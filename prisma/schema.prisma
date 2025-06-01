@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+  // previewFeatures = ["extendedWhereUnique"] // 필요시 활성화
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CourseStatus {
+  ACTIVE // 운영 중
+  CLOSED // 폐쇄
+  MAINTENANCE // 점검 중
+  PENDING // 승인 대기
+}
+
+model GolfCompany {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  address     String? // 회사 주소
+  contact     String? // 대표 연락처 (전화번호, 이메일 등)
+  websiteUrl  String? // 회사 웹사이트 URL
+  description String? // 회사 소개
+
+  golfCourses GolfCourse[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("golf_companies")
+}
+
+model GolfCourse {
+  id          Int          @id @default(autoincrement())
+  name        String // 코스 이름 (예: 레이크 코스, 밸리 코스). 회사 내에서 유일해야 함.
+  location    String? // 코스 실제 위치 (회사 주소와 다를 수 있음)
+  description String?
+  holeCount   Int          @default(9)
+  imageUrl    String?
+  contactInfo String?
+  status      CourseStatus @default(ACTIVE)
+
+  golfCompanyId Int
+  golfCompany   GolfCompany @relation(fields: [golfCompanyId], references: [id], onDelete: Restrict)
+
+  golfHoles             GolfHole[]
+  courseWeeklySchedules CourseWeeklySchedule[]
+  courseTimeSlots       CourseTimeSlot[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([golfCompanyId, name])
+  @@map("golf_courses")
+}
+
+model GolfHole {
+  id          Int     @id @default(autoincrement())
+  holeNumber  Int // 홀 번호 (1, 2, 3...)
+  par         Int // 기준 타수
+  distance    Int? // 홀 길이 (미터 단위)
+  mapUrl      String? // 홀 지도 이미지 URL
+  description String? // 홀 설명
+
+  golfCourseId Int
+  golfCourse   GolfCourse @relation(fields: [golfCourseId], references: [id], onDelete: Cascade)
+
+  golfTeeBoxes GolfTeeBox[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 같은 코스 내에서 홀 번호는 유일해야 함
+  @@unique([golfCourseId, holeNumber])
+  @@map("golf_holes")
+}
+
+model GolfTeeBox {
+  id         Int      @id @default(autoincrement())
+  name       String
+  distance   Int
+  golfHoleId Int
+  golfHole   GolfHole @relation(fields: [golfHoleId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("golf_tee_boxes")
+}
+
+model CourseWeeklySchedule {
+  id           Int        @id @default(autoincrement())
+  golfCourseId Int
+  golfCourse   GolfCourse @relation(fields: [golfCourseId], references: [id], onDelete: Cascade)
+  dayOfWeek    Int // 요일 (0: 일요일, 1: 월요일, ..., 6: 토요일)
+  openTime     String // HH:MM 형식 (예: "09:00")
+  closeTime    String // HH:MM 형식 (예: "18:00")
+  slotDuration Int // 슬롯 지속 시간 (분 단위, 예: 60분)
+  maxCapacity  Int        @default(4) // 슬롯당 최대 예약 가능 인원 (파크골프는 보통 4명)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([golfCourseId, dayOfWeek])
+  @@map("course_weekly_schedule")
+}
+
+model CourseTimeSlot {
+  id           String     @id @default(cuid())
+  golfCourseId Int
+  golfCourse   GolfCourse @relation(fields: [golfCourseId], references: [id], onDelete: Cascade)
+
+  date      DateTime // 슬롯 날짜 (시간 정보는 00:00:00 UTC로 저장하여 날짜만 표현)
+  startTime DateTime // 슬롯 시작 시간 (UTC)
+  endTime   DateTime // 슬롯 종료 시간 (UTC)
+
+  maxCapacity Int // 이 슬롯의 최대 예약 가능 인원 (CourseOperatingHoursTemplate에서 가져오거나 직접 설정)
+  // isAvailable: Boolean @default(true) // Course Service가 직접 예약 상태를 관리한다면 필요
+  bookedCount Int @default(0) // 현재 예약된 인원 수 (maxCapacity와 비교)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 같은 코스, 같은 날짜, 같은 시작 시간의 슬롯은 유일해야 함
+  @@unique([golfCourseId, date, startTime])
+  @@map("course_time_slots")
+}
