@@ -1,0 +1,22 @@
+{
+  "name": "parkgolf-monorepo",
+  "version": "1.0.0",
+  "description": "Park Golf Microservices Monorepo",
+  "scripts": {
+    "start:all": "./scripts/start-all.sh",
+    "build:all": "./scripts/build-all.sh",
+    "test:all": "./scripts/test-all.sh",
+    "install:all": "for dir in parkgolf-*; do cd $dir && npm install && cd ..; done",
+    "clean:all": "for dir in parkgolf-*; do cd $dir && rm -rf node_modules dist && cd ..; done"
+  },
+  "private": true,
+  "workspaces": [
+    "parkgolf-auth-service",
+    "parkgolf-course-service",
+    "parkgolf-booking-service",
+    "parkgolf-notify-service",
+    "parkgolf-search-service",
+    "parkgolf-admin-api",
+    "parkgolf-user-api"
+  ]
+}

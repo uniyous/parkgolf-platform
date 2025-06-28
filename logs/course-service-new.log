@@ -1,0 +1,300 @@
+
+> parkgolf-course-service@0.0.1 start:dev
+> cross-env NODE_ENV=development nest start --watch
+
+[2J[3J[H[[90m11:21:25 AM[0m] Starting compilation in watch mode...
+
+[96msrc/company/service/golf-company.service.ts[0m:[93m13[0m:[93m32[0m - [91merror[0m[90m TS2339: [0mProperty 'golfCompany' does not exist on type 'PrismaService'.
+
+[7m13[0m       return await this.prisma.golfCompany.create({
+[7m  [0m [91m                               ~~~~~~~~~~~[0m
+
+[96msrc/company/service/golf-company.service.ts[0m:[93m25[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'golfCompany' does not exist on type 'PrismaService'.
+
+[7m25[0m     return this.prisma.golfCompany.findMany({
+[7m  [0m [91m                       ~~~~~~~~~~~[0m
+
+[96msrc/company/service/golf-company.service.ts[0m:[93m31[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'golfCompany' does not exist on type 'PrismaService'.
+
+[7m31[0m     const company = await this.prisma.golfCompany.findUnique({
+[7m  [0m [91m                                      ~~~~~~~~~~~[0m
+
+[96msrc/company/service/golf-company.service.ts[0m:[93m43[0m:[93m32[0m - [91merror[0m[90m TS2339: [0mProperty 'golfCompany' does not exist on type 'PrismaService'.
+
+[7m43[0m       return await this.prisma.golfCompany.update({
+[7m  [0m [91m                               ~~~~~~~~~~~[0m
+
+[96msrc/company/service/golf-company.service.ts[0m:[93m64[0m:[93m32[0m - [91merror[0m[90m TS2339: [0mProperty 'golfCompany' does not exist on type 'PrismaService'.
+
+[7m64[0m       return await this.prisma.golfCompany.delete({
+[7m  [0m [91m                               ~~~~~~~~~~~[0m
+
+[96msrc/course/dto/course-time-slot.dto.ts[0m:[93m2[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"@prisma/client"' has no exported member 'CourseTimeSlot'.
+
+[7m2[0m import { CourseTimeSlot as CourseTimeSlotModel } from '@prisma/client';
+[7m [0m [91m         ~~~~~~~~~~~~~~[0m
+
+[96msrc/course/dto/course-weekly-schedule.dto.ts[0m:[93m2[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"@prisma/client"' has no exported member 'CourseWeeklySchedule'.
+
+[7m2[0m import { CourseWeeklySchedule as CourseWeeklyScheduleModel } from '@prisma/client';
+[7m [0m [91m         ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/course/dto/golf-course.dto.ts[0m:[93m2[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"@prisma/client"' has no exported member 'CourseStatus'.
+
+[7m2[0m import { CourseStatus, GolfCourse as GolfCourseModel } from '@prisma/client';
+[7m [0m [91m         ~~~~~~~~~~~~[0m
+
+[96msrc/course/dto/golf-course.dto.ts[0m:[93m2[0m:[93m24[0m - [91merror[0m[90m TS2305: [0mModule '"@prisma/client"' has no exported member 'GolfCourse'.
+
+[7m2[0m import { CourseStatus, GolfCourse as GolfCourseModel } from '@prisma/client';
+[7m [0m [91m                       ~~~~~~~~~~[0m
+
+[96msrc/course/dto/golf-hole.dto.ts[0m:[93m2[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"@prisma/client"' has no exported member 'GolfHole'.
+
+[7m2[0m import { GolfHole as GolfHoleModel } from '@prisma/client';
+[7m [0m [91m         ~~~~~~~~[0m
+
+[96msrc/course/dto/golf-tee-box.dto.ts[0m:[93m2[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"@prisma/client"' has no exported member 'GolfTeeBox'.
+
+[7m2[0m import { GolfTeeBox as GolfTeeBoxModel } from '@prisma/client';
+[7m [0m [91m         ~~~~~~~~~~[0m
+
+[96msrc/course/service/course-time-slot.service.ts[0m:[93m2[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"@prisma/client"' has no exported member 'CourseTimeSlot'.
+
+[7m2[0m import { CourseTimeSlot, Prisma } from '@prisma/client';
+[7m [0m [91m         ~~~~~~~~~~~~~~[0m
+
+[96msrc/course/service/course-time-slot.service.ts[0m:[93m30[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'courseTimeSlot' does not exist on type 'PrismaService'.
+
+[7m30[0m     return this.prisma.courseTimeSlot.findMany({
+[7m  [0m [91m                       ~~~~~~~~~~~~~~[0m
+
+[96msrc/course/service/course-time-slot.service.ts[0m:[93m54[0m:[93m36[0m - [91merror[0m[90m TS2339: [0mProperty 'courseTimeSlot' does not exist on type 'PrismaService'.
+
+[7m54[0m     const slot = await this.prisma.courseTimeSlot.findUnique({
+[7m  [0m [91m                                   ~~~~~~~~~~~~~~[0m
+
+[96msrc/course/service/course-time-slot.service.ts[0m:[93m92[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'golfCourse' does not exist on type 'PrismaService'.
+
+[7m92[0m     const course = await this.prisma.golfCourse.findUnique({
+[7m  [0m [91m                                     ~~~~~~~~~~[0m
+
+[96msrc/course/service/course-time-slot.service.ts[0m:[93m113[0m:[93m33[0m - [91merror[0m[90m TS2694: [0mNamespace '"/Users/sungyoo/git/uniyous/parkgolf/node_modules/.prisma/client/index".Prisma' has no exported member 'CourseTimeSlotCreateManyInput'.
+
+[7m113[0m     const slotsToCreate: Prisma.CourseTimeSlotCreateManyInput[] = [];
+[7m   [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/course/service/course-time-slot.service.ts[0m:[93m159[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'courseTimeSlot' does not exist on type 'PrismaService'.
+
+[7m159[0m     const result = await this.prisma.courseTimeSlot.createMany({
+[7m   [0m [91m                                     ~~~~~~~~~~~~~~[0m
+
+[96msrc/course/service/course-time-slot.service.ts[0m:[93m174[0m:[93m31[0m - [91merror[0m[90m TS2339: [0mProperty 'courseTimeSlot' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$on" | "$connect" | "$disconnect" | "$use" | "$transaction" | "$extends">'.
+
+[7m174[0m         const slot = await tx.courseTimeSlot.findUnique({ where: { id: slotId } });
+[7m   [0m [91m                              ~~~~~~~~~~~~~~[0m
+
+[96msrc/course/service/course-time-slot.service.ts[0m:[93m187[0m:[93m19[0m - [91merror[0m[90m TS2339: [0mProperty 'courseTimeSlot' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$on" | "$connect" | "$disconnect" | "$use" | "$transaction" | "$extends">'.
+
+[7m187[0m         return tx.courseTimeSlot.update({
+[7m   [0m [91m                  ~~~~~~~~~~~~~~[0m
+
+[96msrc/course/service/course-weekly-schedule.service.ts[0m:[93m2[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"@prisma/client"' has no exported member 'CourseWeeklySchedule'.
+
+[7m2[0m import { CourseWeeklySchedule, Prisma } from '@prisma/client';
+[7m [0m [91m         ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/course/service/course-weekly-schedule.service.ts[0m:[93m16[0m:[93m42[0m - [91merror[0m[90m TS2339: [0mProperty 'golfCourse' does not exist on type 'PrismaService'.
+
+[7m16[0m     const golfCourse = await this.prisma.golfCourse.findUnique({
+[7m  [0m [91m                                         ~~~~~~~~~~[0m
+
+[96msrc/course/service/course-weekly-schedule.service.ts[0m:[93m29[0m:[93m32[0m - [91merror[0m[90m TS2339: [0mProperty 'courseWeeklySchedule' does not exist on type 'PrismaService'.
+
+[7m29[0m       return await this.prisma.courseWeeklySchedule.create({
+[7m  [0m [91m                               ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/course/service/course-weekly-schedule.service.ts[0m:[93m55[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'courseWeeklySchedule' does not exist on type 'PrismaService'.
+
+[7m55[0m     return this.prisma.courseWeeklySchedule.findMany({
+[7m  [0m [91m                       ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/course/service/course-weekly-schedule.service.ts[0m:[93m63[0m:[93m40[0m - [91merror[0m[90m TS2339: [0mProperty 'courseWeeklySchedule' does not exist on type 'PrismaService'.
+
+[7m63[0m     const schedule = await this.prisma.courseWeeklySchedule.findUnique({
+[7m  [0m [91m                                       ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/course/service/course-weekly-schedule.service.ts[0m:[93m74[0m:[93m40[0m - [91merror[0m[90m TS2339: [0mProperty 'courseWeeklySchedule' does not exist on type 'PrismaService'.
+
+[7m74[0m     const schedule = await this.prisma.courseWeeklySchedule.findUnique({
+[7m  [0m [91m                                       ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/course/service/course-weekly-schedule.service.ts[0m:[93m92[0m:[93m48[0m - [91merror[0m[90m TS2339: [0mProperty 'courseWeeklySchedule' does not exist on type 'PrismaService'.
+
+[7m92[0m     const existingSchedule = await this.prisma.courseWeeklySchedule.findUnique({
+[7m  [0m [91m                                               ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/course/service/course-weekly-schedule.service.ts[0m:[93m118[0m:[93m32[0m - [91merror[0m[90m TS2339: [0mProperty 'courseWeeklySchedule' does not exist on type 'PrismaService'.
+
+[7m118[0m       return await this.prisma.courseWeeklySchedule.update({
+[7m   [0m [91m                               ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/course/service/course-weekly-schedule.service.ts[0m:[93m143[0m:[93m32[0m - [91merror[0m[90m TS2339: [0mProperty 'courseWeeklySchedule' does not exist on type 'PrismaService'.
+
+[7m143[0m       return await this.prisma.courseWeeklySchedule.delete({
+[7m   [0m [91m                               ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-course.service.ts[0m:[93m2[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"@prisma/client"' has no exported member 'GolfCourse'.
+
+[7m2[0m import { GolfCourse, Prisma } from '@prisma/client';
+[7m [0m [91m         ~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-course.service.ts[0m:[93m16[0m:[93m43[0m - [91merror[0m[90m TS2339: [0mProperty 'golfCompany' does not exist on type 'PrismaService'.
+
+[7m16[0m     const golfCompany = await this.prisma.golfCompany.findUnique({
+[7m  [0m [91m                                          ~~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-course.service.ts[0m:[93m24[0m:[93m32[0m - [91merror[0m[90m TS2339: [0mProperty 'golfCourse' does not exist on type 'PrismaService'.
+
+[7m24[0m       return await this.prisma.golfCourse.create({
+[7m  [0m [91m                               ~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-course.service.ts[0m:[93m55[0m:[93m25[0m - [91merror[0m[90m TS2724: [0m'"/Users/sungyoo/git/uniyous/parkgolf/node_modules/.prisma/client/index".Prisma' has no exported member named 'GolfCourseWhereInput'. Did you mean 'UserWhereInput'?
+
+[7m55[0m     const where: Prisma.GolfCourseWhereInput = {};
+[7m  [0m [91m                        ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-course.service.ts[0m:[93m69[0m:[93m19[0m - [91merror[0m[90m TS2339: [0mProperty 'golfCourse' does not exist on type 'PrismaService'.
+
+[7m69[0m       this.prisma.golfCourse.findMany({
+[7m  [0m [91m                  ~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-course.service.ts[0m:[93m76[0m:[93m19[0m - [91merror[0m[90m TS2339: [0mProperty 'golfCourse' does not exist on type 'PrismaService'.
+
+[7m76[0m       this.prisma.golfCourse.count({ where }),
+[7m  [0m [91m                  ~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-course.service.ts[0m:[93m84[0m:[93m42[0m - [91merror[0m[90m TS2339: [0mProperty 'golfCourse' does not exist on type 'PrismaService'.
+
+[7m84[0m     const golfCourse = await this.prisma.golfCourse.findUnique({
+[7m  [0m [91m                                         ~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-course.service.ts[0m:[93m107[0m:[93m45[0m - [91merror[0m[90m TS2339: [0mProperty 'golfCompany' does not exist on type 'PrismaService'.
+
+[7m107[0m       const golfCompany = await this.prisma.golfCompany.findUnique({
+[7m   [0m [91m                                            ~~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-course.service.ts[0m:[93m116[0m:[93m32[0m - [91merror[0m[90m TS2339: [0mProperty 'golfCourse' does not exist on type 'PrismaService'.
+
+[7m116[0m       return await this.prisma.golfCourse.update({
+[7m   [0m [91m                               ~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-course.service.ts[0m:[93m155[0m:[93m32[0m - [91merror[0m[90m TS2339: [0mProperty 'golfCourse' does not exist on type 'PrismaService'.
+
+[7m155[0m       return await this.prisma.golfCourse.delete({
+[7m   [0m [91m                               ~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-hole.service.ts[0m:[93m2[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"@prisma/client"' has no exported member 'GolfHole'.
+
+[7m2[0m import { GolfHole, Prisma } from '@prisma/client';
+[7m [0m [91m         ~~~~~~~~[0m
+
+[96msrc/course/service/golf-hole.service.ts[0m:[93m16[0m:[93m42[0m - [91merror[0m[90m TS2339: [0mProperty 'golfCourse' does not exist on type 'PrismaService'.
+
+[7m16[0m     const golfCourse = await this.prisma.golfCourse.findUnique({
+[7m  [0m [91m                                         ~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-hole.service.ts[0m:[93m24[0m:[93m32[0m - [91merror[0m[90m TS2339: [0mProperty 'golfHole' does not exist on type 'PrismaService'.
+
+[7m24[0m       return await this.prisma.golfHole.create({
+[7m  [0m [91m                               ~~~~~~~~[0m
+
+[96msrc/course/service/golf-hole.service.ts[0m:[93m48[0m:[93m25[0m - [91merror[0m[90m TS2694: [0mNamespace '"/Users/sungyoo/git/uniyous/parkgolf/node_modules/.prisma/client/index".Prisma' has no exported member 'GolfHoleWhereInput'.
+
+[7m48[0m     const where: Prisma.GolfHoleWhereInput = {
+[7m  [0m [91m                        ~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-hole.service.ts[0m:[93m58[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'golfHole' does not exist on type 'PrismaService'.
+
+[7m58[0m     return this.prisma.golfHole.findMany({
+[7m  [0m [91m                       ~~~~~~~~[0m
+
+[96msrc/course/service/golf-hole.service.ts[0m:[93m67[0m:[93m40[0m - [91merror[0m[90m TS2339: [0mProperty 'golfHole' does not exist on type 'PrismaService'.
+
+[7m67[0m     const golfHole = await this.prisma.golfHole.findUnique({
+[7m  [0m [91m                                       ~~~~~~~~[0m
+
+[96msrc/course/service/golf-hole.service.ts[0m:[93m94[0m:[93m60[0m - [91merror[0m[90m TS2339: [0mProperty 'golfHole' does not exist on type 'PrismaService'.
+
+[7m94[0m       const existingHoleWithSameNumber = await this.prisma.golfHole.findUnique({
+[7m  [0m [91m                                                           ~~~~~~~~[0m
+
+[96msrc/course/service/golf-hole.service.ts[0m:[93m109[0m:[93m32[0m - [91merror[0m[90m TS2339: [0mProperty 'golfHole' does not exist on type 'PrismaService'.
+
+[7m109[0m       return await this.prisma.golfHole.update({
+[7m   [0m [91m                               ~~~~~~~~[0m
+
+[96msrc/course/service/golf-hole.service.ts[0m:[93m137[0m:[93m32[0m - [91merror[0m[90m TS2339: [0mProperty 'golfHole' does not exist on type 'PrismaService'.
+
+[7m137[0m       return await this.prisma.golfHole.delete({
+[7m   [0m [91m                               ~~~~~~~~[0m
+
+[96msrc/course/service/golf-tee-box.service.ts[0m:[93m2[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"@prisma/client"' has no exported member 'GolfTeeBox'.
+
+[7m2[0m import { GolfTeeBox, Prisma } from '@prisma/client';
+[7m [0m [91m         ~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-tee-box.service.ts[0m:[93m16[0m:[93m40[0m - [91merror[0m[90m TS2339: [0mProperty 'golfHole' does not exist on type 'PrismaService'.
+
+[7m16[0m     const golfHole = await this.prisma.golfHole.findUnique({
+[7m  [0m [91m                                       ~~~~~~~~[0m
+
+[96msrc/course/service/golf-tee-box.service.ts[0m:[93m24[0m:[93m54[0m - [91merror[0m[90m TS2339: [0mProperty 'golfTeeBox' does not exist on type 'PrismaService'.
+
+[7m24[0m     const existingTeeBoxWithName = await this.prisma.golfTeeBox.findFirst({
+[7m  [0m [91m                                                     ~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-tee-box.service.ts[0m:[93m35[0m:[93m32[0m - [91merror[0m[90m TS2339: [0mProperty 'golfTeeBox' does not exist on type 'PrismaService'.
+
+[7m35[0m       return await this.prisma.golfTeeBox.create({
+[7m  [0m [91m                               ~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-tee-box.service.ts[0m:[93m55[0m:[93m25[0m - [91merror[0m[90m TS2694: [0mNamespace '"/Users/sungyoo/git/uniyous/parkgolf/node_modules/.prisma/client/index".Prisma' has no exported member 'GolfTeeBoxWhereInput'.
+
+[7m55[0m     const where: Prisma.GolfTeeBoxWhereInput = {
+[7m  [0m [91m                        ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-tee-box.service.ts[0m:[93m62[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'golfTeeBox' does not exist on type 'PrismaService'.
+
+[7m62[0m     return this.prisma.golfTeeBox.findMany({
+[7m  [0m [91m                       ~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-tee-box.service.ts[0m:[93m70[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'golfTeeBox' does not exist on type 'PrismaService'.
+
+[7m70[0m     const teeBox = await this.prisma.golfTeeBox.findUnique({
+[7m  [0m [91m                                     ~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-tee-box.service.ts[0m:[93m91[0m:[93m56[0m - [91merror[0m[90m TS2339: [0mProperty 'golfTeeBox' does not exist on type 'PrismaService'.
+
+[7m91[0m       const existingTeeBoxWithName = await this.prisma.golfTeeBox.findFirst({
+[7m  [0m [91m                                                       ~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-tee-box.service.ts[0m:[93m104[0m:[93m32[0m - [91merror[0m[90m TS2339: [0mProperty 'golfTeeBox' does not exist on type 'PrismaService'.
+
+[7m104[0m       return await this.prisma.golfTeeBox.update({
+[7m   [0m [91m                               ~~~~~~~~~~[0m
+
+[96msrc/course/service/golf-tee-box.service.ts[0m:[93m128[0m:[93m32[0m - [91merror[0m[90m TS2339: [0mProperty 'golfTeeBox' does not exist on type 'PrismaService'.
+
+[7m128[0m       return await this.prisma.golfTeeBox.delete({
+[7m   [0m [91m                               ~~~~~~~~~~[0m
+
+[[90m11:21:26 AM[0m] Found 57 errors. Watching for file changes.
+
+npm error Lifecycle script `start:dev` failed with error:
+npm error code 1
+npm error path /Users/sungyoo/git/uniyous/parkgolf/parkgolf-course-service
+npm error workspace parkgolf-course-service@0.0.1
+npm error location /Users/sungyoo/git/uniyous/parkgolf/parkgolf-course-service
+npm error command failed
+npm error command sh -c cross-env NODE_ENV=development nest start --watch
