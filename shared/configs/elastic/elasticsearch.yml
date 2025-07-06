@@ -1,15 +1,14 @@
-# ElasticSearch Configuration for Park Golf Platform
+# ElasticSearch Configuration for Park Golf Platform - Development
 
 cluster.name: parkgolf-cluster
-node.name: ${NODE_NAME}
+node.name: parkgolf-node-1
 
 # Network
 network.host: 0.0.0.0
 http.port: 9200
 
-# Discovery
-discovery.seed_hosts: ["es-node1", "es-node2", "es-node3"]
-cluster.initial_master_nodes: ["es-node1"]
+# Discovery (Single Node for Development)
+discovery.type: single-node
 
 # Memory
 bootstrap.memory_lock: true
