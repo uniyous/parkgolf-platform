@@ -1,0 +1,101 @@
+// Common database schema patterns for all services
+// This file contains reusable models and patterns
+
+// Base model with common fields
+model BaseModel {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
+
+// Address component
+model Address {
+  street     String
+  city       String
+  state      String
+  postalCode String
+  country    String  @default("KR")
+  latitude   Float?
+  longitude  Float?
+}
+
+// Contact information
+model Contact {
+  phone    String?
+  email    String? @unique
+  website  String?
+  kakaoId  String?
+  lineId   String?
+}
+
+// Operating hours
+model OperatingHours {
+  dayOfWeek Int    // 0-6 (Sunday-Saturday)
+  openTime  String // HH:MM format
+  closeTime String // HH:MM format
+  isClosed  Boolean @default(false)
+}
+
+// Price information
+model Price {
+  amount   Decimal @db.Decimal(10, 2)
+  currency String  @default("KRW")
+  
+  @@index([currency])
+}
+
+// Common enums
+enum Status {
+  ACTIVE
+  INACTIVE
+  PENDING
+  SUSPENDED
+  DELETED
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  USER
+  GUEST
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum NotificationType {
+  EMAIL
+  SMS
+  PUSH
+  KAKAO
+}
+
+enum Language {
+  KO
+  EN
+  JA
+  ZH
+}
+
+// Audit fields generator
+generator auditFields {
+  provider = "prisma-generator-audit"
+  output   = "./generated"
+}

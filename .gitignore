@@ -1,0 +1,513 @@
+# Park Golf Platform - Comprehensive .gitignore
+
+# ========================================
+# Node.js & npm
+# ========================================
+node_modules/
+*/node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.npm
+.eslintcache
+*.tsbuildinfo
+
+# Package manager locks (keep for consistency)
+# package-lock.json
+# yarn.lock
+
+# ========================================
+# Environment Variables & Secrets
+# ========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+*.env
+!.env.example
+
+# Secret files
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets.json
+service-account-key.json
+
+# ========================================
+# Build outputs & Dist
+# ========================================
+dist/
+build/
+out/
+.next/
+.nuxt/
+.cache/
+.parcel-cache/
+*.tsbuildinfo
+
+# ========================================
+# Logs
+# ========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.nyc_output/
+coverage/
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# ========================================
+# Testing
+# ========================================
+coverage/
+.nyc_output/
+junit.xml
+test-results/
+playwright-report/
+test-results.xml
+
+# ========================================
+# Databases
+# ========================================
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.mdb
+*.accdb
+
+# PostgreSQL
+*.dump
+*.sql.gz
+
+# ========================================
+# Docker
+# ========================================
+.dockerignore
+docker-compose.override.yml
+Dockerfile.local
+
+# ========================================
+# Terraform
+# ========================================
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+terraform.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
+crash.log
+crash.*.log
+
+# ========================================
+# Cloud & Deployment
+# ========================================
+# Google Cloud
+gcloud/
+.gcloud/
+google-cloud-key.json
+
+# AWS
+.aws/
+*.pem
+
+# Azure
+.azure/
+
+# ========================================
+# Go Language
+# ========================================
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency directories
+vendor/
+
+# Go modules
+go.sum
+
+# ========================================
+# Python
+# ========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.pipenv
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# ========================================
+# Operating Systems
+# ========================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.tmp
+*.temp
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ========================================
+# IDEs & Editors
+# ========================================
+
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.history/
+*.vsix
+
+# JetBrains IDEs (IntelliJ IDEA, WebStorm, PhpStorm, etc.)
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+.idea_modules/
+atlassian-ide-plugin.xml
+com_crashlytics_export_strings.xml
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties
+
+# JetBrains specific
+# GoLand
+.idea/
+
+# Sublime Text
+*.tmlanguage.cache
+*.tmPreferences.cache
+*.stTheme.cache
+*.sublime-workspace
+*.sublime-project
+
+# Vim
+[._]*.s[a-v][a-z]
+!*.svg
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+Session.vim
+Sessionx.vim
+.netrwhist
+*~
+tags
+[._]*.un~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Nano
+*.save
+*.swp
+*.swo
+
+# ========================================
+# Temporary files
+# ========================================
+tmp/
+temp/
+*.tmp
+*.temp
+*.cache
+.cache/
+.tmp/
+.temp/
+
+# ========================================
+# Project specific
+# ========================================
+
+# Development artifacts
+*.map
+*.min.js
+*.min.css
+
+# Local development
+.local/
+local/
+dev/
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# ========================================
+# Monitoring & Analytics
+# ========================================
+.newrelic/
+newrelic.js
+
+# ========================================
+# Mobile Development
+# ========================================
+# React Native
+.expo/
+.expo-shared/
+expo-env.d.ts
+
+# iOS
+ios/Pods/
+ios/build/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+xcuserdata/
+*.xcworkspace/
+*.xccheckout
+*.moved-aside
+DerivedData
+*.hmap
+*.ipa
+
+# Android
+android/app/build/
+android/.gradle/
+android/gradle/
+android/gradlew
+android/gradlew.bat
+android/local.properties
+*.ap_
+*.aab
+*.apk
+
+# ========================================
+# Documentation
+# ========================================
+docs/_build/
+docs/build/
+.jekyll-metadata
+_site/
+
+# ========================================
+# Certificates & Keys
+# ========================================
+*.crt
+*.cer
+*.der
+*.pem
+*.p7b
+*.p7c
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# ========================================
+# Misc
+# ========================================
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# ESLint
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env.test
+
+# parcel-bundler cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

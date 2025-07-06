@@ -1,0 +1,41 @@
+{
+  "name": "parkgolf-platform",
+  "version": "1.0.0",
+  "description": "Park Golf Booking Platform - Microservices Architecture",
+  "repository": "https://github.com/uniyous/parkgolf-platform",
+  "architecture": {
+    "type": "microservices",
+    "pattern": "BFF",
+    "communication": "NATS Streaming",
+    "deployment": "GCP Cloud Run"
+  },
+  "technologies": {
+    "frontend": {
+      "admin": "React + TypeScript + Redux Toolkit",
+      "user": "React + TypeScript + Recoil"
+    },
+    "backend": {
+      "bff": "NestJS",
+      "microservices": "NestJS",
+      "search": "Golang",
+      "ml": "Python FastAPI"
+    },
+    "database": {
+      "primary": "PostgreSQL",
+      "search": "ElasticSearch",
+      "cache": "Redis"
+    },
+    "infrastructure": {
+      "cloud": "Google Cloud Platform",
+      "orchestration": "Cloud Run",
+      "ci_cd": "Cloud Build",
+      "monitoring": "Cloud Monitoring",
+      "logging": "Cloud Logging"
+    }
+  },
+  "environments": ["development", "staging", "production"],
+  "team": {
+    "owner": "uniyous",
+    "contact": "admin@parkgolf.com"
+  }
+}

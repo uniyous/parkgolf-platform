@@ -1,0 +1,150 @@
+{
+  "events": {
+    "user": {
+      "user.created": {
+        "description": "Fired when a new user is created",
+        "payload": {
+          "userId": "string",
+          "email": "string",
+          "role": "string",
+          "createdAt": "datetime"
+        }
+      },
+      "user.updated": {
+        "description": "Fired when user information is updated",
+        "payload": {
+          "userId": "string",
+          "changes": "object",
+          "updatedAt": "datetime"
+        }
+      },
+      "user.deleted": {
+        "description": "Fired when a user is deleted",
+        "payload": {
+          "userId": "string",
+          "deletedAt": "datetime"
+        }
+      },
+      "user.login": {
+        "description": "Fired when a user logs in",
+        "payload": {
+          "userId": "string",
+          "ip": "string",
+          "device": "string",
+          "timestamp": "datetime"
+        }
+      }
+    },
+    "course": {
+      "course.created": {
+        "description": "Fired when a new course is created",
+        "payload": {
+          "courseId": "string",
+          "companyId": "string",
+          "name": "string",
+          "createdAt": "datetime"
+        }
+      },
+      "course.updated": {
+        "description": "Fired when course information is updated",
+        "payload": {
+          "courseId": "string",
+          "changes": "object",
+          "updatedAt": "datetime"
+        }
+      },
+      "course.availability.changed": {
+        "description": "Fired when course availability changes",
+        "payload": {
+          "courseId": "string",
+          "date": "date",
+          "availableSlots": "number",
+          "changedAt": "datetime"
+        }
+      }
+    },
+    "booking": {
+      "booking.created": {
+        "description": "Fired when a new booking is created",
+        "payload": {
+          "bookingId": "string",
+          "userId": "string",
+          "courseId": "string",
+          "date": "date",
+          "timeSlot": "string",
+          "players": "number",
+          "totalAmount": "number",
+          "createdAt": "datetime"
+        }
+      },
+      "booking.confirmed": {
+        "description": "Fired when a booking is confirmed",
+        "payload": {
+          "bookingId": "string",
+          "confirmedAt": "datetime"
+        }
+      },
+      "booking.cancelled": {
+        "description": "Fired when a booking is cancelled",
+        "payload": {
+          "bookingId": "string",
+          "reason": "string",
+          "cancelledBy": "string",
+          "cancelledAt": "datetime"
+        }
+      },
+      "booking.completed": {
+        "description": "Fired when a booking is completed",
+        "payload": {
+          "bookingId": "string",
+          "completedAt": "datetime"
+        }
+      },
+      "booking.payment.completed": {
+        "description": "Fired when payment for a booking is completed",
+        "payload": {
+          "bookingId": "string",
+          "paymentId": "string",
+          "amount": "number",
+          "method": "string",
+          "completedAt": "datetime"
+        }
+      }
+    },
+    "notification": {
+      "notification.sent": {
+        "description": "Fired when a notification is sent",
+        "payload": {
+          "notificationId": "string",
+          "type": "string",
+          "recipient": "string",
+          "templateId": "string",
+          "sentAt": "datetime"
+        }
+      },
+      "notification.failed": {
+        "description": "Fired when a notification fails to send",
+        "payload": {
+          "notificationId": "string",
+          "type": "string",
+          "recipient": "string",
+          "error": "string",
+          "failedAt": "datetime"
+        }
+      }
+    },
+    "search": {
+      "search.performed": {
+        "description": "Fired when a search is performed",
+        "payload": {
+          "searchId": "string",
+          "userId": "string",
+          "query": "string",
+          "filters": "object",
+          "resultsCount": "number",
+          "performedAt": "datetime"
+        }
+      }
+    }
+  }
+}

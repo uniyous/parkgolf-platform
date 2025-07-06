@@ -1,0 +1,100 @@
+{
+  "environments": {
+    "development": {
+      "name": "Development",
+      "gcp_project": "parkgolf-dev",
+      "region": "asia-northeast3",
+      "database": {
+        "host": "localhost",
+        "port": 5432,
+        "ssl": false
+      },
+      "elasticsearch": {
+        "host": "localhost",
+        "port": 9200,
+        "ssl": false
+      },
+      "nats": {
+        "host": "localhost",
+        "port": 4222
+      },
+      "redis": {
+        "host": "localhost",
+        "port": 6379
+      },
+      "features": {
+        "debug": true,
+        "swagger": true,
+        "monitoring": false
+      }
+    },
+    "staging": {
+      "name": "Staging",
+      "gcp_project": "parkgolf-staging",
+      "region": "asia-northeast3",
+      "database": {
+        "host": "10.20.0.3",
+        "port": 5432,
+        "ssl": true,
+        "connection_name": "parkgolf-staging:asia-northeast3:pg-staging"
+      },
+      "elasticsearch": {
+        "host": "es-staging.parkgolf.internal",
+        "port": 9200,
+        "ssl": true
+      },
+      "nats": {
+        "host": "nats-staging.parkgolf.internal",
+        "port": 4222
+      },
+      "redis": {
+        "host": "redis-staging.parkgolf.internal",
+        "port": 6379
+      },
+      "features": {
+        "debug": false,
+        "swagger": true,
+        "monitoring": true
+      }
+    },
+    "production": {
+      "name": "Production",
+      "gcp_project": "parkgolf-prod",
+      "region": "asia-northeast3",
+      "database": {
+        "host": "10.30.0.3",
+        "port": 5432,
+        "ssl": true,
+        "connection_name": "parkgolf-prod:asia-northeast3:pg-prod",
+        "pool_size": 20
+      },
+      "elasticsearch": {
+        "host": "es-prod.parkgolf.internal",
+        "port": 9200,
+        "ssl": true,
+        "cluster": true
+      },
+      "nats": {
+        "host": "nats-prod.parkgolf.internal",
+        "port": 4222,
+        "cluster": true
+      },
+      "redis": {
+        "host": "redis-prod.parkgolf.internal",
+        "port": 6379,
+        "cluster": true
+      },
+      "features": {
+        "debug": false,
+        "swagger": false,
+        "monitoring": true
+      },
+      "scaling": {
+        "min_instances": 2,
+        "max_instances": 10,
+        "cpu_threshold": 70,
+        "memory_threshold": 80
+      }
+    }
+  }
+}
