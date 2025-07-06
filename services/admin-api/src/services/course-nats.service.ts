@@ -290,35 +290,22 @@ export class CourseNatsService {
     try {
       this.logger.log(`Fetching holes via NATS for course: ${courseId}`);
       
-      // 임시로 샘플 데이터 반환 (course service가 구현되지 않음)
-      if (courseId === '5') {
-        // 그린밸리 동코스 9홀 데이터
-        const sampleHoles = [
-          { id: 1, holeNumber: 1, par: 3, distance: 120, description: "그린밸리 동코스 1번 홀 (Par 3, 120m)", courseId: parseInt(courseId) },
-          { id: 2, holeNumber: 2, par: 4, distance: 150, description: "그린밸리 동코스 2번 홀 (Par 4, 150m)", courseId: parseInt(courseId) },
-          { id: 3, holeNumber: 3, par: 5, distance: 180, description: "그린밸리 동코스 3번 홀 (Par 5, 180m)", courseId: parseInt(courseId) },
-          { id: 4, holeNumber: 4, par: 3, distance: 120, description: "그린밸리 동코스 4번 홀 (Par 3, 120m)", courseId: parseInt(courseId) },
-          { id: 5, holeNumber: 5, par: 4, distance: 150, description: "그린밸리 동코스 5번 홀 (Par 4, 150m)", courseId: parseInt(courseId) },
-          { id: 6, holeNumber: 6, par: 5, distance: 180, description: "그린밸리 동코스 6번 홀 (Par 5, 180m)", courseId: parseInt(courseId) },
-          { id: 7, holeNumber: 7, par: 3, distance: 120, description: "그린밸리 동코스 7번 홀 (Par 3, 120m)", courseId: parseInt(courseId) },
-          { id: 8, holeNumber: 8, par: 4, distance: 150, description: "그린밸리 동코스 8번 홀 (Par 4, 150m)", courseId: parseInt(courseId) },
-          { id: 9, holeNumber: 9, par: 5, distance: 180, description: "그린밸리 동코스 9번 홀 (Par 5, 180m)", courseId: parseInt(courseId) }
-        ];
-        
-        return {
-          success: true,
-          data: sampleHoles
-        };
-      }
+      // Course service의 REST API 직접 호출로 변경
+      const axios = require('axios');
+      const response = await axios.get(`http://localhost:3012/api/courses/${courseId}/holes`);
       
-      // 다른 코스는 빈 배열 반환
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      this.logger.error(`Failed to fetch holes for course: ${courseId}`, error);
+      
+      // 에러 시 빈 배열 반환
       return {
         success: true,
         data: []
       };
-    } catch (error) {
-      this.logger.error(`Failed to fetch holes for course: ${courseId}`, error);
-      throw error;
     }
   }
 

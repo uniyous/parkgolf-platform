@@ -48,7 +48,9 @@ fi
 
 # Load environment variables
 if [ -f .env.development ]; then
-    export $(cat .env.development | grep -v '^#' | xargs)
+    set -a
+    source .env.development
+    set +a
     print_status "Environment variables loaded from .env.development"
 fi
 
