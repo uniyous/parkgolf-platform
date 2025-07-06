@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Booking {
+  id          Int           @id @default(autoincrement())
+  userId      Int
+  courseId    Int
+  bookingDate DateTime
+  timeSlot    String        // HH:MM format
+  playerCount Int           @default(1)
+  totalPrice  Decimal       @db.Decimal(10, 2)
+  status      BookingStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations (외부 서비스 참조이므로 실제 relation은 설정하지 않음)
+  payments    Payment[]
+
+  @@map("bookings")
+}
+
+model Payment {
+  id            Int           @id @default(autoincrement())
+  bookingId     Int
+  booking       Booking       @relation(fields: [bookingId], references: [id])
+  amount        Decimal       @db.Decimal(10, 2)
+  paymentMethod String
+  paymentStatus PaymentStatus @default(PENDING)
+  transactionId String?
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("payments")
+}
+
+model BookingHistory {
+  id        Int      @id @default(autoincrement())
+  bookingId Int
+  action    String   // CREATED, UPDATED, CANCELLED, etc.
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@map("booking_history")
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}

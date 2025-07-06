@@ -1,0 +1,110 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CourseStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+model Company {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  address     String?
+  phoneNumber String?
+  email       String?
+  website     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  courses     Course[]
+
+  @@map("companies")
+}
+
+model Course {
+  id              Int                    @id @default(autoincrement())
+  name            String
+  description     String?
+  address         String
+  phoneNumber     String?
+  status          CourseStatus           @default(ACTIVE)
+  companyId       Int
+  company         Company                @relation(fields: [companyId], references: [id])
+  holes           Hole[]
+  timeSlots       CourseTimeSlot[]
+  weeklySchedules CourseWeeklySchedule[]
+  isActive        Boolean                @default(true)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@map("courses")
+}
+
+model Hole {
+  id         Int      @id @default(autoincrement())
+  holeNumber Int
+  par        Int
+  distance   Int?
+  courseId   Int
+  course     Course   @relation(fields: [courseId], references: [id])
+  teeBoxes   TeeBox[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([courseId, holeNumber])
+  @@map("holes")
+}
+
+model TeeBox {
+  id        Int      @id @default(autoincrement())
+  name      String
+  color     String?
+  distance  Int
+  holeId    Int
+  hole      Hole     @relation(fields: [holeId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tee_boxes")
+}
+
+model CourseTimeSlot {
+  id         Int      @id @default(autoincrement())
+  startTime  String // HH:MM format
+  endTime    String // HH:MM format
+  maxPlayers Int      @default(4)
+  price      Decimal  @db.Decimal(10, 2)
+  courseId   Int
+  course     Course   @relation(fields: [courseId], references: [id])
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("course_time_slots")
+}
+
+model CourseWeeklySchedule {
+  id        Int      @id @default(autoincrement())
+  dayOfWeek Int // 0=Sunday, 1=Monday, ..., 6=Saturday
+  openTime  String // HH:MM format
+  closeTime String // HH:MM format
+  courseId  Int
+  course    Course   @relation(fields: [courseId], references: [id])
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([courseId, dayOfWeek])
+  @@map("course_weekly_schedules")
+}

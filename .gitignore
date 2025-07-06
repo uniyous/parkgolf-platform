@@ -511,3 +511,76 @@ temp/
 *.njsproj
 *.sln
 *.sw?
+
+# ========================================
+# Services Folder Exclusions (Monorepo)
+# ========================================
+
+# Node.js services (admin-api, auth-service, course-service, booking-service, notify-service, search-service, user-api)
+services/*/node_modules/
+services/*/dist/
+services/*/build/
+services/*/.next/
+services/*/.nuxt/
+services/*/coverage/
+services/*/.nyc_output/
+services/*/package-lock.json
+services/*/yarn.lock
+services/*/.eslintcache
+services/*/*.tsbuildinfo
+
+# Python services (ml-service)
+services/*/__pycache__/
+services/*/venv/
+services/*/env/
+services/*/.venv/
+services/*/.env/
+services/*/.pytest_cache/
+services/*/*.pyc
+services/*/*.pyo
+services/*/*.egg-info/
+services/*/.coverage
+services/*/htmlcov/
+
+# React services (admin-dashboard, user-webapp)
+services/*/build/
+services/*/dist/
+services/*/.cache/
+services/*/.parcel-cache/
+
+# Environment and logs
+services/*/.env
+services/*/.env.local
+services/*/.env.development.local
+services/*/.env.test.local
+services/*/.env.production.local
+services/*/logs/
+services/*/*.log
+services/*/npm-debug.log*
+services/*/yarn-debug.log*
+services/*/yarn-error.log*
+
+# Database files
+services/*/*.sqlite
+services/*/*.sqlite3
+services/*/*.db
+
+# IDE and editor files
+services/*/.idea/
+services/*/.vscode/
+services/*/.DS_Store
+services/*/Thumbs.db
+
+# Docker and deployment
+services/*/.dockerignore
+
+# Testing
+services/*/test-results/
+services/*/playwright-report/
+services/*/junit.xml
+
+# Temporary files
+services/*/tmp/
+services/*/temp/
+services/*/*.tmp
+services/*/*.temp

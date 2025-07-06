@@ -1,0 +1,77 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Notification {
+  id              Int                @id @default(autoincrement())
+  userId          String             // Changed to String to match other services
+  type            NotificationType
+  title           String
+  message         String
+  data            Json?
+  status          NotificationStatus @default(PENDING)
+  deliveryChannel String?            // EMAIL, SMS, PUSH
+  retryCount      Int                @default(0)
+  maxRetries      Int                @default(3)
+  scheduledAt     DateTime?          // For scheduled notifications
+  sentAt          DateTime?
+  readAt          DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([userId, status])
+  @@index([type, status])
+  @@index([scheduledAt])
+  @@map("notifications")
+}
+
+model NotificationTemplate {
+  id        Int              @id @default(autoincrement())
+  type      NotificationType
+  title     String
+  content   String
+  variables Json?            // 템플릿 변수 정의
+  isActive  Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@map("notification_templates")
+}
+
+model NotificationSettings {
+  id        Int     @id @default(autoincrement())
+  userId    String  @unique // Changed to String to match other services
+  email     Boolean @default(true)
+  sms       Boolean @default(false)
+  push      Boolean @default(true)
+  marketing Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notification_settings")
+}
+
+enum NotificationType {
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  BOOKING_REMINDER
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  PROMOTIONAL
+  SYSTEM_ALERT
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  READ
+}
