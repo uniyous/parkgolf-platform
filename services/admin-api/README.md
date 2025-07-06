@@ -1,98 +1,214 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Admin API Service
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## 📋 개요
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Admin API는 Park Golf Platform의 관리자 대시보드를 위한 Backend-for-Frontend (BFF) 서비스입니다.
+여러 마이크로서비스의 기능을 통합하여 관리자 인터페이스에 최적화된 API를 제공합니다.
 
-## Description
+## 🏗️ 아키텍처
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- **Framework**: NestJS 10.x
+- **Language**: TypeScript 5.x
+- **Database**: PostgreSQL 15 with Prisma ORM
+- **Message Queue**: NATS 2.x
+- **Cache**: Redis 7.x
+- **Authentication**: JWT with Passport
 
-## Project setup
+## 🚀 빠른 시작
 
+### 사전 요구사항
+- Node.js 18.x 이상
+- PostgreSQL 15
+- Redis 7
+- NATS Server
+
+### 개발 환경 설정
 ```bash
-$ npm install
+# 의존성 설치
+npm install
+
+# 환경 변수 설정
+cp .env.example .env.development
+
+# 데이터베이스 마이그레이션
+npx prisma migrate dev
+
+# 개발 서버 시작
+npm run dev
 ```
 
-## Compile and run the project
-
+### 테스트 실행
 ```bash
-# development
-$ npm run start
+# 유닛 테스트
+npm test
 
-# watch mode
-$ npm run start:dev
+# E2E 테스트
+npm run test:e2e
 
-# production mode
-$ npm run start:prod
+# 테스트 커버리지
+npm run test:cov
 ```
 
-## Run tests
-
+### 빌드
 ```bash
-# unit tests
-$ npm run test
+# 프로덕션 빌드
+npm run build
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+# 프로덕션 실행
+npm run start:prod
 ```
 
-## Deployment
+## 📁 프로젝트 구조
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+```
+src/
+├── common/                 # 공통 모듈
+│   ├── filters/           # 예외 필터
+│   ├── interceptors/      # 인터셉터
+│   ├── pipes/            # 파이프
+│   └── utils/            # 유틸리티
+├── controllers/           # API 컨트롤러
+│   ├── admin-auth.controller.ts
+│   ├── admin-courses.controller.ts
+│   ├── admin-bookings.controller.ts
+│   └── ...
+├── services/             # 비즈니스 로직
+│   ├── auth.service.ts
+│   ├── course-nats.service.ts
+│   └── ...
+├── prisma/               # Prisma 설정
+│   ├── schema.prisma
+│   └── migrations/
+├── app.module.ts         # 루트 모듈
+└── main.ts              # 애플리케이션 진입점
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## 🔌 API 엔드포인트
 
-## Resources
+### Authentication
+- `POST /api/admin/auth/login` - 관리자 로그인
+- `POST /api/admin/auth/logout` - 로그아웃
+- `POST /api/admin/auth/refresh` - 토큰 갱신
+- `GET /api/admin/auth/profile` - 프로필 조회
 
-Check out a few resources that may come in handy when working with NestJS:
+### Courses Management
+- `GET /api/admin/courses` - 코스 목록 조회
+- `GET /api/admin/courses/:id` - 코스 상세 조회
+- `POST /api/admin/courses` - 코스 생성
+- `PUT /api/admin/courses/:id` - 코스 수정
+- `DELETE /api/admin/courses/:id` - 코스 삭제
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Time Slots Management
+- `GET /api/admin/courses/:id/time-slots` - 타임슬롯 목록
+- `POST /api/admin/courses/:id/time-slots` - 타임슬롯 생성
+- `PUT /api/admin/courses/:id/time-slots/:slotId` - 타임슬롯 수정
+- `DELETE /api/admin/courses/:id/time-slots/:slotId` - 타임슬롯 삭제
 
-## Support
+### Bookings Management
+- `GET /api/admin/bookings` - 예약 목록
+- `GET /api/admin/bookings/:id` - 예약 상세
+- `PUT /api/admin/bookings/:id/status` - 예약 상태 변경
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## 🔐 환경 변수
 
-## Stay in touch
+```env
+# Server
+PORT=3091
+NODE_ENV=development
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/admin_api_db?schema=public"
 
-## License
+# JWT
+JWT_SECRET="your-jwt-secret"
+JWT_EXPIRES_IN="7d"
+JWT_REFRESH_SECRET="your-refresh-secret"
+JWT_REFRESH_EXPIRES_IN="30d"
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+# Redis
+REDIS_URL="redis://:password@localhost:6379"
+
+# NATS
+NATS_URL="nats://localhost:4222"
+
+# Microservices
+AUTH_SERVICE_URL="http://localhost:3011"
+COURSE_SERVICE_URL="http://localhost:3012"
+BOOKING_SERVICE_URL="http://localhost:3013"
+NOTIFY_SERVICE_URL="http://localhost:3014"
+```
+
+## 🧪 테스트
+
+### 테스트 구조
+```
+test/
+├── unit/              # 유닛 테스트
+├── integration/       # 통합 테스트
+└── e2e/              # E2E 테스트
+```
+
+### 테스트 실행
+```bash
+# 특정 테스트 파일 실행
+npm test -- auth.service.spec.ts
+
+# Watch 모드
+npm run test:watch
+
+# 디버그 모드
+npm run test:debug
+```
+
+## 📊 모니터링
+
+- **Health Check**: `GET /health`
+- **Metrics**: Prometheus 형식 메트릭 제공
+- **Logging**: Winston 로거 사용
+- **Tracing**: OpenTelemetry 지원
+
+## 🐛 문제 해결
+
+### 일반적인 문제
+
+1. **데이터베이스 연결 오류**
+   ```bash
+   # PostgreSQL 서비스 확인
+   sudo systemctl status postgresql
+   
+   # 연결 테스트
+   npx prisma db pull
+   ```
+
+2. **NATS 연결 오류**
+   ```bash
+   # NATS 서버 실행
+   docker run -d --name nats -p 4222:4222 nats:latest
+   ```
+
+3. **Redis 연결 오류**
+   ```bash
+   # Redis 서버 실행
+   docker run -d --name redis -p 6379:6379 redis:latest
+   ```
+
+## 📚 추가 문서
+
+- [API 문서](./docs/API.md)
+- [데이터베이스 스키마](./docs/DATABASE.md)
+- [NATS 통신 가이드](./docs/NATS.md)
+
+## 🤝 기여하기
+
+1. 기능 브랜치 생성 (`git checkout -b feature/amazing-feature`)
+2. 변경사항 커밋 (`git commit -m 'feat: Add amazing feature'`)
+3. 브랜치 푸시 (`git push origin feature/amazing-feature`)
+4. Pull Request 생성
+
+## 📄 라이선스
+
+이 프로젝트는 MIT 라이선스를 따릅니다.
+
+---
+
+Last updated: 2024-07-06
