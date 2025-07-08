@@ -1,4 +1,56 @@
 import { apiClient } from './client';
+
+// Course Service API 클라이언트 (직접 연결)
+class CourseServiceApiClient {
+  private baseURL = 'http://localhost:3012';
+
+  async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`;
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
+    const response = await fetch(url, { ...options, headers });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Course Service API Error: ${response.status} - ${errorText}`);
+    }
+
+    // 응답이 비어있는 경우 처리 (DELETE 요청 등)
+    if (response.status === 204 || response.headers.get("content-length") === "0") {
+      return undefined as T;
+    }
+
+    return response.json();
+  }
+
+  async get<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'GET' });
+  }
+
+  async post<T>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async patch<T>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async delete<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE' });
+  }
+}
+
+const courseServiceClient = new CourseServiceApiClient();
 import type { 
   CreateCourseDto, 
   Course, 
@@ -7,6 +59,7 @@ import type {
   TimeSlot,
   CreateTimeSlotDto,
   UpdateTimeSlotDto,
+  TimeSlotFilter,
   WeeklySchedule,
   CreateWeeklyScheduleDto,
   UpdateWeeklyScheduleDto,
@@ -194,19 +247,27 @@ export const courseApi = {
   },
 
   // ===== Time Slot Management =====
-  async getTimeSlots(courseId: number): Promise<TimeSlot[]> {
+  async getTimeSlots(courseId: number, filter?: TimeSlotFilter): Promise<TimeSlot[]> {
     try {
-      console.log('Fetching time slots for course:', courseId);
-      const response = await apiClient.get<TimeSlot[]>(`/admin/courses/${courseId}/time-slots`);
-      console.log('Time slots fetched successfully:', response.data);
-      return response.data || [];
+      console.log('Fetching time slots for course:', courseId, 'with filter:', filter);
+      
+      const params = new URLSearchParams();
+      if (filter?.dateFrom) params.append('dateFrom', filter.dateFrom);
+      if (filter?.dateTo) params.append('dateTo', filter.dateTo);
+      if (filter?.timeFrom) params.append('timeFrom', filter.timeFrom);
+      if (filter?.timeTo) params.append('timeTo', filter.timeTo);
+      if (filter?.isActive !== undefined) params.append('isActive', filter.isActive.toString());
+      if (filter?.page) params.append('page', filter.page.toString());
+      if (filter?.limit) params.append('limit', filter.limit.toString());
+      
+      const queryString = params.toString();
+      const url = `/api/admin/courses/${courseId}/time-slots${queryString ? `?${queryString}` : ''}`;
+      
+      const response = await courseServiceClient.get<TimeSlot[]>(url);
+      console.log('Time slots fetched successfully:', response);
+      return response || [];
     } catch (error: any) {
       console.error(`Failed to fetch time slots for course ${courseId}:`, error);
-      // API 엔드포인트가 구현되지 않은 경우 빈 배열 반환
-      if (error?.status === 404 || error?.status === 500 || error?.message?.includes('404') || error?.message?.includes('500')) {
-        console.log('Time slots API not implemented yet, returning empty array for course:', courseId);
-        return [];
-      }
       throw error;
     }
   },
@@ -214,31 +275,11 @@ export const courseApi = {
   async createTimeSlot(courseId: number, timeSlotData: CreateTimeSlotDto): Promise<TimeSlot> {
     try {
       console.log('Creating time slot for course:', courseId, 'with data:', timeSlotData);
-      const response = await apiClient.post<TimeSlot>(`/admin/courses/${courseId}/time-slots`, timeSlotData);
-      console.log('Time slot created successfully:', response.data);
-      return response.data;
+      const response = await courseServiceClient.post<TimeSlot>(`/api/admin/courses/${courseId}/time-slots`, timeSlotData);
+      console.log('Time slot created successfully:', response);
+      return response;
     } catch (error: any) {
       console.error(`Failed to create time slot for course ${courseId}:`, error);
-      // API 엔드포인트가 구현되지 않은 경우 mock 데이터 반환
-      if (error?.status === 500 || error?.message?.includes('500') || error?.message?.includes('Http Exception')) {
-        console.log('Time slot creation API not implemented yet, returning mock data for course:', courseId);
-        
-        // Mock 타임슬롯 생성
-        const mockTimeSlot: TimeSlot = {
-          id: Date.now(), // 고유 ID 생성
-          courseId: courseId,
-          startTime: timeSlotData.startTime,
-          endTime: timeSlotData.endTime,
-          maxPlayers: timeSlotData.maxPlayers,
-          price: timeSlotData.price,
-          isActive: timeSlotData.isActive ?? true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        
-        console.log('Mock time slot created:', mockTimeSlot);
-        return mockTimeSlot;
-      }
       throw error;
     }
   },
@@ -246,31 +287,11 @@ export const courseApi = {
   async updateTimeSlot(courseId: number, timeSlotId: number, timeSlotData: UpdateTimeSlotDto): Promise<TimeSlot> {
     try {
       console.log('Updating time slot:', timeSlotId, 'for course:', courseId, 'with data:', timeSlotData);
-      const response = await apiClient.patch<TimeSlot>(`/admin/courses/${courseId}/time-slots/${timeSlotId}`, timeSlotData);
-      console.log('Time slot updated successfully:', response.data);
-      return response.data;
+      const response = await courseServiceClient.patch<TimeSlot>(`/api/admin/courses/${courseId}/time-slots/${timeSlotId}`, timeSlotData);
+      console.log('Time slot updated successfully:', response);
+      return response;
     } catch (error: any) {
       console.error(`Failed to update time slot ${timeSlotId} for course ${courseId}:`, error);
-      // API 엔드포인트가 구현되지 않은 경우 mock 데이터 반환
-      if (error?.status === 500 || error?.message?.includes('500') || error?.message?.includes('Http Exception')) {
-        console.log('Time slot update API not implemented yet, returning mock data');
-        
-        // Mock 타임슬롯 업데이트
-        const mockTimeSlot: TimeSlot = {
-          id: timeSlotId,
-          courseId: courseId,
-          startTime: timeSlotData.startTime || '09:00',
-          endTime: timeSlotData.endTime || '10:00',
-          maxPlayers: timeSlotData.maxPlayers || 4,
-          price: timeSlotData.price || 10000,
-          isActive: timeSlotData.isActive ?? true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        
-        console.log('Mock time slot updated:', mockTimeSlot);
-        return mockTimeSlot;
-      }
       throw error;
     }
   },
@@ -278,15 +299,10 @@ export const courseApi = {
   async deleteTimeSlot(courseId: number, timeSlotId: number): Promise<void> {
     try {
       console.log('Deleting time slot:', timeSlotId, 'for course:', courseId);
-      await apiClient.delete(`/admin/courses/${courseId}/time-slots/${timeSlotId}`);
+      await courseServiceClient.delete(`/api/admin/courses/${courseId}/time-slots/${timeSlotId}`);
       console.log('Time slot deleted successfully');
     } catch (error: any) {
       console.error(`Failed to delete time slot ${timeSlotId} for course ${courseId}:`, error);
-      // API 엔드포인트가 구현되지 않은 경우 성공으로 처리
-      if (error?.status === 500 || error?.message?.includes('500') || error?.message?.includes('Http Exception')) {
-        console.log('Time slot deletion API not implemented yet, treating as successful for timeSlot:', timeSlotId);
-        return;
-      }
       throw error;
     }
   },
@@ -295,9 +311,9 @@ export const courseApi = {
   async getWeeklySchedule(courseId: number): Promise<WeeklySchedule[]> {
     try {
       console.log('Fetching weekly schedule for course:', courseId);
-      const response = await apiClient.get<WeeklySchedule[]>(`/admin/courses/${courseId}/weekly-schedule`);
-      console.log('Weekly schedule fetched successfully:', response.data);
-      return response.data || [];
+      const response = await courseServiceClient.get<WeeklySchedule[]>(`/api/courses/${courseId}/weekly-schedules`);
+      console.log('Weekly schedule fetched successfully:', response);
+      return response || [];
     } catch (error) {
       console.error(`Failed to fetch weekly schedule for course ${courseId}:`, error);
       throw error;
@@ -307,9 +323,46 @@ export const courseApi = {
   async updateWeeklySchedule(courseId: number, scheduleData: CreateWeeklyScheduleDto[]): Promise<WeeklySchedule[]> {
     try {
       console.log('Updating weekly schedule for course:', courseId, 'with data:', scheduleData);
-      const response = await apiClient.patch<WeeklySchedule[]>(`/admin/courses/${courseId}/weekly-schedule`, scheduleData);
-      console.log('Weekly schedule updated successfully:', response.data);
-      return response.data;
+      // Weekly schedule는 개별적으로 생성/수정해야 합니다
+      const results: WeeklySchedule[] = [];
+      
+      for (const schedule of scheduleData) {
+        try {
+          // 먼저 해당 요일의 기존 스케줄이 있는지 확인
+          const existingSchedule = await courseServiceClient.get<WeeklySchedule>(
+            `/api/courses/${courseId}/weekly-schedules/day/${schedule.dayOfWeek}`
+          ).catch(() => null);
+          
+          if (existingSchedule) {
+            // 기존 스케줄이 있으면 수정
+            const updated = await courseServiceClient.patch<WeeklySchedule>(
+              `/api/courses/${courseId}/weekly-schedules/${existingSchedule.id}`,
+              {
+                openTime: schedule.openTime,
+                closeTime: schedule.closeTime,
+                isActive: schedule.isActive
+              }
+            );
+            results.push(updated);
+          } else {
+            // 없으면 새로 생성
+            const created = await courseServiceClient.post<WeeklySchedule>(
+              `/api/courses/${courseId}/weekly-schedules`,
+              {
+                dayOfWeek: schedule.dayOfWeek,
+                openTime: schedule.openTime,
+                closeTime: schedule.closeTime,
+                isActive: schedule.isActive
+              }
+            );
+            results.push(created);
+          }
+        } catch (error) {
+          console.error(`Failed to update schedule for day ${schedule.dayOfWeek}:`, error);
+        }
+      }
+      
+      return results;
     } catch (error) {
       console.error(`Failed to update weekly schedule for course ${courseId}:`, error);
       throw error;
@@ -333,31 +386,11 @@ export const courseApi = {
   async createBulkTimeSlots(courseId: number, timeSlotsData: CreateTimeSlotDto[]): Promise<TimeSlot[]> {
     try {
       console.log('Creating bulk time slots for course:', courseId, 'with data:', timeSlotsData);
-      const response = await apiClient.post<TimeSlot[]>(`/admin/courses/${courseId}/time-slots/bulk`, { timeSlots: timeSlotsData });
-      console.log('Bulk time slots created successfully:', response.data);
-      return response.data;
+      const response = await courseServiceClient.post<TimeSlot[]>(`/api/admin/courses/${courseId}/time-slots/bulk`, { timeSlots: timeSlotsData });
+      console.log('Bulk time slots created successfully:', response);
+      return response;
     } catch (error: any) {
       console.error(`Failed to create bulk time slots for course ${courseId}:`, error);
-      // API 엔드포인트가 구현되지 않은 경우 mock 데이터 반환
-      if (error?.status === 500 || error?.message?.includes('500') || error?.message?.includes('Http Exception')) {
-        console.log('Bulk time slot creation API not implemented yet, returning mock data for course:', courseId);
-        
-        // Mock 벌크 타임슬롯 생성
-        const mockTimeSlots: TimeSlot[] = timeSlotsData.map((data, index) => ({
-          id: Date.now() + index, // 고유 ID 생성
-          courseId: courseId,
-          startTime: data.startTime,
-          endTime: data.endTime,
-          maxPlayers: data.maxPlayers,
-          price: data.price,
-          isActive: data.isActive ?? true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }));
-        
-        console.log('Mock bulk time slots created:', mockTimeSlots);
-        return mockTimeSlots;
-      }
       throw error;
     }
   }

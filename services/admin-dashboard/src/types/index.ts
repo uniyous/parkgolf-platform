@@ -207,6 +207,7 @@ export interface LoginDto {
 // --- Time Slot & Booking Types ---
 export interface TimeSlot {
   id: number;
+  date: string;      // YYYY-MM-DD format
   startTime: string; // HH:MM format
   endTime: string;   // HH:MM format
   maxPlayers: number;
@@ -218,6 +219,7 @@ export interface TimeSlot {
 }
 
 export interface CreateTimeSlotDto {
+  date: string;      // YYYY-MM-DD format
   startTime: string;
   endTime: string;
   maxPlayers: number;
@@ -226,11 +228,23 @@ export interface CreateTimeSlotDto {
 }
 
 export interface UpdateTimeSlotDto {
+  date?: string;     // YYYY-MM-DD format
   startTime?: string;
   endTime?: string;
   maxPlayers?: number;
   price?: number;
   isActive?: boolean;
+}
+
+// 타임슬롯 필터링 인터페이스
+export interface TimeSlotFilter {
+  dateFrom?: string;   // YYYY-MM-DD format
+  dateTo?: string;     // YYYY-MM-DD format
+  timeFrom?: string;   // HH:MM format
+  timeTo?: string;     // HH:MM format
+  isActive?: boolean;
+  page?: number;
+  limit?: number;
 }
 
 export interface WeeklySchedule {
@@ -299,3 +313,4 @@ export interface CreateBookingDto {
   playerCount: number;
   notes?: string;
 }
+

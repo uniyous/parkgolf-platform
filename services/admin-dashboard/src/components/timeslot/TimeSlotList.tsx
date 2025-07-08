@@ -12,8 +12,10 @@ export const TimeSlotList: React.FC<TimeSlotListProps> = ({
   onEdit,
   onDelete
 }) => {
-  // 시간대별로 정렬
+  // 날짜와 시간대별로 정렬
   const sortedTimeSlots = [...timeSlots].sort((a, b) => {
+    const dateCompare = (a.date || '').localeCompare(b.date || '');
+    if (dateCompare !== 0) return dateCompare;
     return a.startTime.localeCompare(b.startTime);
   });
 
@@ -25,6 +27,17 @@ export const TimeSlotList: React.FC<TimeSlotListProps> = ({
   // 시간 포맷팅
   const formatTimeRange = (startTime: string, endTime: string) => {
     return `${startTime} - ${endTime}`;
+  };
+
+  // 날짜 포맷팅
+  const formatDate = (date: string) => {
+    const d = new Date(date);
+    return d.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      weekday: 'short'
+    });
   };
 
   if (timeSlots.length === 0) {
@@ -42,6 +55,7 @@ export const TimeSlotList: React.FC<TimeSlotListProps> = ({
       <table className="min-w-full">
         <thead>
           <tr className="border-b border-gray-200">
+            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">날짜</th>
             <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">시간대</th>
             <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">최대 인원</th>
             <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">가격</th>
@@ -52,10 +66,29 @@ export const TimeSlotList: React.FC<TimeSlotListProps> = ({
         <tbody>
           {sortedTimeSlots.map((timeSlot) => (
             <tr key={timeSlot.id} className="border-b border-gray-200 hover:bg-gray-50">
-              {/* 시간대 */}
+              {/* 날짜 */}
               <td className="px-4 py-4 text-sm text-gray-900">
                 <div className="flex items-center">
                   <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <div className="font-medium text-gray-900">
+                      {timeSlot.date ? formatDate(timeSlot.date) : '-'}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {timeSlot.date || 'No Date'}
+                    </div>
+                  </div>
+                </div>
+              </td>
+
+              {/* 시간대 */}
+              <td className="px-4 py-4 text-sm text-gray-900">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-sm font-medium">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>

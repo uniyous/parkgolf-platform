@@ -109,7 +109,11 @@ export const GolfCompanyCourseList: React.FC<GolfCompanyCourseListProps> = ({
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {courses.map((course) => (
-                      <tr key={course.id} className="hover:bg-gray-50">
+                      <tr 
+                        key={course.id} 
+                        className="hover:bg-gray-50 cursor-pointer transition-colors duration-150"
+                        onClick={() => onCourseSelect(course)}
+                      >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center">
                             {course.imageUrl ? (
@@ -157,16 +161,6 @@ export const GolfCompanyCourseList: React.FC<GolfCompanyCourseListProps> = ({
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end space-x-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onCourseSelect(course);
-                              }}
-                            >
-                              상세
-                            </Button>
                             {onEditCourse && (
                               <Button
                                 size="sm"
