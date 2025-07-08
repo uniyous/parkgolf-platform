@@ -32,6 +32,7 @@ export class CourseWeeklyScheduleService {
           dayOfWeek: createDto.dayOfWeek,
           openTime: createDto.openTime,
           closeTime: createDto.closeTime,
+          isActive: createDto.isActive ?? true,
         },
       });
     } catch (error) {

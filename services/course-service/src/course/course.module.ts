@@ -9,9 +9,17 @@ import { HoleController } from './controller/hole.controller';
 import { TeeBoxController } from './controller/tee-box.controller';
 import { CourseTimeSlotController } from './controller/course-time-slot.controller';
 import { CourseWeeklyScheduleController } from './controller/course-weekly-schedule.controller';
+import { AdminTimeSlotController } from './controller/admin-time-slot.controller';
 
 @Module({
-  controllers: [CourseController, HoleController, TeeBoxController, CourseTimeSlotController, CourseWeeklyScheduleController],
+  controllers: [
+    CourseController, 
+    HoleController, 
+    TeeBoxController, 
+    CourseTimeSlotController, 
+    CourseWeeklyScheduleController,
+    AdminTimeSlotController
+  ],
   providers: [CourseService, HoleService, TeeBoxService, CourseTimeSlotService, CourseWeeklyScheduleService],
 })
 export class CourseModule {}

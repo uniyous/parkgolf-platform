@@ -1,6 +1,6 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { CourseWeeklySchedule as CourseWeeklyScheduleModel } from '@prisma/client';
-import { IsInt, IsNotEmpty, IsOptional, Matches, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsNotEmpty, IsOptional, Matches, Max, Min } from 'class-validator';
 
 export class CreateCourseWeeklyScheduleDto {
   @ApiProperty({ description: '골프 코스 ID' })
@@ -25,6 +25,10 @@ export class CreateCourseWeeklyScheduleDto {
   @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: 'closeTime must be in HH:MM format' })
   closeTime: string;
 
+  @ApiProperty({ description: '활성화 여부', default: true, required: false })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
 
 export class UpdateCourseWeeklyScheduleDto extends PartialType(CreateCourseWeeklyScheduleDto) {}
