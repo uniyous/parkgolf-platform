@@ -23,22 +23,42 @@ export class AdminUsersController {
   constructor(private readonly authService: AuthNatsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get user list' })
+  @ApiOperation({ summary: 'Get user list with filtering' })
   @ApiHeader({ name: 'authorization', description: 'Bearer token' })
+  @ApiQuery({ name: 'search', required: false, description: 'Search in name, username, email' })
+  @ApiQuery({ name: 'role', required: false, description: 'Filter by user role' })
+  @ApiQuery({ name: 'status', required: false, description: 'Filter by user status' })
   @ApiQuery({ name: 'page', required: false, description: 'Page number', example: 1 })
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page', example: 20 })
+  @ApiQuery({ name: 'sortBy', required: false, description: 'Sort field', example: 'name' })
+  @ApiQuery({ name: 'sortOrder', required: false, description: 'Sort order (asc/desc)', example: 'asc' })
   @ApiResponse({ status: 200, description: 'User list retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getUserList(
+    @Query('search') search?: string,
+    @Query('role') role?: string,
+    @Query('status') status?: string,
     @Query('page') page = 1,
     @Query('limit') limit = 20,
+    @Query('sortBy') sortBy = 'name',
+    @Query('sortOrder') sortOrder = 'asc',
     @Headers('authorization') authorization: string
   ) {
     try {
       const token = this.extractToken(authorization);
-      this.logger.log(`Fetching user list - page: ${page}, limit: ${limit}`);
+      const filters = {
+        search,
+        role,
+        status,
+        page: parseInt(page.toString(), 10),
+        limit: parseInt(limit.toString(), 10),
+        sortBy,
+        sortOrder: sortOrder as 'asc' | 'desc'
+      };
       
-      const result = await this.authService.getUserList(page, limit, token);
+      this.logger.log(`Fetching user list with filters: ${JSON.stringify(filters)}`);
+      
+      const result = await this.authService.getUserList(filters, token);
       return result;
     } catch (error) {
       this.logger.error('Failed to fetch user list', error);
@@ -131,6 +151,98 @@ export class AdminUsersController {
       return result;
     } catch (error) {
       this.logger.error(`Failed to delete user: ${userId}`, error);
+      throw this.handleError(error);
+    }
+  }
+
+  @Patch(':userId/status')
+  @ApiOperation({ summary: 'Update user status' })
+  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
+  @ApiResponse({ status: 200, description: 'User status updated successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async updateUserStatus(
+    @Param('userId') userId: string,
+    @Body() statusData: { status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' },
+    @Headers('authorization') authorization: string
+  ) {
+    try {
+      const token = this.extractToken(authorization);
+      this.logger.log(`Updating user status: ${userId} to ${statusData.status}`);
+      
+      const result = await this.authService.updateUserStatus(userId, statusData.status, token);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to update user status: ${userId}`, error);
+      throw this.handleError(error);
+    }
+  }
+
+  @Patch(':userId/role')
+  @ApiOperation({ summary: 'Update user role' })
+  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
+  @ApiResponse({ status: 200, description: 'User role updated successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async updateUserRole(
+    @Param('userId') userId: string,
+    @Body() roleData: { role: 'ADMIN' | 'MANAGER' | 'USER' },
+    @Headers('authorization') authorization: string
+  ) {
+    try {
+      const token = this.extractToken(authorization);
+      this.logger.log(`Updating user role: ${userId} to ${roleData.role}`);
+      
+      const result = await this.authService.updateUserRole(userId, roleData.role, token);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to update user role: ${userId}`, error);
+      throw this.handleError(error);
+    }
+  }
+
+  @Patch(':userId/permissions')
+  @ApiOperation({ summary: 'Update user permissions' })
+  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
+  @ApiResponse({ status: 200, description: 'User permissions updated successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async updateUserPermissions(
+    @Param('userId') userId: string,
+    @Body() permissionData: { permissions: string[] },
+    @Headers('authorization') authorization: string
+  ) {
+    try {
+      const token = this.extractToken(authorization);
+      this.logger.log(`Updating user permissions: ${userId}`);
+      
+      const result = await this.authService.updateUserPermissions(userId, permissionData.permissions, token);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to update user permissions: ${userId}`, error);
+      throw this.handleError(error);
+    }
+  }
+
+  @Patch(':userId/password')
+  @ApiOperation({ summary: 'Reset user password' })
+  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
+  @ApiResponse({ status: 200, description: 'Password reset successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async resetUserPassword(
+    @Param('userId') userId: string,
+    @Body() passwordData: { password: string },
+    @Headers('authorization') authorization: string
+  ) {
+    try {
+      const token = this.extractToken(authorization);
+      this.logger.log(`Resetting password for user: ${userId}`);
+      
+      const result = await this.authService.resetUserPassword(userId, passwordData.password, token);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to reset password for user: ${userId}`, error);
       throw this.handleError(error);
     }
   }

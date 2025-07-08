@@ -12,7 +12,10 @@
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["../../shared/*"],
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@types/*": ["./src/types/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@config/*": ["./src/config/*"]
     },
     "resolveJsonModule": true,
     
@@ -68,6 +71,7 @@
     "build",
     "coverage",
     "**/*.spec.ts",
-    "**/*.test.ts"
+    "**/*.test.ts",
+    "**/*.e2e-spec.ts"
   ]
 }

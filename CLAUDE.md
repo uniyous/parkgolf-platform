@@ -44,11 +44,19 @@ parkgolf-platform/
 
 ## 🎯 완료된 주요 기능
 
-### ✅ 타임슬롯 관리 시스템 (2024-07-06)
+### ✅ 타임슬롯 관리 시스템 (2024-07-08)
 - **완전한 CRUD 작업**: 생성, 읽기, 수정, 삭제
-- **Mock API 지원**: 백엔드 미구현 시 개발 가능
-- **벌크 생성**: 09:00-18:00 자동 타임슬롯 생성
-- **실시간 UI 업데이트**: 로컬 상태 관리 최적화
+- **고급 기능**: 벌크 작업, 분석 대시보드, 통계 위젯
+- **스마트 생성**: 09:00-18:00 자동 타임슬롯 생성 및 반복 패턴
+- **실시간 UI**: 로컬 상태 관리 최적화 및 즉시 업데이트
+- **필터링**: 코스별, 상태별, 날짜별 고급 필터링
+
+### ✅ Enhanced GNB & Navigation (2024-07-08)
+- **사용자 드롭다운**: 프로필, 설정, 로그아웃 통합 메뉴
+- **알림 센터**: 실시간 알림 및 읽음 상태 관리
+- **계층적 네비게이션**: 그룹별 메뉴, 즐겨찾기, 최근 방문
+- **검색 기능**: 통합 검색 및 빠른 액세스
+- **반응형 디자인**: 모바일 친화적 UI/UX
 
 ### ✅ 통합 모노레포 구조 (2024-07-06)
 - **모든 MSA 서비스 통합**: 10개 서비스를 단일 저장소로
@@ -59,6 +67,7 @@ parkgolf-platform/
 - **admin-api**: 관리자 대시보드용 통합 API
 - **user-api**: 사용자 앱용 통합 API
 - **NATS 통신**: 마이크로서비스간 메시징
+- **실제 API 연동**: 모든 프론트엔드가 실제 데이터로 작동
 
 ## 🚀 빠른 시작
 
@@ -72,6 +81,9 @@ parkgolf-platform/
 
 # 특정 서비스만 시작
 ./.devtools/scripts/start-service.sh [service-name]
+
+# Admin Dashboard 접속
+# http://localhost:3000
 ```
 
 ### 개별 서비스 개발
@@ -103,11 +115,11 @@ npm run build
 - **Authentication**: JWT + Passport
 
 ### Frontend Services
-- **Framework**: React 18.x
+- **Framework**: React 19.x
 - **Language**: TypeScript 5.x
 - **State Management**: Redux Toolkit / Recoil
-- **UI Library**: Tailwind CSS 3.x
-- **Build Tool**: Vite 5.x
+- **UI Library**: Tailwind CSS 4.x
+- **Build Tool**: Vite 6.x
 
 ### Infrastructure
 - **Container**: Docker & Docker Compose
@@ -121,7 +133,7 @@ npm run build
 | Service | Development Port | Description |
 |---------|-----------------|-------------|
 | admin-api | 3091 | Admin BFF API |
-| admin-dashboard | 3090 | Admin React App |
+| admin-dashboard | 3000 | Admin React App |
 | auth-service | 3011 | Authentication Service |
 | course-service | 3012 | Course Management |
 | booking-service | 3013 | Booking System |

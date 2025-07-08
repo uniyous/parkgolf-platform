@@ -155,9 +155,15 @@ docker-compose down && docker-compose up -d
 - ML Service (Python FastAPI 전환 예정)
 - User API (BFF 구현 필요)
 
+### 🔥 최근 완료 (2024-07-08)
+1. ✅ Admin Dashboard TypeScript 오류 수정 완료
+2. ✅ 타임슬롯 관리 시스템 완전 구현
+3. ✅ Enhanced GNB 및 네비게이션 개선
+4. ✅ 모든 프론트엔드 페이지 실제 API 연동
+
 ### 🔥 즉시 해결 필요
-1. Admin Dashboard TypeScript import 오류 수정
-2. Booking Service NATS 이벤트 발행 구현
-3. 각 서비스 Docker 빌드 테스트
+1. Booking Service NATS 이벤트 발행 구현
+2. 각 서비스 Docker 빌드 테스트
+3. User API (BFF) 구현 시작
 
 **지원**: GitHub Issues 또는 admin@parkgolf.com

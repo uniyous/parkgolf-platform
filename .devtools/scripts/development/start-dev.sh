@@ -26,7 +26,7 @@ check_port() {
 
 # Check required ports
 echo "Checking required ports..."
-PORTS=(3001 3002 3011 3012 3013 3014 3015 3016 3091 3092 4222 5432 6379 9200)
+PORTS=(3000 3002 3011 3012 3013 3014 3015 3016 3091 3092 4222 5432 6379 9200)
 PORT_CHECK_FAILED=false
 
 for port in "${PORTS[@]}"; do
@@ -152,7 +152,7 @@ fi
 # Display service status
 echo -e "\n${GREEN}✨ Development environment started!${NC}"
 echo -e "\nServices:"
-echo "  Admin Dashboard:  http://localhost:3001"
+echo "  Admin Dashboard:  http://localhost:3000"
 echo "  User Web App:     http://localhost:3002"
 echo "  Admin API:        http://localhost:3091/api/docs"
 echo "  User API:         http://localhost:3092/api/docs"
