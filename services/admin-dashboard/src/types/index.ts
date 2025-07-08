@@ -129,15 +129,30 @@ export interface UpdateTeeBoxDto {
 }
 
 // --- Auth & User Types ---
+export type UserRole = 'ADMIN' | 'MANAGER' | 'USER';
+export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+
 export interface User {
   id: number;
   username: string;
   email: string;
-  roles: string[];
-  permissions?: string[];
-  name?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  name: string;
+  phoneNumber?: string;
+  role: UserRole;
+  status: UserStatus;
+  permissions: string[];
+  isActive: boolean;
+  lastLoginAt: Date | null;
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
+export interface UserFilters {
+  search: string;
+  role?: UserRole;
+  status?: UserStatus;
+  sortBy: string;
+  sortOrder: 'asc' | 'desc';
 }
 
 export interface LoginCredentials {

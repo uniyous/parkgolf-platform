@@ -9,8 +9,10 @@ const navigation = [
   { name: '대시보드', href: '/dashboard', icon: '📊' },
   { name: '회사 관리', href: '/companies', icon: '🏢' },
   { name: '코스 관리', href: '/course-management', icon: '⛳' },
+  { name: '타임슬롯 관리', href: '/timeslots', icon: '⏰' },
   { name: '예약 관리', href: '/bookings', icon: '📅' },
-  { name: '사용자 관리', href: '/admin-management', icon: '👥' },
+  { name: '관리자 관리', href: '/admin-management', icon: '👨‍💼' },
+  { name: '사용자 관리', href: '/user-management', icon: '👥' },
 ];
 
 export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {

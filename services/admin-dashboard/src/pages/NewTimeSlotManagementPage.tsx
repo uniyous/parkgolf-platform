@@ -1,19 +1,19 @@
 import React from 'react';
-import { NewCourseManagementContainer } from '../components/course/NewCourseManagementContainer';
+import { TimeSlotManagementContainer } from '../components/timeslot/TimeSlotManagementContainer';
 import { Breadcrumb } from '../components/common/Breadcrumb';
 import { PageLayout } from '../components/common/Layout/PageLayout';
 
-export const CourseManagementPage: React.FC = () => {
+export const NewTimeSlotManagementPage: React.FC = () => {
   return (
     <PageLayout>
       <Breadcrumb 
         items={[
-          { label: '코스 관리', icon: '⛳' }
+          { label: '타임슬롯 관리', icon: '⏰' }
         ]}
       />
       
       <PageLayout.Content>
-        <NewCourseManagementContainer />
+        <TimeSlotManagementContainer />
       </PageLayout.Content>
     </PageLayout>
   );
