@@ -1,5 +1,5 @@
 import React from 'react';
-import { AdminManagementContainer } from '../components/admin/AdminManagementContainer';
+import { EnhancedAdminManagementContainer } from '../components/admin/EnhancedAdminManagementContainer';
 import { PageLayout } from '../components/common/Layout/PageLayout';
 import { Breadcrumb } from '../components/common/Breadcrumb';
 import { withPermission } from '../hooks/usePermissionGuard';
@@ -9,15 +9,12 @@ const AdminManagementPageComponent: React.FC = () => {
     <PageLayout>
       <Breadcrumb 
         items={[
-          { label: '사용자 관리', icon: '👥' }
+          { label: '시스템', icon: '⚙️' },
+          { label: '관리자 관리', icon: '👨‍💼' }
         ]}
       />
-      <PageLayout.Header>
-        <h1 className="text-3xl font-bold text-gray-900">관리자 관리</h1>
-        <p className="mt-2 text-sm text-gray-600">시스템 관리자들의 계정과 권한을 관리합니다.</p>
-      </PageLayout.Header>
       <PageLayout.Content>
-        <AdminManagementContainer />
+        <EnhancedAdminManagementContainer />
       </PageLayout.Content>
     </PageLayout>
   );

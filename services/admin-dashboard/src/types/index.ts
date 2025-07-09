@@ -188,6 +188,10 @@ export interface Admin {
   lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
+  // 추가 필드
+  phone?: string;
+  department?: string;
+  description?: string;
 }
 
 export interface CreateAdminDto {
@@ -197,6 +201,10 @@ export interface CreateAdminDto {
   password: string;
   role: AdminRole;
   permissions?: Permission[];
+  isActive?: boolean;
+  phone?: string;
+  department?: string;
+  description?: string;
 }
 
 export interface UpdateAdminDto {
@@ -206,6 +214,9 @@ export interface UpdateAdminDto {
   role?: AdminRole;
   permissions?: Permission[];
   isActive?: boolean;
+  phone?: string;
+  department?: string;
+  description?: string;
 }
 
 export interface ChangePasswordDto {
