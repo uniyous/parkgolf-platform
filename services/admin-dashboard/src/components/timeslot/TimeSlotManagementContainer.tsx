@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TimeSlotStats } from './TimeSlotStats';
-import { TimeSlotFilters } from './TimeSlotFilters';
-import { NewTimeSlotList } from './NewTimeSlotList';
+import { EnhancedTimeSlotList } from './EnhancedTimeSlotList';
 import { TimeSlotBulkActions } from './TimeSlotBulkActions';
 import { NewTimeSlotForm } from './NewTimeSlotForm';
 import { TimeSlotDetailView } from './TimeSlotDetailView';
@@ -357,24 +356,12 @@ export const TimeSlotManagementContainer: React.FC = () => {
           >
             대량 생성
           </button>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            타임슬롯 추가
-          </button>
         </div>
       </div>
 
       {/* Stats */}
       {stats && <TimeSlotStats stats={stats} />}
 
-      {/* Filters */}
-      <TimeSlotFilters
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        onReset={() => setFilters({ page: 1, limit: 20, sortBy: 'date', sortOrder: 'asc' })}
-      />
 
       {/* Bulk Actions */}
       {showBulkActions && (
@@ -402,17 +389,20 @@ export const TimeSlotManagementContainer: React.FC = () => {
       )}
 
       {/* Time Slot List */}
-      <NewTimeSlotList
+      <EnhancedTimeSlotList
         timeSlots={timeSlots}
-        loading={loading}
-        selectedIds={selectedIds}
-        onSelectionChange={handleSelectionChange}
-        onView={handleViewDetails}
-        onEdit={handleEditTimeSlot}
-        onDelete={handleDeleteTimeSlot}
-        onPageChange={handlePageChange}
-        currentPage={currentPage}
-        pageSize={filters.limit || 20}
+        isLoading={loading}
+        selectedTimeSlots={timeSlots.filter(ts => selectedIds.includes(ts.id))}
+        onSelectionChange={(timeSlots) => setSelectedIds(timeSlots.map(ts => ts.id))}
+        onSelectTimeSlot={handleViewDetails}
+        onCreateTimeSlot={() => setShowCreateModal(true)}
+        onEditTimeSlot={handleEditTimeSlot}
+        onDeleteTimeSlot={handleDeleteTimeSlot}
+        onUpdateStatus={(timeSlot, status) => {
+          // Handle status update
+          console.log('Update status:', timeSlot.id, status);
+        }}
+        onRefresh={fetchTimeSlots}
       />
 
       {/* Create Modal */}

@@ -1,10 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { ADMIN_ROLE_LABELS, ADMIN_ROLE_COLORS } from '../../../utils/adminPermissions';
+import type { AdminRole } from '../../../types';
 
 interface UserDropdownProps {
   currentUser: {
     username: string;
     email: string;
+    role?: string;
+    company?: string;
   };
   onLogout: () => void;
 }
@@ -98,6 +102,15 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ currentUser, onLogou
           <div className="text-xs text-gray-500">
             {currentUser.email}
           </div>
+          {currentUser.role && (
+            <div className="mt-1">
+              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                ADMIN_ROLE_COLORS[currentUser.role as AdminRole] || 'bg-gray-100 text-gray-800'
+              }`}>
+                {ADMIN_ROLE_LABELS[currentUser.role as AdminRole] || currentUser.role}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* 드롭다운 화살표 */}
@@ -122,13 +135,27 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ currentUser, onLogou
                   {currentUser.username.charAt(0).toUpperCase()}
                 </span>
               </div>
-              <div>
+              <div className="flex-1">
                 <div className="text-sm font-medium text-gray-900">
                   {currentUser.username}
                 </div>
                 <div className="text-xs text-gray-500">
                   {currentUser.email}
                 </div>
+                {currentUser.role && (
+                  <div className="mt-2 flex items-center space-x-2">
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                      ADMIN_ROLE_COLORS[currentUser.role as AdminRole] || 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {ADMIN_ROLE_LABELS[currentUser.role as AdminRole] || currentUser.role}
+                    </span>
+                    {currentUser.company && (
+                      <span className="text-xs text-gray-500">
+                        • {currentUser.company}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

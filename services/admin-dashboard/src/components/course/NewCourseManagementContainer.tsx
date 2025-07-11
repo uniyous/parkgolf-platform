@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { CourseList } from './CourseList';
+import { EnhancedCourseList } from './EnhancedCourseList';
 import { NewCourseDetailView } from './NewCourseDetailView';
 import { CourseForm } from './CourseForm';
 import { CourseStats } from './CourseStats';
-import { CourseFilters } from './CourseFilters';
 import { CourseBulkActions } from './CourseBulkActions';
+import { useAdminAuth } from '../../contexts/AdminAuthContext';
 import type { Course, CourseFilters as CourseFiltersType, CourseStatus } from '../../types/course';
 
 // Mock data for development
@@ -228,9 +228,35 @@ const mockCompanies = [
 type ViewMode = 'list' | 'detail' | 'create' | 'edit';
 
 export const NewCourseManagementContainer: React.FC = () => {
+  const { currentAdmin, hasPermission, canAccessCompany } = useAdminAuth();
+  
   const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [courses, setCourses] = useState<Course[]>(mockCourses);
-  const [filteredCourses, setFilteredCourses] = useState<Course[]>(mockCourses);
+  
+  // 권한에 따른 초기 코스 필터링
+  const getFilteredMockCourses = () => {
+    if (!currentAdmin) return [];
+    
+    // 플랫폼 관리자는 모든 코스 조회 가능
+    if (currentAdmin.scope === 'PLATFORM') {
+      return mockCourses;
+    }
+    
+    // 회사 관리자는 자신의 회사 코스만 조회 가능
+    if (currentAdmin.scope === 'COMPANY' && currentAdmin.companyId) {
+      return mockCourses.filter(course => course.companyId === currentAdmin.companyId);
+    }
+    
+    // 코스 관리자는 담당 코스만 조회 가능
+    if (currentAdmin.scope === 'COURSE' && currentAdmin.courseIds) {
+      return mockCourses.filter(course => currentAdmin.courseIds?.includes(course.id));
+    }
+    
+    return [];
+  };
+  
+  const initialCourses = getFilteredMockCourses();
+  const [courses, setCourses] = useState<Course[]>(initialCourses);
+  const [filteredCourses, setFilteredCourses] = useState<Course[]>(initialCourses);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [selectedCourses, setSelectedCourses] = useState<number[]>([]);
@@ -533,17 +559,6 @@ export const NewCourseManagementContainer: React.FC = () => {
           </div>
         </div>
 
-        {viewMode === 'list' && (
-          <button
-            onClick={handleCreateCourse}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            새 코스 등록
-          </button>
-        )}
       </div>
 
       {/* Content based on view mode */}
@@ -551,15 +566,6 @@ export const NewCourseManagementContainer: React.FC = () => {
         <>
           {/* Statistics */}
           <CourseStats courses={courses} />
-          
-          {/* Filters */}
-          <CourseFilters
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-            totalCourses={courses.length}
-            filteredCourses={filteredCourses.length}
-            companies={mockCompanies}
-          />
 
           {/* Bulk Actions */}
           {selectedCourses.length > 0 && (
@@ -572,15 +578,17 @@ export const NewCourseManagementContainer: React.FC = () => {
           )}
 
           {/* Course List */}
-          <CourseList
+          <EnhancedCourseList
             courses={filteredCourses}
-            selectedCourses={selectedCourses}
+            selectedCourses={filteredCourses.filter(c => selectedCourses.includes(c.id))}
             isLoading={isLoading}
-            onSelectCourses={setSelectedCourses}
-            onViewCourse={handleViewCourse}
+            onSelectionChange={(courses) => setSelectedCourses(courses.map(c => c.id))}
+            onSelectCourse={handleViewCourse}
+            onCreateCourse={() => setViewMode('create')}
             onEditCourse={handleEditCourse}
             onDeleteCourse={handleDeleteCourse}
             onUpdateStatus={handleUpdateCourseStatus}
+            onRefresh={() => window.location.reload()}
           />
         </>
       )}

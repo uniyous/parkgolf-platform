@@ -4,6 +4,7 @@ import { SignupPage } from '../pages/SignupPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { CourseManagementPage } from '../pages/CourseManagementPage';
 import { AdminManagementPage } from '../pages/AdminManagementPage';
+import { AdminRoleDemoPage } from '../pages/AdminRoleDemoPage';
 import { UserManagementPage } from '../pages/UserManagementPage';
 import { CompanyManagementPage } from '../pages/CompanyManagementPage';
 import { BookingManagementPage } from '../pages/BookingManagementPage';
@@ -12,10 +13,10 @@ import { NewTimeSlotManagementPage } from '../pages/NewTimeSlotManagementPage';
 import { BookingManagement } from '../components/booking/BookingManagement';
 import { AppLayout } from '../components/common/Layout/AppLayout';
 import { NewAppLayout } from '../components/common/Layout/NewAppLayout';
-import { useAuth } from '../redux/hooks/useAuth';
+import { useAdminAuth } from '../contexts/AdminAuthContext';
 
 const ProtectedRoute = ({ children, useNewLayout = false }: { children: React.ReactNode; useNewLayout?: boolean }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAdminAuth(); // AdminAuthContext 사용
   
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -31,7 +32,7 @@ const ProtectedRoute = ({ children, useNewLayout = false }: { children: React.Re
 };
 
 export const AppRouter = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAdminAuth();
 
   return (
     <BrowserRouter>
@@ -66,6 +67,12 @@ export const AppRouter = () => {
         <Route path="/admin-management" element={
           <ProtectedRoute useNewLayout={true}>
             <AdminManagementPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/admin-role-demo" element={
+          <ProtectedRoute useNewLayout={true}>
+            <AdminRoleDemoPage />
           </ProtectedRoute>
         } />
 

@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { CompanyList } from './CompanyList';
+import { EnhancedCompanyList } from './EnhancedCompanyList';
 import { CompanyDetailView } from './CompanyDetailView';
 import { CompanyForm } from './CompanyForm';
 import { CompanyStats } from './CompanyStats';
-import { CompanyFilters } from './CompanyFilters';
 import { CompanyBulkActions } from './CompanyBulkActions';
-import type { Company, CompanyFilters as CompanyFiltersType } from '../../types/company';
+import type { Company, CompanyFilters as CompanyFiltersType, CompanyStatus } from '../../types/company';
 
 // Mock data for development
 const mockCompanies: Company[] = [
@@ -220,7 +219,7 @@ export const CompanyManagementContainer: React.FC = () => {
     }
   };
 
-  const handleUpdateCompanyStatus = async (company: Company, status: Company['status']) => {
+  const handleUpdateCompanyStatus = async (company: Company, status: CompanyStatus) => {
     setIsLoading(true);
     try {
       // TODO: Replace with actual API call
@@ -382,14 +381,6 @@ export const CompanyManagementContainer: React.FC = () => {
         <>
           {/* Statistics */}
           <CompanyStats companies={companies} />
-          
-          {/* Filters */}
-          <CompanyFilters
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-            totalCompanies={companies.length}
-            filteredCompanies={filteredCompanies.length}
-          />
 
           {/* Bulk Actions */}
           {selectedCompanies.length > 0 && (
@@ -401,16 +392,22 @@ export const CompanyManagementContainer: React.FC = () => {
             />
           )}
 
-          {/* Company List */}
-          <CompanyList
-            companies={filteredCompanies}
-            selectedCompanies={selectedCompanies}
+          {/* Enhanced Company List */}
+          <EnhancedCompanyList
+            companies={companies}
             isLoading={isLoading}
-            onSelectCompanies={setSelectedCompanies}
-            onViewCompany={handleViewCompany}
+            onSelectCompany={handleViewCompany}
+            onCreateCompany={handleCreateCompany}
             onEditCompany={handleEditCompany}
             onDeleteCompany={handleDeleteCompany}
             onUpdateStatus={handleUpdateCompanyStatus}
+            selectedCompanies={companies.filter(c => selectedCompanies.includes(c.id))}
+            onSelectionChange={(companies) => setSelectedCompanies(companies.map(c => c.id))}
+            onRefresh={() => {
+              // Refresh companies data
+              setIsLoading(true);
+              setTimeout(() => setIsLoading(false), 1000);
+            }}
           />
         </>
       )}

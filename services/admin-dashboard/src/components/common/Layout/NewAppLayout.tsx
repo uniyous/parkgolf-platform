@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EnhancedGNB } from './EnhancedGNB';
+import { useAdminAuth } from '../../../contexts/AdminAuthContext';
 
 interface NewAppLayoutProps {
   children: React.ReactNode;
@@ -8,16 +9,18 @@ interface NewAppLayoutProps {
 
 export const NewAppLayout: React.FC<NewAppLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
+  const { currentAdmin, logout, getDisplayInfo } = useAdminAuth();
   
-  // 임시로 하드코딩된 사용자 정보 (실제로는 context나 store에서 가져옴)
-  const currentUser = { 
-    username: '관리자', 
-    email: 'admin@parkgolf.com' 
+  const displayInfo = getDisplayInfo();
+  const currentUser = {
+    username: displayInfo.name,
+    email: currentAdmin?.email || '',
+    role: displayInfo.role,
+    company: displayInfo.company
   };
 
   const handleLogout = async () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    logout();
     navigate('/login');
   };
 

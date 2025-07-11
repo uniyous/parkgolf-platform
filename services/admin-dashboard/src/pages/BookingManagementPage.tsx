@@ -3,26 +3,43 @@ import { useNavigate } from 'react-router-dom';
 import { courseApi } from '../api/courseApi';
 import { Breadcrumb } from '../components/common';
 import { PageLayout } from '../components/common/Layout/PageLayout';
+import { useAdminAuth } from '../contexts/AdminAuthContext';
+import { CanManageBookings } from '../components/auth/PermissionGuard';
 import type { Course, Company } from '../types';
 
 export const BookingManagementPage: React.FC = () => {
   const navigate = useNavigate();
+  const { currentAdmin, hasPermission } = useAdminAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedCompany, setSelectedCompany] = useState<number | null>(null);
 
-  // 회사 목록 조회
+  // 회사 목록 조회 (권한에 따른 필터링)
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
         const companiesData = await courseApi.getCompanies();
-        setCompanies(companiesData);
+        
+        // 권한에 따른 회사 필터링
+        let filteredCompanies = companiesData;
+        if (currentAdmin) {
+          if (currentAdmin.scope === 'COMPANY' && currentAdmin.companyId) {
+            // 회사 관리자는 자신의 회사만 볼 수 있음
+            filteredCompanies = companiesData.filter(c => c.id === currentAdmin.companyId);
+          } else if (currentAdmin.scope === 'COURSE') {
+            // 코스 관리자는 회사 선택 불가
+            filteredCompanies = [];
+          }
+          // 플랫폼 관리자는 모든 회사 볼 수 있음
+        }
+        
+        setCompanies(filteredCompanies);
         
         // 첫 번째 회사 자동 선택
-        if (companiesData.length > 0) {
-          setSelectedCompany(companiesData[0].id);
+        if (filteredCompanies.length > 0) {
+          setSelectedCompany(filteredCompanies[0].id);
         }
       } catch (error) {
         console.error('Failed to fetch companies:', error);
@@ -31,18 +48,30 @@ export const BookingManagementPage: React.FC = () => {
     };
 
     fetchCompanies();
-  }, []);
+  }, [currentAdmin]);
 
-  // 선택된 회사의 코스 목록 조회
+  // 선택된 회사의 코스 목록 조회 (권한에 따른 필터링)
   useEffect(() => {
     const fetchCourses = async () => {
-      if (!selectedCompany) return;
+      if (!selectedCompany && currentAdmin?.scope !== 'COURSE') return;
 
       setLoading(true);
       setError(null);
 
       try {
-        const coursesData = await courseApi.getCoursesByCompany(selectedCompany);
+        let coursesData: Course[] = [];
+        
+        if (currentAdmin?.scope === 'COURSE' && currentAdmin.courseIds) {
+          // 코스 관리자는 담당 코스만 조회
+          const allCourses = await courseApi.getAllCourses();
+          coursesData = allCourses.filter(course => 
+            currentAdmin.courseIds?.includes(course.id)
+          );
+        } else if (selectedCompany) {
+          // 회사/플랫폼 관리자는 선택된 회사의 코스 조회
+          coursesData = await courseApi.getCoursesByCompany(selectedCompany);
+        }
+        
         setCourses(coursesData);
       } catch (error) {
         console.error('Failed to fetch courses:', error);
@@ -53,7 +82,7 @@ export const BookingManagementPage: React.FC = () => {
     };
 
     fetchCourses();
-  }, [selectedCompany]);
+  }, [selectedCompany, currentAdmin]);
 
   // 코스 예약 관리로 이동
   const handleCourseSelect = (courseId: number) => {
@@ -61,44 +90,56 @@ export const BookingManagementPage: React.FC = () => {
   };
 
   return (
-    <PageLayout>
-      <Breadcrumb 
-        items={[
-          { label: '예약 관리', icon: '📅' }
-        ]}
-      />
+    <CanManageBookings
+      fallback={
+        <PageLayout>
+          <div className="text-center py-12">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">접근 권한이 없습니다</h1>
+            <p className="text-gray-600">예약 관리 권한이 필요합니다.</p>
+          </div>
+        </PageLayout>
+      }
+    >
+      <PageLayout>
+        <Breadcrumb 
+          items={[
+            { label: '예약 관리', icon: '📅' }
+          ]}
+        />
 
-      <PageLayout.Header>
-        <h1 className="text-3xl font-bold text-gray-900">예약 관리</h1>
-        <p className="text-gray-600 mt-2">코스를 선택하여 예약을 관리하세요.</p>
-      </PageLayout.Header>
+        <PageLayout.Header>
+          <h1 className="text-3xl font-bold text-gray-900">예약 관리</h1>
+          <p className="text-gray-600 mt-2">코스를 선택하여 예약을 관리하세요.</p>
+        </PageLayout.Header>
 
-      <PageLayout.Content>
+        <PageLayout.Content>
 
-      {/* 회사 선택 */}
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-3">
-          회사 선택
-        </label>
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {companies.map((company) => (
-            <button
-              key={company.id}
-              onClick={() => setSelectedCompany(company.id)}
-              className={`p-4 border rounded-lg text-left transition-all ${
-                selectedCompany === company.id
-                  ? 'border-blue-500 bg-blue-50 shadow-md'
-                  : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-              }`}
-            >
-              <div className="font-medium text-gray-900">{company.name}</div>
-              {company.description && (
-                <div className="text-sm text-gray-500 mt-1">{company.description}</div>
-              )}
-            </button>
-          ))}
+      {/* 회사 선택 (코스 관리자는 표시하지 않음) */}
+      {currentAdmin?.scope !== 'COURSE' && companies.length > 0 && (
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            회사 선택
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {companies.map((company) => (
+              <button
+                key={company.id}
+                onClick={() => setSelectedCompany(company.id)}
+                className={`p-4 border rounded-lg text-left transition-all ${
+                  selectedCompany === company.id
+                    ? 'border-blue-500 bg-blue-50 shadow-md'
+                    : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                }`}
+              >
+                <div className="font-medium text-gray-900">{company.name}</div>
+                {company.description && (
+                  <div className="text-sm text-gray-500 mt-1">{company.description}</div>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 에러 메시지 */}
       {error && (
@@ -111,9 +152,14 @@ export const BookingManagementPage: React.FC = () => {
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-4">
           코스 선택
-          {selectedCompany && (
+          {selectedCompany && currentAdmin?.scope !== 'COURSE' && (
             <span className="text-sm font-normal text-gray-500 ml-2">
               ({companies.find(c => c.id === selectedCompany)?.name})
+            </span>
+          )}
+          {currentAdmin?.scope === 'COURSE' && (
+            <span className="text-sm font-normal text-gray-500 ml-2">
+              (담당 코스)
             </span>
           )}
         </h2>
@@ -126,7 +172,12 @@ export const BookingManagementPage: React.FC = () => {
         ) : courses.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-500">
-              {selectedCompany ? '등록된 코스가 없습니다.' : '회사를 선택해주세요.'}
+              {currentAdmin?.scope === 'COURSE' 
+                ? '담당하는 코스가 없습니다.' 
+                : selectedCompany 
+                  ? '등록된 코스가 없습니다.' 
+                  : '회사를 선택해주세요.'
+              }
             </div>
           </div>
         ) : (
@@ -260,7 +311,8 @@ export const BookingManagementPage: React.FC = () => {
           </div>
         </div>
       )}
-      </PageLayout.Content>
-    </PageLayout>
+        </PageLayout.Content>
+      </PageLayout>
+    </CanManageBookings>
   );
 };

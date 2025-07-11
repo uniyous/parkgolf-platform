@@ -1,17 +1,19 @@
 // Time Slot Management Types
-export type TimeSlotStatus = 'ACTIVE' | 'INACTIVE' | 'FULL' | 'CANCELLED';
+export type TimeSlotStatus = 'AVAILABLE' | 'BOOKED' | 'BLOCKED' | 'CANCELLED';
 
 export interface TimeSlot {
   id: number;
   courseId: number;
+  courseName?: string;   // Course name for display
   date: string;          // YYYY-MM-DD format
   startTime: string;     // HH:MM format
   endTime: string;       // HH:MM format
-  maxPlayers: number;
-  currentBookings: number;
-  availableSlots: number;
+  maxSlots: number;      // Maximum number of slots
+  bookedSlots: number;   // Currently booked slots
+  availableSlots: number; // Available slots (maxSlots - bookedSlots)
   price: number;
   status: TimeSlotStatus;
+  description?: string;  // Optional description
   isRecurring: boolean;
   recurringPattern?: RecurringPattern;
   createdAt: string;

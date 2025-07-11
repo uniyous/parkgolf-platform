@@ -22,6 +22,105 @@ export interface UserFilters {
 }
 
 export const adminApi = {
+  // 관리자 관리 (Admin Service)
+  async getAdmins(_filters: any = {}): Promise<Admin[]> {
+    try {
+      console.log('🔍 Fetching admins via BFF API...');
+      // BFF API를 통한 관리자 목록 조회
+      const response = await apiClient.get('/admin/admins');
+      console.log('✅ Admin API response:', response);
+      console.log('✅ Response data type:', typeof response.data);
+      console.log('✅ Response data:', response.data);
+      
+      // BFF API 응답 구조: {success: true, data: [...]}
+      const adminList = response.data.data || response.data;
+      console.log('✅ Final admin list:', adminList);
+      return Array.isArray(adminList) ? adminList : [];
+    } catch (error) {
+      console.error('❌ Failed to fetch admins:', error);
+      throw error;
+    }
+  },
+
+  async getAdmin(id: number): Promise<Admin> {
+    try {
+      const response = await apiClient.get(`/admin/admins/${id}`);
+      return response.data.data || response.data;
+    } catch (error) {
+      console.error(`Failed to fetch admin ${id}:`, error);
+      throw error;
+    }
+  },
+
+  async createAdmin(data: CreateAdminDto): Promise<Admin> {
+    try {
+      const response = await apiClient.post('/admin/admins', data);
+      return response.data.data || response.data;
+    } catch (error) {
+      console.error('Failed to create admin:', error);
+      throw error;
+    }
+  },
+
+  async updateAdmin(id: number, data: UpdateAdminDto): Promise<Admin> {
+    try {
+      const response = await apiClient.patch(`/admin/admins/${id}`, data);
+      return response.data.data || response.data;
+    } catch (error) {
+      console.error(`Failed to update admin ${id}:`, error);
+      throw error;
+    }
+  },
+
+  async deleteAdmin(id: number): Promise<void> {
+    try {
+      await apiClient.delete(`/admin/admins/${id}`);
+    } catch (error) {
+      console.error(`Failed to delete admin ${id}:`, error);
+      throw error;
+    }
+  },
+
+  async updateAdminStatus(id: number, isActive: boolean): Promise<Admin> {
+    try {
+      const response = await apiClient.patch(`/admin/admins/${id}/status`, { isActive });
+      return response.data.data || response.data;
+    } catch (error) {
+      console.error(`Failed to update admin status ${id}:`, error);
+      throw error;
+    }
+  },
+
+  async updateAdminPermissions(id: number, permissionIds: number[]): Promise<Admin> {
+    try {
+      const response = await apiClient.post(`/admin/admins/${id}/permissions`, { permissionIds });
+      return response.data.data || response.data;
+    } catch (error) {
+      console.error(`Failed to update admin permissions ${id}:`, error);
+      throw error;
+    }
+  },
+
+  async getAdminStats(): Promise<any> {
+    try {
+      const response = await apiClient.get('/admin/admins/stats');
+      return response.data.data || response.data;
+    } catch (error) {
+      console.error('Failed to fetch admin stats:', error);
+      throw error;
+    }
+  },
+
+  async getPermissions(): Promise<any[]> {
+    try {
+      const response = await apiClient.get('/admin/admins/permissions');
+      return response.data?.data || [];
+    } catch (error) {
+      console.error('Failed to fetch permissions:', error);
+      throw error;
+    }
+  },
+
   // 사용자 관리 (BFF API)
   async getUsers(filters: UserFilters = {}, page = 1, limit = 20): Promise<UserListResponse> {
     try {
@@ -31,7 +130,7 @@ export const adminApi = {
         ...filters
       };
       const response = await apiClient.get<UserListResponse>('/admin/users', params);
-      return response.data;
+      return response.data.data || response.data;
     } catch (error) {
       console.error('Failed to fetch users:', error);
       throw error;
@@ -41,7 +140,7 @@ export const adminApi = {
   async getUser(id: number): Promise<User> {
     try {
       const response = await apiClient.get<User>(`/admin/users/${id}`);
-      return response.data;
+      return response.data.data || response.data;
     } catch (error) {
       console.error(`Failed to fetch user ${id}:`, error);
       throw error;
@@ -51,7 +150,7 @@ export const adminApi = {
   async createUser(data: CreateAdminDto): Promise<User> {
     try {
       const response = await apiClient.post<User>('/admin/users', data);
-      return response.data;
+      return response.data.data || response.data;
     } catch (error) {
       console.error('Failed to create user:', error);
       throw error;
@@ -61,7 +160,7 @@ export const adminApi = {
   async updateUser(id: number, data: UpdateAdminDto): Promise<User> {
     try {
       const response = await apiClient.put<User>(`/admin/users/${id}`, data);
-      return response.data;
+      return response.data.data || response.data;
     } catch (error) {
       console.error(`Failed to update user ${id}:`, error);
       throw error;
@@ -80,7 +179,7 @@ export const adminApi = {
   async updateUserStatus(id: number, status: string): Promise<User> {
     try {
       const response = await apiClient.patch<User>(`/admin/users/${id}/status`, { status });
-      return response.data;
+      return response.data.data || response.data;
     } catch (error) {
       console.error(`Failed to update user status ${id}:`, error);
       throw error;
@@ -90,7 +189,7 @@ export const adminApi = {
   async updateUserPermissions(id: number, permissions: string[]): Promise<User> {
     try {
       const response = await apiClient.patch<User>(`/admin/users/${id}/permissions`, { permissions });
-      return response.data;
+      return response.data.data || response.data;
     } catch (error) {
       console.error(`Failed to update user permissions ${id}:`, error);
       throw error;
@@ -106,71 +205,6 @@ export const adminApi = {
     }
   },
 
-  // Legacy compatibility methods (mapping to user management)
-  async getAdmins(): Promise<Admin[]> {
-    try {
-      const response = await this.getUsers({ role: 'ADMIN' });
-      return response.users.map(user => ({
-        ...user,
-        role: (user.roles?.[0] || 'ADMIN') as any,
-        isActive: user.roles?.includes('ACTIVE') || true
-      })) as Admin[];
-    } catch (error) {
-      console.error('Failed to fetch admins:', error);
-      throw error;
-    }
-  },
-
-  async getAdmin(id: number): Promise<Admin> {
-    try {
-      const user = await this.getUser(id);
-      return {
-        ...user,
-        role: (user.roles?.[0] || 'ADMIN') as any,
-        isActive: user.roles?.includes('ACTIVE') || true
-      } as Admin;
-    } catch (error) {
-      console.error(`Failed to fetch admin ${id}:`, error);
-      throw error;
-    }
-  },
-
-  async createAdmin(data: CreateAdminDto): Promise<Admin> {
-    try {
-      const user = await this.createUser(data);
-      return {
-        ...user,
-        role: data.role,
-        isActive: true
-      } as Admin;
-    } catch (error) {
-      console.error('Failed to create admin:', error);
-      throw error;
-    }
-  },
-
-  async updateAdmin(id: number, data: UpdateAdminDto): Promise<Admin> {
-    try {
-      const user = await this.updateUser(id, data);
-      return {
-        ...user,
-        role: data.role || 'ADMIN',
-        isActive: user.roles?.includes('ACTIVE') || true
-      } as Admin;
-    } catch (error) {
-      console.error(`Failed to update admin ${id}:`, error);
-      throw error;
-    }
-  },
-
-  async deleteAdmin(id: number): Promise<void> {
-    try {
-      await this.deleteUser(id);
-    } catch (error) {
-      console.error(`Failed to delete admin ${id}:`, error);
-      throw error;
-    }
-  },
 
   async changePassword(id: number, data: ChangePasswordDto): Promise<void> {
     try {
@@ -181,31 +215,12 @@ export const adminApi = {
     }
   },
 
-  async updateAdminPermissions(id: number, permissions: string[]): Promise<Admin> {
-    try {
-      const user = await this.updateUserPermissions(id, permissions);
-      return {
-        ...user,
-        role: (user.roles?.[0] || 'ADMIN') as any,
-        isActive: user.roles?.includes('ACTIVE') || true
-      } as Admin;
-    } catch (error) {
-      console.error(`Failed to update admin permissions ${id}:`, error);
-      throw error;
-    }
-  },
-
   async toggleAdminStatus(id: number): Promise<Admin> {
     try {
       // First get current status, then toggle
-      const currentUser = await this.getUser(id);
-      const newStatus = currentUser.roles?.includes('ACTIVE') ? 'INACTIVE' : 'ACTIVE';
-      const user = await this.updateUserStatus(id, newStatus);
-      return {
-        ...user,
-        role: (user.roles?.[0] || 'ADMIN') as any,
-        isActive: newStatus === 'ACTIVE'
-      } as Admin;
+      const currentAdmin = await this.getAdmin(id);
+      const newStatus = !currentAdmin.isActive;
+      return await this.updateAdminStatus(id, newStatus);
     } catch (error) {
       console.error(`Failed to toggle admin status ${id}:`, error);
       throw error;

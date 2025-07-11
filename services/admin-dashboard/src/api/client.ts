@@ -89,10 +89,11 @@ class ApiClient {
         };
       }
 
-      const responseData: BffApiResponse<T> = await response.json();
+      const responseData: any = await response.json();
       
-      // BFF API 응답 형식 처리
-      if (!responseData.success && responseData.error) {
+      // auth-service 직접 응답 처리 (BFF 형식이 아님)
+      // BFF API 응답 형식인지 확인
+      if ('success' in responseData && !responseData.success && responseData.error) {
         throw new ApiError(
           responseData.error.message,
           response.status,
@@ -101,10 +102,9 @@ class ApiClient {
         );
       }
       
-      // Date 문자열을 자동으로 변환하지 않고 원본 데이터 그대로 반환
-      // Redux에서 직렬화 가능한 상태로 유지
+      // auth-service 직접 응답 처리 (성공한 경우)
       return {
-        data: responseData.data as T,
+        data: responseData as T,
         status: response.status,
         message: responseData.message,
       };
@@ -118,24 +118,29 @@ class ApiClient {
   }
 
   private async handleErrorResponse(response: Response): Promise<never> {
-    let errorData: BffApiResponse<any>;
+    let errorData: any;
     try {
       errorData = await response.json();
     } catch {
       errorData = { 
-        success: false, 
-        error: { 
-          code: 'UNKNOWN_ERROR',
-          message: response.statusText || 'An error occurred'
-        }
+        message: response.statusText || 'An error occurred'
       };
     }
 
-    // BFF API 에러 형식 처리
-    const error = errorData.error || {
-      code: 'UNKNOWN_ERROR',
-      message: errorData.message || 'An error occurred'
-    };
+    // auth-service 에러 형식 처리
+    let error: { code: string; message: string; details?: any };
+    
+    if ('success' in errorData && errorData.error) {
+      // BFF API 에러 형식
+      error = errorData.error;
+    } else {
+      // auth-service 직접 에러 형식
+      error = {
+        code: errorData.error?.code || 'UNKNOWN_ERROR',
+        message: errorData.message || errorData.error?.message || 'An error occurred',
+        details: errorData.error?.details
+      };
+    }
 
     const apiError = new ApiError(
       error.message,

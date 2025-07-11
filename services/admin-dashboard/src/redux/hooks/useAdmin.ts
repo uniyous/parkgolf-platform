@@ -1,4 +1,6 @@
-import { useAppSelector } from './reduxHooks';
+import { useCallback } from 'react';
+import { useAppSelector, useAppDispatch } from './reduxHooks';
+import { fetchAdmins as fetchAdminsThunk, selectAdmin as selectAdminAction } from '../slices/adminSlice';
 import { adminApi } from '../../api/adminApi';
 import type { Admin, CreateAdminDto, UpdateAdminDto } from '../../types';
 
@@ -14,61 +16,58 @@ export interface UseAdminActionsReturn {
 }
 
 export const useAdminActions = (): UseAdminActionsReturn => {
-  const { users: admins, isLoading, error } = useAppSelector((state: any) => state.admin);
+  const dispatch = useAppDispatch();
+  const { admins, isLoading, error } = useAppSelector((state: any) => state.admin);
 
-  const fetchAdmins = async () => {
+  const fetchAdmins = useCallback(async () => {
     try {
-      // Set loading state
-      // For now, we'll use the API directly since we need proper admin slice implementation
-      const admins = await adminApi.getAdmins();
-      // Update state with admins
-      // This would require proper Redux slice implementation
-      console.log('Fetched admins:', admins);
+      console.log('📡 Dispatching fetchAdminsThunk...');
+      dispatch(fetchAdminsThunk());
     } catch (error) {
       console.error('Failed to fetch admins:', error);
     }
-  };
+  }, [dispatch]);
 
-  const createAdmin = async (data: CreateAdminDto): Promise<Admin | null> => {
+  const createAdmin = useCallback(async (data: CreateAdminDto): Promise<Admin | null> => {
     try {
       const admin = await adminApi.createAdmin(data);
       // Refresh the admin list
-      await fetchAdmins();
+      dispatch(fetchAdminsThunk());
       return admin;
     } catch (error) {
       console.error('Failed to create admin:', error);
       return null;
     }
-  };
+  }, [dispatch]);
 
-  const updateAdmin = async (id: number, data: UpdateAdminDto): Promise<Admin | null> => {
+  const updateAdmin = useCallback(async (id: number, data: UpdateAdminDto): Promise<Admin | null> => {
     try {
       const admin = await adminApi.updateAdmin(id, data);
       // Refresh the admin list
-      await fetchAdmins();
+      dispatch(fetchAdminsThunk());
       return admin;
     } catch (error) {
       console.error('Failed to update admin:', error);
       return null;
     }
-  };
+  }, [dispatch]);
 
-  const deleteAdmin = async (id: number): Promise<boolean> => {
+  const deleteAdmin = useCallback(async (id: number): Promise<boolean> => {
     try {
       await adminApi.deleteAdmin(id);
       // Refresh the admin list
-      await fetchAdmins();
+      dispatch(fetchAdminsThunk());
       return true;
     } catch (error) {
       console.error('Failed to delete admin:', error);
       return false;
     }
-  };
+  }, [dispatch]);
 
-  const selectAdmin = (id: number | null) => {
-    // This would require proper Redux slice implementation
-    console.log('Selected admin:', id);
-  };
+  const selectAdmin = useCallback((id: number | null) => {
+    const admin = admins.find(a => a.id === id) || null;
+    dispatch(selectAdminAction(admin));
+  }, [dispatch, admins]);
 
   return {
     admins,

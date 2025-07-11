@@ -27,7 +27,8 @@ export const navigationConfig: NavigationGroup[] = [
         href: '/dashboard', 
         icon: '📊',
         description: '전체 현황 및 주요 지표',
-        shortcut: 'Ctrl+H'
+        shortcut: 'Ctrl+H',
+        permission: 'VIEW_DASHBOARD'
       },
     ],
     defaultOpen: true,
@@ -40,21 +41,24 @@ export const navigationConfig: NavigationGroup[] = [
         href: '/companies', 
         icon: '🏢',
         description: '골프장 회사 정보 관리',
-        shortcut: 'Ctrl+C'
+        shortcut: 'Ctrl+C',
+        permission: 'MANAGE_COMPANIES'
       },
       { 
         name: '코스 관리', 
         href: '/course-management', 
         icon: '⛳',
         description: '골프 코스 정보 및 설정',
-        shortcut: 'Ctrl+G'
+        shortcut: 'Ctrl+G',
+        permission: 'MANAGE_COURSES'
       },
       { 
         name: '타임슬롯 관리', 
         href: '/timeslots', 
         icon: '⏰',
         description: '예약 시간 슬롯 관리',
-        shortcut: 'Ctrl+T'
+        shortcut: 'Ctrl+T',
+        permission: 'MANAGE_TIMESLOTS'
       },
     ],
     collapsible: true,
@@ -69,19 +73,22 @@ export const navigationConfig: NavigationGroup[] = [
         href: '/bookings', 
         icon: '📅',
         description: '예약 현황 및 관리',
-        shortcut: 'Ctrl+B'
+        shortcut: 'Ctrl+B',
+        permission: 'MANAGE_BOOKINGS'
       },
       { 
         name: '취소/환불', 
         href: '/bookings/cancellations', 
         icon: '🔄',
-        description: '예약 취소 및 환불 처리'
+        description: '예약 취소 및 환불 처리',
+        permission: 'MANAGE_PAYMENTS'
       },
       { 
         name: '예약 분석', 
         href: '/bookings/analytics', 
         icon: '📈',
-        description: '예약 패턴 및 통계 분석'
+        description: '예약 패턴 및 통계 분석',
+        permission: 'VIEW_ANALYTICS'
       },
     ],
     collapsible: true,
@@ -96,7 +103,8 @@ export const navigationConfig: NavigationGroup[] = [
         href: '/user-management', 
         icon: '👥',
         description: '고객 계정 관리',
-        shortcut: 'Ctrl+U'
+        shortcut: 'Ctrl+U',
+        permission: 'MANAGE_USERS'
       },
     ],
     collapsible: false,
@@ -111,35 +119,42 @@ export const navigationConfig: NavigationGroup[] = [
         href: '/settings', 
         icon: '⚙️',
         description: '시스템 환경 설정',
-        permission: 'SYSTEM_SETTINGS'
+        permission: 'MANAGE_SYSTEM'
       },
       { 
         name: '관리자 관리', 
         href: '/admin-management', 
         icon: '👨‍💼',
         description: '시스템 관리자 계정 관리',
-        permission: 'ADMIN_MANAGE'
+        permission: 'MANAGE_ADMINS'
+      },
+      { 
+        name: '관리자 역할 데모', 
+        href: '/admin-role-demo', 
+        icon: '🎭',
+        description: '계층적 관리자 시스템 데모',
+        permission: 'VIEW_ADMIN_ROLES'
       },
       { 
         name: '권한 관리', 
         href: '/permissions', 
         icon: '🔐',
         description: '사용자 권한 및 역할 관리',
-        permission: 'PERMISSION_MANAGE'
+        permission: 'MANAGE_PERMISSIONS'
       },
       { 
         name: '로그 관리', 
         href: '/logs', 
         icon: '📋',
         description: '시스템 로그 조회',
-        permission: 'LOG_VIEW'
+        permission: 'VIEW_LOGS'
       },
       { 
         name: '백업 관리', 
         href: '/backups', 
         icon: '💾',
         description: '데이터 백업 및 복원',
-        permission: 'BACKUP_MANAGE'
+        permission: 'MANAGE_BACKUPS'
       },
     ],
     collapsible: true,

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAdminAuth } from '../../contexts/AdminAuthContext';
 import type { Course, CourseStatus, DifficultyLevel, CourseType } from '../../types/course';
 
 interface CourseListProps {
@@ -22,6 +23,7 @@ export const CourseList: React.FC<CourseListProps> = ({
   onDeleteCourse,
   onUpdateStatus
 }) => {
+  const { currentAdmin, hasPermission } = useAdminAuth();
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
@@ -350,39 +352,45 @@ export const CourseList: React.FC<CourseListProps> = ({
                       >
                         상세보기
                       </button>
-                      <button
-                        onClick={() => onEditCourse(course)}
-                        className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
-                      >
-                        수정
-                      </button>
-                      
-                      {/* Status Actions */}
-                      <div className="flex space-x-1">
-                        {course.status !== 'ACTIVE' && (
+                      {hasPermission('MANAGE_COURSES') && (
+                        <>
                           <button
-                            onClick={() => onUpdateStatus(course, 'ACTIVE')}
-                            className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
+                            onClick={() => onEditCourse(course)}
+                            className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
                           >
-                            활성화
+                            수정
                           </button>
-                        )}
-                        {course.status === 'ACTIVE' && (
-                          <button
-                            onClick={() => onUpdateStatus(course, 'MAINTENANCE')}
-                            className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200"
-                          >
-                            점검
-                          </button>
-                        )}
-                      </div>
+                          
+                          {/* Status Actions */}
+                          <div className="flex space-x-1">
+                            {course.status !== 'ACTIVE' && (
+                              <button
+                                onClick={() => onUpdateStatus(course, 'ACTIVE')}
+                                className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
+                              >
+                                활성화
+                              </button>
+                            )}
+                            {course.status === 'ACTIVE' && (
+                              <button
+                                onClick={() => onUpdateStatus(course, 'MAINTENANCE')}
+                                className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200"
+                              >
+                                점검
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      )}
                       
-                      <button
-                        onClick={() => onDeleteCourse(course)}
-                        className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
-                      >
-                        삭제
-                      </button>
+                      {hasPermission('MANAGE_COURSES') && currentAdmin?.scope === 'PLATFORM' && (
+                        <button
+                          onClick={() => onDeleteCourse(course)}
+                          className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                        >
+                          삭제
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { UserList } from './UserList';
+import { EnhancedUserList } from './EnhancedUserList';
 import { UserForm } from './UserForm';
 import { UserPermissionModal } from './UserPermissionModal';
-import { UserSearchFilters } from './UserSearchFilters';
-import { UserStats } from './UserStats';
-import type { User, UserRole, UserStatus, UserFilters } from '../../types';
+// import { UserSearchFilters } from './UserSearchFilters';
+// import { UserStats } from './UserStats';
+import type { User, UserMembershipTier, UserStatus, UserFilters } from '../../types';
 
 // Mock user data for development
 const mockUsers: User[] = [
@@ -14,51 +14,65 @@ const mockUsers: User[] = [
     email: 'john.doe@example.com',
     name: '김민수',
     phoneNumber: '010-1234-5678',
-    role: 'USER',
+    membershipTier: 'REGULAR',
     status: 'ACTIVE',
-    permissions: ['READ_PROFILE', 'BOOK_COURSE'],
     lastLoginAt: new Date('2024-07-07T10:30:00'),
     createdAt: new Date('2024-01-15T09:00:00'),
-    isActive: true
+    isActive: true,
+    membershipStartDate: new Date('2024-01-15T09:00:00'),
+    membershipEndDate: new Date('2024-12-31T23:59:59'),
+    totalBookings: 15,
+    totalSpent: 450000,
+    loyaltyPoints: 1250
   },
   {
     id: 2,
-    username: 'jane_admin',
-    email: 'jane.admin@parkgolf.com',
+    username: 'jane_premium',
+    email: 'jane.premium@example.com',
     name: '박지영',
     phoneNumber: '010-9876-5432',
-    role: 'ADMIN',
+    membershipTier: 'PREMIUM',
     status: 'ACTIVE',
-    permissions: ['ALL_PERMISSIONS'],
     lastLoginAt: new Date('2024-07-07T14:20:00'),
     createdAt: new Date('2024-01-10T08:30:00'),
-    isActive: true
+    isActive: true,
+    membershipStartDate: new Date('2024-01-10T08:30:00'),
+    membershipEndDate: new Date('2025-01-09T23:59:59'),
+    totalBookings: 38,
+    totalSpent: 1200000,
+    loyaltyPoints: 3800
   },
   {
     id: 3,
-    username: 'mike_manager',
-    email: 'mike.manager@parkgolf.com',
+    username: 'mike_regular',
+    email: 'mike.regular@example.com',
     name: '이성호',
     phoneNumber: '010-5555-7777',
-    role: 'MANAGER',
+    membershipTier: 'REGULAR',
     status: 'ACTIVE',
-    permissions: ['MANAGE_COURSES', 'MANAGE_BOOKINGS', 'VIEW_REPORTS'],
     lastLoginAt: new Date('2024-07-06T16:45:00'),
     createdAt: new Date('2024-02-01T10:00:00'),
-    isActive: true
+    isActive: true,
+    membershipStartDate: new Date('2024-02-01T10:00:00'),
+    membershipEndDate: new Date('2024-07-31T23:59:59'),
+    totalBookings: 22,
+    totalSpent: 660000,
+    loyaltyPoints: 2200
   },
   {
     id: 4,
-    username: 'susan_user',
-    email: 'susan.user@example.com',
+    username: 'susan_guest',
+    email: 'susan.guest@example.com',
     name: '최수진',
     phoneNumber: '010-3333-4444',
-    role: 'USER',
+    membershipTier: 'GUEST',
     status: 'INACTIVE',
-    permissions: ['READ_PROFILE'],
     lastLoginAt: new Date('2024-06-15T11:20:00'),
     createdAt: new Date('2024-03-01T14:30:00'),
-    isActive: false
+    isActive: false,
+    totalBookings: 3,
+    totalSpent: 120000,
+    loyaltyPoints: 120
   },
   {
     id: 5,
@@ -66,12 +80,14 @@ const mockUsers: User[] = [
     email: 'tom.suspended@example.com',
     name: '정민철',
     phoneNumber: '010-2222-3333',
-    role: 'USER',
+    membershipTier: 'GUEST',
     status: 'SUSPENDED',
-    permissions: [],
     lastLoginAt: new Date('2024-05-20T09:15:00'),
     createdAt: new Date('2024-04-01T12:00:00'),
-    isActive: false
+    isActive: false,
+    totalBookings: 1,
+    totalSpent: 30000,
+    loyaltyPoints: 30
   }
 ];
 
@@ -80,61 +96,36 @@ type ViewMode = 'list' | 'create' | 'edit' | 'permissions';
 export const UserManagementContainer: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [users, setUsers] = useState<User[]>(mockUsers);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>(mockUsers);
+  // const [filteredUsers, setFilteredUsers] = useState<User[]>(mockUsers);"
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [permissionUser, setPermissionUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [filters, setFilters] = useState<UserFilters>({
     search: '',
-    role: undefined,
+    membershipTier: undefined,
     status: undefined,
     sortBy: 'name',
     sortOrder: 'asc'
   });
 
-  // Apply filters and search
-  useEffect(() => {
-    let filtered = [...users];
-
-    // Search filter
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(user => 
-        user.name.toLowerCase().includes(searchLower) ||
-        user.username.toLowerCase().includes(searchLower) ||
-        user.email.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Role filter
-    if (filters.role) {
-      filtered = filtered.filter(user => user.role === filters.role);
-    }
-
-    // Status filter
-    if (filters.status) {
-      filtered = filtered.filter(user => user.status === filters.status);
-    }
-
-    // Sort
-    filtered.sort((a, b) => {
-      const aValue = a[filters.sortBy as keyof User] as string;
-      const bValue = b[filters.sortBy as keyof User] as string;
-      
-      if (filters.sortOrder === 'asc') {
-        return aValue.localeCompare(bValue);
-      } else {
-        return bValue.localeCompare(aValue);
-      }
-    });
-
-    setFilteredUsers(filtered);
-  }, [users, filters]);
+  // Filtering and search is now handled within EnhancedUserList
 
   // User selection handlers
   const handleSelectUser = (user: User) => {
     setSelectedUser(user);
+  };
+
+  const handleSelectionChange = (users: User[]) => {
+    setSelectedUsers(users);
+  };
+
+  const handleRefresh = () => {
+    // In real implementation, this would refetch from API
+    setUsers([...mockUsers]);
+    setSelectedUser(null);
+    setSelectedUsers([]);
   };
 
   const handleCreateUser = () => {
@@ -200,23 +191,29 @@ export const UserManagementContainer: React.FC = () => {
     }
   };
 
-  const handleUpdateUserRole = async (user: User, role: UserRole) => {
+  const handleUpdateMembershipTier = async (user: User, membershipTier: UserMembershipTier) => {
     setIsLoading(true);
     try {
       // TODO: Replace with actual API call
       await new Promise(resolve => setTimeout(resolve, 500));
       
       setUsers(prev => prev.map(u => 
-        u.id === user.id ? { ...u, role } : u
+        u.id === user.id ? { ...u, membershipTier } : u
       ));
       
       if (selectedUser?.id === user.id) {
-        setSelectedUser({ ...user, role });
+        setSelectedUser({ ...user, membershipTier });
       }
       
-      alert(`사용자 역할이 ${role}로 변경되었습니다.`);
+      const tierLabels = {
+        PREMIUM: '프리미엄 멤버',
+        REGULAR: '일반 멤버',
+        GUEST: '비회원'
+      };
+      
+      alert(`사용자 멤버십 등급이 ${tierLabels[membershipTier]}로 변경되었습니다.`);
     } catch (error) {
-      alert('역할 변경 중 오류가 발생했습니다.');
+      alert('멤버십 등급 변경 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -231,12 +228,17 @@ export const UserManagementContainer: React.FC = () => {
         email: userData.email!,
         name: userData.name!,
         phoneNumber: userData.phoneNumber || '',
-        role: userData.role!,
+        membershipTier: userData.membershipTier!,
         status: userData.status!,
-        permissions: userData.permissions || [],
         lastLoginAt: null,
         createdAt: new Date(),
-        isActive: userData.status === 'ACTIVE'
+        isActive: userData.status === 'ACTIVE',
+        membershipStartDate: userData.membershipTier !== 'GUEST' ? new Date() : undefined,
+        membershipEndDate: userData.membershipTier === 'PREMIUM' ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) : 
+                         userData.membershipTier === 'REGULAR' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : undefined,
+        totalBookings: 0,
+        totalSpent: 0,
+        loyaltyPoints: 0
       };
       
       setUsers(prev => [...prev, newUser]);
@@ -285,9 +287,9 @@ export const UserManagementContainer: React.FC = () => {
     setPermissionUser(null);
   };
 
-  const handleFiltersChange = (newFilters: UserFilters) => {
-    setFilters(newFilters);
-  };
+  // const handleFiltersChange = (newFilters: UserFilters) => {
+  //   setFilters(newFilters);
+  // };
 
   return (
     <div className="space-y-6">
@@ -330,7 +332,7 @@ export const UserManagementContainer: React.FC = () => {
               {selectedUser.name} ({selectedUser.username})
             </div>
             <div className="text-xs text-blue-600">
-              {selectedUser.role} • {selectedUser.status}
+              {selectedUser.membershipTier} • {selectedUser.status}
             </div>
             <div className="mt-2 space-x-2">
               <button
@@ -350,35 +352,24 @@ export const UserManagementContainer: React.FC = () => {
         )}
       </div>
 
-      {/* Statistics (list view only) */}
-      {viewMode === 'list' && (
-        <UserStats users={users} />
-      )}
-
-      {/* Search and Filters (list view only) */}
-      {viewMode === 'list' && (
-        <UserSearchFilters
-          filters={filters}
-          onFiltersChange={handleFiltersChange}
-          totalUsers={users.length}
-          filteredUsers={filteredUsers.length}
-        />
-      )}
+      {/* Enhanced filtering and search is now handled within EnhancedUserList */}
 
       {/* Main Content */}
       <div>
         {viewMode === 'list' && (
-          <UserList
-            users={filteredUsers}
-            selectedUser={selectedUser}
+          <EnhancedUserList
+            users={users}
             isLoading={isLoading}
             onSelectUser={handleSelectUser}
             onCreateUser={handleCreateUser}
             onEditUser={handleEditUser}
             onDeleteUser={handleDeleteUser}
             onUpdateStatus={handleUpdateUserStatus}
-            onUpdateRole={handleUpdateUserRole}
+            onUpdateMembershipTier={handleUpdateMembershipTier}
             onManagePermissions={handleManagePermissions}
+            selectedUsers={selectedUsers}
+            onSelectionChange={handleSelectionChange}
+            onRefresh={handleRefresh}
           />
         )}
 

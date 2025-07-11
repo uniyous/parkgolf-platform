@@ -1,5 +1,5 @@
 import React from 'react';
-import type { User, UserRole, UserStatus } from '../../types';
+import type { User, UserMembershipTier, UserStatus } from '../../types';
 
 interface UserListProps {
   users: User[];
@@ -46,13 +46,13 @@ export const UserList: React.FC<UserListProps> = ({
     }
   };
 
-  // Role labels
-  const getRoleLabel = (role: UserRole): string => {
-    switch (role) {
-      case 'ADMIN': return '관리자';
-      case 'MANAGER': return '매니저';
-      case 'USER': return '사용자';
-      default: return role;
+  // Membership tier labels
+  const getMembershipTierLabel = (tier: UserMembershipTier): string => {
+    switch (tier) {
+      case 'PREMIUM': return '프리미엄 멤버';
+      case 'REGULAR': return '일반 멤버';
+      case 'GUEST': return '비회원';
+      default: return tier;
     }
   };
 
@@ -165,8 +165,8 @@ export const UserList: React.FC<UserListProps> = ({
                           <p className="text-sm font-medium text-gray-900">
                             {user.name}
                           </p>
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>
-                            {getRoleLabel(user.role)}
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleBadgeColor(user.membershipTier)}`}>
+                            {getMembershipTierLabel(user.membershipTier)}
                           </span>
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(user.status)}`}>
                             {getStatusLabel(user.status)}
@@ -193,7 +193,7 @@ export const UserList: React.FC<UserListProps> = ({
                             가입일: {formatDate(user.createdAt)}
                           </p>
                           <p className="text-xs text-gray-400">
-                            권한: {user.permissions.length}개
+                            총 {user.totalBookings || 0}회 예약
                           </p>
                         </div>
                       </div>
@@ -273,7 +273,7 @@ export const UserList: React.FC<UserListProps> = ({
                             >
                               권한 관리
                             </button>
-                            {user.role !== 'ADMIN' && (
+                            {(
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -308,7 +308,7 @@ export const UserList: React.FC<UserListProps> = ({
                         >
                           권한
                         </button>
-                        {user.role !== 'ADMIN' && (
+                        {(
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

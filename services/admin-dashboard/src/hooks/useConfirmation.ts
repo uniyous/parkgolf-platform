@@ -18,6 +18,7 @@ export interface UseConfirmationReturn {
   message?: string;
   confirm: (config: ConfirmationConfig) => Promise<boolean>;
   show: (config: ConfirmationConfig) => Promise<boolean>; // Alias for confirm
+  showConfirmation: (config: ConfirmationConfig) => Promise<boolean>; // Additional alias
   close: () => void;
   hide: () => void; // Alias for close
   handleConfirm: () => Promise<void>;
@@ -86,6 +87,7 @@ export function useConfirmation(): UseConfirmationReturn {
     message: config?.message,
     confirm,
     show: confirm, // Alias
+    showConfirmation: confirm, // Additional alias
     close,
     hide: close, // Alias
     handleConfirm,

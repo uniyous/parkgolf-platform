@@ -47,7 +47,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch('http://localhost:3091/api/admin/auth/login', {
+      const response = await fetch('http://localhost:3011/auth/admin/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

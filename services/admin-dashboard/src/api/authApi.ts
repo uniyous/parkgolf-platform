@@ -4,14 +4,19 @@ import type { AuthResponse, LoginCredentials, User } from "../types";
 export const authApi = {
   async login(credentials: LoginCredentials): Promise<BffApiResponse<AuthResponse>> {
     try {
-      console.log('Attempting login with BFF API:', credentials.username);
+      console.log('Attempting login with auth-service directly:', credentials.username);
       const response = await apiClient.post<AuthResponse>('/admin/auth/login', credentials);
+      
+      // 토큰 저장
+      if (response.data.accessToken) {
+        localStorage.setItem('accessToken', response.data.accessToken);
+        localStorage.setItem('refreshToken', response.data.refreshToken);
+      }
       
       console.log('Login successful:', response.data);
       return {
         success: true,
-        data: response.data,
-        message: response.message
+        data: response.data
       };
     } catch (error) {
       console.error('Login failed:', error);
