@@ -17,6 +17,13 @@ enum Role {
   USER
 }
 
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  MODERATOR
+  VIEWER
+}
+
 model User {
   id           Int            @id @default(autoincrement())
   username     String         @unique
@@ -41,4 +48,76 @@ model RefreshToken {
   createdAt DateTime @default(now())
 
   @@map("refresh_tokens")
+}
+
+model Admin {
+  id            Int              @id @default(autoincrement())
+  username      String           @unique
+  email         String           @unique
+  password      String
+  name          String
+  role          AdminRole        @default(VIEWER)
+  phone         String?
+  department    String?
+  description   String?
+  isActive      Boolean          @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  refreshTokens AdminRefreshToken[]
+  permissions   AdminPermission[]
+  activityLogs  AdminActivityLog[]
+
+  @@map("admins")
+}
+
+model AdminRefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  adminId   Int
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("admin_refresh_tokens")
+}
+
+model Permission {
+  id          Int              @id @default(autoincrement())
+  code        String           @unique
+  name        String
+  description String?
+  category    String
+  level       String           @default("low") // low, medium, high, critical
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  admins      AdminPermission[]
+
+  @@map("permissions")
+}
+
+model AdminPermission {
+  id           Int        @id @default(autoincrement())
+  adminId      Int
+  permissionId Int
+  admin        Admin      @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([adminId, permissionId])
+  @@map("admin_permissions")
+}
+
+model AdminActivityLog {
+  id         Int      @id @default(autoincrement())
+  adminId    Int
+  admin      Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  action     String
+  resource   String?
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@map("admin_activity_logs")
 }

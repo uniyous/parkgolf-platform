@@ -11,21 +11,36 @@ datasource db {
 }
 
 model Booking {
-  id          Int           @id @default(autoincrement())
-  userId      Int
-  courseId    Int
-  bookingDate DateTime
-  timeSlot    String        // HH:MM format
-  playerCount Int           @default(1)
-  totalPrice  Decimal       @db.Decimal(10, 2)
-  status      BookingStatus @default(PENDING)
-  notes       String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id               Int           @id @default(autoincrement())
+  userId           Int
+  courseId         Int
+  courseName       String        // 코스명 캐시
+  courseLocation   String        // 위치 정보 캐시
+  bookingDate      DateTime
+  timeSlot         String        // HH:MM format
+  playerCount      Int           @default(1)
+  pricePerPerson   Decimal       @db.Decimal(10, 2)
+  serviceFee       Decimal       @db.Decimal(10, 2)
+  totalPrice       Decimal       @db.Decimal(10, 2)
+  status           BookingStatus @default(CONFIRMED)
+  paymentMethod    String?       // card, kakaopay, naverpay, tosspay, bank
+  specialRequests  String?
+  bookingNumber    String        @unique // BK12345678 형식
+  userEmail        String        // 사용자 이메일 캐시
+  userName         String        // 사용자 이름 캐시
+  userPhone        String?       // 사용자 전화번호
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   // Relations (외부 서비스 참조이므로 실제 relation은 설정하지 않음)
-  payments    Payment[]
+  payments         Payment[]
+  histories        BookingHistory[]
 
+  @@index([userId])
+  @@index([courseId])
+  @@index([bookingDate])
+  @@index([bookingNumber])
+  @@index([status])
   @@map("bookings")
 }
 
@@ -47,11 +62,54 @@ model Payment {
 model BookingHistory {
   id        Int      @id @default(autoincrement())
   bookingId Int
+  booking   Booking  @relation(fields: [bookingId], references: [id])
   action    String   // CREATED, UPDATED, CANCELLED, etc.
   details   Json?
+  userId    Int      // 작업 수행한 사용자
   createdAt DateTime @default(now())
 
+  @@index([bookingId])
   @@map("booking_history")
+}
+
+// 추가: 타임슬롯 가용성 관리
+model TimeSlotAvailability {
+  id           Int      @id @default(autoincrement())
+  courseId     Int
+  date         DateTime
+  timeSlot     String   // HH:MM format
+  maxCapacity  Int      @default(4)
+  booked       Int      @default(0)
+  isAvailable  Boolean  @default(true)
+  isPremium    Boolean  @default(false)
+  price        Decimal  @db.Decimal(10, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([courseId, date, timeSlot])
+  @@index([courseId])
+  @@index([date])
+  @@map("time_slot_availability")
+}
+
+// 추가: 코스 정보 캐시 (course-service에서 동기화)
+model CourseCache {
+  id           Int      @id @default(autoincrement())
+  courseId     Int      @unique
+  name         String
+  location     String
+  description  String?
+  rating       Decimal  @db.Decimal(3, 2)
+  pricePerHour Decimal  @db.Decimal(10, 2)
+  imageUrl     String?
+  amenities    String[] // PostgreSQL array
+  openTime     String   // HH:MM format
+  closeTime    String   // HH:MM format
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("course_cache")
 }
 
 enum BookingStatus {

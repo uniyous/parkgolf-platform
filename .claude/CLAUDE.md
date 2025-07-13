@@ -102,7 +102,11 @@ cd shared/terraform/environments/prod && terraform apply
 
 ### 보안 요구사항
 - **Authentication**: JWT (access + refresh token)
-- **Authorization**: RBAC (Role-Based Access Control)
+- **Authorization**: 계층적 RBAC 시스템
+  - 플랫폼 레벨: PLATFORM_OWNER, PLATFORM_ADMIN, PLATFORM_SUPPORT, PLATFORM_ANALYST
+  - 회사 레벨: COMPANY_OWNER, COMPANY_MANAGER, COURSE_MANAGER, STAFF, READONLY_STAFF
+  - 범위 기반 접근 제어: PLATFORM, COMPANY, COURSE
+- **Permission System**: 세분화된 권한 관리 (40+ permissions)
 - **Validation**: DTO + class-validator 사용
 - **Secrets**: 환경변수로 관리, 운영환경은 Secret Manager
 
@@ -155,11 +159,12 @@ docker-compose down && docker-compose up -d
 - ML Service (Python FastAPI 전환 예정)
 - User API (BFF 구현 필요)
 
-### 🔥 최근 완료 (2024-07-08)
-1. ✅ Admin Dashboard TypeScript 오류 수정 완료
-2. ✅ 타임슬롯 관리 시스템 완전 구현
-3. ✅ Enhanced GNB 및 네비게이션 개선
-4. ✅ 모든 프론트엔드 페이지 실제 API 연동
+### 🔥 최근 완료 (2025-01-11)
+1. ✅ 포괄적인 RBAC (Role-Based Access Control) 시스템 구현
+2. ✅ AdminAuthContext로 인증/인가 통합
+3. ✅ Redux에서 Context API로 마이그레이션
+4. ✅ 권한 기반 UI 렌더링 및 라우트 보호
+5. ✅ 범위 기반 데이터 필터링 (PLATFORM/COMPANY/COURSE)
 
 ### 🔥 즉시 해결 필요
 1. Booking Service NATS 이벤트 발행 구현

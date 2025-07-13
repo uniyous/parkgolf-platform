@@ -158,8 +158,100 @@ parkgolf-platform/
 - [ ] 모니터링 및 로깅 설정
 - [ ] CI/CD 파이프라인 구축
 
+## 🔄 RBAC System Implementation (2025-01-11)
+
+### Overview
+Implemented a comprehensive Role-Based Access Control (RBAC) system with hierarchical permissions and scope-based filtering.
+
+### Key Changes
+
+#### 1. Authentication Architecture
+- **Previous**: Redux-based authentication with simple role checking
+- **Current**: Context API-based with AdminAuthContext
+- **Benefits**: Cleaner code, better TypeScript support, easier testing
+
+#### 2. Role Hierarchy
+```
+Platform Level (전체 플랫폼 관리)
+├── PLATFORM_OWNER (100) - 최고 관리자
+├── PLATFORM_ADMIN (90) - 운영 관리자
+├── PLATFORM_SUPPORT (80) - 지원팀
+└── PLATFORM_ANALYST (75) - 분석가
+
+Company Level (회사별 관리)
+├── COMPANY_OWNER (70) - 회사 대표
+├── COMPANY_MANAGER (60) - 운영 관리자
+├── COURSE_MANAGER (50) - 코스 관리자
+├── STAFF (40) - 일반 직원
+└── READONLY_STAFF (30) - 조회 전용
+```
+
+#### 3. Permission System
+- 40+ granular permissions
+- Permission inheritance based on roles
+- Scope-based data filtering (PLATFORM/COMPANY/COURSE)
+- UI navigation permissions
+
+#### 4. Implementation Details
+- **AdminAuthContext**: Central authentication state
+- **Permission Utils**: Role-permission matrix and helpers
+- **Protected Routes**: Permission-based route protection
+- **Conditional UI**: Permission-aware component rendering
+
+### Migration Steps
+1. Created AdminAuthContext with all auth methods
+2. Moved from Redux authSlice to Context API
+3. Implemented permission checking utilities
+4. Updated all components to use new auth system
+5. Added scope-based filtering logic
+
+### Files Modified
+- `/services/admin-dashboard/src/contexts/AdminAuthContext.tsx` (NEW)
+- `/services/admin-dashboard/src/utils/adminPermissions.ts` (NEW)
+- `/services/admin-dashboard/src/types/index.ts` (UPDATED)
+- `/services/admin-dashboard/src/app/router.tsx` (UPDATED)
+- All page components updated to use AdminAuthContext
+
+### Database Schema Updates
+```prisma
+model Admin {
+  role        AdminRole
+  scope       AdminScope
+  permissions Permission[]
+  companyId   Int?
+  courseIds   Int[]
+}
+
+enum AdminRole {
+  PLATFORM_OWNER
+  PLATFORM_ADMIN
+  // ... all roles
+}
+
+enum AdminScope {
+  PLATFORM
+  COMPANY
+  COURSE
+}
+```
+
+### Testing & Validation
+- ✅ Login/logout flow
+- ✅ Permission checking
+- ✅ Role hierarchy validation
+- ✅ Scope-based filtering
+- ✅ UI permission guards
+
+### Next Steps
+1. Implement admin activity logging
+2. Add two-factor authentication
+3. Create permission audit UI
+4. Implement bulk admin management
+
 ## 🔗 Related Documents
 - [Project README](.devtools/docs/README.md)
+- [RBAC Architecture](.claude/RBAC_ARCHITECTURE.md)
+- [Admin Management System](./ADMIN_MANAGEMENT_SYSTEM.md)
 - [API Schemas](.devtools/schemas/api/)
 - [Deployment Scripts](.devtools/scripts/deployment/)
 - [Development Scripts](.devtools/scripts/development/)

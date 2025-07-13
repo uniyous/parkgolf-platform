@@ -5,6 +5,7 @@ import { CommonModule } from './common/common.module';
 import { NatsServicesModule } from './services/nats-services.module';
 import { AdminAuthController } from './controllers/admin-auth.controller';
 import { AdminUsersController } from './controllers/admin-users.controller';
+import { AdminAdminsController } from './controllers/admin-admins.controller';
 import { AdminCoursesController } from './controllers/admin-courses.controller';
 import { AdminBookingsController } from './controllers/admin-bookings.controller';
 import { AdminNotificationsController } from './controllers/admin-notifications.controller';
@@ -23,6 +24,7 @@ import { AdminDashboardController } from './controllers/admin-dashboard.controll
   controllers: [
     AdminAuthController,
     AdminUsersController,
+    AdminAdminsController,
     AdminCoursesController,
     AdminBookingsController,
     AdminNotificationsController,

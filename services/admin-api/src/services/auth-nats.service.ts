@@ -85,12 +85,12 @@ export class AuthNatsService {
     }
   }
 
-  async getUserList(page = 1, limit = 20, adminToken: string): Promise<UserListResponse> {
+  async getUserList(filters: any, adminToken: string): Promise<UserListResponse> {
     try {
       this.logger.log('Fetching user list via NATS');
       
       const result = await firstValueFrom(
-        this.authClient.send('users.list', { page, limit, token: adminToken }).pipe(timeout(10000))
+        this.authClient.send('users.list', { ...filters, token: adminToken }).pipe(timeout(10000))
       );
       
       return result;
@@ -141,6 +141,66 @@ export class AuthNatsService {
       return result;
     } catch (error) {
       this.logger.error(`Failed to delete user: ${userId}`, error);
+      throw error;
+    }
+  }
+
+  async updateUserStatus(userId: string, status: string, adminToken: string): Promise<any> {
+    try {
+      this.logger.log(`Updating user ${userId} status to ${status} via NATS`);
+      
+      const result = await firstValueFrom(
+        this.authClient.send('users.updateStatus', { userId, status, token: adminToken }).pipe(timeout(10000))
+      );
+      
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to update user ${userId} status`, error);
+      throw error;
+    }
+  }
+
+  async updateUserRole(userId: string, role: string, adminToken: string): Promise<any> {
+    try {
+      this.logger.log(`Updating user ${userId} role to ${role} via NATS`);
+      
+      const result = await firstValueFrom(
+        this.authClient.send('users.updateRole', { userId, role, token: adminToken }).pipe(timeout(10000))
+      );
+      
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to update user ${userId} role`, error);
+      throw error;
+    }
+  }
+
+  async updateUserPermissions(userId: string, permissions: string[], adminToken: string): Promise<any> {
+    try {
+      this.logger.log(`Updating user ${userId} permissions via NATS`);
+      
+      const result = await firstValueFrom(
+        this.authClient.send('users.updatePermissions', { userId, permissions, token: adminToken }).pipe(timeout(10000))
+      );
+      
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to update user ${userId} permissions`, error);
+      throw error;
+    }
+  }
+
+  async resetUserPassword(userId: string, newPassword: string, adminToken: string): Promise<any> {
+    try {
+      this.logger.log(`Resetting password for user ${userId} via NATS`);
+      
+      const result = await firstValueFrom(
+        this.authClient.send('users.resetPassword', { userId, newPassword, token: adminToken }).pipe(timeout(10000))
+      );
+      
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to reset password for user ${userId}`, error);
       throw error;
     }
   }

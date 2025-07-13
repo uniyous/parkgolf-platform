@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
 import { AuthNatsService } from './auth-nats.service';
+import { AdminNatsService } from './admin-nats.service';
 import { CourseNatsService } from './course-nats.service';
 import { BookingNatsService } from './booking-nats.service';
 import { NotificationNatsService } from './notification-nats.service';
@@ -69,12 +70,14 @@ import { NotificationNatsService } from './notification-nats.service';
   ],
   providers: [
     AuthNatsService,
+    AdminNatsService,
     CourseNatsService,
     BookingNatsService,
     NotificationNatsService,
   ],
   exports: [
     AuthNatsService,
+    AdminNatsService,
     CourseNatsService,
     BookingNatsService,
     NotificationNatsService,

@@ -1,6 +1,7 @@
-import { Controller, Post, Body, UseGuards, Request, Get, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get, HttpCode, HttpStatus, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { AdminLoginDto } from '../admin/dto/admin-login.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -57,5 +58,48 @@ export class AuthController {
     @ApiOperation({ summary: 'User or Admin endpoint' })
     getProtectedResource(@Request() req) {
         return { message: `Welcome ${req.user.email}! You have access.` };
+    }
+
+    // Admin authentication endpoints
+    @Post('admin/login')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Log in an admin' })
+    @ApiBody({ type: AdminLoginDto })
+    @ApiResponse({ status: 200, description: 'Login successful, returns JWT.' })
+    @ApiResponse({ status: 401, description: 'Unauthorized (Invalid credentials).' })
+    async adminLogin(@Body() loginDto: AdminLoginDto) {
+        const admin = await this.authService.validateAdmin(loginDto.username, loginDto.password);
+        if (!admin) {
+            throw new UnauthorizedException('Invalid credentials');
+        }
+        return this.authService.adminLogin(admin);
+    }
+
+    @Post('admin/refresh')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Refresh admin token' })
+    @ApiResponse({ status: 200, description: 'Token refreshed successfully.' })
+    @ApiResponse({ status: 401, description: 'Unauthorized (Invalid refresh token).' })
+    async adminRefresh(@Body('refreshToken') refreshToken: string) {
+        return this.authService.adminRefreshToken(refreshToken);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('admin/profile')
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Get current admin profile' })
+    @ApiResponse({ status: 200, description: 'Returns current admin profile.' })
+    @ApiResponse({ status: 401, description: 'Unauthorized (Token not provided or invalid).' })
+    async getAdminProfile(@Request() req) {
+        if (req.user.type !== 'admin') {
+            throw new UnauthorizedException('Not an admin token');
+        }
+        // For now, return user info from token
+        return {
+            id: req.user.adminId,
+            username: req.user.username,
+            role: req.user.role,
+            type: req.user.type
+        };
     }
 }

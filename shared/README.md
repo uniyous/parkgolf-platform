@@ -8,27 +8,42 @@
 
 ```
 shared/
-├── types/                    # 공유 TypeScript 타입 정의
-│   ├── api/                 # API 관련 타입
-│   ├── models/              # 데이터 모델 타입
-│   └── common/              # 공통 유틸리티 타입
-├── configs/                  # 공통 설정 파일
+├── configs/                  # 모든 공통 설정 파일
+│   ├── project/             # 프로젝트 설정
+│   │   ├── project.json
+│   │   ├── services.json
+│   │   └── environments.json
+│   ├── database/            # 데이터베이스 설정
+│   │   ├── postgresql.conf
+│   │   └── init-multiple-databases.sh
+│   ├── elastic/             # Elasticsearch 설정
+│   │   └── elasticsearch.yml
 │   ├── eslint/              # ESLint 설정
+│   │   ├── .eslintrc.shared.js
+│   │   ├── eslint.config.frontend.js
+│   │   └── eslint.config.backend.js
 │   ├── prettier/            # Prettier 설정
-│   ├── typescript/          # TypeScript 설정
-│   └── jest/                # Jest 설정
-├── constants/                # 공유 상수
-│   ├── api.constants.ts     # API 관련 상수
-│   ├── error.constants.ts   # 에러 코드 정의
-│   └── regex.constants.ts   # 정규 표현식
-├── utils/                    # 공유 유틸리티 함수
-│   ├── validation/          # 검증 함수
-│   ├── formatting/          # 포맷팅 함수
-│   └── helpers/             # 헬퍼 함수
-└── docs/                    # 공통 문서
-    ├── API.md               # API 설계 가이드
-    ├── DATABASE.md          # 데이터베이스 스키마
-    └── CONVENTIONS.md       # 코딩 컨벤션
+│   │   ├── .prettierrc.shared.json
+│   │   └── .prettierignore
+│   └── typescript/          # TypeScript 설정
+│       ├── tsconfig.shared.json
+│       └── tsconfig.frontend.json
+├── schemas/                  # 스키마 정의
+│   ├── api/                 # API 스키마
+│   │   └── common.yaml
+│   ├── database/            # 데이터베이스 스키마
+│   │   └── common.prisma
+│   ├── events/              # 이벤트 스키마
+│   │   └── events.json
+│   └── elasticsearch/       # Elasticsearch 매핑
+│       └── mappings.json
+├── types/                    # 공유 TypeScript 타입 정의
+│   └── typescript/
+│       ├── api.types.ts     # API 관련 타입
+│       └── common.types.ts  # 공통 타입
+├── constants/                # 공유 상수 (기존 유지)
+├── utils/                    # 공유 유틸리티 함수 (기존 유지)
+└── docs/                    # 공통 문서 (기존 유지)
 ```
 
 ## 🔧 공통 설정
@@ -151,6 +166,28 @@ export interface SoftDeletableEntity extends BaseEntity {
 export interface AuditableEntity extends BaseEntity {
   createdBy?: number;
   updatedBy?: number;
+}
+```
+
+### Admin & Permission Types (types/models/admin.model.ts)
+```typescript
+export type AdminRole = 
+  | 'PLATFORM_OWNER' | 'PLATFORM_ADMIN' | 'PLATFORM_SUPPORT' | 'PLATFORM_ANALYST'
+  | 'COMPANY_OWNER' | 'COMPANY_MANAGER' | 'COURSE_MANAGER' | 'STAFF' | 'READONLY_STAFF';
+
+export type AdminScope = 'PLATFORM' | 'COMPANY' | 'COURSE';
+
+export interface AdminEntity extends AuditableEntity {
+  username: string;
+  email: string;
+  name: string;
+  role: AdminRole;
+  scope: AdminScope;
+  permissions: string[];
+  isActive: boolean;
+  companyId?: number;
+  courseIds?: number[];
+  lastLoginAt?: Date;
 }
 ```
 

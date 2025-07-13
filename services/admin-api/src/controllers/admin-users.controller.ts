@@ -35,14 +35,14 @@ export class AdminUsersController {
   @ApiResponse({ status: 200, description: 'User list retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getUserList(
+    @Headers('authorization') authorization: string,
     @Query('search') search?: string,
     @Query('role') role?: string,
     @Query('status') status?: string,
     @Query('page') page = 1,
     @Query('limit') limit = 20,
     @Query('sortBy') sortBy = 'name',
-    @Query('sortOrder') sortOrder = 'asc',
-    @Headers('authorization') authorization: string
+    @Query('sortOrder') sortOrder = 'asc'
   ) {
     try {
       const token = this.extractToken(authorization);

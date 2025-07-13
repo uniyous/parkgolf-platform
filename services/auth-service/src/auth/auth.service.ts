@@ -1,14 +1,16 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UserService } from '../user/user.service';
+import { AdminService } from '../admin/admin.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { User } from '@prisma/client';
+import { User, Admin } from '@prisma/client';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
     constructor(
         private userService: UserService,
+        private adminService: AdminService,
         private jwtService: JwtService,
     ) {}
 
@@ -102,6 +104,88 @@ export class AuthService {
                     username: user.username,
                     email: user.email,
                     role: user.roles?.[0] || 'USER',
+                }
+            };
+        } catch (error) {
+            throw new UnauthorizedException('Invalid refresh token');
+        }
+    }
+
+    // Admin authentication methods
+    async validateAdmin(username: string, pass: string): Promise<Omit<Admin, 'password'> | null> {
+        console.log(`🔍 Validating admin: ${username}`);
+        const admin = await this.adminService.validateAdmin(username, pass);
+        
+        if (admin) {
+            console.log(`✅ Admin validated: ${username}`);
+            const { password, ...result } = admin;
+            return result;
+        }
+        
+        console.log(`❌ Admin login failed for ${username}`);
+        return null;
+    }
+
+    async adminLogin(admin: Omit<Admin, 'password'>) {
+        const payload = {
+            username: admin.username,
+            email: admin.email,
+            sub: admin.id,
+            role: admin.role,
+            type: 'admin',
+        };
+
+        const accessToken = this.jwtService.sign(payload);
+        const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+
+        return {
+            accessToken,
+            refreshToken,
+            user: {
+                id: admin.id,
+                username: admin.username,
+                email: admin.email,
+                name: admin.name,
+                role: admin.role,
+                type: 'admin',
+            }
+        };
+    }
+
+    async adminRefreshToken(refreshToken: string) {
+        try {
+            const payload = this.jwtService.verify(refreshToken);
+            
+            if (payload.type !== 'admin') {
+                throw new UnauthorizedException('Invalid admin token');
+            }
+            
+            const admin = await this.adminService.findByUsername(payload.username);
+            if (!admin || !admin.isActive) {
+                throw new UnauthorizedException('Admin not found or inactive');
+            }
+
+            const newPayload = {
+                username: admin.username,
+                email: admin.email,
+                sub: admin.id,
+                role: admin.role,
+                type: 'admin',
+            };
+
+            const newAccessToken = this.jwtService.sign(newPayload);
+            const newRefreshToken = this.jwtService.sign(newPayload, { expiresIn: '7d' });
+
+            return {
+                accessToken: newAccessToken,
+                refreshToken: newRefreshToken,
+                user: {
+                    id: admin.id,
+                    username: admin.username,
+                    email: admin.email,
+                    name: admin.name,
+                    role: admin.role,
+                    type: 'admin',
                 }
             };
         } catch (error) {
