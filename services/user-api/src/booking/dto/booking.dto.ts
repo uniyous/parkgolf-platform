@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsEnum } from 'class-validator';
+import {
+  IsDateString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsEnum,
+} from 'class-validator';
 
 export class CreateBookingDto {
   @ApiProperty({ description: '코스 ID', example: 1 })
@@ -71,12 +78,20 @@ export class SearchBookingDto {
   @IsOptional()
   page?: number;
 
-  @ApiProperty({ description: '페이지당 항목 수', example: 10, required: false })
+  @ApiProperty({
+    description: '페이지당 항목 수',
+    example: 10,
+    required: false,
+  })
   @IsNumber()
   @IsOptional()
   limit?: number;
 
-  @ApiProperty({ description: '예약 상태', example: 'CONFIRMED', required: false })
+  @ApiProperty({
+    description: '예약 상태',
+    example: 'CONFIRMED',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   status?: string;
@@ -86,12 +101,20 @@ export class SearchBookingDto {
   @IsOptional()
   courseId?: number;
 
-  @ApiProperty({ description: '시작 날짜', example: '2024-07-01', required: false })
+  @ApiProperty({
+    description: '시작 날짜',
+    example: '2024-07-01',
+    required: false,
+  })
   @IsDateString()
   @IsOptional()
   startDate?: string;
 
-  @ApiProperty({ description: '종료 날짜', example: '2024-07-31', required: false })
+  @ApiProperty({
+    description: '종료 날짜',
+    example: '2024-07-31',
+    required: false,
+  })
   @IsDateString()
   @IsOptional()
   endDate?: string;

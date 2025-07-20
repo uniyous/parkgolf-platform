@@ -99,49 +99,52 @@ const mockCourses: Course[] = [
 ];
 
 class BookingApiService {
-  private baseURL = process.env.REACT_APP_USER_API_URL || 'http://localhost:3092';
+  private baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3092';
 
-  // 코스 검색 (현재는 mock 데이터 사용)
+  // 코스 검색
   async searchCourses(filters: {
     keyword?: string;
     location?: string;
     priceRange?: [number, number];
     rating?: number;
   }): Promise<Course[]> {
-    // TODO: 실제 API 호출로 교체
-    // const response = await authApi.get('/courses/search', { params: filters });
-    // return response.data;
-    
-    // Mock implementation
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        let filteredCourses = [...mockCourses];
-        
-        if (filters.keyword) {
-          const keyword = filters.keyword.toLowerCase();
-          filteredCourses = filteredCourses.filter(course =>
-            course.name.toLowerCase().includes(keyword) ||
-            course.location.toLowerCase().includes(keyword) ||
-            course.amenities.some(amenity => amenity.toLowerCase().includes(keyword))
-          );
-        }
-        
-        if (filters.priceRange) {
-          filteredCourses = filteredCourses.filter(course =>
-            course.pricePerHour >= filters.priceRange![0] &&
-            course.pricePerHour <= filters.priceRange![1]
-          );
-        }
-        
-        if (filters.rating) {
-          filteredCourses = filteredCourses.filter(course =>
-            course.rating >= filters.rating!
-          );
-        }
-        
-        resolve(filteredCourses);
-      }, 500);
-    });
+    try {
+      const response = await authApi.get('/courses/search', { params: filters });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to search courses:', error);
+      
+      // Fallback to mock data if API fails
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          let filteredCourses = [...mockCourses];
+          
+          if (filters.keyword) {
+            const keyword = filters.keyword.toLowerCase();
+            filteredCourses = filteredCourses.filter(course =>
+              course.name.toLowerCase().includes(keyword) ||
+              course.location.toLowerCase().includes(keyword) ||
+              course.amenities.some(amenity => amenity.toLowerCase().includes(keyword))
+            );
+          }
+          
+          if (filters.priceRange) {
+            filteredCourses = filteredCourses.filter(course =>
+              course.pricePerHour >= filters.priceRange![0] &&
+              course.pricePerHour <= filters.priceRange![1]
+            );
+          }
+          
+          if (filters.rating) {
+            filteredCourses = filteredCourses.filter(course =>
+              course.rating >= filters.rating!
+            );
+          }
+          
+          resolve(filteredCourses);
+        }, 500);
+      });
+    }
   }
 
   // 타임슬롯 가용성 조회

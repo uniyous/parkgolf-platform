@@ -23,17 +23,17 @@ export class AdminAuthController {
     schema: {
       type: 'object',
       properties: {
-        username: { type: 'string', example: 'admin' },
+        email: { type: 'string', example: 'admin@parkgolf.com' },
         password: { type: 'string', example: 'password123' }
       },
-      required: ['username', 'password']
+      required: ['email', 'password']
     }
   })
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Body() loginRequest: LoginRequest) {
     try {
-      this.logger.log(`Admin login attempt for username: ${loginRequest.username}`);
+      this.logger.log(`Admin login attempt for email: ${loginRequest.email}`);
       
       const result = await this.authService.login(loginRequest);
       
@@ -51,10 +51,10 @@ export class AdminAuthController {
         );
       }
 
-      this.logger.log(`Admin login successful for: ${loginRequest.username}`);
+      this.logger.log(`Admin login successful for: ${loginRequest.email}`);
       return result;
     } catch (error) {
-      this.logger.error(`Admin login failed for: ${loginRequest.username}`, error);
+      this.logger.error(`Admin login failed for: ${loginRequest.email}`, error);
       
       if (error instanceof HttpException) {
         throw error;

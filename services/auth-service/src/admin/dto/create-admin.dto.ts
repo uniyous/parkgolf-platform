@@ -1,11 +1,6 @@
-import { IsEmail, IsString, IsNotEmpty, MinLength, IsEnum, IsOptional } from 'class-validator';
-import { AdminRole } from '@prisma/client';
+import { IsEmail, IsString, IsNotEmpty, MinLength, IsIn, IsOptional } from 'class-validator';
 
 export class CreateAdminDto {
-  @IsString()
-  @IsNotEmpty()
-  username: string;
-
   @IsEmail()
   @IsNotEmpty()
   email: string;
@@ -19,9 +14,9 @@ export class CreateAdminDto {
   @IsNotEmpty()
   name: string;
 
-  @IsEnum(AdminRole)
+  @IsIn(['PLATFORM_OWNER', 'PLATFORM_ADMIN', 'PLATFORM_SUPPORT', 'PLATFORM_ANALYST', 'COMPANY_OWNER', 'COMPANY_MANAGER', 'COURSE_MANAGER', 'STAFF', 'READONLY_STAFF'])
   @IsOptional()
-  role?: AdminRole;
+  roleCode?: string;
 
   @IsString()
   @IsOptional()

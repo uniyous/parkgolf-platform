@@ -1,0 +1,208 @@
+version: '3.8'
+
+services:
+  # ========================================
+  # Database Services
+  # ========================================
+  
+  # PostgreSQL - Main Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: parkgolf-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: parkgolf
+      POSTGRES_USER: parkgolf
+      POSTGRES_PASSWORD: parkgolf123
+      POSTGRES_MULTIPLE_DATABASES: auth_db,course_db,booking_db,notify_db,ml_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../../shared/configs/database/init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh:ro
+      - ../../shared/configs/database/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    networks:
+      - parkgolf-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U parkgolf -d parkgolf"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis - Cache & Session Store
+  redis:
+    image: redis:7-alpine
+    container_name: parkgolf-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass redis123
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - parkgolf-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ========================================
+  # Message Broker
+  # ========================================
+  
+  # NATS JetStream - Message Streaming
+  nats:
+    image: nats:2.10-alpine
+    container_name: parkgolf-nats
+    restart: unless-stopped
+    command: 
+      - "-js"                          # Enable JetStream
+      - "-m"                           # Enable monitoring
+      - "8222"                         # Monitor port
+      - "-sd"                          # Enable store directory
+      - "/data"                        # Store directory
+      - "--cluster_name"               # Cluster name
+      - "parkgolf-cluster"
+    ports:
+      - "4222:4222"     # NATS port
+      - "8222:8222"     # HTTP monitoring port
+      - "6222:6222"     # Routing port for clustering
+    volumes:
+      - nats_data:/data
+    networks:
+      - parkgolf-network
+    healthcheck:
+      test: ["CMD", "nats", "server", "check", "--server", "nats://localhost:4222"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========================================
+  # Search & Analytics
+  # ========================================
+  
+  # ElasticSearch - Search Engine
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: parkgolf-elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+      - ../../shared/configs/elastic/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    networks:
+      - parkgolf-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Kibana - ElasticSearch UI (Optional)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: parkgolf-kibana
+    restart: unless-stopped
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - xpack.security.enabled=false
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - parkgolf-network
+    profiles:
+      - monitoring
+
+  # ========================================
+  # Monitoring & Observability
+  # ========================================
+  
+  # NATS Monitoring UI
+  nats-box:
+    image: natsio/nats-box:latest
+    container_name: parkgolf-nats-box
+    restart: unless-stopped
+    networks:
+      - parkgolf-network
+    depends_on:
+      nats:
+        condition: service_healthy
+    profiles:
+      - monitoring
+    command: tail -f /dev/null
+
+  # Database Admin UI
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: parkgolf-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@parkgolf.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - parkgolf-network
+    profiles:
+      - monitoring
+
+  # Redis Commander UI
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: parkgolf-redis-commander
+    restart: unless-stopped
+    environment:
+      - REDIS_HOSTS=local:redis:6379:0:redis123
+    ports:
+      - "8081:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - parkgolf-network
+    profiles:
+      - monitoring
+
+# ========================================
+# Networks
+# ========================================
+networks:
+  parkgolf-network:
+    driver: bridge
+    name: parkgolf-network
+
+# ========================================
+# Volumes
+# ========================================
+volumes:
+  postgres_data:
+    name: parkgolf-postgres-data
+  redis_data:
+    name: parkgolf-redis-data
+  nats_data:
+    name: parkgolf-nats-data
+  elasticsearch_data:
+    name: parkgolf-elasticsearch-data
+  pgadmin_data:
+    name: parkgolf-pgadmin-data

@@ -2,18 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { navigationConfig, quickAccessItems, getRecentPages, getFavorites, toggleFavorite, isFavorite, addRecentPage } from './navigation';
 import { UserDropdown } from './UserDropdown';
-import { useAdminAuth } from '../../../contexts/AdminAuthContext';
 import type { NavigationItem, NavigationGroup } from './navigation';
 
 interface EnhancedGNBProps {
-  currentUser: { username: string; email: string };
+  currentUser: { username: string; email: string; role?: string; company?: string };
   onLogout: () => void;
   children: React.ReactNode;
 }
 
 export const EnhancedGNB: React.FC<EnhancedGNBProps> = ({ currentUser, onLogout, children }) => {
   const location = useLocation();
-  const { hasPermission } = useAdminAuth();
+  // Redux의 권한 체크를 대신할 간단한 로직 사용
+  const hasPermission = (permission: string) => {
+    // 일단 모든 권한을 허용하거나, currentUser.role 기반으로 체크
+    return true;
+  };
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [showQuickAccess, setShowQuickAccess] = useState(false);

@@ -13,10 +13,10 @@ import { NewTimeSlotManagementPage } from '../pages/NewTimeSlotManagementPage';
 import { BookingManagement } from '../components/booking/BookingManagement';
 import { AppLayout } from '../components/common/Layout/AppLayout';
 import { NewAppLayout } from '../components/common/Layout/NewAppLayout';
-import { useAdminAuth } from '../contexts/AdminAuthContext';
+import { useAuth } from '../redux/hooks/useAuth';
 
 const ProtectedRoute = ({ children, useNewLayout = false }: { children: React.ReactNode; useNewLayout?: boolean }) => {
-  const { isAuthenticated } = useAdminAuth(); // AdminAuthContext 사용
+  const { isAuthenticated } = useAuth(); // Redux useAuth 사용
   
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -32,7 +32,7 @@ const ProtectedRoute = ({ children, useNewLayout = false }: { children: React.Re
 };
 
 export const AppRouter = () => {
-  const { isAuthenticated } = useAdminAuth();
+  const { isAuthenticated } = useAuth();
 
   return (
     <BrowserRouter>

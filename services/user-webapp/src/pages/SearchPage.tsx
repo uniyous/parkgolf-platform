@@ -93,9 +93,10 @@ export const SearchPage: React.FC = () => {
     });
   };
 
-  useEffect(() => {
-    performSearch();
-  }, [selectedDate, selectedTimeOfDay]);
+  // Don't automatically search on mount to avoid authentication issues
+  // useEffect(() => {
+  //   performSearch();
+  // }, [selectedDate, selectedTimeOfDay]);
 
   return (
     <div style={{ 

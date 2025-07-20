@@ -170,7 +170,7 @@ export interface UserFilters {
 export type UserRole = UserMembershipTier;
 
 export interface LoginCredentials {
-  username: string;
+  email: string;
   password: string;
 }
 
@@ -314,7 +314,7 @@ export interface ChangePasswordDto {
 }
 
 export interface LoginDto {
-  username: string;
+  email: string;
   password: string;
 }
 

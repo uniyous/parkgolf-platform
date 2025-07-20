@@ -30,13 +30,6 @@ export class UserService {
             throw new ConflictException('Email already registered.');
         }
 
-        const existingUsername = await this.prisma.user.findUnique({
-            where: { username: createUserDto.username },
-        });
-
-        if (existingUsername) {
-            throw new ConflictException('Username already taken.');
-        }
 
         const hashedPassword = await bcrypt.hash(
             createUserDto.password,
@@ -46,11 +39,10 @@ export class UserService {
         try {
             const newUser = await this.prisma.user.create({
                 data: {
-                    username: createUserDto.username,
                     email: createUserDto.email,
                     password: hashedPassword,
                     name: createUserDto.name,
-                    roles: createUserDto.role ? [createUserDto.role] : ['USER'],
+                    roleCode: createUserDto.role || 'USER',
                     isActive: true,
                 },
             });
@@ -126,9 +118,6 @@ export class UserService {
         return this.prisma.user.findUnique({ where: { email } });
     }
 
-    async findOneByUsername(username: string): Promise<User | null> {
-        return this.prisma.user.findUnique({ where: { username } });
-    }
 
     // For NATS controller compatibility
     async create(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {

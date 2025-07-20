@@ -4,7 +4,7 @@ import type { AuthResponse, LoginCredentials, User } from "../types";
 export const authApi = {
   async login(credentials: LoginCredentials): Promise<BffApiResponse<AuthResponse>> {
     try {
-      console.log('Attempting login with auth-service directly:', credentials.username);
+      console.log('Attempting login with auth-service directly:', credentials.email);
       const response = await apiClient.post<AuthResponse>('/admin/auth/login', credentials);
       
       // 토큰 저장

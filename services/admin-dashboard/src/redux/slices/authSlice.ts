@@ -6,6 +6,7 @@ interface User {
   email: string;
   name?: string;
   role: string;
+  type: string;
   permissions?: string[];
 }
 
@@ -28,31 +29,32 @@ const initialState: AuthState = {
 // Async thunk for login
 export const login = createAsyncThunk(
   'auth/login',
-  async ({ username, password }: { username: string; password: string }) => {
-    const response = await fetch('http://localhost:3091/api/admin/auth/login', {
+  async ({ email, password }: { email: string; password: string }) => {
+    const response = await fetch('http://localhost:3011/auth/admin/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ email, password }),
     });
 
     const result = await response.json();
 
-    if (!response.ok || !result.success) {
-      throw new Error(result.error?.message || '로그인에 실패했습니다.');
+    if (!response.ok) {
+      throw new Error(result.message || '로그인에 실패했습니다.');
     }
 
+    // auth-service 응답 형식: { accessToken, refreshToken, user }
     // 토큰 저장
-    localStorage.setItem('accessToken', result.data.accessToken);
-    if (result.data.refreshToken) {
-      localStorage.setItem('refreshToken', result.data.refreshToken);
+    localStorage.setItem('accessToken', result.accessToken);
+    if (result.refreshToken) {
+      localStorage.setItem('refreshToken', result.refreshToken);
     }
-    localStorage.setItem('user', JSON.stringify(result.data.user));
+    localStorage.setItem('user', JSON.stringify(result.user));
 
     return {
-      user: result.data.user,
-      token: result.data.accessToken,
+      user: result.user,
+      token: result.accessToken,
     };
   }
 );
@@ -105,6 +107,10 @@ const authSlice = createSlice({
         state.token = action.payload.token;
         state.isAuthenticated = true;
         state.error = null;
+        console.log('로그인 성공 - Redux Store 업데이트:', {
+          user: action.payload.user,
+          token: action.payload.token
+        });
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;

@@ -141,12 +141,12 @@ export class AdminNatsController {
 
   @MessagePattern('auth.admin.updatePermissions')
   async updateAdminPermissions(
-    @Payload() data: { adminId: string; permissionIds: number[]; token: string }
+    @Payload() data: { adminId: string; permissions: string[]; token: string }
   ) {
     try {
       const admin = await this.adminService.updatePermissions(
         parseInt(data.adminId, 10),
-        data.permissionIds
+        data.permissions
       );
       const { password, ...result } = admin;
       

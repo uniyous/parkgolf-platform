@@ -3,7 +3,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout } from 'rxjs';
 
 export interface LoginRequest {
-  username: string;
+  email: string;
   password: string;
 }
 
@@ -41,16 +41,16 @@ export class AuthNatsService {
 
   async login(loginRequest: LoginRequest): Promise<AuthResponse> {
     try {
-      this.logger.log(`Authenticating user via NATS: ${loginRequest.username}`);
+      this.logger.log(`Authenticating user via NATS: ${loginRequest.email}`);
       
       const result = await firstValueFrom(
         this.authClient.send('auth.login', loginRequest).pipe(timeout(5000))
       );
       
-      this.logger.log(`Authentication successful for: ${loginRequest.username}`);
+      this.logger.log(`Authentication successful for: ${loginRequest.email}`);
       return result;
     } catch (error) {
-      this.logger.error(`Authentication failed for user: ${loginRequest.username}`, error);
+      this.logger.error(`Authentication failed for user: ${loginRequest.email}`, error);
       throw error;
     }
   }

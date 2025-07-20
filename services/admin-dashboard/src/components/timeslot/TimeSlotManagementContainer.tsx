@@ -14,7 +14,7 @@ import type {
   BulkTimeSlotOperation,
   TimeSlotGenerationConfig
 } from '../../types/timeslot';
-import { generateMockTimeSlots, generateMockTimeSlotStats } from '../../types/timeslot';
+import { timeSlotApi } from '../../api/timeSlotApi';
 
 export const TimeSlotManagementContainer: React.FC = () => {
   // Data state
@@ -22,6 +22,11 @@ export const TimeSlotManagementContainer: React.FC = () => {
   const [stats, setStats] = useState<TimeSlotStatsType | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  
+  // Course selection state - 임시로 기본값 설정 (추후 프로퍼티로 받을 수 있음)
+  const [selectedCourseId, setSelectedCourseId] = useState<number>(1);
 
   // UI state
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -41,102 +46,28 @@ export const TimeSlotManagementContainer: React.FC = () => {
 
   // Load initial data
   useEffect(() => {
-    fetchTimeSlots();
-    fetchStats();
-  }, [filters]);
+    if (selectedCourseId) {
+      fetchTimeSlots();
+      fetchStats();
+    }
+  }, [filters, selectedCourseId]);
 
   const fetchTimeSlots = async () => {
+    if (!selectedCourseId) return;
+    
     setLoading(true);
     setError(null);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await timeSlotApi.getTimeSlots(selectedCourseId, filters);
       
-      let mockData = generateMockTimeSlots(100);
+      setTimeSlots(response.timeSlots);
+      setTotalCount(response.totalCount);
+      setTotalPages(response.totalPages);
+      setCurrentPage(response.page);
       
-      // Apply filters
-      if (filters.search) {
-        mockData = mockData.filter(slot => 
-          slot.course?.name.toLowerCase().includes(filters.search!.toLowerCase()) ||
-          slot.date.includes(filters.search!)
-        );
-      }
-      
-      if (filters.courseId) {
-        mockData = mockData.filter(slot => slot.courseId === filters.courseId);
-      }
-      
-      if (filters.status) {
-        mockData = mockData.filter(slot => slot.status === filters.status);
-      }
-      
-      if (filters.dateFrom) {
-        mockData = mockData.filter(slot => slot.date >= filters.dateFrom!);
-      }
-      
-      if (filters.dateTo) {
-        mockData = mockData.filter(slot => slot.date <= filters.dateTo!);
-      }
-      
-      if (filters.timeFrom) {
-        mockData = mockData.filter(slot => slot.startTime >= filters.timeFrom!);
-      }
-      
-      if (filters.timeTo) {
-        mockData = mockData.filter(slot => slot.endTime <= filters.timeTo!);
-      }
-      
-      if (filters.minAvailableSlots !== undefined) {
-        mockData = mockData.filter(slot => slot.availableSlots >= filters.minAvailableSlots!);
-      }
-      
-      if (filters.maxAvailableSlots !== undefined) {
-        mockData = mockData.filter(slot => slot.availableSlots <= filters.maxAvailableSlots!);
-      }
-      
-      if (filters.minPrice !== undefined) {
-        mockData = mockData.filter(slot => slot.price >= filters.minPrice!);
-      }
-      
-      if (filters.maxPrice !== undefined) {
-        mockData = mockData.filter(slot => slot.price <= filters.maxPrice!);
-      }
-      
-      if (filters.isRecurring !== undefined) {
-        mockData = mockData.filter(slot => slot.isRecurring === filters.isRecurring);
-      }
-      
-      // Apply sorting
-      if (filters.sortBy) {
-        mockData.sort((a, b) => {
-          let aValue: any = a[filters.sortBy as keyof TimeSlot];
-          let bValue: any = b[filters.sortBy as keyof TimeSlot];
-          
-          // Handle special sorting cases
-          if (filters.sortBy === 'date') {
-            aValue = new Date(a.date + 'T' + a.startTime).getTime();
-            bValue = new Date(b.date + 'T' + b.startTime).getTime();
-          } else if (filters.sortBy === 'time') {
-            aValue = a.startTime;
-            bValue = b.startTime;
-          }
-          
-          if (aValue < bValue) return filters.sortOrder === 'asc' ? -1 : 1;
-          if (aValue > bValue) return filters.sortOrder === 'asc' ? 1 : -1;
-          return 0;
-        });
-      }
-      
-      // Apply pagination
-      const startIndex = ((filters.page || 1) - 1) * (filters.limit || 20);
-      const endIndex = startIndex + (filters.limit || 20);
-      
-      setTimeSlots(mockData.slice(startIndex, endIndex));
-      setCurrentPage(filters.page || 1);
-      
-    } catch (err) {
-      setError('타임슬롯 데이터를 불러오는데 실패했습니다.');
+    } catch (err: any) {
+      setError(err.message || '타임슬롯 데이터를 불러오는데 실패했습니다.');
       console.error('Failed to fetch time slots:', err);
     } finally {
       setLoading(false);
@@ -145,175 +76,101 @@ export const TimeSlotManagementContainer: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setStats(generateMockTimeSlotStats());
+      const statsData = await timeSlotApi.getTimeSlotStats(selectedCourseId);
+      setStats(statsData);
     } catch (err) {
       console.error('Failed to fetch stats:', err);
     }
   };
 
   const handleCreateTimeSlot = async (data: CreateTimeSlotDto) => {
+    if (!selectedCourseId) return;
+    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const newTimeSlot = await timeSlotApi.createTimeSlot(selectedCourseId, data);
       
-      const newTimeSlot: TimeSlot = {
-        id: Date.now(),
-        ...data,
-        currentBookings: 0,
-        availableSlots: data.maxPlayers,
-        status: data.status || 'ACTIVE',
-        isRecurring: data.isRecurring || false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        revenue: 0,
-        utilizationRate: 0,
-      };
+      // 목록 새로고침
+      await fetchTimeSlots();
+      await fetchStats();
       
-      setTimeSlots(prev => [newTimeSlot, ...prev]);
       setShowCreateModal(false);
-      fetchStats(); // Refresh stats
       
-    } catch (err) {
-      setError('타임슬롯 생성에 실패했습니다.');
+    } catch (err: any) {
+      setError(err.message || '타임슬롯 생성에 실패했습니다.');
       console.error('Failed to create time slot:', err);
     }
   };
 
   const handleUpdateTimeSlot = async (data: UpdateTimeSlotDto) => {
-    if (!selectedTimeSlot) return;
+    if (!selectedTimeSlot || !selectedCourseId) return;
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await timeSlotApi.updateTimeSlot(selectedCourseId, selectedTimeSlot.id, data);
       
-      const updatedTimeSlot = {
-        ...selectedTimeSlot,
-        ...data,
-        updatedAt: new Date().toISOString(),
-      };
+      // 목록 새로고침
+      await fetchTimeSlots();
+      await fetchStats();
       
-      setTimeSlots(prev => prev.map(slot => 
-        slot.id === selectedTimeSlot.id ? updatedTimeSlot : slot
-      ));
       setShowEditModal(false);
       setSelectedTimeSlot(null);
-      fetchStats(); // Refresh stats
       
-    } catch (err) {
-      setError('타임슬롯 수정에 실패했습니다.');
+    } catch (err: any) {
+      setError(err.message || '타임슬롯 수정에 실패했습니다.');
       console.error('Failed to update time slot:', err);
     }
   };
 
   const handleDeleteTimeSlot = async (id: number) => {
+    if (!selectedCourseId) return;
+    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await timeSlotApi.deleteTimeSlot(selectedCourseId, id);
       
-      setTimeSlots(prev => prev.filter(slot => slot.id !== id));
+      // 목록 새로고침
+      await fetchTimeSlots();
+      await fetchStats();
+      
       setSelectedIds(prev => prev.filter(selectedId => selectedId !== id));
-      fetchStats(); // Refresh stats
       
-    } catch (err) {
-      setError('타임슬롯 삭제에 실패했습니다.');
+    } catch (err: any) {
+      setError(err.message || '타임슬롯 삭제에 실패했습니다.');
       console.error('Failed to delete time slot:', err);
     }
   };
 
   const handleBulkOperation = async (operation: BulkTimeSlotOperation) => {
+    if (!selectedCourseId || selectedIds.length === 0) return;
+    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await timeSlotApi.bulkOperation(selectedCourseId, operation, selectedIds);
       
-      switch (operation.type) {
-        case 'DELETE':
-          setTimeSlots(prev => prev.filter(slot => !selectedIds.includes(slot.id)));
-          break;
-        case 'STATUS_CHANGE':
-          if (operation.data?.status) {
-            setTimeSlots(prev => prev.map(slot => 
-              selectedIds.includes(slot.id) 
-                ? { ...slot, status: operation.data!.status!, updatedAt: new Date().toISOString() }
-                : slot
-            ));
-          }
-          break;
-        case 'UPDATE':
-          if (operation.data) {
-            setTimeSlots(prev => prev.map(slot => 
-              selectedIds.includes(slot.id) 
-                ? { ...slot, ...operation.data, updatedAt: new Date().toISOString() }
-                : slot
-            ));
-          }
-          break;
-      }
+      // 목록 새로고침
+      await fetchTimeSlots();
+      await fetchStats();
       
       setSelectedIds([]);
       setShowBulkActions(false);
-      fetchStats(); // Refresh stats
       
-    } catch (err) {
-      setError('대량 작업에 실패했습니다.');
+    } catch (err: any) {
+      setError(err.message || '대량 작업에 실패했습니다.');
       console.error('Failed to perform bulk operation:', err);
     }
   };
 
   const handleGenerateTimeSlots = async (config: TimeSlotGenerationConfig) => {
+    if (!selectedCourseId) return;
+    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await timeSlotApi.generateTimeSlots(selectedCourseId, config);
       
-      const startDate = new Date(config.startDate);
-      const endDate = new Date(config.endDate);
-      const newSlots: TimeSlot[] = [];
+      // 목록 새로고침
+      await fetchTimeSlots();
+      await fetchStats();
       
-      // Generate slots based on pattern
-      for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-        const dateStr = date.toISOString().split('T')[0];
-        
-        // Skip weekends if excluded
-        if (config.excludeWeekends && (date.getDay() === 0 || date.getDay() === 6)) {
-          continue;
-        }
-        
-        switch (config.pattern) {
-          case 'HOURLY':
-            const startHour = parseInt(config.startTime.split(':')[0]);
-            const endHour = parseInt(config.endTime.split(':')[0]);
-            
-            for (let hour = startHour; hour < endHour; hour++) {
-              newSlots.push({
-                id: Date.now() + newSlots.length,
-                courseId: config.courseId,
-                date: dateStr,
-                startTime: `${hour.toString().padStart(2, '0')}:00`,
-                endTime: `${(hour + 1).toString().padStart(2, '0')}:00`,
-                maxPlayers: config.maxPlayers,
-                currentBookings: 0,
-                availableSlots: config.maxPlayers,
-                price: config.price,
-                status: 'ACTIVE',
-                isRecurring: false,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                revenue: 0,
-                utilizationRate: 0,
-              });
-            }
-            break;
-          // Add other patterns as needed
-        }
-      }
-      
-      setTimeSlots(prev => [...newSlots, ...prev]);
       setShowGenerationModal(false);
-      fetchStats(); // Refresh stats
       
-    } catch (err) {
-      setError('타임슬롯 생성에 실패했습니다.');
+    } catch (err: any) {
+      setError(err.message || '타임슬롯 생성에 실패했습니다.');
       console.error('Failed to generate time slots:', err);
     }
   };
@@ -341,6 +198,22 @@ export const TimeSlotManagementContainer: React.FC = () => {
     setShowBulkActions(ids.length > 0);
   };
 
+  const handleUpdateStatus = async (timeSlot: TimeSlot, status: 'ACTIVE' | 'INACTIVE' | 'CANCELLED') => {
+    if (!selectedCourseId) return;
+    
+    try {
+      await timeSlotApi.updateTimeSlotStatus(selectedCourseId, timeSlot.id, status);
+      
+      // 목록 새로고침
+      await fetchTimeSlots();
+      await fetchStats();
+      
+    } catch (err: any) {
+      setError(err.message || '타임슬롯 상태 변경에 실패했습니다.');
+      console.error('Failed to update time slot status:', err);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -350,6 +223,22 @@ export const TimeSlotManagementContainer: React.FC = () => {
           <p className="text-gray-600 mt-1">골프장 타임슬롯을 관리하고 예약 현황을 확인하세요</p>
         </div>
         <div className="flex items-center space-x-3">
+          {/* Course Selection */}
+          <div className="flex items-center space-x-2">
+            <label htmlFor="courseSelect" className="text-sm font-medium text-gray-700">
+              코스:
+            </label>
+            <select
+              id="courseSelect"
+              value={selectedCourseId}
+              onChange={(e) => setSelectedCourseId(Number(e.target.value))}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value={1}>코스 1</option>
+              <option value={2}>코스 2</option>
+              <option value={3}>코스 3</option>
+            </select>
+          </div>
           <button
             onClick={() => setShowGenerationModal(true)}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
@@ -398,10 +287,7 @@ export const TimeSlotManagementContainer: React.FC = () => {
         onCreateTimeSlot={() => setShowCreateModal(true)}
         onEditTimeSlot={handleEditTimeSlot}
         onDeleteTimeSlot={handleDeleteTimeSlot}
-        onUpdateStatus={(timeSlot, status) => {
-          // Handle status update
-          console.log('Update status:', timeSlot.id, status);
-        }}
+        onUpdateStatus={handleUpdateStatus}
         onRefresh={fetchTimeSlots}
       />
 

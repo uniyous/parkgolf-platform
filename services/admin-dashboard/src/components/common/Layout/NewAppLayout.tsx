@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EnhancedGNB } from './EnhancedGNB';
-import { useAdminAuth } from '../../../contexts/AdminAuthContext';
+import { useAuth } from '../../../redux/hooks/useAuth';
 
 interface NewAppLayoutProps {
   children: React.ReactNode;
@@ -9,14 +9,13 @@ interface NewAppLayoutProps {
 
 export const NewAppLayout: React.FC<NewAppLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
-  const { currentAdmin, logout, getDisplayInfo } = useAdminAuth();
+  const { user, logout } = useAuth();
   
-  const displayInfo = getDisplayInfo();
   const currentUser = {
-    username: displayInfo.name,
-    email: currentAdmin?.email || '',
-    role: displayInfo.role,
-    company: displayInfo.company
+    username: user?.name || user?.username || '',
+    email: user?.email || '',
+    role: user?.role || '',
+    company: '' // Redux user에는 company 정보가 없을 수 있음
   };
 
   const handleLogout = async () => {

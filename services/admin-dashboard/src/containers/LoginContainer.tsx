@@ -4,7 +4,7 @@ import { useAuth } from '../redux/hooks/useAuth';
 import { LoginForm } from '../components/LoginForm';
 
 export const LoginContainer: React.FC = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
   const { login, isLoading, error, clearError } = useAuth();
@@ -13,17 +13,18 @@ export const LoginContainer: React.FC = () => {
     e.preventDefault();
     clearError();
 
-    const result = await login(username, password);
+    const result = await login(email, password);
     if (result.success) {
-      navigate('/course-management');
+      // 로그인 성공 후 대시보드로 이동
+      navigate('/dashboard');
     }
   };
 
   return (
     <LoginForm
-      username={username}
+      email={email}
       password={password}
-      onUsernameChange={setUsername}
+      onEmailChange={setEmail}
       onPasswordChange={setPassword}
       onSubmit={handleSubmit}
       isLoading={isLoading}

@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { AppRouter } from "./router";
 import { useAuth } from "../redux/hooks/useAuth";
-import { AdminAuthProvider } from "../contexts/AdminAuthContext";
 
 function App() {
   const { checkAuth } = useAuth();
@@ -11,11 +10,7 @@ function App() {
     checkAuth();
   }, [checkAuth]);
 
-  return (
-    <AdminAuthProvider>
-      <AppRouter />
-    </AdminAuthProvider>
-  );
+  return <AppRouter />;
 }
 
 export default App;

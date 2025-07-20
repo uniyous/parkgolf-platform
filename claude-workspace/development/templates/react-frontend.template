@@ -1,0 +1,60 @@
+# React Frontend Template
+
+This template provides a standardized structure for creating new React applications in the Park Golf Platform.
+
+## Application Structure
+
+```
+{app-name}/
+├── src/
+│   ├── app/
+│   │   ├── App.tsx
+│   │   ├── router.tsx
+│   │   └── store/
+│   ├── api/
+│   │   ├── client.ts
+│   │   └── {domain}Api.ts
+│   ├── components/
+│   │   ├── common/
+│   │   │   ├── Layout/
+│   │   │   ├── Button.tsx
+│   │   │   ├── Input.tsx
+│   │   │   └── Modal.tsx
+│   │   └── {domain}/
+│   ├── hooks/
+│   ├── pages/
+│   ├── contexts/
+│   ├── types/
+│   ├── utils/
+│   ├── index.css
+│   └── main.tsx
+├── public/
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+├── tailwind.config.js
+└── eslint.config.js
+```
+
+## Required Dependencies
+
+- react
+- react-dom
+- react-router-dom
+- @reduxjs/toolkit or recoil
+- axios
+- tailwindcss
+
+## Environment Variables
+
+- VITE_API_BASE_URL
+- VITE_APP_NAME
+- VITE_NODE_ENV
+
+## Usage
+
+1. Copy this template to create a new React application
+2. Replace {app-name} and {domain} with actual names
+3. Update package.json with application-specific information
+4. Configure API endpoints in src/api/
+5. Implement domain-specific components and pages

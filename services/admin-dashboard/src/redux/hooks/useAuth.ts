@@ -6,9 +6,9 @@ export const useAuth = () => {
   const dispatch = useAppDispatch();
   const { user, isAuthenticated, isLoading, error } = useAppSelector((state) => state.auth);
 
-  const login = useCallback(async (username: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     try {
-      await dispatch(loginThunk({ username, password })).unwrap();
+      await dispatch(loginThunk({ email, password })).unwrap();
       return { success: true };
     } catch (error) {
       return { success: false, error: error as string };

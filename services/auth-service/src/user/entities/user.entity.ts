@@ -1,12 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {Role, User as PrismaUser} from '@prisma/client';
+import { User as PrismaUser} from '@prisma/client';
 
 export class UserEntity implements Omit<PrismaUser, 'password'> {
     @ApiProperty({ example: 1, description: 'The unique identifier of the user' })
     id: number;
-
-    @ApiProperty({ example: 'testuser', description: 'The username of the user' })
-    username: string;
 
     @ApiProperty({ example: 'user@example.com', description: 'The email address of the user' })
     email: string;
@@ -17,8 +14,8 @@ export class UserEntity implements Omit<PrismaUser, 'password'> {
     // Password should NOT be exposed
     // password!: string;
 
-    @ApiProperty({ enum: Role, isArray: true, example: ['USER'], description: 'Roles of the user' })
-    roles: Role[];
+    @ApiProperty({ example: 'USER', description: 'Role of the user' })
+    roleCode: string;
 
     @ApiProperty({ example: true, description: 'Whether the user is active' })
     isActive: boolean;

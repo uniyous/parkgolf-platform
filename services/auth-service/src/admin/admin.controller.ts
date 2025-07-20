@@ -33,7 +33,7 @@ export class AdminController {
         currentAdminId,
         'CREATE_ADMIN',
         'admin',
-        { createdAdminId: admin.id, username: admin.username },
+        { createdAdminId: admin.id, email: admin.email },
         req.ip,
         req.get('user-agent'),
       );
@@ -54,7 +54,7 @@ export class AdminController {
     const where: any = {};
     
     if (role) {
-      where.role = role;
+      where.roleCode = role;
     }
     
     if (isActive !== undefined) {
@@ -63,7 +63,6 @@ export class AdminController {
     
     if (search) {
       where.OR = [
-        { username: { contains: search, mode: 'insensitive' } },
         { email: { contains: search, mode: 'insensitive' } },
         { name: { contains: search, mode: 'insensitive' } },
       ];
@@ -123,7 +122,7 @@ export class AdminController {
         currentAdminId,
         'DELETE_ADMIN',
         'admin',
-        { deletedAdminId: id, username: admin.username },
+        { deletedAdminId: id, email: admin.email },
         req.ip,
         req.get('user-agent'),
       );
@@ -136,10 +135,10 @@ export class AdminController {
   @Post(':id/permissions')
   async updatePermissions(
     @Param('id', ParseIntPipe) id: number,
-    @Body('permissionIds') permissionIds: number[],
+    @Body('permissions') permissions: string[],
     @Req() req: Request,
   ) {
-    const admin = await this.adminService.updatePermissions(id, permissionIds);
+    const admin = await this.adminService.updatePermissions(id, permissions);
     
     // Log activity
     const currentAdminId = (req.user as any)?.adminId;
@@ -148,7 +147,7 @@ export class AdminController {
         currentAdminId,
         'UPDATE_ADMIN_PERMISSIONS',
         'admin',
-        { adminId: id, permissionIds },
+        { adminId: id, permissions },
         req.ip,
         req.get('user-agent'),
       );
@@ -160,27 +159,31 @@ export class AdminController {
 
   @Get('count/stats')
   async getStats() {
-    const [total, active, byRole] = await Promise.all([
-      this.adminService.count(),
-      this.adminService.count({ isActive: true }),
-      Promise.all([
-        this.adminService.count({ role: 'SUPER_ADMIN' }),
-        this.adminService.count({ role: 'ADMIN' }),
-        this.adminService.count({ role: 'MODERATOR' }),
-        this.adminService.count({ role: 'VIEWER' }),
-      ]),
-    ]);
+    return this.adminService.getStats();
+  }
 
-    return {
-      total,
-      active,
-      inactive: total - active,
-      byRole: {
-        SUPER_ADMIN: byRole[0],
-        ADMIN: byRole[1],
-        MODERATOR: byRole[2],
-        VIEWER: byRole[3],
-      },
-    };
+  @Get('permissions')
+  async getAllPermissions() {
+    return this.adminService.getAllPermissions();
+  }
+
+  @Get('permissions/category/:category')
+  async getPermissionsByCategory(@Param('category') category: string) {
+    return this.adminService.getPermissionsByCategory(category);
+  }
+
+  @Get('roles')
+  async getAllRoles() {
+    return this.adminService.getAllRoles();
+  }
+
+  @Get('roles/admin')
+  async getAdminRoles() {
+    return this.adminService.getAdminRoles();
+  }
+
+  @Get('roles/:roleCode/permissions')
+  async getRolePermissions(@Param('roleCode') roleCode: string) {
+    return this.adminService.getRolePermissions(roleCode);
   }
 }

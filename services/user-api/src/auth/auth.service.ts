@@ -1,6 +1,19 @@
-import { Injectable, UnauthorizedException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  NotFoundException,
+  Inject,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { RegisterDto, LoginDto, AuthResponseDto, UserProfileDto } from './dto/auth.dto';
+import { ClientProxy } from '@nestjs/microservices';
+import {
+  RegisterDto,
+  LoginDto,
+  AuthResponseDto,
+  UserProfileDto,
+} from './dto/auth.dto';
+import { firstValueFrom } from 'rxjs';
 import * as bcrypt from 'bcrypt';
 
 // Mock user database
@@ -227,14 +240,19 @@ export class AuthService {
       birthDate: '1980-01-01',
       createdAt: new Date('2024-01-21'),
       updatedAt: new Date('2024-01-21'),
-    }
+    },
   ];
 
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy,
+  ) {}
 
   async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
     // Check if email already exists
-    const existingUser = this.users.find(user => user.email === registerDto.email);
+    const existingUser = this.users.find(
+      (user) => user.email === registerDto.email,
+    );
     if (existingUser) {
       throw new ConflictException('이미 존재하는 이메일입니다.');
     }
@@ -261,24 +279,49 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto): Promise<AuthResponseDto> {
-    // Find user
-    const user = this.users.find(u => u.email === loginDto.email);
-    if (!user) {
-      throw new UnauthorizedException('이메일 또는 비밀번호가 일치하지 않습니다.');
-    }
+    try {
+      // Call auth-service via NATS using email directly
+      const response = await firstValueFrom(
+        this.authClient.send('auth.login', {
+          email: loginDto.email,
+          password: loginDto.password,
+        }),
+      );
 
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('이메일 또는 비밀번호가 일치하지 않습니다.');
-    }
+      if (!response.success) {
+        throw new UnauthorizedException(
+          response.error?.message ||
+            '이메일 또는 비밀번호가 일치하지 않습니다.',
+        );
+      }
 
-    // Generate tokens
-    return this.generateTokens(user);
+      const authData = response.data;
+
+      // Map the response to match our AuthResponseDto format
+      return {
+        accessToken: authData.accessToken,
+        refreshToken: authData.refreshToken,
+        user: {
+          id: authData.user.id,
+          email: authData.user.email,
+          name: authData.user.name || authData.user.email,
+          phoneNumber: '',
+          createdAt: new Date(),
+        },
+        expiresIn: 3600,
+      };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException(
+        '이메일 또는 비밀번호가 일치하지 않습니다.',
+      );
+    }
   }
 
   async getProfile(userId: number): Promise<UserProfileDto> {
-    const user = this.users.find(u => u.id === userId);
+    const user = this.users.find((u) => u.id === userId);
     if (!user) {
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
     }
@@ -290,8 +333,8 @@ export class AuthService {
   async refreshToken(refreshToken: string): Promise<AuthResponseDto> {
     try {
       const payload = this.jwtService.verify(refreshToken);
-      const user = this.users.find(u => u.id === payload.sub);
-      
+      const user = this.users.find((u) => u.id === payload.sub);
+
       if (!user) {
         throw new UnauthorizedException('유효하지 않은 토큰입니다.');
       }
@@ -310,7 +353,7 @@ export class AuthService {
 
   private async generateTokens(user: User): Promise<AuthResponseDto> {
     const payload = { email: user.email, sub: user.id };
-    
+
     const accessToken = this.jwtService.sign(payload, { expiresIn: '1h' });
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 

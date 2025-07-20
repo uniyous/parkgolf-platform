@@ -39,7 +39,10 @@ async function bootstrap() {
       }),
     );
 
-    app.enableCors();
+    app.enableCors({
+      origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'],
+      credentials: true,
+    });
 
   // Swagger 설정
   const config = new DocumentBuilder()

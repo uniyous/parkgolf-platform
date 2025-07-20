@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = process.env.REACT_APP_USER_API_URL || 'http://localhost:3092';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3092';
 
 // Create axios instance with interceptors
 export const authApi = axios.create({
@@ -49,10 +49,11 @@ authApi.interceptors.response.use(
           return authApi(originalRequest);
         }
       } catch (refreshError) {
-        // Refresh failed, redirect to login
+        // Refresh failed, clear tokens but don't redirect immediately
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        window.location.href = '/login';
+        localStorage.removeItem('user');
+        // Let the AuthContext handle the redirect
         return Promise.reject(refreshError);
       }
     }

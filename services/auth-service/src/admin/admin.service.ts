@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminDto } from './dto/update-admin.dto';
 import * as bcrypt from 'bcrypt';
-import { Admin, AdminRole, Prisma } from '@prisma/client';
+import { Admin, Prisma } from '@prisma/client';
 
 @Injectable()
 export class AdminService {
@@ -16,7 +16,6 @@ export class AdminService {
     const existing = await this.prisma.admin.findFirst({
       where: {
         OR: [
-          { username: data.username },
           { email: data.email }
         ]
       }
@@ -33,7 +32,7 @@ export class AdminService {
       data: {
         ...data,
         password: hashedPassword,
-        role: data.role || AdminRole.VIEWER,
+        roleCode: data.roleCode || 'READONLY_STAFF',
       },
     });
   }
@@ -52,11 +51,7 @@ export class AdminService {
       where,
       orderBy,
       include: {
-        permissions: {
-          include: {
-            permission: true,
-          },
-        },
+        permissions: true,
       },
     });
   }
@@ -65,11 +60,7 @@ export class AdminService {
     const admin = await this.prisma.admin.findUnique({
       where: { id },
       include: {
-        permissions: {
-          include: {
-            permission: true,
-          },
-        },
+        permissions: true,
       },
     });
 
@@ -80,15 +71,11 @@ export class AdminService {
     return admin;
   }
 
-  async findByUsername(username: string): Promise<Admin | null> {
+  async findByEmail(email: string): Promise<Admin | null> {
     return this.prisma.admin.findUnique({
-      where: { username },
+      where: { email },
       include: {
-        permissions: {
-          include: {
-            permission: true,
-          },
-        },
+        permissions: true,
       },
     });
   }
@@ -96,33 +83,27 @@ export class AdminService {
   async update(id: number, updateAdminDto: UpdateAdminDto): Promise<Admin> {
     const admin = await this.findOne(id);
     
-    const { password, username, email, ...data } = updateAdminDto;
+    const { password, email, ...data } = updateAdminDto;
     
-    // Check if new username or email already exists (if changed)
-    if (username || email) {
+    // Check if new email already exists (if changed)
+    if (email) {
       const existing = await this.prisma.admin.findFirst({
         where: {
           AND: [
             { id: { not: id } },
-            {
-              OR: [
-                username ? { username } : {},
-                email ? { email } : {},
-              ],
-            },
+            { email },
           ],
         },
       });
 
       if (existing) {
-        throw new ConflictException('Admin with this username or email already exists');
+        throw new ConflictException('Admin with this email already exists');
       }
     }
 
     // Prepare update data
     const updateData: Prisma.AdminUpdateInput = {
       ...data,
-      username,
       email,
     };
 
@@ -135,11 +116,7 @@ export class AdminService {
       where: { id },
       data: updateData,
       include: {
-        permissions: {
-          include: {
-            permission: true,
-          },
-        },
+        permissions: true,
       },
     });
   }
@@ -147,14 +124,14 @@ export class AdminService {
   async remove(id: number): Promise<Admin> {
     const admin = await this.findOne(id);
     
-    // Prevent deleting the last SUPER_ADMIN
-    if (admin.role === AdminRole.SUPER_ADMIN) {
-      const superAdminCount = await this.prisma.admin.count({
-        where: { role: AdminRole.SUPER_ADMIN },
+    // Prevent deleting the last PLATFORM_OWNER
+    if (admin.roleCode === 'PLATFORM_OWNER') {
+      const ownerCount = await this.prisma.admin.count({
+        where: { roleCode: 'PLATFORM_OWNER' },
       });
       
-      if (superAdminCount <= 1) {
-        throw new ConflictException('Cannot delete the last SUPER_ADMIN');
+      if (ownerCount <= 1) {
+        throw new ConflictException('Cannot delete the last PLATFORM_OWNER');
       }
     }
 
@@ -163,8 +140,8 @@ export class AdminService {
     });
   }
 
-  async validateAdmin(username: string, password: string): Promise<Admin | null> {
-    const admin = await this.findByUsername(username);
+  async validateAdmin(email: string, password: string): Promise<Admin | null> {
+    const admin = await this.findByEmail(email);
     
     if (!admin) {
       return null;
@@ -194,51 +171,116 @@ export class AdminService {
   }
 
   async getStats(): Promise<any> {
+    // Get all active admin roles from RoleMaster
+    const adminRoles = await this.prisma.roleMaster.findMany({
+      where: { 
+        userType: 'ADMIN',
+        isActive: true 
+      },
+      orderBy: { level: 'desc' },
+    });
+
     const [total, active, byRole] = await Promise.all([
       this.count(),
       this.count({ isActive: true }),
-      Promise.all([
-        this.count({ role: 'SUPER_ADMIN' }),
-        this.count({ role: 'ADMIN' }),
-        this.count({ role: 'MODERATOR' }),
-        this.count({ role: 'VIEWER' }),
-      ]),
+      Promise.all(
+        adminRoles.map(role => 
+          this.count({ roleCode: role.code })
+        )
+      ),
     ]);
+
+    // Build dynamic byRole object
+    const byRoleStats: Record<string, number> = {};
+    adminRoles.forEach((role, index) => {
+      byRoleStats[role.code] = byRole[index];
+    });
 
     return {
       total,
       active,
       inactive: total - active,
-      byRole: {
-        SUPER_ADMIN: byRole[0],
-        ADMIN: byRole[1],
-        MODERATOR: byRole[2],
-        VIEWER: byRole[3],
-      },
+      byRole: byRoleStats,
     };
   }
 
   async getAllPermissions(): Promise<any[]> {
-    return this.prisma.permission.findMany({
+    return this.prisma.permissionMaster.findMany({
+      where: { isActive: true },
       orderBy: [
         { category: 'asc' },
-        { name: 'asc' },
+        { code: 'asc' },
       ],
     });
   }
 
-  async updatePermissions(adminId: number, permissionIds: number[]): Promise<Admin> {
+  async getAllRoles(): Promise<any[]> {
+    return this.prisma.roleMaster.findMany({
+      where: { isActive: true },
+      orderBy: [
+        { userType: 'asc' },
+        { level: 'desc' },
+      ],
+    });
+  }
+
+  async getRolePermissions(roleCode: string): Promise<string[]> {
+    const rolePermissions = await this.prisma.rolePermission.findMany({
+      where: { 
+        roleCode,
+        permission: {
+          isActive: true
+        }
+      },
+      include: {
+        permission: true
+      }
+    });
+    
+    return rolePermissions.map(rp => rp.permissionCode);
+  }
+
+  async getPermissionsByCategory(category?: string): Promise<any[]> {
+    const where: any = { isActive: true };
+    if (category) {
+      where.category = category;
+    }
+
+    return this.prisma.permissionMaster.findMany({
+      where,
+      orderBy: [
+        { category: 'asc' },
+        { level: 'desc' },
+        { code: 'asc' },
+      ],
+    });
+  }
+
+  async getAdminRoles(): Promise<any[]> {
+    return this.prisma.roleMaster.findMany({
+      where: { 
+        userType: 'ADMIN',
+        isActive: true 
+      },
+      orderBy: [
+        { level: 'desc' },
+        { code: 'asc' },
+      ],
+    });
+  }
+
+  async updatePermissions(adminId: number, permissions: string[]): Promise<Admin> {
     // First, delete all existing permissions
     await this.prisma.adminPermission.deleteMany({
       where: { adminId },
     });
 
     // Then, create new permissions
-    if (permissionIds.length > 0) {
+    if (permissions.length > 0) {
       await this.prisma.adminPermission.createMany({
-        data: permissionIds.map(permissionId => ({
+        data: permissions.map(permission => ({
           adminId,
-          permissionId,
+          permission,
         })),
       });
     }

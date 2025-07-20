@@ -20,7 +20,11 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: ['http://localhost:3001', 'http://localhost:3002', 'http://localhost:3000'],
+    origin: [
+      'http://localhost:3001',
+      'http://localhost:3002',
+      'http://localhost:3000',
+    ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
@@ -33,13 +37,13 @@ async function bootstrap() {
     .setVersion('1.0')
     .addBearerAuth()
     .build();
-  
+
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api-docs', app, document);
 
   const port = configService.get<number>('PORT') || 3092;
   await app.listen(port);
-  
+
   console.log(`🚀 Parkgolf User API is running on port ${port}`);
   console.log(`📚 Swagger docs: http://localhost:${port}/api-docs`);
 }

@@ -18,22 +18,22 @@ export class AuthNatsController {
   @MessagePattern('auth.login')
   async login(@Payload() loginDto: LoginDto) {
     try {
-      this.logger.log(`NATS: Login request for user: ${loginDto.username}`);
+      this.logger.log(`NATS: Login request for user: ${loginDto.email}`);
       
       // First validate the user
-      const user = await this.authService.validateUser(loginDto.username, loginDto.password);
+      const user = await this.authService.validateUser(loginDto.email, loginDto.password);
       if (!user) {
         throw new Error('Invalid credentials');
       }
       
       const result = await this.authService.login(user);
-      this.logger.log(`NATS: Login successful for user: ${loginDto.username}`);
+      this.logger.log(`NATS: Login successful for user: ${loginDto.email}`);
       return {
         success: true,
         data: result,
       };
     } catch (error) {
-      this.logger.error(`NATS: Login failed for user: ${loginDto.username}`, error);
+      this.logger.error(`NATS: Login failed for user: ${loginDto.email}`, error);
       return {
         success: false,
         error: {
@@ -91,7 +91,7 @@ export class AuthNatsController {
   @MessagePattern('users.create')
   async createUser(@Payload() payload: { data: CreateUserDto; token?: string }) {
     try {
-      this.logger.log(`NATS: Create user request for: ${payload.data.username}`);
+      this.logger.log(`NATS: Create user request for: ${payload.data.email}`);
       
       // For signup, we don't require token validation
       // For admin creation, we should validate the token
@@ -100,14 +100,14 @@ export class AuthNatsController {
       }
       
       const result = await this.userService.create(payload.data);
-      this.logger.log(`NATS: User created successfully: ${payload.data.username}`);
+      this.logger.log(`NATS: User created successfully: ${payload.data.email}`);
       
       return {
         success: true,
         data: result,
       };
     } catch (error) {
-      this.logger.error(`NATS: User creation failed for: ${payload.data.username}`, error);
+      this.logger.error(`NATS: User creation failed for: ${payload.data.email}`, error);
       return {
         success: false,
         error: {

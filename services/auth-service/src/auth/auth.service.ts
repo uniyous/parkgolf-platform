@@ -14,10 +14,10 @@ export class AuthService {
         private jwtService: JwtService,
     ) {}
 
-    async validateUser(username: string, pass: string): Promise<Omit<User, 'password'> | null> {
-        console.log(`🔍 Validating user: ${username}, password provided: ${!!pass}`);
-        const user = await this.userService.findOneByUsername(username);
-        console.log(`👤 User found:`, user ? `${user.username} (active: ${user.isActive}, hasPassword: ${!!user?.password})` : 'null');
+    async validateUser(email: string, pass: string): Promise<Omit<User, 'password'> | null> {
+        console.log(`🔍 Validating user: ${email}, password provided: ${!!pass}`);
+        const user = await this.userService.findOneByEmail(email);
+        console.log(`👤 User found:`, user ? `${user.email} (active: ${user.isActive}, hasPassword: ${!!user?.password})` : 'null');
         
         if (user && user.isActive) {
             if (!pass || !user.password) {
@@ -29,23 +29,22 @@ export class AuthService {
             console.log(`🔐 Password comparison result: ${passwordMatch}`);
             
             if (passwordMatch) {
-                console.log(`✅ Password match for ${username}`);
+                console.log(`✅ Password match for ${email}`);
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { password, ...result } = user;
                 return result;
             }
         }
-        console.log(`❌ Login failed for ${username}`);
+        console.log(`❌ Login failed for ${email}`);
         return null;
     }
 
     async login(user: Omit<User, 'password'>) {
         // User is already validated by LocalAuthGuard/LocalStrategy
         const payload: JwtPayload = {
-            username: user.username,
             email: user.email,
             sub: user.id,
-            roles: user.roles,
+            roles: [user.roleCode],
         };
 
         const accessToken = this.jwtService.sign(payload);
@@ -56,9 +55,9 @@ export class AuthService {
             refreshToken,
             user: {
                 id: user.id,
-                username: user.username,
                 email: user.email,
-                role: user.roles?.[0] || 'USER', // Take first role as primary role
+                name: user.name || user.email, // Use name if available, otherwise email
+                role: user.roleCode || 'USER', // Take first role as primary role
             }
         };
     }
@@ -66,7 +65,7 @@ export class AuthService {
     async validateToken(token: string) {
         try {
             const payload = this.jwtService.verify(token);
-            const user = await this.userService.findOneByUsername(payload.username);
+            const user = await this.userService.findOneByEmail(payload.email);
             if (!user) {
                 throw new UnauthorizedException('User not found');
             }
@@ -81,16 +80,15 @@ export class AuthService {
     async refreshToken(refreshToken: string) {
         try {
             const payload = this.jwtService.verify(refreshToken);
-            const user = await this.userService.findOneByUsername(payload.username);
+            const user = await this.userService.findOneByEmail(payload.email);
             if (!user) {
                 throw new UnauthorizedException('User not found');
             }
 
             const newPayload: JwtPayload = {
-                username: user.username,
                 email: user.email,
                 sub: user.id,
-                roles: user.roles,
+                roles: [user.roleCode],
             };
 
             const newAccessToken = this.jwtService.sign(newPayload);
@@ -101,9 +99,9 @@ export class AuthService {
                 refreshToken: newRefreshToken,
                 user: {
                     id: user.id,
-                    username: user.username,
                     email: user.email,
-                    role: user.roles?.[0] || 'USER',
+                    name: user.name || user.email,
+                    role: user.roleCode || 'USER',
                 }
             };
         } catch (error) {
@@ -128,10 +126,10 @@ export class AuthService {
 
     async adminLogin(admin: Omit<Admin, 'password'>) {
         const payload = {
-            username: admin.username,
+            username: admin.email,
             email: admin.email,
             sub: admin.id,
-            role: admin.role,
+            role: admin.roleCode,
             type: 'admin',
         };
 
@@ -143,10 +141,10 @@ export class AuthService {
             refreshToken,
             user: {
                 id: admin.id,
-                username: admin.username,
+                username: admin.email,
                 email: admin.email,
                 name: admin.name,
-                role: admin.role,
+                role: admin.roleCode,
                 type: 'admin',
             }
         };
@@ -160,16 +158,16 @@ export class AuthService {
                 throw new UnauthorizedException('Invalid admin token');
             }
             
-            const admin = await this.adminService.findByUsername(payload.username);
+            const admin = await this.adminService.findByEmail(payload.email);
             if (!admin || !admin.isActive) {
                 throw new UnauthorizedException('Admin not found or inactive');
             }
 
             const newPayload = {
-                username: admin.username,
+                username: admin.email,
                 email: admin.email,
                 sub: admin.id,
-                role: admin.role,
+                role: admin.roleCode,
                 type: 'admin',
             };
 
@@ -181,10 +179,10 @@ export class AuthService {
                 refreshToken: newRefreshToken,
                 user: {
                     id: admin.id,
-                    username: admin.username,
+                    username: admin.email,
                     email: admin.email,
                     name: admin.name,
-                    role: admin.role,
+                    role: admin.roleCode,
                     type: 'admin',
                 }
             };

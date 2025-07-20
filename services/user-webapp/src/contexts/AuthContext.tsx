@@ -56,20 +56,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setAccessToken(storedToken);
           setUser(JSON.parse(storedUser));
           
-          // Verify token by fetching profile
-          const response = await fetch(`${API_BASE_URL}/auth/profile`, {
-            headers: {
-              'Authorization': `Bearer ${storedToken}`,
-            },
-          });
-          
-          if (!response.ok) {
-            // Token is invalid, try to refresh
-            const refreshed = await refreshTokenFn();
-            if (!refreshed) {
-              logout();
-            }
-          }
+          // Don't verify token immediately on page load to avoid auth loops
+          // Token verification will happen when making actual API calls
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
@@ -95,12 +83,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (response.ok) {
         const data = await response.json();
         setAccessToken(data.accessToken);
-        setUser(data.user);
+        
+        // Map the user data to match our User interface
+        const userData: User = {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.name || data.user.email, // Use name if available, otherwise email
+          phoneNumber: '', // Not provided by auth service
+          createdAt: new Date().toISOString(),
+        };
+        
+        setUser(userData);
         
         // Store in localStorage
         localStorage.setItem('accessToken', data.accessToken);
         localStorage.setItem('refreshToken', data.refreshToken);
-        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('user', JSON.stringify(userData));
         
         return true;
       }

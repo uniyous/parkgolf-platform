@@ -7,7 +7,6 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UserEntity } from '../user/entities/user.entity';
 import { Roles } from './decorators/roles.decorator';
-import { Role } from '@prisma/client';
 import { RolesGuard } from './guards/roles.guard';
 
 @ApiTags('Authentication')
@@ -68,7 +67,7 @@ export class AuthController {
     @ApiResponse({ status: 200, description: 'Login successful, returns JWT.' })
     @ApiResponse({ status: 401, description: 'Unauthorized (Invalid credentials).' })
     async adminLogin(@Body() loginDto: AdminLoginDto) {
-        const admin = await this.authService.validateAdmin(loginDto.username, loginDto.password);
+        const admin = await this.authService.validateAdmin(loginDto.email, loginDto.password);
         if (!admin) {
             throw new UnauthorizedException('Invalid credentials');
         }

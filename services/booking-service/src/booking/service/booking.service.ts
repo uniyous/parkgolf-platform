@@ -379,8 +379,10 @@ export class BookingService {
     courseId: number,
     date: string
   ): Promise<any[]> {
-    const targetDate = new Date(date);
-    targetDate.setHours(0, 0, 0, 0);
+    // UTC 기준으로 날짜 생성하여 타임존 문제 해결
+    const targetDate = new Date(date + 'T00:00:00.000Z');
+
+    this.logger.log(`Querying time slots for courseId: ${courseId}, date: ${date}, targetDate: ${targetDate.toISOString()}`);
 
     const slots = await this.prisma.timeSlotAvailability.findMany({
       where: {
@@ -392,20 +394,45 @@ export class BookingService {
       }
     });
 
+    this.logger.log(`Found ${slots.length} slots in database`);
+    
     // 슬롯이 없으면 생성
     if (slots.length === 0) {
+      this.logger.log('No slots found, generating default slots');
       return this.generateDefaultTimeSlots(courseId, targetDate);
     }
 
-    return slots.map(slot => ({
-      id: slot.id,
-      time: slot.timeSlot,
-      date: slot.date.toISOString().split('T')[0],
-      available: slot.isAvailable,
-      price: Number(slot.price),
-      isPremium: slot.isPremium,
-      remaining: slot.maxCapacity - slot.booked
-    }));
+    // 데이터 매핑 과정 디버깅
+    const mappedSlots = slots.map(slot => {
+      const mappedSlot = {
+        id: slot.id,
+        time: slot.timeSlot,
+        date: slot.date.toISOString().split('T')[0],
+        available: slot.isAvailable,
+        price: Number(slot.price),
+        isPremium: slot.isPremium,
+        remaining: slot.maxCapacity - slot.booked
+      };
+      
+      this.logger.log(`Mapping slot: ${JSON.stringify({
+        original: {
+          id: slot.id,
+          timeSlot: slot.timeSlot,
+          date: slot.date,
+          isAvailable: slot.isAvailable,
+          price: slot.price,
+          isPremium: slot.isPremium,
+          maxCapacity: slot.maxCapacity,
+          booked: slot.booked
+        },
+        mapped: mappedSlot
+      })}`);
+      
+      return mappedSlot;
+    });
+
+    this.logger.log(`Returning ${mappedSlots.length} mapped slots`);
+    return mappedSlots;
   }
 
   // 프라이빗 헬퍼 메서드들
@@ -415,8 +442,8 @@ export class BookingService {
     timeSlot: string,
     playerCount: number
   ): Promise<{available: boolean; price: number; remaining: number}> {
-    const targetDate = new Date(date);
-    targetDate.setHours(0, 0, 0, 0);
+    // UTC 기준으로 날짜 생성하여 타임존 문제 해결
+    const targetDate = new Date(date + 'T00:00:00.000Z');
 
     let slot = await this.prisma.timeSlotAvailability.findUnique({
       where: {
@@ -452,23 +479,38 @@ export class BookingService {
     courseId: number,
     date: Date
   ): Promise<any[]> {
+    this.logger.log(`Generating default time slots for courseId: ${courseId}, date: ${date.toISOString()}`);
+    
     const course = await this.prisma.courseCache.findUnique({
       where: { courseId }
     });
 
     if (!course) {
+      this.logger.error(`Course not found in cache for courseId: ${courseId}`);
       return [];
     }
+
+    this.logger.log(`Course found: ${JSON.stringify({
+      courseId: course.courseId,
+      name: course.name,
+      openTime: course.openTime,
+      closeTime: course.closeTime,
+      pricePerHour: course.pricePerHour
+    })}`);
 
     const slots = [];
     const startHour = parseInt(course.openTime.split(':')[0]);
     const endHour = parseInt(course.closeTime.split(':')[0]);
     const basePrice = Number(course.pricePerHour);
 
+    this.logger.log(`Generating slots from ${startHour}:00 to ${endHour}:00 with base price: ${basePrice}`);
+
     for (let hour = startHour; hour < endHour; hour++) {
       const timeSlot = `${hour.toString().padStart(2, '0')}:00`;
       const isPremium = hour >= 12 && hour <= 16;
       const price = isPremium ? Math.floor(basePrice * 1.2) : basePrice;
+
+      this.logger.log(`Creating slot: ${timeSlot}, premium: ${isPremium}, price: ${price}`);
 
       const newSlot = await this.prisma.timeSlotAvailability.create({
         data: {
@@ -483,9 +525,21 @@ export class BookingService {
         }
       });
 
-      slots.push(newSlot);
+      const mappedSlot = {
+        id: newSlot.id,
+        time: newSlot.timeSlot,
+        date: newSlot.date.toISOString().split('T')[0],
+        available: newSlot.isAvailable,
+        price: Number(newSlot.price),
+        isPremium: newSlot.isPremium,
+        remaining: newSlot.maxCapacity - newSlot.booked
+      };
+
+      this.logger.log(`Generated slot: ${JSON.stringify(mappedSlot)}`);
+      slots.push(mappedSlot);
     }
 
+    this.logger.log(`Generated ${slots.length} default slots`);
     return slots;
   }
 

@@ -1,0 +1,53 @@
+# Health Check Configuration
+
+## Service Health Check Endpoints
+
+Each service should implement the following health check endpoints:
+
+### Standard Health Check
+- **Endpoint**: `/health`
+- **Method**: GET
+- **Response**: 200 OK with service status
+
+### Detailed Health Check
+- **Endpoint**: `/health/detailed`
+- **Method**: GET
+- **Response**: JSON with component status
+
+## Health Check Template
+
+```typescript
+// health.controller.ts
+import { Controller, Get } from '@nestjs/common';
+import { HealthCheck, HealthCheckService, TypeOrmHealthIndicator } from '@nestjs/terminus';
+
+@Controller('health')
+export class HealthController {
+  constructor(
+    private health: HealthCheckService,
+    private db: TypeOrmHealthIndicator,
+  ) {}
+
+  @Get()
+  @HealthCheck()
+  check() {
+    return this.health.check([
+      () => this.db.pingCheck('database'),
+      // Add other health indicators
+    ]);
+  }
+}
+```
+
+## Monitoring Integration
+
+- Prometheus metrics endpoint: `/metrics`
+- Grafana dashboard templates
+- Alert manager configurations
+
+## Usage
+
+1. Copy health check template to your service
+2. Add service-specific health indicators
+3. Configure monitoring dashboards
+4. Set up alerting rules

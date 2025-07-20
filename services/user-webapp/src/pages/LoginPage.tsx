@@ -169,21 +169,26 @@ export const LoginPage: React.FC = () => {
           border: '1px solid #e9ecef'
         }}>
           <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#495057' }}>
-            🧪 테스트 계정 (비밀번호: password123!)
+            🧪 테스트 계정 (클릭하여 자동 입력)
           </h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '5px' }}>
             {[
-              { email: 'test@example.com', name: '테스트 사용자' },
-              { email: 'user1@golf.com', name: '김철수' },
-              { email: 'user2@golf.com', name: '이영희' },
-              { email: 'user3@golf.com', name: '박민수' },
-              { email: 'user4@golf.com', name: '정수연' },
-              { email: 'admin@golf.com', name: '관리자' }
+              { email: 'king@parkgolf.com', password: 'king1234', name: '킹(관리자)', role: 'ADMIN' },
+              { email: 'kimcheolsu@parkgolf.com', password: 'user1234', name: '김철수', role: 'USER' },
+              { email: 'parkyounghee@parkgolf.com', password: 'user1234', name: '박영희', role: 'USER' },
+              { email: 'leeminsu@parkgolf.com', password: 'user1234', name: '이민수', role: 'USER' },
+              { email: 'jungsuyoung@parkgolf.com', password: 'user1234', name: '정수영', role: 'USER' },
+              { email: 'choijina@parkgolf.com', password: 'user1234', name: '최진아', role: 'USER' },
+              { email: 'songdongho@parkgolf.com', password: 'user1234', name: '송동호', role: 'USER' },
+              { email: 'yoonseoyeon@parkgolf.com', password: 'user1234', name: '윤서연', role: 'USER' },
+              { email: 'kangminwoo@parkgolf.com', password: 'mod1234', name: '강민우', role: 'MOD' },
+              { email: 'limjihye@parkgolf.com', password: 'admin1234', name: '임지혜', role: 'ADMIN' },
+              { email: 'hanseungwoo@parkgolf.com', password: 'view1234', name: '한승우', role: 'VIEWER' }
             ].map((testUser, index) => (
               <button
                 key={index}
                 onClick={() => {
-                  setFormData({ email: testUser.email, password: 'password123!' });
+                  setFormData({ email: testUser.email, password: testUser.password });
                 }}
                 style={{
                   background: 'white',
@@ -196,7 +201,8 @@ export const LoginPage: React.FC = () => {
                   color: '#495057'
                 }}
               >
-                <div style={{ fontWeight: '500' }}>{testUser.name}</div>
+                <div style={{ fontWeight: '500', marginBottom: '2px' }}>{testUser.name}</div>
+                <div style={{ fontSize: '10px', opacity: 0.6, color: '#6c757d' }}>{testUser.role}</div>
                 <div style={{ fontSize: '11px', opacity: 0.7 }}>{testUser.email}</div>
               </button>
             ))}

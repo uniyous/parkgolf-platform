@@ -27,18 +27,25 @@ parkgolf-platform/
 │   ├── ml-service/             # ML & analytics (Python/Node.js hybrid)
 │   ├── user-api/              # User-facing API (NestJS)
 │   └── user-webapp/           # User React frontend
-├── .devtools/                  # 개발 도구 및 스크립트
-│   ├── scripts/               # 빌드, 배포, 개발 스크립트
-│   └── docker/                # Docker 개발 환경 설정
-├── shared/                     # 공통 설정 및 유틸리티
-│   ├── types/                 # 공유 TypeScript 타입 정의
-│   ├── configs/               # 공통 설정 파일들
-│   └── docs/                  # 공통 문서
+├── claude-workspace/           # Claude AI 통합 작업공간
+│   ├── quick-start/           # 빠른 시작 가이드
+│   ├── development/           # 개발 도구
+│   │   ├── scripts/          # 자동화 스크립트
+│   │   ├── templates/        # 서비스 템플릿
+│   │   ├── environments/     # 환경 설정
+│   │   └── docker/           # Docker 설정
+│   ├── shared/               # 공유 리소스
+│   │   ├── configs/          # 설정 파일들
+│   │   ├── schemas/          # 스키마 정의
+│   │   ├── types/            # TypeScript 타입
+│   │   └── utils/            # 유틸리티 함수
+│   ├── testing/              # 테스트 도구
+│   ├── operations/           # 운영 도구
+│   └── docs/                 # 통합 문서
 ├── .github/                    # GitHub 설정
 │   ├── workflows/             # 서비스별 CI/CD pipelines
 │   └── ISSUE_TEMPLATE/        # 이슈 템플릿
-├── infrastructure/             # 인프라 코드 (Terraform, K8s manifests)
-└── docs/                      # 전체 프로젝트 문서
+└── infrastructure/             # 인프라 코드 (Terraform, K8s manifests)
 
 ```
 
@@ -74,13 +81,13 @@ parkgolf-platform/
 ### 전체 개발 환경 실행
 ```bash
 # 인프라 서비스 시작 (PostgreSQL, Redis, NATS)
-./.devtools/scripts/development/start-infrastructure.sh
+docker-compose -f claude-workspace/development/docker/docker-compose.yml up -d
 
 # 모든 서비스 시작
-./.devtools/scripts/start-all-services.sh
+./claude-workspace/development/scripts/start-all-services.sh
 
 # 특정 서비스만 시작
-./.devtools/scripts/start-service.sh [service-name]
+./claude-workspace/development/scripts/start-service.sh [service-name]
 
 # Admin Dashboard 접속
 # http://localhost:3000
@@ -157,10 +164,10 @@ npm run build
 
 ## 📚 추가 문서
 
-- [개발 도구 가이드](./.devtools/README.md)
-- [API 문서](./shared/docs/API.md)
-- [배포 가이드](./docs/DEPLOYMENT.md)
-- [기여 가이드](./CONTRIBUTING.md)
+- [Claude 워크스페이스 가이드](./claude-workspace/README.md)
+- [개발 가이드](./claude-workspace/docs/DEVELOPMENT_GUIDE.md)
+- [API 문서](./claude-workspace/docs/API_DOCUMENTATION.md)
+- [서비스 아키텍처](./claude-workspace/docs/SERVICES_OVERVIEW.md)
 
 ## 🤝 기여하기
 
