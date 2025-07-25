@@ -88,6 +88,34 @@ export class AuthNatsController {
     }
   }
 
+  @MessagePattern('auth.getCurrentUser')
+  async getCurrentUser(@Payload() payload: { token: string }) {
+    try {
+      this.logger.log('NATS: Get current user request');
+      
+      // First validate the token and extract user info
+      const tokenValidation = await this.authService.validateToken(payload.token);
+      
+      // Then get complete user/admin information
+      const result = await this.authService.getCurrentUser(tokenValidation.user);
+      this.logger.log('NATS: Current user information retrieved successfully');
+      
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      this.logger.error('NATS: Get current user failed', error);
+      return {
+        success: false,
+        error: {
+          code: 'GET_CURRENT_USER_FAILED',
+          message: error.message || 'Failed to get current user information',
+        },
+      };
+    }
+  }
+
   @MessagePattern('users.create')
   async createUser(@Payload() payload: { data: CreateUserDto; token?: string }) {
     try {

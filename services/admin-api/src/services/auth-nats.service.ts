@@ -235,6 +235,22 @@ export class AuthNatsService {
     }
   }
 
+  async getCurrentUser(token: string): Promise<any> {
+    try {
+      this.logger.log('Getting current user/admin information via NATS');
+      
+      const result = await firstValueFrom(
+        this.authClient.send('auth.getCurrentUser', { token }).pipe(timeout(5000))
+      );
+      
+      this.logger.log('Current user information retrieved successfully');
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to get current user information', error);
+      throw error;
+    }
+  }
+
   onModuleInit() {
     this.authClient.connect();
   }

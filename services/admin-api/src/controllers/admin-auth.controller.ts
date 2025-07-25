@@ -1,5 +1,5 @@
-import { Controller, Post, Body, HttpStatus, HttpException, Logger } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { Controller, Post, Body, HttpStatus, HttpException, Logger, Get, Headers } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthNatsService, LoginRequest } from '../services/auth-nats.service';
 
 export interface SignupRequest {
@@ -176,6 +176,68 @@ export class AdminAuthController {
           error: {
             code: 'VALIDATION_FAILED',
             message: 'Invalid token',
+          }
+        },
+        HttpStatus.UNAUTHORIZED
+      );
+    }
+  }
+
+  @Get('me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current admin user information' })
+  @ApiResponse({ status: 200, description: 'Returns current admin user profile' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing token' })
+  async getCurrentUser(@Headers('authorization') authorization: string) {
+    try {
+      if (!authorization || !authorization.startsWith('Bearer ')) {
+        throw new HttpException(
+          {
+            success: false,
+            error: {
+              code: 'MISSING_TOKEN',
+              message: 'Authorization token is required',
+            }
+          },
+          HttpStatus.UNAUTHORIZED
+        );
+      }
+
+      const token = authorization.substring(7); // Remove 'Bearer ' prefix
+      this.logger.log('Getting current admin user information');
+      
+      // Call auth-service /auth/me endpoint via NATS
+      const result = await this.authService.getCurrentUser(token);
+      
+      // Verify admin role
+      if (!this.isAdminRole(result.data.role)) {
+        throw new HttpException(
+          {
+            success: false,
+            error: {
+              code: 'INSUFFICIENT_PRIVILEGES',
+              message: 'Admin privileges required',
+            }
+          },
+          HttpStatus.FORBIDDEN
+        );
+      }
+
+      this.logger.log(`Current admin user retrieved: ${result.data.email}`);
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to get current admin user', error);
+      
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      
+      throw new HttpException(
+        {
+          success: false,
+          error: {
+            code: 'GET_USER_FAILED',
+            message: 'Failed to get current user information',
           }
         },
         HttpStatus.UNAUTHORIZED

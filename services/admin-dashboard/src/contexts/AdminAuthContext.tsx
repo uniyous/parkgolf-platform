@@ -1,18 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import type { Admin, Permission, AdminRole, AdminScope } from '../types';
+import type { Admin, Permission, AdminRole, AdminScope, User } from '../types';
 import { 
   hasPermission, 
   canManageAdmin, 
   isPlatformAdmin, 
   isCompanyAdmin,
-  ADMIN_ROLE_LABELS 
+  ADMIN_ROLE_LABELS,
+  getDefaultPermissions,
+  getRoleScope
 } from '../utils/adminPermissions';
-import { getMockAdminById } from '../utils/mockAdminData';
+import { authApi } from '../api/authApi';
 
 interface AdminAuthContextType {
   // 현재 로그인한 관리자 정보
   currentAdmin: Admin | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   
   // 권한 체크 함수들
   hasPermission: (permission: Permission) => boolean;
@@ -57,38 +60,116 @@ interface AdminAuthProviderProps {
 
 export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }) => {
   const [currentAdmin, setCurrentAdmin] = useState<Admin | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // 초기화: localStorage에서 로그인 정보 복원
-  useEffect(() => {
-    const savedAdminId = localStorage.getItem('currentAdminId');
-    if (savedAdminId) {
-      const admin = getMockAdminById(parseInt(savedAdminId));
-      if (admin) {
-        setCurrentAdmin(admin);
+  // User 타입을 Admin 타입으로 변환하는 함수
+  const convertUserToAdmin = (user: User): Admin => {
+    // 사용자의 역할을 Admin 역할로 변환
+    const adminRole = (user.role as AdminRole) || 'PLATFORM_ADMIN';
+    
+    // 역할에 따른 스코프 자동 설정
+    const scope = user.scope || getRoleScope(adminRole);
+    
+    // 역할에 따른 기본 권한 설정 (API에서 권한을 제공하지 않는 경우)
+    const permissions = user.permissions && user.permissions.length > 0 
+      ? user.permissions 
+      : getDefaultPermissions(adminRole);
+    
+    return {
+      id: user.id,
+      username: user.username || user.email,
+      email: user.email,
+      name: user.name || user.username || 'Unknown',
+      role: adminRole,
+      scope: scope,
+      permissions: permissions,
+      isActive: user.isActive ?? true,
+      lastLoginAt: typeof user.lastLoginAt === 'string' ? user.lastLoginAt : user.lastLoginAt?.toISOString(),
+      createdAt: typeof user.createdAt === 'string' ? user.createdAt : user.createdAt.toISOString(),
+      updatedAt: typeof user.updatedAt === 'string' ? user.updatedAt : user.updatedAt?.toISOString(),
+      companyId: user.companyId,
+      courseIds: user.courseIds,
+      department: user.department,
+      description: user.description
+    };
+  };
+
+  // 현재 사용자 정보 로드
+  const loadCurrentUser = async () => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('accessToken');
+      
+      if (!token) {
+        setCurrentAdmin(null);
+        return;
       }
+
+      console.log('토큰을 사용하여 사용자 정보 로드 중...');
+      
+      // 실제 API 호출
+      const response = await authApi.getCurrentUser();
+      
+      if (response.success && response.data) {
+        const admin = convertUserToAdmin(response.data);
+        console.log('API에서 사용자 정보 로드 성공:', admin.name, admin.role);
+        setCurrentAdmin(admin);
+        return;
+      } else {
+        console.error('API 응답 실패:', response.error?.message);
+        // API 실패 시 토큰 제거 및 로그아웃
+        setCurrentAdmin(null);
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('currentUser');
+      }
+    } catch (error) {
+      console.error('사용자 정보 로드 중 오류:', error);
+      // 에러 발생 시 토큰 제거 및 로그아웃
+      setCurrentAdmin(null);
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('currentUser');
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // 초기화: 토큰이 있으면 사용자 정보 로드
+  useEffect(() => {
+    loadCurrentUser();
   }, []);
 
-  // 로그인 함수
+  // Redux 토큰 변경 감지하여 동기화
+  useEffect(() => {
+    const handleStorageChange = async () => {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        if (!currentAdmin) {
+          console.log('토큰 변경 감지 - 사용자 정보 다시 로드');
+          await loadCurrentUser();
+        }
+      } else {
+        // 토큰이 없으면 로그아웃
+        setCurrentAdmin(null);
+        localStorage.removeItem('currentAdminId');
+      }
+    };
+
+    // storage 이벤트 리스너 추가
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [currentAdmin]);
+
+  // 로그인 함수 (실제로는 사용되지 않음 - 인증은 로그인 페이지에서 처리)
   const login = async (adminId: number): Promise<void> => {
-    console.log('AdminAuthContext login 호출됨, adminId:', adminId);
-    const admin = getMockAdminById(adminId);
-    console.log('찾은 관리자:', admin);
-    
-    if (!admin) {
-      console.error('관리자를 찾을 수 없음:', adminId);
-      throw new Error('관리자를 찾을 수 없습니다.');
-    }
-    
-    if (!admin.isActive) {
-      console.error('비활성화된 계정:', admin);
-      throw new Error('비활성화된 계정입니다.');
-    }
-    
-    console.log('로그인 성공, 관리자 설정:', admin.name);
-    setCurrentAdmin(admin);
-    localStorage.setItem('currentAdminId', adminId.toString());
-    localStorage.setItem('accessToken', `mock-token-${adminId}`);
+    console.log('AdminAuthContext login 호출됨 - API 통합 후에는 사용되지 않음');
+    // 실제 환경에서는 로그인 페이지에서 authApi.login을 사용하여 토큰을 받고
+    // 그 토큰으로 loadCurrentUser를 호출하여 사용자 정보를 가져옴
+    await loadCurrentUser();
   };
 
   // 로그아웃 함수
@@ -97,6 +178,7 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
     localStorage.removeItem('currentAdminId');
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('currentUser');
   };
 
   // 권한 체크
@@ -244,6 +326,7 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
   const value: AdminAuthContextType = {
     currentAdmin,
     isAuthenticated: !!currentAdmin,
+    isLoading,
     hasPermission: checkPermission,
     canManageAdminRole: checkCanManageAdmin,
     canAccessCompany,

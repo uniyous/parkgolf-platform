@@ -190,4 +190,70 @@ export class AuthService {
             throw new UnauthorizedException('Invalid refresh token');
         }
     }
+
+    async getCurrentUser(user: any) {
+        // Check if this is an admin token by checking if it has admin-specific properties
+        if (user.type === 'admin' || user.role?.includes('ADMIN') || user.role?.includes('OWNER') || user.role?.includes('MANAGER') || user.role?.includes('STAFF')) {
+            // For admin tokens, use the sub (user ID) to fetch admin information
+            const adminId = user.sub || user.id;
+            const admin = await this.adminService.findOne(adminId);
+            if (!admin || !admin.isActive) {
+                throw new UnauthorizedException('Admin not found or inactive');
+            }
+
+            // Type assertion for admin with permissions relation
+            const adminWithPermissions = admin as any;
+
+            return {
+                id: admin.id,
+                username: admin.email,
+                email: admin.email,
+                name: admin.name,
+                role: admin.roleCode,
+                scope: this.getAdminScope(admin.roleCode),
+                permissions: adminWithPermissions.permissions?.map((p: any) => p.permission) || [],
+                isActive: admin.isActive,
+                lastLoginAt: admin.lastLoginAt,
+                createdAt: admin.createdAt,
+                updatedAt: admin.updatedAt,
+                department: admin.department,
+                description: admin.description,
+                phone: admin.phone,
+                type: 'admin'
+            };
+        } else {
+            // For regular user tokens, fetch complete user information
+            const userId = user.sub || user.id;
+            const userData = await this.userService.findOneById(userId);
+            if (!userData || !userData.isActive) {
+                throw new UnauthorizedException('User not found or inactive');
+            }
+
+            const { password, ...userResult } = userData;
+            return {
+                ...userResult,
+                username: userResult.email,
+                role: userResult.roleCode,
+                scope: 'USER',
+                permissions: [],
+                type: 'user'
+            };
+        }
+    }
+
+    private getAdminScope(roleCode: string): string {
+        // Map role codes to admin scopes
+        const roleToScope = {
+            'SUPER_ADMIN': 'PLATFORM',
+            'PLATFORM_ADMIN': 'PLATFORM', 
+            'PLATFORM_OWNER': 'PLATFORM',
+            'COMPANY_OWNER': 'COMPANY',
+            'COMPANY_MANAGER': 'COMPANY',
+            'COURSE_MANAGER': 'COURSE',
+            'STAFF': 'COURSE',
+            'READONLY_STAFF': 'COURSE'
+        };
+        
+        return roleToScope[roleCode] || 'COURSE';
+    }
 }

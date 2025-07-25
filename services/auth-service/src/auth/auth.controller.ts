@@ -101,4 +101,14 @@ export class AuthController {
             type: req.user.type
         };
     }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('me')
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Get current user/admin information' })
+    @ApiResponse({ status: 200, description: 'Returns current user or admin profile with complete information.' })
+    @ApiResponse({ status: 401, description: 'Unauthorized (Token not provided or invalid).' })
+    async getCurrentUser(@Request() req) {
+        return this.authService.getCurrentUser(req.user);
+    }
 }
