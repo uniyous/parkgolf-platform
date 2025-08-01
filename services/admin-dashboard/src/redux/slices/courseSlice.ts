@@ -27,7 +27,9 @@ export const fetchCompanies = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const companies = await courseApi.getCompanies();
-      return companies;
+      console.log('Redux: fetchCompanies API response:', companies);
+      // API 응답이 배열인지 객체인지 확인하고 적절히 처리
+      return Array.isArray(companies) ? companies : (companies as any)?.data || [];
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch companies');
     }
@@ -47,7 +49,8 @@ export const fetchCoursesByCompany = createAsyncThunk(
       console.log('Redux: Courses array length:', courses?.length);
       console.log('Redux: Courses array type:', Array.isArray(courses));
       
-      return courses;
+      // API 응답이 배열인지 객체인지 확인하고 적절히 처리
+      return Array.isArray(courses) ? courses : (courses as any)?.data || [];
     } catch (error: any) {
       console.error('Redux: Error fetching courses:', error);
       console.error('Redux: Error stack:', error.stack);

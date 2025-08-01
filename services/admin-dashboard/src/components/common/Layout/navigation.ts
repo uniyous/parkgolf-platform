@@ -62,8 +62,7 @@ export const navigationConfig: NavigationGroup[] = [
       },
     ],
     collapsible: true,
-    defaultOpen: true,
-    icon: '⛳'
+    defaultOpen: true
   },
   {
     name: '예약',
@@ -92,8 +91,7 @@ export const navigationConfig: NavigationGroup[] = [
       },
     ],
     collapsible: true,
-    defaultOpen: true,
-    icon: '📅'
+    defaultOpen: true
   },
   {
     name: '사용자',
@@ -108,8 +106,7 @@ export const navigationConfig: NavigationGroup[] = [
       },
     ],
     collapsible: false,
-    defaultOpen: true,
-    icon: '👥'
+    defaultOpen: true
   },
   {
     name: '시스템',
@@ -158,8 +155,7 @@ export const navigationConfig: NavigationGroup[] = [
       },
     ],
     collapsible: true,
-    defaultOpen: false,
-    icon: '⚙️'
+    defaultOpen: false
   },
 ];
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
+import type { AdminRole } from '../types';
 
 interface SignupFormData {
   username: string;
@@ -9,7 +10,7 @@ interface SignupFormData {
   password: string;
   confirmPassword: string;
   name: string;
-  role: 'ADMIN' | 'MODERATOR' | 'VIEWER';
+  role: AdminRole;
 }
 
 export const SignupPage: React.FC = () => {
@@ -19,7 +20,7 @@ export const SignupPage: React.FC = () => {
     password: '',
     confirmPassword: '',
     name: '',
-    role: 'VIEWER',
+    role: 'READONLY_STAFF',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -96,7 +97,7 @@ export const SignupPage: React.FC = () => {
         password: '',
         confirmPassword: '',
         name: '',
-        role: 'VIEWER',
+        role: 'READONLY_STAFF',
       });
       
     } catch {
@@ -211,9 +212,11 @@ export const SignupPage: React.FC = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 required
               >
-                <option value="VIEWER">뷰어 (읽기 전용)</option>
-                <option value="MODERATOR">중간 관리자</option>
-                <option value="ADMIN">관리자</option>
+                <option value="READONLY_STAFF">조회 전용 직원</option>
+                <option value="STAFF">일반 직원</option>
+                <option value="COURSE_MANAGER">코스 관리자</option>
+                <option value="COMPANY_MANAGER">회사 운영 관리자</option>
+                <option value="COMPANY_OWNER">회사 대표</option>
               </select>
             </div>
           </div>

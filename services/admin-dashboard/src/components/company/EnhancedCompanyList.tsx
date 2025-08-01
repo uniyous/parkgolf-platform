@@ -11,8 +11,6 @@ interface EnhancedCompanyListProps {
   onEditCompany: (company: Company) => void;
   onDeleteCompany: (company: Company) => void;
   onUpdateStatus: (company: Company, status: CompanyStatus) => void;
-  selectedCompanies: Company[];
-  onSelectionChange: (companies: Company[]) => void;
   onRefresh: () => void;
 }
 
@@ -34,8 +32,6 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
   onEditCompany,
   onDeleteCompany,
   onUpdateStatus,
-  selectedCompanies,
-  onSelectionChange,
   onRefresh,
 }) => {
   const { showConfirmation } = useConfirmation();
@@ -50,7 +46,6 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
   });
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
 
   // 필터링 및 정렬된 회사 목록
   const filteredAndSortedCompanies = useMemo(() => {
@@ -63,11 +58,11 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
         return (
-          company.name.toLowerCase().includes(searchLower) ||
-          company.businessNumber.includes(filters.search) ||
-          company.email.toLowerCase().includes(searchLower) ||
-          company.address.toLowerCase().includes(searchLower) ||
-          company.phoneNumber.includes(filters.search)
+          (company.name && company.name.toLowerCase().includes(searchLower)) ||
+          (company.businessNumber && company.businessNumber.includes(filters.search)) ||
+          (company.email && company.email.toLowerCase().includes(searchLower)) ||
+          (company.address && company.address.toLowerCase().includes(searchLower)) ||
+          (company.phoneNumber && company.phoneNumber.includes(filters.search))
         );
       }
       return true;
@@ -80,7 +75,7 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
     }).filter(company => {
       // 매출 범위 필터
       if (filters.revenueRange !== 'ALL') {
-        const revenue = company.totalRevenue;
+        const revenue = company.totalRevenue || 0;
         switch (filters.revenueRange) {
           case 'LOW': return revenue < 1000000000; // 10억 미만
           case 'MEDIUM': return revenue >= 1000000000 && revenue < 5000000000; // 10억~50억
@@ -92,7 +87,7 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
     }).filter(company => {
       // 코스 수 범위 필터
       if (filters.coursesRange !== 'ALL') {
-        const courses = company.coursesCount;
+        const courses = company.coursesCount || 0;
         switch (filters.coursesRange) {
           case 'SMALL': return courses <= 2;
           case 'MEDIUM': return courses >= 3 && courses <= 5;
@@ -109,44 +104,44 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
       
       switch (sortField) {
         case 'name':
-          aValue = a.name.toLowerCase();
-          bValue = b.name.toLowerCase();
+          aValue = (a.name || '').toLowerCase();
+          bValue = (b.name || '').toLowerCase();
           break;
         case 'businessNumber':
-          aValue = a.businessNumber;
-          bValue = b.businessNumber;
+          aValue = a.businessNumber || '';
+          bValue = b.businessNumber || '';
           break;
         case 'status':
-          aValue = a.status;
-          bValue = b.status;
+          aValue = a.status || '';
+          bValue = b.status || '';
           break;
         case 'coursesCount':
-          aValue = a.coursesCount;
-          bValue = b.coursesCount;
+          aValue = a.coursesCount || 0;
+          bValue = b.coursesCount || 0;
           break;
         case 'totalRevenue':
-          aValue = a.totalRevenue;
-          bValue = b.totalRevenue;
+          aValue = a.totalRevenue || 0;
+          bValue = b.totalRevenue || 0;
           break;
         case 'totalBookings':
-          aValue = a.totalBookings;
-          bValue = b.totalBookings;
+          aValue = a.totalBookings || 0;
+          bValue = b.totalBookings || 0;
           break;
         case 'averageRating':
-          aValue = a.averageRating;
-          bValue = b.averageRating;
+          aValue = a.averageRating || 0;
+          bValue = b.averageRating || 0;
           break;
         case 'establishedDate':
-          aValue = new Date(a.establishedDate).getTime();
-          bValue = new Date(b.establishedDate).getTime();
+          aValue = a.establishedDate ? new Date(a.establishedDate).getTime() : 0;
+          bValue = b.establishedDate ? new Date(b.establishedDate).getTime() : 0;
           break;
         case 'createdAt':
-          aValue = new Date(a.createdAt).getTime();
-          bValue = new Date(b.createdAt).getTime();
+          aValue = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          bValue = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           break;
         default:
-          aValue = a.name;
-          bValue = b.name;
+          aValue = a.name || '';
+          bValue = b.name || '';
       }
 
       if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
@@ -167,23 +162,6 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
     }
   };
 
-  // 전체 선택/해제
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      onSelectionChange(filteredAndSortedCompanies);
-    } else {
-      onSelectionChange([]);
-    }
-  };
-
-  // 개별 선택/해제
-  const handleSelectCompany = (company: Company, checked: boolean) => {
-    if (checked) {
-      onSelectionChange([...selectedCompanies, company]);
-    } else {
-      onSelectionChange(selectedCompanies.filter(c => c.id !== company.id));
-    }
-  };
 
   // 필터 초기화
   const resetFilters = () => {
@@ -252,7 +230,10 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
   };
 
   // Format currency
-  const formatCurrency = (value: number): string => {
+  const formatCurrency = (value?: number): string => {
+    if (value === undefined || value === null || isNaN(value)) {
+      return '₩0';
+    }
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
       currency: 'KRW',
@@ -262,27 +243,49 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
   };
 
   // Format date
-  const formatDate = (dateString: string | Date): string => {
-    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
-    return new Intl.DateTimeFormat('ko-KR', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    }).format(date);
+  const formatDate = (dateString?: string | Date): string => {
+    if (!dateString) {
+      return '정보없음';
+    }
+    
+    try {
+      const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+      
+      // 유효하지 않은 날짜 체크
+      if (isNaN(date.getTime())) {
+        return '정보없음';
+      }
+      
+      return new Intl.DateTimeFormat('ko-KR', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      }).format(date);
+    } catch (error) {
+      console.warn('Date formatting error:', error);
+      return '정보없음';
+    }
   };
 
   // Format business number
-  const formatBusinessNumber = (businessNumber: string): string => {
-    // 123-45-67890 형태로 포맷팅
-    if (businessNumber.length === 10) {
-      return `${businessNumber.slice(0, 3)}-${businessNumber.slice(3, 5)}-${businessNumber.slice(5)}`;
+  const formatBusinessNumber = (businessNumber?: string): string => {
+    // 사업자번호가 없거나 undefined인 경우 처리
+    if (!businessNumber) {
+      return '-';
     }
+    
+    // 하이픈 제거 후 숫자만 추출
+    const numbersOnly = businessNumber.replace(/[^0-9]/g, '');
+    
+    // 123-45-67890 형태로 포맷팅 (10자리인 경우)
+    if (numbersOnly.length === 10) {
+      return `${numbersOnly.slice(0, 3)}-${numbersOnly.slice(3, 5)}-${numbersOnly.slice(5)}`;
+    }
+    
+    // 원본 반환 (이미 포맷팅되어 있거나 길이가 다른 경우)
     return businessNumber;
   };
 
-  const isAllSelected = filteredAndSortedCompanies.length > 0 && 
-    filteredAndSortedCompanies.every(company => selectedCompanies.some(selected => selected.id === company.id));
-  const isSomeSelected = selectedCompanies.length > 0 && !isAllSelected;
 
   if (isLoading) {
     return (
@@ -300,13 +303,13 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
         <div>
           <h2 className="text-xl font-semibold text-gray-900">회사 관리</h2>
           <div className="mt-2 flex items-center space-x-4 text-sm text-gray-600">
-            <span>전체 {companies.length}개</span>
+            <span>전체 {companies?.length || 0}개</span>
             <span>•</span>
-            <span>활성 {companies.filter(c => c.status === 'ACTIVE').length}개</span>
+            <span>활성 {companies?.filter(c => c.status === 'ACTIVE').length || 0}개</span>
             <span>•</span>
-            <span>점검중 {companies.filter(c => c.status === 'MAINTENANCE').length}개</span>
+            <span>점검중 {companies?.filter(c => c.status === 'MAINTENANCE').length || 0}개</span>
             <span>•</span>
-            <span>비활성 {companies.filter(c => c.status === 'INACTIVE').length}개</span>
+            <span>비활성 {companies?.filter(c => c.status === 'INACTIVE').length || 0}개</span>
             {filteredAndSortedCompanies.length !== companies.length && (
               <>
                 <span>•</span>
@@ -448,49 +451,8 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
       </div>
 
       {/* Company List */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        {/* List Header */}
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={isAllSelected}
-                  ref={(el) => {
-                    if (el) el.indeterminate = isSomeSelected;
-                  }}
-                  onChange={(e) => handleSelectAll(e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="ml-2 text-sm text-gray-700">
-                  {selectedCompanies.length > 0 ? `${selectedCompanies.length}개 선택됨` : '전체 선택'}
-                </span>
-              </label>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setViewMode('table')}
-                className={`p-2 rounded ${viewMode === 'table' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                </svg>
-              </button>
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded ${viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
+      <div className="bg-white shadow rounded-lg p-6">
 
-        {/* Company Items */}
         {filteredAndSortedCompanies.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🏢</div>
@@ -513,174 +475,98 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
             )}
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
-            {filteredAndSortedCompanies.map((company) => {
-              const isSelected = selectedCompanies.some(selected => selected.id === company.id);
-              
-              return (
-                <div 
-                  key={company.id}
-                  className={`p-6 hover:bg-gray-50 transition-colors duration-150 ${
-                    isSelected ? 'bg-blue-50 border-l-4 border-blue-500' : ''
-                  }`}
-                >
-                  <div className="flex items-center space-x-4">
-                    {/* Checkbox */}
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={(e) => handleSelectCompany(company, e.target.checked)}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                    </label>
-
-                    {/* Company Logo */}
-                    <div className="flex-shrink-0">
-                      <div className="w-20 h-16 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-                        {company.logoUrl ? (
-                          <img
-                            src={company.logoUrl}
-                            alt={company.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-2xl">🏢</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Company Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h4 
-                          className="text-lg font-semibold text-gray-900 cursor-pointer hover:text-blue-600"
-                          onClick={() => onSelectCompany(company)}
-                        >
-                          {company.name}
-                        </h4>
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(company.status)}`}>
-                          {getStatusLabel(company.status)}
-                        </span>
-                        {company.website && (
-                          <a
-                            href={company.website}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                          </a>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600 mb-2">
-                        <div>
-                          <span className="font-medium">사업자번호:</span>
-                          <br />
-                          {formatBusinessNumber(company.businessNumber)}
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">회사명</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">주소</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">연락처</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">코스</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">관리</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredAndSortedCompanies.map((company) => (
+                  <tr 
+                    key={company.id}
+                    className="hover:bg-gray-50 cursor-pointer transition-colors duration-150"
+                    onClick={() => onSelectCompany(company)}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10">
+                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                            {company.logoUrl ? (
+                              <img
+                                className="h-10 w-10 rounded-full"
+                                src={company.logoUrl}
+                                alt={company.name}
+                              />
+                            ) : (
+                              <span className="text-lg">🏢</span>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <span className="font-medium">코스 수:</span>
-                          <br />
-                          {company.coursesCount}개
-                        </div>
-                        <div>
-                          <span className="font-medium">평점:</span>
-                          <br />
-                          ⭐ {company.averageRating.toFixed(1)}
-                        </div>
-                        <div>
-                          <span className="font-medium">설립일:</span>
-                          <br />
-                          {formatDate(company.establishedDate)}
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900 hover:text-blue-600">
+                            {company.name}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {company.email || '-'}
+                          </div>
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm text-gray-600 mb-2">
-                        <div>
-                          <span className="font-medium">📧</span> {company.email}
-                        </div>
-                        <div>
-                          <span className="font-medium">📞</span> {company.phoneNumber}
-                        </div>
-                        <div>
-                          <span className="font-medium">📍</span> {company.address}
-                        </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      <div className="max-w-xs truncate">
+                        {company.address || '-'}
                       </div>
-
-                      {company.description && (
-                        <div className="text-sm text-gray-600 mb-2">
-                          {company.description}
-                        </div>
-                      )}
-
-                      <div className="flex items-center space-x-4 text-sm">
-                        <span className="text-green-600 font-medium">
-                          매출: {formatCurrency(company.totalRevenue)}
-                        </span>
-                        <span className="text-blue-600 font-medium">
-                          예약: {company.totalBookings.toLocaleString()}건
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex-shrink-0">
-                      <div className="flex flex-col space-y-2">
-                        <button
-                          onClick={() => onSelectCompany(company)}
-                          className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
-                        >
-                          상세보기
-                        </button>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {company.phoneNumber || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {company.coursesCount || 0}개
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(company.status)}`}>
+                        {getStatusLabel(company.status)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end space-x-2">
                         {hasPermission('MANAGE_COMPANIES') && (
                           <>
                             <button
-                              onClick={() => onEditCompany(company)}
-                              className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditCompany(company);
+                              }}
+                              className="text-indigo-600 hover:text-indigo-900"
                             >
                               수정
                             </button>
-                            
-                            {/* Status Actions */}
-                            <div className="flex space-x-1">
-                              {company.status !== 'ACTIVE' && (
-                                <button
-                                  onClick={() => handleStatusChange(company, 'ACTIVE')}
-                                  className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
-                                >
-                                  활성화
-                                </button>
-                              )}
-                              {company.status === 'ACTIVE' && (
-                                <button
-                                  onClick={() => handleStatusChange(company, 'MAINTENANCE')}
-                                  className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200"
-                                >
-                                  점검
-                                </button>
-                              )}
-                            </div>
+                            {currentAdmin?.scope === 'PLATFORM' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteCompany(company);
+                                }}
+                                className="text-red-600 hover:text-red-900"
+                              >
+                                삭제
+                              </button>
+                            )}
                           </>
                         )}
-                        
-                        {hasPermission('MANAGE_COMPANIES') && currentAdmin?.scope === 'PLATFORM' && (
-                          <button
-                            onClick={() => handleDeleteCompany(company)}
-                            className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
-                          >
-                            삭제
-                          </button>
-                        )}
                       </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

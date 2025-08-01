@@ -308,20 +308,6 @@ export const UserManagementContainer: React.FC = () => {
             </button>
           )}
           
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {viewMode === 'list' && '사용자 관리'}
-              {viewMode === 'create' && '새 사용자 추가'}
-              {viewMode === 'edit' && '사용자 정보 수정'}
-              {viewMode === 'permissions' && '사용자 권한 관리'}
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              {viewMode === 'list' && '시스템 사용자들을 관리합니다.'}
-              {viewMode === 'create' && '새로운 사용자를 시스템에 추가합니다.'}
-              {viewMode === 'edit' && '사용자의 기본 정보를 수정합니다.'}
-              {viewMode === 'permissions' && '사용자의 역할과 세부 권한을 설정합니다.'}
-            </p>
-          </div>
         </div>
 
         {/* Selected user info (list view only) */}

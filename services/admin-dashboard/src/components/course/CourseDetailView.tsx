@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Course, UpdateCourseDto } from '../../types';
+import type { Course, UpdateCourseDto, Hole } from '../../types';
 import { courseApi } from '../../api/courseApi';
 import { HoleFormModal } from './HoleFormModal';
-import { Breadcrumb } from '../common/Breadcrumb';
+import { useBreadcrumb } from '../../redux/hooks/useBreadcrumb';
 
 interface CourseDetailViewProps {
   course: Course;
@@ -20,14 +20,15 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({
   onBackToCourseList,
 }) => {
   const navigate = useNavigate();
-  const [holes, setHoles] = useState<any[]>([]);
+  const { updateLast } = useBreadcrumb();
+  const [holes, setHoles] = useState<Hole[]>([]);
   const [holesLoading, setHolesLoading] = useState(false);
   const [holesError, setHolesError] = useState<string | null>(null);
   
   // 홀 관리 모달 상태
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedHole, setSelectedHole] = useState<any>(null);
+  const [selectedHole, setSelectedHole] = useState<Hole | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // 홀 데이터 가져오기
@@ -40,8 +41,10 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({
     try {
       const holesData = await courseApi.getHolesByCourse(course.id);
       setHoles(holesData);
-    } catch (error) {
-      setHolesError('홀 정보를 불러오는데 실패했습니다.');
+    } catch (error: any) {
+      // API에서 반환된 구체적인 에러 메시지 사용
+      const errorMessage = error?.message || '홀 정보를 불러오는데 실패했습니다.';
+      setHolesError(errorMessage);
       console.error('Failed to fetch holes:', error);
     } finally {
       setHolesLoading(false);
@@ -52,17 +55,24 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({
     fetchHoles();
   }, [course?.id]);
 
+  // 코스 정보가 변경될 때 breadcrumb 업데이트
+  useEffect(() => {
+    if (course?.name) {
+      updateLast({ label: course.name, icon: '🏌️' });
+    }
+  }, [course?.name, updateLast]); // useCallback으로 안정화된 updateLast 사용
+
   // 홀 관리 함수들
   const handleAddHole = () => {
     setShowAddModal(true);
   };
 
-  const handleEditHole = (hole: any) => {
+  const handleEditHole = (hole: Hole) => {
     setSelectedHole(hole);
     setShowEditModal(true);
   };
 
-  const handleDeleteHole = (hole: any) => {
+  const handleDeleteHole = (hole: Hole) => {
     setSelectedHole(hole);
     setShowDeleteConfirm(true);
   };
@@ -112,37 +122,20 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumb */}
-      <Breadcrumb 
-        items={[
-          { label: '코스 관리', path: '/course-management', icon: '⛳' },
-          { label: course.name, icon: '🏌️' }
-        ]}
-      />
-
-      {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">{course.name} - 홀 관리</h2>
-        <div className="flex space-x-3">
-          <button
-            onClick={() => navigate(`/courses/${course.id}/timeslots`)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            타임슬롯 관리
-          </button>
-          <button
-            onClick={() => navigate(`/courses/${course.id}/bookings`)}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-          >
-            예약 관리
-          </button>
-          <button
-            onClick={onBackToCourseList}
-            className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-          >
-            목록으로
-          </button>
-        </div>
+      {/* 액션 버튼들 */}
+      <div className="flex justify-end space-x-3">
+        <button
+          onClick={() => navigate(`/courses/${course.id}/timeslots`)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+        >
+          타임슬롯 관리
+        </button>
+        <button
+          onClick={() => navigate(`/courses/${course.id}/bookings`)}
+          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+        >
+          예약 관리
+        </button>
       </div>
 
       {/* 골프장 개요 정보 레이어 */}

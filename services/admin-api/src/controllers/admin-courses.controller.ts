@@ -319,42 +319,128 @@ export class AdminCoursesController {
   }
 
   // Weekly Schedule Management
-  @Get(':courseId/weekly-schedule')
-  @ApiOperation({ summary: 'Get course weekly schedule' })
-  @ApiResponse({ status: 200, description: 'Weekly schedule retrieved successfully' })
-  async getWeeklySchedule(
+  @Get(':courseId/weekly-schedules')
+  @ApiOperation({ summary: 'Get all weekly schedules for course' })
+  @ApiResponse({ status: 200, description: 'Weekly schedules retrieved successfully' })
+  async getWeeklySchedules(
     @Param('courseId') courseId: string,
     @Headers('authorization') authorization?: string
   ) {
     try {
       const token = authorization ? this.extractToken(authorization) : undefined;
-      this.logger.log(`Fetching weekly schedule for course: ${courseId}`);
+      this.logger.log(`Fetching weekly schedules for course: ${courseId}`);
       
-      const result = await this.courseService.getWeeklySchedule(courseId, token);
+      const result = await this.courseService.getWeeklySchedules(courseId, token);
       return result;
     } catch (error) {
-      this.logger.error(`Failed to fetch weekly schedule for course: ${courseId}`, error);
+      this.logger.error(`Failed to fetch weekly schedules for course: ${courseId}`, error);
       throw this.handleError(error);
     }
   }
 
-  @Patch(':courseId/weekly-schedule')
-  @ApiOperation({ summary: 'Update course weekly schedule' })
+  @Get(':courseId/weekly-schedules/:scheduleId')
+  @ApiOperation({ summary: 'Get weekly schedule by ID' })
   @ApiHeader({ name: 'authorization', description: 'Bearer token' })
-  @ApiResponse({ status: 200, description: 'Weekly schedule updated successfully' })
-  async updateWeeklySchedule(
+  @ApiResponse({ status: 200, description: 'Weekly schedule retrieved successfully' })
+  async getWeeklyScheduleById(
+    @Param('courseId') courseId: string,
+    @Param('scheduleId') scheduleId: string,
+    @Headers('authorization') authorization: string
+  ) {
+    try {
+      const token = this.extractToken(authorization);
+      this.logger.log(`Fetching weekly schedule: ${scheduleId} for course: ${courseId}`);
+      
+      const result = await this.courseService.getWeeklyScheduleById(scheduleId, token);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to fetch weekly schedule: ${scheduleId}`, error);
+      throw this.handleError(error);
+    }
+  }
+
+  @Get(':courseId/weekly-schedules/day/:dayOfWeek')
+  @ApiOperation({ summary: 'Get weekly schedule by day of week' })
+  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
+  @ApiResponse({ status: 200, description: 'Weekly schedule retrieved successfully' })
+  async getWeeklyScheduleByDay(
+    @Param('courseId') courseId: string,
+    @Param('dayOfWeek') dayOfWeek: string,
+    @Headers('authorization') authorization: string
+  ) {
+    try {
+      const token = this.extractToken(authorization);
+      this.logger.log(`Fetching weekly schedule for course: ${courseId}, day: ${dayOfWeek}`);
+      
+      const result = await this.courseService.getWeeklyScheduleByDay(courseId, dayOfWeek, token);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to fetch weekly schedule for day: ${dayOfWeek}`, error);
+      throw this.handleError(error);
+    }
+  }
+
+  @Post(':courseId/weekly-schedules')
+  @ApiOperation({ summary: 'Create weekly schedule for course' })
+  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
+  @ApiResponse({ status: 201, description: 'Weekly schedule created successfully' })
+  async createWeeklySchedule(
     @Param('courseId') courseId: string,
     @Body() scheduleData: any,
     @Headers('authorization') authorization: string
   ) {
     try {
       const token = this.extractToken(authorization);
-      this.logger.log(`Updating weekly schedule for course: ${courseId}`);
+      this.logger.log(`Creating weekly schedule for course: ${courseId}`);
       
-      const result = await this.courseService.updateWeeklySchedule(courseId, scheduleData, token);
+      const data = { ...scheduleData, courseId: Number(courseId) };
+      const result = await this.courseService.createWeeklySchedule(data, token);
       return result;
     } catch (error) {
-      this.logger.error(`Failed to update weekly schedule for course: ${courseId}`, error);
+      this.logger.error(`Failed to create weekly schedule for course: ${courseId}`, error);
+      throw this.handleError(error);
+    }
+  }
+
+  @Patch(':courseId/weekly-schedules/:scheduleId')
+  @ApiOperation({ summary: 'Update weekly schedule' })
+  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
+  @ApiResponse({ status: 200, description: 'Weekly schedule updated successfully' })
+  async updateWeeklySchedule(
+    @Param('courseId') courseId: string,
+    @Param('scheduleId') scheduleId: string,
+    @Body() scheduleData: any,
+    @Headers('authorization') authorization: string
+  ) {
+    try {
+      const token = this.extractToken(authorization);
+      this.logger.log(`Updating weekly schedule: ${scheduleId} for course: ${courseId}`);
+      
+      const result = await this.courseService.updateWeeklySchedule(scheduleId, scheduleData, token);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to update weekly schedule: ${scheduleId}`, error);
+      throw this.handleError(error);
+    }
+  }
+
+  @Delete(':courseId/weekly-schedules/:scheduleId')
+  @ApiOperation({ summary: 'Delete weekly schedule' })
+  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
+  @ApiResponse({ status: 200, description: 'Weekly schedule deleted successfully' })
+  async deleteWeeklySchedule(
+    @Param('courseId') courseId: string,
+    @Param('scheduleId') scheduleId: string,
+    @Headers('authorization') authorization: string
+  ) {
+    try {
+      const token = this.extractToken(authorization);
+      this.logger.log(`Deleting weekly schedule: ${scheduleId} for course: ${courseId}`);
+      
+      const result = await this.courseService.deleteWeeklySchedule(scheduleId, token);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to delete weekly schedule: ${scheduleId}`, error);
       throw this.handleError(error);
     }
   }

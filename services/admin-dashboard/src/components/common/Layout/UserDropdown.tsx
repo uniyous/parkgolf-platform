@@ -89,7 +89,7 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ currentUser, onLogou
         <div className="flex-shrink-0">
           <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
             <span className="text-sm font-medium text-white">
-              {currentUser.username.charAt(0).toUpperCase()}
+              {currentUser.username ? currentUser.username.charAt(0).toUpperCase() : 'A'}
             </span>
           </div>
         </div>
@@ -132,7 +132,7 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ currentUser, onLogou
             <div className="flex items-center space-x-3">
               <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
                 <span className="text-lg font-medium text-white">
-                  {currentUser.username.charAt(0).toUpperCase()}
+                  {currentUser.username ? currentUser.username.charAt(0).toUpperCase() : 'A'}
                 </span>
               </div>
               <div className="flex-1">

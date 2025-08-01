@@ -283,6 +283,38 @@ shared/
 5. **Scalability**: 수평적 확장 가능
 6. **Observability**: 모니터링 및 추적 가능
 
+## 📋 주요 기술 결정사항
+
+### DEC-001: 마이크로서비스 아키텍처 (2024-05-15)
+- **결정**: 모놀리식 대신 MSA 구조 채택
+- **이유**: 서비스별 독립적 확장, 팀별 독립 개발/배포
+- **결과**: 10개 마이크로서비스 + 2 BFF 구조
+
+### DEC-002: 모노레포 구조 (2024-06-20)
+- **결정**: 멀티레포 대신 모노레포 채택
+- **이유**: 코드 공유 용이, 의존성 관리 단순화
+- **도구**: GitHub Actions workflows
+
+### DEC-003: TypeScript 전체 적용 (2024-05-20)
+- **결정**: TypeScript 100% 사용
+- **설정**: Strict mode 활성화
+- **이유**: 타입 안정성, 개발 생산성 향상
+
+### DEC-004: NATS 메시징 (2024-06-01)
+- **선택**: RabbitMQ/Kafka 대신 NATS
+- **이유**: 가벼운 footprint, 클라우드 네이티브 친화적
+- **패턴**: Event-driven architecture
+
+### DEC-005: React 19 + Vite (2024-07-01)
+- **선택**: Next.js 대신 React + Vite
+- **이유**: 빠른 개발 서버, 유연한 라우팅
+- **상태관리**: Redux Toolkit
+
+### 향후 검토사항
+- GraphQL vs REST API (현재 REST)
+- Elasticsearch 도입 범위 확대
+- 모니터링: Prometheus + Grafana vs Datadog
+
 ---
 
-*마지막 업데이트: 2025-07-13*
+*마지막 업데이트: 2025-01-23*

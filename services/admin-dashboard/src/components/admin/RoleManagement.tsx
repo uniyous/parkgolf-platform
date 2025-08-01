@@ -9,46 +9,90 @@ interface RoleManagementProps {
   onUpdate: (updatedAdmin: Admin) => void;
 }
 
-// 권한 그룹 정의
+// 권한 그룹 정의 - 실제 Permission 타입 사용
 const PERMISSION_GROUPS = {
+  platform: {
+    label: '플랫폼 관리',
+    permissions: [
+      'PLATFORM_ALL', 'PLATFORM_COMPANY_MANAGE', 'PLATFORM_USER_MANAGE', 
+      'PLATFORM_SYSTEM_CONFIG', 'PLATFORM_ANALYTICS', 'PLATFORM_SUPPORT'
+    ] as Permission[],
+  },
+  company: {
+    label: '회사 관리',
+    permissions: [
+      'COMPANY_ALL', 'COMPANY_ADMIN_MANAGE', 'COMPANY_COURSE_MANAGE',
+      'COMPANY_BOOKING_MANAGE', 'COMPANY_USER_MANAGE', 'COMPANY_ANALYTICS'
+    ] as Permission[],
+  },
   course: {
     label: '코스 관리',
-    permissions: ['COURSE_READ', 'COURSE_WRITE', 'COURSE_DELETE'] as Permission[],
+    permissions: [
+      'COURSE_TIMESLOT_MANAGE', 'COURSE_BOOKING_MANAGE', 
+      'COURSE_CUSTOMER_VIEW', 'COURSE_ANALYTICS_VIEW'
+    ] as Permission[],
   },
-  booking: {
-    label: '예약 관리',
-    permissions: ['BOOKING_READ', 'BOOKING_WRITE', 'BOOKING_DELETE'] as Permission[],
+  ui: {
+    label: 'UI 네비게이션',
+    permissions: [
+      'VIEW_DASHBOARD', 'MANAGE_COMPANIES', 'MANAGE_COURSES', 'MANAGE_TIMESLOTS',
+      'MANAGE_BOOKINGS', 'MANAGE_USERS', 'MANAGE_ADMINS', 'VIEW_ANALYTICS'
+    ] as Permission[],
   },
-  admin: {
-    label: '관리자 관리',
-    permissions: ['ADMIN_READ', 'ADMIN_WRITE', 'ADMIN_DELETE'] as Permission[],
-  },
-  system: {
-    label: '시스템 설정',
-    permissions: ['SYSTEM_SETTINGS'] as Permission[],
+  support: {
+    label: '고객 지원',
+    permissions: [
+      'CUSTOMER_SUPPORT', 'BOOKING_RECEPTION', 'READ_ONLY'
+    ] as Permission[],
   },
 };
 
-// 기본 역할별 권한
+// 새로운 AdminRole 시스템의 기본 역할별 권한
 const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
-  SUPER_ADMIN: [
-    'COURSE_READ', 'COURSE_WRITE', 'COURSE_DELETE',
-    'BOOKING_READ', 'BOOKING_WRITE', 'BOOKING_DELETE',
-    'ADMIN_READ', 'ADMIN_WRITE', 'ADMIN_DELETE',
-    'SYSTEM_SETTINGS',
+  'PLATFORM_OWNER': [
+    'PLATFORM_ALL', 'PLATFORM_COMPANY_MANAGE', 'PLATFORM_USER_MANAGE', 'PLATFORM_SYSTEM_CONFIG',
+    'PLATFORM_ANALYTICS', 'PLATFORM_SUPPORT', 'COMPANY_ALL', 'COMPANY_ADMIN_MANAGE',
+    'COMPANY_COURSE_MANAGE', 'COMPANY_BOOKING_MANAGE', 'COMPANY_USER_MANAGE', 'COMPANY_ANALYTICS',
+    'COURSE_TIMESLOT_MANAGE', 'COURSE_BOOKING_MANAGE', 'COURSE_CUSTOMER_VIEW', 'COURSE_ANALYTICS_VIEW',
+    'VIEW_DASHBOARD', 'MANAGE_COMPANIES', 'MANAGE_COURSES', 'MANAGE_TIMESLOTS', 'MANAGE_BOOKINGS',
+    'MANAGE_USERS', 'MANAGE_ADMINS', 'VIEW_ANALYTICS'
   ] as Permission[],
-  ADMIN: [
-    'COURSE_READ', 'COURSE_WRITE', 'COURSE_DELETE',
-    'BOOKING_READ', 'BOOKING_WRITE', 'BOOKING_DELETE',
-    'ADMIN_READ',
+  'PLATFORM_ADMIN': [
+    'PLATFORM_COMPANY_MANAGE', 'PLATFORM_USER_MANAGE', 'PLATFORM_ANALYTICS', 'PLATFORM_SUPPORT',
+    'COMPANY_ALL', 'COMPANY_ADMIN_MANAGE', 'COMPANY_COURSE_MANAGE', 'COMPANY_BOOKING_MANAGE',
+    'COMPANY_USER_MANAGE', 'COMPANY_ANALYTICS', 'VIEW_DASHBOARD', 'MANAGE_COMPANIES',
+    'MANAGE_COURSES', 'MANAGE_TIMESLOTS', 'MANAGE_BOOKINGS', 'MANAGE_USERS', 'MANAGE_ADMINS', 'VIEW_ANALYTICS'
   ] as Permission[],
-  MODERATOR: [
-    'COURSE_READ',
-    'BOOKING_READ', 'BOOKING_WRITE',
+  'PLATFORM_SUPPORT': [
+    'PLATFORM_SUPPORT', 'COMPANY_USER_MANAGE', 'COMPANY_BOOKING_MANAGE', 'COURSE_BOOKING_MANAGE',
+    'COURSE_CUSTOMER_VIEW', 'CUSTOMER_SUPPORT', 'BOOKING_RECEPTION', 'VIEW_DASHBOARD',
+    'MANAGE_BOOKINGS', 'MANAGE_USERS'
   ] as Permission[],
-  VIEWER: [
-    'COURSE_READ',
-    'BOOKING_READ',
+  'PLATFORM_ANALYST': [
+    'PLATFORM_ANALYTICS', 'COMPANY_ANALYTICS', 'COURSE_ANALYTICS_VIEW', 'READ_ONLY',
+    'VIEW_DASHBOARD', 'VIEW_ANALYTICS'
+  ] as Permission[],
+  'COMPANY_OWNER': [
+    'COMPANY_ALL', 'COMPANY_ADMIN_MANAGE', 'COMPANY_COURSE_MANAGE', 'COMPANY_BOOKING_MANAGE',
+    'COMPANY_USER_MANAGE', 'COMPANY_ANALYTICS', 'COURSE_TIMESLOT_MANAGE', 'COURSE_BOOKING_MANAGE',
+    'COURSE_CUSTOMER_VIEW', 'COURSE_ANALYTICS_VIEW', 'VIEW_DASHBOARD', 'MANAGE_COURSES',
+    'MANAGE_TIMESLOTS', 'MANAGE_BOOKINGS', 'MANAGE_USERS', 'MANAGE_ADMINS', 'VIEW_ANALYTICS'
+  ] as Permission[],
+  'COMPANY_MANAGER': [
+    'COMPANY_COURSE_MANAGE', 'COMPANY_BOOKING_MANAGE', 'COMPANY_USER_MANAGE', 'COMPANY_ANALYTICS',
+    'COURSE_TIMESLOT_MANAGE', 'COURSE_BOOKING_MANAGE', 'COURSE_CUSTOMER_VIEW', 'COURSE_ANALYTICS_VIEW',
+    'VIEW_DASHBOARD', 'MANAGE_COURSES', 'MANAGE_TIMESLOTS', 'MANAGE_BOOKINGS', 'MANAGE_USERS', 'VIEW_ANALYTICS'
+  ] as Permission[],
+  'COURSE_MANAGER': [
+    'COURSE_TIMESLOT_MANAGE', 'COURSE_BOOKING_MANAGE', 'COURSE_CUSTOMER_VIEW', 'COURSE_ANALYTICS_VIEW',
+    'BOOKING_RECEPTION', 'CUSTOMER_SUPPORT', 'VIEW_DASHBOARD', 'MANAGE_TIMESLOTS', 'MANAGE_BOOKINGS'
+  ] as Permission[],
+  'STAFF': [
+    'COURSE_BOOKING_MANAGE', 'COURSE_CUSTOMER_VIEW', 'BOOKING_RECEPTION', 'CUSTOMER_SUPPORT',
+    'VIEW_DASHBOARD', 'MANAGE_BOOKINGS'
+  ] as Permission[],
+  'READONLY_STAFF': [
+    'COURSE_CUSTOMER_VIEW', 'COURSE_ANALYTICS_VIEW', 'READ_ONLY', 'VIEW_DASHBOARD'
   ] as Permission[],
 };
 
@@ -66,27 +110,41 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 권한명을 한글로 변환
+  // 권한명을 한글로 변환 - 실제 Permission 타입 사용
   const getPermissionLabel = (permission: Permission): string => {
-    const labels: Record<Permission, string> = {
-      COURSE_READ: '코스 조회',
-      COURSE_WRITE: '코스 생성/수정',
-      COURSE_DELETE: '코스 삭제',
-      BOOKING_READ: '예약 조회',
-      BOOKING_WRITE: '예약 생성/수정',
-      BOOKING_DELETE: '예약 삭제',
-      TIMESLOT_READ: '타임슬롯 조회',
-      TIMESLOT_WRITE: '타임슬롯 생성/수정',
-      TIMESLOT_DELETE: '타임슬롯 삭제',
-      ADMIN_READ: '관리자 조회',
-      ADMIN_WRITE: '관리자 생성/수정',
-      ADMIN_DELETE: '관리자 삭제',
-      USER_READ: '사용자 조회',
-      USER_WRITE: '사용자 생성/수정',
-      USER_DELETE: '사용자 삭제',
-      SYSTEM_READ: '시스템 조회',
-      SYSTEM_WRITE: '시스템 수정',
-      SYSTEM_SETTINGS: '시스템 설정',
+    const labels: Record<string, string> = {
+      // 플랫폼 권한
+      'PLATFORM_ALL': '플랫폼 전체 권한',
+      'PLATFORM_COMPANY_MANAGE': '플랫폼 회사 관리',
+      'PLATFORM_USER_MANAGE': '플랫폼 사용자 관리',
+      'PLATFORM_SYSTEM_CONFIG': '시스템 설정',
+      'PLATFORM_ANALYTICS': '플랫폼 분석',
+      'PLATFORM_SUPPORT': '플랫폼 지원',
+      // 회사 권한
+      'COMPANY_ALL': '회사 전체 권한',
+      'COMPANY_ADMIN_MANAGE': '회사 관리자 관리',
+      'COMPANY_COURSE_MANAGE': '회사 코스 관리',
+      'COMPANY_BOOKING_MANAGE': '회사 예약 관리',
+      'COMPANY_USER_MANAGE': '회사 사용자 관리',
+      'COMPANY_ANALYTICS': '회사 분석',
+      // 코스 권한
+      'COURSE_TIMESLOT_MANAGE': '타임슬롯 관리',
+      'COURSE_BOOKING_MANAGE': '코스 예약 관리',
+      'COURSE_CUSTOMER_VIEW': '고객 정보 조회',
+      'COURSE_ANALYTICS_VIEW': '코스 분석 조회',
+      // UI 네비게이션 권한
+      'VIEW_DASHBOARD': '대시보드 조회',
+      'MANAGE_COMPANIES': '회사 관리',
+      'MANAGE_COURSES': '코스 관리',
+      'MANAGE_TIMESLOTS': '타임슬롯 관리',
+      'MANAGE_BOOKINGS': '예약 관리',
+      'MANAGE_USERS': '사용자 관리',
+      'MANAGE_ADMINS': '관리자 관리',
+      'VIEW_ANALYTICS': '분석 조회',
+      // 고객 지원 권한
+      'CUSTOMER_SUPPORT': '고객 지원',
+      'BOOKING_RECEPTION': '예약 접수',
+      'READ_ONLY': '읽기 전용',
     };
     return labels[permission] || permission;
   };
@@ -126,8 +184,8 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({
     }
   };
 
-  // 권한 수정 가능 여부 체크
-  if (!hasPermission('ADMIN_WRITE')) {
+  // 권한 수정 가능 여부 체크 - 새로운 권한명 사용
+  if (!hasPermission('MANAGE_ADMINS')) {
     return (
       <div className="text-center p-8">
         <p className="text-gray-500">권한을 수정할 권한이 없습니다.</p>
@@ -165,10 +223,15 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({
                 onChange={(e) => handleRoleChange(e.target.value as AdminRole)}
                 className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
               >
-                <option value="VIEWER">조회자</option>
-                <option value="MODERATOR">운영자</option>
-                <option value="ADMIN">관리자</option>
-                <option value="SUPER_ADMIN">최고 관리자</option>
+                <option value="READONLY_STAFF">조회 전용 직원</option>
+                <option value="STAFF">일반 직원</option>
+                <option value="COURSE_MANAGER">코스 관리자</option>
+                <option value="COMPANY_MANAGER">회사 운영 관리자</option>
+                <option value="COMPANY_OWNER">회사 대표</option>
+                <option value="PLATFORM_ANALYST">플랫폼 분석가</option>
+                <option value="PLATFORM_SUPPORT">플랫폼 지원팀</option>
+                <option value="PLATFORM_ADMIN">플랫폼 관리자</option>
+                <option value="PLATFORM_OWNER">플랫폼 소유자</option>
               </select>
             </div>
 

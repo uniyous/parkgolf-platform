@@ -13,7 +13,21 @@ export const TimeSlotStats: React.FC<TimeSlotStatsProps> = ({ stats }) => {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(amount);
+    return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(amount || 0);
+  };
+
+  // Safe defaults for undefined values
+  const safeStats = {
+    totalSlots: stats?.totalSlots || 0,
+    activeSlots: stats?.activeSlots || 0,
+    fullyBookedSlots: stats?.fullyBookedSlots || 0,
+    cancelledSlots: stats?.cancelledSlots || 0,
+    totalRevenue: stats?.totalRevenue || 0,
+    averageUtilization: stats?.averageUtilization || 0,
+    totalBookings: stats?.totalBookings || 0,
+    averagePrice: stats?.averagePrice || 0,
+    peakHours: stats?.peakHours || [],
+    topCourses: stats?.topCourses || [],
   };
 
   return (
@@ -23,7 +37,7 @@ export const TimeSlotStats: React.FC<TimeSlotStatsProps> = ({ stats }) => {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-gray-600">전체 타임슬롯</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.totalSlots.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-gray-900">{safeStats.totalSlots.toLocaleString()}</p>
           </div>
           <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
             <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -33,9 +47,9 @@ export const TimeSlotStats: React.FC<TimeSlotStatsProps> = ({ stats }) => {
         </div>
         <div className="mt-4 flex items-center text-sm">
           <span className="text-green-600 bg-green-100 px-2 py-1 rounded-full">
-            활성 {stats.activeSlots}
+            활성 {safeStats.activeSlots}
           </span>
-          <span className="text-gray-500 ml-2">/ {stats.totalSlots}</span>
+          <span className="text-gray-500 ml-2">/ {safeStats.totalSlots}</span>
         </div>
       </div>
 
@@ -44,7 +58,7 @@ export const TimeSlotStats: React.FC<TimeSlotStatsProps> = ({ stats }) => {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-gray-600">총 수익</p>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalRevenue)}</p>
+            <p className="text-2xl font-bold text-gray-900">{formatCurrency(safeStats.totalRevenue)}</p>
           </div>
           <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
             <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -53,7 +67,7 @@ export const TimeSlotStats: React.FC<TimeSlotStatsProps> = ({ stats }) => {
           </div>
         </div>
         <div className="mt-4 flex items-center text-sm">
-          <span className="text-gray-600">평균 {formatCurrency(stats.averagePrice)}</span>
+          <span className="text-gray-600">평균 {formatCurrency(safeStats.averagePrice)}</span>
         </div>
       </div>
 
@@ -62,7 +76,7 @@ export const TimeSlotStats: React.FC<TimeSlotStatsProps> = ({ stats }) => {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-gray-600">평균 이용률</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.averageUtilization}%</p>
+            <p className="text-2xl font-bold text-gray-900">{safeStats.averageUtilization}%</p>
           </div>
           <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
             <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -73,8 +87,8 @@ export const TimeSlotStats: React.FC<TimeSlotStatsProps> = ({ stats }) => {
         <div className="mt-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600">만료된 슬롯</span>
-            <span className={`px-2 py-1 rounded-full ${utilizationColor(stats.averageUtilization)}`}>
-              {stats.fullyBookedSlots}개
+            <span className={`px-2 py-1 rounded-full ${utilizationColor(safeStats.averageUtilization)}`}>
+              {safeStats.fullyBookedSlots}개
             </span>
           </div>
         </div>
@@ -85,7 +99,7 @@ export const TimeSlotStats: React.FC<TimeSlotStatsProps> = ({ stats }) => {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-gray-600">총 예약</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.totalBookings.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-gray-900">{safeStats.totalBookings.toLocaleString()}</p>
           </div>
           <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
             <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,7 +109,7 @@ export const TimeSlotStats: React.FC<TimeSlotStatsProps> = ({ stats }) => {
         </div>
         <div className="mt-4 flex items-center text-sm">
           <span className="text-red-600 bg-red-100 px-2 py-1 rounded-full">
-            취소 {stats.cancelledSlots}
+            취소 {safeStats.cancelledSlots}
           </span>
         </div>
       </div>
@@ -104,7 +118,7 @@ export const TimeSlotStats: React.FC<TimeSlotStatsProps> = ({ stats }) => {
       <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 md:col-span-2">
         <h3 className="text-lg font-medium text-gray-900 mb-4">피크 시간대</h3>
         <div className="flex flex-wrap gap-2">
-          {stats.peakHours.map((hour) => (
+          {safeStats.peakHours.map((hour) => (
             <span
               key={hour}
               className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
@@ -122,7 +136,7 @@ export const TimeSlotStats: React.FC<TimeSlotStatsProps> = ({ stats }) => {
       <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 md:col-span-2">
         <h3 className="text-lg font-medium text-gray-900 mb-4">상위 코스</h3>
         <div className="space-y-4">
-          {stats.topCourses.map((course, index) => (
+          {safeStats.topCourses.map((course, index) => (
             <div key={course.courseId} className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-sm font-medium">

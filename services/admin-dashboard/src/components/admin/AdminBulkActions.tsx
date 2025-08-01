@@ -19,7 +19,7 @@ export const AdminBulkActions: React.FC<AdminBulkActionsProps> = ({
   const { updateAdmin, deleteAdmin } = useAdminActions();
   const { showConfirmation } = useConfirmation();
   const [selectedAction, setSelectedAction] = useState<BulkAction | null>(null);
-  const [newRole, setNewRole] = useState<AdminRole>('VIEWER');
+  const [newRole, setNewRole] = useState<AdminRole>('READONLY_STAFF');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -69,10 +69,10 @@ export const AdminBulkActions: React.FC<AdminBulkActionsProps> = ({
 
   // 역할 옵션
   const roleOptions: { value: AdminRole; label: string }[] = [
-    { value: 'VIEWER', label: '조회자' },
-    { value: 'MODERATOR', label: '운영자' },
-    { value: 'ADMIN', label: '관리자' },
-    { value: 'SUPER_ADMIN', label: '최고 관리자' },
+    { value: 'READONLY_STAFF', label: '조회 전용 직원' },
+    { value: 'STAFF', label: '일반 직원' },
+    { value: 'COURSE_MANAGER', label: '코스 관리자' },
+    { value: 'COMPANY_MANAGER', label: '회사 운영 관리자' },
   ];
 
   // 선택 가능한 관리자들 필터링
@@ -83,7 +83,7 @@ export const AdminBulkActions: React.FC<AdminBulkActionsProps> = ({
       case 'deactivate':
         return selectedAdmins.filter(admin => admin.isActive);
       case 'delete':
-        return selectedAdmins.filter(admin => admin.role !== 'SUPER_ADMIN');
+        return selectedAdmins.filter(admin => admin.role !== 'PLATFORM_OWNER');
       case 'changeRole':
         return selectedAdmins.filter(admin => admin.role !== newRole);
       default:

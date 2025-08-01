@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import type { Company, CompanyStatus, CreateCompanyDto } from '../../types/company';
+import { useDispatch } from 'react-redux';
+import type { Company, CompanyStatus, CreateCompanyDto, UpdateCompanyDto } from '../../types/company';
+import { createCompany, updateCompany } from '../../redux/slices/companySlice';
+import type { AppDispatch } from '../../redux/store';
 
 interface CompanyFormProps {
   company?: Company | null;
@@ -66,7 +69,7 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
         email: company.email,
         website: company.website || '',
         description: company.description || '',
-        establishedDate: company.establishedDate.toISOString().split('T')[0],
+        establishedDate: company.establishedDate ? company.establishedDate.split('T')[0] : '',
         logoUrl: company.logoUrl || '',
         status: company.status
       });
@@ -173,6 +176,8 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
     }
   };
 
+  const dispatch = useDispatch<AppDispatch>();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -183,18 +188,53 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
     setIsSubmitting(true);
     
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (isEdit && company) {
+        // 수정 모드: Redux updateCompany 액션 디스패치
+        const updateData: UpdateCompanyDto = {
+          name: formData.name,
+          businessNumber: formData.businessNumber,
+          address: formData.address,
+          phoneNumber: formData.phoneNumber,
+          email: formData.email,
+          website: formData.website || undefined,
+          description: formData.description || undefined,
+          establishedDate: formData.establishedDate,
+          logoUrl: formData.logoUrl || undefined,
+          status: formData.status
+        };
+        
+        await dispatch(updateCompany({ id: company.id, data: updateData })).unwrap();
+        alert('회사 정보가 성공적으로 수정되었습니다.');
+      } else {
+        // 생성 모드: Redux createCompany 액션 디스패치
+        const createData: CreateCompanyDto = {
+          name: formData.name,
+          businessNumber: formData.businessNumber,
+          address: formData.address,
+          phoneNumber: formData.phoneNumber,
+          email: formData.email,
+          website: formData.website || undefined,
+          description: formData.description || undefined,
+          establishedDate: formData.establishedDate,
+          logoUrl: formData.logoUrl || undefined,
+          status: formData.status
+        };
+        
+        await dispatch(createCompany(createData)).unwrap();
+        alert('새 회사가 성공적으로 등록되었습니다.');
+      }
       
+      // 성공 시 onSuccess 콜백 호출 (화면 전환용)
       const submitData: Partial<Company> = {
         ...formData,
-        establishedDate: new Date(formData.establishedDate),
+        establishedDate: formData.establishedDate,
         logoUrl: formData.logoUrl || null
       };
-      
       onSuccess(submitData);
-    } catch (error) {
-      alert('저장 중 오류가 발생했습니다.');
+      
+    } catch (error: any) {
+      // Redux에서 반환된 에러 메시지 표시
+      alert(error || (isEdit ? '회사 정보 수정에 실패했습니다.' : '회사 등록에 실패했습니다.'));
     } finally {
       setIsSubmitting(false);
     }

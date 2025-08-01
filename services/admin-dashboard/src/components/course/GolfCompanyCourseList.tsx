@@ -39,27 +39,73 @@ export const GolfCompanyCourseList: React.FC<GolfCompanyCourseListProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* 회사 선택 */}
+      {/* 회사/골프장 선택 */}
       <div className="bg-white shadow rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">골프장 선택</h3>
-        <div className="max-w-md">
-          <label htmlFor="company-select" className="block text-sm font-medium text-gray-700 mb-2">
-            골프장을 선택하세요
-          </label>
-          <select
-            id="company-select"
-            value={selectedCompanyId || ''}
-            onChange={(e) => onCompanyChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">골프장을 선택하세요</option>
-            {companies.map((company) => (
-              <option key={company.id} value={company.id}>
-                {company.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        
+        {/* 항상 카드 그리드 패턴 사용 */}
+        <div>
+          <p className="text-sm text-gray-600 mb-4">관리할 골프장을 선택하세요</p>
+          <div className={`grid gap-4 ${
+            companies.length === 1 ? 'grid-cols-1 max-w-md' :
+            companies.length === 2 ? 'grid-cols-1 md:grid-cols-2' :
+            companies.length === 3 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' :
+            companies.length <= 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' :
+            companies.length <= 6 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' :
+            'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+          }`}>
+              {companies.map((company) => (
+                <div
+                  key={company.id}
+                  onClick={() => onCompanyChange(company.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onCompanyChange(company.id);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-pressed={selectedCompanyId === company.id}
+                  aria-label={`${company.name} 골프장 선택`}
+                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                    selectedCompanyId === company.id
+                      ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200 shadow-md'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl ${
+                      selectedCompanyId === company.id
+                        ? 'bg-blue-100 text-blue-600'
+                        : 'bg-green-100 text-green-600'
+                    }`}>
+                      ⛳
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className={`font-medium text-sm truncate ${
+                        selectedCompanyId === company.id ? 'text-blue-900' : 'text-gray-900'
+                      }`}>
+                        {company.name}
+                      </h4>
+                      <p className={`text-xs mt-1 ${
+                        selectedCompanyId === company.id ? 'text-blue-600' : 'text-gray-500'
+                      }`}>
+                        골프장 관리
+                      </p>
+                    </div>
+                    {selectedCompanyId === company.id && (
+                      <div className="flex-shrink-0">
+                        <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
       </div>
 
       {/* 코스 목록 헤더 - 회사가 선택된 경우에만 표시 */}

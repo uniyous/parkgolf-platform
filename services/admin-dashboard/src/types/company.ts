@@ -9,7 +9,7 @@ export interface Company {
   email: string;
   website?: string;
   description?: string;
-  establishedDate: Date;
+  establishedDate: string; // ISO 문자열 (Redux 직렬화 호환)
   logoUrl?: string | null;
   status: CompanyStatus;
   isActive: boolean;
@@ -18,8 +18,8 @@ export interface Company {
   monthlyRevenue: number;
   averageRating: number;
   totalBookings: number;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string; // ISO 문자열 (Redux 직렬화 호환)
+  updatedAt: string; // ISO 문자열 (Redux 직렬화 호환)
 }
 
 export interface CompanyFilters {
@@ -49,7 +49,7 @@ export interface CreateCompanyDto {
   email: string;
   website?: string;
   description?: string;
-  establishedDate: Date;
+  establishedDate: string; // ISO 문자열
   logoUrl?: string;
   status?: CompanyStatus;
 }
@@ -62,7 +62,7 @@ export interface UpdateCompanyDto {
   email?: string;
   website?: string;
   description?: string;
-  establishedDate?: Date;
+  establishedDate?: string; // ISO 문자열
   logoUrl?: string;
   status?: CompanyStatus;
 }

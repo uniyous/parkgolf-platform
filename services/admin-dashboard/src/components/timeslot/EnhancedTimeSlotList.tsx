@@ -79,6 +79,8 @@ export const EnhancedTimeSlotList: React.FC<EnhancedTimeSlotListProps> = ({
         const searchLower = filters.search.toLowerCase();
         return (
           timeSlot.courseName?.toLowerCase().includes(searchLower) ||
+          timeSlot.frontNineCourseName?.toLowerCase().includes(searchLower) ||
+          timeSlot.backNineCourseName?.toLowerCase().includes(searchLower) ||
           timeSlot.startTime.includes(filters.search) ||
           timeSlot.endTime.includes(filters.search)
         );
@@ -588,12 +590,21 @@ export const EnhancedTimeSlotList: React.FC<EnhancedTimeSlotListProps> = ({
                         <div>
                           <span className="font-medium">코스:</span>
                           <br />
-                          {timeSlot.courseName || `코스 ${timeSlot.courseId}`}
+                          {timeSlot.isDualCourse ? (
+                            <span className="flex items-center space-x-1">
+                              <span className="text-blue-600">{timeSlot.frontNineCourseName || '전반'}</span>
+                              <span>→</span>
+                              <span className="text-green-600">{timeSlot.backNineCourseName || '후반'}</span>
+                            </span>
+                          ) : (
+                            timeSlot.courseName || `코스 ${timeSlot.courseId}`
+                          )}
                         </div>
                         <div>
                           <span className="font-medium">가격:</span>
                           <br />
                           {formatCurrency(timeSlot.price)}
+                          {timeSlot.isDualCourse && <span className="text-xs text-gray-500"> (18홀)</span>}
                         </div>
                         <div>
                           <span className="font-medium">예약 현황:</span>

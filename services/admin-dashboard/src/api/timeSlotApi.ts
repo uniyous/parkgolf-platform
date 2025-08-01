@@ -21,145 +21,219 @@ export interface TimeSlotStatsResponse {
   stats: TimeSlotStats;
 }
 
+interface NineHoleTimeSlotFilters {
+  companyId?: number;
+  firstCourseId?: number;
+  secondCourseId?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  roundType?: 'NINE_HOLE' | 'EIGHTEEN_HOLE';
+  page: number;
+  limit: number;
+}
+
 /**
- * 타임슬롯 API 클라이언트
+ * 타임슬롯 API 클라이언트 (9홀 기준)
  * admin-api와 통신하여 타임슬롯 관리 기능을 제공합니다.
  */
 export const timeSlotApi = {
   /**
-   * 타임슬롯 목록 조회
+   * 타임슬롯 목록 조회 (9홀 기준)
    */
-  async getTimeSlots(courseId: number, filters: Partial<TimeSlotFilters> = {}): Promise<TimeSlotListResponse> {
+  async getTimeSlots(filters: Partial<NineHoleTimeSlotFilters> = {}): Promise<TimeSlotListResponse> {
     const params: Record<string, any> = {};
     
     // 필터 파라미터 변환
-    if (filters.page) params.page = filters.page;
-    if (filters.limit) params.limit = filters.limit;
-    if (filters.search) params.search = filters.search;
-    if (filters.status) params.status = filters.status;
+    if (filters.companyId) params.companyId = filters.companyId;
+    if (filters.firstCourseId) params.firstCourseId = filters.firstCourseId;
+    if (filters.secondCourseId) params.secondCourseId = filters.secondCourseId;
     if (filters.dateFrom) params.dateFrom = filters.dateFrom;
     if (filters.dateTo) params.dateTo = filters.dateTo;
-    if (filters.timeFrom) params.timeFrom = filters.timeFrom;
-    if (filters.timeTo) params.timeTo = filters.timeTo;
-    if (filters.minAvailableSlots !== undefined) params.minAvailableSlots = filters.minAvailableSlots;
-    if (filters.maxAvailableSlots !== undefined) params.maxAvailableSlots = filters.maxAvailableSlots;
-    if (filters.minPrice !== undefined) params.minPrice = filters.minPrice;
-    if (filters.maxPrice !== undefined) params.maxPrice = filters.maxPrice;
-    if (filters.isRecurring !== undefined) params.isRecurring = filters.isRecurring;
-    if (filters.sortBy) params.sortBy = filters.sortBy;
-    if (filters.sortOrder) params.sortOrder = filters.sortOrder;
-
-    const response = await apiClient.get<TimeSlotListResponse>(
-      `/admin/courses/${courseId}/time-slots`,
-      params
-    );
+    if (filters.roundType) params.roundType = filters.roundType;
+    if (filters.page) params.page = filters.page;
+    if (filters.limit) params.limit = filters.limit;
     
-    return response.data;
+    const response = await apiClient.get<{
+      success: boolean;
+      data: TimeSlotListResponse;
+    }>('/admin/time-slots', { params });
+    
+    return response.data.data;
   },
 
   /**
-   * 타임슬롯 생성
+   * 타임슬롯 생성 (9홀 기준)
    */
-  async createTimeSlot(courseId: number, data: CreateTimeSlotDto): Promise<TimeSlot> {
-    const response = await apiClient.post<TimeSlot>(
-      `/admin/courses/${courseId}/time-slots`,
-      data
-    );
+  async createTimeSlot(data: CreateTimeSlotDto): Promise<TimeSlot> {
+    const response = await apiClient.post<{
+      success: boolean;
+      data: TimeSlot;
+    }>('/admin/time-slots', data);
     
-    return response.data;
+    return response.data.data;
   },
 
   /**
    * 타임슬롯 수정
    */
-  async updateTimeSlot(courseId: number, timeSlotId: number, data: UpdateTimeSlotDto): Promise<TimeSlot> {
-    const response = await apiClient.patch<TimeSlot>(
-      `/admin/courses/${courseId}/time-slots/${timeSlotId}`,
-      data
-    );
+  async updateTimeSlot(id: number, data: UpdateTimeSlotDto): Promise<TimeSlot> {
+    const response = await apiClient.put<{
+      success: boolean;
+      data: TimeSlot;
+    }>(`/admin/time-slots/${id}`, data);
     
-    return response.data;
+    return response.data.data;
   },
 
   /**
    * 타임슬롯 삭제
    */
-  async deleteTimeSlot(courseId: number, timeSlotId: number): Promise<void> {
-    await apiClient.delete(`/admin/courses/${courseId}/time-slots/${timeSlotId}`);
+  async deleteTimeSlot(id: number): Promise<void> {
+    await apiClient.delete(`/admin/time-slots/${id}`);
   },
 
   /**
    * 타임슬롯 통계 조회
    */
-  async getTimeSlotStats(courseId?: number): Promise<TimeSlotStats> {
+  async getStats(filters: {
+    companyId?: number;
+    firstCourseId?: number;
+    roundType?: 'NINE_HOLE' | 'EIGHTEEN_HOLE';
+    startDate?: string;
+    endDate?: string;
+  } = {}): Promise<TimeSlotStats> {
     const params: Record<string, any> = {};
-    if (courseId) params.courseId = courseId;
-
-    const response = await apiClient.get<TimeSlotStatsResponse>(
-      '/admin/time-slots/stats',
-      params
-    );
     
-    return response.data.stats;
+    if (filters.companyId) params.companyId = filters.companyId;
+    if (filters.firstCourseId) params.firstCourseId = filters.firstCourseId;
+    if (filters.roundType) params.roundType = filters.roundType;
+    if (filters.startDate) params.startDate = filters.startDate;
+    if (filters.endDate) params.endDate = filters.endDate;
+    
+    const response = await apiClient.get<{
+      success: boolean;
+      data: { stats: TimeSlotStats };
+    }>('/admin/time-slots/stats', { params });
+    
+    return response.data.data.stats;
   },
 
   /**
-   * 대량 타임슬롯 생성
+   * 타임슬롯 일괄 생성
    */
-  async generateTimeSlots(courseId: number, config: TimeSlotGenerationConfig): Promise<TimeSlot[]> {
-    const response = await apiClient.post<TimeSlot[]>(
-      `/admin/courses/${courseId}/time-slots/generate`,
-      config
-    );
+  async bulkCreateTimeSlots(timeSlots: CreateTimeSlotDto[]): Promise<TimeSlot[]> {
+    const response = await apiClient.post<{
+      success: boolean;
+      data: TimeSlot[];
+    }>('/admin/time-slots/bulk', { timeSlots });
     
-    return response.data;
+    return response.data.data;
   },
 
   /**
-   * 대량 작업 (삭제, 상태 변경 등)
+   * 타임슬롯 일괄 수정
    */
-  async bulkOperation(courseId: number, operation: BulkTimeSlotOperation, timeSlotIds: number[]): Promise<void> {
-    await apiClient.post(
-      `/admin/courses/${courseId}/time-slots/bulk`,
-      {
-        operation,
-        timeSlotIds,
-      }
-    );
+  async bulkUpdateTimeSlots(ids: number[], data: Partial<UpdateTimeSlotDto>): Promise<TimeSlot[]> {
+    const response = await apiClient.put<{
+      success: boolean;
+      data: TimeSlot[];
+    }>('/admin/time-slots/bulk', { ids, data });
+    
+    return response.data.data;
   },
 
   /**
-   * 타임슬롯 상태 변경
+   * 타임슬롯 일괄 삭제
    */
-  async updateTimeSlotStatus(courseId: number, timeSlotId: number, status: 'ACTIVE' | 'INACTIVE' | 'CANCELLED'): Promise<TimeSlot> {
-    const response = await apiClient.patch<TimeSlot>(
-      `/admin/courses/${courseId}/time-slots/${timeSlotId}/status`,
-      { status }
-    );
-    
-    return response.data;
+  async bulkDeleteTimeSlots(ids: number[]): Promise<void> {
+    await apiClient.delete('/admin/time-slots/bulk', { 
+      data: { ids } 
+    });
   },
 
   /**
-   * 특정 날짜의 타임슬롯 조회
+   * 타임슬롯 템플릿으로 일괄 생성
    */
-  async getTimeSlotsByDate(courseId: number, date: string): Promise<TimeSlot[]> {
-    const response = await apiClient.get<TimeSlot[]>(
-      `/admin/courses/${courseId}/time-slots`,
-      { date }
-    );
+  async generateFromTemplate(config: TimeSlotGenerationConfig): Promise<TimeSlot[]> {
+    const response = await apiClient.post<{
+      success: boolean;
+      data: TimeSlot[];
+    }>('/admin/time-slots/generate', config);
     
-    return response.data;
+    return response.data.data;
   },
 
   /**
-   * 타임슬롯 상세 정보 조회
+   * 특정 기간의 타임슬롯 가용성 확인
    */
-  async getTimeSlotById(courseId: number, timeSlotId: number): Promise<TimeSlot> {
-    const response = await apiClient.get<TimeSlot>(
-      `/admin/courses/${courseId}/time-slots/${timeSlotId}`
-    );
+  async checkAvailability(params: {
+    firstCourseId: number;
+    secondCourseId?: number;
+    dateFrom: string;
+    dateTo: string;
+    startTime: string;
+    endTime: string;
+  }): Promise<{
+    available: boolean;
+    conflicts: TimeSlot[];
+  }> {
+    const response = await apiClient.get<{
+      success: boolean;
+      data: {
+        available: boolean;
+        conflicts: TimeSlot[];
+      };
+    }>('/admin/time-slots/availability', { params });
     
-    return response.data;
+    return response.data.data;
   },
+
+  /**
+   * 타임슬롯 복제
+   */
+  async duplicateTimeSlot(id: number, params: {
+    targetDates: string[];
+    adjustments?: Partial<CreateTimeSlotDto>;
+  }): Promise<TimeSlot[]> {
+    const response = await apiClient.post<{
+      success: boolean;
+      data: TimeSlot[];
+    }>(`/admin/time-slots/${id}/duplicate`, params);
+    
+    return response.data.data;
+  },
+
+  /**
+   * 타임슬롯 상태 변경 (활성화/비활성화)
+   */
+  async toggleStatus(id: number, status: 'ACTIVE' | 'INACTIVE'): Promise<TimeSlot> {
+    const response = await apiClient.patch<{
+      success: boolean;
+      data: TimeSlot;
+    }>(`/admin/time-slots/${id}/status`, { status });
+    
+    return response.data.data;
+  },
+
+  /**
+   * 타임슬롯 사용률 분석
+   */
+  async getUtilizationAnalysis(params: {
+    companyId?: number;
+    firstCourseId?: number;
+    roundType?: 'NINE_HOLE' | 'EIGHTEEN_HOLE';
+    period: 'week' | 'month' | 'quarter';
+  }): Promise<{
+    overall: number;
+    byHour: { hour: string; utilization: number }[];
+    byDayOfWeek: { day: string; utilization: number }[];
+    trends: { date: string; utilization: number }[];
+  }> {
+    const response = await apiClient.get<{
+      success: boolean;
+      data: any;
+    }>('/admin/time-slots/utilization', { params });
+    
+    return response.data.data;
+  }
 };

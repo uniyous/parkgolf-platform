@@ -6,5 +6,11 @@ export { CourseFormModal } from './CourseFormModal';
 export { GolfCompanyCourseList } from './GolfCompanyCourseList';
 export { HoleFormModal } from './HoleFormModal';
 export { HoleManagementView } from './HoleManagementView';
-export { GolfHoleManager } from './GolfHoleManager';
-export { TeeBoxManager } from './TeeBoxManager';
+export { WeeklyScheduleManager } from './WeeklyScheduleManager';
+export { 
+  FlexibleCourseDetail, 
+  CourseCard, 
+  CourseWidget, 
+  CoursePreview, 
+  CompactCourseDetail 
+} from './FlexibleCourseDetail';

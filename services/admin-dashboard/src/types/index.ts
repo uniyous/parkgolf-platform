@@ -10,14 +10,15 @@ export type CourseStatus = typeof CourseStatus[keyof typeof CourseStatus];
 export interface Company {
   id: number;
   name: string;
-  businessNumber: string;
-  address: string;
-  phone: string;
-  email: string;
-  status: 'active' | 'inactive';
+  businessNumber?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  status?: 'active' | 'inactive';
+  isActive: boolean;
   description?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CompanyInput {
@@ -35,20 +36,22 @@ export interface Course {
   companyId: number;
   location?: string | null;
   description?: string | null;
-  holeCount: number;
+  holeCount?: number;
+  holes?: number; // 9홀 또는 18홀
   par?: number | null;
+  totalPar?: number; // 전체 파 수
   courseRating?: number | null;
   slopeRating?: number | null;
   imageUrl?: string | null;
   contactInfo?: string | null;
-  status: CourseStatus;
-  createdAt: string;
-  updatedAt: string;
+  status?: CourseStatus;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
   // 추가 필드
   address?: string;
   phoneNumber?: string;
   numberOfHoles?: number;
-  isActive?: boolean;
   // 관계 필드 (선택적)
   // holes?: Hole[];
   // courseWeeklySchedules?: CourseWeeklySchedule[];
@@ -144,18 +147,27 @@ export interface User {
   email: string;
   name: string;
   phoneNumber?: string;
-  membershipTier: UserMembershipTier;
-  status: UserStatus;
+  membershipTier?: UserMembershipTier;
+  status?: UserStatus;
   isActive: boolean;
-  lastLoginAt: Date | null;
-  createdAt: Date;
-  updatedAt?: Date;
+  lastLoginAt?: Date | string | null;
+  createdAt: Date | string;
+  updatedAt?: Date | string;
   // 멤버십 관련 필드
   membershipStartDate?: Date | null;
   membershipEndDate?: Date | null;
   totalBookings?: number;
   totalSpent?: number;
   loyaltyPoints?: number;
+  
+  // Admin 관련 필드 (관리자 사용자인 경우)
+  role?: AdminRole | UserMembershipTier;
+  scope?: AdminScope;
+  permissions?: Permission[];
+  companyId?: number;
+  courseIds?: number[];
+  department?: string;
+  description?: string;
 }
 
 export interface UserFilters {

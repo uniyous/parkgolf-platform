@@ -135,47 +135,6 @@ export const CompanyStats: React.FC<CompanyStatsProps> = ({ companies }) => {
         </div>
       ))}
 
-      {/* Status Distribution */}
-      <div className="col-span-full bg-white rounded-xl shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">상태별 분포</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Active Companies */}
-          <div className="text-center">
-            <div className="text-3xl font-bold text-green-600">{activeCompanies}</div>
-            <div className="text-sm text-gray-500 mt-1">활성 회사</div>
-            <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-green-500 h-2 rounded-full"
-                style={{ width: `${totalCompanies > 0 ? (activeCompanies / totalCompanies) * 100 : 0}%` }}
-              ></div>
-            </div>
-          </div>
-
-          {/* Maintenance Companies */}
-          <div className="text-center">
-            <div className="text-3xl font-bold text-yellow-600">{maintenanceCompanies}</div>
-            <div className="text-sm text-gray-500 mt-1">점검 중</div>
-            <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-yellow-500 h-2 rounded-full"
-                style={{ width: `${totalCompanies > 0 ? (maintenanceCompanies / totalCompanies) * 100 : 0}%` }}
-              ></div>
-            </div>
-          </div>
-
-          {/* Inactive Companies */}
-          <div className="text-center">
-            <div className="text-3xl font-bold text-red-600">{inactiveCompanies}</div>
-            <div className="text-sm text-gray-500 mt-1">비활성</div>
-            <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-red-500 h-2 rounded-full"
-                style={{ width: `${totalCompanies > 0 ? (inactiveCompanies / totalCompanies) * 100 : 0}%` }}
-              ></div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

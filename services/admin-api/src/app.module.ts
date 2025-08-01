@@ -10,6 +10,7 @@ import { AdminCoursesController } from './controllers/admin-courses.controller';
 import { AdminBookingsController } from './controllers/admin-bookings.controller';
 import { AdminNotificationsController } from './controllers/admin-notifications.controller';
 import { AdminDashboardController } from './controllers/admin-dashboard.controller';
+import { AdminTimeSlotsController } from './controllers/admin-time-slots.controller';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { AdminDashboardController } from './controllers/admin-dashboard.controll
     AdminBookingsController,
     AdminNotificationsController,
     AdminDashboardController,
+    AdminTimeSlotsController,
   ],
   providers: [],
 })

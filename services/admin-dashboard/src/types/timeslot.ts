@@ -3,11 +3,18 @@ export type TimeSlotStatus = 'AVAILABLE' | 'BOOKED' | 'BLOCKED' | 'CANCELLED';
 
 export interface TimeSlot {
   id: number;
-  courseId: number;
+  courseId: number;      // Legacy field for backward compatibility
   courseName?: string;   // Course name for display
+  // Dual course fields for 18-hole rounds
+  frontNineCourseId?: number;    // 전반 9홀 코스 ID
+  frontNineCourseName?: string;  // 전반 9홀 코스명
+  backNineCourseId?: number;     // 후반 9홀 코스 ID
+  backNineCourseName?: string;   // 후반 9홀 코스명
+  isDualCourse?: boolean;        // 18홀 라운딩 여부
   date: string;          // YYYY-MM-DD format
-  startTime: string;     // HH:MM format
-  endTime: string;       // HH:MM format
+  startTime: string;     // HH:MM format (전반 시작 시간)
+  endTime: string;       // HH:MM format (후반 종료 시간)
+  breakTime?: number;    // 휴식 시간 (분)
   maxSlots: number;      // Maximum number of slots
   bookedSlots: number;   // Currently booked slots
   availableSlots: number; // Available slots (maxSlots - bookedSlots)
@@ -23,6 +30,16 @@ export interface TimeSlot {
     id: number;
     name: string;
     status: string;
+  };
+  frontNineCourse?: {
+    id: number;
+    name: string;
+    par: number;
+  };
+  backNineCourse?: {
+    id: number;
+    name: string;
+    par: number;
   };
   bookings?: TimeSlotBooking[];
   revenue?: number;
@@ -92,10 +109,14 @@ export interface TimeSlotStats {
 }
 
 export interface CreateTimeSlotDto {
-  courseId: number;
+  courseId?: number;     // Legacy field
+  frontNineCourseId?: number;  // 전반 9홀 코스
+  backNineCourseId?: number;   // 후반 9홀 코스
+  isDualCourse?: boolean;
   date: string;
   startTime: string;
   endTime: string;
+  breakTime?: number;    // 휴식 시간 (분, 기본값: 30)
   maxPlayers: number;
   price: number;
   status?: TimeSlotStatus;
@@ -122,13 +143,17 @@ export interface BulkTimeSlotOperation {
 }
 
 export interface TimeSlotGenerationConfig {
-  courseId: number;
+  courseId?: number;     // Legacy field
+  frontNineCourseId?: number;  // 전반 9홀 코스
+  backNineCourseId?: number;   // 후반 9홀 코스
+  isDualCourse?: boolean;
   startDate: string;
   endDate: string;
   pattern: 'HOURLY' | 'CUSTOM_INTERVALS' | 'AM_PM' | 'PEAK_HOURS';
   startTime: string;
   endTime: string;
   interval?: number;      // minutes
+  breakTime?: number;     // 휴식 시간 (분)
   maxPlayers: number;
   price: number;
   excludeWeekends?: boolean;

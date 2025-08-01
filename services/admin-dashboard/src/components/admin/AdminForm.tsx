@@ -24,7 +24,7 @@ export const AdminForm: React.FC<AdminFormProps> = ({
     name: admin?.name || '',
     password: '',
     confirmPassword: '',
-    role: admin?.role || 'VIEWER' as AdminRole,
+    role: admin?.role || 'READONLY_STAFF' as AdminRole,
   };
 
   const formManager = useFormManager(initialData, {
@@ -75,6 +75,7 @@ export const AdminForm: React.FC<AdminFormProps> = ({
             name: data.name,
             password: data.password,
             role: data.role,
+            scope: 'COMPANY', // Default scope
           };
 
           const newAdmin = await createAdmin(createData);
@@ -93,24 +94,24 @@ export const AdminForm: React.FC<AdminFormProps> = ({
   // 역할 옵션
   const roleOptions: { value: AdminRole; label: string; description: string }[] = [
     { 
-      value: 'VIEWER', 
-      label: '조회자', 
+      value: 'READONLY_STAFF', 
+      label: '조회 전용 직원', 
       description: '정보 조회만 가능' 
     },
     { 
-      value: 'MODERATOR', 
-      label: '운영자', 
-      description: '예약 관리 및 기본 업무 수행' 
+      value: 'STAFF', 
+      label: '일반 직원', 
+      description: '기본 업무 수행' 
     },
     { 
-      value: 'ADMIN', 
-      label: '관리자', 
-      description: '대부분의 관리 기능 수행 (관리자 관리 제외)' 
+      value: 'COURSE_MANAGER', 
+      label: '코스 관리자', 
+      description: '코스별 관리 기능 수행' 
     },
     { 
-      value: 'SUPER_ADMIN', 
-      label: '최고 관리자', 
-      description: '모든 기능 사용 가능' 
+      value: 'COMPANY_MANAGER', 
+      label: '회사 운영 관리자', 
+      description: '회사 관리 기능 수행' 
     },
   ];
 

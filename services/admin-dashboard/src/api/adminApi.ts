@@ -33,7 +33,7 @@ export const adminApi = {
       console.log('✅ Response data:', response.data);
       
       // BFF API 응답 구조: {success: true, data: [...]}
-      const adminList = response.data.data || response.data;
+      const adminList = (response.data as any)?.data || response.data;
       console.log('✅ Final admin list:', adminList);
       return Array.isArray(adminList) ? adminList : [];
     } catch (error) {
@@ -45,7 +45,7 @@ export const adminApi = {
   async getAdmin(id: number): Promise<Admin> {
     try {
       const response = await apiClient.get(`/admin/admins/${id}`);
-      return response.data.data || response.data;
+      return (response.data as any)?.data || response.data;
     } catch (error) {
       console.error(`Failed to fetch admin ${id}:`, error);
       throw error;
@@ -55,7 +55,7 @@ export const adminApi = {
   async createAdmin(data: CreateAdminDto): Promise<Admin> {
     try {
       const response = await apiClient.post('/admin/admins', data);
-      return response.data.data || response.data;
+      return (response.data as any)?.data || response.data;
     } catch (error) {
       console.error('Failed to create admin:', error);
       throw error;
@@ -65,7 +65,7 @@ export const adminApi = {
   async updateAdmin(id: number, data: UpdateAdminDto): Promise<Admin> {
     try {
       const response = await apiClient.patch(`/admin/admins/${id}`, data);
-      return response.data.data || response.data;
+      return (response.data as any)?.data || response.data;
     } catch (error) {
       console.error(`Failed to update admin ${id}:`, error);
       throw error;
@@ -84,7 +84,7 @@ export const adminApi = {
   async updateAdminStatus(id: number, isActive: boolean): Promise<Admin> {
     try {
       const response = await apiClient.patch(`/admin/admins/${id}/status`, { isActive });
-      return response.data.data || response.data;
+      return (response.data as any)?.data || response.data;
     } catch (error) {
       console.error(`Failed to update admin status ${id}:`, error);
       throw error;
@@ -94,7 +94,7 @@ export const adminApi = {
   async updateAdminPermissions(id: number, permissionIds: number[]): Promise<Admin> {
     try {
       const response = await apiClient.post(`/admin/admins/${id}/permissions`, { permissionIds });
-      return response.data.data || response.data;
+      return (response.data as any)?.data || response.data;
     } catch (error) {
       console.error(`Failed to update admin permissions ${id}:`, error);
       throw error;
@@ -104,7 +104,7 @@ export const adminApi = {
   async getAdminStats(): Promise<any> {
     try {
       const response = await apiClient.get('/admin/admins/stats');
-      return response.data.data || response.data;
+      return (response.data as any)?.data || response.data;
     } catch (error) {
       console.error('Failed to fetch admin stats:', error);
       throw error;
@@ -114,7 +114,7 @@ export const adminApi = {
   async getPermissions(): Promise<any[]> {
     try {
       const response = await apiClient.get('/admin/admins/permissions');
-      return response.data?.data || [];
+      return (response.data as any)?.data || [];
     } catch (error) {
       console.error('Failed to fetch permissions:', error);
       throw error;
@@ -130,7 +130,7 @@ export const adminApi = {
         ...filters
       };
       const response = await apiClient.get<UserListResponse>('/admin/users', params);
-      return response.data.data || response.data;
+      return (response.data as any)?.data || response.data;
     } catch (error) {
       console.error('Failed to fetch users:', error);
       throw error;
@@ -140,7 +140,7 @@ export const adminApi = {
   async getUser(id: number): Promise<User> {
     try {
       const response = await apiClient.get<User>(`/admin/users/${id}`);
-      return response.data.data || response.data;
+      return (response.data as any)?.data || response.data;
     } catch (error) {
       console.error(`Failed to fetch user ${id}:`, error);
       throw error;
@@ -150,7 +150,7 @@ export const adminApi = {
   async createUser(data: CreateAdminDto): Promise<User> {
     try {
       const response = await apiClient.post<User>('/admin/users', data);
-      return response.data.data || response.data;
+      return (response.data as any)?.data || response.data;
     } catch (error) {
       console.error('Failed to create user:', error);
       throw error;
@@ -160,7 +160,7 @@ export const adminApi = {
   async updateUser(id: number, data: UpdateAdminDto): Promise<User> {
     try {
       const response = await apiClient.put<User>(`/admin/users/${id}`, data);
-      return response.data.data || response.data;
+      return (response.data as any)?.data || response.data;
     } catch (error) {
       console.error(`Failed to update user ${id}:`, error);
       throw error;
@@ -179,7 +179,7 @@ export const adminApi = {
   async updateUserStatus(id: number, status: string): Promise<User> {
     try {
       const response = await apiClient.patch<User>(`/admin/users/${id}/status`, { status });
-      return response.data.data || response.data;
+      return (response.data as any)?.data || response.data;
     } catch (error) {
       console.error(`Failed to update user status ${id}:`, error);
       throw error;
@@ -189,7 +189,7 @@ export const adminApi = {
   async updateUserPermissions(id: number, permissions: string[]): Promise<User> {
     try {
       const response = await apiClient.patch<User>(`/admin/users/${id}/permissions`, { permissions });
-      return response.data.data || response.data;
+      return (response.data as any)?.data || response.data;
     } catch (error) {
       console.error(`Failed to update user permissions ${id}:`, error);
       throw error;

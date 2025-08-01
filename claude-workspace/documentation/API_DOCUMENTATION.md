@@ -70,11 +70,11 @@ Content-Type: application/json
 
 #### 관리자 로그인
 ```http
-POST /api/admin/login
+POST /auth/admin/login
 Content-Type: application/json
 
 {
-  "username": "admin",
+  "email": "admin@parkgolf.com",
   "password": "admin123"
 }
 
@@ -82,18 +82,173 @@ Response:
 {
   "accessToken": "eyJhbGc...",
   "refreshToken": "eyJhbGc...",
-  "admin": {
+  "user": {
     "id": 1,
-    "username": "admin",
+    "username": "admin@parkgolf.com",
     "email": "admin@parkgolf.com",
-    "name": "관리자",
-    "role": "SUPER_ADMIN",
-    "permissions": [
-      {
-        "code": "admin.manage",
-        "name": "관리자 관리"
-      }
-    ]
+    "name": "플랫폼 관리자",
+    "role": "PLATFORM_OWNER",
+    "type": "admin"
+  }
+}
+```
+
+#### 현재 사용자 정보 조회 (NEW!)
+```http
+GET /auth/me
+Authorization: Bearer <access_token>
+
+Response:
+{
+  "id": 1,
+  "username": "admin@parkgolf.com",
+  "email": "admin@parkgolf.com", 
+  "name": "플랫폼 관리자",
+  "role": "PLATFORM_OWNER",
+  "scope": "PLATFORM",
+  "permissions": ["PLATFORM_ALL", "ADMIN_WRITE", "COURSE_WRITE"],
+  "isActive": true,
+  "lastLoginAt": "2025-01-25T10:30:00.000Z",
+  "createdAt": "2025-01-01T00:00:00.000Z",
+  "updatedAt": "2025-01-25T10:30:00.000Z",
+  "department": "운영팀",
+  "description": "플랫폼 전체 관리자",
+  "phone": "02-000-0000",
+  "type": "admin"
+}
+```
+
+#### 관리자 토큰 갱신
+```http
+POST /auth/admin/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "eyJhbGc..."
+}
+
+Response:
+{
+  "accessToken": "eyJhbGc...",
+  "refreshToken": "eyJhbGc...",
+  "user": {
+    "id": 1,
+    "username": "admin@parkgolf.com",
+    "email": "admin@parkgolf.com",
+    "name": "플랫폼 관리자",
+    "role": "PLATFORM_OWNER",
+    "type": "admin"
+  }
+}
+```
+
+## 🏢 Admin API (BFF Layer)
+
+### 관리자 인증 (BFF)
+
+#### 관리자 로그인 (BFF)
+```http
+POST /api/admin/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@parkgolf.com",
+  "password": "admin123"
+}
+
+Response:
+{
+  "success": true,
+  "data": {
+    "accessToken": "eyJhbGc...",
+    "refreshToken": "eyJhbGc...",
+    "user": {
+      "id": 1,
+      "username": "admin@parkgolf.com",
+      "email": "admin@parkgolf.com",
+      "name": "플랫폼 관리자",
+      "role": "PLATFORM_OWNER",
+      "type": "admin"
+    }
+  }
+}
+```
+
+#### 현재 관리자 정보 조회 (BFF)
+```http
+GET /api/admin/auth/me
+Authorization: Bearer <access_token>
+
+Response:
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "username": "admin@parkgolf.com",
+    "email": "admin@parkgolf.com",
+    "name": "플랫폼 관리자", 
+    "role": "PLATFORM_OWNER",
+    "scope": "PLATFORM",
+    "permissions": ["PLATFORM_ALL", "ADMIN_WRITE", "COURSE_WRITE"],
+    "isActive": true,
+    "lastLoginAt": "2025-01-25T10:30:00.000Z",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedAt": "2025-01-25T10:30:00.000Z",
+    "department": "운영팀",
+    "description": "플랫폼 전체 관리자",
+    "phone": "02-000-0000",
+    "type": "admin"
+  }
+}
+```
+
+#### 토큰 갱신 (BFF)
+```http
+POST /api/admin/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "eyJhbGc..."
+}
+
+Response:
+{
+  "success": true,
+  "data": {
+    "accessToken": "eyJhbGc...",
+    "refreshToken": "eyJhbGc...",
+    "user": {
+      "id": 1,
+      "username": "admin@parkgolf.com",
+      "email": "admin@parkgolf.com",
+      "name": "플랫폼 관리자",
+      "role": "PLATFORM_OWNER",
+      "type": "admin"
+    }
+  }
+}
+```
+
+#### 토큰 검증 (BFF)
+```http
+POST /api/admin/auth/validate
+Content-Type: application/json
+
+{
+  "token": "eyJhbGc..."
+}
+
+Response:
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": 1,
+      "email": "admin@parkgolf.com",
+      "name": "플랫폼 관리자",
+      "role": "PLATFORM_OWNER",
+      "isActive": true
+    }
   }
 }
 ```

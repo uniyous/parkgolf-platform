@@ -56,13 +56,15 @@ import type {
   Course, 
   UpdateCourseDto, 
   Company,
+  Hole,
+  CreateHoleDto,
+  UpdateHoleDto,
   TimeSlot,
   CreateTimeSlotDto,
   UpdateTimeSlotDto,
   TimeSlotFilter,
   WeeklySchedule,
   CreateWeeklyScheduleDto,
-  UpdateWeeklyScheduleDto,
   TimeSlotAvailability
 } from '../types';
 
@@ -89,9 +91,19 @@ export const courseApi = {
   async getCompanies(): Promise<Company[]> {
     try {
       console.log('Fetching companies from BFF API');
-      const response = await apiClient.get<Company[]>('/admin/courses/companies');
-      console.log('Companies fetched successfully:', response.data);
-      return response.data;
+      
+      // BFF API 응답 구조: {companies: Company[], totalCount: number, totalPages: number, page: number}
+      const response = await apiClient.get<{companies: Company[], totalCount: number, totalPages: number, page: number}>('/admin/courses/companies');
+      console.log('API Client Response:', response);
+      console.log('Response.data:', response.data);
+      
+      // BFF 응답에서 companies 배열 추출
+      const bffResponse = response.data;
+      const companies = bffResponse?.companies || [];
+      console.log('Final companies array:', companies);
+      console.log('Companies count:', companies.length);
+      
+      return companies;
     } catch (error) {
       console.error('Failed to fetch companies:', error);
       throw error;
@@ -106,20 +118,28 @@ export const courseApi = {
         ...filters
       };
       console.log('Fetching courses from BFF API with params:', params);
-      const response = await apiClient.get<Course[]>('/admin/courses', params);
+      
+      // BFF API 응답 구조: {courses: Course[], totalCount: number, totalPages: number, page: number}
+      const response = await apiClient.get<{courses: Course[], totalCount: number, totalPages: number, page: number}>('/admin/courses', params);
       console.log('API Client Response:', response);
       console.log('Response.data:', response.data);
       console.log('Response.data type:', typeof response.data);
       
-      // apiClient.get()이 BFF 응답에서 data 부분을 이미 추출해서 반환
-      // response.data가 실제 코스 배열
-      const courses = response.data || [];
+      // BFF 응답에서 courses 배열 추출
+      const bffResponse = response.data;
+      const courses = bffResponse?.courses || [];
       console.log('Final courses array:', courses);
       console.log('Courses count:', courses.length);
+      console.log('Total count from BFF:', bffResponse?.totalCount);
       
       return {
         data: courses,
-        pagination: { page, limit, total: courses.length, totalPages: 1 }
+        pagination: { 
+          page: bffResponse?.page || page, 
+          limit, 
+          total: bffResponse?.totalCount || courses.length, 
+          totalPages: bffResponse?.totalPages || 1 
+        }
       };
     } catch (error) {
       console.error('Failed to fetch courses:', error);
@@ -141,7 +161,12 @@ export const courseApi = {
 
   async getCourseById(id: number): Promise<Course> {
     try {
+      console.log('Fetching course by ID:', id);
       const response = await apiClient.get<Course>(`/admin/courses/${id}`);
+      console.log('getCourseById - API response:', response);
+      console.log('getCourseById - course data:', response.data);
+      
+      // API가 직접 Course 객체를 반환하는 경우
       return response.data;
     } catch (error) {
       console.error(`Failed to fetch course ${id}:`, error);
@@ -151,8 +176,12 @@ export const courseApi = {
 
   async createCourse(courseData: CreateCourseDto): Promise<Course> {
     try {
-      const response = await apiClient.post<Course>('/admin/courses', courseData);
-      return response.data;
+      // BFF API 응답 구조: {success: true, data: Course}
+      const response = await apiClient.post<{success: boolean, data: Course}>('/admin/courses', courseData);
+      
+      // BFF 응답에서 data 추출
+      const bffResponse = response.data;
+      return bffResponse?.data;
     } catch (error) {
       console.error('Failed to create course:', error);
       throw error;
@@ -161,8 +190,12 @@ export const courseApi = {
 
   async updateCourse(id: number, courseData: UpdateCourseDto): Promise<Course> {
     try {
-      const response = await apiClient.put<Course>(`/admin/courses/${id}`, courseData);
-      return response.data;
+      // BFF API 응답 구조: {success: true, data: Course}
+      const response = await apiClient.put<{success: boolean, data: Course}>(`/admin/courses/${id}`, courseData);
+      
+      // BFF 응답에서 data 추출
+      const bffResponse = response.data;
+      return bffResponse?.data;
     } catch (error) {
       console.error(`Failed to update course ${id}:`, error);
       throw error;
@@ -178,57 +211,74 @@ export const courseApi = {
     }
   },
 
-  async getHolesByCourse(courseId: number): Promise<any[]> {
+  async getHolesByCourse(courseId: number): Promise<Hole[]> {
     try {
       console.log('Fetching holes from BFF API for course:', courseId);
-      const response = await apiClient.get<any[]>(`/admin/courses/${courseId}/holes`);
-      console.log('Holes fetched successfully:', response.data);
-      return response.data || [];
+      
+      // BFF API 응답 구조: {success: true, data: Hole[]}
+      const response = await apiClient.get<{success: boolean, data: Hole[]}>(`/admin/courses/${courseId}/holes`);
+      console.log('API Client Response:', response);
+      console.log('Response.data:', response.data);
+      
+      // BFF 응답에서 data 배열 추출
+      const bffResponse = response.data;
+      const holes = bffResponse?.data || [];
+      console.log('Final holes array:', holes);
+      console.log('Holes count:', holes.length);
+      
+      return holes;
     } catch (error: any) {
       console.error(`Failed to fetch holes for course ${courseId}:`, error);
-      // API 엔드포인트가 구현되지 않은 경우 샘플 데이터 반환
-      if (error?.status === 404 || error?.message?.includes('404') || error?.message?.includes('Cannot GET')) {
-        console.log('Holes API not implemented yet, returning sample data for course:', courseId);
-        
-        // 그린밸리 동코스(ID: 5)의 경우 9홀 샘플 데이터 반환
-        if (courseId === 5) {
-          return [
-            { id: 1, holeNumber: 1, par: 3, distance: 120, description: "그린밸리 동코스 1번 홀 (Par 3, 120m)" },
-            { id: 2, holeNumber: 2, par: 4, distance: 150, description: "그린밸리 동코스 2번 홀 (Par 4, 150m)" },
-            { id: 3, holeNumber: 3, par: 5, distance: 180, description: "그린밸리 동코스 3번 홀 (Par 5, 180m)" },
-            { id: 4, holeNumber: 4, par: 3, distance: 120, description: "그린밸리 동코스 4번 홀 (Par 3, 120m)" },
-            { id: 5, holeNumber: 5, par: 4, distance: 150, description: "그린밸리 동코스 5번 홀 (Par 4, 150m)" },
-            { id: 6, holeNumber: 6, par: 5, distance: 180, description: "그린밸리 동코스 6번 홀 (Par 5, 180m)" },
-            { id: 7, holeNumber: 7, par: 3, distance: 120, description: "그린밸리 동코스 7번 홀 (Par 3, 120m)" },
-            { id: 8, holeNumber: 8, par: 4, distance: 150, description: "그린밸리 동코스 8번 홀 (Par 4, 150m)" },
-            { id: 9, holeNumber: 9, par: 5, distance: 180, description: "그린밸리 동코스 9번 홀 (Par 5, 180m)" }
-          ];
-        }
-        
-        return [];
+      
+      // API 응답에 따른 적절한 에러 처리
+      if (error?.status === 404) {
+        console.log(`No holes found for course ${courseId}`);
+        return []; // 홀이 없는 경우 빈 배열 반환
       }
-      throw error;
+      
+      if (error?.status === 403) {
+        console.error(`Access denied to holes for course ${courseId}`);
+        throw new Error('홀 정보에 접근할 권한이 없습니다.');
+      }
+      
+      if (error?.status >= 500) {
+        console.error(`Server error when fetching holes for course ${courseId}`);
+        throw new Error('서버 오류로 홀 정보를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.');
+      }
+      
+      // 기타 에러의 경우 원본 에러 전파
+      throw new Error(error?.message || `코스 ${courseId}의 홀 정보를 불러오는데 실패했습니다.`);
     }
   },
 
-  async createHole(courseId: number, holeData: any): Promise<any> {
+  async createHole(courseId: number, holeData: CreateHoleDto): Promise<Hole> {
     try {
       console.log('Creating hole for course:', courseId, 'with data:', holeData);
-      const response = await apiClient.post<any>(`/admin/courses/${courseId}/holes`, holeData);
+      
+      // BFF API 응답 구조: {success: true, data: Hole}
+      const response = await apiClient.post<{success: boolean, data: Hole}>(`/admin/courses/${courseId}/holes`, holeData);
       console.log('Hole created successfully:', response.data);
-      return response.data;
+      
+      // BFF 응답에서 data 추출
+      const bffResponse = response.data;
+      return bffResponse?.data;
     } catch (error) {
       console.error(`Failed to create hole for course ${courseId}:`, error);
       throw error;
     }
   },
 
-  async updateHole(courseId: number, holeId: number, holeData: any): Promise<any> {
+  async updateHole(courseId: number, holeId: number, holeData: UpdateHoleDto): Promise<Hole> {
     try {
       console.log('Updating hole:', holeId, 'for course:', courseId, 'with data:', holeData);
-      const response = await apiClient.patch<any>(`/admin/courses/${courseId}/holes/${holeId}`, holeData);
+      
+      // BFF API 응답 구조: {success: true, data: Hole}
+      const response = await apiClient.patch<{success: boolean, data: Hole}>(`/admin/courses/${courseId}/holes/${holeId}`, holeData);
       console.log('Hole updated successfully:', response.data);
-      return response.data;
+      
+      // BFF 응답에서 data 추출
+      const bffResponse = response.data;
+      return bffResponse?.data;
     } catch (error) {
       console.error(`Failed to update hole ${holeId} for course ${courseId}:`, error);
       throw error;
@@ -311,50 +361,130 @@ export const courseApi = {
   async getWeeklySchedule(courseId: number): Promise<WeeklySchedule[]> {
     try {
       console.log('Fetching weekly schedule for course:', courseId);
-      const response = await courseServiceClient.get<WeeklySchedule[]>(`/api/courses/${courseId}/weekly-schedules`);
-      console.log('Weekly schedule fetched successfully:', response);
-      return response || [];
+      
+      // BFF API 응답 구조: {success: boolean, data: WeeklySchedule[]}
+      const response = await apiClient.get<{success: boolean, data: WeeklySchedule[]}>(`/admin/courses/${courseId}/weekly-schedules`);
+      console.log('API Client Response:', response);
+      console.log('Response.data:', response.data);
+      
+      // BFF 응답에서 data 배열 추출
+      const bffResponse = response.data;
+      const schedules = bffResponse?.data || [];
+      console.log('Final weekly schedules array:', schedules);
+      
+      return schedules;
     } catch (error) {
       console.error(`Failed to fetch weekly schedule for course ${courseId}:`, error);
       throw error;
     }
   },
 
-  async updateWeeklySchedule(courseId: number, scheduleData: CreateWeeklyScheduleDto[]): Promise<WeeklySchedule[]> {
+  async getWeeklyScheduleById(courseId: number, scheduleId: number): Promise<WeeklySchedule> {
     try {
-      console.log('Updating weekly schedule for course:', courseId, 'with data:', scheduleData);
+      console.log('Fetching weekly schedule by ID:', scheduleId, 'for course:', courseId);
+      
+      // BFF API 응답 구조: {success: boolean, data: WeeklySchedule}
+      const response = await apiClient.get<{success: boolean, data: WeeklySchedule}>(`/admin/courses/${courseId}/weekly-schedules/${scheduleId}`);
+      console.log('Weekly schedule by ID fetched successfully:', response.data);
+      
+      // BFF 응답에서 data 추출
+      const bffResponse = response.data;
+      return bffResponse?.data;
+    } catch (error) {
+      console.error(`Failed to fetch weekly schedule ${scheduleId} for course ${courseId}:`, error);
+      throw error;
+    }
+  },
+
+  async getWeeklyScheduleByDay(courseId: number, dayOfWeek: number): Promise<WeeklySchedule> {
+    try {
+      console.log('Fetching weekly schedule by day:', dayOfWeek, 'for course:', courseId);
+      
+      // BFF API 응답 구조: {success: boolean, data: WeeklySchedule}
+      const response = await apiClient.get<{success: boolean, data: WeeklySchedule}>(`/admin/courses/${courseId}/weekly-schedules/day/${dayOfWeek}`);
+      console.log('Weekly schedule by day fetched successfully:', response.data);
+      
+      // BFF 응답에서 data 추출
+      const bffResponse = response.data;
+      return bffResponse?.data;
+    } catch (error) {
+      console.error(`Failed to fetch weekly schedule for day ${dayOfWeek} for course ${courseId}:`, error);
+      throw error;
+    }
+  },
+
+  async createWeeklySchedule(courseId: number, scheduleData: CreateWeeklyScheduleDto): Promise<WeeklySchedule> {
+    try {
+      console.log('Creating weekly schedule for course:', courseId, 'with data:', scheduleData);
+      
+      // BFF API 응답 구조: {success: boolean, data: WeeklySchedule}
+      const response = await apiClient.post<{success: boolean, data: WeeklySchedule}>(`/admin/courses/${courseId}/weekly-schedules`, scheduleData);
+      console.log('Weekly schedule created successfully:', response.data);
+      
+      // BFF 응답에서 data 추출
+      const bffResponse = response.data;
+      return bffResponse?.data;
+    } catch (error) {
+      console.error(`Failed to create weekly schedule for course ${courseId}:`, error);
+      throw error;
+    }
+  },
+
+  async updateWeeklySchedule(courseId: number, scheduleId: number, updateData: Partial<CreateWeeklyScheduleDto>): Promise<WeeklySchedule> {
+    try {
+      console.log('Updating weekly schedule:', scheduleId, 'for course:', courseId, 'with data:', updateData);
+      
+      // BFF API 응답 구조: {success: boolean, data: WeeklySchedule}
+      const response = await apiClient.patch<{success: boolean, data: WeeklySchedule}>(`/admin/courses/${courseId}/weekly-schedules/${scheduleId}`, updateData);
+      console.log('Weekly schedule updated successfully:', response.data);
+      
+      // BFF 응답에서 data 추출
+      const bffResponse = response.data;
+      return bffResponse?.data;
+    } catch (error) {
+      console.error(`Failed to update weekly schedule ${scheduleId} for course ${courseId}:`, error);
+      throw error;
+    }
+  },
+
+  async deleteWeeklySchedule(courseId: number, scheduleId: number): Promise<void> {
+    try {
+      console.log('Deleting weekly schedule:', scheduleId, 'for course:', courseId);
+      await apiClient.delete(`/admin/courses/${courseId}/weekly-schedules/${scheduleId}`);
+      console.log('Weekly schedule deleted successfully');
+    } catch (error) {
+      console.error(`Failed to delete weekly schedule ${scheduleId} for course ${courseId}:`, error);
+      throw error;
+    }
+  },
+
+  async updateBulkWeeklySchedule(courseId: number, scheduleData: CreateWeeklyScheduleDto[]): Promise<WeeklySchedule[]> {
+    try {
+      console.log('Updating bulk weekly schedule for course:', courseId, 'with data:', scheduleData);
       // Weekly schedule는 개별적으로 생성/수정해야 합니다
       const results: WeeklySchedule[] = [];
       
       for (const schedule of scheduleData) {
         try {
           // 먼저 해당 요일의 기존 스케줄이 있는지 확인
-          const existingSchedule = await courseServiceClient.get<WeeklySchedule>(
-            `/api/courses/${courseId}/weekly-schedules/day/${schedule.dayOfWeek}`
-          ).catch(() => null);
+          const existingSchedule = await this.getWeeklyScheduleByDay(courseId, schedule.dayOfWeek).catch(() => null);
           
           if (existingSchedule) {
             // 기존 스케줄이 있으면 수정
-            const updated = await courseServiceClient.patch<WeeklySchedule>(
-              `/api/courses/${courseId}/weekly-schedules/${existingSchedule.id}`,
-              {
-                openTime: schedule.openTime,
-                closeTime: schedule.closeTime,
-                isActive: schedule.isActive
-              }
-            );
+            const updated = await this.updateWeeklySchedule(courseId, existingSchedule.id, {
+              openTime: schedule.openTime,
+              closeTime: schedule.closeTime,
+              isActive: schedule.isActive
+            });
             results.push(updated);
           } else {
             // 없으면 새로 생성
-            const created = await courseServiceClient.post<WeeklySchedule>(
-              `/api/courses/${courseId}/weekly-schedules`,
-              {
-                dayOfWeek: schedule.dayOfWeek,
-                openTime: schedule.openTime,
-                closeTime: schedule.closeTime,
-                isActive: schedule.isActive
-              }
-            );
+            const created = await this.createWeeklySchedule(courseId, {
+              dayOfWeek: schedule.dayOfWeek,
+              openTime: schedule.openTime,
+              closeTime: schedule.closeTime,
+              isActive: schedule.isActive
+            });
             results.push(created);
           }
         } catch (error) {
@@ -364,7 +494,7 @@ export const courseApi = {
       
       return results;
     } catch (error) {
-      console.error(`Failed to update weekly schedule for course ${courseId}:`, error);
+      console.error(`Failed to update bulk weekly schedule for course ${courseId}:`, error);
       throw error;
     }
   },
@@ -402,6 +532,10 @@ export const fetchCourseById = courseApi.getCourseById;
 export const createCourse = courseApi.createCourse;
 export const updateCourse = courseApi.updateCourse;
 export const deleteCourse = courseApi.deleteCourse;
+
+// Weekly Schedule legacy exports
+export const fetchWeeklySchedule = courseApi.getWeeklySchedule;
+export const updateWeeklySchedule = courseApi.updateBulkWeeklySchedule;
 
 // 이전 이름 호환성 유지
 export const golfCourseApi = courseApi;

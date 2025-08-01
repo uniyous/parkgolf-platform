@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { navigationConfig, quickAccessItems, getRecentPages, getFavorites, toggleFavorite, isFavorite, addRecentPage } from './navigation';
 import { UserDropdown } from './UserDropdown';
@@ -26,24 +26,26 @@ export const EnhancedGNB: React.FC<EnhancedGNBProps> = ({ currentUser, onLogout,
   const [recentPages, setRecentPages] = useState<NavigationItem[]>([]);
   const [favorites, setFavorites] = useState<NavigationItem[]>([]);
 
-  // 권한 기반 네비게이션 필터링
-  const filterNavigationByPermission = (items: NavigationItem[]): NavigationItem[] => {
-    return items.filter(item => {
-      // 권한이 설정되지 않은 항목은 모두 표시
-      if (!item.permission) return true;
-      // 권한이 있는 항목만 표시
-      return hasPermission(item.permission as any);
-    });
-  };
+  // 권한 기반 네비게이션 필터링 (useMemo로 최적화)
+  const filteredNavigationConfig = useMemo(() => {
+    const filterNavigationByPermission = (items: NavigationItem[]): NavigationItem[] => {
+      return items.filter(item => {
+        // 권한이 설정되지 않은 항목은 모두 표시
+        if (!item.permission) return true;
+        // 권한이 있는 항목만 표시
+        return hasPermission(item.permission as any);
+      });
+    };
 
-  const filterGroupsByPermission = (groups: NavigationGroup[]): NavigationGroup[] => {
-    return groups.map(group => ({
-      ...group,
-      items: filterNavigationByPermission(group.items)
-    })).filter(group => group.items.length > 0); // 빈 그룹은 제거
-  };
+    const filterGroupsByPermission = (groups: NavigationGroup[]): NavigationGroup[] => {
+      return groups.map(group => ({
+        ...group,
+        items: filterNavigationByPermission(group.items)
+      })).filter(group => group.items.length > 0); // 빈 그룹은 제거
+    };
 
-  const filteredNavigationConfig = filterGroupsByPermission(navigationConfig);
+    return filterGroupsByPermission(navigationConfig);
+  }, [currentUser.role]); // currentUser.role이 변경될 때만 재계산
 
   // 컴포넌트 마운트 시 데이터 로드
   useEffect(() => {
@@ -60,7 +62,7 @@ export const EnhancedGNB: React.FC<EnhancedGNBProps> = ({ currentUser, onLogout,
       }
     });
     setCollapsedGroups(initialCollapsed);
-  }, [hasPermission]);
+  }, [filteredNavigationConfig]); // filteredNavigationConfig가 변경될 때만 실행
 
   // 현재 페이지 정보를 최근 방문에 추가
   useEffect(() => {

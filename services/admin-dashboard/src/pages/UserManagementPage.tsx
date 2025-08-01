@@ -1,10 +1,16 @@
 import React from 'react';
 import { UserManagementContainer } from '../components/user';
 import { PageLayout } from '../components/common/Layout/PageLayout';
-import { Breadcrumb } from '../components/common/Breadcrumb';
 import { CanManageUsers } from '../components/auth/PermissionGuard';
+import { useSetBreadcrumb } from '../redux/hooks/useBreadcrumb';
 
 export const UserManagementPage: React.FC = () => {
+  // Redux breadcrumb 설정
+  useSetBreadcrumb([
+    { label: '시스템', icon: '⚙️' },
+    { label: '사용자 관리', icon: '👥' }
+  ]);
+
   return (
     <CanManageUsers
       fallback={
@@ -17,12 +23,6 @@ export const UserManagementPage: React.FC = () => {
       }
     >
       <PageLayout>
-        <Breadcrumb 
-          items={[
-            { label: '시스템', icon: '⚙️' },
-            { label: '사용자 관리', icon: '👥' }
-          ]}
-        />
         <PageLayout.Content>
           <UserManagementContainer />
         </PageLayout.Content>

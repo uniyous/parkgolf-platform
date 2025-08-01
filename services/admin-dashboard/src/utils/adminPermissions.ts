@@ -12,6 +12,14 @@ export const ROLE_PERMISSION_MATRIX: Record<AdminRole, Permission[]> = {
     'PLATFORM_SYSTEM_CONFIG',
     'PLATFORM_ANALYTICS',
     'PLATFORM_SUPPORT',
+    'MANAGE_COMPANIES', // 회사 관리 권한 추가
+    'MANAGE_COURSES', // 코스 관리 권한 추가
+    'MANAGE_TIMESLOTS', // 타임슬롯 관리 권한 추가
+    'MANAGE_BOOKINGS', // 예약 관리 권한 추가
+    'MANAGE_USERS', // 사용자 관리 권한 추가
+    'MANAGE_ADMINS', // 관리자 관리 권한 추가
+    'VIEW_DASHBOARD', // 대시보드 권한 추가
+    'VIEW_ANALYTICS', // 분석 권한 추가
     'COMPANY_ALL',
     'COMPANY_ADMIN_MANAGE',
     'COMPANY_COURSE_MANAGE',
@@ -29,6 +37,14 @@ export const ROLE_PERMISSION_MATRIX: Record<AdminRole, Permission[]> = {
     'PLATFORM_USER_MANAGE',
     'PLATFORM_ANALYTICS',
     'PLATFORM_SUPPORT',
+    'MANAGE_COMPANIES', // 회사 관리 권한 추가
+    'MANAGE_COURSES', // 코스 관리 권한 추가
+    'MANAGE_TIMESLOTS', // 타임슬롯 관리 권한 추가
+    'MANAGE_BOOKINGS', // 예약 관리 권한 추가
+    'MANAGE_USERS', // 사용자 관리 권한 추가
+    'MANAGE_ADMINS', // 관리자 관리 권한 추가
+    'VIEW_DASHBOARD', // 대시보드 권한 추가
+    'VIEW_ANALYTICS', // 분석 권한 추가
     'COMPANY_ALL',
     'COMPANY_ADMIN_MANAGE',
     'COMPANY_COURSE_MANAGE',

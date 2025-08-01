@@ -7,6 +7,7 @@ import {
   selectCourse 
 } from '../slices/courseSlice';
 import { courseApi } from '../../api/courseApi';
+import { useAdminAuth } from '../../contexts/AdminAuthContext';
 import type { Company, Course, UpdateCourseDto } from '../../types';
 
 export interface UseGolfCourseManagementReturn {
@@ -34,6 +35,7 @@ export interface UseGolfCourseManagementReturn {
 
 export const useGolfCourseManagement = (): UseGolfCourseManagementReturn => {
   const dispatch = useAppDispatch();
+  const { currentAdmin } = useAdminAuth();
   const { 
     companies, 
     courses, 
@@ -53,8 +55,31 @@ export const useGolfCourseManagement = (): UseGolfCourseManagementReturn => {
     error
   });
 
+  // 권한에 따른 회사 목록 필터링
+  const filteredCompanies = currentAdmin ? (Array.isArray(companies) ? companies : []).filter((company: Company) => {
+    if (currentAdmin.scope === 'PLATFORM') {
+      return true; // 플랫폼 관리자는 모든 회사 조회 가능
+    } else if (currentAdmin.scope === 'COMPANY') {
+      return company.id === currentAdmin.companyId; // 회사 관리자는 자신의 회사만
+    } else {
+      return false; // 코스 관리자는 회사 선택 불가
+    }
+  }) : (Array.isArray(companies) ? companies : []);
+
+  // 권한에 따른 코스 목록 필터링
+  const filteredCourses = currentAdmin ? (Array.isArray(courses) ? courses : []).filter((course: Course) => {
+    if (currentAdmin.scope === 'PLATFORM') {
+      return true; // 플랫폼 관리자는 모든 코스 조회 가능
+    } else if (currentAdmin.scope === 'COMPANY') {
+      return course.companyId === currentAdmin.companyId; // 회사 관리자는 자신의 회사 코스만
+    } else if (currentAdmin.scope === 'COURSE') {
+      return currentAdmin.courseIds?.includes(course.id) || false; // 코스 관리자는 담당 코스만
+    }
+    return false;
+  }) : (Array.isArray(courses) ? courses : []);
+
   const selectedCourse = selectedCourseId 
-    ? courses.find((course: any) => course.id === selectedCourseId) || null 
+    ? filteredCourses.find((course: Course) => course.id === selectedCourseId) || null 
     : null;
 
   const fetchCompaniesAction = async () => {
@@ -92,9 +117,9 @@ export const useGolfCourseManagement = (): UseGolfCourseManagementReturn => {
   };
 
   return {
-    // 상태
-    companies,
-    courses,
+    // 상태 (권한 필터링 적용)
+    companies: filteredCompanies,
+    courses: filteredCourses,
     selectedCompanyId,
     selectedCourse,
     

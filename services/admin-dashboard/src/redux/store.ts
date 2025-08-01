@@ -3,6 +3,8 @@ import authReducer from './slices/authSlice';
 import courseReducer from './slices/courseSlice';
 import holeReducer from './slices/holeSlice';
 import adminReducer from './slices/adminSlice';
+import companyReducer from './slices/companySlice';
+import breadcrumbReducer from './slices/breadcrumbSlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +12,8 @@ export const store = configureStore({
     course: courseReducer,
     hole: holeReducer,
     admin: adminReducer,
+    company: companyReducer,
+    breadcrumb: breadcrumbReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -18,6 +22,12 @@ export const store = configureStore({
         ignoredActionPaths: [
           'meta.arg',
           'meta.baseQueryMeta'
+        ],
+        ignoredStatePaths: [
+          // 필요한 경우에만 특정 경로 무시 (현재는 모든 데이터가 직렬화 가능)
+        ],
+        ignoredActions: [
+          // 필요한 경우에만 특정 액션 무시 (현재는 모든 액션이 직렬화 가능)
         ],
       },
     }),

@@ -6,13 +6,16 @@ import { useConfirmation } from '../../hooks/useConfirmation';
 import { CourseFormModal } from './CourseFormModal';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
+import { PageHeader, PageHeaderAction } from '../common/PageHeader';
 import type { Course, UpdateCourseDto, CreateCourseDto } from '../../types';
 import { courseApi } from '../../api/courseApi';
+import { useBreadcrumb } from '../../redux/hooks/useBreadcrumb';
 
 
 export const CourseManagementContainer: React.FC = () => {
   // 통합된 상태 관리 훅 사용
   const golfCourseManager = useGolfCourseManagement();
+  const { push, pop } = useBreadcrumb();
   
   // 모달 관리
   const addCourseModal = useModal();
@@ -28,15 +31,18 @@ export const CourseManagementContainer: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // 빈 의존성 배열로 한 번만 실행
 
-  // 회사 목록이 로드된 후 첫 번째 회사 자동 선택
+  // 권한에 따른 자동 선택 로직
   useEffect(() => {
     console.log('CourseManagementContainer - Auto selection effect triggered');
     console.log('Companies length:', golfCourseManager.companies.length);
     console.log('Selected company ID:', golfCourseManager.selectedCompanyId);
     console.log('Companies:', golfCourseManager.companies);
     
+    // 권한 기반 자동 선택
     if (golfCourseManager.companies.length > 0 && !golfCourseManager.selectedCompanyId) {
-      console.log('Auto-selecting first company:', golfCourseManager.companies[0]);
+      // 회사 관리자의 경우 자신의 회사 자동 선택
+      // 플랫폼 관리자의 경우 첫 번째 회사 선택
+      console.log('Auto-selecting first available company:', golfCourseManager.companies[0]);
       golfCourseManager.selectCompanyAndFetchCourses(golfCourseManager.companies[0].id);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -52,12 +58,16 @@ export const CourseManagementContainer: React.FC = () => {
   const handleCourseSelect = (course: Course) => {
     if (golfCourseManager.selectedCompanyId) {
       golfCourseManager.selectCourse(golfCourseManager.selectedCompanyId, course.id);
+      // breadcrumb에 선택된 코스 추가
+      push({ label: course.name, icon: '🏌️' });
     }
   };
 
   const handleBackToCourseList = () => {
     if (golfCourseManager.selectedCompanyId) {
       golfCourseManager.selectCourse(golfCourseManager.selectedCompanyId, null);
+      // breadcrumb에서 코스 항목 제거
+      pop();
     }
   };
 

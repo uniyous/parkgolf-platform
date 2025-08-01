@@ -1,43 +1,33 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
-import { BaseExceptionFilter } from './common/exception/base-exception.filter';
 import { GlobalRpcExceptionFilter } from './common/exception/rpc-exception.filter';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   
   try {
-    const app = await NestFactory.create(AppModule);
-    const configService = app.get(ConfigService);
-
-    // Global exception filter
-    app.useGlobalFilters(new BaseExceptionFilter());
-
-    // NATS microservice setup (if needed)
+    // Create NATS microservice only (no HTTP server)
+    const configService = new ConfigService();
     const natsUrl = configService.get<string>('NATS_URL') || 'nats://localhost:4222';
     
-    try {
-      const microservice = app.connectMicroservice<MicroserviceOptions>({
-        transport: Transport.NATS,
-        options: {
-          servers: [natsUrl],
-          queue: 'course-service',
-          reconnect: true,
-          maxReconnectAttempts: 5,
-          reconnectTimeWait: 1000,
-        },
-      });
+    const app = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
+      transport: Transport.NATS,
+      options: {
+        servers: [natsUrl],
+        queue: 'course-service',
+        reconnect: true,
+        maxReconnectAttempts: 5,
+        reconnectTimeWait: 1000,
+      },
+    });
 
-      microservice.useGlobalFilters(new GlobalRpcExceptionFilter());
-    } catch (error) {
-      logger.error('Failed to connect to NATS', error);
-      throw error;
-    }
+    // Global filters for microservice
+    app.useGlobalFilters(new GlobalRpcExceptionFilter());
 
+    // Global pipes for validation
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -49,28 +39,18 @@ async function bootstrap() {
       }),
     );
 
-    app.enableCors();
-
-    const config = new DocumentBuilder()
-      .setTitle('Park  Course Service API')
-      .setDescription('Course management API')
-      .setVersion('1.0')
-      .addBearerAuth()
-      .build();
+    await app.listen();
     
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api-docs', app, document);
-
-    await app.startAllMicroservices();
-
-    const port = configService.get<number>('PORT') || 3012;
-    await app.listen(port);
-    
-    logger.log(`🚀 Course Service is running on port ${port}`);
-    logger.log(`📚 Swagger docs: http://localhost:${port}/api-docs`);
-    logger.log(`🔗 NATS microservice connected to: ${natsUrl}`);
+    logger.log(`🚀 Course Service (NATS Microservice) is running`);
+    logger.log(`🔗 NATS connected to: ${natsUrl}`);
+    logger.log(`📢 Queue: course-service`);
+    logger.log(`💬 Available message patterns:`);
+    logger.log(`   - courses.list, courses.findById, courses.create, courses.update, courses.delete`);
+    logger.log(`   - holes.list, holes.findById, holes.create, holes.update, holes.delete, holes.findByCourse`);
+    logger.log(`   - timeSlots.list, timeSlots.create, timeSlots.update, timeSlots.delete, timeSlots.stats, timeSlots.findByCourse`);
+    logger.log(`   - companies.list, companies.findById, companies.create, companies.update, companies.delete`);
   } catch (error) {
-    logger.error('Failed to start Course Service', error);
+    logger.error('Failed to start Course Service microservice', error);
     process.exit(1);
   }
 }

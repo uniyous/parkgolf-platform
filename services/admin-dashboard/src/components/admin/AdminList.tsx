@@ -27,10 +27,13 @@ export const AdminList: React.FC<AdminListProps> = ({
   // 역할별 배지 색상
   const getRoleBadgeColor = (role: AdminRole): string => {
     switch (role) {
-      case 'SUPER_ADMIN': return 'bg-red-100 text-red-800';
-      case 'ADMIN': return 'bg-blue-100 text-blue-800';
-      case 'MODERATOR': return 'bg-green-100 text-green-800';
-      case 'VIEWER': return 'bg-gray-100 text-gray-800';
+      case 'PLATFORM_OWNER': return 'bg-red-100 text-red-800';
+      case 'PLATFORM_ADMIN': return 'bg-purple-100 text-purple-800';
+      case 'COMPANY_OWNER': return 'bg-blue-100 text-blue-800';
+      case 'COMPANY_MANAGER': return 'bg-green-100 text-green-800';
+      case 'COURSE_MANAGER': return 'bg-yellow-100 text-yellow-800';
+      case 'STAFF': return 'bg-indigo-100 text-indigo-800';
+      case 'READONLY_STAFF': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -38,10 +41,15 @@ export const AdminList: React.FC<AdminListProps> = ({
   // 역할명 한글 변환
   const getRoleLabel = (role: AdminRole): string => {
     switch (role) {
-      case 'SUPER_ADMIN': return '최고 관리자';
-      case 'ADMIN': return '관리자';
-      case 'MODERATOR': return '운영자';
-      case 'VIEWER': return '조회자';
+      case 'PLATFORM_OWNER': return '플랫폼 소유자';
+      case 'PLATFORM_ADMIN': return '플랫폼 관리자';
+      case 'PLATFORM_SUPPORT': return '플랫폼 지원팀';
+      case 'PLATFORM_ANALYST': return '플랫폼 분석가';
+      case 'COMPANY_OWNER': return '회사 대표';
+      case 'COMPANY_MANAGER': return '회사 운영 관리자';
+      case 'COURSE_MANAGER': return '코스 관리자';
+      case 'STAFF': return '일반 직원';
+      case 'READONLY_STAFF': return '조회 전용 직원';
       default: return role;
     }
   };
@@ -65,7 +73,7 @@ export const AdminList: React.FC<AdminListProps> = ({
             총 {admins.length}명의 관리자가 등록되어 있습니다.
           </p>
         </div>
-        {hasPermission('ADMIN_WRITE') && (
+        {hasPermission('COMPANY_ADMIN_MANAGE') && (
           <button
             onClick={onCreateAdmin}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -139,7 +147,7 @@ export const AdminList: React.FC<AdminListProps> = ({
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          {hasPermission('ADMIN_WRITE') && (
+                          {hasPermission('COMPANY_ADMIN_MANAGE') && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -150,7 +158,7 @@ export const AdminList: React.FC<AdminListProps> = ({
                               수정
                             </button>
                           )}
-                          {hasPermission('ADMIN_DELETE') && admin.role !== 'SUPER_ADMIN' && (
+                          {hasPermission('COMPANY_ADMIN_MANAGE') && admin.role !== 'PLATFORM_OWNER' && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();

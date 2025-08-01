@@ -16,6 +16,18 @@ enum CourseStatus {
   MAINTENANCE
 }
 
+enum RoundType {
+  NINE_HOLE
+  EIGHTEEN_HOLE
+}
+
+enum TimeSlotStatus {
+  ACTIVE
+  INACTIVE
+  BOOKED_OUT
+  CANCELLED
+}
+
 model Company {
   id          Int      @id @default(autoincrement())
   name        String
@@ -28,6 +40,7 @@ model Company {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   courses     Course[]
+  timeSlotTemplates TimeSlotTemplate[]
 
   @@map("companies")
 }
@@ -42,7 +55,11 @@ model Course {
   companyId       Int
   company         Company                @relation(fields: [companyId], references: [id])
   holes           Hole[]
-  timeSlots       CourseTimeSlot[]
+  
+  // 9홀 기준 타임슬롯 관계 (2개 코스만)
+  firstCourseTimeSlots   CourseTimeSlot[] @relation("FirstCourseTimeSlots")
+  secondCourseTimeSlots  CourseTimeSlot[] @relation("SecondCourseTimeSlots")
+  
   weeklySchedules CourseWeeklySchedule[]
   isActive        Boolean                @default(true)
   createdAt       DateTime               @default(now())
@@ -84,17 +101,37 @@ model CourseTimeSlot {
   date       String   // YYYY-MM-DD format
   startTime  String   // HH:MM format
   endTime    String   // HH:MM format
-  maxPlayers Int      @default(4)
-  price      Decimal  @db.Decimal(10, 2)
-  courseId   Int
-  course     Course   @relation(fields: [courseId], references: [id])
-  isActive   Boolean  @default(true)
+  
+  // 9홀 기준 라운드 타입 및 코스 조합
+  roundType          RoundType @default(EIGHTEEN_HOLE)
+  firstCourseId      Int
+  secondCourseId     Int?
+  
+  // 예약 관리 필드
+  bookedCount        Int           @default(0)
+  availableSlots     Int           @default(4)
+  
+  // 라운드 타입별 가격
+  nineHolePrice      Decimal?      @db.Decimal(10, 2)
+  eighteenHolePrice  Decimal       @db.Decimal(10, 2)
+  
+  // 상태 및 메타데이터
+  status             TimeSlotStatus @default(ACTIVE)
+  notes              String?
+  
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  @@unique([courseId, date, startTime, endTime]) // 중복 방지
+  // 9홀 기준 관계 (2개 코스)
+  firstCourse   Course  @relation("FirstCourseTimeSlots", fields: [firstCourseId], references: [id], onDelete: Cascade)
+  secondCourse  Course? @relation("SecondCourseTimeSlots", fields: [secondCourseId], references: [id], onDelete: Cascade)
+
+  @@unique([firstCourseId, secondCourseId, date, startTime, endTime])
+  @@index([date, firstCourseId])
+  @@index([roundType, status])
   @@map("course_time_slots")
 }
+
 
 model CourseWeeklySchedule {
   id        Int      @id @default(autoincrement())
@@ -109,4 +146,42 @@ model CourseWeeklySchedule {
 
   @@unique([courseId, dayOfWeek])
   @@map("course_weekly_schedules")
+}
+
+model TimeSlotTemplate {
+  id          Int        @id @default(autoincrement())
+  name        String
+  description String?
+  roundType   RoundType  @default(EIGHTEEN_HOLE)
+  
+  // 시간 패턴
+  timePattern Json       // { intervals: [{ start: "09:00", end: "11:00" }, ...] }
+  
+  // 9홀 기준 기본값들
+  defaultMaxPlayers         Int     @default(4)
+  defaultNineHolePrice      Decimal @db.Decimal(10, 2)
+  defaultEighteenHolePrice  Decimal @db.Decimal(10, 2)
+  
+  companyId   Int
+  company     Company    @relation(fields: [companyId], references: [id])
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("time_slot_templates")
+}
+
+
+model TimeSlotGenerationLog {
+  id            Int      @id @default(autoincrement())
+  adminId       Int?     // 생성한 관리자 ID
+  templateId    Int?     // 사용된 템플릿 ID
+  
+  generationConfig Json  // 생성 설정 저장
+  slotsCreated     Int   // 생성된 슬롯 수
+  dateRange        Json  // { start: "2024-01-01", end: "2024-01-31" }
+  
+  createdAt     DateTime @default(now())
+
+  @@map("time_slot_generation_logs")
 }

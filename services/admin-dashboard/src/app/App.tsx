@@ -1,16 +1,12 @@
-import { useEffect } from "react";
 import { AppRouter } from "./router";
-import { useAuth } from "../redux/hooks/useAuth";
+import { AdminAuthProvider } from "../contexts/AdminAuthContext";
 
 function App() {
-  const { checkAuth } = useAuth();
-
-  useEffect(() => {
-    // 앱 시작 시 인증 상태 확인
-    checkAuth();
-  }, [checkAuth]);
-
-  return <AppRouter />;
+  return (
+    <AdminAuthProvider>
+      <AppRouter />
+    </AdminAuthProvider>
+  );
 }
 
 export default App;

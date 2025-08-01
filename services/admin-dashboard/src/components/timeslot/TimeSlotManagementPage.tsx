@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { courseApi } from '../../api/courseApi';
 import { TimeSlotManagement } from './TimeSlotManagement';
-import { WeeklyScheduleManager } from './WeeklyScheduleManager';
-import { Breadcrumb } from '../common/Breadcrumb';
+import { WeeklyScheduleManager } from '../course/WeeklyScheduleManager';
+import { PageLayout } from '../common/Layout/PageLayout';
+import { PageHeader, PageHeaderAction } from '../common/PageHeader';
+import { useBreadcrumb } from '../../redux/hooks/useBreadcrumb';
 import type { Course } from '../../types';
 
 export const TimeSlotManagementPage: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
+  const { setItems } = useBreadcrumb();
   
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,8 +28,24 @@ export const TimeSlotManagementPage: React.FC = () => {
       }
 
       try {
+        console.log('Fetching course with ID:', courseId);
         const courseData = await courseApi.getCourseById(parseInt(courseId));
+        console.log('Course data received:', courseData);
+        
+        if (!courseData) {
+          throw new Error('코스 데이터를 찾을 수 없습니다.');
+        }
+        
         setCourse(courseData);
+        
+        // breadcrumb 설정 - courseData.name 존재 확인
+        if (courseData.name) {
+          setItems([
+            { label: '코스 관리', path: '/course-management', icon: '⛳' },
+            { label: courseData.name, icon: '🏌️' },
+            { label: '타임슬롯 관리', icon: '⏰' }
+          ]);
+        }
       } catch (error) {
         console.error('Failed to fetch course:', error);
         setError('코스 정보를 불러오는데 실패했습니다.');
@@ -36,63 +55,61 @@ export const TimeSlotManagementPage: React.FC = () => {
     };
 
     fetchCourse();
-  }, [courseId]);
+  }, [courseId, setItems]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">코스 정보를 불러오는 중...</p>
-        </div>
-      </div>
+      <PageLayout>
+        <PageLayout.Content>
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">코스 정보를 불러오는 중...</p>
+            </div>
+          </div>
+        </PageLayout.Content>
+      </PageLayout>
     );
   }
 
   if (error || !course) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">오류가 발생했습니다</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={() => navigate('/courses')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            코스 목록으로 돌아가기
-          </button>
-        </div>
-      </div>
+      <PageLayout>
+        <PageLayout.Content>
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="text-red-500 text-6xl mb-4">⚠️</div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">오류가 발생했습니다</h2>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <button
+                onClick={() => navigate('/course-management')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                코스 목록으로 돌아가기
+              </button>
+            </div>
+          </div>
+        </PageLayout.Content>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="space-y-6">
-        {/* Breadcrumb */}
-        <Breadcrumb 
-          items={[
-            { label: '코스 관리', path: '/course-management', icon: '⛳' },
-            { label: course.name, path: '/course-management', icon: '🏌️' },
-            { label: '타임슬롯 관리', icon: '⏰' }
-          ]}
-        />
-
-        {/* 페이지 헤더 */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">{course.name}</h1>
-              <p className="text-gray-600 mt-1">타임슬롯과 운영 스케줄을 관리하세요</p>
-            </div>
-            <button
-              onClick={() => navigate('/courses')}
-              className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-            >
-              코스 목록으로
-            </button>
-          </div>
-        </div>
+    <PageLayout>
+      <PageLayout.Content>
+        <div className="space-y-6">
+          {/* Unified Page Header */}
+          <PageHeader
+            title={course.name}
+            subtitle="타임슬롯과 운영 스케줄을 관리하세요"
+            icon={
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            }
+            onBack={() => navigate('/course-management')}
+            backLabel="코스 목록으로"
+          />
 
         {/* 코스 개요 카드 */}
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
@@ -183,6 +200,8 @@ export const TimeSlotManagementPage: React.FC = () => {
             {activeTab === 'schedule' && <WeeklyScheduleManager course={course} />}
           </div>
         </div>
-    </div>
+        </div>
+      </PageLayout.Content>
+    </PageLayout>
   );
 };

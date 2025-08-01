@@ -1,6 +1,44 @@
 import { apiClient, type BffApiResponse } from './client';
 import type { AuthResponse, LoginCredentials, User } from "../types";
 
+// Auth Service 직접 연결을 위한 클라이언트
+const AUTH_SERVICE_BASE_URL = (import.meta as any).env?.VITE_AUTH_API_BASE_URL || 'http://localhost:3011';
+
+class AuthServiceClient {
+  private baseURL: string;
+
+  constructor(baseURL: string) {
+    this.baseURL = baseURL;
+  }
+
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`;
+    
+    // 헤더 설정
+    const token = localStorage.getItem('accessToken');
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...options.headers,
+    };
+
+    const response = await fetch(url, { ...options, headers });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  async getProfile(): Promise<User> {
+    return this.request<User>('/auth/profile');
+  }
+}
+
+const authServiceClient = new AuthServiceClient(AUTH_SERVICE_BASE_URL);
+
 export const authApi = {
   async login(credentials: LoginCredentials): Promise<BffApiResponse<AuthResponse>> {
     try {
@@ -11,6 +49,11 @@ export const authApi = {
       if (response.data.accessToken) {
         localStorage.setItem('accessToken', response.data.accessToken);
         localStorage.setItem('refreshToken', response.data.refreshToken);
+        
+        // 사용자 정보도 캐시에 저장 (getCurrentUser 실패 시 사용)
+        if (response.data.user) {
+          localStorage.setItem('currentUser', JSON.stringify(response.data.user));
+        }
       }
       
       console.log('Login successful:', response.data);
@@ -52,13 +95,33 @@ export const authApi = {
 
   async getCurrentUser(): Promise<BffApiResponse<User>> {
     try {
-      const response = await apiClient.get<User>('/admin/auth/me');
+      // Auth Service에 직접 연결하여 프로필 정보 가져오기
+      console.log('Fetching user profile from auth-service...');
+      const user = await authServiceClient.getProfile();
+      console.log('Successfully fetched user profile:', user);
+      
       return {
         success: true,
-        data: response.data
+        data: user
       };
     } catch (error) {
-      console.error('Failed to get current user:', error);
+      console.error('Failed to get current user from auth-service:', error);
+      
+      // Auth Service 실패 시 localStorage에서 사용자 정보 확인
+      const cachedUser = localStorage.getItem('currentUser');
+      if (cachedUser) {
+        try {
+          const user = JSON.parse(cachedUser);
+          console.log('Using cached user data:', user);
+          return {
+            success: true,
+            data: user
+          };
+        } catch (parseError) {
+          console.error('Failed to parse cached user data:', parseError);
+        }
+      }
+      
       return {
         success: false,
         error: {
@@ -100,6 +163,7 @@ export const authApi = {
       // Always clear local storage
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      localStorage.removeItem('currentUser');
     }
   }
 } as const;

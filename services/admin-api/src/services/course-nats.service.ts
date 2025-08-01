@@ -170,13 +170,41 @@ export class CourseNatsService {
   }
 
   // Time Slot Management
-  async getTimeSlots(courseId: string, date?: string, adminToken?: string): Promise<any> {
+  async getTimeSlots(courseId: string, date?: string, adminToken?: string): Promise<any>;
+  async getTimeSlots(filters: any, adminToken: string): Promise<any>;
+  async getTimeSlots(courseIdOrFilters: string | any, dateOrAdminToken?: string, adminToken?: string): Promise<any> {
     try {
-      this.logger.log(`Fetching time slots via NATS for course: ${courseId}`);
+      // Handle different overloads
+      let params: any;
+      let token: string;
       
-      const params: any = { courseId };
-      if (date) params.date = date;
-      if (adminToken) params.token = adminToken;
+      if (typeof courseIdOrFilters === 'string') {
+        // First overload: getTimeSlots(courseId, date?, adminToken?)
+        this.logger.log(`Fetching time slots via NATS for course: ${courseIdOrFilters}`);
+        params = { courseId: courseIdOrFilters };
+        if (dateOrAdminToken && typeof dateOrAdminToken === 'string' && !adminToken) {
+          // Assume dateOrAdminToken is date if adminToken is not provided
+          params.date = dateOrAdminToken;
+        } else if (dateOrAdminToken && adminToken) {
+          // Both date and adminToken provided
+          params.date = dateOrAdminToken;
+          token = adminToken;
+        } else if (dateOrAdminToken && !adminToken) {
+          // Could be either date or adminToken
+          if (dateOrAdminToken.includes('-')) {
+            params.date = dateOrAdminToken;
+          } else {
+            token = dateOrAdminToken;
+          }
+        }
+      } else {
+        // Second overload: getTimeSlots(filters, adminToken)
+        this.logger.log('Fetching time slots with filters via NATS:', courseIdOrFilters);
+        params = { ...courseIdOrFilters };
+        token = dateOrAdminToken as string;
+      }
+
+      if (token) params.token = token;
 
       const result = await firstValueFrom(
         this.courseClient.send('courses.timeSlots.list', params).pipe(timeout(10000))
@@ -184,18 +212,18 @@ export class CourseNatsService {
       
       return result;
     } catch (error) {
-      this.logger.error(`Failed to fetch time slots for course: ${courseId}`, error);
+      this.logger.error('Failed to fetch time slots', error);
       throw error;
     }
   }
 
   async createTimeSlot(courseId: string, timeSlotData: any, adminToken: string): Promise<any> {
     try {
-      this.logger.log(`Creating time slot via NATS for course: ${courseId}`);
+      this.logger.log('Creating time slot via NATS with 9-hole support');
       
       const result = await firstValueFrom(
         this.courseClient.send('courses.timeSlots.create', { 
-          courseId, 
+          courseId,
           data: timeSlotData, 
           token: adminToken 
         }).pipe(timeout(5000))
@@ -203,10 +231,11 @@ export class CourseNatsService {
       
       return result;
     } catch (error) {
-      this.logger.error(`Failed to create time slot for course: ${courseId}`, error);
+      this.logger.error('Failed to create time slot', error);
       throw error;
     }
   }
+
 
   async updateTimeSlot(courseId: string, timeSlotId: string, updateData: any, adminToken: string): Promise<any> {
     try {
@@ -214,8 +243,8 @@ export class CourseNatsService {
       
       const result = await firstValueFrom(
         this.courseClient.send('courses.timeSlots.update', { 
-          courseId, 
-          timeSlotId, 
+          courseId,
+          timeSlotId: Number(timeSlotId), 
           data: updateData, 
           token: adminToken 
         }).pipe(timeout(5000))
@@ -234,8 +263,8 @@ export class CourseNatsService {
       
       const result = await firstValueFrom(
         this.courseClient.send('courses.timeSlots.delete', { 
-          courseId, 
-          timeSlotId, 
+          courseId,
+          timeSlotId: Number(timeSlotId), 
           token: adminToken 
         }).pipe(timeout(5000))
       );
@@ -244,6 +273,37 @@ export class CourseNatsService {
     } catch (error) {
       this.logger.error(`Failed to delete time slot: ${timeSlotId}`, error);
       throw error;
+    }
+  }
+
+  async getTimeSlotStats(params: any, adminToken?: string): Promise<any> {
+    try {
+      this.logger.log('Fetching time slot statistics via NATS');
+      
+      const requestParams: any = { ...params };
+      if (adminToken) requestParams.token = adminToken;
+
+      const result = await firstValueFrom(
+        this.courseClient.send('courses.timeSlots.stats', requestParams).pipe(timeout(10000))
+      );
+      
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to fetch time slot statistics', error);
+      
+      // Return mock data if service is unavailable
+      return {
+        totalSlots: 0,
+        activeSlots: 0,
+        fullyBookedSlots: 0,
+        cancelledSlots: 0,
+        totalRevenue: 0,
+        averageUtilization: 0,
+        totalBookings: 0,
+        averagePrice: 0,
+        peakHours: [],
+        topCourses: [],
+      };
     }
   }
 
@@ -382,6 +442,87 @@ export class CourseNatsService {
       return result;
     } catch (error) {
       this.logger.error('Failed to fetch course statistics', error);
+      throw error;
+    }
+  }
+
+  // Weekly Schedule Management
+  async getWeeklySchedules(courseId: string, adminToken: string): Promise<any> {
+    try {
+      this.logger.log(`Fetching weekly schedules for course via NATS: ${courseId}`);
+      
+      const result = await firstValueFrom(
+        this.courseClient.send('courses.weeklySchedule.list', { courseId, token: adminToken }).pipe(timeout(5000))
+      );
+      
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to fetch weekly schedules for course: ${courseId}`, error);
+      throw error;
+    }
+  }
+
+  async getWeeklyScheduleById(scheduleId: string, adminToken: string): Promise<any> {
+    try {
+      this.logger.log(`Fetching weekly schedule via NATS: ${scheduleId}`);
+      
+      const result = await firstValueFrom(
+        this.courseClient.send('courses.weeklySchedule.findById', { scheduleId, token: adminToken }).pipe(timeout(5000))
+      );
+      
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to fetch weekly schedule: ${scheduleId}`, error);
+      throw error;
+    }
+  }
+
+  async getWeeklyScheduleByDay(courseId: string, dayOfWeek: string, adminToken: string): Promise<any> {
+    try {
+      this.logger.log(`Fetching weekly schedule by day via NATS: ${courseId}, day: ${dayOfWeek}`);
+      
+      const result = await firstValueFrom(
+        this.courseClient.send('courses.weeklySchedule.findByCourseAndDay', { 
+          courseId, 
+          dayOfWeek: Number(dayOfWeek), 
+          token: adminToken 
+        }).pipe(timeout(5000))
+      );
+      
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to fetch weekly schedule by day: ${dayOfWeek}`, error);
+      throw error;
+    }
+  }
+
+  async createWeeklySchedule(scheduleData: any, adminToken: string): Promise<any> {
+    try {
+      this.logger.log('Creating weekly schedule via NATS');
+      
+      const result = await firstValueFrom(
+        this.courseClient.send('courses.weeklySchedule.create', { data: scheduleData, token: adminToken }).pipe(timeout(5000))
+      );
+      
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to create weekly schedule', error);
+      throw error;
+    }
+  }
+
+
+  async deleteWeeklySchedule(scheduleId: string, adminToken: string): Promise<any> {
+    try {
+      this.logger.log(`Deleting weekly schedule via NATS: ${scheduleId}`);
+      
+      const result = await firstValueFrom(
+        this.courseClient.send('courses.weeklySchedule.delete', { scheduleId, token: adminToken }).pipe(timeout(5000))
+      );
+      
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to delete weekly schedule: ${scheduleId}`, error);
       throw error;
     }
   }

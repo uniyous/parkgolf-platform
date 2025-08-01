@@ -1,10 +1,15 @@
 import React from 'react';
-import { NewCourseManagementContainer } from '../components/course/NewCourseManagementContainer';
-import { Breadcrumb } from '../components/common/Breadcrumb';
+import { CourseManagementContainer } from '../components/course/CourseManagementContainer';
 import { PageLayout } from '../components/common/Layout/PageLayout';
 import { CanManageCourses } from '../components/auth/PermissionGuard';
+import { useSetBreadcrumb } from '../redux/hooks/useBreadcrumb';
 
 export const CourseManagementPage: React.FC = () => {
+  // Redux breadcrumb 설정
+  useSetBreadcrumb([
+    { label: '코스 관리', icon: '⛳' }
+  ]);
+
   return (
     <CanManageCourses
       fallback={
@@ -17,14 +22,8 @@ export const CourseManagementPage: React.FC = () => {
       }
     >
       <PageLayout>
-        <Breadcrumb 
-          items={[
-            { label: '코스 관리', icon: '⛳' }
-          ]}
-        />
-        
         <PageLayout.Content>
-          <NewCourseManagementContainer />
+          <CourseManagementContainer />
         </PageLayout.Content>
       </PageLayout>
     </CanManageCourses>

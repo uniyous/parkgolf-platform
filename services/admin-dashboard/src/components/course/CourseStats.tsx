@@ -136,47 +136,6 @@ export const CourseStats: React.FC<CourseStatsProps> = ({ courses }) => {
         </div>
       ))}
 
-      {/* Status Distribution */}
-      <div className="col-span-full bg-white rounded-xl shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">상태별 분포</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Active Courses */}
-          <div className="text-center">
-            <div className="text-3xl font-bold text-green-600">{activeCourses}</div>
-            <div className="text-sm text-gray-500 mt-1">활성 코스</div>
-            <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-green-500 h-2 rounded-full"
-                style={{ width: `${totalCourses > 0 ? (activeCourses / totalCourses) * 100 : 0}%` }}
-              ></div>
-            </div>
-          </div>
-
-          {/* Maintenance Courses */}
-          <div className="text-center">
-            <div className="text-3xl font-bold text-yellow-600">{maintenanceCourses}</div>
-            <div className="text-sm text-gray-500 mt-1">점검 중</div>
-            <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-yellow-500 h-2 rounded-full"
-                style={{ width: `${totalCourses > 0 ? (maintenanceCourses / totalCourses) * 100 : 0}%` }}
-              ></div>
-            </div>
-          </div>
-
-          {/* Inactive Courses */}
-          <div className="text-center">
-            <div className="text-3xl font-bold text-red-600">{inactiveCourses}</div>
-            <div className="text-sm text-gray-500 mt-1">비활성</div>
-            <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-red-500 h-2 rounded-full"
-                style={{ width: `${totalCourses > 0 ? (inactiveCourses / totalCourses) * 100 : 0}%` }}
-              ></div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
