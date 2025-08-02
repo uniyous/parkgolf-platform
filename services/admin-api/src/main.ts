@@ -55,9 +55,6 @@ async function bootstrap() {
       origin: [
         'http://localhost:3000', // Admin frontend dev
         'http://localhost:3001', // Admin frontend port 2
-        'http://localhost:3002', // Admin frontend port 3
-        'http://localhost:3003', // Admin frontend port 4
-        'https://admin.parkgolf.com', // Production admin domain
       ],
       credentials: true,
     });

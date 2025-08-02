@@ -157,7 +157,84 @@ export class UserService {
         return this.updateUser(parseInt(id), updateUserDto);
     }
 
-    async remove(id: string): Promise<{ message: string }> {
-        return this.deleteUser(parseInt(id));
+    async remove(id: number): Promise<User> {
+        const user = await this.prisma.user.findUnique({ where: { id } });
+        if (!user) {
+            throw new NotFoundException(`User with ID ${id} not found.`);
+        }
+
+        await this.prisma.user.delete({ where: { id } });
+        return user;
+    }
+
+    async findAll(filters: any = {}): Promise<User[]> {
+        const { page = 1, limit = 20, ...whereFilters } = filters;
+        const skip = (page - 1) * limit;
+        
+        return this.prisma.user.findMany({
+            where: whereFilters,
+            skip,
+            take: limit,
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+
+    async findOne(id: number): Promise<User> {
+        const user = await this.prisma.user.findUnique({ where: { id } });
+        if (!user) {
+            throw new NotFoundException(`User with ID ${id} not found.`);
+        }
+        return user;
+    }
+
+    async update(id: number, updateData: any): Promise<User> {
+        const user = await this.prisma.user.findUnique({ where: { id } });
+        if (!user) {
+            throw new NotFoundException(`User with ID ${id} not found.`);
+        }
+
+        const dataToUpdate: any = { ...updateData };
+        
+        if (updateData.password) {
+            dataToUpdate.password = await bcrypt.hash(updateData.password, this.SALT_ROUNDS);
+        }
+
+        return this.prisma.user.update({
+            where: { id },
+            data: dataToUpdate,
+        });
+    }
+
+    async getStats(): Promise<any> {
+        const totalUsers = await this.prisma.user.count();
+        const activeUsers = await this.prisma.user.count({
+            where: { isActive: true }
+        });
+        const inactiveUsers = totalUsers - activeUsers;
+
+        return {
+            totalUsers,
+            activeUsers,
+            inactiveUsers,
+            growthRate: 0, // TODO: Calculate based on date range
+        };
+    }
+
+    async findByEmail(email: string): Promise<User | null> {
+        return this.prisma.user.findUnique({ where: { email } });
+    }
+
+    async validateUser(email: string, password: string): Promise<User | null> {
+        const user = await this.findByEmail(email);
+        if (!user) {
+            return null;
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return null;
+        }
+
+        return user;
     }
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 
 export const LoginPage: React.FC = () => {
@@ -173,17 +173,14 @@ export const LoginPage: React.FC = () => {
           </h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '5px' }}>
             {[
-              { email: 'king@parkgolf.com', password: 'king1234', name: '킹(관리자)', role: 'ADMIN' },
-              { email: 'kimcheolsu@parkgolf.com', password: 'user1234', name: '김철수', role: 'USER' },
-              { email: 'parkyounghee@parkgolf.com', password: 'user1234', name: '박영희', role: 'USER' },
-              { email: 'leeminsu@parkgolf.com', password: 'user1234', name: '이민수', role: 'USER' },
-              { email: 'jungsuyoung@parkgolf.com', password: 'user1234', name: '정수영', role: 'USER' },
-              { email: 'choijina@parkgolf.com', password: 'user1234', name: '최진아', role: 'USER' },
-              { email: 'songdongho@parkgolf.com', password: 'user1234', name: '송동호', role: 'USER' },
-              { email: 'yoonseoyeon@parkgolf.com', password: 'user1234', name: '윤서연', role: 'USER' },
-              { email: 'kangminwoo@parkgolf.com', password: 'mod1234', name: '강민우', role: 'MOD' },
-              { email: 'limjihye@parkgolf.com', password: 'admin1234', name: '임지혜', role: 'ADMIN' },
-              { email: 'hanseungwoo@parkgolf.com', password: 'view1234', name: '한승우', role: 'VIEWER' }
+              { email: 'king@parkgolf.com', password: 'user123', name: '킹(관리자)', role: 'ADMIN' },
+              { email: 'kimcheolsu@parkgolf.com', password: 'user123', name: '김철수', role: 'USER' },
+              { email: 'parkyounghee@parkgolf.com', password: 'user123', name: '박영희', role: 'USER' },
+              { email: 'leeminsu@parkgolf.com', password: 'user123', name: '이민수', role: 'USER' },
+              { email: 'jungsuyoung@parkgolf.com', password: 'user123', name: '정수영', role: 'USER' },
+              { email: 'choijina@parkgolf.com', password: 'user123', name: '최진아', role: 'USER' },
+              { email: 'limjihye@parkgolf.com', password: 'user123', name: '임지혜', role: 'ADMIN' },
+              { email: 'kangminwoo@parkgolf.com', password: 'user123', name: '강민우', role: 'MOD' }
             ].map((testUser, index) => (
               <button
                 key={index}

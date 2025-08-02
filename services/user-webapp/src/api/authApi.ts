@@ -72,6 +72,8 @@ export interface RegisterRequest {
   password: string;
   name: string;
   phone?: string;
+  phoneNumber?: string;
+  birthDate?: string;
 }
 
 export interface User {
@@ -149,3 +151,32 @@ class AuthApiService {
 }
 
 export const authApiService = new AuthApiService();
+
+// Export individual functions for Redux
+export const authApi = {
+  login: async (email: string, password: string): Promise<AuthResponse> => {
+    return authApiService.login({ email, password });
+  },
+  
+  register: async (data: RegisterRequest): Promise<AuthResponse> => {
+    // Handle phoneNumber field
+    const requestData = {
+      ...data,
+      phone: data.phoneNumber || data.phone,
+    };
+    return authApiService.register(requestData);
+  },
+  
+  logout: async (): Promise<void> => {
+    return authApiService.logout();
+  },
+  
+  getProfile: async (token: string): Promise<User> => {
+    return authApiService.getProfile();
+  },
+  
+  refreshToken: async (refreshToken: string): Promise<AuthResponse> => {
+    const response = await authApi.post('/auth/refresh', { refreshToken });
+    return response.data;
+  },
+};
