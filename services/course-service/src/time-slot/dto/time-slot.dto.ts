@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { CourseTimeSlot as CourseTimeSlotModel, RoundType } from '@prisma/client';
-import { IsDateString, IsInt, IsNotEmpty, IsString, IsOptional, IsBoolean, IsArray, ValidateNested, IsNumber, IsEnum } from 'class-validator';
+import { CourseTimeSlot as CourseTimeSlotModel } from '@prisma/client';
+import { IsDateString, IsInt, IsNotEmpty, IsString, IsOptional, IsBoolean, IsArray, ValidateNested, IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class GenerateTimeSlotsDto {
@@ -27,32 +27,17 @@ export class CourseTimeSlotResponseDto {
   @ApiProperty({ description: '슬롯 종료 시간 (HH:MM)' })
   endTime: string;
 
-  @ApiProperty({ description: '라운드 타입', enum: RoundType })
-  roundType: RoundType;
+  @ApiProperty({ description: '코스 ID' })
+  courseId: number;
 
-  @ApiProperty({ description: '첫 번째 코스 ID' })
-  firstCourseId: number;
+  @ApiProperty({ description: '최대 인원' })
+  maxPlayers: number;
 
-  @ApiProperty({ description: '두 번째 코스 ID', required: false })
-  secondCourseId?: number;
+  @ApiProperty({ description: '가격' })
+  price: number;
 
-  @ApiProperty({ description: '예약된 인원' })
-  bookedCount: number;
-
-  @ApiProperty({ description: '최대 예약 가능 인원' })
-  availableSlots: number;
-
-  @ApiProperty({ description: '9홀 가격', required: false })
-  nineHolePrice?: number;
-
-  @ApiProperty({ description: '18홀 가격' })
-  eighteenHolePrice: number;
-
-  @ApiProperty({ description: '상태' })
-  status: string;
-
-  @ApiProperty({ description: '메모', required: false })
-  notes?: string;
+  @ApiProperty({ description: '활성 상태' })
+  isActive: boolean;
 
   @ApiProperty({ description: '생성일' })
   createdAt: Date;
@@ -66,15 +51,10 @@ export class CourseTimeSlotResponseDto {
       date: entity.date,
       startTime: entity.startTime,
       endTime: entity.endTime,
-      roundType: entity.roundType,
-      firstCourseId: entity.firstCourseId,
-      secondCourseId: entity.secondCourseId,
-      bookedCount: entity.bookedCount,
-      availableSlots: entity.availableSlots,
-      nineHolePrice: entity.nineHolePrice ? Number(entity.nineHolePrice) : undefined,
-      eighteenHolePrice: Number(entity.eighteenHolePrice),
-      status: entity.status,
-      notes: entity.notes,
+      courseId: entity.courseId,
+      maxPlayers: entity.maxPlayers,
+      price: Number(entity.price),
+      isActive: entity.isActive,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     };
@@ -126,40 +106,20 @@ export class CreateTimeSlotDto {
   @IsNotEmpty()
   endTime: string;
 
-  @ApiProperty({ description: '라운드 타입', enum: RoundType, default: RoundType.EIGHTEEN_HOLE })
-  @IsEnum(RoundType)
-  @IsOptional()
-  roundType?: RoundType = RoundType.EIGHTEEN_HOLE;
-
-  @ApiProperty({ description: '첫 번째 코스 ID' })
+  @ApiProperty({ description: '코스 ID' })
   @IsInt()
   @IsNotEmpty()
-  firstCourseId: number;
+  courseId: number;
 
-  @ApiProperty({ description: '두 번째 코스 ID (18홀용)', required: false })
-  @IsInt()
+  @ApiProperty({ description: '최대 인원', default: 4 })
+  @IsNumber()
   @IsOptional()
-  secondCourseId?: number;
+  maxPlayers?: number = 4;
 
-  @ApiProperty({ description: '최대 인원' })
+  @ApiProperty({ description: '가격' })
   @IsNumber()
   @IsNotEmpty()
-  availableSlots: number;
-
-  @ApiProperty({ description: '9홀 가격', required: false })
-  @IsNumber()
-  @IsOptional()
-  nineHolePrice?: number;
-
-  @ApiProperty({ description: '18홀 가격' })
-  @IsNumber()
-  @IsNotEmpty()
-  eighteenHolePrice: number;
-
-  @ApiProperty({ description: '메모', required: false })
-  @IsString()
-  @IsOptional()
-  notes?: string;
+  price: number;
 }
 
 export class UpdateTimeSlotDto {
@@ -178,40 +138,25 @@ export class UpdateTimeSlotDto {
   @IsOptional()
   endTime?: string;
 
-  @ApiProperty({ description: '라운드 타입', enum: RoundType, required: false })
-  @IsEnum(RoundType)
-  @IsOptional()
-  roundType?: RoundType;
-
-  @ApiProperty({ description: '첫 번째 코스 ID', required: false })
+  @ApiProperty({ description: '코스 ID', required: false })
   @IsInt()
   @IsOptional()
-  firstCourseId?: number;
-
-  @ApiProperty({ description: '두 번째 코스 ID', required: false })
-  @IsInt()
-  @IsOptional()
-  secondCourseId?: number;
+  courseId?: number;
 
   @ApiProperty({ description: '최대 인원', required: false })
   @IsNumber()
   @IsOptional()
-  availableSlots?: number;
+  maxPlayers?: number;
 
-  @ApiProperty({ description: '9홀 가격', required: false })
+  @ApiProperty({ description: '가격', required: false })
   @IsNumber()
   @IsOptional()
-  nineHolePrice?: number;
+  price?: number;
 
-  @ApiProperty({ description: '18홀 가격', required: false })
-  @IsNumber()
+  @ApiProperty({ description: '활성 상태', required: false })
+  @IsBoolean()
   @IsOptional()
-  eighteenHolePrice?: number;
-
-  @ApiProperty({ description: '메모', required: false })
-  @IsString()
-  @IsOptional()
-  notes?: string;
+  isActive?: boolean;
 }
 
 // 필터링을 위한 DTO 추가

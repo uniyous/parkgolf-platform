@@ -1,5 +1,5 @@
 import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { CourseTimeSlot, Prisma, RoundType, TimeSlotStatus } from '@prisma/client';
+import { CourseTimeSlot, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateTimeSlotDto, UpdateTimeSlotDto, TimeSlotFilterDto } from '../dto/time-slot.dto';
 import { ClientProxy } from '@nestjs/microservices';
@@ -17,13 +17,12 @@ export class TimeSlotService {
    * 새 타임슬롯 생성 (9홀 기준)
    */
   async create(data: CreateTimeSlotDto): Promise<CourseTimeSlot> {
-    this.logger.log('Creating new time slot with 9-hole support');
+    this.logger.log('Creating new time slot');
 
     // 중복 체크
     const existing = await this.prisma.courseTimeSlot.findFirst({
       where: {
-        firstCourseId: data.firstCourseId,
-        secondCourseId: data.secondCourseId || null,
+        courseId: data.courseId,
         date: data.date,
         startTime: data.startTime,
         endTime: data.endTime,
@@ -31,7 +30,7 @@ export class TimeSlotService {
     });
 
     if (existing) {
-      throw new ConflictException('같은 코스 조합과 시간에 이미 타임슬롯이 존재합니다.');
+      throw new ConflictException('같은 코스와 시간에 이미 타임슬롯이 존재합니다.');
     }
 
     const timeSlot = await this.prisma.courseTimeSlot.create({
@@ -39,24 +38,17 @@ export class TimeSlotService {
         date: data.date,
         startTime: data.startTime,
         endTime: data.endTime,
-        roundType: data.roundType || RoundType.EIGHTEEN_HOLE,
-        firstCourseId: data.firstCourseId,
-        secondCourseId: data.secondCourseId,
-        availableSlots: data.availableSlots,
-        nineHolePrice: data.nineHolePrice,
-        eighteenHolePrice: data.eighteenHolePrice,
-        status: TimeSlotStatus.ACTIVE,
-        notes: data.notes,
-        bookedCount: 0,
+        courseId: data.courseId,
+        maxPlayers: data.maxPlayers || 4,
+        price: data.price,
+        isActive: true,
       },
       include: {
-        firstCourse: true,
-        secondCourse: true,
+        courses: true,
       },
     });
 
     this.logger.log(`Created time slot with ID ${timeSlot.id}`);
-    await this.publishTimeSlotCreated(timeSlot);
     
     return timeSlot;
   }
@@ -81,22 +73,17 @@ export class TimeSlotService {
         date: data.date,
         startTime: data.startTime,
         endTime: data.endTime,
-        roundType: data.roundType,
-        firstCourseId: data.firstCourseId,
-        secondCourseId: data.secondCourseId,
-        availableSlots: data.availableSlots,
-        nineHolePrice: data.nineHolePrice,
-        eighteenHolePrice: data.eighteenHolePrice,
-        notes: data.notes,
+        courseId: data.courseId,
+        maxPlayers: data.maxPlayers,
+        price: data.price,
+        isActive: data.isActive,
       },
       include: {
-        firstCourse: true,
-        secondCourse: true,
+        courses: true,
       },
     });
 
     this.logger.log(`Updated time slot ${id}`);
-    await this.publishTimeSlotUpdated(timeSlot);
     
     return timeSlot;
   }
@@ -120,7 +107,6 @@ export class TimeSlotService {
     });
 
     this.logger.log(`Deleted time slot ${id}`);
-    await this.publishTimeSlotDeleted(id);
   }
 
   /**
@@ -131,9 +117,9 @@ export class TimeSlotService {
 
     const where: Prisma.CourseTimeSlotWhereInput = {};
 
-    // 회사 필터 (첫 번째 코스 기준)
+    // 회사 필터
     if (companyId) {
-      where.firstCourse = {
+      where.courses = {
         companyId: companyId,
       };
     }
@@ -157,8 +143,7 @@ export class TimeSlotService {
     const timeSlots = await this.prisma.courseTimeSlot.findMany({
       where,
       include: {
-        firstCourse: true,
-        secondCourse: true,
+        courses: true,
       },
       orderBy: [
         { date: 'asc' },
@@ -180,14 +165,10 @@ export class TimeSlotService {
 
     return this.prisma.courseTimeSlot.findMany({
       where: {
-        OR: [
-          { firstCourseId: courseId },
-          { secondCourseId: courseId },
-        ],
+        courseId: courseId,
       },
       include: {
-        firstCourse: true,
-        secondCourse: true,
+        courses: true,
       },
       orderBy: [
         { date: 'asc' },
@@ -196,64 +177,4 @@ export class TimeSlotService {
     });
   }
 
-  /**
-   * 이벤트 발행 메서드들
-   */
-  private async publishTimeSlotCreated(timeSlot: CourseTimeSlot): Promise<void> {
-    try {
-      const event = {
-        eventType: 'TIMESLOT_CREATED',
-        timeSlotId: timeSlot.id,
-        roundType: timeSlot.roundType,
-        firstCourseId: timeSlot.firstCourseId,
-        secondCourseId: timeSlot.secondCourseId,
-        date: timeSlot.date,
-        startTime: timeSlot.startTime,
-        endTime: timeSlot.endTime,
-        availableSlots: timeSlot.availableSlots,
-        nineHolePrice: timeSlot.nineHolePrice ? Number(timeSlot.nineHolePrice) : null,
-        eighteenHolePrice: Number(timeSlot.eighteenHolePrice),
-        status: timeSlot.status,
-        timestamp: new Date().toISOString(),
-      };
-
-      this.natsClient.emit('timeslot.created', event);
-      this.logger.log(`Published TIMESLOT_CREATED event for slot ${timeSlot.id}`);
-    } catch (error) {
-      this.logger.error(`Failed to publish TIMESLOT_CREATED event: ${error.message}`);
-    }
-  }
-
-  private async publishTimeSlotUpdated(timeSlot: CourseTimeSlot): Promise<void> {
-    try {
-      const event = {
-        eventType: 'TIMESLOT_UPDATED',
-        timeSlotId: timeSlot.id,
-        roundType: timeSlot.roundType,
-        firstCourseId: timeSlot.firstCourseId,
-        secondCourseId: timeSlot.secondCourseId,
-        timestamp: new Date().toISOString(),
-      };
-
-      this.natsClient.emit('timeslot.updated', event);
-      this.logger.log(`Published TIMESLOT_UPDATED event for slot ${timeSlot.id}`);
-    } catch (error) {
-      this.logger.error(`Failed to publish TIMESLOT_UPDATED event: ${error.message}`);
-    }
-  }
-
-  private async publishTimeSlotDeleted(timeSlotId: number): Promise<void> {
-    try {
-      const event = {
-        eventType: 'TIMESLOT_DELETED',
-        timeSlotId,
-        timestamp: new Date().toISOString(),
-      };
-
-      this.natsClient.emit('timeslot.deleted', event);
-      this.logger.log(`Published TIMESLOT_DELETED event for slot ${timeSlotId}`);
-    } catch (error) {
-      this.logger.error(`Failed to publish TIMESLOT_DELETED event: ${error.message}`);
-    }
-  }
 }

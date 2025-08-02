@@ -27,21 +27,22 @@ export class TimeSlotNatsController {
         ...filters
       };
 
-      const slots = await this.timeSlotService.findWithFilters(Number(courseId), filterDto);
+      // courseId로 시작하는 경우 findByCourse 메서드 사용
+      const slots = await this.timeSlotService.findByCourse(Number(courseId));
       
       const result = {
         timeSlots: slots.map(slot => ({
           id: slot.id,
-          courseId: slot.firstCourseId,
-          courseName: `코스 ${slot.firstCourseId}`, // Since course relation might not be loaded
+          courseId: slot.courseId,
+          courseName: `코스 ${slot.courseId}`,
           date: slot.date,
           startTime: slot.startTime,
           endTime: slot.endTime,
-          maxSlots: slot.availableSlots,
-          bookedSlots: slot.bookedCount || 0,
-          availableSlots: slot.availableSlots,
-          price: Number(slot.eighteenHolePrice),
-          status: slot.status === 'ACTIVE' ? 'AVAILABLE' : 'INACTIVE',
+          maxSlots: slot.maxPlayers,
+          bookedSlots: 0, // Not tracked in current schema
+          availableSlots: slot.maxPlayers,
+          price: Number(slot.price),
+          status: slot.isActive ? 'AVAILABLE' : 'INACTIVE',
           isRecurring: false, // Not tracked yet in database
           createdAt: slot.createdAt.toISOString(),
           updatedAt: slot.updatedAt.toISOString(),
@@ -103,15 +104,10 @@ export class TimeSlotNatsController {
         date: slot.date,
         startTime: slot.startTime,
         endTime: slot.endTime,
-        roundType: slot.roundType,
-        firstCourseId: slot.firstCourseId,
-        secondCourseId: slot.secondCourseId,
-        bookedCount: slot.bookedCount || 0,
-        availableSlots: slot.availableSlots,
-        nineHolePrice: slot.nineHolePrice ? Number(slot.nineHolePrice) : null,
-        eighteenHolePrice: Number(slot.eighteenHolePrice),
-        status: slot.status,
-        notes: slot.notes,
+        courseId: slot.courseId,
+        maxPlayers: slot.maxPlayers,
+        price: Number(slot.price),
+        isActive: slot.isActive,
         createdAt: slot.createdAt.toISOString(),
         updatedAt: slot.updatedAt.toISOString()
       };
@@ -139,15 +135,10 @@ export class TimeSlotNatsController {
         date: slot.date,
         startTime: slot.startTime,
         endTime: slot.endTime,
-        roundType: slot.roundType,
-        firstCourseId: slot.firstCourseId,
-        secondCourseId: slot.secondCourseId,
-        bookedCount: slot.bookedCount || 0,
-        availableSlots: slot.availableSlots,
-        nineHolePrice: slot.nineHolePrice ? Number(slot.nineHolePrice) : null,
-        eighteenHolePrice: Number(slot.eighteenHolePrice),
-        status: slot.status,
-        notes: slot.notes,
+        courseId: slot.courseId,
+        maxPlayers: slot.maxPlayers,
+        price: Number(slot.price),
+        isActive: slot.isActive,
         createdAt: slot.createdAt.toISOString(),
         updatedAt: slot.updatedAt.toISOString()
       };
@@ -187,15 +178,10 @@ export class TimeSlotNatsController {
         date: slot.date,
         startTime: slot.startTime,
         endTime: slot.endTime,
-        roundType: slot.roundType,
-        firstCourseId: slot.firstCourseId,
-        secondCourseId: slot.secondCourseId,
-        bookedCount: slot.bookedCount || 0,
-        availableSlots: slot.availableSlots,
-        nineHolePrice: slot.nineHolePrice ? Number(slot.nineHolePrice) : null,
-        eighteenHolePrice: Number(slot.eighteenHolePrice),
-        status: slot.status,
-        notes: slot.notes,
+        courseId: slot.courseId,
+        maxPlayers: slot.maxPlayers,
+        price: Number(slot.price),
+        isActive: slot.isActive,
         createdAt: slot.createdAt.toISOString(),
         updatedAt: slot.updatedAt.toISOString()
       }));
