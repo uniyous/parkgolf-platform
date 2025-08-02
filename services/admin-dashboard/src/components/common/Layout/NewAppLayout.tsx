@@ -1,7 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
 import { EnhancedGNB } from './EnhancedGNB';
-import { useAdminAuth } from '../../../contexts/AdminAuthContext';
+import { selectCurrentAdmin, selectIsLoading, logout } from '../../../redux/slices/authSlice';
 
 interface NewAppLayoutProps {
   children: React.ReactNode;
@@ -9,7 +10,9 @@ interface NewAppLayoutProps {
 
 export const NewAppLayout: React.FC<NewAppLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
-  const { currentAdmin, logout, isLoading } = useAdminAuth();
+  const dispatch = useDispatch();
+  const currentAdmin = useSelector(selectCurrentAdmin);
+  const isLoading = useSelector(selectIsLoading);
   
   // 디버깅 로그 추가
   console.log('NewAppLayout - currentAdmin:', currentAdmin);
@@ -26,7 +29,7 @@ export const NewAppLayout: React.FC<NewAppLayoutProps> = ({ children }) => {
   console.log('NewAppLayout - currentUser:', currentUser);
 
   const handleLogout = async () => {
-    logout();
+    dispatch(logout());
     navigate('/login');
   };
 

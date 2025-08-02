@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useConfirmation } from '../../hooks/useConfirmation';
-import { useAdminAuth } from '../../contexts/AdminAuthContext';
+import { useSelector } from 'react-redux';
+import { selectCurrentAdmin, selectHasPermission } from '../../redux/slices/authSlice';
 import type { Course, CourseStatus, DifficultyLevel, CourseType } from '../../types/course';
 
 interface EnhancedCourseListProps {
@@ -39,7 +40,8 @@ export const EnhancedCourseList: React.FC<EnhancedCourseListProps> = ({
   onRefresh,
 }) => {
   const { showConfirmation } = useConfirmation();
-  const { currentAdmin, hasPermission } = useAdminAuth();
+  const currentAdmin = useSelector(selectCurrentAdmin);
+  const hasManageCourses = useSelector(selectHasPermission('MANAGE_COURSES'));
 
   // 필터 및 정렬 상태
   const [filters, setFilters] = useState<FilterState>({
@@ -347,7 +349,7 @@ export const EnhancedCourseList: React.FC<EnhancedCourseListProps> = ({
             </svg>
             새로고침
           </button>
-          {hasPermission('MANAGE_COURSES') && (
+          {hasManageCourses && (
             <button
               onClick={onCreateCourse}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -654,7 +656,7 @@ export const EnhancedCourseList: React.FC<EnhancedCourseListProps> = ({
                         >
                           상세보기
                         </button>
-                        {hasPermission('MANAGE_COURSES') && (
+                        {hasManageCourses && (
                           <>
                             <button
                               onClick={() => onEditCourse(course)}
@@ -685,7 +687,7 @@ export const EnhancedCourseList: React.FC<EnhancedCourseListProps> = ({
                           </>
                         )}
                         
-                        {hasPermission('MANAGE_COURSES') && currentAdmin?.scope === 'PLATFORM' && (
+                        {hasManageCourses && currentAdmin?.scope === 'PLATFORM' && (
                           <button
                             onClick={() => handleDeleteCourse(course)}
                             className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"

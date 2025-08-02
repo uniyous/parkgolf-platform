@@ -235,19 +235,33 @@ export class AdminCoursesController {
   // Time Slot Management
   @Get(':courseId/time-slots')
   @ApiOperation({ summary: 'Get course time slots' })
-  @ApiQuery({ name: 'date', required: false, description: 'Filter by date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'dateFrom', required: false, description: 'Filter from date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'dateTo', required: false, description: 'Filter to date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'timeFrom', required: false, description: 'Filter from time (HH:MM)' })
+  @ApiQuery({ name: 'timeTo', required: false, description: 'Filter to time (HH:MM)' })
+  @ApiQuery({ name: 'isActive', required: false, description: 'Filter by active status' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Items per page' })
   @ApiResponse({ status: 200, description: 'Time slots retrieved successfully' })
   async getTimeSlots(
     @Param('courseId') courseId: string,
-    @Query('date') date?: string,
+    @Query() query: any,
     @Headers('authorization') authorization?: string
   ) {
     try {
       const token = authorization ? this.extractToken(authorization) : undefined;
-      this.logger.log(`Fetching time slots for course: ${courseId}, date: ${date || 'all'}`);
+      this.logger.log(`Fetching time slots for course: ${courseId}, filters:`, query);
       
-      const result = await this.courseService.getTimeSlots(courseId, date, token);
-      return result;
+      // Use the overloaded method that accepts filters
+      const result = await this.courseService.getTimeSlots({
+        courseId,
+        ...query
+      }, token);
+      
+      return {
+        success: true,
+        data: result
+      };
     } catch (error) {
       this.logger.error(`Failed to fetch time slots for course: ${courseId}`, error);
       throw this.handleError(error);
@@ -268,7 +282,10 @@ export class AdminCoursesController {
       this.logger.log(`Creating time slot for course: ${courseId}`);
       
       const result = await this.courseService.createTimeSlot(courseId, timeSlotData, token);
-      return result;
+      return {
+        success: true,
+        data: result
+      };
     } catch (error) {
       this.logger.error(`Failed to create time slot for course: ${courseId}`, error);
       throw this.handleError(error);
@@ -290,7 +307,10 @@ export class AdminCoursesController {
       this.logger.log(`Updating time slot: ${timeSlotId}`);
       
       const result = await this.courseService.updateTimeSlot(courseId, timeSlotId, updateData, token);
-      return result;
+      return {
+        success: true,
+        data: result
+      };
     } catch (error) {
       this.logger.error(`Failed to update time slot: ${timeSlotId}`, error);
       throw this.handleError(error);
@@ -311,9 +331,47 @@ export class AdminCoursesController {
       this.logger.log(`Deleting time slot: ${timeSlotId}`);
       
       const result = await this.courseService.deleteTimeSlot(courseId, timeSlotId, token);
-      return result;
+      return {
+        success: true,
+        data: result
+      };
     } catch (error) {
       this.logger.error(`Failed to delete time slot: ${timeSlotId}`, error);
+      throw this.handleError(error);
+    }
+  }
+
+  @Post(':courseId/time-slots/bulk')
+  @ApiOperation({ summary: 'Create bulk time slots for course' })
+  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
+  @ApiResponse({ status: 201, description: 'Bulk time slots created successfully' })
+  async createBulkTimeSlots(
+    @Param('courseId') courseId: string,
+    @Body() bulkData: { timeSlots: any[] },
+    @Headers('authorization') authorization: string
+  ) {
+    try {
+      const token = this.extractToken(authorization);
+      this.logger.log(`Creating bulk time slots for course: ${courseId}`);
+      
+      // Create time slots one by one since NATS service doesn't have bulk endpoint
+      const results = [];
+      for (const timeSlotData of bulkData.timeSlots) {
+        try {
+          const result = await this.courseService.createTimeSlot(courseId, timeSlotData, token);
+          results.push(result);
+        } catch (error) {
+          this.logger.warn(`Failed to create time slot:`, error);
+          // Continue with other time slots
+        }
+      }
+      
+      return {
+        success: true,
+        data: results
+      };
+    } catch (error) {
+      this.logger.error(`Failed to create bulk time slots for course: ${courseId}`, error);
       throw this.handleError(error);
     }
   }

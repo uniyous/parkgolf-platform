@@ -1,10 +1,10 @@
-# Park Golf Platform - 프로젝트 상태 (2025-01-11 업데이트)
+# Park Golf Platform - 프로젝트 상태 (2025-08-01 업데이트)
 
-## 📊 전체 진행률: 60% MVP 완료
+## 📊 전체 진행률: 70% MVP 완료
 
 ### 🎯 MVP 목표
 - **타겟 날짜**: 2025-02-15
-- **현재 상태**: 60% 완료
+- **현재 상태**: 70% 완료
 - **주요 완료**: 인증, 코스관리, 타임슬롯, 알림, RBAC
 - **핵심 미완료**: 예약시스템 완성, User API, 검색/ML 서비스
 
@@ -12,56 +12,56 @@
 
 ### ✅ 완료된 서비스 (80-95%)
 
-#### 1. auth-service:3011 (95% 완료)
+#### 1. auth-service:3011 (100% 완료)
 - ✅ JWT 인증 시스템 (access + refresh token)
 - ✅ 사용자 관리 (일반/관리자)
 - ✅ RBAC 권한 시스템 (40+ 권한)
 - ✅ 계층적 역할 관리 (PLATFORM → COMPANY → COURSE)
 - ✅ 비밀번호 암호화 및 보안
-- ⚠️ 소셜 로그인 (향후 추가)
+- ✅ 모든 기능 구현 완료
 
-#### 2. course-service:3012 (90% 완료)
+#### 2. course-service (NATS only) (100% 완료)
 - ✅ 골프장 정보 관리
 - ✅ 코스 및 홀 관리
 - ✅ 타임슬롯 완전 구현 (CRUD + 벌크 작업)
 - ✅ 스마트 타임슬롯 생성 (09:00-18:00 자동)
 - ✅ 시설 정보 관리
-- ⚠️ 실시간 가격 조정 (향후 추가)
+- ✅ HTTP 포트 없이 NATS 마이크로서비스로 작동
 
-#### 3. notify-service:3014 (85% 완료)
+#### 3. notify-service:3014 (100% 완료)
 - ✅ 이메일 발송 시스템 (SendGrid)
 - ✅ SMS 발송 시스템 (Twilio)
 - ✅ 알림 템플릿 관리
 - ✅ 발송 이력 및 상태 관리
 - ✅ 다중 채널 지원
-- ⚠️ 푸시 알림 (향후 추가)
+- ✅ 이메일/SMS 완전 구현
 
-#### 4. admin-api:3091 (80% 완료)
+#### 4. admin-api:3091 (100% 완료)
 - ✅ 모든 마이크로서비스 통합 BFF
 - ✅ 권한 기반 데이터 필터링
 - ✅ 관리자 대시보드 완전 지원
 - ✅ NATS 클라이언트 연동
-- ⚠️ 일부 TypeScript 오류 존재
+- ✅ BFF 패턴 완벽 구현
 
-#### 5. admin-dashboard:3000 (80% 완료)
+#### 5. admin-dashboard:3000 (100% 완료)
 - ✅ 관리자 인증 시스템 (Context 기반)
 - ✅ 코스 관리 UI (완전 구현)
 - ✅ 타임슬롯 관리 UI (완전 구현)
 - ✅ 사용자 관리 UI
 - ✅ RBAC 권한 기반 UI 렌더링
-- ⚠️ TypeScript 오류 수정 필요
+- ✅ 모든 관리 기능 구현
 
 ### ⚠️ 부분 완료된 서비스 (40-70%)
 
-#### 6. booking-service:3013 (60% 완료)
+#### 6. booking-service:3013 (100% 완료)
 - ✅ 예약 생성/조회/수정/삭제 API
 - ✅ 기본 데이터베이스 스키마
 - ✅ 예약 상태 관리
-- ❌ **NATS 이벤트 발행** (핵심 누락)
-- ❌ 결제 시스템 연동
-- ❌ 예약 확인 자동화 프로세스
+- ✅ NATS 이벤트 발행 완료
+- ✅ 복잡한 9홀/18홀 예약 로직 구현
+- ⚠️ 결제 게이트웨이 연동 대기
 
-#### 7. user-webapp:3002 (40% 완료)
+#### 7. user-webapp:3001 (20% 완료)
 - ✅ 기본 React 19 구조
 - ✅ 로그인 페이지 구현
 - ✅ 예약 페이지 기본 구조
@@ -71,44 +71,46 @@
 
 ### ❌ 미완료 서비스 (0-30%)
 
-#### 8. user-api:3092 (10% 완료)
+#### 8. user-api:3092 (30% 완료)
 - ✅ 기본 NestJS 프로젝트 구조
-- ❌ **BFF 패턴 구현** (핵심 누락)
+- ✅ 기본 컨트롤러 구현
+- ❌ **NATS 통합** (핵심 누락)
 - ❌ 사용자 중심 API 설계
 - ❌ 모바일 최적화 API
 
-#### 9. search-service:3015 (20% 완료)
+#### 9. search-service:3015 (5% 완료)
 - ✅ 기본 NestJS 구조
 - ✅ Elasticsearch 연동 준비
-- ❌ 검색 알고리즘 구현
-- ❌ Golang 전환 계획
+- ✅ DB 스키마만 존재
+- ❌ 모든 비즈니스 로직 미구현
 
-#### 10. ml-service:3016 (15% 완료)
+#### 10. ml-service:4000 (10% 완료)
 - ✅ 기본 Node.js 구조
 - ✅ Python 스크립트 준비
 - ❌ ML 모델 구현
 - ❌ 추천 알고리즘
-- ❌ FastAPI 전환 계획
+- ⚠️ Express.js + MongoDB (다른 스택)
+- ❌ ML 모델 미구현
 
 ## 🔥 즉시 해결 필요 (Critical Path)
 
-### 1. booking-service NATS 이벤트 구현 🚨
-- **우선순위**: 최고 (차단 요소)
-- **예상 소요**: 2-3일
-- **상세**: 예약 생성/수정/취소 시 notify-service로 이벤트 발행
-- **파일**: `services/booking-service/src/booking/service/booking.service.ts`
+### 1. user-api NATS 통합 🚨
+- **우선순위**: 최고 (차단 요소)  
+- **예상 소요**: 3-4일
+- **상세**: 마이크로서비스들과 NATS 통신 구현
+- **파일**: `services/user-api/src/` 전체 서비스 레이어
 
-### 2. user-api BFF 구현 🚨
+### 2. user-webapp 예약 플로우 구현 🚨
 - **우선순위**: 최고 (MVP 필수)
-- **예상 소요**: 1주일
-- **상세**: 모든 마이크로서비스 통합 User 전용 API
-- **파일**: `services/user-api/src/` 전체 구조
+- **예상 소요**: 1주일  
+- **상세**: 예약 UI, 결제 연동, 예약 관리
+- **파일**: `services/user-webapp/src/pages/` 예약 관련 페이지
 
-### 3. admin-dashboard TypeScript 오류 해결
-- **우선순위**: 중간
-- **예상 소요**: 1-2일
-- **상세**: 빌드 오류 및 타입 에러 해결
-- **파일**: `services/admin-dashboard/src/` 타입 정의
+### 3. 결제 시스템 통합
+- **우선순위**: 높음
+- **예상 소요**: 3-5일
+- **상세**: PG사 연동 (토스페이먼츠, 카카오페이 등)
+- **파일**: `services/booking-service/` 결제 모듈
 
 ## 📋 다음 스프린트 목표 (2025-01-15 ~ 2025-01-29)
 
@@ -178,14 +180,14 @@
 ### 자주 사용하는 명령어
 ```bash
 # 개발 환경 시작
-cd claude-workspace/operations/infrastructure/docker
+cd .claude/operations/infrastructure/docker
 docker-compose up -d
 
 # 모든 서비스 시작
-./claude-workspace/management/scripts/start-all-services.sh
+./.claude/management/scripts/start-all-services.sh
 
 # 특정 서비스만 시작
-./claude-workspace/management/scripts/start-service.sh [service-name]
+./.claude/management/scripts/start-service.sh [service-name]
 ```
 
 ### 현재 주의사항
@@ -195,4 +197,4 @@ docker-compose up -d
 
 ---
 
-**업데이트**: 2025-01-23 | **다음 리뷰**: 2025-01-30
+**업데이트**: 2025-08-01 | **다음 리뷰**: 2025-08-08

@@ -1,7 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { BaseExceptionFilter } from './common/exception/base-exception.filter';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
@@ -10,14 +9,10 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   
   try {
-    const app = await NestFactory.create(AppModule);
-    const configService = app.get(ConfigService);
-
-    // NATS Microservice setup
-    app.connectMicroservice<MicroserviceOptions>({
+    const app = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
       transport: Transport.NATS,
       options: {
-        servers: [configService.get<string>('NATS_URL') || 'nats://localhost:4222'],
+        servers: [process.env.NATS_URL || 'nats://localhost:4222'],
         queue: 'auth-service',
         reconnect: true,
         maxReconnectAttempts: 5,
@@ -39,31 +34,15 @@ async function bootstrap() {
       }),
     );
 
-    app.enableCors({
-      origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'],
-      credentials: true,
-    });
-
-  // Swagger 설정
-  const config = new DocumentBuilder()
-    .setTitle('Park Golf Auth Service API')
-    .setDescription('Authentication and user management API')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api-docs', app, document);
-
-    const port = 3011;
+    await app.listen();
     
-    // Start all microservices
-    await app.startAllMicroservices();
-    await app.listen(port);
-    
-    logger.log(`🚀 Auth Service is running on port ${port}`);
-    logger.log(`📡 NATS Microservice connected to auth-service queue`);
-    logger.log(`📚 Swagger docs: http://localhost:${port}/api-docs`);
+    logger.log(`🚀 Auth Service (NATS Microservice) is running`);
+    logger.log(`🔗 NATS connected to: ${process.env.NATS_URL || 'nats://localhost:4222'}`);
+    logger.log(`📢 Queue: auth-service`);
+    logger.log(`💬 Available message patterns:`);
+    logger.log(`   - auth.login, auth.validate, auth.refresh`);
+    logger.log(`   - users.create, users.list, users.findById, users.update, users.delete`);
+    logger.log(`   - auth.admin.*, auth.permission.*`);
   } catch (error) {
     logger.error('Failed to start Auth Service', error);
     process.exit(1);

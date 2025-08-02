@@ -61,10 +61,59 @@ export class AdminTimeSlotsController {
       
       this.logger.log(`Fetching time slots with filters:`, filters);
       
-      const result = await this.courseService.getTimeSlots(filters, token);
+      // company 기반 필터링인 경우 해당 회사의 모든 코스 time slot 조회
+      if (companyId && !firstCourseId) {
+        // 해당 회사의 모든 코스를 먼저 조회
+        const coursesResult = await this.courseService.getCourses(companyId, 1, 100, token);
+        const courses = coursesResult?.courses || [];
+        
+        let allTimeSlots = [];
+        for (const course of courses) {
+          try {
+            const courseTimeSlots = await this.courseService.getTimeSlots({
+              courseId: course.id.toString(),
+              ...filters
+            }, token);
+            if (courseTimeSlots?.timeSlots) {
+              allTimeSlots = allTimeSlots.concat(courseTimeSlots.timeSlots);
+            }
+          } catch (error) {
+            this.logger.warn(`Failed to fetch time slots for course ${course.id}:`, error);
+          }
+        }
+        
+        return {
+          success: true,
+          data: {
+            timeSlots: allTimeSlots,
+            totalCount: allTimeSlots.length,
+            totalPages: Math.ceil(allTimeSlots.length / (filters.limit || 20)),
+            page: filters.page || 1
+          }
+        };
+      }
+      
+      // 특정 코스에 대한 time slot 조회
+      if (firstCourseId) {
+        const result = await this.courseService.getTimeSlots({
+          courseId: firstCourseId,
+          ...filters
+        }, token);
+        return {
+          success: true,
+          data: result
+        };
+      }
+      
+      // 필터 조건이 부족한 경우
       return {
         success: true,
-        data: result
+        data: {
+          timeSlots: [],
+          totalCount: 0,
+          totalPages: 0,
+          page: filters.page || 1
+        }
       };
     } catch (error) {
       this.logger.error('Failed to fetch time slots', error);

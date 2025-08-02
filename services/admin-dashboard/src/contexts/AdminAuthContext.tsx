@@ -65,7 +65,9 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
   // User 타입을 Admin 타입으로 변환하는 함수
   const convertUserToAdmin = (user: User): Admin => {
     // 사용자의 역할을 Admin 역할로 변환
+    console.log('🔧 Original user.role:', user.role);
     const adminRole = (user.role as AdminRole) || 'PLATFORM_ADMIN';
+    console.log('🔧 Converted adminRole:', adminRole);
     
     // 역할에 따른 스코프 자동 설정
     const scope = user.scope || getRoleScope(adminRole);
@@ -74,6 +76,10 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
     const permissions = user.permissions && user.permissions.length > 0 
       ? user.permissions 
       : getDefaultPermissions(adminRole);
+    
+    console.log('🔧 convertUserToAdmin - role:', adminRole);
+    console.log('🔧 convertUserToAdmin - user.permissions:', user.permissions);
+    console.log('🔧 convertUserToAdmin - final permissions:', permissions);
     
     return {
       id: user.id,
@@ -100,24 +106,62 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
       setIsLoading(true);
       const token = localStorage.getItem('accessToken');
       
+      console.log('💡 loadCurrentUser 시작 - token exists:', !!token);
+      
       if (!token) {
+        console.log('💡 토큰이 없어서 로그아웃 상태로 설정');
         setCurrentAdmin(null);
         return;
       }
 
-      console.log('토큰을 사용하여 사용자 정보 로드 중...');
+      console.log('💡 토큰을 사용하여 사용자 정보 로드 중...');
       
+      // 먼저 캐시된 사용자 정보 확인
+      const cachedUserData = localStorage.getItem('currentUser');
+      console.log('💡 캐시된 사용자 정보:', !!cachedUserData);
+      if (cachedUserData) {
+        try {
+          const userData = JSON.parse(cachedUserData);
+          console.log('💡 파싱된 사용자 데이터:', userData);
+          const admin = convertUserToAdmin(userData);
+          console.log('💡 변환된 admin 객체:', admin);
+          console.log('캐시된 사용자 정보 사용:', admin.name, admin.role);
+          console.log('사용자 권한:', admin.permissions);
+          console.log('MANAGE_COURSES 권한 보유:', admin.permissions.includes('MANAGE_COURSES'));
+          setCurrentAdmin(admin);
+          console.log('💡 setCurrentAdmin 완료');
+          return;
+        } catch (parseError) {
+          console.error('캐시된 사용자 정보 파싱 실패:', parseError);
+        }
+      }
+
       // 실제 API 호출
       const response = await authApi.getCurrentUser();
       
       if (response.success && response.data) {
         const admin = convertUserToAdmin(response.data);
         console.log('API에서 사용자 정보 로드 성공:', admin.name, admin.role);
+        console.log('사용자 권한:', admin.permissions);
+        console.log('MANAGE_COURSES 권한 보유:', admin.permissions.includes('MANAGE_COURSES'));
         setCurrentAdmin(admin);
         return;
       } else {
         console.error('API 응답 실패:', response.error?.message);
-        // API 실패 시 토큰 제거 및 로그아웃
+        // API 실패해도 토큰이 있으면 캐시된 정보로라도 진행
+        if (cachedUserData) {
+          try {
+            const userData = JSON.parse(cachedUserData);
+            const admin = convertUserToAdmin(userData);
+            console.log('API 실패 - 캐시된 사용자 정보로 대체:', admin.name, admin.role);
+            setCurrentAdmin(admin);
+            return;
+          } catch (parseError) {
+            console.error('캐시된 사용자 정보 파싱 실패:', parseError);
+          }
+        }
+        
+        // 완전히 실패한 경우에만 로그아웃
         setCurrentAdmin(null);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
@@ -144,13 +188,15 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
   useEffect(() => {
     const handleStorageChange = async () => {
       const token = localStorage.getItem('accessToken');
+      console.log('💡 Storage change detected - token exists:', !!token);
       if (token) {
         if (!currentAdmin) {
-          console.log('토큰 변경 감지 - 사용자 정보 다시 로드');
+          console.log('💡 토큰 변경 감지 - 사용자 정보 다시 로드');
           await loadCurrentUser();
         }
       } else {
         // 토큰이 없으면 로그아웃
+        console.log('💡 토큰이 없어서 currentAdmin null 설정');
         setCurrentAdmin(null);
         localStorage.removeItem('currentAdminId');
       }
@@ -159,8 +205,18 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
     // storage 이벤트 리스너 추가
     window.addEventListener('storage', handleStorageChange);
     
+    // 주기적으로 토큰 변경 체크 (Redux와 동기화)
+    const intervalId = setInterval(() => {
+      const token = localStorage.getItem('accessToken');
+      if (token && !currentAdmin) {
+        console.log('💡 주기적 체크 - 토큰 발견, 사용자 정보 로드');
+        loadCurrentUser();
+      }
+    }, 1000); // 1초마다 체크
+    
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      clearInterval(intervalId);
     };
   }, [currentAdmin]);
 
@@ -183,8 +239,14 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
 
   // 권한 체크
   const checkPermission = (permission: Permission): boolean => {
-    if (!currentAdmin) return false;
-    return hasPermission(currentAdmin.permissions, permission);
+    if (!currentAdmin) {
+      console.log('🔒 checkPermission - no currentAdmin');
+      return false;
+    }
+    const result = hasPermission(currentAdmin.permissions, permission);
+    console.log(`🔒 checkPermission(${permission}):`, result);
+    console.log(`🔒 currentAdmin.permissions:`, currentAdmin.permissions);
+    return result;
   };
 
   // 다른 관리자 관리 권한 체크
@@ -339,6 +401,13 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
     logout,
     getDisplayInfo
   };
+
+  console.log('💡 AdminAuthContext value:', {
+    currentAdmin: !!currentAdmin,
+    isAuthenticated: !!currentAdmin,
+    isLoading,
+    adminName: currentAdmin?.name
+  });
 
   return (
     <AdminAuthContext.Provider value={value}>

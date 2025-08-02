@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useAdminActions } from '../../hooks/useAdminActions';
 import { useRolePermission } from '../../hooks/useRolePermission';
 import { useConfirmation } from '../../hooks/useConfirmation';
-import { useAdminAuth } from '../../contexts/AdminAuthContext';
+import { useSelector } from 'react-redux';
+import { selectCurrentAdmin, selectHasPermission, selectCanManageAdminRole } from '../../redux/slices/authSlice';
 import type { Admin, AdminRole, AdminScope } from '../../types';
 import { 
   ADMIN_ROLE_LABELS, 
@@ -45,7 +46,8 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
   const { admins, isLoading, fetchAdmins } = useAdminActions();
   const { hasPermission } = useRolePermission();
   const { showConfirmation } = useConfirmation();
-  const { currentAdmin, canManageAdmin: canManageAdminById, canAddAdminToCompany } = useAdminAuth();
+  const currentAdmin = useSelector(selectCurrentAdmin);
+  const hasManageAdmins = useSelector(selectHasPermission('MANAGE_ADMINS'));
 
   // 필터 및 정렬 상태
   const [filters, setFilters] = useState<FilterState>({
@@ -327,7 +329,7 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
             </div>
 
             {/* 새 관리자 추가 버튼 */}
-            {hasPermission('ADMIN_WRITE') && currentAdmin && (
+            {hasManageAdmins && currentAdmin && (
               currentAdmin.scope === 'PLATFORM' || 
               (currentAdmin.scope === 'COMPANY' && ['COMPANY_OWNER', 'COMPANY_MANAGER'].includes(currentAdmin.role))
             ) && (
@@ -621,7 +623,7 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                       <div className="flex space-x-2">
-                        {hasPermission('ADMIN_WRITE') && canManageAdminById(admin.id) && (
+                        {hasManageAdmins && canManageAdmin(currentAdmin?.role || 'PLATFORM_ADMIN', admin.role) && (
                           <button
                             onClick={() => onEditAdmin(admin)}
                             className="text-blue-600 hover:text-blue-900 transition-colors"
@@ -630,7 +632,7 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
                             ✏️
                           </button>
                         )}
-                        {canManageAdminById(admin.id) && (
+                        {canManageAdmin(currentAdmin?.role || 'PLATFORM_ADMIN', admin.role) && (
                           <button
                             onClick={() => onManagePermissions(admin)}
                             className="text-purple-600 hover:text-purple-900 transition-colors"
@@ -639,7 +641,7 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
                             🔐
                           </button>
                         )}
-                        {hasPermission('ADMIN_DELETE') && canManageAdminById(admin.id) && admin.id !== currentAdmin?.id && (
+                        {hasManageAdmins && canManageAdmin(currentAdmin?.role || 'PLATFORM_ADMIN', admin.role) && admin.id !== currentAdmin?.id && (
                           <button
                             onClick={() => handleDeleteConfirm(admin)}
                             className="text-red-600 hover:text-red-900 transition-colors"
@@ -708,7 +710,7 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
                   </div>
 
                   <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
-                    {hasPermission('ADMIN_WRITE') && canManageAdminById(admin.id) && (
+                    {hasManageAdmins && canManageAdmin(currentAdmin?.role || 'PLATFORM_ADMIN', admin.role) && (
                       <button
                         onClick={() => onEditAdmin(admin)}
                         className="flex-1 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
@@ -716,7 +718,7 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
                         ✏️ 수정
                       </button>
                     )}
-                    {canManageAdminById(admin.id) && (
+                    {canManageAdmin(currentAdmin?.role || 'PLATFORM_ADMIN', admin.role) && (
                       <button
                         onClick={() => onManagePermissions(admin)}
                         className="flex-1 text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded hover:bg-purple-200 transition-colors"
@@ -724,7 +726,7 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
                         🔐 권한
                       </button>
                     )}
-                    {hasPermission('ADMIN_DELETE') && canManageAdminById(admin.id) && admin.id !== currentAdmin?.id && (
+                    {hasManageAdmins && canManageAdmin(currentAdmin?.role || 'PLATFORM_ADMIN', admin.role) && admin.id !== currentAdmin?.id && (
                       <button
                         onClick={() => handleDeleteConfirm(admin)}
                         className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded hover:bg-red-200 transition-colors"

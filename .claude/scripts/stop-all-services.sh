@@ -10,14 +10,15 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-# 프로젝트 루트 디렉토리 (claude-workspace/management/scripts에서 3단계 위로)
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+# 프로젝트 루트 디렉토리 (.claude/scripts에서 2단계 위로)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # PID 파일 디렉토리
 PID_DIR="$PROJECT_ROOT/.pids"
 
 # 서비스 정의 (배열로 변경)
-SERVICES="auth-service:3011 course-service:3012 booking-service:3013 admin-api:3091 user-api:3092 admin-dashboard:3000 user-webapp:3001"
+# 핵심 서비스만 포함
+SERVICES="auth-service:3011 course-service:3012 booking-service:3013 admin-api:3091 admin-dashboard:3000 user-webapp:3002"
 
 # 서비스 종료 함수
 stop_service() {

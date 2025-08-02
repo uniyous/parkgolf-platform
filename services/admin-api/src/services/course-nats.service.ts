@@ -207,7 +207,7 @@ export class CourseNatsService {
       if (token) params.token = token;
 
       const result = await firstValueFrom(
-        this.courseClient.send('courses.timeSlots.list', params).pipe(timeout(10000))
+        this.courseClient.send('timeSlots.list', params).pipe(timeout(10000))
       );
       
       return result;
@@ -222,7 +222,7 @@ export class CourseNatsService {
       this.logger.log('Creating time slot via NATS with 9-hole support');
       
       const result = await firstValueFrom(
-        this.courseClient.send('courses.timeSlots.create', { 
+        this.courseClient.send('timeSlots.create', { 
           courseId,
           data: timeSlotData, 
           token: adminToken 
@@ -242,7 +242,7 @@ export class CourseNatsService {
       this.logger.log(`Updating time slot via NATS: ${timeSlotId}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('courses.timeSlots.update', { 
+        this.courseClient.send('timeSlots.update', { 
           courseId,
           timeSlotId: Number(timeSlotId), 
           data: updateData, 
@@ -262,7 +262,7 @@ export class CourseNatsService {
       this.logger.log(`Deleting time slot via NATS: ${timeSlotId}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('courses.timeSlots.delete', { 
+        this.courseClient.send('timeSlots.delete', { 
           courseId,
           timeSlotId: Number(timeSlotId), 
           token: adminToken 
@@ -284,7 +284,7 @@ export class CourseNatsService {
       if (adminToken) requestParams.token = adminToken;
 
       const result = await firstValueFrom(
-        this.courseClient.send('courses.timeSlots.stats', requestParams).pipe(timeout(10000))
+        this.courseClient.send('timeSlots.stats', requestParams).pipe(timeout(10000))
       );
       
       return result;
@@ -350,13 +350,13 @@ export class CourseNatsService {
     try {
       this.logger.log(`Fetching holes via NATS for course: ${courseId}`);
       
-      // Course service의 REST API 직접 호출로 변경
-      const axios = require('axios');
-      const response = await axios.get(`http://localhost:3012/api/courses/${courseId}/holes`);
+      const result = await firstValueFrom(
+        this.courseClient.send('holes.findByCourse', { courseId, token: adminToken }).pipe(timeout(5000))
+      );
       
       return {
         success: true,
-        data: response.data
+        data: result
       };
     } catch (error) {
       this.logger.error(`Failed to fetch holes for course: ${courseId}`, error);

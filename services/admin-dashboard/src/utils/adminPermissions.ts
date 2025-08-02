@@ -203,16 +203,23 @@ export const isCompanyAdmin = (role: AdminRole): role is CompanyAdminRole => {
  * 관리자가 특정 권한을 가지고 있는지 확인
  */
 export const hasPermission = (adminPermissions: Permission[], requiredPermission: Permission): boolean => {
+  console.log(`🔍 hasPermission check - required: ${requiredPermission}`);
+  console.log(`🔍 hasPermission - adminPermissions:`, adminPermissions);
+  
   // PLATFORM_ALL이나 COMPANY_ALL 권한이 있으면 해당 범위의 모든 권한을 가짐
   if (adminPermissions.includes('PLATFORM_ALL')) {
+    console.log(`✅ hasPermission - PLATFORM_ALL grants all permissions`);
     return true;
   }
   
   if (adminPermissions.includes('COMPANY_ALL') && requiredPermission.startsWith('COMPANY_')) {
+    console.log(`✅ hasPermission - COMPANY_ALL grants company permissions`);
     return true;
   }
   
-  return adminPermissions.includes(requiredPermission);
+  const hasSpecificPermission = adminPermissions.includes(requiredPermission);
+  console.log(`🔍 hasPermission - specific permission check: ${hasSpecificPermission}`);
+  return hasSpecificPermission;
 };
 
 /**

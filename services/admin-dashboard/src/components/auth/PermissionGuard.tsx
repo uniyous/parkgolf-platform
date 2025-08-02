@@ -1,5 +1,6 @@
 import React from 'react';
-import { useAdminAuth } from '../../contexts/AdminAuthContext';
+import { useSelector } from 'react-redux';
+import { selectCurrentAdmin, selectHasPermission } from '../../redux/slices/authSlice';
 import type { Permission } from '../../types';
 
 interface PermissionGuardProps {
@@ -25,9 +26,7 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
   fallback = null,
   hideIfNoAccess = false
 }) => {
-  const { hasPermission } = useAdminAuth();
-  
-  const hasAccess = hasPermission(permission);
+  const hasAccess = useSelector(selectHasPermission(permission));
   
   if (hasAccess) {
     return <>{children}</>;
@@ -89,12 +88,12 @@ export const CanManageCompanies: React.FC<QuickGuardProps> = (props) => (
 
 // 복합 권한 가드
 export const CanManageAnyContent: React.FC<QuickGuardProps> = ({ children, fallback, hideIfNoAccess }) => {
-  const { hasPermission } = useAdminAuth();
+  const hasManageUsers = useSelector(selectHasPermission('MANAGE_USERS'));
+  const hasManageAdmins = useSelector(selectHasPermission('MANAGE_ADMINS'));
+  const hasManageCourses = useSelector(selectHasPermission('MANAGE_COURSES'));
+  const hasManageBookings = useSelector(selectHasPermission('MANAGE_BOOKINGS'));
   
-  const hasAccess = hasPermission('MANAGE_USERS') || 
-                   hasPermission('MANAGE_ADMINS') || 
-                   hasPermission('MANAGE_COURSES') || 
-                   hasPermission('MANAGE_BOOKINGS');
+  const hasAccess = hasManageUsers || hasManageAdmins || hasManageCourses || hasManageBookings;
   
   if (hasAccess) {
     return <>{children}</>;
@@ -109,7 +108,7 @@ export const CanManageAnyContent: React.FC<QuickGuardProps> = ({ children, fallb
 
 // 플랫폼 관리자 전용
 export const PlatformAdminOnly: React.FC<QuickGuardProps> = ({ children, fallback, hideIfNoAccess }) => {
-  const { currentAdmin } = useAdminAuth();
+  const currentAdmin = useSelector(selectCurrentAdmin);
   
   const isPlatformAdmin = currentAdmin?.scope === 'PLATFORM';
   
@@ -126,7 +125,7 @@ export const PlatformAdminOnly: React.FC<QuickGuardProps> = ({ children, fallbac
 
 // 회사 관리자 이상
 export const CompanyAdminOrAbove: React.FC<QuickGuardProps> = ({ children, fallback, hideIfNoAccess }) => {
-  const { currentAdmin } = useAdminAuth();
+  const currentAdmin = useSelector(selectCurrentAdmin);
   
   const hasAccess = currentAdmin?.scope === 'PLATFORM' || currentAdmin?.scope === 'COMPANY';
   
@@ -143,10 +142,11 @@ export const CompanyAdminOrAbove: React.FC<QuickGuardProps> = ({ children, fallb
 
 // 회사 소속 관리자 관리 권한 (김대표, 남운영 등)
 export const CanManageCompanyAdmins: React.FC<QuickGuardProps> = ({ children, fallback, hideIfNoAccess }) => {
-  const { currentAdmin, hasPermission } = useAdminAuth();
+  const currentAdmin = useSelector(selectCurrentAdmin);
+  const hasManageAdmins = useSelector(selectHasPermission('MANAGE_ADMINS'));
   
   // MANAGE_ADMINS 권한이 있고, 회사 레벨 이상의 관리자
-  const hasAccess = hasPermission('MANAGE_ADMINS') && 
+  const hasAccess = hasManageAdmins && 
                    (currentAdmin?.scope === 'PLATFORM' || currentAdmin?.scope === 'COMPANY');
   
   if (hasAccess) {
@@ -162,9 +162,7 @@ export const CanManageCompanyAdmins: React.FC<QuickGuardProps> = ({ children, fa
 
 // 타임슬롯 관리 권한 (회사 관리자 포함)
 export const CanManageTimeslots: React.FC<QuickGuardProps> = ({ children, fallback, hideIfNoAccess }) => {
-  const { hasPermission } = useAdminAuth();
-  
-  const hasAccess = hasPermission('MANAGE_TIMESLOTS');
+  const hasAccess = useSelector(selectHasPermission('MANAGE_TIMESLOTS'));
   
   if (hasAccess) {
     return <>{children}</>;

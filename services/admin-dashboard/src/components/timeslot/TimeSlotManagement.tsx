@@ -34,8 +34,8 @@ export const TimeSlotManagement: React.FC<TimeSlotManagementProps> = ({ course }
     setError(null);
     
     try {
-      const data = await courseApi.getTimeSlots(course.id, filter);
-      setTimeSlots(data);
+      const response = await courseApi.getTimeSlots(course.id, filter);
+      setTimeSlots(response.timeSlots || []);
     } catch (error) {
       setError('타임슬롯 정보를 불러오는데 실패했습니다.');
       console.error('Failed to fetch time slots:', error);

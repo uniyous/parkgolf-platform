@@ -297,25 +297,26 @@ export const courseApi = {
   },
 
   // ===== Time Slot Management =====
-  async getTimeSlots(courseId: number, filter?: TimeSlotFilter): Promise<TimeSlot[]> {
+  async getTimeSlots(courseId: number, filter?: TimeSlotFilter): Promise<{timeSlots: TimeSlot[], totalCount: number, totalPages: number, page: number}> {
     try {
       console.log('Fetching time slots for course:', courseId, 'with filter:', filter);
       
-      const params = new URLSearchParams();
-      if (filter?.dateFrom) params.append('dateFrom', filter.dateFrom);
-      if (filter?.dateTo) params.append('dateTo', filter.dateTo);
-      if (filter?.timeFrom) params.append('timeFrom', filter.timeFrom);
-      if (filter?.timeTo) params.append('timeTo', filter.timeTo);
-      if (filter?.isActive !== undefined) params.append('isActive', filter.isActive.toString());
-      if (filter?.page) params.append('page', filter.page.toString());
-      if (filter?.limit) params.append('limit', filter.limit.toString());
+      const params: any = {};
+      if (filter?.dateFrom) params.dateFrom = filter.dateFrom;
+      if (filter?.dateTo) params.dateTo = filter.dateTo;
+      if (filter?.timeFrom) params.timeFrom = filter.timeFrom;
+      if (filter?.timeTo) params.timeTo = filter.timeTo;
+      if (filter?.isActive !== undefined) params.isActive = filter.isActive;
+      if (filter?.page) params.page = filter.page;
+      if (filter?.limit) params.limit = filter.limit;
       
-      const queryString = params.toString();
-      const url = `/api/admin/courses/${courseId}/time-slots${queryString ? `?${queryString}` : ''}`;
-      
-      const response = await courseServiceClient.get<TimeSlot[]>(url);
+      // Use admin-api endpoint which will communicate with course-service via NATS
+      const response = await apiClient.get<{success: boolean, data: {timeSlots: TimeSlot[], totalCount: number, totalPages: number, page: number}}>(`/admin/courses/${courseId}/time-slots`, params);
       console.log('Time slots fetched successfully:', response);
-      return response || [];
+      
+      // Extract data from BFF response
+      const bffResponse = response.data;
+      return bffResponse?.data || {timeSlots: [], totalCount: 0, totalPages: 0, page: 1};
     } catch (error: any) {
       console.error(`Failed to fetch time slots for course ${courseId}:`, error);
       throw error;
@@ -325,9 +326,14 @@ export const courseApi = {
   async createTimeSlot(courseId: number, timeSlotData: CreateTimeSlotDto): Promise<TimeSlot> {
     try {
       console.log('Creating time slot for course:', courseId, 'with data:', timeSlotData);
-      const response = await courseServiceClient.post<TimeSlot>(`/api/admin/courses/${courseId}/time-slots`, timeSlotData);
+      
+      // Use admin-api endpoint which will communicate with course-service via NATS
+      const response = await apiClient.post<{success: boolean, data: TimeSlot}>(`/admin/courses/${courseId}/time-slots`, timeSlotData);
       console.log('Time slot created successfully:', response);
-      return response;
+      
+      // Extract data from BFF response
+      const bffResponse = response.data;
+      return bffResponse?.data;
     } catch (error: any) {
       console.error(`Failed to create time slot for course ${courseId}:`, error);
       throw error;
@@ -337,9 +343,14 @@ export const courseApi = {
   async updateTimeSlot(courseId: number, timeSlotId: number, timeSlotData: UpdateTimeSlotDto): Promise<TimeSlot> {
     try {
       console.log('Updating time slot:', timeSlotId, 'for course:', courseId, 'with data:', timeSlotData);
-      const response = await courseServiceClient.patch<TimeSlot>(`/api/admin/courses/${courseId}/time-slots/${timeSlotId}`, timeSlotData);
+      
+      // Use admin-api endpoint which will communicate with course-service via NATS
+      const response = await apiClient.patch<{success: boolean, data: TimeSlot}>(`/admin/courses/${courseId}/time-slots/${timeSlotId}`, timeSlotData);
       console.log('Time slot updated successfully:', response);
-      return response;
+      
+      // Extract data from BFF response
+      const bffResponse = response.data;
+      return bffResponse?.data;
     } catch (error: any) {
       console.error(`Failed to update time slot ${timeSlotId} for course ${courseId}:`, error);
       throw error;
@@ -349,7 +360,9 @@ export const courseApi = {
   async deleteTimeSlot(courseId: number, timeSlotId: number): Promise<void> {
     try {
       console.log('Deleting time slot:', timeSlotId, 'for course:', courseId);
-      await courseServiceClient.delete(`/api/admin/courses/${courseId}/time-slots/${timeSlotId}`);
+      
+      // Use admin-api endpoint which will communicate with course-service via NATS
+      await apiClient.delete(`/admin/courses/${courseId}/time-slots/${timeSlotId}`);
       console.log('Time slot deleted successfully');
     } catch (error: any) {
       console.error(`Failed to delete time slot ${timeSlotId} for course ${courseId}:`, error);
@@ -516,9 +529,14 @@ export const courseApi = {
   async createBulkTimeSlots(courseId: number, timeSlotsData: CreateTimeSlotDto[]): Promise<TimeSlot[]> {
     try {
       console.log('Creating bulk time slots for course:', courseId, 'with data:', timeSlotsData);
-      const response = await courseServiceClient.post<TimeSlot[]>(`/api/admin/courses/${courseId}/time-slots/bulk`, { timeSlots: timeSlotsData });
+      
+      // Use admin-api endpoint which will communicate with course-service via NATS
+      const response = await apiClient.post<{success: boolean, data: TimeSlot[]}>(`/admin/courses/${courseId}/time-slots/bulk`, { timeSlots: timeSlotsData });
       console.log('Bulk time slots created successfully:', response);
-      return response;
+      
+      // Extract data from BFF response
+      const bffResponse = response.data;
+      return bffResponse?.data || [];
     } catch (error: any) {
       console.error(`Failed to create bulk time slots for course ${courseId}:`, error);
       throw error;

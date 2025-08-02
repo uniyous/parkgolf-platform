@@ -95,19 +95,19 @@ export const authApi = {
 
   async getCurrentUser(): Promise<BffApiResponse<User>> {
     try {
-      // Auth Service에 직접 연결하여 프로필 정보 가져오기
-      console.log('Fetching user profile from auth-service...');
-      const user = await authServiceClient.getProfile();
-      console.log('Successfully fetched user profile:', user);
+      // BFF API를 통해 프로필 정보 가져오기 (auth-service는 이제 NATS로만 통신)
+      console.log('Fetching user profile from admin-api...');
+      const response = await apiClient.get<User>('/admin/auth/me');
+      console.log('Successfully fetched user profile:', response.data);
       
       return {
         success: true,
-        data: user
+        data: response.data
       };
     } catch (error) {
-      console.error('Failed to get current user from auth-service:', error);
+      console.error('Failed to get current user from admin-api:', error);
       
-      // Auth Service 실패 시 localStorage에서 사용자 정보 확인
+      // Admin API 실패 시 localStorage에서 사용자 정보 확인
       const cachedUser = localStorage.getItem('currentUser');
       if (cachedUser) {
         try {

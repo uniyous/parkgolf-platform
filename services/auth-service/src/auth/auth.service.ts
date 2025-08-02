@@ -65,13 +65,30 @@ export class AuthService {
     async validateToken(token: string) {
         try {
             const payload = this.jwtService.verify(token);
-            const user = await this.userService.findOneByEmail(payload.email);
-            if (!user) {
-                throw new UnauthorizedException('User not found');
+            console.log('🔍 validateToken - payload:', payload);
+            
+            // Check if this is an admin token
+            if (payload.type === 'admin') {
+                console.log('🔍 validateToken - admin token detected');
+                const admin = await this.adminService.findByEmail(payload.email);
+                console.log('🔍 validateToken - admin found:', !!admin);
+                if (!admin) {
+                    throw new UnauthorizedException('Admin not found');
+                }
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { password, ...result } = admin;
+                console.log('🔍 validateToken - admin result:', { id: result.id, email: result.email, roleCode: result.roleCode });
+                return { user: result };
+            } else {
+                // Regular user token
+                const user = await this.userService.findOneByEmail(payload.email);
+                if (!user) {
+                    throw new UnauthorizedException('User not found');
+                }
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { password, ...result } = user;
+                return { user: result };
             }
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { password, ...result } = user;
-            return { user: result };
         } catch (error) {
             throw new UnauthorizedException('Invalid token');
         }
@@ -124,7 +141,9 @@ export class AuthService {
         return null;
     }
 
-    async adminLogin(admin: Omit<Admin, 'password'>) {
+    async adminLogin(admin: any) {
+        console.log('🔑 Admin login - permissions:', admin.permissions?.length || 0);
+        
         const payload = {
             username: admin.email,
             email: admin.email,
@@ -136,6 +155,11 @@ export class AuthService {
         const accessToken = this.jwtService.sign(payload);
         const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
+        // Get admin permissions
+        const adminPermissions = admin.permissions || [];
+        const permissionCodes = adminPermissions.map(p => p.permission);
+        console.log('🔑 Permission codes:', permissionCodes);
+        
         return {
             accessToken,
             refreshToken,
@@ -146,6 +170,7 @@ export class AuthService {
                 name: admin.name,
                 role: admin.roleCode,
                 type: 'admin',
+                permissions: permissionCodes,
             }
         };
     }

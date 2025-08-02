@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useConfirmation } from '../../hooks/useConfirmation';
-import { useAdminAuth } from '../../contexts/AdminAuthContext';
+import { useSelector } from 'react-redux';
+import { selectCurrentAdmin, selectHasPermission } from '../../redux/slices/authSlice';
 import type { Company, CompanyStatus } from '../../types/company';
 
 interface EnhancedCompanyListProps {
@@ -35,7 +36,8 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
   onRefresh,
 }) => {
   const { showConfirmation } = useConfirmation();
-  const { currentAdmin, hasPermission } = useAdminAuth();
+  const currentAdmin = useSelector(selectCurrentAdmin);
+  const hasManageCompanies = useSelector(selectHasPermission('MANAGE_COMPANIES'));
 
   // 필터 및 정렬 상태
   const [filters, setFilters] = useState<FilterState>({
@@ -328,7 +330,7 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
             </svg>
             새로고침
           </button>
-          {hasPermission('MANAGE_COMPANIES') && (
+          {hasManageCompanies && (
             <button
               onClick={onCreateCompany}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -537,7 +539,7 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
-                        {hasPermission('MANAGE_COMPANIES') && (
+                        {hasManageCompanies && (
                           <>
                             <button
                               onClick={(e) => {

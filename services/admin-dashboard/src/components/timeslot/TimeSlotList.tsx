@@ -12,8 +12,11 @@ export const TimeSlotList: React.FC<TimeSlotListProps> = ({
   onEdit,
   onDelete
 }) => {
+  // timeSlots가 배열인지 확인하고 방어적 처리
+  const validTimeSlots = Array.isArray(timeSlots) ? timeSlots : [];
+  
   // 날짜와 시간대별로 정렬
-  const sortedTimeSlots = [...timeSlots].sort((a, b) => {
+  const sortedTimeSlots = [...validTimeSlots].sort((a, b) => {
     const dateCompare = (a.date || '').localeCompare(b.date || '');
     if (dateCompare !== 0) return dateCompare;
     return a.startTime.localeCompare(b.startTime);

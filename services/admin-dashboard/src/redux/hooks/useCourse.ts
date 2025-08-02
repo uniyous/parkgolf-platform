@@ -7,7 +7,8 @@ import {
   selectCourse 
 } from '../slices/courseSlice';
 import { courseApi } from '../../api/courseApi';
-import { useAdminAuth } from '../../contexts/AdminAuthContext';
+import { useSelector } from 'react-redux';
+import { selectCurrentAdmin } from '../slices/authSlice';
 import type { Company, Course, UpdateCourseDto } from '../../types';
 
 export interface UseGolfCourseManagementReturn {
@@ -35,7 +36,7 @@ export interface UseGolfCourseManagementReturn {
 
 export const useGolfCourseManagement = (): UseGolfCourseManagementReturn => {
   const dispatch = useAppDispatch();
-  const { currentAdmin } = useAdminAuth();
+  const currentAdmin = useSelector(selectCurrentAdmin);
   const { 
     companies, 
     courses, 

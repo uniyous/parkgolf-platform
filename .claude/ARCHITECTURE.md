@@ -1,9 +1,9 @@
 # Park Golf Platform - Architecture Overview
 
-## 🏗️ 시스템 아키텍처 (2025-01-11 업데이트)
+## 🏗️ 시스템 아키텍처 (2025-08-01 업데이트)
 
 ### 핵심 아키텍처 패턴
-- **Microservices Architecture (MSA)**: 10개 독립 서비스
+- **Microservices Architecture (MSA)**: 10개 서비스 (6개 완성, 4개 개발중)
 - **Backend for Frontend (BFF)**: Admin/User 전용 API 게이트웨이
 - **Event-Driven Architecture**: NATS 기반 비동기 메시징
 - **Domain-Driven Design (DDD)**: 도메인별 서비스 분리
@@ -28,7 +28,7 @@
 
 ### 1. Frontend Services
 
-#### Admin Dashboard (Port: 3000)
+#### Admin Dashboard (Port: 3000) ✅ 완성
 ```
 admin-dashboard/
 ├── src/
@@ -41,7 +41,7 @@ admin-dashboard/
 │   └── utils/        # 유틸리티 함수
 ```
 
-#### User Webapp (Port: 3002)
+#### User Webapp (Port: 3001) ⚠️ 기초만 구현
 ```
 user-webapp/
 ├── src/
@@ -53,7 +53,7 @@ user-webapp/
 
 ### 2. BFF Services (Backend for Frontend)
 
-#### Admin API (Port: 3091)
+#### Admin API (Port: 3091) ✅ 완성
 - **역할**: 관리자 대시보드를 위한 API Gateway
 - **기능**:
   - 마이크로서비스 통합
@@ -61,7 +61,7 @@ user-webapp/
   - 데이터 집계
   - 응답 최적화
 
-#### User API (Port: 3001)
+#### User API (Port: 3092) ⚠️ 부분 구현
 - **역할**: 사용자 앱을 위한 API Gateway
 - **기능**:
   - 사용자 중심 API
@@ -70,7 +70,7 @@ user-webapp/
 
 ### 3. Core Services
 
-#### Auth Service (Port: 3011)
+#### Auth Service (Port: 3011) ✅ 완성
 ```
 auth-service/
 ├── src/
@@ -87,7 +87,7 @@ auth-service/
 - RBAC 권한 관리
 - 활동 로그 기록
 
-#### Course Service (Port: 3012)
+#### Course Service (NATS only) ✅ 완성
 ```
 course-service/
 ├── src/
@@ -103,7 +103,7 @@ course-service/
 - 타임슬롯 관리
 - 주간 스케줄 관리
 
-#### Booking Service (Port: 3013)
+#### Booking Service (Port: 3013) ✅ 완성
 ```
 booking-service/
 ├── src/
@@ -117,17 +117,17 @@ booking-service/
 - 결제 정보 관리
 - 타임슬롯 가용성 체크
 
-#### Notify Service (Port: 3014)
+#### Notify Service (Port: 3014) ✅ 완성
 - 알림 템플릿 관리
 - 이메일/SMS 발송
 - 스케줄링
 
-#### Search Service (Port: 3015)
+#### Search Service (Port: 3015) ❌ 미구현
 - Elasticsearch 연동
 - 전문 검색
 - 자동완성
 
-#### ML Service (Port: 3016)
+#### ML Service (Port: 4000) ⚠️ 기초만 구현
 - 추천 시스템
 - 예측 분석
 - 데이터 분석
@@ -317,4 +317,4 @@ shared/
 
 ---
 
-*마지막 업데이트: 2025-01-23*
+*마지막 업데이트: 2025-08-01*

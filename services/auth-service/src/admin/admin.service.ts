@@ -71,13 +71,16 @@ export class AdminService {
     return admin;
   }
 
-  async findByEmail(email: string): Promise<Admin | null> {
-    return this.prisma.admin.findUnique({
+  async findByEmail(email: string): Promise<any> {
+    const admin = await this.prisma.admin.findUnique({
       where: { email },
       include: {
         permissions: true,
       },
     });
+    
+    console.log('🔍 findByEmail - admin permissions count:', admin?.permissions?.length || 0);
+    return admin;
   }
 
   async update(id: number, updateAdminDto: UpdateAdminDto): Promise<Admin> {
@@ -142,6 +145,7 @@ export class AdminService {
 
   async validateAdmin(email: string, password: string): Promise<Admin | null> {
     const admin = await this.findByEmail(email);
+    console.log('🔍 validateAdmin - admin found with permissions:', admin?.permissions?.length || 0);
     
     if (!admin) {
       return null;

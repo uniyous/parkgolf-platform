@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useConfirmation } from '../../hooks/useConfirmation';
-import { useAdminAuth } from '../../contexts/AdminAuthContext';
+import { useSelector } from 'react-redux';
+import { selectCurrentAdmin, selectHasPermission } from '../../redux/slices/authSlice';
 import type { User, UserMembershipTier, UserStatus } from '../../types';
 
 interface EnhancedUserListProps {
@@ -42,7 +43,8 @@ export const EnhancedUserList: React.FC<EnhancedUserListProps> = ({
   onRefresh,
 }) => {
   const { showConfirmation } = useConfirmation();
-  const { currentAdmin, hasPermission } = useAdminAuth();
+  const currentAdmin = useSelector(selectCurrentAdmin);
+  const hasManageUsers = useSelector(selectHasPermission('MANAGE_USERS'));
 
   // 필터 및 정렬 상태
   const [filters, setFilters] = useState<FilterState>({
@@ -336,7 +338,7 @@ export const EnhancedUserList: React.FC<EnhancedUserListProps> = ({
             </svg>
             새로고침
           </button>
-          {hasPermission('MANAGE_USERS') && (
+          {hasManageUsers && (
             <button
               onClick={onCreateUser}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -466,7 +468,7 @@ export const EnhancedUserList: React.FC<EnhancedUserListProps> = ({
                 필터 초기화
               </button>
             )}
-            {hasPermission('MANAGE_USERS') && (
+            {hasManageUsers && (
               <button
                 onClick={onCreateUser}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-600 bg-blue-100 hover:bg-blue-200"
@@ -646,7 +648,7 @@ export const EnhancedUserList: React.FC<EnhancedUserListProps> = ({
 
                         {/* 기본 작업 버튼들 */}
                         <div className="flex items-center space-x-2">
-                          {hasPermission('MANAGE_USERS') && (
+                          {hasManageUsers && (
                             <button
                               onClick={() => onEditUser(user)}
                               className="text-blue-600 hover:text-blue-800 text-sm font-medium"
@@ -654,7 +656,7 @@ export const EnhancedUserList: React.FC<EnhancedUserListProps> = ({
                               수정
                             </button>
                           )}
-                          {hasPermission('MANAGE_USERS') && (
+                          {hasManageUsers && (
                             <button
                               onClick={() => onManagePermissions(user)}
                               className="text-purple-600 hover:text-purple-800 text-sm font-medium"
@@ -662,7 +664,7 @@ export const EnhancedUserList: React.FC<EnhancedUserListProps> = ({
                               권한
                             </button>
                           )}
-                          {hasPermission('MANAGE_USERS') && currentAdmin?.scope === 'PLATFORM' && (
+                          {hasManageUsers && currentAdmin?.scope === 'PLATFORM' && (
                             <button
                               onClick={() => handleDeleteUser(user)}
                               className="text-red-600 hover:text-red-800 text-sm font-medium"
@@ -730,7 +732,7 @@ export const EnhancedUserList: React.FC<EnhancedUserListProps> = ({
                 
                 <div className="mt-3 flex justify-between items-center">
                   <div className="flex space-x-2">
-                    {hasPermission('MANAGE_USERS') && (
+                    {hasManageUsers && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -741,7 +743,7 @@ export const EnhancedUserList: React.FC<EnhancedUserListProps> = ({
                         수정
                       </button>
                     )}
-                    {hasPermission('MANAGE_USERS') && (
+                    {hasManageUsers && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -753,7 +755,7 @@ export const EnhancedUserList: React.FC<EnhancedUserListProps> = ({
                       </button>
                     )}
                   </div>
-                  {hasPermission('MANAGE_USERS') && currentAdmin?.scope === 'PLATFORM' && (
+                  {hasManageUsers && currentAdmin?.scope === 'PLATFORM' && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

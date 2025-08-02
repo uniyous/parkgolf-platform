@@ -11,8 +11,8 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-# 프로젝트 루트 디렉토리 (claude-workspace/management/scripts에서 3단계 위로)
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+# 프로젝트 루트 디렉토리 (.claude/scripts에서 2단계 위로)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # 로그 디렉토리 생성
 LOG_DIR="$PROJECT_ROOT/logs"
@@ -23,7 +23,8 @@ PID_DIR="$PROJECT_ROOT/.pids"
 mkdir -p "$PID_DIR"
 
 # 서비스 정의 (배열로 변경)
-SERVICES="auth-service:3011 course-service:3012 booking-service:3013 admin-api:3091 user-api:3092 admin-dashboard:3000 user-webapp:3001"
+# 핵심 서비스만 포함 (notify, search, ml 서비스는 MVP 완료 후 추가)
+SERVICES="auth-service:3011 course-service:3012 booking-service:3013 admin-api:3091 admin-dashboard:3000 user-webapp:3002"
 
 # 서비스 시작 함수
 start_service() {
@@ -114,11 +115,10 @@ echo ""
 echo "Service URLs:"
 echo "============="
 echo "Admin Dashboard: http://localhost:3000"
-echo "User WebApp:     http://localhost:3001"
+echo "User WebApp:     http://localhost:3002"
 echo "Admin API (BFF): http://localhost:3091"
-echo "User API (BFF):  http://localhost:3092"
 echo "Auth Service:    http://localhost:3011"
 echo "Course Service:  http://localhost:3012"
 echo "Booking Service: http://localhost:3013"
 echo ""
-echo "To stop all services, run: ./stop-services.sh"
+echo "To stop all services, run: .claude/scripts/stop-all-services.sh"

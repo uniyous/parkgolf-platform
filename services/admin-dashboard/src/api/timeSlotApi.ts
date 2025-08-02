@@ -56,7 +56,7 @@ export const timeSlotApi = {
     const response = await apiClient.get<{
       success: boolean;
       data: TimeSlotListResponse;
-    }>('/admin/time-slots', { params });
+    }>('/admin/time-slots', params);
     
     return response.data.data;
   },

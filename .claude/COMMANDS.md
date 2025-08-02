@@ -7,13 +7,13 @@
 #### 전체 환경 시작
 ```bash
 # 인프라 서비스 시작
-docker-compose -f claude-workspace/development/docker/docker-compose.yml up -d
+docker-compose -f .claude/docker/docker-compose.yml up -d
 
 # 서비스 상태 확인
-docker-compose -f claude-workspace/development/docker/docker-compose.yml ps
+docker-compose -f .claude/docker/docker-compose.yml ps
 
 # 로그 확인
-docker-compose -f claude-workspace/development/docker/docker-compose.yml logs -f postgres
+docker-compose -f .claude/docker/docker-compose.yml logs -f postgres
 ```
 
 #### 개별 서비스 시작
@@ -33,7 +33,7 @@ npm run start:dev
 #### 템플릿 사용
 ```bash
 # 템플릿 확인
-cat claude-workspace/development/templates/nestjs-service.template
+cat .claude/development/templates/nestjs-service.template
 
 # 새 서비스 디렉토리 생성
 mkdir services/new-service
@@ -47,10 +47,10 @@ npm install @nestjs/core @nestjs/common @nestjs/platform-express
 #### 설정 업데이트
 ```bash
 # 서비스 목록에 추가
-vim claude-workspace/shared/configs/project/services.json
+vim .claude/shared/configs/project/services.json
 
 # 환경 변수 추가
-vim claude-workspace/development/environments/.env.development
+vim .claude/development/environments/.env.development
 
 # 포트 매핑 추가 (예: 3017)
 ```
@@ -235,16 +235,16 @@ cd services/auth-service
 docker build -t parkgolf-auth-service .
 
 # 모든 서비스 빌드
-claude-workspace/development/scripts/build-all-services.sh
+.claude/development/scripts/build-all-services.sh
 ```
 
 #### 환경 설정 관리
 ```bash
 # 개발 환경 설정
-cp claude-workspace/development/environments/.env.development .env
+cp .claude/development/environments/.env.development .env
 
 # 스테이징 환경 설정
-cp claude-workspace/development/environments/.env.staging .env
+cp .claude/development/environments/.env.staging .env
 
 # 환경 변수 확인
 echo $DATABASE_URL
@@ -287,8 +287,8 @@ docker exec -it parkgolf-redis redis-cli FLUSHALL
 #### 개발 환경 재시작
 ```bash
 # 전체 환경 재시작
-docker-compose -f claude-workspace/development/docker/docker-compose.yml down
-docker-compose -f claude-workspace/development/docker/docker-compose.yml up -d
+docker-compose -f .claude/docker/docker-compose.yml down
+docker-compose -f .claude/docker/docker-compose.yml up -d
 ```
 
 #### 빠른 테스트

@@ -25,49 +25,49 @@ interface LoginFormProps {
 const ADMIN_ACCOUNTS: AdminAccount[] = [
   {
     email: 'owner@parkgolf.com',
-    password: 'admin123!@#',
+    password: 'admin123',
     name: '김플랫폼',
     role: 'PLATFORM_OWNER',
     description: '플랫폼 최고 책임자'
   },
   {
     email: 'admin@parkgolf.com',
-    password: 'admin123!@#',
+    password: 'admin123',
     name: '박운영',
     role: 'PLATFORM_ADMIN',
     description: '플랫폼 운영 총괄'
   },
   {
     email: 'support@parkgolf.com',
-    password: 'admin123!@#',
+    password: 'admin123',
     name: '이지원',
     role: 'PLATFORM_SUPPORT',
     description: '고객 문의 및 기술 지원'
   },
   {
     email: 'analyst@parkgolf.com',
-    password: 'admin123!@#',
+    password: 'admin123',
     name: '최분석',
     role: 'PLATFORM_ANALYST',
     description: '플랫폼 데이터 분석 및 리포팅'
   },
   {
     email: 'owner@gangnam-golf.com',
-    password: 'admin123!@#',
+    password: 'admin123',
     name: '강대표',
     role: 'COMPANY_OWNER',
     description: '강남 파크골프장 대표'
   },
   {
     email: 'manager@gangnam-golf.com',
-    password: 'admin123!@#',
+    password: 'admin123',
     name: '남운영',
     role: 'COMPANY_MANAGER',
     description: '강남 파크골프장 운영 관리자'
   },
   {
     email: 'owner@busan-golf.com',
-    password: 'admin123!@#',
+    password: 'admin123',
     name: '부대표',
     role: 'COMPANY_OWNER',
     description: '부산 파크골프장 대표'

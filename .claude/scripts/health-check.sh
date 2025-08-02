@@ -11,10 +11,11 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # 프로젝트 루트 디렉토리
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # 서비스 정의
-SERVICES="auth-service:3011 course-service:3012 booking-service:3013 admin-api:3091 user-api:3092 admin-dashboard:3000 user-webapp:3001"
+# 핵심 서비스만 포함
+SERVICES="auth-service:3011 course-service:3012 booking-service:3013 admin-api:3091 admin-dashboard:3000 user-webapp:3002"
 
 # 인프라 서비스 정의
 INFRA_SERVICES="postgresql:5432 redis:6379 nats:4222 elasticsearch:9200"

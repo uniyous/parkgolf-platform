@@ -27,7 +27,7 @@ import { AdminJwtStrategy } from './strategies/admin-jwt.strategy';
         ConfigModule,
     ],
     providers: [AuthService, LocalStrategy, JwtStrategy, AdminJwtStrategy],
-    controllers: [AuthController, AuthNatsController],
+    controllers: [AuthNatsController],
     exports: [AuthService, JwtModule], // Export JwtModule if other modules need to verify tokens directly
 })
 export class AuthModule {}

@@ -20,14 +20,25 @@ export class AuthNatsController {
     try {
       this.logger.log(`NATS: Login request for user: ${loginDto.email}`);
       
-      // First validate the user
+      // Check if this is an admin by trying admin authentication first
+      const admin = await this.authService.validateAdmin(loginDto.email, loginDto.password);
+      if (admin) {
+        const result = await this.authService.adminLogin(admin);
+        this.logger.log(`NATS: Admin login successful for: ${loginDto.email}`);
+        return {
+          success: true,
+          data: result,
+        };
+      }
+      
+      // If not admin, try regular user authentication
       const user = await this.authService.validateUser(loginDto.email, loginDto.password);
       if (!user) {
         throw new Error('Invalid credentials');
       }
       
       const result = await this.authService.login(user);
-      this.logger.log(`NATS: Login successful for user: ${loginDto.email}`);
+      this.logger.log(`NATS: User login successful for: ${loginDto.email}`);
       return {
         success: true,
         data: result,
@@ -91,21 +102,23 @@ export class AuthNatsController {
   @MessagePattern('auth.getCurrentUser')
   async getCurrentUser(@Payload() payload: { token: string }) {
     try {
-      this.logger.log('NATS: Get current user request');
+      this.logger.log('🎯 NATS: Get current user request received');
+      this.logger.log('🎯 NATS: Token (first 20 chars):', payload.token?.substring(0, 20) + '...');
       
-      // First validate the token and extract user info
-      const tokenValidation = await this.authService.validateToken(payload.token);
-      
-      // Then get complete user/admin information
-      const result = await this.authService.getCurrentUser(tokenValidation.user);
-      this.logger.log('NATS: Current user information retrieved successfully');
+      // Validate the token and return user info
+      const result = await this.authService.validateToken(payload.token);
+      this.logger.log('🎯 NATS: validateToken result:', { 
+        hasUser: !!result.user, 
+        userId: result.user?.id,
+        userEmail: result.user?.email 
+      });
       
       return {
         success: true,
-        data: result,
+        data: result.user,
       };
     } catch (error) {
-      this.logger.error('NATS: Get current user failed', error);
+      this.logger.error('🎯 NATS: Get current user failed', error);
       return {
         success: false,
         error: {

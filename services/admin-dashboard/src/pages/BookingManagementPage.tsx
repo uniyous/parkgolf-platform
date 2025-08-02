@@ -3,13 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { courseApi } from '../api/courseApi';
 import { Breadcrumb } from '../components/common';
 import { PageLayout } from '../components/common/Layout/PageLayout';
-import { useAdminAuth } from '../contexts/AdminAuthContext';
+import { useSelector } from 'react-redux';
+import { selectCurrentAdmin, selectHasPermission } from '../redux/slices/authSlice';
 import { CanManageBookings } from '../components/auth/PermissionGuard';
 import type { Course, Company } from '../types';
 
 export const BookingManagementPage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentAdmin, hasPermission } = useAdminAuth();
+  const currentAdmin = useSelector(selectCurrentAdmin);
+  const hasManageBookings = useSelector(selectHasPermission('MANAGE_BOOKINGS'));
   const [courses, setCourses] = useState<Course[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(false);

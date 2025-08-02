@@ -1,5 +1,6 @@
 import React from 'react';
-import { useAdminAuth } from '../../contexts/AdminAuthContext';
+import { useSelector } from 'react-redux';
+import { selectCurrentAdmin, selectHasPermission } from '../../redux/slices/authSlice';
 import type { Course, CourseStatus, DifficultyLevel, CourseType } from '../../types/course';
 
 interface CourseListProps {
@@ -23,7 +24,8 @@ export const CourseList: React.FC<CourseListProps> = ({
   onDeleteCourse,
   onUpdateStatus
 }) => {
-  const { currentAdmin, hasPermission } = useAdminAuth();
+  const currentAdmin = useSelector(selectCurrentAdmin);
+  const hasManageCourses = useSelector(selectHasPermission('MANAGE_COURSES'));
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
@@ -352,7 +354,7 @@ export const CourseList: React.FC<CourseListProps> = ({
                       >
                         상세보기
                       </button>
-                      {hasPermission('MANAGE_COURSES') && (
+                      {hasManageCourses && (
                         <>
                           <button
                             onClick={() => onEditCourse(course)}
@@ -383,7 +385,7 @@ export const CourseList: React.FC<CourseListProps> = ({
                         </>
                       )}
                       
-                      {hasPermission('MANAGE_COURSES') && currentAdmin?.scope === 'PLATFORM' && (
+                      {hasManageCourses && currentAdmin?.scope === 'PLATFORM' && (
                         <button
                           onClick={() => onDeleteCourse(course)}
                           className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
