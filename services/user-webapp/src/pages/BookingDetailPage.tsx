@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useBooking } from '../hooks/useBooking';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { bookingApi, Course, TimeSlot } from '../api/bookingApi';
+import { Course } from '../redux/api/courseApi';
+import { TimeSlot } from '../redux/api/bookingApi';
+import { Button, Text, PriceDisplay } from '../components';
 
 
 interface BookingState {
@@ -51,6 +54,7 @@ const paymentMethods: PaymentMethod[] = [
 
 export const BookingDetailPage: React.FC = () => {
   const { user, logout } = useAuth();
+  const { createBooking, isCreating } = useBooking();
   const location = useLocation();
   const navigate = useNavigate();
   const bookingState = location.state as BookingState;
@@ -60,7 +64,6 @@ export const BookingDetailPage: React.FC = () => {
   const [specialRequests, setSpecialRequests] = useState('');
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [agreeToPrivacy, setAgreeToPrivacy] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
   if (!bookingState) {
     navigate('/search');
@@ -69,12 +72,6 @@ export const BookingDetailPage: React.FC = () => {
 
   const { course, timeSlot } = bookingState;
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR', {
-      style: 'currency',
-      currency: 'KRW',
-    }).format(price);
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ko-KR', {
@@ -95,39 +92,39 @@ export const BookingDetailPage: React.FC = () => {
     if (!canProceed || !user) return;
 
     try {
-      setIsLoading(true);
-
       // 예약 생성 API 호출
       const bookingData = {
         courseId: course.id,
         bookingDate: timeSlot.date,
         timeSlot: timeSlot.time,
         playerCount,
-        paymentMethod: selectedPaymentMethod,
-        specialRequests,
+        specialRequests: specialRequests || undefined,
         userEmail: user.email,
         userName: user.name,
-        userPhone: user.phoneNumber,
+        userPhone: user.phoneNumber || user.phone,
+        paymentMethod: selectedPaymentMethod,
       };
 
-      const booking = await bookingApi.createBooking(bookingData);
+      const result = await createBooking(bookingData);
 
-      // 결제 완료 페이지로 이동 (실제 예약 데이터와 함께)
-      navigate('/booking-complete', {
-        state: {
-          booking,
-          course,
-          timeSlot,
-          playerCount,
-          paymentMethod: paymentMethods.find(p => p.id === selectedPaymentMethod),
-          specialRequests
-        }
-      });
+      if (result.success) {
+        // 결제 완료 페이지로 이동 (실제 예약 데이터와 함께)
+        navigate('/booking-complete', {
+          state: {
+            booking: result.data,
+            course,
+            timeSlot,
+            playerCount,
+            paymentMethod: paymentMethods.find(p => p.id === selectedPaymentMethod),
+            specialRequests
+          }
+        });
+      } else {
+        alert('예약 생성에 실패했습니다. 다시 시도해주세요.');
+      }
     } catch (error) {
       console.error('Booking failed:', error);
       alert('예약 생성에 실패했습니다. 다시 시도해주세요.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -306,9 +303,11 @@ export const BookingDetailPage: React.FC = () => {
             </div>
             <div>
               <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>기본 요금</div>
-              <div style={{ fontSize: '16px', fontWeight: '600', color: '#10b981' }}>
-                {formatPrice(timeSlot.price)}
-              </div>
+              <PriceDisplay 
+                price={timeSlot.price} 
+                size="medium" 
+                showUnit={false}
+              />
             </div>
           </div>
         </div>
@@ -468,11 +467,11 @@ export const BookingDetailPage: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: '#6b7280' }}>기본 요금 x {playerCount}명</span>
-              <span style={{ fontWeight: '500' }}>{formatPrice(totalPrice)}</span>
+              <PriceDisplay price={totalPrice} size="small" showUnit={false} />
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: '#6b7280' }}>서비스 수수료</span>
-              <span style={{ fontWeight: '500' }}>{formatPrice(serviceFee)}</span>
+              <PriceDisplay price={serviceFee} size="small" showUnit={false} />
             </div>
             <div style={{ 
               borderTop: '1px solid #e5e7eb', 
@@ -482,9 +481,7 @@ export const BookingDetailPage: React.FC = () => {
               alignItems: 'center' 
             }}>
               <span style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937' }}>총 결제 금액</span>
-              <span style={{ fontSize: '20px', fontWeight: '700', color: '#10b981' }}>
-                {formatPrice(finalPrice)}
-              </span>
+              <PriceDisplay price={finalPrice} size="large" showUnit={false} />
             </div>
           </div>
         </div>
@@ -535,39 +532,24 @@ export const BookingDetailPage: React.FC = () => {
         </div>
 
         {/* Payment Button */}
-        <button
+        <Button
           onClick={handlePayment}
-          disabled={!canProceed || isLoading}
+          disabled={!canProceed || isCreating}
+          loading={isCreating}
+          variant="primary"
+          size="large"
           style={{
             width: '100%',
-            padding: '16px',
-            background: (canProceed && !isLoading) ? '#10b981' : '#d1d5db',
-            color: 'white',
-            border: 'none',
-            borderRadius: '12px',
             fontSize: '18px',
             fontWeight: '700',
-            cursor: (canProceed && !isLoading) ? 'pointer' : 'not-allowed',
-            transition: 'all 0.2s ease'
-          }}
-          onMouseEnter={(e) => {
-            if (canProceed && !isLoading) {
-              e.currentTarget.style.background = '#059669';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (canProceed && !isLoading) {
-              e.currentTarget.style.background = '#10b981';
-            }
+            borderRadius: '12px'
           }}
         >
-          {isLoading 
-            ? '예약 처리 중...' 
-            : canProceed 
-              ? `💳 ${formatPrice(finalPrice)} 결제하기` 
-              : '필수 항목을 완료해주세요'
+          {canProceed 
+            ? `💳 ${new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(finalPrice)} 결제하기` 
+            : '필수 항목을 완료해주세요'
           }
-        </button>
+        </Button>
       </div>
     </div>
   );

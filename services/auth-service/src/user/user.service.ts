@@ -167,43 +167,6 @@ export class UserService {
         return user;
     }
 
-    async findAll(filters: any = {}): Promise<User[]> {
-        const { page = 1, limit = 20, ...whereFilters } = filters;
-        const skip = (page - 1) * limit;
-        
-        return this.prisma.user.findMany({
-            where: whereFilters,
-            skip,
-            take: limit,
-            orderBy: { createdAt: 'desc' },
-        });
-    }
-
-    async findOne(id: number): Promise<User> {
-        const user = await this.prisma.user.findUnique({ where: { id } });
-        if (!user) {
-            throw new NotFoundException(`User with ID ${id} not found.`);
-        }
-        return user;
-    }
-
-    async update(id: number, updateData: any): Promise<User> {
-        const user = await this.prisma.user.findUnique({ where: { id } });
-        if (!user) {
-            throw new NotFoundException(`User with ID ${id} not found.`);
-        }
-
-        const dataToUpdate: any = { ...updateData };
-        
-        if (updateData.password) {
-            dataToUpdate.password = await bcrypt.hash(updateData.password, this.SALT_ROUNDS);
-        }
-
-        return this.prisma.user.update({
-            where: { id },
-            data: dataToUpdate,
-        });
-    }
 
     async getStats(): Promise<any> {
         const totalUsers = await this.prisma.user.count();

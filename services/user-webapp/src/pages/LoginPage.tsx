@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { Button, Text, FormField } from '../components';
 
 export const LoginPage: React.FC = () => {
-  const { login } = useAuth();
+  const { login, isLoggingIn } = useAuth();
   const navigate = useNavigate();
   
   const [formData, setFormData] = useState({
@@ -11,23 +12,7 @@ export const LoginPage: React.FC = () => {
     password: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,132 +31,83 @@ export const LoginPage: React.FC = () => {
       return;
     }
 
-    setIsLoading(true);
-
     try {
       const success = await login(formData.email, formData.password);
       
-      if (success) {
-        navigate('/search');
-      } else {
+      if (!success) {
         setErrors({ submit: '이메일 또는 비밀번호가 일치하지 않습니다.' });
       }
     } catch (error) {
       setErrors({ submit: '네트워크 오류가 발생했습니다.' });
-    } finally {
-      setIsLoading(false);
     }
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, var(--golf-primary) 0%, var(--golf-secondary) 100%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
-      <div className="card" style={{ maxWidth: '400px', width: '100%' }}>
-        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <h1 style={{ fontSize: '28px', color: 'var(--golf-primary)', marginBottom: '8px' }}>
+    <div className="min-h-screen bg-gradient-to-br from-golf-primary to-golf-secondary flex items-center justify-center p-5">
+      <div className="card w-full max-w-md">
+        <div className="text-center mb-8">
+          <Text variant="h1" className="text-golf-primary mb-2">
             ⛳ 골프장 예약
-          </h1>
-          <p style={{ color: '#666' }}>로그인하여 예약을 시작하세요</p>
+          </Text>
+          <Text className="text-gray-600">로그인하여 예약을 시작하세요</Text>
         </div>
 
         <form onSubmit={handleLogin}>
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-              이메일
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="your@email.com"
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: errors.email ? '1px solid #ef4444' : '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '16px',
-                outline: 'none'
-              }}
-            />
-            {errors.email && (
-              <p style={{ color: '#ef4444', fontSize: '14px', marginTop: '4px' }}>
-                {errors.email}
-              </p>
-            )}
-          </div>
+          <FormField
+            label="이메일"
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={(value) => {
+              setFormData(prev => ({ ...prev, email: value }));
+              if (errors.email) {
+                setErrors(prev => ({ ...prev, email: '' }));
+              }
+            }}
+            placeholder="your@email.com"
+            error={errors.email}
+            required
+          />
 
-          <div style={{ marginBottom: '25px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-              비밀번호
-            </label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="비밀번호를 입력하세요"
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: errors.password ? '1px solid #ef4444' : '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '16px',
-                outline: 'none'
-              }}
-            />
-            {errors.password && (
-              <p style={{ color: '#ef4444', fontSize: '14px', marginTop: '4px' }}>
-                {errors.password}
-              </p>
-            )}
-          </div>
+          <FormField
+            label="비밀번호"
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={(value) => {
+              setFormData(prev => ({ ...prev, password: value }));
+              if (errors.password) {
+                setErrors(prev => ({ ...prev, password: '' }));
+              }
+            }}
+            placeholder="비밀번호를 입력하세요"
+            error={errors.password}
+            required
+          />
 
           {errors.submit && (
-            <div style={{ 
-              marginBottom: '20px', 
-              padding: '12px', 
-              backgroundColor: '#fef2f2', 
-              border: '1px solid #fecaca',
-              borderRadius: '8px',
-              color: '#dc2626'
-            }}>
-              {errors.submit}
+            <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <Text variant="error">{errors.submit}</Text>
             </div>
           )}
 
-          <button
+          <Button
             type="submit"
-            disabled={isLoading}
-            className="btn btn-primary"
-            style={{ 
-              width: '100%', 
-              fontSize: '16px',
-              background: isLoading ? '#9ca3af' : 'var(--golf-primary)',
-              cursor: isLoading ? 'not-allowed' : 'pointer'
-            }}
+            disabled={isLoggingIn}
+            loading={isLoggingIn}
+            variant="primary"
+            size="large"
+            className="w-full"
           >
-            {isLoading ? '로그인 중...' : '로그인'}
-          </button>
+            로그인
+          </Button>
         </form>
 
-        <div style={{ 
-          marginTop: '20px', 
-          padding: '15px', 
-          backgroundColor: '#f8f9fa', 
-          borderRadius: '8px',
-          border: '1px solid #e9ecef'
-        }}>
-          <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#495057' }}>
+        <div className="mt-5 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <Text variant="h4" className="mb-3 text-sm text-gray-700">
             🧪 테스트 계정 (클릭하여 자동 입력)
-          </h4>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '5px' }}>
+          </Text>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {[
               { email: 'king@parkgolf.com', password: 'user123', name: '킹(관리자)', role: 'ADMIN' },
               { email: 'kimcheolsu@parkgolf.com', password: 'user123', name: '김철수', role: 'USER' },
@@ -182,53 +118,43 @@ export const LoginPage: React.FC = () => {
               { email: 'limjihye@parkgolf.com', password: 'user123', name: '임지혜', role: 'ADMIN' },
               { email: 'kangminwoo@parkgolf.com', password: 'user123', name: '강민우', role: 'MOD' }
             ].map((testUser, index) => (
-              <button
+              <Button
                 key={index}
+                variant="outline"
+                size="small"
                 onClick={() => {
                   setFormData({ email: testUser.email, password: testUser.password });
                 }}
-                style={{
-                  background: 'white',
-                  border: '1px solid #dee2e6',
-                  borderRadius: '4px',
-                  padding: '8px',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  color: '#495057'
-                }}
+                className="text-left h-auto p-2 flex-col items-start"
               >
-                <div style={{ fontWeight: '500', marginBottom: '2px' }}>{testUser.name}</div>
-                <div style={{ fontSize: '10px', opacity: 0.6, color: '#6c757d' }}>{testUser.role}</div>
-                <div style={{ fontSize: '11px', opacity: 0.7 }}>{testUser.email}</div>
-              </button>
+                <div className="font-medium mb-1 text-xs">
+                  {testUser.name}
+                </div>
+                <div className="text-xs opacity-60 text-gray-600">
+                  {testUser.role}
+                </div>
+                <div className="text-xs opacity-70">
+                  {testUser.email}
+                </div>
+              </Button>
             ))}
           </div>
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
-          <span style={{ color: '#666', fontSize: '14px' }}>계정이 없으신가요? </span>
+        <div className="text-center mt-5">
+          <Text className="text-gray-600 text-sm inline">
+            계정이 없으신가요?{' '}
+          </Text>
           <a 
             href="/signup" 
-            style={{ 
-              color: 'var(--golf-secondary)', 
-              textDecoration: 'none',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}
+            className="text-golf-secondary no-underline text-sm font-medium hover:text-golf-dark"
           >
             회원가입
           </a>
           <br />
           <a 
             href="/booking" 
-            style={{ 
-              color: 'var(--golf-light)', 
-              textDecoration: 'none',
-              fontSize: '14px',
-              marginTop: '8px',
-              display: 'inline-block'
-            }}
+            className="text-golf-light no-underline text-sm mt-2 inline-block hover:text-golf-secondary"
           >
             로그인 없이 둘러보기 →
           </a>

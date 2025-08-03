@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MinLength, IsBoolean } from 'class-validator';
 
 export class UpdateUserDto {
     @ApiPropertyOptional({
@@ -19,4 +19,12 @@ export class UpdateUserDto {
     @IsString()
     @MinLength(8, { message: 'Password must be at least 8 characters long.' })
     password?: string;
+
+    @ApiPropertyOptional({
+        example: true,
+        description: 'Active status of the user',
+    })
+    @IsOptional()
+    @IsBoolean()
+    isActive?: boolean;
 }

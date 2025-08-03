@@ -129,6 +129,36 @@ export class AuthNatsController {
     }
   }
 
+  @MessagePattern('auth.getProfile')
+  async getProfile(@Payload() payload: { userId: number }) {
+    try {
+      this.logger.log(`NATS: Get profile request for user ID: ${payload.userId}`);
+      
+      const user = await this.userService.findOneById(payload.userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+      
+      // Remove password before returning
+      const { password, ...userProfile } = user;
+      this.logger.log(`NATS: Profile retrieved successfully for user ID: ${payload.userId}`);
+      
+      return {
+        success: true,
+        data: userProfile,
+      };
+    } catch (error) {
+      this.logger.error(`NATS: Get profile failed for user ID: ${payload.userId}`, error);
+      return {
+        success: false,
+        error: {
+          code: 'GET_PROFILE_FAILED',
+          message: error.message || 'Failed to get user profile',
+        },
+      };
+    }
+  }
+
   @MessagePattern('users.create')
   async createUser(@Payload() payload: { data: CreateUserDto; token?: string }) {
     try {
@@ -248,7 +278,7 @@ export class AuthNatsController {
       // Validate admin token
       await this.authService.validateToken(payload.token);
       
-      const result = await this.userService.remove(payload.userId);
+      const result = await this.userService.remove(parseInt(payload.userId));
       this.logger.log(`NATS: User deleted successfully: ${payload.userId}`);
       
       return {

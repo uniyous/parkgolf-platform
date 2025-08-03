@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { Course, EnhancedTimeSlot } from '../types/booking';
+import { useCourses } from '../hooks/useCourses';
+import { useBooking } from '../hooks/useBooking';
+import { Course } from '../redux/api/courseApi';
+
+interface EnhancedTimeSlot {
+  id: number;
+  time: string;
+  isAvailable: boolean;
+  price: number;
+  isPremium: boolean;
+}
 
 const mockCourses: Course[] = [
   {
@@ -14,7 +24,6 @@ const mockCourses: Course[] = [
     amenities: ['클럽하우스', '레스토랑', '프로샵', '주차장'],
     openTime: '06:00',
     closeTime: '18:00',
-    isAvailable: true,
   },
   {
     id: 2,
@@ -27,7 +36,6 @@ const mockCourses: Course[] = [
     amenities: ['클럽하우스', '레스토랑', '연습장'],
     openTime: '06:30',
     closeTime: '17:30',
-    isAvailable: true,
   },
   {
     id: 3,
@@ -40,7 +48,6 @@ const mockCourses: Course[] = [
     amenities: ['클럽하우스', '레스토랑', '프로샵', '호텔', '스파'],
     openTime: '06:00',
     closeTime: '19:00',
-    isAvailable: true,
   },
 ];
 
@@ -64,6 +71,9 @@ const generateTimeSlots = (): EnhancedTimeSlot[] => {
 
 export const EnhancedBookingPage: React.FC = () => {
   const { user, logout } = useAuth();
+  const { allCourses } = useCourses();
+  const { createBooking, isCreating } = useBooking();
+  
   const [step, setStep] = useState<'course' | 'datetime' | 'details' | 'confirmation'>('course');
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedDate, setSelectedDate] = useState('');
@@ -71,6 +81,7 @@ export const EnhancedBookingPage: React.FC = () => {
   const [playerCount, setPlayerCount] = useState(2);
   const [specialRequests, setSpecialRequests] = useState('');
   const [timeSlots] = useState<EnhancedTimeSlot[]>(generateTimeSlots());
+  const [bookingResult, setBookingResult] = useState<any>(null);
 
   const handleCourseSelect = (course: Course) => {
     setSelectedCourse(course);
@@ -83,8 +94,33 @@ export const EnhancedBookingPage: React.FC = () => {
     }
   };
 
-  const handleBookingComplete = () => {
-    setStep('confirmation');
+  const handleBookingComplete = async () => {
+    if (!selectedCourse || !selectedTimeSlot) return;
+
+    try {
+      const bookingData = {
+        courseId: selectedCourse.id,
+        bookingDate: selectedDate,
+        timeSlot: selectedTimeSlot.time,
+        playerCount,
+        specialRequests: specialRequests || undefined,
+        userEmail: user?.email || '',
+        userName: user?.name || '',
+        userPhone: user?.phoneNumber || user?.phone,
+      };
+
+      const result = await createBooking(bookingData);
+
+      if (result.success) {
+        setBookingResult(result.data);
+        setStep('confirmation');
+      } else {
+        alert('예약 생성에 실패했습니다. 다시 시도해주세요.');
+      }
+    } catch (error) {
+      console.error('Booking failed:', error);
+      alert('예약 생성에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   const goBack = () => {
@@ -301,7 +337,7 @@ export const EnhancedBookingPage: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1" style={{ gap: '24px', maxWidth: '800px', margin: '0 auto' }}>
-              {mockCourses.map((course) => (
+              {(allCourses.length > 0 ? allCourses : mockCourses).map((course) => (
                 <div
                   key={course.id}
                   onClick={() => handleCourseSelect(course)}
@@ -654,16 +690,19 @@ export const EnhancedBookingPage: React.FC = () => {
 
               <button
                 onClick={handleBookingComplete}
+                disabled={isCreating}
                 className="btn btn-primary"
                 style={{
                   width: '100%',
                   padding: '16px',
                   fontSize: '16px',
                   fontWeight: '600',
-                  borderRadius: 'var(--radius-lg)'
+                  borderRadius: 'var(--radius-lg)',
+                  background: isCreating ? '#9ca3af' : 'var(--golf-secondary)',
+                  cursor: isCreating ? 'not-allowed' : 'pointer'
                 }}
               >
-                예약 완료하기
+                {isCreating ? '예약 처리 중...' : '예약 완료하기'}
               </button>
             </div>
           </div>
@@ -730,6 +769,7 @@ export const EnhancedBookingPage: React.FC = () => {
                   <div><strong>시간:</strong> {selectedTimeSlot.time}</div>
                   <div><strong>플레이어:</strong> {playerCount}명</div>
                   <div><strong>금액:</strong> {formatPrice(selectedTimeSlot.price * playerCount)}</div>
+                  {bookingResult && <div><strong>예약번호:</strong> {bookingResult.bookingNumber}</div>}
                 </div>
               </div>
 
@@ -741,6 +781,7 @@ export const EnhancedBookingPage: React.FC = () => {
                   setSelectedTimeSlot(null);
                   setPlayerCount(2);
                   setSpecialRequests('');
+                  setBookingResult(null);
                 }}
                 className="btn btn-primary"
                 style={{

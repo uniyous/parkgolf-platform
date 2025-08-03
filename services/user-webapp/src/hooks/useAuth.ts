@@ -1,56 +1,86 @@
-import { useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAppDispatch, useAppSelector } from '../redux/hooks';
-import { login as loginAction, logout as logoutAction, register as registerAction, clearError } from '../redux/slices/authSlice';
+import { useSelector } from 'react-redux';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { RootState } from '../redux/store';
+import { 
+  useLoginMutation, 
+  useRegisterMutation, 
+  useLogoutMutation,
+  useGetProfileQuery,
+  RegisterRequest 
+} from '../redux/api/authApi';
+import { useEffect, useRef } from 'react';
 
 export const useAuth = () => {
-  const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const auth = useAppSelector((state) => state.auth);
+  const location = useLocation();
+  const user = useSelector((state: RootState) => state.auth.user);
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  
+  const [loginMutation, { isLoading: isLoggingIn }] = useLoginMutation();
+  const [registerMutation, { isLoading: isRegistering }] = useRegisterMutation();
+  const [logoutMutation] = useLogoutMutation();
+  
+  // Get profile query (only runs if authenticated)
+  const { data: profile, refetch: refetchProfile } = useGetProfileQuery(undefined, {
+    skip: !isAuthenticated,
+  });
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = async (email: string, password: string) => {
     try {
-      const result = await dispatch(loginAction({ email, password })).unwrap();
+      const result = await loginMutation({ email, password }).unwrap();
+      
+      // Redux 상태가 업데이트될 때까지 대기
+      let attempts = 0;
+      const maxAttempts = 20; // 2초 대기 (100ms * 20)
+      
+      while (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        const currentState = localStorage.getItem('token');
+        if (currentState && currentState === result.accessToken) {
+          break;
+        }
+        attempts++;
+      }
+      
+      // 로그인 후 원래 페이지 또는 기본 페이지로 이동
+      const from = (location.state as any)?.from?.pathname || '/search';
+      navigate(from, { replace: true });
       return true;
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Login failed:', error);
       return false;
     }
-  }, [dispatch]);
+  };
 
-  const register = useCallback(async (data: {
-    email: string;
-    password: string;
-    name: string;
-    phone?: string;
-  }) => {
+  const register = async (userData: RegisterRequest) => {
     try {
-      const result = await dispatch(registerAction(data)).unwrap();
+      const result = await registerMutation(userData).unwrap();
+      navigate('/search');
       return true;
     } catch (error) {
-      console.error('Register error:', error);
+      console.error('Registration failed:', error);
       return false;
     }
-  }, [dispatch]);
+  };
 
-  const logout = useCallback(() => {
-    dispatch(logoutAction());
-    navigate('/login');
-  }, [dispatch, navigate]);
-
-  const clearAuthError = useCallback(() => {
-    dispatch(clearError());
-  }, [dispatch]);
+  const logout = async () => {
+    try {
+      await logoutMutation().unwrap();
+    } catch (error) {
+      console.warn('Logout failed:', error);
+    } finally {
+      navigate('/login');
+    }
+  };
 
   return {
-    user: auth.user,
-    token: auth.token,
-    isAuthenticated: auth.isAuthenticated,
-    isLoading: auth.isLoading,
-    error: auth.error,
+    user: user || profile, // 로그인 시 받은 사용자 정보를 우선 사용
+    isAuthenticated,
+    isLoggingIn,
+    isRegistering,
     login,
     register,
     logout,
-    clearError: clearAuthError,
+    refetchProfile,
   };
 };

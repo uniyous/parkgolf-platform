@@ -1,29 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { bookingApi, Course, TimeSlot } from '../api/bookingApi';
+import { useAuth } from '../hooks/useAuth';
+import { useCourses } from '../hooks/useCourses';
+import { useTimeSlots } from '../hooks/useBooking';
+import { Course } from '../redux/api/courseApi';
+import { TimeSlot } from '../redux/api/bookingApi';
+import { Button, Text, PriceDisplay } from '../components';
 
 interface SearchResult {
   course: Course;
   timeSlots: TimeSlot[];
 }
 
-
 export const SearchPage: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  
+  // Search state
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedTimeOfDay, setSelectedTimeOfDay] = useState<'all' | 'morning' | 'afternoon'>('all');
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR', {
-      style: 'currency',
-      currency: 'KRW',
-    }).format(price);
-  };
+  // RTK Query hooks
+  const { 
+    courses, 
+    isLoading: isLoadingCourses, 
+    searchCourses,
+    hasSearched,
+    error: coursesError 
+  } = useCourses();
+
+  // Format functions
 
   const getMinDate = () => {
     return new Date().toISOString().split('T')[0];
@@ -35,68 +42,38 @@ export const SearchPage: React.FC = () => {
     return date.toISOString().split('T')[0];
   };
 
+  // Search handler
   const performSearch = async () => {
-    setIsLoading(true);
-    
     try {
-      // 1. 코스 검색
-      const courses = await bookingApi.searchCourses({
+      searchCourses({
         keyword: searchKeyword,
         priceRange: [50000, 150000],
-        rating: 0
+        rating: 0,
+        date: selectedDate
       });
-
-      // 2. 각 코스별 타임슬롯 가용성 조회
-      const results: SearchResult[] = [];
-      
-      for (const course of courses) {
-        try {
-          const allSlots = await bookingApi.getTimeSlotAvailability(course.id, selectedDate);
-          
-          // 시간대 필터링
-          const filteredSlots = allSlots.filter(slot => {
-            if (selectedTimeOfDay === 'morning') {
-              return parseInt(slot.time.split(':')[0]) < 12;
-            } else if (selectedTimeOfDay === 'afternoon') {
-              return parseInt(slot.time.split(':')[0]) >= 12;
-            }
-            return true;
-          });
-
-          if (filteredSlots.length > 0) {
-            results.push({
-              course,
-              timeSlots: filteredSlots
-            });
-          }
-        } catch (error) {
-          console.warn(`Failed to get time slots for course ${course.id}:`, error);
-        }
-      }
-
-      setSearchResults(results);
     } catch (error) {
       console.error('Search failed:', error);
-      setSearchResults([]);
-    } finally {
-      setIsLoading(false);
     }
   };
 
+  // Time slot selection handler
   const handleTimeSlotSelect = (course: Course, timeSlot: TimeSlot) => {
-    // 선택된 정보를 다음 페이지로 전달
     navigate('/booking-detail', {
-      state: {
-        course,
-        timeSlot
-      }
+      state: { course, timeSlot }
     });
   };
 
-  // Don't automatically search on mount to avoid authentication issues
-  // useEffect(() => {
-  //   performSearch();
-  // }, [selectedDate, selectedTimeOfDay]);
+  // Filter time slots based on selected time of day
+  const filterTimeSlots = (timeSlots: TimeSlot[]) => {
+    return timeSlots.filter(slot => {
+      if (selectedTimeOfDay === 'morning') {
+        return parseInt(slot.time.split(':')[0]) < 12;
+      } else if (selectedTimeOfDay === 'afternoon') {
+        return parseInt(slot.time.split(':')[0]) >= 12;
+      }
+      return true;
+    });
+  };
 
   return (
     <div style={{ 
@@ -134,14 +111,12 @@ export const SearchPage: React.FC = () => {
             }}>
               🔍
             </div>
-            <h1 style={{ 
+            <Text variant="h2" style={{ 
               fontSize: '24px', 
-              fontWeight: '700',
-              color: '#1f2937',
               margin: 0
             }}>
               골프장 검색
-            </h1>
+            </Text>
           </div>
           
           {user && (
@@ -281,271 +256,251 @@ export const SearchPage: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ marginTop: '20px', textAlign: 'center' }}>
-            <button
+          {/* Search Button */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
+            <Button
               onClick={performSearch}
-              style={{
-                background: '#10b981',
-                color: 'white',
-                padding: '12px 32px',
-                borderRadius: '8px',
-                border: 'none',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#059669';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#10b981';
-              }}
+              disabled={isLoadingCourses}
+              loading={isLoadingCourses}
+              variant="primary"
+              size="large"
+              style={{ padding: '16px 48px' }}
             >
-              🔍 검색하기
-            </button>
+              🔍 골프장 검색
+            </Button>
           </div>
         </div>
 
-        {/* Search Results */}
-        <div>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
+        {/* Error Message */}
+        {coursesError && (
+          <div style={{
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#dc2626',
+            padding: '16px',
+            borderRadius: '8px',
             marginBottom: '24px'
           }}>
-            <h2 style={{ 
-              fontSize: '24px', 
+            검색 중 오류가 발생했습니다. 다시 시도해주세요.
+          </div>
+        )}
+
+        {/* Search Results */}
+        {hasSearched && (
+          <div>
+            <h2 style={{
+              fontSize: '24px',
               fontWeight: '700',
               color: '#1f2937',
-              margin: 0
+              marginBottom: '24px'
             }}>
-              검색 결과
+              🎯 검색 결과 ({courses.length}개)
             </h2>
-            <div style={{
-              background: '#f0fdf4',
-              color: '#059669',
-              padding: '8px 16px',
-              borderRadius: '20px',
-              fontSize: '14px',
-              fontWeight: '600'
-            }}>
-              {searchResults.length}개 골프장 발견
-            </div>
-          </div>
 
-          {isLoading ? (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '60px 20px',
-              color: '#6b7280'
-            }}>
-              <div style={{ fontSize: '40px', marginBottom: '16px' }}>🔍</div>
-              <div>검색 중...</div>
-            </div>
-          ) : searchResults.length === 0 ? (
-            <div style={{
-              background: 'white',
-              padding: '60px 20px',
-              borderRadius: '16px',
-              textAlign: 'center',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-              border: '1px solid #e5e7eb'
-            }}>
-              <div style={{ fontSize: '60px', marginBottom: '16px' }}>🏌️‍♀️</div>
-              <h3 style={{ 
-                fontSize: '20px', 
-                fontWeight: '600',
-                color: '#374151',
-                marginBottom: '8px'
+            {courses.length === 0 ? (
+              <div style={{
+                background: 'white',
+                padding: '48px 24px',
+                borderRadius: '16px',
+                textAlign: 'center',
+                border: '1px solid #e5e7eb'
               }}>
-                검색 결과가 없습니다
-              </h3>
-              <p style={{ color: '#6b7280' }}>
-                다른 검색 조건을 시도해보세요.
-              </p>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gap: '24px' }}>
-              {searchResults.map((result) => (
-                <div
-                  key={result.course.id}
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏌️</div>
+                <h3 style={{ fontSize: '20px', color: '#6b7280', margin: 0 }}>
+                  검색 조건에 맞는 골프장이 없습니다
+                </h3>
+                <p style={{ color: '#9ca3af', marginTop: '8px' }}>
+                  다른 조건으로 다시 검색해보세요
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: '24px' }}>
+                {courses.map((course) => (
+                  <CourseCard 
+                    key={course.id}
+                    course={course}
+                    date={selectedDate}
+                    timeOfDay={selectedTimeOfDay}
+                    onTimeSlotSelect={handleTimeSlotSelect}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Course Card Component with Time Slots
+interface CourseCardProps {
+  course: Course;
+  date: string;
+  timeOfDay: 'all' | 'morning' | 'afternoon';
+  onTimeSlotSelect: (course: Course, timeSlot: TimeSlot) => void;
+}
+
+const CourseCard: React.FC<CourseCardProps> = ({ 
+  course, 
+  date, 
+  timeOfDay, 
+  onTimeSlotSelect 
+}) => {
+  const { timeSlots, isLoading: isLoadingSlots } = useTimeSlots(course.id, date);
+
+  const filteredSlots = useMemo(() => {
+    return timeSlots.filter(slot => {
+      if (timeOfDay === 'morning') {
+        return parseInt(slot.time.split(':')[0]) < 12;
+      } else if (timeOfDay === 'afternoon') {
+        return parseInt(slot.time.split(':')[0]) >= 12;
+      }
+      return true;
+    });
+  }, [timeSlots, timeOfDay]);
+
+
+  return (
+    <div style={{
+      background: 'white',
+      borderRadius: '16px',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+      border: '1px solid #e5e7eb',
+      overflow: 'hidden'
+    }}>
+      {/* Course Info */}
+      <div style={{ padding: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '24px', alignItems: 'start' }}>
+          <div>
+            <h3 style={{ 
+              fontSize: '20px', 
+              fontWeight: '700', 
+              color: '#1f2937', 
+              margin: '0 0 8px 0' 
+            }}>
+              {course.name}
+            </h3>
+            <p style={{ 
+              color: '#6b7280', 
+              fontSize: '14px', 
+              margin: '0 0 12px 0' 
+            }}>
+              📍 {course.location}
+            </p>
+            <p style={{ 
+              color: '#4b5563', 
+              fontSize: '14px', 
+              margin: '0 0 16px 0' 
+            }}>
+              {course.description}
+            </p>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              {course.amenities.map((amenity, index) => (
+                <span
+                  key={index}
                   style={{
-                    background: 'white',
-                    borderRadius: '16px',
-                    overflow: 'hidden',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-                    border: '1px solid #e5e7eb'
+                    background: '#f3f4f6',
+                    color: '#6b7280',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    fontSize: '12px'
                   }}
                 >
-                  {/* Course Info */}
-                  <div style={{ padding: '24px', borderBottom: '1px solid #e5e7eb' }}>
-                    <div style={{ display: 'flex', gap: '24px' }}>
-                      <div style={{
-                        width: '120px',
-                        height: '80px',
-                        background: `url(${result.course.imageUrl}) center/cover`,
-                        borderRadius: '8px',
-                        flexShrink: 0
-                      }} />
-                      
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                          <h3 style={{ 
-                            fontSize: '20px', 
-                            fontWeight: '600',
-                            color: '#1f2937',
-                            margin: 0
-                          }}>
-                            {result.course.name}
-                          </h3>
-                          <div style={{
-                            background: '#f0fdf4',
-                            color: '#059669',
-                            padding: '4px 8px',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}>
-                            ⭐ {result.course.rating}
-                          </div>
-                          <div style={{
-                            background: '#f3f4f6',
-                            color: '#6b7280',
-                            padding: '4px 8px',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            fontWeight: '600'
-                          }}>
-                            {result.timeSlots.length}개 슬롯 예약가능
-                          </div>
-                        </div>
-                        
-                        <p style={{ 
-                          color: '#6b7280', 
-                          fontSize: '14px',
-                          margin: '0 0 8px 0'
-                        }}>
-                          📍 {result.course.location}
-                        </p>
-                        
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                          {result.course.amenities.map((amenity, index) => (
-                            <span
-                              key={index}
-                              style={{
-                                background: '#f3f4f6',
-                                color: '#6b7280',
-                                padding: '2px 8px',
-                                borderRadius: '6px',
-                                fontSize: '11px',
-                                fontWeight: '500'
-                              }}
-                            >
-                              {amenity}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ 
-                          fontSize: '18px', 
-                          fontWeight: '700',
-                          color: '#10b981',
-                          marginBottom: '4px'
-                        }}>
-                          {formatPrice(result.course.pricePerHour)}
-                        </div>
-                        <div style={{ 
-                          color: '#6b7280', 
-                          fontSize: '12px'
-                        }}>
-                          /시간
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Time Slots */}
-                  <div style={{ padding: '24px' }}>
-                    <h4 style={{ 
-                      fontSize: '16px', 
-                      fontWeight: '600',
-                      color: '#1f2937',
-                      marginBottom: '16px'
-                    }}>
-                      📅 {new Date(selectedDate).toLocaleDateString('ko-KR', { 
-                        month: 'long', 
-                        day: 'numeric',
-                        weekday: 'short'
-                      })} 예약 가능한 시간
-                    </h4>
-                    
-                    <div style={{ 
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-                      gap: '8px'
-                    }}>
-                      {result.timeSlots.slice(0, 12).map((slot) => (
-                        <button
-                          key={slot.id}
-                          onClick={() => handleTimeSlotSelect(result.course, slot)}
-                          style={{
-                            padding: '12px 8px',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '8px',
-                            background: 'white',
-                            color: '#374151',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                            fontWeight: '500',
-                            textAlign: 'center',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = '#f0fdf4';
-                            e.currentTarget.style.borderColor = '#10b981';
-                            e.currentTarget.style.color = '#059669';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'white';
-                            e.currentTarget.style.borderColor = '#d1d5db';
-                            e.currentTarget.style.color = '#374151';
-                          }}
-                        >
-                          <div style={{ marginBottom: '4px' }}>{slot.time}</div>
-                          <div style={{ fontSize: '10px', opacity: 0.8 }}>
-                            {slot.isPremium && '💎'} {formatPrice(slot.price)}
-                          </div>
-                        </button>
-                      ))}
-                      {result.timeSlots.length > 12 && (
-                        <div style={{
-                          padding: '12px 8px',
-                          border: '1px dashed #d1d5db',
-                          borderRadius: '8px',
-                          background: 'transparent',
-                          color: '#6b7280',
-                          fontSize: '12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}>
-                          +{result.timeSlots.length - 12}개 더
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  {amenity}
+                </span>
               ))}
             </div>
-          )}
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <PriceDisplay 
+              price={course.pricePerHour} 
+              size="medium" 
+            />
+            <div style={{ 
+              fontSize: '14px', 
+              color: '#f59e0b',
+              marginTop: '4px'
+            }}>
+              ⭐ {course.rating}
+            </div>
+          </div>
         </div>
+      </div>
+
+      {/* Time Slots */}
+      <div style={{ 
+        borderTop: '1px solid #e5e7eb', 
+        padding: '24px',
+        background: '#f9fafb'
+      }}>
+        <h4 style={{ 
+          fontSize: '16px', 
+          fontWeight: '600', 
+          color: '#1f2937',
+          margin: '0 0 16px 0'
+        }}>
+          ⏰ 예약 가능 시간
+        </h4>
+        
+        {isLoadingSlots ? (
+          <div style={{ textAlign: 'center', padding: '24px', color: '#6b7280' }}>
+            시간 정보를 불러오는 중...
+          </div>
+        ) : filteredSlots.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '24px', color: '#6b7280' }}>
+            선택한 조건에 예약 가능한 시간이 없습니다
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+            gap: '12px'
+          }}>
+            {filteredSlots.map((slot) => (
+              <button
+                key={slot.id}
+                onClick={() => onTimeSlotSelect(course, slot)}
+                style={{
+                  background: slot.isPremium ? '#fef3c7' : 'white',
+                  border: slot.isPremium ? '2px solid #f59e0b' : '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <div style={{ 
+                  fontSize: '16px', 
+                  fontWeight: '600',
+                  color: '#1f2937'
+                }}>
+                  {slot.time}
+                </div>
+                <PriceDisplay 
+                  price={slot.price} 
+                  size="small" 
+                  showUnit={false}
+                />
+                <div style={{ 
+                  fontSize: '12px', 
+                  color: '#6b7280'
+                }}>
+                  {slot.remaining}자리 남음
+                </div>
+                {slot.isPremium && (
+                  <div style={{
+                    fontSize: '10px',
+                    color: '#f59e0b',
+                    fontWeight: '600'
+                  }}>
+                    프리미엄
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

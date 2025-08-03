@@ -321,13 +321,36 @@ export class AuthService {
   }
 
   async getProfile(userId: number): Promise<UserProfileDto> {
-    const user = this.users.find((u) => u.id === userId);
-    if (!user) {
+    try {
+      // Call auth-service via NATS to get user profile
+      const response = await firstValueFrom(
+        this.authClient.send('auth.getProfile', { userId }),
+      );
+
+      if (!response.success) {
+        throw new NotFoundException(
+          response.error?.message || '사용자를 찾을 수 없습니다.',
+        );
+      }
+
+      const userData = response.data;
+      
+      // Map the response to match our UserProfileDto format
+      return {
+        id: userData.id,
+        email: userData.email,
+        name: userData.name || userData.email,
+        phoneNumber: userData.phoneNumber || '',
+        birthDate: userData.birthDate,
+        createdAt: userData.createdAt,
+        updatedAt: userData.updatedAt,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
     }
-
-    const { password, ...userProfile } = user;
-    return userProfile;
   }
 
   async refreshToken(refreshToken: string): Promise<AuthResponseDto> {

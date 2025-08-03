@@ -1,16 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { authApi } from '../../api/authApi';
-
-interface User {
-  id: number;
-  email: string;
-  name: string;
-  phone?: string;
-  roleCode: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+import { User } from '../api/authApi';
 
 interface AuthState {
   user: User | null;
@@ -59,52 +48,7 @@ const initialState: AuthState = {
   ...loadAuthFromStorage(),
 };
 
-// Async thunks
-export const login = createAsyncThunk(
-  'auth/login',
-  async ({ email, password }: { email: string; password: string }) => {
-    const response = await authApi.login(email, password);
-    return response;
-  }
-);
-
-export const register = createAsyncThunk(
-  'auth/register',
-  async (data: { email: string; password: string; name: string; phone?: string }) => {
-    const response = await authApi.register(data);
-    return response;
-  }
-);
-
-export const refreshAccessToken = createAsyncThunk(
-  'auth/refresh',
-  async (_, { getState }) => {
-    const state = getState() as { auth: AuthState };
-    const refreshToken = state.auth.refreshToken;
-    
-    if (!refreshToken) {
-      throw new Error('No refresh token available');
-    }
-    
-    const response = await authApi.refreshToken(refreshToken);
-    return response;
-  }
-);
-
-export const fetchProfile = createAsyncThunk(
-  'auth/fetchProfile',
-  async (_, { getState }) => {
-    const state = getState() as { auth: AuthState };
-    const token = state.auth.token;
-    
-    if (!token) {
-      throw new Error('No token available');
-    }
-    
-    const response = await authApi.getProfile(token);
-    return response;
-  }
-);
+// RTK Query handles authentication, these thunks are no longer needed
 
 const authSlice = createSlice({
   name: 'auth',
@@ -125,7 +69,11 @@ const authSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
-    updateToken: (state, action: PayloadAction<{ token: string; refreshToken?: string }>) => {
+    updateToken: (state, action: PayloadAction<{ user?: User; token: string; refreshToken?: string }>) => {
+      if (action.payload.user) {
+        state.user = action.payload.user;
+        state.isAuthenticated = true;
+      }
       state.token = action.payload.token;
       if (action.payload.refreshToken) {
         state.refreshToken = action.payload.refreshToken;
@@ -136,90 +84,12 @@ const authSlice = createSlice({
       if (action.payload.refreshToken) {
         localStorage.setItem('refreshToken', action.payload.refreshToken);
       }
+      if (action.payload.user) {
+        localStorage.setItem('user', JSON.stringify(action.payload.user));
+      }
     },
   },
-  extraReducers: (builder) => {
-    // Login
-    builder
-      .addCase(login.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(login.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.user = action.payload.user;
-        state.token = action.payload.accessToken;
-        state.refreshToken = action.payload.refreshToken;
-        state.isAuthenticated = true;
-        
-        // Save to localStorage
-        localStorage.setItem('token', action.payload.accessToken);
-        localStorage.setItem('refreshToken', action.payload.refreshToken);
-        localStorage.setItem('user', JSON.stringify(action.payload.user));
-      })
-      .addCase(login.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.error.message || '로그인에 실패했습니다.';
-        state.isAuthenticated = false;
-      });
-      
-    // Register
-    builder
-      .addCase(register.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(register.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.user = action.payload.user;
-        state.token = action.payload.accessToken;
-        state.refreshToken = action.payload.refreshToken;
-        state.isAuthenticated = true;
-        
-        // Save to localStorage
-        localStorage.setItem('token', action.payload.accessToken);
-        localStorage.setItem('refreshToken', action.payload.refreshToken);
-        localStorage.setItem('user', JSON.stringify(action.payload.user));
-      })
-      .addCase(register.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.error.message || '회원가입에 실패했습니다.';
-      });
-      
-    // Refresh token
-    builder
-      .addCase(refreshAccessToken.fulfilled, (state, action) => {
-        state.token = action.payload.accessToken;
-        if (action.payload.refreshToken) {
-          state.refreshToken = action.payload.refreshToken;
-        }
-        
-        // Update localStorage
-        localStorage.setItem('token', action.payload.accessToken);
-        if (action.payload.refreshToken) {
-          localStorage.setItem('refreshToken', action.payload.refreshToken);
-        }
-      })
-      .addCase(refreshAccessToken.rejected, (state) => {
-        // If refresh fails, logout
-        state.user = null;
-        state.token = null;
-        state.refreshToken = null;
-        state.isAuthenticated = false;
-        
-        // Clear localStorage
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-      });
-      
-    // Fetch profile
-    builder
-      .addCase(fetchProfile.fulfilled, (state, action) => {
-        state.user = action.payload;
-        localStorage.setItem('user', JSON.stringify(action.payload));
-      });
-  },
+  // RTK Query handles all authentication logic
 });
 
 export const { logout, clearError, updateToken } = authSlice.actions;

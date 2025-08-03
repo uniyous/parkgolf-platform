@@ -10,11 +10,14 @@ export class UserNatsController {
   async getUserList(@Payload() data: { filters: any; token: string }) {
     try {
       const { filters } = data;
-      const users = await this.userService.findAll(filters);
+      const result = await this.userService.findAll(filters?.page, filters?.limit);
       
       return {
         success: true,
-        data: users.map(({ password, ...user }) => user),
+        data: result.users,
+        total: result.total,
+        page: result.page,
+        totalPages: result.totalPages,
       };
     } catch (error) {
       return {
@@ -30,12 +33,11 @@ export class UserNatsController {
   @MessagePattern('auth.user.getById')
   async getUserById(@Payload() data: { userId: string; token: string }) {
     try {
-      const user = await this.userService.findOne(parseInt(data.userId, 10));
-      const { password, ...result } = user;
+      const user = await this.userService.findOne(data.userId);
       
       return {
         success: true,
-        data: result,
+        data: user,
       };
     } catch (error) {
       return {
@@ -52,11 +54,10 @@ export class UserNatsController {
   async createUser(@Payload() data: { userData: any; token: string }) {
     try {
       const user = await this.userService.create(data.userData);
-      const { password, ...result } = user;
       
       return {
         success: true,
-        data: result,
+        data: user,
       };
     } catch (error) {
       return {
@@ -73,14 +74,13 @@ export class UserNatsController {
   async updateUser(@Payload() data: { userId: string; updateData: any; token: string }) {
     try {
       const user = await this.userService.update(
-        parseInt(data.userId, 10),
+        data.userId,
         data.updateData
       );
-      const { password, ...result } = user;
       
       return {
         success: true,
-        data: result,
+        data: user,
       };
     } catch (error) {
       return {
@@ -96,8 +96,7 @@ export class UserNatsController {
   @MessagePattern('auth.user.delete')
   async deleteUser(@Payload() data: { userId: string; token: string }) {
     try {
-      const user = await this.userService.remove(parseInt(data.userId, 10));
-      const { password, ...result } = user;
+      const result = await this.userService.remove(parseInt(data.userId, 10));
       
       return {
         success: true,
@@ -118,14 +117,13 @@ export class UserNatsController {
   async updateUserStatus(@Payload() data: { userId: string; isActive: boolean; token: string }) {
     try {
       const user = await this.userService.update(
-        parseInt(data.userId, 10),
+        data.userId,
         { isActive: data.isActive }
       );
-      const { password, ...result } = user;
       
       return {
         success: true,
-        data: result,
+        data: user,
       };
     } catch (error) {
       return {

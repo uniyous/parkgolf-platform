@@ -1,7 +1,9 @@
 import React from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { BookingResponse, Course, TimeSlot } from '../api/bookingApi';
+import { BookingResponse } from '../redux/api/bookingApi';
+import { Course } from '../redux/api/courseApi';
+import { TimeSlot } from '../redux/api/bookingApi';
 
 interface PaymentMethod {
   id: string;
