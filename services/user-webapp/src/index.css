@@ -1,9 +1,47 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+:root {
+  /* Modern Golf Theme Colors */
+  --golf-emerald: #059669;
+  --golf-emerald-light: #10b981;
+  --golf-emerald-dark: #047857;
+  --golf-mint: #6ee7b7;
+  --golf-sage: #84cc16;
+  
+  /* Neutral Colors */
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
+  
+  /* Accent Colors */
+  --amber-400: #fbbf24;
+  --blue-500: #3b82f6;
+  --red-500: #ef4444;
+}
 
 @layer components {
   .card {
-    @apply bg-white rounded-xl p-6 shadow-md border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+    @apply bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-white/20 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1;
+  }
+  
+  .glass-card {
+    @apply bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 shadow-2xl;
+  }
+  
+  .gradient-golf {
+    background: linear-gradient(135deg, var(--golf-emerald) 0%, var(--golf-sage) 100%);
+  }
+  
+  .gradient-sunset {
+    background: linear-gradient(135deg, #ff6b6b 0%, #feca57 50%, #48cae4 100%);
+  }
+  
+  .gradient-forest {
+    background: linear-gradient(135deg, #2d5016 0%, #405721 25%, var(--golf-emerald) 75%, var(--golf-mint) 100%);
   }
 }

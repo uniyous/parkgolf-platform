@@ -147,287 +147,147 @@ export const EnhancedBookingPage: React.FC = () => {
   };
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      background: 'linear-gradient(135deg, var(--neutral-50) 0%, var(--golf-cream) 100%)' 
-    }}>
+    <div className="min-h-screen gradient-forest relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-20 left-20 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-10 right-10 w-80 h-80 bg-white/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
+      </div>
+
       {/* Modern Header */}
-      <header style={{
-        background: 'white',
-        borderBottom: '1px solid var(--neutral-200)',
-        boxShadow: 'var(--shadow-sm)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 50
-      }}>
-        <div className="container">
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            height: '80px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                background: 'var(--golf-secondary)',
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '20px'
-              }}>
-                ⛳
-              </div>
-              <h1 style={{ 
-                fontSize: '24px', 
-                fontWeight: '700',
-                color: 'var(--neutral-900)',
-                margin: 0
-              }}>
-                골프장 예약
-              </h1>
+      <header className="glass-card mx-4 mt-4 mb-8 !p-4 relative z-10">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl backdrop-blur-sm">
+              🏌️
             </div>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              
-              {user && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    padding: '8px 16px',
-                    background: 'var(--golf-light)',
-                    borderRadius: 'var(--radius-lg)',
-                    fontSize: '14px',
-                    color: 'var(--golf-dark)',
-                    fontWeight: '500'
-                  }}>
-                    {user.name}님
-                  </div>
-                  <button
-                    onClick={logout}
-                    style={{
-                      background: 'transparent',
-                      border: '1px solid var(--neutral-300)',
-                      color: 'var(--neutral-600)',
-                      padding: '8px 16px',
-                      borderRadius: 'var(--radius-md)',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500'
-                    }}
-                  >
-                    로그아웃
-                  </button>
-                </div>
-              )}
-              
+            <div>
+              <div className="text-white text-xl font-bold">골프장 예약</div>
+              <div className="text-white/70 text-sm">
+                {step === 'course' && '골프장 선택'}
+                {step === 'datetime' && '날짜 및 시간 선택'}
+                {step === 'details' && '예약 정보 입력'}
+                {step === 'confirmation' && '예약 확인'}
+              </div>
+            </div>
+          </div>
+          
+          {user && (
+            <div className="flex items-center gap-3">
+              <div className="px-4 py-2 bg-white/20 rounded-full text-sm text-white font-medium backdrop-blur-sm">
+                {user.name}님
+              </div>
+              <button
+                onClick={logout}
+                className="bg-white/10 hover:bg-white/20 border border-white/30 text-white px-4 py-2 rounded-xl cursor-pointer text-sm font-medium transition-all duration-200 backdrop-blur-sm"
+              >
+                로그아웃
+              </button>
               {step !== 'course' && (
                 <button 
                   onClick={goBack}
-                  style={{
-                    background: 'var(--neutral-100)',
-                    border: '1px solid var(--neutral-300)',
-                    color: 'var(--neutral-700)',
-                    padding: '10px 20px',
-                    borderRadius: 'var(--radius-md)',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
+                  className="bg-white/10 hover:bg-white/20 border border-white/30 text-white px-4 py-2 rounded-xl cursor-pointer text-sm font-medium transition-all duration-200 backdrop-blur-sm flex items-center gap-2"
                 >
                   ← 이전
                 </button>
               )}
             </div>
-          </div>
+          )}
         </div>
       </header>
 
       {/* Modern Progress Bar */}
-      <div style={{ 
-        background: 'white', 
-        padding: '24px 0',
-        borderBottom: '1px solid var(--neutral-200)'
-      }}>
-        <div className="container">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', maxWidth: '600px', margin: '0 auto' }}>
-            {[
-              { key: 'course', label: '골프장 선택', icon: '🏌️' },
-              { key: 'datetime', label: '날짜 & 시간', icon: '📅' },
-              { key: 'details', label: '예약 정보', icon: '✏️' },
-              { key: 'confirmation', label: '확인', icon: '✅' }
-            ].map((item, index) => {
-              const isActive = step === item.key;
-              const isCompleted = ['course', 'datetime', 'details', 'confirmation'].indexOf(step) > index;
-              
-              return (
-                <React.Fragment key={item.key}>
-                  <div style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center',
-                    flex: 1
-                  }}>
-                    <div style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '50%',
-                      background: isActive ? 'var(--golf-secondary)' : isCompleted ? 'var(--golf-accent)' : 'var(--neutral-200)',
-                      color: isActive || isCompleted ? 'white' : 'var(--neutral-500)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '20px',
-                      fontWeight: '600',
-                      marginBottom: '8px',
-                      transition: 'all 0.3s ease'
-                    }}>
-                      {isCompleted ? '✓' : item.icon}
-                    </div>
-                    <span style={{
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: isActive ? 'var(--golf-secondary)' : isCompleted ? 'var(--golf-accent)' : 'var(--neutral-500)',
-                      textAlign: 'center'
-                    }}>
-                      {item.label}
-                    </span>
+      <div className="glass-card mx-4 mb-8 !p-4 relative z-10">
+        <div className="flex items-center justify-center gap-4 max-w-2xl mx-auto">
+          {[
+            { key: 'course', label: '골프장 선택', icon: '🏌️' },
+            { key: 'datetime', label: '날짜 & 시간', icon: '📅' },
+            { key: 'details', label: '예약 정보', icon: '✏️' },
+            { key: 'confirmation', label: '확인', icon: '✅' }
+          ].map((item, index) => {
+            const isActive = step === item.key;
+            const isCompleted = ['course', 'datetime', 'details', 'confirmation'].indexOf(step) > index;
+            
+            return (
+              <React.Fragment key={item.key}>
+                <div className="flex flex-col items-center flex-1">
+                  <div className={`
+                    w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold mb-2 transition-all duration-300
+                    ${isActive ? 'bg-white/30 text-white border-2 border-white/50' : 
+                      isCompleted ? 'bg-white/20 text-white border-2 border-white/30' : 
+                      'bg-white/10 text-white/50 border border-white/20'}
+                  `}>
+                    {isCompleted ? '✓' : item.icon}
                   </div>
-                  {index < 3 && (
-                    <div style={{
-                      flex: 1,
-                      height: '2px',
-                      background: isCompleted ? 'var(--golf-accent)' : 'var(--neutral-200)',
-                      marginTop: '24px',
-                      transition: 'all 0.3s ease'
-                    }} />
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </div>
+                  <span className={`
+                    text-xs font-medium text-center transition-colors duration-300
+                    ${isActive ? 'text-white' : isCompleted ? 'text-white/90' : 'text-white/60'}
+                  `}>
+                    {item.label}
+                  </span>
+                </div>
+                {index < 3 && (
+                  <div className={`
+                    flex-1 h-0.5 transition-all duration-300 mt-6
+                    ${isCompleted ? 'bg-white/40' : 'bg-white/20'}
+                  `} />
+                )}
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="container" style={{ paddingTop: '40px', paddingBottom: '40px' }}>
+      <div className="max-w-6xl mx-auto px-4 relative z-10">
         {step === 'course' && (
           <div>
-            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-              <h2 style={{ 
-                fontSize: '32px', 
-                fontWeight: '700', 
-                color: 'var(--neutral-900)',
-                marginBottom: '8px'
-              }}>
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold text-white mb-3">
                 완벽한 골프장을 선택하세요
               </h2>
-              <p style={{ 
-                fontSize: '18px', 
-                color: 'var(--neutral-600)',
-                maxWidth: '600px',
-                margin: '0 auto'
-              }}>
+              <p className="text-white/80 text-lg max-w-2xl mx-auto">
                 프리미엄 골프장에서 최고의 라운딩을 경험해보세요
               </p>
             </div>
 
-            <div className="grid grid-cols-1" style={{ gap: '24px', maxWidth: '800px', margin: '0 auto' }}>
+            <div className="grid gap-6 max-w-4xl mx-auto">
               {(allCourses.length > 0 ? allCourses : mockCourses).map((course) => (
                 <div
                   key={course.id}
                   onClick={() => handleCourseSelect(course)}
-                  style={{
-                    background: 'white',
-                    borderRadius: 'var(--radius-xl)',
-                    overflow: 'hidden',
-                    boxShadow: 'var(--shadow-md)',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    border: '1px solid var(--neutral-200)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-4px)';
-                    e.currentTarget.style.boxShadow = 'var(--shadow-xl)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = 'var(--shadow-md)';
-                  }}
+                  className="glass-card overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
                 >
-                  <div style={{ display: 'flex', gap: '24px' }}>
-                    <div style={{
-                      width: '200px',
-                      height: '160px',
-                      background: `url(${course.imageUrl}) center/cover`,
-                      flexShrink: 0
-                    }} />
+                  <div className="flex flex-col lg:flex-row gap-6">
+                    <div 
+                      className="w-full lg:w-80 h-48 lg:h-40 bg-cover bg-center rounded-xl lg:rounded-r-none flex-shrink-0"
+                      style={{ backgroundImage: `url(${course.imageUrl})` }}
+                    />
                     
-                    <div style={{ 
-                      padding: '24px 24px 24px 0',
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between'
-                    }}>
+                    <div className="flex-1 flex flex-col justify-between">
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                          <h3 style={{ 
-                            fontSize: '20px', 
-                            fontWeight: '600',
-                            color: 'var(--neutral-900)',
-                            margin: 0
-                          }}>
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-xl font-bold text-white">
                             {course.name}
                           </h3>
-                          <div style={{
-                            background: 'var(--golf-light)',
-                            color: 'var(--golf-dark)',
-                            padding: '4px 8px',
-                            borderRadius: 'var(--radius-sm)',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}>
+                          <div className="bg-amber-400/20 text-amber-300 px-3 py-1 rounded-full text-sm font-semibold backdrop-blur-sm border border-amber-400/30">
                             ⭐ {course.rating}
                           </div>
                         </div>
                         
-                        <p style={{ 
-                          color: 'var(--neutral-600)', 
-                          fontSize: '14px',
-                          margin: '0 0 8px 0'
-                        }}>
+                        <p className="text-white/70 text-sm mb-2">
                           📍 {course.location}
                         </p>
                         
-                        <p style={{ 
-                          color: 'var(--neutral-700)', 
-                          fontSize: '16px',
-                          margin: '0 0 16px 0',
-                          lineHeight: '1.5'
-                        }}>
+                        <p className="text-white/80 text-sm mb-4 leading-relaxed">
                           {course.description}
                         </p>
                         
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+                        <div className="flex flex-wrap gap-2 mb-4">
                           {course.amenities.map((amenity, index) => (
                             <span
                               key={index}
-                              style={{
-                                background: 'var(--neutral-100)',
-                                color: 'var(--neutral-600)',
-                                padding: '4px 12px',
-                                borderRadius: 'var(--radius-lg)',
-                                fontSize: '12px',
-                                fontWeight: '500'
-                              }}
+                              className="bg-white/20 text-white/90 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm"
                             >
                               {amenity}
                             </span>
@@ -435,32 +295,17 @@ export const EnhancedBookingPage: React.FC = () => {
                         </div>
                       </div>
                       
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div className="flex justify-between items-center pt-4 border-t border-white/20">
                         <div>
-                          <span style={{ 
-                            fontSize: '24px', 
-                            fontWeight: '700',
-                            color: 'var(--golf-secondary)'
-                          }}>
+                          <span className="text-2xl font-bold text-white">
                             {formatPrice(course.pricePerHour)}
                           </span>
-                          <span style={{ 
-                            color: 'var(--neutral-500)', 
-                            fontSize: '14px',
-                            marginLeft: '4px'
-                          }}>
+                          <span className="text-white/60 text-sm ml-1">
                             /시간
                           </span>
                         </div>
                         
-                        <div style={{
-                          background: 'var(--golf-secondary)',
-                          color: 'white',
-                          padding: '10px 20px',
-                          borderRadius: 'var(--radius-md)',
-                          fontSize: '14px',
-                          fontWeight: '600'
-                        }}>
+                        <div className="bg-white/20 hover:bg-white/30 border border-white/30 text-white px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 backdrop-blur-sm">
                           선택하기 →
                         </div>
                       </div>
@@ -473,39 +318,20 @@ export const EnhancedBookingPage: React.FC = () => {
         )}
 
         {step === 'datetime' && selectedCourse && (
-          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-              <h2 style={{ 
-                fontSize: '28px', 
-                fontWeight: '700', 
-                color: 'var(--neutral-900)',
-                marginBottom: '8px'
-              }}>
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold text-white mb-3">
                 날짜와 시간을 선택하세요
               </h2>
-              <p style={{ 
-                fontSize: '16px', 
-                color: 'var(--neutral-600)'
-              }}>
+              <p className="text-white/80 text-lg">
                 {selectedCourse.name}에서의 라운딩 시간을 예약하세요
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Date Selection */}
-              <div style={{
-                background: 'white',
-                padding: '24px',
-                borderRadius: 'var(--radius-xl)',
-                boxShadow: 'var(--shadow-md)',
-                border: '1px solid var(--neutral-200)'
-              }}>
-                <h3 style={{ 
-                  fontSize: '18px', 
-                  fontWeight: '600',
-                  color: 'var(--neutral-900)',
-                  marginBottom: '20px'
-                }}>
+              <div className="glass-card">
+                <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
                   📅 날짜 선택
                 </h3>
                 <input
@@ -514,71 +340,33 @@ export const EnhancedBookingPage: React.FC = () => {
                   onChange={(e) => setSelectedDate(e.target.value)}
                   min={getMinDate()}
                   max={getMaxDate()}
-                  style={{
-                    width: '100%',
-                    padding: '16px',
-                    border: '2px solid var(--neutral-200)',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '16px',
-                    background: 'var(--neutral-50)',
-                    cursor: 'pointer'
-                  }}
+                  className="w-full px-4 py-4 rounded-xl text-lg outline-none transition-all duration-200 bg-white/90 border border-white/30 text-slate-800 focus:bg-white focus:border-white/50 focus:ring-2 focus:ring-white/20 backdrop-blur-sm cursor-pointer"
                 />
               </div>
 
               {/* Time Selection */}
-              <div style={{
-                background: 'white',
-                padding: '24px',
-                borderRadius: 'var(--radius-xl)',
-                boxShadow: 'var(--shadow-md)',
-                border: '1px solid var(--neutral-200)'
-              }}>
-                <h3 style={{ 
-                  fontSize: '18px', 
-                  fontWeight: '600',
-                  color: 'var(--neutral-900)',
-                  marginBottom: '20px'
-                }}>
+              <div className="glass-card">
+                <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
                   🕐 시간 선택
                 </h3>
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(3, 1fr)', 
-                  gap: '8px',
-                  maxHeight: '300px',
-                  overflowY: 'auto',
-                  padding: '4px'
-                }}>
+                <div className="grid grid-cols-3 gap-3 max-h-80 overflow-y-auto scrollbar-thin scrollbar-track-white/10 scrollbar-thumb-white/30">
                   {timeSlots.map((slot) => (
                     <button
                       key={slot.id}
                       onClick={() => setSelectedTimeSlot(slot)}
                       disabled={!slot.isAvailable}
-                      style={{
-                        padding: '12px 8px',
-                        border: '2px solid',
-                        borderColor: selectedTimeSlot?.id === slot.id 
-                          ? 'var(--golf-secondary)' 
-                          : slot.isAvailable ? 'var(--neutral-200)' : 'var(--neutral-100)',
-                        borderRadius: 'var(--radius-md)',
-                        background: selectedTimeSlot?.id === slot.id 
-                          ? 'var(--golf-light)' 
-                          : slot.isAvailable ? 'white' : 'var(--neutral-50)',
-                        color: selectedTimeSlot?.id === slot.id 
-                          ? 'var(--golf-dark)' 
-                          : slot.isAvailable ? 'var(--neutral-700)' : 'var(--neutral-400)',
-                        cursor: slot.isAvailable ? 'pointer' : 'not-allowed',
-                        fontSize: '12px',
-                        fontWeight: selectedTimeSlot?.id === slot.id ? '600' : '500',
-                        textAlign: 'center',
-                        transition: 'all 0.2s ease',
-                        position: 'relative'
-                      }}
+                      className={`
+                        p-3 rounded-xl text-center transition-all duration-200 backdrop-blur-sm border text-sm font-medium
+                        ${selectedTimeSlot?.id === slot.id 
+                          ? 'bg-white/30 border-white/50 text-white shadow-lg' 
+                          : slot.isAvailable 
+                            ? 'bg-white/10 border-white/30 text-white hover:bg-white/20' 
+                            : 'bg-white/5 border-white/10 text-white/40 cursor-not-allowed'}
+                      `}
                     >
-                      <div style={{ marginBottom: '2px' }}>{slot.time}</div>
-                      <div style={{ fontSize: '10px', opacity: 0.8 }}>
-                        {slot.isPremium && '💎'} {formatPrice(slot.price)}
+                      <div className="mb-1 font-semibold">{slot.time}</div>
+                      <div className="text-xs opacity-90">
+                        {slot.isPremium && '💎 '}{formatPrice(slot.price)}
                       </div>
                     </button>
                   ))}
@@ -587,19 +375,10 @@ export const EnhancedBookingPage: React.FC = () => {
             </div>
 
             {selectedDate && selectedTimeSlot && (
-              <div style={{ 
-                marginTop: '32px',
-                textAlign: 'center'
-              }}>
+              <div className="text-center mt-10">
                 <button
                   onClick={handleDateTimeNext}
-                  className="btn btn-primary"
-                  style={{
-                    padding: '16px 48px',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    borderRadius: 'var(--radius-lg)'
-                  }}
+                  className="bg-white/20 hover:bg-white/30 border border-white/30 text-white px-12 py-4 rounded-xl text-lg font-semibold transition-all duration-200 backdrop-blur-sm shadow-lg hover:shadow-xl"
                 >
                   다음 단계 →
                 </button>
@@ -609,51 +388,25 @@ export const EnhancedBookingPage: React.FC = () => {
         )}
 
         {step === 'details' && selectedCourse && selectedTimeSlot && (
-          <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-              <h2 style={{ 
-                fontSize: '28px', 
-                fontWeight: '700', 
-                color: 'var(--neutral-900)',
-                marginBottom: '8px'
-              }}>
+          <div className="max-w-2xl mx-auto">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold text-white mb-3">
                 예약 정보를 입력하세요
               </h2>
-              <p style={{ 
-                fontSize: '16px', 
-                color: 'var(--neutral-600)'
-              }}>
+              <p className="text-white/80 text-lg">
                 마지막 단계입니다. 추가 정보를 입력해주세요.
               </p>
             </div>
 
-            <div style={{
-              background: 'white',
-              padding: '32px',
-              borderRadius: 'var(--radius-xl)',
-              boxShadow: 'var(--shadow-md)',
-              border: '1px solid var(--neutral-200)'
-            }}>
-              <div style={{ marginBottom: '24px' }}>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: '8px', 
-                  fontWeight: '600',
-                  color: 'var(--neutral-700)'
-                }}>
+            <div className="glass-card">
+              <div className="mb-6">
+                <label className="block mb-3 text-sm font-semibold text-white/90">
                   플레이어 수
                 </label>
                 <select
                   value={playerCount}
                   onChange={(e) => setPlayerCount(Number(e.target.value))}
-                  style={{
-                    width: '100%',
-                    padding: '16px',
-                    border: '2px solid var(--neutral-200)',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '16px',
-                    background: 'white'
-                  }}
+                  className="w-full px-4 py-4 rounded-xl text-lg outline-none transition-all duration-200 bg-white/90 border border-white/30 text-slate-800 focus:bg-white focus:border-white/50 focus:ring-2 focus:ring-white/20 backdrop-blur-sm cursor-pointer"
                 >
                   <option value={1}>1명 (개인 레슨)</option>
                   <option value={2}>2명</option>
@@ -662,13 +415,8 @@ export const EnhancedBookingPage: React.FC = () => {
                 </select>
               </div>
 
-              <div style={{ marginBottom: '32px' }}>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: '8px', 
-                  fontWeight: '600',
-                  color: 'var(--neutral-700)'
-                }}>
+              <div className="mb-8">
+                <label className="block mb-3 text-sm font-semibold text-white/90">
                   특별 요청사항 (선택사항)
                 </label>
                 <textarea
@@ -676,31 +424,19 @@ export const EnhancedBookingPage: React.FC = () => {
                   onChange={(e) => setSpecialRequests(e.target.value)}
                   placeholder="카트 요청, 캐디 서비스, 기타 요청사항을 입력해주세요."
                   rows={4}
-                  style={{
-                    width: '100%',
-                    padding: '16px',
-                    border: '2px solid var(--neutral-200)',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '16px',
-                    fontFamily: 'inherit',
-                    resize: 'vertical'
-                  }}
+                  className="w-full px-4 py-4 rounded-xl text-base outline-none transition-all duration-200 bg-white/90 border border-white/30 text-slate-800 placeholder-slate-500 focus:bg-white focus:border-white/50 focus:ring-2 focus:ring-white/20 backdrop-blur-sm resize-vertical"
                 />
               </div>
 
               <button
                 onClick={handleBookingComplete}
                 disabled={isCreating}
-                className="btn btn-primary"
-                style={{
-                  width: '100%',
-                  padding: '16px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  borderRadius: 'var(--radius-lg)',
-                  background: isCreating ? '#9ca3af' : 'var(--golf-secondary)',
-                  cursor: isCreating ? 'not-allowed' : 'pointer'
-                }}
+                className={`
+                  w-full px-6 py-4 rounded-xl text-lg font-semibold transition-all duration-200 backdrop-blur-sm shadow-lg hover:shadow-xl
+                  ${isCreating 
+                    ? 'bg-white/20 border border-white/30 text-white/50 cursor-not-allowed' 
+                    : 'bg-white/20 hover:bg-white/30 border border-white/30 text-white'}
+                `}
               >
                 {isCreating ? '예약 처리 중...' : '예약 완료하기'}
               </button>
@@ -709,67 +445,51 @@ export const EnhancedBookingPage: React.FC = () => {
         )}
 
         {step === 'confirmation' && selectedCourse && selectedTimeSlot && (
-          <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
-            <div style={{
-              background: 'white',
-              padding: '48px 32px',
-              borderRadius: 'var(--radius-xl)',
-              boxShadow: 'var(--shadow-lg)',
-              border: '1px solid var(--neutral-200)'
-            }}>
-              <div style={{
-                width: '80px',
-                height: '80px',
-                background: 'var(--golf-light)',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '40px',
-                margin: '0 auto 24px'
-              }}>
+          <div className="max-w-2xl mx-auto text-center">
+            <div className="glass-card">
+              <div className="w-20 h-20 bg-green-400/20 border border-green-400/30 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 backdrop-blur-sm">
                 ✅
               </div>
               
-              <h2 style={{ 
-                fontSize: '28px', 
-                fontWeight: '700', 
-                color: 'var(--neutral-900)',
-                marginBottom: '16px'
-              }}>
+              <h2 className="text-3xl font-bold text-white mb-4">
                 예약이 완료되었습니다!
               </h2>
               
-              <p style={{ 
-                fontSize: '16px', 
-                color: 'var(--neutral-600)',
-                marginBottom: '32px'
-              }}>
+              <p className="text-white/80 text-lg mb-8">
                 예약 확인 메일이 발송되었습니다.
               </p>
 
-              <div style={{
-                background: 'var(--neutral-50)',
-                padding: '24px',
-                borderRadius: 'var(--radius-lg)',
-                marginBottom: '32px',
-                textAlign: 'left'
-              }}>
-                <h3 style={{ 
-                  fontSize: '18px', 
-                  fontWeight: '600',
-                  color: 'var(--neutral-900)',
-                  marginBottom: '16px'
-                }}>
+              <div className="bg-white/10 border border-white/20 rounded-xl p-6 mb-8 text-left backdrop-blur-sm">
+                <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
                   📋 예약 정보
                 </h3>
-                <div style={{ display: 'grid', gap: '8px' }}>
-                  <div><strong>골프장:</strong> {selectedCourse.name}</div>
-                  <div><strong>날짜:</strong> {selectedDate}</div>
-                  <div><strong>시간:</strong> {selectedTimeSlot.time}</div>
-                  <div><strong>플레이어:</strong> {playerCount}명</div>
-                  <div><strong>금액:</strong> {formatPrice(selectedTimeSlot.price * playerCount)}</div>
-                  {bookingResult && <div><strong>예약번호:</strong> {bookingResult.bookingNumber}</div>}
+                <div className="grid gap-3 text-white/90">
+                  <div className="flex justify-between">
+                    <span>골프장:</span>
+                    <span className="font-medium">{selectedCourse.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>날짜:</span>
+                    <span className="font-medium">{selectedDate}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>시간:</span>
+                    <span className="font-medium">{selectedTimeSlot.time}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>플레이어:</span>
+                    <span className="font-medium">{playerCount}명</span>
+                  </div>
+                  <div className="flex justify-between border-t border-white/20 pt-2">
+                    <span className="font-semibold">총 금액:</span>
+                    <span className="font-bold text-xl text-green-300">{formatPrice(selectedTimeSlot.price * playerCount)}</span>
+                  </div>
+                  {bookingResult && (
+                    <div className="flex justify-between">
+                      <span>예약번호:</span>
+                      <span className="font-mono font-medium">{bookingResult.bookingNumber}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -783,13 +503,7 @@ export const EnhancedBookingPage: React.FC = () => {
                   setSpecialRequests('');
                   setBookingResult(null);
                 }}
-                className="btn btn-primary"
-                style={{
-                  padding: '16px 48px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  borderRadius: 'var(--radius-lg)'
-                }}
+                className="bg-white/20 hover:bg-white/30 border border-white/30 text-white px-12 py-4 rounded-xl text-lg font-semibold transition-all duration-200 backdrop-blur-sm shadow-lg hover:shadow-xl"
               >
                 새로운 예약하기
               </button>

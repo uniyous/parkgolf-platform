@@ -76,73 +76,34 @@ export const SearchPage: React.FC = () => {
   };
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)' 
-    }}>
+    <div className="min-h-screen gradient-forest relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-10 left-10 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 right-20 w-80 h-80 bg-white/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
+      </div>
+
       {/* Header */}
-      <header style={{
-        background: 'white',
-        borderBottom: '1px solid #e2e8f0',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 50
-      }}>
-        <div style={{ 
-          maxWidth: '1200px', 
-          margin: '0 auto', 
-          padding: '0 24px',
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          height: '80px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              background: '#10b981',
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '20px'
-            }}>
+      <header className="glass-card mx-4 mt-4 mb-8 !p-4 relative z-10">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl backdrop-blur-sm">
               🔍
             </div>
-            <Text variant="h2" style={{ 
-              fontSize: '24px', 
-              margin: 0
-            }}>
+            <Text variant="h2" className="text-white text-2xl font-bold m-0">
               골프장 검색
             </Text>
           </div>
           
           {user && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{
-                padding: '8px 16px',
-                background: '#f0fdf4',
-                borderRadius: '20px',
-                fontSize: '14px',
-                color: '#059669',
-                fontWeight: '500'
-              }}>
+            <div className="flex items-center gap-3">
+              <div className="px-4 py-2 bg-white/20 rounded-full text-sm text-white font-medium backdrop-blur-sm">
                 {user.name}님
               </div>
               <button
                 onClick={logout}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid #d1d5db',
-                  color: '#6b7280',
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
+                className="bg-white/10 hover:bg-white/20 border border-white/30 text-white px-4 py-2 rounded-xl cursor-pointer text-sm font-medium transition-all duration-200 backdrop-blur-sm"
               >
                 로그아웃
               </button>
@@ -151,35 +112,17 @@ export const SearchPage: React.FC = () => {
         </div>
       </header>
 
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
+      <div className="max-w-6xl mx-auto px-4 relative z-10">
         {/* Search Filters */}
-        <div style={{
-          background: 'white',
-          padding: '24px',
-          borderRadius: '16px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-          border: '1px solid #e5e7eb',
-          marginBottom: '32px'
-        }}>
-          <h2 style={{ 
-            fontSize: '20px', 
-            fontWeight: '600',
-            color: '#1f2937',
-            marginBottom: '24px'
-          }}>
+        <div className="glass-card mb-8">
+          <h2 className="text-xl font-semibold text-white mb-6">
             🎯 검색 조건
           </h2>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* 키워드 검색 */}
             <div>
-              <label style={{ 
-                display: 'block', 
-                marginBottom: '8px', 
-                fontWeight: '600',
-                color: '#374151',
-                fontSize: '14px'
-              }}>
+              <label className="block mb-2 text-sm font-semibold text-white/90">
                 🔍 키워드 검색
               </label>
               <input
@@ -187,26 +130,13 @@ export const SearchPage: React.FC = () => {
                 value={searchKeyword}
                 onChange={(e) => setSearchKeyword(e.target.value)}
                 placeholder="골프장명, 지역, 편의시설 검색..."
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '2px solid #e5e7eb',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  background: '#f9fafb'
-                }}
+                className="w-full px-4 py-3 rounded-xl text-base outline-none transition-all duration-200 bg-white/90 border border-white/30 text-slate-800 placeholder-slate-500 focus:bg-white focus:border-white/50 focus:ring-2 focus:ring-white/20 backdrop-blur-sm"
               />
             </div>
 
             {/* 날짜 선택 */}
             <div>
-              <label style={{ 
-                display: 'block', 
-                marginBottom: '8px', 
-                fontWeight: '600',
-                color: '#374151',
-                fontSize: '14px'
-              }}>
+              <label className="block mb-2 text-sm font-semibold text-white/90">
                 📅 예약 날짜
               </label>
               <input
@@ -215,39 +145,19 @@ export const SearchPage: React.FC = () => {
                 onChange={(e) => setSelectedDate(e.target.value)}
                 min={getMinDate()}
                 max={getMaxDate()}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '2px solid #e5e7eb',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  background: '#f9fafb'
-                }}
+                className="w-full px-4 py-3 rounded-xl text-base outline-none transition-all duration-200 bg-white/90 border border-white/30 text-slate-800 focus:bg-white focus:border-white/50 focus:ring-2 focus:ring-white/20 backdrop-blur-sm"
               />
             </div>
 
             {/* 시간대 */}
             <div>
-              <label style={{ 
-                display: 'block', 
-                marginBottom: '8px', 
-                fontWeight: '600',
-                color: '#374151',
-                fontSize: '14px'
-              }}>
+              <label className="block mb-2 text-sm font-semibold text-white/90">
                 🕐 시간대
               </label>
               <select
                 value={selectedTimeOfDay}
                 onChange={(e) => setSelectedTimeOfDay(e.target.value as any)}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '2px solid #e5e7eb',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  background: '#f9fafb'
-                }}
+                className="w-full px-4 py-3 rounded-xl text-base outline-none transition-all duration-200 bg-white/90 border border-white/30 text-slate-800 focus:bg-white focus:border-white/50 focus:ring-2 focus:ring-white/20 backdrop-blur-sm"
               >
                 <option value="all">전체</option>
                 <option value="morning">오전 (06:00-11:59)</option>
@@ -257,14 +167,14 @@ export const SearchPage: React.FC = () => {
           </div>
 
           {/* Search Button */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
+          <div className="flex justify-center mt-6">
             <Button
               onClick={performSearch}
               disabled={isLoadingCourses}
               loading={isLoadingCourses}
               variant="primary"
               size="large"
-              style={{ padding: '16px 48px' }}
+              className="!bg-white/90 hover:!bg-white !text-slate-800 font-semibold px-12 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-0"
             >
               🔍 골프장 검색
             </Button>
@@ -273,48 +183,32 @@ export const SearchPage: React.FC = () => {
 
         {/* Error Message */}
         {coursesError && (
-          <div style={{
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            color: '#dc2626',
-            padding: '16px',
-            borderRadius: '8px',
-            marginBottom: '24px'
-          }}>
-            검색 중 오류가 발생했습니다. 다시 시도해주세요.
+          <div className="bg-red-500/20 border border-red-500/30 rounded-xl backdrop-blur-sm p-4 mb-6">
+            <Text className="text-red-200">
+              검색 중 오류가 발생했습니다. 다시 시도해주세요.
+            </Text>
           </div>
         )}
 
         {/* Search Results */}
         {hasSearched && (
           <div>
-            <h2 style={{
-              fontSize: '24px',
-              fontWeight: '700',
-              color: '#1f2937',
-              marginBottom: '24px'
-            }}>
+            <h2 className="text-2xl font-bold text-white mb-6">
               🎯 검색 결과 ({courses.length}개)
             </h2>
 
             {courses.length === 0 ? (
-              <div style={{
-                background: 'white',
-                padding: '48px 24px',
-                borderRadius: '16px',
-                textAlign: 'center',
-                border: '1px solid #e5e7eb'
-              }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏌️</div>
-                <h3 style={{ fontSize: '20px', color: '#6b7280', margin: 0 }}>
+              <div className="glass-card text-center py-12">
+                <div className="text-6xl mb-4">🏌️</div>
+                <h3 className="text-xl text-white mb-2">
                   검색 조건에 맞는 골프장이 없습니다
                 </h3>
-                <p style={{ color: '#9ca3af', marginTop: '8px' }}>
+                <p className="text-white/70">
                   다른 조건으로 다시 검색해보세요
                 </p>
               </div>
             ) : (
-              <div style={{ display: 'grid', gap: '24px' }}>
+              <div className="grid gap-6">
                 {courses.map((course) => (
                   <CourseCard 
                     key={course.id}
@@ -362,66 +256,37 @@ const CourseCard: React.FC<CourseCardProps> = ({
 
 
   return (
-    <div style={{
-      background: 'white',
-      borderRadius: '16px',
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-      border: '1px solid #e5e7eb',
-      overflow: 'hidden'
-    }}>
+    <div className="glass-card overflow-hidden">
       {/* Course Info */}
-      <div style={{ padding: '24px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '24px', alignItems: 'start' }}>
-          <div>
-            <h3 style={{ 
-              fontSize: '20px', 
-              fontWeight: '700', 
-              color: '#1f2937', 
-              margin: '0 0 8px 0' 
-            }}>
+      <div className="p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="lg:col-span-2">
+            <h3 className="text-xl font-bold text-white mb-2">
               {course.name}
             </h3>
-            <p style={{ 
-              color: '#6b7280', 
-              fontSize: '14px', 
-              margin: '0 0 12px 0' 
-            }}>
+            <p className="text-white/80 text-sm mb-3">
               📍 {course.location}
             </p>
-            <p style={{ 
-              color: '#4b5563', 
-              fontSize: '14px', 
-              margin: '0 0 16px 0' 
-            }}>
+            <p className="text-white/70 text-sm mb-4">
               {course.description}
             </p>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+            <div className="flex flex-wrap gap-2 mb-4">
               {course.amenities.map((amenity, index) => (
                 <span
                   key={index}
-                  style={{
-                    background: '#f3f4f6',
-                    color: '#6b7280',
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    fontSize: '12px'
-                  }}
+                  className="bg-white/20 text-white/90 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm"
                 >
                   {amenity}
                 </span>
               ))}
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
+          <div className="text-right">
             <PriceDisplay 
               price={course.pricePerHour} 
               size="medium" 
             />
-            <div style={{ 
-              fontSize: '14px', 
-              color: '#f59e0b',
-              marginTop: '4px'
-            }}>
+            <div className="text-sm text-amber-300 mt-1 font-medium">
               ⭐ {course.rating}
             </div>
           </div>
@@ -429,52 +294,34 @@ const CourseCard: React.FC<CourseCardProps> = ({
       </div>
 
       {/* Time Slots */}
-      <div style={{ 
-        borderTop: '1px solid #e5e7eb', 
-        padding: '24px',
-        background: '#f9fafb'
-      }}>
-        <h4 style={{ 
-          fontSize: '16px', 
-          fontWeight: '600', 
-          color: '#1f2937',
-          margin: '0 0 16px 0'
-        }}>
+      <div className="border-t border-white/20 p-6 bg-black/10">
+        <h4 className="text-base font-semibold text-white mb-4">
           ⏰ 예약 가능 시간
         </h4>
         
         {isLoadingSlots ? (
-          <div style={{ textAlign: 'center', padding: '24px', color: '#6b7280' }}>
+          <div className="text-center py-6 text-white/70">
             시간 정보를 불러오는 중...
           </div>
         ) : filteredSlots.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '24px', color: '#6b7280' }}>
+          <div className="text-center py-6 text-white/70">
             선택한 조건에 예약 가능한 시간이 없습니다
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-            gap: '12px'
-          }}>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
             {filteredSlots.map((slot) => (
               <button
                 key={slot.id}
                 onClick={() => onTimeSlotSelect(course, slot)}
-                style={{
-                  background: slot.isPremium ? '#fef3c7' : 'white',
-                  border: slot.isPremium ? '2px solid #f59e0b' : '2px solid #e5e7eb',
-                  borderRadius: '8px',
-                  padding: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
+                className={`
+                  p-3 rounded-xl cursor-pointer transition-all duration-200 backdrop-blur-sm border
+                  ${slot.isPremium 
+                    ? 'bg-amber-400/20 border-amber-400/50 hover:bg-amber-400/30' 
+                    : 'bg-white/10 border-white/30 hover:bg-white/20'
+                  }
+                `}
               >
-                <div style={{ 
-                  fontSize: '16px', 
-                  fontWeight: '600',
-                  color: '#1f2937'
-                }}>
+                <div className="text-base font-semibold text-white">
                   {slot.time}
                 </div>
                 <PriceDisplay 
@@ -482,18 +329,11 @@ const CourseCard: React.FC<CourseCardProps> = ({
                   size="small" 
                   showUnit={false}
                 />
-                <div style={{ 
-                  fontSize: '12px', 
-                  color: '#6b7280'
-                }}>
+                <div className="text-xs text-white/70 mt-1">
                   {slot.remaining}자리 남음
                 </div>
                 {slot.isPremium && (
-                  <div style={{
-                    fontSize: '10px',
-                    color: '#f59e0b',
-                    fontWeight: '600'
-                  }}>
+                  <div className="text-xs text-amber-300 font-semibold mt-1">
                     프리미엄
                   </div>
                 )}

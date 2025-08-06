@@ -29,11 +29,11 @@ export const Input: React.FC<InputProps> = ({
   style = {},
 }) => {
   const inputClasses = clsx(
-    'w-full px-4 py-3 rounded-lg text-base outline-none transition-all duration-200',
-    'bg-gray-50 border-2 border-gray-200',
-    'focus:bg-white focus:border-golf-primary focus:ring-2 focus:ring-golf-primary/20',
-    error && 'border-red-500 bg-red-50 focus:border-red-500 focus:ring-red-500/20',
-    disabled && 'bg-gray-100 text-gray-400 cursor-not-allowed',
+    'w-full px-4 py-3 rounded-xl text-base outline-none transition-all duration-200',
+    'bg-white/90 border border-white/30 text-slate-800 placeholder-slate-500',
+    'focus:bg-white focus:border-white/50 focus:ring-2 focus:ring-white/20 backdrop-blur-sm',
+    error && 'border-red-400 bg-red-50/90 focus:border-red-400 focus:ring-red-400/20',
+    disabled && 'bg-white/50 text-slate-400 cursor-not-allowed',
     className
   );
 

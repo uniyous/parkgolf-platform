@@ -31,8 +31,8 @@ export const FormField: React.FC<FormFieldProps> = ({
 }) => {
   return (
     <div className="mb-5">
-      <label className="block mb-2 text-sm font-semibold text-gray-700">
-        {label} {required && <span className="text-red-600">*</span>}
+      <label className="block mb-2 text-sm font-semibold text-white/90">
+        {label} {required && <span className="text-red-300">*</span>}
       </label>
       <Input
         type={type}
@@ -45,7 +45,7 @@ export const FormField: React.FC<FormFieldProps> = ({
         min={min}
         max={max}
       />
-      {error && <Text variant="error">{error}</Text>}
+      {error && <Text variant="error" className="text-red-300 text-sm mt-1">{error}</Text>}
     </div>
   );
 };

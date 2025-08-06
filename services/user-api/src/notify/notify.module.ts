@@ -1,23 +1,23 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { BookingController } from './booking.controller';
-import { BookingService } from './booking.service';
+import { NotifyController } from './notify.controller';
+import { NotifyService } from './notify.service';
 
 @Module({
   imports: [
     ClientsModule.register([
       {
-        name: 'BOOKING_SERVICE',
+        name: 'NOTIFY_SERVICE',
         transport: Transport.NATS,
         options: {
           servers: [process.env.NATS_URL || 'nats://localhost:4222'],
-          queue: 'booking-service',
+          queue: 'notify-service',
         },
       },
     ]),
   ],
-  controllers: [BookingController],
-  providers: [BookingService],
-  exports: [BookingService],
+  controllers: [NotifyController],
+  providers: [NotifyService],
+  exports: [NotifyService],
 })
-export class BookingModule {}
+export class NotifyModule {}

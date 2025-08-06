@@ -129,87 +129,41 @@ export const BookingDetailPage: React.FC = () => {
   };
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)' 
-    }}>
+    <div className="min-h-screen gradient-forest relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-20 left-20 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-10 right-10 w-80 h-80 bg-white/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
+      </div>
+
       {/* Header */}
-      <header style={{
-        background: 'white',
-        borderBottom: '1px solid #e2e8f0',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 50
-      }}>
-        <div style={{ 
-          maxWidth: '1200px', 
-          margin: '0 auto', 
-          padding: '0 24px',
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          height: '80px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <header className="glass-card mx-4 mt-4 mb-8 !p-4 relative z-10">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/search')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                fontSize: '24px',
-                cursor: 'pointer',
-                padding: '8px'
-              }}
+              className="p-2 hover:bg-white/20 rounded-xl transition-colors duration-200 text-white text-xl backdrop-blur-sm"
             >
               ←
             </button>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              background: '#10b981',
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '20px'
-            }}>
+            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl backdrop-blur-sm">
               📝
             </div>
-            <h1 style={{ 
-              fontSize: '24px', 
-              fontWeight: '700',
-              color: '#1f2937',
-              margin: 0
-            }}>
-              예약 정보 입력
-            </h1>
+            <div>
+              <div className="text-white text-xl font-bold">예약 정보 입력</div>
+              <div className="text-white/70 text-sm">세부 정보를 입력하세요</div>
+            </div>
           </div>
           
           {user && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{
-                padding: '8px 16px',
-                background: '#f0fdf4',
-                borderRadius: '20px',
-                fontSize: '14px',
-                color: '#059669',
-                fontWeight: '500'
-              }}>
+            <div className="flex items-center gap-3">
+              <div className="px-4 py-2 bg-white/20 rounded-full text-sm text-white font-medium backdrop-blur-sm">
                 {user.name}님
               </div>
               <button
                 onClick={logout}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid #d1d5db',
-                  color: '#6b7280',
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
+                className="bg-white/10 hover:bg-white/20 border border-white/30 text-white px-4 py-2 rounded-xl cursor-pointer text-sm font-medium transition-all duration-200 backdrop-blur-sm"
               >
                 로그아웃
               </button>
@@ -218,91 +172,47 @@ export const BookingDetailPage: React.FC = () => {
         </div>
       </header>
 
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '32px 24px' }}>
+      <div className="max-w-4xl mx-auto px-4 relative z-10">
         {/* Selected Booking Info */}
-        <div style={{
-          background: 'white',
-          padding: '24px',
-          borderRadius: '16px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-          border: '1px solid #e5e7eb',
-          marginBottom: '32px'
-        }}>
-          <h2 style={{ 
-            fontSize: '20px', 
-            fontWeight: '600',
-            color: '#1f2937',
-            marginBottom: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
+        <div className="glass-card mb-8">
+          <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
             ⛳ 선택된 예약 정보
           </h2>
 
-          <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-            <div style={{
-              width: '100px',
-              height: '70px',
-              background: `url(${course.imageUrl}) center/cover`,
-              borderRadius: '8px',
-              flexShrink: 0
-            }} />
+          <div className="flex flex-col lg:flex-row gap-6 mb-6">
+            <div 
+              className="w-full lg:w-32 h-24 bg-cover bg-center rounded-xl flex-shrink-0"
+              style={{ backgroundImage: `url(${course.imageUrl})` }}
+            />
             
-            <div style={{ flex: 1 }}>
-              <h3 style={{ 
-                fontSize: '18px', 
-                fontWeight: '600',
-                color: '#1f2937',
-                margin: '0 0 4px 0'
-              }}>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-white mb-1">
                 {course.name}
               </h3>
-              <p style={{ 
-                color: '#6b7280', 
-                fontSize: '14px',
-                margin: '0 0 8px 0'
-              }}>
+              <p className="text-white/70 text-sm mb-3">
                 📍 {course.location}
               </p>
-              <div style={{
-                background: '#f0fdf4',
-                color: '#059669',
-                padding: '4px 8px',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: '600',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}>
+              <div className="bg-amber-400/20 text-amber-300 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-sm border border-amber-400/30 inline-flex items-center gap-1">
                 ⭐ {course.rating}
               </div>
             </div>
           </div>
 
-          <div style={{
-            background: '#f9fafb',
-            padding: '16px',
-            borderRadius: '8px',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '16px'
-          }}>
+          <div className="bg-white/10 border border-white/20 rounded-xl p-4 backdrop-blur-sm grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>예약 날짜</div>
-              <div style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937' }}>
+              <div className="text-xs text-white/60 mb-1">예약 날짜</div>
+              <div className="text-sm font-semibold text-white">
                 {formatDate(timeSlot.date)}
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>예약 시간</div>
-              <div style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937' }}>
+              <div className="text-xs text-white/60 mb-1">예약 시간</div>
+              <div className="text-sm font-semibold text-white">
                 {timeSlot.time} {timeSlot.isPremium && '💎'}
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>기본 요금</div>
+              <div className="text-xs text-white/60 mb-1">기본 요금</div>
               <PriceDisplay 
                 price={timeSlot.price} 
                 size="medium" 
@@ -313,45 +223,20 @@ export const BookingDetailPage: React.FC = () => {
         </div>
 
         {/* Booking Details Form */}
-        <div style={{
-          background: 'white',
-          padding: '24px',
-          borderRadius: '16px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-          border: '1px solid #e5e7eb',
-          marginBottom: '32px'
-        }}>
-          <h2 style={{ 
-            fontSize: '20px', 
-            fontWeight: '600',
-            color: '#1f2937',
-            marginBottom: '20px'
-          }}>
+        <div className="glass-card mb-8">
+          <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
             📋 예약 세부 정보
           </h2>
 
           {/* Player Count */}
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '8px', 
-              fontWeight: '600',
-              color: '#374151',
-              fontSize: '14px'
-            }}>
+          <div className="mb-6">
+            <label className="block mb-3 text-sm font-semibold text-white/90">
               플레이어 수
             </label>
             <select
               value={playerCount}
               onChange={(e) => setPlayerCount(Number(e.target.value))}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '2px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '16px',
-                background: 'white'
-              }}
+              className="w-full px-4 py-3 rounded-xl text-base outline-none transition-all duration-200 bg-white/90 border border-white/30 text-slate-800 focus:bg-white focus:border-white/50 focus:ring-2 focus:ring-white/20 backdrop-blur-sm cursor-pointer"
             >
               <option value={1}>1명 (개인 레슨)</option>
               <option value={2}>2명</option>
@@ -361,14 +246,8 @@ export const BookingDetailPage: React.FC = () => {
           </div>
 
           {/* Special Requests */}
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '8px', 
-              fontWeight: '600',
-              color: '#374151',
-              fontSize: '14px'
-            }}>
+          <div className="mb-6">
+            <label className="block mb-3 text-sm font-semibold text-white/90">
               특별 요청사항 (선택사항)
             </label>
             <textarea
@@ -376,51 +255,26 @@ export const BookingDetailPage: React.FC = () => {
               onChange={(e) => setSpecialRequests(e.target.value)}
               placeholder="카트 요청, 캐디 서비스, 기타 요청사항을 입력해주세요."
               rows={4}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '2px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontFamily: 'inherit',
-                resize: 'vertical'
-              }}
+              className="w-full px-4 py-3 rounded-xl text-base outline-none transition-all duration-200 bg-white/90 border border-white/30 text-slate-800 placeholder-slate-500 focus:bg-white focus:border-white/50 focus:ring-2 focus:ring-white/20 backdrop-blur-sm resize-vertical"
             />
           </div>
         </div>
 
         {/* Payment Method Selection */}
-        <div style={{
-          background: 'white',
-          padding: '24px',
-          borderRadius: '16px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-          border: '1px solid #e5e7eb',
-          marginBottom: '32px'
-        }}>
-          <h2 style={{ 
-            fontSize: '20px', 
-            fontWeight: '600',
-            color: '#1f2937',
-            marginBottom: '20px'
-          }}>
+        <div className="glass-card mb-8">
+          <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
             💳 결제 방법 선택
           </h2>
 
-          <div style={{ display: 'grid', gap: '12px' }}>
+          <div className="grid gap-3">
             {paymentMethods.map((method) => (
               <label
                 key={method.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '16px',
-                  border: `2px solid ${selectedPaymentMethod === method.id ? '#10b981' : '#e5e7eb'}`,
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  background: selectedPaymentMethod === method.id ? '#f0fdf4' : 'white'
-                }}
+                className={`flex items-center p-4 rounded-xl cursor-pointer transition-all duration-200 backdrop-blur-sm border ${
+                  selectedPaymentMethod === method.id 
+                    ? 'bg-white/20 border-white/50 shadow-lg' 
+                    : 'bg-white/10 border-white/30 hover:bg-white/15'
+                }`}
               >
                 <input
                   type="radio"
@@ -428,16 +282,16 @@ export const BookingDetailPage: React.FC = () => {
                   value={method.id}
                   checked={selectedPaymentMethod === method.id}
                   onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                  style={{ marginRight: '12px' }}
+                  className="mr-3 scale-125"
                 />
-                <div style={{ fontSize: '24px', marginRight: '12px' }}>
+                <div className="text-2xl mr-3">
                   {method.icon}
                 </div>
                 <div>
-                  <div style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937' }}>
+                  <div className="text-base font-semibold text-white">
                     {method.name}
                   </div>
-                  <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                  <div className="text-sm text-white/70">
                     {method.description}
                   </div>
                 </div>
@@ -447,84 +301,54 @@ export const BookingDetailPage: React.FC = () => {
         </div>
 
         {/* Price Summary */}
-        <div style={{
-          background: 'white',
-          padding: '24px',
-          borderRadius: '16px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-          border: '1px solid #e5e7eb',
-          marginBottom: '32px'
-        }}>
-          <h2 style={{ 
-            fontSize: '20px', 
-            fontWeight: '600',
-            color: '#1f2937',
-            marginBottom: '20px'
-          }}>
+        <div className="glass-card mb-8">
+          <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
             💰 결제 금액
           </h2>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#6b7280' }}>기본 요금 x {playerCount}명</span>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-white/80">기본 요금 x {playerCount}명</span>
               <PriceDisplay price={totalPrice} size="small" showUnit={false} />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#6b7280' }}>서비스 수수료</span>
+            <div className="flex justify-between items-center">
+              <span className="text-white/80">서비스 수수료</span>
               <PriceDisplay price={serviceFee} size="small" showUnit={false} />
             </div>
-            <div style={{ 
-              borderTop: '1px solid #e5e7eb', 
-              paddingTop: '12px',
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center' 
-            }}>
-              <span style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937' }}>총 결제 금액</span>
+            <div className="border-t border-white/20 pt-4 flex justify-between items-center">
+              <span className="text-lg font-semibold text-white">총 결제 금액</span>
               <PriceDisplay price={finalPrice} size="large" showUnit={false} />
             </div>
           </div>
         </div>
 
         {/* Terms and Conditions */}
-        <div style={{
-          background: 'white',
-          padding: '24px',
-          borderRadius: '16px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-          border: '1px solid #e5e7eb',
-          marginBottom: '32px'
-        }}>
-          <h2 style={{ 
-            fontSize: '20px', 
-            fontWeight: '600',
-            color: '#1f2937',
-            marginBottom: '20px'
-          }}>
+        <div className="glass-card mb-8">
+          <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
             📄 약관 동의
           </h2>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+          <div className="space-y-4">
+            <label className="flex items-center cursor-pointer">
               <input
                 type="checkbox"
                 checked={agreeToTerms}
                 onChange={(e) => setAgreeToTerms(e.target.checked)}
-                style={{ marginRight: '8px', transform: 'scale(1.2)' }}
+                className="mr-3 scale-125"
               />
-              <span style={{ fontSize: '14px', color: '#374151' }}>
+              <span className="text-sm text-white/90">
                 이용약관에 동의합니다 (필수)
               </span>
             </label>
             
-            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+            <label className="flex items-center cursor-pointer">
               <input
                 type="checkbox"
                 checked={agreeToPrivacy}
                 onChange={(e) => setAgreeToPrivacy(e.target.checked)}
-                style={{ marginRight: '8px', transform: 'scale(1.2)' }}
+                className="mr-3 scale-125"
               />
-              <span style={{ fontSize: '14px', color: '#374151' }}>
+              <span className="text-sm text-white/90">
                 개인정보처리방침에 동의합니다 (필수)
               </span>
             </label>
@@ -532,24 +356,20 @@ export const BookingDetailPage: React.FC = () => {
         </div>
 
         {/* Payment Button */}
-        <Button
+        <button
           onClick={handlePayment}
           disabled={!canProceed || isCreating}
-          loading={isCreating}
-          variant="primary"
-          size="large"
-          style={{
-            width: '100%',
-            fontSize: '18px',
-            fontWeight: '700',
-            borderRadius: '12px'
-          }}
+          className={`w-full px-6 py-4 rounded-xl text-lg font-semibold transition-all duration-200 backdrop-blur-sm shadow-lg hover:shadow-xl ${
+            !canProceed || isCreating
+              ? 'bg-white/20 border border-white/30 text-white/50 cursor-not-allowed' 
+              : '!bg-white/90 hover:!bg-white !text-slate-800'
+          }`}
         >
-          {canProceed 
+          {isCreating ? '결제 처리 중...' : canProceed 
             ? `💳 ${new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(finalPrice)} 결제하기` 
             : '필수 항목을 완료해주세요'
           }
-        </Button>
+        </button>
       </div>
     </div>
   );

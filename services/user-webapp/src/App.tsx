@@ -1,12 +1,11 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { EnhancedBookingPage } from './pages/EnhancedBookingPage';
-import { SearchPage } from './pages/SearchPage';
-import { BookingDetailPage } from './pages/BookingDetailPage';
-import { BookingCompletePage } from './pages/BookingCompletePage';
-import { LoginPage } from './pages/LoginPage';
-import { SignupPage } from './pages/SignupPage';
+import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { PrivateRoute } from './components/PrivateRoute';
+import { BookingCompletePage } from './pages/BookingCompletePage';
+import { BookingDetailPage } from './pages/BookingDetailPage';
+import { EnhancedBookingPage } from './pages/EnhancedBookingPage';
+import { LoginPage } from './pages/LoginPage';
+import { SearchPage } from './pages/SearchPage';
+import { SignupPage } from './pages/SignupPage';
 
 function App() {
   return (

@@ -111,25 +111,28 @@ export const SignupPage: React.FC = () => {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, var(--golf-primary) 0%, var(--golf-secondary) 100%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
-      <div className="card" style={{ maxWidth: '480px', width: '100%' }}>
-        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <h1 style={{ fontSize: '28px', color: 'var(--golf-primary)', marginBottom: '8px' }}>
-            ⛳ 회원가입
+    <div className="min-h-screen gradient-forest flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 opacity-20">
+        <div className="absolute top-20 left-10 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+      </div>
+      
+      <div className="glass-card w-full max-w-lg relative z-10">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-2xl mb-4 backdrop-blur-sm">
+            <span className="text-3xl">⛳</span>
+          </div>
+          <h1 className="text-white mb-2 text-3xl font-bold">
+            회원가입
           </h1>
-          <p style={{ color: '#666' }}>골프장 예약 서비스에 오신 것을 환영합니다</p>
+          <p className="text-white/80 text-sm">골프장 예약 서비스에 오신 것을 환영합니다</p>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+          <div className="mb-5">
+            <label className="block mb-2 text-sm font-semibold text-white/90">
               이메일 *
             </label>
             <input
@@ -138,24 +141,19 @@ export const SignupPage: React.FC = () => {
               value={formData.email}
               onChange={handleChange}
               placeholder="your@email.com"
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: errors.email ? '1px solid #ef4444' : '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '16px',
-                outline: 'none'
-              }}
+              className={`w-full px-4 py-3 rounded-xl text-base outline-none transition-all duration-200 bg-white/90 border text-slate-800 placeholder-slate-500 focus:bg-white focus:border-white/50 focus:ring-2 focus:ring-white/20 backdrop-blur-sm ${
+                errors.email ? 'border-red-400/50' : 'border-white/30'
+              }`}
             />
             {errors.email && (
-              <p style={{ color: '#ef4444', fontSize: '14px', marginTop: '4px' }}>
+              <p className="text-red-300 text-sm mt-1">
                 {errors.email}
               </p>
             )}
           </div>
 
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+          <div className="mb-5">
+            <label className="block mb-2 text-sm font-semibold text-white/90">
               비밀번호 *
             </label>
             <input
@@ -164,24 +162,19 @@ export const SignupPage: React.FC = () => {
               value={formData.password}
               onChange={handleChange}
               placeholder="영문, 숫자, 특수문자 포함 8자 이상"
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: errors.password ? '1px solid #ef4444' : '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '16px',
-                outline: 'none'
-              }}
+              className={`w-full px-4 py-3 rounded-xl text-base outline-none transition-all duration-200 bg-white/90 border text-slate-800 placeholder-slate-500 focus:bg-white focus:border-white/50 focus:ring-2 focus:ring-white/20 backdrop-blur-sm ${
+                errors.password ? 'border-red-400/50' : 'border-white/30'
+              }`}
             />
             {errors.password && (
-              <p style={{ color: '#ef4444', fontSize: '14px', marginTop: '4px' }}>
+              <p className="text-red-300 text-sm mt-1">
                 {errors.password}
               </p>
             )}
           </div>
 
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+          <div className="mb-5">
+            <label className="block mb-2 text-sm font-semibold text-white/90">
               비밀번호 확인 *
             </label>
             <input
@@ -190,24 +183,19 @@ export const SignupPage: React.FC = () => {
               value={formData.confirmPassword}
               onChange={handleChange}
               placeholder="비밀번호를 다시 입력하세요"
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: errors.confirmPassword ? '1px solid #ef4444' : '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '16px',
-                outline: 'none'
-              }}
+              className={`w-full px-4 py-3 rounded-xl text-base outline-none transition-all duration-200 bg-white/90 border text-slate-800 placeholder-slate-500 focus:bg-white focus:border-white/50 focus:ring-2 focus:ring-white/20 backdrop-blur-sm ${
+                errors.confirmPassword ? 'border-red-400/50' : 'border-white/30'
+              }`}
             />
             {errors.confirmPassword && (
-              <p style={{ color: '#ef4444', fontSize: '14px', marginTop: '4px' }}>
+              <p className="text-red-300 text-sm mt-1">
                 {errors.confirmPassword}
               </p>
             )}
           </div>
 
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+          <div className="mb-5">
+            <label className="block mb-2 text-sm font-semibold text-white/90">
               이름 *
             </label>
             <input
@@ -216,24 +204,19 @@ export const SignupPage: React.FC = () => {
               value={formData.name}
               onChange={handleChange}
               placeholder="홍길동"
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: errors.name ? '1px solid #ef4444' : '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '16px',
-                outline: 'none'
-              }}
+              className={`w-full px-4 py-3 rounded-xl text-base outline-none transition-all duration-200 bg-white/90 border text-slate-800 placeholder-slate-500 focus:bg-white focus:border-white/50 focus:ring-2 focus:ring-white/20 backdrop-blur-sm ${
+                errors.name ? 'border-red-400/50' : 'border-white/30'
+              }`}
             />
             {errors.name && (
-              <p style={{ color: '#ef4444', fontSize: '14px', marginTop: '4px' }}>
+              <p className="text-red-300 text-sm mt-1">
                 {errors.name}
               </p>
             )}
           </div>
 
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+          <div className="mb-5">
+            <label className="block mb-2 text-sm font-semibold text-white/90">
               전화번호 *
             </label>
             <input
@@ -242,24 +225,19 @@ export const SignupPage: React.FC = () => {
               value={formData.phoneNumber}
               onChange={handleChange}
               placeholder="010-1234-5678"
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: errors.phoneNumber ? '1px solid #ef4444' : '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '16px',
-                outline: 'none'
-              }}
+              className={`w-full px-4 py-3 rounded-xl text-base outline-none transition-all duration-200 bg-white/90 border text-slate-800 placeholder-slate-500 focus:bg-white focus:border-white/50 focus:ring-2 focus:ring-white/20 backdrop-blur-sm ${
+                errors.phoneNumber ? 'border-red-400/50' : 'border-white/30'
+              }`}
             />
             {errors.phoneNumber && (
-              <p style={{ color: '#ef4444', fontSize: '14px', marginTop: '4px' }}>
+              <p className="text-red-300 text-sm mt-1">
                 {errors.phoneNumber}
               </p>
             )}
           </div>
 
-          <div style={{ marginBottom: '25px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+          <div className="mb-6">
+            <label className="block mb-2 text-sm font-semibold text-white/90">
               생년월일 (선택)
             </label>
             <input
@@ -267,58 +245,39 @@ export const SignupPage: React.FC = () => {
               name="birthDate"
               value={formData.birthDate}
               onChange={handleChange}
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '16px',
-                outline: 'none'
-              }}
+              className="w-full px-4 py-3 rounded-xl text-base outline-none transition-all duration-200 bg-white/90 border border-white/30 text-slate-800 focus:bg-white focus:border-white/50 focus:ring-2 focus:ring-white/20 backdrop-blur-sm cursor-pointer"
             />
           </div>
 
           {errors.submit && (
-            <div style={{ 
-              marginBottom: '20px', 
-              padding: '12px', 
-              backgroundColor: '#fef2f2', 
-              border: '1px solid #fecaca',
-              borderRadius: '8px',
-              color: '#dc2626'
-            }}>
-              {errors.submit}
+            <div className="mb-5 p-4 bg-red-500/20 border border-red-500/30 rounded-xl backdrop-blur-sm">
+              <p className="text-red-200">{errors.submit}</p>
             </div>
           )}
 
           <button
             type="submit"
             disabled={isLoading}
-            className="btn btn-primary"
-            style={{ 
-              width: '100%', 
-              fontSize: '16px',
-              background: isLoading ? '#9ca3af' : 'var(--golf-primary)',
-              cursor: isLoading ? 'not-allowed' : 'pointer'
-            }}
+            className={`w-full px-6 py-4 rounded-xl text-lg font-semibold transition-all duration-200 backdrop-blur-sm shadow-lg hover:shadow-xl ${
+              isLoading 
+                ? 'bg-white/20 border border-white/30 text-white/50 cursor-not-allowed' 
+                : '!bg-white/90 hover:!bg-white !text-slate-800'
+            }`}
           >
             {isLoading ? '가입 중...' : '회원가입'}
           </button>
         </form>
 
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
-          <span style={{ color: '#666', fontSize: '14px' }}>이미 계정이 있으신가요? </span>
-          <a 
-            href="/login" 
-            style={{ 
-              color: 'var(--golf-secondary)', 
-              textDecoration: 'none',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}
-          >
-            로그인
-          </a>
+        <div className="text-center mt-6 space-y-2">
+          <div>
+            <span className="text-white/80 text-sm">이미 계정이 있으신가요? </span>
+            <a 
+              href="/login" 
+              className="text-white font-medium text-sm hover:text-white/80 transition-colors duration-200 underline decoration-white/50 hover:decoration-white"
+            >
+              로그인
+            </a>
+          </div>
         </div>
       </div>
     </div>
