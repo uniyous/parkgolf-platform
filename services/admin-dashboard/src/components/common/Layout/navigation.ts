@@ -6,7 +6,6 @@ export interface NavigationItem {
   badge?: string | number;
   children?: NavigationItem[];
   description?: string;
-  shortcut?: string;
   permission?: string;
 }
 
@@ -27,7 +26,6 @@ export const navigationConfig: NavigationGroup[] = [
         href: '/dashboard', 
         icon: '📊',
         description: '전체 현황 및 주요 지표',
-        shortcut: 'Ctrl+H',
         permission: 'VIEW_DASHBOARD'
       },
     ],
@@ -41,7 +39,6 @@ export const navigationConfig: NavigationGroup[] = [
         href: '/companies', 
         icon: '🏢',
         description: '골프장 회사 정보 관리',
-        shortcut: 'Ctrl+C',
         permission: 'MANAGE_COMPANIES'
       },
       { 
@@ -49,7 +46,6 @@ export const navigationConfig: NavigationGroup[] = [
         href: '/course-management', 
         icon: '⛳',
         description: '골프 코스 정보 및 설정',
-        shortcut: 'Ctrl+G',
         permission: 'MANAGE_COURSES'
       },
       { 
@@ -57,7 +53,6 @@ export const navigationConfig: NavigationGroup[] = [
         href: '/timeslots', 
         icon: '⏰',
         description: '예약 시간 슬롯 관리',
-        shortcut: 'Ctrl+T',
         permission: 'MANAGE_TIMESLOTS'
       },
     ],
@@ -72,7 +67,6 @@ export const navigationConfig: NavigationGroup[] = [
         href: '/bookings', 
         icon: '📅',
         description: '예약 현황 및 관리',
-        shortcut: 'Ctrl+B',
         permission: 'MANAGE_BOOKINGS'
       },
       { 
@@ -101,7 +95,6 @@ export const navigationConfig: NavigationGroup[] = [
         href: '/user-management', 
         icon: '👥',
         description: '고객 계정 관리',
-        shortcut: 'Ctrl+U',
         permission: 'MANAGE_USERS'
       },
     ],
@@ -159,26 +152,7 @@ export const navigationConfig: NavigationGroup[] = [
   },
 ];
 
-// 빠른 액세스 메뉴
-export const quickAccessItems: NavigationItem[] = [
-  { name: '새 예약', href: '/bookings/new', icon: '➕' },
-  { name: '타임슬롯 추가', href: '/timeslots/new', icon: '⏰' },
-  { name: '사용자 추가', href: '/users/new', icon: '👤' },
-  { name: '보고서', href: '/reports', icon: '📊' },
-];
 
-// 최근 방문 페이지 (localStorage에서 관리)
-export const getRecentPages = (): NavigationItem[] => {
-  const recent = localStorage.getItem('recentPages');
-  return recent ? JSON.parse(recent) : [];
-};
-
-export const addRecentPage = (page: NavigationItem): void => {
-  const recent = getRecentPages();
-  const filtered = recent.filter(item => item.href !== page.href);
-  const updated = [page, ...filtered].slice(0, 5); // 최근 5개만 유지
-  localStorage.setItem('recentPages', JSON.stringify(updated));
-};
 
 // 즐겨찾기 (localStorage에서 관리)
 export const getFavorites = (): NavigationItem[] => {

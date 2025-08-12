@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import type { Company, CompanyStatus, CreateCompanyDto, UpdateCompanyDto } from '../../types/company';
 import { createCompany, updateCompany } from '../../redux/slices/companySlice';
 import type { AppDispatch } from '../../redux/store';
+import PostalSearchModal from './PostalSearchModal';
 
 interface CompanyFormProps {
   company?: Company | null;
@@ -14,7 +15,9 @@ interface CompanyFormProps {
 interface FormData {
   name: string;
   businessNumber: string;
-  address: string;
+  postalCode: string;
+  address1: string;
+  address2: string;
   phoneNumber: string;
   email: string;
   website: string;
@@ -27,7 +30,9 @@ interface FormData {
 interface FormErrors {
   name?: string;
   businessNumber?: string;
-  address?: string;
+  postalCode?: string;
+  address1?: string;
+  address2?: string;
   phoneNumber?: string;
   email?: string;
   website?: string;
@@ -45,7 +50,9 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
   const [formData, setFormData] = useState<FormData>({
     name: '',
     businessNumber: '',
-    address: '',
+    postalCode: '',
+    address1: '',
+    address2: '',
     phoneNumber: '',
     email: '',
     website: '',
@@ -57,21 +64,30 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPostalSearchOpen, setIsPostalSearchOpen] = useState(false);
 
   // Initialize form data when editing
   useEffect(() => {
     if (company) {
+      // Parse existing address (assuming format: "postalCode address1 address2")
+      const addressParts = company.address ? company.address.split(' ') : ['', '', ''];
+      const postalCode = addressParts[0] || '';
+      const address1 = addressParts.slice(1, -1).join(' ') || '';
+      const address2 = addressParts[addressParts.length - 1] || '';
+      
       setFormData({
-        name: company.name,
-        businessNumber: company.businessNumber,
-        address: company.address,
-        phoneNumber: company.phoneNumber,
-        email: company.email,
+        name: company.name || '',
+        businessNumber: company.businessNumber || '',
+        postalCode: postalCode,
+        address1: address1,
+        address2: address2,
+        phoneNumber: company.phoneNumber || '',
+        email: company.email || '',
         website: company.website || '',
         description: company.description || '',
         establishedDate: company.establishedDate ? company.establishedDate.split('T')[0] : '',
         logoUrl: company.logoUrl || '',
-        status: company.status
+        status: company.status || 'ACTIVE'
       });
     }
   }, [company]);
@@ -80,27 +96,31 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
     const newErrors: FormErrors = {};
 
     // Required fields
-    if (!formData.name.trim()) {
+    if (!formData.name || !formData.name.trim()) {
       newErrors.name = '회사명은 필수입니다.';
     }
 
-    if (!formData.businessNumber.trim()) {
+    if (!formData.businessNumber || !formData.businessNumber.trim()) {
       newErrors.businessNumber = '사업자번호는 필수입니다.';
     } else if (!/^\d{3}-\d{2}-\d{5}$/.test(formData.businessNumber)) {
       newErrors.businessNumber = '사업자번호 형식이 올바르지 않습니다. (예: 123-45-67890)';
     }
 
-    if (!formData.address.trim()) {
-      newErrors.address = '주소는 필수입니다.';
+    if (!formData.postalCode || !formData.postalCode.trim()) {
+      newErrors.postalCode = '우편번호는 필수입니다.';
     }
 
-    if (!formData.phoneNumber.trim()) {
+    if (!formData.address1 || !formData.address1.trim()) {
+      newErrors.address1 = '기본주소는 필수입니다.';
+    }
+
+    if (!formData.phoneNumber || !formData.phoneNumber.trim()) {
       newErrors.phoneNumber = '연락처는 필수입니다.';
     } else if (!/^0\d{1,2}-\d{3,4}-\d{4}$/.test(formData.phoneNumber)) {
       newErrors.phoneNumber = '연락처 형식이 올바르지 않습니다. (예: 02-1234-5678)';
     }
 
-    if (!formData.email.trim()) {
+    if (!formData.email || !formData.email.trim()) {
       newErrors.email = '이메일은 필수입니다.';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = '이메일 형식이 올바르지 않습니다.';
@@ -178,6 +198,28 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
 
   const dispatch = useDispatch<AppDispatch>();
 
+  const handlePostalSearch = () => {
+    setIsPostalSearchOpen(true);
+  };
+
+  const handlePostalSelect = (postalData: { postalCode: string; address: string }) => {
+    setFormData(prev => ({
+      ...prev,
+      postalCode: postalData.postalCode,
+      address1: postalData.address
+    }));
+    setIsPostalSearchOpen(false);
+    
+    // Clear errors for postal code and address1 since they're now filled
+    if (errors.postalCode || errors.address1) {
+      setErrors(prev => ({ 
+        ...prev, 
+        postalCode: undefined, 
+        address1: undefined 
+      }));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -190,10 +232,11 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
     try {
       if (isEdit && company) {
         // 수정 모드: Redux updateCompany 액션 디스패치
+        const combinedAddress = [formData.postalCode, formData.address1, formData.address2].filter(Boolean).join(' ');
         const updateData: UpdateCompanyDto = {
           name: formData.name,
           businessNumber: formData.businessNumber,
-          address: formData.address,
+          address: combinedAddress,
           phoneNumber: formData.phoneNumber,
           email: formData.email,
           website: formData.website || undefined,
@@ -207,10 +250,11 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
         alert('회사 정보가 성공적으로 수정되었습니다.');
       } else {
         // 생성 모드: Redux createCompany 액션 디스패치
+        const combinedAddress = [formData.postalCode, formData.address1, formData.address2].filter(Boolean).join(' ');
         const createData: CreateCompanyDto = {
           name: formData.name,
           businessNumber: formData.businessNumber,
-          address: formData.address,
+          address: combinedAddress,
           phoneNumber: formData.phoneNumber,
           email: formData.email,
           website: formData.website || undefined,
@@ -225,8 +269,10 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
       }
       
       // 성공 시 onSuccess 콜백 호출 (화면 전환용)
+      const combinedAddress = [formData.postalCode, formData.address1, formData.address2].filter(Boolean).join(' ');
       const submitData: Partial<Company> = {
         ...formData,
+        address: combinedAddress,
         establishedDate: formData.establishedDate,
         logoUrl: formData.logoUrl || null
       };
@@ -378,21 +424,73 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
 
           {/* Address */}
           <div>
-            <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-              주소 <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              id="address"
-              name="address"
-              value={formData.address}
-              onChange={handleInputChange}
-              className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-                errors.address ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="예: 경기도 용인시 처인구 모현읍 능원로 200"
-            />
-            {errors.address && <p className="mt-1 text-sm text-red-600">{errors.address}</p>}
+            <h4 className="text-md font-medium text-gray-900 mb-4">주소 정보</h4>
+            <div className="space-y-4">
+              {/* Postal Code */}
+              <div>
+                <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 mb-1">
+                  우편번호 <span className="text-red-500">*</span>
+                </label>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    id="postalCode"
+                    name="postalCode"
+                    value={formData.postalCode}
+                    onChange={handleInputChange}
+                    className={`flex-1 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.postalCode ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="예: 12345"
+                    maxLength={5}
+                  />
+                  <button
+                    type="button"
+                    onClick={handlePostalSearch}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    우편번호 검색
+                  </button>
+                </div>
+                {errors.postalCode && <p className="mt-1 text-sm text-red-600">{errors.postalCode}</p>}
+              </div>
+
+              {/* Address 1 */}
+              <div>
+                <label htmlFor="address1" className="block text-sm font-medium text-gray-700 mb-1">
+                  기본주소 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="address1"
+                  name="address1"
+                  value={formData.address1}
+                  onChange={handleInputChange}
+                  className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.address1 ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="예: 경기도 용인시 처인구 모현읍"
+                />
+                {errors.address1 && <p className="mt-1 text-sm text-red-600">{errors.address1}</p>}
+              </div>
+
+              {/* Address 2 */}
+              <div>
+                <label htmlFor="address2" className="block text-sm font-medium text-gray-700 mb-1">
+                  상세주소
+                </label>
+                <input
+                  type="text"
+                  id="address2"
+                  name="address2"
+                  value={formData.address2}
+                  onChange={handleInputChange}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="예: 능원로 200"
+                />
+                {errors.address2 && <p className="mt-1 text-sm text-red-600">{errors.address2}</p>}
+              </div>
+            </div>
           </div>
 
           {/* Description */}
@@ -416,18 +514,42 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
             <label htmlFor="logoUrl" className="block text-sm font-medium text-gray-700 mb-1">
               로고 URL
             </label>
-            <input
-              type="url"
-              id="logoUrl"
-              name="logoUrl"
-              value={formData.logoUrl}
-              onChange={handleInputChange}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              placeholder="https://example.com/logo.png"
-            />
-            <p className="mt-1 text-sm text-gray-500">
-              로고 이미지의 URL을 입력하세요. (선택사항)
-            </p>
+            <div className="flex space-x-4">
+              <div className="flex-1">
+                <input
+                  type="url"
+                  id="logoUrl"
+                  name="logoUrl"
+                  value={formData.logoUrl}
+                  onChange={handleInputChange}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="https://example.com/logo.png"
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  로고 이미지의 URL을 입력하세요. (선택사항)
+                </p>
+              </div>
+              {formData.logoUrl && (
+                <div className="flex-shrink-0">
+                  <div className="w-20 h-20 border border-gray-300 rounded-md overflow-hidden bg-gray-50 flex items-center justify-center">
+                    <img
+                      src={formData.logoUrl}
+                      alt="로고 미리보기"
+                      className="max-w-full max-h-full object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                          parent.innerHTML = '<div class="text-xs text-gray-400 text-center p-2">이미지를<br/>불러올 수<br/>없습니다</div>';
+                        }
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 text-center mt-1">미리보기</p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Status */}
@@ -475,6 +597,13 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
           </button>
         </div>
       </form>
+
+      {/* Postal Search Modal */}
+      <PostalSearchModal
+        isOpen={isPostalSearchOpen}
+        onClose={() => setIsPostalSearchOpen(false)}
+        onSelect={handlePostalSelect}
+      />
     </div>
   );
 };

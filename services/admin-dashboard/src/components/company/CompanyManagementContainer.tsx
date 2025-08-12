@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { EnhancedCompanyList } from './EnhancedCompanyList';
 import { CompanyDetailView } from './CompanyDetailView';
 import { CompanyForm } from './CompanyForm';
-import { CompanyStats } from './CompanyStats';
 import { PageHeader, PageHeaderAction } from '../common/PageHeader';
 import { useCompanyManagement } from '../../redux/hooks/useCompanyManagement';
 import type { Company, CompanyStatus } from '../../types/company';
@@ -131,9 +130,6 @@ export const CompanyManagementContainer: React.FC = () => {
       {/* Content based on view mode */}
       {viewMode === 'list' && (
         <>
-          {/* Statistics */}
-          <CompanyStats companies={companies} />
-
           {/* Enhanced Company List */}
           <EnhancedCompanyList
             companies={companies} 

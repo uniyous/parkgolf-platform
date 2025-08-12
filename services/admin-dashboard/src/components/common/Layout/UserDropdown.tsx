@@ -99,9 +99,6 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ currentUser, onLogou
           <div className="text-sm font-medium text-gray-900">
             {currentUser.username}
           </div>
-          <div className="text-xs text-gray-500">
-            {currentUser.email}
-          </div>
           {currentUser.role && (
             <div className="mt-1">
               <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
@@ -138,9 +135,6 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ currentUser, onLogou
               <div className="flex-1">
                 <div className="text-sm font-medium text-gray-900">
                   {currentUser.username}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {currentUser.email}
                 </div>
                 {currentUser.role && (
                   <div className="mt-2 flex items-center space-x-2">

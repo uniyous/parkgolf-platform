@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { navigationConfig, quickAccessItems, getRecentPages, getFavorites, toggleFavorite, isFavorite, addRecentPage } from './navigation';
+import { navigationConfig, getFavorites, toggleFavorite, isFavorite } from './navigation';
 import { UserDropdown } from './UserDropdown';
 import type { NavigationItem, NavigationGroup } from './navigation';
 
@@ -19,11 +19,9 @@ export const EnhancedGNB: React.FC<EnhancedGNBProps> = ({ currentUser, onLogout,
   };
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
-  const [showQuickAccess, setShowQuickAccess] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<NavigationItem[]>([]);
-  const [recentPages, setRecentPages] = useState<NavigationItem[]>([]);
   const [favorites, setFavorites] = useState<NavigationItem[]>([]);
 
   // 권한 기반 네비게이션 필터링 (useMemo로 최적화)
@@ -49,7 +47,6 @@ export const EnhancedGNB: React.FC<EnhancedGNBProps> = ({ currentUser, onLogout,
 
   // 컴포넌트 마운트 시 데이터 로드
   useEffect(() => {
-    setRecentPages(getRecentPages());
     setFavorites(getFavorites());
   }, []);
 
@@ -64,14 +61,6 @@ export const EnhancedGNB: React.FC<EnhancedGNBProps> = ({ currentUser, onLogout,
     setCollapsedGroups(initialCollapsed);
   }, [filteredNavigationConfig]); // filteredNavigationConfig가 변경될 때만 실행
 
-  // 현재 페이지 정보를 최근 방문에 추가
-  useEffect(() => {
-    const currentPage = findCurrentPage(location.pathname);
-    if (currentPage) {
-      addRecentPage(currentPage);
-      setRecentPages(getRecentPages());
-    }
-  }, [location.pathname]);
 
   // 현재 페이지 찾기
   const findCurrentPage = (pathname: string): NavigationItem | null => {
@@ -160,36 +149,6 @@ export const EnhancedGNB: React.FC<EnhancedGNBProps> = ({ currentUser, onLogout,
           </h1>
         </div>
 
-        {/* 빠른 액세스 */}
-        <div className="px-4 mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              빠른 액세스
-            </h3>
-            <button
-              onClick={() => setShowQuickAccess(!showQuickAccess)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <svg className={`w-4 h-4 transform transition-transform ${showQuickAccess ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </div>
-          {showQuickAccess && (
-            <div className="grid grid-cols-2 gap-2">
-              {quickAccessItems.map((item) => (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className="flex items-center px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded"
-                >
-                  <span className="mr-1">{item.icon}</span>
-                  {item.name}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
 
         {/* 즐겨찾기 */}
         {favorites.length > 0 && (
@@ -266,11 +225,6 @@ export const EnhancedGNB: React.FC<EnhancedGNBProps> = ({ currentUser, onLogout,
                               {item.badge}
                             </span>
                           )}
-                          {item.shortcut && (
-                            <span className="ml-2 text-xs text-gray-400">
-                              {item.shortcut}
-                            </span>
-                          )}
                         </Link>
                         <button
                           onClick={() => handleToggleFavorite(item)}
@@ -287,26 +241,6 @@ export const EnhancedGNB: React.FC<EnhancedGNBProps> = ({ currentUser, onLogout,
           ))}
         </nav>
 
-        {/* 최근 방문 */}
-        {recentPages.length > 0 && (
-          <div className="px-4 mt-6">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-              최근 방문
-            </h3>
-            <div className="space-y-1">
-              {recentPages.slice(0, 3).map((item) => (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className="flex items-center px-2 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded"
-                >
-                  <span className="mr-2 text-sm">{item.icon}</span>
-                  {item.name}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -20,9 +20,6 @@ type SortDirection = 'asc' | 'desc';
 
 interface FilterState {
   search: string;
-  status: CompanyStatus | 'ALL';
-  revenueRange: 'ALL' | 'LOW' | 'MEDIUM' | 'HIGH';
-  coursesRange: 'ALL' | 'SMALL' | 'MEDIUM' | 'LARGE';
 }
 
 export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
@@ -42,9 +39,6 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
   // 필터 및 정렬 상태
   const [filters, setFilters] = useState<FilterState>({
     search: '',
-    status: 'ALL',
-    revenueRange: 'ALL',
-    coursesRange: 'ALL',
   });
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -66,36 +60,6 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
           (company.address && company.address.toLowerCase().includes(searchLower)) ||
           (company.phoneNumber && company.phoneNumber.includes(filters.search))
         );
-      }
-      return true;
-    }).filter(company => {
-      // 상태 필터
-      if (filters.status !== 'ALL') {
-        return company.status === filters.status;
-      }
-      return true;
-    }).filter(company => {
-      // 매출 범위 필터
-      if (filters.revenueRange !== 'ALL') {
-        const revenue = company.totalRevenue || 0;
-        switch (filters.revenueRange) {
-          case 'LOW': return revenue < 1000000000; // 10억 미만
-          case 'MEDIUM': return revenue >= 1000000000 && revenue < 5000000000; // 10억~50억
-          case 'HIGH': return revenue >= 5000000000; // 50억 이상
-          default: return true;
-        }
-      }
-      return true;
-    }).filter(company => {
-      // 코스 수 범위 필터
-      if (filters.coursesRange !== 'ALL') {
-        const courses = company.coursesCount || 0;
-        switch (filters.coursesRange) {
-          case 'SMALL': return courses <= 2;
-          case 'MEDIUM': return courses >= 3 && courses <= 5;
-          case 'LARGE': return courses >= 6;
-          default: return true;
-        }
       }
       return true;
     });
@@ -169,9 +133,6 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
   const resetFilters = () => {
     setFilters({
       search: '',
-      status: 'ALL',
-      revenueRange: 'ALL',
-      coursesRange: 'ALL',
     });
   };
 
@@ -300,60 +261,15 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header with Stats */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">회사 관리</h2>
-          <div className="mt-2 flex items-center space-x-4 text-sm text-gray-600">
-            <span>전체 {companies?.length || 0}개</span>
-            <span>•</span>
-            <span>활성 {companies?.filter(c => c.status === 'ACTIVE').length || 0}개</span>
-            <span>•</span>
-            <span>점검중 {companies?.filter(c => c.status === 'MAINTENANCE').length || 0}개</span>
-            <span>•</span>
-            <span>비활성 {companies?.filter(c => c.status === 'INACTIVE').length || 0}개</span>
-            {filteredAndSortedCompanies.length !== companies.length && (
-              <>
-                <span>•</span>
-                <span className="text-blue-600 font-medium">필터링됨 {filteredAndSortedCompanies.length}개</span>
-              </>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={onRefresh}
-            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            새로고침
-          </button>
-          {hasManageCompanies && (
-            <button
-              onClick={onCreateCompany}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              새 회사
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="flex items-center justify-between gap-4">
           {/* Search */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">검색</label>
+          <div className="flex-1 max-w-md">
             <div className="relative">
               <input
                 type="text"
-                placeholder="회사명, 사업자번호, 주소..."
+                placeholder="회사명, 사업자번호, 주소 검색..."
                 value={filters.search}
                 onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
@@ -365,69 +281,8 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Status Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">상태</label>
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value as CompanyStatus | 'ALL' })}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-            >
-              <option value="ALL">전체</option>
-              <option value="ACTIVE">활성</option>
-              <option value="INACTIVE">비활성</option>
-              <option value="MAINTENANCE">점검</option>
-            </select>
-          </div>
-
-          {/* Revenue Range Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">매출 규모</label>
-            <select
-              value={filters.revenueRange}
-              onChange={(e) => setFilters({ ...filters, revenueRange: e.target.value as FilterState['revenueRange'] })}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-            >
-              <option value="ALL">전체</option>
-              <option value="LOW">10억 미만</option>
-              <option value="MEDIUM">10억 ~ 50억</option>
-              <option value="HIGH">50억 이상</option>
-            </select>
-          </div>
-
-          {/* Courses Range Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">코스 규모</label>
-            <select
-              value={filters.coursesRange}
-              onChange={(e) => setFilters({ ...filters, coursesRange: e.target.value as FilterState['coursesRange'] })}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-            >
-              <option value="ALL">전체</option>
-              <option value="SMALL">소규모 (2개 이하)</option>
-              <option value="MEDIUM">중규모 (3-5개)</option>
-              <option value="LARGE">대규모 (6개 이상)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Filter Actions */}
-        <div className="mt-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-700">
-              {filteredAndSortedCompanies.length}개 결과
-            </span>
-            {(filters.search || filters.status !== 'ALL' || filters.revenueRange !== 'ALL' || filters.coursesRange !== 'ALL') && (
-              <button
-                onClick={resetFilters}
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                필터 초기화
-              </button>
-            )}
-          </div>
           
+          {/* Sort */}
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-700">정렬:</span>
             <select
@@ -437,7 +292,7 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
                 setSortField(field as SortField);
                 setSortDirection(direction as SortDirection);
               }}
-              className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="text-sm border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="name-asc">이름 (가나다순)</option>
               <option value="name-desc">이름 (다가나순)</option>
@@ -450,6 +305,45 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
             </select>
           </div>
         </div>
+
+        {/* Filter Info */}
+        {filters.search && (
+          <div className="mt-3 flex items-center justify-between">
+            <span className="text-sm text-gray-700">
+              {filteredAndSortedCompanies.length}개 결과
+            </span>
+            <button
+              onClick={resetFilters}
+              className="text-sm text-blue-600 hover:text-blue-800"
+            >
+              검색 초기화
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex justify-end items-center space-x-3">
+        <button
+          onClick={onRefresh}
+          className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        >
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          새로고침
+        </button>
+        {hasManageCompanies && (
+          <button
+            onClick={onCreateCompany}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            새 회사
+          </button>
+        )}
       </div>
 
       {/* Company List */}
@@ -467,12 +361,12 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
                 : '다른 검색 조건을 시도해보세요.'
               }
             </p>
-            {companies.length > 0 && (
+            {filters.search && (
               <button
                 onClick={resetFilters}
                 className="text-blue-600 hover:text-blue-800 text-sm font-medium"
               >
-                모든 필터 초기화
+                검색 초기화
               </button>
             )}
           </div>
@@ -538,29 +432,110 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-2">
+                      <div className="flex justify-end items-center space-x-1">
                         {hasManageCompanies && (
                           <>
+                            {/* Edit Button */}
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onEditCompany(company);
                               }}
-                              className="text-indigo-600 hover:text-indigo-900"
+                              className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              title="수정"
                             >
-                              수정
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
                             </button>
+                            
                             {currentAdmin?.scope === 'PLATFORM' && (
+                              /* Delete Button */
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleDeleteCompany(company);
                                 }}
-                                className="text-red-600 hover:text-red-900"
+                                className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="삭제"
                               >
-                                삭제
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
                               </button>
                             )}
+
+                            {/* Status Change Dropdown */}
+                            <div className="relative inline-block text-left">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const dropdown = e.currentTarget.nextElementSibling as HTMLElement;
+                                  if (dropdown) {
+                                    dropdown.classList.toggle('hidden');
+                                  }
+                                }}
+                                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="상태 변경"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                                </svg>
+                              </button>
+                              
+                              <div className="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                                <div className="py-1">
+                                  {company.status !== 'ACTIVE' && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStatusChange(company, 'ACTIVE');
+                                        const dropdown = e.currentTarget.closest('.relative')?.querySelector('.absolute') as HTMLElement;
+                                        if (dropdown) dropdown.classList.add('hidden');
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                                    >
+                                      <svg className="w-4 h-4 mr-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                      </svg>
+                                      활성
+                                    </button>
+                                  )}
+                                  {company.status !== 'MAINTENANCE' && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStatusChange(company, 'MAINTENANCE');
+                                        const dropdown = e.currentTarget.closest('.relative')?.querySelector('.absolute') as HTMLElement;
+                                        if (dropdown) dropdown.classList.add('hidden');
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                                    >
+                                      <svg className="w-4 h-4 mr-3 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                      </svg>
+                                      점검중
+                                    </button>
+                                  )}
+                                  {company.status !== 'INACTIVE' && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStatusChange(company, 'INACTIVE');
+                                        const dropdown = e.currentTarget.closest('.relative')?.querySelector('.absolute') as HTMLElement;
+                                        if (dropdown) dropdown.classList.add('hidden');
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                                    >
+                                      <svg className="w-4 h-4 mr-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                      </svg>
+                                      비활성
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
                           </>
                         )}
                       </div>

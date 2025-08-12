@@ -141,32 +141,37 @@ export const companyApi = {
     }
   },
 
-  // 회사 생성 (Mock 구현 - 실제 API 대기)
+  // 회사 생성 (실제 API 사용)
   async createCompany(companyData: CreateCompanyDto): Promise<Company> {
     try {
-      // Mock: 새 ID 생성하여 반환
-      const newCompany: Company = {
-        id: Math.floor(Math.random() * 10000),
+      console.log('Creating company with data:', companyData);
+      
+      // 백엔드가 지원하는 필드만 필터링
+      const supportedFields = {
         name: companyData.name,
         businessNumber: companyData.businessNumber,
         address: companyData.address,
         phoneNumber: companyData.phoneNumber,
         email: companyData.email,
-        website: companyData.website || '',
-        description: companyData.description || '',
+        website: companyData.website,
+        description: companyData.description,
         establishedDate: companyData.establishedDate,
-        logoUrl: companyData.logoUrl || null,
-        status: companyData.status || 'ACTIVE',
-        isActive: companyData.status !== 'INACTIVE',
-        coursesCount: 0,
-        totalRevenue: 0,
-        monthlyRevenue: 0,
-        averageRating: 0,
-        totalBookings: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        logoUrl: companyData.logoUrl,
+        status: companyData.status
       };
       
+      // undefined 값 제거
+      const filteredData = Object.entries(supportedFields)
+        .filter(([_, value]) => value !== undefined)
+        .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
+      
+      console.log('Filtered data for API:', filteredData);
+      
+      // 실제 API 호출
+      const response = await apiClient.post<Company>('/admin/courses/companies', filteredData);
+      console.log('Create company API response:', response);
+      
+      const newCompany = transformCompanyData(response.data);
       return newCompany;
     } catch (error) {
       console.error('Failed to create company:', error);
@@ -174,17 +179,37 @@ export const companyApi = {
     }
   },
 
-  // 회사 수정 (Mock 구현 - 실제 API 대기)
+  // 회사 수정 (실제 API 사용)
   async updateCompany(id: number, companyData: UpdateCompanyDto): Promise<Company> {
     try {
-      // 기존 회사 정보 가져와서 업데이트
-      const existingCompany = await this.getCompanyById(id);
-      const updatedCompany: Company = {
-        ...existingCompany,
-        ...companyData,
-        updatedAt: new Date().toISOString()
+      console.log(`Updating company ${id} with data:`, companyData);
+      
+      // 백엔드가 지원하는 필드만 필터링
+      const supportedFields = {
+        name: companyData.name,
+        businessNumber: companyData.businessNumber,
+        address: companyData.address,
+        phoneNumber: companyData.phoneNumber,
+        email: companyData.email,
+        website: companyData.website,
+        description: companyData.description,
+        establishedDate: companyData.establishedDate,
+        logoUrl: companyData.logoUrl,
+        status: companyData.status
       };
       
+      // undefined 값 제거
+      const filteredData = Object.entries(supportedFields)
+        .filter(([_, value]) => value !== undefined)
+        .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
+      
+      console.log('Filtered data for API:', filteredData);
+      
+      // 실제 API 호출
+      const response = await apiClient.patch<Company>(`/admin/courses/companies/${id}`, filteredData);
+      console.log('Update company API response:', response);
+      
+      const updatedCompany = transformCompanyData(response.data);
       return updatedCompany;
     } catch (error) {
       console.error(`Failed to update company ${id}:`, error);
@@ -192,11 +217,14 @@ export const companyApi = {
     }
   },
 
-  // 회사 삭제 (Mock 구현 - 실제 API 대기)
+  // 회사 삭제 (실제 API 사용)
   async deleteCompany(id: number): Promise<void> {
     try {
-      // Mock: 단순히 성공으로 처리
-      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log(`Deleting company ${id}`);
+      
+      // 실제 API 호출
+      await apiClient.delete(`/admin/courses/companies/${id}`);
+      console.log(`Company ${id} deleted successfully`);
     } catch (error) {
       console.error(`Failed to delete company ${id}:`, error);
       throw error;
