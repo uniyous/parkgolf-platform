@@ -65,12 +65,14 @@ export class BookingService {
         // 예약 생성
         const newBooking = await prisma.booking.create({
           data: {
-            userId: dto.userId,
-            courseId: dto.courseId,
-            courseName: courseInfo.name,
-            courseLocation: courseInfo.location,
+            timeSlotId: Math.floor(Math.random() * 1000000), // Generate temporary ID
+            slotType: 'NINE_HOLE' as any,
             bookingDate: new Date(dto.bookingDate),
-            timeSlot: dto.timeSlot,
+            startTime: dto.timeSlot,
+            endTime: this.calculateEndTime(dto.timeSlot, 1), // 1 hour duration
+            singleCourseId: dto.courseId,
+            singleCourseName: courseInfo.name,
+            userId: dto.userId,
             playerCount: dto.playerCount,
             pricePerPerson,
             serviceFee,
@@ -86,21 +88,29 @@ export class BookingService {
         });
 
         // 타임슬롯 업데이트
-        await prisma.timeSlotAvailability.update({
+        // Find and update time slot availability
+        const timeSlot = await prisma.timeSlotAvailability.findFirst({
           where: {
-            courseId_date_timeSlot: {
-              courseId: dto.courseId,
-              date: new Date(dto.bookingDate),
-              timeSlot: dto.timeSlot
-            }
-          },
-          data: {
-            booked: {
-              increment: dto.playerCount
-            },
-            isAvailable: availability.remaining - dto.playerCount > 0
+            singleCourseId: dto.courseId,
+            date: new Date(dto.bookingDate),
+            startTime: dto.timeSlot
           }
         });
+
+        if (timeSlot) {
+          await prisma.timeSlotAvailability.update({
+            where: { id: timeSlot.id },
+            data: {
+              currentBookings: {
+                increment: dto.playerCount
+              },
+              availableSlots: {
+                decrement: dto.playerCount
+              },
+              isAvailable: availability.remaining - dto.playerCount > 0
+            }
+          });
+        }
 
         // 예약 히스토리 생성
         await prisma.bookingHistory.create({
@@ -126,10 +136,10 @@ export class BookingService {
         bookingId: booking.id,
         bookingNumber: booking.bookingNumber,
         userId: booking.userId,
-        courseId: booking.courseId,
-        courseName: booking.courseName,
+        courseId: booking.singleCourseId,
+        courseName: booking.singleCourseName,
         bookingDate: booking.bookingDate.toISOString(),
-        timeSlot: booking.timeSlot,
+        timeSlot: booking.startTime,
         playerCount: booking.playerCount,
         totalPrice: Number(booking.totalPrice),
         userEmail: booking.userEmail,
@@ -203,7 +213,7 @@ export class BookingService {
       where.status = status as BookingStatus;
     }
     if (courseId) {
-      where.courseId = courseId;
+      where.singleCourseId = courseId;
     }
     if (userId) {
       where.userId = userId;
@@ -324,21 +334,29 @@ export class BookingService {
       });
 
       // 타임슬롯 가용성 복구
-      await prisma.timeSlotAvailability.update({
+      // Find and update time slot availability for cancellation
+      const timeSlot = await prisma.timeSlotAvailability.findFirst({
         where: {
-          courseId_date_timeSlot: {
-            courseId: existingBooking.courseId,
-            date: existingBooking.bookingDate,
-            timeSlot: existingBooking.timeSlot
-          }
-        },
-        data: {
-          booked: {
-            decrement: existingBooking.playerCount
-          },
-          isAvailable: true
+          singleCourseId: existingBooking.singleCourseId,
+          date: existingBooking.bookingDate,
+          startTime: existingBooking.startTime
         }
       });
+
+      if (timeSlot) {
+        await prisma.timeSlotAvailability.update({
+          where: { id: timeSlot.id },
+          data: {
+            currentBookings: {
+              decrement: existingBooking.playerCount
+            },
+            availableSlots: {
+              increment: existingBooking.playerCount
+            },
+            isAvailable: true
+          }
+        });
+      }
 
       // 히스토리 추가
       await prisma.bookingHistory.create({
@@ -360,10 +378,10 @@ export class BookingService {
       bookingId: booking.id,
       bookingNumber: booking.bookingNumber,
       userId: booking.userId,
-      courseId: booking.courseId,
-      courseName: booking.courseName,
+      courseId: booking.singleCourseId,
+      courseName: booking.singleCourseName,
       bookingDate: booking.bookingDate.toISOString(),
-      timeSlot: booking.timeSlot,
+      timeSlot: booking.startTime,
       reason: reason || 'No reason provided',
       cancelledAt: new Date().toISOString(),
       userEmail: booking.userEmail,
@@ -386,11 +404,11 @@ export class BookingService {
 
     const slots = await this.prisma.timeSlotAvailability.findMany({
       where: {
-        courseId,
+        singleCourseId: courseId,
         date: targetDate
       },
       orderBy: {
-        timeSlot: 'asc'
+        startTime: 'asc'
       }
     });
 
@@ -406,24 +424,24 @@ export class BookingService {
     const mappedSlots = slots.map(slot => {
       const mappedSlot = {
         id: slot.id,
-        time: slot.timeSlot,
+        time: slot.startTime,
         date: slot.date.toISOString().split('T')[0],
         available: slot.isAvailable,
         price: Number(slot.price),
         isPremium: slot.isPremium,
-        remaining: slot.maxCapacity - slot.booked
+        remaining: slot.maxCapacity - slot.currentBookings
       };
       
       this.logger.log(`Mapping slot: ${JSON.stringify({
         original: {
           id: slot.id,
-          timeSlot: slot.timeSlot,
+          startTime: slot.startTime,
           date: slot.date,
           isAvailable: slot.isAvailable,
           price: slot.price,
           isPremium: slot.isPremium,
           maxCapacity: slot.maxCapacity,
-          booked: slot.booked
+          currentBookings: slot.currentBookings
         },
         mapped: mappedSlot
       })}`);
@@ -445,27 +463,25 @@ export class BookingService {
     // UTC 기준으로 날짜 생성하여 타임존 문제 해결
     const targetDate = new Date(date + 'T00:00:00.000Z');
 
-    let slot = await this.prisma.timeSlotAvailability.findUnique({
+    let slot = await this.prisma.timeSlotAvailability.findFirst({
       where: {
-        courseId_date_timeSlot: {
-          courseId,
-          date: targetDate,
-          timeSlot
-        }
+        singleCourseId: courseId,
+        date: targetDate,
+        startTime: timeSlot
       }
     });
 
     // 슬롯이 없으면 기본 슬롯 생성
     if (!slot) {
       const defaultSlots = await this.generateDefaultTimeSlots(courseId, targetDate);
-      slot = defaultSlots.find(s => s.timeSlot === timeSlot);
+      slot = defaultSlots.find(s => s.startTime === timeSlot);
       
       if (!slot) {
         return { available: false, price: 0, remaining: 0 };
       }
     }
 
-    const remaining = slot.maxCapacity - slot.booked;
+    const remaining = slot.maxCapacity - slot.currentBookings;
     const available = slot.isAvailable && remaining >= playerCount;
 
     return {
@@ -514,11 +530,16 @@ export class BookingService {
 
       const newSlot = await this.prisma.timeSlotAvailability.create({
         data: {
-          courseId,
+          timeSlotId: Math.floor(Math.random() * 1000000), // Temporary ID generation
+          slotType: 'NINE_HOLE' as any,
           date,
-          timeSlot,
+          startTime: timeSlot,
+          endTime: `${(hour + 1).toString().padStart(2, '0')}:00`,
+          singleCourseId: courseId,
+          singleCourseName: course.name || 'Default Course',
           maxCapacity: 4,
-          booked: 0,
+          currentBookings: 0,
+          availableSlots: 4,
           isAvailable: true,
           isPremium,
           price
@@ -527,12 +548,12 @@ export class BookingService {
 
       const mappedSlot = {
         id: newSlot.id,
-        time: newSlot.timeSlot,
+        time: newSlot.startTime,
         date: newSlot.date.toISOString().split('T')[0],
         available: newSlot.isAvailable,
         price: Number(newSlot.price),
         isPremium: newSlot.isPremium,
-        remaining: newSlot.maxCapacity - newSlot.booked
+        remaining: newSlot.maxCapacity - newSlot.currentBookings
       };
 
       this.logger.log(`Generated slot: ${JSON.stringify(mappedSlot)}`);
@@ -592,11 +613,11 @@ export class BookingService {
       id: booking.id,
       bookingNumber: booking.bookingNumber,
       userId: booking.userId,
-      courseId: booking.courseId,
-      courseName: booking.courseName,
-      courseLocation: booking.courseLocation,
+      courseId: booking.singleCourseId,
+      courseName: booking.singleCourseName,
+      courseLocation: 'N/A', // Not available in new schema
       bookingDate: booking.bookingDate.toISOString(),
-      timeSlot: booking.timeSlot,
+      timeSlot: booking.startTime,
       playerCount: booking.playerCount,
       pricePerPerson: Number(booking.pricePerPerson),
       serviceFee: Number(booking.serviceFee),
@@ -612,5 +633,11 @@ export class BookingService {
       createdAt: booking.createdAt.toISOString(),
       updatedAt: booking.updatedAt.toISOString(),
     };
+  }
+
+  private calculateEndTime(startTime: string, durationHours: number): string {
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const endHour = hours + durationHours;
+    return `${endHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   }
 }

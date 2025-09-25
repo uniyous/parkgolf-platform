@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, SlotType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -77,11 +77,16 @@ async function main() {
 
         await prisma.timeSlotAvailability.create({
           data: {
-            courseId: course.courseId,
+            timeSlotId: Math.floor(Math.random() * 1000000),
+            slotType: SlotType.NINE_HOLE,
+            singleCourseId: course.courseId,
+            singleCourseName: course.name,
             date: date,
-            timeSlot: timeSlot,
+            startTime: timeSlot,
+            endTime: `${(hour + 1).toString().padStart(2, '0')}:00`,
             maxCapacity: 4,
-            booked: Math.floor(Math.random() * 2), // 0-1명 랜덤 예약
+            currentBookings: Math.floor(Math.random() * 2), // 0-1명 랜덤 예약
+            availableSlots: 4 - Math.floor(Math.random() * 2),
             isAvailable: true,
             isPremium: isPremium,
             price: price
@@ -95,12 +100,14 @@ async function main() {
   // 샘플 예약 데이터 생성
   const sampleBookings = [
     {
-      userId: 1,
-      courseId: 1,
-      courseName: '그린밸리 골프클럽',
-      courseLocation: '경기도 용인시',
+      timeSlotId: Math.floor(Math.random() * 1000000),
+      slotType: SlotType.NINE_HOLE,
       bookingDate: new Date(today.getTime() + 24 * 60 * 60 * 1000), // 내일
-      timeSlot: '09:00',
+      startTime: '09:00',
+      endTime: '10:00',
+      singleCourseId: 1,
+      singleCourseName: '그린밸리 골프클럽',
+      userId: 1,
       playerCount: 2,
       pricePerPerson: 80000,
       serviceFee: 4800,
@@ -112,12 +119,14 @@ async function main() {
       userPhone: '010-1234-5678'
     },
     {
-      userId: 2,
-      courseId: 2,
-      courseName: '선셋힐 컨트리클럽',
-      courseLocation: '강원도 춘천시',
+      timeSlotId: Math.floor(Math.random() * 1000000),
+      slotType: SlotType.NINE_HOLE,
       bookingDate: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000), // 모레
-      timeSlot: '14:00',
+      startTime: '14:00',
+      endTime: '15:00',
+      singleCourseId: 2,
+      singleCourseName: '선셋힐 컨트리클럽',
+      userId: 2,
       playerCount: 4,
       pricePerPerson: 78000, // 프리미엄 시간대
       serviceFee: 9360,
