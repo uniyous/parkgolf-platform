@@ -7,9 +7,19 @@ import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  
+
   try {
-    const app = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
+    // Create HTTP app first for health check
+    const app = await NestFactory.create(AppModule);
+    const configService = app.get(ConfigService);
+
+    // Add health check endpoint for Cloud Run
+    app.getHttpAdapter().get('/health', (req, res) => {
+      res.status(200).json({ status: 'ok', service: 'auth-service' });
+    });
+
+    // Connect NATS microservice
+    const microservice = app.connectMicroservice<MicroserviceOptions>({
       transport: Transport.NATS,
       options: {
         servers: [process.env.NATS_URL || 'nats://localhost:4222'],
@@ -34,9 +44,15 @@ async function bootstrap() {
       }),
     );
 
-    await app.listen();
-    
-    logger.log(`🚀 Auth Service (NATS Microservice) is running`);
+    // Start all microservices
+    await app.startAllMicroservices();
+
+    // Start HTTP server for health check
+    const port = configService.get<number>('PORT') || 8080;
+    await app.listen(port);
+
+    logger.log(`🚀 Auth Service (NATS Microservice + HTTP Health Check) is running on port ${port}`);
+    logger.log(`🩺 Health check: http://localhost:${port}/health`);
     logger.log(`🔗 NATS connected to: ${process.env.NATS_URL || 'nats://localhost:4222'}`);
     logger.log(`📢 Queue: auth-service`);
     logger.log(`💬 Available message patterns:`);

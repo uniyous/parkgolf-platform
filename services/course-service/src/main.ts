@@ -7,13 +7,20 @@ import { GlobalRpcExceptionFilter } from './common/exception/rpc-exception.filte
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  
+
   try {
-    // Create NATS microservice only (no HTTP server)
-    const configService = new ConfigService();
+    // Create HTTP app first for health check
+    const app = await NestFactory.create(AppModule);
+    const configService = app.get(ConfigService);
+
+    // Add health check endpoint for Cloud Run
+    app.getHttpAdapter().get('/health', (req, res) => {
+      res.status(200).json({ status: 'ok', service: 'course-service' });
+    });
+
+    // Connect NATS microservice
     const natsUrl = configService.get<string>('NATS_URL') || 'nats://localhost:4222';
-    
-    const app = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
+    const microservice = app.connectMicroservice<MicroserviceOptions>({
       transport: Transport.NATS,
       options: {
         servers: [natsUrl],
@@ -39,9 +46,15 @@ async function bootstrap() {
       }),
     );
 
-    await app.listen();
-    
-    logger.log(`🚀 Course Service (NATS Microservice) is running`);
+    // Start all microservices
+    await app.startAllMicroservices();
+
+    // Start HTTP server for health check
+    const port = configService.get<number>('PORT') || 8080;
+    await app.listen(port);
+
+    logger.log(`🚀 Course Service (NATS Microservice + HTTP Health Check) is running on port ${port}`);
+    logger.log(`🩺 Health check: http://localhost:${port}/health`);
     logger.log(`🔗 NATS connected to: ${natsUrl}`);
     logger.log(`📢 Queue: course-service`);
     logger.log(`💬 Available message patterns:`);

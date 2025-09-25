@@ -41,8 +41,8 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             if [ "${{ github.event.inputs.services }}" == "all" ]; then
-              # Only deploy HTTP services to Cloud Run (NATS services excluded)
-              echo "services=[\"booking-service\",\"admin-api\",\"user-api\"]" >> $GITHUB_OUTPUT
+              # Deploy all services including NATS with HTTP health check
+              echo "services=[\"auth-service\",\"course-service\",\"booking-service\",\"admin-api\",\"user-api\"]" >> $GITHUB_OUTPUT
             else
               # Convert comma-separated list to JSON array
               services=$(echo "${{ github.event.inputs.services }}" | sed 's/,/","/g' | sed 's/^/["/' | sed 's/$/"]/')
@@ -94,6 +94,14 @@ jobs:
         id: env-vars
         run: |
           case "${{ matrix.service }}" in
+            auth-service)
+              echo "DATABASE_NAME=auth_db" >> $GITHUB_OUTPUT
+              echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> $GITHUB_OUTPUT
+              echo "REDIS_URL=redis://${{ secrets.REDIS_HOST }}:6379" >> $GITHUB_OUTPUT
+              ;;
+            course-service)
+              echo "DATABASE_NAME=course_db" >> $GITHUB_OUTPUT
+              ;;
             booking-service)
               echo "DATABASE_NAME=booking_db" >> $GITHUB_OUTPUT
               ;;
