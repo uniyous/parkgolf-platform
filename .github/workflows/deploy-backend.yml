@@ -94,32 +94,26 @@ jobs:
         run: |
           case "${{ matrix.service }}" in
             auth-service)
-              echo "PORT=3011" >> $GITHUB_OUTPUT
               echo "DATABASE_NAME=auth_db" >> $GITHUB_OUTPUT
               echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> $GITHUB_OUTPUT
               echo "REDIS_URL=redis://${{ secrets.REDIS_HOST }}:6379" >> $GITHUB_OUTPUT
               ;;
             course-service)
-              echo "PORT=3012" >> $GITHUB_OUTPUT
               echo "DATABASE_NAME=course_db" >> $GITHUB_OUTPUT
               ;;
             booking-service)
-              echo "PORT=3013" >> $GITHUB_OUTPUT
               echo "DATABASE_NAME=booking_db" >> $GITHUB_OUTPUT
               ;;
             notify-service)
-              echo "PORT=3014" >> $GITHUB_OUTPUT
               echo "DATABASE_NAME=notify_db" >> $GITHUB_OUTPUT
               echo "SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}" >> $GITHUB_OUTPUT
               echo "TWILIO_ACCOUNT_SID=${{ secrets.TWILIO_ACCOUNT_SID }}" >> $GITHUB_OUTPUT
               echo "TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}" >> $GITHUB_OUTPUT
               ;;
             admin-api)
-              echo "PORT=3091" >> $GITHUB_OUTPUT
               echo "REDIS_URL=redis://${{ secrets.REDIS_HOST }}:6379" >> $GITHUB_OUTPUT
               ;;
             user-api)
-              echo "PORT=3092" >> $GITHUB_OUTPUT
               echo "REDIS_URL=redis://${{ secrets.REDIS_HOST }}:6379" >> $GITHUB_OUTPUT
               ;;
           esac
@@ -145,10 +139,8 @@ jobs:
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
-            --port ${{ steps.env-vars.outputs.PORT }} \
             --service-account ${{ env.SERVICE_ACCOUNT_EMAIL }} \
             --set-env-vars NODE_ENV=${{ steps.deployment-env.outputs.NODE_ENV }} \
-            --set-env-vars PORT=${{ steps.env-vars.outputs.PORT }} \
             --set-env-vars NATS_URL=${{ env.NATS_URL }} \
             --set-env-vars NATS_USER=${{ env.NATS_USER }} \
             --set-env-vars NATS_PASSWORD=${{ env.NATS_PASSWORD }} \
