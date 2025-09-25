@@ -76,15 +76,18 @@ jobs:
           fi
           echo "🔧 Selected environment: $SELECTED_ENV"
 
-      - name: Setup Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
         with:
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
           project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Docker for GCP
         run: |
-          gcloud auth configure-docker asia-northeast3-docker.pkg.dev
+          gcloud auth configure-docker asia-northeast3-docker.pkg.dev --quiet
 
       - name: Set environment variables for service
         id: env-vars
