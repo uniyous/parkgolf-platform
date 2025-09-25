@@ -5,10 +5,17 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import {
+  PrismaClientKnownRequestError,
+  PrismaClientUnknownRequestError,
+  PrismaClientRustPanicError,
+  PrismaClientInitializationError,
+  PrismaClientValidationError,
+} from '@prisma/client/runtime/library';
 import { ErrorCodes } from '../types/error-response.type';
 
 export function handlePrismaError(error: any): never {
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+  if (error instanceof PrismaClientKnownRequestError) {
     switch (error.code) {
       case 'P2002':
         // Unique constraint violation
@@ -68,7 +75,7 @@ export function handlePrismaError(error: any): never {
     }
   }
 
-  if (error instanceof Prisma.PrismaClientUnknownRequestError) {
+  if (error instanceof PrismaClientUnknownRequestError) {
     throw new InternalServerErrorException({
       code: ErrorCodes.DATABASE_ERROR,
       message: 'Unknown database error',
@@ -76,7 +83,7 @@ export function handlePrismaError(error: any): never {
     });
   }
 
-  if (error instanceof Prisma.PrismaClientRustPanicError) {
+  if (error instanceof PrismaClientRustPanicError) {
     throw new InternalServerErrorException({
       code: ErrorCodes.SYSTEM_ERROR,
       message: 'Database engine error',
@@ -84,7 +91,7 @@ export function handlePrismaError(error: any): never {
     });
   }
 
-  if (error instanceof Prisma.PrismaClientInitializationError) {
+  if (error instanceof PrismaClientInitializationError) {
     throw new InternalServerErrorException({
       code: ErrorCodes.DATABASE_ERROR,
       message: 'Database connection error',
@@ -92,7 +99,7 @@ export function handlePrismaError(error: any): never {
     });
   }
 
-  if (error instanceof Prisma.PrismaClientValidationError) {
+  if (error instanceof PrismaClientValidationError) {
     throw new BadRequestException({
       code: ErrorCodes.VALIDATION_ERROR,
       message: 'Database validation error',
