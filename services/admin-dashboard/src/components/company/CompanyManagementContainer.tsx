@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { EnhancedCompanyList } from './EnhancedCompanyList';
 import { CompanyDetailView } from './CompanyDetailView';
 import { CompanyForm } from './CompanyForm';
-import { PageHeader, PageHeaderAction } from '../common/PageHeader';
+import { PageHeader } from '../common/PageHeader';
 import { useCompanyManagement } from '../../redux/hooks/useCompanyManagement';
 import type { Company, CompanyStatus } from '../../types/company';
 
@@ -12,15 +12,12 @@ export const CompanyManagementContainer: React.FC = () => {
     companies,
     selectedCompany,
     viewMode,
-    filters,
     loading,
     error,
     
     // 액션들
     actions: {
       loadCompanies,
-      handleCreateCompany,
-      handleUpdateCompany,
       handleDeleteCompany,
       changeCompanyStatus,
       viewCompanyDetail,

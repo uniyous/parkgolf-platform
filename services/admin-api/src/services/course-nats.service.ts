@@ -531,6 +531,124 @@ export class CourseNatsService {
     this.courseClient.connect();
   }
 
+  // Club Management
+  async getClubs(filters: any = {}, adminToken?: string): Promise<any> {
+    try {
+      this.logger.log('Fetching clubs via NATS');
+      
+      const params: any = { ...filters };
+      if (adminToken) params.token = adminToken;
+
+      const result = await firstValueFrom(
+        this.courseClient.send('club.findAll', params).pipe(timeout(10000))
+      );
+      
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to fetch clubs', error);
+      throw error;
+    }
+  }
+
+  async getClubById(id: number, adminToken?: string): Promise<any> {
+    try {
+      this.logger.log(`Fetching club via NATS: ${id}`);
+      
+      const params: any = { id };
+      if (adminToken) params.token = adminToken;
+
+      const result = await firstValueFrom(
+        this.courseClient.send('club.findOne', params).pipe(timeout(5000))
+      );
+      
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to fetch club: ${id}`, error);
+      throw error;
+    }
+  }
+
+  async createClub(clubData: any, adminToken: string): Promise<any> {
+    try {
+      this.logger.log('Creating club via NATS');
+      
+      const result = await firstValueFrom(
+        this.courseClient.send('club.create', { data: clubData, token: adminToken }).pipe(timeout(5000))
+      );
+      
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to create club', error);
+      throw error;
+    }
+  }
+
+  async updateClub(id: number, updateData: any, adminToken: string): Promise<any> {
+    try {
+      this.logger.log(`Updating club via NATS: ${id}`);
+      
+      const result = await firstValueFrom(
+        this.courseClient.send('club.update', { id, updateClubDto: updateData, token: adminToken }).pipe(timeout(5000))
+      );
+      
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to update club: ${id}`, error);
+      throw error;
+    }
+  }
+
+  async deleteClub(id: number, adminToken: string): Promise<any> {
+    try {
+      this.logger.log(`Deleting club via NATS: ${id}`);
+      
+      const result = await firstValueFrom(
+        this.courseClient.send('club.remove', { id, token: adminToken }).pipe(timeout(5000))
+      );
+      
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to delete club: ${id}`, error);
+      throw error;
+    }
+  }
+
+  async getClubsByCompany(companyId: number, adminToken?: string): Promise<any> {
+    try {
+      this.logger.log(`Fetching clubs by company via NATS: ${companyId}`);
+      
+      const params: any = { companyId };
+      if (adminToken) params.token = adminToken;
+
+      const result = await firstValueFrom(
+        this.courseClient.send('club.findByCompany', params).pipe(timeout(5000))
+      );
+      
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to fetch clubs by company: ${companyId}`, error);
+      throw error;
+    }
+  }
+
+  async searchClubs(query: string, adminToken?: string): Promise<any> {
+    try {
+      this.logger.log(`Searching clubs via NATS: ${query}`);
+      
+      const params: any = { query };
+      if (adminToken) params.token = adminToken;
+
+      const result = await firstValueFrom(
+        this.courseClient.send('club.search', params).pipe(timeout(5000))
+      );
+      
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to search clubs: ${query}`, error);
+      throw error;
+    }
+  }
+
   onModuleDestroy() {
     this.courseClient.close();
   }

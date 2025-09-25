@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Course, UpdateCourseDto, Hole } from '../../types';
+import type { TimeSlot } from '../../types/timeslot';
 import { courseApi } from '../../api/courseApi';
 import { HoleFormModal } from './HoleFormModal';
+import { TimeSlotCard } from '../timeslot/TimeSlotCard';
 import { useBreadcrumb } from '../../redux/hooks/useBreadcrumb';
 
 interface CourseDetailViewProps {
@@ -30,6 +32,11 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedHole, setSelectedHole] = useState<Hole | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  // 타임슬롯 관련 상태
+  const [todayTimeSlots, setTodayTimeSlots] = useState<TimeSlot[]>([]);
+  const [timeSlotsLoading, setTimeSlotsLoading] = useState(false);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null);
 
   // 홀 데이터 가져오기
   const fetchHoles = async () => {
@@ -51,8 +58,28 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({
     }
   };
 
+  // 오늘 타임슬롯 가져오기
+  const fetchTodayTimeSlots = async () => {
+    if (!course?.id) return;
+    
+    setTimeSlotsLoading(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const timeSlots = await courseApi.getTimeSlots({
+        courseId: course.id,
+        date: today
+      });
+      setTodayTimeSlots(timeSlots.slice(0, 6)); // 최대 6개만 표시
+    } catch (error) {
+      console.error('Failed to fetch time slots:', error);
+    } finally {
+      setTimeSlotsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchHoles();
+    fetchTodayTimeSlots();
   }, [course?.id]);
 
   // 코스 정보가 변경될 때 breadcrumb 업데이트
@@ -123,19 +150,36 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({
   return (
     <div className="space-y-6">
       {/* 액션 버튼들 */}
-      <div className="flex justify-end space-x-3">
+      <div className="flex justify-between items-center">
         <button
-          onClick={() => navigate(`/courses/${course.id}/timeslots`)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          onClick={onBackToCourseList}
+          className="inline-flex items-center text-gray-600 hover:text-gray-800"
         >
-          타임슬롯 관리
+          <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          코스 목록으로
         </button>
-        <button
-          onClick={() => navigate(`/courses/${course.id}/bookings`)}
-          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-        >
-          예약 관리
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => navigate(`/courses/${course.id}/timeslots`)}
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            타임슬롯 관리
+          </button>
+          <button
+            onClick={() => navigate(`/courses/${course.id}/bookings`)}
+            className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            예약 관리
+          </button>
+        </div>
       </div>
 
       {/* 골프장 개요 정보 레이어 */}
@@ -209,14 +253,126 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({
         </div>
       )}
 
+      {/* 타임슬롯 섹션 */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900">
+              오늘의 타임슬롯
+            </h3>
+            <p className="text-sm text-gray-500 mt-1">
+              {new Date().toLocaleDateString('ko-KR', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                weekday: 'long'
+              })}
+            </p>
+          </div>
+          <button
+            onClick={() => navigate(`/courses/${course.id}/timeslots`)}
+            className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 font-medium"
+          >
+            전체 관리
+            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+        
+        {timeSlotsLoading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-2 text-sm text-gray-500">타임슬롯을 불러오는 중...</p>
+          </div>
+        ) : todayTimeSlots.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {todayTimeSlots.map(slot => (
+              <TimeSlotCard
+                key={slot.id}
+                timeSlot={slot}
+                variant="compact"
+                onClick={() => setSelectedTimeSlot(slot)}
+                isSelected={selectedTimeSlot?.id === slot.id}
+                showActions={false}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <div className="text-gray-400 mb-4">
+              <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-gray-500 mb-4">오늘 예약 가능한 타임슬롯이 없습니다.</p>
+            <button
+              onClick={() => navigate(`/courses/${course.id}/timeslots`)}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              타임슬롯 추가
+            </button>
+          </div>
+        )}
+        
+        {/* 선택된 타임슬롯 상세 정보 */}
+        {selectedTimeSlot && (
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium text-blue-900">선택된 타임슬롯</h4>
+              <button
+                onClick={() => setSelectedTimeSlot(null)}
+                className="text-blue-600 hover:text-blue-800"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <span className="text-blue-700">시간:</span>
+                <p className="font-medium text-blue-900">
+                  {selectedTimeSlot.startTime.substring(0, 5)} - {selectedTimeSlot.endTime.substring(0, 5)}
+                </p>
+              </div>
+              <div>
+                <span className="text-blue-700">예약 현황:</span>
+                <p className="font-medium text-blue-900">
+                  {selectedTimeSlot.bookedSlots}/{selectedTimeSlot.maxSlots}팀
+                </p>
+              </div>
+              <div>
+                <span className="text-blue-700">가격:</span>
+                <p className="font-medium text-blue-900">
+                  ₩{selectedTimeSlot.price.toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <span className="text-blue-700">상태:</span>
+                <p className="font-medium text-blue-900">
+                  {selectedTimeSlot.status === 'ACTIVE' ? '예약 가능' : '예약 불가'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* 홀 목록 섹션 */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-medium text-gray-900">홀 목록 ({holes.length}개)</h3>
           <button 
             onClick={handleAddHole}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
             홀 추가
           </button>
         </div>
@@ -291,18 +447,24 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({
                       {hole.description || '-'}
                     </td>
                     <td className="px-4 py-4 text-right text-sm">
-                      <div className="flex justify-end space-x-2">
+                      <div className="flex justify-end space-x-1">
                         <button
                           onClick={() => handleEditHole(hole)}
-                          className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                          title="수정"
                         >
-                          수정
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
                         </button>
                         <button
                           onClick={() => handleDeleteHole(hole)}
-                          className="text-red-600 hover:text-red-800 font-medium transition-colors"
+                          className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                          title="삭제"
                         >
-                          삭제
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
                         </button>
                       </div>
                     </td>
@@ -318,8 +480,11 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({
             <p className="text-gray-500 mb-4">홀 추가 버튼을 클릭하여 첫 번째 홀을 추가하세요.</p>
             <button
               onClick={handleAddHole}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
               첫 번째 홀 추가
             </button>
           </div>

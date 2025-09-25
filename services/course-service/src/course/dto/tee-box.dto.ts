@@ -1,19 +1,35 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
-import { TeeBox as TeeBoxModel } from '@prisma/client';
-import { IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { TeeBox as TeeBoxModel, TeeBoxLevel } from '@prisma/client';
+import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 export class CreateTeeBoxDto {
-  @ApiProperty({ description: '티박스 이름 (예: White Tee, Red Tee, Blue Tee)', example: 'White Tee' })
+  @ApiProperty({ description: '티박스 이름', example: 'Championship' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(50)
   name: string;
 
+  @ApiProperty({ description: '티박스 색상', example: 'Gold' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(20)
+  color: string;
+
   @ApiProperty({ description: '해당 티박스에서의 홀까지의 거리 (미터 단위)', example: 320 })
   @IsInt()
-  @Min(0)
+  @Min(50)
   @IsNotEmpty()
   distance: number;
+
+  @ApiProperty({ 
+    description: '난이도 레벨', 
+    enum: TeeBoxLevel, 
+    example: TeeBoxLevel.INTERMEDIATE,
+    default: TeeBoxLevel.INTERMEDIATE
+  })
+  @IsEnum(TeeBoxLevel)
+  @IsOptional()
+  difficulty?: TeeBoxLevel = TeeBoxLevel.INTERMEDIATE;
 
   // holeId는 경로 파라미터로 받을 것이므로 DTO에서는 제외
   // @ApiProperty({ description: '골프 홀 ID' })
@@ -32,7 +48,11 @@ export class TeeBoxResponseDto {
   @ApiProperty()
   name: string;
   @ApiProperty()
+  color: string;
+  @ApiProperty()
   distance: number;
+  @ApiProperty({ enum: TeeBoxLevel })
+  difficulty: TeeBoxLevel;
   @ApiProperty()
   createdAt: Date;
   @ApiProperty()
@@ -43,7 +63,9 @@ export class TeeBoxResponseDto {
       id: entity.id,
       holeId: entity.holeId,
       name: entity.name,
+      color: entity.color,
       distance: entity.distance,
+      difficulty: entity.difficulty,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     };

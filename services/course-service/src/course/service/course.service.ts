@@ -24,9 +24,20 @@ export class CourseService {
       return await this.prisma.course.create({
         data: {
           name: createDto.name,
+          code: createDto.code,
+          subtitle: createDto.subtitle,
           companyId: createDto.companyId,
-          address: createDto.address,
+          clubId: createDto.clubId,
+          holeCount: createDto.holeCount || 9,
+          par: createDto.par || 36,
+          totalDistance: createDto.totalDistance,
+          difficulty: createDto.difficulty || 3,
+          scenicRating: createDto.scenicRating || 3,
+          courseRating: createDto.courseRating,
+          slopeRating: createDto.slopeRating,
+          imageUrl: createDto.imageUrl,
           description: createDto.description,
+          status: createDto.status,
         },
       });
     } catch (error: unknown) {
@@ -113,10 +124,19 @@ export class CourseService {
         where: { id },
         data: {
           name: updateDto.name,
+          code: updateDto.code,
+          subtitle: updateDto.subtitle,
           companyId: updateDto.companyId,
-          address: updateDto.address,
+          clubId: updateDto.clubId,
+          holeCount: updateDto.holeCount,
+          par: updateDto.par,
+          totalDistance: updateDto.totalDistance,
+          difficulty: updateDto.difficulty,
+          scenicRating: updateDto.scenicRating,
+          courseRating: updateDto.courseRating,
+          slopeRating: updateDto.slopeRating,
+          imageUrl: updateDto.imageUrl,
           description: updateDto.description,
-          phoneNumber: updateDto.phoneNumber,
           status: updateDto.status,
         },
       });

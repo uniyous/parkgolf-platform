@@ -10,12 +10,21 @@ export class CompanyService {
 
   async create(createCompanyDto: CreateCompanyDto) {
     try {
+      // Convert establishedDate string to DateTime if provided
+      const data: any = {
+        ...createCompanyDto,
+      };
+      
+      if (createCompanyDto.establishedDate) {
+        data.establishedDate = new Date(createCompanyDto.establishedDate);
+      }
+      
       return await this.prisma.company.create({
-        data: createCompanyDto,
+        data,
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new NotFoundException('A golf company with this name already exists.');
+        throw new NotFoundException('A golf company with this name or business number already exists.');
       }
       throw error;
     }
@@ -40,9 +49,18 @@ export class CompanyService {
 
   async update(id: number, updateCompanyDto: UpdateCompanyDto) {
     try {
+      // Convert establishedDate string to DateTime if provided
+      const data: any = {
+        ...updateCompanyDto,
+      };
+      
+      if (updateCompanyDto.establishedDate) {
+        data.establishedDate = new Date(updateCompanyDto.establishedDate);
+      }
+      
       return await this.prisma.company.update({
         where: { id },
-        data: updateCompanyDto,
+        data,
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -52,7 +70,7 @@ export class CompanyService {
         }
         if (error.code === 'P2002') {
           // Unique constraint failed
-          throw new NotFoundException('A golf company with this name already exists.');
+          throw new NotFoundException('A golf company with this name or business number already exists.');
         }
       }
       throw error;

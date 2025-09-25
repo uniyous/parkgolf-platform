@@ -5,6 +5,7 @@ import holeReducer from './slices/holeSlice';
 import adminReducer from './slices/adminSlice';
 import companyReducer from './slices/companySlice';
 import breadcrumbReducer from './slices/breadcrumbSlice';
+import clubReducer from './slices/clubSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     admin: adminReducer,
     company: companyReducer,
     breadcrumb: breadcrumbReducer,
+    club: clubReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

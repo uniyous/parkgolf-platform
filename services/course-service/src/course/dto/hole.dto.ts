@@ -3,29 +3,46 @@ import { Hole as HoleModel } from '@prisma/client';
 import { IsInt, IsNotEmpty, IsOptional, IsString, IsUrl, MaxLength, Min } from 'class-validator';
 
 export class CreateHoleDto {
-  @ApiProperty({ description: '홀 번호 (1, 2, ...)', example: 1 })
+  @ApiProperty({ description: '홀 번호 (1-9)', example: 1 })
   @IsInt()
   @Min(1)
   @IsNotEmpty()
   holeNumber: number;
 
-  @ApiProperty({ description: '기준 타수 (Par)', example: 4 })
+  @ApiProperty({ description: '기준 타수 (Par) - 3, 4, 5', example: 4 })
   @IsInt()
-  @Min(1)
+  @Min(3)
   @IsNotEmpty()
   par: number;
 
-  // courseId는 경로 파라미터로 받을 것이므로 DTO에서는 제외
-  // @ApiProperty({ description: '골프 코스 ID' })
-  // @IsInt()
-  // @IsNotEmpty()
-  // courseId: number;
-
-  @ApiProperty({ description: '홀 거리 (미터 단위)', example: 350, required: false })
+  @ApiProperty({ description: '홀 거리 (미터 단위)', example: 350 })
   @IsInt()
-  @Min(0)
+  @Min(50)
+  @IsNotEmpty()
+  distance: number;
+
+  @ApiProperty({ description: '핸디캡 (1-18)', example: 5 })
+  @IsInt()
+  @Min(1)
+  @IsNotEmpty()
+  handicap: number;
+
+  @ApiProperty({ description: '홀 설명', required: false })
+  @IsString()
   @IsOptional()
-  distance?: number;
+  @MaxLength(500)
+  description?: string;
+
+  @ApiProperty({ description: '플레이 팁', required: false })
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  tips?: string;
+
+  @ApiProperty({ description: '홀 이미지 URL', required: false })
+  @IsUrl()
+  @IsOptional()
+  imageUrl?: string;
 
 }
 
@@ -48,8 +65,16 @@ export class HoleResponseDto {
   holeNumber: number;
   @ApiProperty()
   par: number;
+  @ApiProperty()
+  distance: number;
+  @ApiProperty()
+  handicap: number;
   @ApiProperty({ required: false })
-  distance?: number;
+  description?: string;
+  @ApiProperty({ required: false })
+  tips?: string;
+  @ApiProperty({ required: false })
+  imageUrl?: string;
   @ApiProperty()
   createdAt: Date;
   @ApiProperty()
@@ -66,6 +91,10 @@ export class HoleResponseDto {
       holeNumber: entity.holeNumber,
       par: entity.par,
       distance: entity.distance,
+      handicap: entity.handicap,
+      description: entity.description,
+      tips: entity.tips,
+      imageUrl: entity.imageUrl,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     } as HoleResponseDto;

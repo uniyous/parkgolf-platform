@@ -174,6 +174,11 @@ export const courseApi = {
     }
   },
 
+  // Alias for getCourseById for consistency
+  async getCourse(id: number): Promise<Course> {
+    return this.getCourseById(id);
+  },
+
   async createCourse(courseData: CreateCourseDto): Promise<Course> {
     try {
       // BFF API 응답 구조: {success: true, data: Course}

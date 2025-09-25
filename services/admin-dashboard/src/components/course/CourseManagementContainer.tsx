@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CourseManagementPresenter } from './CourseManagementPresenter';
 import { useGolfCourseManagement } from '../../redux/hooks/useCourse';
 import { useModal } from '../../hooks/useModal';
@@ -15,6 +16,7 @@ import { useBreadcrumb } from '../../redux/hooks/useBreadcrumb';
 export const CourseManagementContainer: React.FC = () => {
   // 통합된 상태 관리 훅 사용
   const golfCourseManager = useGolfCourseManagement();
+  const navigate = useNavigate();
   const { push, pop } = useBreadcrumb();
   
   // 모달 관리
@@ -56,11 +58,8 @@ export const CourseManagementContainer: React.FC = () => {
   };
 
   const handleCourseSelect = (course: Course) => {
-    if (golfCourseManager.selectedCompanyId) {
-      golfCourseManager.selectCourse(golfCourseManager.selectedCompanyId, course.id);
-      // breadcrumb에 선택된 코스 추가
-      push({ label: course.name, icon: '🏌️' });
-    }
+    // 페이지 이동으로 변경
+    navigate(`/courses/${course.id}`);
   };
 
   const handleBackToCourseList = () => {

@@ -93,6 +93,7 @@ function generateHoles(courseId: number, courseName: string) {
       holeNumber,
       par,
       distance,
+      handicap: holeNumber, // Use hole number as handicap
       courseId,
     });
   }
@@ -128,6 +129,7 @@ async function main() {
   await prisma.teeBox.deleteMany();
   await prisma.hole.deleteMany();
   await prisma.course.deleteMany();
+  await prisma.club.deleteMany();
   await prisma.company.deleteMany();
 
   console.log('🏢 회사 데이터를 생성합니다...');
@@ -149,11 +151,44 @@ async function main() {
     console.log(`  ✅ ${company.name} 생성 완료`);
   }
 
+  // Golf clubs 생성
+  console.log('🏌️ 골프클럽 데이터를 생성합니다...');
+  const clubs = [];
+  
+  for (const company of companies) {
+    // 각 회사마다 1개의 골프클럽 생성
+    const club = await prisma.club.create({
+      data: {
+        name: `${company.name} Golf Club`,
+        companyId: company.id,
+        location: locations[Math.floor(Math.random() * locations.length)],
+        address: `${company.address || locations[Math.floor(Math.random() * locations.length)]} 골프장로 123`,
+        phone: company.phoneNumber || '064-123-4567',
+        email: `info@${company.name.toLowerCase().replace(/\s/g, '')}.com`,
+        website: `https://${company.name.toLowerCase().replace(/\s/g, '')}.com`,
+        totalHoles: 0, // Will be updated later
+        totalCourses: 0, // Will be updated later
+        status: 'ACTIVE',
+        operatingHours: {
+          open: '06:00',
+          close: '18:00'
+        },
+        facilities: ['카트도로', '연습장', '클럽하우스', '주차장'],
+        isActive: true,
+      },
+    });
+    clubs.push(club);
+    console.log(`  ✅ ${club.name} 생성 완료`);
+  }
+
   console.log('⛳ 코스 데이터를 생성합니다...');
   let totalCourses = 0;
   let totalHoles = 0;
 
-  for (const company of companies) {
+  for (let companyIndex = 0; companyIndex < companies.length; companyIndex++) {
+    const company = companies[companyIndex];
+    const club = clubs[companyIndex];
+    
     // 각 회사마다 1~4개의 코스 생성
     const courseCount = Math.floor(Math.random() * 4) + 1;
     
@@ -164,10 +199,16 @@ async function main() {
       const course = await prisma.course.create({
         data: {
           name: courseName,
+          code: courseType.prefix,
+          subtitle: courseType.difficulty,
           companyId: company.id,
-          address: company.address || locations[Math.floor(Math.random() * locations.length)],
+          clubId: club.id,
+          holeCount: 9,
+          par: 36,
+          totalDistance: Math.floor(Math.random() * 1000) + 2500, // 2500-3500m
+          difficulty: Math.floor(Math.random() * 5) + 1,
+          scenicRating: Math.floor(Math.random() * 5) + 1,
           description: `${courseName}는 자연과 조화를 이룬 아름다운 코스로, 모든 레벨의 골퍼들이 즐길 수 있도록 설계되었습니다.`,
-          phoneNumber: company.phoneNumber,
           status: Math.random() > 0.05 ? 'ACTIVE' : 'MAINTENANCE', // 95% 활성
           isActive: true,
         },

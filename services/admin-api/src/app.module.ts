@@ -11,6 +11,8 @@ import { AdminBookingsController } from './controllers/admin-bookings.controller
 import { AdminNotificationsController } from './controllers/admin-notifications.controller';
 import { AdminDashboardController } from './controllers/admin-dashboard.controller';
 import { AdminTimeSlotsController } from './controllers/admin-time-slots.controller';
+import { PostalController } from './controllers/postal.controller';
+import { AdminClubController } from './controllers/admin-club.controller';
 
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { AdminTimeSlotsController } from './controllers/admin-time-slots.control
     AdminNotificationsController,
     AdminDashboardController,
     AdminTimeSlotsController,
+    PostalController,
+    AdminClubController,
   ],
   providers: [],
 })

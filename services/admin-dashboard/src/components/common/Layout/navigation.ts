@@ -42,18 +42,11 @@ export const navigationConfig: NavigationGroup[] = [
         permission: 'MANAGE_COMPANIES'
       },
       { 
-        name: '코스 관리', 
-        href: '/course-management', 
-        icon: '⛳',
-        description: '골프 코스 정보 및 설정',
-        permission: 'MANAGE_COURSES'
-      },
-      { 
-        name: '타임슬롯 관리', 
-        href: '/timeslots', 
-        icon: '⏰',
-        description: '예약 시간 슬롯 관리',
-        permission: 'MANAGE_TIMESLOTS'
+        name: '골프장 관리', 
+        href: '/club', 
+        icon: '🏌️',
+        description: '9홀 단위 골프장 및 코스 관리',
+        permission: 'MANAGE_GOLF_CLUBS'
       },
     ],
     collapsible: true,
@@ -75,13 +68,6 @@ export const navigationConfig: NavigationGroup[] = [
         icon: '🔄',
         description: '예약 취소 및 환불 처리',
         permission: 'MANAGE_PAYMENTS'
-      },
-      { 
-        name: '예약 분석', 
-        href: '/bookings/analytics', 
-        icon: '📈',
-        description: '예약 패턴 및 통계 분석',
-        permission: 'VIEW_ANALYTICS'
       },
     ],
     collapsible: true,

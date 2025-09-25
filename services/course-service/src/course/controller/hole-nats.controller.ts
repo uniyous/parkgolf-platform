@@ -79,6 +79,7 @@ export class HoleNatsController {
         holeNumber: holeData.holeNumber,
         par: holeData.par,
         distance: holeData.distance,
+        handicap: holeData.handicap || holeData.holeNumber, // Default to hole number if not provided
       };
 
       const hole = await this.holeService.create(Number(courseId), createDto);

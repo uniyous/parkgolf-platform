@@ -1,9 +1,19 @@
-import { IsOptional, IsString, IsUrl, MinLength } from 'class-validator';
+import { IsOptional, IsString, IsUrl, MinLength, IsEmail, IsEnum, IsDateString } from 'class-validator';
+
+export enum CompanyStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  MAINTENANCE = 'MAINTENANCE',
+}
 
 export class CreateCompanyDto {
   @IsString()
   @MinLength(2)
   name: string;
+
+  @IsOptional()
+  @IsString()
+  businessNumber?: string;
 
   @IsOptional()
   @IsString()
@@ -14,7 +24,7 @@ export class CreateCompanyDto {
   phoneNumber?: string;
 
   @IsOptional()
-  @IsString()
+  @IsEmail()
   email?: string;
 
   @IsOptional()
@@ -24,4 +34,16 @@ export class CreateCompanyDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsDateString()
+  establishedDate?: string;
+
+  @IsOptional()
+  @IsUrl()
+  logoUrl?: string;
+
+  @IsOptional()
+  @IsEnum(CompanyStatus)
+  status?: CompanyStatus;
 }

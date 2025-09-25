@@ -28,11 +28,15 @@ export class CompanyNatsController {
         companies: paginatedCompanies.map((company: any) => ({
           id: company.id,
           name: company.name,
+          businessNumber: company.businessNumber,
           description: company.description,
           address: company.address,
           phoneNumber: company.phoneNumber,
           email: company.email,
           website: company.website,
+          establishedDate: company.establishedDate?.toISOString(),
+          logoUrl: company.logoUrl,
+          status: company.status,
           isActive: company.isActive,
           createdAt: company.createdAt.toISOString(),
           updatedAt: company.updatedAt.toISOString()
@@ -60,11 +64,15 @@ export class CompanyNatsController {
       const result = {
         id: company.id,
         name: company.name,
+        businessNumber: company.businessNumber,
         description: company.description,
         address: company.address,
         phoneNumber: company.phoneNumber,
         email: company.email,
         website: company.website,
+        establishedDate: company.establishedDate?.toISOString(),
+        logoUrl: company.logoUrl,
+        status: company.status,
         isActive: company.isActive,
         createdAt: company.createdAt.toISOString(),
         updatedAt: company.updatedAt.toISOString()
@@ -88,11 +96,15 @@ export class CompanyNatsController {
       const result = {
         id: company.id,
         name: company.name,
+        businessNumber: company.businessNumber,
         description: company.description,
         address: company.address,
         phoneNumber: company.phoneNumber,
         email: company.email,
         website: company.website,
+        establishedDate: company.establishedDate?.toISOString(),
+        logoUrl: company.logoUrl,
+        status: company.status,
         isActive: company.isActive,
         createdAt: company.createdAt.toISOString(),
         updatedAt: company.updatedAt.toISOString()
@@ -116,11 +128,15 @@ export class CompanyNatsController {
       const result = {
         id: company.id,
         name: company.name,
+        businessNumber: company.businessNumber,
         description: company.description,
         address: company.address,
         phoneNumber: company.phoneNumber,
         email: company.email,
         website: company.website,
+        establishedDate: company.establishedDate?.toISOString(),
+        logoUrl: company.logoUrl,
+        status: company.status,
         isActive: company.isActive,
         createdAt: company.createdAt.toISOString(),
         updatedAt: company.updatedAt.toISOString()

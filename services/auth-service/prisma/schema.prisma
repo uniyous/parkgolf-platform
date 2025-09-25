@@ -12,10 +12,10 @@ model User {
   email         String           @unique
   password      String
   name          String?
-  roleCode      String           @default("USER") // RoleMaster 참조 (필수)
-  isActive      Boolean          @default(true)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  roleCode      String           @default("USER") @map("role_code") // RoleMaster 참조 (필수)
+  isActive      Boolean          @default(true) @map("is_active")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
   
   // 관계
   role          RoleMaster       @relation(fields: [roleCode], references: [code])
@@ -28,9 +28,9 @@ model User {
 model RefreshToken {
   id        Int      @id @default(autoincrement())
   token     String   @unique
-  userId    Int
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  userId    Int      @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
@@ -41,14 +41,14 @@ model Admin {
   email         String              @unique
   password      String
   name          String
-  roleCode      String              @default("READONLY_STAFF") // RoleMaster 참조 (필수)
+  roleCode      String              @default("READONLY_STAFF") @map("role_code") // RoleMaster 참조 (필수)
   phone         String?
   department    String?
   description   String?
-  isActive      Boolean             @default(true)
-  lastLoginAt   DateTime?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  isActive      Boolean             @default(true) @map("is_active")
+  lastLoginAt   DateTime?           @map("last_login_at")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
   
   // 관계
   role          RoleMaster          @relation(fields: [roleCode], references: [code])
@@ -62,9 +62,9 @@ model Admin {
 model AdminRefreshToken {
   id        Int      @id @default(autoincrement())
   token     String   @unique
-  adminId   Int
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  adminId   Int      @map("admin_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
   admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
   @@map("admin_refresh_tokens")
@@ -79,9 +79,9 @@ model PermissionMaster {
   description String?  // 권한 설명
   category    String   // 권한 카테고리 (예: 'BOOKING', 'PROFILE', 'COURSE')
   level       String   @default("low") // 권한 레벨 (low, medium, high)
-  isActive    Boolean  @default(true)  // 활성화 여부
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive    Boolean  @default(true) @map("is_active") // 활성화 여부
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
   
   // 관계
   rolePermissions RolePermission[]
@@ -94,11 +94,11 @@ model RoleMaster {
   code        String   @id // 역할 코드 PK (예: 'USER', 'ADMIN')
   name        String   // 역할 이름 (예: '일반 사용자', '관리자')
   description String?  // 역할 설명
-  userType    String   // 사용자 유형 ('USER' 또는 'ADMIN')
+  userType    String   @map("user_type") // 사용자 유형 ('USER' 또는 'ADMIN')
   level       Int      @default(1) // 역할 레벨 (숫자가 높을수록 상위)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
   
   // 관계
   users           User[]
@@ -110,9 +110,9 @@ model RoleMaster {
 
 // 역할-권한 매핑 테이블
 model RolePermission {
-  roleCode       String
-  permissionCode String
-  createdAt      DateTime         @default(now())
+  roleCode       String           @map("role_code")
+  permissionCode String           @map("permission_code")
+  createdAt      DateTime         @default(now()) @map("created_at")
   
   role           RoleMaster       @relation(fields: [roleCode], references: [code], onDelete: Cascade)
   permission     PermissionMaster @relation(fields: [permissionCode], references: [code], onDelete: Cascade)
@@ -124,9 +124,9 @@ model RolePermission {
 // 기존 AdminPermission (일시적으로 기존 구조 유지)
 model AdminPermission {
   id          Int      @id @default(autoincrement())
-  adminId     Int
+  adminId     Int      @map("admin_id")
   permission  String   // 권한 코드를 직접 저장
-  createdAt   DateTime @default(now())
+  createdAt   DateTime @default(now()) @map("created_at")
   admin       Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
   @@unique([adminId, permission])
@@ -136,9 +136,9 @@ model AdminPermission {
 // 기존 UserPermission (일시적으로 기존 구조 유지)
 model UserPermission {
   id          Int      @id @default(autoincrement())
-  userId      Int
+  userId      Int      @map("user_id")
   permission  String   // 권한 코드를 직접 저장
-  createdAt   DateTime @default(now())
+  createdAt   DateTime @default(now()) @map("created_at")
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, permission])
@@ -148,13 +148,13 @@ model UserPermission {
 
 model AdminActivityLog {
   id        Int      @id @default(autoincrement())
-  adminId   Int
+  adminId   Int      @map("admin_id")
   action    String
   resource  String?
   details   Json?
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
   admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
   @@map("admin_activity_logs")

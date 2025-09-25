@@ -55,40 +55,28 @@ export const CourseManagementPresenter: React.FC<CourseManagementPresenterProps>
     <div className="space-y-6">
       {/* Unified Page Header */}
       <PageHeader
-        title={selectedCourse ? `${selectedCourse.name} - 홀 관리` : '코스 관리'}
-        subtitle={selectedCourse ? '코스의 홀 정보를 관리합니다.' : '골프 코스와 홀 정보를 관리합니다.'}
+        title="코스 관리"
+        subtitle="골프 코스와 홀 정보를 관리합니다."
         icon={
           <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
           </svg>
         }
-        onBack={selectedCourse ? onBackToCourseList : undefined}
-        backLabel="목록으로"
       />
 
-      {/* 코스 목록 또는 코스 상세 */}
-      {!selectedCourse ? (
-        /* 코스 목록 */
-        <GolfCompanyCourseList
-          companies={companies}
-          courses={courses}
-          selectedCompanyId={selectedCompanyId}
-          loading={coursesLoading}
-          error={coursesError}
-          onCompanyChange={onCompanyChange}
-          onCourseSelect={onCourseSelect}
-          onAddNewCourse={onAddNewCourse}
-          onEditCourse={onEditCourse}
-          onDeleteCourse={onDeleteCourse}
-        />
-      ) : (
-        /* 코스 상세 뷰 */
-        <CourseDetailContainer
-          course={selectedCourse}
-          onBack={onBackToCourseList}
-          onUpdateCourse={onUpdateCourse}
-        />
-      )}
+      {/* 코스 목록 */}
+      <GolfCompanyCourseList
+        companies={companies}
+        courses={courses}
+        selectedCompanyId={selectedCompanyId}
+        loading={coursesLoading}
+        error={coursesError}
+        onCompanyChange={onCompanyChange}
+        onCourseSelect={onCourseSelect}
+        onAddNewCourse={onAddNewCourse}
+        onEditCourse={onEditCourse}
+        onDeleteCourse={onDeleteCourse}
+      />
     </div>
   );
 };
