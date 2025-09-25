@@ -60,6 +60,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set deployment environment
+        id: deployment-env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "ENVIRONMENT=production" >> $GITHUB_OUTPUT
+            echo "SERVICE_SUFFIX=-prod" >> $GITHUB_OUTPUT
+            echo "NODE_ENV=production" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            echo "ENVIRONMENT=development" >> $GITHUB_OUTPUT
+            echo "SERVICE_SUFFIX=-dev" >> $GITHUB_OUTPUT
+            echo "NODE_ENV=development" >> $GITHUB_OUTPUT
+          else
+            echo "ENVIRONMENT=development" >> $GITHUB_OUTPUT
+            echo "SERVICE_SUFFIX=-dev" >> $GITHUB_OUTPUT
+            echo "NODE_ENV=development" >> $GITHUB_OUTPUT
+          fi
+
       - name: Setup Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
@@ -108,27 +125,27 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
-            -t asia-northeast3-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/parkgolf/${{ matrix.service }}:${{ github.sha }} \
-            -t asia-northeast3-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/parkgolf/${{ matrix.service }}:latest \
+            -t asia-northeast3-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/parkgolf/${{ matrix.service }}:${{ steps.deployment-env.outputs.ENVIRONMENT }}-${{ github.sha }} \
+            -t asia-northeast3-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/parkgolf/${{ matrix.service }}:${{ steps.deployment-env.outputs.ENVIRONMENT }}-latest \
             -f services/${{ matrix.service }}/Dockerfile \
-            --build-arg NODE_ENV=production \
+            --build-arg NODE_ENV=${{ steps.deployment-env.outputs.NODE_ENV }} \
             services/${{ matrix.service }}
 
       - name: Push Docker image
         run: |
-          docker push asia-northeast3-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/parkgolf/${{ matrix.service }}:${{ github.sha }}
-          docker push asia-northeast3-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/parkgolf/${{ matrix.service }}:latest
+          docker push asia-northeast3-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/parkgolf/${{ matrix.service }}:${{ steps.deployment-env.outputs.ENVIRONMENT }}-${{ github.sha }}
+          docker push asia-northeast3-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/parkgolf/${{ matrix.service }}:${{ steps.deployment-env.outputs.ENVIRONMENT }}-latest
 
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy ${{ matrix.service }} \
-            --image asia-northeast3-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/parkgolf/${{ matrix.service }}:${{ github.sha }} \
+          gcloud run deploy ${{ matrix.service }}${{ steps.deployment-env.outputs.SERVICE_SUFFIX }} \
+            --image asia-northeast3-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/parkgolf/${{ matrix.service }}:${{ steps.deployment-env.outputs.ENVIRONMENT }}-${{ github.sha }} \
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
             --port ${{ steps.env-vars.outputs.PORT }} \
             --service-account ${{ env.SERVICE_ACCOUNT_EMAIL }} \
-            --set-env-vars NODE_ENV=production \
+            --set-env-vars NODE_ENV=${{ steps.deployment-env.outputs.NODE_ENV }} \
             --set-env-vars PORT=${{ steps.env-vars.outputs.PORT }} \
             --set-env-vars NATS_URL=${{ env.NATS_URL }} \
             --set-env-vars NATS_USER=${{ env.NATS_USER }} \
@@ -150,5 +167,5 @@ jobs:
 
       - name: Get Service URL
         run: |
-          SERVICE_URL=$(gcloud run services describe ${{ matrix.service }} --region=${{ env.REGION }} --format='value(status.url)')
-          echo "Service deployed to: $SERVICE_URL"
+          SERVICE_URL=$(gcloud run services describe ${{ matrix.service }}${{ steps.deployment-env.outputs.SERVICE_SUFFIX }} --region=${{ env.REGION }} --format='value(status.url)')
+          echo "🚀 [${{ steps.deployment-env.outputs.ENVIRONMENT }}] ${{ matrix.service }} deployed to: $SERVICE_URL"

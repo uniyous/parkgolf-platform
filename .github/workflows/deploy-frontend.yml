@@ -59,17 +59,37 @@ jobs:
           cache: 'npm'
           cache-dependency-path: services/${{ matrix.app }}/package-lock.json
 
+      - name: Set deployment environment
+        id: deployment-env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "ENVIRONMENT=production" >> $GITHUB_OUTPUT
+            echo "SITE_SUFFIX=" >> $GITHUB_OUTPUT
+            echo "API_SUFFIX=-prod" >> $GITHUB_OUTPUT
+            echo "APP_ENV=production" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            echo "ENVIRONMENT=development" >> $GITHUB_OUTPUT
+            echo "SITE_SUFFIX=-dev" >> $GITHUB_OUTPUT
+            echo "API_SUFFIX=-dev" >> $GITHUB_OUTPUT
+            echo "APP_ENV=development" >> $GITHUB_OUTPUT
+          else
+            echo "ENVIRONMENT=development" >> $GITHUB_OUTPUT
+            echo "SITE_SUFFIX=-dev" >> $GITHUB_OUTPUT
+            echo "API_SUFFIX=-dev" >> $GITHUB_OUTPUT
+            echo "APP_ENV=development" >> $GITHUB_OUTPUT
+          fi
+
       - name: Set environment variables
         id: env-vars
         run: |
           case "${{ matrix.app }}" in
             admin-dashboard)
-              echo "FIREBASE_SITE=parkgolf-admin" >> $GITHUB_OUTPUT
-              echo "API_URL=https://admin-api-${{ secrets.CLOUD_RUN_HASH }}.asia-northeast3.run.app" >> $GITHUB_OUTPUT
+              echo "FIREBASE_SITE=parkgolf-admin${{ steps.deployment-env.outputs.SITE_SUFFIX }}" >> $GITHUB_OUTPUT
+              echo "API_URL=https://admin-api${{ steps.deployment-env.outputs.API_SUFFIX }}-${{ secrets.CLOUD_RUN_HASH }}.asia-northeast3.run.app" >> $GITHUB_OUTPUT
               ;;
             user-webapp)
-              echo "FIREBASE_SITE=parkgolf-user" >> $GITHUB_OUTPUT
-              echo "API_URL=https://user-api-${{ secrets.CLOUD_RUN_HASH }}.asia-northeast3.run.app" >> $GITHUB_OUTPUT
+              echo "FIREBASE_SITE=parkgolf-user${{ steps.deployment-env.outputs.SITE_SUFFIX }}" >> $GITHUB_OUTPUT
+              echo "API_URL=https://user-api${{ steps.deployment-env.outputs.API_SUFFIX }}-${{ secrets.CLOUD_RUN_HASH }}.asia-northeast3.run.app" >> $GITHUB_OUTPUT
               ;;
           esac
 
@@ -77,12 +97,12 @@ jobs:
         working-directory: services/${{ matrix.app }}
         run: npm ci
 
-      - name: Create production environment file
+      - name: Create environment file
         working-directory: services/${{ matrix.app }}
         run: |
           cat > .env.production << EOF
           VITE_API_URL=${{ steps.env-vars.outputs.API_URL }}
-          VITE_APP_ENV=production
+          VITE_APP_ENV=${{ steps.deployment-env.outputs.APP_ENV }}
           VITE_GA_TRACKING_ID=${{ secrets.GA_TRACKING_ID }}
           EOF
 
@@ -102,4 +122,4 @@ jobs:
 
       - name: Get Hosting URL
         run: |
-          echo "🚀 ${{ matrix.app }} deployed to: https://${{ steps.env-vars.outputs.FIREBASE_SITE }}.web.app"
+          echo "🚀 [${{ steps.deployment-env.outputs.ENVIRONMENT }}] ${{ matrix.app }} deployed to: https://${{ steps.env-vars.outputs.FIREBASE_SITE }}.web.app"
