@@ -1,20 +1,20 @@
 name: Deploy Frontend to Firebase Hosting
 
 on:
-  push:
-    branches:
-      - main
-      - develop
-    paths:
-      - 'services/admin-dashboard/**'
-      - 'services/user-webapp/**'
-      - '.github/workflows/deploy-frontend.yml'
   workflow_dispatch:
     inputs:
       apps:
         description: 'Apps to deploy (comma-separated or "all")'
         required: false
         default: 'all'
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - production
 
 env:
   GCP_PROJECT_ID: uniyous-319808
@@ -62,22 +62,19 @@ jobs:
       - name: Set deployment environment
         id: deployment-env
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          SELECTED_ENV="${{ github.event.inputs.environment }}"
+          if [[ "$SELECTED_ENV" == "production" ]]; then
             echo "ENVIRONMENT=production" >> $GITHUB_OUTPUT
             echo "SITE_SUFFIX=" >> $GITHUB_OUTPUT
             echo "API_SUFFIX=-prod" >> $GITHUB_OUTPUT
             echo "APP_ENV=production" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
-            echo "ENVIRONMENT=development" >> $GITHUB_OUTPUT
-            echo "SITE_SUFFIX=-dev" >> $GITHUB_OUTPUT
-            echo "API_SUFFIX=-dev" >> $GITHUB_OUTPUT
-            echo "APP_ENV=development" >> $GITHUB_OUTPUT
           else
             echo "ENVIRONMENT=development" >> $GITHUB_OUTPUT
             echo "SITE_SUFFIX=-dev" >> $GITHUB_OUTPUT
             echo "API_SUFFIX=-dev" >> $GITHUB_OUTPUT
             echo "APP_ENV=development" >> $GITHUB_OUTPUT
           fi
+          echo "🔧 Selected environment: $SELECTED_ENV"
 
       - name: Set environment variables
         id: env-vars
