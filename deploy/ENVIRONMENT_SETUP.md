@@ -33,9 +33,6 @@ JSON 형태로 환경 변수를 관리하여 더 깔끔하고 유지보수하기
     "refresh_secret": "dev-refresh-secret-key",
     "refresh_expires_in": "30d"
   },
-  "redis": {
-    "url": "redis://:redis123@34.47.122.22:6379"
-  },
   "nats": {
     "url": "nats://34.64.85.225:4222"
   }
@@ -59,9 +56,6 @@ JSON 형태로 환경 변수를 관리하여 더 깔끔하고 유지보수하기
     "expires_in": "7d",
     "refresh_secret": "production-refresh-secret",
     "refresh_expires_in": "30d"
-  },
-  "redis": {
-    "url": "redis://:production-redis-password@production-redis-host:6379"
   },
   "nats": {
     "url": "nats://production-nats-host:4222"
@@ -120,22 +114,16 @@ GitHub Actions 워크플로우는 다음과 같이 환경을 자동으로 구분
 
 ```env
 # Database
-DATABASE_HOST=localhost
-DATABASE_PORT=5432
-DATABASE_USER=postgres
-DATABASE_PASSWORD=your_password
-DATABASE_NAME=auth_db  # 서비스별로 변경
+DATABASE_URL=postgresql://parkgolf:parkgolf123@localhost:5432/auth_db?schema=public  # 서비스별로 변경
 
 # NATS
 NATS_URL=nats://localhost:4222
-NATS_USER=nats
-NATS_PASSWORD=nats123
-
-# Redis
-REDIS_URL=redis://localhost:6379
 
 # JWT
-JWT_SECRET=your_jwt_secret_key
+JWT_SECRET=dev-super-secret-jwt-key-change-in-production
+JWT_EXPIRES_IN=7d
+JWT_REFRESH_SECRET=dev-refresh-secret-key
+JWT_REFRESH_EXPIRES_IN=30d
 
 # Node
 NODE_ENV=development

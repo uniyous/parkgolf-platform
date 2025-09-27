@@ -14,9 +14,6 @@
     "refresh_secret": "dev-refresh-secret-key",
     "refresh_expires_in": "30d"
   },
-  "redis": {
-    "url": "redis://:redis123@34.47.122.22:6379"
-  },
   "nats": {
     "url": "nats://34.64.85.225:4222"
   }

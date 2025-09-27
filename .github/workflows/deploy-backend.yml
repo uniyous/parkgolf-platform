@@ -119,7 +119,6 @@ jobs:
               echo "JWT_EXPIRES_IN=$(jq -r '.jwt.expires_in // "7d"' /tmp/config.json)" >> $GITHUB_OUTPUT
               echo "JWT_REFRESH_SECRET=$(jq -r '.jwt.refresh_secret // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
               echo "JWT_REFRESH_EXPIRES_IN=$(jq -r '.jwt.refresh_expires_in // "30d"' /tmp/config.json)" >> $GITHUB_OUTPUT
-              echo "REDIS_URL=$(jq -r '.redis.url // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
               echo "NATS_URL=$(jq -r '.nats.url // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
 
               # Clean up temp file
@@ -202,7 +201,6 @@ jobs:
             --set-env-vars JWT_EXPIRES_IN=${{ steps.deployment-env.outputs.JWT_EXPIRES_IN }} \
             --set-env-vars JWT_REFRESH_SECRET=${{ steps.deployment-env.outputs.JWT_REFRESH_SECRET }} \
             --set-env-vars JWT_REFRESH_EXPIRES_IN=${{ steps.deployment-env.outputs.JWT_REFRESH_EXPIRES_IN }} \
-            --set-env-vars REDIS_URL=${{ steps.deployment-env.outputs.REDIS_URL }} \
             --set-env-vars NATS_URL=${{ steps.deployment-env.outputs.NATS_URL }} \
             --min-instances 1 \
             --max-instances 10 \
