@@ -18,18 +18,6 @@ async function bootstrap() {
       res.status(200).json({ status: 'ok', service: 'auth-service' });
     });
 
-    // Connect NATS microservice
-    const microservice = app.connectMicroservice<MicroserviceOptions>({
-      transport: Transport.NATS,
-      options: {
-        servers: [process.env.NATS_URL || 'nats://localhost:4222'],
-        queue: 'auth-service',
-        reconnect: true,
-        maxReconnectAttempts: 5,
-        reconnectTimeWait: 1000,
-      },
-    });
-
     // Global exception filter
     app.useGlobalFilters(new BaseExceptionFilter());
 
@@ -44,16 +32,37 @@ async function bootstrap() {
       }),
     );
 
-    // Start all microservices
-    await app.startAllMicroservices();
-
-    // Start HTTP server for health check
-    const port = configService.get<number>('PORT') || 8080;
-    await app.listen(port);
-
-    logger.log(`🚀 Auth Service (NATS Microservice + HTTP Health Check) is running on port ${port}`);
+    // Start HTTP server first for Cloud Run health check
+    const port = process.env.PORT || 8080;
+    await app.listen(port, '0.0.0.0');
+    logger.log(`🚀 Auth Service is running on port ${port}`);
     logger.log(`🩺 Health check: http://localhost:${port}/health`);
-    logger.log(`🔗 NATS connected to: ${process.env.NATS_URL || 'nats://localhost:4222'}`);
+
+    // Connect NATS microservice asynchronously (optional for Cloud Run)
+    if (process.env.NATS_URL) {
+      setImmediate(async () => {
+        try {
+          const microservice = app.connectMicroservice<MicroserviceOptions>({
+            transport: Transport.NATS,
+            options: {
+              servers: [process.env.NATS_URL],
+              queue: 'auth-service',
+              reconnect: true,
+              maxReconnectAttempts: 3,
+              reconnectTimeWait: 2000,
+            },
+          });
+
+          await app.startAllMicroservices();
+          logger.log(`🔗 NATS connected to: ${process.env.NATS_URL}`);
+        } catch (natsError) {
+          logger.warn('Failed to connect NATS microservice, continuing with HTTP only...', natsError.message);
+        }
+      });
+    } else {
+      logger.warn('NATS_URL not provided, running in HTTP-only mode');
+    }
+
     logger.log(`📢 Queue: auth-service`);
     logger.log(`💬 Available message patterns:`);
     logger.log(`   - auth.login, auth.validate, auth.refresh`);
