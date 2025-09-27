@@ -49,8 +49,8 @@ RUN chown -R nodejs:nodejs /app
 USER nodejs
 
 # Expose port
-EXPOSE 3013
+EXPOSE 8080
 
-# Run database migrations on startup and start the application
+# Start the application
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["sh", "-c", "npx prisma migrate deploy || echo 'Migration skipped or failed, continuing...' && node dist/src/main.js"]
+CMD ["node", "dist/src/main.js"]
