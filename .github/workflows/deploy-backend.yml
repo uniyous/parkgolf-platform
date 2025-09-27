@@ -59,23 +59,41 @@ jobs:
         id: deployment-env
         run: |
           SELECTED_ENV="${{ github.event.inputs.environment }}"
+
+          # Parse environment configuration from JSON
           if [[ "$SELECTED_ENV" == "production" ]]; then
             echo "ENVIRONMENT=production" >> $GITHUB_OUTPUT
             echo "SERVICE_SUFFIX=-prod" >> $GITHUB_OUTPUT
             echo "NODE_ENV=production" >> $GITHUB_OUTPUT
-            # Production environment uses different database/services
-            echo "NATS_URL=${{ secrets.PROD_NATS_URL || secrets.DEV_NATS_URL }}" >> $GITHUB_OUTPUT
-            echo "DATABASE_HOST=${{ secrets.PROD_DATABASE_HOST || secrets.DEV_DATABASE_HOST }}" >> $GITHUB_OUTPUT
-            echo "DATABASE_PASSWORD=${{ secrets.PROD_DATABASE_PASSWORD }}" >> $GITHUB_OUTPUT
+
+            # Parse production config JSON
+            if [ -n "${{ secrets.PROD_ENV_CONFIG }}" ]; then
+              echo "${{ secrets.PROD_ENV_CONFIG }}" > /tmp/env-config.json
+            else
+              echo "${{ secrets.DEV_ENV_CONFIG }}" > /tmp/env-config.json
+            fi
           else
             echo "ENVIRONMENT=development" >> $GITHUB_OUTPUT
             echo "SERVICE_SUFFIX=-dev" >> $GITHUB_OUTPUT
             echo "NODE_ENV=development" >> $GITHUB_OUTPUT
-            # Development environment
-            echo "NATS_URL=${{ secrets.DEV_NATS_URL }}" >> $GITHUB_OUTPUT
-            echo "DATABASE_HOST=${{ secrets.DEV_DATABASE_HOST }}" >> $GITHUB_OUTPUT
-            echo "DATABASE_PASSWORD=${{ secrets.DEV_DATABASE_PASSWORD }}" >> $GITHUB_OUTPUT
+
+            # Parse development config JSON
+            echo "${{ secrets.DEV_ENV_CONFIG }}" > /tmp/env-config.json
           fi
+
+          # Extract environment variables from JSON
+          if [ -f /tmp/env-config.json ]; then
+            echo "NATS_URL=$(jq -r '.nats.url' /tmp/env-config.json)" >> $GITHUB_OUTPUT
+            echo "NATS_USER=$(jq -r '.nats.user' /tmp/env-config.json)" >> $GITHUB_OUTPUT
+            echo "NATS_PASSWORD=$(jq -r '.nats.password' /tmp/env-config.json)" >> $GITHUB_OUTPUT
+            echo "DATABASE_HOST=$(jq -r '.database.host' /tmp/env-config.json)" >> $GITHUB_OUTPUT
+            echo "DATABASE_PORT=$(jq -r '.database.port' /tmp/env-config.json)" >> $GITHUB_OUTPUT
+            echo "DATABASE_USER=$(jq -r '.database.user' /tmp/env-config.json)" >> $GITHUB_OUTPUT
+            echo "DATABASE_PASSWORD=$(jq -r '.database.password' /tmp/env-config.json)" >> $GITHUB_OUTPUT
+            echo "REDIS_HOST=$(jq -r '.redis.host' /tmp/env-config.json)" >> $GITHUB_OUTPUT
+            echo "JWT_SECRET=$(jq -r '.security.jwt_secret' /tmp/env-config.json)" >> $GITHUB_OUTPUT
+          fi
+
           echo "🔧 Selected environment: $SELECTED_ENV"
 
       - name: Authenticate to Google Cloud
@@ -94,11 +112,17 @@ jobs:
       - name: Set environment variables for service
         id: env-vars
         run: |
+          # Extract additional service-specific config from JSON if available
+          if [ -f /tmp/env-config.json ]; then
+            SENDGRID_API_KEY=$(jq -r '.external_services.sendgrid_api_key // empty' /tmp/env-config.json)
+            TWILIO_ACCOUNT_SID=$(jq -r '.external_services.twilio_account_sid // empty' /tmp/env-config.json)
+            TWILIO_AUTH_TOKEN=$(jq -r '.external_services.twilio_auth_token // empty' /tmp/env-config.json)
+          fi
+
           case "${{ matrix.service }}" in
             auth-service)
               echo "DATABASE_NAME=auth_db" >> $GITHUB_OUTPUT
-              echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> $GITHUB_OUTPUT
-              echo "REDIS_URL=redis://${{ secrets.REDIS_HOST }}:6379" >> $GITHUB_OUTPUT
+              echo "REDIS_URL=redis://${{ steps.deployment-env.outputs.REDIS_HOST }}:6379" >> $GITHUB_OUTPUT
               ;;
             course-service)
               echo "DATABASE_NAME=course_db" >> $GITHUB_OUTPUT
@@ -107,12 +131,23 @@ jobs:
               echo "DATABASE_NAME=booking_db" >> $GITHUB_OUTPUT
               ;;
             admin-api)
-              echo "REDIS_URL=redis://${{ secrets.REDIS_HOST }}:6379" >> $GITHUB_OUTPUT
+              echo "REDIS_URL=redis://${{ steps.deployment-env.outputs.REDIS_HOST }}:6379" >> $GITHUB_OUTPUT
               ;;
             user-api)
-              echo "REDIS_URL=redis://${{ secrets.REDIS_HOST }}:6379" >> $GITHUB_OUTPUT
+              echo "REDIS_URL=redis://${{ steps.deployment-env.outputs.REDIS_HOST }}:6379" >> $GITHUB_OUTPUT
               ;;
           esac
+
+          # Set external service variables if available
+          if [ -n "$SENDGRID_API_KEY" ] && [ "$SENDGRID_API_KEY" != "null" ]; then
+            echo "SENDGRID_API_KEY=$SENDGRID_API_KEY" >> $GITHUB_OUTPUT
+          fi
+          if [ -n "$TWILIO_ACCOUNT_SID" ] && [ "$TWILIO_ACCOUNT_SID" != "null" ]; then
+            echo "TWILIO_ACCOUNT_SID=$TWILIO_ACCOUNT_SID" >> $GITHUB_OUTPUT
+          fi
+          if [ -n "$TWILIO_AUTH_TOKEN" ] && [ "$TWILIO_AUTH_TOKEN" != "null" ]; then
+            echo "TWILIO_AUTH_TOKEN=$TWILIO_AUTH_TOKEN" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build Docker image
         run: |
@@ -138,14 +173,14 @@ jobs:
             --service-account ${{ env.SERVICE_ACCOUNT_EMAIL }} \
             --set-env-vars NODE_ENV=${{ steps.deployment-env.outputs.NODE_ENV }} \
             --set-env-vars NATS_URL=${{ steps.deployment-env.outputs.NATS_URL }} \
-            --set-env-vars NATS_USER=${{ secrets.NATS_USER }} \
-            --set-env-vars NATS_PASSWORD=${{ secrets.NATS_PASSWORD }} \
+            --set-env-vars NATS_USER=${{ steps.deployment-env.outputs.NATS_USER }} \
+            --set-env-vars NATS_PASSWORD=${{ steps.deployment-env.outputs.NATS_PASSWORD }} \
             --set-env-vars DATABASE_HOST=${{ steps.deployment-env.outputs.DATABASE_HOST }} \
-            --set-env-vars DATABASE_PORT=${{ secrets.DATABASE_PORT }} \
-            --set-env-vars DATABASE_USER=${{ secrets.DATABASE_USER }} \
+            --set-env-vars DATABASE_PORT=${{ steps.deployment-env.outputs.DATABASE_PORT }} \
+            --set-env-vars DATABASE_USER=${{ steps.deployment-env.outputs.DATABASE_USER }} \
             --set-env-vars DATABASE_PASSWORD=${{ steps.deployment-env.outputs.DATABASE_PASSWORD }} \
             --set-env-vars DATABASE_NAME=${{ steps.env-vars.outputs.DATABASE_NAME }} \
-            --set-env-vars JWT_SECRET=${{ steps.env-vars.outputs.JWT_SECRET }} \
+            --set-env-vars JWT_SECRET=${{ steps.deployment-env.outputs.JWT_SECRET }} \
             --set-env-vars REDIS_URL=${{ steps.env-vars.outputs.REDIS_URL }} \
             --set-env-vars SENDGRID_API_KEY=${{ steps.env-vars.outputs.SENDGRID_API_KEY }} \
             --set-env-vars TWILIO_ACCOUNT_SID=${{ steps.env-vars.outputs.TWILIO_ACCOUNT_SID }} \

@@ -1,67 +1,113 @@
-# 환경 변수 설정 가이드
+# 환경 변수 설정 가이드 (JSON 기반)
 
 ## GitHub Secrets 설정
 
-개발(develop) 브랜치와 프로덕션(main) 브랜치를 위해 다음 GitHub Secrets을 설정해야 합니다.
+JSON 형태로 환경 변수를 관리하여 더 깔끔하고 유지보수하기 쉽게 구성했습니다.
 
 ### 1. GCP 인증
 - `GCP_SA_KEY`: Google Cloud Service Account JSON 키 (필수)
 
-### 2. 개발 환경 변수 (develop 브랜치)
+### 2. 개발 환경 설정 (develop 브랜치)
+- `DEV_ENV_CONFIG`: 개발 환경 JSON 설정
 
-#### 데이터베이스
-- `DEV_DATABASE_HOST`: PostgreSQL 호스트 (예: 34.47.122.22)
-- `DEV_DATABASE_PASSWORD`: 데이터베이스 비밀번호
-- `DATABASE_PORT`: 5432 (기본값)
-- `DATABASE_USER`: postgres (기본값)
+### 3. 프로덕션 환경 설정 (main 브랜치)
+- `PROD_ENV_CONFIG`: 프로덕션 환경 JSON 설정
 
-#### NATS 메시지 브로커
-- `DEV_NATS_URL`: NATS 서버 URL (예: nats://34.64.85.225:4222)
-- `NATS_USER`: NATS 사용자명
-- `NATS_PASSWORD`: NATS 비밀번호
+## JSON 템플릿
 
-#### Redis
-- `REDIS_HOST`: Redis 서버 호스트
+### DEV_ENV_CONFIG (개발 환경)
+```json
+{
+  "nats": {
+    "url": "nats://34.64.85.225:4222",
+    "user": "nats",
+    "password": "nats123"
+  },
+  "database": {
+    "host": "34.47.122.22",
+    "port": "5432",
+    "user": "postgres",
+    "password": "postgres123"
+  },
+  "redis": {
+    "host": "your-redis-host"
+  },
+  "security": {
+    "jwt_secret": "your-jwt-secret-key"
+  },
+  "external_services": {
+    "sendgrid_api_key": "optional-sendgrid-key",
+    "twilio_account_sid": "optional-twilio-sid",
+    "twilio_auth_token": "optional-twilio-token"
+  }
+}
+```
 
-#### 보안
-- `JWT_SECRET`: JWT 토큰 서명용 시크릿 키
-
-#### 외부 서비스 (선택)
-- `SENDGRID_API_KEY`: SendGrid 이메일 서비스 API 키
-- `TWILIO_ACCOUNT_SID`: Twilio SMS 서비스 계정 SID
-- `TWILIO_AUTH_TOKEN`: Twilio 인증 토큰
-
-### 3. 프로덕션 환경 변수 (main 브랜치)
-
-프로덕션용으로 다음 추가 시크릿들을 설정할 수 있습니다:
-- `PROD_DATABASE_HOST`: 프로덕션 데이터베이스 호스트
-- `PROD_DATABASE_PASSWORD`: 프로덕션 데이터베이스 비밀번호
-- `PROD_NATS_URL`: 프로덕션 NATS 서버 URL
+### PROD_ENV_CONFIG (프로덕션 환경)
+```json
+{
+  "nats": {
+    "url": "nats://production-nats-host:4222",
+    "user": "nats",
+    "password": "production-nats-password"
+  },
+  "database": {
+    "host": "production-db-host",
+    "port": "5432",
+    "user": "postgres",
+    "password": "production-db-password"
+  },
+  "redis": {
+    "host": "production-redis-host"
+  },
+  "security": {
+    "jwt_secret": "production-jwt-secret"
+  },
+  "external_services": {
+    "sendgrid_api_key": "production-sendgrid-key",
+    "twilio_account_sid": "production-twilio-sid",
+    "twilio_auth_token": "production-twilio-token"
+  }
+}
+```
 
 ## GitHub Secrets 설정 방법
 
 1. GitHub 저장소 → Settings → Secrets and variables → Actions
 2. "New repository secret" 클릭
-3. Name과 Value 입력
-4. "Add secret" 클릭
+3. 다음 시크릿들을 설정:
+
+### 필수 Secrets
+- **Name**: `GCP_SA_KEY`
+  - **Value**: Google Cloud Service Account JSON 키 전체 내용
+
+- **Name**: `DEV_ENV_CONFIG`
+  - **Value**: 위의 개발 환경 JSON 템플릿을 복사하여 실제 값으로 수정
+
+- **Name**: `PROD_ENV_CONFIG` (프로덕션용, 선택사항)
+  - **Value**: 위의 프로덕션 환경 JSON 템플릿을 복사하여 실제 값으로 수정
+
+## JSON 기반 관리의 장점
+
+1. **중앙 집중 관리**: 모든 환경 변수를 하나의 JSON에서 관리
+2. **가독성**: 구조화된 형태로 설정 확인 용이
+3. **유지보수**: 새로운 변수 추가 시 JSON만 수정하면 됨
+4. **보안**: 민감한 정보가 워크플로우 파일에 노출되지 않음
+5. **환경 분리**: 개발/프로덕션 환경을 완전히 분리
 
 ## 환경별 자동 설정
 
 GitHub Actions 워크플로우는 다음과 같이 환경을 자동으로 구분합니다:
 
 ### Development (develop 브랜치)
-```yaml
-environment: development
-SERVICE_SUFFIX: -dev
-NODE_ENV: development
-```
+- 사용 JSON: `DEV_ENV_CONFIG`
+- 서비스 접미사: `-dev`
+- NODE_ENV: `development`
 
 ### Production (main 브랜치)
-```yaml
-environment: production
-SERVICE_SUFFIX: -prod
-NODE_ENV: production
-```
+- 사용 JSON: `PROD_ENV_CONFIG` (없으면 `DEV_ENV_CONFIG` 사용)
+- 서비스 접미사: `-prod`
+- NODE_ENV: `production`
 
 ## 서비스별 데이터베이스
 
@@ -98,31 +144,36 @@ NODE_ENV=development
 PORT=8080  # Cloud Run에서 자동 설정
 ```
 
+## 변수 추가/수정 방법
+
+새로운 환경 변수가 필요한 경우:
+
+1. **JSON 업데이트**: `DEV_ENV_CONFIG`의 JSON에 새 필드 추가
+2. **워크플로우 수정**: 필요 시 `.github/workflows/deploy-backend.yml`에서 jq 추출 로직 추가
+3. **테스트**: 개발 환경에서 배포 테스트
+
 ## 보안 주의사항
 
 1. **절대 하지 말아야 할 것**:
-   - 비밀번호를 코드에 하드코딩
-   - .env 파일을 Git에 커밋
-   - 프로덕션 시크릿을 공유
+   - JSON 내용을 코드에 하드코딩
+   - GitHub Secrets을 로그에 출력
+   - 프로덕션 시크릿을 개발에서 사용
 
 2. **반드시 해야 할 것**:
-   - GitHub Secrets 사용
+   - JSON 형식 검증 후 GitHub Secrets 저장
    - 환경별 시크릿 분리
    - 정기적인 비밀번호 변경
-   - 최소 권한 원칙 적용
 
 ## 문제 해결
 
+### JSON 파싱 오류
+- JSON 형식이 올바른지 확인 (JSON validator 사용)
+- 특수문자 이스케이프 확인
+
 ### 환경 변수가 설정되지 않음
-- GitHub Secrets이 올바르게 설정되었는지 확인
-- 워크플로우에서 환경(development/production) 선택 확인
+- `jq` 경로가 올바른지 확인
+- JSON 구조와 jq 쿼리 일치 확인
 
-### 데이터베이스 연결 실패
-- DATABASE_HOST가 올바른지 확인
-- 방화벽 규칙에서 Cloud Run IP 허용 확인
-- 데이터베이스 사용자 권한 확인
-
-### NATS 연결 실패
-- NATS_URL 형식 확인 (nats://host:port)
-- NATS 서버가 실행 중인지 확인
-- 네트워크 연결 확인
+### 새로운 변수가 반영되지 않음
+- GitHub Secrets 업데이트 후 워크플로우 재실행
+- jq 추출 로직이 워크플로우에 추가되었는지 확인
