@@ -18,27 +18,27 @@ JSON 형태로 환경 변수를 관리하여 더 깔끔하고 유지보수하기
 ### DEV_ENV_CONFIG (개발 환경)
 ```json
 {
-  "nats": {
-    "url": "nats://34.64.85.225:4222",
-    "user": "nats",
-    "password": "nats123"
-  },
   "database": {
     "host": "34.47.122.22",
     "port": "5432",
-    "user": "postgres",
-    "password": "postgres123"
+    "user": "parkgolf",
+    "password": "parkgolf123"
+  },
+  "server": {
+    "port": "8080",
+    "node_env": "development"
+  },
+  "jwt": {
+    "secret": "dev-super-secret-jwt-key-change-in-production",
+    "expires_in": "7d",
+    "refresh_secret": "dev-refresh-secret-key",
+    "refresh_expires_in": "30d"
   },
   "redis": {
-    "host": "your-redis-host"
+    "url": "redis://:redis123@34.47.122.22:6379"
   },
-  "security": {
-    "jwt_secret": "your-jwt-secret-key"
-  },
-  "external_services": {
-    "sendgrid_api_key": "optional-sendgrid-key",
-    "twilio_account_sid": "optional-twilio-sid",
-    "twilio_auth_token": "optional-twilio-token"
+  "nats": {
+    "url": "nats://34.64.85.225:4222"
   }
 }
 ```
@@ -46,27 +46,27 @@ JSON 형태로 환경 변수를 관리하여 더 깔끔하고 유지보수하기
 ### PROD_ENV_CONFIG (프로덕션 환경)
 ```json
 {
-  "nats": {
-    "url": "nats://production-nats-host:4222",
-    "user": "nats",
-    "password": "production-nats-password"
-  },
   "database": {
     "host": "production-db-host",
     "port": "5432",
-    "user": "postgres",
+    "user": "parkgolf",
     "password": "production-db-password"
   },
+  "server": {
+    "port": "8080",
+    "node_env": "production"
+  },
+  "jwt": {
+    "secret": "production-jwt-secret-change-this",
+    "expires_in": "7d",
+    "refresh_secret": "production-refresh-secret",
+    "refresh_expires_in": "30d"
+  },
   "redis": {
-    "host": "production-redis-host"
+    "url": "redis://:production-redis-password@production-redis-host:6379"
   },
-  "security": {
-    "jwt_secret": "production-jwt-secret"
-  },
-  "external_services": {
-    "sendgrid_api_key": "production-sendgrid-key",
-    "twilio_account_sid": "production-twilio-sid",
-    "twilio_auth_token": "production-twilio-token"
+  "nats": {
+    "url": "nats://production-nats-host:4222"
   }
 }
 ```

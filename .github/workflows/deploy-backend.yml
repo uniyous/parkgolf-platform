@@ -157,25 +157,6 @@ jobs:
       - name: Set environment variables for service
         id: env-vars
         run: |
-          # Extract additional service-specific config from JSON
-          if [[ "${{ github.event.inputs.environment }}" == "production" ]] && [ -n "${{ secrets.PROD_ENV_CONFIG }}" ]; then
-            CONFIG_JSON='${{ secrets.PROD_ENV_CONFIG }}'
-          else
-            CONFIG_JSON='${{ secrets.DEV_ENV_CONFIG }}'
-          fi
-
-          # Extract external service variables from JSON
-          if [ -n "$CONFIG_JSON" ]; then
-            # Write to temp file for consistent JSON processing
-            printf '%s\n' "$CONFIG_JSON" > /tmp/service_config.json
-
-            SENDGRID_API_KEY=$(jq -r '.external_services.sendgrid_api_key // ""' /tmp/service_config.json 2>/dev/null || echo "")
-            TWILIO_ACCOUNT_SID=$(jq -r '.external_services.twilio_account_sid // ""' /tmp/service_config.json 2>/dev/null || echo "")
-            TWILIO_AUTH_TOKEN=$(jq -r '.external_services.twilio_auth_token // ""' /tmp/service_config.json 2>/dev/null || echo "")
-
-            rm -f /tmp/service_config.json
-          fi
-
           case "${{ matrix.service }}" in
             auth-service)
               echo "DATABASE_NAME=auth_db" >> $GITHUB_OUTPUT
@@ -198,23 +179,6 @@ jobs:
               echo "DATABASE_URL=" >> $GITHUB_OUTPUT
               ;;
           esac
-
-          # Set external service variables if available and not empty
-          if [ -n "$SENDGRID_API_KEY" ] && [ "$SENDGRID_API_KEY" != "null" ] && [ "$SENDGRID_API_KEY" != "" ]; then
-            echo "SENDGRID_API_KEY=$SENDGRID_API_KEY" >> $GITHUB_OUTPUT
-          else
-            echo "SENDGRID_API_KEY=" >> $GITHUB_OUTPUT
-          fi
-          if [ -n "$TWILIO_ACCOUNT_SID" ] && [ "$TWILIO_ACCOUNT_SID" != "null" ] && [ "$TWILIO_ACCOUNT_SID" != "" ]; then
-            echo "TWILIO_ACCOUNT_SID=$TWILIO_ACCOUNT_SID" >> $GITHUB_OUTPUT
-          else
-            echo "TWILIO_ACCOUNT_SID=" >> $GITHUB_OUTPUT
-          fi
-          if [ -n "$TWILIO_AUTH_TOKEN" ] && [ "$TWILIO_AUTH_TOKEN" != "null" ] && [ "$TWILIO_AUTH_TOKEN" != "" ]; then
-            echo "TWILIO_AUTH_TOKEN=$TWILIO_AUTH_TOKEN" >> $GITHUB_OUTPUT
-          else
-            echo "TWILIO_AUTH_TOKEN=" >> $GITHUB_OUTPUT
-          fi
 
       - name: Build Docker image
         run: |
@@ -251,9 +215,6 @@ jobs:
             --set-env-vars JWT_REFRESH_EXPIRES_IN=${{ steps.deployment-env.outputs.JWT_REFRESH_EXPIRES_IN }} \
             --set-env-vars REDIS_URL=${{ steps.deployment-env.outputs.REDIS_URL }} \
             --set-env-vars NATS_URL=${{ steps.deployment-env.outputs.NATS_URL }} \
-            --set-env-vars SENDGRID_API_KEY=${{ steps.env-vars.outputs.SENDGRID_API_KEY }} \
-            --set-env-vars TWILIO_ACCOUNT_SID=${{ steps.env-vars.outputs.TWILIO_ACCOUNT_SID }} \
-            --set-env-vars TWILIO_AUTH_TOKEN=${{ steps.env-vars.outputs.TWILIO_AUTH_TOKEN }} \
             --min-instances 1 \
             --max-instances 10 \
             --memory 512Mi \

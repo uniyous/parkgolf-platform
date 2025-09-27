@@ -20,10 +20,5 @@
   },
   "nats": {
     "url": "nats://34.64.85.225:4222"
-  },
-  "external_services": {
-    "sendgrid_api_key": "",
-    "twilio_account_sid": "",
-    "twilio_auth_token": ""
   }
 }
