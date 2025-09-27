@@ -87,9 +87,9 @@ jobs:
 
             # Parse production config JSON
             if [ -n "${{ secrets.PROD_ENV_CONFIG }}" ]; then
-              CONFIG_JSON="${{ secrets.PROD_ENV_CONFIG }}"
+              CONFIG_JSON='${{ secrets.PROD_ENV_CONFIG }}'
             else
-              CONFIG_JSON="${{ secrets.DEV_ENV_CONFIG }}"
+              CONFIG_JSON='${{ secrets.DEV_ENV_CONFIG }}'
             fi
           else
             echo "ENVIRONMENT=development" >> $GITHUB_OUTPUT
@@ -97,17 +97,15 @@ jobs:
             echo "NODE_ENV=development" >> $GITHUB_OUTPUT
 
             # Parse development config JSON
-            CONFIG_JSON="${{ secrets.DEV_ENV_CONFIG }}"
+            CONFIG_JSON='${{ secrets.DEV_ENV_CONFIG }}'
           fi
 
           # Validate and extract environment variables from JSON
           if [ -n "$CONFIG_JSON" ]; then
             echo "🔍 Validating JSON configuration..."
-            echo "DEBUG: CONFIG_JSON length: ${#CONFIG_JSON}"
-            echo "DEBUG: First 200 chars: $(echo "$CONFIG_JSON" | head -c 200)"
 
-            # Write to temp file to handle special characters properly
-            echo "$CONFIG_JSON" > /tmp/config.json
+            # Use printf to properly handle the JSON string
+            printf '%s\n' "$CONFIG_JSON" > /tmp/config.json
 
             if jq empty /tmp/config.json 2>/dev/null; then
               echo "✅ JSON is valid, extracting variables..."
@@ -159,15 +157,15 @@ jobs:
         run: |
           # Extract additional service-specific config from JSON
           if [[ "${{ github.event.inputs.environment }}" == "production" ]] && [ -n "${{ secrets.PROD_ENV_CONFIG }}" ]; then
-            CONFIG_JSON="${{ secrets.PROD_ENV_CONFIG }}"
+            CONFIG_JSON='${{ secrets.PROD_ENV_CONFIG }}'
           else
-            CONFIG_JSON="${{ secrets.DEV_ENV_CONFIG }}"
+            CONFIG_JSON='${{ secrets.DEV_ENV_CONFIG }}'
           fi
 
           # Extract external service variables from JSON
           if [ -n "$CONFIG_JSON" ]; then
             # Write to temp file for consistent JSON processing
-            echo "$CONFIG_JSON" > /tmp/service_config.json
+            printf '%s\n' "$CONFIG_JSON" > /tmp/service_config.json
 
             SENDGRID_API_KEY=$(jq -r '.external_services.sendgrid_api_key // ""' /tmp/service_config.json 2>/dev/null || echo "")
             TWILIO_ACCOUNT_SID=$(jq -r '.external_services.twilio_account_sid // ""' /tmp/service_config.json 2>/dev/null || echo "")
