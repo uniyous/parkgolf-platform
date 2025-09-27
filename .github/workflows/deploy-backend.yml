@@ -34,10 +34,11 @@ jobs:
       services: ${{ steps.determine-services.outputs.services }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: develop
           fetch-depth: 1
+          clean: true
         timeout-minutes: 10
 
       - name: Determine services to deploy
@@ -66,10 +67,11 @@ jobs:
         service: ${{ fromJson(needs.setup.outputs.services) }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: develop
           fetch-depth: 1
+          clean: true
         timeout-minutes: 10
 
       - name: Set deployment environment
