@@ -60,7 +60,7 @@ jobs:
         run: |
           SELECTED_ENV="${{ github.event.inputs.environment }}"
 
-          # Parse environment configuration from JSON
+          # Parse environment configuration from JSON with error handling
           if [[ "$SELECTED_ENV" == "production" ]]; then
             echo "ENVIRONMENT=production" >> $GITHUB_OUTPUT
             echo "SERVICE_SUFFIX=-prod" >> $GITHUB_OUTPUT
@@ -68,9 +68,9 @@ jobs:
 
             # Parse production config JSON
             if [ -n "${{ secrets.PROD_ENV_CONFIG }}" ]; then
-              echo "${{ secrets.PROD_ENV_CONFIG }}" > /tmp/env-config.json
+              CONFIG_JSON="${{ secrets.PROD_ENV_CONFIG }}"
             else
-              echo "${{ secrets.DEV_ENV_CONFIG }}" > /tmp/env-config.json
+              CONFIG_JSON="${{ secrets.DEV_ENV_CONFIG }}"
             fi
           else
             echo "ENVIRONMENT=development" >> $GITHUB_OUTPUT
@@ -78,20 +78,34 @@ jobs:
             echo "NODE_ENV=development" >> $GITHUB_OUTPUT
 
             # Parse development config JSON
-            echo "${{ secrets.DEV_ENV_CONFIG }}" > /tmp/env-config.json
+            CONFIG_JSON="${{ secrets.DEV_ENV_CONFIG }}"
           fi
 
-          # Extract environment variables from JSON
-          if [ -f /tmp/env-config.json ]; then
-            echo "NATS_URL=$(jq -r '.nats.url' /tmp/env-config.json)" >> $GITHUB_OUTPUT
-            echo "NATS_USER=$(jq -r '.nats.user' /tmp/env-config.json)" >> $GITHUB_OUTPUT
-            echo "NATS_PASSWORD=$(jq -r '.nats.password' /tmp/env-config.json)" >> $GITHUB_OUTPUT
-            echo "DATABASE_HOST=$(jq -r '.database.host' /tmp/env-config.json)" >> $GITHUB_OUTPUT
-            echo "DATABASE_PORT=$(jq -r '.database.port' /tmp/env-config.json)" >> $GITHUB_OUTPUT
-            echo "DATABASE_USER=$(jq -r '.database.user' /tmp/env-config.json)" >> $GITHUB_OUTPUT
-            echo "DATABASE_PASSWORD=$(jq -r '.database.password' /tmp/env-config.json)" >> $GITHUB_OUTPUT
-            echo "REDIS_HOST=$(jq -r '.redis.host' /tmp/env-config.json)" >> $GITHUB_OUTPUT
-            echo "JWT_SECRET=$(jq -r '.security.jwt_secret' /tmp/env-config.json)" >> $GITHUB_OUTPUT
+          # Validate and extract environment variables from JSON
+          if [ -n "$CONFIG_JSON" ]; then
+            echo "🔍 Validating JSON configuration..."
+            if echo "$CONFIG_JSON" | jq empty 2>/dev/null; then
+              echo "✅ JSON is valid, extracting variables..."
+
+              # Extract variables with fallback to empty string for optional fields
+              echo "NATS_URL=$(echo "$CONFIG_JSON" | jq -r '.nats.url // ""')" >> $GITHUB_OUTPUT
+              echo "NATS_USER=$(echo "$CONFIG_JSON" | jq -r '.nats.user // ""')" >> $GITHUB_OUTPUT
+              echo "NATS_PASSWORD=$(echo "$CONFIG_JSON" | jq -r '.nats.password // ""')" >> $GITHUB_OUTPUT
+              echo "DATABASE_HOST=$(echo "$CONFIG_JSON" | jq -r '.database.host // ""')" >> $GITHUB_OUTPUT
+              echo "DATABASE_PORT=$(echo "$CONFIG_JSON" | jq -r '.database.port // "5432"')" >> $GITHUB_OUTPUT
+              echo "DATABASE_USER=$(echo "$CONFIG_JSON" | jq -r '.database.user // "postgres"')" >> $GITHUB_OUTPUT
+              echo "DATABASE_PASSWORD=$(echo "$CONFIG_JSON" | jq -r '.database.password // ""')" >> $GITHUB_OUTPUT
+              echo "REDIS_HOST=$(echo "$CONFIG_JSON" | jq -r '.redis.host // ""')" >> $GITHUB_OUTPUT
+              echo "JWT_SECRET=$(echo "$CONFIG_JSON" | jq -r '.security.jwt_secret // ""')" >> $GITHUB_OUTPUT
+            else
+              echo "❌ Invalid JSON format in environment configuration"
+              echo "JSON content preview (first 100 chars):"
+              echo "$CONFIG_JSON" | head -c 100
+              exit 1
+            fi
+          else
+            echo "❌ No environment configuration found"
+            exit 1
           fi
 
           echo "🔧 Selected environment: $SELECTED_ENV"
@@ -112,11 +126,18 @@ jobs:
       - name: Set environment variables for service
         id: env-vars
         run: |
-          # Extract additional service-specific config from JSON if available
-          if [ -f /tmp/env-config.json ]; then
-            SENDGRID_API_KEY=$(jq -r '.external_services.sendgrid_api_key // empty' /tmp/env-config.json)
-            TWILIO_ACCOUNT_SID=$(jq -r '.external_services.twilio_account_sid // empty' /tmp/env-config.json)
-            TWILIO_AUTH_TOKEN=$(jq -r '.external_services.twilio_auth_token // empty' /tmp/env-config.json)
+          # Extract additional service-specific config from JSON
+          if [[ "${{ github.event.inputs.environment }}" == "production" ]] && [ -n "${{ secrets.PROD_ENV_CONFIG }}" ]; then
+            CONFIG_JSON="${{ secrets.PROD_ENV_CONFIG }}"
+          else
+            CONFIG_JSON="${{ secrets.DEV_ENV_CONFIG }}"
+          fi
+
+          # Extract external service variables from JSON
+          if [ -n "$CONFIG_JSON" ]; then
+            SENDGRID_API_KEY=$(echo "$CONFIG_JSON" | jq -r '.external_services.sendgrid_api_key // ""' 2>/dev/null || echo "")
+            TWILIO_ACCOUNT_SID=$(echo "$CONFIG_JSON" | jq -r '.external_services.twilio_account_sid // ""' 2>/dev/null || echo "")
+            TWILIO_AUTH_TOKEN=$(echo "$CONFIG_JSON" | jq -r '.external_services.twilio_auth_token // ""' 2>/dev/null || echo "")
           fi
 
           case "${{ matrix.service }}" in
@@ -138,15 +159,21 @@ jobs:
               ;;
           esac
 
-          # Set external service variables if available
-          if [ -n "$SENDGRID_API_KEY" ] && [ "$SENDGRID_API_KEY" != "null" ]; then
+          # Set external service variables if available and not empty
+          if [ -n "$SENDGRID_API_KEY" ] && [ "$SENDGRID_API_KEY" != "null" ] && [ "$SENDGRID_API_KEY" != "" ]; then
             echo "SENDGRID_API_KEY=$SENDGRID_API_KEY" >> $GITHUB_OUTPUT
+          else
+            echo "SENDGRID_API_KEY=" >> $GITHUB_OUTPUT
           fi
-          if [ -n "$TWILIO_ACCOUNT_SID" ] && [ "$TWILIO_ACCOUNT_SID" != "null" ]; then
+          if [ -n "$TWILIO_ACCOUNT_SID" ] && [ "$TWILIO_ACCOUNT_SID" != "null" ] && [ "$TWILIO_ACCOUNT_SID" != "" ]; then
             echo "TWILIO_ACCOUNT_SID=$TWILIO_ACCOUNT_SID" >> $GITHUB_OUTPUT
+          else
+            echo "TWILIO_ACCOUNT_SID=" >> $GITHUB_OUTPUT
           fi
-          if [ -n "$TWILIO_AUTH_TOKEN" ] && [ "$TWILIO_AUTH_TOKEN" != "null" ]; then
+          if [ -n "$TWILIO_AUTH_TOKEN" ] && [ "$TWILIO_AUTH_TOKEN" != "null" ] && [ "$TWILIO_AUTH_TOKEN" != "" ]; then
             echo "TWILIO_AUTH_TOKEN=$TWILIO_AUTH_TOKEN" >> $GITHUB_OUTPUT
+          else
+            echo "TWILIO_AUTH_TOKEN=" >> $GITHUB_OUTPUT
           fi
 
       - name: Build Docker image

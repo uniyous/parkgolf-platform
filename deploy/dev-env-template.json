@@ -1,0 +1,24 @@
+{
+  "nats": {
+    "url": "nats://34.64.85.225:4222",
+    "user": "nats",
+    "password": "nats123"
+  },
+  "database": {
+    "host": "34.47.122.22",
+    "port": "5432",
+    "user": "postgres",
+    "password": "postgres123"
+  },
+  "redis": {
+    "host": "your-redis-host"
+  },
+  "security": {
+    "jwt_secret": "your-jwt-secret-key-here"
+  },
+  "external_services": {
+    "sendgrid_api_key": "",
+    "twilio_account_sid": "",
+    "twilio_auth_token": ""
+  }
+}
