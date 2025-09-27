@@ -103,23 +103,35 @@ jobs:
           # Validate and extract environment variables from JSON
           if [ -n "$CONFIG_JSON" ]; then
             echo "🔍 Validating JSON configuration..."
-            if echo "$CONFIG_JSON" | jq empty 2>/dev/null; then
+            echo "DEBUG: CONFIG_JSON length: ${#CONFIG_JSON}"
+            echo "DEBUG: First 200 chars: $(echo "$CONFIG_JSON" | head -c 200)"
+
+            # Write to temp file to handle special characters properly
+            echo "$CONFIG_JSON" > /tmp/config.json
+
+            if jq empty /tmp/config.json 2>/dev/null; then
               echo "✅ JSON is valid, extracting variables..."
 
               # Extract variables with fallback to empty string for optional fields
-              echo "NATS_URL=$(echo "$CONFIG_JSON" | jq -r '.nats.url // ""')" >> $GITHUB_OUTPUT
-              echo "NATS_USER=$(echo "$CONFIG_JSON" | jq -r '.nats.user // ""')" >> $GITHUB_OUTPUT
-              echo "NATS_PASSWORD=$(echo "$CONFIG_JSON" | jq -r '.nats.password // ""')" >> $GITHUB_OUTPUT
-              echo "DATABASE_HOST=$(echo "$CONFIG_JSON" | jq -r '.database.host // ""')" >> $GITHUB_OUTPUT
-              echo "DATABASE_PORT=$(echo "$CONFIG_JSON" | jq -r '.database.port // "5432"')" >> $GITHUB_OUTPUT
-              echo "DATABASE_USER=$(echo "$CONFIG_JSON" | jq -r '.database.user // "postgres"')" >> $GITHUB_OUTPUT
-              echo "DATABASE_PASSWORD=$(echo "$CONFIG_JSON" | jq -r '.database.password // ""')" >> $GITHUB_OUTPUT
-              echo "REDIS_HOST=$(echo "$CONFIG_JSON" | jq -r '.redis.host // ""')" >> $GITHUB_OUTPUT
-              echo "JWT_SECRET=$(echo "$CONFIG_JSON" | jq -r '.security.jwt_secret // ""')" >> $GITHUB_OUTPUT
+              echo "NATS_URL=$(jq -r '.nats.url // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
+              echo "NATS_USER=$(jq -r '.nats.user // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
+              echo "NATS_PASSWORD=$(jq -r '.nats.password // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
+              echo "DATABASE_HOST=$(jq -r '.database.host // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
+              echo "DATABASE_PORT=$(jq -r '.database.port // "5432"' /tmp/config.json)" >> $GITHUB_OUTPUT
+              echo "DATABASE_USER=$(jq -r '.database.user // "postgres"' /tmp/config.json)" >> $GITHUB_OUTPUT
+              echo "DATABASE_PASSWORD=$(jq -r '.database.password // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
+              echo "REDIS_HOST=$(jq -r '.redis.host // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
+              echo "JWT_SECRET=$(jq -r '.security.jwt_secret // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
+
+              # Clean up temp file
+              rm -f /tmp/config.json
             else
               echo "❌ Invalid JSON format in environment configuration"
-              echo "JSON content preview (first 100 chars):"
-              echo "$CONFIG_JSON" | head -c 100
+              echo "jq error details:"
+              jq empty /tmp/config.json 2>&1 || true
+              echo "Raw content (first 500 chars):"
+              head -c 500 /tmp/config.json
+              rm -f /tmp/config.json
               exit 1
             fi
           else
@@ -154,9 +166,14 @@ jobs:
 
           # Extract external service variables from JSON
           if [ -n "$CONFIG_JSON" ]; then
-            SENDGRID_API_KEY=$(echo "$CONFIG_JSON" | jq -r '.external_services.sendgrid_api_key // ""' 2>/dev/null || echo "")
-            TWILIO_ACCOUNT_SID=$(echo "$CONFIG_JSON" | jq -r '.external_services.twilio_account_sid // ""' 2>/dev/null || echo "")
-            TWILIO_AUTH_TOKEN=$(echo "$CONFIG_JSON" | jq -r '.external_services.twilio_auth_token // ""' 2>/dev/null || echo "")
+            # Write to temp file for consistent JSON processing
+            echo "$CONFIG_JSON" > /tmp/service_config.json
+
+            SENDGRID_API_KEY=$(jq -r '.external_services.sendgrid_api_key // ""' /tmp/service_config.json 2>/dev/null || echo "")
+            TWILIO_ACCOUNT_SID=$(jq -r '.external_services.twilio_account_sid // ""' /tmp/service_config.json 2>/dev/null || echo "")
+            TWILIO_AUTH_TOKEN=$(jq -r '.external_services.twilio_auth_token // ""' /tmp/service_config.json 2>/dev/null || echo "")
+
+            rm -f /tmp/service_config.json
           fi
 
           case "${{ matrix.service }}" in
