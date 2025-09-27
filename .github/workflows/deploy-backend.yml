@@ -111,15 +111,17 @@ jobs:
               echo "✅ JSON is valid, extracting variables..."
 
               # Extract variables with fallback to empty string for optional fields
-              echo "NATS_URL=$(jq -r '.nats.url // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
-              echo "NATS_USER=$(jq -r '.nats.user // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
-              echo "NATS_PASSWORD=$(jq -r '.nats.password // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
               echo "DATABASE_HOST=$(jq -r '.database.host // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
               echo "DATABASE_PORT=$(jq -r '.database.port // "5432"' /tmp/config.json)" >> $GITHUB_OUTPUT
               echo "DATABASE_USER=$(jq -r '.database.user // "postgres"' /tmp/config.json)" >> $GITHUB_OUTPUT
               echo "DATABASE_PASSWORD=$(jq -r '.database.password // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
-              echo "REDIS_HOST=$(jq -r '.redis.host // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
-              echo "JWT_SECRET=$(jq -r '.security.jwt_secret // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
+              echo "SERVER_PORT=$(jq -r '.server.port // "8080"' /tmp/config.json)" >> $GITHUB_OUTPUT
+              echo "JWT_SECRET=$(jq -r '.jwt.secret // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
+              echo "JWT_EXPIRES_IN=$(jq -r '.jwt.expires_in // "7d"' /tmp/config.json)" >> $GITHUB_OUTPUT
+              echo "JWT_REFRESH_SECRET=$(jq -r '.jwt.refresh_secret // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
+              echo "JWT_REFRESH_EXPIRES_IN=$(jq -r '.jwt.refresh_expires_in // "30d"' /tmp/config.json)" >> $GITHUB_OUTPUT
+              echo "REDIS_URL=$(jq -r '.redis.url // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
+              echo "NATS_URL=$(jq -r '.nats.url // ""' /tmp/config.json)" >> $GITHUB_OUTPUT
 
               # Clean up temp file
               rm -f /tmp/config.json
@@ -177,19 +179,23 @@ jobs:
           case "${{ matrix.service }}" in
             auth-service)
               echo "DATABASE_NAME=auth_db" >> $GITHUB_OUTPUT
-              echo "REDIS_URL=redis://${{ steps.deployment-env.outputs.REDIS_HOST }}:6379" >> $GITHUB_OUTPUT
+              echo "DATABASE_URL=postgresql://${{ steps.deployment-env.outputs.DATABASE_USER }}:${{ steps.deployment-env.outputs.DATABASE_PASSWORD }}@${{ steps.deployment-env.outputs.DATABASE_HOST }}:${{ steps.deployment-env.outputs.DATABASE_PORT }}/auth_db?schema=public" >> $GITHUB_OUTPUT
               ;;
             course-service)
               echo "DATABASE_NAME=course_db" >> $GITHUB_OUTPUT
+              echo "DATABASE_URL=postgresql://${{ steps.deployment-env.outputs.DATABASE_USER }}:${{ steps.deployment-env.outputs.DATABASE_PASSWORD }}@${{ steps.deployment-env.outputs.DATABASE_HOST }}:${{ steps.deployment-env.outputs.DATABASE_PORT }}/course_db?schema=public" >> $GITHUB_OUTPUT
               ;;
             booking-service)
               echo "DATABASE_NAME=booking_db" >> $GITHUB_OUTPUT
+              echo "DATABASE_URL=postgresql://${{ steps.deployment-env.outputs.DATABASE_USER }}:${{ steps.deployment-env.outputs.DATABASE_PASSWORD }}@${{ steps.deployment-env.outputs.DATABASE_HOST }}:${{ steps.deployment-env.outputs.DATABASE_PORT }}/booking_db?schema=public" >> $GITHUB_OUTPUT
               ;;
             admin-api)
-              echo "REDIS_URL=redis://${{ steps.deployment-env.outputs.REDIS_HOST }}:6379" >> $GITHUB_OUTPUT
+              echo "DATABASE_NAME=" >> $GITHUB_OUTPUT
+              echo "DATABASE_URL=" >> $GITHUB_OUTPUT
               ;;
             user-api)
-              echo "REDIS_URL=redis://${{ steps.deployment-env.outputs.REDIS_HOST }}:6379" >> $GITHUB_OUTPUT
+              echo "DATABASE_NAME=" >> $GITHUB_OUTPUT
+              echo "DATABASE_URL=" >> $GITHUB_OUTPUT
               ;;
           esac
 
@@ -233,16 +239,18 @@ jobs:
             --allow-unauthenticated \
             --service-account ${{ env.SERVICE_ACCOUNT_EMAIL }} \
             --set-env-vars NODE_ENV=${{ steps.deployment-env.outputs.NODE_ENV }} \
-            --set-env-vars NATS_URL=${{ steps.deployment-env.outputs.NATS_URL }} \
-            --set-env-vars NATS_USER=${{ steps.deployment-env.outputs.NATS_USER }} \
-            --set-env-vars NATS_PASSWORD=${{ steps.deployment-env.outputs.NATS_PASSWORD }} \
+            --set-env-vars DATABASE_URL=${{ steps.env-vars.outputs.DATABASE_URL }} \
             --set-env-vars DATABASE_HOST=${{ steps.deployment-env.outputs.DATABASE_HOST }} \
             --set-env-vars DATABASE_PORT=${{ steps.deployment-env.outputs.DATABASE_PORT }} \
             --set-env-vars DATABASE_USER=${{ steps.deployment-env.outputs.DATABASE_USER }} \
             --set-env-vars DATABASE_PASSWORD=${{ steps.deployment-env.outputs.DATABASE_PASSWORD }} \
             --set-env-vars DATABASE_NAME=${{ steps.env-vars.outputs.DATABASE_NAME }} \
             --set-env-vars JWT_SECRET=${{ steps.deployment-env.outputs.JWT_SECRET }} \
-            --set-env-vars REDIS_URL=${{ steps.env-vars.outputs.REDIS_URL }} \
+            --set-env-vars JWT_EXPIRES_IN=${{ steps.deployment-env.outputs.JWT_EXPIRES_IN }} \
+            --set-env-vars JWT_REFRESH_SECRET=${{ steps.deployment-env.outputs.JWT_REFRESH_SECRET }} \
+            --set-env-vars JWT_REFRESH_EXPIRES_IN=${{ steps.deployment-env.outputs.JWT_REFRESH_EXPIRES_IN }} \
+            --set-env-vars REDIS_URL=${{ steps.deployment-env.outputs.REDIS_URL }} \
+            --set-env-vars NATS_URL=${{ steps.deployment-env.outputs.NATS_URL }} \
             --set-env-vars SENDGRID_API_KEY=${{ steps.env-vars.outputs.SENDGRID_API_KEY }} \
             --set-env-vars TWILIO_ACCOUNT_SID=${{ steps.env-vars.outputs.TWILIO_ACCOUNT_SID }} \
             --set-env-vars TWILIO_AUTH_TOKEN=${{ steps.env-vars.outputs.TWILIO_AUTH_TOKEN }} \
