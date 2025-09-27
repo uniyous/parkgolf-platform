@@ -29,13 +29,14 @@ env:
 jobs:
   setup:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     outputs:
       services: ${{ steps.determine-services.outputs.services }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
-          timeout-minutes: 5
+          ref: develop
           fetch-depth: 1
         timeout-minutes: 10
 
@@ -59,14 +60,15 @@ jobs:
   deploy-service:
     needs: setup
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       matrix:
         service: ${{ fromJson(needs.setup.outputs.services) }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
-          timeout-minutes: 5
+          ref: develop
           fetch-depth: 1
         timeout-minutes: 10
 
