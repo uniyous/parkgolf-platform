@@ -16,6 +16,11 @@ on:
           - development
           - production
 
+# Prevent concurrent deployments to same environment
+concurrency:
+  group: deploy-backend-${{ github.event.inputs.environment || 'development' }}
+  cancel-in-progress: true
+
 env:
   GCP_PROJECT_ID: uniyous-319808
   REGION: asia-northeast3
@@ -27,7 +32,12 @@ jobs:
     outputs:
       services: ${{ steps.determine-services.outputs.services }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          timeout-minutes: 5
+          fetch-depth: 1
+        timeout-minutes: 10
 
       - name: Determine services to deploy
         id: determine-services
@@ -53,7 +63,12 @@ jobs:
       matrix:
         service: ${{ fromJson(needs.setup.outputs.services) }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          timeout-minutes: 5
+          fetch-depth: 1
+        timeout-minutes: 10
 
       - name: Set deployment environment
         id: deployment-env
