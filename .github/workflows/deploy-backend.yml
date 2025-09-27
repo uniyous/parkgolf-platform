@@ -20,13 +20,6 @@ env:
   GCP_PROJECT_ID: uniyous-319808
   REGION: asia-northeast3
   SERVICE_ACCOUNT_EMAIL: parkgolf-services@uniyous-319808.iam.gserviceaccount.com
-  NATS_URL: nats://34.64.85.225:4222
-  NATS_USER: nats
-  NATS_PASSWORD: nats123
-  DATABASE_HOST: 34.47.122.22
-  DATABASE_PORT: 5432
-  DATABASE_USER: postgres
-  DATABASE_PASSWORD: postgres123
 
 jobs:
   setup:
@@ -70,10 +63,18 @@ jobs:
             echo "ENVIRONMENT=production" >> $GITHUB_OUTPUT
             echo "SERVICE_SUFFIX=-prod" >> $GITHUB_OUTPUT
             echo "NODE_ENV=production" >> $GITHUB_OUTPUT
+            # Production environment uses different database/services
+            echo "NATS_URL=${{ secrets.PROD_NATS_URL || secrets.DEV_NATS_URL }}" >> $GITHUB_OUTPUT
+            echo "DATABASE_HOST=${{ secrets.PROD_DATABASE_HOST || secrets.DEV_DATABASE_HOST }}" >> $GITHUB_OUTPUT
+            echo "DATABASE_PASSWORD=${{ secrets.PROD_DATABASE_PASSWORD }}" >> $GITHUB_OUTPUT
           else
             echo "ENVIRONMENT=development" >> $GITHUB_OUTPUT
             echo "SERVICE_SUFFIX=-dev" >> $GITHUB_OUTPUT
             echo "NODE_ENV=development" >> $GITHUB_OUTPUT
+            # Development environment
+            echo "NATS_URL=${{ secrets.DEV_NATS_URL }}" >> $GITHUB_OUTPUT
+            echo "DATABASE_HOST=${{ secrets.DEV_DATABASE_HOST }}" >> $GITHUB_OUTPUT
+            echo "DATABASE_PASSWORD=${{ secrets.DEV_DATABASE_PASSWORD }}" >> $GITHUB_OUTPUT
           fi
           echo "🔧 Selected environment: $SELECTED_ENV"
 
@@ -136,13 +137,13 @@ jobs:
             --allow-unauthenticated \
             --service-account ${{ env.SERVICE_ACCOUNT_EMAIL }} \
             --set-env-vars NODE_ENV=${{ steps.deployment-env.outputs.NODE_ENV }} \
-            --set-env-vars NATS_URL=${{ env.NATS_URL }} \
-            --set-env-vars NATS_USER=${{ env.NATS_USER }} \
-            --set-env-vars NATS_PASSWORD=${{ env.NATS_PASSWORD }} \
-            --set-env-vars DATABASE_HOST=${{ env.DATABASE_HOST }} \
-            --set-env-vars DATABASE_PORT=${{ env.DATABASE_PORT }} \
-            --set-env-vars DATABASE_USER=${{ env.DATABASE_USER }} \
-            --set-env-vars DATABASE_PASSWORD=${{ env.DATABASE_PASSWORD }} \
+            --set-env-vars NATS_URL=${{ steps.deployment-env.outputs.NATS_URL }} \
+            --set-env-vars NATS_USER=${{ secrets.NATS_USER }} \
+            --set-env-vars NATS_PASSWORD=${{ secrets.NATS_PASSWORD }} \
+            --set-env-vars DATABASE_HOST=${{ steps.deployment-env.outputs.DATABASE_HOST }} \
+            --set-env-vars DATABASE_PORT=${{ secrets.DATABASE_PORT }} \
+            --set-env-vars DATABASE_USER=${{ secrets.DATABASE_USER }} \
+            --set-env-vars DATABASE_PASSWORD=${{ steps.deployment-env.outputs.DATABASE_PASSWORD }} \
             --set-env-vars DATABASE_NAME=${{ steps.env-vars.outputs.DATABASE_NAME }} \
             --set-env-vars JWT_SECRET=${{ steps.env-vars.outputs.JWT_SECRET }} \
             --set-env-vars REDIS_URL=${{ steps.env-vars.outputs.REDIS_URL }} \
