@@ -53,4 +53,4 @@ EXPOSE 3013
 
 # Run database migrations on startup and start the application
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy || echo 'Migration skipped or failed, continuing...' && node dist/src/main.js"]
