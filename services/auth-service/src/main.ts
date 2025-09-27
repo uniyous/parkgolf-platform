@@ -9,13 +9,27 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   try {
-    // Create HTTP app first for health check
-    const app = await NestFactory.create(AppModule);
-    const configService = app.get(ConfigService);
+    // Create HTTP app with minimal logging
+    const app = await NestFactory.create(AppModule, {
+      logger: ['error', 'warn', 'log'],
+    });
 
     // Add health check endpoint for Cloud Run
     app.getHttpAdapter().get('/health', (req, res) => {
-      res.status(200).json({ status: 'ok', service: 'auth-service' });
+      res.status(200).json({
+        status: 'ok',
+        service: 'auth-service',
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    // Add root endpoint
+    app.getHttpAdapter().get('/', (req, res) => {
+      res.status(200).json({
+        service: 'auth-service',
+        version: '1.0.0',
+        status: 'running'
+      });
     });
 
     // Global exception filter
@@ -33,10 +47,11 @@ async function bootstrap() {
     );
 
     // Start HTTP server first for Cloud Run health check
-    const port = process.env.PORT || 8080;
+    const port = parseInt(process.env.PORT || '8080');
     await app.listen(port, '0.0.0.0');
+
     logger.log(`🚀 Auth Service is running on port ${port}`);
-    logger.log(`🩺 Health check: http://localhost:${port}/health`);
+    logger.log(`🩺 Health check available at: http://0.0.0.0:${port}/health`);
 
     // Connect NATS microservice asynchronously (optional for Cloud Run)
     if (process.env.NATS_URL) {

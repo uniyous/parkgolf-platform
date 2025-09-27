@@ -51,9 +51,6 @@ USER nodejs
 # Expose port (Cloud Run uses PORT env var)
 EXPOSE 8080
 
-# Copy health server
-COPY health-server.js .
-
-# Start the application (using health server for debugging)
+# Start the application
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "health-server.js"]
+CMD ["node", "dist/src/main.js"]
