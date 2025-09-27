@@ -1,9 +1,8 @@
 {
   "database": {
-    "host": "34.47.122.22",
-    "port": "5432",
-    "user": "parkgolf",
-    "password": "parkgolf123"
+    "auth_url": "postgresql://parkgolf:parkgolf123@34.47.122.22:5432/auth_db?schema=public",
+    "course_url": "postgresql://parkgolf:parkgolf123@34.47.122.22:5432/course_db?schema=public",
+    "booking_url": "postgresql://parkgolf:parkgolf123@34.47.122.22:5432/booking_db?schema=public"
   },
   "server": {
     "port": "8080",

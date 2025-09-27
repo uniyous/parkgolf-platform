@@ -19,10 +19,9 @@ JSON 형태로 환경 변수를 관리하여 더 깔끔하고 유지보수하기
 ```json
 {
   "database": {
-    "host": "34.47.122.22",
-    "port": "5432",
-    "user": "parkgolf",
-    "password": "parkgolf123"
+    "auth_url": "postgresql://parkgolf:parkgolf123@34.47.122.22:5432/auth_db?schema=public",
+    "course_url": "postgresql://parkgolf:parkgolf123@34.47.122.22:5432/course_db?schema=public",
+    "booking_url": "postgresql://parkgolf:parkgolf123@34.47.122.22:5432/booking_db?schema=public"
   },
   "server": {
     "port": "8080",
@@ -47,10 +46,9 @@ JSON 형태로 환경 변수를 관리하여 더 깔끔하고 유지보수하기
 ```json
 {
   "database": {
-    "host": "production-db-host",
-    "port": "5432",
-    "user": "parkgolf",
-    "password": "production-db-password"
+    "auth_url": "postgresql://parkgolf:production-password@production-db-host:5432/auth_db?schema=public",
+    "course_url": "postgresql://parkgolf:production-password@production-db-host:5432/course_db?schema=public",
+    "booking_url": "postgresql://parkgolf:production-password@production-db-host:5432/booking_db?schema=public"
   },
   "server": {
     "port": "8080",
