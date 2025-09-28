@@ -195,6 +195,8 @@ jobs:
             --platform managed \
             --allow-unauthenticated \
             --service-account ${{ env.SERVICE_ACCOUNT_EMAIL }} \
+            --vpc-connector parkgolf-connector \
+            --vpc-egress private-ranges-only \
             --set-env-vars NODE_ENV=${{ steps.deployment-env.outputs.NODE_ENV }} \
             --set-env-vars DATABASE_URL=${{ steps.env-vars.outputs.DATABASE_URL }} \
             --set-env-vars JWT_SECRET=${{ steps.deployment-env.outputs.JWT_SECRET }} \

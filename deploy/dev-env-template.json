@@ -1,8 +1,8 @@
 {
   "database": {
-    "auth_url": "postgresql://parkgolf:parkgolf123@34.47.122.22:5432/auth_db?schema=public",
-    "course_url": "postgresql://parkgolf:parkgolf123@34.47.122.22:5432/course_db?schema=public",
-    "booking_url": "postgresql://parkgolf:parkgolf123@34.47.122.22:5432/booking_db?schema=public"
+    "auth_url": "postgresql://postgres:postgres123@10.178.0.8:5432/auth_db?schema=public",
+    "course_url": "postgresql://postgres:postgres123@10.178.0.8:5432/course_db?schema=public",
+    "booking_url": "postgresql://postgres:postgres123@10.178.0.8:5432/booking_db?schema=public"
   },
   "server": {
     "port": "8080",
@@ -15,6 +15,6 @@
     "refresh_expires_in": "30d"
   },
   "nats": {
-    "url": "nats://34.64.85.225:4222"
+    "url": "nats://10.178.0.7:4222"
   }
 }
