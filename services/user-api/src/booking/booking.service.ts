@@ -2,6 +2,7 @@ import {
   Injectable,
   Logger,
   Inject,
+  Optional,
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
@@ -18,7 +19,7 @@ export class BookingService {
   private readonly logger = new Logger(BookingService.name);
 
   constructor(
-    @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
+    @Optional() @Inject('BOOKING_SERVICE') private readonly bookingClient?: ClientProxy,
   ) {}
 
   async createBooking(userId: number, dto: CreateBookingDto) {

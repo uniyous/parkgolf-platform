@@ -17,6 +17,34 @@ const natsImports = process.env.NATS_URL && process.env.NATS_URL !== 'disabled'
           servers: [process.env.NATS_URL || 'nats://localhost:4222'],
         },
       },
+      {
+        name: 'AUTH_SERVICE',
+        transport: Transport.NATS,
+        options: {
+          servers: [process.env.NATS_URL || 'nats://localhost:4222'],
+        },
+      },
+      {
+        name: 'COURSE_SERVICE',
+        transport: Transport.NATS,
+        options: {
+          servers: [process.env.NATS_URL || 'nats://localhost:4222'],
+        },
+      },
+      {
+        name: 'BOOKING_SERVICE',
+        transport: Transport.NATS,
+        options: {
+          servers: [process.env.NATS_URL || 'nats://localhost:4222'],
+        },
+      },
+      {
+        name: 'NOTIFY_SERVICE',
+        transport: Transport.NATS,
+        options: {
+          servers: [process.env.NATS_URL || 'nats://localhost:4222'],
+        },
+      },
     ])]
   : [];
 

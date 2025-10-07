@@ -1,11 +1,11 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class NotifyService {
   constructor(
-    @Inject('NOTIFY_SERVICE') private readonly notifyClient: ClientProxy,
+    @Optional() @Inject('NOTIFY_SERVICE') private readonly notifyClient?: ClientProxy,
   ) {}
 
   async sendEmail(data: {

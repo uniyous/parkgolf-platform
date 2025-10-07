@@ -4,6 +4,7 @@ import {
   ConflictException,
   NotFoundException,
   Inject,
+  Optional,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ClientProxy } from '@nestjs/microservices';
@@ -245,7 +246,7 @@ export class AuthService {
 
   constructor(
     private readonly jwtService: JwtService,
-    @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy,
+    @Optional() @Inject('AUTH_SERVICE') private readonly authClient?: ClientProxy,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<AuthResponseDto> {

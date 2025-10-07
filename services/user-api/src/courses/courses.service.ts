@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout } from 'rxjs';
 
@@ -7,7 +7,7 @@ export class CoursesService {
   private readonly logger = new Logger(CoursesService.name);
 
   constructor(
-    @Inject('COURSE_SERVICE') private readonly courseClient: ClientProxy,
+    @Optional() @Inject('COURSE_SERVICE') private readonly courseClient?: ClientProxy,
   ) {}
 
   async searchCourses(filters: {
@@ -22,7 +22,7 @@ export class CoursesService {
       );
 
       const result = await firstValueFrom(
-        this.courseClient.send('course.search', filters).pipe(timeout(5000)),
+        this.courseClient.send('courses.list', filters).pipe(timeout(5000)),
       );
 
       return result;
@@ -42,7 +42,7 @@ export class CoursesService {
       this.logger.log('Getting all courses');
 
       const result = await firstValueFrom(
-        this.courseClient.send('course.getAll', {}).pipe(timeout(5000)),
+        this.courseClient.send('courses.list', {}).pipe(timeout(5000)),
       );
 
       return result;
