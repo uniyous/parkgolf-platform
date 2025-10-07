@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { CourseTimeSlot, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateTimeSlotDto, UpdateTimeSlotDto, TimeSlotFilterDto } from '../dto/time-slot.dto';
@@ -10,7 +10,7 @@ export class TimeSlotService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Inject('NATS_CLIENT') private readonly natsClient: ClientProxy,
+    @Optional() @Inject('NATS_CLIENT') private readonly natsClient?: ClientProxy,
   ) {}
 
   /**

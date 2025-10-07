@@ -8,12 +8,8 @@ import { BookingModule } from './booking/booking.module';
 import { CoursesModule } from './courses/courses.module';
 import { NotifyModule } from './notify/notify.module';
 
-@Module({
-  imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
-    ClientsModule.register([
+const natsImports = process.env.NATS_URL && process.env.NATS_URL !== 'disabled'
+  ? [ClientsModule.register([
       {
         name: 'NATS_CLIENT',
         transport: Transport.NATS,
@@ -21,7 +17,17 @@ import { NotifyModule } from './notify/notify.module';
           servers: [process.env.NATS_URL || 'nats://localhost:4222'],
         },
       },
-    ]),
+    ])]
+  : [];
+
+const natsExports = process.env.NATS_URL && process.env.NATS_URL !== 'disabled' ? [ClientsModule] : [];
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    ...natsImports,
     AuthModule,
     BookingModule,
     CoursesModule,
@@ -29,6 +35,6 @@ import { NotifyModule } from './notify/notify.module';
   ],
   controllers: [AppController],
   providers: [AppService],
-  exports: [ClientsModule],
+  exports: natsExports,
 })
 export class AppModule {}
