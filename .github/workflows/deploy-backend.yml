@@ -197,13 +197,13 @@ jobs:
             --service-account ${{ env.SERVICE_ACCOUNT_EMAIL }} \
             --vpc-connector parkgolf-connector \
             --vpc-egress private-ranges-only \
-            --set-env-vars NODE_ENV=${{ steps.deployment-env.outputs.NODE_ENV }} \
-            --set-env-vars DATABASE_URL=${{ steps.env-vars.outputs.DATABASE_URL }} \
-            --set-env-vars JWT_SECRET=${{ steps.deployment-env.outputs.JWT_SECRET }} \
-            --set-env-vars JWT_EXPIRES_IN=${{ steps.deployment-env.outputs.JWT_EXPIRES_IN }} \
-            --set-env-vars JWT_REFRESH_SECRET=${{ steps.deployment-env.outputs.JWT_REFRESH_SECRET }} \
-            --set-env-vars JWT_REFRESH_EXPIRES_IN=${{ steps.deployment-env.outputs.JWT_REFRESH_EXPIRES_IN }} \
-            --set-env-vars NATS_URL=${{ steps.deployment-env.outputs.NATS_URL }} \
+            --set-env-vars "NODE_ENV=${{ steps.deployment-env.outputs.NODE_ENV }}" \
+            --set-env-vars "DATABASE_URL=${{ steps.env-vars.outputs.DATABASE_URL }}" \
+            --set-env-vars "JWT_SECRET=${{ steps.deployment-env.outputs.JWT_SECRET }}" \
+            --set-env-vars "JWT_EXPIRES_IN=${{ steps.deployment-env.outputs.JWT_EXPIRES_IN }}" \
+            --set-env-vars "JWT_REFRESH_SECRET=${{ steps.deployment-env.outputs.JWT_REFRESH_SECRET }}" \
+            --set-env-vars "JWT_REFRESH_EXPIRES_IN=${{ steps.deployment-env.outputs.JWT_REFRESH_EXPIRES_IN }}" \
+            --set-env-vars "NATS_URL=${{ steps.deployment-env.outputs.NATS_URL }}" \
             --min-instances 1 \
             --max-instances 10 \
             --memory 512Mi \
