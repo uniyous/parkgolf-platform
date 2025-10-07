@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus, Logger, Inject } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Logger, Inject, Optional } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Booking, BookingStatus, BookingHistory } from '@prisma/client';
 import { 
@@ -16,7 +16,7 @@ export class BookingService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Inject('NOTIFICATION_SERVICE') private readonly notificationPublisher: ClientProxy,
+    @Optional() @Inject('NOTIFICATION_SERVICE') private readonly notificationPublisher?: ClientProxy,
   ) {}
 
   // 예약번호 생성 함수
