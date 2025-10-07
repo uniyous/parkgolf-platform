@@ -189,6 +189,14 @@ jobs:
 
       - name: Deploy to Cloud Run
         run: |
+          # Set NATS_URL based on service type
+          if [[ "${{ matrix.service }}" == "course-service" ]]; then
+            # Disable NATS for course-service due to auth issues
+            NATS_ENV_VAR=""
+          else
+            NATS_ENV_VAR="--set-env-vars NATS_URL=${{ steps.deployment-env.outputs.NATS_URL }}"
+          fi
+
           gcloud run deploy ${{ matrix.service }}${{ steps.deployment-env.outputs.SERVICE_SUFFIX }} \
             --image asia-northeast3-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/parkgolf/${{ matrix.service }}:${{ steps.deployment-env.outputs.ENVIRONMENT }}-${{ github.sha }} \
             --region ${{ env.REGION }} \
@@ -203,7 +211,7 @@ jobs:
             --set-env-vars JWT_EXPIRES_IN=${{ steps.deployment-env.outputs.JWT_EXPIRES_IN }} \
             --set-env-vars JWT_REFRESH_SECRET=${{ steps.deployment-env.outputs.JWT_REFRESH_SECRET }} \
             --set-env-vars JWT_REFRESH_EXPIRES_IN=${{ steps.deployment-env.outputs.JWT_REFRESH_EXPIRES_IN }} \
-            --set-env-vars NATS_URL=${{ steps.deployment-env.outputs.NATS_URL }} \
+            $NATS_ENV_VAR \
             --min-instances 1 \
             --max-instances 10 \
             --memory 512Mi \

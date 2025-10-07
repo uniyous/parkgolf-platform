@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BaseExceptionFilter } from './common/exception/base-exception.filter';
+import { GlobalRpcExceptionFilter } from './common/exception/rpc-exception.filter';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 
 async function bootstrap() {
@@ -20,15 +21,6 @@ async function bootstrap() {
         status: 'ok',
         service: 'auth-service',
         timestamp: new Date().toISOString()
-      });
-    });
-
-    // Add root endpoint
-    app.getHttpAdapter().get('/', (req, res) => {
-      res.status(200).json({
-        service: 'auth-service',
-        version: '1.0.0',
-        status: 'running'
       });
     });
 
@@ -67,6 +59,9 @@ async function bootstrap() {
               reconnectTimeWait: 2000,
             },
           });
+
+          // Global filters for microservice
+          app.useGlobalFilters(new GlobalRpcExceptionFilter());
 
           await app.startAllMicroservices();
           logger.log(`🔗 NATS connected to: ${process.env.NATS_URL}`);

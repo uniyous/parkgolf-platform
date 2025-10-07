@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '../prisma/prisma.module';
 import { CompanyModule } from './company/company.module';
 import { CourseModule } from './course/course.module';
@@ -6,6 +7,16 @@ import { TimeSlotModule } from './time-slot/time-slot.module';
 import { CommonModule } from './common/common.module';
 
 @Module({
-  imports: [CommonModule, PrismaModule, CompanyModule, CourseModule, TimeSlotModule],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
+    CommonModule,
+    PrismaModule,
+    CompanyModule,
+    CourseModule,
+    TimeSlotModule
+  ],
 })
 export class AppModule {}

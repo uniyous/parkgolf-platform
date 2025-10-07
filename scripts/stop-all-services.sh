@@ -10,8 +10,8 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-# 프로젝트 루트 디렉토리 (.claude/scripts에서 2단계 위로)
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# 프로젝트 루트 디렉토리 (scripts에서 1단계 위로)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # PID 파일 디렉토리
 PID_DIR="$PROJECT_ROOT/.pids"

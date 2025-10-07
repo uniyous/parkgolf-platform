@@ -11,8 +11,8 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-# 프로젝트 루트 디렉토리 (.claude/scripts에서 2단계 위로)
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# 프로젝트 루트 디렉토리 (scripts에서 1단계 위로)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # 로그 디렉토리 생성
 LOG_DIR="$PROJECT_ROOT/logs"
@@ -122,4 +122,4 @@ echo "Auth Service:    http://localhost:3011"
 echo "Course Service:  http://localhost:3012"
 echo "Booking Service: http://localhost:3013"
 echo ""
-echo "To stop all services, run: .claude/scripts/stop-all-services.sh"
+echo "To stop all services, run: scripts/stop-all-services.sh"
