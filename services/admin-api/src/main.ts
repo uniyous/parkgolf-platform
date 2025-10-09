@@ -9,7 +9,7 @@ import { GlobalRpcExceptionFilter } from './common/exception/rpc-exception.filte
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  
+
   try {
     const app = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
@@ -17,27 +17,9 @@ async function bootstrap() {
     // Global exception filter
     app.useGlobalFilters(new BaseExceptionFilter());
 
-    // NATS microservice setup for client communication
+    // NATS client is configured in app.module.ts, not as microservice
     const natsUrl = configService.get<string>('NATS_URL') || 'nats://localhost:4222';
-    
-    try {
-      const microservice = app.connectMicroservice<MicroserviceOptions>({
-        transport: Transport.NATS,
-        options: {
-          servers: [natsUrl],
-          queue: 'admin-bff',
-          reconnect: true,
-          maxReconnectAttempts: 5,
-          reconnectTimeWait: 1000,
-        },
-      });
-
-      microservice.useGlobalFilters(new GlobalRpcExceptionFilter());
-      logger.log(`🔗 NATS microservice client configured: ${natsUrl}`);
-    } catch (error) {
-      logger.error('Failed to configure NATS microservice client', error);
-      throw error;
-    }
+    logger.log(`🔗 NATS client configured: ${natsUrl}`);
 
     app.useGlobalPipes(
       new ValidationPipe({
@@ -77,14 +59,11 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api-docs', app, document);
 
-    await app.startAllMicroservices();
-
     const port = configService.get<number>('PORT') || 3091;
     await app.listen(port);
 
     logger.log(`🚀 Parkgolf Admin BFF is running on port ${port}`);
     logger.log(`📚 Swagger docs: http://localhost:${port}/api-docs`);
-    logger.log(`🔗 NATS microservice connected to: ${natsUrl}`);
     logger.log(`🎯 BFF serving admin dashboard via NATS communication`);
   } catch (error) {
     logger.error('Failed to start Admin BFF', error);

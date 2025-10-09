@@ -528,7 +528,9 @@ export class CourseService {
   }
 
   onModuleInit() {
-    this.natsClient.connect();
+    if (this.natsClient) {
+      this.natsClient.connect();
+    }
   }
 
   // Club Management
@@ -650,6 +652,8 @@ export class CourseService {
   }
 
   onModuleDestroy() {
-    this.natsClient.close();
+    if (this.natsClient) {
+      this.natsClient.close();
+    }
   }
 }

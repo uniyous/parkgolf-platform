@@ -335,10 +335,14 @@ export class BookingService {
   }
 
   onModuleInit() {
-    this.bookingClient.connect();
+    if (this.bookingClient) {
+      this.bookingClient.connect();
+    }
   }
 
   onModuleDestroy() {
-    this.bookingClient.close();
+    if (this.bookingClient) {
+      this.bookingClient.close();
+    }
   }
 }

@@ -2,7 +2,7 @@
   "database": {
     "auth_url": "postgresql://postgres:postgres123@10.178.0.8:5432/auth_db?schema=public",
     "course_url": "postgresql://postgres:postgres123@10.178.0.8:5432/course_db?schema=public",
-    "booking_url": "postgresql: //postgres:postgres123@10.178.0.8:5432/booking_db?schema=public"
+    "booking_url": "postgresql://postgres:postgres123@10.178.0.8:5432/booking_db?schema=public"
   },
   "server": {
     "port": "8080",

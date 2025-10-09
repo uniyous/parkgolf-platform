@@ -423,10 +423,14 @@ export class NotificationService {
   }
 
   onModuleInit() {
-    this.notifyClient.connect();
+    if (this.notifyClient) {
+      this.notifyClient.connect();
+    }
   }
 
   onModuleDestroy() {
-    this.notifyClient.close();
+    if (this.notifyClient) {
+      this.notifyClient.close();
+    }
   }
 }
