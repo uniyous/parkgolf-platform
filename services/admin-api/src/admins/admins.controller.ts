@@ -13,14 +13,14 @@ import {
   Logger 
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiQuery } from '@nestjs/swagger';
-import { AdminNatsService } from '../services/admin-nats.service';
+import { AdminService } from './admins.service';
 
 @ApiTags('admins')
 @Controller('api/admin/admins')
-export class AdminAdminsController {
-  private readonly logger = new Logger(AdminAdminsController.name);
+export class AdminsController {
+  private readonly logger = new Logger(AdminsController.name);
 
-  constructor(private readonly adminService: AdminNatsService) {}
+  constructor(private readonly adminService: AdminService) {}
 
   @Get()
   @ApiOperation({ summary: 'Get admin list with filtering' })

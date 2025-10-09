@@ -13,14 +13,14 @@ import {
   Logger 
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiQuery } from '@nestjs/swagger';
-import { NotificationNatsService } from '../services/notification-nats.service';
+import { NotificationService } from './notifications.service';
 
 @ApiTags('notifications')
 @Controller('api/admin/notifications')
-export class AdminNotificationsController {
-  private readonly logger = new Logger(AdminNotificationsController.name);
+export class NotificationsController {
+  private readonly logger = new Logger(NotificationsController.name);
 
-  constructor(private readonly notificationService: NotificationNatsService) {}
+  constructor(private readonly notificationService: NotificationService) {}
 
   // Notification Management
   @Get()

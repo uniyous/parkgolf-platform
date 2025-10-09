@@ -1,6 +1,6 @@
 import { Controller, Post, Body, HttpStatus, HttpException, Logger, Get, Headers } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
-import { AuthNatsService, LoginRequest } from '../services/auth-nats.service';
+import { AuthService, LoginRequest } from './auth.service';
 
 export interface SignupRequest {
   username: string;
@@ -12,10 +12,10 @@ export interface SignupRequest {
 
 @ApiTags('auth')
 @Controller('api/admin/auth')
-export class AdminAuthController {
-  private readonly logger = new Logger(AdminAuthController.name);
+export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
 
-  constructor(private readonly authService: AuthNatsService) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Post('login')
   @ApiOperation({ summary: 'Admin login' })

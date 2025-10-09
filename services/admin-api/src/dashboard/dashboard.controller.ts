@@ -8,21 +8,21 @@ import {
   Logger 
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiQuery } from '@nestjs/swagger';
-import { AuthNatsService } from '../services/auth-nats.service';
-import { CourseNatsService } from '../services/course-nats.service';
-import { BookingNatsService } from '../services/booking-nats.service';
-import { NotificationNatsService } from '../services/notification-nats.service';
+import { AuthService } from '../auth/auth.service';
+import { CourseService } from '../courses/courses.service';
+import { BookingService } from '../bookings/bookings.service';
+import { NotificationService } from '../notifications/notifications.service';
 
 @ApiTags('analytics')
 @Controller('api/admin/dashboard')
-export class AdminDashboardController {
-  private readonly logger = new Logger(AdminDashboardController.name);
+export class DashboardController {
+  private readonly logger = new Logger(DashboardController.name);
 
   constructor(
-    private readonly authService: AuthNatsService,
-    private readonly courseService: CourseNatsService,
-    private readonly bookingService: BookingNatsService,
-    private readonly notificationService: NotificationNatsService,
+    private readonly authService: AuthService,
+    private readonly courseService: CourseService,
+    private readonly bookingService: BookingService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   @Get('overview')

@@ -13,14 +13,14 @@ import {
   Logger 
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiQuery } from '@nestjs/swagger';
-import { AuthNatsService } from '../services/auth-nats.service';
+import { AuthService } from '../auth/auth.service';
 
 @ApiTags('users')
 @Controller('api/admin/users')
-export class AdminUsersController {
-  private readonly logger = new Logger(AdminUsersController.name);
+export class UsersController {
+  private readonly logger = new Logger(UsersController.name);
 
-  constructor(private readonly authService: AuthNatsService) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Get()
   @ApiOperation({ summary: 'Get user list with filtering' })

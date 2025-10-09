@@ -12,7 +12,7 @@ import {
   HttpException,
   Req,
 } from '@nestjs/common';
-import { CourseNatsService } from '../services/course-nats.service';
+import { CourseService } from '../courses/courses.service';
 import { Request } from 'express';
 
 // Club DTOs
@@ -61,14 +61,14 @@ export interface UpdateClubDto {
 }
 
 @Controller('api/admin/club')
-export class AdminClubController {
-  constructor(private readonly courseNatsService: CourseNatsService) {}
+export class ClubController {
+  constructor(private readonly courseService: CourseService) {}
 
   @Get('clubs')
   async getClubs(@Query() filters: ClubFiltersDto, @Req() req: Request) {
     try {
       const adminToken = req.headers.authorization?.replace('Bearer ', '') || '';
-      const result = await this.courseNatsService.getClubs(filters, adminToken);
+      const result = await this.courseService.getClubs(filters, adminToken);
       return result;
     } catch (error) {
       console.error('Failed to fetch clubs:', error);
@@ -83,7 +83,7 @@ export class AdminClubController {
   async getClubById(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
     try {
       const adminToken = req.headers.authorization?.replace('Bearer ', '') || '';
-      const result = await this.courseNatsService.getClubById(id, adminToken);
+      const result = await this.courseService.getClubById(id, adminToken);
       return result;
     } catch (error) {
       console.error('Failed to fetch club:', error);
@@ -98,7 +98,7 @@ export class AdminClubController {
   async createClub(@Body() createClubDto: CreateClubDto, @Req() req: Request) {
     try {
       const adminToken = req.headers.authorization?.replace('Bearer ', '') || '';
-      const result = await this.courseNatsService.createClub(createClubDto, adminToken);
+      const result = await this.courseService.createClub(createClubDto, adminToken);
       return result;
     } catch (error) {
       console.error('Failed to create club:', error);
@@ -117,7 +117,7 @@ export class AdminClubController {
   ) {
     try {
       const adminToken = req.headers.authorization?.replace('Bearer ', '') || '';
-      const result = await this.courseNatsService.updateClub(id, updateClubDto, adminToken);
+      const result = await this.courseService.updateClub(id, updateClubDto, adminToken);
       return result;
     } catch (error) {
       console.error('Failed to update club:', error);
@@ -132,7 +132,7 @@ export class AdminClubController {
   async deleteClub(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
     try {
       const adminToken = req.headers.authorization?.replace('Bearer ', '') || '';
-      const result = await this.courseNatsService.deleteClub(id, adminToken);
+      const result = await this.courseService.deleteClub(id, adminToken);
       return result;
     } catch (error) {
       console.error('Failed to delete club:', error);
@@ -147,7 +147,7 @@ export class AdminClubController {
   async getClubsByCompany(@Param('companyId', ParseIntPipe) companyId: number, @Req() req: Request) {
     try {
       const adminToken = req.headers.authorization?.replace('Bearer ', '') || '';
-      const result = await this.courseNatsService.getClubsByCompany(companyId, adminToken);
+      const result = await this.courseService.getClubsByCompany(companyId, adminToken);
       return result;
     } catch (error) {
       console.error('Failed to fetch clubs by company:', error);
@@ -162,7 +162,7 @@ export class AdminClubController {
   async searchClubs(@Query('q') query: string, @Req() req: Request) {
     try {
       const adminToken = req.headers.authorization?.replace('Bearer ', '') || '';
-      const result = await this.courseNatsService.searchClubs(query, adminToken);
+      const result = await this.courseService.searchClubs(query, adminToken);
       return { data: result };
     } catch (error) {
       console.error('Failed to search clubs:', error);

@@ -1,13 +1,13 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout } from 'rxjs';
 
 @Injectable()
-export class NotificationNatsService {
-  private readonly logger = new Logger(NotificationNatsService.name);
+export class NotificationService {
+  private readonly logger = new Logger(NotificationService.name);
 
   constructor(
-    @Inject('NOTIFY_SERVICE') private readonly notifyClient: ClientProxy,
+    @Optional() @Inject('NATS_CLIENT') private readonly notifyClient?: ClientProxy,
   ) {}
 
   // Notification Management

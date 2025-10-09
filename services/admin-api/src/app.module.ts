@@ -1,17 +1,30 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ClientsModule, Transport } from '@nestjs/microservices';
 import { CommonModule } from './common/common.module';
-import { NatsServicesModule } from './services/nats-services.module';
-import { AdminAuthController } from './controllers/admin-auth.controller';
-import { AdminUsersController } from './controllers/admin-users.controller';
-import { AdminAdminsController } from './controllers/admin-admins.controller';
-import { AdminCoursesController } from './controllers/admin-courses.controller';
-import { AdminBookingsController } from './controllers/admin-bookings.controller';
-import { AdminNotificationsController } from './controllers/admin-notifications.controller';
-import { AdminDashboardController } from './controllers/admin-dashboard.controller';
-import { AdminTimeSlotsController } from './controllers/admin-time-slots.controller';
-import { PostalController } from './controllers/postal.controller';
-import { AdminClubController } from './controllers/admin-club.controller';
+import { SharedModule } from './postal/shared.module';
+import { AuthModule } from './auth/auth.module';
+import { AdminsModule } from './admins/admins.module';
+import { CoursesModule } from './courses/courses.module';
+import { BookingsModule } from './bookings/bookings.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { UsersModule } from './users/users.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { ClubModule } from './club/club.module';
+
+const natsImports = process.env.NATS_URL && process.env.NATS_URL !== 'disabled'
+  ? [ClientsModule.register([
+      {
+        name: 'NATS_CLIENT',
+        transport: Transport.NATS,
+        options: {
+          servers: [process.env.NATS_URL || 'nats://localhost:4222'],
+        },
+      },
+    ])]
+  : [];
+
+const natsExports = process.env.NATS_URL && process.env.NATS_URL !== 'disabled' ? [ClientsModule] : [];
 
 @Module({
   imports: [
@@ -19,21 +32,20 @@ import { AdminClubController } from './controllers/admin-club.controller';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    ...natsImports,
     CommonModule,
-    NatsServicesModule,
+    SharedModule,
+    AuthModule,
+    AdminsModule,
+    CoursesModule,
+    BookingsModule,
+    NotificationsModule,
+    UsersModule,
+    DashboardModule,
+    ClubModule,
   ],
-  controllers: [
-    AdminAuthController,
-    AdminUsersController,
-    AdminAdminsController,
-    AdminCoursesController,
-    AdminBookingsController,
-    AdminNotificationsController,
-    AdminDashboardController,
-    AdminTimeSlotsController,
-    PostalController,
-    AdminClubController,
-  ],
+  controllers: [],
   providers: [],
+  exports: natsExports,
 })
 export class AppModule {}

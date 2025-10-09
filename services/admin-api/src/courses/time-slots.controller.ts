@@ -13,14 +13,14 @@ import {
   Logger 
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiQuery, ApiBody } from '@nestjs/swagger';
-import { CourseNatsService } from '../services/course-nats.service';
+import { CourseService } from './courses.service';
 
 @ApiTags('time-slots')
 @Controller('api/admin/time-slots')
-export class AdminTimeSlotsController {
-  private readonly logger = new Logger(AdminTimeSlotsController.name);
+export class TimeSlotsController {
+  private readonly logger = new Logger(TimeSlotsController.name);
 
-  constructor(private readonly courseService: CourseNatsService) {}
+  constructor(private readonly courseService: CourseService) {}
 
   @Get()
   @ApiOperation({ summary: 'Get time slots list with filters (9-hole support)' })

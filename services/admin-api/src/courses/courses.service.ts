@@ -1,13 +1,13 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout } from 'rxjs';
 
 @Injectable()
-export class CourseNatsService {
-  private readonly logger = new Logger(CourseNatsService.name);
+export class CourseService {
+  private readonly logger = new Logger(CourseService.name);
 
   constructor(
-    @Inject('COURSE_SERVICE') private readonly courseClient: ClientProxy,
+    @Optional() @Inject('NATS_CLIENT') private readonly natsClient?: ClientProxy,
   ) {}
 
   // Golf Company Management
@@ -16,7 +16,7 @@ export class CourseNatsService {
       this.logger.log('Fetching golf companies via NATS');
       
       const result = await firstValueFrom(
-        this.courseClient.send('companies.list', { page, limit, token: adminToken }).pipe(timeout(10000))
+        this.natsClient.send('companies.list', { page, limit, token: adminToken }).pipe(timeout(10000))
       );
       
       return result;
@@ -31,7 +31,7 @@ export class CourseNatsService {
       this.logger.log(`Fetching company via NATS: ${companyId}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('companies.findById', { companyId, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('companies.findById', { companyId, token: adminToken }).pipe(timeout(5000))
       );
       
       return result;
@@ -46,7 +46,7 @@ export class CourseNatsService {
       this.logger.log('Creating golf company via NATS');
       
       const result = await firstValueFrom(
-        this.courseClient.send('companies.create', { data: companyData, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('companies.create', { data: companyData, token: adminToken }).pipe(timeout(5000))
       );
       
       return result;
@@ -61,7 +61,7 @@ export class CourseNatsService {
       this.logger.log(`Updating company via NATS: ${companyId}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('companies.update', { companyId, data: updateData, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('companies.update', { companyId, data: updateData, token: adminToken }).pipe(timeout(5000))
       );
       
       return result;
@@ -76,7 +76,7 @@ export class CourseNatsService {
       this.logger.log(`Deleting company via NATS: ${companyId}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('companies.delete', { companyId, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('companies.delete', { companyId, token: adminToken }).pipe(timeout(5000))
       );
       
       return result;
@@ -96,7 +96,7 @@ export class CourseNatsService {
       if (adminToken) params.token = adminToken;
 
       const result = await firstValueFrom(
-        this.courseClient.send('courses.list', params).pipe(timeout(10000))
+        this.natsClient.send('courses.list', params).pipe(timeout(10000))
       );
       
       return result;
@@ -114,7 +114,7 @@ export class CourseNatsService {
       if (adminToken) params.token = adminToken;
 
       const result = await firstValueFrom(
-        this.courseClient.send('courses.findById', params).pipe(timeout(5000))
+        this.natsClient.send('courses.findById', params).pipe(timeout(5000))
       );
       
       return result;
@@ -129,7 +129,7 @@ export class CourseNatsService {
       this.logger.log('Creating golf course via NATS');
       
       const result = await firstValueFrom(
-        this.courseClient.send('courses.create', { data: courseData, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('courses.create', { data: courseData, token: adminToken }).pipe(timeout(5000))
       );
       
       return result;
@@ -144,7 +144,7 @@ export class CourseNatsService {
       this.logger.log(`Updating course via NATS: ${courseId}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('courses.update', { courseId, data: updateData, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('courses.update', { courseId, data: updateData, token: adminToken }).pipe(timeout(5000))
       );
       
       return result;
@@ -159,7 +159,7 @@ export class CourseNatsService {
       this.logger.log(`Deleting course via NATS: ${courseId}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('courses.delete', { courseId, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('courses.delete', { courseId, token: adminToken }).pipe(timeout(5000))
       );
       
       return result;
@@ -207,7 +207,7 @@ export class CourseNatsService {
       if (token) params.token = token;
 
       const result = await firstValueFrom(
-        this.courseClient.send('timeSlots.list', params).pipe(timeout(10000))
+        this.natsClient.send('timeSlots.list', params).pipe(timeout(10000))
       );
       
       return result;
@@ -222,7 +222,7 @@ export class CourseNatsService {
       this.logger.log('Creating time slot via NATS with 9-hole support');
       
       const result = await firstValueFrom(
-        this.courseClient.send('timeSlots.create', { 
+        this.natsClient.send('timeSlots.create', { 
           courseId,
           data: timeSlotData, 
           token: adminToken 
@@ -242,7 +242,7 @@ export class CourseNatsService {
       this.logger.log(`Updating time slot via NATS: ${timeSlotId}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('timeSlots.update', { 
+        this.natsClient.send('timeSlots.update', { 
           courseId,
           timeSlotId: Number(timeSlotId), 
           data: updateData, 
@@ -262,7 +262,7 @@ export class CourseNatsService {
       this.logger.log(`Deleting time slot via NATS: ${timeSlotId}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('timeSlots.delete', { 
+        this.natsClient.send('timeSlots.delete', { 
           courseId,
           timeSlotId: Number(timeSlotId), 
           token: adminToken 
@@ -284,7 +284,7 @@ export class CourseNatsService {
       if (adminToken) requestParams.token = adminToken;
 
       const result = await firstValueFrom(
-        this.courseClient.send('timeSlots.stats', requestParams).pipe(timeout(10000))
+        this.natsClient.send('timeSlots.stats', requestParams).pipe(timeout(10000))
       );
       
       return result;
@@ -316,7 +316,7 @@ export class CourseNatsService {
       if (adminToken) params.token = adminToken;
 
       const result = await firstValueFrom(
-        this.courseClient.send('courses.weeklySchedule.get', params).pipe(timeout(5000))
+        this.natsClient.send('courses.weeklySchedule.get', params).pipe(timeout(5000))
       );
       
       return result;
@@ -331,7 +331,7 @@ export class CourseNatsService {
       this.logger.log(`Updating weekly schedule via NATS for course: ${courseId}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('courses.weeklySchedule.update', { 
+        this.natsClient.send('courses.weeklySchedule.update', { 
           courseId, 
           data: scheduleData, 
           token: adminToken 
@@ -351,7 +351,7 @@ export class CourseNatsService {
       this.logger.log(`Fetching holes via NATS for course: ${courseId}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('holes.findByCourse', { courseId, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('holes.findByCourse', { courseId, token: adminToken }).pipe(timeout(5000))
       );
       
       return {
@@ -374,7 +374,7 @@ export class CourseNatsService {
       this.logger.log(`Fetching hole via NATS: ${holeId}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('courses.holes.findById', { courseId, holeId, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('courses.holes.findById', { courseId, holeId, token: adminToken }).pipe(timeout(5000))
       );
       
       return result;
@@ -389,7 +389,7 @@ export class CourseNatsService {
       this.logger.log(`Creating hole via NATS for course: ${courseId}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('courses.holes.create', { courseId, data: holeData, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('courses.holes.create', { courseId, data: holeData, token: adminToken }).pipe(timeout(5000))
       );
       
       return result;
@@ -404,7 +404,7 @@ export class CourseNatsService {
       this.logger.log(`Updating hole via NATS: ${holeId}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('courses.holes.update', { courseId, holeId, data: updateData, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('courses.holes.update', { courseId, holeId, data: updateData, token: adminToken }).pipe(timeout(5000))
       );
       
       return result;
@@ -419,7 +419,7 @@ export class CourseNatsService {
       this.logger.log(`Deleting hole via NATS: ${holeId}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('courses.holes.delete', { courseId, holeId, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('courses.holes.delete', { courseId, holeId, token: adminToken }).pipe(timeout(5000))
       );
       
       return result;
@@ -436,7 +436,7 @@ export class CourseNatsService {
       this.logger.log('Fetching course statistics via NATS');
       
       const result = await firstValueFrom(
-        this.courseClient.send('courses.stats', { dateRange, token: adminToken }).pipe(timeout(10000))
+        this.natsClient.send('courses.stats', { dateRange, token: adminToken }).pipe(timeout(10000))
       );
       
       return result;
@@ -452,7 +452,7 @@ export class CourseNatsService {
       this.logger.log(`Fetching weekly schedules for course via NATS: ${courseId}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('courses.weeklySchedule.list', { courseId, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('courses.weeklySchedule.list', { courseId, token: adminToken }).pipe(timeout(5000))
       );
       
       return result;
@@ -467,7 +467,7 @@ export class CourseNatsService {
       this.logger.log(`Fetching weekly schedule via NATS: ${scheduleId}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('courses.weeklySchedule.findById', { scheduleId, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('courses.weeklySchedule.findById', { scheduleId, token: adminToken }).pipe(timeout(5000))
       );
       
       return result;
@@ -482,7 +482,7 @@ export class CourseNatsService {
       this.logger.log(`Fetching weekly schedule by day via NATS: ${courseId}, day: ${dayOfWeek}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('courses.weeklySchedule.findByCourseAndDay', { 
+        this.natsClient.send('courses.weeklySchedule.findByCourseAndDay', { 
           courseId, 
           dayOfWeek: Number(dayOfWeek), 
           token: adminToken 
@@ -501,7 +501,7 @@ export class CourseNatsService {
       this.logger.log('Creating weekly schedule via NATS');
       
       const result = await firstValueFrom(
-        this.courseClient.send('courses.weeklySchedule.create', { data: scheduleData, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('courses.weeklySchedule.create', { data: scheduleData, token: adminToken }).pipe(timeout(5000))
       );
       
       return result;
@@ -517,7 +517,7 @@ export class CourseNatsService {
       this.logger.log(`Deleting weekly schedule via NATS: ${scheduleId}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('courses.weeklySchedule.delete', { scheduleId, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('courses.weeklySchedule.delete', { scheduleId, token: adminToken }).pipe(timeout(5000))
       );
       
       return result;
@@ -528,7 +528,7 @@ export class CourseNatsService {
   }
 
   onModuleInit() {
-    this.courseClient.connect();
+    this.natsClient.connect();
   }
 
   // Club Management
@@ -540,7 +540,7 @@ export class CourseNatsService {
       if (adminToken) params.token = adminToken;
 
       const result = await firstValueFrom(
-        this.courseClient.send('club.findAll', params).pipe(timeout(10000))
+        this.natsClient.send('club.findAll', params).pipe(timeout(10000))
       );
       
       return result;
@@ -558,7 +558,7 @@ export class CourseNatsService {
       if (adminToken) params.token = adminToken;
 
       const result = await firstValueFrom(
-        this.courseClient.send('club.findOne', params).pipe(timeout(5000))
+        this.natsClient.send('club.findOne', params).pipe(timeout(5000))
       );
       
       return result;
@@ -573,7 +573,7 @@ export class CourseNatsService {
       this.logger.log('Creating club via NATS');
       
       const result = await firstValueFrom(
-        this.courseClient.send('club.create', { data: clubData, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('club.create', { data: clubData, token: adminToken }).pipe(timeout(5000))
       );
       
       return result;
@@ -588,7 +588,7 @@ export class CourseNatsService {
       this.logger.log(`Updating club via NATS: ${id}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('club.update', { id, updateClubDto: updateData, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('club.update', { id, updateClubDto: updateData, token: adminToken }).pipe(timeout(5000))
       );
       
       return result;
@@ -603,7 +603,7 @@ export class CourseNatsService {
       this.logger.log(`Deleting club via NATS: ${id}`);
       
       const result = await firstValueFrom(
-        this.courseClient.send('club.remove', { id, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('club.remove', { id, token: adminToken }).pipe(timeout(5000))
       );
       
       return result;
@@ -621,7 +621,7 @@ export class CourseNatsService {
       if (adminToken) params.token = adminToken;
 
       const result = await firstValueFrom(
-        this.courseClient.send('club.findByCompany', params).pipe(timeout(5000))
+        this.natsClient.send('club.findByCompany', params).pipe(timeout(5000))
       );
       
       return result;
@@ -639,7 +639,7 @@ export class CourseNatsService {
       if (adminToken) params.token = adminToken;
 
       const result = await firstValueFrom(
-        this.courseClient.send('club.search', params).pipe(timeout(5000))
+        this.natsClient.send('club.search', params).pipe(timeout(5000))
       );
       
       return result;
@@ -650,6 +650,6 @@ export class CourseNatsService {
   }
 
   onModuleDestroy() {
-    this.courseClient.close();
+    this.natsClient.close();
   }
 }

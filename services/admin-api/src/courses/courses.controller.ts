@@ -13,14 +13,14 @@ import {
   Logger 
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiQuery } from '@nestjs/swagger';
-import { CourseNatsService } from '../services/course-nats.service';
+import { CourseService } from './courses.service';
 
 @ApiTags('courses')
 @Controller('api/admin/courses')
-export class AdminCoursesController {
-  private readonly logger = new Logger(AdminCoursesController.name);
+export class CoursesController {
+  private readonly logger = new Logger(CoursesController.name);
 
-  constructor(private readonly courseService: CourseNatsService) {}
+  constructor(private readonly courseService: CourseService) {}
 
   // Golf Company Management
   @Get('companies')

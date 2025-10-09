@@ -12,14 +12,14 @@ import {
   Logger 
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiQuery } from '@nestjs/swagger';
-import { BookingNatsService } from '../services/booking-nats.service';
+import { BookingService } from './bookings.service';
 
 @ApiTags('bookings')
 @Controller('api/admin/bookings')
-export class AdminBookingsController {
-  private readonly logger = new Logger(AdminBookingsController.name);
+export class BookingsController {
+  private readonly logger = new Logger(BookingsController.name);
 
-  constructor(private readonly bookingService: BookingNatsService) {}
+  constructor(private readonly bookingService: BookingService) {}
 
   // Booking Management
   @Get()
