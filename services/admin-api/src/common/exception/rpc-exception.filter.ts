@@ -2,7 +2,6 @@ import { Catch, ExceptionFilter, ArgumentsHost, Logger, HttpException } from '@n
 import { RpcException } from '@nestjs/microservices';
 import { Observable, throwError } from 'rxjs';
 import { RpcErrorResponse, ErrorCodes } from '../types/error-response.type';
-import { handlePrismaError } from '../utils/prisma-error.handler';
 
 @Catch()
 export class GlobalRpcExceptionFilter implements ExceptionFilter {
@@ -41,15 +40,6 @@ export class GlobalRpcExceptionFilter implements ExceptionFilter {
           timestamp: new Date().toISOString(),
         };
       } else {
-        // Try to handle as Prisma error first
-        try {
-          handlePrismaError(exception);
-        } catch (prismaException) {
-          if (prismaException instanceof HttpException) {
-            return this.catch(prismaException, host);
-          }
-        }
-
         // Handle unknown errors
         errorResponse = {
           success: false,

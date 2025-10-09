@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ErrorResponse, ErrorCodes } from '../types/error-response.type';
-import { handlePrismaError } from '../utils/prisma-error.handler';
 
 @Catch()
 export class BaseExceptionFilter implements ExceptionFilter {
@@ -46,15 +45,6 @@ export class BaseExceptionFilter implements ExceptionFilter {
           method: request.method,
         };
       } else {
-        // Try to handle as Prisma error first
-        try {
-          handlePrismaError(exception);
-        } catch (prismaException) {
-          if (prismaException instanceof HttpException) {
-            return this.catch(prismaException, host);
-          }
-        }
-
         // Handle unknown errors
         status = HttpStatus.INTERNAL_SERVER_ERROR;
         errorResponse = {
