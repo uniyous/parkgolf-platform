@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { PrismaModule } from '../prisma/prisma.module';
 import { CommonModule } from './common/common.module';
 import { NatsServicesModule } from './services/nats-services.module';
 import { AdminAuthController } from './controllers/admin-auth.controller';
@@ -20,7 +19,6 @@ import { AdminClubController } from './controllers/admin-club.controller';
       isGlobal: true,
       envFilePath: '.env',
     }),
-    PrismaModule,
     CommonModule,
     NatsServicesModule,
   ],
