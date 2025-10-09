@@ -5,7 +5,7 @@ import { lastValueFrom } from 'rxjs';
 @Injectable()
 export class NotifyService {
   constructor(
-    @Optional() @Inject('NOTIFY_SERVICE') private readonly notifyClient?: ClientProxy,
+    @Optional() @Inject('NATS_CLIENT') private readonly natsClient?: ClientProxy,
   ) {}
 
   async sendEmail(data: {
@@ -15,7 +15,7 @@ export class NotifyService {
     context: any;
   }) {
     return lastValueFrom(
-      this.notifyClient.send('notify.send.email', data),
+      this.natsClient.send('notify.send.email', data),
     );
   }
 
@@ -24,19 +24,19 @@ export class NotifyService {
     message: string;
   }) {
     return lastValueFrom(
-      this.notifyClient.send('notify.send.sms', data),
+      this.natsClient.send('notify.send.sms', data),
     );
   }
 
   async sendBookingConfirmation(bookingId: string) {
     return lastValueFrom(
-      this.notifyClient.send('notify.booking.confirmation', { bookingId }),
+      this.natsClient.send('notify.booking.confirmation', { bookingId }),
     );
   }
 
   async sendBookingCancellation(bookingId: string) {
     return lastValueFrom(
-      this.notifyClient.send('notify.booking.cancellation', { bookingId }),
+      this.natsClient.send('notify.booking.cancellation', { bookingId }),
     );
   }
 }

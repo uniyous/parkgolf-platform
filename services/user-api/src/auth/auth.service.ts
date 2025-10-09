@@ -246,7 +246,7 @@ export class AuthService {
 
   constructor(
     private readonly jwtService: JwtService,
-    @Optional() @Inject('AUTH_SERVICE') private readonly authClient?: ClientProxy,
+    @Optional() @Inject('NATS_CLIENT') private readonly natsClient?: ClientProxy,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
@@ -283,7 +283,7 @@ export class AuthService {
     try {
       // Call auth-service via NATS using email directly
       const response = await firstValueFrom(
-        this.authClient.send('auth.login', {
+        this.natsClient.send('auth.login', {
           email: loginDto.email,
           password: loginDto.password,
         }),
@@ -325,7 +325,7 @@ export class AuthService {
     try {
       // Call auth-service via NATS to get user profile
       const response = await firstValueFrom(
-        this.authClient.send('auth.getProfile', { userId }),
+        this.natsClient.send('auth.getProfile', { userId }),
       );
 
       if (!response.success) {

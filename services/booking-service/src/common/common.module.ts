@@ -3,10 +3,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { HealthController } from './controllers/health.controller';
 
-const natsImports = process.env.NATS_URL && process.env.NATS_URL !== 'disabled'
-  ? [ClientsModule.registerAsync([
+@Global()
+@Module({
+  imports: [
+    ConfigModule,
+    ClientsModule.registerAsync([
       {
-        name: 'NOTIFICATION_SERVICE',
+        name: 'NATS_CLIENT',
         imports: [ConfigModule],
         useFactory: async (configService: ConfigService) => ({
           transport: Transport.NATS,
@@ -19,19 +22,10 @@ const natsImports = process.env.NATS_URL && process.env.NATS_URL !== 'disabled'
         }),
         inject: [ConfigService],
       },
-    ])]
-  : [];
-
-const natsExports = process.env.NATS_URL && process.env.NATS_URL !== 'disabled' ? [ClientsModule] : [];
-
-@Global()
-@Module({
-  imports: [
-    ConfigModule,
-    ...natsImports,
+    ]),
   ],
   controllers: [HealthController],
   providers: [],
-  exports: natsExports,
+  exports: [ClientsModule],
 })
 export class CommonModule {}

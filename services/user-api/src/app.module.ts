@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { BookingModule } from './booking/booking.module';
@@ -12,34 +11,6 @@ const natsImports = process.env.NATS_URL && process.env.NATS_URL !== 'disabled'
   ? [ClientsModule.register([
       {
         name: 'NATS_CLIENT',
-        transport: Transport.NATS,
-        options: {
-          servers: [process.env.NATS_URL || 'nats://localhost:4222'],
-        },
-      },
-      {
-        name: 'AUTH_SERVICE',
-        transport: Transport.NATS,
-        options: {
-          servers: [process.env.NATS_URL || 'nats://localhost:4222'],
-        },
-      },
-      {
-        name: 'COURSE_SERVICE',
-        transport: Transport.NATS,
-        options: {
-          servers: [process.env.NATS_URL || 'nats://localhost:4222'],
-        },
-      },
-      {
-        name: 'BOOKING_SERVICE',
-        transport: Transport.NATS,
-        options: {
-          servers: [process.env.NATS_URL || 'nats://localhost:4222'],
-        },
-      },
-      {
-        name: 'NOTIFY_SERVICE',
         transport: Transport.NATS,
         options: {
           servers: [process.env.NATS_URL || 'nats://localhost:4222'],
@@ -61,7 +32,7 @@ const natsExports = process.env.NATS_URL && process.env.NATS_URL !== 'disabled' 
     CoursesModule,
     NotifyModule,
   ],
-  controllers: [AppController],
+  controllers: [],
   providers: [AppService],
   exports: natsExports,
 })

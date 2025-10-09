@@ -7,7 +7,7 @@ export class CoursesService {
   private readonly logger = new Logger(CoursesService.name);
 
   constructor(
-    @Optional() @Inject('COURSE_SERVICE') private readonly courseClient?: ClientProxy,
+    @Optional() @Inject('NATS_CLIENT') private readonly natsClient?: ClientProxy,
   ) {}
 
   async searchCourses(filters: {
@@ -22,7 +22,7 @@ export class CoursesService {
       );
 
       const result = await firstValueFrom(
-        this.courseClient.send('courses.list', filters).pipe(timeout(5000)),
+        this.natsClient.send('courses.list', filters).pipe(timeout(5000)),
       );
 
       return result;
@@ -42,7 +42,7 @@ export class CoursesService {
       this.logger.log('Getting all courses');
 
       const result = await firstValueFrom(
-        this.courseClient.send('courses.list', {}).pipe(timeout(5000)),
+        this.natsClient.send('courses.list', {}).pipe(timeout(5000)),
       );
 
       return result;
@@ -60,7 +60,7 @@ export class CoursesService {
       this.logger.log(`Getting course by id: ${id}`);
 
       const result = await firstValueFrom(
-        this.courseClient.send('course.getById', { id }).pipe(timeout(5000)),
+        this.natsClient.send('course.getById', { id }).pipe(timeout(5000)),
       );
 
       return result;

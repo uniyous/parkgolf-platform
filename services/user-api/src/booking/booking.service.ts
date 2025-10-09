@@ -19,7 +19,7 @@ export class BookingService {
   private readonly logger = new Logger(BookingService.name);
 
   constructor(
-    @Optional() @Inject('BOOKING_SERVICE') private readonly bookingClient?: ClientProxy,
+    @Optional() @Inject('NATS_CLIENT') private readonly natsClient?: ClientProxy,
   ) {}
 
   async createBooking(userId: number, dto: CreateBookingDto) {
@@ -42,7 +42,7 @@ export class BookingService {
       };
 
       const result = await firstValueFrom(
-        this.bookingClient
+        this.natsClient
           .send('booking.create', createBookingRequest)
           .pipe(timeout(10000)),
       );
@@ -66,7 +66,7 @@ export class BookingService {
       this.logger.log(`Getting booking by ID: ${id}`);
 
       const result = await firstValueFrom(
-        this.bookingClient.send('booking.findById', { id }).pipe(timeout(5000)),
+        this.natsClient.send('booking.findById', { id }).pipe(timeout(5000)),
       );
 
       return result;
@@ -84,7 +84,7 @@ export class BookingService {
       this.logger.log(`Getting booking by number: ${bookingNumber}`);
 
       const result = await firstValueFrom(
-        this.bookingClient
+        this.natsClient
           .send('booking.findByNumber', { bookingNumber })
           .pipe(timeout(5000)),
       );
@@ -104,7 +104,7 @@ export class BookingService {
       this.logger.log(`Getting bookings for user: ${userId}`);
 
       const result = await firstValueFrom(
-        this.bookingClient
+        this.natsClient
           .send('booking.findByUserId', { userId })
           .pipe(timeout(5000)),
       );
@@ -127,7 +127,7 @@ export class BookingService {
       this.logger.log(`Searching bookings: ${JSON.stringify(searchDto)}`);
 
       const result = await firstValueFrom(
-        this.bookingClient
+        this.natsClient
           .send('booking.search', searchDto)
           .pipe(timeout(10000)),
       );
@@ -150,7 +150,7 @@ export class BookingService {
       this.logger.log(`Updating booking ${id}: ${JSON.stringify(dto)}`);
 
       const result = await firstValueFrom(
-        this.bookingClient
+        this.natsClient
           .send('booking.update', { id, dto })
           .pipe(timeout(5000)),
       );
@@ -173,7 +173,7 @@ export class BookingService {
       this.logger.log(`Cancelling booking ${id} for user ${userId}`);
 
       const result = await firstValueFrom(
-        this.bookingClient
+        this.natsClient
           .send('booking.cancel', { id, userId, reason })
           .pipe(timeout(5000)),
       );
@@ -198,7 +198,7 @@ export class BookingService {
       );
 
       const result = await firstValueFrom(
-        this.bookingClient
+        this.natsClient
           .send('booking.timeSlots.availability', { courseId, date })
           .pipe(timeout(5000)),
       );
