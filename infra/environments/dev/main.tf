@@ -1,0 +1,346 @@
+# Park Golf Platform - Development Environment
+# This is the main entry point for the development infrastructure
+
+terraform {
+  required_version = ">= 1.0"
+
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+  }
+
+  backend "gcs" {
+    bucket = "parkgolf-uniyous-terraform-state"
+    prefix = "environments/dev"
+  }
+}
+
+# ============================================================================
+# Local Variables
+# ============================================================================
+
+locals {
+  environment   = "dev"
+  provider_type = "gcp"
+  project_id    = "parkgolf-uniyous"
+  region        = "asia-northeast3"
+
+  # Service definitions - Minimal specs for dev (cost optimization)
+  services = {
+    "auth-service" = {
+      cpu           = "1"
+      memory        = "256Mi"
+      min_instances = 0  # Scale to zero when idle
+      max_instances = 1
+      port          = 8080
+    }
+    "course-service" = {
+      cpu           = "1"
+      memory        = "256Mi"
+      min_instances = 0
+      max_instances = 1
+      port          = 8080
+    }
+    "booking-service" = {
+      cpu           = "1"
+      memory        = "256Mi"
+      min_instances = 0
+      max_instances = 1
+      port          = 8080
+    }
+    "notify-service" = {
+      cpu           = "1"
+      memory        = "128Mi"
+      min_instances = 0
+      max_instances = 1
+      port          = 8080
+    }
+    "admin-api" = {
+      cpu           = "1"
+      memory        = "256Mi"
+      min_instances = 0
+      max_instances = 1
+      port          = 8080
+    }
+    "user-api" = {
+      cpu           = "1"
+      memory        = "256Mi"
+      min_instances = 0
+      max_instances = 1
+      port          = 8080
+    }
+  }
+
+  # Database definitions
+  databases = ["auth_db", "course_db", "booking_db", "notify_db"]
+
+  # Common tags
+  labels = {
+    environment = local.environment
+    project     = "parkgolf"
+    managed_by  = "terraform"
+  }
+}
+
+# ============================================================================
+# Provider Configuration
+# ============================================================================
+
+provider "google" {
+  project = local.project_id
+  region  = local.region
+}
+
+# ============================================================================
+# Data Sources
+# ============================================================================
+
+data "google_project" "project" {
+  project_id = local.project_id
+}
+
+# ============================================================================
+# Networking Module
+# ============================================================================
+
+module "networking" {
+  source = "../../modules/networking"
+
+  provider_type = local.provider_type
+  network_name  = "parkgolf"
+  environment   = local.environment
+  region        = local.region
+
+  vpc_cidr = "10.1.0.0/16"
+  subnet_cidrs = {
+    public  = "10.1.1.0/24"
+    private = "10.1.2.0/24"
+    data    = "10.1.3.0/24"
+  }
+
+  vpc_connector_cidr   = "10.1.10.0/28"
+  enable_vpc_connector = true
+  enable_nat           = false  # Disable NAT for cost savings in dev
+}
+
+# ============================================================================
+# Database Module
+# ============================================================================
+
+module "database" {
+  source = "../../modules/database"
+
+  provider_type    = local.provider_type
+  instance_name    = "parkgolf-db"
+  environment      = local.environment
+  region           = local.region
+  postgres_version = "15"
+  tier             = "micro"  # db-f1-micro (shared CPU, minimal cost)
+  storage_gb       = 10        # Minimal storage
+
+  databases       = local.databases
+  admin_username  = "parkgolf"
+  admin_password  = var.db_password
+
+  vpc_network         = module.networking.vpc_self_link
+  backup_enabled      = false  # No backup for dev (cost savings)
+  high_availability   = false  # No HA for dev
+  deletion_protection = false  # Allow deletion in dev
+
+  depends_on = [module.networking]
+}
+
+# ============================================================================
+# Messaging Module (NATS)
+# ============================================================================
+
+module "messaging" {
+  source = "../../modules/messaging"
+
+  provider_type = local.provider_type
+  name          = "parkgolf"
+  environment   = local.environment
+  region        = local.region
+
+  # NATS JetStream VM Configuration - Minimal for dev
+  nats_machine_type    = "e2-micro"   # Smallest instance type
+  nats_disk_size       = 10           # Minimal disk
+  nats_version         = "2.10-alpine"
+  jetstream_max_memory = "128M"       # Minimal memory for JetStream
+  jetstream_max_file   = "1G"         # Minimal file storage
+
+  vpc_network    = module.networking.vpc_name
+  vpc_subnetwork = module.networking.subnet_ids["private"]
+
+  depends_on = [module.networking]
+}
+
+# ============================================================================
+# Secrets Module
+# ============================================================================
+
+module "secrets" {
+  source = "../../modules/secrets"
+
+  provider_type = local.provider_type
+  project_id    = local.project_id
+  environment   = local.environment
+
+  secrets = {
+    db_password = {
+      value       = var.db_password
+      description = "Database password"
+    }
+    jwt_secret = {
+      value       = var.jwt_secret
+      description = "JWT signing secret"
+    }
+    jwt_refresh_secret = {
+      value       = var.jwt_refresh_secret
+      description = "JWT refresh token secret"
+    }
+  }
+
+  service_accounts = [
+    for svc in keys(local.services) :
+    "${svc}-${local.environment}@${local.project_id}.iam.gserviceaccount.com"
+  ]
+}
+
+# ============================================================================
+# Cloud Run Services
+# ============================================================================
+
+module "services" {
+  for_each = local.services
+  source   = "../../modules/cloud-run"
+
+  provider_type = local.provider_type
+  service_name  = each.key
+  environment   = local.environment
+  region        = local.region
+
+  image = "asia-northeast3-docker.pkg.dev/${local.project_id}/parkgolf/${each.key}:dev-latest"
+
+  cpu           = each.value.cpu
+  memory        = each.value.memory
+  min_instances = each.value.min_instances
+  max_instances = each.value.max_instances
+  port          = each.value.port
+
+  vpc_connector         = module.networking.vpc_connector_id
+  allow_unauthenticated = true
+
+  env_vars = {
+    NODE_ENV = "development"
+    PORT     = tostring(each.value.port)
+    NATS_URL = module.messaging.nats_url
+  }
+
+  secrets = {
+    DATABASE_URL = module.secrets.secret_references["db_password"]
+    JWT_SECRET   = module.secrets.secret_references["jwt_secret"]
+  }
+
+  depends_on = [
+    module.networking,
+    module.database,
+    module.messaging,
+    module.secrets
+  ]
+}
+
+# ============================================================================
+# Monitoring Module
+# ============================================================================
+
+module "monitoring" {
+  source = "../../modules/monitoring"
+
+  provider_type = local.provider_type
+  project_id    = local.project_id
+  environment   = local.environment
+
+  services = keys(local.services)
+
+  notification_channels = {
+    dev_email = {
+      type = "email"
+      config = {
+        email = var.alert_email
+      }
+    }
+  }
+
+  latency_threshold_ms = 3000 # More lenient for dev
+  error_rate_threshold = 10
+  enable_uptime_checks = false # Disabled for dev
+
+  depends_on = [module.services]
+}
+
+# ============================================================================
+# Variables
+# ============================================================================
+
+variable "db_password" {
+  type        = string
+  sensitive   = true
+  description = "Database password"
+}
+
+variable "jwt_secret" {
+  type        = string
+  sensitive   = true
+  description = "JWT signing secret"
+}
+
+variable "jwt_refresh_secret" {
+  type        = string
+  sensitive   = true
+  description = "JWT refresh token secret"
+}
+
+variable "alert_email" {
+  type        = string
+  default     = "dev@uniyous.com"
+  description = "Email for alert notifications"
+}
+
+# ============================================================================
+# Outputs
+# ============================================================================
+
+output "vpc_id" {
+  description = "VPC Network ID"
+  value       = module.networking.vpc_id
+}
+
+output "vpc_connector" {
+  description = "VPC Connector for Cloud Run"
+  value       = module.networking.vpc_connector_name
+}
+
+output "database_instance" {
+  description = "Database instance name"
+  value       = module.database.instance_name
+}
+
+output "database_ip" {
+  description = "Database private IP"
+  value       = module.database.private_ip
+}
+
+output "nats_url" {
+  description = "NATS connection URL"
+  value       = module.messaging.nats_url
+}
+
+output "service_urls" {
+  description = "Cloud Run service URLs"
+  value = {
+    for k, v in module.services : k => v.service_url
+  }
+}

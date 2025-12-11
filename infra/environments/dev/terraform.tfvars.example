@@ -1,0 +1,8 @@
+# Development Environment Variables
+# Copy this file to terraform.tfvars and fill in the values
+# NEVER commit terraform.tfvars to version control
+
+db_password        = "your-secure-db-password"
+jwt_secret         = "your-jwt-secret-key-min-32-chars"
+jwt_refresh_secret = "your-jwt-refresh-secret-min-32-chars"
+alert_email        = "dev-team@yourcompany.com"
