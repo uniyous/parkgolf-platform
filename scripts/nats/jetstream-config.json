@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "NATS JetStream Configuration for Park Golf Platform",
+  "streams": {
+    "SERVICES": {
+      "description": "Request/Response communication between microservices",
+      "subjects": [
+        "auth.*",
+        "auth.admin.*",
+        "auth.permission.*",
+        "users.*",
+        "course.*",
+        "hole.*",
+        "company.*",
+        "time-slot.*",
+        "booking.*",
+        "search.*",
+        "ml.*"
+      ],
+      "config": {
+        "retention": "limits",
+        "max_msgs": 100000,
+        "max_bytes": 1073741824,
+        "max_age_hours": 24,
+        "storage": "file",
+        "replicas": 1,
+        "discard": "old",
+        "duplicate_window_minutes": 2
+      }
+    },
+    "NOTIFICATIONS": {
+      "description": "Async notification processing (Pub/Sub pattern)",
+      "subjects": [
+        "notification.email.*",
+        "notification.push.*",
+        "notification.sms.*",
+        "notification.booking.*",
+        "notification.system.*"
+      ],
+      "config": {
+        "retention": "workqueue",
+        "max_msgs": 500000,
+        "max_bytes": 2147483648,
+        "max_age_hours": 168,
+        "storage": "file",
+        "replicas": 1,
+        "discard": "old",
+        "duplicate_window_minutes": 5
+      },
+      "consumers": {
+        "email-worker": {
+          "filter": "notification.email.>",
+          "ack_policy": "explicit",
+          "max_deliver": 5,
+          "ack_wait_seconds": 30
+        },
+        "push-worker": {
+          "filter": "notification.push.>",
+          "ack_policy": "explicit",
+          "max_deliver": 5,
+          "ack_wait_seconds": 30
+        },
+        "sms-worker": {
+          "filter": "notification.sms.>",
+          "ack_policy": "explicit",
+          "max_deliver": 3,
+          "ack_wait_seconds": 30
+        },
+        "notify-service": {
+          "filter": "notification.>",
+          "ack_policy": "explicit",
+          "max_deliver": 5,
+          "ack_wait_seconds": 30
+        }
+      }
+    },
+    "EVENTS": {
+      "description": "Event sourcing and audit log",
+      "subjects": [
+        "events.user.*",
+        "events.booking.*",
+        "events.payment.*",
+        "events.course.*",
+        "events.system.*"
+      ],
+      "config": {
+        "retention": "limits",
+        "max_msgs": 1000000,
+        "max_bytes": 5368709120,
+        "max_age_hours": 720,
+        "storage": "file",
+        "replicas": 1,
+        "discard": "old",
+        "duplicate_window_minutes": 10
+      }
+    }
+  },
+  "message_patterns": {
+    "request_response": {
+      "description": "Synchronous request/response for service calls",
+      "examples": [
+        "auth.login",
+        "auth.verify",
+        "users.findById",
+        "course.findAll",
+        "booking.create"
+      ]
+    },
+    "pub_sub": {
+      "description": "Asynchronous publish/subscribe for notifications",
+      "examples": [
+        "notification.email.booking_confirmation",
+        "notification.push.booking_reminder",
+        "notification.sms.verification_code"
+      ]
+    },
+    "event_sourcing": {
+      "description": "Domain events for audit and analytics",
+      "examples": [
+        "events.user.created",
+        "events.booking.completed",
+        "events.payment.processed"
+      ]
+    }
+  }
+}

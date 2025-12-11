@@ -38,6 +38,8 @@ lerna-debug.log*
 *.pfx
 secrets.json
 service-account-key.json
+github-actions-sa-key.json
+*-sa-key.json
 
 # ========================================
 # Build outputs & Dist

@@ -25,7 +25,7 @@ Park Golf Platform은 골프장 예약 및 관리를 위한 통합 플랫폼으�
 
 ### 📊 Project Status
 - **Current Phase**: MVP Development
-- **Completion**: 70% (as of 2025-01-15)
+- **Completion**: 75% (as of 2025-10-09)
 - **Target Release**: 2025-02-15
 
 ## System Architecture Diagram
@@ -194,35 +194,38 @@ graph LR
 ### Frontend Technologies
 | Component | Technology | Version | Purpose |
 |-----------|------------|---------|---------|
-| **Framework** | React | 19.0 | UI Library |
-| **State Management** | Redux Toolkit | 2.x | Admin Dashboard State |
-| **Build Tool** | Vite | 6.x | Fast HMR & Building |
-| **Language** | TypeScript | 5.x | Type Safety |
-| **Styling** | CSS Modules | - | Component Styling |
-| **UI Library** | Ant Design | 5.x | Component Library |
-| **HTTP Client** | Axios | 1.x | API Communication |
+| **Framework** | React | 19.1 | UI Library |
+| **State Management** | Redux Toolkit | 2.8 | State Management |
+| **Build Tool** | Vite | 6.3 | Fast HMR & Building |
+| **Language** | TypeScript | 5.8 | Type Safety |
+| **Styling** | Tailwind CSS | 4.1.8 | Utility-first CSS |
+| **UI Components** | Headless UI, Lucide React | latest | Component Library |
+| **HTTP Client** | Axios | 1.10 | API Communication |
+| **Routing** | React Router | 7.6 | Client-side Routing |
 
 ### Backend Technologies
 | Component | Technology | Version | Purpose |
 |-----------|------------|---------|---------|
-| **Framework** | NestJS | 10.x | Main Backend Framework |
+| **Framework** | NestJS | 11.0 | Main Backend Framework |
 | **Runtime** | Node.js | 20.x | JavaScript Runtime |
-| **Language** | TypeScript | 5.x | Type Safety |
-| **ORM** | Prisma | 5.x | Database ORM |
-| **Validation** | class-validator | 0.14.x | DTO Validation |
-| **Authentication** | Passport.js | 0.7.x | Auth Strategies |
-| **Documentation** | Swagger | 7.x | API Documentation |
+| **Language** | TypeScript | 5.7 | Type Safety |
+| **ORM** | Prisma | 6.8-6.10 | Database ORM |
+| **Validation** | class-validator | 0.14.2 | DTO Validation |
+| **Authentication** | Passport.js | 0.7 | Auth Strategies |
+| **Documentation** | Swagger | 11.2 | API Documentation |
+| **Password Hash** | bcrypt | 5.1-6.0 | Password Encryption |
 
 ### Infrastructure Technologies
 | Component | Technology | Version | Purpose |
 |-----------|------------|---------|---------|
-| **Database** | PostgreSQL | 15 | Primary Database |
+| **Database** | PostgreSQL | 15+ | Primary Database |
 | **Cache** | Redis | 7.x | Session & Cache |
-| **Message Broker** | NATS | 2.x | Event Streaming |
-| **Search Engine** | Elasticsearch | 8.x | Full-text Search |
+| **Message Broker** | NATS | 2.29 | Event Streaming |
+| **Search Engine** | Elasticsearch | 8.x | Full-text Search (planned) |
+| **NoSQL** | MongoDB | 5.x | ML Service Data (planned) |
 | **Container** | Docker | 24.x | Containerization |
-| **Orchestration** | Kubernetes | 1.28 | Container Orchestration |
-| **Cloud** | Google Cloud | - | Cloud Platform |
+| **Orchestration** | Kubernetes | 1.28+ | Container Orchestration |
+| **Cloud** | Google Cloud Platform | - | Cloud Run, GCR |
 
 ## Service Details
 
@@ -231,37 +234,40 @@ graph LR
 #### Admin Dashboard (:3000) ✅
 ```typescript
 // Tech Stack
-- Framework: React 19 + TypeScript
-- State: Redux Toolkit + RTK Query
-- Routing: React Router v6
-- UI: Ant Design + Custom Components
-- Build: Vite 6
+- Framework: React 19.1 + TypeScript 5.8
+- State: Redux Toolkit 2.8
+- Routing: React Router 7.6
+- UI: Tailwind CSS 4.1.8 + Headless UI + Lucide React
+- Build: Vite 6.3 + SWC
 
 // Features
 - 관리자 인증 및 권한 관리
-- 골프장/코스 관리
+- 골프장/코스 관리 (Company, Club, Course)
 - 예약 관리 및 모니터링
 - 사용자 관리
 - 통계 대시보드
-- 실시간 알림
+- 타임슬롯 관리
 ```
 
 #### User WebApp (:3001) 🚧
 ```typescript
 // Tech Stack
-- Framework: React 19 + TypeScript
-- State: Context API + Local Storage
-- Routing: React Router v6
-- UI: Custom Components
-- Build: Vite 6
+- Framework: React 19.1 + TypeScript 5.8
+- State: Redux Toolkit 2.8
+- Routing: React Router 7.6
+- UI: Tailwind CSS 4.1.8 + Custom Components
+- Build: Vite 6.3 + SWC
+- HTTP: Axios 1.10
 
-// Features
+// Features (Planned)
 - 사용자 회원가입/로그인
 - 골프장 검색 및 조회
 - 예약 생성/수정/취소
 - 결제 시스템 연동
 - 예약 히스토리
 - 프로필 관리
+
+// Status: Basic structure only, blocked by User API NATS integration
 ```
 
 ### 2. BFF Services (Backend for Frontend)
@@ -286,7 +292,7 @@ graph LR
 - ML Service (분석)
 ```
 
-#### User API (:3092) 🚧
+#### User API (:3092) ⚠️
 ```typescript
 // Purpose: 사용자 웹앱 전용 API Gateway
 
@@ -297,106 +303,148 @@ graph LR
 - Rate limiting
 - Response optimization
 
-// Connected Services
+// Connected Services (via NATS)
 - Auth Service (인증)
 - Course Service (골프장 조회)
 - Booking Service (예약)
-- Search Service (검색)
 - Notify Service (알림)
+
+// Current Status
+- ✅ Basic structure and modules created
+- ✅ NATS client registration configured
+- ⚠️ NATS integration needs verification
+- 🚧 Actual API endpoints implementation pending
+- 🚧 Blocking User WebApp development
 ```
 
 ### 3. Core Microservices
 
-#### Auth Service (:3011) ✅
+#### Auth Service (:3011 / :8080) ✅
 ```typescript
 // Database: PostgreSQL (auth_db)
-// Communication: NATS + HTTP
+// Communication: NATS + HTTP (Cloud Run)
 
 // Core Features
-- JWT 토큰 발급/검증 (Access + Refresh)
-- 사용자 인증 (일반/관리자)
+- JWT 토큰 발급/검증 (Access 15min + Refresh 7days)
+- 사용자 인증 (일반/관리자 분리)
 - RBAC 권한 시스템 (40+ permissions)
-- 계층적 역할 관리
+- 계층적 역할 관리 (RoleMaster)
 - 비밀번호 암호화 (bcrypt)
 - 로그인 히스토리
-- 세션 관리
+- Admin activity logging
+- Refresh token 관리
 
-// Message Patterns
+// Message Patterns (NATS)
 - auth.login
 - auth.validate
 - auth.refresh
-- users.create/list/update/delete
+- users.create/list/findById/update/delete
 - auth.admin.*
 - auth.permission.*
+
+// Cloud Run Optimization
+- Health check endpoint at /health
+- HTTP server first (port 8080)
+- NATS connects asynchronously
+- Graceful degradation if NATS unavailable
 ```
 
-#### Course Service (NATS only) ✅
+#### Course Service (NATS only / :8080) ✅
 ```typescript
 // Database: PostgreSQL (course_db)
-// Communication: NATS only
+// Communication: NATS only (HTTP for health check)
+
+// Domain Structure
+- Company: 골프장 운영 회사
+- Club: 골프장 (실제 장소)
+- Course: 코스 (9홀/18홀)
+- Hole: 홀 상세 정보
+- TeeBox: 티박스 (난이도별)
+- CourseTimeSlot: 타임슬롯
+- CourseWeeklySchedule: 주간 스케줄
 
 // Core Features
-- 골프장 회사 관리
-- 코스 정보 관리 (18홀/9홀)
-- 홀별 상세 정보
-- 타임슬롯 관리
-- 주간 스케줄 생성
-- 시설 정보 관리
-- 가격 정책
+- 골프장 회사/클럽 관리
+- 9홀/18홀 코스 설정
+- 홀별 상세 (par, distance, handicap, tips)
+- 타임슬롯 자동 생성 (09:00-18:00)
+- 주간 스케줄 관리
+- 시설 정보 관리 (facilities array)
+- 시즌/운영시간 정보
 
 // Message Patterns
 - companies.*
+- clubs.*
 - courses.*
 - holes.*
 - timeSlots.*
-- facilities.*
+
+// Cloud Run Optimization
+- Health check at /health (port 8080)
+- NATS asynchronous connection
+- Domain-based module structure
 ```
 
-#### Booking Service (:3013) ✅
+#### Booking Service (:3013 / :8080) ⚠️
 ```typescript
 // Database: PostgreSQL (booking_db)
 // Communication: NATS + HTTP
 
+// Data Models
+- Booking: 예약 (9홀/18홀 통합)
+- Payment: 결제
+- BookingHistory: 예약 히스토리
+- TimeSlotAvailability: 타임슬롯 가용성 캐시
+- CourseCache: 코스 정보 캐시
+
 // Core Features
-- 예약 생성/수정/취소
-- 9홀/18홀 복잡 예약 로직
-- 타임슬롯 가용성 체크
-- 결제 정보 관리
-- 예약 상태 관리
-- 취소 정책 적용
-- 예약 히스토리
+- ✅ 9홀/18홀 복합 예약 로직
+- ✅ 회원/비회원 예약 지원
+- ✅ 타임슬롯 가용성 체크
+- ✅ 예약 상태 관리 (PENDING → CONFIRMED → COMPLETED)
+- ✅ 예약 히스토리 추적
+- ✅ 성능 최적화 (캐싱)
+- ⚠️ 결제 게이트웨이 미완성 (TossPayments/KakaoPay 선택 필요)
 
 // Event Publishing
 - booking.created
 - booking.updated
 - booking.cancelled
 - payment.processed
+
+// Cloud Run Optimization
+- Health check at /health
+- Swagger documentation
 ```
 
-#### Notify Service (:3014) ✅
+#### Notify Service (:3014 / :8080) ✅
 ```typescript
 // Database: PostgreSQL (notify_db)
 // Communication: NATS + HTTP
 
 // Core Features
-- 이메일 발송 (SendGrid)
-- SMS 발송 (Twilio)
-- 푸시 알림 (FCM)
-- 템플릿 관리
-- 발송 스케줄링
-- 발송 히스토리
-- 다국어 지원
+- ✅ Multi-channel 알림 (Email, SMS, Push)
+- ✅ 이메일 발송 (SendGrid 준비)
+- ✅ SMS 발송 (Twilio 준비)
+- ✅ 푸시 알림 (FCM 준비)
+- ✅ 템플릿 관리 시스템
+- ✅ 발송 스케줄링 (@nestjs/schedule)
+- ✅ 발송 히스토리 로깅
+- ✅ 다국어 지원 구조
+- ✅ 재시도 메커니즘
 
 // Event Subscriptions
 - booking.created → 예약 확인 알림
 - booking.cancelled → 취소 알림
 - user.registered → 환영 이메일
 - payment.processed → 결제 확인
+
+// Note: External service configurations needed (SendGrid, Twilio, FCM)
 ```
 
 ### 4. Advanced Services
 
-#### Search Service (:3015) 🚧
+#### Search Service (:3015 / :8080) 🚧
 ```typescript
 // Database: Elasticsearch
 // Communication: NATS + HTTP
@@ -410,7 +458,13 @@ graph LR
 - 검색 히스토리
 - 인기 검색어
 
-// Status: Basic structure only
+// Current Status
+- ✅ NestJS basic structure created
+- 🚧 Elasticsearch integration not implemented
+- 🚧 Search logic pending
+- 📋 Low priority for MVP
+
+// Priority: P2 (Nice to Have)
 ```
 
 #### ML Service (:4000) 🚧
@@ -418,6 +472,11 @@ graph LR
 // Database: MongoDB
 // Communication: NATS + HTTP
 // Stack: Express.js (different from others)
+
+// Structure
+- Wrapper package for ML/MCP services
+- Separate ml-services/ subdirectory
+- Separate mcp-services/ subdirectory
 
 // Planned Features
 - 수요 예측
@@ -427,7 +486,14 @@ graph LR
 - 예약 패턴 분석
 - 시즌별 트렌드
 
-// Status: Infrastructure only
+// Current Status
+- ✅ Package structure created
+- 🚧 ML logic not implemented
+- 🚧 MongoDB integration pending
+- 📋 Low priority for MVP
+
+// Priority: P2 (Future Enhancement)
+// Note: Uses Express.js instead of NestJS
 ```
 
 ## Communication Patterns
@@ -751,9 +817,19 @@ graph LR
 
 ---
 
-**Document Version**: 2.0.0  
-**Last Updated**: 2025-01-15  
-**Next Review**: 2025-02-01  
+**Document Version**: 2.1.0
+**Last Updated**: 2025-10-09
+**Next Review**: 2025-11-01
 **Maintained By**: Platform Team
 
 *This document is the single source of truth for Park Golf Platform architecture.*
+
+## 📋 Recent Updates (2025-10-09)
+- Updated all technology stack versions to actual implementation
+- Updated service completion status (75% overall)
+- Added Cloud Run optimization details for all microservices
+- Updated Frontend stack (React 19.1, Tailwind CSS 4.1.8)
+- Added detailed status for User API (⚠️ NATS integration needs verification)
+- Added detailed status for Booking Service (⚠️ Payment gateway pending)
+- Updated database schema information based on actual Prisma schemas
+- Added priority labels for Search and ML services

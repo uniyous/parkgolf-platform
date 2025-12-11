@@ -21,7 +21,8 @@ JSON 형태로 환경 변수를 관리하여 더 깔끔하고 유지보수하기
   "database": {
     "auth_url": "postgresql://parkgolf:parkgolf123@34.47.122.22:5432/auth_db?schema=public",
     "course_url": "postgresql://parkgolf:parkgolf123@34.47.122.22:5432/course_db?schema=public",
-    "booking_url": "postgresql://parkgolf:parkgolf123@34.47.122.22:5432/booking_db?schema=public"
+    "booking_url": "postgresql://parkgolf:parkgolf123@34.47.122.22:5432/booking_db?schema=public",
+    "notify_url": "postgresql://parkgolf:parkgolf123@34.47.122.22:5432/notify_db?schema=public"
   },
   "server": {
     "port": "8080",
@@ -29,9 +30,9 @@ JSON 형태로 환경 변수를 관리하여 더 깔끔하고 유지보수하기
   },
   "jwt": {
     "secret": "dev-super-secret-jwt-key-change-in-production",
-    "expires_in": "7d",
+    "expires_in": "15m",
     "refresh_secret": "dev-refresh-secret-key",
-    "refresh_expires_in": "30d"
+    "refresh_expires_in": "7d"
   },
   "nats": {
     "url": "nats://34.64.85.225:4222"
@@ -45,7 +46,8 @@ JSON 형태로 환경 변수를 관리하여 더 깔끔하고 유지보수하기
   "database": {
     "auth_url": "postgresql://parkgolf:production-password@production-db-host:5432/auth_db?schema=public",
     "course_url": "postgresql://parkgolf:production-password@production-db-host:5432/course_db?schema=public",
-    "booking_url": "postgresql://parkgolf:production-password@production-db-host:5432/booking_db?schema=public"
+    "booking_url": "postgresql://parkgolf:production-password@production-db-host:5432/booking_db?schema=public",
+    "notify_url": "postgresql://parkgolf:production-password@production-db-host:5432/notify_db?schema=public"
   },
   "server": {
     "port": "8080",
@@ -53,9 +55,9 @@ JSON 형태로 환경 변수를 관리하여 더 깔끔하고 유지보수하기
   },
   "jwt": {
     "secret": "production-jwt-secret-change-this",
-    "expires_in": "7d",
+    "expires_in": "15m",
     "refresh_secret": "production-refresh-secret",
-    "refresh_expires_in": "30d"
+    "refresh_expires_in": "7d"
   },
   "nats": {
     "url": "nats://production-nats-host:4222"
@@ -104,9 +106,10 @@ GitHub Actions 워크플로우는 다음과 같이 환경을 자동으로 구분
 ## 서비스별 데이터베이스
 
 각 서비스는 독립적인 데이터베이스를 사용합니다:
-- `auth-service`: auth_db
-- `course-service`: course_db
-- `booking-service`: booking_db
+- `auth-service`: auth_db (Users, Admins, Roles, Permissions)
+- `course-service`: course_db (Companies, Clubs, Courses, Holes, TimeSlots)
+- `booking-service`: booking_db (Bookings, Payments, BookingHistory, Caches)
+- `notify-service`: notify_db (Notifications, Templates, Logs)
 
 ## 로컬 개발 환경
 
@@ -163,3 +166,17 @@ PORT=8080  # Cloud Run에서 자동 설정
 ### 새로운 변수가 반영되지 않음
 - GitHub Secrets 업데이트 후 워크플로우 재실행
 - jq 추출 로직이 워크플로우에 추가되었는지 확인
+
+---
+
+## 📋 Recent Updates (2025-10-09)
+- Added notify_db database configuration
+- Updated JWT token expiration times to actual implementation (Access: 15m, Refresh: 7d)
+- Added detailed database descriptions for each service
+- Clarified service-specific database usage
+
+---
+
+**Document Version**: 1.1.0
+**Last Updated**: 2025-10-09
+**Next Review**: 2025-11-01

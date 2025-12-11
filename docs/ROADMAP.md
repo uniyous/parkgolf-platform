@@ -1,7 +1,8 @@
 # Park Golf Platform - Development Roadmap
 
 ## 🎯 MVP Target: February 15, 2025
-**Overall Progress**: `███████░░░` 70%
+**Overall Progress**: `███████▓░░` 75%
+**Last Updated**: 2025-10-09
 
 ---
 
@@ -43,24 +44,31 @@
 ---
 
 ## 🚀 Milestone 4: Booking Engine
-**Status**: 🟡 IN PROGRESS (85% - Target: January 25, 2025)
+**Status**: 🟡 IN PROGRESS (90% - Target: October 31, 2025)
 
 ### ✅ Completed
 - [x] Booking service API implementation
 - [x] Complex 9-hole/18-hole booking logic
 - [x] Time slot availability checking
-- [x] NATS event publishing (booking.created, booking.updated)
-- [x] Booking status management
-- [x] Database schema and relations
+- [x] NATS event publishing (booking.created, booking.updated, booking.cancelled)
+- [x] Booking status management (PENDING, CONFIRMED, CANCELLED, COMPLETED, NO_SHOW)
+- [x] Database schema and relations (Prisma 6.8)
+- [x] Member/Guest booking support
+- [x] Booking history tracking
+- [x] Performance optimization (caching strategy)
+- [x] TimeSlotAvailability cache model
+- [x] CourseCache for performance
+- [x] Cloud Run health check integration
 
 ### 🔄 In Progress
-- [ ] Payment gateway integration (0%)
+- [ ] Payment gateway integration (20%)
 - [ ] Research PG providers (TossPayments, KakaoPay)
 - [ ] Payment module implementation
 - [ ] Transaction logging
-- [ ] Refund processing
+- [ ] Webhook handling
 
 ### 📋 Pending
+- [ ] Refund processing
 - [ ] Cancellation policy implementation
 - [ ] Booking modification rules
 - [ ] Group booking support
@@ -68,29 +76,42 @@
 ---
 
 ## 🚀 Milestone 5: User Portal
-**Status**: 🔴 BLOCKED (30% - Target: February 5, 2025)
+**Status**: 🔴 BLOCKED (35% - Target: November 15, 2025)
 
 ### ✅ Completed
-- [x] React 19 project setup with Vite
-- [x] Basic routing structure
-- [x] Login/Register pages UI
-- [x] Authentication context
+- [x] React 19.1 project setup with Vite 6.3
+- [x] Redux Toolkit 2.8 state management
+- [x] React Router 7.6 routing structure
+- [x] Tailwind CSS 4.1.8 styling
+- [x] Basic component structure
+- [x] Axios 1.10 HTTP client setup
 
 ### 🚨 Blocked by User API
-- [ ] **User API NATS Integration** (CRITICAL PATH)
+- [ ] **User API NATS Integration** (CRITICAL PATH - P0)
+  - [x] Basic module structure (AuthModule, BookingModule, CoursesModule, NotifyModule)
+  - [x] NATS client registration configured
+  - [ ] Verify NATS connections to microservices
   - [ ] Connect to auth-service via NATS
   - [ ] Connect to course-service via NATS
   - [ ] Connect to booking-service via NATS
-  - [ ] Implement BFF pattern properly
+  - [ ] Implement actual BFF API endpoints
   - [ ] Add caching layer with Redis
+  - [ ] Test end-to-end communication
 
 ### 📋 Pending (After Unblocking)
-- [ ] Course browsing and search
+- [ ] User authentication UI (login/register)
+- [ ] Course browsing and search interface
 - [ ] Time slot selection interface
 - [ ] Booking confirmation flow
 - [ ] Payment integration UI
 - [ ] Booking history page
 - [ ] User profile management
+
+### 📝 Technical Debt
+- [ ] Error handling and user feedback
+- [ ] Loading states and skeletons
+- [ ] Responsive design optimization
+- [ ] Accessibility (a11y) improvements
 
 ---
 
@@ -197,34 +218,97 @@
 
 ---
 
-## 🔥 Critical Path Items (Week of Jan 15-22)
+## 🔥 Critical Path Items (Current Sprint: Oct 9-23)
 
-### 1. Unblock User API (3-4 days)
+### 1. 🚨 URGENT: Unblock User API (Priority: P0, Est: 3-5 days)
 ```typescript
-// Required NATS connections
-- auth-service connection
-- course-service connection  
-- booking-service connection
-- Error handling
-- Response formatting
+// Required Tasks
+✅ Module structure created
+✅ NATS client configured
+⚠️ Verify NATS connections work
+🚧 Implement actual API endpoints:
+   - POST /api/auth/login
+   - POST /api/auth/register
+   - GET  /api/courses
+   - GET  /api/courses/:id
+   - POST /api/bookings
+   - GET  /api/bookings
+🚧 Test NATS communication with:
+   - auth-service
+   - course-service
+   - booking-service
+   - notify-service
+🚧 Error handling and logging
+🚧 Response formatting
+🚧 Add Redis caching layer
+
+// Dependencies
+- None (Can start immediately)
+
+// Impact
+- Blocks: User WebApp development
+- Blocks: End-to-end booking flow testing
 ```
 
-### 2. Complete Payment Integration (2-3 days)
+### 2. 🔴 Complete Payment Integration (Priority: P0, Est: 3-4 days)
 ```typescript
 // Payment gateway tasks
-- Provider selection
-- SDK integration
-- Webhook handling
-- Transaction logging
+📋 Provider selection (TossPayments vs KakaoPay)
+🚧 SDK integration
+🚧 Payment API endpoints
+🚧 Webhook handling
+🚧 Transaction logging
+🚧 Refund processing
+🚧 Payment status management
+
+// Dependencies
+- Requires: Booking service (already done)
+
+// Impact
+- Blocks: Complete booking flow
+- Blocks: MVP launch
 ```
 
-### 3. User Booking Flow UI (3-4 days)
+### 3. 📋 User Booking Flow UI (Priority: P1, Est: 4-5 days)
 ```typescript
-// Frontend components
-- Course list view
-- Time slot selector
-- Booking confirmation
-- Payment form
+// Frontend components (After User API unblocked)
+📋 Course list view with filters
+📋 Time slot selector (9-hole/18-hole)
+📋 Booking form (member/guest)
+📋 Booking confirmation UI
+📋 Payment form integration
+📋 Booking success/error screens
+
+// Dependencies
+- Requires: User API NATS integration complete
+- Requires: Payment integration complete
+
+// Impact
+- Required for: MVP launch
+```
+
+### 4. 📋 Testing & Quality Assurance (Priority: P1, Est: Ongoing)
+```typescript
+// Test Coverage
+🚧 Unit tests (Target: 80% coverage)
+   - Auth service
+   - Booking service
+   - Course service
+🚧 Integration tests
+   - Service-to-service via NATS
+   - BFF to microservices
+🚧 E2E tests
+   - Complete booking flow
+   - Payment flow
+   - Admin workflows
+🚧 Performance testing
+   - Load testing
+   - Database query optimization
+   - NATS message throughput
+
+// Impact
+- Blocks: Production deployment
+- Required for: MVP quality
 ```
 
 ---
@@ -300,8 +384,19 @@
 
 ---
 
-**Last Updated**: 2025-01-15  
-**Next Review**: 2025-01-22  
-**Version**: 2.0.0
+**Last Updated**: 2025-10-09
+**Next Review**: 2025-10-16
+**Version**: 2.1.0
 
 *This roadmap is the single source of truth for development priorities and progress.*
+
+## 📋 Recent Updates (2025-10-09)
+- Overall progress updated to 75%
+- Milestone 4 (Booking Engine) updated to 90% with detailed completion status
+- Milestone 5 (User Portal) updated with more granular blocking details
+- Critical Path Items rewritten with current priorities and dependencies
+- Added Testing & QA as critical path item
+- Updated all target dates to realistic timeframes
+- Added technical debt section for User Portal
+- Clarified User API NATS integration requirements
+- Payment integration details expanded with specific tasks

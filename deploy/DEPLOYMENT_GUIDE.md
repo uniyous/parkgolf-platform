@@ -14,10 +14,11 @@
 Park Golf Platform은 Google Cloud Platform(GCP)에서 운영되는 마이크로서비스 아키텍처입니다.
 
 ### 서비스 구성
-- **Backend Services**: auth-service, course-service, booking-service
+- **Backend Services**: auth-service, course-service, booking-service, notify-service
 - **API Gateways**: admin-api, user-api
 - **Frontend Apps**: admin-dashboard, user-webapp
-- **Infrastructure**: PostgreSQL, NATS
+- **Infrastructure**: PostgreSQL, NATS, Redis
+- **Future Services**: search-service, ml-service (planned)
 
 ## 인프라 구성
 
@@ -129,23 +130,33 @@ sudo -u postgres psql
 CREATE DATABASE auth_db;
 CREATE DATABASE course_db;
 CREATE DATABASE booking_db;
+CREATE DATABASE notify_db;
 \q
 exit
 ```
 
 #### 1.2 테이블 생성 (Prisma)
 ```bash
-# 각 서비스 디렉토리에서 실행
+# 각 서비스 디렉토리에서 실행 (Prisma 6.8-6.10)
+
+# Auth Service
 cd services/auth-service
 DATABASE_URL="postgresql://postgres:postgres123@34.47.122.22:5432/auth_db?schema=public" \
 npx prisma db push
 
+# Course Service
 cd ../course-service
 DATABASE_URL="postgresql://postgres:postgres123@34.47.122.22:5432/course_db?schema=public" \
 npx prisma db push
 
+# Booking Service
 cd ../booking-service
 DATABASE_URL="postgresql://postgres:postgres123@34.47.122.22:5432/booking_db?schema=public" \
+npx prisma db push
+
+# Notify Service
+cd ../notify-service
+DATABASE_URL="postgresql://postgres:postgres123@34.47.122.22:5432/notify_db?schema=public" \
 npx prisma db push
 ```
 
@@ -196,13 +207,31 @@ docker build -t asia-northeast3-docker.pkg.dev/uniyous-319808/parkgolf/auth-serv
 # 푸시
 docker push asia-northeast3-docker.pkg.dev/uniyous-319808/parkgolf/auth-service:latest
 
-# Cloud Run 배포
+# Cloud Run 배포 (최적화된 설정)
 gcloud run deploy auth-service-dev \
   --image=asia-northeast3-docker.pkg.dev/uniyous-319808/parkgolf/auth-service:latest \
   --region=asia-northeast3 \
   --vpc-connector=parkgolf-connector \
   --vpc-egress=private-ranges-only \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --port=8080 \
+  --platform=managed \
+  --set-env-vars="NODE_ENV=development,PORT=8080" \
+  --memory=512Mi \
+  --cpu=1 \
+  --timeout=300 \
+  --concurrency=80 \
+  --min-instances=0 \
+  --max-instances=10
+
+# 주요 설정 설명:
+# - port=8080: Cloud Run이 요구하는 포트
+# - memory=512Mi: 서비스당 메모리 (필요시 조정)
+# - cpu=1: CPU 할당 (1 vCPU)
+# - timeout=300: 요청 타임아웃 (5분)
+# - concurrency=80: 인스턴스당 동시 요청 수
+# - min-instances=0: 비용 절감 (개발 환경)
+# - max-instances=10: 자동 스케일링 상한
 ```
 
 ### 4. Frontend 배포
@@ -330,4 +359,16 @@ gcloud run services list --region=asia-northeast3
 
 ---
 
-*Last Updated: 2025-09-28*
+## 📋 Recent Updates (2025-10-09)
+- Added notify-service to service list and deployment guide
+- Updated Prisma version to 6.8-6.10
+- Added notify_db database creation
+- Updated technology stack versions
+- Added Cloud Run optimization notes
+- Clarified service deployment order
+
+---
+
+**Document Version**: 1.1.0
+**Last Updated**: 2025-10-09
+**Next Review**: 2025-11-01

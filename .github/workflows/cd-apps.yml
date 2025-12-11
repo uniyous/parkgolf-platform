@@ -1,0 +1,407 @@
+# Application CD Pipeline
+# Builds, pushes, and deploys applications to Cloud Run and Firebase
+
+name: CD Applications
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+    paths:
+      - 'apps/**'
+      - 'services/**'
+      - 'docker/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      services:
+        description: 'Services to deploy (comma-separated or "all")'
+        required: true
+        default: 'all'
+      deploy_frontend:
+        description: 'Deploy frontend apps'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  NODE_VERSION: '20'
+  REGISTRY: asia-northeast3-docker.pkg.dev
+  PROJECT_ID: parkgolf-uniyous
+  REPOSITORY: parkgolf
+  REGION: asia-northeast3
+
+jobs:
+  # ============================================================================
+  # Setup
+  # ============================================================================
+  setup:
+    name: Setup
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      backend_services: ${{ steps.services.outputs.backend }}
+      frontend_apps: ${{ steps.services.outputs.frontend }}
+      deploy_backend: ${{ steps.deploy.outputs.backend }}
+      deploy_frontend: ${{ steps.deploy.outputs.frontend }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine services to deploy
+        id: services
+        run: |
+          # Backend services
+          if [ "${{ github.event.inputs.services }}" == "all" ] || [ -z "${{ github.event.inputs.services }}" ]; then
+            BACKEND='["auth-service","course-service","booking-service","notify-service","admin-api","user-api"]'
+          else
+            BACKEND=$(echo '${{ github.event.inputs.services }}' | jq -R 'split(",") | map(gsub("^\\s+|\\s+$";""))')
+          fi
+          echo "backend=$BACKEND" >> $GITHUB_OUTPUT
+
+          # Frontend apps
+          FRONTEND='["admin-dashboard","user-webapp"]'
+          echo "frontend=$FRONTEND" >> $GITHUB_OUTPUT
+
+      - name: Check what to deploy
+        id: deploy
+        run: |
+          # Check if backend changed
+          if git diff --name-only HEAD~1 | grep -qE '^(services/(auth|course|booking|notify|admin-api|user-api)|apps/(gateway|services))'; then
+            echo "backend=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "backend=true" >> $GITHUB_OUTPUT
+          else
+            echo "backend=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Check if frontend changed
+          if git diff --name-only HEAD~1 | grep -qE '^(services/(admin-dashboard|user-webapp)|apps/frontend)'; then
+            echo "frontend=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ "${{ github.event.inputs.deploy_frontend }}" == "true" ]; then
+            echo "frontend=true" >> $GITHUB_OUTPUT
+          else
+            echo "frontend=false" >> $GITHUB_OUTPUT
+          fi
+
+  # ============================================================================
+  # Build and Push Backend Services
+  # ============================================================================
+  build-backend:
+    name: Build Backend
+    needs: setup
+    if: needs.setup.outputs.deploy_backend == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.setup.outputs.backend_services) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
+
+      - name: Determine service path
+        id: path
+        run: |
+          # Check both possible locations
+          if [ -d "services/${{ matrix.service }}" ]; then
+            echo "path=services/${{ matrix.service }}" >> $GITHUB_OUTPUT
+            echo "dockerfile=services/${{ matrix.service }}/Dockerfile" >> $GITHUB_OUTPUT
+          elif [ -d "apps/gateway/${{ matrix.service }}" ]; then
+            echo "path=apps/gateway/${{ matrix.service }}" >> $GITHUB_OUTPUT
+            echo "dockerfile=apps/gateway/${{ matrix.service }}/Dockerfile" >> $GITHUB_OUTPUT
+          elif [ -d "apps/services/${{ matrix.service }}" ]; then
+            echo "path=apps/services/${{ matrix.service }}" >> $GITHUB_OUTPUT
+            echo "dockerfile=apps/services/${{ matrix.service }}/Dockerfile" >> $GITHUB_OUTPUT
+          else
+            echo "Service path not found for ${{ matrix.service }}"
+            exit 1
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ steps.path.outputs.path }}
+          file: ${{ steps.path.outputs.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.service }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.service }}:${{ needs.setup.outputs.environment }}-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_ENV=production
+
+  # ============================================================================
+  # Deploy Backend Services to Cloud Run
+  # ============================================================================
+  deploy-backend:
+    name: Deploy Backend
+    needs: [setup, build-backend]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.setup.outputs.backend_services) }}
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Get environment config
+        id: config
+        run: |
+          ENV="${{ needs.setup.outputs.environment }}"
+          if [ "$ENV" == "prod" ]; then
+            echo "min_instances=1" >> $GITHUB_OUTPUT
+            echo "max_instances=10" >> $GITHUB_OUTPUT
+            echo "memory=1Gi" >> $GITHUB_OUTPUT
+            echo "cpu=2" >> $GITHUB_OUTPUT
+          else
+            echo "min_instances=0" >> $GITHUB_OUTPUT
+            echo "max_instances=3" >> $GITHUB_OUTPUT
+            echo "memory=512Mi" >> $GITHUB_OUTPUT
+            echo "cpu=1" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy to Cloud Run
+        run: |
+          SERVICE_NAME="${{ matrix.service }}-${{ needs.setup.outputs.environment }}"
+          IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.service }}:${{ github.sha }}"
+
+          gcloud run deploy $SERVICE_NAME \
+            --image $IMAGE \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8080 \
+            --cpu ${{ steps.config.outputs.cpu }} \
+            --memory ${{ steps.config.outputs.memory }} \
+            --min-instances ${{ steps.config.outputs.min_instances }} \
+            --max-instances ${{ steps.config.outputs.max_instances }} \
+            --timeout 300 \
+            --vpc-connector parkgolf-connector \
+            --vpc-egress private-ranges-only \
+            --set-env-vars "NODE_ENV=${{ needs.setup.outputs.environment }}" \
+            --set-env-vars "PORT=8080" \
+            --quiet
+
+      - name: Get Service URL
+        id: url
+        run: |
+          URL=$(gcloud run services describe ${{ matrix.service }}-${{ needs.setup.outputs.environment }} \
+            --region ${{ env.REGION }} \
+            --format 'value(status.url)')
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "Service URL: $URL"
+
+      - name: Health Check
+        run: |
+          URL="${{ steps.url.outputs.url }}"
+          echo "Checking health at $URL/health"
+
+          for i in {1..5}; do
+            if curl -sf "$URL/health" > /dev/null 2>&1; then
+              echo "✅ Health check passed"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+
+          echo "❌ Health check failed after 5 attempts"
+          exit 1
+
+  # ============================================================================
+  # Build and Deploy Frontend
+  # ============================================================================
+  deploy-frontend:
+    name: Deploy Frontend
+    needs: setup
+    if: needs.setup.outputs.deploy_frontend == 'true'
+    runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJson(needs.setup.outputs.frontend_apps) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Determine app path
+        id: path
+        run: |
+          if [ -d "services/${{ matrix.app }}" ]; then
+            echo "path=services/${{ matrix.app }}" >> $GITHUB_OUTPUT
+          else
+            echo "path=apps/frontend/${{ matrix.app }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get API URL
+        id: api
+        run: |
+          ENV="${{ needs.setup.outputs.environment }}"
+          if [ "${{ matrix.app }}" == "admin-dashboard" ]; then
+            API_SERVICE="admin-api"
+          else
+            API_SERVICE="user-api"
+          fi
+
+          # Get Cloud Run URL
+          API_URL=$(gcloud run services describe ${API_SERVICE}-${ENV} \
+            --region ${{ env.REGION }} \
+            --format 'value(status.url)' 2>/dev/null || echo "https://${API_SERVICE}-${ENV}.run.app")
+
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Install dependencies
+        working-directory: ${{ steps.path.outputs.path }}
+        run: npm ci
+
+      - name: Create environment file
+        working-directory: ${{ steps.path.outputs.path }}
+        run: |
+          cat > .env.production << EOF
+          VITE_API_URL=${{ steps.api.outputs.api_url }}
+          VITE_ENVIRONMENT=${{ needs.setup.outputs.environment }}
+          VITE_GA_TRACKING_ID=${{ secrets.GA_TRACKING_ID }}
+          EOF
+
+      - name: Build
+        working-directory: ${{ steps.path.outputs.path }}
+        run: npm run build
+
+      - name: Determine Firebase target
+        id: target
+        run: |
+          ENV="${{ needs.setup.outputs.environment }}"
+          APP="${{ matrix.app }}"
+
+          if [ "$ENV" == "prod" ]; then
+            if [ "$APP" == "admin-dashboard" ]; then
+              echo "target=parkgolf-admin" >> $GITHUB_OUTPUT
+            else
+              echo "target=parkgolf-user" >> $GITHUB_OUTPUT
+            fi
+          else
+            if [ "$APP" == "admin-dashboard" ]; then
+              echo "target=parkgolf-admin-dev" >> $GITHUB_OUTPUT
+            else
+              echo "target=parkgolf-user-dev" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Deploy to Firebase
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId: ${{ needs.setup.outputs.environment == 'prod' && 'live' || needs.setup.outputs.environment }}
+          projectId: ${{ env.PROJECT_ID }}
+          target: ${{ steps.target.outputs.target }}
+          entryPoint: ${{ steps.path.outputs.path }}
+
+  # ============================================================================
+  # Notify
+  # ============================================================================
+  notify:
+    name: Notify
+    needs: [setup, deploy-backend, deploy-frontend]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine status
+        id: status
+        run: |
+          if [ "${{ needs.deploy-backend.result }}" == "failure" ] || [ "${{ needs.deploy-frontend.result }}" == "failure" ]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.deploy-backend.result }}" == "success" ] || [ "${{ needs.deploy-frontend.result }}" == "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "emoji=✅" >> $GITHUB_OUTPUT
+          else
+            echo "status=skipped" >> $GITHUB_OUTPUT
+            echo "emoji=⏭️" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Slack notification
+        if: vars.SLACK_WEBHOOK_URL != ''
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              "text": "${{ steps.status.outputs.emoji }} Deployment to ${{ needs.setup.outputs.environment }}: ${{ steps.status.outputs.status }}",
+              "attachments": [{
+                "color": "${{ steps.status.outputs.status == 'success' && 'good' || steps.status.outputs.status == 'failure' && 'danger' || 'warning' }}",
+                "fields": [
+                  { "title": "Environment", "value": "${{ needs.setup.outputs.environment }}", "short": true },
+                  { "title": "Triggered by", "value": "${{ github.actor }}", "short": true },
+                  { "title": "Commit", "value": "${{ github.sha }}", "short": false },
+                  { "title": "Workflow", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false }
+                ]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
+
+      - name: Summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ needs.setup.outputs.environment }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend Status | ${{ needs.deploy-backend.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Status | ${{ needs.deploy-frontend.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Actor | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY

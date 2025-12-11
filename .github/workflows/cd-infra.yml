@@ -1,0 +1,353 @@
+# Infrastructure CD Pipeline (Terraform)
+# Manages infrastructure changes through GitOps workflow
+
+name: CD Infrastructure
+
+on:
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - 'infra/**'
+      - 'deploy/infrastructure-terraform/**'
+  push:
+    branches: [develop, main]
+    paths:
+      - 'infra/**'
+      - 'deploy/infrastructure-terraform/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      action:
+        description: 'Terraform action'
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+env:
+  TF_VERSION: '1.6.0'
+  TF_VAR_FILE: 'terraform.tfvars'
+  GCP_PROJECT: 'parkgolf-uniyous'
+  GCP_REGION: 'asia-northeast3'
+
+jobs:
+  # ============================================================================
+  # Detect Environment
+  # ============================================================================
+  detect-environment:
+    name: Detect Environment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      tf_dir: ${{ steps.dir.outputs.tf_dir }}
+    steps:
+      - name: Determine environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine Terraform directory
+        id: dir
+        run: |
+          ENV=${{ steps.env.outputs.environment }}
+          if [ -d "infra/environments/$ENV" ]; then
+            echo "tf_dir=infra/environments/$ENV" >> $GITHUB_OUTPUT
+          else
+            echo "tf_dir=deploy/infrastructure-terraform" >> $GITHUB_OUTPUT
+          fi
+
+  # ============================================================================
+  # Terraform Validation
+  # ============================================================================
+  terraform-validate:
+    name: Terraform Validate
+    needs: detect-environment
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ needs.detect-environment.outputs.tf_dir }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform Init
+        id: init
+        run: |
+          terraform init -backend=false
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+
+      - name: Comment PR - Validation
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const output = `### Terraform Validation Results
+
+            | Check | Status |
+            |-------|--------|
+            | Format | ${{ steps.fmt.outcome == 'success' && '✅ Pass' || '⚠️ Needs formatting' }} |
+            | Init | ${{ steps.init.outcome == 'success' && '✅ Pass' || '❌ Failed' }} |
+            | Validate | ${{ steps.validate.outcome == 'success' && '✅ Pass' || '❌ Failed' }} |
+
+            **Environment:** \`${{ needs.detect-environment.outputs.environment }}\`
+            **Directory:** \`${{ needs.detect-environment.outputs.tf_dir }}\`
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+  # ============================================================================
+  # Terraform Plan
+  # ============================================================================
+  terraform-plan:
+    name: Terraform Plan
+    needs: [detect-environment, terraform-validate]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.detect-environment.outputs.environment }}-plan
+    defaults:
+      run:
+        working-directory: ${{ needs.detect-environment.outputs.tf_dir }}
+    outputs:
+      plan_exitcode: ${{ steps.plan.outputs.exitcode }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Create tfvars from secrets
+        run: |
+          cat > terraform.tfvars << EOF
+          db_password        = "${{ secrets.DB_PASSWORD }}"
+          jwt_secret         = "${{ secrets.JWT_SECRET }}"
+          jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
+          alert_email        = "${{ secrets.ALERT_EMAIL }}"
+          EOF
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan \
+            -var="environment=${{ needs.detect-environment.outputs.environment }}" \
+            -no-color \
+            -detailed-exitcode \
+            -out=tfplan 2>&1 | tee plan_output.txt
+          echo "exitcode=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Upload Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ needs.detect-environment.outputs.environment }}
+          path: |
+            ${{ needs.detect-environment.outputs.tf_dir }}/tfplan
+            ${{ needs.detect-environment.outputs.tf_dir }}/plan_output.txt
+          retention-days: 7
+
+      - name: Comment PR - Plan
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const planOutput = fs.readFileSync('${{ needs.detect-environment.outputs.tf_dir }}/plan_output.txt', 'utf8');
+
+            // Truncate if too long
+            const maxLength = 60000;
+            const truncated = planOutput.length > maxLength
+              ? planOutput.substring(0, maxLength) + '\n\n... (truncated)'
+              : planOutput;
+
+            const exitCode = '${{ steps.plan.outputs.exitcode }}';
+            let statusEmoji = '✅';
+            let statusText = 'No changes detected';
+
+            if (exitCode === '1') {
+              statusEmoji = '❌';
+              statusText = 'Plan failed';
+            } else if (exitCode === '2') {
+              statusEmoji = '⚠️';
+              statusText = 'Changes detected';
+            }
+
+            const output = `### Terraform Plan ${statusEmoji}
+
+            **Status:** ${statusText}
+            **Environment:** \`${{ needs.detect-environment.outputs.environment }}\`
+
+            <details><summary>Show Plan Output</summary>
+
+            \`\`\`terraform
+            ${truncated}
+            \`\`\`
+
+            </details>
+
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+  # ============================================================================
+  # Terraform Apply
+  # ============================================================================
+  terraform-apply:
+    name: Terraform Apply
+    needs: [detect-environment, terraform-plan]
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
+    runs-on: ubuntu-latest
+    environment: ${{ needs.detect-environment.outputs.environment }}
+    defaults:
+      run:
+        working-directory: ${{ needs.detect-environment.outputs.tf_dir }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Download Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ needs.detect-environment.outputs.environment }}
+          path: ${{ needs.detect-environment.outputs.tf_dir }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+
+      - name: Notify Success
+        if: success()
+        run: |
+          echo "✅ Infrastructure applied successfully to ${{ needs.detect-environment.outputs.environment }}"
+
+      - name: Notify Failure
+        if: failure()
+        run: |
+          echo "❌ Infrastructure apply failed for ${{ needs.detect-environment.outputs.environment }}"
+
+  # ============================================================================
+  # Terraform Destroy (Manual Only)
+  # ============================================================================
+  terraform-destroy:
+    name: Terraform Destroy
+    needs: detect-environment
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+    runs-on: ubuntu-latest
+    environment: ${{ needs.detect-environment.outputs.environment }}-destroy
+    defaults:
+      run:
+        working-directory: ${{ needs.detect-environment.outputs.tf_dir }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Safety Check
+        if: needs.detect-environment.outputs.environment == 'prod'
+        run: |
+          echo "⚠️ DANGER: Destroying production infrastructure!"
+          echo "This action requires explicit approval."
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Create tfvars from secrets
+        run: |
+          cat > terraform.tfvars << EOF
+          db_password        = "${{ secrets.DB_PASSWORD }}"
+          jwt_secret         = "${{ secrets.JWT_SECRET }}"
+          jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
+          alert_email        = "${{ secrets.ALERT_EMAIL }}"
+          EOF
+
+      - name: Terraform Destroy
+        run: |
+          terraform destroy \
+            -var="environment=${{ needs.detect-environment.outputs.environment }}" \
+            -auto-approve
