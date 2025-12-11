@@ -176,12 +176,32 @@ jobs:
 
       - name: Create tfvars from secrets
         run: |
+          ENV="${{ needs.detect-environment.outputs.environment }}"
+
+          # Common secrets
           cat > terraform.tfvars << EOF
           db_password        = "${{ secrets.DB_PASSWORD }}"
           jwt_secret         = "${{ secrets.JWT_SECRET }}"
           jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
           alert_email        = "${{ secrets.ALERT_EMAIL }}"
           EOF
+
+          # Dev environment uses external database (Compute Engine PostgreSQL)
+          if [ "$ENV" == "dev" ]; then
+            cat >> terraform.tfvars << EOF
+          db_host            = "${{ secrets.DEV_DB_HOST }}"
+          db_username        = "${{ secrets.DEV_DB_USERNAME }}"
+          EOF
+          fi
+
+          # Prod environment additional variables
+          if [ "$ENV" == "prod" ]; then
+            cat >> terraform.tfvars << EOF
+          ops_email          = "${{ secrets.OPS_EMAIL }}"
+          slack_channel      = "${{ secrets.SLACK_CHANNEL }}"
+          slack_token        = "${{ secrets.SLACK_TOKEN }}"
+          EOF
+          fi
 
       - name: Terraform Plan
         id: plan
@@ -339,12 +359,32 @@ jobs:
 
       - name: Create tfvars from secrets
         run: |
+          ENV="${{ needs.detect-environment.outputs.environment }}"
+
+          # Common secrets
           cat > terraform.tfvars << EOF
           db_password        = "${{ secrets.DB_PASSWORD }}"
           jwt_secret         = "${{ secrets.JWT_SECRET }}"
           jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
           alert_email        = "${{ secrets.ALERT_EMAIL }}"
           EOF
+
+          # Dev environment uses external database
+          if [ "$ENV" == "dev" ]; then
+            cat >> terraform.tfvars << EOF
+          db_host            = "${{ secrets.DEV_DB_HOST }}"
+          db_username        = "${{ secrets.DEV_DB_USERNAME }}"
+          EOF
+          fi
+
+          # Prod environment additional variables
+          if [ "$ENV" == "prod" ]; then
+            cat >> terraform.tfvars << EOF
+          ops_email          = "${{ secrets.OPS_EMAIL }}"
+          slack_channel      = "${{ secrets.SLACK_CHANNEL }}"
+          slack_token        = "${{ secrets.SLACK_TOKEN }}"
+          EOF
+          fi
 
       - name: Terraform Destroy
         run: |

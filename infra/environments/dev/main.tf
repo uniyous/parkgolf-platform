@@ -126,30 +126,20 @@ module "networking" {
 }
 
 # ============================================================================
-# Database Module
+# External Database Configuration (Existing Compute Engine PostgreSQL)
 # ============================================================================
+# Dev environment uses existing PostgreSQL on Compute Engine in uniyous-319808 project
+# No new database resources are created - using external DB connection
 
-module "database" {
-  source = "../../modules/database"
-
-  provider_type    = local.provider_type
-  instance_name    = "parkgolf-db"
-  environment      = local.environment
-  region           = local.region
-  postgres_version = "15"
-  tier             = "micro"  # db-f1-micro (shared CPU, minimal cost)
-  storage_gb       = 10        # Minimal storage
-
-  databases       = local.databases
-  admin_username  = "parkgolf"
-  admin_password  = var.db_password
-
-  vpc_network         = module.networking.vpc_self_link
-  backup_enabled      = false  # No backup for dev (cost savings)
-  high_availability   = false  # No HA for dev
-  deletion_protection = false  # Allow deletion in dev
-
-  depends_on = [module.networking]
+locals {
+  # External database configuration
+  external_db = {
+    host     = var.db_host      # Compute Engine PostgreSQL IP
+    port     = 5432
+    username = var.db_username
+    password = var.db_password
+    # Database names: auth_db, course_db, booking_db, notify_db
+  }
 }
 
 # ============================================================================
@@ -234,19 +224,22 @@ module "services" {
   allow_unauthenticated = true
 
   env_vars = {
-    NODE_ENV = "development"
-    PORT     = tostring(each.value.port)
-    NATS_URL = module.messaging.nats_url
+    NODE_ENV     = "development"
+    PORT         = tostring(each.value.port)
+    NATS_URL     = module.messaging.nats_url
+    # External DB connection (Compute Engine PostgreSQL)
+    DB_HOST      = local.external_db.host
+    DB_PORT      = tostring(local.external_db.port)
+    DB_USERNAME  = local.external_db.username
   }
 
   secrets = {
-    DATABASE_URL = module.secrets.secret_references["db_password"]
+    DB_PASSWORD  = module.secrets.secret_references["db_password"]
     JWT_SECRET   = module.secrets.secret_references["jwt_secret"]
   }
 
   depends_on = [
     module.networking,
-    module.database,
     module.messaging,
     module.secrets
   ]
@@ -284,6 +277,17 @@ module "monitoring" {
 # ============================================================================
 # Variables
 # ============================================================================
+
+variable "db_host" {
+  type        = string
+  description = "External PostgreSQL host (Compute Engine IP in uniyous-319808)"
+}
+
+variable "db_username" {
+  type        = string
+  default     = "parkgolf"
+  description = "Database username"
+}
 
 variable "db_password" {
   type        = string
@@ -323,14 +327,14 @@ output "vpc_connector" {
   value       = module.networking.vpc_connector_name
 }
 
-output "database_instance" {
-  description = "Database instance name"
-  value       = module.database.instance_name
+output "database_host" {
+  description = "External database host (Compute Engine PostgreSQL)"
+  value       = local.external_db.host
 }
 
-output "database_ip" {
-  description = "Database private IP"
-  value       = module.database.private_ip
+output "database_port" {
+  description = "External database port"
+  value       = local.external_db.port
 }
 
 output "nats_url" {
