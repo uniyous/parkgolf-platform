@@ -215,6 +215,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Plan
+        if: steps.plan.outputs.exitcode == '0' || steps.plan.outputs.exitcode == '2'
         uses: actions/upload-artifact@v4
         with:
           name: tfplan-${{ needs.detect-environment.outputs.environment }}
@@ -222,6 +223,12 @@ jobs:
             ${{ needs.detect-environment.outputs.tf_dir }}/tfplan
             ${{ needs.detect-environment.outputs.tf_dir }}/plan_output.txt
           retention-days: 7
+
+      - name: Fail if plan failed
+        if: steps.plan.outputs.exitcode == '1'
+        run: |
+          echo "❌ Terraform plan failed"
+          exit 1
 
       - name: Comment PR - Plan
         if: github.event_name == 'pull_request'
@@ -278,9 +285,12 @@ jobs:
     name: Terraform Apply
     needs: [detect-environment, terraform-plan]
     if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
+      needs.terraform-plan.outputs.plan_exitcode != '1' &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
+      )
     runs-on: ubuntu-latest
     environment: ${{ needs.detect-environment.outputs.environment }}
     defaults:
@@ -305,6 +315,15 @@ jobs:
         with:
           name: tfplan-${{ needs.detect-environment.outputs.environment }}
           path: ${{ needs.detect-environment.outputs.tf_dir }}
+
+      - name: Verify Plan File
+        run: |
+          if [ ! -f "tfplan" ]; then
+            echo "❌ tfplan file not found!"
+            ls -la
+            exit 1
+          fi
+          echo "✅ tfplan file found"
 
       - name: Terraform Init
         run: terraform init
