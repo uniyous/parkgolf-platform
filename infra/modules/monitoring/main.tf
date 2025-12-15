@@ -107,8 +107,12 @@ resource "google_monitoring_notification_channel" "channels" {
     channel_name = each.value.config["channel"]
   } : {}
 
-  sensitive_labels {
-    auth_token = each.value.type == "slack" ? lookup(each.value.config, "auth_token", null) : null
+  # sensitive_labels only for slack type (email doesn't need it)
+  dynamic "sensitive_labels" {
+    for_each = each.value.type == "slack" ? [1] : []
+    content {
+      auth_token = lookup(each.value.config, "auth_token", "")
+    }
   }
 }
 
