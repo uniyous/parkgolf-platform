@@ -195,10 +195,10 @@ module "secrets" {
     jwt_refresh_secret = "JWT refresh token secret"
   }
 
-  service_accounts = [
-    for svc in keys(local.services) :
-    "${svc}-${local.environment}@${local.project_id}.iam.gserviceaccount.com"
-  ]
+  # Service accounts are not pre-created in dev environment
+  # Cloud Run services will use the default compute service account
+  # IAM bindings will be added after services are deployed
+  service_accounts = []
 }
 
 # ============================================================================
