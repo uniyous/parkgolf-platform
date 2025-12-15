@@ -311,6 +311,12 @@ module "monitoring" {
 # Variables
 # ============================================================================
 
+variable "environment" {
+  type        = string
+  default     = "prod"
+  description = "Environment name (passed from workflow, but defaults to prod)"
+}
+
 variable "db_password" {
   type        = string
   sensitive   = true

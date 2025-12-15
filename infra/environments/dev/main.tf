@@ -280,6 +280,12 @@ module "monitoring" {
 # Variables
 # ============================================================================
 
+variable "environment" {
+  type        = string
+  default     = "dev"
+  description = "Environment name (passed from workflow, but defaults to dev)"
+}
+
 variable "db_host" {
   type        = string
   description = "External PostgreSQL host (Compute Engine IP in uniyous-319808)"
