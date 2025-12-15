@@ -189,19 +189,21 @@ module "secrets" {
   project_id    = local.project_id
   environment   = local.environment
 
-  secrets = {
-    db_password = {
-      value       = var.db_password
-      description = "Database password"
-    }
-    jwt_secret = {
-      value       = var.jwt_secret
-      description = "JWT signing secret"
-    }
-    jwt_refresh_secret = {
-      value       = var.jwt_refresh_secret
-      description = "JWT refresh token secret"
-    }
+  # Secret names (non-sensitive, used for for_each)
+  secret_names = ["db_password", "jwt_secret", "jwt_refresh_secret"]
+
+  # Secret values (sensitive)
+  secret_values = {
+    db_password        = var.db_password
+    jwt_secret         = var.jwt_secret
+    jwt_refresh_secret = var.jwt_refresh_secret
+  }
+
+  # Secret descriptions
+  secret_descriptions = {
+    db_password        = "Database password"
+    jwt_secret         = "JWT signing secret"
+    jwt_refresh_secret = "JWT refresh token secret"
   }
 
   service_accounts = [

@@ -29,14 +29,23 @@ variable "environment" {
   description = "Environment: dev, staging, prod"
 }
 
-variable "secrets" {
-  type = map(object({
-    value       = string
-    description = optional(string, "")
-  }))
+variable "secret_names" {
+  type        = list(string)
+  default     = []
+  description = "List of secret names to create"
+}
+
+variable "secret_values" {
+  type        = map(string)
   sensitive   = true
   default     = {}
-  description = "Map of secrets to create"
+  description = "Map of secret values (sensitive)"
+}
+
+variable "secret_descriptions" {
+  type        = map(string)
+  default     = {}
+  description = "Map of secret descriptions"
 }
 
 variable "service_accounts" {
@@ -68,9 +77,14 @@ variable "azure_tenant_id" {
 # GCP Secret Manager
 # ============================================================================
 
+locals {
+  # Convert list to set for for_each (non-sensitive)
+  secret_names_set = var.provider_type == "gcp" ? toset(var.secret_names) : toset([])
+}
+
 resource "google_secret_manager_secret" "secrets" {
-  for_each  = var.provider_type == "gcp" ? var.secrets : {}
-  secret_id = "${each.key}-${var.environment}"
+  for_each  = local.secret_names_set
+  secret_id = "${each.value}-${var.environment}"
 
   labels = {
     environment = var.environment
@@ -82,22 +96,22 @@ resource "google_secret_manager_secret" "secrets" {
 }
 
 resource "google_secret_manager_secret_version" "versions" {
-  for_each    = var.provider_type == "gcp" ? var.secrets : {}
-  secret      = google_secret_manager_secret.secrets[each.key].id
-  secret_data = each.value.value
+  for_each    = local.secret_names_set
+  secret      = google_secret_manager_secret.secrets[each.value].id
+  secret_data = var.secret_values[each.value]
 }
 
 # Grant access to service accounts
 resource "google_secret_manager_secret_iam_member" "accessors" {
   for_each = var.provider_type == "gcp" ? {
-    for pair in setproduct(keys(var.secrets), var.service_accounts) :
+    for pair in setproduct(var.secret_names, var.service_accounts) :
     "${pair[0]}-${pair[1]}" => {
-      secret_id       = pair[0]
+      secret_name     = pair[0]
       service_account = pair[1]
     }
   } : {}
 
-  secret_id = google_secret_manager_secret.secrets[each.value.secret_id].id
+  secret_id = google_secret_manager_secret.secrets[each.value.secret_name].id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${each.value.service_account}"
 }
