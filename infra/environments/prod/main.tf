@@ -239,7 +239,7 @@ module "services" {
 
   env_vars = {
     NODE_ENV = "production"
-    PORT     = tostring(each.value.port)
+    # PORT is automatically set by Cloud Run, do not set it manually
     NATS_URL = module.messaging.nats_url
   }
 

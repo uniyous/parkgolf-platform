@@ -227,7 +227,7 @@ module "services" {
 
   env_vars = {
     NODE_ENV     = "development"
-    PORT         = tostring(each.value.port)
+    # PORT is automatically set by Cloud Run, do not set it manually
     NATS_URL     = module.messaging.nats_url
     # External DB connection (Compute Engine PostgreSQL)
     DB_HOST      = local.external_db.host
