@@ -1,0 +1,195 @@
+# Backend Services CD Pipeline
+# Builds, pushes, and deploys backend services to Cloud Run
+
+name: CD Services
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      services:
+        description: 'Services to deploy (comma-separated or "all")'
+        required: true
+        default: 'all'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: cd-services-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  REGISTRY: asia-northeast3-docker.pkg.dev
+  PROJECT_ID: parkgolf-uniyous
+  REPOSITORY: parkgolf
+  REGION: asia-northeast3
+
+jobs:
+  # ============================================================================
+  # Setup
+  # ============================================================================
+  setup:
+    name: Setup
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      services: ${{ steps.services.outputs.list }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine services to deploy
+        id: services
+        run: |
+          ALL_SERVICES='["auth-service","course-service","booking-service","notify-service","admin-api","user-api"]'
+
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            if [ "${{ github.event.inputs.services }}" == "all" ]; then
+              echo "list=$ALL_SERVICES" >> $GITHUB_OUTPUT
+            else
+              SERVICES=$(echo '${{ github.event.inputs.services }}' | jq -R 'split(",") | map(gsub("^\\s+|\\s+$";""))')
+              echo "list=$SERVICES" >> $GITHUB_OUTPUT
+            fi
+          else
+            # For push events, detect changed services
+            CHANGED_SERVICES=$(git diff --name-only HEAD~1 HEAD -- services/ | cut -d'/' -f2 | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            if [ "$CHANGED_SERVICES" == "[]" ]; then
+              echo "list=$ALL_SERVICES" >> $GITHUB_OUTPUT
+            else
+              echo "list=$CHANGED_SERVICES" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+  # ============================================================================
+  # Build and Push
+  # ============================================================================
+  build:
+    name: Build ${{ matrix.service }}
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.setup.outputs.services) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
+
+      - name: Set image tags
+        id: tags
+        run: |
+          ENV="${{ needs.setup.outputs.environment }}"
+          IMAGE_BASE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.service }}"
+          echo "sha_tag=${IMAGE_BASE}:${ENV}-${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "latest_tag=${IMAGE_BASE}:${ENV}-latest" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        run: |
+          docker build \
+            -t ${{ steps.tags.outputs.sha_tag }} \
+            -t ${{ steps.tags.outputs.latest_tag }} \
+            -f services/${{ matrix.service }}/Dockerfile \
+            --build-arg NODE_ENV=${{ needs.setup.outputs.environment == 'prod' && 'production' || 'development' }} \
+            services/${{ matrix.service }}
+
+          docker push ${{ steps.tags.outputs.sha_tag }}
+          docker push ${{ steps.tags.outputs.latest_tag }}
+
+  # ============================================================================
+  # Deploy to Cloud Run
+  # ============================================================================
+  deploy:
+    name: Deploy ${{ matrix.service }}
+    needs: [setup, build]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.setup.outputs.services) }}
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Set deployment variables
+        id: vars
+        run: |
+          ENV="${{ needs.setup.outputs.environment }}"
+          SERVICE_NAME="${{ matrix.service }}-${ENV}"
+          IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.service }}:${ENV}-${{ github.sha }}"
+
+          echo "service_name=${SERVICE_NAME}" >> $GITHUB_OUTPUT
+          echo "image=${IMAGE}" >> $GITHUB_OUTPUT
+
+          # Environment-specific settings
+          if [ "$ENV" == "prod" ]; then
+            echo "min_instances=1" >> $GITHUB_OUTPUT
+            echo "max_instances=10" >> $GITHUB_OUTPUT
+            echo "memory=1Gi" >> $GITHUB_OUTPUT
+            echo "cpu=2" >> $GITHUB_OUTPUT
+          else
+            echo "min_instances=0" >> $GITHUB_OUTPUT
+            echo "max_instances=2" >> $GITHUB_OUTPUT
+            echo "memory=512Mi" >> $GITHUB_OUTPUT
+            echo "cpu=1" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ steps.vars.outputs.service_name }} \
+            --image ${{ steps.vars.outputs.image }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --min-instances ${{ steps.vars.outputs.min_instances }} \
+            --max-instances ${{ steps.vars.outputs.max_instances }} \
+            --memory ${{ steps.vars.outputs.memory }} \
+            --cpu ${{ steps.vars.outputs.cpu }} \
+            --timeout 300 \
+            --set-env-vars "NODE_ENV=${{ needs.setup.outputs.environment == 'prod' && 'production' || 'development' }}"
+
+      - name: Get Service URL
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ steps.vars.outputs.service_name }} \
+            --region=${{ env.REGION }} \
+            --format='value(status.url)')
+          echo "### ${{ matrix.service }} deployed" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: ${{ needs.setup.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- URL: $SERVICE_URL" >> $GITHUB_STEP_SUMMARY

@@ -4,16 +4,6 @@
 name: CD Infrastructure
 
 on:
-  pull_request:
-    branches: [develop, main]
-    paths:
-      - 'infra/**'
-      - 'deploy/infrastructure-terraform/**'
-  push:
-    branches: [develop, main]
-    paths:
-      - 'infra/**'
-      - 'deploy/infrastructure-terraform/**'
   workflow_dispatch:
     inputs:
       environment:
@@ -73,11 +63,7 @@ jobs:
         id: dir
         run: |
           ENV=${{ steps.env.outputs.environment }}
-          if [ -d "infra/environments/$ENV" ]; then
-            echo "tf_dir=infra/environments/$ENV" >> $GITHUB_OUTPUT
-          else
-            echo "tf_dir=deploy/infrastructure-terraform" >> $GITHUB_OUTPUT
-          fi
+          echo "tf_dir=infra/environments/$ENV" >> $GITHUB_OUTPUT
 
   # ============================================================================
   # Terraform Validation

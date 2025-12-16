@@ -1,21 +1,19 @@
 # Unified CI Pipeline
-# Runs lint, test, and build checks for all changed applications
+# Runs lint, test, and build checks for apps and services
 
 name: CI Pipeline
 
 on:
-  pull_request:
-    branches: [develop, main]
-    paths:
-      - 'apps/**'
-      - 'services/**'
-      - 'docker/**'
-      - 'package*.json'
-  push:
-    branches: [develop]
-    paths:
-      - 'apps/**'
-      - 'services/**'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target to test'
+        required: true
+        type: choice
+        options:
+          - all
+          - apps
+          - services
 
 concurrency:
   group: ci-${{ github.head_ref || github.ref }}
@@ -26,225 +24,129 @@ env:
 
 jobs:
   # ============================================================================
-  # Detect Changes
+  # Setup
   # ============================================================================
-  detect-changes:
-    name: Detect Changes
+  setup:
+    name: Setup
     runs-on: ubuntu-latest
     outputs:
-      frontend: ${{ steps.changes.outputs.frontend }}
-      gateway: ${{ steps.changes.outputs.gateway }}
-      services: ${{ steps.changes.outputs.services }}
-      frontend_apps: ${{ steps.frontend-apps.outputs.apps }}
-      gateway_apps: ${{ steps.gateway-apps.outputs.apps }}
-      service_apps: ${{ steps.service-apps.outputs.apps }}
+      run_apps: ${{ steps.target.outputs.run_apps }}
+      run_services: ${{ steps.target.outputs.run_services }}
+      apps_list: ${{ steps.apps-list.outputs.list }}
+      services_list: ${{ steps.services-list.outputs.list }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Detect file changes
-        uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            frontend:
-              - 'services/admin-dashboard/**'
-              - 'services/user-webapp/**'
-              - 'apps/frontend/**'
-            gateway:
-              - 'services/admin-api/**'
-              - 'services/user-api/**'
-              - 'apps/gateway/**'
-            services:
-              - 'services/auth-service/**'
-              - 'services/course-service/**'
-              - 'services/booking-service/**'
-              - 'services/notify-service/**'
-              - 'services/search-service/**'
-              - 'services/ml-service/**'
-              - 'apps/services/**'
-
-      - name: Determine frontend apps
-        id: frontend-apps
+      - name: Determine targets
+        id: target
         run: |
-          APPS='[]'
-          if [ -d "services/admin-dashboard" ]; then
-            APPS=$(echo '["admin-dashboard","user-webapp"]' | jq -c)
-          elif [ -d "apps/frontend" ]; then
-            APPS=$(ls -d apps/frontend/*/ 2>/dev/null | xargs -n1 basename | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          TARGET="${{ github.event.inputs.target }}"
+          if [ "$TARGET" == "all" ] || [ "$TARGET" == "apps" ]; then
+            echo "run_apps=true" >> $GITHUB_OUTPUT
+          else
+            echo "run_apps=false" >> $GITHUB_OUTPUT
           fi
-          echo "apps=$APPS" >> $GITHUB_OUTPUT
+          if [ "$TARGET" == "all" ] || [ "$TARGET" == "services" ]; then
+            echo "run_services=true" >> $GITHUB_OUTPUT
+          else
+            echo "run_services=false" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Determine gateway apps
-        id: gateway-apps
+      - name: Determine apps list
+        id: apps-list
         run: |
-          APPS='[]'
-          if [ -d "services/admin-api" ]; then
-            APPS=$(echo '["admin-api","user-api"]' | jq -c)
-          elif [ -d "apps/gateway" ]; then
-            APPS=$(ls -d apps/gateway/*/ 2>/dev/null | xargs -n1 basename | jq -R -s -c 'split("\n") | map(select(. != ""))')
-          fi
-          echo "apps=$APPS" >> $GITHUB_OUTPUT
+          APPS=$(ls -d apps/*/ 2>/dev/null | xargs -n1 basename | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          echo "list=$APPS" >> $GITHUB_OUTPUT
 
-      - name: Determine service apps
-        id: service-apps
+      - name: Determine services list
+        id: services-list
         run: |
-          APPS='[]'
-          if [ -d "services/auth-service" ]; then
-            APPS=$(echo '["auth-service","course-service","booking-service","notify-service"]' | jq -c)
-          elif [ -d "apps/services" ]; then
-            APPS=$(ls -d apps/services/*/ 2>/dev/null | xargs -n1 basename | jq -R -s -c 'split("\n") | map(select(. != ""))')
-          fi
-          echo "apps=$APPS" >> $GITHUB_OUTPUT
+          SERVICES=$(ls -d services/*/ 2>/dev/null | xargs -n1 basename | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          echo "list=$SERVICES" >> $GITHUB_OUTPUT
 
   # ============================================================================
-  # Frontend CI
+  # Frontend Apps CI
   # ============================================================================
-  ci-frontend:
-    name: CI Frontend
-    needs: detect-changes
-    if: needs.detect-changes.outputs.frontend == 'true'
+  ci-apps:
+    name: CI Apps
+    needs: setup
+    if: needs.setup.outputs.run_apps == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        app: ${{ fromJson(needs.detect-changes.outputs.frontend_apps) }}
+        app: ${{ fromJson(needs.setup.outputs.apps_list) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Determine app path
-        id: path
-        run: |
-          if [ -d "services/${{ matrix.app }}" ]; then
-            echo "path=services/${{ matrix.app }}" >> $GITHUB_OUTPUT
-          else
-            echo "path=apps/frontend/${{ matrix.app }}" >> $GITHUB_OUTPUT
-          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: ${{ steps.path.outputs.path }}/package-lock.json
+          cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
 
       - name: Install dependencies
-        working-directory: ${{ steps.path.outputs.path }}
+        working-directory: apps/${{ matrix.app }}
         run: npm ci
 
       - name: Lint
-        working-directory: ${{ steps.path.outputs.path }}
+        working-directory: apps/${{ matrix.app }}
         run: npm run lint --if-present
 
       - name: Type check
-        working-directory: ${{ steps.path.outputs.path }}
+        working-directory: apps/${{ matrix.app }}
         run: npm run typecheck --if-present || npm run type-check --if-present || true
 
       - name: Test
-        working-directory: ${{ steps.path.outputs.path }}
+        working-directory: apps/${{ matrix.app }}
         run: npm test --if-present -- --passWithNoTests
 
       - name: Build
-        working-directory: ${{ steps.path.outputs.path }}
+        working-directory: apps/${{ matrix.app }}
         run: npm run build
         env:
           VITE_API_URL: https://api.example.com
 
   # ============================================================================
-  # Gateway/BFF CI
-  # ============================================================================
-  ci-gateway:
-    name: CI Gateway
-    needs: detect-changes
-    if: needs.detect-changes.outputs.gateway == 'true'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        app: ${{ fromJson(needs.detect-changes.outputs.gateway_apps) }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Determine app path
-        id: path
-        run: |
-          if [ -d "services/${{ matrix.app }}" ]; then
-            echo "path=services/${{ matrix.app }}" >> $GITHUB_OUTPUT
-          else
-            echo "path=apps/gateway/${{ matrix.app }}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: ${{ steps.path.outputs.path }}/package-lock.json
-
-      - name: Install dependencies
-        working-directory: ${{ steps.path.outputs.path }}
-        run: npm ci
-
-      - name: Lint
-        working-directory: ${{ steps.path.outputs.path }}
-        run: npm run lint --if-present
-
-      - name: Test
-        working-directory: ${{ steps.path.outputs.path }}
-        run: npm test --if-present -- --passWithNoTests
-
-      - name: Build
-        working-directory: ${{ steps.path.outputs.path }}
-        run: npm run build
-
-  # ============================================================================
-  # Microservices CI
+  # Backend Services CI
   # ============================================================================
   ci-services:
     name: CI Services
-    needs: detect-changes
-    if: needs.detect-changes.outputs.services == 'true'
+    needs: setup
+    if: needs.setup.outputs.run_services == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        app: ${{ fromJson(needs.detect-changes.outputs.service_apps) }}
+        service: ${{ fromJson(needs.setup.outputs.services_list) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Determine app path
-        id: path
-        run: |
-          if [ -d "services/${{ matrix.app }}" ]; then
-            echo "path=services/${{ matrix.app }}" >> $GITHUB_OUTPUT
-          else
-            echo "path=apps/services/${{ matrix.app }}" >> $GITHUB_OUTPUT
-          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: ${{ steps.path.outputs.path }}/package-lock.json
+          cache-dependency-path: services/${{ matrix.service }}/package-lock.json
 
       - name: Install dependencies
-        working-directory: ${{ steps.path.outputs.path }}
+        working-directory: services/${{ matrix.service }}
         run: npm ci
 
       - name: Lint
-        working-directory: ${{ steps.path.outputs.path }}
+        working-directory: services/${{ matrix.service }}
         run: npm run lint --if-present
 
       - name: Test
-        working-directory: ${{ steps.path.outputs.path }}
+        working-directory: services/${{ matrix.service }}
         run: npm test --if-present -- --passWithNoTests
 
       - name: Build
-        working-directory: ${{ steps.path.outputs.path }}
+        working-directory: services/${{ matrix.service }}
         run: npm run build
 
   # ============================================================================
@@ -280,14 +182,13 @@ jobs:
   # ============================================================================
   ci-status:
     name: CI Status
-    needs: [detect-changes, ci-frontend, ci-gateway, ci-services, security-scan]
+    needs: [setup, ci-apps, ci-services, security-scan]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Check CI Status
         run: |
-          if [[ "${{ needs.ci-frontend.result }}" == "failure" ]] || \
-             [[ "${{ needs.ci-gateway.result }}" == "failure" ]] || \
+          if [[ "${{ needs.ci-apps.result }}" == "failure" ]] || \
              [[ "${{ needs.ci-services.result }}" == "failure" ]]; then
             echo "CI failed"
             exit 1

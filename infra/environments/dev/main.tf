@@ -214,7 +214,9 @@ module "services" {
   environment   = local.environment
   region        = local.region
 
-  image = "asia-northeast3-docker.pkg.dev/${local.project_id}/parkgolf/${each.key}:dev-latest"
+  # Use placeholder image until actual images are built and pushed
+  # After CI/CD deploys real images, this will be updated automatically
+  image = "gcr.io/cloudrun/hello"
 
   cpu           = each.value.cpu
   memory        = each.value.memory
@@ -225,20 +227,14 @@ module "services" {
   vpc_connector         = module.networking.vpc_connector_id
   allow_unauthenticated = true
 
+  # Using placeholder image (gcr.io/cloudrun/hello), so minimal env vars
+  # After deploying real images via CI/CD, update with full config
   env_vars = {
-    NODE_ENV     = "development"
-    # PORT is automatically set by Cloud Run, do not set it manually
-    NATS_URL     = module.messaging.nats_url
-    # External DB connection (Compute Engine PostgreSQL)
-    DB_HOST      = local.external_db.host
-    DB_PORT      = tostring(local.external_db.port)
-    DB_USERNAME  = local.external_db.username
+    NODE_ENV = "development"
   }
 
-  secrets = {
-    DB_PASSWORD  = module.secrets.secret_references["db_password"]
-    JWT_SECRET   = module.secrets.secret_references["jwt_secret"]
-  }
+  # Secrets will be added after real images are deployed
+  secrets = {}
 
   depends_on = [
     module.networking,
