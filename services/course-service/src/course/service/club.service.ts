@@ -1,0 +1,377 @@
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
+import {
+  CreateClubDto,
+  UpdateClubDto,
+  ClubFilterDto,
+  ClubResponseDto,
+  ClubListResponseDto,
+} from '../dto/club.dto';
+
+@Injectable()
+export class ClubService {
+  private readonly logger = new Logger(ClubService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * 골프클럽 생성
+   */
+  async create(createClubDto: CreateClubDto): Promise<ClubResponseDto> {
+    try {
+      // 회사 존재 여부 확인
+      const company = await this.prisma.company.findUnique({
+        where: { id: createClubDto.companyId },
+      });
+
+      if (!company) {
+        throw new NotFoundException(`Company with ID ${createClubDto.companyId} not found`);
+      }
+
+      // 같은 회사 내에서 클럽명 중복 확인
+      const existingClub = await this.prisma.club.findFirst({
+        where: {
+          companyId: createClubDto.companyId,
+          name: createClubDto.name,
+        },
+      });
+
+      if (existingClub) {
+        throw new BadRequestException('Club with this name already exists in the company');
+      }
+
+      const club = await this.prisma.club.create({
+        data: {
+          ...createClubDto,
+          operatingHours: createClubDto.operatingHours ? JSON.parse(JSON.stringify(createClubDto.operatingHours)) : undefined,
+          seasonInfo: createClubDto.seasonInfo ? JSON.parse(JSON.stringify(createClubDto.seasonInfo)) : undefined,
+          facilities: createClubDto.facilities || [],
+        },
+        include: {
+          company: true,
+          courses: {
+            include: {
+              holes: true,
+            },
+          },
+        },
+      });
+
+      this.logger.log(`Club created: ${club.name} (ID: ${club.id})`);
+      return this.formatClubResponse(club);
+    } catch (error) {
+      this.logger.error(`Failed to create club: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * 골프클럽 목록 조회 (필터링, 페이징 지원)
+   */
+  async findAll(filters: ClubFilterDto): Promise<ClubListResponseDto> {
+    try {
+      const {
+        search,
+        location,
+        status,
+        minHoles,
+        maxHoles,
+        facilities,
+        sortBy = 'name',
+        sortOrder = 'asc',
+        page = 1,
+        limit = 20,
+      } = filters;
+
+      // Convert page and limit to numbers
+      const pageNum = parseInt(page.toString(), 10) || 1;
+      const limitNum = parseInt(limit.toString(), 10) || 20;
+
+      // 검색 조건 구성
+      const where: Prisma.ClubWhereInput = {
+        isActive: true,
+        ...(search && {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { location: { contains: search, mode: 'insensitive' } },
+            { address: { contains: search, mode: 'insensitive' } },
+          ],
+        }),
+        ...(location && { location: { contains: location, mode: 'insensitive' } }),
+        ...(status && { status }),
+        ...(minHoles && { totalHoles: { gte: minHoles } }),
+        ...(maxHoles && { totalHoles: { lte: maxHoles } }),
+        ...(facilities && facilities.length > 0 && {
+          facilities: { hasEvery: facilities },
+        }),
+      };
+
+      // 정렬 조건
+      const orderBy: Prisma.ClubOrderByWithRelationInput = {
+        [sortBy]: sortOrder,
+      };
+
+      // 총 개수 조회
+      const total = await this.prisma.club.count({ where });
+
+      // 페이징 계산
+      const skip = (pageNum - 1) * limitNum;
+      const totalPages = Math.ceil(total / limitNum);
+
+      // 데이터 조회
+      const clubs = await this.prisma.club.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limitNum,
+        include: {
+          company: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+            },
+          },
+          courses: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              subtitle: true,
+              par: true,
+              difficulty: true,
+              status: true,
+            },
+          },
+        },
+      });
+
+      const data = clubs.map(club => this.formatClubResponse(club));
+
+      return {
+        data,
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to fetch clubs: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * 골프클럽 상세 조회
+   */
+  async findOne(id: number): Promise<ClubResponseDto> {
+    try {
+      const club = await this.prisma.club.findUnique({
+        where: { id, isActive: true },
+        include: {
+          company: true,
+          courses: {
+            include: {
+              holes: {
+                include: {
+                  teeBoxes: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!club) {
+        throw new NotFoundException(`Club with ID ${id} not found`);
+      }
+
+      return this.formatClubResponse(club);
+    } catch (error) {
+      this.logger.error(`Failed to fetch club ${id}: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * 골프클럽 수정
+   */
+  async update(id: number, updateClubDto: UpdateClubDto): Promise<ClubResponseDto> {
+    try {
+      // 클럽 존재 여부 확인
+      const existingClub = await this.prisma.club.findUnique({
+        where: { id, isActive: true },
+      });
+
+      if (!existingClub) {
+        throw new NotFoundException(`Club with ID ${id} not found`);
+      }
+
+      // 회사 변경 시 존재 여부 확인
+      if (updateClubDto.companyId && updateClubDto.companyId !== existingClub.companyId) {
+        const company = await this.prisma.company.findUnique({
+          where: { id: updateClubDto.companyId },
+        });
+
+        if (!company) {
+          throw new NotFoundException(`Company with ID ${updateClubDto.companyId} not found`);
+        }
+      }
+
+      // 이름 변경 시 중복 확인
+      if (updateClubDto.name && updateClubDto.name !== existingClub.name) {
+        const companyId = updateClubDto.companyId || existingClub.companyId;
+        const duplicateClub = await this.prisma.club.findFirst({
+          where: {
+            companyId,
+            name: updateClubDto.name,
+            id: { not: id },
+          },
+        });
+
+        if (duplicateClub) {
+          throw new BadRequestException('Club with this name already exists in the company');
+        }
+      }
+
+      const club = await this.prisma.club.update({
+        where: { id },
+        data: {
+          ...updateClubDto,
+          operatingHours: updateClubDto.operatingHours ? JSON.parse(JSON.stringify(updateClubDto.operatingHours)) : undefined,
+          seasonInfo: updateClubDto.seasonInfo ? JSON.parse(JSON.stringify(updateClubDto.seasonInfo)) : undefined,
+        },
+        include: {
+          company: true,
+          courses: {
+            include: {
+              holes: true,
+            },
+          },
+        },
+      });
+
+      this.logger.log(`Club updated: ${club.name} (ID: ${club.id})`);
+      return this.formatClubResponse(club);
+    } catch (error) {
+      this.logger.error(`Failed to update club ${id}: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * 골프클럽 삭제 (soft delete)
+   */
+  async remove(id: number): Promise<void> {
+    try {
+      const club = await this.prisma.club.findUnique({
+        where: { id, isActive: true },
+      });
+
+      if (!club) {
+        throw new NotFoundException(`Club with ID ${id} not found`);
+      }
+
+      await this.prisma.club.update({
+        where: { id },
+        data: { isActive: false },
+      });
+
+      this.logger.log(`Club deleted: ${club.name} (ID: ${club.id})`);
+    } catch (error) {
+      this.logger.error(`Failed to delete club ${id}: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * 회사별 골프클럽 목록 조회
+   */
+  async findByCompany(companyId: number): Promise<ClubResponseDto[]> {
+    try {
+      const clubs = await this.prisma.club.findMany({
+        where: {
+          companyId,
+          isActive: true,
+        },
+        include: {
+          company: true,
+          courses: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              subtitle: true,
+              par: true,
+              difficulty: true,
+              status: true,
+            },
+          },
+        },
+        orderBy: { name: 'asc' },
+      });
+
+      return clubs.map(club => this.formatClubResponse(club));
+    } catch (error) {
+      this.logger.error(`Failed to fetch clubs for company ${companyId}: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * 골프클럽 통계 업데이트 (코스 추가/삭제 시 호출)
+   */
+  async updateStats(clubId: number): Promise<void> {
+    try {
+      const stats = await this.prisma.course.aggregate({
+        where: {
+          clubId,
+          isActive: true,
+        },
+        _count: { id: true },
+        _sum: { holeCount: true },
+      });
+
+      await this.prisma.club.update({
+        where: { id: clubId },
+        data: {
+          totalCourses: stats._count.id || 0,
+          totalHoles: stats._sum.holeCount || 0,
+        },
+      });
+
+      this.logger.log(`Club stats updated for ID: ${clubId}`);
+    } catch (error) {
+      this.logger.error(`Failed to update club stats ${clubId}: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * 골프클럽 응답 포맷팅
+   */
+  private formatClubResponse(club: any): ClubResponseDto {
+    return {
+      id: club.id,
+      name: club.name,
+      companyId: club.companyId,
+      location: club.location,
+      address: club.address,
+      phone: club.phone,
+      email: club.email,
+      website: club.website,
+      totalHoles: club.totalHoles,
+      totalCourses: club.totalCourses,
+      status: club.status,
+      operatingHours: club.operatingHours as any,
+      seasonInfo: club.seasonInfo as any,
+      facilities: club.facilities,
+      isActive: club.isActive,
+      createdAt: club.createdAt,
+      updatedAt: club.updatedAt,
+      company: club.company,
+      courses: club.courses,
+    };
+  }
+}

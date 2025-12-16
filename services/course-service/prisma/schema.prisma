@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id              Int           @id @default(autoincrement())
+  name            String
+  description     String?
+  address         String?
+  phoneNumber     String?       @map("phone_number")
+  email           String?       @unique
+  website         String?
+  isActive        Boolean       @default(true) @map("is_active")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  businessNumber  String?       @unique @map("business_number")
+  establishedDate DateTime?     @map("established_date")
+  logoUrl         String?       @map("logo_url")
+  status          CompanyStatus @default(ACTIVE)
+  courses         Course[]
+  clubs           Club[]
+
+  @@map("companies")
+}
+
+model Club {
+  id             Int        @id @default(autoincrement())
+  name           String
+  companyId      Int        @map("company_id")
+  location       String
+  address        String
+  phone          String
+  email          String?
+  website        String?
+  totalHoles     Int        @default(0) @map("total_holes")
+  totalCourses   Int        @default(0) @map("total_courses")
+  status         ClubStatus @default(ACTIVE)
+  operatingHours Json?      @map("operating_hours")
+  seasonInfo     Json?      @map("season_info")
+  facilities     String[]   @default([])
+  isActive       Boolean    @default(true) @map("is_active")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+  courses        Course[]
+  company        Company    @relation(fields: [companyId], references: [id])
+
+  @@map("clubs")
+}
+
+model Course {
+  id                Int                    @id @default(autoincrement())
+  name              String
+  code              String
+  subtitle          String?
+  description       String?
+  holeCount         Int                    @default(9) @map("hole_count")
+  par               Int                    @default(36)
+  totalDistance     Int?                   @map("total_distance")
+  difficulty        Int                    @default(3)
+  scenicRating      Int                    @default(3) @map("scenic_rating")
+  courseRating      Float?                 @map("course_rating")
+  slopeRating       Float?                 @map("slope_rating")
+  imageUrl          String?                @map("image_url")
+  status            CourseStatus           @default(ACTIVE)
+  clubId            Int                    @map("club_id")
+  companyId         Int                    @map("company_id")
+  isActive          Boolean                @default(true) @map("is_active")
+  createdAt         DateTime               @default(now()) @map("created_at")
+  updatedAt         DateTime               @updatedAt @map("updated_at")
+  course_time_slots CourseTimeSlot[]
+  weeklySchedules   CourseWeeklySchedule[]
+  club              Club                   @relation(fields: [clubId], references: [id])
+  company           Company                @relation(fields: [companyId], references: [id])
+  holes             Hole[]
+
+  @@map("courses")
+}
+
+model Hole {
+  id          Int      @id @default(autoincrement())
+  holeNumber  Int      @map("hole_number")
+  par         Int
+  distance    Int
+  handicap    Int
+  description String?
+  tips        String?
+  imageUrl    String?  @map("image_url")
+  courseId    Int      @map("course_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  course      Course   @relation(fields: [courseId], references: [id])
+  teeBoxes    TeeBox[]
+
+  @@unique([courseId, holeNumber])
+  @@map("holes")
+}
+
+model TeeBox {
+  id         Int         @id @default(autoincrement())
+  name       String
+  color      String
+  distance   Int
+  difficulty TeeBoxLevel @default(INTERMEDIATE)
+  holeId     Int         @map("hole_id")
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+  hole       Hole        @relation(fields: [holeId], references: [id])
+
+  @@map("tee_boxes")
+}
+
+model CourseTimeSlot {
+  id         Int      @id @default(autoincrement())
+  date       String
+  startTime  String   @map("start_time")
+  endTime    String   @map("end_time")
+  maxPlayers Int      @default(4) @map("max_players")
+  price      Decimal  @db.Decimal(10, 2)
+  courseId   Int      @map("course_id")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  courses    Course   @relation(fields: [courseId], references: [id])
+
+  @@unique([courseId, date, startTime, endTime])
+  @@map("course_time_slots")
+}
+
+model CourseWeeklySchedule {
+  id        Int      @id @default(autoincrement())
+  dayOfWeek Int      @map("day_of_week")
+  openTime  String   @map("open_time")
+  closeTime String   @map("close_time")
+  courseId  Int      @map("course_id")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  course    Course   @relation(fields: [courseId], references: [id])
+
+  @@unique([courseId, dayOfWeek])
+  @@map("course_weekly_schedules")
+}
+
+enum CourseStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum CompanyStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum ClubStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  SEASONAL_CLOSED
+}
+
+enum TeeBoxLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  PROFESSIONAL
+}

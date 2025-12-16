@@ -1,0 +1,43 @@
+{
+  "name": "parkgolf-user-webapp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3001",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "preview": "vite preview",
+    "start": "vite --port 3001"
+  },
+  "dependencies": {
+    "@reduxjs/toolkit": "^2.8.2",
+    "axios": "^1.10.0",
+    "clsx": "^2.1.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-redux": "^9.2.0",
+    "react-router-dom": "^7.6.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.28.0",
+    "@tailwindcss/vite": "^4.1.8",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.5",
+    "@vitejs/plugin-react-swc": "^3.10.1",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.28.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.2.0",
+    "postcss": "^8.4.47",
+    "prettier": "^3.5.3",
+    "tailwindcss": "^4.1.8",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.33.1",
+    "vite": "^6.3.5"
+  }
+}

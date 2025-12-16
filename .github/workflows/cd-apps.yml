@@ -1,0 +1,196 @@
+# Frontend Apps CD Pipeline
+# Builds and deploys frontend applications to Firebase Hosting
+
+name: CD Apps
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      apps:
+        description: 'Apps to deploy (comma-separated or "all")'
+        required: true
+        default: 'all'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: cd-apps-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  PROJECT_ID: parkgolf-uniyous
+
+jobs:
+  # ============================================================================
+  # Setup
+  # ============================================================================
+  setup:
+    name: Setup
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      apps: ${{ steps.apps.outputs.list }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine apps to deploy
+        id: apps
+        run: |
+          ALL_APPS='["admin-dashboard","user-webapp"]'
+
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            if [ "${{ github.event.inputs.apps }}" == "all" ]; then
+              echo "list=$ALL_APPS" >> $GITHUB_OUTPUT
+            else
+              APPS=$(echo '${{ github.event.inputs.apps }}' | jq -R 'split(",") | map(gsub("^\\s+|\\s+$";""))')
+              echo "list=$APPS" >> $GITHUB_OUTPUT
+            fi
+          else
+            # For push events, detect changed apps
+            CHANGED_APPS=$(git diff --name-only HEAD~1 HEAD -- apps/ | cut -d'/' -f2 | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            if [ "$CHANGED_APPS" == "[]" ]; then
+              echo "list=$ALL_APPS" >> $GITHUB_OUTPUT
+            else
+              echo "list=$CHANGED_APPS" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+  # ============================================================================
+  # Build
+  # ============================================================================
+  build:
+    name: Build ${{ matrix.app }}
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJson(needs.setup.outputs.apps) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/${{ matrix.app }}
+        run: npm ci
+
+      - name: Set environment variables
+        id: env-vars
+        run: |
+          ENV="${{ needs.setup.outputs.environment }}"
+
+          if [ "$ENV" == "prod" ]; then
+            echo "api_url=https://api.parkgolf.app" >> $GITHUB_OUTPUT
+          elif [ "$ENV" == "staging" ]; then
+            echo "api_url=https://staging-api.parkgolf.app" >> $GITHUB_OUTPUT
+          else
+            echo "api_url=https://dev-api.parkgolf.app" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build
+        working-directory: apps/${{ matrix.app }}
+        env:
+          VITE_API_URL: ${{ steps.env-vars.outputs.api_url }}
+          VITE_ENV: ${{ needs.setup.outputs.environment }}
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-${{ needs.setup.outputs.environment }}
+          path: apps/${{ matrix.app }}/dist
+          retention-days: 7
+
+  # ============================================================================
+  # Deploy to Firebase Hosting
+  # ============================================================================
+  deploy:
+    name: Deploy ${{ matrix.app }}
+    needs: [setup, build]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJson(needs.setup.outputs.apps) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.app }}-${{ needs.setup.outputs.environment }}
+          path: apps/${{ matrix.app }}/dist
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set Firebase project target
+        id: target
+        run: |
+          ENV="${{ needs.setup.outputs.environment }}"
+          APP="${{ matrix.app }}"
+
+          # Map app to Firebase hosting site
+          if [ "$APP" == "admin-dashboard" ]; then
+            SITE="parkgolf-admin"
+          else
+            SITE="parkgolf-user"
+          fi
+
+          # Add environment suffix for non-prod
+          if [ "$ENV" != "prod" ]; then
+            SITE="${SITE}-${ENV}"
+          fi
+
+          echo "site=${SITE}" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.GCP_SA_KEY }}
+          projectId: ${{ env.PROJECT_ID }}
+          target: ${{ steps.target.outputs.site }}
+          channelId: live
+        env:
+          FIREBASE_CLI_EXPERIMENTS: webframeworks
+
+      - name: Output deployment URL
+        run: |
+          echo "### ${{ matrix.app }} deployed" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: ${{ needs.setup.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Site: ${{ steps.target.outputs.site }}" >> $GITHUB_STEP_SUMMARY

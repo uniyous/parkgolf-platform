@@ -1,0 +1,15 @@
+# Development Environment Variables
+# Copy this file to terraform.tfvars and fill in the values
+# NEVER commit terraform.tfvars to version control
+
+# External Database (Compute Engine PostgreSQL in uniyous-319808)
+db_host            = "10.x.x.x"  # Compute Engine internal IP
+db_username        = "parkgolf"
+db_password        = "your-secure-db-password"
+
+# JWT Configuration
+jwt_secret         = "your-jwt-secret-key-min-32-chars"
+jwt_refresh_secret = "your-jwt-refresh-secret-min-32-chars"
+
+# Monitoring
+alert_email        = "dev-team@yourcompany.com"

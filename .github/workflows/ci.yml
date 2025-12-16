@@ -1,0 +1,196 @@
+# Unified CI Pipeline
+# Runs lint, test, and build checks for apps and services
+
+name: CI Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target to test'
+        required: true
+        type: choice
+        options:
+          - all
+          - apps
+          - services
+
+concurrency:
+  group: ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ============================================================================
+  # Setup
+  # ============================================================================
+  setup:
+    name: Setup
+    runs-on: ubuntu-latest
+    outputs:
+      run_apps: ${{ steps.target.outputs.run_apps }}
+      run_services: ${{ steps.target.outputs.run_services }}
+      apps_list: ${{ steps.apps-list.outputs.list }}
+      services_list: ${{ steps.services-list.outputs.list }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine targets
+        id: target
+        run: |
+          TARGET="${{ github.event.inputs.target }}"
+          if [ "$TARGET" == "all" ] || [ "$TARGET" == "apps" ]; then
+            echo "run_apps=true" >> $GITHUB_OUTPUT
+          else
+            echo "run_apps=false" >> $GITHUB_OUTPUT
+          fi
+          if [ "$TARGET" == "all" ] || [ "$TARGET" == "services" ]; then
+            echo "run_services=true" >> $GITHUB_OUTPUT
+          else
+            echo "run_services=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine apps list
+        id: apps-list
+        run: |
+          APPS=$(ls -d apps/*/ 2>/dev/null | xargs -n1 basename | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          echo "list=$APPS" >> $GITHUB_OUTPUT
+
+      - name: Determine services list
+        id: services-list
+        run: |
+          SERVICES=$(ls -d services/*/ 2>/dev/null | xargs -n1 basename | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          echo "list=$SERVICES" >> $GITHUB_OUTPUT
+
+  # ============================================================================
+  # Frontend Apps CI
+  # ============================================================================
+  ci-apps:
+    name: CI Apps
+    needs: setup
+    if: needs.setup.outputs.run_apps == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJson(needs.setup.outputs.apps_list) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/${{ matrix.app }}
+        run: npm ci
+
+      - name: Lint
+        working-directory: apps/${{ matrix.app }}
+        run: npm run lint --if-present
+
+      - name: Type check
+        working-directory: apps/${{ matrix.app }}
+        run: npm run typecheck --if-present || npm run type-check --if-present || true
+
+      - name: Test
+        working-directory: apps/${{ matrix.app }}
+        run: npm test --if-present -- --passWithNoTests
+
+      - name: Build
+        working-directory: apps/${{ matrix.app }}
+        run: npm run build
+        env:
+          VITE_API_URL: https://api.example.com
+
+  # ============================================================================
+  # Backend Services CI
+  # ============================================================================
+  ci-services:
+    name: CI Services
+    needs: setup
+    if: needs.setup.outputs.run_services == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.setup.outputs.services_list) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: services/${{ matrix.service }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: services/${{ matrix.service }}
+        run: npm ci
+
+      - name: Lint
+        working-directory: services/${{ matrix.service }}
+        run: npm run lint --if-present
+
+      - name: Test
+        working-directory: services/${{ matrix.service }}
+        run: npm test --if-present -- --passWithNoTests
+
+      - name: Build
+        working-directory: services/${{ matrix.service }}
+        run: npm run build
+
+  # ============================================================================
+  # Security Scan
+  # ============================================================================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # ============================================================================
+  # CI Status Check
+  # ============================================================================
+  ci-status:
+    name: CI Status
+    needs: [setup, ci-apps, ci-services, security-scan]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check CI Status
+        run: |
+          if [[ "${{ needs.ci-apps.result }}" == "failure" ]] || \
+             [[ "${{ needs.ci-services.result }}" == "failure" ]]; then
+            echo "CI failed"
+            exit 1
+          fi
+          echo "CI passed"
