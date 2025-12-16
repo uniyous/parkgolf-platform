@@ -65,10 +65,15 @@ jobs:
           ALL_SERVICES='["auth-service","course-service","booking-service","notify-service","admin-api","user-api"]'
 
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            if [ "${{ github.event.inputs.services }}" == "all" ]; then
+            INPUT_SERVICES="${{ github.event.inputs.services }}"
+            # Remove quotes and trim whitespace
+            INPUT_SERVICES=$(echo "$INPUT_SERVICES" | tr -d '"' | tr -d "'" | xargs)
+
+            if [ "$INPUT_SERVICES" == "all" ]; then
               echo "list=$ALL_SERVICES" >> $GITHUB_OUTPUT
             else
-              SERVICES=$(echo '${{ github.event.inputs.services }}' | jq -R 'split(",") | map(gsub("^\\s+|\\s+$";""))')
+              # Split by comma, trim whitespace, and format as JSON array
+              SERVICES=$(echo "$INPUT_SERVICES" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | jq -R -s -c 'split("\n") | map(select(length > 0))')
               echo "list=$SERVICES" >> $GITHUB_OUTPUT
             fi
           else
