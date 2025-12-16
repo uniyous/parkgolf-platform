@@ -370,6 +370,7 @@ dev/
 *.bak
 *.backup
 *.old
+*.old.*
 *.orig
 
 # Archive files
@@ -572,6 +573,10 @@ services/*/.idea/
 services/*/.vscode/
 services/*/.DS_Store
 services/*/Thumbs.db
+apps/*/.idea/
+apps/*/.vscode/
+apps/*/.DS_Store
+apps/*/Thumbs.db
 
 # Docker and deployment
 services/*/.dockerignore
