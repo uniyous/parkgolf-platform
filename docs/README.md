@@ -6,25 +6,28 @@
 ## 폴더 구조
 ```
 docs/
-├── README.md           # 이 파일
-├── ARCHITECTURE.md     # 시스템 아키텍처 문서
-└── ROADMAP.md         # 개발 로드맵
+├── README.md               # 이 파일
+├── ARCHITECTURE.md         # 시스템 아키텍처 문서
+├── CICD_GUIDE.md           # CI/CD 파이프라인 가이드
+├── GCP_INFRASTRUCTURE_DETAIL.md  # GCP 인프라 상세
+└── ROADMAP.md              # 개발 로드맵
 ```
 
-## 사용 방법
+## 문서 안내
 
-### 새 작업 시작 시:
-1. AI 도구에게 요청: "`docs` 폴더의 문서들을 분석해주세요"
-2. 또는 특정 파일: "`docs/ARCHITECTURE.md` 파일을 읽어주세요"
-
-### 권장 문서:
-- **ARCHITECTURE.md**: 시스템 구조, 기술 스택, 서비스 관계
-- **ROADMAP.md**: 현재 진행 상황, 다음 작업
+| 문서 | 설명 | 언제 참조? |
+|------|------|-----------|
+| **ARCHITECTURE.md** | 시스템 구조, 기술 스택, 서비스 관계 | 시스템 이해, 설계 |
+| **CICD_GUIDE.md** | GitHub Actions 워크플로우, 배포 방법 | 배포 작업 |
+| **GCP_INFRASTRUCTURE_DETAIL.md** | GCP 리소스 상세 구성 | 인프라 관리 |
+| **ROADMAP.md** | 개발 진행 상황, 다음 작업 | 진행 상황 확인 |
 
 ## 관련 폴더
-- `deploy/`: 배포 관련 문서 및 스크립트
-- `docker/`: Docker 설정 파일
-- `scripts/`: 개발 유틸리티 스크립트
+- `infra/`: Terraform 인프라 코드
+- `services/`: 백엔드 서비스
+- `apps/`: 프론트엔드 앱
+- `.github/workflows/`: CI/CD 워크플로우
+- `.claude/skills/`: Claude Code Skills
 
 ## 업데이트 관리
 

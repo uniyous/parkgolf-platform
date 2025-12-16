@@ -225,7 +225,8 @@ module "services" {
   environment   = local.environment
   region        = local.region
 
-  image = "asia-northeast3-docker.pkg.dev/${local.project_id}/parkgolf/${each.key}:prod-latest"
+  # Use placeholder image - actual images deployed by CD Services workflow
+  image = "gcr.io/cloudrun/hello"
 
   cpu           = each.value.cpu
   memory        = each.value.memory
