@@ -67,6 +67,12 @@ variable "vpc_connector_cidr" {
   description = "VPC connector CIDR (GCP)"
 }
 
+variable "enable_private_service_connection" {
+  type        = bool
+  default     = true
+  description = "Enable Private Service Connection for Cloud SQL (GCP)"
+}
+
 # Azure specific
 variable "azure_resource_group" {
   type        = string
@@ -152,7 +158,7 @@ resource "google_compute_router_nat" "nat" {
 
 # Private Service Connection (for Cloud SQL)
 resource "google_compute_global_address" "private_ip_range" {
-  count         = var.provider_type == "gcp" ? 1 : 0
+  count         = var.provider_type == "gcp" && var.enable_private_service_connection ? 1 : 0
   name          = "${var.network_name}-private-ip-${var.environment}"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
@@ -161,7 +167,7 @@ resource "google_compute_global_address" "private_ip_range" {
 }
 
 resource "google_service_networking_connection" "private_vpc_connection" {
-  count                   = var.provider_type == "gcp" ? 1 : 0
+  count                   = var.provider_type == "gcp" && var.enable_private_service_connection ? 1 : 0
   network                 = google_compute_network.vpc[0].id
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.private_ip_range[0].name]
@@ -294,5 +300,5 @@ output "vpc_connector_name" {
 
 output "private_vpc_connection" {
   description = "Private VPC connection for Cloud SQL (GCP)"
-  value       = var.provider_type == "gcp" ? google_service_networking_connection.private_vpc_connection[0].id : null
+  value       = var.provider_type == "gcp" && var.enable_private_service_connection ? google_service_networking_connection.private_vpc_connection[0].id : null
 }
