@@ -176,79 +176,27 @@ jobs:
             echo "cpu=1" >> $GITHUB_OUTPUT
           fi
 
-      - name: Set service-specific environment variables
-        id: service_env
-        run: |
-          SERVICE="${{ matrix.service }}"
-          ENV="${{ needs.setup.outputs.environment }}"
-
-          # Convert service name to uppercase for secret lookup (e.g., auth-service -> AUTH_SERVICE)
-          SERVICE_UPPER=$(echo "$SERVICE" | tr '[:lower:]-' '[:upper:]_')
-
-          # Set service-specific DATABASE_URL secret name
-          echo "db_secret_name=DATABASE_URL_${SERVICE_UPPER}" >> $GITHUB_OUTPUT
-
-          # Set Cloud Run internal URLs for BFF services
-          if [ "$ENV" == "prod" ]; then
-            AUTH_URL="https://auth-service-prod-xxxxxxxxxx-an.a.run.app"
-            COURSE_URL="https://course-service-prod-xxxxxxxxxx-an.a.run.app"
-            BOOKING_URL="https://booking-service-prod-xxxxxxxxxx-an.a.run.app"
-            NOTIFY_URL="https://notify-service-prod-xxxxxxxxxx-an.a.run.app"
-          else
-            AUTH_URL="https://auth-service-dev-xxxxxxxxxx-an.a.run.app"
-            COURSE_URL="https://course-service-dev-xxxxxxxxxx-an.a.run.app"
-            BOOKING_URL="https://booking-service-dev-xxxxxxxxxx-an.a.run.app"
-            NOTIFY_URL="https://notify-service-dev-xxxxxxxxxx-an.a.run.app"
-          fi
-
-          echo "auth_url=${AUTH_URL}" >> $GITHUB_OUTPUT
-          echo "course_url=${COURSE_URL}" >> $GITHUB_OUTPUT
-          echo "booking_url=${BOOKING_URL}" >> $GITHUB_OUTPUT
-          echo "notify_url=${NOTIFY_URL}" >> $GITHUB_OUTPUT
-
       - name: Deploy to Cloud Run
         env:
-          # Service-specific DATABASE_URL secrets
+          # Service-specific DATABASE_URL secrets (for services with Prisma)
           DATABASE_URL_AUTH_SERVICE: ${{ secrets.DATABASE_URL_AUTH_SERVICE }}
           DATABASE_URL_COURSE_SERVICE: ${{ secrets.DATABASE_URL_COURSE_SERVICE }}
           DATABASE_URL_BOOKING_SERVICE: ${{ secrets.DATABASE_URL_BOOKING_SERVICE }}
           DATABASE_URL_NOTIFY_SERVICE: ${{ secrets.DATABASE_URL_NOTIFY_SERVICE }}
-          DATABASE_URL_ADMIN_API: ${{ secrets.DATABASE_URL_ADMIN_API }}
-          DATABASE_URL_USER_API: ${{ secrets.DATABASE_URL_USER_API }}
         run: |
           SERVICE="${{ matrix.service }}"
           SERVICE_UPPER=$(echo "$SERVICE" | tr '[:lower:]-' '[:upper:]_')
 
-          # Get service-specific DATABASE_URL
-          DB_URL_VAR="DATABASE_URL_${SERVICE_UPPER}"
-          DB_URL="${!DB_URL_VAR}"
-
-          # Build env vars string
+          # Build env vars string (required)
           ENV_VARS="NODE_ENV=${{ needs.setup.outputs.environment == 'prod' && 'production' || 'development' }}"
           ENV_VARS="${ENV_VARS},JWT_SECRET=${{ secrets.JWT_SECRET }}"
-          ENV_VARS="${ENV_VARS},JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN || '7d' }}"
-          ENV_VARS="${ENV_VARS},JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}"
-          ENV_VARS="${ENV_VARS},JWT_REFRESH_EXPIRES_IN=${{ secrets.JWT_REFRESH_EXPIRES_IN || '30d' }}"
-
-          # Add DATABASE_URL if available
-          if [ -n "$DB_URL" ]; then
-            ENV_VARS="${ENV_VARS},DATABASE_URL=${DB_URL}"
-          fi
-
-          # Add NATS_URL (required)
           ENV_VARS="${ENV_VARS},NATS_URL=${{ secrets.NATS_URL }}"
 
-          # Add REDIS_URL if available
-          if [ -n "${{ secrets.REDIS_URL }}" ]; then
-            ENV_VARS="${ENV_VARS},REDIS_URL=${{ secrets.REDIS_URL }}"
-          fi
-
-          # Add service URLs for BFF services (admin-api, user-api)
-          if [ "$SERVICE" == "admin-api" ] || [ "$SERVICE" == "user-api" ]; then
-            ENV_VARS="${ENV_VARS},AUTH_SERVICE_URL=${{ steps.service_env.outputs.auth_url }}"
-            ENV_VARS="${ENV_VARS},COURSE_SERVICE_URL=${{ steps.service_env.outputs.course_url }}"
-            ENV_VARS="${ENV_VARS},BOOKING_SERVICE_URL=${{ steps.service_env.outputs.booking_url }}"
-            ENV_VARS="${ENV_VARS},NOTIFY_SERVICE_URL=${{ steps.service_env.outputs.notify_url }}"
+          # Add DATABASE_URL only for services with Prisma (not admin-api, user-api)
+          if [ "$SERVICE" != "admin-api" ] && [ "$SERVICE" != "user-api" ]; then
+            DB_URL_VAR="DATABASE_URL_${SERVICE_UPPER}"
+            DB_URL="${!DB_URL_VAR}"
+            ENV_VARS="${ENV_VARS},DATABASE_URL=${DB_URL}"
           fi
 
           gcloud run deploy ${{ steps.vars.outputs.service_name }} \

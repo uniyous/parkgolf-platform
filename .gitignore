@@ -26,6 +26,7 @@ lerna-debug.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env.development
 .env.*.local
 *.env
 !.env.example
@@ -554,6 +555,7 @@ services/*/.parcel-cache/
 # Environment and logs
 services/*/.env
 services/*/.env.local
+services/*/.env.development
 services/*/.env.development.local
 services/*/.env.test.local
 services/*/.env.production.local
