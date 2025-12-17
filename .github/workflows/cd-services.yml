@@ -177,7 +177,29 @@ jobs:
           fi
 
       - name: Deploy to Cloud Run
+        env:
+          # Service-specific DATABASE_URL secrets (for services with Prisma)
+          DATABASE_URL_AUTH_SERVICE: ${{ secrets.DATABASE_URL_AUTH_SERVICE }}
+          DATABASE_URL_COURSE_SERVICE: ${{ secrets.DATABASE_URL_COURSE_SERVICE }}
+          DATABASE_URL_BOOKING_SERVICE: ${{ secrets.DATABASE_URL_BOOKING_SERVICE }}
+          DATABASE_URL_NOTIFY_SERVICE: ${{ secrets.DATABASE_URL_NOTIFY_SERVICE }}
         run: |
+          SERVICE="${{ matrix.service }}"
+          SERVICE_UPPER=$(echo "$SERVICE" | tr '[:lower:]-' '[:upper:]_')
+
+          # Build env vars string (required)
+          ENV_VARS="NODE_ENV=${{ needs.setup.outputs.environment == 'prod' && 'production' || 'development' }}"
+          ENV_VARS="${ENV_VARS},JWT_SECRET=${{ secrets.JWT_SECRET }}"
+          ENV_VARS="${ENV_VARS},JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}"
+          ENV_VARS="${ENV_VARS},NATS_URL=${{ secrets.NATS_URL }}"
+
+          # Add DATABASE_URL only for services with Prisma (not admin-api, user-api)
+          if [ "$SERVICE" != "admin-api" ] && [ "$SERVICE" != "user-api" ]; then
+            DB_URL_VAR="DATABASE_URL_${SERVICE_UPPER}"
+            DB_URL="${!DB_URL_VAR}"
+            ENV_VARS="${ENV_VARS},DATABASE_URL=${DB_URL}"
+          fi
+
           gcloud run deploy ${{ steps.vars.outputs.service_name }} \
             --image ${{ steps.vars.outputs.image }} \
             --region ${{ env.REGION }} \
@@ -188,7 +210,7 @@ jobs:
             --memory ${{ steps.vars.outputs.memory }} \
             --cpu ${{ steps.vars.outputs.cpu }} \
             --timeout 300 \
-            --set-env-vars "NODE_ENV=${{ needs.setup.outputs.environment == 'prod' && 'production' || 'development' }}"
+            --set-env-vars "${ENV_VARS}"
 
       - name: Get Service URL
         run: |
