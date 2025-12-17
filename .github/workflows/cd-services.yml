@@ -190,6 +190,7 @@ jobs:
           # Build env vars string (required)
           ENV_VARS="NODE_ENV=${{ needs.setup.outputs.environment == 'prod' && 'production' || 'development' }}"
           ENV_VARS="${ENV_VARS},JWT_SECRET=${{ secrets.JWT_SECRET }}"
+          ENV_VARS="${ENV_VARS},JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}"
           ENV_VARS="${ENV_VARS},NATS_URL=${{ secrets.NATS_URL }}"
 
           # Add DATABASE_URL only for services with Prisma (not admin-api, user-api)
