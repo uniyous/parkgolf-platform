@@ -219,7 +219,7 @@ jobs:
             --cpu ${{ steps.vars.outputs.cpu }} \
             --timeout 300 \
             --vpc-connector "${VPC_CONNECTOR}" \
-            --vpc-egress private-ranges-only \
+            --vpc-egress all-traffic \
             --set-env-vars "${ENV_VARS}"
 
       - name: Get Service URL
