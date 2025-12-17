@@ -197,6 +197,10 @@ jobs:
           if [ "$SERVICE" != "admin-api" ] && [ "$SERVICE" != "user-api" ]; then
             DB_URL_VAR="DATABASE_URL_${SERVICE_UPPER}"
             DB_URL="${!DB_URL_VAR}"
+            # Debug: Log DATABASE_URL (masked password)
+            echo "Service: $SERVICE"
+            echo "DB_URL_VAR: $DB_URL_VAR"
+            echo "DATABASE_URL: $(echo "$DB_URL" | sed 's/:[^@]*@/:****@/')"
             ENV_VARS="${ENV_VARS},DATABASE_URL=${DB_URL}"
           fi
 

@@ -9,6 +9,14 @@ import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
+  // Log environment variables (masked)
+  const dbUrl = process.env.DATABASE_URL || '';
+  const maskedDbUrl = dbUrl.replace(/:[^@]*@/, ':****@');
+  logger.log(`🔧 Environment Variables:`);
+  logger.log(`   - NODE_ENV: ${process.env.NODE_ENV}`);
+  logger.log(`   - DATABASE_URL: ${maskedDbUrl}`);
+  logger.log(`   - NATS_URL: ${process.env.NATS_URL}`);
+
   try {
     // Create HTTP app with minimal logging
     const app = await NestFactory.create(AppModule, {
