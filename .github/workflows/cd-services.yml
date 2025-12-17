@@ -200,6 +200,14 @@ jobs:
             ENV_VARS="${ENV_VARS},DATABASE_URL=${DB_URL}"
           fi
 
+          # Set VPC connector based on environment
+          ENV="${{ needs.setup.outputs.environment }}"
+          if [ "$ENV" == "prod" ]; then
+            VPC_CONNECTOR="projects/parkgolf-uniyous/locations/asia-northeast3/connectors/parkgolf-connector-prod"
+          else
+            VPC_CONNECTOR="projects/parkgolf-uniyous/locations/asia-northeast3/connectors/parkgolf-connector-dev"
+          fi
+
           gcloud run deploy ${{ steps.vars.outputs.service_name }} \
             --image ${{ steps.vars.outputs.image }} \
             --region ${{ env.REGION }} \
@@ -210,6 +218,8 @@ jobs:
             --memory ${{ steps.vars.outputs.memory }} \
             --cpu ${{ steps.vars.outputs.cpu }} \
             --timeout 300 \
+            --vpc-connector "${VPC_CONNECTOR}" \
+            --vpc-egress private-ranges-only \
             --set-env-vars "${ENV_VARS}"
 
       - name: Get Service URL
