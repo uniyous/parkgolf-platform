@@ -235,10 +235,8 @@ jobs:
             ENV_VARS="${ENV_VARS},DATABASE_URL=${DB_URL}"
           fi
 
-          # Add NATS_URL if available
-          if [ -n "${{ secrets.NATS_URL }}" ]; then
-            ENV_VARS="${ENV_VARS},NATS_URL=${{ secrets.NATS_URL }}"
-          fi
+          # Add NATS_URL (required)
+          ENV_VARS="${ENV_VARS},NATS_URL=${{ secrets.NATS_URL }}"
 
           # Add REDIS_URL if available
           if [ -n "${{ secrets.REDIS_URL }}" ]; then
