@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { CommonModule } from './common/common.module';
 import { SharedModule } from './postal/shared.module';
+import { NatsModule } from './shared/nats';
 import { AuthModule } from './auth/auth.module';
 import { AdminsModule } from './admins/admins.module';
 import { CoursesModule } from './courses/courses.module';
@@ -17,6 +18,7 @@ import { ClubModule } from './club/club.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    NatsModule,
     CommonModule,
     SharedModule,
     AuthModule,
