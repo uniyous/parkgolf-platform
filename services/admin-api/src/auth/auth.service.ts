@@ -44,7 +44,7 @@ export class AuthService {
       this.logger.log(`Authenticating user via NATS: ${loginRequest.email}`);
       
       const result = await firstValueFrom(
-        this.natsClient.send('auth.login', loginRequest).pipe(timeout(5000))
+        this.natsClient.send('auth.login', loginRequest).pipe(timeout(15000))
       );
       
       this.logger.log(`Authentication successful for: ${loginRequest.email}`);
@@ -60,7 +60,7 @@ export class AuthService {
       this.logger.log('Validating token via NATS');
       
       const result = await firstValueFrom(
-        this.natsClient.send('auth.validate', { token }).pipe(timeout(5000))
+        this.natsClient.send('auth.validate', { token }).pipe(timeout(15000))
       );
       
       return result;
@@ -75,7 +75,7 @@ export class AuthService {
       this.logger.log('Refreshing token via NATS');
       
       const result = await firstValueFrom(
-        this.natsClient.send('auth.refresh', { refreshToken }).pipe(timeout(5000))
+        this.natsClient.send('auth.refresh', { refreshToken }).pipe(timeout(15000))
       );
       
       return result;
@@ -105,7 +105,7 @@ export class AuthService {
       this.logger.log(`Fetching user via NATS: ${userId}`);
       
       const result = await firstValueFrom(
-        this.natsClient.send('users.findById', { userId, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('users.findById', { userId, token: adminToken }).pipe(timeout(15000))
       );
       
       return result;
@@ -120,7 +120,7 @@ export class AuthService {
       this.logger.log(`Updating user via NATS: ${userId}`);
       
       const result = await firstValueFrom(
-        this.natsClient.send('users.update', { userId, data: updateData, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('users.update', { userId, data: updateData, token: adminToken }).pipe(timeout(15000))
       );
       
       return result;
@@ -135,7 +135,7 @@ export class AuthService {
       this.logger.log(`Deleting user via NATS: ${userId}`);
       
       const result = await firstValueFrom(
-        this.natsClient.send('users.delete', { userId, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('users.delete', { userId, token: adminToken }).pipe(timeout(15000))
       );
       
       return result;
@@ -210,7 +210,7 @@ export class AuthService {
       this.logger.log('Creating user via NATS');
 
       const result = await firstValueFrom(
-        this.natsClient.send('users.create', { data: userData, token: adminToken }).pipe(timeout(5000))
+        this.natsClient.send('users.create', { data: userData, token: adminToken }).pipe(timeout(15000))
       );
 
       return result;
@@ -255,7 +255,7 @@ export class AuthService {
       this.logger.log('Getting current user/admin information via NATS');
 
       const result = await firstValueFrom(
-        this.natsClient.send('auth.getCurrentUser', { token }).pipe(timeout(5000))
+        this.natsClient.send('auth.getCurrentUser', { token }).pipe(timeout(15000))
       );
 
       this.logger.log('Current user information retrieved successfully');
