@@ -121,10 +121,7 @@ resource "google_compute_instance" "nats" {
           args = [
             "-js",                                    # Enable JetStream
             "-sd", "/data",                           # Storage directory
-            "--cluster_name", "parkgolf-cluster",     # Cluster name
-            "-m", "8222",                             # Monitoring port
-            "--jetstream_max_memory", var.jetstream_max_memory,
-            "--jetstream_max_file", var.jetstream_max_file
+            "-m", "8222"                              # Monitoring port
           ]
           volumeMounts = [{
             name      = "nats-data"
