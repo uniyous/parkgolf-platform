@@ -286,21 +286,20 @@ export class AuthController {
             success: false,
             error: {
               code: 'INVALID_ROLE',
-              message: 'Invalid admin role. Must be ADMIN, MODERATOR, or VIEWER',
+              message: 'Invalid admin role. Must be one of: PLATFORM_OWNER, PLATFORM_ADMIN, PLATFORM_SUPPORT, PLATFORM_ANALYST, COMPANY_OWNER, COMPANY_MANAGER, COURSE_MANAGER, STAFF, READONLY_STAFF',
             }
           },
           HttpStatus.BAD_REQUEST
         );
       }
 
-      // Create user via NATS (auth-service will handle the actual creation)
-      const result = await this.authService.createUser({
-        username: signupRequest.username,
+      // Create admin via NATS (auth-service will save to admins table)
+      const result = await this.authService.createAdmin({
         email: signupRequest.email,
         password: signupRequest.password,
         name: signupRequest.name,
-        role: signupRequest.role,
-      }, null); // No admin token needed for signup
+        roleCode: signupRequest.role,
+      });
 
       this.logger.log(`Admin signup successful for: ${signupRequest.username}`);
       
@@ -359,7 +358,10 @@ export class AuthController {
   }
 
   private isValidAdminRole(role: string): boolean {
-    const validRoles = ['ADMIN', 'MODERATOR', 'VIEWER'];
-    return validRoles.includes(role.toUpperCase());
+    const validRoles = [
+      'PLATFORM_OWNER', 'PLATFORM_ADMIN', 'PLATFORM_SUPPORT', 'PLATFORM_ANALYST',
+      'COMPANY_OWNER', 'COMPANY_MANAGER', 'COURSE_MANAGER', 'STAFF', 'READONLY_STAFF'
+    ];
+    return validRoles.includes(role);
   }
 }

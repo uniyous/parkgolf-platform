@@ -208,14 +208,29 @@ export class AuthService {
   async createUser(userData: any, adminToken: string): Promise<any> {
     try {
       this.logger.log('Creating user via NATS');
-      
+
       const result = await firstValueFrom(
         this.natsClient.send('users.create', { data: userData, token: adminToken }).pipe(timeout(5000))
       );
-      
+
       return result;
     } catch (error) {
       this.logger.error('Failed to create user', error);
+      throw error;
+    }
+  }
+
+  async createAdmin(adminData: any): Promise<any> {
+    try {
+      this.logger.log('Creating admin via NATS');
+
+      const result = await firstValueFrom(
+        this.natsClient.send('auth.admin.create', { adminData }).pipe(timeout(10000))
+      );
+
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to create admin', error);
       throw error;
     }
   }
