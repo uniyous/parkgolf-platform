@@ -1,6 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { UserService } from './user.service';
+import { successResponse, errorResponse, omitPassword, paginationMeta } from '../common/utils/response.util';
 
 @Controller()
 export class UserNatsController {
@@ -11,22 +12,9 @@ export class UserNatsController {
     try {
       const { filters } = data;
       const result = await this.userService.findAll(filters?.page, filters?.limit);
-      
-      return {
-        success: true,
-        data: result.users,
-        total: result.total,
-        page: result.page,
-        totalPages: result.totalPages,
-      };
+      return successResponse(result.users, paginationMeta(result.total, result.page, filters?.limit || 10));
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'FETCH_FAILED',
-          message: error.message,
-        },
-      };
+      return errorResponse('FETCH_FAILED', error.message);
     }
   }
 
@@ -34,19 +22,9 @@ export class UserNatsController {
   async getUserById(@Payload() data: { userId: string; token: string }) {
     try {
       const user = await this.userService.findOne(data.userId);
-      
-      return {
-        success: true,
-        data: user,
-      };
+      return successResponse(user);
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: error.message,
-        },
-      };
+      return errorResponse('NOT_FOUND', error.message);
     }
   }
 
@@ -54,42 +32,19 @@ export class UserNatsController {
   async createUser(@Payload() data: { userData: any; token: string }) {
     try {
       const user = await this.userService.create(data.userData);
-      
-      return {
-        success: true,
-        data: user,
-      };
+      return successResponse(user);
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'CREATE_FAILED',
-          message: error.message,
-        },
-      };
+      return errorResponse('CREATE_FAILED', error.message);
     }
   }
 
   @MessagePattern('auth.user.update')
   async updateUser(@Payload() data: { userId: string; updateData: any; token: string }) {
     try {
-      const user = await this.userService.update(
-        data.userId,
-        data.updateData
-      );
-      
-      return {
-        success: true,
-        data: user,
-      };
+      const user = await this.userService.update(data.userId, data.updateData);
+      return successResponse(user);
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'UPDATE_FAILED',
-          message: error.message,
-        },
-      };
+      return errorResponse('UPDATE_FAILED', error.message);
     }
   }
 
@@ -97,42 +52,19 @@ export class UserNatsController {
   async deleteUser(@Payload() data: { userId: string; token: string }) {
     try {
       const result = await this.userService.remove(parseInt(data.userId, 10));
-      
-      return {
-        success: true,
-        data: result,
-      };
+      return successResponse(result);
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'DELETE_FAILED',
-          message: error.message,
-        },
-      };
+      return errorResponse('DELETE_FAILED', error.message);
     }
   }
 
   @MessagePattern('auth.user.updateStatus')
   async updateUserStatus(@Payload() data: { userId: string; isActive: boolean; token: string }) {
     try {
-      const user = await this.userService.update(
-        data.userId,
-        { isActive: data.isActive }
-      );
-      
-      return {
-        success: true,
-        data: user,
-      };
+      const user = await this.userService.update(data.userId, { isActive: data.isActive });
+      return successResponse(user);
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'UPDATE_FAILED',
-          message: error.message,
-        },
-      };
+      return errorResponse('UPDATE_FAILED', error.message);
     }
   }
 
@@ -140,19 +72,9 @@ export class UserNatsController {
   async getUserStats(@Payload() data: { dateRange?: any; token: string }) {
     try {
       const stats = await this.userService.getStats();
-      
-      return {
-        success: true,
-        data: stats,
-      };
+      return successResponse(stats);
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'FETCH_FAILED',
-          message: error.message,
-        },
-      };
+      return errorResponse('FETCH_FAILED', error.message);
     }
   }
 
@@ -161,28 +83,11 @@ export class UserNatsController {
     try {
       const user = await this.userService.findByEmail(data.email);
       if (!user) {
-        return {
-          success: false,
-          error: {
-            code: 'NOT_FOUND',
-            message: 'User not found',
-          },
-        };
+        return errorResponse('NOT_FOUND', 'User not found');
       }
-      
-      const { password, ...result } = user;
-      return {
-        success: true,
-        data: result,
-      };
+      return successResponse(omitPassword(user));
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'FETCH_FAILED',
-          message: error.message,
-        },
-      };
+      return errorResponse('FETCH_FAILED', error.message);
     }
   }
 
@@ -191,28 +96,11 @@ export class UserNatsController {
     try {
       const user = await this.userService.validateUser(data.email, data.password);
       if (!user) {
-        return {
-          success: false,
-          error: {
-            code: 'INVALID_CREDENTIALS',
-            message: 'Invalid email or password',
-          },
-        };
+        return errorResponse('INVALID_CREDENTIALS', 'Invalid email or password');
       }
-      
-      const { password, ...result } = user;
-      return {
-        success: true,
-        data: result,
-      };
+      return successResponse(omitPassword(user));
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'VALIDATION_FAILED',
-          message: error.message,
-        },
-      };
+      return errorResponse('VALIDATION_FAILED', error.message);
     }
   }
 }

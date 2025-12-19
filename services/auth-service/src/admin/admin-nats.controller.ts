@@ -1,7 +1,7 @@
-import { Controller, UseGuards, Logger } from '@nestjs/common';
+import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AdminService } from './admin.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { successResponse, errorResponse, omitPassword, omitPasswordFromArray } from '../common/utils/response.util';
 
 @Controller()
 export class AdminNatsController {
@@ -14,19 +14,9 @@ export class AdminNatsController {
     try {
       const { filters } = data;
       const admins = await this.adminService.findAll(filters);
-      
-      return {
-        success: true,
-        data: admins.map(({ password, ...admin }) => admin),
-      };
+      return successResponse(omitPasswordFromArray(admins));
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'FETCH_FAILED',
-          message: error.message,
-        },
-      };
+      return errorResponse('FETCH_FAILED', error.message);
     }
   }
 
@@ -34,45 +24,23 @@ export class AdminNatsController {
   async getAdminById(@Payload() data: { adminId: string; token: string }) {
     try {
       const admin = await this.adminService.findOne(parseInt(data.adminId, 10));
-      const { password, ...result } = admin;
-      
-      return {
-        success: true,
-        data: result,
-      };
+      return successResponse(omitPassword(admin));
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: error.message,
-        },
-      };
+      return errorResponse('NOT_FOUND', error.message);
     }
   }
 
   @MessagePattern('auth.admin.create')
   async createAdmin(@Payload() data: { adminData: any; token?: string }) {
-    this.logger.log(`NATS: Create admin request received`);
-    this.logger.log(`NATS: Admin data: ${JSON.stringify(data.adminData)}`);
+    this.logger.log('NATS: Create admin request received');
+    this.logger.debug(`NATS: Admin data: ${JSON.stringify(data.adminData)}`);
     try {
       const admin = await this.adminService.create(data.adminData);
-      const { password, ...result } = admin;
-
-      this.logger.log(`NATS: Admin created successfully: ${result.email}`);
-      return {
-        success: true,
-        data: result,
-      };
+      this.logger.log(`NATS: Admin created successfully: ${admin.email}`);
+      return successResponse(omitPassword(admin));
     } catch (error) {
       this.logger.error(`NATS: Failed to create admin: ${error.message}`);
-      return {
-        success: false,
-        error: {
-          code: 'CREATE_FAILED',
-          message: error.message,
-        },
-      };
+      return errorResponse('CREATE_FAILED', error.message);
     }
   }
 
@@ -83,20 +51,9 @@ export class AdminNatsController {
         parseInt(data.adminId, 10),
         data.updateData
       );
-      const { password, ...result } = admin;
-      
-      return {
-        success: true,
-        data: result,
-      };
+      return successResponse(omitPassword(admin));
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'UPDATE_FAILED',
-          message: error.message,
-        },
-      };
+      return errorResponse('UPDATE_FAILED', error.message);
     }
   }
 
@@ -104,20 +61,9 @@ export class AdminNatsController {
   async deleteAdmin(@Payload() data: { adminId: string; token: string }) {
     try {
       const admin = await this.adminService.remove(parseInt(data.adminId, 10));
-      const { password, ...result } = admin;
-      
-      return {
-        success: true,
-        data: result,
-      };
+      return successResponse(omitPassword(admin));
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'DELETE_FAILED',
-          message: error.message,
-        },
-      };
+      return errorResponse('DELETE_FAILED', error.message);
     }
   }
 
@@ -128,20 +74,9 @@ export class AdminNatsController {
         parseInt(data.adminId, 10),
         { isActive: data.isActive }
       );
-      const { password, ...result } = admin;
-      
-      return {
-        success: true,
-        data: result,
-      };
+      return successResponse(omitPassword(admin));
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'UPDATE_FAILED',
-          message: error.message,
-        },
-      };
+      return errorResponse('UPDATE_FAILED', error.message);
     }
   }
 
@@ -154,20 +89,9 @@ export class AdminNatsController {
         parseInt(data.adminId, 10),
         data.permissions
       );
-      const { password, ...result } = admin;
-      
-      return {
-        success: true,
-        data: result,
-      };
+      return successResponse(omitPassword(admin));
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'UPDATE_FAILED',
-          message: error.message,
-        },
-      };
+      return errorResponse('UPDATE_FAILED', error.message);
     }
   }
 
@@ -175,19 +99,9 @@ export class AdminNatsController {
   async getAdminStats(@Payload() data: { dateRange?: any; token: string }) {
     try {
       const stats = await this.adminService.getStats();
-      
-      return {
-        success: true,
-        data: stats,
-      };
+      return successResponse(stats);
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'FETCH_FAILED',
-          message: error.message,
-        },
-      };
+      return errorResponse('FETCH_FAILED', error.message);
     }
   }
 
@@ -195,19 +109,9 @@ export class AdminNatsController {
   async getPermissionList(@Payload() data: { token: string }) {
     try {
       const permissions = await this.adminService.getAllPermissions();
-      
-      return {
-        success: true,
-        data: permissions,
-      };
+      return successResponse(permissions);
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'FETCH_FAILED',
-          message: error.message,
-        },
-      };
+      return errorResponse('FETCH_FAILED', error.message);
     }
   }
 }

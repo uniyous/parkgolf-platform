@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { UserService } from '../user/user.service';
 import { AdminService } from '../admin/admin.service';
 import { JwtService } from '@nestjs/jwt';
@@ -8,6 +8,8 @@ import { JwtPayload, UserJwtPayload, AdminJwtPayload } from './interfaces/jwt-pa
 
 @Injectable()
 export class AuthService {
+    private readonly logger = new Logger(AuthService.name);
+
     constructor(
         private userService: UserService,
         private adminService: AdminService,
@@ -15,27 +17,26 @@ export class AuthService {
     ) {}
 
     async validateUser(email: string, pass: string): Promise<Omit<User, 'password'> | null> {
-        console.log(`🔍 Validating user: ${email}, password provided: ${!!pass}`);
+        this.logger.debug(`Validating user: ${email}, password provided: ${!!pass}`);
         const user = await this.userService.findOneByEmail(email);
-        console.log(`👤 User found:`, user ? `${user.email} (active: ${user.isActive}, hasPassword: ${!!user?.password})` : 'null');
-        
+        this.logger.debug(`User found: ${user ? `${user.email} (active: ${user.isActive}, hasPassword: ${!!user?.password})` : 'null'}`);
+
         if (user && user.isActive) {
             if (!pass || !user.password) {
-                console.log(`❌ Missing password data: pass=${!!pass}, user.password=${!!user?.password}`);
+                this.logger.debug(`Missing password data: pass=${!!pass}, user.password=${!!user?.password}`);
                 return null;
             }
-            
+
             const passwordMatch = await bcrypt.compare(pass, user.password);
-            console.log(`🔐 Password comparison result: ${passwordMatch}`);
-            
+            this.logger.debug(`Password comparison result: ${passwordMatch}`);
+
             if (passwordMatch) {
-                console.log(`✅ Password match for ${email}`);
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                this.logger.log(`Password match for ${email}`);
                 const { password, ...result } = user;
                 return result;
             }
         }
-        console.log(`❌ Login failed for ${email}`);
+        this.logger.warn(`Login failed for ${email}`);
         return null;
     }
 
@@ -67,19 +68,18 @@ export class AuthService {
     async validateToken(token: string) {
         try {
             const payload = this.jwtService.verify(token);
-            console.log('🔍 validateToken - payload:', payload);
-            
+            this.logger.debug(`validateToken - payload type: ${payload.type}, email: ${payload.email}`);
+
             // Check if this is an admin token
             if (payload.type === 'admin') {
-                console.log('🔍 validateToken - admin token detected');
+                this.logger.debug('validateToken - admin token detected');
                 const admin = await this.adminService.findByEmail(payload.email);
-                console.log('🔍 validateToken - admin found:', !!admin);
+                this.logger.debug(`validateToken - admin found: ${!!admin}`);
                 if (!admin) {
                     throw new UnauthorizedException('Admin not found');
                 }
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { password, ...result } = admin;
-                console.log('🔍 validateToken - admin result:', { id: result.id, email: result.email, roleCode: result.roleCode });
+                this.logger.debug(`validateToken - admin result: id=${result.id}, email=${result.email}, roleCode=${result.roleCode}`);
                 return { user: result };
             } else {
                 // Regular user token
@@ -87,7 +87,6 @@ export class AuthService {
                 if (!user) {
                     throw new UnauthorizedException('User not found');
                 }
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { password, ...result } = user;
                 return { user: result };
             }
@@ -138,26 +137,26 @@ export class AuthService {
 
     // Admin authentication methods
     async validateAdmin(username: string, pass: string): Promise<Omit<Admin, 'password'> | null> {
-        console.log(`🔍 Validating admin: ${username}`);
+        this.logger.debug(`Validating admin: ${username}`);
         const admin = await this.adminService.validateAdmin(username, pass);
-        
+
         if (admin) {
-            console.log(`✅ Admin validated: ${username}`);
+            this.logger.log(`Admin validated: ${username}`);
             const { password, ...result } = admin;
             return result;
         }
-        
-        console.log(`❌ Admin login failed for ${username}`);
+
+        this.logger.warn(`Admin login failed for ${username}`);
         return null;
     }
 
     async adminLogin(admin: any) {
-        console.log('🔑 Admin login - permissions:', admin.permissions?.length || 0);
+        this.logger.debug(`Admin login - permissions count: ${admin.permissions?.length || 0}`);
 
         // Get admin permissions
         const adminPermissions = admin.permissions || [];
         const permissionCodes = adminPermissions.map(p => p.permission);
-        console.log('🔑 Permission codes:', permissionCodes);
+        this.logger.debug(`Permission codes: ${permissionCodes.join(', ')}`);
 
         const payload: AdminJwtPayload = {
             email: admin.email,
