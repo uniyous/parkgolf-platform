@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ClientsModule, Transport } from '@nestjs/microservices';
 
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -20,19 +19,6 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       }),
       inject: [ConfigService],
     }),
-    ClientsModule.registerAsync([
-      {
-        name: 'NATS_CLIENT',
-        imports: [ConfigModule],
-        useFactory: (configService: ConfigService) => ({
-          transport: Transport.NATS,
-          options: {
-            servers: [configService.get<string>('NATS_URL') || 'nats://localhost:4222'],
-          },
-        }),
-        inject: [ConfigService],
-      },
-    ]),
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

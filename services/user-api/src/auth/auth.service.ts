@@ -3,18 +3,16 @@ import {
   UnauthorizedException,
   ConflictException,
   NotFoundException,
-  Inject,
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { ClientProxy } from '@nestjs/microservices';
 import {
   RegisterDto,
   LoginDto,
   AuthResponseDto,
   UserProfileDto,
 } from './dto/auth.dto';
-import { firstValueFrom, timeout } from 'rxjs';
+import { NatsClientService } from '../shared/nats';
 
 @Injectable()
 export class AuthService {
@@ -22,25 +20,20 @@ export class AuthService {
 
   constructor(
     private readonly jwtService: JwtService,
-    @Inject('NATS_CLIENT') private readonly natsClient: ClientProxy,
+    private readonly natsClient: NatsClientService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
     try {
       this.logger.log(`Register request for: ${registerDto.email}`);
 
-      // Call auth-service via NATS to create user
-      const response = await firstValueFrom(
-        this.natsClient.send('users.create', {
-          data: {
-            email: registerDto.email,
-            password: registerDto.password,
-            name: registerDto.name,
-          },
-        }).pipe(timeout(15000)),
-      );
-
-      this.logger.log(`NATS users.create response: ${JSON.stringify(response)}`);
+      const response = await this.natsClient.send<any>('users.create', {
+        data: {
+          email: registerDto.email,
+          password: registerDto.password,
+          name: registerDto.name,
+        },
+      });
 
       if (!response.success) {
         if (response.error?.message?.includes('Email already registered')) {
@@ -51,15 +44,10 @@ export class AuthService {
 
       const userData = response.data;
 
-      // After successful registration, login to get tokens using user-specific endpoint
-      const loginResponse = await firstValueFrom(
-        this.natsClient.send('auth.user.login', {
-          email: registerDto.email,
-          password: registerDto.password,
-        }).pipe(timeout(15000)),
-      );
-
-      this.logger.log(`NATS auth.user.login response after register: ${JSON.stringify(loginResponse)}`);
+      const loginResponse = await this.natsClient.send<any>('auth.user.login', {
+        email: registerDto.email,
+        password: registerDto.password,
+      });
 
       if (!loginResponse.success) {
         throw new Error('Login after registration failed');
@@ -92,24 +80,19 @@ export class AuthService {
     try {
       this.logger.log(`User login request for: ${loginDto.email}`);
 
-      // Call auth-service via NATS using user-specific login endpoint
-      const response = await firstValueFrom(
-        this.natsClient.send('auth.user.login', {
-          email: loginDto.email,
-          password: loginDto.password,
-        }).pipe(timeout(15000)),
-      );
+      const response = await this.natsClient.send<any>('auth.user.login', {
+        email: loginDto.email,
+        password: loginDto.password,
+      });
 
       if (!response.success) {
         throw new UnauthorizedException(
-          response.error?.message ||
-            '이메일 또는 비밀번호가 일치하지 않습니다.',
+          response.error?.message || '이메일 또는 비밀번호가 일치하지 않습니다.',
         );
       }
 
       const authData = response.data;
 
-      // Map the response to match our AuthResponseDto format
       return {
         accessToken: authData.accessToken,
         refreshToken: authData.refreshToken,
@@ -126,9 +109,7 @@ export class AuthService {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      throw new UnauthorizedException(
-        '이메일 또는 비밀번호가 일치하지 않습니다.',
-      );
+      throw new UnauthorizedException('이메일 또는 비밀번호가 일치하지 않습니다.');
     }
   }
 
@@ -136,20 +117,14 @@ export class AuthService {
     try {
       this.logger.log(`Get profile request for userId: ${userId}`);
 
-      // Call auth-service via NATS to get user profile
-      const response = await firstValueFrom(
-        this.natsClient.send('auth.getProfile', { userId }).pipe(timeout(15000)),
-      );
+      const response = await this.natsClient.send<any>('auth.getProfile', { userId });
 
       if (!response.success) {
-        throw new NotFoundException(
-          response.error?.message || '사용자를 찾을 수 없습니다.',
-        );
+        throw new NotFoundException(response.error?.message || '사용자를 찾을 수 없습니다.');
       }
 
       const userData = response.data;
-      
-      // Map the response to match our UserProfileDto format
+
       return {
         id: userData.id,
         email: userData.email,
@@ -171,10 +146,7 @@ export class AuthService {
     try {
       this.logger.log('Token refresh request');
 
-      // Call auth-service via NATS to refresh token
-      const response = await firstValueFrom(
-        this.natsClient.send('auth.refresh', { refreshToken: refreshTokenStr }).pipe(timeout(15000)),
-      );
+      const response = await this.natsClient.send<any>('auth.refresh', { refreshToken: refreshTokenStr });
 
       if (!response.success) {
         throw new UnauthorizedException('유효하지 않은 토큰입니다.');
@@ -200,8 +172,6 @@ export class AuthService {
   }
 
   async logout(userId: number): Promise<{ message: string }> {
-    // In a real implementation, you would invalidate the tokens
-    // For now, just return success message
     return { message: '로그아웃되었습니다.' };
   }
 }

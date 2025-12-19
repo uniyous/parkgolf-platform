@@ -1,6 +1,7 @@
 import { Controller, Post, Body, HttpStatus, HttpException, Logger, Get, Headers } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService, LoginRequest } from './auth.service';
+import { ADMIN_ROLES, hasAdminRole, isAdminRole } from '../shared/constants';
 
 export interface SignupRequest {
   username: string;
@@ -51,7 +52,7 @@ export class AuthController {
       }
       
       // Verify admin role (check roles array)
-      if (!this.hasAdminRole(result.data.user.roles)) {
+      if (!hasAdminRole(result.data.user.roles)) {
         throw new HttpException(
           {
             success: false,
@@ -106,7 +107,7 @@ export class AuthController {
       const result = await this.authService.refreshToken(body.refreshToken);
       
       // Verify admin role (check roles array)
-      if (!this.hasAdminRole(result.data.user.roles)) {
+      if (!hasAdminRole(result.data.user.roles)) {
         throw new HttpException(
           {
             success: false,
@@ -161,7 +162,7 @@ export class AuthController {
       const result = await this.authService.validateToken(body.token);
       
       // Verify admin role (check roles array)
-      if (!this.hasAdminRole(result.data.user.roles)) {
+      if (!hasAdminRole(result.data.user.roles)) {
         throw new HttpException(
           {
             success: false,
@@ -223,7 +224,7 @@ export class AuthController {
       const result = await this.authService.getCurrentUser(token);
       
       // Verify admin role (check roles array)
-      if (!this.hasAdminRole(result.data.roles)) {
+      if (!hasAdminRole(result.data.roles)) {
         throw new HttpException(
           {
             success: false,
@@ -280,7 +281,7 @@ export class AuthController {
       this.logger.log(`Admin signup attempt for username: ${signupRequest.username}`);
       
       // Validate admin role
-      if (!this.isValidAdminRole(signupRequest.role)) {
+      if (!isAdminRole(signupRequest.role)) {
         throw new HttpException(
           {
             success: false,
@@ -348,22 +349,4 @@ export class AuthController {
     }
   }
 
-  private hasAdminRole(roles: string[] | undefined): boolean {
-    if (!roles || !Array.isArray(roles)) {
-      return false;
-    }
-    const adminRoles = [
-      'PLATFORM_OWNER', 'PLATFORM_ADMIN', 'PLATFORM_SUPPORT', 'PLATFORM_ANALYST',
-      'COMPANY_OWNER', 'COMPANY_MANAGER', 'COURSE_MANAGER', 'STAFF', 'READONLY_STAFF'
-    ];
-    return roles.some(role => adminRoles.includes(role));
-  }
-
-  private isValidAdminRole(role: string): boolean {
-    const validRoles = [
-      'PLATFORM_OWNER', 'PLATFORM_ADMIN', 'PLATFORM_SUPPORT', 'PLATFORM_ANALYST',
-      'COMPANY_OWNER', 'COMPANY_MANAGER', 'COURSE_MANAGER', 'STAFF', 'READONLY_STAFF'
-    ];
-    return validRoles.includes(role);
-  }
 }

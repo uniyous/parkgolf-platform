@@ -5,29 +5,10 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { isAdminRole, ADMIN_ROLES, AdminRole } from '../../shared/constants';
 
-/**
- * 관리자 역할 목록
- */
-export const ADMIN_ROLES = [
-  // Platform Level
-  'PLATFORM_OWNER',
-  'PLATFORM_ADMIN',
-  'PLATFORM_SUPPORT',
-  'PLATFORM_ANALYST',
-  // Company Level
-  'COMPANY_OWNER',
-  'COMPANY_MANAGER',
-  // Course Level
-  'COURSE_MANAGER',
-  'STAFF',
-  'READONLY_STAFF',
-  // Legacy roles
-  'ADMIN',
-  'SUPER_ADMIN',
-] as const;
-
-export type AdminRole = (typeof ADMIN_ROLES)[number];
+// Re-export for backward compatibility
+export { ADMIN_ROLES, AdminRole };
 
 /**
  * Admin Role Guard
@@ -53,7 +34,7 @@ export class AdminRoleGuard implements CanActivate {
 
     const userRole = user.role || user.roleCode;
 
-    if (!this.isAdminRole(userRole)) {
+    if (!isAdminRole(userRole)) {
       throw new ForbiddenException({
         success: false,
         error: {
@@ -64,18 +45,6 @@ export class AdminRoleGuard implements CanActivate {
     }
 
     return true;
-  }
-
-  /**
-   * 주어진 역할이 관리자 역할인지 확인
-   */
-  private isAdminRole(role: string): boolean {
-    if (!role) return false;
-
-    const normalizedRole = role.toUpperCase();
-    return ADMIN_ROLES.some(
-      (adminRole) => adminRole.toUpperCase() === normalizedRole,
-    );
   }
 }
 

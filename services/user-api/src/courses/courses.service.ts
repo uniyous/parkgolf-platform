@@ -1,14 +1,11 @@
-import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout } from 'rxjs';
+import { Injectable, Logger } from '@nestjs/common';
+import { NatsClientService } from '../shared/nats';
 
 @Injectable()
 export class CoursesService {
   private readonly logger = new Logger(CoursesService.name);
 
-  constructor(
-    @Optional() @Inject('NATS_CLIENT') private readonly natsClient?: ClientProxy,
-  ) {}
+  constructor(private readonly natsClient: NatsClientService) {}
 
   async searchCourses(filters: {
     keyword?: string;
@@ -17,22 +14,10 @@ export class CoursesService {
     rating?: number;
   }) {
     try {
-      this.logger.log(
-        `Searching courses with filters: ${JSON.stringify(filters)}`,
-      );
-
-      const result = await firstValueFrom(
-        this.natsClient.send('courses.list', filters).pipe(timeout(5000)),
-      );
-
-      return result;
+      this.logger.log(`Searching courses with filters: ${JSON.stringify(filters)}`);
+      return await this.natsClient.send('courses.list', filters, 5000);
     } catch (error) {
-      this.logger.error(
-        `Failed to search courses: ${error.message}`,
-        error.stack,
-      );
-
-      // Return empty array instead of throwing to allow fallback to mock data
+      this.logger.error(`Failed to search courses: ${error.message}`);
       return [];
     }
   }
@@ -40,17 +25,9 @@ export class CoursesService {
   async getAllCourses() {
     try {
       this.logger.log('Getting all courses');
-
-      const result = await firstValueFrom(
-        this.natsClient.send('courses.list', {}).pipe(timeout(5000)),
-      );
-
-      return result;
+      return await this.natsClient.send('courses.list', {}, 5000);
     } catch (error) {
-      this.logger.error(
-        `Failed to get all courses: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Failed to get all courses: ${error.message}`);
       return [];
     }
   }
@@ -58,17 +35,9 @@ export class CoursesService {
   async getCourseById(id: number) {
     try {
       this.logger.log(`Getting course by id: ${id}`);
-
-      const result = await firstValueFrom(
-        this.natsClient.send('course.getById', { id }).pipe(timeout(5000)),
-      );
-
-      return result;
+      return await this.natsClient.send('course.getById', { id }, 5000);
     } catch (error) {
-      this.logger.error(
-        `Failed to get course ${id}: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Failed to get course ${id}: ${error.message}`);
       return null;
     }
   }

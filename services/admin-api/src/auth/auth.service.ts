@@ -1,6 +1,5 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout } from 'rxjs';
+import { Injectable, Logger } from '@nestjs/common';
+import { NatsClientService } from '../shared/nats';
 
 export interface LoginRequest {
   email: string;
@@ -37,236 +36,80 @@ export interface UserListResponse {
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
-  constructor(
-    @Inject('NATS_CLIENT') private readonly natsClient: ClientProxy,
-  ) {}
+  constructor(private readonly natsClient: NatsClientService) {}
 
   async login(loginRequest: LoginRequest): Promise<AuthResponse> {
-    try {
-      this.logger.log(`Authenticating admin via NATS: ${loginRequest.email}`);
-
-      // Use admin-specific login endpoint
-      const result = await firstValueFrom(
-        this.natsClient.send('auth.admin.login', loginRequest).pipe(timeout(15000))
-      );
-
-      this.logger.log(`Admin authentication successful for: ${loginRequest.email}`);
-      return result;
-    } catch (error) {
-      this.logger.error(`Admin authentication failed for: ${loginRequest.email}`, error);
-      throw error;
-    }
+    this.logger.log(`Authenticating admin via NATS: ${loginRequest.email}`);
+    return this.natsClient.send<AuthResponse>('auth.admin.login', loginRequest);
   }
 
   async validateToken(token: string): Promise<any> {
-    try {
-      this.logger.log('Validating token via NATS');
-      
-      const result = await firstValueFrom(
-        this.natsClient.send('auth.validate', { token }).pipe(timeout(15000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error('Token validation failed', error);
-      throw error;
-    }
+    this.logger.log('Validating token via NATS');
+    return this.natsClient.send('auth.validate', { token });
   }
 
   async refreshToken(refreshToken: string): Promise<AuthResponse> {
-    try {
-      this.logger.log('Refreshing token via NATS');
-      
-      const result = await firstValueFrom(
-        this.natsClient.send('auth.refresh', { refreshToken }).pipe(timeout(15000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error('Token refresh failed', error);
-      throw error;
-    }
+    this.logger.log('Refreshing token via NATS');
+    return this.natsClient.send<AuthResponse>('auth.refresh', { refreshToken });
   }
 
   async getUserList(filters: any, adminToken: string): Promise<UserListResponse> {
-    try {
-      this.logger.log('Fetching user list via NATS');
-      
-      const result = await firstValueFrom(
-        this.natsClient.send('users.list', { ...filters, token: adminToken }).pipe(timeout(10000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to fetch user list', error);
-      throw error;
-    }
+    this.logger.log('Fetching user list via NATS');
+    return this.natsClient.send<UserListResponse>('users.list', { ...filters, token: adminToken }, 10000);
   }
 
   async getUserById(userId: string, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Fetching user via NATS: ${userId}`);
-      
-      const result = await firstValueFrom(
-        this.natsClient.send('users.findById', { userId, token: adminToken }).pipe(timeout(15000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to fetch user: ${userId}`, error);
-      throw error;
-    }
+    this.logger.log(`Fetching user via NATS: ${userId}`);
+    return this.natsClient.send('users.findById', { userId, token: adminToken });
   }
 
   async updateUser(userId: string, updateData: any, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Updating user via NATS: ${userId}`);
-      
-      const result = await firstValueFrom(
-        this.natsClient.send('users.update', { userId, data: updateData, token: adminToken }).pipe(timeout(15000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to update user: ${userId}`, error);
-      throw error;
-    }
+    this.logger.log(`Updating user via NATS: ${userId}`);
+    return this.natsClient.send('users.update', { userId, data: updateData, token: adminToken });
   }
 
   async deleteUser(userId: string, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Deleting user via NATS: ${userId}`);
-      
-      const result = await firstValueFrom(
-        this.natsClient.send('users.delete', { userId, token: adminToken }).pipe(timeout(15000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to delete user: ${userId}`, error);
-      throw error;
-    }
+    this.logger.log(`Deleting user via NATS: ${userId}`);
+    return this.natsClient.send('users.delete', { userId, token: adminToken });
   }
 
   async updateUserStatus(userId: string, status: string, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Updating user ${userId} status to ${status} via NATS`);
-      
-      const result = await firstValueFrom(
-        this.natsClient.send('users.updateStatus', { userId, status, token: adminToken }).pipe(timeout(10000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to update user ${userId} status`, error);
-      throw error;
-    }
+    this.logger.log(`Updating user ${userId} status to ${status} via NATS`);
+    return this.natsClient.send('users.updateStatus', { userId, status, token: adminToken }, 10000);
   }
 
   async updateUserRole(userId: string, role: string, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Updating user ${userId} role to ${role} via NATS`);
-      
-      const result = await firstValueFrom(
-        this.natsClient.send('users.updateRole', { userId, role, token: adminToken }).pipe(timeout(10000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to update user ${userId} role`, error);
-      throw error;
-    }
+    this.logger.log(`Updating user ${userId} role to ${role} via NATS`);
+    return this.natsClient.send('users.updateRole', { userId, role, token: adminToken }, 10000);
   }
 
   async updateUserPermissions(userId: string, permissions: string[], adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Updating user ${userId} permissions via NATS`);
-      
-      const result = await firstValueFrom(
-        this.natsClient.send('users.updatePermissions', { userId, permissions, token: adminToken }).pipe(timeout(10000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to update user ${userId} permissions`, error);
-      throw error;
-    }
+    this.logger.log(`Updating user ${userId} permissions via NATS`);
+    return this.natsClient.send('users.updatePermissions', { userId, permissions, token: adminToken }, 10000);
   }
 
   async resetUserPassword(userId: string, newPassword: string, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Resetting password for user ${userId} via NATS`);
-      
-      const result = await firstValueFrom(
-        this.natsClient.send('users.resetPassword', { userId, newPassword, token: adminToken }).pipe(timeout(10000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to reset password for user ${userId}`, error);
-      throw error;
-    }
+    this.logger.log(`Resetting password for user ${userId} via NATS`);
+    return this.natsClient.send('users.resetPassword', { userId, newPassword, token: adminToken }, 10000);
   }
 
   async createUser(userData: any, adminToken: string): Promise<any> {
-    try {
-      this.logger.log('Creating user via NATS');
-
-      const result = await firstValueFrom(
-        this.natsClient.send('users.create', { data: userData, token: adminToken }).pipe(timeout(15000))
-      );
-
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to create user', error);
-      throw error;
-    }
+    this.logger.log('Creating user via NATS');
+    return this.natsClient.send('users.create', { data: userData, token: adminToken });
   }
 
   async createAdmin(adminData: any): Promise<any> {
-    try {
-      this.logger.log('Creating admin via NATS');
-
-      const result = await firstValueFrom(
-        this.natsClient.send('auth.admin.create', { adminData }).pipe(timeout(10000))
-      );
-
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to create admin', error);
-      throw error;
-    }
+    this.logger.log('Creating admin via NATS');
+    return this.natsClient.send('auth.admin.create', { adminData }, 10000);
   }
 
   async getUserStats(dateRange: { startDate: string; endDate: string }, adminToken: string): Promise<any> {
-    try {
-      this.logger.log('Fetching user statistics via NATS');
-      
-      const result = await firstValueFrom(
-        this.natsClient.send('users.stats', { dateRange, token: adminToken }).pipe(timeout(10000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to fetch user statistics', error);
-      throw error;
-    }
+    this.logger.log('Fetching user statistics via NATS');
+    return this.natsClient.send('users.stats', { dateRange, token: adminToken }, 10000);
   }
 
   async getCurrentUser(token: string): Promise<any> {
-    try {
-      this.logger.log('Getting current user/admin information via NATS');
-
-      const result = await firstValueFrom(
-        this.natsClient.send('auth.getCurrentUser', { token }).pipe(timeout(15000))
-      );
-
-      this.logger.log('Current user information retrieved successfully');
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to get current user information', error);
-      throw error;
-    }
+    this.logger.log('Getting current user/admin information via NATS');
+    return this.natsClient.send('auth.getCurrentUser', { token });
   }
-
 }
