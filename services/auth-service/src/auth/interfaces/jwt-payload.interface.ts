@@ -8,8 +8,7 @@ export interface JwtPayload {
 export interface AdminJwtPayload {
     sub: number;
     email: string;
-    username: string;
-    role: string;
+    roles: string[];
     type: 'admin';
 }
 

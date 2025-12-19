@@ -58,7 +58,7 @@ export class AuthService {
                 id: user.id,
                 email: user.email,
                 name: user.name || user.email,
-                role: user.roleCode || 'USER',
+                roles: [user.roleCode || 'USER'],
                 type: 'user',
             }
         };
@@ -127,7 +127,7 @@ export class AuthService {
                     id: user.id,
                     email: user.email,
                     name: user.name || user.email,
-                    role: user.roleCode || 'USER',
+                    roles: [user.roleCode || 'USER'],
                     type: 'user',
                 }
             };
@@ -153,32 +153,30 @@ export class AuthService {
 
     async adminLogin(admin: any) {
         console.log('🔑 Admin login - permissions:', admin.permissions?.length || 0);
-        
-        const payload = {
-            username: admin.email,
+
+        // Get admin permissions
+        const adminPermissions = admin.permissions || [];
+        const permissionCodes = adminPermissions.map(p => p.permission);
+        console.log('🔑 Permission codes:', permissionCodes);
+
+        const payload: AdminJwtPayload = {
             email: admin.email,
             sub: admin.id,
-            role: admin.roleCode,
+            roles: [admin.roleCode],
             type: 'admin',
         };
 
         const accessToken = this.jwtService.sign(payload);
         const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
-        // Get admin permissions
-        const adminPermissions = admin.permissions || [];
-        const permissionCodes = adminPermissions.map(p => p.permission);
-        console.log('🔑 Permission codes:', permissionCodes);
-        
         return {
             accessToken,
             refreshToken,
             user: {
                 id: admin.id,
-                username: admin.email,
                 email: admin.email,
                 name: admin.name,
-                role: admin.roleCode,
+                roles: [admin.roleCode],
                 type: 'admin',
                 permissions: permissionCodes,
             }
@@ -188,21 +186,20 @@ export class AuthService {
     async adminRefreshToken(refreshToken: string) {
         try {
             const payload = this.jwtService.verify(refreshToken);
-            
+
             if (payload.type !== 'admin') {
                 throw new UnauthorizedException('Invalid admin token');
             }
-            
+
             const admin = await this.adminService.findByEmail(payload.email);
             if (!admin || !admin.isActive) {
                 throw new UnauthorizedException('Admin not found or inactive');
             }
 
-            const newPayload = {
-                username: admin.email,
+            const newPayload: AdminJwtPayload = {
                 email: admin.email,
                 sub: admin.id,
-                role: admin.roleCode,
+                roles: [admin.roleCode],
                 type: 'admin',
             };
 
@@ -214,10 +211,9 @@ export class AuthService {
                 refreshToken: newRefreshToken,
                 user: {
                     id: admin.id,
-                    username: admin.email,
                     email: admin.email,
                     name: admin.name,
-                    role: admin.roleCode,
+                    roles: [admin.roleCode],
                     type: 'admin',
                 }
             };
@@ -227,8 +223,8 @@ export class AuthService {
     }
 
     async getCurrentUser(user: any) {
-        // Check if this is an admin token by checking if it has admin-specific properties
-        if (user.type === 'admin' || user.role?.includes('ADMIN') || user.role?.includes('OWNER') || user.role?.includes('MANAGER') || user.role?.includes('STAFF')) {
+        // Check if this is an admin token by checking type field
+        if (user.type === 'admin') {
             // For admin tokens, use the sub (user ID) to fetch admin information
             const adminId = user.sub || user.id;
             const admin = await this.adminService.findOne(adminId);
@@ -241,10 +237,9 @@ export class AuthService {
 
             return {
                 id: admin.id,
-                username: admin.email,
                 email: admin.email,
                 name: admin.name,
-                role: admin.roleCode,
+                roles: [admin.roleCode],
                 scope: this.getAdminScope(admin.roleCode),
                 permissions: adminWithPermissions.permissions?.map((p: any) => p.permission) || [],
                 isActive: admin.isActive,
@@ -267,8 +262,7 @@ export class AuthService {
             const { password, ...userResult } = userData;
             return {
                 ...userResult,
-                username: userResult.email,
-                role: userResult.roleCode,
+                roles: [userResult.roleCode],
                 scope: 'USER',
                 permissions: [],
                 type: 'user'

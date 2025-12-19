@@ -50,8 +50,8 @@ export class AuthController {
         );
       }
       
-      // Verify admin role
-      if (!this.isAdminRole(result.data.user.role)) {
+      // Verify admin role (check roles array)
+      if (!this.hasAdminRole(result.data.user.roles)) {
         throw new HttpException(
           {
             success: false,
@@ -105,8 +105,8 @@ export class AuthController {
       
       const result = await this.authService.refreshToken(body.refreshToken);
       
-      // Verify admin role
-      if (!this.isAdminRole(result.data.user.role)) {
+      // Verify admin role (check roles array)
+      if (!this.hasAdminRole(result.data.user.roles)) {
         throw new HttpException(
           {
             success: false,
@@ -160,8 +160,8 @@ export class AuthController {
       
       const result = await this.authService.validateToken(body.token);
       
-      // Verify admin role
-      if (!this.isAdminRole(result.data.user.role)) {
+      // Verify admin role (check roles array)
+      if (!this.hasAdminRole(result.data.user.roles)) {
         throw new HttpException(
           {
             success: false,
@@ -222,8 +222,8 @@ export class AuthController {
       // Call auth-service /auth/me endpoint via NATS
       const result = await this.authService.getCurrentUser(token);
       
-      // Verify admin role
-      if (!this.isAdminRole(result.data.roleCode || result.data.role)) {
+      // Verify admin role (check roles array)
+      if (!this.hasAdminRole(result.data.roles)) {
         throw new HttpException(
           {
             success: false,
@@ -348,13 +348,15 @@ export class AuthController {
     }
   }
 
-  private isAdminRole(role: string): boolean {
+  private hasAdminRole(roles: string[] | undefined): boolean {
+    if (!roles || !Array.isArray(roles)) {
+      return false;
+    }
     const adminRoles = [
-      'admin', 'super_admin', 'ADMIN', 'SUPER_ADMIN',
       'PLATFORM_OWNER', 'PLATFORM_ADMIN', 'PLATFORM_SUPPORT', 'PLATFORM_ANALYST',
       'COMPANY_OWNER', 'COMPANY_MANAGER', 'COURSE_MANAGER', 'STAFF', 'READONLY_STAFF'
     ];
-    return adminRoles.includes(role.toLowerCase()) || adminRoles.includes(role.toUpperCase()) || adminRoles.includes(role);
+    return roles.some(role => adminRoles.includes(role));
   }
 
   private isValidAdminRole(role: string): boolean {
