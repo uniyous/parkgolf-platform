@@ -3,9 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { BaseExceptionFilter } from './common/exception/base-exception.filter';
-import { GlobalRpcExceptionFilter } from './common/exception/rpc-exception.filter';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -13,6 +11,15 @@ async function bootstrap() {
   try {
     const app = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
+
+    // Health check endpoint for Cloud Run
+    app.getHttpAdapter().get('/health', (req, res) => {
+      res.status(200).json({
+        status: 'ok',
+        service: 'admin-api',
+        timestamp: new Date().toISOString()
+      });
+    });
 
     // Global exception filter
     app.useGlobalFilters(new BaseExceptionFilter());
