@@ -1,10 +1,12 @@
-import { Controller, UseGuards } from '@nestjs/common';
+import { Controller, UseGuards, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller()
 export class AdminNatsController {
+  private readonly logger = new Logger(AdminNatsController.name);
+
   constructor(private readonly adminService: AdminService) {}
 
   @MessagePattern('auth.admin.list')
@@ -50,16 +52,20 @@ export class AdminNatsController {
   }
 
   @MessagePattern('auth.admin.create')
-  async createAdmin(@Payload() data: { adminData: any; token: string }) {
+  async createAdmin(@Payload() data: { adminData: any; token?: string }) {
+    this.logger.log(`NATS: Create admin request received`);
+    this.logger.log(`NATS: Admin data: ${JSON.stringify(data.adminData)}`);
     try {
       const admin = await this.adminService.create(data.adminData);
       const { password, ...result } = admin;
-      
+
+      this.logger.log(`NATS: Admin created successfully: ${result.email}`);
       return {
         success: true,
         data: result,
       };
     } catch (error) {
+      this.logger.error(`NATS: Failed to create admin: ${error.message}`);
       return {
         success: false,
         error: {

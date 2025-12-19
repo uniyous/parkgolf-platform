@@ -83,9 +83,11 @@ async function bootstrap() {
 
     logger.log(`📢 Queue: auth-service`);
     logger.log(`💬 Available message patterns:`);
-    logger.log(`   - auth.login, auth.validate, auth.refresh`);
+    logger.log(`   - auth.login, auth.validate, auth.refresh, auth.getCurrentUser`);
     logger.log(`   - users.create, users.list, users.findById, users.update, users.delete`);
-    logger.log(`   - auth.admin.*, auth.permission.*`);
+    logger.log(`   - auth.admin.list, auth.admin.getById, auth.admin.create, auth.admin.update, auth.admin.delete`);
+    logger.log(`   - auth.admin.updateStatus, auth.admin.updatePermissions, auth.admin.stats`);
+    logger.log(`   - auth.permission.list`);
   } catch (error) {
     logger.error('Failed to start Auth Service', error);
     process.exit(1);
