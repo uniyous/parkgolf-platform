@@ -52,15 +52,15 @@ export class AuthService {
 
       const userData = response.data;
 
-      // After successful registration, login to get tokens
+      // After successful registration, login to get tokens using user-specific endpoint
       const loginResponse = await firstValueFrom(
-        this.natsClient.send('auth.login', {
+        this.natsClient.send('auth.user.login', {
           email: registerDto.email,
           password: registerDto.password,
         }),
       );
 
-      this.logger.log(`NATS auth.login response after register: ${JSON.stringify(loginResponse)}`);
+      this.logger.log(`NATS auth.user.login response after register: ${JSON.stringify(loginResponse)}`);
 
       if (!loginResponse.success) {
         throw new Error('Login after registration failed');
@@ -91,9 +91,9 @@ export class AuthService {
 
   async login(loginDto: LoginDto): Promise<AuthResponseDto> {
     try {
-      // Call auth-service via NATS using email directly
+      // Call auth-service via NATS using user-specific login endpoint
       const response = await firstValueFrom(
-        this.natsClient.send('auth.login', {
+        this.natsClient.send('auth.user.login', {
           email: loginDto.email,
           password: loginDto.password,
         }),

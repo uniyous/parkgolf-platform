@@ -41,16 +41,17 @@ export class AuthService {
 
   async login(loginRequest: LoginRequest): Promise<AuthResponse> {
     try {
-      this.logger.log(`Authenticating user via NATS: ${loginRequest.email}`);
-      
+      this.logger.log(`Authenticating admin via NATS: ${loginRequest.email}`);
+
+      // Use admin-specific login endpoint
       const result = await firstValueFrom(
-        this.natsClient.send('auth.login', loginRequest).pipe(timeout(15000))
+        this.natsClient.send('auth.admin.login', loginRequest).pipe(timeout(15000))
       );
-      
-      this.logger.log(`Authentication successful for: ${loginRequest.email}`);
+
+      this.logger.log(`Admin authentication successful for: ${loginRequest.email}`);
       return result;
     } catch (error) {
-      this.logger.error(`Authentication failed for user: ${loginRequest.email}`, error);
+      this.logger.error(`Admin authentication failed for: ${loginRequest.email}`, error);
       throw error;
     }
   }

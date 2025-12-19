@@ -15,11 +15,77 @@ export class AuthNatsController {
     private readonly userService: UserService,
   ) {}
 
+  /**
+   * User login - Only authenticates against users table
+   */
+  @MessagePattern('auth.user.login')
+  async userLogin(@Payload() loginDto: LoginDto) {
+    try {
+      this.logger.log(`NATS: User login request for: ${loginDto.email}`);
+
+      const user = await this.authService.validateUser(loginDto.email, loginDto.password);
+      if (!user) {
+        throw new Error('Invalid credentials');
+      }
+
+      const result = await this.authService.login(user);
+      this.logger.log(`NATS: User login successful for: ${loginDto.email}`);
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      this.logger.error(`NATS: User login failed for: ${loginDto.email}`, error);
+      return {
+        success: false,
+        error: {
+          code: 'AUTH_USER_LOGIN_FAILED',
+          message: error.message || 'Login failed',
+        },
+      };
+    }
+  }
+
+  /**
+   * Admin login - Only authenticates against admins table
+   */
+  @MessagePattern('auth.admin.login')
+  async adminLogin(@Payload() loginDto: LoginDto) {
+    try {
+      this.logger.log(`NATS: Admin login request for: ${loginDto.email}`);
+
+      const admin = await this.authService.validateAdmin(loginDto.email, loginDto.password);
+      if (!admin) {
+        throw new Error('Invalid admin credentials');
+      }
+
+      const result = await this.authService.adminLogin(admin);
+      this.logger.log(`NATS: Admin login successful for: ${loginDto.email}`);
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      this.logger.error(`NATS: Admin login failed for: ${loginDto.email}`, error);
+      return {
+        success: false,
+        error: {
+          code: 'AUTH_ADMIN_LOGIN_FAILED',
+          message: error.message || 'Admin login failed',
+        },
+      };
+    }
+  }
+
+  /**
+   * @deprecated Use auth.user.login or auth.admin.login instead
+   * Legacy login - tries admin first, then user (kept for backward compatibility)
+   */
   @MessagePattern('auth.login')
   async login(@Payload() loginDto: LoginDto) {
     try {
-      this.logger.log(`NATS: Login request for user: ${loginDto.email}`);
-      
+      this.logger.log(`NATS: Legacy login request for: ${loginDto.email}`);
+
       // Check if this is an admin by trying admin authentication first
       const admin = await this.authService.validateAdmin(loginDto.email, loginDto.password);
       if (admin) {
@@ -30,13 +96,13 @@ export class AuthNatsController {
           data: result,
         };
       }
-      
+
       // If not admin, try regular user authentication
       const user = await this.authService.validateUser(loginDto.email, loginDto.password);
       if (!user) {
         throw new Error('Invalid credentials');
       }
-      
+
       const result = await this.authService.login(user);
       this.logger.log(`NATS: User login successful for: ${loginDto.email}`);
       return {
@@ -44,7 +110,7 @@ export class AuthNatsController {
         data: result,
       };
     } catch (error) {
-      this.logger.error(`NATS: Login failed for user: ${loginDto.email}`, error);
+      this.logger.error(`NATS: Login failed for: ${loginDto.email}`, error);
       return {
         success: false,
         error: {

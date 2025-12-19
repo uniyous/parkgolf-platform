@@ -4,7 +4,7 @@ import { AdminService } from '../admin/admin.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User, Admin } from '@prisma/client';
-import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { JwtPayload, UserJwtPayload, AdminJwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
@@ -41,10 +41,11 @@ export class AuthService {
 
     async login(user: Omit<User, 'password'>) {
         // User is already validated by LocalAuthGuard/LocalStrategy
-        const payload: JwtPayload = {
+        const payload: UserJwtPayload = {
             email: user.email,
             sub: user.id,
             roles: [user.roleCode],
+            type: 'user',
         };
 
         const accessToken = this.jwtService.sign(payload);
@@ -56,8 +57,9 @@ export class AuthService {
             user: {
                 id: user.id,
                 email: user.email,
-                name: user.name || user.email, // Use name if available, otherwise email
-                role: user.roleCode || 'USER', // Take first role as primary role
+                name: user.name || user.email,
+                role: user.roleCode || 'USER',
+                type: 'user',
             }
         };
     }
@@ -97,15 +99,22 @@ export class AuthService {
     async refreshToken(refreshToken: string) {
         try {
             const payload = this.jwtService.verify(refreshToken);
+
+            // Check token type and refresh accordingly
+            if (payload.type === 'admin') {
+                return this.adminRefreshToken(refreshToken);
+            }
+
             const user = await this.userService.findOneByEmail(payload.email);
             if (!user) {
                 throw new UnauthorizedException('User not found');
             }
 
-            const newPayload: JwtPayload = {
+            const newPayload: UserJwtPayload = {
                 email: user.email,
                 sub: user.id,
                 roles: [user.roleCode],
+                type: 'user',
             };
 
             const newAccessToken = this.jwtService.sign(newPayload);
@@ -119,6 +128,7 @@ export class AuthService {
                     email: user.email,
                     name: user.name || user.email,
                     role: user.roleCode || 'USER',
+                    type: 'user',
                 }
             };
         } catch (error) {
