@@ -76,8 +76,7 @@ export class AuthService {
           email: userData.email,
           name: userData.name || registerDto.name,
           phoneNumber: registerDto.phoneNumber || '',
-          createdAt: userData.createdAt,
-          updatedAt: userData.updatedAt,
+          createdAt: userData.createdAt || new Date(),
         },
         expiresIn: 3600,
       };
