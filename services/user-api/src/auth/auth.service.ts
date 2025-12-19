@@ -4,7 +4,6 @@ import {
   ConflictException,
   NotFoundException,
   Inject,
-  Optional,
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -15,7 +14,7 @@ import {
   AuthResponseDto,
   UserProfileDto,
 } from './dto/auth.dto';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 
 @Injectable()
 export class AuthService {
@@ -23,7 +22,7 @@ export class AuthService {
 
   constructor(
     private readonly jwtService: JwtService,
-    @Optional() @Inject('NATS_CLIENT') private readonly natsClient?: ClientProxy,
+    @Inject('NATS_CLIENT') private readonly natsClient: ClientProxy,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
@@ -38,7 +37,7 @@ export class AuthService {
             password: registerDto.password,
             name: registerDto.name,
           },
-        }),
+        }).pipe(timeout(15000)),
       );
 
       this.logger.log(`NATS users.create response: ${JSON.stringify(response)}`);
@@ -57,7 +56,7 @@ export class AuthService {
         this.natsClient.send('auth.user.login', {
           email: registerDto.email,
           password: registerDto.password,
-        }),
+        }).pipe(timeout(15000)),
       );
 
       this.logger.log(`NATS auth.user.login response after register: ${JSON.stringify(loginResponse)}`);
@@ -91,12 +90,14 @@ export class AuthService {
 
   async login(loginDto: LoginDto): Promise<AuthResponseDto> {
     try {
+      this.logger.log(`User login request for: ${loginDto.email}`);
+
       // Call auth-service via NATS using user-specific login endpoint
       const response = await firstValueFrom(
         this.natsClient.send('auth.user.login', {
           email: loginDto.email,
           password: loginDto.password,
-        }),
+        }).pipe(timeout(15000)),
       );
 
       if (!response.success) {
@@ -133,9 +134,11 @@ export class AuthService {
 
   async getProfile(userId: number): Promise<UserProfileDto> {
     try {
+      this.logger.log(`Get profile request for userId: ${userId}`);
+
       // Call auth-service via NATS to get user profile
       const response = await firstValueFrom(
-        this.natsClient.send('auth.getProfile', { userId }),
+        this.natsClient.send('auth.getProfile', { userId }).pipe(timeout(15000)),
       );
 
       if (!response.success) {
@@ -166,9 +169,11 @@ export class AuthService {
 
   async refreshToken(refreshTokenStr: string): Promise<AuthResponseDto> {
     try {
+      this.logger.log('Token refresh request');
+
       // Call auth-service via NATS to refresh token
       const response = await firstValueFrom(
-        this.natsClient.send('auth.refresh', { refreshToken: refreshTokenStr }),
+        this.natsClient.send('auth.refresh', { refreshToken: refreshTokenStr }).pipe(timeout(15000)),
       );
 
       if (!response.success) {
