@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout } from 'rxjs';
 
@@ -36,7 +36,7 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
-    @Optional() @Inject('NATS_CLIENT') private readonly natsClient?: ClientProxy,
+    @Inject('NATS_CLIENT') private readonly natsClient: ClientProxy,
   ) {}
 
   async login(loginRequest: LoginRequest): Promise<AuthResponse> {
@@ -238,13 +238,11 @@ export class AuthService {
   async getCurrentUser(token: string): Promise<any> {
     try {
       this.logger.log('Getting current user/admin information via NATS');
-      this.logger.log('Token (first 20 chars):', token.substring(0, 20) + '...');
-      
+
       const result = await firstValueFrom(
         this.natsClient.send('auth.getCurrentUser', { token }).pipe(timeout(5000))
       );
-      
-      this.logger.log('NATS response received:', JSON.stringify(result));
+
       this.logger.log('Current user information retrieved successfully');
       return result;
     } catch (error) {
@@ -253,15 +251,4 @@ export class AuthService {
     }
   }
 
-  onModuleInit() {
-    if (this.natsClient) {
-      this.natsClient.connect();
-    }
-  }
-
-  onModuleDestroy() {
-    if (this.natsClient) {
-      this.natsClient.close();
-    }
-  }
 }

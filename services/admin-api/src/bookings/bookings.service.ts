@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout } from 'rxjs';
 
@@ -7,7 +7,7 @@ export class BookingService {
   private readonly logger = new Logger(BookingService.name);
 
   constructor(
-    @Optional() @Inject('NATS_CLIENT') private readonly bookingClient?: ClientProxy,
+    @Inject('NATS_CLIENT') private readonly bookingClient: ClientProxy,
   ) {}
 
   // Booking Management
@@ -334,15 +334,4 @@ export class BookingService {
     }
   }
 
-  onModuleInit() {
-    if (this.bookingClient) {
-      this.bookingClient.connect();
-    }
-  }
-
-  onModuleDestroy() {
-    if (this.bookingClient) {
-      this.bookingClient.close();
-    }
-  }
 }

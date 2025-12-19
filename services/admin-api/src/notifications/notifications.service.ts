@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout } from 'rxjs';
 
@@ -7,7 +7,7 @@ export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
 
   constructor(
-    @Optional() @Inject('NATS_CLIENT') private readonly notifyClient?: ClientProxy,
+    @Inject('NATS_CLIENT') private readonly notifyClient: ClientProxy,
   ) {}
 
   // Notification Management
@@ -407,30 +407,18 @@ export class NotificationService {
   async deleteCampaign(campaignId: string, adminToken: string): Promise<any> {
     try {
       this.logger.log(`Deleting campaign via NATS: ${campaignId}`);
-      
+
       const result = await firstValueFrom(
-        this.notifyClient.send('campaigns.delete', { 
-          campaignId, 
-          token: adminToken 
+        this.notifyClient.send('campaigns.delete', {
+          campaignId,
+          token: adminToken
         }).pipe(timeout(5000))
       );
-      
+
       return result;
     } catch (error) {
       this.logger.error(`Failed to delete campaign: ${campaignId}`, error);
       throw error;
-    }
-  }
-
-  onModuleInit() {
-    if (this.notifyClient) {
-      this.notifyClient.connect();
-    }
-  }
-
-  onModuleDestroy() {
-    if (this.notifyClient) {
-      this.notifyClient.close();
     }
   }
 }

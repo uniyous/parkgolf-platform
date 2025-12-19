@@ -34,9 +34,8 @@ export class AuthController {
   async login(@Body() loginRequest: LoginRequest) {
     try {
       this.logger.log(`Admin login attempt for email: ${loginRequest.email}`);
-      
+
       const result = await this.authService.login(loginRequest);
-      this.logger.log('NATS login result:', JSON.stringify(result, null, 2));
       
       if (!result.success || !result.data) {
         throw new HttpException(
@@ -204,9 +203,6 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing token' })
   async getCurrentUser(@Headers('authorization') authorization: string) {
     try {
-      this.logger.log('🚀 getCurrentUser 메서드 시작');
-      this.logger.log('🚀 Authorization header:', authorization?.substring(0, 30) + '...');
-      
       if (!authorization || !authorization.startsWith('Bearer ')) {
         throw new HttpException(
           {
@@ -222,16 +218,9 @@ export class AuthController {
 
       const token = authorization.substring(7); // Remove 'Bearer ' prefix
       this.logger.log('Getting current admin user information');
-      
+
       // Call auth-service /auth/me endpoint via NATS
-      let result;
-      try {
-        result = await this.authService.getCurrentUser(token);
-        this.logger.log('NATS response:', JSON.stringify(result));
-      } catch (natsError) {
-        this.logger.error('NATS call failed:', natsError);
-        throw natsError;
-      }
+      const result = await this.authService.getCurrentUser(token);
       
       // Verify admin role
       if (!this.isAdminRole(result.data.roleCode || result.data.role)) {

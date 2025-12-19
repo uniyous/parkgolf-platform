@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, Optional, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Logger, Inject, HttpException, HttpStatus } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout } from 'rxjs';
 
@@ -7,7 +7,7 @@ export class AdminService {
   private readonly logger = new Logger(AdminService.name);
   private readonly TIMEOUT = 30000; // 30 seconds
 
-  constructor(@Optional() @Inject('NATS_CLIENT') private client?: ClientProxy) {}
+  constructor(@Inject('NATS_CLIENT') private client: ClientProxy) {}
 
   // Admin authentication
   async adminLogin(username: string, password: string) {

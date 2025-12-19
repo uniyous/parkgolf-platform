@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout } from 'rxjs';
 
@@ -7,7 +7,7 @@ export class CourseService {
   private readonly logger = new Logger(CourseService.name);
 
   constructor(
-    @Optional() @Inject('NATS_CLIENT') private readonly natsClient?: ClientProxy,
+    @Inject('NATS_CLIENT') private readonly natsClient: ClientProxy,
   ) {}
 
   // Golf Company Management
@@ -527,12 +527,6 @@ export class CourseService {
     }
   }
 
-  onModuleInit() {
-    if (this.natsClient) {
-      this.natsClient.connect();
-    }
-  }
-
   // Club Management
   async getClubs(filters: any = {}, adminToken?: string): Promise<any> {
     try {
@@ -636,24 +630,18 @@ export class CourseService {
   async searchClubs(query: string, adminToken?: string): Promise<any> {
     try {
       this.logger.log(`Searching clubs via NATS: ${query}`);
-      
+
       const params: any = { query };
       if (adminToken) params.token = adminToken;
 
       const result = await firstValueFrom(
         this.natsClient.send('club.search', params).pipe(timeout(5000))
       );
-      
+
       return result;
     } catch (error) {
       this.logger.error(`Failed to search clubs: ${query}`, error);
       throw error;
-    }
-  }
-
-  onModuleDestroy() {
-    if (this.natsClient) {
-      this.natsClient.close();
     }
   }
 }
