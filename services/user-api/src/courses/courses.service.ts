@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { NatsClientService } from '../shared/nats';
+import { NatsClientService, NATS_TIMEOUTS } from '../shared/nats';
 
 @Injectable()
 export class CoursesService {
@@ -13,32 +13,17 @@ export class CoursesService {
     priceRange?: [number, number];
     rating?: number;
   }) {
-    try {
-      this.logger.log(`Searching courses with filters: ${JSON.stringify(filters)}`);
-      return await this.natsClient.send('courses.list', filters, 5000);
-    } catch (error) {
-      this.logger.error(`Failed to search courses: ${error.message}`);
-      return [];
-    }
+    this.logger.log(`Searching courses with filters: ${JSON.stringify(filters)}`);
+    return this.natsClient.send('courses.list', filters, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   async getAllCourses() {
-    try {
-      this.logger.log('Getting all courses');
-      return await this.natsClient.send('courses.list', {}, 5000);
-    } catch (error) {
-      this.logger.error(`Failed to get all courses: ${error.message}`);
-      return [];
-    }
+    this.logger.log('Getting all courses');
+    return this.natsClient.send('courses.list', {}, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   async getCourseById(id: number) {
-    try {
-      this.logger.log(`Getting course by id: ${id}`);
-      return await this.natsClient.send('course.getById', { id }, 5000);
-    } catch (error) {
-      this.logger.error(`Failed to get course ${id}: ${error.message}`);
-      return null;
-    }
+    this.logger.log(`Getting course by id: ${id}`);
+    return this.natsClient.send('course.getById', { id }, NATS_TIMEOUTS.QUICK);
   }
 }
