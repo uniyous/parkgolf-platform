@@ -5,12 +5,13 @@ import { SharedModule } from './postal/shared.module';
 import { NatsModule } from './common/nats';
 import { AuthModule } from './auth/auth.module';
 import { AdminsModule } from './admins/admins.module';
+import { CompaniesModule } from './companies/companies.module';
 import { CoursesModule } from './courses/courses.module';
+import { TimeSlotsModule } from './time-slots/time-slots.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { UsersModule } from './users/users.module';
 import { DashboardModule } from './dashboard/dashboard.module';
-import { ClubModule } from './club/club.module';
 
 @Module({
   imports: [
@@ -23,12 +24,13 @@ import { ClubModule } from './club/club.module';
     SharedModule,
     AuthModule,
     AdminsModule,
+    CompaniesModule,
     CoursesModule,
+    TimeSlotsModule,
     BookingsModule,
     NotificationsModule,
     UsersModule,
     DashboardModule,
-    ClubModule,
   ],
   controllers: [],
   providers: [],
