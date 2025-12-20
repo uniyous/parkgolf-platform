@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppService } from './app.service';
+import { CommonModule } from './common/common.module';
 import { AuthModule } from './auth/auth.module';
 import { BookingModule } from './booking/booking.module';
 import { CoursesModule } from './courses/courses.module';
@@ -13,6 +14,7 @@ import { NatsModule } from './shared/nats';
       isGlobal: true,
     }),
     NatsModule,
+    CommonModule,
     AuthModule,
     BookingModule,
     CoursesModule,

@@ -23,15 +23,6 @@ async function bootstrap() {
       logger: ['error', 'warn', 'log'],
     });
 
-    // Add health check endpoint for Cloud Run
-    app.getHttpAdapter().get('/health', (req, res) => {
-      res.status(200).json({
-        status: 'ok',
-        service: 'auth-service',
-        timestamp: new Date().toISOString()
-      });
-    });
-
     // Global exception filter
     app.useGlobalFilters(new BaseExceptionFilter());
 

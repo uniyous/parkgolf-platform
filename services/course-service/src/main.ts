@@ -14,16 +14,6 @@ async function bootstrap() {
     logger.log('📦 Creating NestJS application...');
     const app = await NestFactory.create(AppModule);
 
-    // Add health check endpoint for Cloud Run
-    logger.log('🏥 Setting up health check endpoint...');
-    app.getHttpAdapter().get('/health', (req, res) => {
-      res.status(200).json({
-        status: 'ok',
-        service: 'course-service',
-        timestamp: new Date().toISOString()
-      });
-    });
-
     // Global pipes for validation
     logger.log('🔧 Setting up global validation pipes...');
     app.useGlobalPipes(

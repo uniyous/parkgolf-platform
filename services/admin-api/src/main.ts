@@ -12,15 +12,6 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
 
-    // Health check endpoint for Cloud Run
-    app.getHttpAdapter().get('/health', (req, res) => {
-      res.status(200).json({
-        status: 'ok',
-        service: 'admin-api',
-        timestamp: new Date().toISOString()
-      });
-    });
-
     // Global exception filter
     app.useGlobalFilters(new BaseExceptionFilter());
 
