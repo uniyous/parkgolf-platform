@@ -1,72 +1,76 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
 
+/**
+ * Admin Management Service
+ *
+ * NATS Patterns:
+ * - Admin CRUD: admins.list, admins.getById, admins.create, admins.update, admins.delete
+ * - Admin Actions: admins.updateStatus, admins.updatePermissions, admins.stats
+ * - Permissions: permissions.list
+ */
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
 
   constructor(private readonly natsClient: NatsClientService) {}
 
-  // Admin authentication
-  async adminLogin(username: string, password: string) {
-    this.logger.log(`Admin login attempt: ${username}`);
-    return this.natsClient.send('auth.admin.login', { username, password });
-  }
+  // ============================================
+  // Admin CRUD Operations
+  // ============================================
 
-  async adminRefreshToken(refreshToken: string) {
-    this.logger.log('Admin token refresh');
-    return this.natsClient.send('auth.admin.refresh', { refreshToken });
-  }
-
-  async getAdminProfile(token: string) {
-    this.logger.log('Getting admin profile');
-    return this.natsClient.send('auth.admin.profile', { token });
-  }
-
-  // Admin CRUD operations
   async getAdminList(filters: any, token: string) {
     this.logger.log('Fetching admin list');
-    return this.natsClient.send('auth.admin.list', { filters, token }, NATS_TIMEOUTS.LIST_QUERY);
+    return this.natsClient.send('admins.list', { filters, token }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   async getAdminById(adminId: string, token: string) {
     this.logger.log(`Fetching admin: ${adminId}`);
-    return this.natsClient.send('auth.admin.getById', { adminId, token });
+    return this.natsClient.send('admins.getById', { adminId, token });
   }
 
   async createAdmin(adminData: any, token: string) {
     this.logger.log('Creating admin');
-    return this.natsClient.send('auth.admin.create', { adminData, token });
+    return this.natsClient.send('admins.create', { adminData, token });
   }
 
   async updateAdmin(adminId: string, updateData: any, token: string) {
     this.logger.log(`Updating admin: ${adminId}`);
-    return this.natsClient.send('auth.admin.update', { adminId, updateData, token });
+    return this.natsClient.send('admins.update', { adminId, updateData, token });
   }
 
   async deleteAdmin(adminId: string, token: string) {
     this.logger.log(`Deleting admin: ${adminId}`);
-    return this.natsClient.send('auth.admin.delete', { adminId, token });
+    return this.natsClient.send('admins.delete', { adminId, token });
   }
 
+  // ============================================
+  // Admin Actions
+  // ============================================
+
   async updateAdminStatus(adminId: string, isActive: boolean, token: string) {
-    this.logger.log(`Updating admin status: ${adminId}`);
-    return this.natsClient.send('auth.admin.updateStatus', { adminId, isActive, token });
+    this.logger.log(`Updating admin status: ${adminId} -> ${isActive}`);
+    return this.natsClient.send('admins.updateStatus', { adminId, isActive, token });
   }
 
   async updateAdminPermissions(adminId: string, permissionIds: number[], token: string) {
     this.logger.log(`Updating admin permissions: ${adminId}`);
-    return this.natsClient.send('auth.admin.updatePermissions', { adminId, permissionIds, token });
+    // Convert permission IDs to string codes for auth-service compatibility
+    const permissions = permissionIds.map(id => String(id));
+    return this.natsClient.send('admins.updatePermissions', { adminId, permissions, token });
   }
 
   async getAdminStats(dateRange: any, token: string) {
     this.logger.log('Fetching admin statistics');
-    return this.natsClient.send('auth.admin.stats', { dateRange, token }, NATS_TIMEOUTS.ANALYTICS);
+    return this.natsClient.send('admins.stats', { dateRange, token }, NATS_TIMEOUTS.ANALYTICS);
   }
 
-  // Permission management
+  // ============================================
+  // Permission Management
+  // ============================================
+
   async getPermissionList(token: string) {
     this.logger.log('Fetching permission list');
-    return this.natsClient.send('auth.permission.list', { token });
+    return this.natsClient.send('permissions.list', { token });
   }
 }

@@ -74,12 +74,13 @@ async function bootstrap() {
 
     logger.log(`📢 Queue: auth-service`);
     logger.log(`💬 Available message patterns:`);
-    logger.log(`   - auth.user.login, auth.admin.login, auth.validate, auth.refresh`);
-    logger.log(`   - auth.getCurrentUser, auth.getProfile`);
-    logger.log(`   - auth.user.list, auth.user.getById, auth.user.create, auth.user.update, auth.user.delete`);
-    logger.log(`   - auth.admin.list, auth.admin.getById, auth.admin.create, auth.admin.update, auth.admin.delete`);
-    logger.log(`   - auth.admin.updateStatus, auth.admin.updatePermissions, auth.admin.stats`);
-    logger.log(`   - auth.permission.list`);
+    logger.log(`   [Auth] auth.user.login, auth.user.validate, auth.user.refresh, auth.user.me`);
+    logger.log(`   [Auth] auth.admin.login, auth.admin.validate, auth.admin.refresh, auth.admin.me`);
+    logger.log(`   [Users] users.list, users.getById, users.create, users.update, users.delete, users.resetPassword, users.updateRole, users.updatePermissions`);
+    logger.log(`   [Users] users.updateStatus, users.stats, users.findByEmail, users.validateCredentials`);
+    logger.log(`   [Admins] admins.list, admins.getById, admins.create, admins.update, admins.delete`);
+    logger.log(`   [Admins] admins.updateStatus, admins.updatePermissions, admins.stats`);
+    logger.log(`   [Permissions] permissions.list`);
   } catch (error) {
     logger.error('Failed to start Auth Service', error);
     process.exit(1);

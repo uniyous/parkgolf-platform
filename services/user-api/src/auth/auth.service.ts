@@ -4,7 +4,6 @@ import {
   ConflictException,
   NotFoundException,
   Logger,
-  HttpException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import {
@@ -15,6 +14,13 @@ import {
 } from './dto/auth.dto';
 import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
 
+/**
+ * Auth Service for User API
+ *
+ * NATS Patterns:
+ * - Authentication: auth.user.login, auth.user.validate, auth.user.refresh, auth.user.me
+ * - User CRUD: users.create, users.getById
+ */
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -25,10 +31,11 @@ export class AuthService {
   ) {}
 
   async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
-    this.logger.log(`Register request for: ${registerDto.email}`);
+    this.logger.log(`Register request: ${registerDto.email}`);
 
+    // Create user via users.create
     const response = await this.natsClient.send<any>('users.create', {
-      data: {
+      userData: {
         email: registerDto.email,
         password: registerDto.password,
         name: registerDto.name,
@@ -44,6 +51,7 @@ export class AuthService {
 
     const userData = response.data;
 
+    // Login to get tokens via auth.user.login
     const loginResponse = await this.natsClient.send<any>('auth.user.login', {
       email: registerDto.email,
       password: registerDto.password,
@@ -70,7 +78,7 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto): Promise<AuthResponseDto> {
-    this.logger.log(`User login request for: ${loginDto.email}`);
+    this.logger.log(`User login: ${loginDto.email}`);
 
     const response = await this.natsClient.send<any>('auth.user.login', {
       email: loginDto.email,
@@ -100,9 +108,10 @@ export class AuthService {
   }
 
   async getProfile(userId: number): Promise<UserProfileDto> {
-    this.logger.log(`Get profile request for userId: ${userId}`);
+    this.logger.log(`Get profile: userId=${userId}`);
 
-    const response = await this.natsClient.send<any>('auth.getProfile', { userId }, NATS_TIMEOUTS.QUICK);
+    // Use users.getById instead of auth.getProfile
+    const response = await this.natsClient.send<any>('users.getById', { userId: String(userId) }, NATS_TIMEOUTS.QUICK);
 
     if (!response.success) {
       throw new NotFoundException(response.error?.message || '사용자를 찾을 수 없습니다.');
@@ -124,7 +133,7 @@ export class AuthService {
   async refreshToken(refreshTokenStr: string): Promise<AuthResponseDto> {
     this.logger.log('Token refresh request');
 
-    const response = await this.natsClient.send<any>('auth.refresh', { refreshToken: refreshTokenStr }, NATS_TIMEOUTS.QUICK);
+    const response = await this.natsClient.send<any>('auth.user.refresh', { refreshToken: refreshTokenStr }, NATS_TIMEOUTS.QUICK);
 
     if (!response.success) {
       throw new UnauthorizedException('유효하지 않은 토큰입니다.');
