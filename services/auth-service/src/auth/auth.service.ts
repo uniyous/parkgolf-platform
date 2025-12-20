@@ -80,7 +80,7 @@ export class AuthService {
                 }
                 const { password, ...result } = admin;
                 this.logger.debug(`validateToken - admin result: id=${result.id}, email=${result.email}, roleCode=${result.roleCode}`);
-                return { user: result };
+                return { user: { ...result, type: 'admin' } };
             } else {
                 // Regular user token
                 const user = await this.userService.findOneByEmail(payload.email);
@@ -88,7 +88,7 @@ export class AuthService {
                     throw new UnauthorizedException('User not found');
                 }
                 const { password, ...result } = user;
-                return { user: result };
+                return { user: { ...result, type: 'user' } };
             }
         } catch (error) {
             throw new UnauthorizedException('Invalid token');
