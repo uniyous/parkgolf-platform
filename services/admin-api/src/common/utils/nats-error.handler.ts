@@ -111,34 +111,3 @@ function getStatusCodeFromErrorCode(code: string): HttpStatus {
 
   return HttpStatus.INTERNAL_SERVER_ERROR;
 }
-
-/**
- * 토큰 추출 유틸리티
- */
-export function extractBearerToken(authorization: string | undefined): string {
-  if (!authorization || !authorization.startsWith('Bearer ')) {
-    throw new HttpException(
-      {
-        success: false,
-        error: {
-          code: 'MISSING_TOKEN',
-          message: 'Authorization token is required',
-        },
-      },
-      HttpStatus.UNAUTHORIZED,
-    );
-  }
-  return authorization.substring(7);
-}
-
-/**
- * 옵셔널 토큰 추출 유틸리티
- */
-export function extractBearerTokenOptional(
-  authorization: string | undefined,
-): string | undefined {
-  if (!authorization || !authorization.startsWith('Bearer ')) {
-    return undefined;
-  }
-  return authorization.substring(7);
-}
