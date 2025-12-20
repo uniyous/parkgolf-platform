@@ -13,7 +13,7 @@ import {
   AuthResponseDto,
   UserProfileDto,
 } from './dto/auth.dto';
-import { NatsClientService, NATS_TIMEOUTS } from '../shared/nats';
+import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
 
 @Injectable()
 export class AuthService {

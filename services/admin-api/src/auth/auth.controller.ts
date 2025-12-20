@@ -1,7 +1,7 @@
 import { Controller, Post, Body, HttpStatus, HttpException, Logger, Get, Headers } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService, LoginRequest } from './auth.service';
-import { ADMIN_ROLES, hasAdminRole, isAdminRole } from '../shared/constants';
+import { ADMIN_ROLES, hasAdminRole, isAdminRole } from '../common/constants';
 
 export interface SignupRequest {
   username: string;

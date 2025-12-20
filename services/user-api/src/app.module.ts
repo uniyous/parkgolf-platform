@@ -6,7 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { BookingModule } from './booking/booking.module';
 import { CoursesModule } from './courses/courses.module';
 import { NotifyModule } from './notify/notify.module';
-import { NatsModule } from './shared/nats';
+import { NatsModule } from './common/nats';
 
 @Module({
   imports: [

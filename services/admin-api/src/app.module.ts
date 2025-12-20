@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { CommonModule } from './common/common.module';
 import { SharedModule } from './postal/shared.module';
-import { NatsModule } from './shared/nats';
+import { NatsModule } from './common/nats';
 import { AuthModule } from './auth/auth.module';
 import { AdminsModule } from './admins/admins.module';
 import { CoursesModule } from './courses/courses.module';

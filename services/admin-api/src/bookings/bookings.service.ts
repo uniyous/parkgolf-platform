@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { NatsClientService, NATS_TIMEOUTS } from '../shared/nats';
+import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
 
 @Injectable()
 export class BookingService {

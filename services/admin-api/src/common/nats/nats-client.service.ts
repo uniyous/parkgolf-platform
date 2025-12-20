@@ -1,7 +1,7 @@
 import { Injectable, Inject, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, TimeoutError } from 'rxjs';
-import { ErrorCodes } from '../../common/types/error-response.type';
+import { ErrorCodes } from '../types/error-response.type';
 
 /**
  * NATS Timeout Constants
@@ -69,7 +69,7 @@ export class NatsClientService {
           success: false,
           error: {
             code: ErrorCodes.SERVICE_UNAVAILABLE,
-            message: '서비스 요청 시간이 초과되었습니다. 다시 시도해 주세요.',
+            message: 'Service request timeout. Please try again.',
           },
         },
         HttpStatus.REQUEST_TIMEOUT,
@@ -95,7 +95,7 @@ export class NatsClientService {
           success: false,
           error: {
             code: ErrorCodes.SERVICE_UNAVAILABLE,
-            message: '서비스를 일시적으로 사용할 수 없습니다.',
+            message: 'Service temporarily unavailable',
           },
         },
         HttpStatus.SERVICE_UNAVAILABLE,
@@ -109,7 +109,7 @@ export class NatsClientService {
         success: false,
         error: {
           code: ErrorCodes.SYSTEM_ERROR,
-          message: '서버 오류가 발생했습니다.',
+          message: 'Internal server error',
         },
       },
       HttpStatus.INTERNAL_SERVER_ERROR,
