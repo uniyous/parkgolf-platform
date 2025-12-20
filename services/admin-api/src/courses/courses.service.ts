@@ -106,22 +106,22 @@ export class CourseService {
 
   async getHoleById(courseId: string, holeId: string, adminToken: string): Promise<any> {
     this.logger.log(`Fetching hole: ${holeId}`);
-    return this.natsClient.send('courses.holes.findById', { courseId, holeId, token: adminToken }, NATS_TIMEOUTS.QUICK);
+    return this.natsClient.send('holes.findById', { courseId, holeId, token: adminToken }, NATS_TIMEOUTS.QUICK);
   }
 
   async createHole(courseId: string, holeData: any, adminToken: string): Promise<any> {
     this.logger.log(`Creating hole for course: ${courseId}`);
-    return this.natsClient.send('courses.holes.create', { courseId, data: holeData, token: adminToken });
+    return this.natsClient.send('holes.create', { courseId, data: holeData, token: adminToken });
   }
 
   async updateHole(courseId: string, holeId: string, updateData: any, adminToken: string): Promise<any> {
     this.logger.log(`Updating hole: ${holeId}`);
-    return this.natsClient.send('courses.holes.update', { courseId, holeId, data: updateData, token: adminToken });
+    return this.natsClient.send('holes.update', { courseId, holeId, data: updateData, token: adminToken });
   }
 
   async deleteHole(courseId: string, holeId: string, adminToken: string): Promise<any> {
     this.logger.log(`Deleting hole: ${holeId}`);
-    return this.natsClient.send('courses.holes.delete', { courseId, holeId, token: adminToken });
+    return this.natsClient.send('holes.delete', { courseId, holeId, token: adminToken });
   }
 
   // ============================================
