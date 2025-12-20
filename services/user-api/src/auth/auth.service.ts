@@ -2,7 +2,6 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
-  NotFoundException,
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -10,7 +9,6 @@ import {
   RegisterDto,
   LoginDto,
   AuthResponseDto,
-  UserProfileDto,
 } from './dto/auth.dto';
 import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
 
@@ -18,8 +16,8 @@ import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
  * Auth Service for User API
  *
  * NATS Patterns:
- * - Authentication: auth.user.login, auth.user.validate, auth.user.refresh, auth.user.me
- * - User CRUD: users.create, users.getById
+ * - Authentication: auth.user.login, auth.user.refresh
+ * - User Registration: users.create
  */
 @Injectable()
 export class AuthService {
@@ -104,29 +102,6 @@ export class AuthService {
         createdAt: new Date(),
       },
       expiresIn: 3600,
-    };
-  }
-
-  async getProfile(userId: number): Promise<UserProfileDto> {
-    this.logger.log(`Get profile: userId=${userId}`);
-
-    // Use users.getById instead of auth.getProfile
-    const response = await this.natsClient.send<any>('users.getById', { userId: String(userId) }, NATS_TIMEOUTS.QUICK);
-
-    if (!response.success) {
-      throw new NotFoundException(response.error?.message || '사용자를 찾을 수 없습니다.');
-    }
-
-    const userData = response.data;
-
-    return {
-      id: userData.id,
-      email: userData.email,
-      name: userData.name || userData.email,
-      phoneNumber: userData.phoneNumber || '',
-      birthDate: userData.birthDate,
-      createdAt: userData.createdAt,
-      updatedAt: userData.updatedAt,
     };
   }
 

@@ -13,13 +13,17 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { UsersService } from '../users/users.service';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @Post('register')
   @ApiOperation({ summary: '회원가입' })
@@ -53,7 +57,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: '프로필 조회 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async getProfile(@Request() req: any) {
-    return this.authService.getProfile(req.user.userId);
+    return this.usersService.getProfile(req.user.userId);
   }
 
   @Post('refresh')
