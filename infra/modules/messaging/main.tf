@@ -1,5 +1,40 @@
 # Messaging Module
 # NATS JetStream for all messaging patterns (Request/Response + Pub/Sub)
+#
+# ============================================================================
+# IMPORTANT: NATS Container Configuration
+# ============================================================================
+# NATS 2.10 버전에서 JetStream 설정 시 명령줄 인수 제한 사항:
+#
+# 지원되는 인수:
+#   -js           : JetStream 활성화
+#   -sd /data     : Storage directory 지정
+#   -m 8222       : HTTP 모니터링 포트
+#
+# 지원되지 않는 인수 (설정 파일에서만 가능):
+#   --jetstream_max_memory (X)
+#   --jetstream_max_file (X)
+#
+# JetStream 메모리/파일 제한이 필요한 경우 nats.conf 설정 파일을 사용해야 함:
+#   jetstream {
+#     store_dir: /data
+#     max_memory_store: 1G
+#     max_file_store: 10G
+#   }
+#
+# 트러블슈팅:
+#   1. VM이 TERMINATED 상태인 경우:
+#      gcloud compute instances start parkgolf-nats-{env} --zone={zone}
+#
+#   2. 컨테이너가 계속 재시작하는 경우:
+#      SSH 접속 후 docker logs nats로 원인 확인
+#      잘못된 인수 사용 시 컨테이너 수동 재생성 필요
+#
+#   3. Cloud Run에서 연결 실패:
+#      - VPC Connector 상태 확인
+#      - Firewall 규칙 확인 (4222 포트)
+#      - NATS_URL 환경변수 확인
+# ============================================================================
 
 terraform {
   required_version = ">= 1.0"

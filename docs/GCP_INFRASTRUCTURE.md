@@ -865,6 +865,63 @@ flowchart TB
     STREAMS --> DISK
 ```
 
+### NATS Container 설정 (중요)
+
+NATS 2.10 버전에서 JetStream 설정을 위한 **올바른 명령줄 인수**:
+
+```bash
+# 올바른 NATS 컨테이너 실행 명령
+docker run -d --name nats \
+  -p 4222:4222 \
+  -p 6222:6222 \
+  -p 8222:8222 \
+  -v /var/nats-data:/data \
+  nats:2.10-alpine \
+  -js \           # JetStream 활성화
+  -sd /data \     # Storage directory
+  -m 8222         # Monitoring port
+
+# ⚠️ 주의: 다음 옵션들은 NATS 2.10에서 지원되지 않음
+# --jetstream_max_memory (X) - 설정 파일에서만 지원
+# --jetstream_max_file (X) - 설정 파일에서만 지원
+```
+
+JetStream 메모리/파일 제한 설정이 필요한 경우, 설정 파일(nats.conf)을 사용해야 합니다:
+
+```conf
+# nats.conf 예시
+jetstream {
+  store_dir: /data
+  max_memory_store: 1G
+  max_file_store: 10G
+}
+```
+
+### Cloud Run에서 NATS 연결
+
+Cloud Run 서비스는 VPC Connector를 통해 NATS VM에 연결합니다:
+
+```typescript
+// NestJS 서비스에서 NATS 연결 설정 (auth.module.ts 예시)
+ClientsModule.registerAsync([
+  {
+    name: 'NATS_CLIENT',
+    imports: [ConfigModule],
+    useFactory: (configService: ConfigService) => ({
+      transport: Transport.NATS,
+      options: {
+        servers: [configService.get<string>('NATS_URL') || 'nats://localhost:4222'],
+      },
+    }),
+    inject: [ConfigService],
+  },
+]),
+```
+
+환경변수 설정:
+- **Development**: `NATS_URL=nats://10.1.2.x:4222` (Private IP)
+- **Production**: `NATS_URL=nats://10.0.2.x:4222` (Private IP)
+
 ### JetStream Streams 구성
 
 | Stream | Purpose | Subjects | Retention | Max Age |
@@ -1172,6 +1229,101 @@ terraform apply tfplan
 
 ---
 
+## NATS 트러블슈팅 가이드
+
+### 일반적인 문제 및 해결 방법
+
+#### 1. NATS VM이 TERMINATED 상태인 경우
+
+```bash
+# VM 상태 확인
+gcloud compute instances list --filter="name~nats"
+
+# VM 시작
+gcloud compute instances start parkgolf-nats-dev \
+  --zone=asia-northeast3-a \
+  --project=parkgolf-uniyous
+```
+
+#### 2. NATS 컨테이너가 계속 재시작하는 경우
+
+원인: 잘못된 명령줄 인수 (예: `--jetstream_max_memory`)
+
+```bash
+# SSH 접속 (IAP 터널 사용)
+gcloud compute ssh parkgolf-nats-dev \
+  --zone=asia-northeast3-a \
+  --project=parkgolf-uniyous \
+  --tunnel-through-iap
+
+# 컨테이너 로그 확인
+docker logs nats
+
+# 기존 컨테이너 제거 및 올바른 설정으로 재시작
+docker stop nats && docker rm nats
+docker run -d --name nats \
+  -p 4222:4222 \
+  -p 6222:6222 \
+  -p 8222:8222 \
+  -v /var/nats-data:/data \
+  nats:2.10-alpine \
+  -js -sd /data -m 8222
+```
+
+#### 3. Cloud Run에서 NATS 연결 실패 (TIMEOUT/CONNECTION_REFUSED)
+
+**체크리스트:**
+1. NATS VM이 실행 중인지 확인
+2. VPC Connector가 올바르게 설정되어 있는지 확인
+3. Firewall 규칙이 4222 포트를 허용하는지 확인
+4. Cloud Run 서비스에 올바른 `NATS_URL` 환경변수가 설정되어 있는지 확인
+
+```bash
+# NATS VM 내부 IP 확인
+gcloud compute instances describe parkgolf-nats-dev \
+  --zone=asia-northeast3-a \
+  --format='get(networkInterfaces[0].networkIP)'
+
+# Firewall 규칙 확인
+gcloud compute firewall-rules list --filter="name~nats"
+
+# Cloud Run 환경변수 확인
+gcloud run services describe auth-service-dev \
+  --region=asia-northeast3 \
+  --format='value(spec.template.spec.containers[0].env)'
+```
+
+#### 4. Docker 이미지 Pull 실패 (VM에 외부 IP 없음)
+
+```bash
+# 임시로 외부 IP 추가
+gcloud compute instances add-access-config parkgolf-nats-dev \
+  --zone=asia-northeast3-a
+
+# Docker 이미지 Pull 후 외부 IP 제거 (보안)
+gcloud compute instances delete-access-config parkgolf-nats-dev \
+  --zone=asia-northeast3-a \
+  --access-config-name="external-nat"
+```
+
+### NATS 상태 확인 명령어
+
+```bash
+# 컨테이너 상태 확인
+docker ps -a | grep nats
+
+# NATS 서버 상태 확인 (HTTP 모니터링)
+curl http://10.1.2.x:8222/varz
+
+# JetStream 상태 확인
+curl http://10.1.2.x:8222/jsz
+
+# 연결 중인 클라이언트 확인
+curl http://10.1.2.x:8222/connz
+```
+
+---
+
 ## 참고 자료
 
 - [GCP VPC 네트워크 문서](https://cloud.google.com/vpc/docs)
@@ -1179,3 +1331,4 @@ terraform apply tfplan
 - [Cloud SQL 문서](https://cloud.google.com/sql/docs)
 - [Secret Manager 문서](https://cloud.google.com/secret-manager/docs)
 - [NATS JetStream 문서](https://docs.nats.io/nats-concepts/jetstream)
+- [NATS 명령줄 인수 참조](https://docs.nats.io/running-a-nats-service/configuration)

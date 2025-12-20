@@ -1,5 +1,34 @@
 # Backend Services CD Pipeline
 # Builds, pushes, and deploys backend services to Cloud Run
+#
+# ============================================================================
+# NATS Connection Notes
+# ============================================================================
+# 모든 백엔드 서비스는 NATS를 통해 서비스 간 통신을 수행합니다.
+#
+# NATS 연결 설정:
+# - 환경변수: NATS_URL (GitHub Secrets에서 관리)
+# - Dev: nats://10.1.2.x:4222 (VPC Connector 경유)
+# - Prod: nats://10.0.2.x:4222 (VPC Connector 경유)
+#
+# VPC Connector:
+# - Dev: parkgolf-connector-dev
+# - Prod: parkgolf-connector-prod
+# - vpc-egress: private-ranges-only (NATS는 VPC 내부 통신만 필요)
+#
+# 서비스별 NATS 사용:
+# - auth-service: auth.*, users.* 패턴 처리
+# - course-service: course.*, hole.*, company.* 패턴 처리
+# - booking-service: booking.* 패턴 처리
+# - notify-service: notification.> 구독
+# - admin-api: 모든 서비스에 NATS Request 전송
+# - user-api: auth.*, booking.*, course.* Request 전송
+#
+# NATS 연결 문제 해결:
+# 1. NATS VM 상태 확인: gcloud compute instances list --filter="name~nats"
+# 2. Firewall 확인: gcloud compute firewall-rules list --filter="name~nats"
+# 3. Cloud Run 로그 확인: gcloud run logs read --service={service}-{env}
+# ============================================================================
 
 name: CD Services
 

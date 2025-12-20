@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { AppService } from './app.service';
 import { CommonModule } from './common/common.module';
 import { AuthModule } from './auth/auth.module';
 import { BookingModule } from './booking/booking.module';
@@ -21,6 +20,6 @@ import { NatsModule } from './common/nats';
     NotifyModule,
   ],
   controllers: [],
-  providers: [AppService],
+  providers: [],
 })
 export class AppModule {}

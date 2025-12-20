@@ -8,8 +8,6 @@ import {
   Param,
   Query,
   Headers,
-  HttpStatus,
-  HttpException,
   Logger,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiQuery } from '@nestjs/swagger';

@@ -1,5 +1,32 @@
 # Infrastructure CD Pipeline (Terraform)
 # Manages infrastructure changes through GitOps workflow
+#
+# ============================================================================
+# NATS Infrastructure Notes
+# ============================================================================
+# NATS JetStream은 Compute Engine VM에서 Container-Optimized OS로 실행됩니다.
+#
+# 주요 구성요소:
+# - NATS VM: parkgolf-nats-{env} (e2-small/e2-medium)
+# - NATS 포트: 4222 (Client), 6222 (Cluster), 8222 (Monitoring)
+# - VPC Connector: Cloud Run ↔ NATS 통신
+# - Firewall: allow-nats-{env} (4222, 6222, 8222 포트 허용)
+#
+# NATS 컨테이너 인수 (중요):
+# - NATS 2.10에서 지원되는 인수만 사용해야 함
+# - 올바른 인수: -js, -sd /data, -m 8222
+# - 지원되지 않는 인수: --jetstream_max_memory, --jetstream_max_file
+#   (이 옵션들은 설정 파일(nats.conf)에서만 지원됨)
+#
+# Terraform 모듈 위치: infra/modules/messaging/main.tf
+# 환경 설정: infra/environments/{env}/main.tf
+#
+# NATS VM 수동 관리 명령:
+#   # VM 시작: gcloud compute instances start parkgolf-nats-{env} --zone=asia-northeast3-a
+#   # SSH 접속: gcloud compute ssh parkgolf-nats-{env} --tunnel-through-iap
+#   # 컨테이너 확인: docker ps -a | grep nats
+#   # 컨테이너 로그: docker logs nats
+# ============================================================================
 
 name: CD Infrastructure
 
