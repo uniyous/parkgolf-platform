@@ -13,6 +13,8 @@ export interface ErrorResponse {
 export enum ErrorCodes {
   // System errors (SYS)
   SYSTEM_ERROR = 'SYS_001',
+  DATABASE_ERROR = 'SYS_002',
+  NETWORK_ERROR = 'SYS_003',
   SERVICE_UNAVAILABLE = 'SYS_004',
 
   // Authentication errors (AUT)
