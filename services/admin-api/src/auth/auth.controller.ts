@@ -222,7 +222,21 @@ export class AuthController {
 
       // Call auth-service /auth/me endpoint via NATS
       const result = await this.authService.getCurrentUser(token);
-      
+
+      // Check if result is valid
+      if (!result || !result.success || !result.data) {
+        throw new HttpException(
+          {
+            success: false,
+            error: {
+              code: 'GET_USER_FAILED',
+              message: result?.error?.message || 'Failed to get user information',
+            }
+          },
+          HttpStatus.UNAUTHORIZED
+        );
+      }
+
       // Verify admin role (check roles array)
       if (!hasAdminRole(result.data.roles)) {
         throw new HttpException(

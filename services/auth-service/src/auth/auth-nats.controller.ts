@@ -155,14 +155,19 @@ export class AuthNatsController {
     try {
       this.logger.log('Get current admin request');
       const decoded = await this.authService.validateToken(payload.token);
+      this.logger.debug(`Token decoded: ${JSON.stringify({ type: decoded.user?.type, sub: decoded.user?.sub })}`);
 
       // Ensure this is an admin token
       if (decoded.user?.type !== 'admin') {
+        this.logger.warn(`Invalid token type: ${decoded.user?.type}`);
         return errorResponse('INVALID_TOKEN_TYPE', 'Expected admin token, got user token');
       }
 
       const adminInfo = await this.authService.getCurrentUser(decoded.user);
-      return successResponse(adminInfo);
+      this.logger.debug(`Admin info retrieved: ${JSON.stringify({ id: adminInfo.id, email: adminInfo.email, roles: adminInfo.roles })}`);
+      const response = successResponse(adminInfo);
+      this.logger.debug(`auth.admin.me response: success=${response.success}`);
+      return response;
     } catch (error) {
       this.logger.error('Get current admin failed', error);
       return errorResponse('GET_CURRENT_ADMIN_FAILED', error.message || 'Failed to get current admin');
