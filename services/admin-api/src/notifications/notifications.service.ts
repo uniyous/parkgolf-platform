@@ -1,424 +1,201 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout } from 'rxjs';
+import { Injectable, Logger } from '@nestjs/common';
+import { NatsClientService, NATS_TIMEOUTS } from '../shared/nats';
 
 @Injectable()
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
 
-  constructor(
-    @Inject('NATS_CLIENT') private readonly notifyClient: ClientProxy,
-  ) {}
+  constructor(private readonly natsClient: NatsClientService) {}
 
   // Notification Management
   async getNotifications(filters: any = {}, page = 1, limit = 20, adminToken: string): Promise<any> {
-    try {
-      this.logger.log('Fetching notifications via NATS');
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('notifications.list', { 
-          filters, 
-          page, 
-          limit, 
-          token: adminToken 
-        }).pipe(timeout(10000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to fetch notifications', error);
-      throw error;
-    }
+    this.logger.log('Fetching notifications');
+    return this.natsClient.send('notifications.list', {
+      filters,
+      page,
+      limit,
+      token: adminToken,
+    }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   async getNotificationById(notificationId: string, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Fetching notification via NATS: ${notificationId}`);
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('notifications.findById', { 
-          notificationId, 
-          token: adminToken 
-        }).pipe(timeout(5000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to fetch notification: ${notificationId}`, error);
-      throw error;
-    }
+    this.logger.log(`Fetching notification: ${notificationId}`);
+    return this.natsClient.send('notifications.findById', {
+      notificationId,
+      token: adminToken,
+    }, NATS_TIMEOUTS.QUICK);
   }
 
   async createNotification(notificationData: any, adminToken: string): Promise<any> {
-    try {
-      this.logger.log('Creating notification via NATS');
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('notifications.create', { 
-          data: notificationData, 
-          token: adminToken 
-        }).pipe(timeout(5000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to create notification', error);
-      throw error;
-    }
+    this.logger.log('Creating notification');
+    return this.natsClient.send('notifications.create', {
+      data: notificationData,
+      token: adminToken,
+    });
   }
 
   async sendBulkNotification(bulkNotificationData: any, adminToken: string): Promise<any> {
-    try {
-      this.logger.log('Sending bulk notification via NATS');
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('notifications.sendBulk', { 
-          data: bulkNotificationData, 
-          token: adminToken 
-        }).pipe(timeout(15000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to send bulk notification', error);
-      throw error;
-    }
+    this.logger.log('Sending bulk notification');
+    return this.natsClient.send('notifications.sendBulk', {
+      data: bulkNotificationData,
+      token: adminToken,
+    }, NATS_TIMEOUTS.ANALYTICS);
   }
 
   async getUserNotifications(userId: string, page = 1, limit = 20, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Fetching user notifications via NATS: ${userId}`);
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('notifications.user', { 
-          userId, 
-          page, 
-          limit, 
-          token: adminToken 
-        }).pipe(timeout(10000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to fetch notifications for user: ${userId}`, error);
-      throw error;
-    }
+    this.logger.log(`Fetching user notifications: ${userId}`);
+    return this.natsClient.send('notifications.user', {
+      userId,
+      page,
+      limit,
+      token: adminToken,
+    }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   async markAsRead(notificationId: string, userId: string, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Marking notification as read via NATS: ${notificationId}`);
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('notifications.markRead', { 
-          notificationId, 
-          userId, 
-          token: adminToken 
-        }).pipe(timeout(5000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to mark notification as read: ${notificationId}`, error);
-      throw error;
-    }
+    this.logger.log(`Marking notification as read: ${notificationId}`);
+    return this.natsClient.send('notifications.markRead', {
+      notificationId,
+      userId,
+      token: adminToken,
+    });
   }
 
   async markAllAsRead(userId: string, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Marking all notifications as read via NATS for user: ${userId}`);
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('notifications.markAllRead', { 
-          userId, 
-          token: adminToken 
-        }).pipe(timeout(5000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to mark all notifications as read for user: ${userId}`, error);
-      throw error;
-    }
+    this.logger.log(`Marking all notifications as read for user: ${userId}`);
+    return this.natsClient.send('notifications.markAllRead', {
+      userId,
+      token: adminToken,
+    });
   }
 
   // Template Management
   async getTemplates(page = 1, limit = 20, adminToken: string): Promise<any> {
-    try {
-      this.logger.log('Fetching notification templates via NATS');
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('templates.list', { 
-          page, 
-          limit, 
-          token: adminToken 
-        }).pipe(timeout(10000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to fetch notification templates', error);
-      throw error;
-    }
+    this.logger.log('Fetching notification templates');
+    return this.natsClient.send('templates.list', {
+      page,
+      limit,
+      token: adminToken,
+    }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   async getTemplateById(templateId: string, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Fetching template via NATS: ${templateId}`);
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('templates.findById', { 
-          templateId, 
-          token: adminToken 
-        }).pipe(timeout(5000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to fetch template: ${templateId}`, error);
-      throw error;
-    }
+    this.logger.log(`Fetching template: ${templateId}`);
+    return this.natsClient.send('templates.findById', {
+      templateId,
+      token: adminToken,
+    }, NATS_TIMEOUTS.QUICK);
   }
 
   async createTemplate(templateData: any, adminToken: string): Promise<any> {
-    try {
-      this.logger.log('Creating notification template via NATS');
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('templates.create', { 
-          data: templateData, 
-          token: adminToken 
-        }).pipe(timeout(5000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to create notification template', error);
-      throw error;
-    }
+    this.logger.log('Creating notification template');
+    return this.natsClient.send('templates.create', {
+      data: templateData,
+      token: adminToken,
+    });
   }
 
   async updateTemplate(templateId: string, updateData: any, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Updating template via NATS: ${templateId}`);
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('templates.update', { 
-          templateId, 
-          data: updateData, 
-          token: adminToken 
-        }).pipe(timeout(5000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to update template: ${templateId}`, error);
-      throw error;
-    }
+    this.logger.log(`Updating template: ${templateId}`);
+    return this.natsClient.send('templates.update', {
+      templateId,
+      data: updateData,
+      token: adminToken,
+    });
   }
 
   async deleteTemplate(templateId: string, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Deleting template via NATS: ${templateId}`);
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('templates.delete', { 
-          templateId, 
-          token: adminToken 
-        }).pipe(timeout(5000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to delete template: ${templateId}`, error);
-      throw error;
-    }
+    this.logger.log(`Deleting template: ${templateId}`);
+    return this.natsClient.send('templates.delete', {
+      templateId,
+      token: adminToken,
+    });
   }
 
   async testTemplate(templateId: string, testData: any, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Testing template via NATS: ${templateId}`);
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('templates.test', { 
-          templateId, 
-          data: testData, 
-          token: adminToken 
-        }).pipe(timeout(10000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to test template: ${templateId}`, error);
-      throw error;
-    }
+    this.logger.log(`Testing template: ${templateId}`);
+    return this.natsClient.send('templates.test', {
+      templateId,
+      data: testData,
+      token: adminToken,
+    }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   // User Preferences Management
   async getUserPreferences(userId: string, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Fetching user preferences via NATS: ${userId}`);
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('preferences.get', { 
-          userId, 
-          token: adminToken 
-        }).pipe(timeout(5000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to fetch preferences for user: ${userId}`, error);
-      throw error;
-    }
+    this.logger.log(`Fetching user preferences: ${userId}`);
+    return this.natsClient.send('preferences.get', {
+      userId,
+      token: adminToken,
+    }, NATS_TIMEOUTS.QUICK);
   }
 
   async updateUserPreferences(userId: string, preferencesData: any, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Updating user preferences via NATS: ${userId}`);
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('preferences.update', { 
-          userId, 
-          data: preferencesData, 
-          token: adminToken 
-        }).pipe(timeout(5000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to update preferences for user: ${userId}`, error);
-      throw error;
-    }
+    this.logger.log(`Updating user preferences: ${userId}`);
+    return this.natsClient.send('preferences.update', {
+      userId,
+      data: preferencesData,
+      token: adminToken,
+    });
   }
 
   // Notification Statistics
   async getNotificationStats(dateRange: { startDate: string; endDate: string }, adminToken: string): Promise<any> {
-    try {
-      this.logger.log('Fetching notification statistics via NATS');
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('notifications.stats', { 
-          dateRange, 
-          token: adminToken 
-        }).pipe(timeout(10000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to fetch notification statistics', error);
-      throw error;
-    }
+    this.logger.log('Fetching notification statistics');
+    return this.natsClient.send('notifications.stats', {
+      dateRange,
+      token: adminToken,
+    }, NATS_TIMEOUTS.ANALYTICS);
   }
 
   async getDeliveryStats(dateRange: { startDate: string; endDate: string }, adminToken: string): Promise<any> {
-    try {
-      this.logger.log('Fetching delivery statistics via NATS');
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('notifications.deliveryStats', { 
-          dateRange, 
-          token: adminToken 
-        }).pipe(timeout(10000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to fetch delivery statistics', error);
-      throw error;
-    }
+    this.logger.log('Fetching delivery statistics');
+    return this.natsClient.send('notifications.deliveryStats', {
+      dateRange,
+      token: adminToken,
+    }, NATS_TIMEOUTS.ANALYTICS);
   }
 
   // Campaign Management
   async getCampaigns(page = 1, limit = 20, adminToken: string): Promise<any> {
-    try {
-      this.logger.log('Fetching notification campaigns via NATS');
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('campaigns.list', { 
-          page, 
-          limit, 
-          token: adminToken 
-        }).pipe(timeout(10000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to fetch notification campaigns', error);
-      throw error;
-    }
+    this.logger.log('Fetching notification campaigns');
+    return this.natsClient.send('campaigns.list', {
+      page,
+      limit,
+      token: adminToken,
+    }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   async createCampaign(campaignData: any, adminToken: string): Promise<any> {
-    try {
-      this.logger.log('Creating notification campaign via NATS');
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('campaigns.create', { 
-          data: campaignData, 
-          token: adminToken 
-        }).pipe(timeout(10000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to create notification campaign', error);
-      throw error;
-    }
+    this.logger.log('Creating notification campaign');
+    return this.natsClient.send('campaigns.create', {
+      data: campaignData,
+      token: adminToken,
+    }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   async getCampaignById(campaignId: string, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Fetching campaign via NATS: ${campaignId}`);
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('campaigns.findById', { 
-          campaignId, 
-          token: adminToken 
-        }).pipe(timeout(5000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to fetch campaign: ${campaignId}`, error);
-      throw error;
-    }
+    this.logger.log(`Fetching campaign: ${campaignId}`);
+    return this.natsClient.send('campaigns.findById', {
+      campaignId,
+      token: adminToken,
+    }, NATS_TIMEOUTS.QUICK);
   }
 
   async updateCampaign(campaignId: string, updateData: any, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Updating campaign via NATS: ${campaignId}`);
-      
-      const result = await firstValueFrom(
-        this.notifyClient.send('campaigns.update', { 
-          campaignId, 
-          data: updateData, 
-          token: adminToken 
-        }).pipe(timeout(5000))
-      );
-      
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to update campaign: ${campaignId}`, error);
-      throw error;
-    }
+    this.logger.log(`Updating campaign: ${campaignId}`);
+    return this.natsClient.send('campaigns.update', {
+      campaignId,
+      data: updateData,
+      token: adminToken,
+    });
   }
 
   async deleteCampaign(campaignId: string, adminToken: string): Promise<any> {
-    try {
-      this.logger.log(`Deleting campaign via NATS: ${campaignId}`);
-
-      const result = await firstValueFrom(
-        this.notifyClient.send('campaigns.delete', {
-          campaignId,
-          token: adminToken
-        }).pipe(timeout(5000))
-      );
-
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to delete campaign: ${campaignId}`, error);
-      throw error;
-    }
+    this.logger.log(`Deleting campaign: ${campaignId}`);
+    return this.natsClient.send('campaigns.delete', {
+      campaignId,
+      token: adminToken,
+    });
   }
 }

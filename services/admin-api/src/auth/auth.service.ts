@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { NatsClientService } from '../shared/nats';
+import { NatsClientService, NATS_TIMEOUTS } from '../shared/nats';
 
 export interface LoginRequest {
   email: string;
@@ -55,7 +55,7 @@ export class AuthService {
 
   async getUserList(filters: any, adminToken: string): Promise<UserListResponse> {
     this.logger.log('Fetching user list via NATS');
-    return this.natsClient.send<UserListResponse>('users.list', { ...filters, token: adminToken }, 10000);
+    return this.natsClient.send<UserListResponse>('users.list', { ...filters, token: adminToken }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   async getUserById(userId: string, adminToken: string): Promise<any> {
@@ -75,22 +75,22 @@ export class AuthService {
 
   async updateUserStatus(userId: string, status: string, adminToken: string): Promise<any> {
     this.logger.log(`Updating user ${userId} status to ${status} via NATS`);
-    return this.natsClient.send('users.updateStatus', { userId, status, token: adminToken }, 10000);
+    return this.natsClient.send('users.updateStatus', { userId, status, token: adminToken });
   }
 
   async updateUserRole(userId: string, role: string, adminToken: string): Promise<any> {
     this.logger.log(`Updating user ${userId} role to ${role} via NATS`);
-    return this.natsClient.send('users.updateRole', { userId, role, token: adminToken }, 10000);
+    return this.natsClient.send('users.updateRole', { userId, role, token: adminToken });
   }
 
   async updateUserPermissions(userId: string, permissions: string[], adminToken: string): Promise<any> {
     this.logger.log(`Updating user ${userId} permissions via NATS`);
-    return this.natsClient.send('users.updatePermissions', { userId, permissions, token: adminToken }, 10000);
+    return this.natsClient.send('users.updatePermissions', { userId, permissions, token: adminToken });
   }
 
   async resetUserPassword(userId: string, newPassword: string, adminToken: string): Promise<any> {
     this.logger.log(`Resetting password for user ${userId} via NATS`);
-    return this.natsClient.send('users.resetPassword', { userId, newPassword, token: adminToken }, 10000);
+    return this.natsClient.send('users.resetPassword', { userId, newPassword, token: adminToken });
   }
 
   async createUser(userData: any, adminToken: string): Promise<any> {
@@ -100,12 +100,12 @@ export class AuthService {
 
   async createAdmin(adminData: any): Promise<any> {
     this.logger.log('Creating admin via NATS');
-    return this.natsClient.send('auth.admin.create', { adminData }, 10000);
+    return this.natsClient.send('auth.admin.create', { adminData });
   }
 
   async getUserStats(dateRange: { startDate: string; endDate: string }, adminToken: string): Promise<any> {
     this.logger.log('Fetching user statistics via NATS');
-    return this.natsClient.send('users.stats', { dateRange, token: adminToken }, 10000);
+    return this.natsClient.send('users.stats', { dateRange, token: adminToken }, NATS_TIMEOUTS.ANALYTICS);
   }
 
   async getCurrentUser(token: string): Promise<any> {
