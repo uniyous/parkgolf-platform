@@ -49,6 +49,11 @@ on:
           - plan
           - apply
           - destroy
+      target:
+        description: 'Terraform target module (optional, e.g., module.messaging)'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -219,8 +224,15 @@ jobs:
       - name: Terraform Plan
         id: plan
         run: |
+          TARGET_OPTION=""
+          if [ -n "${{ github.event.inputs.target }}" ]; then
+            TARGET_OPTION="-target=${{ github.event.inputs.target }}"
+            echo "🎯 Targeting: ${{ github.event.inputs.target }}"
+          fi
+
           terraform plan \
             -var="environment=${{ needs.detect-environment.outputs.environment }}" \
+            $TARGET_OPTION \
             -no-color \
             -detailed-exitcode \
             -out=tfplan 2>&1 | tee plan_output.txt
@@ -420,6 +432,13 @@ jobs:
 
       - name: Terraform Destroy
         run: |
+          TARGET_OPTION=""
+          if [ -n "${{ github.event.inputs.target }}" ]; then
+            TARGET_OPTION="-target=${{ github.event.inputs.target }}"
+            echo "🎯 Targeting: ${{ github.event.inputs.target }}"
+          fi
+
           terraform destroy \
             -var="environment=${{ needs.detect-environment.outputs.environment }}" \
+            $TARGET_OPTION \
             -auto-approve
