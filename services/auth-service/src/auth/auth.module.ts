@@ -6,9 +6,7 @@ import { AdminModule } from '../admin/admin.module';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { AdminJwtStrategy } from './strategies/admin-jwt.strategy';
 
 @Module({
     imports: [
@@ -27,8 +25,8 @@ import { AdminJwtStrategy } from './strategies/admin-jwt.strategy';
         }),
         ConfigModule,
     ],
-    providers: [AuthService, LocalStrategy, JwtStrategy, AdminJwtStrategy],
+    providers: [AuthService, JwtStrategy],
     controllers: [AuthNatsController],
-    exports: [AuthService, JwtModule], // Export JwtModule if other modules need to verify tokens directly
+    exports: [AuthService, JwtModule],
 })
 export class AuthModule {}
