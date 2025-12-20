@@ -29,7 +29,7 @@ import {
 } from './dto/booking.dto';
 
 @ApiTags('Booking')
-@Controller('bookings')
+@Controller('api/user/bookings')
 export class BookingController {
   private readonly logger = new Logger(BookingController.name);
 
