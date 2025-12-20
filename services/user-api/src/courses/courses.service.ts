@@ -24,6 +24,6 @@ export class CoursesService {
 
   async getCourseById(id: number) {
     this.logger.log(`Getting course by id: ${id}`);
-    return this.natsClient.send('course.getById', { id }, NATS_TIMEOUTS.QUICK);
+    return this.natsClient.send('courses.findById', { courseId: id }, NATS_TIMEOUTS.QUICK);
   }
 }
