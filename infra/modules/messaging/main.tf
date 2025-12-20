@@ -187,8 +187,10 @@ resource "google_compute_instance" "nats" {
   }
 
   scheduling {
-    preemptible       = var.environment != "prod"
-    automatic_restart = var.environment == "prod"
+    # NATS는 메시징 인프라로 안정성이 중요하므로 preemptible 사용 안함
+    preemptible       = false
+    automatic_restart = true
+    on_host_maintenance = "MIGRATE"
   }
 
   labels = {
@@ -197,11 +199,7 @@ resource "google_compute_instance" "nats" {
     component   = "messaging"
   }
 
-  lifecycle {
-    ignore_changes = [
-      metadata["gce-container-declaration"]
-    ]
-  }
+  # lifecycle block removed to allow metadata updates via Terraform
 }
 
 # Firewall for NATS
