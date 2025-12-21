@@ -122,7 +122,7 @@ module "networking" {
 
   vpc_connector_cidr   = "10.1.10.0/28"
   enable_vpc_connector = true
-  enable_nat           = false  # Disable NAT for cost savings in dev
+  enable_nat           = false  # NATS VM uses external IP instead (cost saving)
 
   # Disable Private Service Connection - dev uses external Compute Engine PostgreSQL
   enable_private_service_connection = false

@@ -143,8 +143,11 @@ resource "google_compute_instance" "nats" {
     network    = var.vpc_network
     subnetwork = var.vpc_subnetwork
 
-    # No external IP for security
-    # access_config {} # Uncomment if external access needed
+    # External IP for Docker Hub access (required for pulling images)
+    # NATS ports (4222, 6222, 8222) are protected by firewall rules (internal only)
+    access_config {
+      # Ephemeral external IP (no cost)
+    }
   }
 
   metadata = {
