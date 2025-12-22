@@ -196,14 +196,12 @@ jobs:
         run: |
           ENV="${{ needs.detect-environment.outputs.environment }}"
 
-          # Dev environment - uses external DB, no db_password needed
+          # Dev environment - uses external DB configured in cd-services.yml
           if [ "$ENV" == "dev" ]; then
             cat > terraform.tfvars << EOF
           jwt_secret         = "${{ secrets.JWT_SECRET }}"
           jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
           alert_email        = "${{ secrets.ALERT_EMAIL }}"
-          db_host            = "${{ secrets.DEV_DB_HOST }}"
-          db_username        = "${{ secrets.DEV_DB_USERNAME }}"
           EOF
           fi
 
@@ -414,14 +412,12 @@ jobs:
         run: |
           ENV="${{ needs.detect-environment.outputs.environment }}"
 
-          # Dev environment - uses external DB, no db_password needed
+          # Dev environment - uses external DB configured in cd-services.yml
           if [ "$ENV" == "dev" ]; then
             cat > terraform.tfvars << EOF
           jwt_secret         = "${{ secrets.JWT_SECRET }}"
           jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
           alert_email        = "${{ secrets.ALERT_EMAIL }}"
-          db_host            = "${{ secrets.DEV_DB_HOST }}"
-          db_username        = "${{ secrets.DEV_DB_USERNAME }}"
           EOF
           fi
 
