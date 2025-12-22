@@ -9,7 +9,7 @@ import {
   BookingConfirmedEvent
 } from '../dto/booking.dto';
 import { ClientProxy } from '@nestjs/microservices';
-import { generateTimeSlotId } from '../../common/utils/response.util';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class BookingService {
@@ -20,10 +20,19 @@ export class BookingService {
     @Optional() @Inject('NOTIFICATION_SERVICE') private readonly notificationPublisher?: ClientProxy,
   ) {}
 
-  // 예약번호 생성 함수
+  // 예약번호 생성 함수 - UUID 기반으로 예측 불가능하고 충돌 없는 번호 생성
   private generateBookingNumber(): string {
-    const now = Date.now();
-    return `BK${now.toString().slice(-8)}`;
+    const uuid = randomUUID().replace(/-/g, '').toUpperCase();
+    return `BK-${uuid.slice(0, 8)}-${uuid.slice(8, 12)}`;
+  }
+
+  // 안전한 타임슬롯 ID 생성 - UUID 기반
+  private generateTimeSlotId(): number {
+    const uuid = randomUUID();
+    // UUID를 32비트 정수로 변환 (시간 기반 + 랜덤 조합)
+    const timestamp = Date.now() % 1000000000; // 9자리 타임스탬프
+    const randomPart = parseInt(uuid.replace(/-/g, '').slice(0, 6), 16) % 1000; // 3자리 랜덤
+    return timestamp * 1000 + randomPart;
   }
 
   async createBooking(dto: CreateBookingRequestDto): Promise<BookingResponseDto> {
@@ -66,7 +75,7 @@ export class BookingService {
         // 예약 생성
         const newBooking = await prisma.booking.create({
           data: {
-            timeSlotId: generateTimeSlotId(),
+            timeSlotId: this.generateTimeSlotId(),
             slotType: 'NINE_HOLE' as any,
             bookingDate: new Date(dto.bookingDate),
             startTime: dto.timeSlot,
@@ -88,19 +97,28 @@ export class BookingService {
           },
         });
 
-        // 타임슬롯 업데이트
-        // Find and update time slot availability
-        const timeSlot = await prisma.timeSlotAvailability.findFirst({
-          where: {
-            singleCourseId: dto.courseId,
-            date: new Date(dto.bookingDate),
-            startTime: dto.timeSlot
-          }
-        });
+        // 타임슬롯 업데이트 (Race Condition 방지를 위해 SELECT FOR UPDATE 사용)
+        const timeSlotResult = await prisma.$queryRaw<Array<{id: number, available_slots: number}>>`
+          SELECT id, "availableSlots" as available_slots
+          FROM "TimeSlotAvailability"
+          WHERE "singleCourseId" = ${dto.courseId}
+            AND date = ${new Date(dto.bookingDate)}
+            AND "startTime" = ${dto.timeSlot}
+          FOR UPDATE
+        `;
 
-        if (timeSlot) {
+        if (timeSlotResult.length > 0) {
+          const slot = timeSlotResult[0];
+          // 다시 한번 가용성 확인 (동시성 이슈 방지)
+          if (slot.available_slots < dto.playerCount) {
+            throw new HttpException(
+              'Selected time slot is no longer available',
+              HttpStatus.CONFLICT
+            );
+          }
+
           await prisma.timeSlotAvailability.update({
-            where: { id: timeSlot.id },
+            where: { id: slot.id },
             data: {
               currentBookings: {
                 increment: dto.playerCount
@@ -108,7 +126,7 @@ export class BookingService {
               availableSlots: {
                 decrement: dto.playerCount
               },
-              isAvailable: availability.remaining - dto.playerCount > 0
+              isAvailable: slot.available_slots - dto.playerCount > 0
             }
           });
         }
@@ -410,8 +428,6 @@ export class BookingService {
     // UTC 기준으로 날짜 생성하여 타임존 문제 해결
     const targetDate = new Date(date + 'T00:00:00.000Z');
 
-    this.logger.log(`Querying time slots for courseId: ${courseId}, date: ${date}, targetDate: ${targetDate.toISOString()}`);
-
     const slots = await this.prisma.timeSlotAvailability.findMany({
       where: {
         singleCourseId: courseId,
@@ -422,45 +438,20 @@ export class BookingService {
       }
     });
 
-    this.logger.log(`Found ${slots.length} slots in database`);
-    
     // 슬롯이 없으면 생성
     if (slots.length === 0) {
-      this.logger.log('No slots found, generating default slots');
       return this.generateDefaultTimeSlots(courseId, targetDate);
     }
 
-    // 데이터 매핑 과정 디버깅
-    const mappedSlots = slots.map(slot => {
-      const mappedSlot = {
-        id: slot.id,
-        time: slot.startTime,
-        date: slot.date.toISOString().split('T')[0],
-        available: slot.isAvailable,
-        price: Number(slot.price),
-        isPremium: slot.isPremium,
-        remaining: slot.maxCapacity - slot.currentBookings
-      };
-      
-      this.logger.log(`Mapping slot: ${JSON.stringify({
-        original: {
-          id: slot.id,
-          startTime: slot.startTime,
-          date: slot.date,
-          isAvailable: slot.isAvailable,
-          price: slot.price,
-          isPremium: slot.isPremium,
-          maxCapacity: slot.maxCapacity,
-          currentBookings: slot.currentBookings
-        },
-        mapped: mappedSlot
-      })}`);
-      
-      return mappedSlot;
-    });
-
-    this.logger.log(`Returning ${mappedSlots.length} mapped slots`);
-    return mappedSlots;
+    return slots.map(slot => ({
+      id: slot.id,
+      time: slot.startTime,
+      date: slot.date.toISOString().split('T')[0],
+      available: slot.isAvailable,
+      price: Number(slot.price),
+      isPremium: slot.isPremium,
+      remaining: slot.maxCapacity - slot.currentBookings
+    }));
   }
 
   // 프라이빗 헬퍼 메서드들
@@ -505,8 +496,6 @@ export class BookingService {
     courseId: number,
     date: Date
   ): Promise<any[]> {
-    this.logger.log(`Generating default time slots for courseId: ${courseId}, date: ${date.toISOString()}`);
-    
     const course = await this.prisma.courseCache.findUnique({
       where: { courseId }
     });
@@ -516,62 +505,67 @@ export class BookingService {
       return [];
     }
 
-    this.logger.log(`Course found: ${JSON.stringify({
-      courseId: course.courseId,
-      name: course.name,
-      openTime: course.openTime,
-      closeTime: course.closeTime,
-      pricePerHour: course.pricePerHour
-    })}`);
+    // 시간 문자열 검증
+    const timeRegex = /^\d{2}:\d{2}$/;
+    if (!timeRegex.test(course.openTime) || !timeRegex.test(course.closeTime)) {
+      this.logger.error(`Invalid time format: openTime=${course.openTime}, closeTime=${course.closeTime}`);
+      return [];
+    }
 
-    const slots = [];
     const startHour = parseInt(course.openTime.split(':')[0]);
     const endHour = parseInt(course.closeTime.split(':')[0]);
     const basePrice = Number(course.pricePerHour);
 
-    this.logger.log(`Generating slots from ${startHour}:00 to ${endHour}:00 with base price: ${basePrice}`);
-
+    // 배치 INSERT를 위한 데이터 준비
+    const slotsData = [];
     for (let hour = startHour; hour < endHour; hour++) {
       const timeSlot = `${hour.toString().padStart(2, '0')}:00`;
       const isPremium = hour >= 12 && hour <= 16;
       const price = isPremium ? Math.floor(basePrice * 1.2) : basePrice;
 
-      this.logger.log(`Creating slot: ${timeSlot}, premium: ${isPremium}, price: ${price}`);
-
-      const newSlot = await this.prisma.timeSlotAvailability.create({
-        data: {
-          timeSlotId: generateTimeSlotId(),
-          slotType: 'NINE_HOLE' as any,
-          date,
-          startTime: timeSlot,
-          endTime: `${(hour + 1).toString().padStart(2, '0')}:00`,
-          singleCourseId: courseId,
-          singleCourseName: course.name || 'Default Course',
-          maxCapacity: 4,
-          currentBookings: 0,
-          availableSlots: 4,
-          isAvailable: true,
-          isPremium,
-          price
-        }
+      slotsData.push({
+        timeSlotId: this.generateTimeSlotId(),
+        slotType: 'NINE_HOLE',
+        date,
+        startTime: timeSlot,
+        endTime: `${(hour + 1).toString().padStart(2, '0')}:00`,
+        singleCourseId: courseId,
+        singleCourseName: course.name || 'Default Course',
+        maxCapacity: 4,
+        currentBookings: 0,
+        availableSlots: 4,
+        isAvailable: true,
+        isPremium,
+        price
       });
-
-      const mappedSlot = {
-        id: newSlot.id,
-        time: newSlot.startTime,
-        date: newSlot.date.toISOString().split('T')[0],
-        available: newSlot.isAvailable,
-        price: Number(newSlot.price),
-        isPremium: newSlot.isPremium,
-        remaining: newSlot.maxCapacity - newSlot.currentBookings
-      };
-
-      this.logger.log(`Generated slot: ${JSON.stringify(mappedSlot)}`);
-      slots.push(mappedSlot);
     }
 
-    this.logger.log(`Generated ${slots.length} default slots`);
-    return slots;
+    // 배치 INSERT 실행
+    await this.prisma.timeSlotAvailability.createMany({
+      data: slotsData as any[],
+      skipDuplicates: true,
+    });
+
+    // 생성된 슬롯 조회하여 반환
+    const createdSlots = await this.prisma.timeSlotAvailability.findMany({
+      where: {
+        singleCourseId: courseId,
+        date
+      },
+      orderBy: { startTime: 'asc' }
+    });
+
+    this.logger.log(`Generated ${createdSlots.length} default time slots for courseId: ${courseId}`);
+
+    return createdSlots.map(slot => ({
+      id: slot.id,
+      time: slot.startTime,
+      date: slot.date.toISOString().split('T')[0],
+      available: slot.isAvailable,
+      price: Number(slot.price),
+      isPremium: slot.isPremium,
+      remaining: slot.maxCapacity - slot.currentBookings
+    }));
   }
 
   // 코스 캐시 동기화 메서드
