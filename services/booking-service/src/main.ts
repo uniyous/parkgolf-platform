@@ -1,8 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ConfigService } from '@nestjs/config';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { BaseExceptionFilter } from './common/exception/base-exception.filter';
 import { GlobalRpcExceptionFilter } from './common/exception/rpc-exception.filter';
@@ -10,18 +8,23 @@ import { GlobalRpcExceptionFilter } from './common/exception/rpc-exception.filte
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
-  try {
-    logger.log('🚀 Starting Booking Service...');
+  // Log environment variables (masked)
+  const dbUrl = process.env.DATABASE_URL || '';
+  const maskedDbUrl = dbUrl.replace(/:[^@]*@/, ':****@');
+  logger.log(`🔧 Environment Variables:`);
+  logger.log(`   - NODE_ENV: ${process.env.NODE_ENV}`);
+  logger.log(`   - DATABASE_URL: ${maskedDbUrl}`);
+  logger.log(`   - NATS_URL: ${process.env.NATS_URL}`);
 
-    // Create HTTP app first for health check
-    logger.log('📦 Creating NestJS application...');
-    const app = await NestFactory.create(AppModule);
+  try {
+    // Create HTTP app with minimal logging
+    const app = await NestFactory.create(AppModule, {
+      logger: ['error', 'warn', 'log'],
+    });
 
     // Global exception filter
     app.useGlobalFilters(new BaseExceptionFilter());
 
-    // Global pipes for validation
-    logger.log('🔧 Setting up global validation pipes...');
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -33,34 +36,17 @@ async function bootstrap() {
       }),
     );
 
-    app.enableCors();
-
-    const config = new DocumentBuilder()
-      .setTitle('Park Golf Booking Service API')
-      .setDescription('Booking management API')
-      .setVersion('1.0')
-      .addBearerAuth()
-      .build();
-
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api-docs', app, document);
-
     // Start HTTP server first for Cloud Run health check
     const port = parseInt(process.env.PORT || '8080');
-    logger.log(`🌐 Starting HTTP server on port ${port}...`);
-    logger.log(`🔧 Environment: NODE_ENV=${process.env.NODE_ENV}, PORT=${process.env.PORT}`);
     await app.listen(port, '0.0.0.0');
 
     logger.log(`🚀 Booking Service is running on port ${port}`);
-    logger.log(`🩺 Health check: http://localhost:${port}/health`);
-    logger.log(`📚 Swagger docs: http://localhost:${port}/api-docs`);
+    logger.log(`🩺 Health check available at: http://0.0.0.0:${port}/health`);
 
     // Connect NATS microservice asynchronously (optional for Cloud Run)
     if (process.env.NATS_URL) {
-      logger.log(`📡 NATS_URL found: ${process.env.NATS_URL}`);
       setImmediate(async () => {
         try {
-          logger.log('🔗 Attempting NATS connection...');
           const microservice = app.connectMicroservice<MicroserviceOptions>({
             transport: Transport.NATS,
             options: {
@@ -76,17 +62,23 @@ async function bootstrap() {
           app.useGlobalFilters(new GlobalRpcExceptionFilter());
 
           await app.startAllMicroservices();
-          logger.log(`✅ NATS connected successfully to: ${process.env.NATS_URL}`);
-          logger.log(`📢 Queue: booking-service`);
+          logger.log(`🔗 NATS connected to: ${process.env.NATS_URL}`);
         } catch (natsError) {
-          logger.warn(`⚠️ Failed to connect NATS microservice: ${natsError.message}. Continuing with HTTP only...`);
+          logger.warn('Failed to connect NATS microservice, continuing with HTTP only...', natsError.message);
         }
       });
     } else {
-      logger.warn('📵 NATS_URL not provided, running in HTTP-only mode');
+      logger.warn('NATS_URL not provided, running in HTTP-only mode');
     }
+
+    logger.log(`📢 Queue: booking-service`);
+    logger.log(`💬 Available message patterns:`);
+    logger.log(`   [Booking] booking.create, booking.get, booking.update, booking.cancel`);
+    logger.log(`   [Booking] booking.search, booking.getByUser, booking.getByNumber`);
+    logger.log(`   [TimeSlot] timeslot.availability, timeslot.check`);
+    logger.log(`   [Course] course.cache.sync`);
   } catch (error) {
-    logger.error('Failed to start Booking Service microservice', error);
+    logger.error('Failed to start Booking Service', error);
     process.exit(1);
   }
 }
