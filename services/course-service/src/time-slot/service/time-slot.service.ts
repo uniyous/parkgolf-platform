@@ -177,4 +177,20 @@ export class TimeSlotService {
     });
   }
 
+  /**
+   * 전체 타임슬롯 조회
+   */
+  async findAll(): Promise<CourseTimeSlot[]> {
+    this.logger.log('Finding all time slots');
+
+    return this.prisma.courseTimeSlot.findMany({
+      include: {
+        courses: true,
+      },
+      orderBy: [
+        { date: 'asc' },
+        { startTime: 'asc' },
+      ],
+    });
+  }
 }

@@ -1,13 +1,13 @@
 import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { ClubService } from '../service/club.service';
+import { ClubFilterDto } from '../dto/club.dto';
 import {
-  CreateClubDto,
-  UpdateClubDto,
-  ClubFilterDto,
-  ClubResponseDto,
-  ClubListResponseDto,
-} from '../dto/club.dto';
+  successResponse,
+  errorResponse,
+  paginationMeta,
+  mapClubToResponse,
+} from '../../common/utils/response.util';
 
 @Controller()
 export class ClubNatsController {
@@ -15,153 +15,173 @@ export class ClubNatsController {
 
   constructor(private readonly clubService: ClubService) {}
 
-  /**
-   * 클럽 생성
-   */
   @MessagePattern('club.create')
-  async createGolfClub(@Payload() data: any): Promise<ClubResponseDto> {
-    this.logger.log(`Creating club with data: ${JSON.stringify(data)}`);
-    const { token, ...createGolfClubDto } = data;
-    return await this.clubService.create(createGolfClubDto.data || createGolfClubDto);
+  async createGolfClub(@Payload() data: any) {
+    try {
+      this.logger.log(`Creating club with data: ${JSON.stringify(data)}`);
+      const { token, ...createGolfClubDto } = data;
+      const club = await this.clubService.create(createGolfClubDto.data || createGolfClubDto);
+      return successResponse(mapClubToResponse(club));
+    } catch (error) {
+      this.logger.error('Failed to create club', error);
+      return errorResponse('CLUB_CREATE_FAILED', error.message || 'Failed to create club');
+    }
   }
 
-  /**
-   * 클럽 목록 조회
-   */
   @MessagePattern('club.findAll')
-  async findAllGolfClubs(@Payload() data: any): Promise<ClubListResponseDto> {
-    this.logger.log(`Finding clubs with data: ${JSON.stringify(data)}`);
-    // Extract token if present and remove it from filters
-    const { token, ...filters } = data;
-    return await this.clubService.findAll(filters);
+  async findAllGolfClubs(@Payload() data: any) {
+    try {
+      this.logger.log(`Finding clubs with data: ${JSON.stringify(data)}`);
+      const { token, ...filters } = data;
+      const result = await this.clubService.findAll(filters);
+      const clubs = result.data.map(mapClubToResponse);
+      return successResponse({ clubs }, paginationMeta(result.total, result.page, result.limit));
+    } catch (error) {
+      this.logger.error('Failed to find clubs', error);
+      return errorResponse('CLUBS_LIST_FAILED', error.message || 'Failed to find clubs');
+    }
   }
 
-  /**
-   * 클럽 상세 조회
-   */
   @MessagePattern('club.findOne')
-  async findOneGolfClub(@Payload() data: any): Promise<ClubResponseDto> {
-    this.logger.log(`Finding club with data: ${JSON.stringify(data)}`);
-    const { token, ...params } = data;
-    return await this.clubService.findOne(params.id);
+  async findOneGolfClub(@Payload() data: any) {
+    try {
+      this.logger.log(`Finding club with data: ${JSON.stringify(data)}`);
+      const { token, ...params } = data;
+      const club = await this.clubService.findOne(params.id);
+      return successResponse(mapClubToResponse(club));
+    } catch (error) {
+      this.logger.error('Failed to find club', error);
+      return errorResponse('CLUB_NOT_FOUND', error.message || 'Club not found');
+    }
   }
 
-  /**
-   * 클럽 수정
-   */
   @MessagePattern('club.update')
-  async updateGolfClub(@Payload() data: any): Promise<ClubResponseDto> {
-    this.logger.log(`Updating club with data: ${JSON.stringify(data)}`);
-    const { token, ...params } = data;
-    return await this.clubService.update(params.id, params.updateClubDto);
+  async updateGolfClub(@Payload() data: any) {
+    try {
+      this.logger.log(`Updating club with data: ${JSON.stringify(data)}`);
+      const { token, ...params } = data;
+      const club = await this.clubService.update(params.id, params.updateClubDto);
+      return successResponse(mapClubToResponse(club));
+    } catch (error) {
+      this.logger.error('Failed to update club', error);
+      return errorResponse('CLUB_UPDATE_FAILED', error.message || 'Failed to update club');
+    }
   }
 
-  /**
-   * 클럽 삭제
-   */
   @MessagePattern('club.remove')
-  async removeGolfClub(@Payload() data: any): Promise<{ success: boolean }> {
-    this.logger.log(`Removing club with data: ${JSON.stringify(data)}`);
-    const { token, ...params } = data;
-    await this.clubService.remove(params.id);
-    return { success: true };
+  async removeGolfClub(@Payload() data: any) {
+    try {
+      this.logger.log(`Removing club with data: ${JSON.stringify(data)}`);
+      const { token, ...params } = data;
+      await this.clubService.remove(params.id);
+      return successResponse({ deleted: true });
+    } catch (error) {
+      this.logger.error('Failed to remove club', error);
+      return errorResponse('CLUB_DELETE_FAILED', error.message || 'Failed to remove club');
+    }
   }
 
-  /**
-   * 회사별 클럽 목록 조회
-   */
   @MessagePattern('club.findByCompany')
-  async findGolfClubsByCompany(@Payload() data: any): Promise<ClubResponseDto[]> {
-    this.logger.log(`Finding clubs by company with data: ${JSON.stringify(data)}`);
-    const { token, ...params } = data;
-    return await this.clubService.findByCompany(params.companyId);
+  async findGolfClubsByCompany(@Payload() data: any) {
+    try {
+      this.logger.log(`Finding clubs by company with data: ${JSON.stringify(data)}`);
+      const { token, ...params } = data;
+      const clubs = await this.clubService.findByCompany(params.companyId);
+      return successResponse(clubs.map(mapClubToResponse));
+    } catch (error) {
+      this.logger.error('Failed to find clubs by company', error);
+      return errorResponse('CLUBS_BY_COMPANY_FAILED', error.message || 'Failed to find clubs by company');
+    }
   }
 
-  /**
-   * 클럽 통계 업데이트
-   */
   @MessagePattern('club.updateStats')
-  async updateGolfClubStats(@Payload() data: { clubId: number }): Promise<{ success: boolean }> {
-    this.logger.log(`Updating stats for club ID: ${data.clubId}`);
-    await this.clubService.updateStats(data.clubId);
-    return { success: true };
+  async updateGolfClubStats(@Payload() data: { clubId: number }) {
+    try {
+      this.logger.log(`Updating stats for club ID: ${data.clubId}`);
+      await this.clubService.updateStats(data.clubId);
+      return successResponse({ updated: true });
+    } catch (error) {
+      this.logger.error('Failed to update club stats', error);
+      return errorResponse('CLUB_STATS_UPDATE_FAILED', error.message || 'Failed to update club stats');
+    }
   }
 
-  /**
-   * 클럽 검색 (간단한 이름/위치 검색)
-   */
   @MessagePattern('club.search')
-  async searchGolfClubs(@Payload() data: any): Promise<ClubResponseDto[]> {
-    this.logger.log(`Searching clubs with data: ${JSON.stringify(data)}`);
-    const { token, ...params } = data;
-    
-    const filters: ClubFilterDto = {
-      search: params.query,
-      limit: params.limit || 10,
-      page: 1,
-    };
-    
-    const result = await this.clubService.findAll(filters);
-    return result.data;
+  async searchGolfClubs(@Payload() data: any) {
+    try {
+      this.logger.log(`Searching clubs with data: ${JSON.stringify(data)}`);
+      const { token, ...params } = data;
+
+      const filters: ClubFilterDto = {
+        search: params.query,
+        limit: params.limit || 10,
+        page: 1,
+      };
+
+      const result = await this.clubService.findAll(filters);
+      return successResponse(result.data.map(mapClubToResponse));
+    } catch (error) {
+      this.logger.error('Failed to search clubs', error);
+      return errorResponse('CLUBS_SEARCH_FAILED', error.message || 'Failed to search clubs');
+    }
   }
 
-  /**
-   * 인기 클럽 Top N 조회 (코스 수 기준)
-   */
   @MessagePattern('club.findPopular')
-  async findPopularGolfClubs(@Payload() data: { limit?: number }): Promise<ClubResponseDto[]> {
-    this.logger.log(`Finding popular clubs (limit: ${data.limit || 10})`);
-    
-    const filters: ClubFilterDto = {
-      sortBy: 'totalCourses',
-      sortOrder: 'desc',
-      limit: data.limit || 10,
-      page: 1,
-    };
-    
-    const result = await this.clubService.findAll(filters);
-    return result.data;
+  async findPopularGolfClubs(@Payload() data: { limit?: number }) {
+    try {
+      this.logger.log(`Finding popular clubs (limit: ${data.limit || 10})`);
+
+      const filters: ClubFilterDto = {
+        sortBy: 'totalCourses',
+        sortOrder: 'desc',
+        limit: data.limit || 10,
+        page: 1,
+      };
+
+      const result = await this.clubService.findAll(filters);
+      return successResponse(result.data.map(mapClubToResponse));
+    } catch (error) {
+      this.logger.error('Failed to find popular clubs', error);
+      return errorResponse('CLUBS_POPULAR_FAILED', error.message || 'Failed to find popular clubs');
+    }
   }
 
-  /**
-   * 클럽 상태별 개수 조회
-   */
   @MessagePattern('club.getStatusCounts')
-  async getGolfClubStatusCounts(): Promise<{ [key: string]: number }> {
-    this.logger.log('Getting club status counts');
-    
-    // 전체 조회해서 상태별로 카운트 (실제 프로덕션에서는 더 효율적인 쿼리 사용)
-    const allGolfClubs = await this.clubService.findAll({ limit: 1000, page: 1 });
-    
-    const statusCounts = allGolfClubs.data.reduce((acc, club) => {
-      acc[club.status] = (acc[club.status] || 0) + 1;
-      return acc;
-    }, {} as { [key: string]: number });
-    
-    return statusCounts;
+  async getGolfClubStatusCounts() {
+    try {
+      this.logger.log('Getting club status counts');
+      const allGolfClubs = await this.clubService.findAll({ limit: 1000, page: 1 });
+
+      const statusCounts = allGolfClubs.data.reduce((acc, club) => {
+        acc[club.status] = (acc[club.status] || 0) + 1;
+        return acc;
+      }, {} as { [key: string]: number });
+
+      return successResponse(statusCounts);
+    } catch (error) {
+      this.logger.error('Failed to get club status counts', error);
+      return errorResponse('CLUBS_STATUS_COUNTS_FAILED', error.message || 'Failed to get status counts');
+    }
   }
 
-  /**
-   * 클럽 평균 통계 조회
-   */
   @MessagePattern('club.getAverageStats')
-  async getGolfClubAverageStats(): Promise<{
-    averageHoles: number;
-    averageCourses: number;
-    totalGolfClubs: number;
-  }> {
-    this.logger.log('Getting club average statistics');
-    
-    const allGolfClubs = await this.clubService.findAll({ limit: 1000, page: 1 });
-    
-    const totalGolfClubs = allGolfClubs.total;
-    const totalHoles = allGolfClubs.data.reduce((sum, gc) => sum + gc.totalHoles, 0);
-    const totalCourses = allGolfClubs.data.reduce((sum, gc) => sum + gc.totalCourses, 0);
-    
-    return {
-      averageHoles: totalGolfClubs > 0 ? Math.round(totalHoles / totalGolfClubs) : 0,
-      averageCourses: totalGolfClubs > 0 ? Math.round(totalCourses / totalGolfClubs) : 0,
-      totalGolfClubs,
-    };
+  async getGolfClubAverageStats() {
+    try {
+      this.logger.log('Getting club average statistics');
+      const allGolfClubs = await this.clubService.findAll({ limit: 1000, page: 1 });
+
+      const totalGolfClubs = allGolfClubs.total;
+      const totalHoles = allGolfClubs.data.reduce((sum, gc) => sum + gc.totalHoles, 0);
+      const totalCourses = allGolfClubs.data.reduce((sum, gc) => sum + gc.totalCourses, 0);
+
+      return successResponse({
+        averageHoles: totalGolfClubs > 0 ? Math.round(totalHoles / totalGolfClubs) : 0,
+        averageCourses: totalGolfClubs > 0 ? Math.round(totalCourses / totalGolfClubs) : 0,
+        totalGolfClubs,
+      });
+    } catch (error) {
+      this.logger.error('Failed to get club average stats', error);
+      return errorResponse('CLUBS_AVERAGE_STATS_FAILED', error.message || 'Failed to get average stats');
+    }
   }
 }

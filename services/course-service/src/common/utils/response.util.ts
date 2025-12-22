@@ -91,3 +91,87 @@ export function toISOString(date: Date | string | null | undefined): string | nu
   if (typeof date === 'string') return date;
   return date.toISOString();
 }
+
+/**
+ * Club 엔티티를 응답용으로 매핑
+ */
+export function mapClubToResponse(club: any) {
+  return {
+    id: club.id,
+    name: club.name,
+    companyId: club.companyId,
+    location: club.location,
+    address: club.address,
+    phone: club.phone,
+    email: club.email,
+    website: club.website,
+    totalHoles: club.totalHoles,
+    totalCourses: club.totalCourses,
+    status: club.status,
+    operatingHours: club.operatingHours,
+    seasonInfo: club.seasonInfo,
+    facilities: club.facilities,
+    isActive: club.isActive,
+    createdAt: toISOString(club.createdAt),
+    updatedAt: toISOString(club.updatedAt),
+  };
+}
+
+/**
+ * Company 엔티티를 응답용으로 매핑
+ */
+export function mapCompanyToResponse(company: any) {
+  return {
+    id: company.id,
+    name: company.name,
+    businessNumber: company.businessNumber,
+    description: company.description,
+    address: company.address,
+    phoneNumber: company.phoneNumber,
+    email: company.email,
+    website: company.website,
+    establishedDate: toISOString(company.establishedDate),
+    logoUrl: company.logoUrl,
+    status: company.status,
+    isActive: company.isActive,
+    createdAt: toISOString(company.createdAt),
+    updatedAt: toISOString(company.updatedAt),
+  };
+}
+
+/**
+ * Hole 엔티티를 응답용으로 매핑
+ */
+export function mapHoleToResponse(hole: any) {
+  return {
+    id: hole.id,
+    courseId: hole.courseId,
+    holeNumber: hole.holeNumber,
+    par: hole.par,
+    distance: hole.distance,
+    handicap: hole.handicap,
+    description: hole.description,
+    tips: hole.tips,
+    imageUrl: hole.imageUrl,
+    createdAt: toISOString(hole.createdAt),
+    updatedAt: toISOString(hole.updatedAt),
+  };
+}
+
+/**
+ * TimeSlot 엔티티를 응답용으로 매핑
+ */
+export function mapTimeSlotToResponse(slot: any) {
+  return {
+    id: slot.id,
+    courseId: slot.courseId,
+    date: slot.date,
+    startTime: slot.startTime,
+    endTime: slot.endTime,
+    maxPlayers: slot.maxPlayers,
+    price: Number(slot.price),
+    isActive: slot.isActive,
+    createdAt: toISOString(slot.createdAt),
+    updatedAt: toISOString(slot.updatedAt),
+  };
+}
