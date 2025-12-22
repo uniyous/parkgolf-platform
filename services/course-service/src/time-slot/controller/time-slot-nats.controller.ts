@@ -84,9 +84,15 @@ export class TimeSlotNatsController {
   @MessagePattern('timeSlots.create')
   async createTimeSlot(@Payload() data: any) {
     try {
-      this.logger.log('NATS: Creating time slot');
+      this.logger.log(`NATS: Creating time slot for course ${data.courseId}`);
 
-      const slot = await this.timeSlotService.create(data.data);
+      // courseId를 data에 병합
+      const createData = {
+        ...data.data,
+        courseId: Number(data.courseId),
+      };
+
+      const slot = await this.timeSlotService.create(createData);
       this.logger.log(`NATS: Created time slot with ID ${slot.id}`);
       return successResponse(mapTimeSlotToResponse(slot));
     } catch (error) {
