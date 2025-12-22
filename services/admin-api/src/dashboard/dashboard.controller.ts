@@ -1,14 +1,14 @@
-import { 
-  Controller, 
-  Get, 
-  Query, 
+import {
+  Controller,
+  Get,
+  Query,
   Headers,
-  HttpStatus, 
-  HttpException, 
-  Logger 
+  HttpStatus,
+  HttpException,
+  Logger
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiQuery } from '@nestjs/swagger';
-import { AuthService } from '../auth/auth.service';
+import { UsersService } from '../users/users.service';
 import { CourseService } from '../courses/courses.service';
 import { BookingService } from '../bookings/bookings.service';
 import { NotificationService } from '../notifications/notifications.service';
@@ -19,7 +19,7 @@ export class DashboardController {
   private readonly logger = new Logger(DashboardController.name);
 
   constructor(
-    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
     private readonly courseService: CourseService,
     private readonly bookingService: BookingService,
     private readonly notificationService: NotificationService,
@@ -52,7 +52,7 @@ export class DashboardController {
 
       // Fetch data from all services in parallel
       const [userStats, courseStats, bookingStats, revenueStats, notificationStats] = await Promise.allSettled([
-        this.authService.getUserStats(dateRange, token),
+        this.usersService.getUserStats(dateRange, token),
         this.courseService.getCourseStats(dateRange, token),
         this.bookingService.getBookingStats(dateRange, token),
         this.bookingService.getRevenueStats(dateRange, token),

@@ -200,4 +200,68 @@ export class UserService {
 
         return user;
     }
+
+    async resetPassword(id: string, newPassword: string): Promise<Omit<User, 'password'>> {
+        const user = await this.prisma.user.findUnique({
+            where: { id: parseInt(id) }
+        });
+        if (!user) {
+            throw new NotFoundException(`User with ID ${id} not found.`);
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, this.SALT_ROUNDS);
+        const updatedUser = await this.prisma.user.update({
+            where: { id: parseInt(id) },
+            data: { password: hashedPassword },
+        });
+
+        return this.omitPassword(updatedUser);
+    }
+
+    async updateRole(id: string, role: string): Promise<Omit<User, 'password'>> {
+        const user = await this.prisma.user.findUnique({
+            where: { id: parseInt(id) }
+        });
+        if (!user) {
+            throw new NotFoundException(`User with ID ${id} not found.`);
+        }
+
+        const updatedUser = await this.prisma.user.update({
+            where: { id: parseInt(id) },
+            data: { roleCode: role },
+        });
+
+        return this.omitPassword(updatedUser);
+    }
+
+    async updatePermissions(id: string, permissionCodes: string[]): Promise<Omit<User, 'password'>> {
+        const userId = parseInt(id);
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId }
+        });
+        if (!user) {
+            throw new NotFoundException(`User with ID ${id} not found.`);
+        }
+
+        // Delete existing permissions
+        await this.prisma.userPermission.deleteMany({
+            where: { userId }
+        });
+
+        // Add new permissions (using permission code directly)
+        if (permissionCodes.length > 0) {
+            await this.prisma.userPermission.createMany({
+                data: permissionCodes.map(permission => ({
+                    userId,
+                    permission
+                }))
+            });
+        }
+
+        const updatedUser = await this.prisma.user.findUnique({
+            where: { id: userId }
+        });
+
+        return this.omitPassword(updatedUser!);
+    }
 }

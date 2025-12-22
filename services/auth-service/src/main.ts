@@ -9,19 +9,18 @@ import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
+  // Log environment variables (masked)
+  const dbUrl = process.env.DATABASE_URL || '';
+  const maskedDbUrl = dbUrl.replace(/:[^@]*@/, ':****@');
+  logger.log(`🔧 Environment Variables:`);
+  logger.log(`   - NODE_ENV: ${process.env.NODE_ENV}`);
+  logger.log(`   - DATABASE_URL: ${maskedDbUrl}`);
+  logger.log(`   - NATS_URL: ${process.env.NATS_URL}`);
+
   try {
     // Create HTTP app with minimal logging
     const app = await NestFactory.create(AppModule, {
       logger: ['error', 'warn', 'log'],
-    });
-
-    // Add health check endpoint for Cloud Run
-    app.getHttpAdapter().get('/health', (req, res) => {
-      res.status(200).json({
-        status: 'ok',
-        service: 'auth-service',
-        timestamp: new Date().toISOString()
-      });
     });
 
     // Global exception filter
@@ -75,9 +74,13 @@ async function bootstrap() {
 
     logger.log(`📢 Queue: auth-service`);
     logger.log(`💬 Available message patterns:`);
-    logger.log(`   - auth.login, auth.validate, auth.refresh`);
-    logger.log(`   - users.create, users.list, users.findById, users.update, users.delete`);
-    logger.log(`   - auth.admin.*, auth.permission.*`);
+    logger.log(`   [Auth] auth.user.login, auth.user.validate, auth.user.refresh, auth.user.me`);
+    logger.log(`   [Auth] auth.admin.login, auth.admin.validate, auth.admin.refresh, auth.admin.me`);
+    logger.log(`   [Users] users.list, users.getById, users.create, users.update, users.delete, users.resetPassword, users.updateRole, users.updatePermissions`);
+    logger.log(`   [Users] users.updateStatus, users.stats, users.findByEmail, users.validateCredentials`);
+    logger.log(`   [Admins] admins.list, admins.getById, admins.create, admins.update, admins.delete`);
+    logger.log(`   [Admins] admins.updateStatus, admins.updatePermissions, admins.stats`);
+    logger.log(`   [Permissions] permissions.list`);
   } catch (error) {
     logger.error('Failed to start Auth Service', error);
     process.exit(1);

@@ -122,28 +122,27 @@ module "networking" {
 
   vpc_connector_cidr   = "10.1.10.0/28"
   enable_vpc_connector = true
-  enable_nat           = false  # Disable NAT for cost savings in dev
+  enable_nat           = false  # NATS VM uses external IP instead (cost saving)
 
   # Disable Private Service Connection - dev uses external Compute Engine PostgreSQL
   enable_private_service_connection = false
 }
 
 # ============================================================================
-# External Database Configuration (Existing Compute Engine PostgreSQL)
+# VPC Peering to uniyous-319808 (PostgreSQL Database)
 # ============================================================================
-# Dev environment uses existing PostgreSQL on Compute Engine in uniyous-319808 project
-# No new database resources are created - using external DB connection
-
-locals {
-  # External database configuration
-  external_db = {
-    host     = var.db_host      # Compute Engine PostgreSQL IP
-    port     = 5432
-    username = var.db_username
-    password = var.db_password
-    # Database names: auth_db, course_db, booking_db, notify_db
-  }
-}
+# Dev environment connects to existing PostgreSQL on Compute Engine in uniyous-319808 project
+# VPC peering was created manually (not managed by Terraform):
+#
+# parkgolf-uniyous -> uniyous-319808:
+#   gcloud compute networks peerings create parkgolf-to-uniyous-peering \
+#     --network=parkgolf-dev --peer-project=uniyous-319808 --peer-network=default \
+#     --export-custom-routes --import-custom-routes --project=parkgolf-uniyous
+#
+# uniyous-319808 -> parkgolf-uniyous:
+#   gcloud compute networks peerings create uniyous-to-parkgolf-peering \
+#     --network=default --peer-project=parkgolf-uniyous --peer-network=parkgolf-dev \
+#     --export-custom-routes --import-custom-routes --project=uniyous-319808
 
 # ============================================================================
 # Messaging Module (NATS)
@@ -181,19 +180,17 @@ module "secrets" {
   project_id    = local.project_id
   environment   = local.environment
 
-  # Secret names (non-sensitive, used for for_each)
-  secret_names = ["db_password", "jwt_secret", "jwt_refresh_secret"]
+  # Secret names - dev uses external DB, so no db_password needed
+  secret_names = ["jwt_secret", "jwt_refresh_secret"]
 
   # Secret values (sensitive)
   secret_values = {
-    db_password        = var.db_password
     jwt_secret         = var.jwt_secret
     jwt_refresh_secret = var.jwt_refresh_secret
   }
 
   # Secret descriptions
   secret_descriptions = {
-    db_password        = "Database password"
     jwt_secret         = "JWT signing secret"
     jwt_refresh_secret = "JWT refresh token secret"
   }
@@ -285,23 +282,6 @@ variable "environment" {
   description = "Environment name (passed from workflow, but defaults to dev)"
 }
 
-variable "db_host" {
-  type        = string
-  description = "External PostgreSQL host (Compute Engine IP in uniyous-319808)"
-}
-
-variable "db_username" {
-  type        = string
-  default     = "parkgolf"
-  description = "Database username"
-}
-
-variable "db_password" {
-  type        = string
-  sensitive   = true
-  description = "Database password"
-}
-
 variable "jwt_secret" {
   type        = string
   sensitive   = true
@@ -332,16 +312,6 @@ output "vpc_id" {
 output "vpc_connector" {
   description = "VPC Connector for Cloud Run"
   value       = module.networking.vpc_connector_name
-}
-
-output "database_host" {
-  description = "External database host (Compute Engine PostgreSQL)"
-  value       = local.external_db.host
-}
-
-output "database_port" {
-  description = "External database port"
-  value       = local.external_db.port
 }
 
 output "nats_url" {

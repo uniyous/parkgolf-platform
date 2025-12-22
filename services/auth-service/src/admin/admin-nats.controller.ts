@@ -1,207 +1,138 @@
-import { Controller, UseGuards } from '@nestjs/common';
+import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AdminService } from './admin.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { successResponse, errorResponse, omitPassword, omitPasswordFromArray } from '../common/utils/response.util';
 
+/**
+ * Admin Management NATS Controller
+ *
+ * Handles admin CRUD operations:
+ * - admins.list, admins.getById, admins.create, admins.update, admins.delete
+ * - admins.updateStatus, admins.updatePermissions, admins.stats
+ * - permissions.list
+ */
 @Controller()
 export class AdminNatsController {
+  private readonly logger = new Logger(AdminNatsController.name);
+
   constructor(private readonly adminService: AdminService) {}
 
-  @MessagePattern('auth.admin.list')
-  async getAdminList(@Payload() data: { filters: any; token: string }) {
+  @MessagePattern('admins.list')
+  async getAdminList(@Payload() data: { filters?: any; token?: string }) {
     try {
+      this.logger.log('Get admin list request');
       const { filters } = data;
       const admins = await this.adminService.findAll(filters);
-      
-      return {
-        success: true,
-        data: admins.map(({ password, ...admin }) => admin),
-      };
+      return successResponse(omitPasswordFromArray(admins));
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'FETCH_FAILED',
-          message: error.message,
-        },
-      };
+      this.logger.error('Get admin list failed', error);
+      return errorResponse('FETCH_FAILED', error.message);
     }
   }
 
-  @MessagePattern('auth.admin.getById')
-  async getAdminById(@Payload() data: { adminId: string; token: string }) {
+  @MessagePattern('admins.getById')
+  async getAdminById(@Payload() data: { adminId: string; token?: string }) {
     try {
+      this.logger.log(`Get admin by ID: ${data.adminId}`);
       const admin = await this.adminService.findOne(parseInt(data.adminId, 10));
-      const { password, ...result } = admin;
-      
-      return {
-        success: true,
-        data: result,
-      };
+      return successResponse(omitPassword(admin));
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: error.message,
-        },
-      };
+      this.logger.error(`Get admin failed: ${data.adminId}`, error);
+      return errorResponse('NOT_FOUND', error.message);
     }
   }
 
-  @MessagePattern('auth.admin.create')
-  async createAdmin(@Payload() data: { adminData: any; token: string }) {
+  @MessagePattern('admins.create')
+  async createAdmin(@Payload() data: { adminData: any; token?: string }) {
     try {
+      this.logger.log(`Create admin: ${data.adminData?.email}`);
       const admin = await this.adminService.create(data.adminData);
-      const { password, ...result } = admin;
-      
-      return {
-        success: true,
-        data: result,
-      };
+      this.logger.log(`Admin created: ${admin.email}`);
+      return successResponse(omitPassword(admin));
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'CREATE_FAILED',
-          message: error.message,
-        },
-      };
+      this.logger.error('Create admin failed', error);
+      return errorResponse('CREATE_FAILED', error.message);
     }
   }
 
-  @MessagePattern('auth.admin.update')
-  async updateAdmin(@Payload() data: { adminId: string; updateData: any; token: string }) {
+  @MessagePattern('admins.update')
+  async updateAdmin(@Payload() data: { adminId: string; updateData: any; token?: string }) {
     try {
+      this.logger.log(`Update admin: ${data.adminId}`);
       const admin = await this.adminService.update(
         parseInt(data.adminId, 10),
         data.updateData
       );
-      const { password, ...result } = admin;
-      
-      return {
-        success: true,
-        data: result,
-      };
+      return successResponse(omitPassword(admin));
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'UPDATE_FAILED',
-          message: error.message,
-        },
-      };
+      this.logger.error(`Update admin failed: ${data.adminId}`, error);
+      return errorResponse('UPDATE_FAILED', error.message);
     }
   }
 
-  @MessagePattern('auth.admin.delete')
-  async deleteAdmin(@Payload() data: { adminId: string; token: string }) {
+  @MessagePattern('admins.delete')
+  async deleteAdmin(@Payload() data: { adminId: string; token?: string }) {
     try {
+      this.logger.log(`Delete admin: ${data.adminId}`);
       const admin = await this.adminService.remove(parseInt(data.adminId, 10));
-      const { password, ...result } = admin;
-      
-      return {
-        success: true,
-        data: result,
-      };
+      return successResponse(omitPassword(admin));
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'DELETE_FAILED',
-          message: error.message,
-        },
-      };
+      this.logger.error(`Delete admin failed: ${data.adminId}`, error);
+      return errorResponse('DELETE_FAILED', error.message);
     }
   }
 
-  @MessagePattern('auth.admin.updateStatus')
-  async updateAdminStatus(@Payload() data: { adminId: string; isActive: boolean; token: string }) {
+  @MessagePattern('admins.updateStatus')
+  async updateAdminStatus(@Payload() data: { adminId: string; isActive: boolean; token?: string }) {
     try {
+      this.logger.log(`Update admin status: ${data.adminId} -> ${data.isActive}`);
       const admin = await this.adminService.update(
         parseInt(data.adminId, 10),
         { isActive: data.isActive }
       );
-      const { password, ...result } = admin;
-      
-      return {
-        success: true,
-        data: result,
-      };
+      return successResponse(omitPassword(admin));
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'UPDATE_FAILED',
-          message: error.message,
-        },
-      };
+      this.logger.error(`Update admin status failed: ${data.adminId}`, error);
+      return errorResponse('UPDATE_FAILED', error.message);
     }
   }
 
-  @MessagePattern('auth.admin.updatePermissions')
-  async updateAdminPermissions(
-    @Payload() data: { adminId: string; permissions: string[]; token: string }
-  ) {
+  @MessagePattern('admins.updatePermissions')
+  async updateAdminPermissions(@Payload() data: { adminId: string; permissions: string[]; token?: string }) {
     try {
+      this.logger.log(`Update admin permissions: ${data.adminId}`);
       const admin = await this.adminService.updatePermissions(
         parseInt(data.adminId, 10),
         data.permissions
       );
-      const { password, ...result } = admin;
-      
-      return {
-        success: true,
-        data: result,
-      };
+      return successResponse(omitPassword(admin));
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'UPDATE_FAILED',
-          message: error.message,
-        },
-      };
+      this.logger.error(`Update admin permissions failed: ${data.adminId}`, error);
+      return errorResponse('UPDATE_FAILED', error.message);
     }
   }
 
-  @MessagePattern('auth.admin.stats')
-  async getAdminStats(@Payload() data: { dateRange?: any; token: string }) {
+  @MessagePattern('admins.stats')
+  async getAdminStats(@Payload() data: { dateRange?: any; token?: string }) {
     try {
+      this.logger.log('Get admin stats request');
       const stats = await this.adminService.getStats();
-      
-      return {
-        success: true,
-        data: stats,
-      };
+      return successResponse(stats);
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'FETCH_FAILED',
-          message: error.message,
-        },
-      };
+      this.logger.error('Get admin stats failed', error);
+      return errorResponse('FETCH_FAILED', error.message);
     }
   }
 
-  @MessagePattern('auth.permission.list')
-  async getPermissionList(@Payload() data: { token: string }) {
+  @MessagePattern('permissions.list')
+  async getPermissionList(@Payload() data: { token?: string }) {
     try {
+      this.logger.log('Get permission list request');
       const permissions = await this.adminService.getAllPermissions();
-      
-      return {
-        success: true,
-        data: permissions,
-      };
+      return successResponse(permissions);
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 'FETCH_FAILED',
-          message: error.message,
-        },
-      };
+      this.logger.error('Get permission list failed', error);
+      return errorResponse('FETCH_FAILED', error.message);
     }
   }
 }

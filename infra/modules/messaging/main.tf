@@ -1,5 +1,40 @@
 # Messaging Module
 # NATS JetStream for all messaging patterns (Request/Response + Pub/Sub)
+#
+# ============================================================================
+# IMPORTANT: NATS Container Configuration
+# ============================================================================
+# NATS 2.10 버전에서 JetStream 설정 시 명령줄 인수 제한 사항:
+#
+# 지원되는 인수:
+#   -js           : JetStream 활성화
+#   -sd /data     : Storage directory 지정
+#   -m 8222       : HTTP 모니터링 포트
+#
+# 지원되지 않는 인수 (설정 파일에서만 가능):
+#   --jetstream_max_memory (X)
+#   --jetstream_max_file (X)
+#
+# JetStream 메모리/파일 제한이 필요한 경우 nats.conf 설정 파일을 사용해야 함:
+#   jetstream {
+#     store_dir: /data
+#     max_memory_store: 1G
+#     max_file_store: 10G
+#   }
+#
+# 트러블슈팅:
+#   1. VM이 TERMINATED 상태인 경우:
+#      gcloud compute instances start parkgolf-nats-{env} --zone={zone}
+#
+#   2. 컨테이너가 계속 재시작하는 경우:
+#      SSH 접속 후 docker logs nats로 원인 확인
+#      잘못된 인수 사용 시 컨테이너 수동 재생성 필요
+#
+#   3. Cloud Run에서 연결 실패:
+#      - VPC Connector 상태 확인
+#      - Firewall 규칙 확인 (4222 포트)
+#      - NATS_URL 환경변수 확인
+# ============================================================================
 
 terraform {
   required_version = ">= 1.0"
@@ -108,8 +143,11 @@ resource "google_compute_instance" "nats" {
     network    = var.vpc_network
     subnetwork = var.vpc_subnetwork
 
-    # No external IP for security
-    # access_config {} # Uncomment if external access needed
+    # External IP for Docker Hub access (required for pulling images)
+    # NATS ports (4222, 6222, 8222) are protected by firewall rules (internal only)
+    access_config {
+      # Ephemeral external IP (no cost)
+    }
   }
 
   metadata = {
@@ -121,10 +159,7 @@ resource "google_compute_instance" "nats" {
           args = [
             "-js",                                    # Enable JetStream
             "-sd", "/data",                           # Storage directory
-            "--cluster_name", "parkgolf-cluster",     # Cluster name
-            "-m", "8222",                             # Monitoring port
-            "--jetstream_max_memory", var.jetstream_max_memory,
-            "--jetstream_max_file", var.jetstream_max_file
+            "-m", "8222"                              # Monitoring port
           ]
           volumeMounts = [{
             name      = "nats-data"
@@ -155,8 +190,10 @@ resource "google_compute_instance" "nats" {
   }
 
   scheduling {
-    preemptible       = var.environment != "prod"
-    automatic_restart = var.environment == "prod"
+    # NATS는 메시징 인프라로 안정성이 중요하므로 preemptible 사용 안함
+    preemptible       = false
+    automatic_restart = true
+    on_host_maintenance = "MIGRATE"
   }
 
   labels = {
@@ -165,11 +202,7 @@ resource "google_compute_instance" "nats" {
     component   = "messaging"
   }
 
-  lifecycle {
-    ignore_changes = [
-      metadata["gce-container-declaration"]
-    ]
-  }
+  # lifecycle block removed to allow metadata updates via Terraform
 }
 
 # Firewall for NATS

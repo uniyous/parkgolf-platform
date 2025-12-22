@@ -4,7 +4,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { NotifyService } from './notify.service';
 
 @ApiTags('notifications')
-@Controller('notifications')
+@Controller('api/user/notifications')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class NotifyController {

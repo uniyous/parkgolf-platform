@@ -1,30 +1,17 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ClientsModule, Transport } from '@nestjs/microservices';
 import { CommonModule } from './common/common.module';
 import { SharedModule } from './postal/shared.module';
+import { NatsModule } from './common/nats';
 import { AuthModule } from './auth/auth.module';
 import { AdminsModule } from './admins/admins.module';
+import { CompaniesModule } from './companies/companies.module';
 import { CoursesModule } from './courses/courses.module';
+import { TimeSlotsModule } from './time-slots/time-slots.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { UsersModule } from './users/users.module';
 import { DashboardModule } from './dashboard/dashboard.module';
-import { ClubModule } from './club/club.module';
-
-const natsImports = process.env.NATS_URL && process.env.NATS_URL !== 'disabled'
-  ? [ClientsModule.register([
-      {
-        name: 'NATS_CLIENT',
-        transport: Transport.NATS,
-        options: {
-          servers: [process.env.NATS_URL || 'nats://localhost:4222'],
-        },
-      },
-    ])]
-  : [];
-
-const natsExports = process.env.NATS_URL && process.env.NATS_URL !== 'disabled' ? [ClientsModule] : [];
 
 @Module({
   imports: [
@@ -32,20 +19,20 @@ const natsExports = process.env.NATS_URL && process.env.NATS_URL !== 'disabled' 
       isGlobal: true,
       envFilePath: '.env',
     }),
-    ...natsImports,
+    NatsModule,
     CommonModule,
     SharedModule,
     AuthModule,
     AdminsModule,
+    CompaniesModule,
     CoursesModule,
+    TimeSlotsModule,
     BookingsModule,
     NotificationsModule,
     UsersModule,
     DashboardModule,
-    ClubModule,
   ],
   controllers: [],
   providers: [],
-  exports: natsExports,
 })
 export class AppModule {}

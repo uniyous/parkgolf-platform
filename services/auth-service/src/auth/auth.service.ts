@@ -1,13 +1,15 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { UserService } from '../user/user.service';
 import { AdminService } from '../admin/admin.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User, Admin } from '@prisma/client';
-import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { JwtPayload, UserJwtPayload, AdminJwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
+    private readonly logger = new Logger(AuthService.name);
+
     constructor(
         private userService: UserService,
         private adminService: AdminService,
@@ -15,36 +17,36 @@ export class AuthService {
     ) {}
 
     async validateUser(email: string, pass: string): Promise<Omit<User, 'password'> | null> {
-        console.log(`🔍 Validating user: ${email}, password provided: ${!!pass}`);
+        this.logger.debug(`Validating user: ${email}, password provided: ${!!pass}`);
         const user = await this.userService.findOneByEmail(email);
-        console.log(`👤 User found:`, user ? `${user.email} (active: ${user.isActive}, hasPassword: ${!!user?.password})` : 'null');
-        
+        this.logger.debug(`User found: ${user ? `${user.email} (active: ${user.isActive}, hasPassword: ${!!user?.password})` : 'null'}`);
+
         if (user && user.isActive) {
             if (!pass || !user.password) {
-                console.log(`❌ Missing password data: pass=${!!pass}, user.password=${!!user?.password}`);
+                this.logger.debug(`Missing password data: pass=${!!pass}, user.password=${!!user?.password}`);
                 return null;
             }
-            
+
             const passwordMatch = await bcrypt.compare(pass, user.password);
-            console.log(`🔐 Password comparison result: ${passwordMatch}`);
-            
+            this.logger.debug(`Password comparison result: ${passwordMatch}`);
+
             if (passwordMatch) {
-                console.log(`✅ Password match for ${email}`);
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                this.logger.log(`Password match for ${email}`);
                 const { password, ...result } = user;
                 return result;
             }
         }
-        console.log(`❌ Login failed for ${email}`);
+        this.logger.warn(`Login failed for ${email}`);
         return null;
     }
 
     async login(user: Omit<User, 'password'>) {
         // User is already validated by LocalAuthGuard/LocalStrategy
-        const payload: JwtPayload = {
+        const payload: UserJwtPayload = {
             email: user.email,
             sub: user.id,
             roles: [user.roleCode],
+            type: 'user',
         };
 
         const accessToken = this.jwtService.sign(payload);
@@ -56,8 +58,9 @@ export class AuthService {
             user: {
                 id: user.id,
                 email: user.email,
-                name: user.name || user.email, // Use name if available, otherwise email
-                role: user.roleCode || 'USER', // Take first role as primary role
+                name: user.name || user.email,
+                roles: [user.roleCode || 'USER'],
+                type: 'user',
             }
         };
     }
@@ -65,29 +68,27 @@ export class AuthService {
     async validateToken(token: string) {
         try {
             const payload = this.jwtService.verify(token);
-            console.log('🔍 validateToken - payload:', payload);
-            
+            this.logger.debug(`validateToken - payload type: ${payload.type}, email: ${payload.email}`);
+
             // Check if this is an admin token
             if (payload.type === 'admin') {
-                console.log('🔍 validateToken - admin token detected');
+                this.logger.debug('validateToken - admin token detected');
                 const admin = await this.adminService.findByEmail(payload.email);
-                console.log('🔍 validateToken - admin found:', !!admin);
+                this.logger.debug(`validateToken - admin found: ${!!admin}`);
                 if (!admin) {
                     throw new UnauthorizedException('Admin not found');
                 }
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { password, ...result } = admin;
-                console.log('🔍 validateToken - admin result:', { id: result.id, email: result.email, roleCode: result.roleCode });
-                return { user: result };
+                this.logger.debug(`validateToken - admin result: id=${result.id}, email=${result.email}, roleCode=${result.roleCode}`);
+                return { user: { ...result, type: 'admin' } };
             } else {
                 // Regular user token
                 const user = await this.userService.findOneByEmail(payload.email);
                 if (!user) {
                     throw new UnauthorizedException('User not found');
                 }
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { password, ...result } = user;
-                return { user: result };
+                return { user: { ...result, type: 'user' } };
             }
         } catch (error) {
             throw new UnauthorizedException('Invalid token');
@@ -97,15 +98,22 @@ export class AuthService {
     async refreshToken(refreshToken: string) {
         try {
             const payload = this.jwtService.verify(refreshToken);
+
+            // Check token type and refresh accordingly
+            if (payload.type === 'admin') {
+                return this.adminRefreshToken(refreshToken);
+            }
+
             const user = await this.userService.findOneByEmail(payload.email);
             if (!user) {
                 throw new UnauthorizedException('User not found');
             }
 
-            const newPayload: JwtPayload = {
+            const newPayload: UserJwtPayload = {
                 email: user.email,
                 sub: user.id,
                 roles: [user.roleCode],
+                type: 'user',
             };
 
             const newAccessToken = this.jwtService.sign(newPayload);
@@ -118,7 +126,8 @@ export class AuthService {
                     id: user.id,
                     email: user.email,
                     name: user.name || user.email,
-                    role: user.roleCode || 'USER',
+                    roles: [user.roleCode || 'USER'],
+                    type: 'user',
                 }
             };
         } catch (error) {
@@ -128,47 +137,45 @@ export class AuthService {
 
     // Admin authentication methods
     async validateAdmin(username: string, pass: string): Promise<Omit<Admin, 'password'> | null> {
-        console.log(`🔍 Validating admin: ${username}`);
+        this.logger.debug(`Validating admin: ${username}`);
         const admin = await this.adminService.validateAdmin(username, pass);
-        
+
         if (admin) {
-            console.log(`✅ Admin validated: ${username}`);
+            this.logger.log(`Admin validated: ${username}`);
             const { password, ...result } = admin;
             return result;
         }
-        
-        console.log(`❌ Admin login failed for ${username}`);
+
+        this.logger.warn(`Admin login failed for ${username}`);
         return null;
     }
 
     async adminLogin(admin: any) {
-        console.log('🔑 Admin login - permissions:', admin.permissions?.length || 0);
-        
-        const payload = {
-            username: admin.email,
+        this.logger.debug(`Admin login - permissions count: ${admin.permissions?.length || 0}`);
+
+        // Get admin permissions
+        const adminPermissions = admin.permissions || [];
+        const permissionCodes = adminPermissions.map(p => p.permission);
+        this.logger.debug(`Permission codes: ${permissionCodes.join(', ')}`);
+
+        const payload: AdminJwtPayload = {
             email: admin.email,
             sub: admin.id,
-            role: admin.roleCode,
+            roles: [admin.roleCode],
             type: 'admin',
         };
 
         const accessToken = this.jwtService.sign(payload);
         const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
-        // Get admin permissions
-        const adminPermissions = admin.permissions || [];
-        const permissionCodes = adminPermissions.map(p => p.permission);
-        console.log('🔑 Permission codes:', permissionCodes);
-        
         return {
             accessToken,
             refreshToken,
             user: {
                 id: admin.id,
-                username: admin.email,
                 email: admin.email,
                 name: admin.name,
-                role: admin.roleCode,
+                roles: [admin.roleCode],
                 type: 'admin',
                 permissions: permissionCodes,
             }
@@ -178,21 +185,20 @@ export class AuthService {
     async adminRefreshToken(refreshToken: string) {
         try {
             const payload = this.jwtService.verify(refreshToken);
-            
+
             if (payload.type !== 'admin') {
                 throw new UnauthorizedException('Invalid admin token');
             }
-            
+
             const admin = await this.adminService.findByEmail(payload.email);
             if (!admin || !admin.isActive) {
                 throw new UnauthorizedException('Admin not found or inactive');
             }
 
-            const newPayload = {
-                username: admin.email,
+            const newPayload: AdminJwtPayload = {
                 email: admin.email,
                 sub: admin.id,
-                role: admin.roleCode,
+                roles: [admin.roleCode],
                 type: 'admin',
             };
 
@@ -204,10 +210,9 @@ export class AuthService {
                 refreshToken: newRefreshToken,
                 user: {
                     id: admin.id,
-                    username: admin.email,
                     email: admin.email,
                     name: admin.name,
-                    role: admin.roleCode,
+                    roles: [admin.roleCode],
                     type: 'admin',
                 }
             };
@@ -217,8 +222,8 @@ export class AuthService {
     }
 
     async getCurrentUser(user: any) {
-        // Check if this is an admin token by checking if it has admin-specific properties
-        if (user.type === 'admin' || user.role?.includes('ADMIN') || user.role?.includes('OWNER') || user.role?.includes('MANAGER') || user.role?.includes('STAFF')) {
+        // Check if this is an admin token by checking type field
+        if (user.type === 'admin') {
             // For admin tokens, use the sub (user ID) to fetch admin information
             const adminId = user.sub || user.id;
             const admin = await this.adminService.findOne(adminId);
@@ -231,10 +236,9 @@ export class AuthService {
 
             return {
                 id: admin.id,
-                username: admin.email,
                 email: admin.email,
                 name: admin.name,
-                role: admin.roleCode,
+                roles: [admin.roleCode],
                 scope: this.getAdminScope(admin.roleCode),
                 permissions: adminWithPermissions.permissions?.map((p: any) => p.permission) || [],
                 isActive: admin.isActive,
@@ -257,8 +261,7 @@ export class AuthService {
             const { password, ...userResult } = userData;
             return {
                 ...userResult,
-                username: userResult.email,
-                role: userResult.roleCode,
+                roles: [userResult.roleCode],
                 scope: 'USER',
                 permissions: [],
                 type: 'user'

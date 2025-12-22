@@ -1,200 +1,76 @@
-import { Injectable, Logger, Inject, Optional, HttpException, HttpStatus } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout } from 'rxjs';
+import { Injectable, Logger } from '@nestjs/common';
+import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
 
+/**
+ * Admin Management Service
+ *
+ * NATS Patterns:
+ * - Admin CRUD: admins.list, admins.getById, admins.create, admins.update, admins.delete
+ * - Admin Actions: admins.updateStatus, admins.updatePermissions, admins.stats
+ * - Permissions: permissions.list
+ */
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
-  private readonly TIMEOUT = 30000; // 30 seconds
 
-  constructor(@Optional() @Inject('NATS_CLIENT') private client?: ClientProxy) {}
+  constructor(private readonly natsClient: NatsClientService) {}
 
-  // Admin authentication
-  async adminLogin(username: string, password: string) {
-    try {
-      const result = await firstValueFrom(
-        this.client.send('auth.admin.login', { username, password })
-          .pipe(timeout(this.TIMEOUT))
-      );
-      return result;
-    } catch (error) {
-      this.logger.error('Admin login failed', error);
-      throw this.handleNatsError(error);
-    }
-  }
+  // ============================================
+  // Admin CRUD Operations
+  // ============================================
 
-  async adminRefreshToken(refreshToken: string) {
-    try {
-      const result = await firstValueFrom(
-        this.client.send('auth.admin.refresh', { refreshToken })
-          .pipe(timeout(this.TIMEOUT))
-      );
-      return result;
-    } catch (error) {
-      this.logger.error('Admin token refresh failed', error);
-      throw this.handleNatsError(error);
-    }
-  }
-
-  async getAdminProfile(token: string) {
-    try {
-      const result = await firstValueFrom(
-        this.client.send('auth.admin.profile', { token })
-          .pipe(timeout(this.TIMEOUT))
-      );
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to get admin profile', error);
-      throw this.handleNatsError(error);
-    }
-  }
-
-  // Admin CRUD operations
   async getAdminList(filters: any, token: string) {
-    try {
-      const result = await firstValueFrom(
-        this.client.send('auth.admin.list', { filters, token })
-          .pipe(timeout(this.TIMEOUT))
-      );
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to get admin list', error);
-      throw this.handleNatsError(error);
-    }
+    this.logger.log('Fetching admin list');
+    return this.natsClient.send('admins.list', { filters, token }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   async getAdminById(adminId: string, token: string) {
-    try {
-      const result = await firstValueFrom(
-        this.client.send('auth.admin.getById', { adminId, token })
-          .pipe(timeout(this.TIMEOUT))
-      );
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to get admin: ${adminId}`, error);
-      throw this.handleNatsError(error);
-    }
+    this.logger.log(`Fetching admin: ${adminId}`);
+    return this.natsClient.send('admins.getById', { adminId, token });
   }
 
   async createAdmin(adminData: any, token: string) {
-    try {
-      const result = await firstValueFrom(
-        this.client.send('auth.admin.create', { adminData, token })
-          .pipe(timeout(this.TIMEOUT))
-      );
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to create admin', error);
-      throw this.handleNatsError(error);
-    }
+    this.logger.log('Creating admin');
+    return this.natsClient.send('admins.create', { adminData, token });
   }
 
   async updateAdmin(adminId: string, updateData: any, token: string) {
-    try {
-      const result = await firstValueFrom(
-        this.client.send('auth.admin.update', { adminId, updateData, token })
-          .pipe(timeout(this.TIMEOUT))
-      );
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to update admin: ${adminId}`, error);
-      throw this.handleNatsError(error);
-    }
+    this.logger.log(`Updating admin: ${adminId}`);
+    return this.natsClient.send('admins.update', { adminId, updateData, token });
   }
 
   async deleteAdmin(adminId: string, token: string) {
-    try {
-      const result = await firstValueFrom(
-        this.client.send('auth.admin.delete', { adminId, token })
-          .pipe(timeout(this.TIMEOUT))
-      );
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to delete admin: ${adminId}`, error);
-      throw this.handleNatsError(error);
-    }
+    this.logger.log(`Deleting admin: ${adminId}`);
+    return this.natsClient.send('admins.delete', { adminId, token });
   }
 
+  // ============================================
+  // Admin Actions
+  // ============================================
+
   async updateAdminStatus(adminId: string, isActive: boolean, token: string) {
-    try {
-      const result = await firstValueFrom(
-        this.client.send('auth.admin.updateStatus', { adminId, isActive, token })
-          .pipe(timeout(this.TIMEOUT))
-      );
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to update admin status: ${adminId}`, error);
-      throw this.handleNatsError(error);
-    }
+    this.logger.log(`Updating admin status: ${adminId} -> ${isActive}`);
+    return this.natsClient.send('admins.updateStatus', { adminId, isActive, token });
   }
 
   async updateAdminPermissions(adminId: string, permissionIds: number[], token: string) {
-    try {
-      const result = await firstValueFrom(
-        this.client.send('auth.admin.updatePermissions', { adminId, permissionIds, token })
-          .pipe(timeout(this.TIMEOUT))
-      );
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to update admin permissions: ${adminId}`, error);
-      throw this.handleNatsError(error);
-    }
+    this.logger.log(`Updating admin permissions: ${adminId}`);
+    // Convert permission IDs to string codes for auth-service compatibility
+    const permissions = permissionIds.map(id => String(id));
+    return this.natsClient.send('admins.updatePermissions', { adminId, permissions, token });
   }
 
   async getAdminStats(dateRange: any, token: string) {
-    try {
-      const result = await firstValueFrom(
-        this.client.send('auth.admin.stats', { dateRange, token })
-          .pipe(timeout(this.TIMEOUT))
-      );
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to get admin statistics', error);
-      throw this.handleNatsError(error);
-    }
+    this.logger.log('Fetching admin statistics');
+    return this.natsClient.send('admins.stats', { dateRange, token }, NATS_TIMEOUTS.ANALYTICS);
   }
 
-  // Permission management
+  // ============================================
+  // Permission Management
+  // ============================================
+
   async getPermissionList(token: string) {
-    try {
-      const result = await firstValueFrom(
-        this.client.send('auth.permission.list', { token })
-          .pipe(timeout(this.TIMEOUT))
-      );
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to get permission list', error);
-      throw this.handleNatsError(error);
-    }
-  }
-
-  private handleNatsError(error: any): HttpException {
-    if (error.message?.includes('timeout')) {
-      throw new HttpException(
-        {
-          success: false,
-          error: {
-            code: 'SERVICE_TIMEOUT',
-            message: 'Auth service request timeout',
-          }
-        },
-        HttpStatus.REQUEST_TIMEOUT
-      );
-    }
-
-    if (error.status) {
-      throw new HttpException(error.response || error.message, error.status);
-    }
-
-    throw new HttpException(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Internal server error',
-        }
-      },
-      HttpStatus.INTERNAL_SERVER_ERROR
-    );
+    this.logger.log('Fetching permission list');
+    return this.natsClient.send('permissions.list', { token });
   }
 }

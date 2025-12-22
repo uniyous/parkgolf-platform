@@ -3,9 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { BaseExceptionFilter } from './common/exception/base-exception.filter';
-import { GlobalRpcExceptionFilter } from './common/exception/rpc-exception.filter';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');

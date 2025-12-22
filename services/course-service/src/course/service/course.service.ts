@@ -47,9 +47,9 @@ export class CourseService {
           throw new ConflictException(`A course with name "${createDto.name}" already exists for company ID ${createDto.companyId}.`);
         }
       } else if (error instanceof Error) {
-        this.logger.error(`ailed to create course: ${error.message}`, error.stack);
+        this.logger.error(`Failed to create course: ${error.message}`, error.stack);
       } else {
-        this.logger.error(`ailed to create course: ${JSON.stringify(error)}`);
+        this.logger.error(`Failed to create course: ${JSON.stringify(error)}`);
       }
       throw error;
     }

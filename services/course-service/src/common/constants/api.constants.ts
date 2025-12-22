@@ -14,10 +14,4 @@ export const HTTP_STATUS_MESSAGES = {
   500: 'Internal Server Error',
 };
 
-export const ERROR_CODES = {
-  VALIDATION_ERROR: 'VALIDATION_ERROR',
-  NOT_FOUND: 'NOT_FOUND',
-  UNAUTHORIZED: 'UNAUTHORIZED',
-  FORBIDDEN: 'FORBIDDEN',
-  INTERNAL_ERROR: 'INTERNAL_ERROR',
-};
+// Note: Use ErrorCodes enum from '../types/error-response.type' instead

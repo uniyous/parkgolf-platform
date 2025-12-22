@@ -1,6 +1,7 @@
 import { Controller, Post, Body, HttpStatus, HttpException, Logger, Get, Headers } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService, LoginRequest } from './auth.service';
+import { hasAdminRole, isAdminRole } from '../common/constants';
 
 export interface SignupRequest {
   username: string;
@@ -34,9 +35,8 @@ export class AuthController {
   async login(@Body() loginRequest: LoginRequest) {
     try {
       this.logger.log(`Admin login attempt for email: ${loginRequest.email}`);
-      
+
       const result = await this.authService.login(loginRequest);
-      this.logger.log('NATS login result:', JSON.stringify(result, null, 2));
       
       if (!result.success || !result.data) {
         throw new HttpException(
@@ -51,8 +51,8 @@ export class AuthController {
         );
       }
       
-      // Verify admin role
-      if (!this.isAdminRole(result.data.user.role)) {
+      // Verify admin role (check roles array)
+      if (!hasAdminRole(result.data.user.roles)) {
         throw new HttpException(
           {
             success: false,
@@ -106,8 +106,8 @@ export class AuthController {
       
       const result = await this.authService.refreshToken(body.refreshToken);
       
-      // Verify admin role
-      if (!this.isAdminRole(result.data.user.role)) {
+      // Verify admin role (check roles array)
+      if (!hasAdminRole(result.data.user.roles)) {
         throw new HttpException(
           {
             success: false,
@@ -161,8 +161,8 @@ export class AuthController {
       
       const result = await this.authService.validateToken(body.token);
       
-      // Verify admin role
-      if (!this.isAdminRole(result.data.user.role)) {
+      // Verify admin role (check roles array)
+      if (!hasAdminRole(result.data.user.roles)) {
         throw new HttpException(
           {
             success: false,
@@ -204,9 +204,6 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing token' })
   async getCurrentUser(@Headers('authorization') authorization: string) {
     try {
-      this.logger.log('🚀 getCurrentUser 메서드 시작');
-      this.logger.log('🚀 Authorization header:', authorization?.substring(0, 30) + '...');
-      
       if (!authorization || !authorization.startsWith('Bearer ')) {
         throw new HttpException(
           {
@@ -222,19 +219,26 @@ export class AuthController {
 
       const token = authorization.substring(7); // Remove 'Bearer ' prefix
       this.logger.log('Getting current admin user information');
-      
+
       // Call auth-service /auth/me endpoint via NATS
-      let result;
-      try {
-        result = await this.authService.getCurrentUser(token);
-        this.logger.log('NATS response:', JSON.stringify(result));
-      } catch (natsError) {
-        this.logger.error('NATS call failed:', natsError);
-        throw natsError;
+      const result = await this.authService.getCurrentUser(token);
+
+      // Check if result is valid
+      if (!result || !result.success || !result.data) {
+        throw new HttpException(
+          {
+            success: false,
+            error: {
+              code: 'GET_USER_FAILED',
+              message: result?.error?.message || 'Failed to get user information',
+            }
+          },
+          HttpStatus.UNAUTHORIZED
+        );
       }
-      
-      // Verify admin role
-      if (!this.isAdminRole(result.data.roleCode || result.data.role)) {
+
+      // Verify admin role (check roles array)
+      if (!hasAdminRole(result.data.roles)) {
         throw new HttpException(
           {
             success: false,
@@ -291,27 +295,26 @@ export class AuthController {
       this.logger.log(`Admin signup attempt for username: ${signupRequest.username}`);
       
       // Validate admin role
-      if (!this.isValidAdminRole(signupRequest.role)) {
+      if (!isAdminRole(signupRequest.role)) {
         throw new HttpException(
           {
             success: false,
             error: {
               code: 'INVALID_ROLE',
-              message: 'Invalid admin role. Must be ADMIN, MODERATOR, or VIEWER',
+              message: 'Invalid admin role. Must be one of: PLATFORM_OWNER, PLATFORM_ADMIN, PLATFORM_SUPPORT, PLATFORM_ANALYST, COMPANY_OWNER, COMPANY_MANAGER, COURSE_MANAGER, STAFF, READONLY_STAFF',
             }
           },
           HttpStatus.BAD_REQUEST
         );
       }
 
-      // Create user via NATS (auth-service will handle the actual creation)
-      const result = await this.authService.createUser({
-        username: signupRequest.username,
+      // Create admin via NATS (auth-service will save to admins table)
+      const result = await this.authService.createAdmin({
         email: signupRequest.email,
         password: signupRequest.password,
         name: signupRequest.name,
-        role: signupRequest.role,
-      }, null); // No admin token needed for signup
+        roleCode: signupRequest.role,
+      });
 
       this.logger.log(`Admin signup successful for: ${signupRequest.username}`);
       
@@ -360,17 +363,4 @@ export class AuthController {
     }
   }
 
-  private isAdminRole(role: string): boolean {
-    const adminRoles = [
-      'admin', 'super_admin', 'ADMIN', 'SUPER_ADMIN',
-      'PLATFORM_OWNER', 'PLATFORM_ADMIN', 'PLATFORM_SUPPORT', 'PLATFORM_ANALYST',
-      'COMPANY_OWNER', 'COMPANY_MANAGER', 'COURSE_MANAGER', 'STAFF', 'READONLY_STAFF'
-    ];
-    return adminRoles.includes(role.toLowerCase()) || adminRoles.includes(role.toUpperCase()) || adminRoles.includes(role);
-  }
-
-  private isValidAdminRole(role: string): boolean {
-    const validRoles = ['ADMIN', 'MODERATOR', 'VIEWER'];
-    return validRoles.includes(role.toUpperCase());
-  }
 }

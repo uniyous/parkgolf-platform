@@ -1,14 +1,15 @@
 import { Injectable, HttpException, HttpStatus, Logger, Inject, Optional } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Booking, BookingStatus, BookingHistory } from '@prisma/client';
-import { 
-  CreateBookingRequestDto, 
+import {
+  CreateBookingRequestDto,
   UpdateBookingDto,
   BookingResponseDto,
   SearchBookingDto,
-  BookingConfirmedEvent 
+  BookingConfirmedEvent
 } from '../dto/booking.dto';
 import { ClientProxy } from '@nestjs/microservices';
+import { generateTimeSlotId } from '../../common/utils/response.util';
 
 @Injectable()
 export class BookingService {
@@ -65,7 +66,7 @@ export class BookingService {
         // 예약 생성
         const newBooking = await prisma.booking.create({
           data: {
-            timeSlotId: Math.floor(Math.random() * 1000000), // Generate temporary ID
+            timeSlotId: generateTimeSlotId(),
             slotType: 'NINE_HOLE' as any,
             bookingDate: new Date(dto.bookingDate),
             startTime: dto.timeSlot,
@@ -146,8 +147,13 @@ export class BookingService {
         userName: booking.userName,
       };
 
-      this.notificationPublisher.emit('booking.confirmed', eventPayload);
-      this.logger.log(`'booking.confirmed' event emitted for booking ${booking.bookingNumber}`);
+      // Emit event if notification publisher is available
+      if (this.notificationPublisher) {
+        this.notificationPublisher.emit('booking.confirmed', eventPayload);
+        this.logger.log(`'booking.confirmed' event emitted for booking ${booking.bookingNumber}`);
+      } else {
+        this.logger.debug('Notification publisher not available, skipping event emission');
+      }
 
       return this.toResponseDto(booking);
     } catch (error) {
@@ -374,20 +380,24 @@ export class BookingService {
     });
 
     // 예약 취소 이벤트 발행
-    this.notificationPublisher.emit('booking.cancelled', {
-      bookingId: booking.id,
-      bookingNumber: booking.bookingNumber,
-      userId: booking.userId,
-      courseId: booking.singleCourseId,
-      courseName: booking.singleCourseName,
-      bookingDate: booking.bookingDate.toISOString(),
-      timeSlot: booking.startTime,
-      reason: reason || 'No reason provided',
-      cancelledAt: new Date().toISOString(),
-      userEmail: booking.userEmail,
-      userName: booking.userName,
-    });
-    this.logger.log(`'booking.cancelled' event emitted for booking ${booking.bookingNumber}`);
+    if (this.notificationPublisher) {
+      this.notificationPublisher.emit('booking.cancelled', {
+        bookingId: booking.id,
+        bookingNumber: booking.bookingNumber,
+        userId: booking.userId,
+        courseId: booking.singleCourseId,
+        courseName: booking.singleCourseName,
+        bookingDate: booking.bookingDate.toISOString(),
+        timeSlot: booking.startTime,
+        reason: reason || 'No reason provided',
+        cancelledAt: new Date().toISOString(),
+        userEmail: booking.userEmail,
+        userName: booking.userName,
+      });
+      this.logger.log(`'booking.cancelled' event emitted for booking ${booking.bookingNumber}`);
+    } else {
+      this.logger.debug('Notification publisher not available, skipping cancel event emission');
+    }
 
     return this.toResponseDto(booking);
   }
@@ -530,7 +540,7 @@ export class BookingService {
 
       const newSlot = await this.prisma.timeSlotAvailability.create({
         data: {
-          timeSlotId: Math.floor(Math.random() * 1000000), // Temporary ID generation
+          timeSlotId: generateTimeSlotId(),
           slotType: 'NINE_HOLE' as any,
           date,
           startTime: timeSlot,

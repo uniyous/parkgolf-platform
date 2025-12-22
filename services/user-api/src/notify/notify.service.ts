@@ -1,42 +1,29 @@
-import { Injectable, Inject, Optional } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { lastValueFrom } from 'rxjs';
+import { Injectable, Logger } from '@nestjs/common';
+import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
 
 @Injectable()
 export class NotifyService {
-  constructor(
-    @Optional() @Inject('NATS_CLIENT') private readonly natsClient?: ClientProxy,
-  ) {}
+  private readonly logger = new Logger(NotifyService.name);
 
-  async sendEmail(data: {
-    to: string;
-    subject: string;
-    template: string;
-    context: any;
-  }) {
-    return lastValueFrom(
-      this.natsClient.send('notify.send.email', data),
-    );
+  constructor(private readonly natsClient: NatsClientService) {}
+
+  async sendEmail(data: { to: string; subject: string; template: string; context: any }) {
+    this.logger.log(`Sending email to: ${data.to}`);
+    return this.natsClient.send('notify.send.email', data);
   }
 
-  async sendSMS(data: {
-    to: string;
-    message: string;
-  }) {
-    return lastValueFrom(
-      this.natsClient.send('notify.send.sms', data),
-    );
+  async sendSMS(data: { to: string; message: string }) {
+    this.logger.log(`Sending SMS to: ${data.to}`);
+    return this.natsClient.send('notify.send.sms', data);
   }
 
   async sendBookingConfirmation(bookingId: string) {
-    return lastValueFrom(
-      this.natsClient.send('notify.booking.confirmation', { bookingId }),
-    );
+    this.logger.log(`Sending booking confirmation for: ${bookingId}`);
+    return this.natsClient.send('notify.booking.confirmation', { bookingId });
   }
 
   async sendBookingCancellation(bookingId: string) {
-    return lastValueFrom(
-      this.natsClient.send('notify.booking.cancellation', { bookingId }),
-    );
+    this.logger.log(`Sending booking cancellation for: ${bookingId}`);
+    return this.natsClient.send('notify.booking.cancellation', { bookingId });
   }
 }

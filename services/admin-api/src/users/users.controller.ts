@@ -1,26 +1,26 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Patch, 
-  Delete, 
-  Body, 
-  Param, 
-  Query, 
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
   Headers,
-  HttpStatus, 
-  HttpException, 
-  Logger 
+  HttpStatus,
+  HttpException,
+  Logger
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiQuery } from '@nestjs/swagger';
-import { AuthService } from '../auth/auth.service';
+import { UsersService } from './users.service';
 
 @ApiTags('users')
 @Controller('api/admin/users')
 export class UsersController {
   private readonly logger = new Logger(UsersController.name);
 
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly usersService: UsersService) {}
 
   @Get()
   @ApiOperation({ summary: 'Get user list with filtering' })
@@ -58,7 +58,7 @@ export class UsersController {
       
       this.logger.log(`Fetching user list with filters: ${JSON.stringify(filters)}`);
       
-      const result = await this.authService.getUserList(filters, token);
+      const result = await this.usersService.getUserList(filters, token);
       return result;
     } catch (error) {
       this.logger.error('Failed to fetch user list', error);
@@ -80,7 +80,7 @@ export class UsersController {
       const token = this.extractToken(authorization);
       this.logger.log(`Fetching user: ${userId}`);
       
-      const result = await this.authService.getUserById(userId, token);
+      const result = await this.usersService.getUserById(userId, token);
       return result;
     } catch (error) {
       this.logger.error(`Failed to fetch user: ${userId}`, error);
@@ -102,7 +102,7 @@ export class UsersController {
       const token = this.extractToken(authorization);
       this.logger.log(`Creating user: ${userData.username || userData.email}`);
       
-      const result = await this.authService.createUser(userData, token);
+      const result = await this.usersService.createUser(userData, token);
       return result;
     } catch (error) {
       this.logger.error('Failed to create user', error);
@@ -125,7 +125,7 @@ export class UsersController {
       const token = this.extractToken(authorization);
       this.logger.log(`Updating user: ${userId}`);
       
-      const result = await this.authService.updateUser(userId, updateData, token);
+      const result = await this.usersService.updateUser(userId, updateData, token);
       return result;
     } catch (error) {
       this.logger.error(`Failed to update user: ${userId}`, error);
@@ -147,7 +147,7 @@ export class UsersController {
       const token = this.extractToken(authorization);
       this.logger.log(`Deleting user: ${userId}`);
       
-      const result = await this.authService.deleteUser(userId, token);
+      const result = await this.usersService.deleteUser(userId, token);
       return result;
     } catch (error) {
       this.logger.error(`Failed to delete user: ${userId}`, error);
@@ -170,7 +170,7 @@ export class UsersController {
       const token = this.extractToken(authorization);
       this.logger.log(`Updating user status: ${userId} to ${statusData.status}`);
       
-      const result = await this.authService.updateUserStatus(userId, statusData.status, token);
+      const result = await this.usersService.updateUserStatus(userId, statusData.status, token);
       return result;
     } catch (error) {
       this.logger.error(`Failed to update user status: ${userId}`, error);
@@ -193,7 +193,7 @@ export class UsersController {
       const token = this.extractToken(authorization);
       this.logger.log(`Updating user role: ${userId} to ${roleData.role}`);
       
-      const result = await this.authService.updateUserRole(userId, roleData.role, token);
+      const result = await this.usersService.updateUserRole(userId, roleData.role, token);
       return result;
     } catch (error) {
       this.logger.error(`Failed to update user role: ${userId}`, error);
@@ -216,7 +216,7 @@ export class UsersController {
       const token = this.extractToken(authorization);
       this.logger.log(`Updating user permissions: ${userId}`);
       
-      const result = await this.authService.updateUserPermissions(userId, permissionData.permissions, token);
+      const result = await this.usersService.updateUserPermissions(userId, permissionData.permissions, token);
       return result;
     } catch (error) {
       this.logger.error(`Failed to update user permissions: ${userId}`, error);
@@ -239,7 +239,7 @@ export class UsersController {
       const token = this.extractToken(authorization);
       this.logger.log(`Resetting password for user: ${userId}`);
       
-      const result = await this.authService.resetUserPassword(userId, passwordData.password, token);
+      const result = await this.usersService.resetUserPassword(userId, passwordData.password, token);
       return result;
     } catch (error) {
       this.logger.error(`Failed to reset password for user: ${userId}`, error);
@@ -273,7 +273,7 @@ export class UsersController {
       
       this.logger.log(`Fetching user statistics for range: ${dateRange.startDate} to ${dateRange.endDate}`);
       
-      const result = await this.authService.getUserStats(dateRange, token);
+      const result = await this.usersService.getUserStats(dateRange, token);
       return result;
     } catch (error) {
       this.logger.error('Failed to fetch user statistics', error);

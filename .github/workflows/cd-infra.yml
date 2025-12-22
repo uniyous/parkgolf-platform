@@ -1,5 +1,32 @@
 # Infrastructure CD Pipeline (Terraform)
 # Manages infrastructure changes through GitOps workflow
+#
+# ============================================================================
+# NATS Infrastructure Notes
+# ============================================================================
+# NATS JetStream은 Compute Engine VM에서 Container-Optimized OS로 실행됩니다.
+#
+# 주요 구성요소:
+# - NATS VM: parkgolf-nats-{env} (e2-small/e2-medium)
+# - NATS 포트: 4222 (Client), 6222 (Cluster), 8222 (Monitoring)
+# - VPC Connector: Cloud Run ↔ NATS 통신
+# - Firewall: allow-nats-{env} (4222, 6222, 8222 포트 허용)
+#
+# NATS 컨테이너 인수 (중요):
+# - NATS 2.10에서 지원되는 인수만 사용해야 함
+# - 올바른 인수: -js, -sd /data, -m 8222
+# - 지원되지 않는 인수: --jetstream_max_memory, --jetstream_max_file
+#   (이 옵션들은 설정 파일(nats.conf)에서만 지원됨)
+#
+# Terraform 모듈 위치: infra/modules/messaging/main.tf
+# 환경 설정: infra/environments/{env}/main.tf
+#
+# NATS VM 수동 관리 명령:
+#   # VM 시작: gcloud compute instances start parkgolf-nats-{env} --zone=asia-northeast3-a
+#   # SSH 접속: gcloud compute ssh parkgolf-nats-{env} --tunnel-through-iap
+#   # 컨테이너 확인: docker ps -a | grep nats
+#   # 컨테이너 로그: docker logs nats
+# ============================================================================
 
 name: CD Infrastructure
 
@@ -22,6 +49,11 @@ on:
           - plan
           - apply
           - destroy
+      target:
+        description: 'Terraform target module (optional, e.g., module.messaging)'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -164,36 +196,50 @@ jobs:
         run: |
           ENV="${{ needs.detect-environment.outputs.environment }}"
 
-          # Common secrets
-          cat > terraform.tfvars << EOF
-          db_password        = "${{ secrets.DB_PASSWORD }}"
+          # Dev environment - uses external DB configured in cd-services.yml
+          if [ "$ENV" == "dev" ]; then
+            cat > terraform.tfvars << EOF
           jwt_secret         = "${{ secrets.JWT_SECRET }}"
           jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
           alert_email        = "${{ secrets.ALERT_EMAIL }}"
           EOF
-
-          # Dev environment uses external database (Compute Engine PostgreSQL)
-          if [ "$ENV" == "dev" ]; then
-            cat >> terraform.tfvars << EOF
-          db_host            = "${{ secrets.DEV_DB_HOST }}"
-          db_username        = "${{ secrets.DEV_DB_USERNAME }}"
-          EOF
           fi
 
-          # Prod environment additional variables
+          # Prod environment - uses Cloud SQL with db_password
           if [ "$ENV" == "prod" ]; then
-            cat >> terraform.tfvars << EOF
+            cat > terraform.tfvars << EOF
+          db_password        = "${{ secrets.DB_PASSWORD }}"
+          jwt_secret         = "${{ secrets.JWT_SECRET }}"
+          jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
+          alert_email        = "${{ secrets.ALERT_EMAIL }}"
           ops_email          = "${{ secrets.OPS_EMAIL }}"
           slack_channel      = "${{ secrets.SLACK_CHANNEL }}"
           slack_token        = "${{ secrets.SLACK_TOKEN }}"
           EOF
           fi
 
+          # Staging environment
+          if [ "$ENV" == "staging" ]; then
+            cat > terraform.tfvars << EOF
+          db_password        = "${{ secrets.DB_PASSWORD }}"
+          jwt_secret         = "${{ secrets.JWT_SECRET }}"
+          jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
+          alert_email        = "${{ secrets.ALERT_EMAIL }}"
+          EOF
+          fi
+
       - name: Terraform Plan
         id: plan
         run: |
+          TARGET_OPTION=""
+          if [ -n "${{ github.event.inputs.target }}" ]; then
+            TARGET_OPTION="-target=${{ github.event.inputs.target }}"
+            echo "🎯 Targeting: ${{ github.event.inputs.target }}"
+          fi
+
           terraform plan \
             -var="environment=${{ needs.detect-environment.outputs.environment }}" \
+            $TARGET_OPTION \
             -no-color \
             -detailed-exitcode \
             -out=tfplan 2>&1 | tee plan_output.txt
@@ -366,33 +412,47 @@ jobs:
         run: |
           ENV="${{ needs.detect-environment.outputs.environment }}"
 
-          # Common secrets
-          cat > terraform.tfvars << EOF
-          db_password        = "${{ secrets.DB_PASSWORD }}"
+          # Dev environment - uses external DB configured in cd-services.yml
+          if [ "$ENV" == "dev" ]; then
+            cat > terraform.tfvars << EOF
           jwt_secret         = "${{ secrets.JWT_SECRET }}"
           jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
           alert_email        = "${{ secrets.ALERT_EMAIL }}"
           EOF
-
-          # Dev environment uses external database
-          if [ "$ENV" == "dev" ]; then
-            cat >> terraform.tfvars << EOF
-          db_host            = "${{ secrets.DEV_DB_HOST }}"
-          db_username        = "${{ secrets.DEV_DB_USERNAME }}"
-          EOF
           fi
 
-          # Prod environment additional variables
+          # Prod environment - uses Cloud SQL with db_password
           if [ "$ENV" == "prod" ]; then
-            cat >> terraform.tfvars << EOF
+            cat > terraform.tfvars << EOF
+          db_password        = "${{ secrets.DB_PASSWORD }}"
+          jwt_secret         = "${{ secrets.JWT_SECRET }}"
+          jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
+          alert_email        = "${{ secrets.ALERT_EMAIL }}"
           ops_email          = "${{ secrets.OPS_EMAIL }}"
           slack_channel      = "${{ secrets.SLACK_CHANNEL }}"
           slack_token        = "${{ secrets.SLACK_TOKEN }}"
           EOF
           fi
 
+          # Staging environment
+          if [ "$ENV" == "staging" ]; then
+            cat > terraform.tfvars << EOF
+          db_password        = "${{ secrets.DB_PASSWORD }}"
+          jwt_secret         = "${{ secrets.JWT_SECRET }}"
+          jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
+          alert_email        = "${{ secrets.ALERT_EMAIL }}"
+          EOF
+          fi
+
       - name: Terraform Destroy
         run: |
+          TARGET_OPTION=""
+          if [ -n "${{ github.event.inputs.target }}" ]; then
+            TARGET_OPTION="-target=${{ github.event.inputs.target }}"
+            echo "🎯 Targeting: ${{ github.event.inputs.target }}"
+          fi
+
           terraform destroy \
             -var="environment=${{ needs.detect-environment.outputs.environment }}" \
+            $TARGET_OPTION \
             -auto-approve
