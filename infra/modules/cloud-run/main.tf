@@ -215,7 +215,7 @@ resource "google_cloud_run_v2_service" "service" {
       for_each = var.vpc_connector != null ? [1] : []
       content {
         connector = var.vpc_connector
-        egress    = "PRIVATE_RANGES_ONLY"
+        egress    = "ALL_TRAFFIC"
       }
     }
   }
