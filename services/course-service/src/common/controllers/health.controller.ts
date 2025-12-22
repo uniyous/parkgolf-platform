@@ -1,14 +1,11 @@
 import { Controller, Get } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 
-@ApiTags('Health')
 @Controller('health')
 export class HealthController {
   constructor(private readonly configService: ConfigService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Health check' })
   getHealth() {
     return {
       status: 'ok',
@@ -20,7 +17,6 @@ export class HealthController {
   }
 
   @Get('ready')
-  @ApiOperation({ summary: 'Readiness check' })
   getReady() {
     return {
       status: 'ready',
@@ -29,7 +25,6 @@ export class HealthController {
   }
 
   @Get('live')
-  @ApiOperation({ summary: 'Liveness check' })
   getLive() {
     return {
       status: 'alive',
