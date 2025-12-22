@@ -129,11 +129,31 @@ module "networking" {
 }
 
 # ============================================================================
-# External Database Configuration (Existing Compute Engine PostgreSQL)
+# VPC Peering to uniyous-319808 (PostgreSQL Database)
 # ============================================================================
-# Dev environment uses existing PostgreSQL on Compute Engine in uniyous-319808 project
-# Database connection is configured via Cloud Run environment variables in cd-services.yml
-# No Terraform-managed database resources in dev
+# Dev environment connects to existing PostgreSQL on Compute Engine in uniyous-319808 project
+# VPC peering enables private network connectivity between projects
+
+# Peering from parkgolf-uniyous to uniyous-319808
+resource "google_compute_network_peering" "parkgolf_to_uniyous" {
+  name         = "parkgolf-to-uniyous-peering"
+  network      = module.networking.vpc_self_link
+  peer_network = "projects/uniyous-319808/global/networks/default"
+
+  export_custom_routes = true
+  import_custom_routes = true
+}
+
+# Note: The reverse peering (uniyous-319808 -> parkgolf-uniyous) must be created
+# in the uniyous-319808 project. Run this command manually:
+#
+# gcloud compute networks peerings create uniyous-to-parkgolf-peering \
+#   --network=default \
+#   --peer-project=parkgolf-uniyous \
+#   --peer-network=parkgolf-dev \
+#   --export-custom-routes \
+#   --import-custom-routes \
+#   --project=uniyous-319808
 
 # ============================================================================
 # Messaging Module (NATS)
