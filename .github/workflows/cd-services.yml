@@ -14,7 +14,7 @@
 # VPC Connector:
 # - Dev: parkgolf-connector-dev
 # - Prod: parkgolf-connector-prod
-# - vpc-egress: private-ranges-only (NATS는 VPC 내부 통신만 필요)
+# - vpc-egress: all-traffic (VPC Peering을 통한 외부 DB 연결 필요)
 #
 # 서비스별 NATS 사용:
 # - auth-service: auth.*, users.* 패턴 처리
@@ -252,7 +252,7 @@ jobs:
             --cpu ${{ steps.vars.outputs.cpu }} \
             --timeout 300 \
             --vpc-connector "${VPC_CONNECTOR}" \
-            --vpc-egress private-ranges-only \
+            --vpc-egress all-traffic \
             --set-env-vars "${ENV_VARS}"
 
       - name: Get Service URL
