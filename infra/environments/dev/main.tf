@@ -181,19 +181,17 @@ module "secrets" {
   project_id    = local.project_id
   environment   = local.environment
 
-  # Secret names (non-sensitive, used for for_each)
-  secret_names = ["db_password", "jwt_secret", "jwt_refresh_secret"]
+  # Secret names - dev uses external DB, so no db_password needed
+  secret_names = ["jwt_secret", "jwt_refresh_secret"]
 
   # Secret values (sensitive)
   secret_values = {
-    db_password        = var.db_password
     jwt_secret         = var.jwt_secret
     jwt_refresh_secret = var.jwt_refresh_secret
   }
 
   # Secret descriptions
   secret_descriptions = {
-    db_password        = "Database password"
     jwt_secret         = "JWT signing secret"
     jwt_refresh_secret = "JWT refresh token secret"
   }
@@ -294,12 +292,6 @@ variable "db_username" {
   type        = string
   default     = "parkgolf"
   description = "Database username"
-}
-
-variable "db_password" {
-  type        = string
-  sensitive   = true
-  description = "Database password"
 }
 
 variable "jwt_secret" {

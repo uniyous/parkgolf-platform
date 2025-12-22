@@ -196,28 +196,37 @@ jobs:
         run: |
           ENV="${{ needs.detect-environment.outputs.environment }}"
 
-          # Common secrets
-          cat > terraform.tfvars << EOF
-          db_password        = "${{ secrets.DB_PASSWORD }}"
+          # Dev environment - uses external DB, no db_password needed
+          if [ "$ENV" == "dev" ]; then
+            cat > terraform.tfvars << EOF
           jwt_secret         = "${{ secrets.JWT_SECRET }}"
           jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
           alert_email        = "${{ secrets.ALERT_EMAIL }}"
-          EOF
-
-          # Dev environment uses external database (Compute Engine PostgreSQL)
-          if [ "$ENV" == "dev" ]; then
-            cat >> terraform.tfvars << EOF
           db_host            = "${{ secrets.DEV_DB_HOST }}"
           db_username        = "${{ secrets.DEV_DB_USERNAME }}"
           EOF
           fi
 
-          # Prod environment additional variables
+          # Prod environment - uses Cloud SQL with db_password
           if [ "$ENV" == "prod" ]; then
-            cat >> terraform.tfvars << EOF
+            cat > terraform.tfvars << EOF
+          db_password        = "${{ secrets.DB_PASSWORD }}"
+          jwt_secret         = "${{ secrets.JWT_SECRET }}"
+          jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
+          alert_email        = "${{ secrets.ALERT_EMAIL }}"
           ops_email          = "${{ secrets.OPS_EMAIL }}"
           slack_channel      = "${{ secrets.SLACK_CHANNEL }}"
           slack_token        = "${{ secrets.SLACK_TOKEN }}"
+          EOF
+          fi
+
+          # Staging environment
+          if [ "$ENV" == "staging" ]; then
+            cat > terraform.tfvars << EOF
+          db_password        = "${{ secrets.DB_PASSWORD }}"
+          jwt_secret         = "${{ secrets.JWT_SECRET }}"
+          jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
+          alert_email        = "${{ secrets.ALERT_EMAIL }}"
           EOF
           fi
 
@@ -405,28 +414,37 @@ jobs:
         run: |
           ENV="${{ needs.detect-environment.outputs.environment }}"
 
-          # Common secrets
-          cat > terraform.tfvars << EOF
-          db_password        = "${{ secrets.DB_PASSWORD }}"
+          # Dev environment - uses external DB, no db_password needed
+          if [ "$ENV" == "dev" ]; then
+            cat > terraform.tfvars << EOF
           jwt_secret         = "${{ secrets.JWT_SECRET }}"
           jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
           alert_email        = "${{ secrets.ALERT_EMAIL }}"
-          EOF
-
-          # Dev environment uses external database
-          if [ "$ENV" == "dev" ]; then
-            cat >> terraform.tfvars << EOF
           db_host            = "${{ secrets.DEV_DB_HOST }}"
           db_username        = "${{ secrets.DEV_DB_USERNAME }}"
           EOF
           fi
 
-          # Prod environment additional variables
+          # Prod environment - uses Cloud SQL with db_password
           if [ "$ENV" == "prod" ]; then
-            cat >> terraform.tfvars << EOF
+            cat > terraform.tfvars << EOF
+          db_password        = "${{ secrets.DB_PASSWORD }}"
+          jwt_secret         = "${{ secrets.JWT_SECRET }}"
+          jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
+          alert_email        = "${{ secrets.ALERT_EMAIL }}"
           ops_email          = "${{ secrets.OPS_EMAIL }}"
           slack_channel      = "${{ secrets.SLACK_CHANNEL }}"
           slack_token        = "${{ secrets.SLACK_TOKEN }}"
+          EOF
+          fi
+
+          # Staging environment
+          if [ "$ENV" == "staging" ]; then
+            cat > terraform.tfvars << EOF
+          db_password        = "${{ secrets.DB_PASSWORD }}"
+          jwt_secret         = "${{ secrets.JWT_SECRET }}"
+          jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
+          alert_email        = "${{ secrets.ALERT_EMAIL }}"
           EOF
           fi
 
