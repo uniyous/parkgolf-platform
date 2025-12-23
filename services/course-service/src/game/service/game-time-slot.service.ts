@@ -65,15 +65,15 @@ export class GameTimeSlotService {
     page: number;
     limit: number;
   }> {
-    const { gameId, date, dateFrom, dateTo, status, isActive, availableOnly, page = 1, limit = 50 } = query;
+    const { gameId, date, startDate, endDate, status, isActive, availableOnly, page = 1, limit = 50 } = query;
 
     const where: Prisma.GameTimeSlotWhereInput = {};
     if (gameId) where.gameId = gameId;
     if (date) where.date = new Date(date);
-    if (dateFrom || dateTo) {
+    if (startDate || endDate) {
       where.date = {};
-      if (dateFrom) where.date.gte = new Date(dateFrom);
-      if (dateTo) where.date.lte = new Date(dateTo);
+      if (startDate) where.date.gte = new Date(startDate);
+      if (endDate) where.date.lte = new Date(endDate);
     }
     if (status) where.status = status;
     if (isActive !== undefined) where.isActive = isActive;
@@ -185,7 +185,7 @@ export class GameTimeSlotService {
   }
 
   async generateTimeSlots(dto: GenerateTimeSlotsDto): Promise<{ created: number; skipped: number }> {
-    this.logger.log(`Generating time slots for game ${dto.gameId} from ${dto.dateFrom} to ${dto.dateTo}`);
+    this.logger.log(`Generating time slots for game ${dto.gameId} from ${dto.startDate} to ${dto.endDate}`);
 
     const game = await this.prisma.game.findUnique({
       where: { id: dto.gameId },
@@ -200,8 +200,8 @@ export class GameTimeSlotService {
       throw new ConflictException(`No weekly schedules found for game ${dto.gameId}`);
     }
 
-    const startDate = new Date(dto.dateFrom);
-    const endDate = new Date(dto.dateTo);
+    const startDate = new Date(dto.startDate);
+    const endDate = new Date(dto.endDate);
     const slotsToCreate: Prisma.GameTimeSlotCreateManyInput[] = [];
 
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {

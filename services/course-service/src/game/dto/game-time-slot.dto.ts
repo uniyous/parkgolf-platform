@@ -122,11 +122,11 @@ export class FindGameTimeSlotsQueryDto {
 
   @IsDateString()
   @IsOptional()
-  dateFrom?: string;
+  startDate?: string;
 
   @IsDateString()
   @IsOptional()
-  dateTo?: string;
+  endDate?: string;
 
   @IsEnum(TimeSlotStatus)
   @IsOptional()
@@ -162,10 +162,10 @@ export class GenerateTimeSlotsDto {
   gameId: number;
 
   @IsDateString()
-  dateFrom: string;
+  startDate: string;
 
   @IsDateString()
-  dateTo: string;
+  endDate: string;
 
   @IsBoolean()
   @IsOptional()
