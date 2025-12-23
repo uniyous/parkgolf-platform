@@ -24,8 +24,9 @@ export class GameNatsController {
   // =====================================================
 
   @MessagePattern('games.create')
-  async createGame(@Payload() data: any) {
+  async createGame(@Payload() payload: any) {
     try {
+      const data = payload.data || payload;
       this.logger.log(`NATS: Creating game: ${data.name}`);
       const game = await this.gameService.create(data);
       return successResponse(this.mapGameToResponse(game));
@@ -103,8 +104,9 @@ export class GameNatsController {
   // =====================================================
 
   @MessagePattern('gameTimeSlots.create')
-  async createGameTimeSlot(@Payload() data: any) {
+  async createGameTimeSlot(@Payload() payload: any) {
     try {
+      const data = payload.data || payload;
       this.logger.log(`NATS: Creating time slot for game ${data.gameId}`);
       const slot = await this.gameTimeSlotService.create(data);
       return successResponse(this.mapTimeSlotToResponse(slot));
@@ -181,8 +183,9 @@ export class GameNatsController {
   }
 
   @MessagePattern('gameTimeSlots.generate')
-  async generateGameTimeSlots(@Payload() data: any) {
+  async generateGameTimeSlots(@Payload() payload: any) {
     try {
+      const data = payload.data || payload;
       this.logger.log(`NATS: Generating time slots for game ${data.gameId}`);
       const result = await this.gameTimeSlotService.generateTimeSlots(data);
       return successResponse(result);
@@ -227,8 +230,9 @@ export class GameNatsController {
   // =====================================================
 
   @MessagePattern('gameWeeklySchedules.create')
-  async createGameWeeklySchedule(@Payload() data: any) {
+  async createGameWeeklySchedule(@Payload() payload: any) {
     try {
+      const data = payload.data || payload;
       this.logger.log(`NATS: Creating weekly schedule for game ${data.gameId}`);
       const schedule = await this.gameWeeklyScheduleService.create(data);
       return successResponse(this.mapScheduleToResponse(schedule));
@@ -290,8 +294,9 @@ export class GameNatsController {
   }
 
   @MessagePattern('gameWeeklySchedules.bulkCreate')
-  async bulkCreateGameWeeklySchedules(@Payload() data: any) {
+  async bulkCreateGameWeeklySchedules(@Payload() payload: any) {
     try {
+      const data = payload.data || payload;
       this.logger.log(`NATS: Bulk creating weekly schedules for game ${data.gameId}`);
       const result = await this.gameWeeklyScheduleService.bulkCreate(data);
       return successResponse(result);
