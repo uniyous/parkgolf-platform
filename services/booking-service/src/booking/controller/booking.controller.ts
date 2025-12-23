@@ -115,44 +115,83 @@ export class BookingController {
     }
   }
 
-  @MessagePattern('booking.timeSlots.availability')
-  async getTimeSlotAvailability(@Payload() data: {
-    courseId: number;
+  @MessagePattern('booking.gameTimeSlots.availability')
+  async getGameTimeSlotAvailability(@Payload() data: {
+    gameId: number;
     date: string;
   }) {
     try {
-      this.logger.log(`NATS: Received timeSlots.availability request for course: ${data.courseId}, date: ${data.date}`);
-      const slots = await this.bookingService.getTimeSlotAvailability(data.courseId, data.date);
-      this.logger.log(`NATS: Found ${slots.length} time slots`);
+      this.logger.log(`NATS: Received gameTimeSlots.availability request for game: ${data.gameId}, date: ${data.date}`);
+      const slots = await this.bookingService.getGameTimeSlotAvailability(data.gameId, data.date);
+      this.logger.log(`NATS: Found ${slots.length} game time slots`);
       return successResponse(slots);
     } catch (error) {
-      this.logger.error(`NATS: Error getting time slot availability: ${error.message}`, error.stack);
-      return errorResponse('TIMESLOTS_FETCH_FAILED', error.message || 'Failed to get time slot availability');
+      this.logger.error(`NATS: Error getting game time slot availability: ${error.message}`, error.stack);
+      return errorResponse('GAME_TIMESLOTS_FETCH_FAILED', error.message || 'Failed to get game time slot availability');
     }
   }
 
-  @MessagePattern('booking.course.sync')
-  async syncCourseCache(@Payload() data: {
-    courseId: number;
+  @MessagePattern('booking.game.sync')
+  async syncGameCache(@Payload() data: {
+    gameId: number;
     name: string;
-    location: string;
+    code: string;
     description?: string;
-    rating: number;
-    pricePerHour: number;
-    imageUrl?: string;
-    amenities: string[];
-    openTime: string;
-    closeTime: string;
+    frontNineCourseId: number;
+    frontNineCourseName: string;
+    backNineCourseId: number;
+    backNineCourseName: string;
+    totalHoles: number;
+    estimatedDuration: number;
+    breakDuration: number;
+    maxPlayers: number;
+    basePrice: number;
+    weekendPrice?: number;
+    holidayPrice?: number;
+    clubId: number;
+    clubName: string;
     isActive: boolean;
   }) {
     try {
-      this.logger.log(`NATS: Received course.sync request for course: ${data.courseId}`);
-      await this.bookingService.syncCourseCache(data);
-      this.logger.log(`NATS: Course cache synced for: ${data.courseId}`);
+      this.logger.log(`NATS: Received game.sync request for game: ${data.gameId}`);
+      await this.bookingService.syncGameCache(data);
+      this.logger.log(`NATS: Game cache synced for: ${data.gameId}`);
       return successResponse({ synced: true });
     } catch (error) {
-      this.logger.error(`NATS: Error syncing course cache: ${error.message}`, error.stack);
-      return errorResponse('COURSE_SYNC_FAILED', error.message || 'Failed to sync course cache');
+      this.logger.error(`NATS: Error syncing game cache: ${error.message}`, error.stack);
+      return errorResponse('GAME_SYNC_FAILED', error.message || 'Failed to sync game cache');
+    }
+  }
+
+  @MessagePattern('booking.gameTimeSlot.sync')
+  async syncGameTimeSlotCache(@Payload() data: {
+    gameTimeSlotId: number;
+    gameId: number;
+    gameName?: string;
+    gameCode?: string;
+    frontNineCourseName?: string;
+    backNineCourseName?: string;
+    clubId?: number;
+    clubName?: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    maxPlayers: number;
+    bookedPlayers: number;
+    availablePlayers: number;
+    isAvailable: boolean;
+    price: number;
+    isPremium: boolean;
+    status: string;
+  }) {
+    try {
+      this.logger.log(`NATS: Received gameTimeSlot.sync request for slot: ${data.gameTimeSlotId}`);
+      await this.bookingService.syncGameTimeSlotCache(data);
+      this.logger.log(`NATS: GameTimeSlot cache synced for: ${data.gameTimeSlotId}`);
+      return successResponse({ synced: true });
+    } catch (error) {
+      this.logger.error(`NATS: Error syncing game time slot cache: ${error.message}`, error.stack);
+      return errorResponse('GAME_TIMESLOT_SYNC_FAILED', error.message || 'Failed to sync game time slot cache');
     }
   }
 }

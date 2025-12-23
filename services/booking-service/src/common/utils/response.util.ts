@@ -50,17 +50,24 @@ export function toISOString(date: Date | string | null | undefined): string | nu
 }
 
 /**
- * Booking 엔티티를 응답용으로 매핑
+ * Booking 엔티티를 응답용으로 매핑 (Game 기반)
  */
 export function mapBookingToResponse(booking: any) {
   return {
     id: booking.id,
     bookingNumber: booking.bookingNumber,
     userId: booking.userId,
-    courseId: booking.singleCourseId,
-    courseName: booking.singleCourseName,
+    gameId: booking.gameId,
+    gameTimeSlotId: booking.gameTimeSlotId,
+    gameName: booking.gameName,
+    gameCode: booking.gameCode,
+    frontNineCourseId: booking.frontNineCourseId,
+    frontNineCourseName: booking.frontNineCourseName,
+    backNineCourseId: booking.backNineCourseId,
+    backNineCourseName: booking.backNineCourseName,
+    clubId: booking.clubId,
+    clubName: booking.clubName,
     bookingDate: toISOString(booking.bookingDate),
-    timeSlot: booking.startTime,
     startTime: booking.startTime,
     endTime: booking.endTime,
     playerCount: booking.playerCount,
@@ -79,23 +86,29 @@ export function mapBookingToResponse(booking: any) {
 }
 
 /**
- * TimeSlotAvailability 엔티티를 응답용으로 매핑
+ * GameTimeSlotCache 엔티티를 응답용으로 매핑
  */
-export function mapTimeSlotAvailabilityToResponse(slot: any) {
+export function mapGameTimeSlotCacheToResponse(slot: any) {
   return {
     id: slot.id,
-    timeSlotId: slot.timeSlotId,
-    courseId: slot.singleCourseId,
-    courseName: slot.singleCourseName,
+    gameTimeSlotId: slot.gameTimeSlotId,
+    gameId: slot.gameId,
+    gameName: slot.gameName,
+    gameCode: slot.gameCode,
+    frontNineCourseName: slot.frontNineCourseName,
+    backNineCourseName: slot.backNineCourseName,
+    clubId: slot.clubId,
+    clubName: slot.clubName,
     date: toISOString(slot.date)?.split('T')[0],
     startTime: slot.startTime,
     endTime: slot.endTime,
-    maxCapacity: slot.maxCapacity,
-    currentBookings: slot.currentBookings,
-    availableSlots: slot.availableSlots,
-    price: Number(slot.price),
+    maxPlayers: slot.maxPlayers,
+    bookedPlayers: slot.bookedPlayers,
+    availablePlayers: slot.availablePlayers,
     isAvailable: slot.isAvailable,
+    price: Number(slot.price),
     isPremium: slot.isPremium,
+    status: slot.status,
   };
 }
 
@@ -130,22 +143,31 @@ export function mapPaymentToResponse(payment: any) {
 }
 
 /**
- * CourseCache 엔티티를 응답용으로 매핑
+ * GameCache 엔티티를 응답용으로 매핑
  */
-export function mapCourseCacheToResponse(course: any) {
+export function mapGameCacheToResponse(game: any) {
   return {
-    id: course.id,
-    courseId: course.courseId,
-    name: course.name,
-    location: course.location,
-    description: course.description,
-    rating: course.rating,
-    pricePerHour: Number(course.pricePerHour),
-    imageUrl: course.imageUrl,
-    amenities: course.amenities,
-    openTime: course.openTime,
-    closeTime: course.closeTime,
-    isActive: course.isActive,
-    updatedAt: toISOString(course.updatedAt),
+    id: game.id,
+    gameId: game.gameId,
+    name: game.name,
+    code: game.code,
+    description: game.description,
+    frontNineCourseId: game.frontNineCourseId,
+    frontNineCourseName: game.frontNineCourseName,
+    backNineCourseId: game.backNineCourseId,
+    backNineCourseName: game.backNineCourseName,
+    totalHoles: game.totalHoles,
+    estimatedDuration: game.estimatedDuration,
+    breakDuration: game.breakDuration,
+    maxPlayers: game.maxPlayers,
+    basePrice: Number(game.basePrice),
+    weekendPrice: game.weekendPrice ? Number(game.weekendPrice) : null,
+    holidayPrice: game.holidayPrice ? Number(game.holidayPrice) : null,
+    clubId: game.clubId,
+    clubName: game.clubName,
+    isActive: game.isActive,
+    lastSyncAt: toISOString(game.lastSyncAt),
+    createdAt: toISOString(game.createdAt),
+    updatedAt: toISOString(game.updatedAt),
   };
 }

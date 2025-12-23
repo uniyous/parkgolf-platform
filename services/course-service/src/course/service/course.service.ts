@@ -90,12 +90,11 @@ export class CourseService {
     this.logger.log(`Fetching course with ID: ${id}`);
     const course = await this.prisma.course.findUnique({
       where: { id },
-      // include: {
-      //   company: true,
-      //   holes: true,
-      //   courseWeeklySchedules: true,
-      //   courseTimeSlots: { where: { date: { gte: new Date() } } } // 예시: 오늘 이후의 타임슬롯만
-      // },
+      include: {
+        company: true,
+        club: true,
+        holes: true,
+      },
     });
     if (!course) {
       throw new NotFoundException(`Course with ID ${id} not found.`);
@@ -162,9 +161,8 @@ export class CourseService {
     // Course 존재 여부 확인
     await this.findOne(id);
 
-    // onDelete: Restrict 이므로, 관련된 Hole, CourseWeeklySchedule, CourseTimeSlot이 있으면 삭제 불가
+    // onDelete: Restrict 이므로, 관련된 Hole, Game이 있으면 삭제 불가
     // 먼저 하위 레코드를 삭제하거나, Prisma 스키마에서 onDelete 규칙을 변경해야 함.
-    // 여기서는 Restrict를 존중하여, 연결된 데이터가 있으면 Prisma가 에러를 발생시킬 것으로 예상.
     try {
       return await this.prisma.course.delete({
         where: { id },
@@ -176,7 +174,7 @@ export class CourseService {
         }
         if (error.code === 'P2003' || error.code === 'P2014') {
           throw new ConflictException(
-            `Cannot delete course with ID ${id} as it has related records (e.g., holes, schedules, time slots). Please delete them first.`,
+            `Cannot delete course with ID ${id} as it has related records (e.g., holes, games). Please delete them first.`,
           );
         }
       } else if (error instanceof Error) {

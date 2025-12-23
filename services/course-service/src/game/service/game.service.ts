@@ -1,0 +1,224 @@
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Game, Prisma } from '@prisma/client';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { CreateGameDto, UpdateGameDto, FindGamesQueryDto } from '../dto/game.dto';
+
+@Injectable()
+export class GameService {
+  private readonly logger = new Logger(GameService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(createDto: CreateGameDto): Promise<Game> {
+    this.logger.log(`Creating game: ${createDto.name} (${createDto.code})`);
+
+    // Club 존재 확인
+    const club = await this.prisma.club.findUnique({
+      where: { id: createDto.clubId },
+    });
+    if (!club) {
+      throw new NotFoundException(`Club with ID ${createDto.clubId} not found`);
+    }
+
+    // Front/Back Nine Course 존재 확인
+    const [frontCourse, backCourse] = await Promise.all([
+      this.prisma.course.findUnique({ where: { id: createDto.frontNineCourseId } }),
+      this.prisma.course.findUnique({ where: { id: createDto.backNineCourseId } }),
+    ]);
+
+    if (!frontCourse) {
+      throw new NotFoundException(`Front nine course with ID ${createDto.frontNineCourseId} not found`);
+    }
+    if (!backCourse) {
+      throw new NotFoundException(`Back nine course with ID ${createDto.backNineCourseId} not found`);
+    }
+
+    // 같은 코스 조합 중복 체크
+    if (createDto.frontNineCourseId === createDto.backNineCourseId) {
+      throw new ConflictException('Front nine and back nine must be different courses');
+    }
+
+    try {
+      return await this.prisma.game.create({
+        data: {
+          name: createDto.name,
+          code: createDto.code,
+          description: createDto.description,
+          frontNineCourseId: createDto.frontNineCourseId,
+          backNineCourseId: createDto.backNineCourseId,
+          totalHoles: createDto.totalHoles ?? 18,
+          estimatedDuration: createDto.estimatedDuration ?? 180,
+          breakDuration: createDto.breakDuration ?? 10,
+          maxPlayers: createDto.maxPlayers ?? 4,
+          basePrice: createDto.basePrice,
+          weekendPrice: createDto.weekendPrice,
+          holidayPrice: createDto.holidayPrice,
+          clubId: createDto.clubId,
+          status: createDto.status ?? 'ACTIVE',
+          isActive: createDto.isActive ?? true,
+        },
+        include: {
+          frontNineCourse: true,
+          backNineCourse: true,
+          club: true,
+        },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          const target = error.meta?.target as string[];
+          if (target?.includes('code')) {
+            throw new ConflictException(`Game with code "${createDto.code}" already exists`);
+          }
+          if (target?.includes('front_nine_course_id') && target?.includes('back_nine_course_id')) {
+            throw new ConflictException('This course combination already exists as a game');
+          }
+        }
+      }
+      throw error;
+    }
+  }
+
+  async findAll(query: FindGamesQueryDto): Promise<{ data: Game[]; total: number; page: number; limit: number }> {
+    const { clubId, name, status, isActive, page = 1, limit = 10 } = query;
+
+    const where: Prisma.GameWhereInput = {};
+    if (clubId) where.clubId = clubId;
+    if (name) where.name = { contains: name, mode: 'insensitive' };
+    if (status) where.status = status;
+    if (isActive !== undefined) where.isActive = isActive;
+
+    const skip = (page - 1) * limit;
+
+    const [games, total] = await this.prisma.$transaction([
+      this.prisma.game.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          frontNineCourse: true,
+          backNineCourse: true,
+          club: true,
+        },
+      }),
+      this.prisma.game.count({ where }),
+    ]);
+
+    return { data: games, total, page, limit };
+  }
+
+  async findOne(id: number): Promise<Game> {
+    const game = await this.prisma.game.findUnique({
+      where: { id },
+      include: {
+        frontNineCourse: {
+          include: { holes: true },
+        },
+        backNineCourse: {
+          include: { holes: true },
+        },
+        club: true,
+        weeklySchedules: true,
+      },
+    });
+
+    if (!game) {
+      throw new NotFoundException(`Game with ID ${id} not found`);
+    }
+
+    return game;
+  }
+
+  async findByClub(clubId: number): Promise<Game[]> {
+    return this.prisma.game.findMany({
+      where: { clubId, isActive: true },
+      include: {
+        frontNineCourse: true,
+        backNineCourse: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async update(id: number, updateDto: UpdateGameDto): Promise<Game> {
+    this.logger.log(`Updating game with ID: ${id}`);
+
+    await this.findOne(id);
+
+    // Course 변경 시 존재 확인
+    if (updateDto.frontNineCourseId) {
+      const course = await this.prisma.course.findUnique({
+        where: { id: updateDto.frontNineCourseId },
+      });
+      if (!course) {
+        throw new NotFoundException(`Front nine course with ID ${updateDto.frontNineCourseId} not found`);
+      }
+    }
+
+    if (updateDto.backNineCourseId) {
+      const course = await this.prisma.course.findUnique({
+        where: { id: updateDto.backNineCourseId },
+      });
+      if (!course) {
+        throw new NotFoundException(`Back nine course with ID ${updateDto.backNineCourseId} not found`);
+      }
+    }
+
+    try {
+      return await this.prisma.game.update({
+        where: { id },
+        data: {
+          name: updateDto.name,
+          code: updateDto.code,
+          description: updateDto.description,
+          frontNineCourseId: updateDto.frontNineCourseId,
+          backNineCourseId: updateDto.backNineCourseId,
+          totalHoles: updateDto.totalHoles,
+          estimatedDuration: updateDto.estimatedDuration,
+          breakDuration: updateDto.breakDuration,
+          maxPlayers: updateDto.maxPlayers,
+          basePrice: updateDto.basePrice,
+          weekendPrice: updateDto.weekendPrice,
+          holidayPrice: updateDto.holidayPrice,
+          clubId: updateDto.clubId,
+          status: updateDto.status,
+          isActive: updateDto.isActive,
+        },
+        include: {
+          frontNineCourse: true,
+          backNineCourse: true,
+          club: true,
+        },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          throw new ConflictException('Game code or course combination already exists');
+        }
+      }
+      throw error;
+    }
+  }
+
+  async remove(id: number): Promise<Game> {
+    this.logger.log(`Deleting game with ID: ${id}`);
+
+    await this.findOne(id);
+
+    try {
+      return await this.prisma.game.delete({
+        where: { id },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2003' || error.code === 'P2014') {
+          throw new ConflictException(
+            `Cannot delete game with ID ${id}. Please delete related time slots and schedules first.`
+          );
+        }
+      }
+      throw error;
+    }
+  }
+}

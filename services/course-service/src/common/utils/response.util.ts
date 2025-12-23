@@ -68,15 +68,68 @@ export function mapCourseToResponse(course: any) {
 }
 
 /**
- * Weekly Schedule 엔티티를 응답용으로 매핑
+ * Game 엔티티를 응답용으로 매핑
  */
-export function mapWeeklyScheduleToResponse(schedule: any) {
+export function mapGameToResponse(game: any) {
+  return {
+    id: game.id,
+    name: game.name,
+    code: game.code,
+    description: game.description,
+    frontNineCourseId: game.frontNineCourseId,
+    backNineCourseId: game.backNineCourseId,
+    frontNineCourse: game.frontNineCourse ? mapCourseToResponse(game.frontNineCourse) : null,
+    backNineCourse: game.backNineCourse ? mapCourseToResponse(game.backNineCourse) : null,
+    totalHoles: game.totalHoles,
+    estimatedDuration: game.estimatedDuration,
+    breakDuration: game.breakDuration,
+    maxPlayers: game.maxPlayers,
+    basePrice: Number(game.basePrice),
+    weekendPrice: game.weekendPrice ? Number(game.weekendPrice) : null,
+    holidayPrice: game.holidayPrice ? Number(game.holidayPrice) : null,
+    clubId: game.clubId,
+    club: game.club ? mapClubToResponse(game.club) : null,
+    status: game.status,
+    isActive: game.isActive,
+    createdAt: toISOString(game.createdAt),
+    updatedAt: toISOString(game.updatedAt),
+  };
+}
+
+/**
+ * GameTimeSlot 엔티티를 응답용으로 매핑
+ */
+export function mapGameTimeSlotToResponse(slot: any) {
+  return {
+    id: slot.id,
+    gameId: slot.gameId,
+    game: slot.game ? mapGameToResponse(slot.game) : null,
+    date: slot.date instanceof Date ? slot.date.toISOString().split('T')[0] : slot.date,
+    startTime: slot.startTime,
+    endTime: slot.endTime,
+    maxPlayers: slot.maxPlayers,
+    bookedPlayers: slot.bookedPlayers,
+    availablePlayers: slot.maxPlayers - slot.bookedPlayers,
+    price: Number(slot.price),
+    isPremium: slot.isPremium,
+    status: slot.status,
+    isActive: slot.isActive,
+    createdAt: toISOString(slot.createdAt),
+    updatedAt: toISOString(slot.updatedAt),
+  };
+}
+
+/**
+ * GameWeeklySchedule 엔티티를 응답용으로 매핑
+ */
+export function mapGameWeeklyScheduleToResponse(schedule: any) {
   return {
     id: schedule.id,
-    courseId: schedule.courseId,
+    gameId: schedule.gameId,
     dayOfWeek: schedule.dayOfWeek,
-    openTime: schedule.openTime,
-    closeTime: schedule.closeTime,
+    startTime: schedule.startTime,
+    endTime: schedule.endTime,
+    interval: schedule.interval,
     isActive: schedule.isActive,
     createdAt: toISOString(schedule.createdAt),
     updatedAt: toISOString(schedule.updatedAt),
@@ -158,20 +211,3 @@ export function mapHoleToResponse(hole: any) {
   };
 }
 
-/**
- * TimeSlot 엔티티를 응답용으로 매핑
- */
-export function mapTimeSlotToResponse(slot: any) {
-  return {
-    id: slot.id,
-    courseId: slot.courseId,
-    date: slot.date,
-    startTime: slot.startTime,
-    endTime: slot.endTime,
-    maxPlayers: slot.maxPlayers,
-    price: Number(slot.price),
-    isActive: slot.isActive,
-    createdAt: toISOString(slot.createdAt),
-    updatedAt: toISOString(slot.updatedAt),
-  };
-}

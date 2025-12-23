@@ -4,7 +4,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { CompanyModule } from './company/company.module';
 import { ClubModule } from './club/club.module';
 import { CourseModule } from './course/course.module';
-import { TimeSlotModule } from './time-slot/time-slot.module';
+import { GameModule } from './game/game.module';
 import { CommonModule } from './common/common.module';
 
 @Module({
@@ -18,7 +18,7 @@ import { CommonModule } from './common/common.module';
     CompanyModule,
     ClubModule,
     CourseModule,
-    TimeSlotModule,
+    GameModule,
   ],
 })
 export class AppModule {}
