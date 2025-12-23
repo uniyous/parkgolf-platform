@@ -135,7 +135,7 @@ export class GamesService {
   async generateTimeSlots(gameId: number, startDate: string, endDate: string, adminToken: string): Promise<any> {
     this.logger.log(`Generating time slots for game: ${gameId} from ${startDate} to ${endDate}`);
     return this.natsClient.send('gameTimeSlots.generate', {
-      data: { gameId, startDate, endDate },
+      data: { gameId, dateFrom: startDate, dateTo: endDate },
       token: adminToken
     }, NATS_TIMEOUTS.LIST_QUERY);
   }
