@@ -53,29 +53,29 @@ export class GamesService {
     this.logger.log(`Fetching weekly schedules for game: ${gameId}`);
     const params: any = { gameId };
     if (adminToken) params.token = adminToken;
-    return this.natsClient.send('games.weeklySchedule.list', params, NATS_TIMEOUTS.QUICK);
+    return this.natsClient.send('gameWeeklySchedules.getByGame', params, NATS_TIMEOUTS.QUICK);
   }
 
   async getWeeklyScheduleById(scheduleId: number, adminToken?: string): Promise<any> {
     this.logger.log(`Fetching weekly schedule: ${scheduleId}`);
     const params: any = { scheduleId };
     if (adminToken) params.token = adminToken;
-    return this.natsClient.send('games.weeklySchedule.findById', params, NATS_TIMEOUTS.QUICK);
+    return this.natsClient.send('gameWeeklySchedules.get', params, NATS_TIMEOUTS.QUICK);
   }
 
   async createWeeklySchedule(scheduleData: any, adminToken: string): Promise<any> {
     this.logger.log('Creating weekly schedule');
-    return this.natsClient.send('games.weeklySchedule.create', { data: scheduleData, token: adminToken });
+    return this.natsClient.send('gameWeeklySchedules.create', { data: scheduleData, token: adminToken });
   }
 
   async updateWeeklySchedule(scheduleId: number, updateData: any, adminToken: string): Promise<any> {
     this.logger.log(`Updating weekly schedule: ${scheduleId}`);
-    return this.natsClient.send('games.weeklySchedule.update', { scheduleId, data: updateData, token: adminToken });
+    return this.natsClient.send('gameWeeklySchedules.update', { scheduleId, data: updateData, token: adminToken });
   }
 
   async deleteWeeklySchedule(scheduleId: number, adminToken: string): Promise<any> {
     this.logger.log(`Deleting weekly schedule: ${scheduleId}`);
-    return this.natsClient.send('games.weeklySchedule.delete', { scheduleId, token: adminToken });
+    return this.natsClient.send('gameWeeklySchedules.delete', { scheduleId, token: adminToken });
   }
 
   // ============================================
@@ -100,12 +100,12 @@ export class GamesService {
     const params: any = { gameId };
     if (date) params.date = date;
     if (adminToken) params.token = adminToken;
-    return this.natsClient.send('gameTimeSlots.findByGame', params, NATS_TIMEOUTS.LIST_QUERY);
+    return this.natsClient.send('gameTimeSlots.getByGameAndDate', params, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   async createTimeSlot(gameId: number, timeSlotData: any, adminToken: string): Promise<any> {
     this.logger.log(`Creating time slot for game: ${gameId}`);
-    return this.natsClient.send('gameTimeSlots.create', { gameId, data: timeSlotData, token: adminToken });
+    return this.natsClient.send('gameTimeSlots.create', { data: { ...timeSlotData, gameId }, token: adminToken });
   }
 
   async bulkCreateTimeSlots(gameId: number, timeSlots: any[], adminToken: string): Promise<any[]> {
@@ -135,9 +135,7 @@ export class GamesService {
   async generateTimeSlots(gameId: number, startDate: string, endDate: string, adminToken: string): Promise<any> {
     this.logger.log(`Generating time slots for game: ${gameId} from ${startDate} to ${endDate}`);
     return this.natsClient.send('gameTimeSlots.generate', {
-      gameId,
-      startDate,
-      endDate,
+      data: { gameId, startDate, endDate },
       token: adminToken
     }, NATS_TIMEOUTS.LIST_QUERY);
   }

@@ -11,10 +11,10 @@ import {
 } from 'class-validator';
 
 export class CreateGameWeeklyScheduleDto {
-  @ApiProperty({ description: '게임 ID', example: 1 })
+  @ApiPropertyOptional({ description: '게임 ID (URL 파라미터에서 제공)', example: 1 })
+  @IsOptional()
   @IsNumber()
-  @IsNotEmpty()
-  gameId: number;
+  gameId?: number;
 
   @ApiProperty({
     description: '요일 (0=일요일, 1=월요일, ..., 6=토요일)',
