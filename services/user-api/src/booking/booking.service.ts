@@ -17,9 +17,9 @@ export class BookingService {
 
     const result = await this.natsClient.send<any>('booking.create', {
       userId,
-      courseId: dto.courseId,
+      gameId: dto.gameId,
+      gameTimeSlotId: dto.gameTimeSlotId,
       bookingDate: dto.bookingDate,
-      timeSlot: dto.timeSlot,
       playerCount: dto.playerCount,
       paymentMethod: dto.paymentMethod,
       specialRequests: dto.specialRequests,
@@ -56,7 +56,7 @@ export class BookingService {
     return this.natsClient.send('booking.cancel', { id, userId, reason }, NATS_TIMEOUTS.QUICK);
   }
 
-  async getTimeSlotAvailability(courseId: number, date: string) {
-    return this.natsClient.send('booking.timeSlots.availability', { courseId, date }, NATS_TIMEOUTS.QUICK);
+  async getTimeSlotAvailability(gameId: number, date: string) {
+    return this.natsClient.send('booking.gameTimeSlots.availability', { gameId, date }, NATS_TIMEOUTS.QUICK);
   }
 }

@@ -22,12 +22,12 @@ export class BookingFilterDto {
   status?: string;
 
   @ApiPropertyOptional({
-    description: 'Filter by course ID',
+    description: 'Filter by game ID',
     example: '1',
   })
   @IsOptional()
   @IsString()
-  courseId?: string;
+  gameId?: string;
 
   @ApiPropertyOptional({
     description: 'Filter by user ID',

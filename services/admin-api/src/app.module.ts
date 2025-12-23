@@ -7,7 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { AdminsModule } from './admins/admins.module';
 import { CompaniesModule } from './companies/companies.module';
 import { CoursesModule } from './courses/courses.module';
-import { TimeSlotsModule } from './time-slots/time-slots.module';
+import { GamesModule } from './games/games.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { UsersModule } from './users/users.module';
@@ -26,7 +26,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     AdminsModule,
     CompaniesModule,
     CoursesModule,
-    TimeSlotsModule,
+    GamesModule,
     BookingsModule,
     NotificationsModule,
     UsersModule,

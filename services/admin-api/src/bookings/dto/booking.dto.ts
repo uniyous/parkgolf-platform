@@ -20,20 +20,20 @@ export class CreateBookingDto {
   userId: string;
 
   @ApiProperty({
-    description: 'Course ID',
+    description: 'Game ID (18-hole course combination)',
     example: '1',
   })
   @IsString()
-  @IsNotEmpty({ message: 'Course ID is required' })
-  courseId: string;
+  @IsNotEmpty({ message: 'Game ID is required' })
+  gameId: string;
 
   @ApiProperty({
-    description: 'Time slot ID',
+    description: 'Game Time slot ID',
     example: '1',
   })
   @IsString()
-  @IsNotEmpty({ message: 'Time slot ID is required' })
-  timeSlotId: string;
+  @IsNotEmpty({ message: 'Game Time slot ID is required' })
+  gameTimeSlotId: string;
 
   @ApiProperty({
     description: 'Booking date (YYYY-MM-DD)',

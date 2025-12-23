@@ -71,6 +71,13 @@ export class CourseService {
     return this.natsClient.send('courses.findById', params, NATS_TIMEOUTS.QUICK);
   }
 
+  async getCoursesByClub(clubId: number, adminToken?: string): Promise<any> {
+    this.logger.log(`Fetching courses by club: ${clubId}`);
+    const params: any = { clubId };
+    if (adminToken) params.token = adminToken;
+    return this.natsClient.send('courses.findByClub', params, NATS_TIMEOUTS.LIST_QUERY);
+  }
+
   async createCourse(courseData: any, adminToken: string): Promise<any> {
     this.logger.log('Creating golf course');
     return this.natsClient.send('courses.create', { data: courseData, token: adminToken });
@@ -122,53 +129,5 @@ export class CourseService {
   async deleteHole(courseId: string, holeId: string, adminToken: string): Promise<any> {
     this.logger.log(`Deleting hole: ${holeId}`);
     return this.natsClient.send('holes.delete', { courseId, holeId, token: adminToken });
-  }
-
-  // ============================================
-  // Weekly Schedule Management
-  // ============================================
-  async getWeeklySchedule(courseId: string, adminToken?: string): Promise<any> {
-    this.logger.log(`Fetching weekly schedule for course: ${courseId}`);
-    const params: any = { courseId };
-    if (adminToken) params.token = adminToken;
-    return this.natsClient.send('courses.weeklySchedule.get', params, NATS_TIMEOUTS.QUICK);
-  }
-
-  async getWeeklySchedules(courseId: string, adminToken: string): Promise<any> {
-    this.logger.log(`Fetching weekly schedules for course: ${courseId}`);
-    return this.natsClient.send('courses.weeklySchedule.list', { courseId, token: adminToken }, NATS_TIMEOUTS.QUICK);
-  }
-
-  async getWeeklyScheduleById(scheduleId: string, adminToken: string): Promise<any> {
-    this.logger.log(`Fetching weekly schedule: ${scheduleId}`);
-    return this.natsClient.send('courses.weeklySchedule.findById', { scheduleId, token: adminToken }, NATS_TIMEOUTS.QUICK);
-  }
-
-  async getWeeklyScheduleByDay(courseId: string, dayOfWeek: string, adminToken: string): Promise<any> {
-    this.logger.log(`Fetching weekly schedule by day: ${dayOfWeek}`);
-    return this.natsClient.send('courses.weeklySchedule.findByCourseAndDay', {
-      courseId,
-      dayOfWeek: Number(dayOfWeek),
-      token: adminToken,
-    }, NATS_TIMEOUTS.QUICK);
-  }
-
-  async createWeeklySchedule(scheduleData: any, adminToken: string): Promise<any> {
-    this.logger.log('Creating weekly schedule');
-    return this.natsClient.send('courses.weeklySchedule.create', { data: scheduleData, token: adminToken });
-  }
-
-  async updateWeeklySchedule(courseId: string, scheduleData: any, adminToken: string): Promise<any> {
-    this.logger.log(`Updating weekly schedule for course: ${courseId}`);
-    return this.natsClient.send('courses.weeklySchedule.update', {
-      courseId,
-      data: scheduleData,
-      token: adminToken,
-    });
-  }
-
-  async deleteWeeklySchedule(scheduleId: string, adminToken: string): Promise<any> {
-    this.logger.log(`Deleting weekly schedule: ${scheduleId}`);
-    return this.natsClient.send('courses.weeklySchedule.delete', { scheduleId, token: adminToken });
   }
 }
