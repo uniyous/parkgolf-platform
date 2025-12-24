@@ -1,23 +1,14 @@
 /**
- * Admin Role Constants
+ * Admin Role Constants (v2 - 단순화된 구조)
  * 모든 관리자 역할 정의 - 중앙 집중화
  */
 export const ADMIN_ROLES = [
-  // Platform Level
-  'PLATFORM_OWNER',
-  'PLATFORM_ADMIN',
-  'PLATFORM_SUPPORT',
-  'PLATFORM_ANALYST',
-  // Company Level
-  'COMPANY_OWNER',
-  'COMPANY_MANAGER',
-  // Course Level
-  'COURSE_MANAGER',
-  'STAFF',
-  'READONLY_STAFF',
-  // Legacy roles
-  'ADMIN',
-  'SUPER_ADMIN',
+  // 신규 역할 (v2)
+  'ADMIN',      // 시스템 관리자 - 전체 권한
+  'SUPPORT',    // 고객지원 - 예약/사용자/분석/지원
+  'MANAGER',    // 운영 관리자 - 코스/예약/사용자/관리자/분석
+  'STAFF',      // 현장 직원 - 타임슬롯/예약/지원
+  'VIEWER',     // 조회 전용 - 조회만
 ] as const;
 
 export type AdminRole = (typeof ADMIN_ROLES)[number];
