@@ -270,18 +270,15 @@ export class AuthService {
     }
 
     private getAdminScope(roleCode: string): string {
-        // Map role codes to admin scopes
-        const roleToScope = {
-            'SUPER_ADMIN': 'PLATFORM',
-            'PLATFORM_ADMIN': 'PLATFORM', 
-            'PLATFORM_OWNER': 'PLATFORM',
-            'COMPANY_OWNER': 'COMPANY',
-            'COMPANY_MANAGER': 'COMPANY',
-            'COURSE_MANAGER': 'COURSE',
-            'STAFF': 'COURSE',
-            'READONLY_STAFF': 'COURSE'
+        // Map role codes to admin scopes (v3 - simplified)
+        const roleToScope: Record<string, string> = {
+            'ADMIN': 'SYSTEM',
+            'SUPPORT': 'SYSTEM',
+            'MANAGER': 'OPERATION',
+            'STAFF': 'OPERATION',
+            'VIEWER': 'VIEW'
         };
-        
-        return roleToScope[roleCode] || 'COURSE';
+
+        return roleToScope[roleCode] || 'VIEW';
     }
 }

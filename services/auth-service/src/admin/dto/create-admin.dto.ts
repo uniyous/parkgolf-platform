@@ -14,7 +14,7 @@ export class CreateAdminDto {
   @IsNotEmpty()
   name: string;
 
-  @IsIn(['PLATFORM_OWNER', 'PLATFORM_ADMIN', 'PLATFORM_SUPPORT', 'PLATFORM_ANALYST', 'COMPANY_OWNER', 'COMPANY_MANAGER', 'COURSE_MANAGER', 'STAFF', 'READONLY_STAFF'])
+  @IsIn(['ADMIN', 'SUPPORT', 'MANAGER', 'STAFF', 'VIEWER'])
   @IsOptional()
   roleCode?: string;
 

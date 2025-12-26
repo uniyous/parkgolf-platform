@@ -34,7 +34,7 @@ export class AdminService {
       data: {
         ...data,
         password: hashedPassword,
-        roleCode: data.roleCode || 'READONLY_STAFF',
+        roleCode: data.roleCode || 'VIEWER',
       },
     });
   }
