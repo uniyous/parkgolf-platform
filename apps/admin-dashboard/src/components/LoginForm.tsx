@@ -1,7 +1,36 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
 import { Button } from './common/Button';
 import { Input } from './common/Input';
+
+// 서버 웜업 API 설정
+const ADMIN_API_URL = import.meta.env.VITE_API_URL || 'https://admin-api-162921969782.asia-northeast3.run.app';
+
+interface ServiceHealth {
+  name: string;
+  url: string;
+  status: 'ok' | 'error';
+  responseTime: number;
+  message?: string;
+}
+
+interface WarmupResponse {
+  success: boolean;
+  timestamp: string;
+  services: ServiceHealth[];
+  summary: {
+    total: number;
+    healthy: number;
+    unhealthy: number;
+    totalTime: number;
+  };
+}
+
+interface WarmupStatus {
+  service: string;
+  status: 'pending' | 'loading' | 'success' | 'error';
+  time?: number;
+  message?: string;
+}
 
 interface AdminAccount {
   email: string;
@@ -87,9 +116,79 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   isLoading,
   error,
 }) => {
+  const [showWarmupPanel, setShowWarmupPanel] = useState(false);
+  const [isWarmingUp, setIsWarmingUp] = useState(false);
+  const [warmupStatuses, setWarmupStatuses] = useState<WarmupStatus[]>([]);
+
   const handleAdminSelect = (admin: AdminAccount) => {
     onEmailChange(admin.email);
     onPasswordChange(admin.password);
+  };
+
+  const handleWarmup = async () => {
+    setIsWarmingUp(true);
+    setShowWarmupPanel(true);
+
+    // admin-api 포함하여 초기 로딩 상태 설정
+    setWarmupStatuses([
+      { service: 'admin-api', status: 'loading' },
+      { service: 'auth-service', status: 'pending' },
+      { service: 'user-api', status: 'pending' },
+      { service: 'course-service', status: 'pending' },
+      { service: 'booking-service', status: 'pending' },
+      { service: 'payment-service', status: 'pending' },
+    ]);
+
+    try {
+      const startTime = Date.now();
+
+      // admin-api의 warmup 엔드포인트 호출 (다른 서비스들도 함께 웜업)
+      const response = await fetch(`${ADMIN_API_URL}/health/warmup`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const adminApiTime = Date.now() - startTime;
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data: WarmupResponse = await response.json();
+
+      // admin-api 성공 상태 업데이트
+      const statuses: WarmupStatus[] = [
+        { service: 'admin-api', status: 'success', time: adminApiTime },
+      ];
+
+      // 다른 서비스들 상태 추가
+      data.services.forEach((svc) => {
+        statuses.push({
+          service: svc.name,
+          status: svc.status === 'ok' ? 'success' : 'error',
+          time: svc.responseTime,
+          message: svc.message,
+        });
+      });
+
+      setWarmupStatuses(statuses);
+    } catch (err) {
+      // admin-api 자체 호출 실패
+      setWarmupStatuses([
+        {
+          service: 'admin-api',
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Connection failed'
+        },
+        { service: 'auth-service', status: 'pending' },
+        { service: 'user-api', status: 'pending' },
+        { service: 'course-service', status: 'pending' },
+        { service: 'booking-service', status: 'pending' },
+        { service: 'payment-service', status: 'pending' },
+      ]);
+    }
+
+    setIsWarmingUp(false);
   };
 
   // 현재 선택된 관리자 찾기
@@ -245,6 +344,101 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* 서버 웜업 버튼 (우측 하단 고정) */}
+      <div className="fixed bottom-6 right-6 z-50">
+        {/* 웜업 상태 패널 */}
+        {showWarmupPanel && (
+          <div className="absolute bottom-14 right-0 w-72 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden mb-2">
+            <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+              <span className="font-medium text-sm text-gray-700">서버 웜업 상태</span>
+              <button
+                onClick={() => setShowWarmupPanel(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-3 space-y-2 max-h-80 overflow-y-auto">
+              {warmupStatuses.map((ws, idx) => (
+                <div key={idx} className="flex items-center justify-between text-sm">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-gray-600">{ws.service}</span>
+                    {ws.message && ws.status === 'error' && (
+                      <p className="text-xs text-red-400 truncate">{ws.message}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 ml-2">
+                    {ws.time && (
+                      <span className="text-xs text-gray-400">{ws.time}ms</span>
+                    )}
+                    {ws.status === 'pending' && (
+                      <span className="text-gray-300">○</span>
+                    )}
+                    {ws.status === 'loading' && (
+                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    )}
+                    {ws.status === 'success' && (
+                      <span className="text-green-500">✓</span>
+                    )}
+                    {ws.status === 'error' && (
+                      <span className="text-red-500">✗</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {warmupStatuses.length === 0 && (
+                <p className="text-xs text-gray-400 text-center py-2">
+                  버튼을 클릭하여 서버를 웜업하세요
+                </p>
+              )}
+              {warmupStatuses.length > 0 && !isWarmingUp && (
+                <div className="mt-2 pt-2 border-t border-gray-100">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-500">
+                      완료: {warmupStatuses.filter(s => s.status === 'success').length}/{warmupStatuses.length}
+                    </span>
+                    <span className="text-gray-500">
+                      총 시간: {Math.max(...warmupStatuses.map(s => s.time || 0))}ms
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 웜업 버튼 */}
+        <button
+          onClick={handleWarmup}
+          disabled={isWarmingUp}
+          className={`
+            flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg
+            transition-all duration-200 font-medium text-sm
+            ${isWarmingUp
+              ? 'bg-gray-400 text-white cursor-not-allowed'
+              : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-xl active:scale-95'
+            }
+          `}
+          title="Cloud Run 서버 웜업"
+        >
+          {isWarmingUp ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>웜업 중...</span>
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span>서버 웜업</span>
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

@@ -73,4 +73,23 @@ export class AdminService {
     this.logger.log('Fetching permission list');
     return this.natsClient.send('permissions.list', { token });
   }
+
+  // ============================================
+  // Role Management
+  // ============================================
+
+  async getRoleList(userType: string | undefined, token: string) {
+    this.logger.log('Fetching role list');
+    return this.natsClient.send('roles.list', { userType, token });
+  }
+
+  async getRolePermissions(roleCode: string, token: string) {
+    this.logger.log(`Fetching permissions for role: ${roleCode}`);
+    return this.natsClient.send('roles.permissions', { roleCode, token });
+  }
+
+  async getRolesWithPermissions(userType: string | undefined, token: string) {
+    this.logger.log('Fetching roles with permissions');
+    return this.natsClient.send('roles.withPermissions', { userType, token }, NATS_TIMEOUTS.LIST_QUERY);
+  }
 }

@@ -47,7 +47,7 @@ export const CompanyDetailView: React.FC<CompanyDetailViewProps> = ({
   const statusBadge = getStatusBadge(company.status);
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="w-full">
       {/* Main Content Card */}
       <div className="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100">
         {/* Header Section */}

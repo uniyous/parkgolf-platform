@@ -91,13 +91,81 @@ export class AdminsController {
   ) {
     try {
       const token = this.extractToken(authorization);
-      
+
       this.logger.log('Fetching permissions list');
-      
+
       const result = await this.adminService.getPermissionList(token);
       return result;
     } catch (error) {
       this.logger.error('Failed to fetch permissions', error);
+      throw this.handleError(error);
+    }
+  }
+
+  @Get('roles')
+  @ApiOperation({ summary: 'Get all available roles' })
+  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
+  @ApiQuery({ name: 'userType', required: false, description: 'Filter by user type (ADMIN or USER)' })
+  @ApiResponse({ status: 200, description: 'Roles retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getRoles(
+    @Query('userType') userType?: string,
+    @Headers('authorization') authorization?: string
+  ) {
+    try {
+      const token = this.extractToken(authorization);
+
+      this.logger.log('Fetching roles list');
+
+      const result = await this.adminService.getRoleList(userType, token);
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to fetch roles', error);
+      throw this.handleError(error);
+    }
+  }
+
+  @Get('roles/with-permissions')
+  @ApiOperation({ summary: 'Get all roles with their permissions' })
+  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
+  @ApiQuery({ name: 'userType', required: false, description: 'Filter by user type (ADMIN or USER)' })
+  @ApiResponse({ status: 200, description: 'Roles with permissions retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getRolesWithPermissions(
+    @Query('userType') userType?: string,
+    @Headers('authorization') authorization?: string
+  ) {
+    try {
+      const token = this.extractToken(authorization);
+
+      this.logger.log('Fetching roles with permissions');
+
+      const result = await this.adminService.getRolesWithPermissions(userType, token);
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to fetch roles with permissions', error);
+      throw this.handleError(error);
+    }
+  }
+
+  @Get('roles/:roleCode/permissions')
+  @ApiOperation({ summary: 'Get permissions for a specific role' })
+  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
+  @ApiResponse({ status: 200, description: 'Role permissions retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getRolePermissions(
+    @Param('roleCode') roleCode: string,
+    @Headers('authorization') authorization?: string
+  ) {
+    try {
+      const token = this.extractToken(authorization);
+
+      this.logger.log(`Fetching permissions for role: ${roleCode}`);
+
+      const result = await this.adminService.getRolePermissions(roleCode, token);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to fetch permissions for role: ${roleCode}`, error);
       throw this.handleError(error);
     }
   }

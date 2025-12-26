@@ -6,6 +6,7 @@ import { SignupPage } from './pages/SignupPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { AdminManagementPage } from './pages/system/AdminManagementPage';
 import { UserManagementPage } from './pages/system/UserManagementPage';
+import { RolePermissionPage } from './pages/system/RolePermissionPage';
 import { CompanyPage } from './pages/company/CompanyPage';
 import { BookingManagementPage } from './pages/booking/BookingManagementPage';
 import { ClubListPage } from './pages/club/ClubListPage';
@@ -31,6 +32,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/admin-management" element={<AdminManagementPage />} />
           <Route path="/user-management" element={<UserManagementPage />} />
+          <Route path="/roles" element={<RolePermissionPage />} />
           <Route path="/companies" element={<CompanyPage />} />
           <Route path="/club" element={<ClubListPage />} />
           <Route path="/club/clubs/:clubId" element={<ClubDetailPage />} />

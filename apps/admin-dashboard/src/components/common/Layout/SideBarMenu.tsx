@@ -1,29 +1,30 @@
-// Navigation Configuration
-export interface NavigationItem {
+// SideBar Menu Configuration
+
+export interface MenuItem {
   name: string;
   href: string;
   icon: string;
   badge?: string | number;
-  children?: NavigationItem[];
+  children?: MenuItem[];
   description?: string;
   permission?: string;
 }
 
-export interface NavigationGroup {
+export interface MenuGroup {
   name: string;
-  items: NavigationItem[];
+  items: MenuItem[];
   collapsible?: boolean;
   defaultOpen?: boolean;
   icon?: string;
 }
 
-export const navigationConfig: NavigationGroup[] = [
+export const menuConfig: MenuGroup[] = [
   {
     name: '대시보드',
     items: [
-      { 
-        name: '홈 대시보드', 
-        href: '/dashboard', 
+      {
+        name: '홈 대시보드',
+        href: '/dashboard',
         icon: '📊',
         description: '전체 현황 및 주요 지표',
         permission: 'VIEW_DASHBOARD'
@@ -34,16 +35,16 @@ export const navigationConfig: NavigationGroup[] = [
   {
     name: '골프장',
     items: [
-      { 
-        name: '회사 관리', 
-        href: '/companies', 
+      {
+        name: '회사 관리',
+        href: '/companies',
         icon: '🏢',
         description: '골프장 회사 정보 관리',
         permission: 'COMPANIES'
       },
-      { 
-        name: '골프장 관리', 
-        href: '/club', 
+      {
+        name: '골프장 관리',
+        href: '/club',
         icon: '🏌️',
         description: '9홀 단위 골프장 및 코스 관리',
         permission: 'MANAGE_GOLF_CLUBS'
@@ -55,16 +56,16 @@ export const navigationConfig: NavigationGroup[] = [
   {
     name: '예약',
     items: [
-      { 
-        name: '예약 현황', 
-        href: '/bookings', 
+      {
+        name: '예약 현황',
+        href: '/bookings',
         icon: '📅',
         description: '예약 현황 및 관리',
         permission: 'BOOKINGS'
       },
-      { 
-        name: '취소/환불', 
-        href: '/bookings/cancellations', 
+      {
+        name: '취소/환불',
+        href: '/bookings/cancellations',
         icon: '🔄',
         description: '예약 취소 및 환불 처리',
         permission: 'MANAGE_PAYMENTS'
@@ -76,9 +77,9 @@ export const navigationConfig: NavigationGroup[] = [
   {
     name: '사용자',
     items: [
-      { 
-        name: '사용자 관리', 
-        href: '/user-management', 
+      {
+        name: '사용자 관리',
+        href: '/user-management',
         icon: '👥',
         description: '고객 계정 관리',
         permission: 'USERS'
@@ -97,34 +98,36 @@ export const navigationConfig: NavigationGroup[] = [
         description: '시스템 관리자 계정 관리',
         permission: 'ADMINS'
       },
+      {
+        name: '역할 및 권한 관리',
+        href: '/roles',
+        icon: '🔐',
+        description: '시스템 역할과 권한 설정',
+        permission: 'SYSTEM'
+      },
     ],
     collapsible: true,
-    defaultOpen: false
+    defaultOpen: true
   },
 ];
 
-
-
-// 즐겨찾기 (localStorage에서 관리)
-export const getFavorites = (): NavigationItem[] => {
+// 즐겨찾기 (localStorage)
+export const getFavorites = (): MenuItem[] => {
   const favorites = localStorage.getItem('favorites');
   return favorites ? JSON.parse(favorites) : [];
 };
 
-export const toggleFavorite = (page: NavigationItem): void => {
+export const toggleFavorite = (item: MenuItem): void => {
   const favorites = getFavorites();
-  const exists = favorites.some(item => item.href === page.href);
-  
+  const exists = favorites.some(f => f.href === item.href);
+
   if (exists) {
-    const updated = favorites.filter(item => item.href !== page.href);
-    localStorage.setItem('favorites', JSON.stringify(updated));
+    localStorage.setItem('favorites', JSON.stringify(favorites.filter(f => f.href !== item.href)));
   } else {
-    const updated = [...favorites, page];
-    localStorage.setItem('favorites', JSON.stringify(updated));
+    localStorage.setItem('favorites', JSON.stringify([...favorites, item]));
   }
 };
 
 export const isFavorite = (href: string): boolean => {
-  const favorites = getFavorites();
-  return favorites.some(item => item.href === href);
+  return getFavorites().some(item => item.href === href);
 };

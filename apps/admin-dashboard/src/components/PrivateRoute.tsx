@@ -1,7 +1,7 @@
 import React from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useIsAuthenticated } from '../stores';
-import { NewAppLayout } from './common/Layout/NewAppLayout';
+import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useIsAuthenticated, useCurrentAdmin, useAuthLoading, useAuthStore } from '../stores';
+import { MainLayout } from './common/Layout/MainLayout';
 
 interface PrivateRouteProps {
   children?: React.ReactNode;
@@ -9,15 +9,31 @@ interface PrivateRouteProps {
 
 export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const isAuthenticated = useIsAuthenticated();
+  const currentAdmin = useCurrentAdmin();
+  const isLoading = useAuthLoading();
+  const logoutAction = useAuthStore((state) => state.logout);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  const currentUser = {
+    username: currentAdmin?.name || currentAdmin?.username || (isLoading ? '로딩중...' : '개발 관리자'),
+    email: currentAdmin?.email || (isLoading ? '...' : 'admin@parkgolf.com'),
+    role: currentAdmin?.role || 'PLATFORM_OWNER',
+    company: currentAdmin?.company?.name || '플랫폼'
+  };
+
+  const handleLogout = async () => {
+    logoutAction();
+    navigate('/login');
+  };
+
   return (
-    <NewAppLayout>
+    <MainLayout currentUser={currentUser} onLogout={handleLogout}>
       {children ? children : <Outlet />}
-    </NewAppLayout>
+    </MainLayout>
   );
 };

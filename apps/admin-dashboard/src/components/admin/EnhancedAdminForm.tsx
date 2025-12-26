@@ -226,7 +226,7 @@ export const EnhancedAdminForm: React.FC<EnhancedAdminFormProps> = ({
   }, [isDirty]);
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="w-full">
       {/* 진행 단계 표시 */}
       <div className="mb-8">
         <div className="flex items-center justify-center space-x-4">

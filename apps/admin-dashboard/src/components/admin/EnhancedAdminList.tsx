@@ -57,7 +57,6 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
   });
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
 
   // 초기 데이터 로드 (컴포넌트 마운트 시에만 실행)
   useEffect(() => {
@@ -294,30 +293,6 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
             </p>
           </div>
           <div className="flex items-center space-x-3">
-            {/* 뷰 모드 전환 */}
-            <div className="flex rounded-md shadow-sm">
-              <button
-                onClick={() => setViewMode('table')}
-                className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
-                  viewMode === 'table'
-                    ? 'bg-blue-50 text-blue-700 border-blue-200'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                📋 표
-              </button>
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
-                  viewMode === 'grid'
-                    ? 'bg-blue-50 text-blue-700 border-blue-200'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                ⊞ 격자
-              </button>
-            </div>
-
             {/* 새 관리자 추가 버튼 */}
             {hasManageAdmins && currentAdmin && (
               currentAdmin.scope === 'SYSTEM' ||
@@ -491,7 +466,7 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
                 : '등록된 관리자가 없습니다.'}
             </p>
           </div>
-        ) : viewMode === 'table' ? (
+        ) : (
           /* 테이블 뷰 */
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -638,88 +613,6 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
                 ))}
               </tbody>
             </table>
-          </div>
-        ) : (
-          /* 그리드 뷰 */
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredAndSortedAdmins.map((admin) => (
-                <div
-                  key={admin.id}
-                  onClick={() => onSelectAdmin(admin)}
-                  className={`relative bg-white border rounded-lg p-6 cursor-pointer transition-all hover:shadow-md ${
-                    selectedAdmins.some(a => a.id === admin.id) 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200'
-                  }`}
-                >
-                  {/* 선택 체크박스 */}
-                  <div className="absolute top-4 right-4" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={selectedAdmins.some(a => a.id === admin.id)}
-                      onChange={(e) => handleSelectAdmin(admin, e.target.checked)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                  </div>
-
-                  <div className="flex items-center space-x-4 mb-4">
-                    <div className="h-12 w-12 rounded-full bg-gray-300 flex items-center justify-center">
-                      <span className="text-lg font-medium text-gray-700">
-                        {admin.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-medium text-gray-900">{admin.name}</h3>
-                      <p className="text-sm text-gray-500">@{admin.username}</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 mb-4">
-                    <div className="text-sm text-gray-600">{admin.email}</div>
-                    <div className="flex items-center justify-between">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getRoleBadgeStyle(admin.role)}`}>
-                        {getRoleLabel(admin.role)}
-                      </span>
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        admin.isActive 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {admin.isActive ? '활성' : '비활성'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
-                    {hasManageAdmins && canManageAdmin(currentAdmin?.role || 'ADMIN', admin.role) && (
-                      <button
-                        onClick={() => onEditAdmin(admin)}
-                        className="flex-1 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
-                      >
-                        ✏️ 수정
-                      </button>
-                    )}
-                    {canManageAdmin(currentAdmin?.role || 'ADMIN', admin.role) && (
-                      <button
-                        onClick={() => onManagePermissions(admin)}
-                        className="flex-1 text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded hover:bg-purple-200 transition-colors"
-                      >
-                        🔐 권한
-                      </button>
-                    )}
-                    {hasManageAdmins && canManageAdmin(currentAdmin?.role || 'ADMIN', admin.role) && admin.id !== currentAdmin?.id && (
-                      <button
-                        onClick={() => handleDeleteConfirm(admin)}
-                        className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded hover:bg-red-200 transition-colors"
-                      >
-                        🗑️
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         )}
       </div>

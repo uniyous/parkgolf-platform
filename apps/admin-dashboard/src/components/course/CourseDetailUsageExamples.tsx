@@ -58,7 +58,7 @@ export const CourseDetailUsageExamples: React.FC = () => {
 
   return (
     <div className="p-6 space-y-12 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
+      <div className="w-full">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">
           코스 상세 정보 컴포넌트 활용 예시
         </h1>

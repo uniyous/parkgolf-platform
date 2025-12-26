@@ -246,7 +246,7 @@ export const BookingManagement: React.FC = () => {
         )}
 
         {currentView === 'form' && (
-          <div className="max-w-4xl mx-auto">
+          <div className="w-full">
             {selectedDate && selectedTimeSlot ? (
               <BookingForm
                 course={course}

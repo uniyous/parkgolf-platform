@@ -173,7 +173,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 max-w-2xl mx-auto">
+    <div className="bg-white rounded-lg border border-gray-200 w-full">
       {/* 헤더 */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between">

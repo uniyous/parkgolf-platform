@@ -116,7 +116,7 @@ export const AdminForm: React.FC<AdminFormProps> = ({
   ];
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="w-full">
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
           <div className="md:grid md:grid-cols-3 md:gap-6">

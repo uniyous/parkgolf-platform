@@ -19,6 +19,15 @@ export const adminKeys = {
   permissions: () => [...adminKeys.all, 'permissions'] as const,
 };
 
+// Role Keys
+export const roleKeys = {
+  all: ['roles'] as const,
+  lists: () => [...roleKeys.all, 'list'] as const,
+  list: (userType?: string) => [...roleKeys.lists(), userType] as const,
+  withPermissions: (userType?: string) => [...roleKeys.all, 'withPermissions', userType] as const,
+  permissions: (roleCode: string) => [...roleKeys.all, 'permissions', roleCode] as const,
+};
+
 // User Keys
 export const userKeys = {
   all: ['users'] as const,

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api/adminApi';
-import { adminKeys } from './keys';
+import { adminKeys, roleKeys } from './keys';
 import type { CreateAdminDto, UpdateAdminDto } from '@/types';
 
 // ============================================
@@ -189,5 +189,34 @@ export const useBulkUpdateAdminStatus = () => {
     onError: (error) => {
       console.error('Failed to bulk update admin status:', error);
     },
+  });
+};
+
+// ============================================
+// Role Queries
+// ============================================
+
+export const useRoles = (userType?: string) => {
+  return useQuery({
+    queryKey: roleKeys.list(userType),
+    queryFn: () => adminApi.getRoles(userType),
+    staleTime: 1000 * 60 * 30, // 30분
+  });
+};
+
+export const useRolesWithPermissions = (userType?: string) => {
+  return useQuery({
+    queryKey: roleKeys.withPermissions(userType),
+    queryFn: () => adminApi.getRolesWithPermissions(userType),
+    staleTime: 1000 * 60 * 30, // 30분
+  });
+};
+
+export const useRolePermissions = (roleCode: string) => {
+  return useQuery({
+    queryKey: roleKeys.permissions(roleCode),
+    queryFn: () => adminApi.getRolePermissions(roleCode),
+    enabled: !!roleCode,
+    staleTime: 1000 * 60 * 30, // 30분
   });
 };

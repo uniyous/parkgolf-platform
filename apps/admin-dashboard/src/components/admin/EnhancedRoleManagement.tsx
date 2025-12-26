@@ -178,7 +178,7 @@ export const EnhancedRoleManagement: React.FC<EnhancedRoleManagementProps> = ({
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="w-full">
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {/* 헤더 */}
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">

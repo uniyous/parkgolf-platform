@@ -128,13 +128,13 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="w-full">
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         <div className="px-4 py-5 sm:px-6">
           <h3 className="text-lg leading-6 font-medium text-gray-900">
             {admin.name}의 권한 관리
           </h3>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">
+          <p className="mt-1 text-sm text-gray-500">
             관리자의 역할과 권한을 설정합니다.
           </p>
         </div>
