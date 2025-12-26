@@ -27,47 +27,47 @@ locals {
   project_id    = "parkgolf-uniyous"
   region        = "asia-northeast3"
 
-  # Service definitions - Production specs
+  # Service definitions - Production specs (cost optimized with Cold Start)
   services = {
     "auth-service" = {
-      cpu           = "2"
+      cpu           = "1"
       memory        = "1Gi"
-      min_instances = 1
+      min_instances = 0
       max_instances = 10
       port          = 8080
     }
     "course-service" = {
-      cpu           = "2"
+      cpu           = "1"
       memory        = "1Gi"
-      min_instances = 1
+      min_instances = 0
       max_instances = 10
       port          = 8080
     }
     "booking-service" = {
-      cpu           = "2"
+      cpu           = "1"
       memory        = "1Gi"
-      min_instances = 1
+      min_instances = 0
       max_instances = 15
       port          = 8080
     }
     "notify-service" = {
       cpu           = "1"
-      memory        = "512Mi"
-      min_instances = 1
+      memory        = "1Gi"
+      min_instances = 0
       max_instances = 5
       port          = 8080
     }
     "admin-api" = {
-      cpu           = "2"
+      cpu           = "1"
       memory        = "1Gi"
-      min_instances = 1
+      min_instances = 0
       max_instances = 10
       port          = 8080
     }
     "user-api" = {
-      cpu           = "2"
-      memory        = "2Gi"
-      min_instances = 2
+      cpu           = "1"
+      memory        = "1Gi"
+      min_instances = 0
       max_instances = 20
       port          = 8080
     }
@@ -165,12 +165,12 @@ module "messaging" {
   environment   = local.environment
   region        = local.region
 
-  # NATS JetStream VM Configuration (Production specs)
-  nats_machine_type    = "e2-medium"
-  nats_disk_size       = 50
+  # NATS JetStream VM Configuration (cost optimized: 1 CPU, 1GB)
+  nats_machine_type    = "e2-micro"
+  nats_disk_size       = 20
   nats_version         = "2.10-alpine"
-  jetstream_max_memory = "2G"
-  jetstream_max_file   = "20G"
+  jetstream_max_memory = "512M"
+  jetstream_max_file   = "10G"
 
   vpc_network    = module.networking.vpc_name
   vpc_subnetwork = module.networking.subnet_ids["private"]
