@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRightIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { ChevronRight, RefreshCw } from 'lucide-react';
 
 interface Course {
   id: number;
@@ -70,7 +70,7 @@ export const DualCourseSelector: React.FC<DualCourseSelectorProps> = ({
             onClick={onReset}
             className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
           >
-            <ArrowPathIcon className="w-4 h-4" />
+            <RefreshCw className="w-4 h-4" />
             초기화
           </button>
         )}
@@ -137,7 +137,7 @@ export const DualCourseSelector: React.FC<DualCourseSelectorProps> = ({
 
             {/* Arrow */}
             <div className="hidden md:flex items-center justify-center">
-              <ChevronRightIcon className="w-6 h-6 text-gray-400" />
+              <ChevronRight className="w-6 h-6 text-gray-400" />
             </div>
 
             {/* Back Nine Selection */}
@@ -176,7 +176,7 @@ export const DualCourseSelector: React.FC<DualCourseSelectorProps> = ({
               <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
                 <span className="font-medium">전반:</span>
                 {Array.isArray(courses) && courses.find(c => c.id === selectedFrontCourseId)?.name}
-                <ChevronRightIcon className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4" />
                 <span className="font-medium">후반:</span>
                 {Array.isArray(courses) && courses.find(c => c.id === selectedBackCourseId)?.name}
               </div>

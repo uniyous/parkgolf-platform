@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDownIcon } from '@heroicons/react/24/outline';
+import { ChevronDown } from 'lucide-react';
 
 interface Company {
   id: number;
@@ -103,7 +103,7 @@ export const NineHoleCourseSelector: React.FC<NineHoleCourseSelectorProps> = ({
                 </option>
               ))}
             </select>
-            <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
           </div>
           {selectedCompany && (
             <p className="mt-1 text-xs text-gray-500">
@@ -131,7 +131,7 @@ export const NineHoleCourseSelector: React.FC<NineHoleCourseSelectorProps> = ({
                 </option>
               ))}
             </select>
-            <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
           </div>
           {selectedFirstCourse && (
             <p className="mt-1 text-xs text-gray-500">
@@ -164,7 +164,7 @@ export const NineHoleCourseSelector: React.FC<NineHoleCourseSelectorProps> = ({
                   </option>
                 ))}
             </select>
-            <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
           </div>
           {selectedSecondCourse && (
             <p className="mt-1 text-xs text-gray-500">

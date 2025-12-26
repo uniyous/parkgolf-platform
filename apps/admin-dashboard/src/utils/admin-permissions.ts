@@ -125,8 +125,3 @@ export const canManageAdmin = (managerRole: AdminRole, targetRole: AdminRole): b
 export const getDefaultPermissions = (role: AdminRole): Permission[] => {
   return ROLE_PERMISSIONS[role] || ['VIEW'];
 };
-
-// Utility function to combine class names (cn helper)
-export const cn = (...classes: (string | boolean | undefined | null)[]): string => {
-  return classes.filter(Boolean).join(' ');
-};

@@ -41,8 +41,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",
-    "@headlessui/react": "^2.2.4",
-    "@heroicons/react": "^2.2.0",
     "@playwright/test": "^1.57.0",
     "@tailwindcss/vite": "^4.1.8",
     "@types/node": "^25.0.3",
