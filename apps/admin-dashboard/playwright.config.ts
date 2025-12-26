@@ -6,18 +6,20 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
-  fullyParallel: true,
+  fullyParallel: false, // Cloud Run 콜드 스타트 방지를 위해 순차 실행
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  retries: process.env.CI ? 2 : 1, // 로컬에서도 1회 재시도
+  workers: 1, // 순차 실행
+  timeout: 60000, // 60초 기본 타임아웃 (Cloud Run 콜드 스타트 대비)
+  expect: { timeout: 30000 }, // expect 타임아웃 30초
   reporter: [
     ['html', { open: 'never' }],
     ['list']
   ],
 
   use: {
-    // 기본 URL (로컬 개발 서버)
-    baseURL: process.env.E2E_BASE_URL || 'http://localhost:5173',
+    // 기본 URL (로컬 개발 서버 - 포트 3001)
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3001',
 
     // 트레이스 수집 (실패 시)
     trace: 'on-first-retry',
@@ -48,10 +50,10 @@ export default defineConfig({
     },
   ],
 
-  // 로컬 개발 서버 자동 실행
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
+  // 로컬 개발 서버 자동 실행 (E2E 모드로 GCP API 사용)
+  webServer: process.env.E2E_BASE_URL ? undefined : {
+    command: 'npm run dev:e2e',
+    url: 'http://localhost:3001',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },

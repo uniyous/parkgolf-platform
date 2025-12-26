@@ -9,15 +9,14 @@ setup('authenticate as admin', async ({ page }) => {
   // 로그인 페이지로 이동
   await page.goto('/login');
 
-  // 로그인 폼 입력
-  await page.getByLabel('이메일').fill('admin@parkgolf.com');
-  await page.getByLabel('비밀번호').fill('admin123!@#');
+  // 테스트 계정 버튼 클릭 (시스템관리자)
+  await page.getByRole('button', { name: /시스템관리자/ }).click();
 
   // 로그인 버튼 클릭
   await page.getByRole('button', { name: '로그인' }).click();
 
-  // 대시보드로 리다이렉트 확인
-  await expect(page).toHaveURL(/.*dashboard/);
+  // 대시보드로 리다이렉트 확인 (Cloud Run 콜드 스타트 대비)
+  await expect(page).toHaveURL(/.*dashboard/, { timeout: 30000 });
 
   // 인증 상태 저장
   await page.context().storageState({ path: authFile });

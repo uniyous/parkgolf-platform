@@ -4,7 +4,6 @@ import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { AdminManagementPage } from './pages/system/AdminManagementPage';
-import { AdminRoleDemoPage } from './pages/system/AdminRoleDemoPage';
 import { UserManagementPage } from './pages/system/UserManagementPage';
 import { CompanyPage } from './pages/company/CompanyPage';
 import { BookingManagementPage } from './pages/booking/BookingManagementPage';
@@ -25,7 +24,6 @@ function App() {
         <Route element={<PrivateRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/admin-management" element={<AdminManagementPage />} />
-          <Route path="/admin-role-demo" element={<AdminRoleDemoPage />} />
           <Route path="/user-management" element={<UserManagementPage />} />
           <Route path="/companies" element={<CompanyPage />} />
           <Route path="/club" element={<ClubListPage />} />
@@ -48,30 +46,6 @@ function App() {
             <div className="text-center py-12">
               <h1 className="text-2xl font-bold text-gray-900 mb-4">개인 설정</h1>
               <p className="text-gray-600">개인 설정 페이지입니다.</p>
-            </div>
-          } />
-          <Route path="/permissions" element={
-            <div className="text-center py-12">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">권한 관리</h1>
-              <p className="text-gray-600">권한 관리 페이지입니다.</p>
-            </div>
-          } />
-          <Route path="/settings" element={
-            <div className="text-center py-12">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">시스템 설정</h1>
-              <p className="text-gray-600">시스템 설정 페이지입니다.</p>
-            </div>
-          } />
-          <Route path="/logs" element={
-            <div className="text-center py-12">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">로그 관리</h1>
-              <p className="text-gray-600">로그 관리 페이지입니다.</p>
-            </div>
-          } />
-          <Route path="/backups" element={
-            <div className="text-center py-12">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">백업 관리</h1>
-              <p className="text-gray-600">백업 관리 페이지입니다.</p>
             </div>
           } />
         </Route>

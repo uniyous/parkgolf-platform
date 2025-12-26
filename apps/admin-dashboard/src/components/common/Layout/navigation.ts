@@ -90,47 +90,12 @@ export const navigationConfig: NavigationGroup[] = [
   {
     name: '시스템',
     items: [
-      { 
-        name: '시스템 설정', 
-        href: '/settings', 
-        icon: '⚙️',
-        description: '시스템 환경 설정',
-        permission: 'MANAGE_SYSTEM'
-      },
-      { 
-        name: '관리자 관리', 
-        href: '/admin-management', 
+      {
+        name: '관리자 관리',
+        href: '/admin-management',
         icon: '👨‍💼',
         description: '시스템 관리자 계정 관리',
         permission: 'ADMINS'
-      },
-      { 
-        name: '관리자 역할 데모', 
-        href: '/admin-role-demo', 
-        icon: '🎭',
-        description: '계층적 관리자 시스템 데모',
-        permission: 'VIEW_ADMIN_ROLES'
-      },
-      { 
-        name: '권한 관리', 
-        href: '/permissions', 
-        icon: '🔐',
-        description: '사용자 권한 및 역할 관리',
-        permission: 'MANAGE_PERMISSIONS'
-      },
-      { 
-        name: '로그 관리', 
-        href: '/logs', 
-        icon: '📋',
-        description: '시스템 로그 조회',
-        permission: 'VIEW_LOGS'
-      },
-      { 
-        name: '백업 관리', 
-        href: '/backups', 
-        icon: '💾',
-        description: '데이터 백업 및 복원',
-        permission: 'MANAGE_BACKUPS'
       },
     ],
     collapsible: true,
