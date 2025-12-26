@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, UnauthorizedException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminDto } from './dto/update-admin.dto';
@@ -7,6 +7,8 @@ import { Admin, Prisma } from '@prisma/client';
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async create(createAdminDto: CreateAdminDto): Promise<Admin> {
@@ -42,25 +44,49 @@ export class AdminService {
     take?: number;
     where?: Prisma.AdminWhereInput;
     orderBy?: Prisma.AdminOrderByWithRelationInput;
-  }): Promise<Admin[]> {
+  }): Promise<any[]> {
     const { skip, take, where, orderBy } = params || {};
-    
-    return this.prisma.admin.findMany({
+
+    const admins = await this.prisma.admin.findMany({
       skip,
       take,
       where,
       orderBy,
       include: {
-        permissions: true,
+        role: {
+          include: {
+            rolePermissions: {
+              include: {
+                permission: true,
+              },
+            },
+          },
+        },
       },
     });
+
+    // 역할 기반 권한을 permissions 배열로 변환
+    return admins.map((admin) => ({
+      ...admin,
+      permissions: admin.role?.rolePermissions?.map((rp) => ({
+        permission: rp.permission.code,
+      })) || [],
+    }));
   }
 
-  async findOne(id: number): Promise<Admin> {
+  async findOne(id: number): Promise<any> {
     const admin = await this.prisma.admin.findUnique({
       where: { id },
       include: {
-        permissions: true,
+        role: {
+          include: {
+            rolePermissions: {
+              include: {
+                permission: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -68,19 +94,46 @@ export class AdminService {
       throw new NotFoundException(`Admin with ID ${id} not found`);
     }
 
-    return admin;
+    // 역할 기반 권한을 permissions 배열로 변환
+    return {
+      ...admin,
+      permissions: admin.role?.rolePermissions?.map((rp) => ({
+        permission: rp.permission.code,
+      })) || [],
+    };
   }
 
   async findByEmail(email: string): Promise<any> {
     const admin = await this.prisma.admin.findUnique({
       where: { email },
       include: {
-        permissions: true,
+        role: {
+          include: {
+            rolePermissions: {
+              include: {
+                permission: true,
+              },
+            },
+          },
+        },
       },
     });
-    
-    console.log('🔍 findByEmail - admin permissions count:', admin?.permissions?.length || 0);
-    return admin;
+
+    if (!admin) {
+      return null;
+    }
+
+    // 역할 기반 권한을 permissions 배열로 변환
+    const permissions = admin.role?.rolePermissions?.map((rp) => ({
+      permission: rp.permission.code,
+    })) || [];
+
+    this.logger.debug(`findByEmail - ${email} permissions: [${permissions.map(p => p.permission).join(', ')}]`);
+
+    return {
+      ...admin,
+      permissions,
+    };
   }
 
   async update(id: number, updateAdminDto: UpdateAdminDto): Promise<Admin> {
@@ -273,22 +326,12 @@ export class AdminService {
     });
   }
 
-  async updatePermissions(adminId: number, permissions: string[]): Promise<Admin> {
-    // First, delete all existing permissions
-    await this.prisma.adminPermission.deleteMany({
-      where: { adminId },
-    });
-
-    // Then, create new permissions
-    if (permissions.length > 0) {
-      await this.prisma.adminPermission.createMany({
-        data: permissions.map(permission => ({
-          adminId,
-          permission,
-        })),
-      });
-    }
-
+  // 개별 권한 관리는 제거됨 - 역할 기반 권한만 사용
+  // 권한 변경은 역할(roleCode) 변경을 통해 수행
+  async updatePermissions(adminId: number, _permissions: string[]): Promise<Admin> {
+    // 개별 권한 테이블이 삭제되어 역할 기반으로만 권한 관리
+    // 권한을 변경하려면 admin.update()를 통해 roleCode를 변경해야 함
+    this.logger.warn(`updatePermissions is deprecated. Use role-based permissions by updating roleCode.`);
     return this.findOne(adminId);
   }
 
