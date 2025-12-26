@@ -6,6 +6,7 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
+  globalSetup: './e2e/global-setup.ts', // 테스트 전 서버 웜업
   fullyParallel: false, // Cloud Run 콜드 스타트 방지를 위해 순차 실행
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1, // 로컬에서도 1회 재시도
