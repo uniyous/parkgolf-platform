@@ -9,10 +9,12 @@ test.describe('관리자 CRUD 테스트', () => {
   test('관리자 목록 조회', async ({ page }) => {
     // 사이드바 네비게이션으로 이동
     await page.goto('/admin-management');
-    await page.waitForTimeout(2000);
+
+    // 인증 확인 로딩이 완료될 때까지 대기 (로딩 스피너가 사라질 때까지)
+    await page.waitForSelector('text=인증 확인 중', { state: 'hidden', timeout: 30000 }).catch(() => {});
 
     // 페이지 컨텐츠 확인 (권한 없음 메시지 또는 관리자 목록)
-    const hasContent = await page.getByText('관리자').first().isVisible({ timeout: 5000 }).catch(() => false);
+    const hasContent = await page.getByText('관리자').first().isVisible({ timeout: 10000 }).catch(() => false);
     expect(hasContent).toBeTruthy();
   });
 });

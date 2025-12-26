@@ -4,11 +4,11 @@
  */
 
 const API_ENDPOINTS = [
-  'https://parkgolf-admin-api-144712599315.asia-northeast3.run.app/',
-  'https://parkgolf-user-api-144712599315.asia-northeast3.run.app/',
-  'https://parkgolf-course-service-144712599315.asia-northeast3.run.app/',
-  'https://parkgolf-auth-service-144712599315.asia-northeast3.run.app/',
-  'https://parkgolf-booking-service-144712599315.asia-northeast3.run.app/',
+  'https://admin-api-dev-iihuzmuufa-du.a.run.app/health',
+  'https://user-api-dev-iihuzmuufa-du.a.run.app/health',
+  'https://course-service-dev-iihuzmuufa-du.a.run.app/health',
+  'https://auth-service-dev-iihuzmuufa-du.a.run.app/health',
+  'https://booking-service-dev-iihuzmuufa-du.a.run.app/health',
 ];
 
 async function warmupServer(url: string): Promise<{ url: string; status: number; time: number }> {
@@ -37,9 +37,9 @@ async function globalSetup() {
   const firstWarmup = await Promise.all(API_ENDPOINTS.map(warmupServer));
 
   firstWarmup.forEach((result) => {
-    const serviceName = result.url.split('parkgolf-')[1]?.split('-144')[0] || 'unknown';
-    const status = result.status === 404 ? '✅' : result.status === 0 ? '❌' : '⚠️';
-    console.log(`  ${status} ${serviceName}: ${result.time}ms`);
+    const serviceName = result.url.split('-dev-')[0]?.split('://')[1] || 'unknown';
+    const status = result.status === 200 ? '✅' : result.status === 0 ? '❌' : '⚠️';
+    console.log(`  ${status} ${serviceName}: ${result.time}ms (HTTP ${result.status})`);
   });
 
   // NATS 구독 등록 대기
@@ -51,9 +51,9 @@ async function globalSetup() {
   const secondWarmup = await Promise.all(API_ENDPOINTS.map(warmupServer));
 
   secondWarmup.forEach((result) => {
-    const serviceName = result.url.split('parkgolf-')[1]?.split('-144')[0] || 'unknown';
-    const status = result.status === 404 ? '✅' : result.status === 0 ? '❌' : '⚠️';
-    console.log(`  ${status} ${serviceName}: ${result.time}ms`);
+    const serviceName = result.url.split('-dev-')[0]?.split('://')[1] || 'unknown';
+    const status = result.status === 200 ? '✅' : result.status === 0 ? '❌' : '⚠️';
+    console.log(`  ${status} ${serviceName}: ${result.time}ms (HTTP ${result.status})`);
   });
 
   console.log('\n✅ 서버 웜업 완료!\n');
