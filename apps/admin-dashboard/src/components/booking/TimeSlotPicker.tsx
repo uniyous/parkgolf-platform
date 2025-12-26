@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { courseApi } from '../../api/courseApi';
-import { bookingApi } from '../../api/bookingApi';
+import { courseApi } from '@/lib/api/courseApi';
+import { bookingApi } from '@/lib/api/bookingApi';
 import type { Course, TimeSlotAvailability } from '../../types';
 
 interface TimeSlotPickerProps {

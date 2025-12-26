@@ -2,17 +2,16 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useAdminActions } from '../../hooks/useAdminActions';
 import { useRolePermission } from '../../hooks/useRolePermission';
 import { useConfirmation } from '../../hooks/useConfirmation';
-import { useSelector } from 'react-redux';
-import { selectCurrentAdmin, selectHasPermission, selectCanManageAdminRole } from '../../redux/slices/authSlice';
+import { useAuthStore, useCurrentAdmin } from '@/stores';
 import type { Admin, AdminRole, AdminScope } from '../../types';
-import { 
-  ADMIN_ROLE_LABELS, 
-  ADMIN_ROLE_COLORS, 
-  isPlatformAdmin, 
+import {
+  ADMIN_ROLE_LABELS,
+  ADMIN_ROLE_COLORS,
+  isPlatformAdmin,
   isCompanyAdmin,
   canManageAdmin,
   ADMIN_HIERARCHY
-} from '../../utils/adminPermissions';
+} from '@/utils';
 
 interface EnhancedAdminListProps {
   onSelectAdmin: (admin: Admin) => void;
@@ -46,8 +45,8 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
   const { admins, isLoading, fetchAdmins } = useAdminActions();
   const { hasPermission } = useRolePermission();
   const { showConfirmation } = useConfirmation();
-  const currentAdmin = useSelector(selectCurrentAdmin);
-  const hasManageAdmins = useSelector(selectHasPermission('MANAGE_ADMINS'));
+  const currentAdmin = useCurrentAdmin();
+  const hasManageAdmins = useAuthStore((state) => state.hasPermission('ADMINS'));
 
   // 필터 및 정렬 상태
   const [filters, setFilters] = useState<FilterState>({
@@ -106,30 +105,22 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
     }).filter(admin => {
       // 권한 기반 필터 - 현재 로그인한 관리자가 관리할 수 있는 관리자만 표시
       if (!currentAdmin) return false;
-      
-      // 플랫폼 관리자는 모든 관리자 볼 수 있음
-      if (currentAdmin.scope === 'PLATFORM') {
+
+      // 시스템 관리자 (ADMIN, SUPPORT)는 모든 관리자 볼 수 있음
+      if (currentAdmin.role === 'ADMIN' || currentAdmin.role === 'SUPPORT') {
         return true;
       }
-      
-      // 회사 관리자는 같은 회사의 관리자만 볼 수 있음
-      if (currentAdmin.scope === 'COMPANY') {
+
+      // 운영 관리자 (MANAGER)는 하위 직급만 볼 수 있음
+      if (currentAdmin.role === 'MANAGER') {
         // 자기 자신은 항상 포함
         if (admin.id === currentAdmin.id) return true;
-        
-        // 같은 회사의 관리자만
-        if (admin.companyId === currentAdmin.companyId) {
-          // 회사 오너는 모든 회사 직원 관리 가능
-          if (currentAdmin.role === 'COMPANY_OWNER') return true;
-          
-          // 회사 매니저는 하위 직급만 관리 가능 (코스 관리자, 직원)
-          if (currentAdmin.role === 'COMPANY_MANAGER') {
-            return ['COURSE_MANAGER', 'STAFF', 'READONLY_STAFF'].includes(admin.role);
-          }
-        }
+        // STAFF, VIEWER만 관리 가능
+        return admin.role === 'STAFF' || admin.role === 'VIEWER';
       }
-      
-      return false;
+
+      // STAFF, VIEWER는 자신만 볼 수 있음
+      return admin.id === currentAdmin.id;
     });
 
     // 정렬
@@ -243,9 +234,9 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
   // 범위별 배지 스타일
   const getScopeBadgeStyle = (scope: AdminScope) => {
     switch (scope) {
-      case 'PLATFORM': return 'bg-red-50 text-red-700 border-red-200';
-      case 'COMPANY': return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'COURSE': return 'bg-green-50 text-green-700 border-green-200';
+      case 'SYSTEM': return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'OPERATION': return 'bg-green-50 text-green-700 border-green-200';
+      case 'VIEW': return 'bg-gray-50 text-gray-700 border-gray-200';
       default: return 'bg-gray-50 text-gray-700 border-gray-200';
     }
   };
@@ -253,9 +244,9 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
   // 범위명 한글 변환
   const getScopeLabel = (scope: AdminScope) => {
     const scopeLabels = {
-      'PLATFORM': '플랫폼',
-      'COMPANY': '회사',
-      'COURSE': '코스',
+      'SYSTEM': '시스템',
+      'OPERATION': '운영',
+      'VIEW': '조회',
     };
     return scopeLabels[scope] || scope;
   };
@@ -268,17 +259,16 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
       active: adminsList.filter(a => a.isActive).length,
       inactive: adminsList.filter(a => !a.isActive).length,
       byScope: {
-        PLATFORM: adminsList.filter(a => isPlatformAdmin(a.role)).length,
-        COMPANY: adminsList.filter(a => isCompanyAdmin(a.role) && a.scope === 'COMPANY').length,
-        COURSE: adminsList.filter(a => isCompanyAdmin(a.role) && a.scope === 'COURSE').length,
+        SYSTEM: adminsList.filter(a => a.role === 'ADMIN' || a.role === 'SUPPORT').length,
+        OPERATION: adminsList.filter(a => a.role === 'MANAGER' || a.role === 'STAFF').length,
+        VIEW: adminsList.filter(a => a.role === 'VIEWER').length,
       },
       byRole: {
-        PLATFORM_OWNER: adminsList.filter(a => a.role === 'PLATFORM_OWNER').length,
-        PLATFORM_ADMIN: adminsList.filter(a => a.role === 'PLATFORM_ADMIN').length,
-        COMPANY_OWNER: adminsList.filter(a => a.role === 'COMPANY_OWNER').length,
-        COMPANY_MANAGER: adminsList.filter(a => a.role === 'COMPANY_MANAGER').length,
-        COURSE_MANAGER: adminsList.filter(a => a.role === 'COURSE_MANAGER').length,
+        ADMIN: adminsList.filter(a => a.role === 'ADMIN').length,
+        SUPPORT: adminsList.filter(a => a.role === 'SUPPORT').length,
+        MANAGER: adminsList.filter(a => a.role === 'MANAGER').length,
         STAFF: adminsList.filter(a => a.role === 'STAFF').length,
+        VIEWER: adminsList.filter(a => a.role === 'VIEWER').length,
       },
     };
   }, [admins]);
@@ -330,8 +320,8 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
 
             {/* 새 관리자 추가 버튼 */}
             {hasManageAdmins && currentAdmin && (
-              currentAdmin.scope === 'PLATFORM' || 
-              (currentAdmin.scope === 'COMPANY' && ['COMPANY_OWNER', 'COMPANY_MANAGER'].includes(currentAdmin.role))
+              currentAdmin.scope === 'SYSTEM' ||
+              (currentAdmin.scope === 'OPERATION' && ['MANAGER'].includes(currentAdmin.role))
             ) && (
               <button
                 onClick={onCreateAdmin}
@@ -356,17 +346,17 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
             <div className="text-2xl font-bold text-green-600">{stats.active}</div>
             <div className="text-sm text-green-600">활성 관리자</div>
           </div>
-          <div className="bg-red-50 p-4 rounded-lg">
-            <div className="text-2xl font-bold text-red-600">{stats.byScope.PLATFORM}</div>
-            <div className="text-sm text-red-600">플랫폼 관리자</div>
-          </div>
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">{stats.byScope.COMPANY}</div>
-            <div className="text-sm text-blue-600">회사 관리자</div>
+          <div className="bg-purple-50 p-4 rounded-lg">
+            <div className="text-2xl font-bold text-purple-600">{stats.byScope.SYSTEM}</div>
+            <div className="text-sm text-purple-600">시스템 관리자</div>
           </div>
           <div className="bg-green-50 p-4 rounded-lg">
-            <div className="text-2xl font-bold text-green-600">{stats.byScope.COURSE}</div>
-            <div className="text-sm text-green-600">코스 관리자</div>
+            <div className="text-2xl font-bold text-green-600">{stats.byScope.OPERATION}</div>
+            <div className="text-sm text-green-600">운영 관리자</div>
+          </div>
+          <div className="bg-yellow-50 p-4 rounded-lg">
+            <div className="text-2xl font-bold text-yellow-600">{stats.byScope.VIEW}</div>
+            <div className="text-sm text-yellow-600">조회 전용</div>
           </div>
           <div className="bg-gray-50 p-4 rounded-lg">
             <div className="text-2xl font-bold text-gray-600">{stats.inactive}</div>
@@ -410,9 +400,9 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
               className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="ALL">모든 범위</option>
-              <option value="PLATFORM">플랫폼</option>
-              <option value="COMPANY">회사</option>
-              <option value="COURSE">코스</option>
+              <option value="SYSTEM">시스템</option>
+              <option value="OPERATION">운영</option>
+              <option value="VIEW">조회</option>
             </select>
           </div>
 
@@ -427,19 +417,11 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
               className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="ALL">모든 역할</option>
-              <optgroup label="플랫폼 관리자">
-                <option value="PLATFORM_OWNER">플랫폼 최고 관리자</option>
-                <option value="PLATFORM_ADMIN">플랫폼 운영 관리자</option>
-                <option value="PLATFORM_SUPPORT">플랫폼 지원팀</option>
-                <option value="PLATFORM_ANALYST">플랫폼 분석가</option>
-              </optgroup>
-              <optgroup label="회사 관리자">
-                <option value="COMPANY_OWNER">회사 대표</option>
-                <option value="COMPANY_MANAGER">회사 운영 관리자</option>
-                <option value="COURSE_MANAGER">코스 관리자</option>
-                <option value="STAFF">일반 직원</option>
-                <option value="READONLY_STAFF">조회 전용 직원</option>
-              </optgroup>
+              <option value="ADMIN">시스템 관리자</option>
+              <option value="SUPPORT">고객지원</option>
+              <option value="MANAGER">운영 관리자</option>
+              <option value="STAFF">현장 직원</option>
+              <option value="VIEWER">조회 전용</option>
             </select>
           </div>
 
@@ -623,7 +605,7 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                       <div className="flex space-x-2">
-                        {hasManageAdmins && canManageAdmin(currentAdmin?.role || 'PLATFORM_ADMIN', admin.role) && (
+                        {hasManageAdmins && canManageAdmin(currentAdmin?.role || 'ADMIN', admin.role) && (
                           <button
                             onClick={() => onEditAdmin(admin)}
                             className="text-blue-600 hover:text-blue-900 transition-colors"
@@ -632,7 +614,7 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
                             ✏️
                           </button>
                         )}
-                        {canManageAdmin(currentAdmin?.role || 'PLATFORM_ADMIN', admin.role) && (
+                        {canManageAdmin(currentAdmin?.role || 'ADMIN', admin.role) && (
                           <button
                             onClick={() => onManagePermissions(admin)}
                             className="text-purple-600 hover:text-purple-900 transition-colors"
@@ -641,7 +623,7 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
                             🔐
                           </button>
                         )}
-                        {hasManageAdmins && canManageAdmin(currentAdmin?.role || 'PLATFORM_ADMIN', admin.role) && admin.id !== currentAdmin?.id && (
+                        {hasManageAdmins && canManageAdmin(currentAdmin?.role || 'ADMIN', admin.role) && admin.id !== currentAdmin?.id && (
                           <button
                             onClick={() => handleDeleteConfirm(admin)}
                             className="text-red-600 hover:text-red-900 transition-colors"
@@ -710,7 +692,7 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
                   </div>
 
                   <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
-                    {hasManageAdmins && canManageAdmin(currentAdmin?.role || 'PLATFORM_ADMIN', admin.role) && (
+                    {hasManageAdmins && canManageAdmin(currentAdmin?.role || 'ADMIN', admin.role) && (
                       <button
                         onClick={() => onEditAdmin(admin)}
                         className="flex-1 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
@@ -718,7 +700,7 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
                         ✏️ 수정
                       </button>
                     )}
-                    {canManageAdmin(currentAdmin?.role || 'PLATFORM_ADMIN', admin.role) && (
+                    {canManageAdmin(currentAdmin?.role || 'ADMIN', admin.role) && (
                       <button
                         onClick={() => onManagePermissions(admin)}
                         className="flex-1 text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded hover:bg-purple-200 transition-colors"
@@ -726,7 +708,7 @@ export const EnhancedAdminList: React.FC<EnhancedAdminListProps> = ({
                         🔐 권한
                       </button>
                     )}
-                    {hasManageAdmins && canManageAdmin(currentAdmin?.role || 'PLATFORM_ADMIN', admin.role) && admin.id !== currentAdmin?.id && (
+                    {hasManageAdmins && canManageAdmin(currentAdmin?.role || 'ADMIN', admin.role) && admin.id !== currentAdmin?.id && (
                       <button
                         onClick={() => handleDeleteConfirm(admin)}
                         className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded hover:bg-red-200 transition-colors"

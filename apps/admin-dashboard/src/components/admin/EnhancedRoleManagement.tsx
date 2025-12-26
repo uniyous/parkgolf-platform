@@ -38,124 +38,51 @@ export const EnhancedRoleManagement: React.FC<EnhancedRoleManagementProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['platform-management']);
 
-  // 새로운 권한 시스템 정의
+  // v3 권한 시스템 정의 (18 permissions)
   const permissionCategories: PermissionCategory[] = [
     {
-      id: 'platform-management',
-      name: '플랫폼 관리',
-      description: '플랫폼 전체 관리 기능',
-      icon: '🏢',
+      id: 'admin-permissions',
+      name: '관리자 권한',
+      description: '관리자 기능 접근 권한',
+      icon: '🔐',
       permissions: [
-        { id: 'PLATFORM_ALL', name: '플랫폼 전체 권한', description: '플랫폼 모든 기능 접근', category: 'platform-management', icon: '👑', level: 'critical' },
-        { id: 'PLATFORM_COMPANY_MANAGE', name: '회사 관리', description: '플랫폼 내 회사 관리', category: 'platform-management', icon: '🏬', level: 'high' },
-        { id: 'PLATFORM_USER_MANAGE', name: '전체 사용자 관리', description: '플랫폼 사용자 관리', category: 'platform-management', icon: '👥', level: 'high' },
-        { id: 'PLATFORM_SYSTEM_CONFIG', name: '시스템 설정', description: '시스템 설정 관리', category: 'platform-management', icon: '⚙️', level: 'critical' },
-        { id: 'PLATFORM_ANALYTICS', name: '플랫폼 분석', description: '전체 분석 데이터 조회', category: 'platform-management', icon: '📊', level: 'medium' },
-        { id: 'PLATFORM_SUPPORT', name: '플랫폼 지원', description: '고객 지원 기능', category: 'platform-management', icon: '🎧', level: 'medium' },
+        { id: 'ALL', name: '전체 권한', description: '모든 기능 접근', category: 'admin-permissions', icon: '👑', level: 'critical' },
+        { id: 'COMPANIES', name: '회사 관리', description: '회사 관리 기능', category: 'admin-permissions', icon: '🏢', level: 'high' },
+        { id: 'COURSES', name: '코스 관리', description: '코스 관리 기능', category: 'admin-permissions', icon: '⛳', level: 'high' },
+        { id: 'TIMESLOTS', name: '타임슬롯 관리', description: '타임슬롯 관리 기능', category: 'admin-permissions', icon: '⏰', level: 'medium' },
+        { id: 'BOOKINGS', name: '예약 관리', description: '예약 관리 기능', category: 'admin-permissions', icon: '📅', level: 'medium' },
+        { id: 'USERS', name: '사용자 관리', description: '사용자 관리 기능', category: 'admin-permissions', icon: '👥', level: 'high' },
+        { id: 'ADMINS', name: '관리자 관리', description: '관리자 관리 기능', category: 'admin-permissions', icon: '👨‍💼', level: 'critical' },
+        { id: 'ANALYTICS', name: '분석/리포트', description: '분석 및 리포트 조회', category: 'admin-permissions', icon: '📊', level: 'medium' },
+        { id: 'SUPPORT', name: '고객 지원', description: '고객 지원 기능', category: 'admin-permissions', icon: '🎧', level: 'medium' },
+        { id: 'VIEW', name: '조회', description: '정보 조회만 가능', category: 'admin-permissions', icon: '👁️', level: 'low' },
       ]
     },
     {
-      id: 'company-management',
-      name: '회사 관리',
-      description: '회사 레벨 관리 기능',
-      icon: '🏢',
+      id: 'user-permissions',
+      name: '사용자 권한',
+      description: '일반 사용자 기능 접근 권한',
+      icon: '👤',
       permissions: [
-        { id: 'COMPANY_ALL', name: '회사 전체 권한', description: '회사 모든 기능 접근', category: 'company-management', icon: '🏢', level: 'high' },
-        { id: 'COMPANY_ADMIN_MANAGE', name: '회사 관리자 관리', description: '회사 소속 관리자 관리', category: 'company-management', icon: '👨‍💼', level: 'high' },
-        { id: 'COMPANY_COURSE_MANAGE', name: '회사 코스 관리', description: '회사 골프 코스 관리', category: 'company-management', icon: '⛳', level: 'medium' },
-        { id: 'COMPANY_BOOKING_MANAGE', name: '회사 예약 관리', description: '회사 예약 시스템 관리', category: 'company-management', icon: '📅', level: 'medium' },
-        { id: 'COMPANY_USER_MANAGE', name: '회사 고객 관리', description: '회사 고객 관리', category: 'company-management', icon: '👤', level: 'medium' },
-        { id: 'COMPANY_ANALYTICS', name: '회사 분석', description: '회사 분석 데이터 조회', category: 'company-management', icon: '📈', level: 'low' },
-      ]
-    },
-    {
-      id: 'course-management',
-      name: '코스 관리',
-      description: '골프 코스 운영 기능',
-      icon: '⛳',
-      permissions: [
-        { id: 'COURSE_TIMESLOT_MANAGE', name: '타임슬롯 관리', description: '타임슬롯 생성/수정/삭제', category: 'course-management', icon: '⏰', level: 'medium' },
-        { id: 'COURSE_BOOKING_MANAGE', name: '예약 관리', description: '예약 접수 및 관리', category: 'course-management', icon: '📋', level: 'medium' },
-        { id: 'COURSE_CUSTOMER_VIEW', name: '고객 정보 조회', description: '고객 정보 열람', category: 'course-management', icon: '👁️', level: 'low' },
-        { id: 'COURSE_ANALYTICS_VIEW', name: '코스 분석 조회', description: '코스 분석 데이터 조회', category: 'course-management', icon: '📊', level: 'low' },
-      ]
-    },
-    {
-      id: 'ui-navigation',
-      name: 'UI 네비게이션',
-      description: '관리자 인터페이스 접근 권한',
-      icon: '🖥️',
-      permissions: [
-        { id: 'VIEW_DASHBOARD', name: '대시보드 조회', description: '관리자 대시보드 접근', category: 'ui-navigation', icon: '📊', level: 'low' },
-        { id: 'MANAGE_COMPANIES', name: '회사 관리 메뉴', description: '회사 관리 화면 접근', category: 'ui-navigation', icon: '🏢', level: 'medium' },
-        { id: 'MANAGE_COURSES', name: '코스 관리 메뉴', description: '코스 관리 화면 접근', category: 'ui-navigation', icon: '⛳', level: 'medium' },
-        { id: 'MANAGE_TIMESLOTS', name: '타임슬롯 관리 메뉴', description: '타임슬롯 관리 화면 접근', category: 'ui-navigation', icon: '⏰', level: 'medium' },
-        { id: 'MANAGE_BOOKINGS', name: '예약 관리 메뉴', description: '예약 관리 화면 접근', category: 'ui-navigation', icon: '📅', level: 'medium' },
-        { id: 'MANAGE_USERS', name: '사용자 관리 메뉴', description: '사용자 관리 화면 접근', category: 'ui-navigation', icon: '👥', level: 'medium' },
-        { id: 'MANAGE_ADMINS', name: '관리자 관리 메뉴', description: '관리자 관리 화면 접근', category: 'ui-navigation', icon: '👨‍💼', level: 'high' },
-        { id: 'VIEW_ANALYTICS', name: '분석 조회 메뉴', description: '분석 화면 접근', category: 'ui-navigation', icon: '📈', level: 'low' },
-      ]
-    },
-    {
-      id: 'support',
-      name: '고객 지원',
-      description: '고객 지원 및 접수 기능',
-      icon: '🎧',
-      permissions: [
-        { id: 'CUSTOMER_SUPPORT', name: '고객 지원', description: '고객 문의 처리', category: 'support', icon: '🎧', level: 'low' },
-        { id: 'BOOKING_RECEPTION', name: '예약 접수', description: '예약 접수 처리', category: 'support', icon: '📞', level: 'low' },
-        { id: 'READ_ONLY', name: '읽기 전용', description: '정보 조회만 가능', category: 'support', icon: '👁️', level: 'low' },
+        { id: 'PROFILE', name: '프로필 관리', description: '개인 프로필 관리', category: 'user-permissions', icon: '👤', level: 'low' },
+        { id: 'COURSE_VIEW', name: '코스 조회', description: '코스 정보 조회', category: 'user-permissions', icon: '⛳', level: 'low' },
+        { id: 'BOOKING_VIEW', name: '예약 조회', description: '예약 내역 조회', category: 'user-permissions', icon: '📋', level: 'low' },
+        { id: 'BOOKING_MANAGE', name: '예약 관리', description: '예약 생성/수정/취소', category: 'user-permissions', icon: '📅', level: 'medium' },
+        { id: 'PAYMENT', name: '결제/환불', description: '결제 및 환불 처리', category: 'user-permissions', icon: '💳', level: 'medium' },
+        { id: 'PREMIUM_BOOKING', name: '프리미엄 예약', description: '프리미엄 예약 기능', category: 'user-permissions', icon: '⭐', level: 'high' },
+        { id: 'PRIORITY_BOOKING', name: '우선 예약', description: '우선 예약 권한', category: 'user-permissions', icon: '🚀', level: 'high' },
+        { id: 'ADVANCED_SEARCH', name: '고급 검색', description: '고급 검색 기능', category: 'user-permissions', icon: '🔍', level: 'medium' },
       ]
     },
   ];
 
-  // 새로운 역할별 기본 권한 정의
+  // v3 역할별 기본 권한 정의 (5 roles, 18 permissions)
   const rolePermissions: Record<AdminRole, Permission[]> = {
-    'PLATFORM_OWNER': [
-      'PLATFORM_ALL', 'PLATFORM_COMPANY_MANAGE', 'PLATFORM_USER_MANAGE', 'PLATFORM_SYSTEM_CONFIG',
-      'PLATFORM_ANALYTICS', 'PLATFORM_SUPPORT', 'COMPANY_ALL', 'COMPANY_ADMIN_MANAGE',
-      'COMPANY_COURSE_MANAGE', 'COMPANY_BOOKING_MANAGE', 'COMPANY_USER_MANAGE', 'COMPANY_ANALYTICS',
-      'COURSE_TIMESLOT_MANAGE', 'COURSE_BOOKING_MANAGE', 'COURSE_CUSTOMER_VIEW', 'COURSE_ANALYTICS_VIEW',
-      'VIEW_DASHBOARD', 'MANAGE_COMPANIES', 'MANAGE_COURSES', 'MANAGE_TIMESLOTS', 'MANAGE_BOOKINGS',
-      'MANAGE_USERS', 'MANAGE_ADMINS', 'VIEW_ANALYTICS'
-    ],
-    'PLATFORM_ADMIN': [
-      'PLATFORM_COMPANY_MANAGE', 'PLATFORM_USER_MANAGE', 'PLATFORM_ANALYTICS', 'PLATFORM_SUPPORT',
-      'COMPANY_ALL', 'COMPANY_ADMIN_MANAGE', 'COMPANY_COURSE_MANAGE', 'COMPANY_BOOKING_MANAGE',
-      'COMPANY_USER_MANAGE', 'COMPANY_ANALYTICS', 'VIEW_DASHBOARD', 'MANAGE_COMPANIES',
-      'MANAGE_COURSES', 'MANAGE_TIMESLOTS', 'MANAGE_BOOKINGS', 'MANAGE_USERS', 'MANAGE_ADMINS', 'VIEW_ANALYTICS'
-    ],
-    'PLATFORM_SUPPORT': [
-      'PLATFORM_SUPPORT', 'COMPANY_USER_MANAGE', 'COMPANY_BOOKING_MANAGE', 'COURSE_BOOKING_MANAGE',
-      'COURSE_CUSTOMER_VIEW', 'CUSTOMER_SUPPORT', 'BOOKING_RECEPTION', 'VIEW_DASHBOARD',
-      'MANAGE_BOOKINGS', 'MANAGE_USERS'
-    ],
-    'PLATFORM_ANALYST': [
-      'PLATFORM_ANALYTICS', 'COMPANY_ANALYTICS', 'COURSE_ANALYTICS_VIEW', 'READ_ONLY',
-      'VIEW_DASHBOARD', 'VIEW_ANALYTICS'
-    ],
-    'COMPANY_OWNER': [
-      'COMPANY_ALL', 'COMPANY_ADMIN_MANAGE', 'COMPANY_COURSE_MANAGE', 'COMPANY_BOOKING_MANAGE',
-      'COMPANY_USER_MANAGE', 'COMPANY_ANALYTICS', 'COURSE_TIMESLOT_MANAGE', 'COURSE_BOOKING_MANAGE',
-      'COURSE_CUSTOMER_VIEW', 'COURSE_ANALYTICS_VIEW', 'VIEW_DASHBOARD', 'MANAGE_COURSES',
-      'MANAGE_TIMESLOTS', 'MANAGE_BOOKINGS', 'MANAGE_USERS', 'MANAGE_ADMINS', 'VIEW_ANALYTICS'
-    ],
-    'COMPANY_MANAGER': [
-      'COMPANY_COURSE_MANAGE', 'COMPANY_BOOKING_MANAGE', 'COMPANY_USER_MANAGE', 'COMPANY_ANALYTICS',
-      'COURSE_TIMESLOT_MANAGE', 'COURSE_BOOKING_MANAGE', 'COURSE_CUSTOMER_VIEW', 'COURSE_ANALYTICS_VIEW',
-      'VIEW_DASHBOARD', 'MANAGE_COURSES', 'MANAGE_TIMESLOTS', 'MANAGE_BOOKINGS', 'MANAGE_USERS', 'VIEW_ANALYTICS'
-    ],
-    'COURSE_MANAGER': [
-      'COURSE_TIMESLOT_MANAGE', 'COURSE_BOOKING_MANAGE', 'COURSE_CUSTOMER_VIEW', 'COURSE_ANALYTICS_VIEW',
-      'BOOKING_RECEPTION', 'CUSTOMER_SUPPORT', 'VIEW_DASHBOARD', 'MANAGE_TIMESLOTS', 'MANAGE_BOOKINGS'
-    ],
-    'STAFF': [
-      'COURSE_BOOKING_MANAGE', 'COURSE_CUSTOMER_VIEW', 'BOOKING_RECEPTION', 'CUSTOMER_SUPPORT',
-      'VIEW_DASHBOARD', 'MANAGE_BOOKINGS'
-    ],
-    'READONLY_STAFF': [
-      'COURSE_CUSTOMER_VIEW', 'COURSE_ANALYTICS_VIEW', 'READ_ONLY', 'VIEW_DASHBOARD'
-    ],
+    'ADMIN': ['ALL'],
+    'SUPPORT': ['BOOKINGS', 'USERS', 'ANALYTICS', 'SUPPORT', 'VIEW'],
+    'MANAGER': ['COMPANIES', 'COURSES', 'TIMESLOTS', 'BOOKINGS', 'USERS', 'ADMINS', 'ANALYTICS', 'VIEW'],
+    'STAFF': ['TIMESLOTS', 'BOOKINGS', 'SUPPORT', 'VIEW'],
+    'VIEWER': ['VIEW'],
   };
 
   // 현재 역할의 권한 목록
@@ -200,11 +127,11 @@ export const EnhancedRoleManagement: React.FC<EnhancedRoleManagementProps> = ({
 
   // 저장 핸들러
   const handleSave = async () => {
-    const isConfirmed = await showConfirmation(
-      '권한 변경 확인',
-      `${admin.name}의 역할을 "${getRoleLabel(selectedRole)}"로 변경하시겠습니까?`,
-      'warning'
-    );
+    const isConfirmed = await showConfirmation({
+      title: '권한 변경 확인',
+      message: `${admin.name}의 역할을 "${getRoleLabel(selectedRole)}"로 변경하시겠습니까?`,
+      type: 'warning'
+    });
 
     if (!isConfirmed) return;
 
@@ -229,15 +156,11 @@ export const EnhancedRoleManagement: React.FC<EnhancedRoleManagementProps> = ({
   // 역할 라벨
   const getRoleLabel = (role: AdminRole) => {
     const labels: Record<AdminRole, string> = {
-      'PLATFORM_OWNER': '플랫폼 소유자',
-      'PLATFORM_ADMIN': '플랫폼 관리자',
-      'PLATFORM_SUPPORT': '플랫폼 지원팀',
-      'PLATFORM_ANALYST': '플랫폼 분석가',
-      'COMPANY_OWNER': '회사 대표',
-      'COMPANY_MANAGER': '회사 운영 관리자',
-      'COURSE_MANAGER': '코스 관리자',
-      'STAFF': '일반 직원',
-      'READONLY_STAFF': '조회 전용 직원',
+      'ADMIN': '시스템 관리자',
+      'SUPPORT': '고객지원',
+      'MANAGER': '운영 관리자',
+      'STAFF': '현장 직원',
+      'VIEWER': '조회 전용',
     };
     return labels[role] || role;
   };
@@ -245,15 +168,11 @@ export const EnhancedRoleManagement: React.FC<EnhancedRoleManagementProps> = ({
   // 역할 설명
   const getRoleDescription = (role: AdminRole) => {
     const descriptions: Record<AdminRole, string> = {
-      'PLATFORM_OWNER': '플랫폼 전체에 대한 최고 권한을 가집니다.',
-      'PLATFORM_ADMIN': '플랫폼 운영 전반을 관리할 수 있습니다.',
-      'PLATFORM_SUPPORT': '고객 지원 및 기술 지원을 담당합니다.',
-      'PLATFORM_ANALYST': '플랫폼 데이터 분석 및 리포팅을 담당합니다.',
-      'COMPANY_OWNER': '회사 전체 운영을 관리할 수 있습니다.',
-      'COMPANY_MANAGER': '회사 일반 운영업무를 관리할 수 있습니다.',
-      'COURSE_MANAGER': '특정 코스의 운영을 관리할 수 있습니다.',
-      'STAFF': '현장 업무를 수행할 수 있습니다.',
-      'READONLY_STAFF': '정보 조회만 가능합니다.',
+      'ADMIN': '시스템 전체에 대한 최고 권한을 가집니다.',
+      'SUPPORT': '고객 지원 및 예약 관리를 담당합니다.',
+      'MANAGER': '회사 및 코스 운영 전반을 관리합니다.',
+      'STAFF': '현장 업무 및 예약 접수를 수행합니다.',
+      'VIEWER': '정보 조회만 가능합니다.',
     };
     return descriptions[role] || '';
   };

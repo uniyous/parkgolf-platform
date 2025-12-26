@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useConfirmation } from '../../hooks/useConfirmation';
-import { useSelector } from 'react-redux';
-import { selectCurrentAdmin, selectHasPermission } from '../../redux/slices/authSlice';
+import { useAuthStore, useCurrentAdmin } from '@/stores';
 import type { Company, CompanyStatus } from '../../types/company';
 
 interface EnhancedCompanyListProps {
@@ -33,8 +32,8 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
   onRefresh,
 }) => {
   const { showConfirmation } = useConfirmation();
-  const currentAdmin = useSelector(selectCurrentAdmin);
-  const hasManageCompanies = useSelector(selectHasPermission('MANAGE_COMPANIES'));
+  const currentAdmin = useCurrentAdmin();
+  const hasManageCompanies = useAuthStore((state) => state.hasPermission('COMPANIES'));
 
   // 필터 및 정렬 상태
   const [filters, setFilters] = useState<FilterState>({
@@ -449,7 +448,7 @@ export const EnhancedCompanyList: React.FC<EnhancedCompanyListProps> = ({
                               </svg>
                             </button>
                             
-                            {currentAdmin?.scope === 'PLATFORM' && (
+                            {currentAdmin?.scope === 'SYSTEM' && (
                               /* Delete Button */
                               <button
                                 onClick={(e) => {

@@ -3,7 +3,7 @@ import { EnhancedCompanyList } from './EnhancedCompanyList';
 import { CompanyDetailView } from './CompanyDetailView';
 import { CompanyForm } from './CompanyForm';
 import { PageHeader } from '../common/PageHeader';
-import { useCompanyManagement } from '../../redux/hooks/useCompanyManagement';
+import { useCompanyManagement } from '@/hooks';
 import type { Company, CompanyStatus } from '../../types/company';
 
 export const CompanyManagementContainer: React.FC = () => {

@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { courseApi } from '../../api/courseApi';
+import { courseApi } from '@/lib/api/courseApi';
 import { Breadcrumb } from '../../components/common';
 import { PageLayout } from '../../components/common/Layout/PageLayout';
-import { useSelector } from 'react-redux';
-import { selectCurrentAdmin, selectHasPermission } from '../../redux/slices/authSlice';
+import { useAuthStore, useCurrentAdmin } from '@/stores';
 import { CanManageBookings } from '../../components/auth/PermissionGuard';
 import type { Course, Company } from '../../types';
 
 export const BookingManagementPage: React.FC = () => {
   const navigate = useNavigate();
-  const currentAdmin = useSelector(selectCurrentAdmin);
-  const hasManageBookings = useSelector(selectHasPermission('MANAGE_BOOKINGS'));
+  const currentAdmin = useCurrentAdmin();
+  const hasManageBookings = useAuthStore((state) => state.hasPermission('BOOKINGS'));
   const [courses, setCourses] = useState<Course[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(false);
@@ -27,10 +26,10 @@ export const BookingManagementPage: React.FC = () => {
         // 권한에 따른 회사 필터링
         let filteredCompanies = companiesData;
         if (currentAdmin) {
-          if (currentAdmin.scope === 'COMPANY' && currentAdmin.companyId) {
+          if (currentAdmin.scope === 'OPERATION' && currentAdmin.companyId) {
             // 회사 관리자는 자신의 회사만 볼 수 있음
             filteredCompanies = companiesData.filter(c => c.id === currentAdmin.companyId);
-          } else if (currentAdmin.scope === 'COURSE') {
+          } else if (currentAdmin.scope === 'VIEW') {
             // 코스 관리자는 회사 선택 불가
             filteredCompanies = [];
           }
@@ -63,7 +62,7 @@ export const BookingManagementPage: React.FC = () => {
       try {
         let coursesData: Course[] = [];
         
-        if (currentAdmin?.scope === 'COURSE' && currentAdmin.courseIds) {
+        if (currentAdmin?.scope === 'VIEW' && currentAdmin.courseIds) {
           // 코스 관리자는 담당 코스만 조회
           const allCourses = await courseApi.getAllCourses();
           coursesData = allCourses.filter(course => 
@@ -159,7 +158,7 @@ export const BookingManagementPage: React.FC = () => {
               ({companies.find(c => c.id === selectedCompany)?.name})
             </span>
           )}
-          {currentAdmin?.scope === 'COURSE' && (
+          {currentAdmin?.scope === 'VIEW' && (
             <span className="text-sm font-normal text-gray-500 ml-2">
               (담당 코스)
             </span>
@@ -174,7 +173,7 @@ export const BookingManagementPage: React.FC = () => {
         ) : courses.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-500">
-              {currentAdmin?.scope === 'COURSE' 
+              {currentAdmin?.scope === 'VIEW' 
                 ? '담당하는 코스가 없습니다.' 
                 : selectedCompany 
                   ? '등록된 코스가 없습니다.' 

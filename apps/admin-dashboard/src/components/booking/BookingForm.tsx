@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { bookingApi } from '../../api/bookingApi';
+import { bookingApi } from '@/lib/api/bookingApi';
 import type { 
   Course, 
   TimeSlotAvailability, 

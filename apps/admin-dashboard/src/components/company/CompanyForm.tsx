@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
 import type { Company, CompanyStatus, CreateCompanyDto, UpdateCompanyDto } from '../../types/company';
-import { createCompany, updateCompany } from '../../redux/slices/companySlice';
-import type { AppDispatch } from '../../redux/store';
+import { useCreateCompany, useUpdateCompany } from '@/hooks/queries';
 import PostalSearchModal from './PostalSearchModal';
 
 interface CompanyFormProps {
@@ -196,7 +194,8 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
     }
   };
 
-  const dispatch = useDispatch<AppDispatch>();
+  const createCompanyMutation = useCreateCompany();
+  const updateCompanyMutation = useUpdateCompany();
 
   const handlePostalSearch = () => {
     setIsPostalSearchOpen(true);
@@ -222,17 +221,18 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     setIsSubmitting(true);
-    
+
     try {
+      const combinedAddress = [formData.postalCode, formData.address1, formData.address2].filter(Boolean).join(' ');
+
       if (isEdit && company) {
-        // 수정 모드: Redux updateCompany 액션 디스패치
-        const combinedAddress = [formData.postalCode, formData.address1, formData.address2].filter(Boolean).join(' ');
+        // 수정 모드: TanStack Query mutation 사용
         const updateData: UpdateCompanyDto = {
           name: formData.name,
           businessNumber: formData.businessNumber,
@@ -245,12 +245,11 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
           logoUrl: formData.logoUrl || undefined,
           status: formData.status
         };
-        
-        await dispatch(updateCompany({ id: company.id, data: updateData })).unwrap();
+
+        await updateCompanyMutation.mutateAsync({ id: company.id, data: updateData });
         alert('회사 정보가 성공적으로 수정되었습니다.');
       } else {
-        // 생성 모드: Redux createCompany 액션 디스패치
-        const combinedAddress = [formData.postalCode, formData.address1, formData.address2].filter(Boolean).join(' ');
+        // 생성 모드: TanStack Query mutation 사용
         const createData: CreateCompanyDto = {
           name: formData.name,
           businessNumber: formData.businessNumber,
@@ -263,13 +262,12 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
           logoUrl: formData.logoUrl || undefined,
           status: formData.status
         };
-        
-        await dispatch(createCompany(createData)).unwrap();
+
+        await createCompanyMutation.mutateAsync(createData);
         alert('새 회사가 성공적으로 등록되었습니다.');
       }
-      
+
       // 성공 시 onSuccess 콜백 호출 (화면 전환용)
-      const combinedAddress = [formData.postalCode, formData.address1, formData.address2].filter(Boolean).join(' ');
       const submitData: Partial<Company> = {
         ...formData,
         address: combinedAddress,
@@ -277,10 +275,10 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
         logoUrl: formData.logoUrl || null
       };
       onSuccess(submitData);
-      
+
     } catch (error: any) {
-      // Redux에서 반환된 에러 메시지 표시
-      alert(error || (isEdit ? '회사 정보 수정에 실패했습니다.' : '회사 등록에 실패했습니다.'));
+      const errorMessage = error?.message || (isEdit ? '회사 정보 수정에 실패했습니다.' : '회사 등록에 실패했습니다.');
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

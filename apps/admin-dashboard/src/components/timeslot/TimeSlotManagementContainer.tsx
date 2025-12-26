@@ -6,19 +6,18 @@ import { NewTimeSlotForm } from './NewTimeSlotForm';
 import { TimeSlotDetailView } from './TimeSlotDetailView';
 import { TimeSlotGenerationModal } from './TimeSlotGenerationModal';
 import { NineHoleCourseSelector } from './NineHoleCourseSelector';
-import { useGolfCourseManagement } from '../../redux/hooks/useCourse';
-import { useAppDispatch, useAppSelector } from '../../redux/hooks/reduxHooks';
-import { fetchCompanies, fetchCoursesByCompany } from '../../redux/slices/courseSlice';
-import type { 
-  TimeSlot, 
-  TimeSlotFilters as TimeSlotFiltersType, 
+import { useCompanies } from '@/hooks/queries';
+import { useCoursesByCompany } from '@/hooks/queries';
+import type {
+  TimeSlot,
+  TimeSlotFilters as TimeSlotFiltersType,
   TimeSlotStats as TimeSlotStatsType,
   CreateTimeSlotDto,
   UpdateTimeSlotDto,
   BulkTimeSlotOperation,
   TimeSlotGenerationConfig
 } from '../../types/timeslot';
-import { timeSlotApi } from '../../api/timeSlotApi';
+import { timeSlotApi } from '@/lib/api/timeSlotApi';
 
 interface TimeSlotFilters {
   companyId?: number;
@@ -39,15 +38,19 @@ export const TimeSlotManagementContainer: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  
-  // Redux hooks - 직접 store 접근으로 권한 필터링 우회
-  const dispatch = useAppDispatch();
-  const { companies, courses, isLoading, error: reduxError } = useAppSelector((state: any) => state.course);
-  
-  const companiesLoading = isLoading;
-  const coursesLoading = isLoading;
-  const companiesError = reduxError;
-  const coursesError = reduxError;
+
+  // Course selection state (moved up for use in TanStack Query)
+  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
+
+  // TanStack Query hooks
+  const { data: companiesData, isLoading: companiesLoading, error: companiesError } = useCompanies();
+  const { data: coursesData, isLoading: coursesLoading, error: coursesError } = useCoursesByCompany(
+    selectedCompanyId ?? 0,
+    { enabled: !!selectedCompanyId }
+  );
+
+  const companies = companiesData?.data ?? [];
+  const courses = coursesData ?? [];
 
   // UI state
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -63,30 +66,10 @@ export const TimeSlotManagementContainer: React.FC = () => {
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Course selection state
-  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
+  // Course selection state (selectedCompanyId already declared above)
   const [selectedFirstCourseId, setSelectedFirstCourseId] = useState<number | null>(null);
   const [selectedSecondCourseId, setSelectedSecondCourseId] = useState<number | null>(null);
   const [roundType, setRoundType] = useState<'NINE_HOLE' | 'EIGHTEEN_HOLE'>('EIGHTEEN_HOLE');
-
-  // Load initial data
-  useEffect(() => {
-    dispatch(fetchCompanies());
-  }, [dispatch]);
-
-  useEffect(() => {
-    if (selectedCompanyId) {
-      console.log('TimeSlot - useEffect triggered for company:', selectedCompanyId);
-      dispatch(fetchCoursesByCompany(selectedCompanyId));
-    }
-  }, [selectedCompanyId, dispatch]);
-
-  // courses 변화 감지
-  useEffect(() => {
-    console.log('TimeSlot - Courses updated:', courses);
-    console.log('TimeSlot - Filtered courses for company', selectedCompanyId, ':', 
-      selectedCompanyId ? courses.filter(c => c.companyId === selectedCompanyId) : []);
-  }, [courses, selectedCompanyId]);
 
   // Load time slots when filters change
   useEffect(() => {

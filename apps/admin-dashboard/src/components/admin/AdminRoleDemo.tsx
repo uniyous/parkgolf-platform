@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import type { Admin, AdminRole, AdminScope } from '../../types';
-import { 
-  ADMIN_ROLE_LABELS, 
-  PERMISSION_LABELS, 
+import {
+  ADMIN_ROLE_LABELS,
+  PERMISSION_LABELS,
   ADMIN_ROLE_COLORS,
   getDefaultPermissions,
   getRoleScope,
@@ -10,18 +10,18 @@ import {
   hasPermission,
   isPlatformAdmin,
   isCompanyAdmin
-} from '../../utils/adminPermissions';
+} from '@/utils';
 
 // 데모용 관리자 데이터
 const demoAdmins: Admin[] = [
   {
     id: 1,
-    username: 'platform_owner',
-    email: 'owner@parkgolf.com',
-    name: '김플랫폼',
-    role: 'PLATFORM_OWNER',
-    scope: 'PLATFORM',
-    permissions: getDefaultPermissions('PLATFORM_OWNER'),
+    username: 'system_admin',
+    email: 'admin@parkgolf.com',
+    name: '김관리자',
+    role: 'ADMIN',
+    scope: 'SYSTEM',
+    permissions: getDefaultPermissions('ADMIN'),
     isActive: true,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
@@ -29,30 +29,30 @@ const demoAdmins: Admin[] = [
   },
   {
     id: 2,
-    username: 'platform_admin',
-    email: 'admin@parkgolf.com',
-    name: '박운영',
-    role: 'PLATFORM_ADMIN',
-    scope: 'PLATFORM',
-    permissions: getDefaultPermissions('PLATFORM_ADMIN'),
+    username: 'support_admin',
+    email: 'support@parkgolf.com',
+    name: '박지원',
+    role: 'SUPPORT',
+    scope: 'SYSTEM',
+    permissions: getDefaultPermissions('SUPPORT'),
     isActive: true,
     createdAt: '2024-01-02T00:00:00Z',
     updatedAt: '2024-01-02T00:00:00Z',
-    department: '본사 운영팀'
+    department: '고객지원팀'
   },
   {
     id: 3,
-    username: 'company_owner_a',
-    email: 'owner@golf-company-a.com',
-    name: '이회사A',
-    role: 'COMPANY_OWNER',
-    scope: 'COMPANY',
-    permissions: getDefaultPermissions('COMPANY_OWNER'),
+    username: 'manager_a',
+    email: 'manager@golf-company-a.com',
+    name: '이운영',
+    role: 'MANAGER',
+    scope: 'OPERATION',
+    permissions: getDefaultPermissions('MANAGER'),
     isActive: true,
     createdAt: '2024-01-03T00:00:00Z',
     updatedAt: '2024-01-03T00:00:00Z',
     companyId: 1,
-    department: '경영진',
+    department: '운영팀',
     company: {
       id: 1,
       name: '파크골프A',
@@ -68,33 +68,33 @@ const demoAdmins: Admin[] = [
   },
   {
     id: 4,
-    username: 'course_manager_a1',
-    email: 'manager@golf-course-a1.com',
-    name: '최코스A1',
-    role: 'COURSE_MANAGER',
-    scope: 'COURSE',
-    permissions: getDefaultPermissions('COURSE_MANAGER'),
+    username: 'staff_a1',
+    email: 'staff@golf-course-a1.com',
+    name: '최현장',
+    role: 'STAFF',
+    scope: 'OPERATION',
+    permissions: getDefaultPermissions('STAFF'),
     isActive: true,
     createdAt: '2024-01-04T00:00:00Z',
     updatedAt: '2024-01-04T00:00:00Z',
     companyId: 1,
     courseIds: [1],
-    department: '코스 운영팀'
+    department: '현장 운영팀'
   },
   {
     id: 5,
-    username: 'staff_a1',
-    email: 'staff@golf-course-a1.com',
-    name: '김직원A1',
-    role: 'STAFF',
-    scope: 'COURSE',
-    permissions: getDefaultPermissions('STAFF'),
+    username: 'viewer_a1',
+    email: 'viewer@golf-course-a1.com',
+    name: '김조회',
+    role: 'VIEWER',
+    scope: 'VIEW',
+    permissions: getDefaultPermissions('VIEWER'),
     isActive: true,
     createdAt: '2024-01-05T00:00:00Z',
     updatedAt: '2024-01-05T00:00:00Z',
     companyId: 1,
     courseIds: [1],
-    department: '고객 서비스팀'
+    department: '조회 전용'
   }
 ];
 

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ADMIN_ROLE_LABELS, ADMIN_ROLE_COLORS } from '../../../utils/adminPermissions';
+import { ADMIN_ROLE_LABELS, ADMIN_ROLE_COLORS } from '@/utils';
 import type { AdminRole } from '../../../types';
 
 interface UserDropdownProps {

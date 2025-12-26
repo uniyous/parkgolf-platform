@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { courseApi } from '../../api/courseApi';
+import { courseApi } from '@/lib/api/courseApi';
 import { BookingCalendar } from './BookingCalendar';
 import { TimeSlotPicker } from './TimeSlotPicker';
 import { BookingForm } from './BookingForm';

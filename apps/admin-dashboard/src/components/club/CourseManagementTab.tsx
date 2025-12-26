@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Club, Course, CourseCombo, CreateCourseDto } from '../../types/club';
-import { useClub } from '../../redux/hooks/useClub';
+import { useClub } from '@/hooks';
 
 interface CourseManagementTabProps {
   club: Club;

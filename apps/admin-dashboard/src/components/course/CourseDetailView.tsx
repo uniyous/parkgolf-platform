@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Course, UpdateCourseDto, Hole } from '../../types';
 import type { TimeSlot } from '../../types/timeslot';
-import { courseApi } from '../../api/courseApi';
+import { courseApi } from '@/lib/api/courseApi';
 import { HoleFormModal } from './HoleFormModal';
 import { TimeSlotCard } from '../timeslot/TimeSlotCard';
-import { useBreadcrumb } from '../../redux/hooks/useBreadcrumb';
+import { useBreadcrumb } from '@/stores';
 
 interface CourseDetailViewProps {
   course: Course;

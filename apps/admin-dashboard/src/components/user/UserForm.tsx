@@ -43,30 +43,11 @@ export const UserForm: React.FC<UserFormProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
 
-  // Available permissions by role
+  // v3 Available permissions by role
   const availablePermissions = {
-    ADMIN: [
-      'ALL_PERMISSIONS',
-      'MANAGE_USERS',
-      'MANAGE_COURSES',
-      'MANAGE_BOOKINGS',
-      'MANAGE_NOTIFICATIONS',
-      'VIEW_REPORTS',
-      'SYSTEM_SETTINGS'
-    ],
-    MANAGER: [
-      'MANAGE_COURSES',
-      'MANAGE_BOOKINGS',
-      'MANAGE_NOTIFICATIONS',
-      'VIEW_REPORTS',
-      'READ_PROFILE'
-    ],
-    USER: [
-      'READ_PROFILE',
-      'BOOK_COURSE',
-      'VIEW_BOOKINGS',
-      'UPDATE_PROFILE'
-    ]
+    ADMIN: ['ALL', 'COMPANIES', 'COURSES', 'TIMESLOTS', 'BOOKINGS', 'USERS', 'ADMINS', 'ANALYTICS', 'SUPPORT', 'VIEW'],
+    MANAGER: ['COMPANIES', 'COURSES', 'TIMESLOTS', 'BOOKINGS', 'USERS', 'ADMINS', 'ANALYTICS', 'VIEW'],
+    USER: ['PROFILE', 'COURSE_VIEW', 'BOOKING_VIEW', 'BOOKING_MANAGE', 'PAYMENT']
   };
 
   // Initialize form data

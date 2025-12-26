@@ -34,6 +34,7 @@ export interface Course {
   id: number;
   name: string;
   companyId: number;
+  companyName?: string;
   location?: string | null;
   description?: string | null;
   holeCount?: number;
@@ -51,10 +52,35 @@ export interface Course {
   // 추가 필드
   address?: string;
   phoneNumber?: string;
+  email?: string;
+  website?: string;
   numberOfHoles?: number;
-  // 관계 필드 (선택적)
-  // holes?: Hole[];
-  // courseWeeklySchedules?: CourseWeeklySchedule[];
+  // Course specifications (optional)
+  yardage?: number;
+  distance?: number;
+  difficultyLevel?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PROFESSIONAL' | 'CHAMPIONSHIP';
+  courseType?: 'PUBLIC' | 'PRIVATE' | 'RESORT' | 'MUNICIPAL' | 'LINKS' | 'PARKLAND' | 'DESERT' | 'MOUNTAIN';
+  difficulty?: number;
+  scenicRating?: number;
+  // Facilities (optional)
+  facilities?: string[];
+  amenities?: string[];
+  dressCode?: string;
+  // Pricing (optional)
+  weekdayPrice?: number;
+  weekendPrice?: number;
+  memberPrice?: number;
+  cartFee?: number;
+  caddyFee?: number;
+  // Operational
+  openTime?: string;
+  closeTime?: string;
+  restDays?: string[];
+  // Club reference (optional)
+  clubId?: number;
+  code?: string;
+  subtitle?: string;
+  totalDistance?: number;
 }
 
 export interface Hole {
@@ -192,74 +218,45 @@ export interface AuthResponse {
   user: User;
 }
 
-// --- Admin Types ---
-// 플랫폼 레벨 관리자 (본사)
-export type PlatformAdminRole = 
-  | 'PLATFORM_OWNER'        // 플랫폼 최고 관리자
-  | 'PLATFORM_ADMIN'        // 플랫폼 운영 관리자  
-  | 'PLATFORM_SUPPORT'      // 플랫폼 지원팀
-  | 'PLATFORM_ANALYST';     // 플랫폼 분석가
+// --- Admin Types (v2 - 단순화된 구조) ---
 
-// 회사 레벨 관리자 (골프장 운영사)
-export type CompanyAdminRole = 
-  | 'COMPANY_OWNER'         // 회사 대표
-  | 'COMPANY_MANAGER'       // 회사 운영 관리자
-  | 'COURSE_MANAGER'        // 코스별 관리자
-  | 'STAFF'                 // 일반 직원
-  | 'READONLY_STAFF';       // 조회 전용 직원
+// 관리자 역할 (5개로 단순화)
+export type AdminRole =
+  | 'ADMIN'     // 시스템 관리자 - 전체 권한
+  | 'SUPPORT'   // 고객지원 - 예약/사용자/분석/지원
+  | 'MANAGER'   // 운영 관리자 - 코스/예약/사용자/관리자/분석
+  | 'STAFF'     // 현장 직원 - 타임슬롯/예약/지원
+  | 'VIEWER';   // 조회 전용 - 조회만
 
-// 통합 관리자 역할
-export type AdminRole = PlatformAdminRole | CompanyAdminRole;
+// 관리자 범위 타입 (역할에서 자동 추론되므로 단순화)
+export type AdminScope = 'SYSTEM' | 'OPERATION' | 'VIEW';
 
-// 관리자 범위 타입
-export type AdminScope = 'PLATFORM' | 'COMPANY' | 'COURSE';
+// 권한 정의 (18개: 관리자 10개 + 사용자 8개)
+export type Permission =
+  // 관리자 권한 (10개)
+  | 'ALL'              // 전체 권한
+  | 'COMPANIES'        // 회사 관리
+  | 'COURSES'          // 코스 관리
+  | 'TIMESLOTS'        // 타임슬롯 관리
+  | 'BOOKINGS'         // 예약 관리
+  | 'USERS'            // 사용자 관리
+  | 'ADMINS'           // 관리자 관리
+  | 'ANALYTICS'        // 분석/리포트
+  | 'SUPPORT'          // 고객 지원
+  | 'VIEW'             // 조회
+  // 사용자 권한 (8개)
+  | 'PROFILE'          // 프로필 관리
+  | 'COURSE_VIEW'      // 코스 조회
+  | 'BOOKING_VIEW'     // 예약 조회
+  | 'BOOKING_MANAGE'   // 예약 생성/수정/취소
+  | 'PAYMENT'          // 결제/환불
+  | 'PREMIUM_BOOKING'  // 프리미엄 예약
+  | 'PRIORITY_BOOKING' // 우선 예약
+  | 'ADVANCED_SEARCH'; // 고급 검색
 
-// 상세 권한 정의
-export type Permission = 
-  // 플랫폼 권한
-  | 'PLATFORM_ALL'               // 플랫폼 전체 권한
-  | 'PLATFORM_COMPANY_MANAGE'    // 회사 관리
-  | 'PLATFORM_USER_MANAGE'       // 전체 사용자 관리
-  | 'PLATFORM_SYSTEM_CONFIG'     // 시스템 설정
-  | 'PLATFORM_ANALYTICS'         // 전체 분석
-  | 'PLATFORM_SUPPORT'           // 고객 지원
-  
-  // 회사 권한
-  | 'COMPANY_ALL'                // 회사 전체 권한
-  | 'COMPANY_ADMIN_MANAGE'       // 회사 관리자 관리
-  | 'COMPANY_COURSE_MANAGE'      // 회사 코스 관리
-  | 'COMPANY_BOOKING_MANAGE'     // 회사 예약 관리
-  | 'COMPANY_USER_MANAGE'        // 회사 고객 관리
-  | 'COMPANY_ANALYTICS'          // 회사 분석
-  
-  // 코스 권한
-  | 'COURSE_TIMESLOT_MANAGE'     // 타임슬롯 관리
-  | 'COURSE_BOOKING_MANAGE'      // 예약 관리
-  | 'COURSE_CUSTOMER_VIEW'       // 고객 조회
-  | 'COURSE_ANALYTICS_VIEW'      // 코스 분석 조회
-  
-  // 기본 권한
-  | 'READ_ONLY'                  // 조회 전용
-  | 'BOOKING_RECEPTION'          // 예약 접수
-  | 'CUSTOMER_SUPPORT'           // 고객 응대
-  
-  // UI 네비게이션 권한 (통합)
-  | 'VIEW_DASHBOARD'             // 대시보드 조회
-  | 'MANAGE_COMPANIES'           // 회사 관리
-  | 'MANAGE_COURSES'            // 코스 관리
-  | 'MANAGE_TIMESLOTS'          // 타임슬롯 관리
-  | 'MANAGE_BOOKINGS'           // 예약 관리
-  | 'MANAGE_USERS'              // 사용자 관리
-  | 'MANAGE_ADMINS'             // 관리자 관리
-  | 'MANAGE_PAYMENTS'           // 결제 관리
-  | 'VIEW_ANALYTICS'            // 분석 조회
-  | 'VIEW_REPORTS'              // 리포트 조회
-  | 'MANAGE_NOTIFICATIONS'      // 알림 관리
-  | 'MANAGE_SYSTEM'             // 시스템 관리
-  | 'MANAGE_PERMISSIONS'        // 권한 관리
-  | 'VIEW_LOGS'                 // 로그 조회
-  | 'MANAGE_BACKUPS'            // 백업 관리
-  | 'VIEW_ADMIN_ROLES';         // 관리자 역할 조회
+// 하위 호환성을 위한 레거시 타입 별칭 (deprecated)
+export type PlatformAdminRole = 'ADMIN' | 'SUPPORT';
+export type CompanyAdminRole = 'MANAGER' | 'STAFF' | 'VIEWER';
 
 export interface Admin {
   id: number;
@@ -267,53 +264,41 @@ export interface Admin {
   email: string;
   name: string;
   role: AdminRole;
-  scope: AdminScope;
+  scope?: AdminScope;           // 역할에서 자동 추론 가능
   permissions: Permission[];
   isActive: boolean;
   lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
-  
-  // 관리 범위 정의
-  companyId?: number;           // 특정 회사 관리자인 경우
-  courseIds?: number[];         // 특정 코스 관리자인 경우
-  
+
   // 추가 필드
   phone?: string;
   department?: string;
   description?: string;
-  
-  // 관계 필드
-  company?: Company;            // 소속 회사 정보
-  managedCourses?: Course[];    // 관리하는 코스들
+
+  // 관계 필드 (선택)
+  companyId?: number;
+  company?: Company;
 }
 
 export interface CreateAdminDto {
-  username: string;
   email: string;
   name: string;
   password: string;
   role: AdminRole;
-  scope: AdminScope;
   permissions?: Permission[];
   isActive?: boolean;
-  companyId?: number;           // 회사 관리자인 경우 필수
-  courseIds?: number[];         // 코스 관리자인 경우 필수
   phone?: string;
   department?: string;
   description?: string;
 }
 
 export interface UpdateAdminDto {
-  username?: string;
   email?: string;
   name?: string;
   role?: AdminRole;
-  scope?: AdminScope;
   permissions?: Permission[];
   isActive?: boolean;
-  companyId?: number;
-  courseIds?: number[];
   phone?: string;
   department?: string;
   description?: string;
@@ -423,12 +408,20 @@ export interface Booking {
   courseId: number;
   bookingDate: string; // YYYY-MM-DD format
   timeSlot: string;    // HH:MM format
+  startTime?: string;  // HH:MM format (optional for display)
+  endTime?: string;    // HH:MM format (optional for display)
   playerCount: number;
+  numberOfPlayers?: number; // alias for playerCount
   totalPrice: number;
   totalAmount: number; // alias for totalPrice
   status: keyof BookingStatus;
   notes?: string;
   customerName?: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  specialRequests?: string;
+  paymentMethod?: 'CASH' | 'CARD' | 'TRANSFER' | 'MOBILE';
+  paymentStatus?: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   createdAt: string;
   updatedAt: string;
 }
@@ -441,6 +434,13 @@ export interface CreateBookingDto {
   timeSlot: string;
   playerCount: number;
   notes?: string;
+  customerName?: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  numberOfPlayers?: number;
+  specialRequests?: string;
+  paymentMethod?: 'CASH' | 'CARD' | 'TRANSFER' | 'MOBILE';
+  paymentStatus?: 'PENDING' | 'PAID' | 'FAILED';
 }
 
 export interface BookingFilters {
@@ -452,4 +452,20 @@ export interface BookingFilters {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }
+
+export interface UpdateBookingDto {
+  courseId?: number;
+  timeSlotId?: number;
+  bookingDate?: string;
+  timeSlot?: string;
+  playerCount?: number;
+  notes?: string;
+  status?: keyof BookingStatus;
+  customerName?: string;
+  customerPhone?: string;
+  customerEmail?: string;
+}
+
+// Common types re-export
+export * from './common';
 

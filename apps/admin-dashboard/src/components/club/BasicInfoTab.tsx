@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Club, UpdateClubDto } from '../../types/club';
-import { useClub } from '../../redux/hooks/useClub';
+import { useClub } from '@/hooks';
 
 interface BasicInfoTabProps {
   club: Club;
@@ -29,11 +29,11 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
   const handleSave = async () => {
     try {
       const result = await updateExistingClub(club.id, formData);
-      if (result.payload) {
-        onUpdate(result.payload as Club);
+      if (result) {
+        onUpdate(result as Club);
         setIsEditing(false);
       } else {
-        console.error('Update failed: no payload received');
+        console.error('Update failed: no result received');
         alert('골프장 정보 수정에 실패했습니다.');
       }
     } catch (error) {

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
-import { useAuth } from '../redux/hooks/useAuth';
+import { useAuth } from './useAuth';
 import type { Permission, AdminRole, Admin } from '../types';
+import { ROLE_PERMISSIONS, hasPermission as checkPermission } from '../utils/admin-permissions';
 
 export interface UseRolePermissionReturn {
   currentAdmin: Admin | null;
@@ -11,19 +12,15 @@ export interface UseRolePermissionReturn {
   hasAllPermissions: (permissions: Permission[]) => boolean;
   isRole: (role: AdminRole) => boolean;
   isAnyRole: (roles: AdminRole[]) => boolean;
-  
-  // 새로운 역할 체크 함수들
-  isPlatformOwner: () => boolean;
-  isPlatformAdmin: () => boolean;
-  isPlatformSupport: () => boolean;
-  isPlatformAnalyst: () => boolean;
-  isCompanyOwner: () => boolean;
-  isCompanyManager: () => boolean;
-  isCourseManager: () => boolean;
+
+  // 역할 체크 함수들 (v3 - 단순화)
+  isAdmin: () => boolean;
+  isSupport: () => boolean;
+  isManager: () => boolean;
   isStaff: () => boolean;
-  isReadonlyStaff: () => boolean;
-  
-  // 새로운 권한 체크 함수들 (실제 Permission 사용)
+  isViewer: () => boolean;
+
+  // 권한 체크 함수들 (v3 - 단순화된 18개 권한)
   canViewDashboard: () => boolean;
   canManageCompanies: () => boolean;
   canManageCourses: () => boolean;
@@ -32,172 +29,64 @@ export interface UseRolePermissionReturn {
   canManageUsers: () => boolean;
   canManageAdmins: () => boolean;
   canViewAnalytics: () => boolean;
-  canManageSystem: () => boolean;
-  
+  canManageSupport: () => boolean;
+  hasFullAccess: () => boolean;
+
   // 레벨별 권한 체크
+  isSystemLevel: () => boolean;
+  isOperationLevel: () => boolean;
+  isViewLevel: () => boolean;
+
+  // 하위 호환성 (deprecated)
+  /** @deprecated Use isAdmin() instead */
+  isPlatformOwner: () => boolean;
+  /** @deprecated Use isAdmin() instead */
+  isPlatformAdmin: () => boolean;
+  /** @deprecated Use isSupport() instead */
+  isPlatformSupport: () => boolean;
+  /** @deprecated Use isViewer() instead */
+  isPlatformAnalyst: () => boolean;
+  /** @deprecated Use isManager() instead */
+  isCompanyOwner: () => boolean;
+  /** @deprecated Use isManager() instead */
+  isCompanyManager: () => boolean;
+  /** @deprecated Use isStaff() instead */
+  isCourseManager: () => boolean;
+  /** @deprecated Use isViewer() instead */
+  isReadonlyStaff: () => boolean;
+
+  // 레벨별 (deprecated)
+  /** @deprecated Use isSystemLevel() instead */
   isPlatformLevel: () => boolean;
+  /** @deprecated Use isOperationLevel() instead */
   isCompanyLevel: () => boolean;
+  /** @deprecated Use isOperationLevel() instead */
   isCourseLevel: () => boolean;
 }
 
-// 새로운 AdminRole 시스템의 권한 매트릭스 (실제 Permission 사용)
-const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
-  'PLATFORM_OWNER': [
-    'PLATFORM_ALL',
-    'PLATFORM_COMPANY_MANAGE',
-    'PLATFORM_USER_MANAGE',
-    'PLATFORM_SYSTEM_CONFIG',
-    'PLATFORM_ANALYTICS',
-    'PLATFORM_SUPPORT',
-    'COMPANY_ALL',
-    'COMPANY_ADMIN_MANAGE',
-    'COMPANY_COURSE_MANAGE',
-    'COMPANY_BOOKING_MANAGE',
-    'COMPANY_USER_MANAGE',
-    'COMPANY_ANALYTICS',
-    'COURSE_TIMESLOT_MANAGE',
-    'COURSE_BOOKING_MANAGE',
-    'COURSE_CUSTOMER_VIEW',
-    'COURSE_ANALYTICS_VIEW',
-    'VIEW_DASHBOARD',
-    'MANAGE_COMPANIES',
-    'MANAGE_COURSES',
-    'MANAGE_TIMESLOTS',
-    'MANAGE_BOOKINGS',
-    'MANAGE_USERS',
-    'MANAGE_ADMINS',
-    'VIEW_ANALYTICS',
-  ],
-  
-  'PLATFORM_ADMIN': [
-    'PLATFORM_COMPANY_MANAGE',
-    'PLATFORM_USER_MANAGE',
-    'PLATFORM_ANALYTICS',
-    'PLATFORM_SUPPORT',
-    'COMPANY_ALL',
-    'COMPANY_ADMIN_MANAGE',
-    'COMPANY_COURSE_MANAGE',
-    'COMPANY_BOOKING_MANAGE',
-    'COMPANY_USER_MANAGE',
-    'COMPANY_ANALYTICS',
-    'VIEW_DASHBOARD',
-    'MANAGE_COMPANIES',
-    'MANAGE_COURSES',
-    'MANAGE_TIMESLOTS',
-    'MANAGE_BOOKINGS',
-    'MANAGE_USERS',
-    'MANAGE_ADMINS',
-    'VIEW_ANALYTICS',
-  ],
-  
-  'PLATFORM_SUPPORT': [
-    'PLATFORM_SUPPORT',
-    'COMPANY_USER_MANAGE',
-    'COMPANY_BOOKING_MANAGE',
-    'COURSE_BOOKING_MANAGE',
-    'COURSE_CUSTOMER_VIEW',
-    'CUSTOMER_SUPPORT',
-    'BOOKING_RECEPTION',
-    'VIEW_DASHBOARD',
-    'MANAGE_BOOKINGS',
-    'MANAGE_USERS',
-  ],
-  
-  'PLATFORM_ANALYST': [
-    'PLATFORM_ANALYTICS',
-    'COMPANY_ANALYTICS',
-    'COURSE_ANALYTICS_VIEW',
-    'READ_ONLY',
-    'VIEW_DASHBOARD',
-    'VIEW_ANALYTICS',
-  ],
-  
-  'COMPANY_OWNER': [
-    'COMPANY_ALL',
-    'COMPANY_ADMIN_MANAGE',
-    'COMPANY_COURSE_MANAGE',
-    'COMPANY_BOOKING_MANAGE',
-    'COMPANY_USER_MANAGE',
-    'COMPANY_ANALYTICS',
-    'COURSE_TIMESLOT_MANAGE',
-    'COURSE_BOOKING_MANAGE',
-    'COURSE_CUSTOMER_VIEW',
-    'COURSE_ANALYTICS_VIEW',
-    'VIEW_DASHBOARD',
-    'MANAGE_COURSES',
-    'MANAGE_TIMESLOTS',
-    'MANAGE_BOOKINGS',
-    'MANAGE_USERS',
-    'MANAGE_ADMINS',
-    'VIEW_ANALYTICS',
-  ],
-  
-  'COMPANY_MANAGER': [
-    'COMPANY_COURSE_MANAGE',
-    'COMPANY_BOOKING_MANAGE',
-    'COMPANY_USER_MANAGE',
-    'COMPANY_ANALYTICS',
-    'COURSE_TIMESLOT_MANAGE',
-    'COURSE_BOOKING_MANAGE',
-    'COURSE_CUSTOMER_VIEW',
-    'COURSE_ANALYTICS_VIEW',
-    'VIEW_DASHBOARD',
-    'MANAGE_COURSES',
-    'MANAGE_TIMESLOTS',
-    'MANAGE_BOOKINGS',
-    'MANAGE_USERS',
-    'VIEW_ANALYTICS',
-  ],
-  
-  'COURSE_MANAGER': [
-    'COURSE_TIMESLOT_MANAGE',
-    'COURSE_BOOKING_MANAGE',
-    'COURSE_CUSTOMER_VIEW',
-    'COURSE_ANALYTICS_VIEW',
-    'BOOKING_RECEPTION',
-    'CUSTOMER_SUPPORT',
-    'VIEW_DASHBOARD',
-    'MANAGE_TIMESLOTS',
-    'MANAGE_BOOKINGS',
-  ],
-  
-  'STAFF': [
-    'COURSE_BOOKING_MANAGE',
-    'COURSE_CUSTOMER_VIEW',
-    'BOOKING_RECEPTION',
-    'CUSTOMER_SUPPORT',
-    'VIEW_DASHBOARD',
-    'MANAGE_BOOKINGS',
-  ],
-  
-  'READONLY_STAFF': [
-    'COURSE_CUSTOMER_VIEW',
-    'COURSE_ANALYTICS_VIEW',
-    'READ_ONLY',
-    'VIEW_DASHBOARD',
-  ],
-};
-
 export function useRolePermission(): UseRolePermissionReturn {
   const { user } = useAuth();
-  
+
   const currentAdmin = user as Admin | null;
   const currentRole = currentAdmin?.role as AdminRole | null;
-  
+
   const permissions = useMemo((): Permission[] => {
     if (!currentAdmin || !currentRole) return [];
+    // 서버에서 받은 권한 우선, 없으면 역할 기반 기본 권한
     return currentAdmin.permissions || ROLE_PERMISSIONS[currentRole] || [];
   }, [currentAdmin, currentRole]);
 
   const hasPermission = (permission: Permission): boolean => {
-    return permissions.includes(permission);
+    return checkPermission(permissions, permission);
   };
 
   const hasAnyPermission = (requiredPermissions: Permission[]): boolean => {
+    if (permissions.includes('ALL')) return true;
     return requiredPermissions.some(permission => permissions.includes(permission));
   };
 
   const hasAllPermissions = (requiredPermissions: Permission[]): boolean => {
+    if (permissions.includes('ALL')) return true;
     return requiredPermissions.every(permission => permissions.includes(permission));
   };
 
@@ -209,32 +98,43 @@ export function useRolePermission(): UseRolePermissionReturn {
     return currentRole ? roles.includes(currentRole) : false;
   };
 
-  // 새로운 역할 체크 함수들
-  const isPlatformOwner = (): boolean => isRole('PLATFORM_OWNER');
-  const isPlatformAdmin = (): boolean => isRole('PLATFORM_ADMIN');
-  const isPlatformSupport = (): boolean => isRole('PLATFORM_SUPPORT');
-  const isPlatformAnalyst = (): boolean => isRole('PLATFORM_ANALYST');
-  const isCompanyOwner = (): boolean => isRole('COMPANY_OWNER');
-  const isCompanyManager = (): boolean => isRole('COMPANY_MANAGER');
-  const isCourseManager = (): boolean => isRole('COURSE_MANAGER');
+  // 역할 체크 함수들 (v3)
+  const isAdmin = (): boolean => isRole('ADMIN');
+  const isSupport = (): boolean => isRole('SUPPORT');
+  const isManager = (): boolean => isRole('MANAGER');
   const isStaff = (): boolean => isRole('STAFF');
-  const isReadonlyStaff = (): boolean => isRole('READONLY_STAFF');
+  const isViewer = (): boolean => isRole('VIEWER');
 
-  // 새로운 권한 체크 함수들 (실제 Permission 사용)
-  const canViewDashboard = (): boolean => hasPermission('VIEW_DASHBOARD');
-  const canManageCompanies = (): boolean => hasPermission('MANAGE_COMPANIES');
-  const canManageCourses = (): boolean => hasPermission('MANAGE_COURSES');
-  const canManageTimeslots = (): boolean => hasPermission('MANAGE_TIMESLOTS');
-  const canManageBookings = (): boolean => hasPermission('MANAGE_BOOKINGS');
-  const canManageUsers = (): boolean => hasPermission('MANAGE_USERS');
-  const canManageAdmins = (): boolean => hasPermission('COMPANY_ADMIN_MANAGE');
-  const canViewAnalytics = (): boolean => hasPermission('VIEW_ANALYTICS');
-  const canManageSystem = (): boolean => hasPermission('PLATFORM_SYSTEM_CONFIG');
+  // 권한 체크 함수들 (v3 - 단순화된 권한)
+  const hasFullAccess = (): boolean => hasPermission('ALL');
+  const canViewDashboard = (): boolean => hasPermission('VIEW') || hasPermission('ALL');
+  const canManageCompanies = (): boolean => hasPermission('COMPANIES') || hasPermission('ALL');
+  const canManageCourses = (): boolean => hasPermission('COURSES') || hasPermission('ALL');
+  const canManageTimeslots = (): boolean => hasPermission('TIMESLOTS') || hasPermission('ALL');
+  const canManageBookings = (): boolean => hasPermission('BOOKINGS') || hasPermission('ALL');
+  const canManageUsers = (): boolean => hasPermission('USERS') || hasPermission('ALL');
+  const canManageAdmins = (): boolean => hasPermission('ADMINS') || hasPermission('ALL');
+  const canViewAnalytics = (): boolean => hasPermission('ANALYTICS') || hasPermission('ALL');
+  const canManageSupport = (): boolean => hasPermission('SUPPORT') || hasPermission('ALL');
 
   // 레벨별 권한 체크
-  const isPlatformLevel = (): boolean => isAnyRole(['PLATFORM_OWNER', 'PLATFORM_ADMIN', 'PLATFORM_SUPPORT', 'PLATFORM_ANALYST']);
-  const isCompanyLevel = (): boolean => isAnyRole(['COMPANY_OWNER', 'COMPANY_MANAGER']);
-  const isCourseLevel = (): boolean => isAnyRole(['COURSE_MANAGER', 'STAFF', 'READONLY_STAFF']);
+  const isSystemLevel = (): boolean => isAnyRole(['ADMIN', 'SUPPORT']);
+  const isOperationLevel = (): boolean => isAnyRole(['MANAGER', 'STAFF']);
+  const isViewLevel = (): boolean => isRole('VIEWER');
+
+  // 하위 호환성 함수들 (deprecated)
+  const isPlatformOwner = (): boolean => isAdmin();
+  const isPlatformAdmin = (): boolean => isAdmin();
+  const isPlatformSupport = (): boolean => isSupport();
+  const isPlatformAnalyst = (): boolean => isViewer();
+  const isCompanyOwner = (): boolean => isManager();
+  const isCompanyManager = (): boolean => isManager();
+  const isCourseManager = (): boolean => isStaff();
+  const isReadonlyStaff = (): boolean => isViewer();
+
+  const isPlatformLevel = (): boolean => isSystemLevel();
+  const isCompanyLevel = (): boolean => isOperationLevel();
+  const isCourseLevel = (): boolean => isOperationLevel() || isViewLevel();
 
   return {
     currentAdmin,
@@ -245,19 +145,15 @@ export function useRolePermission(): UseRolePermissionReturn {
     hasAllPermissions,
     isRole,
     isAnyRole,
-    
-    // 새로운 역할 체크 함수들
-    isPlatformOwner,
-    isPlatformAdmin,
-    isPlatformSupport,
-    isPlatformAnalyst,
-    isCompanyOwner,
-    isCompanyManager,
-    isCourseManager,
+
+    // 역할 체크 (v3)
+    isAdmin,
+    isSupport,
+    isManager,
     isStaff,
-    isReadonlyStaff,
-    
-    // 새로운 권한 체크 함수들
+    isViewer,
+
+    // 권한 체크 (v3)
     canViewDashboard,
     canManageCompanies,
     canManageCourses,
@@ -266,9 +162,23 @@ export function useRolePermission(): UseRolePermissionReturn {
     canManageUsers,
     canManageAdmins,
     canViewAnalytics,
-    canManageSystem,
-    
-    // 레벨별 권한 체크
+    canManageSupport,
+    hasFullAccess,
+
+    // 레벨별
+    isSystemLevel,
+    isOperationLevel,
+    isViewLevel,
+
+    // 하위 호환성 (deprecated)
+    isPlatformOwner,
+    isPlatformAdmin,
+    isPlatformSupport,
+    isPlatformAnalyst,
+    isCompanyOwner,
+    isCompanyManager,
+    isCourseManager,
+    isReadonlyStaff,
     isPlatformLevel,
     isCompanyLevel,
     isCourseLevel,

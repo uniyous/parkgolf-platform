@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { bookingApi } from '../../api/bookingApi';
+import { bookingApi } from '@/lib/api/bookingApi';
 import type { 
   Booking, 
   Course,
   BookingFilters as ApiBookingFilters 
 } from '../../types';
-import type { BookingListResponse, BookingStats } from '../../api/bookingApi';
+import type { BookingListResponse, BookingStats } from '@/lib/api/bookingApi';
 
 interface BookingListProps {
   course?: Course;

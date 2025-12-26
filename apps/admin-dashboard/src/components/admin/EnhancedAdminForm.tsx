@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useFormManager } from '../../hooks/useFormManager';
 import { useAdminActions } from '../../hooks/useAdminActions';
+import { getRoleScope } from '@/utils';
 import type { Admin, CreateAdminDto, UpdateAdminDto, AdminRole } from '../../types';
 
 interface EnhancedAdminFormProps {
@@ -40,7 +41,7 @@ export const EnhancedAdminForm: React.FC<EnhancedAdminFormProps> = ({
     name: admin?.name || '',
     password: '',
     confirmPassword: '',
-    role: admin?.role || 'READONLY_STAFF',
+    role: admin?.role || 'VIEWER',
     isActive: admin?.isActive ?? true,
     phone: admin?.phone || '',
     department: admin?.department || '',
@@ -128,6 +129,7 @@ export const EnhancedAdminForm: React.FC<EnhancedAdminFormProps> = ({
             name: data.name,
             password: data.password,
             role: data.role,
+            scope: getRoleScope(data.role),
             isActive: data.isActive,
             phone: data.phone,
             department: data.department,
@@ -147,70 +149,42 @@ export const EnhancedAdminForm: React.FC<EnhancedAdminFormProps> = ({
 
   const { formData, errors, handleInputChange, handleSubmit, isSubmitting, isDirty } = formManager;
 
-  // 역할 옵션 - 새로운 AdminRole 시스템 사용
+  // 역할 옵션 - v3 단순화된 역할 시스템
   const roleOptions = [
-    { 
-      value: 'READONLY_STAFF' as AdminRole, 
-      label: '조회 전용 직원', 
+    {
+      value: 'VIEWER' as AdminRole,
+      label: '조회 전용',
       description: '데이터 조회만 가능',
       icon: '👁️',
-      permissions: ['대시보드 조회', '고객 정보 조회', '분석 데이터 조회']
+      permissions: ['VIEW']
     },
-    { 
-      value: 'STAFF' as AdminRole, 
-      label: '일반 직원', 
-      description: '현장 업무 수행',
+    {
+      value: 'STAFF' as AdminRole,
+      label: '현장 직원',
+      description: '타임슬롯/예약/고객지원',
       icon: '👷',
-      permissions: ['예약 관리', '고객 지원', '예약 접수']
+      permissions: ['TIMESLOTS', 'BOOKINGS', 'SUPPORT', 'VIEW']
     },
-    { 
-      value: 'COURSE_MANAGER' as AdminRole, 
-      label: '코스 관리자', 
-      description: '코스 운영 관리',
-      icon: '⛳',
-      permissions: ['타임슬롯 관리', '예약 관리', '고객 지원', '코스 분석']
-    },
-    { 
-      value: 'COMPANY_MANAGER' as AdminRole, 
-      label: '회사 운영 관리자', 
-      description: '회사 일반 운영업무 관리',
+    {
+      value: 'MANAGER' as AdminRole,
+      label: '운영 관리자',
+      description: '회사/코스 운영 관리',
       icon: '👨‍💼',
-      permissions: ['코스 관리', '예약 관리', '사용자 관리', '회사 분석']
+      permissions: ['COMPANIES', 'COURSES', 'TIMESLOTS', 'BOOKINGS', 'USERS', 'ADMINS', 'ANALYTICS', 'VIEW']
     },
-    { 
-      value: 'COMPANY_OWNER' as AdminRole, 
-      label: '회사 대표', 
-      description: '회사 전체 운영 관리',
-      icon: '🏢',
-      permissions: ['회사 전체 관리', '관리자 관리', '모든 회사 기능']
-    },
-    { 
-      value: 'PLATFORM_ANALYST' as AdminRole, 
-      label: '플랫폼 분석가', 
-      description: '데이터 분석 및 리포팅',
-      icon: '📊',
-      permissions: ['플랫폼 분석', '회사 분석', '코스 분석']
-    },
-    { 
-      value: 'PLATFORM_SUPPORT' as AdminRole, 
-      label: '플랫폼 지원팀', 
-      description: '고객 지원 및 기술 지원',
+    {
+      value: 'SUPPORT' as AdminRole,
+      label: '고객지원',
+      description: '고객지원 및 분석 담당',
       icon: '🎧',
-      permissions: ['고객 지원', '예약 관리', '사용자 관리']
+      permissions: ['BOOKINGS', 'USERS', 'ANALYTICS', 'SUPPORT', 'VIEW']
     },
-    { 
-      value: 'PLATFORM_ADMIN' as AdminRole, 
-      label: '플랫폼 관리자', 
-      description: '플랫폼 운영 총괄',
-      icon: '👨‍💻',
-      permissions: ['플랫폼 관리', '회사 관리', '사용자 관리', '관리자 관리']
-    },
-    { 
-      value: 'PLATFORM_OWNER' as AdminRole, 
-      label: '플랫폼 소유자', 
-      description: '플랫폼 최고 권한',
+    {
+      value: 'ADMIN' as AdminRole,
+      label: '시스템 관리자',
+      description: '전체 시스템 관리 권한',
       icon: '👑',
-      permissions: ['플랫폼 전체 권한', '시스템 설정', '모든 기능']
+      permissions: ['ALL']
     },
   ];
 

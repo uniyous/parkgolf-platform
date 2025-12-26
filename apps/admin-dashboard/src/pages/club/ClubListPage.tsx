@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useClub } from '../../redux/hooks/useClub';
+import { useClub } from '@/hooks';
 import type { Club, ClubFilters } from '../../types/club';
 
 export const ClubListPage: React.FC = () => {

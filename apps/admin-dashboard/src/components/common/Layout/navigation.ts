@@ -39,7 +39,7 @@ export const navigationConfig: NavigationGroup[] = [
         href: '/companies', 
         icon: '🏢',
         description: '골프장 회사 정보 관리',
-        permission: 'MANAGE_COMPANIES'
+        permission: 'COMPANIES'
       },
       { 
         name: '골프장 관리', 
@@ -60,7 +60,7 @@ export const navigationConfig: NavigationGroup[] = [
         href: '/bookings', 
         icon: '📅',
         description: '예약 현황 및 관리',
-        permission: 'MANAGE_BOOKINGS'
+        permission: 'BOOKINGS'
       },
       { 
         name: '취소/환불', 
@@ -81,7 +81,7 @@ export const navigationConfig: NavigationGroup[] = [
         href: '/user-management', 
         icon: '👥',
         description: '고객 계정 관리',
-        permission: 'MANAGE_USERS'
+        permission: 'USERS'
       },
     ],
     collapsible: false,
@@ -102,7 +102,7 @@ export const navigationConfig: NavigationGroup[] = [
         href: '/admin-management', 
         icon: '👨‍💼',
         description: '시스템 관리자 계정 관리',
-        permission: 'MANAGE_ADMINS'
+        permission: 'ADMINS'
       },
       { 
         name: '관리자 역할 데모', 

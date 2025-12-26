@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useConfirmation } from '../../hooks/useConfirmation';
-import { useSelector } from 'react-redux';
-import { selectCurrentAdmin, selectHasPermission } from '../../redux/slices/authSlice';
+import { useAuthStore, useCurrentAdmin } from '@/stores';
 import type { User, UserMembershipTier, UserStatus } from '../../types';
 
 interface EnhancedUserListProps {
@@ -43,8 +42,8 @@ export const EnhancedUserList: React.FC<EnhancedUserListProps> = ({
   onRefresh,
 }) => {
   const { showConfirmation } = useConfirmation();
-  const currentAdmin = useSelector(selectCurrentAdmin);
-  const hasManageUsers = useSelector(selectHasPermission('MANAGE_USERS'));
+  const currentAdmin = useCurrentAdmin();
+  const hasManageUsers = useAuthStore((state) => state.hasPermission('USERS'));
 
   // 필터 및 정렬 상태
   const [filters, setFilters] = useState<FilterState>({
@@ -92,13 +91,13 @@ export const EnhancedUserList: React.FC<EnhancedUserListProps> = ({
       if (!currentAdmin) return false;
       
       // 플랫폼 관리자는 모든 고객 조회 가능
-      if (currentAdmin.scope === 'PLATFORM') {
+      if (currentAdmin.scope === 'SYSTEM') {
         return true;
       }
       
       // 회사/코스 관리자는 모든 고객 조회 가능 (실제로는 자신의 골프장 이용 고객만)
       // TODO: 실제 환경에서는 booking 테이블을 조인하여 해당 골프장 이용 고객만 필터링
-      if (currentAdmin.scope === 'COMPANY' || currentAdmin.scope === 'COURSE') {
+      if (currentAdmin.scope === 'OPERATION') {
         return true;
       }
       
@@ -664,7 +663,7 @@ export const EnhancedUserList: React.FC<EnhancedUserListProps> = ({
                               권한
                             </button>
                           )}
-                          {hasManageUsers && currentAdmin?.scope === 'PLATFORM' && (
+                          {hasManageUsers && currentAdmin?.scope === 'SYSTEM' && (
                             <button
                               onClick={() => handleDeleteUser(user)}
                               className="text-red-600 hover:text-red-800 text-sm font-medium"
@@ -755,7 +754,7 @@ export const EnhancedUserList: React.FC<EnhancedUserListProps> = ({
                       </button>
                     )}
                   </div>
-                  {hasManageUsers && currentAdmin?.scope === 'PLATFORM' && (
+                  {hasManageUsers && currentAdmin?.scope === 'SYSTEM' && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

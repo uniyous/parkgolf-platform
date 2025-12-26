@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useClub } from '../../redux/hooks/useClub';
+import { useClub } from '@/hooks';
 import type { TimeSlot, CreateTimeSlotDto, UpdateTimeSlotDto, Course } from '../../types';
 import { TimeSlotForm } from '../../components/timeslot/TimeSlotForm';
 import { TimeSlotList } from '../../components/timeslot/TimeSlotList';

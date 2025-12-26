@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Club, ClubStats, ComboAnalytics } from '../../types/club';
-import { useClub } from '../../redux/hooks/useClub';
+import { useClub } from '@/hooks';
 
 interface OperationInfoTabProps {
   club: Club;
@@ -76,8 +76,8 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
       const result = await updateExistingClub(club.id, {
         seasonInfo: seasonData
       });
-      if (result.payload) {
-        onUpdate(result.payload);
+      if (result) {
+        onUpdate(result);
       } else {
         alert('시즌 정보 업데이트에 실패했습니다.');
       }

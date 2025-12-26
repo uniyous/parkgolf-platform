@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useConfirmation } from '../../hooks/useConfirmation';
-import { useSelector } from 'react-redux';
-import { selectCurrentAdmin, selectHasPermission } from '../../redux/slices/authSlice';
+import { useAuthStore, useCurrentAdmin } from '@/stores';
 import type { TimeSlot, TimeSlotStatus } from '../../types/timeslot';
 
 interface EnhancedTimeSlotListProps {
@@ -41,8 +40,8 @@ export const EnhancedTimeSlotList: React.FC<EnhancedTimeSlotListProps> = ({
   onRefresh,
 }) => {
   const { showConfirmation } = useConfirmation();
-  const currentAdmin = useSelector(selectCurrentAdmin);
-  const hasManageTimeSlots = useSelector(selectHasPermission('MANAGE_TIMESLOTS'));
+  const currentAdmin = useCurrentAdmin();
+  const hasManageTimeSlots = useAuthStore((state) => state.hasPermission('TIMESLOTS'));
 
   // 필터 및 정렬 상태
   const [filters, setFilters] = useState<FilterState>({
@@ -682,7 +681,7 @@ export const EnhancedTimeSlotList: React.FC<EnhancedTimeSlotListProps> = ({
                           </>
                         )}
                         
-                        {hasManageTimeSlots && currentAdmin?.scope === 'PLATFORM' && (
+                        {hasManageTimeSlots && currentAdmin?.scope === 'SYSTEM' && (
                           <button
                             onClick={() => handleDeleteTimeSlot(timeSlot)}
                             className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"

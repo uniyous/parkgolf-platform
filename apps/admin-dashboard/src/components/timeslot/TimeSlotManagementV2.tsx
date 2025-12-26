@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { courseApi } from '../../api/courseApi';
+import { courseApi } from '@/lib/api/courseApi';
 import type { TimeSlot, CreateTimeSlotDto, UpdateTimeSlotDto, Course } from '../../types';
 import { TimeSlotForm } from './TimeSlotForm';
 import { TimeSlotList } from './TimeSlotList';

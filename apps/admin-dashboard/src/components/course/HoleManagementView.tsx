@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { HoleFormModal } from './HoleFormModal';
-import { courseApi } from '../../api/courseApi';
+import { courseApi } from '@/lib/api/courseApi';
 import type { Course } from '../../types';
 
 interface HoleManagementViewProps {

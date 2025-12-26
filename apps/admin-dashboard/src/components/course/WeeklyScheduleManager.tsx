@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { courseApi } from '../../api/courseApi';
+import { courseApi } from '@/lib/api/courseApi';
 import type { WeeklySchedule, CreateWeeklyScheduleDto, Course } from '../../types';
 
 interface WeeklyScheduleManagerProps {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { CompanyManagementContainer } from '../../components/company/CompanyManagementContainer';
 import { PageLayout } from '../../components/common/Layout/PageLayout';
-import { useSetBreadcrumb } from '../../redux/hooks/useBreadcrumb';
+import { useSetBreadcrumb } from '@/stores';
 
 export const CompanyPage: React.FC = () => {
   // Redux breadcrumb 설정

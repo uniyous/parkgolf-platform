@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { courseApi } from '../../api/courseApi';
+import { courseApi } from '@/lib/api/courseApi';
 import { PageLayout } from '../common/Layout/PageLayout';
-import { useBreadcrumb } from '../../redux/hooks/useBreadcrumb';
+import { useBreadcrumb } from '@/stores';
 import { CourseComboSelector } from './CourseComboSelector';
 import { TimeSlotWizardStep2 } from './TimeSlotWizardStep2';
 import { TimeSlotWizardStep3 } from './TimeSlotWizardStep3';

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useClub } from '../../redux/hooks/useClub';
+import { useClub } from '@/hooks';
 import type { CourseCombo } from '../../types/club';
 import { CourseManagementTab } from '../../components/club/CourseManagementTab';
 import { BasicInfoTab } from '../../components/club/BasicInfoTab';

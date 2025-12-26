@@ -2,7 +2,7 @@ import React from 'react';
 import { UserManagementContainer } from '../../components/user';
 import { PageLayout } from '../../components/common/Layout/PageLayout';
 import { CanManageUsers } from '../../components/auth/PermissionGuard';
-import { useSetBreadcrumb } from '../../redux/hooks/useBreadcrumb';
+import { useSetBreadcrumb } from '@/stores';
 
 export const UserManagementPage: React.FC = () => {
   // Redux breadcrumb 설정

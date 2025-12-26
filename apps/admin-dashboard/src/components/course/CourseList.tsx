@@ -1,6 +1,5 @@
 import React from 'react';
-import { useSelector } from 'react-redux';
-import { selectCurrentAdmin, selectHasPermission } from '../../redux/slices/authSlice';
+import { useAuthStore, useCurrentAdmin } from '@/stores';
 import type { Course, CourseStatus, DifficultyLevel, CourseType } from '../../types/course';
 
 interface CourseListProps {
@@ -24,8 +23,8 @@ export const CourseList: React.FC<CourseListProps> = ({
   onDeleteCourse,
   onUpdateStatus
 }) => {
-  const currentAdmin = useSelector(selectCurrentAdmin);
-  const hasManageCourses = useSelector(selectHasPermission('MANAGE_COURSES'));
+  const currentAdmin = useCurrentAdmin();
+  const hasManageCourses = useAuthStore((state) => state.hasPermission('COURSES'));
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
@@ -398,7 +397,7 @@ export const CourseList: React.FC<CourseListProps> = ({
                         </>
                       )}
                       
-                      {hasManageCourses && currentAdmin?.scope === 'PLATFORM' && (
+                      {hasManageCourses && currentAdmin?.scope === 'SYSTEM' && (
                         <>
                           {/* Delete Button */}
                           <button

@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useConfirmation } from '../../hooks/useConfirmation';
-import { useSelector } from 'react-redux';
-import { selectCurrentAdmin, selectHasPermission } from '../../redux/slices/authSlice';
+import { useAuthStore, useCurrentAdmin } from '@/stores';
 import type { Course, CourseStatus, DifficultyLevel, CourseType } from '../../types/course';
 
 interface EnhancedCourseListProps {
@@ -40,8 +39,8 @@ export const EnhancedCourseList: React.FC<EnhancedCourseListProps> = ({
   onRefresh,
 }) => {
   const { showConfirmation } = useConfirmation();
-  const currentAdmin = useSelector(selectCurrentAdmin);
-  const hasManageCourses = useSelector(selectHasPermission('MANAGE_COURSES'));
+  const currentAdmin = useCurrentAdmin();
+  const hasManageCourses = useAuthStore((state) => state.hasPermission('COURSES'));
 
   // 필터 및 정렬 상태
   const [filters, setFilters] = useState<FilterState>({
@@ -687,7 +686,7 @@ export const EnhancedCourseList: React.FC<EnhancedCourseListProps> = ({
                           </>
                         )}
                         
-                        {hasManageCourses && currentAdmin?.scope === 'PLATFORM' && (
+                        {hasManageCourses && currentAdmin?.scope === 'SYSTEM' && (
                           <button
                             onClick={() => handleDeleteCourse(course)}
                             className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"

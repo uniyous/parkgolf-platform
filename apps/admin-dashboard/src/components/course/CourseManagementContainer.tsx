@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CourseManagementPresenter } from './CourseManagementPresenter';
-import { useGolfCourseManagement } from '../../redux/hooks/useCourse';
+import { useGolfCourseManagement } from '@/hooks';
 import { useModal } from '../../hooks/useModal';
 import { useConfirmation } from '../../hooks/useConfirmation';
 import { CourseFormModal } from './CourseFormModal';
@@ -9,8 +9,8 @@ import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { PageHeader, PageHeaderAction } from '../common/PageHeader';
 import type { Course, UpdateCourseDto, CreateCourseDto } from '../../types';
-import { courseApi } from '../../api/courseApi';
-import { useBreadcrumb } from '../../redux/hooks/useBreadcrumb';
+import { courseApi } from '@/lib/api/courseApi';
+import { useBreadcrumb } from '@/stores';
 
 
 export const CourseManagementContainer: React.FC = () => {

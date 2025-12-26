@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Course, Hole } from '../../types';
-import { courseApi } from '../../api/courseApi';
+import { courseApi } from '@/lib/api/courseApi';
 
 // 표시 모드 타입
 export type CourseDetailMode = 
