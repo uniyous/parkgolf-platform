@@ -33,7 +33,15 @@ interface AuthState {
 }
 
 const convertUserToAdmin = (user: any): Admin => {
-  const adminRole = (user.roleCode || user.role) as AdminRole || 'VIEWER';
+  // roles 배열 또는 role/roleCode 문자열 처리
+  let adminRole: AdminRole = 'VIEWER';
+  if (user.roleCode) {
+    adminRole = user.roleCode as AdminRole;
+  } else if (user.role) {
+    adminRole = user.role as AdminRole;
+  } else if (Array.isArray(user.roles) && user.roles.length > 0) {
+    adminRole = user.roles[0] as AdminRole;
+  }
   const scope = getRoleScope(adminRole);
 
   let permissions: Permission[];

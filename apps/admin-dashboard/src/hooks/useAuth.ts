@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   useAuthStore,
@@ -102,10 +102,12 @@ export const useAuth = () => {
  *
  * @example
  * // App.tsx에서 사용
- * useAuthInitialize();
+ * const { isInitializing } = useAuthInitialize();
  */
 export const useAuthInitialize = () => {
   const getCurrentUserMutation = useGetCurrentUser();
+  const isAuthenticated = useIsAuthenticated();
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -123,12 +125,15 @@ export const useAuthInitialize = () => {
       } else {
         console.log('No stored auth found, user needs to login');
       }
+
+      setIsInitialized(true);
     };
 
     initializeAuth();
   }, []); // Run only once on mount
 
-  return { isInitializing: getCurrentUserMutation.isPending };
+  // 초기화 완료 전이거나 API 호출 중이면 로딩 상태
+  return { isInitializing: !isInitialized || getCurrentUserMutation.isPending };
 };
 
 /**
