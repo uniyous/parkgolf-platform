@@ -1,5 +1,6 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { PrivateRoute } from './components/PrivateRoute';
+import { GlobalLoading } from './components/common/GlobalLoading';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
@@ -18,14 +19,7 @@ function App() {
 
   // 인증 상태 초기화 중 로딩 표시
   if (isInitializing) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">로딩 중...</p>
-        </div>
-      </div>
-    );
+    return <GlobalLoading message="인증 확인 중..." />;
   }
 
   return (
