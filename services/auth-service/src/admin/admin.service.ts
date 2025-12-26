@@ -168,26 +168,26 @@ export class AdminService {
       updateData.password = await bcrypt.hash(password, 10);
     }
 
-    return this.prisma.admin.update({
+    await this.prisma.admin.update({
       where: { id },
       data: updateData,
-      include: {
-        permissions: true,
-      },
     });
+
+    // 업데이트된 admin을 역할 기반 권한과 함께 반환
+    return this.findOne(id);
   }
 
   async remove(id: number): Promise<Admin> {
     const admin = await this.findOne(id);
-    
-    // Prevent deleting the last PLATFORM_OWNER
-    if (admin.roleCode === 'PLATFORM_OWNER') {
-      const ownerCount = await this.prisma.admin.count({
-        where: { roleCode: 'PLATFORM_OWNER' },
+
+    // Prevent deleting the last ADMIN
+    if (admin.roleCode === 'ADMIN') {
+      const adminCount = await this.prisma.admin.count({
+        where: { roleCode: 'ADMIN' },
       });
-      
-      if (ownerCount <= 1) {
-        throw new ConflictException('Cannot delete the last PLATFORM_OWNER');
+
+      if (adminCount <= 1) {
+        throw new ConflictException('Cannot delete the last ADMIN');
       }
     }
 
