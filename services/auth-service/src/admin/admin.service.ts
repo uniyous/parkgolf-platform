@@ -54,24 +54,29 @@ export class AdminService {
     const limit = params?.limit || params?.take || 20;
     const skip = params?.skip || (page - 1) * limit;
 
-    // 병렬로 데이터와 카운트 조회
+    // 병렬로 데이터와 카운트 조회 (목록에서는 권한 정보 제외)
     const [admins, total] = await Promise.all([
       this.prisma.admin.findMany({
         skip,
         take: limit,
         where,
         orderBy: orderBy || { createdAt: 'desc' },
-        include: {
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          roleCode: true,
+          phone: true,
+          department: true,
+          isActive: true,
+          lastLoginAt: true,
+          createdAt: true,
+          updatedAt: true,
           role: {
             select: {
               code: true,
               name: true,
               level: true,
-              rolePermissions: {
-                select: {
-                  permissionCode: true,
-                },
-              },
             },
           },
         },
@@ -79,12 +84,10 @@ export class AdminService {
       this.prisma.admin.count({ where }),
     ]);
 
-    // 역할 기반 권한을 permissions 배열로 변환
+    // 목록용 변환 (권한은 상세 조회에서만 포함)
     const transformedAdmins = admins.map((admin) => ({
       ...admin,
-      permissions: admin.role?.rolePermissions?.map((rp) => ({
-        permission: rp.permissionCode,
-      })) || [],
+      permissions: [],
     }));
 
     return {
