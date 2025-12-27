@@ -212,11 +212,6 @@ jobs:
           DATABASE_URL_COURSE_SERVICE: ${{ secrets.DATABASE_URL_COURSE_SERVICE }}
           DATABASE_URL_BOOKING_SERVICE: ${{ secrets.DATABASE_URL_BOOKING_SERVICE }}
           DATABASE_URL_NOTIFY_SERVICE: ${{ secrets.DATABASE_URL_NOTIFY_SERVICE }}
-          # Service URLs for inter-service communication (used by admin-api warmup)
-          AUTH_SERVICE_URL: ${{ vars.AUTH_SERVICE_URL }}
-          USER_API_URL: ${{ vars.USER_API_URL }}
-          COURSE_SERVICE_URL: ${{ vars.COURSE_SERVICE_URL }}
-          BOOKING_SERVICE_URL: ${{ vars.BOOKING_SERVICE_URL }}
         run: |
           SERVICE="${{ matrix.service }}"
           SERVICE_UPPER=$(echo "$SERVICE" | tr '[:lower:]-' '[:upper:]_')
@@ -236,22 +231,6 @@ jobs:
             echo "DB_URL_VAR: $DB_URL_VAR"
             echo "DATABASE_URL: $(echo "$DB_URL" | sed 's/:[^@]*@/:****@/')"
             ENV_VARS="${ENV_VARS},DATABASE_URL=${DB_URL}"
-          fi
-
-          # Add service URLs for admin-api (used for warmup endpoint)
-          if [ "$SERVICE" == "admin-api" ]; then
-            if [ -n "$AUTH_SERVICE_URL" ]; then
-              ENV_VARS="${ENV_VARS},AUTH_SERVICE_URL=${AUTH_SERVICE_URL}"
-            fi
-            if [ -n "$USER_API_URL" ]; then
-              ENV_VARS="${ENV_VARS},USER_API_URL=${USER_API_URL}"
-            fi
-            if [ -n "$COURSE_SERVICE_URL" ]; then
-              ENV_VARS="${ENV_VARS},COURSE_SERVICE_URL=${COURSE_SERVICE_URL}"
-            fi
-            if [ -n "$BOOKING_SERVICE_URL" ]; then
-              ENV_VARS="${ENV_VARS},BOOKING_SERVICE_URL=${BOOKING_SERVICE_URL}"
-            fi
           fi
 
           # Set VPC connector based on environment
