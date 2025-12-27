@@ -3,7 +3,7 @@ import { Button } from './common/Button';
 import { Input } from './common/Input';
 
 // 서버 웜업 API 설정
-const ADMIN_API_URL = import.meta.env.VITE_API_URL || 'https://admin-api-dev-335495814488.asia-northeast3.run.app';
+const ADMIN_API_URL = import.meta.env.VITE_API_URL || 'https://admin-api-dev-iihuzmuufa-du.a.run.app';
 
 interface ServiceHealth {
   name: string;
@@ -136,7 +136,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       { service: 'user-api', status: 'pending' },
       { service: 'course-service', status: 'pending' },
       { service: 'booking-service', status: 'pending' },
-      { service: 'payment-service', status: 'pending' },
     ]);
 
     try {
@@ -184,7 +183,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         { service: 'user-api', status: 'pending' },
         { service: 'course-service', status: 'pending' },
         { service: 'booking-service', status: 'pending' },
-        { service: 'payment-service', status: 'pending' },
       ]);
     }
 

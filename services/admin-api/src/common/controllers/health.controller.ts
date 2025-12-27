@@ -26,11 +26,10 @@ interface WarmupResponse {
 @Controller('health')
 export class HealthController {
   private readonly services = [
-    { name: 'auth-service', url: process.env.AUTH_SERVICE_URL || 'https://auth-service-dev-335495814488.asia-northeast3.run.app' },
-    { name: 'user-api', url: process.env.USER_API_URL || 'https://user-api-dev-335495814488.asia-northeast3.run.app' },
-    { name: 'course-service', url: process.env.COURSE_SERVICE_URL || 'https://course-service-dev-335495814488.asia-northeast3.run.app' },
-    { name: 'booking-service', url: process.env.BOOKING_SERVICE_URL || 'https://booking-service-dev-335495814488.asia-northeast3.run.app' },
-    { name: 'payment-service', url: process.env.PAYMENT_SERVICE_URL || 'https://payment-service-dev-335495814488.asia-northeast3.run.app' },
+    { name: 'auth-service', url: process.env.AUTH_SERVICE_URL || 'https://auth-service-dev-iihuzmuufa-du.a.run.app' },
+    { name: 'user-api', url: process.env.USER_API_URL || 'https://user-api-dev-iihuzmuufa-du.a.run.app' },
+    { name: 'course-service', url: process.env.COURSE_SERVICE_URL || 'https://course-service-dev-iihuzmuufa-du.a.run.app' },
+    { name: 'booking-service', url: process.env.BOOKING_SERVICE_URL || 'https://booking-service-dev-iihuzmuufa-du.a.run.app' },
   ];
 
   constructor(private readonly configService: ConfigService) {}
