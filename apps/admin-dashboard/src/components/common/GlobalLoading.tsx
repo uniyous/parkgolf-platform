@@ -1,6 +1,7 @@
 import React from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Loader2 } from 'lucide-react';
+import { useIsFetching } from '@tanstack/react-query';
 import { cn } from '../../utils';
 
 interface GlobalLoadingProps {
@@ -70,6 +71,20 @@ export const InlineLoading: React.FC<{ message?: string; className?: string }> =
       {message && <p className="mt-4 text-sm font-medium text-gray-600">{message}</p>}
     </div>
   );
+};
+
+// TanStack Query 전역 로딩 인디케이터
+// meta: { globalLoading: false } 가 설정된 쿼리는 제외
+// 로컬 로딩이 필요한 쿼리는 meta: { globalLoading: false } 를 설정하세요
+export const QueryLoadingIndicator: React.FC = () => {
+  // globalLoading이 명시적으로 false가 아닌 쿼리만 카운트
+  const isFetching = useIsFetching({
+    predicate: (query) => query.meta?.globalLoading !== false,
+  });
+
+  if (isFetching === 0) return null;
+
+  return <GlobalLoading message="데이터를 불러오는 중..." />;
 };
 
 export default GlobalLoading;

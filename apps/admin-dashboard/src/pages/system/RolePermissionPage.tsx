@@ -142,22 +142,9 @@ export const RolePermissionPage: React.FC = () => {
     return roleMeta[roleCode] || { label: roleCode, description: '', scope: '', color: 'bg-gray-100 text-gray-800' };
   };
 
+  // 전역 로딩 인디케이터(QueryLoadingIndicator)가 처리
   if (isLoading) {
-    return (
-      <PageLayout>
-        <Breadcrumb
-          items={[
-            { label: '시스템', icon: '⚙️' },
-            { label: '역할 및 권한 관리', icon: '🔐' }
-          ]}
-        />
-        <PageLayout.Content>
-          <div className="flex items-center justify-center h-64">
-            <div className="text-gray-500">데이터를 불러오는 중...</div>
-          </div>
-        </PageLayout.Content>
-      </PageLayout>
-    );
+    return null;
   }
 
   const adminPermissions = apiPermissions.filter((p: any) => p.category === 'ADMIN');

@@ -13,11 +13,12 @@ interface ProfileResponse {
   };
 }
 
-// Login Mutation
+// Login Mutation (로컬 로딩 사용 - LoginForm에서 자체 로딩 처리)
 export const useLogin = () => {
   const { hydrateFromLogin, setLoading, setError } = useAuthStore();
 
   return useMutation({
+    meta: { globalLoading: false }, // 로컬 로딩 사용
     mutationFn: async (credentials: LoginCredentials) => {
       const response = await apiClient.post<any>('/admin/auth/login', credentials);
       const result = response.data;
@@ -46,12 +47,13 @@ export const useLogin = () => {
   });
 };
 
-// Logout Mutation
+// Logout Mutation (로컬 로딩 사용)
 export const useLogout = () => {
   const queryClient = useQueryClient();
   const { logout } = useAuthStore();
 
   return useMutation({
+    meta: { globalLoading: false }, // 로컬 로딩 사용
     mutationFn: async () => {
       try {
         await apiClient.post('/admin/auth/logout');
@@ -66,11 +68,12 @@ export const useLogout = () => {
   });
 };
 
-// Get Current User / Profile Query
+// Get Current User / Profile Query (로컬 로딩 사용)
 export const useGetCurrentUser = () => {
   const { hydrateFromProfile, setError } = useAuthStore();
 
   return useMutation({
+    meta: { globalLoading: false }, // 로컬 로딩 사용
     mutationFn: async () => {
       const token = localStorage.getItem('accessToken');
 
@@ -111,11 +114,12 @@ export const useGetCurrentUser = () => {
   });
 };
 
-// Refresh Token Mutation
+// Refresh Token Mutation (로컬 로딩 사용 - 백그라운드 처리)
 export const useRefreshToken = () => {
   const { setToken, setError } = useAuthStore();
 
   return useMutation({
+    meta: { globalLoading: false }, // 로컬 로딩 사용
     mutationFn: async () => {
       const refreshToken = localStorage.getItem('refreshToken');
 
@@ -148,11 +152,12 @@ export const useRefreshToken = () => {
   });
 };
 
-// Check Auth Status (from localStorage)
+// Check Auth Status (from localStorage) - 로컬 로딩 사용
 export const useCheckAuthStatus = () => {
   const { hydrateFromLogin, logout } = useAuthStore();
 
   return useMutation({
+    meta: { globalLoading: false }, // 로컬 로딩 사용
     mutationFn: async () => {
       const token = localStorage.getItem('accessToken');
       const userStr = localStorage.getItem('currentUser');
