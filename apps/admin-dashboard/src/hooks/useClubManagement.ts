@@ -21,24 +21,34 @@ export const useClubManagement = () => {
   const updateClubMutation = useUpdateClub();
   const deleteClubMutation = useDeleteClub();
 
-  // Derived data
+  // Derived data - API returns PaginatedResponse<Club> with { data: Club[], pagination: {...} }
   const clubs = useMemo(() => {
     if (searchKeyword && searchQuery.data) {
-      return searchQuery.data;
+      return Array.isArray(searchQuery.data) ? searchQuery.data : [];
     }
-    return clubsQuery.data ?? [];
+    // clubsQuery.data is PaginatedResponse<Club>, extract the data array
+    const clubData = clubsQuery.data;
+    if (clubData && 'data' in clubData) {
+      return clubData.data ?? [];
+    }
+    return Array.isArray(clubData) ? clubData : [];
   }, [clubsQuery.data, searchQuery.data, searchKeyword]);
 
   const selectedClub = selectedClubQuery.data ?? null;
   const selectedClubCourses = selectedClub?.courses ?? [];
 
-  // Pagination
-  const pagination = useMemo(() => ({
-    totalCount: clubs.length,
-    currentPage: 1,
-    totalPages: 1,
-    pageSize: 20,
-  }), [clubs.length]);
+  // Pagination - extract from API response
+  const pagination = useMemo(() => {
+    const paginationData = clubsQuery.data && 'pagination' in clubsQuery.data
+      ? clubsQuery.data.pagination
+      : null;
+    return {
+      totalCount: paginationData?.total ?? clubs.length,
+      currentPage: paginationData?.page ?? 1,
+      totalPages: paginationData?.totalPages ?? 1,
+      pageSize: paginationData?.limit ?? 20,
+    };
+  }, [clubsQuery.data, clubs.length]);
 
   // Loading states
   const loading = {
