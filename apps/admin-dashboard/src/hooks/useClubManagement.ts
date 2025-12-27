@@ -1,18 +1,20 @@
-import { useState, useCallback } from 'react';
-import { useClubs, useClub as useClubQuery, useClubsByCompany, useCreateClub, useUpdateClub, useDeleteClub } from './queries';
+import { useState, useCallback, useMemo } from 'react';
+import { useClubs, useClub as useClubQuery, useSearchClubs, useCreateClub, useUpdateClub, useDeleteClub } from './queries';
 import type { Club, ClubFilters } from '@/types/club';
 import type { CreateClubDto, UpdateClubDto } from '@/lib/api/courses';
 
 type ViewMode = 'list' | 'detail' | 'create' | 'edit';
 
 export const useClubManagement = () => {
-  const [selectedClubState, setSelectedClubState] = useState<Club | null>(null);
+  const [selectedClubId, setSelectedClubId] = useState<number | null>(null);
   const [viewModeState, setViewModeState] = useState<ViewMode>('list');
   const [filters, setFilters] = useState<ClubFilters>({});
+  const [searchKeyword, setSearchKeyword] = useState('');
 
   // Queries
   const clubsQuery = useClubs(filters);
-  const selectedClubQuery = useClubQuery(selectedClubState?.id ?? 0);
+  const selectedClubQuery = useClubQuery(selectedClubId ?? 0);
+  const searchQuery = useSearchClubs(searchKeyword);
 
   // Mutations
   const createClubMutation = useCreateClub();
@@ -20,21 +22,39 @@ export const useClubManagement = () => {
   const deleteClubMutation = useDeleteClub();
 
   // Derived data
-  const clubs = clubsQuery.data ?? [];
-  const selectedClub = selectedClubQuery.data ?? selectedClubState;
+  const clubs = useMemo(() => {
+    if (searchKeyword && searchQuery.data) {
+      return searchQuery.data;
+    }
+    return clubsQuery.data ?? [];
+  }, [clubsQuery.data, searchQuery.data, searchKeyword]);
 
-  // Loading & Error
+  const selectedClub = selectedClubQuery.data ?? null;
+  const selectedClubCourses = selectedClub?.courses ?? [];
+
+  // Pagination
+  const pagination = useMemo(() => ({
+    totalCount: clubs.length,
+    currentPage: 1,
+    totalPages: 1,
+    pageSize: 20,
+  }), [clubs.length]);
+
+  // Loading states
   const loading = {
     list: clubsQuery.isLoading,
     detail: selectedClubQuery.isLoading,
+    search: searchQuery.isLoading,
     create: createClubMutation.isPending,
     update: updateClubMutation.isPending,
     delete: deleteClubMutation.isPending,
   };
 
+  // Error states
   const errors = {
     list: clubsQuery.error?.message ?? null,
     detail: selectedClubQuery.error?.message ?? null,
+    search: searchQuery.error?.message ?? null,
     create: createClubMutation.error?.message ?? null,
     update: updateClubMutation.error?.message ?? null,
     delete: deleteClubMutation.error?.message ?? null,
@@ -42,21 +62,39 @@ export const useClubManagement = () => {
 
   // Actions
   const loadClubs = useCallback(() => {
+    setSearchKeyword('');
     clubsQuery.refetch();
   }, [clubsQuery]);
 
+  const loadClubById = useCallback((id: number) => {
+    setSelectedClubId(id);
+  }, []);
+
   const selectClub = useCallback((club: Club | null) => {
-    setSelectedClubState(club);
     if (club) {
+      setSelectedClubId(club.id);
       setViewModeState('detail');
     } else {
+      setSelectedClubId(null);
       setViewModeState('list');
     }
   }, []);
 
   const clearSelectedClub = useCallback(() => {
-    setSelectedClubState(null);
+    setSelectedClubId(null);
     setViewModeState('list');
+  }, []);
+
+  const updateFilters = useCallback((newFilters: Partial<ClubFilters>) => {
+    setFilters(prev => ({ ...prev, ...newFilters }));
+  }, []);
+
+  const searchForClubs = useCallback(async (keyword: string) => {
+    setSearchKeyword(keyword);
+  }, []);
+
+  const clearAllErrors = useCallback(() => {
+    // Errors are automatically cleared on next successful query
   }, []);
 
   const createClub = useCallback(async (data: CreateClubDto) => {
@@ -65,49 +103,74 @@ export const useClubManagement = () => {
     return result;
   }, [createClubMutation]);
 
-  const updateClubAction = useCallback(async (id: number, data: UpdateClubDto) => {
+  const updateExistingClub = useCallback(async (id: number, data: UpdateClubDto) => {
     const result = await updateClubMutation.mutateAsync({ id, data });
-    setViewModeState('list');
     return result;
   }, [updateClubMutation]);
 
-  const deleteClub = useCallback(async (id: number) => {
+  const removeClub = useCallback(async (id: number) => {
     await deleteClubMutation.mutateAsync(id);
-    setSelectedClubState(null);
+    setSelectedClubId(null);
     setViewModeState('list');
   }, [deleteClubMutation]);
 
   // View mode actions
   const backToList = useCallback(() => {
     setViewModeState('list');
-    setSelectedClubState(null);
+    setSelectedClubId(null);
   }, []);
 
   const createClubMode = useCallback(() => {
-    setSelectedClubState(null);
+    setSelectedClubId(null);
     setViewModeState('create');
   }, []);
 
   const editClub = useCallback((club: Club) => {
-    setSelectedClubState(club);
+    setSelectedClubId(club.id);
     setViewModeState('edit');
   }, []);
 
   return {
+    // Data
     clubs,
     selectedClub,
+    selectedClubCourses,
     viewMode: viewModeState,
+    pagination,
+    filters,
+
+    // States
     loading,
     errors,
-    filters,
+
+    // Actions (flat for backward compatibility)
+    loadClubs,
+    loadClubById,
+    selectClub,
+    clearSelectedClub,
+    updateFilters,
+    searchForClubs,
+    clearAllErrors,
+    createClub,
+    updateExistingClub,
+    removeClub,
+    backToList,
+    createClubMode,
+    editClub,
     setFilters,
+
+    // Actions object (for new code)
     actions: {
       loadClubs,
+      loadClubById,
       selectClub,
       clearSelectedClub,
+      updateFilters,
+      searchForClubs,
+      clearAllErrors,
       createClub,
-      updateClub: updateClubAction,
-      deleteClub,
+      updateExistingClub,
+      removeClub,
       backToList,
       createClubMode,
       editClub,
