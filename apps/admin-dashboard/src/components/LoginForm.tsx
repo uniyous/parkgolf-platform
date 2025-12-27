@@ -3,7 +3,7 @@ import { Button } from './common/Button';
 import { Input } from './common/Input';
 
 // 서버 웜업 API 설정
-const ADMIN_API_URL = import.meta.env.VITE_API_URL || 'https://admin-api-162921969782.asia-northeast3.run.app';
+const ADMIN_API_URL = import.meta.env.VITE_API_URL || 'https://admin-api-dev-335495814488.asia-northeast3.run.app';
 
 interface ServiceHealth {
   name: string;
