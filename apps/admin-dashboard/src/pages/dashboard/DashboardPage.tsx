@@ -1,5 +1,5 @@
 import React from 'react';
-import { DashboardContainer } from '../../components/dashboard';
+import { DashboardContainer } from '@/components/features/dashboard';
 import { useAuth } from '@/hooks';
 
 export const DashboardPage: React.FC = () => {

@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { queryClient } from './lib';
-import { QueryLoadingIndicator } from './components/common/GlobalLoading';
+import { QueryLoadingIndicator } from '@/components/common/GlobalLoading';
 import './index.css';
 import App from './App';
 

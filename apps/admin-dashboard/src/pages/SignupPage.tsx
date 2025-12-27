@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from '../components/common/Button';
-import { Input } from '../components/common/Input';
+import { Button, Input } from '@/components/ui';
 import type { AdminRole } from '../types';
 
 interface SignupFormData {

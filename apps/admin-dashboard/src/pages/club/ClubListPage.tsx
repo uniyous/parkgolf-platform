@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useClub } from '@/hooks';
-import type { Club, ClubFilters } from '../../types/club';
+import type { Club, ClubFilters } from '@/types/club';
 
 export const ClubListPage: React.FC = () => {
   const navigate = useNavigate();

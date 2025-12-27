@@ -220,3 +220,20 @@ export const useRolePermissions = (roleCode: string) => {
     staleTime: 1000 * 60 * 30, // 30분
   });
 };
+
+export const useUpdateRolePermissions = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ roleCode, permissions }: { roleCode: string; permissions: string[] }) =>
+      adminApi.updateRolePermissions(roleCode, permissions),
+    onSuccess: (_, { roleCode }) => {
+      queryClient.invalidateQueries({ queryKey: roleKeys.permissions(roleCode) });
+      queryClient.invalidateQueries({ queryKey: roleKeys.withPermissions() });
+      queryClient.invalidateQueries({ queryKey: roleKeys.list() });
+    },
+    onError: (error) => {
+      console.error('Failed to update role permissions:', error);
+    },
+  });
+};

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useClub } from '@/hooks';
-import type { CourseCombo } from '../../types/club';
-import { CourseManagementTab } from '../../components/club/CourseManagementTab';
-import { BasicInfoTab } from '../../components/club/BasicInfoTab';
-import { OperationInfoTab } from '../../components/club/OperationInfoTab';
+import type { CourseCombo } from '@/types/club';
+import { CourseManagementTab } from '@/components/features/club/CourseManagementTab';
+import { BasicInfoTab } from '@/components/features/club/BasicInfoTab';
+import { OperationInfoTab } from '@/components/features/club/OperationInfoTab';
 
 type TabType = 'basic' | 'courses' | 'operation';
 

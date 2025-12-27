@@ -187,6 +187,8 @@ export function mapCompanyToResponse(company: any) {
     logoUrl: company.logoUrl,
     status: company.status,
     isActive: company.isActive,
+    coursesCount: company.coursesCount || 0,
+    clubsCount: company.clubsCount || 0,
     createdAt: toISOString(company.createdAt),
     updatedAt: toISOString(company.updatedAt),
   };

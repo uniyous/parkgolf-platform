@@ -1,8 +1,8 @@
 import React from 'react';
-import { EnhancedAdminManagementContainer } from '../../components/admin/EnhancedAdminManagementContainer';
-import { PageLayout } from '../../components/common/Layout/PageLayout';
-import { Breadcrumb } from '../../components/common/Breadcrumb';
-import { CanManageAdmins } from '../../components/auth/PermissionGuard';
+import { AdminList } from '@/components/features/admin';
+import { PageLayout } from '@/components/layout';
+import { Breadcrumb } from '@/components/common';
+import { CanManageAdmins } from '@/components/auth';
 
 export const AdminManagementPage: React.FC = () => {
   return (
@@ -17,14 +17,14 @@ export const AdminManagementPage: React.FC = () => {
       }
     >
       <PageLayout>
-        <Breadcrumb 
+        <Breadcrumb
           items={[
-            { label: '시스템', icon: '⚙️' },
-            { label: '관리자 관리', icon: '👨‍💼' }
+            { label: '시스템' },
+            { label: '관리자 관리' }
           ]}
         />
         <PageLayout.Content>
-          <EnhancedAdminManagementContainer />
+          <AdminList />
         </PageLayout.Content>
       </PageLayout>
     </CanManageAdmins>

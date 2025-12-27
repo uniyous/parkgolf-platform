@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useClub } from '@/hooks';
-import type { TimeSlot, CreateTimeSlotDto, UpdateTimeSlotDto, Course } from '../../types';
-import { TimeSlotForm } from '../../components/timeslot/TimeSlotForm';
-import { TimeSlotList } from '../../components/timeslot/TimeSlotList';
-import { CourseComboSelector } from '../../components/timeslot/CourseComboSelector';
-import { TimeSlotWizardStep2 } from '../../components/timeslot/TimeSlotWizardStep2';
-import { TimeSlotWizardStep3 } from '../../components/timeslot/TimeSlotWizardStep3';
-import { TimeSlotPreview } from '../../components/timeslot/TimeSlotPreview';
-import type { CourseCombo, TimeSlotWizardData } from '../../types/courseCombo';
+import type { TimeSlot, CreateTimeSlotDto, UpdateTimeSlotDto, Course } from '@/types';
+import { TimeSlotForm } from '@/components/features/timeslot/TimeSlotForm';
+import { TimeSlotList } from '@/components/features/timeslot/TimeSlotList';
+import { CourseComboSelector } from '@/components/features/timeslot/CourseComboSelector';
+import { TimeSlotWizardStep2 } from '@/components/features/timeslot/TimeSlotWizardStep2';
+import { TimeSlotWizardStep3 } from '@/components/features/timeslot/TimeSlotWizardStep3';
+import { TimeSlotPreview } from '@/components/features/timeslot/TimeSlotPreview';
+import type { CourseCombo, TimeSlotWizardData } from '@/types/courseCombo';
 
 export const TimeSlotPage: React.FC = () => {
   const { clubId } = useParams<{ clubId: string }>();

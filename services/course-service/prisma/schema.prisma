@@ -25,6 +25,9 @@ model Company {
   courses         Course[]
   clubs           Club[]
 
+  @@index([status])
+  @@index([isActive])
+  @@index([createdAt])
   @@map("companies")
 }
 
@@ -50,6 +53,9 @@ model Club {
   games          Game[]
   company        Company    @relation(fields: [companyId], references: [id])
 
+  @@index([companyId])
+  @@index([status])
+  @@index([isActive])
   @@map("clubs")
 }
 
@@ -79,6 +85,10 @@ model Course {
   gamesAsFrontNine  Game[]                 @relation("FrontNine")
   gamesAsBackNine   Game[]                 @relation("BackNine")
 
+  @@index([clubId])
+  @@index([companyId])
+  @@index([status])
+  @@index([isActive])
   @@map("courses")
 }
 
@@ -98,6 +108,7 @@ model Hole {
   teeBoxes    TeeBox[]
 
   @@unique([courseId, holeNumber])
+  @@index([courseId])
   @@map("holes")
 }
 
@@ -112,6 +123,7 @@ model TeeBox {
   updatedAt  DateTime    @updatedAt @map("updated_at")
   hole       Hole        @relation(fields: [holeId], references: [id])
 
+  @@index([holeId])
   @@map("tee_boxes")
 }
 

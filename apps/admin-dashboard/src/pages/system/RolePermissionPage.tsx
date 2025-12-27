@@ -1,12 +1,11 @@
-import React, { useState, useMemo } from 'react';
-import { PageLayout } from '../../components/common/Layout/PageLayout';
-import { Breadcrumb } from '../../components/common/Breadcrumb';
-import { useAdmins, useAdminStats, usePermissions, useRolesWithPermissions } from '../../hooks/queries/admin';
-import type { AdminRole, Permission } from '../../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { PageLayout } from '@/components/layout';
+import { Breadcrumb } from '@/components/common';
+import { useAdmins, useAdminStats, usePermissions, useRolesWithPermissions, useUpdateRolePermissions } from '@/hooks/queries/admin';
+import type { AdminRole } from '@/types';
 
 // 권한 레벨 및 카테고리 정보
 const permissionMeta: Record<string, { name: string; description: string; level: 'high' | 'medium' | 'low'; category: string; icon: string }> = {
-  ALL: { name: '전체 권한', description: '시스템의 모든 기능에 접근', level: 'high', category: '전체', icon: '👑' },
   COMPANIES: { name: '회사 관리', description: '회사 정보 생성/수정/삭제', level: 'high', category: '관리', icon: '🏢' },
   COURSES: { name: '코스 관리', description: '골프장 및 코스 관리', level: 'medium', category: '관리', icon: '🏌️' },
   TIMESLOTS: { name: '타임슬롯 관리', description: '타임슬롯 생성/수정/삭제', level: 'medium', category: '관리', icon: '⏰' },
@@ -29,22 +28,23 @@ const roleMeta: Record<string, { label: string; description: string; scope: stri
 
 // 카테고리별 아이콘
 const categoryIcons: Record<string, string> = {
-  '전체': '👑',
   '관리': '🏢',
   '운영': '📅',
   '지원': '🎧',
-  ADMIN: '👑',
 };
 
 export const RolePermissionPage: React.FC = () => {
   const [selectedRoleCode, setSelectedRoleCode] = useState<string>('ADMIN');
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedPermissions, setEditedPermissions] = useState<string[]>([]);
 
   // API 호출
   const { data: admins = [], isLoading: adminsLoading } = useAdmins();
   const { data: stats, isLoading: statsLoading } = useAdminStats();
   const { data: apiPermissions = [], isLoading: permissionsLoading } = usePermissions();
   const { data: rolesWithPermissions = [], isLoading: rolesLoading } = useRolesWithPermissions('ADMIN');
+  const updateRolePermissions = useUpdateRolePermissions();
 
   const isLoading = adminsLoading || statsLoading || permissionsLoading || rolesLoading;
 
@@ -68,9 +68,13 @@ export const RolePermissionPage: React.FC = () => {
     return counts;
   }, [admins, rolesWithPermissions]);
 
-  // 권한을 카테고리별로 그룹화
+  // ALL 권한 제외한 실제 권한 목록
+  const adminPermissions = useMemo(() => {
+    return apiPermissions.filter((p: any) => p.category === 'ADMIN' && p.code !== 'ALL');
+  }, [apiPermissions]);
+
+  // 권한을 카테고리별로 그룹화 (ALL 제외)
   const permissionsByCategory = useMemo(() => {
-    const adminPermissions = apiPermissions.filter((p: any) => p.category === 'ADMIN');
     const groups: Record<string, any[]> = {};
 
     adminPermissions.forEach((p: any) => {
@@ -89,23 +93,86 @@ export const RolePermissionPage: React.FC = () => {
     });
 
     return groups;
-  }, [apiPermissions]);
+  }, [adminPermissions]);
 
   // 그룹 초기화
-  useMemo(() => {
+  useEffect(() => {
     if (Object.keys(permissionsByCategory).length > 0 && Object.keys(expandedGroups).length === 0) {
       setExpandedGroups(Object.fromEntries(Object.keys(permissionsByCategory).map(k => [k, true])));
     }
   }, [permissionsByCategory]);
+
+  // 편집 모드 시작시 현재 권한 복사
+  useEffect(() => {
+    if (isEditing && selectedRole) {
+      // ALL 권한이 있으면 모든 권한을 선택된 것으로 표시
+      if (selectedRole.permissions?.includes('ALL')) {
+        setEditedPermissions(adminPermissions.map((p: any) => p.code));
+      } else {
+        setEditedPermissions(selectedRole.permissions || []);
+      }
+    }
+  }, [isEditing, selectedRole, adminPermissions]);
 
   const toggleGroup = (groupId: string) => {
     setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
   };
 
   const hasPermission = (permissionCode: string) => {
+    if (isEditing) {
+      return editedPermissions.includes(permissionCode);
+    }
     if (!selectedRole?.permissions) return false;
     if (selectedRole.permissions.includes('ALL')) return true;
     return selectedRole.permissions.includes(permissionCode);
+  };
+
+  const togglePermission = (permissionCode: string) => {
+    if (!isEditing) return;
+    setEditedPermissions(prev =>
+      prev.includes(permissionCode)
+        ? prev.filter(p => p !== permissionCode)
+        : [...prev, permissionCode]
+    );
+  };
+
+  const toggleAllInGroup = (permissions: any[]) => {
+    if (!isEditing) return;
+    const groupCodes = permissions.map(p => p.code);
+    const allSelected = groupCodes.every(code => editedPermissions.includes(code));
+
+    if (allSelected) {
+      setEditedPermissions(prev => prev.filter(p => !groupCodes.includes(p)));
+    } else {
+      setEditedPermissions(prev => [...new Set([...prev, ...groupCodes])]);
+    }
+  };
+
+  const selectAll = () => {
+    setEditedPermissions(adminPermissions.map((p: any) => p.code));
+  };
+
+  const deselectAll = () => {
+    setEditedPermissions([]);
+  };
+
+  const handleSave = async () => {
+    if (!selectedRole) return;
+
+    try {
+      await updateRolePermissions.mutateAsync({
+        roleCode: selectedRole.code,
+        permissions: editedPermissions,
+      });
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to save permissions:', error);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditedPermissions([]);
   };
 
   const hasAllGroupPermissions = (permissions: any[]) => {
@@ -142,12 +209,9 @@ export const RolePermissionPage: React.FC = () => {
     return roleMeta[roleCode] || { label: roleCode, description: '', scope: '', color: 'bg-gray-100 text-gray-800' };
   };
 
-  // 전역 로딩 인디케이터(QueryLoadingIndicator)가 처리
   if (isLoading) {
     return null;
   }
-
-  const adminPermissions = apiPermissions.filter((p: any) => p.category === 'ADMIN');
 
   return (
     <PageLayout>
@@ -165,7 +229,7 @@ export const RolePermissionPage: React.FC = () => {
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">역할 및 권한 관리</h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  시스템 역할과 각 역할별 권한을 관리합니다 (데이터: API 연동)
+                  시스템 역할과 각 역할별 권한을 관리합니다
                 </p>
               </div>
             </div>
@@ -202,12 +266,17 @@ export const RolePermissionPage: React.FC = () => {
                   return (
                     <button
                       key={role.code}
-                      onClick={() => setSelectedRoleCode(role.code)}
+                      onClick={() => {
+                        if (!isEditing) {
+                          setSelectedRoleCode(role.code);
+                        }
+                      }}
+                      disabled={isEditing}
                       className={`flex-1 py-4 px-6 text-center border-b-2 font-medium text-sm transition-colors ${
                         selectedRoleCode === role.code
                           ? 'border-blue-500 text-blue-600 bg-blue-50'
                           : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
+                      } ${isEditing && selectedRoleCode !== role.code ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       <div className="font-semibold">{meta.label || role.name}</div>
                       <div className="text-xs text-gray-400 mt-1">{roleUserCounts[role.code] || 0}명</div>
@@ -217,7 +286,7 @@ export const RolePermissionPage: React.FC = () => {
               </nav>
             </div>
 
-            {/* 역할 정보 */}
+            {/* 역할 정보 및 편집 버튼 */}
             {selectedRole && (
               <div className="p-6 bg-gray-50 border-b border-gray-200">
                 <div className="flex items-start justify-between">
@@ -238,9 +307,50 @@ export const RolePermissionPage: React.FC = () => {
                     </p>
                     <div className="mt-2 flex items-center space-x-4 text-sm text-gray-500">
                       <span>범위: <strong>{getRoleMeta(selectedRole.code).scope || selectedRole.userType}</strong></span>
-                      <span>권한: <strong>{selectedRole.permissions?.includes('ALL') ? '전체' : `${selectedRole.permissions?.length || 0}개`}</strong></span>
+                      <span>권한: <strong>{isEditing ? editedPermissions.length : (selectedRole.permissions?.includes('ALL') ? adminPermissions.length : selectedRole.permissions?.length || 0)}개</strong></span>
                       <span>사용자: <strong>{roleUserCounts[selectedRole.code] || 0}명</strong></span>
                     </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isEditing ? (
+                      <>
+                        <button
+                          onClick={selectAll}
+                          className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
+                        >
+                          전체 선택
+                        </button>
+                        <button
+                          onClick={deselectAll}
+                          className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
+                        >
+                          전체 해제
+                        </button>
+                        <button
+                          onClick={handleCancel}
+                          className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                        >
+                          취소
+                        </button>
+                        <button
+                          onClick={handleSave}
+                          disabled={updateRolePermissions.isPending}
+                          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                        >
+                          {updateRolePermissions.isPending ? '저장 중...' : '저장'}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="inline-flex items-center px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        권한 편집
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -251,43 +361,55 @@ export const RolePermissionPage: React.FC = () => {
               {Object.entries(permissionsByCategory).map(([category, permissions]) => (
                 <div key={category}>
                   {/* 그룹 헤더 */}
-                  <button
-                    onClick={() => toggleGroup(category)}
+                  <div
                     className="w-full flex items-center justify-between px-6 py-4 bg-white hover:bg-gray-50 transition-colors"
                   >
-                    <div className="flex items-center space-x-3">
+                    <button
+                      onClick={() => toggleGroup(category)}
+                      className="flex items-center space-x-3 flex-1"
+                    >
                       <span className="text-xl">{categoryIcons[category] || '📌'}</span>
                       <span className="font-medium text-gray-900">{category}</span>
                       <span className="text-sm text-gray-500">
                         ({getGroupPermissionCount(permissions)}/{permissions.length})
                       </span>
-                    </div>
+                    </button>
                     <div className="flex items-center space-x-3">
+                      {isEditing && (
+                        <button
+                          onClick={() => toggleAllInGroup(permissions)}
+                          className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded transition-colors"
+                        >
+                          {hasAllGroupPermissions(permissions) ? '전체 해제' : '전체 선택'}
+                        </button>
+                      )}
                       {hasAllGroupPermissions(permissions) ? (
                         <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">
-                          전체 권한
+                          전체 선택됨
                         </span>
                       ) : hasSomeGroupPermissions(permissions) ? (
                         <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded">
-                          부분 권한
+                          부분 선택
                         </span>
                       ) : (
                         <span className="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded">
-                          권한 없음
+                          선택 없음
                         </span>
                       )}
-                      <svg
-                        className={`w-5 h-5 text-gray-400 transition-transform ${
-                          expandedGroups[category] ? 'rotate-180' : ''
-                        }`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
+                      <button onClick={() => toggleGroup(category)}>
+                        <svg
+                          className={`w-5 h-5 text-gray-400 transition-transform ${
+                            expandedGroups[category] ? 'rotate-180' : ''
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
                     </div>
-                  </button>
+                  </div>
 
                   {/* 권한 목록 */}
                   {expandedGroups[category] && (
@@ -298,15 +420,18 @@ export const RolePermissionPage: React.FC = () => {
                           return (
                             <div
                               key={permission.code}
-                              className={`flex items-start p-3 rounded-lg border ${
+                              onClick={() => togglePermission(permission.code)}
+                              className={`flex items-start p-3 rounded-lg border transition-all ${
                                 granted
                                   ? 'bg-green-50 border-green-200'
                                   : 'bg-white border-gray-200'
-                              }`}
+                              } ${isEditing ? 'cursor-pointer hover:shadow-md' : ''}`}
                             >
-                              <div className={`flex-shrink-0 w-5 h-5 mt-0.5 rounded ${
-                                granted ? 'bg-green-500' : 'bg-gray-300'
-                              } flex items-center justify-center`}>
+                              <div className={`flex-shrink-0 w-5 h-5 mt-0.5 rounded border-2 ${
+                                granted
+                                  ? 'bg-green-500 border-green-500'
+                                  : 'bg-white border-gray-300'
+                              } flex items-center justify-center transition-colors`}>
                                 {granted && (
                                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -405,7 +530,7 @@ export const RolePermissionPage: React.FC = () => {
 
           {/* 안내 문구 */}
           <div className="text-center text-sm text-gray-500">
-            시스템 역할은 수정할 수 없습니다. 역할 변경은 관리자 관리 페이지에서 가능합니다.
+            각 역할의 권한을 편집하려면 역할을 선택한 후 "권한 편집" 버튼을 클릭하세요.
           </div>
         </div>
       </PageLayout.Content>

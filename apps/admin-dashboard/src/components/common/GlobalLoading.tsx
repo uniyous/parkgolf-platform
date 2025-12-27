@@ -1,8 +1,9 @@
 import React from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { Loader2 } from 'lucide-react';
 import { useIsFetching } from '@tanstack/react-query';
-import { cn } from '../../utils';
+import { cn } from '@/utils';
 
 interface GlobalLoadingProps {
   open?: boolean;
@@ -41,17 +42,17 @@ export const GlobalLoading: React.FC<GlobalLoadingProps> = ({
         <Dialog.Overlay className="fixed inset-0 z-50 bg-white/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <Dialog.Content
           className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 focus:outline-none"
-          aria-describedby={message ? 'loading-description' : undefined}
+          aria-describedby={undefined}
         >
+          <VisuallyHidden.Root asChild>
+            <Dialog.Title>로딩</Dialog.Title>
+          </VisuallyHidden.Root>
           <div className="flex flex-col items-center justify-center p-8">
             <Spinner size="lg" />
             {message && (
-              <Dialog.Description
-                id="loading-description"
-                className="mt-4 text-sm font-medium text-gray-600"
-              >
+              <p className="mt-4 text-sm font-medium text-gray-600">
                 {message}
-              </Dialog.Description>
+              </p>
             )}
           </div>
         </Dialog.Content>

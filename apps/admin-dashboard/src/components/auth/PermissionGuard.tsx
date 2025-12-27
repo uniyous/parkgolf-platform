@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuthStore, useCurrentAdmin } from '@/stores';
-import type { Permission } from '../../types';
+import type { Permission } from '@/types';
 
 interface PermissionGuardProps {
   permission: Permission;

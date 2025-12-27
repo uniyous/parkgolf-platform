@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useIsAuthenticated } from '../../stores';
+import { useIsAuthenticated } from '@/stores';
 
 interface AuthGuardProps {
   children: React.ReactNode;

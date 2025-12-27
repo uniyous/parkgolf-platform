@@ -30,10 +30,34 @@ export class CompanyService {
     }
   }
 
-  findAll() {
-    return this.prisma.company.findMany({
-      include: { courses: true },
-    });
+  async findAll(page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+
+    const [companies, total] = await Promise.all([
+      this.prisma.company.findMany({
+        skip,
+        take: limit,
+        include: {
+          _count: {
+            select: { courses: true, clubs: true }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      }),
+      this.prisma.company.count()
+    ]);
+
+    return {
+      companies: companies.map(company => ({
+        ...company,
+        coursesCount: company._count.courses,
+        clubsCount: company._count.clubs,
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    };
   }
 
   async findOne(id: number) {

@@ -20,15 +20,11 @@ export class CompanyNatsController {
       this.logger.log('NATS: Getting companies list');
 
       const { page = 1, limit = 20 } = data;
-      const companies = await this.companyService.findAll();
-
-      const startIndex = (Number(page) - 1) * Number(limit);
-      const endIndex = startIndex + Number(limit);
-      const paginatedCompanies = companies.slice(startIndex, endIndex);
+      const result = await this.companyService.findAll(Number(page), Number(limit));
 
       return successResponse(
-        { companies: paginatedCompanies.map(mapCompanyToResponse) },
-        paginationMeta(companies.length, Number(page), Number(limit))
+        { companies: result.companies.map(mapCompanyToResponse) },
+        paginationMeta(result.total, result.page, result.limit)
       );
     } catch (error) {
       this.logger.error('NATS: Failed to get companies', error);

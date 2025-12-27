@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { courseApi } from '@/lib/api/courseApi';
-import { Breadcrumb } from '../../components/common';
-import { PageLayout } from '../../components/common/Layout/PageLayout';
+import { Breadcrumb } from '@/components/common';
+import { PageLayout } from '@/components/layout';
 import { useAuthStore, useCurrentAdmin } from '@/stores';
-import { CanManageBookings } from '../../components/auth/PermissionGuard';
-import type { Course, Company } from '../../types';
+import { CanManageBookings } from '@/components/auth';
+import type { Course, Company } from '@/types';
 
 export const BookingManagementPage: React.FC = () => {
   const navigate = useNavigate();

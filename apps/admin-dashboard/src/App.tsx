@@ -1,6 +1,6 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
-import { PrivateRoute } from './components/PrivateRoute';
-import { GlobalLoading } from './components/common/GlobalLoading';
+import { PrivateRoute } from '@/components/auth';
+import { GlobalLoading } from '@/components/common';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
