@@ -42,36 +42,58 @@ export class AdminService {
   async findAll(params?: {
     skip?: number;
     take?: number;
+    page?: number;
+    limit?: number;
     where?: Prisma.AdminWhereInput;
     orderBy?: Prisma.AdminOrderByWithRelationInput;
-  }): Promise<any[]> {
-    const { skip, take, where, orderBy } = params || {};
+  }): Promise<{ admins: any[]; total: number; page: number; limit: number; totalPages: number }> {
+    const { where, orderBy } = params || {};
 
-    const admins = await this.prisma.admin.findMany({
-      skip,
-      take,
-      where,
-      orderBy,
-      include: {
-        role: {
-          include: {
-            rolePermissions: {
-              include: {
-                permission: true,
+    // 페이지네이션 처리
+    const page = params?.page || 1;
+    const limit = params?.limit || params?.take || 20;
+    const skip = params?.skip || (page - 1) * limit;
+
+    // 병렬로 데이터와 카운트 조회
+    const [admins, total] = await Promise.all([
+      this.prisma.admin.findMany({
+        skip,
+        take: limit,
+        where,
+        orderBy: orderBy || { createdAt: 'desc' },
+        include: {
+          role: {
+            select: {
+              code: true,
+              name: true,
+              level: true,
+              rolePermissions: {
+                select: {
+                  permissionCode: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      }),
+      this.prisma.admin.count({ where }),
+    ]);
 
     // 역할 기반 권한을 permissions 배열로 변환
-    return admins.map((admin) => ({
+    const transformedAdmins = admins.map((admin) => ({
       ...admin,
       permissions: admin.role?.rolePermissions?.map((rp) => ({
-        permission: rp.permission.code,
+        permission: rp.permissionCode,
       })) || [],
     }));
+
+    return {
+      admins: transformedAdmins,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: number): Promise<any> {
@@ -315,15 +337,51 @@ export class AdminService {
 
   async getAdminRoles(): Promise<any[]> {
     return this.prisma.roleMaster.findMany({
-      where: { 
+      where: {
         userType: 'ADMIN',
-        isActive: true 
+        isActive: true
       },
       orderBy: [
         { level: 'desc' },
         { code: 'asc' },
       ],
     });
+  }
+
+  async getRolesWithPermissions(userType?: string): Promise<any[]> {
+    const where: any = { isActive: true };
+    if (userType) {
+      where.userType = userType;
+    }
+
+    // 단일 쿼리로 역할과 권한을 함께 조회
+    const roles = await this.prisma.roleMaster.findMany({
+      where,
+      orderBy: [
+        { userType: 'asc' },
+        { level: 'desc' },
+      ],
+      include: {
+        rolePermissions: {
+          select: {
+            permissionCode: true,
+          },
+        },
+      },
+    });
+
+    // 권한 코드 배열로 변환
+    return roles.map(role => ({
+      code: role.code,
+      name: role.name,
+      description: role.description,
+      userType: role.userType,
+      level: role.level,
+      isActive: role.isActive,
+      createdAt: role.createdAt,
+      updatedAt: role.updatedAt,
+      permissions: role.rolePermissions.map(rp => rp.permissionCode),
+    }));
   }
 
   // 개별 권한 관리는 제거됨 - 역할 기반 권한만 사용

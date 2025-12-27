@@ -28,31 +28,31 @@ export class AdminsController {
   @ApiQuery({ name: 'search', required: false, description: 'Search in name, username, email' })
   @ApiQuery({ name: 'role', required: false, description: 'Filter by admin role' })
   @ApiQuery({ name: 'isActive', required: false, description: 'Filter by active status' })
-  @ApiQuery({ name: 'skip', required: false, description: 'Number of items to skip', example: 0 })
-  @ApiQuery({ name: 'take', required: false, description: 'Number of items to take', example: 20 })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number', example: 1 })
+  @ApiQuery({ name: 'limit', required: false, description: 'Items per page', example: 20 })
   @ApiResponse({ status: 200, description: 'Admin list retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getAdminList(
     @Query('search') search?: string,
     @Query('role') role?: string,
     @Query('isActive') isActive?: string,
-    @Query('skip') skip = 0,
-    @Query('take') take = 20,
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
     @Headers('authorization') authorization?: string
   ) {
     try {
       const token = this.extractToken(authorization);
+      const pageNum = parseInt(page.toString(), 10) || 1;
+      const limitNum = parseInt(limit.toString(), 10) || 20;
       const filters = {
         search,
         role,
         isActive: isActive === undefined ? undefined : isActive === 'true',
-        skip: parseInt(skip.toString(), 10),
-        take: parseInt(take.toString(), 10),
       };
-      
-      this.logger.log(`Fetching admin list with filters: ${JSON.stringify(filters)}`);
-      
-      const result = await this.adminService.getAdminList(filters, token);
+
+      this.logger.log(`Fetching admin list with filters: ${JSON.stringify(filters)}, page: ${pageNum}, limit: ${limitNum}`);
+
+      const result = await this.adminService.getAdminList(filters, pageNum, limitNum, token);
       return result;
     } catch (error) {
       this.logger.error('Failed to fetch admin list', error);

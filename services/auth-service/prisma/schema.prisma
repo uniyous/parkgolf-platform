@@ -22,6 +22,8 @@ model User {
   role          RoleMaster       @relation(fields: [roleCode], references: [code])
   refreshTokens RefreshToken[]
 
+  @@index([roleCode])
+  @@index([isActive])
   @@map("users")
 }
 
@@ -55,6 +57,9 @@ model Admin {
   activityLogs  AdminActivityLog[]
   refreshTokens AdminRefreshToken[]
 
+  @@index([roleCode])
+  @@index([isActive])
+  @@index([createdAt])
   @@map("admins")
 }
 
@@ -117,6 +122,8 @@ model RolePermission {
   permission     PermissionMaster @relation(fields: [permissionCode], references: [code], onDelete: Cascade)
 
   @@id([roleCode, permissionCode])
+  @@index([roleCode])
+  @@index([permissionCode])
   @@map("role_permissions")
 }
 
@@ -131,5 +138,7 @@ model AdminActivityLog {
   createdAt DateTime @default(now()) @map("created_at")
   admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
+  @@index([adminId])
+  @@index([createdAt])
   @@map("admin_activity_logs")
 }

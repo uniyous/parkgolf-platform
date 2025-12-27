@@ -19,9 +19,9 @@ export class AdminService {
   // Admin CRUD Operations
   // ============================================
 
-  async getAdminList(filters: any, token: string) {
+  async getAdminList(filters: any, page: number = 1, limit: number = 20, token: string) {
     this.logger.log('Fetching admin list');
-    return this.natsClient.send('admins.list', { filters, token }, NATS_TIMEOUTS.LIST_QUERY);
+    return this.natsClient.send('admins.list', { filters, page, limit, token }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   async getAdminById(adminId: string, token: string) {
