@@ -90,6 +90,8 @@ model PermissionMaster {
   // 관계
   rolePermissions RolePermission[]
 
+  @@index([category])
+  @@index([isActive])
   @@map("permission_masters")
 }
 
@@ -109,6 +111,8 @@ model RoleMaster {
   admins          Admin[]
   rolePermissions RolePermission[]
 
+  @@index([userType])
+  @@index([isActive])
   @@map("role_masters")
 }
 

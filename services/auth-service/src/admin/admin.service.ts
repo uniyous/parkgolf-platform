@@ -250,29 +250,20 @@ export class AdminService {
   }
 
   async getStats(): Promise<any> {
-    // Get all active admin roles from RoleMaster
-    const adminRoles = await this.prisma.roleMaster.findMany({
-      where: { 
-        userType: 'ADMIN',
-        isActive: true 
-      },
-      orderBy: { level: 'desc' },
-    });
-
-    const [total, active, byRole] = await Promise.all([
-      this.count(),
-      this.count({ isActive: true }),
-      Promise.all(
-        adminRoles.map(role => 
-          this.count({ roleCode: role.code })
-        )
-      ),
+    // 단일 쿼리로 전체 통계와 역할별 카운트 조회
+    const [total, active, roleGrouped] = await Promise.all([
+      this.prisma.admin.count(),
+      this.prisma.admin.count({ where: { isActive: true } }),
+      this.prisma.admin.groupBy({
+        by: ['roleCode'],
+        _count: { id: true },
+      }),
     ]);
 
-    // Build dynamic byRole object
+    // Build byRole object from grouped results
     const byRoleStats: Record<string, number> = {};
-    adminRoles.forEach((role, index) => {
-      byRoleStats[role.code] = byRole[index];
+    roleGrouped.forEach((group) => {
+      byRoleStats[group.roleCode] = group._count.id;
     });
 
     return {
