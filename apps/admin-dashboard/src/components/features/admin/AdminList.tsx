@@ -27,7 +27,7 @@ const ROLE_META: Record<string, { icon: string; color: string }> = {
 
 export const AdminList: React.FC = () => {
   // Queries & Mutations
-  const { data: admins = [], isLoading, refetch } = useAdmins();
+  const { data: admins = [], refetch } = useAdmins();
   const deleteAdmin = useDeleteAdmin();
   const toggleStatus = useToggleAdminStatus();
   const currentAdmin = useCurrentAdmin();
@@ -149,10 +149,6 @@ export const AdminList: React.FC = () => {
     if (!currentAdmin) return false;
     return canManageAdmin(currentAdmin.role, admin.role);
   };
-
-  if (isLoading) {
-    return null;
-  }
 
   return (
     <div className="space-y-6">

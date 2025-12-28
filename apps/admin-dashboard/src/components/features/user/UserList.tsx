@@ -39,7 +39,7 @@ const TIER_META: Record<UserMembershipTier, { icon: string; color: string }> = {
 
 export const UserList: React.FC = () => {
   // Queries & Mutations
-  const { data: usersResponse, isLoading, refetch } = useUsers();
+  const { data: usersResponse, refetch } = useUsers();
   const deleteUser = useDeleteUser();
   const updateStatus = useUpdateUserStatus();
 
@@ -162,10 +162,6 @@ export const UserList: React.FC = () => {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
-
-  if (isLoading) {
-    return null;
-  }
 
   return (
     <div className="space-y-6">

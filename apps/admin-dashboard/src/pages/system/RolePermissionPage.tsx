@@ -39,13 +39,11 @@ export const RolePermissionPage: React.FC = () => {
   const [editedPermissions, setEditedPermissions] = useState<string[]>([]);
 
   // API 호출
-  const { data: admins = [], isLoading: adminsLoading } = useAdmins();
-  const { data: stats, isLoading: statsLoading } = useAdminStats();
-  const { data: apiPermissions = [], isLoading: permissionsLoading } = usePermissions();
-  const { data: rolesWithPermissions = [], isLoading: rolesLoading } = useRolesWithPermissions('ADMIN');
+  const { data: admins = [] } = useAdmins();
+  const { data: stats } = useAdminStats();
+  const { data: apiPermissions = [] } = usePermissions();
+  const { data: rolesWithPermissions = [] } = useRolesWithPermissions('ADMIN');
   const updateRolePermissions = useUpdateRolePermissions();
-
-  const isLoading = adminsLoading || statsLoading || permissionsLoading || rolesLoading;
 
   // 현재 선택된 역할 (API 데이터에서)
   const selectedRole = useMemo(() =>
@@ -207,10 +205,6 @@ export const RolePermissionPage: React.FC = () => {
   const getRoleMeta = (roleCode: string) => {
     return roleMeta[roleCode] || { label: roleCode, description: '', scope: '', color: 'bg-gray-100 text-gray-800' };
   };
-
-  if (isLoading) {
-    return null;
-  }
 
   return (
     <PageLayout>

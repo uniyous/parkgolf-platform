@@ -20,7 +20,7 @@ export const GameDetailPage: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Queries
-  const { data: game, isLoading, error, refetch } = useGame(Number(gameId));
+  const { data: game, error, refetch } = useGame(Number(gameId));
   const deleteGameMutation = useDeleteGame();
 
   // 게임 삭제
@@ -45,14 +45,6 @@ export const GameDetailPage: React.FC = () => {
       }
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
 
   // game이 없거나 id가 없는 경우 에러로 처리
   if (error || !game || !game.id) {

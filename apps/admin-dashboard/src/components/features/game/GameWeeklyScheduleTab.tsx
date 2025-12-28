@@ -28,7 +28,7 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
   const [isWizardOpen, setIsWizardOpen] = useState(false);
 
   // Queries
-  const { data: schedules, isLoading, refetch } = useGameWeeklySchedules(gameId);
+  const { data: schedules, refetch } = useGameWeeklySchedules(gameId);
   const createMutation = useCreateWeeklySchedule();
   const updateMutation = useUpdateWeeklySchedule();
   const deleteMutation = useDeleteWeeklySchedule();
@@ -106,14 +106,6 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
     setFormData(null);
   };
 
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="p-6">

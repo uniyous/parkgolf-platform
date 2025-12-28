@@ -29,7 +29,7 @@ const STATUS_META: Record<CompanyStatus, { icon: string; color: string }> = {
 
 export const CompanyList: React.FC = () => {
   // Queries & Mutations
-  const { data: companiesResponse, isLoading, refetch } = useCompanies();
+  const { data: companiesResponse, refetch } = useCompanies();
   const deleteCompany = useDeleteCompany();
   const updateStatus = useUpdateCompanyStatus();
 
@@ -141,10 +141,6 @@ export const CompanyList: React.FC = () => {
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
   };
-
-  if (isLoading) {
-    return null;
-  }
 
   return (
     <div className="space-y-6">

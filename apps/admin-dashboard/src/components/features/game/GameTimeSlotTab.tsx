@@ -51,7 +51,7 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
     limit: 1000, // 일주일치 충분히 커버
   }), [weekRange]);
 
-  const { data: timeSlotsData, isLoading, isFetching, refetch } = useGameTimeSlots(gameId, queryFilters);
+  const { data: timeSlotsData, isFetching, refetch } = useGameTimeSlots(gameId, queryFilters);
   const deleteMutation = useDeleteTimeSlot();
   const updateMutation = useUpdateTimeSlot();
 
@@ -156,14 +156,6 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
   // 오늘 날짜
   const today = formatDate(new Date());
   const isThisWeek = today >= weekRange.start && today <= weekRange.end;
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="p-6">
