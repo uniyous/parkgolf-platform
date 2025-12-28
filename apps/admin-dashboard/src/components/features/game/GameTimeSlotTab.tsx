@@ -48,7 +48,7 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
   const queryFilters = useMemo<GameTimeSlotFilter>(() => ({
     startDate: weekRange.start,
     endDate: weekRange.end,
-    limit: 500, // 일주일치 충분히 커버
+    limit: 1000, // 일주일치 충분히 커버
   }), [weekRange]);
 
   const { data: timeSlotsData, isLoading, isFetching, refetch } = useGameTimeSlots(gameId, queryFilters);
