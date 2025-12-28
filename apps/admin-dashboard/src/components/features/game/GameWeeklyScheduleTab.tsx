@@ -165,19 +165,19 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
               {isEditing && formData ? (
                 // 편집 모드
                 <div className="space-y-2">
-                  <div className="flex space-x-1">
+                  <div className="flex items-center gap-0.5">
                     <input
                       type="time"
                       value={formData.startTime}
                       onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                      className="w-full px-1 py-1 text-xs border rounded"
+                      className="flex-1 min-w-0 px-1 py-1 text-xs border rounded [&::-webkit-calendar-picker-indicator]:hidden"
                     />
-                    <span className="text-gray-500">~</span>
+                    <span className="text-gray-400 text-xs">~</span>
                     <input
                       type="time"
                       value={formData.endTime}
                       onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                      className="w-full px-1 py-1 text-xs border rounded"
+                      className="flex-1 min-w-0 px-1 py-1 text-xs border rounded [&::-webkit-calendar-picker-indicator]:hidden"
                     />
                   </div>
                   <div className="flex items-center space-x-1">
