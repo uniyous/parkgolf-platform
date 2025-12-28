@@ -331,13 +331,21 @@ export const gamesApi = {
     const response = await apiClient.get<any>(`/admin/games/${gameId}/weekly-schedules`);
     const responseData = response.data;
 
+    console.log('[gamesApi.getWeeklySchedules] Response:', responseData);
+
     if (Array.isArray(responseData)) {
       return responseData;
     }
+    // { success: true, data: { schedules: [...] } } 형식
+    if (responseData?.data?.schedules && Array.isArray(responseData.data.schedules)) {
+      return responseData.data.schedules;
+    }
+    // { success: true, data: [...] } 형식
     if (Array.isArray(responseData?.data)) {
       return responseData.data;
     }
-    return responseData?.weeklySchedules || responseData?.schedules || [];
+    // { schedules: [...] } 또는 { weeklySchedules: [...] } 형식
+    return responseData?.schedules || responseData?.weeklySchedules || [];
   },
 
   /**
