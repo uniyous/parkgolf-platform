@@ -12,6 +12,7 @@ interface WeeklyScheduleWizardProps {
 }
 
 type WizardStep = 'days' | 'time' | 'preview';
+type DayStatus = 'pending' | 'creating' | 'completed' | 'skipped' | 'error';
 
 const dayOptions = [
   { value: 0, label: '일요일', short: '일', color: 'text-red-600' },
@@ -62,6 +63,8 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
   const [interval, setInterval] = useState(8);
   const [isCreating, setIsCreating] = useState(false);
   const [creationResult, setCreationResult] = useState<{ created: number; skipped: number } | null>(null);
+  const [dayStatuses, setDayStatuses] = useState<Record<number, DayStatus>>({});
+  const [currentProgress, setCurrentProgress] = useState(0);
 
   const createMutation = useCreateWeeklySchedule();
 
@@ -97,12 +100,29 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
     let created = 0;
     let skipped = 0;
 
+    // 처리할 요일 목록 (이미 존재하는 요일 제외)
+    const daysToProcess = selectedDays.filter(d => !existingDays.has(d));
+    const totalDays = daysToProcess.length;
+
+    // 초기 상태 설정
+    const initialStatuses: Record<number, DayStatus> = {};
+    selectedDays.forEach(day => {
+      if (existingDays.has(day)) {
+        initialStatuses[day] = 'skipped';
+        skipped++;
+      } else {
+        initialStatuses[day] = 'pending';
+      }
+    });
+    setDayStatuses(initialStatuses);
+    setCurrentProgress(0);
+
     try {
-      for (const day of selectedDays) {
-        if (existingDays.has(day)) {
-          skipped++;
-          continue;
-        }
+      for (let i = 0; i < daysToProcess.length; i++) {
+        const day = daysToProcess[i];
+
+        // 현재 요일 생성 중 표시
+        setDayStatuses(prev => ({ ...prev, [day]: 'creating' }));
 
         const dto: CreateGameWeeklyScheduleDto = {
           dayOfWeek: day,
@@ -112,8 +132,17 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
           isActive: true,
         };
 
-        await createMutation.mutateAsync({ gameId, data: dto });
-        created++;
+        try {
+          await createMutation.mutateAsync({ gameId, data: dto });
+          setDayStatuses(prev => ({ ...prev, [day]: 'completed' }));
+          created++;
+        } catch (err) {
+          console.error(`Failed to create schedule for day ${day}:`, err);
+          setDayStatuses(prev => ({ ...prev, [day]: 'error' }));
+        }
+
+        // 진행률 업데이트
+        setCurrentProgress(Math.round(((i + 1) / totalDays) * 100));
       }
 
       setCreationResult({ created, skipped });
@@ -126,7 +155,6 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
       }
     } catch (error) {
       console.error('Failed to create schedules:', error);
-      alert('스케줄 생성 중 오류가 발생했습니다.');
     } finally {
       setIsCreating(false);
     }
@@ -141,6 +169,8 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
     setEndTime('18:00');
     setInterval(8);
     setCreationResult(null);
+    setDayStatuses({});
+    setCurrentProgress(0);
     onClose();
   };
 
@@ -428,6 +458,88 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                       {creationResult.skipped > 0 && ` (${creationResult.skipped}개 건너뜀)`}
                     </p>
                   </div>
+                ) : isCreating ? (
+                  /* 생성 진행 중 UI */
+                  <div className="space-y-6">
+                    {/* 프로그레스 바 */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">스케줄 생성 중...</span>
+                        <span className="text-sm font-bold text-violet-600">{currentProgress}%</span>
+                      </div>
+                      <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-violet-500 to-purple-600 rounded-full transition-all duration-300 ease-out"
+                          style={{ width: `${currentProgress}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* 요일별 상태 그리드 */}
+                    <div className="grid grid-cols-7 gap-2">
+                      {dayOptions.map(day => {
+                        const status = dayStatuses[day.value];
+                        const isSelected = selectedDays.includes(day.value);
+
+                        if (!isSelected) {
+                          return (
+                            <div key={day.value} className="p-3 rounded-lg border bg-gray-50 border-gray-200 text-center">
+                              <div className={`text-xs font-medium mb-1 ${day.color}`}>{day.short}</div>
+                              <div className="text-[10px] text-gray-400">-</div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div
+                            key={day.value}
+                            className={`p-3 rounded-lg border text-center transition-all duration-300 ${
+                              status === 'completed'
+                                ? 'bg-green-50 border-green-300'
+                                : status === 'creating'
+                                ? 'bg-violet-50 border-violet-400 ring-2 ring-violet-300 ring-offset-1'
+                                : status === 'skipped'
+                                ? 'bg-gray-100 border-gray-300'
+                                : status === 'error'
+                                ? 'bg-red-50 border-red-300'
+                                : 'bg-gray-50 border-gray-200'
+                            }`}
+                          >
+                            <div className={`text-xs font-medium mb-1 ${day.color}`}>{day.short}</div>
+                            <div className="h-5 flex items-center justify-center">
+                              {status === 'creating' && (
+                                <svg className="animate-spin h-4 w-4 text-violet-600" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                              )}
+                              {status === 'completed' && (
+                                <svg className="h-4 w-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                              {status === 'skipped' && (
+                                <span className="text-[10px] text-gray-500">건너뜀</span>
+                              )}
+                              {status === 'error' && (
+                                <svg className="h-4 w-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              )}
+                              {status === 'pending' && (
+                                <span className="text-[10px] text-gray-400">대기</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* 진행 상태 텍스트 */}
+                    <div className="text-center text-sm text-gray-500">
+                      잠시만 기다려 주세요...
+                    </div>
+                  </div>
                 ) : (
                   <>
                     {/* Summary Card */}
@@ -516,7 +628,7 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
           </div>
 
           {/* Footer */}
-          {!creationResult && (
+          {!creationResult && !isCreating && (
             <div className="px-6 py-4 bg-gray-50 border-t flex items-center justify-between">
               <button
                 onClick={() => {
@@ -551,25 +663,13 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                 {step === 'preview' && (
                   <button
                     onClick={handleCreate}
-                    disabled={isCreating || newDaysCount === 0}
+                    disabled={newDaysCount === 0}
                     className="px-5 py-2.5 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center"
                   >
-                    {isCreating ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        생성 중...
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        {newDaysCount}개 스케줄 생성
-                      </>
-                    )}
+                    <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    {newDaysCount}개 스케줄 생성
                   </button>
                 )}
               </div>
