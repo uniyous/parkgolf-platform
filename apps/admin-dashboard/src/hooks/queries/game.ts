@@ -48,6 +48,7 @@ export const useGameWeeklySchedules = (gameId: number) => {
     queryKey: gameKeys.weeklySchedules(gameId),
     queryFn: () => gamesApi.getWeeklySchedules(gameId),
     enabled: !!gameId,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -117,15 +118,11 @@ export const useDeleteGame = () => {
 // ============================================
 
 export const useCreateWeeklySchedule = () => {
-  const queryClient = useQueryClient();
-
   return useMutation({
     meta: { globalLoading: false }, // 로컬 프로그레스 바 사용
     mutationFn: ({ gameId, data }: { gameId: number; data: CreateGameWeeklyScheduleDto }) =>
       gamesApi.createWeeklySchedule(gameId, data),
-    onSuccess: (_, { gameId }) => {
-      queryClient.invalidateQueries({ queryKey: gameKeys.weeklySchedules(gameId) });
-    },
+    // onSuccess에서 invalidate 하지 않음 - 마법사에서 완료 후 refetch() 호출
   });
 };
 
