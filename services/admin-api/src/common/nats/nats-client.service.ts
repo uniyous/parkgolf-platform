@@ -15,6 +15,8 @@ export const NATS_TIMEOUTS = {
   LIST_QUERY: 30000,
   /** Analytics and statistics */
   ANALYTICS: 30000,
+  /** Bulk operations (time slot generation, batch processing) */
+  BULK_OPERATION: 120000,
 } as const;
 
 /**

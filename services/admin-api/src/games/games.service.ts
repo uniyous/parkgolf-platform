@@ -137,7 +137,7 @@ export class GamesService {
     return this.natsClient.send('gameTimeSlots.generate', {
       data: { gameId, startDate, endDate },
       token: adminToken
-    }, NATS_TIMEOUTS.LIST_QUERY);
+    }, NATS_TIMEOUTS.BULK_OPERATION);
   }
 
   async getTimeSlotStats(params: any, adminToken?: string): Promise<any> {
