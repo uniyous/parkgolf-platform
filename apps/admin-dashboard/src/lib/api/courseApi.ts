@@ -49,18 +49,18 @@ export const courseApi = {
   async getCompanies(): Promise<Company[]> {
     try {
       console.log('Fetching companies from BFF API');
-      
+
       // BFF API 응답 구조: {companies: Company[], totalCount: number, totalPages: number, page: number}
-      const response = await apiClient.get<{companies: Company[], totalCount: number, totalPages: number, page: number}>('/admin/courses/companies');
+      const response = await apiClient.get<{companies: Company[], totalCount: number, totalPages: number, page: number}>('/admin/companies');
       console.log('API Client Response:', response);
       console.log('Response.data:', response.data);
-      
+
       // BFF 응답에서 companies 배열 추출
       const bffResponse = response.data;
       const companies = bffResponse?.companies || [];
       console.log('Final companies array:', companies);
       console.log('Companies count:', companies.length);
-      
+
       return companies;
     } catch (error) {
       console.error('Failed to fetch companies:', error);
