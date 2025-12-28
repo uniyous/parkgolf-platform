@@ -36,7 +36,7 @@ export const Spinner: React.FC<SpinnerProps> = ({ size = 'md', className }) => {
 // 세련된 전역 로딩 컴포넌트
 export const GlobalLoading: React.FC<GlobalLoadingProps> = ({
   open = true,
-  message = '로딩 중...',
+  message,
   delay = 0,
 }) => {
   const [showLoading, setShowLoading] = useState(delay === 0);
@@ -134,7 +134,7 @@ export const QueryLoadingIndicator: React.FC<{ delay?: number }> = ({ delay = 30
 
   if (isFetching === 0) return null;
 
-  return <GlobalLoading message="데이터를 불러오는 중..." delay={delay} />;
+  return <GlobalLoading delay={delay} />;
 };
 
 export default GlobalLoading;
