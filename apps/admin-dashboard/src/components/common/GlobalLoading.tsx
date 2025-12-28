@@ -106,7 +106,7 @@ export const GlobalLoading: React.FC<GlobalLoadingProps> = ({
 
 // 인라인 로딩 컴포넌트 (페이지 내부용)
 export const InlineLoading: React.FC<{ message?: string; className?: string }> = ({
-  message = '로딩 중...',
+  message,
   className,
 }) => {
   return (

@@ -21,7 +21,7 @@ function App() {
 
   // 인증 상태 초기화 중 로딩 표시
   if (isInitializing) {
-    return <GlobalLoading message="인증 확인 중..." />;
+    return <GlobalLoading />;
   }
 
   return (
