@@ -365,6 +365,9 @@ export class GameNatsController {
   }
 
   private mapTimeSlotToResponse(slot: any) {
+    const maxPlayers = slot.maxPlayers ?? 0;
+    const bookedPlayers = slot.bookedPlayers ?? 0;
+
     return {
       id: slot.id,
       gameId: slot.gameId,
@@ -376,10 +379,13 @@ export class GameNatsController {
       date: slot.date instanceof Date ? slot.date.toISOString().split('T')[0] : slot.date,
       startTime: slot.startTime,
       endTime: slot.endTime,
-      maxPlayers: slot.maxPlayers,
-      bookedPlayers: slot.bookedPlayers,
-      availablePlayers: slot.maxPlayers - slot.bookedPlayers,
-      price: Number(slot.price),
+      maxPlayers,
+      bookedPlayers,
+      availablePlayers: maxPlayers - bookedPlayers,
+      // 프론트엔드 호환용 별칭
+      maxBookings: maxPlayers,
+      currentBookings: bookedPlayers,
+      price: Number(slot.price) || 0,
       isPremium: slot.isPremium,
       status: slot.status,
       isActive: slot.isActive,
