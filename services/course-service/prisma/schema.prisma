@@ -204,8 +204,11 @@ model GameTimeSlot {
   updatedAt     DateTime       @updatedAt @map("updated_at")
 
   @@unique([gameId, date, startTime])
-  @@index([date])
-  @@index([status])
+  @@index([gameId, date])           // 주간 조회 최적화 (가장 많이 사용)
+  @@index([gameId, status])         // 게임별 상태 필터링
+  @@index([date])                   // 날짜 범위 조회
+  @@index([status])                 // 상태 필터링
+  @@index([isActive])               // 활성화 필터링
   @@map("game_time_slots")
 }
 

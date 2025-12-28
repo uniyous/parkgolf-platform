@@ -74,7 +74,7 @@ export const BookingTrendsChart: React.FC<BookingTrendsChartProps> = ({ data }) 
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <p className="text-sm text-blue-800">
-              <span className="font-medium">피크 시간:</span> {peakTime.hour || peakTime.day}에 {peakTime.bookings}건으로 가장 많은 예약이 있습니다.
+              <span className="font-medium">피크 시간:</span> {'hour' in peakTime ? peakTime.hour : peakTime.day}에 {peakTime.bookings}건으로 가장 많은 예약이 있습니다.
             </p>
           </div>
         </div>
@@ -108,7 +108,7 @@ export const BookingTrendsChart: React.FC<BookingTrendsChartProps> = ({ data }) 
                   
                   {/* Label */}
                   <div className="mt-1 text-xs text-gray-500 text-center">
-                    {viewMode === 'daily' ? item.day : item.hour}
+                    {'day' in item ? item.day : item.hour}
                   </div>
                 </div>
               );

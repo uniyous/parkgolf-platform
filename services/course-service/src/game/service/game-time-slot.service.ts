@@ -60,7 +60,7 @@ export class GameTimeSlotService {
   }
 
   async findAll(query: FindGameTimeSlotsQueryDto): Promise<{
-    data: GameTimeSlot[];
+    data: any[]; // select 사용으로 타입 변경
     total: number;
     page: number;
     limit: number;
@@ -90,12 +90,27 @@ export class GameTimeSlotService {
         skip,
         take: limit,
         orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
-        include: {
+        // 목록 조회 시 필요한 필드만 선택 (성능 최적화)
+        select: {
+          id: true,
+          gameId: true,
+          date: true,
+          startTime: true,
+          endTime: true,
+          maxPlayers: true,
+          bookedPlayers: true,
+          price: true,
+          isPremium: true,
+          status: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+          // game 정보는 기본만 포함
           game: {
-            include: {
-              frontNineCourse: true,
-              backNineCourse: true,
-              club: true,
+            select: {
+              id: true,
+              name: true,
+              code: true,
             },
           },
         },
@@ -127,7 +142,7 @@ export class GameTimeSlotService {
     return slot;
   }
 
-  async findByGameAndDate(gameId: number, date: string): Promise<GameTimeSlot[]> {
+  async findByGameAndDate(gameId: number, date: string): Promise<any[]> {
     return this.prisma.gameTimeSlot.findMany({
       where: {
         gameId,
@@ -135,13 +150,18 @@ export class GameTimeSlotService {
         isActive: true,
       },
       orderBy: { startTime: 'asc' },
-      include: {
-        game: {
-          include: {
-            frontNineCourse: true,
-            backNineCourse: true,
-          },
-        },
+      select: {
+        id: true,
+        gameId: true,
+        date: true,
+        startTime: true,
+        endTime: true,
+        maxPlayers: true,
+        bookedPlayers: true,
+        price: true,
+        isPremium: true,
+        status: true,
+        isActive: true,
       },
     });
   }

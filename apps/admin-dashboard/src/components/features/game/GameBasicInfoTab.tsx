@@ -236,7 +236,7 @@ export const GameBasicInfoTab: React.FC<GameBasicInfoTabProps> = ({ game, onUpda
           </label>
           <div className="flex flex-wrap gap-2">
             {courses && courses.length > 0 ? (
-              game.courseIds.map((courseId) => {
+              (game.courseIds || []).map((courseId) => {
                 const course = courses.find((c) => c.id === courseId);
                 return (
                   <span
@@ -248,7 +248,7 @@ export const GameBasicInfoTab: React.FC<GameBasicInfoTabProps> = ({ game, onUpda
                 );
               })
             ) : (
-              game.courseIds.map((courseId) => (
+              (game.courseIds || []).map((courseId) => (
                 <span
                   key={courseId}
                   className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm"

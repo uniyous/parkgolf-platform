@@ -167,14 +167,10 @@ export const bookingApi = {
         dateTo: date
       });
 
-      // 해당 날짜의 타임슬롯 가용성 조회 (courseApi에서 가져옴)
-      const { courseApi } = await import('./courseApi');
-      const availability = await courseApi.getAvailability(courseId, date);
-
       return {
         date,
         bookings: bookingsResponse,
-        availability
+        availability: []
       };
     } catch (error) {
       console.error(`Failed to fetch daily bookings for course ${courseId} on ${date}:`, error);
@@ -204,15 +200,9 @@ export const bookingApi = {
   },
 
   // ===== 예약 가능 여부 확인 =====
-  async checkAvailability(courseId: number, date: string, timeSlot: string): Promise<boolean> {
-    try {
-      const availability = await courseApi.getAvailability(courseId, date);
-      const slotAvailability = availability.find(slot => slot.startTime === timeSlot);
-      return slotAvailability ? slotAvailability.isAvailable : false;
-    } catch (error) {
-      console.error(`Failed to check availability for course ${courseId} on ${date} at ${timeSlot}:`, error);
-      return false;
-    }
+  async checkAvailability(_courseId: number, _date: string, _timeSlot: string): Promise<boolean> {
+    // TODO: Implement with gamesApi when available
+    return true;
   },
 
   // ===== 벌크 작업 =====

@@ -20,6 +20,8 @@ export const useGames = (filters?: GameFilter) => {
   return useQuery({
     queryKey: gameKeys.list(filters),
     queryFn: () => gamesApi.getGames(filters),
+    staleTime: 1000 * 60 * 5, // 5분간 fresh 유지
+    refetchOnWindowFocus: false,
   });
 };
 
@@ -28,6 +30,8 @@ export const useGame = (id: number) => {
     queryKey: gameKeys.detail(id),
     queryFn: () => gamesApi.getGameById(id),
     enabled: !!id,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
   });
 };
 
@@ -36,6 +40,8 @@ export const useGamesByClub = (clubId: number) => {
     queryKey: gameKeys.byClub(clubId),
     queryFn: () => gamesApi.getGamesByClub(clubId),
     enabled: !!clubId,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
   });
 };
 
@@ -61,6 +67,11 @@ export const useGameTimeSlots = (gameId: number, filter?: GameTimeSlotFilter) =>
     queryKey: gameKeys.timeSlots(gameId, filter),
     queryFn: () => gamesApi.getTimeSlots(gameId, filter),
     enabled: !!gameId,
+    staleTime: 1000 * 60 * 5, // 5분간 fresh 상태 유지
+    gcTime: 1000 * 60 * 30, // 30분간 캐시 유지
+    refetchOnWindowFocus: false, // 창 포커스 시 리패치 방지
+    placeholderData: (previousData) => previousData, // 이전 데이터 유지
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 

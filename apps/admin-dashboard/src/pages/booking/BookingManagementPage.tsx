@@ -1,319 +1,413 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { courseApi } from '@/lib/api/courseApi';
-import { Breadcrumb } from '@/components/common';
-import { PageLayout } from '@/components/layout';
-import { useAuthStore, useCurrentAdmin } from '@/stores';
-import { CanManageBookings } from '@/components/auth';
-import type { Course, Company } from '@/types';
+import React, { useState, useMemo } from 'react';
+import { useBookings, useConfirmBooking, useCancelBooking } from '@/hooks/queries/booking';
+import { useClubs } from '@/hooks/queries';
+import type { BookingFilters } from '@/lib/api/bookingApi';
+import type { Booking } from '@/types';
+
+// 상태 정의
+const BOOKING_STATUSES = {
+  ALL: { label: '전체', color: '' },
+  PENDING: { label: '대기', color: 'bg-yellow-100 text-yellow-800' },
+  CONFIRMED: { label: '확정', color: 'bg-blue-100 text-blue-800' },
+  COMPLETED: { label: '완료', color: 'bg-green-100 text-green-800' },
+  CANCELLED: { label: '취소', color: 'bg-red-100 text-red-800' },
+  NO_SHOW: { label: '노쇼', color: 'bg-gray-100 text-gray-800' },
+} as const;
+
+type BookingStatusKey = keyof typeof BOOKING_STATUSES;
+
+// 날짜 포맷 헬퍼
+const formatDate = (date: Date): string => {
+  return date.toISOString().split('T')[0];
+};
+
+const formatDisplayDate = (dateStr: string): string => {
+  const date = new Date(dateStr);
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
+  const weekDay = weekDays[date.getDay()];
+  return `${month}/${day}(${weekDay})`;
+};
 
 export const BookingManagementPage: React.FC = () => {
-  const navigate = useNavigate();
-  const currentAdmin = useCurrentAdmin();
-  const hasManageBookings = useAuthStore((state) => state.hasPermission('BOOKINGS'));
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedCompany, setSelectedCompany] = useState<number | null>(null);
+  // 필터 상태
+  const today = new Date();
+  const weekLater = new Date(today);
+  weekLater.setDate(weekLater.getDate() + 7);
 
-  // 회사 목록 조회 (권한에 따른 필터링)
-  useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        const companiesData = await courseApi.getCompanies();
-        
-        // 권한에 따른 회사 필터링
-        let filteredCompanies = companiesData;
-        if (currentAdmin) {
-          if (currentAdmin.scope === 'OPERATION' && currentAdmin.companyId) {
-            // 회사 관리자는 자신의 회사만 볼 수 있음
-            filteredCompanies = companiesData.filter(c => c.id === currentAdmin.companyId);
-          } else if (currentAdmin.scope === 'VIEW') {
-            // 코스 관리자는 회사 선택 불가
-            filteredCompanies = [];
-          }
-          // 플랫폼 관리자는 모든 회사 볼 수 있음
-        }
-        
-        setCompanies(filteredCompanies);
-        
-        // 첫 번째 회사 자동 선택
-        if (filteredCompanies.length > 0) {
-          setSelectedCompany(filteredCompanies[0].id);
-        }
-      } catch (error) {
-        console.error('Failed to fetch companies:', error);
-        setError('회사 목록을 불러오는데 실패했습니다.');
-      }
+  const [dateFrom, setDateFrom] = useState(formatDate(today));
+  const [dateTo, setDateTo] = useState(formatDate(weekLater));
+  const [statusFilter, setStatusFilter] = useState<BookingStatusKey>('ALL');
+  const [clubFilter, setClubFilter] = useState<number | null>(null);
+  const [searchKeyword, setSearchKeyword] = useState('');
+
+  // 필터 객체
+  const filters: BookingFilters = useMemo(() => ({
+    dateFrom,
+    dateTo,
+    status: statusFilter === 'ALL' ? undefined : statusFilter,
+    courseId: clubFilter || undefined,
+    search: searchKeyword || undefined,
+  }), [dateFrom, dateTo, statusFilter, clubFilter, searchKeyword]);
+
+  // API Queries
+  const { data: bookingsData } = useBookings(filters);
+  const { data: clubsData } = useClubs();
+
+  const confirmMutation = useConfirmBooking();
+  const cancelMutation = useCancelBooking();
+
+  const bookings = bookingsData?.data || [];
+  const clubs = clubsData?.data || [];
+
+  // 클라이언트 사이드 검색 필터링
+  const filteredBookings = useMemo(() => {
+    if (!searchKeyword.trim()) return bookings;
+    const keyword = searchKeyword.toLowerCase();
+    return bookings.filter(
+      (booking) =>
+        booking.customerName?.toLowerCase().includes(keyword) ||
+        booking.customerPhone?.includes(keyword) ||
+        booking.customerEmail?.toLowerCase().includes(keyword)
+    );
+  }, [bookings, searchKeyword]);
+
+  // 상태별 카운트
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      ALL: bookings.length,
+      PENDING: 0,
+      CONFIRMED: 0,
+      COMPLETED: 0,
+      CANCELLED: 0,
+      NO_SHOW: 0,
     };
-
-    fetchCompanies();
-  }, [currentAdmin]);
-
-  // 선택된 회사의 코스 목록 조회 (권한에 따른 필터링)
-  useEffect(() => {
-    const fetchCourses = async () => {
-      if (!selectedCompany && currentAdmin?.scope !== 'COURSE') return;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        let coursesData: Course[] = [];
-        
-        if (currentAdmin?.scope === 'VIEW' && currentAdmin.courseIds) {
-          // 코스 관리자는 담당 코스만 조회
-          const allCourses = await courseApi.getAllCourses();
-          coursesData = allCourses.filter(course => 
-            currentAdmin.courseIds?.includes(course.id)
-          );
-        } else if (selectedCompany) {
-          // 회사/플랫폼 관리자는 선택된 회사의 코스 조회
-          coursesData = await courseApi.getCoursesByCompany(selectedCompany);
-        }
-        
-        setCourses(coursesData);
-      } catch (error) {
-        console.error('Failed to fetch courses:', error);
-        setError('코스 목록을 불러오는데 실패했습니다.');
-      } finally {
-        setLoading(false);
+    bookings.forEach((b) => {
+      if (counts[b.status] !== undefined) {
+        counts[b.status]++;
       }
-    };
+    });
+    return counts;
+  }, [bookings]);
 
-    fetchCourses();
-  }, [selectedCompany, currentAdmin]);
+  // 액션 핸들러
+  const handleConfirm = async (booking: Booking) => {
+    if (window.confirm(`${booking.customerName}님의 예약을 확정하시겠습니까?`)) {
+      try {
+        await confirmMutation.mutateAsync(booking.id);
+      } catch (error) {
+        console.error('Failed to confirm booking:', error);
+        alert('예약 확정에 실패했습니다.');
+      }
+    }
+  };
 
-  // 코스 예약 관리로 이동
-  const handleCourseSelect = (courseId: number) => {
-    navigate(`/courses/${courseId}/bookings`);
+  const handleCancel = async (booking: Booking) => {
+    const reason = window.prompt(`${booking.customerName}님의 예약을 취소하시겠습니까?\n취소 사유를 입력해주세요:`);
+    if (reason !== null) {
+      try {
+        await cancelMutation.mutateAsync(booking.id);
+      } catch (error) {
+        console.error('Failed to cancel booking:', error);
+        alert('예약 취소에 실패했습니다.');
+      }
+    }
+  };
+
+  // 필터 초기화
+  const handleResetFilters = () => {
+    const newToday = new Date();
+    const newWeekLater = new Date(newToday);
+    newWeekLater.setDate(newWeekLater.getDate() + 7);
+    setDateFrom(formatDate(newToday));
+    setDateTo(formatDate(newWeekLater));
+    setStatusFilter('ALL');
+    setClubFilter(null);
+    setSearchKeyword('');
   };
 
   return (
-    <CanManageBookings
-      fallback={
-        <PageLayout>
-          <div className="text-center py-12">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">접근 권한이 없습니다</h1>
-            <p className="text-gray-600">예약 관리 권한이 필요합니다.</p>
+    <div className="space-y-6">
+      {/* 헤더 */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">예약 현황</h1>
+            <p className="text-gray-500 mt-1">실시간 예약 조회 및 관리</p>
           </div>
-        </PageLayout>
-      }
-    >
-      <PageLayout>
-        <Breadcrumb 
-          items={[
-            { label: '예약 관리', icon: '📅' }
-          ]}
-        />
+        </div>
 
-        <PageLayout.Header>
-          <h1 className="text-3xl font-bold text-gray-900">예약 관리</h1>
-          <p className="text-gray-600 mt-2">코스를 선택하여 예약을 관리하세요.</p>
-        </PageLayout.Header>
+        {/* 통계 카드 */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div
+            onClick={() => setStatusFilter('ALL')}
+            className={`p-4 rounded-lg cursor-pointer transition-all ${
+              statusFilter === 'ALL' ? 'bg-blue-50 border-2 border-blue-500' : 'bg-gray-50 hover:bg-gray-100'
+            }`}
+          >
+            <p className="text-sm text-gray-500">전체</p>
+            <p className="text-2xl font-bold text-gray-900">{statusCounts.ALL}</p>
+          </div>
+          <div
+            onClick={() => setStatusFilter('PENDING')}
+            className={`p-4 rounded-lg cursor-pointer transition-all ${
+              statusFilter === 'PENDING' ? 'bg-yellow-50 border-2 border-yellow-500' : 'bg-yellow-50/50 hover:bg-yellow-100'
+            }`}
+          >
+            <p className="text-sm text-yellow-600">대기</p>
+            <p className="text-2xl font-bold text-yellow-700">{statusCounts.PENDING}</p>
+          </div>
+          <div
+            onClick={() => setStatusFilter('CONFIRMED')}
+            className={`p-4 rounded-lg cursor-pointer transition-all ${
+              statusFilter === 'CONFIRMED' ? 'bg-blue-50 border-2 border-blue-500' : 'bg-blue-50/50 hover:bg-blue-100'
+            }`}
+          >
+            <p className="text-sm text-blue-600">확정</p>
+            <p className="text-2xl font-bold text-blue-700">{statusCounts.CONFIRMED}</p>
+          </div>
+          <div
+            onClick={() => setStatusFilter('COMPLETED')}
+            className={`p-4 rounded-lg cursor-pointer transition-all ${
+              statusFilter === 'COMPLETED' ? 'bg-green-50 border-2 border-green-500' : 'bg-green-50/50 hover:bg-green-100'
+            }`}
+          >
+            <p className="text-sm text-green-600">완료</p>
+            <p className="text-2xl font-bold text-green-700">{statusCounts.COMPLETED}</p>
+          </div>
+          <div
+            onClick={() => setStatusFilter('CANCELLED')}
+            className={`p-4 rounded-lg cursor-pointer transition-all ${
+              statusFilter === 'CANCELLED' ? 'bg-red-50 border-2 border-red-500' : 'bg-red-50/50 hover:bg-red-100'
+            }`}
+          >
+            <p className="text-sm text-red-600">취소</p>
+            <p className="text-2xl font-bold text-red-700">{statusCounts.CANCELLED}</p>
+          </div>
+        </div>
+      </div>
 
-        <PageLayout.Content>
+      {/* 필터 영역 */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="flex flex-wrap items-center gap-4">
+          {/* 날짜 범위 */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-500">기간</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-gray-400">~</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
-      {/* 회사 선택 (코스 관리자는 표시하지 않음) */}
-      {currentAdmin?.scope !== 'COURSE' && companies.length > 0 && (
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-3">
-            회사 선택
-          </label>
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {companies.map((company) => (
-              <button
-                key={company.id}
-                onClick={() => setSelectedCompany(company.id)}
-                className={`p-4 border rounded-lg text-left transition-all ${
-                  selectedCompany === company.id
-                    ? 'border-blue-500 bg-blue-50 shadow-md'
-                    : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                }`}
+          {/* 골프장 필터 */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-500">골프장</label>
+            <select
+              value={clubFilter || ''}
+              onChange={(e) => setClubFilter(e.target.value ? Number(e.target.value) : null)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">전체</option>
+              {clubs.map((club) => (
+                <option key={club.id} value={club.id}>
+                  {club.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 검색 */}
+          <div className="flex-1 min-w-[200px]">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="고객명, 연락처 검색..."
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+                className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <svg
+                className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <div className="font-medium text-gray-900">{company.name}</div>
-                {company.description && (
-                  <div className="text-sm text-gray-500 mt-1">{company.description}</div>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 에러 메시지 */}
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-          <div className="text-red-700 text-sm">{error}</div>
-        </div>
-      )}
-
-      {/* 코스 목록 */}
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          코스 선택
-          {selectedCompany && currentAdmin?.scope !== 'COURSE' && (
-            <span className="text-sm font-normal text-gray-500 ml-2">
-              ({companies.find(c => c.id === selectedCompany)?.name})
-            </span>
-          )}
-          {currentAdmin?.scope === 'VIEW' && (
-            <span className="text-sm font-normal text-gray-500 ml-2">
-              (담당 코스)
-            </span>
-          )}
-        </h2>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-2 text-gray-500">코스 목록을 불러오는 중...</span>
-          </div>
-        ) : courses.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-gray-500">
-              {currentAdmin?.scope === 'VIEW' 
-                ? '담당하는 코스가 없습니다.' 
-                : selectedCompany 
-                  ? '등록된 코스가 없습니다.' 
-                  : '회사를 선택해주세요.'
-              }
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
             </div>
           </div>
+
+          {/* 필터 초기화 */}
+          {(searchKeyword || clubFilter || statusFilter !== 'ALL') && (
+            <button
+              onClick={handleResetFilters}
+              className="px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            >
+              필터 초기화
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 예약 목록 */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        {filteredBookings.length === 0 ? (
+          <div className="text-center py-12">
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+              />
+            </svg>
+            <h3 className="mt-2 text-lg font-medium text-gray-900">예약이 없습니다</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              선택한 조건에 해당하는 예약이 없습니다.
+            </p>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {courses.map((course) => (
-              <div
-                key={course.id}
-                className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer"
-                onClick={() => handleCourseSelect(course.id)}
-              >
-                <div className="p-6">
-                  {/* 코스 헤더 */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        {course.name}
-                      </h3>
-                      {course.description && (
-                        <p className="text-sm text-gray-600 mb-3">
-                          {course.description}
-                        </p>
-                      )}
-                    </div>
-                    <div className="ml-4">
-                      <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                        <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 코스 정보 */}
-                  <div className="space-y-2 text-sm text-gray-600 mb-4">
-                    {course.address && (
-                      <div className="flex items-center">
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        <span className="truncate">{course.address}</span>
-                      </div>
-                    )}
-                    
-                    {course.phoneNumber && (
-                      <div className="flex items-center">
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                        </svg>
-                        <span>{course.phoneNumber}</span>
-                      </div>
-                    )}
-
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
-                      <span>{course.numberOfHoles || 0}홀</span>
-                    </div>
-                  </div>
-
-                  {/* 액션 버튼 */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        course.isActive 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {course.isActive ? '운영중' : '운영중지'}
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    예약번호
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    날짜/시간
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    고객 정보
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    인원
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    금액
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    상태
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    액션
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredBookings.map((booking) => (
+                  <tr key={booking.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-medium text-gray-900">
+                        B{String(booking.id).padStart(4, '0')}
                       </span>
-                    </div>
-                    
-                    <div className="flex items-center text-blue-600 text-sm font-medium">
-                      <span>예약 관리</span>
-                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {formatDisplayDate(booking.bookingDate)}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {booking.timeSlot || booking.startTime}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {booking.customerName || '미등록'}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {booking.customerPhone || '-'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-gray-900">
+                        {booking.playerCount || booking.numberOfPlayers || 0}명
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-medium text-gray-900">
+                        ₩{(booking.totalPrice || booking.totalAmount || 0).toLocaleString()}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          BOOKING_STATUSES[booking.status as BookingStatusKey]?.color || 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {BOOKING_STATUSES[booking.status as BookingStatusKey]?.label || booking.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end gap-2">
+                        {booking.status === 'PENDING' && (
+                          <>
+                            <button
+                              onClick={() => handleConfirm(booking)}
+                              disabled={confirmMutation.isPending}
+                              className="text-blue-600 hover:text-blue-900 disabled:opacity-50"
+                            >
+                              확정
+                            </button>
+                            <button
+                              onClick={() => handleCancel(booking)}
+                              disabled={cancelMutation.isPending}
+                              className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                            >
+                              취소
+                            </button>
+                          </>
+                        )}
+                        {booking.status === 'CONFIRMED' && (
+                          <button
+                            onClick={() => handleCancel(booking)}
+                            disabled={cancelMutation.isPending}
+                            className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                          >
+                            취소
+                          </button>
+                        )}
+                        <button className="text-gray-600 hover:text-gray-900">
+                          상세
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
-      {/* 빠른 액세스 섹션 */}
-      {courses.length > 0 && (
-        <div className="mt-12">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">빠른 액세스</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button
-              onClick={() => {
-                // 오늘 예약이 많은 코스로 이동 (임시로 첫 번째 코스)
-                if (courses.length > 0) {
-                  handleCourseSelect(courses[0].id);
-                }
-              }}
-              className="p-4 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-left"
-            >
-              <div className="text-blue-600 font-medium">오늘의 예약 현황</div>
-              <div className="text-sm text-gray-600 mt-1">가장 많은 예약이 있는 코스로 이동</div>
-            </button>
-
-            <button
-              onClick={() => {
-                // 예약 대기가 있는 코스로 이동 (임시로 첫 번째 코스)
-                if (courses.length > 0) {
-                  handleCourseSelect(courses[0].id);
-                }
-              }}
-              className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg hover:bg-yellow-100 transition-colors text-left"
-            >
-              <div className="text-yellow-600 font-medium">대기 중인 예약</div>
-              <div className="text-sm text-gray-600 mt-1">확인이 필요한 예약 관리</div>
-            </button>
-
-            <button
-              onClick={() => {
-                // 새 예약이 가능한 코스로 이동 (임시로 첫 번째 코스)
-                if (courses.length > 0) {
-                  handleCourseSelect(courses[0].id);
-                }
-              }}
-              className="p-4 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors text-left"
-            >
-              <div className="text-green-600 font-medium">새 예약 등록</div>
-              <div className="text-sm text-gray-600 mt-1">빠른 예약 등록</div>
-            </button>
-          </div>
-        </div>
-      )}
-        </PageLayout.Content>
-      </PageLayout>
-    </CanManageBookings>
+      {/* 하단 정보 */}
+      <div className="bg-gray-50 rounded-lg p-4">
+        <p className="text-sm text-gray-600 text-center">
+          총 {filteredBookings.length}건의 예약
+          {searchKeyword && ` (검색: "${searchKeyword}")`}
+        </p>
+      </div>
+    </div>
   );
 };
+
+export default BookingManagementPage;

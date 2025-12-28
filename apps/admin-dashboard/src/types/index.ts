@@ -38,7 +38,7 @@ export interface Course {
   location?: string | null;
   description?: string | null;
   holeCount?: number;
-  holes?: number; // 9홀 또는 18홀
+  holes?: Hole[] | number; // Hole 배열 또는 홀 수
   par?: number | null;
   totalPar?: number; // 전체 파 수
   courseRating?: number | null;
@@ -164,8 +164,8 @@ export interface UpdateTeeBoxDto {
 }
 
 // --- Auth & User Types ---
-export type UserMembershipTier = 'PREMIUM' | 'REGULAR' | 'GUEST';
-export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+export type UserMembershipTier = 'PREMIUM' | 'REGULAR' | 'GUEST' | 'SILVER' | 'VIP' | 'GOLD' | 'PLATINUM';
+export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING';
 
 export interface User {
   id: number;
@@ -231,8 +231,10 @@ export type AdminRole =
 // 관리자 범위 타입 (역할에서 자동 추론되므로 단순화)
 export type AdminScope = 'SYSTEM' | 'OPERATION' | 'VIEW';
 
-// 권한 정의 (17개: 관리자 9개 + 사용자 8개)
+// 권한 정의
 export type Permission =
+  // 특수 권한
+  | 'ALL'              // 전체 권한
   // 관리자 권한 (9개)
   | 'COMPANIES'        // 회사 관리
   | 'COURSES'          // 코스 관리
@@ -243,6 +245,11 @@ export type Permission =
   | 'ANALYTICS'        // 분석/리포트
   | 'SUPPORT'          // 고객 지원
   | 'VIEW'             // 조회
+  | 'SYSTEM'           // 시스템 관리
+  | 'MANAGE_GAMES'     // 게임 관리
+  | 'MANAGE_GOLF_CLUBS' // 골프장 관리
+  | 'MANAGE_PAYMENTS'  // 결제 관리
+  | 'VIEW_DASHBOARD'   // 대시보드 조회
   // 사용자 권한 (8개)
   | 'PROFILE'          // 프로필 관리
   | 'COURSE_VIEW'      // 코스 조회

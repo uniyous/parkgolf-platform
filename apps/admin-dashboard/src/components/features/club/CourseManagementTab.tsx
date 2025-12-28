@@ -82,7 +82,10 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
           holeNumber: i + 1,
           par: 3 + Math.floor(Math.random() * 3),
           distance: 120 + Math.floor(Math.random() * 200),
-          handicap: i + 1
+          handicap: i + 1,
+          courseId: course.id,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         }));
         
         const updatedCourses = courses.map(c => 

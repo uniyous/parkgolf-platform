@@ -1,6 +1,6 @@
 // 상태 타입 정의
 export type ClubStatus = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE' | 'SEASONAL_CLOSED';
-export type CourseStatus = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
+export type CourseStatus = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE' | 'CLOSED' | 'PENDING';
 export type SeasonType = 'peak' | 'regular' | 'off';
 
 // 기본 엔티티 타입
@@ -42,15 +42,15 @@ export interface Course {
   name: string;
   code?: string;
   subtitle?: string;
-  description?: string;
+  description?: string | null;
   holeCount?: number;
-  par?: number;
+  par?: number | null;
   totalDistance?: number;
   difficulty?: number;
   scenicRating?: number;
-  courseRating?: number;
-  slopeRating?: number;
-  imageUrl?: string;
+  courseRating?: number | null;
+  slopeRating?: number | null;
+  imageUrl?: string | null;
   status?: CourseStatus;
   clubId?: number;
   companyId?: number;
@@ -63,7 +63,7 @@ export interface Course {
   monthlyBookings?: number;
   totalRevenue?: number;
   monthlyRevenue?: number;
-  location?: string;
+  location?: string | null;
   address?: string;
 }
 
