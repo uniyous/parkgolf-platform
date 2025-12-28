@@ -225,6 +225,22 @@ export class GameNatsController {
     }
   }
 
+  @MessagePattern('gameTimeSlots.stats')
+  async getGameTimeSlotStats(@Payload() data: any) {
+    try {
+      this.logger.log(`NATS: Getting time slot stats for game ${data.gameId || 'all'}`);
+      const stats = await this.gameTimeSlotService.getStats({
+        gameId: data.gameId ? Number(data.gameId) : undefined,
+        startDate: data.startDate,
+        endDate: data.endDate,
+      });
+      return successResponse(stats);
+    } catch (error) {
+      this.logger.error('NATS: Failed to get game time slot stats', error);
+      return errorResponse('GAME_TIMESLOT_STATS_FAILED', error.message);
+    }
+  }
+
   // =====================================================
   // GameWeeklySchedule
   // =====================================================
@@ -251,6 +267,18 @@ export class GameNatsController {
     } catch (error) {
       this.logger.error('NATS: Failed to get game weekly schedules', error);
       return errorResponse('GAME_SCHEDULES_LIST_FAILED', error.message);
+    }
+  }
+
+  @MessagePattern('gameWeeklySchedules.get')
+  async getGameWeeklySchedule(@Payload() data: any) {
+    try {
+      this.logger.log(`NATS: Getting weekly schedule ${data.scheduleId}`);
+      const schedule = await this.gameWeeklyScheduleService.findOne(Number(data.scheduleId));
+      return successResponse(this.mapScheduleToResponse(schedule));
+    } catch (error) {
+      this.logger.error('NATS: Failed to get game weekly schedule', error);
+      return errorResponse('GAME_SCHEDULE_GET_FAILED', error.message);
     }
   }
 

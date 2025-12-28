@@ -348,4 +348,55 @@ export class GameTimeSlotService {
       });
     });
   }
+
+  async getStats(query: { gameId?: number; startDate?: string; endDate?: string }): Promise<{
+    totalSlots: number;
+    availableSlots: number;
+    bookedSlots: number;
+    closedSlots: number;
+    utilizationRate: number;
+    totalRevenue: number;
+  }> {
+    const where: Prisma.GameTimeSlotWhereInput = { isActive: true };
+
+    if (query.gameId) where.gameId = query.gameId;
+    if (query.startDate || query.endDate) {
+      where.date = {};
+      if (query.startDate) where.date.gte = new Date(query.startDate);
+      if (query.endDate) where.date.lte = new Date(query.endDate);
+    }
+
+    const slots = await this.prisma.gameTimeSlot.findMany({
+      where,
+      select: {
+        status: true,
+        bookedPlayers: true,
+        maxPlayers: true,
+        price: true,
+      },
+    });
+
+    const totalSlots = slots.length;
+    const availableSlots = slots.filter(s => s.status === 'AVAILABLE').length;
+    const bookedSlots = slots.filter(s => s.status === 'FULLY_BOOKED').length;
+    const closedSlots = slots.filter(s => s.status === 'CLOSED' || s.status === 'MAINTENANCE').length;
+
+    const totalBooked = slots.reduce((sum, s) => sum + s.bookedPlayers, 0);
+    const totalCapacity = slots.reduce((sum, s) => sum + s.maxPlayers, 0);
+    const utilizationRate = totalCapacity > 0 ? Math.round((totalBooked / totalCapacity) * 100) : 0;
+
+    const totalRevenue = slots.reduce((sum, s) => {
+      const price = Number(s.price) || 0;
+      return sum + (price * s.bookedPlayers);
+    }, 0);
+
+    return {
+      totalSlots,
+      availableSlots,
+      bookedSlots,
+      closedSlots,
+      utilizationRate,
+      totalRevenue,
+    };
+  }
 }
