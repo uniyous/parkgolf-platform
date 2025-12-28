@@ -52,6 +52,20 @@ export class GamesController {
     return this.gamesService.getGames(filters, token);
   }
 
+  // Statistics - 이 라우트는 :gameId 보다 먼저 선언되어야 함
+  @Get('time-slots/stats')
+  @ApiOperation({ summary: 'Get time slot statistics' })
+  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
+  @ApiResponse({ status: 200, description: 'Statistics retrieved successfully' })
+  async getTimeSlotStats(
+    @Query() filters: GameTimeSlotFilterDto,
+    @Headers('authorization') authorization?: string,
+  ) {
+    const token = this.extractToken(authorization);
+    this.logger.log('Fetching time slot statistics');
+    return this.gamesService.getTimeSlotStats(filters, token);
+  }
+
   @Get('club/:clubId')
   @ApiOperation({ summary: 'Get games by club' })
   @ApiHeader({ name: 'authorization', description: 'Bearer token' })
@@ -294,22 +308,6 @@ export class GamesController {
     const token = this.extractToken(authorization);
     this.logger.log(`Deleting time slot: ${timeSlotId}`);
     return this.gamesService.deleteTimeSlot(timeSlotId, token);
-  }
-
-  // ============================================
-  // Statistics
-  // ============================================
-  @Get('time-slots/stats')
-  @ApiOperation({ summary: 'Get time slot statistics' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
-  @ApiResponse({ status: 200, description: 'Statistics retrieved successfully' })
-  async getTimeSlotStats(
-    @Query() filters: GameTimeSlotFilterDto,
-    @Headers('authorization') authorization?: string,
-  ) {
-    const token = this.extractToken(authorization);
-    this.logger.log('Fetching time slot statistics');
-    return this.gamesService.getTimeSlotStats(filters, token);
   }
 
   private extractToken(authorization?: string): string {
