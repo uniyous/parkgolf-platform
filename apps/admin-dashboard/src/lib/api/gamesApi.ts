@@ -399,6 +399,7 @@ export const gamesApi = {
    * 게임의 타임슬롯 조회
    */
   async getTimeSlots(gameId: number, filter?: GameTimeSlotFilter): Promise<PaginatedResponse<GameTimeSlot>> {
+    console.log('[gamesApi.getTimeSlots] gameId:', gameId, 'filter:', filter);
     const params: Record<string, unknown> = {};
     if (filter?.date) params.date = filter.date;
     if (filter?.startDate) params.startDate = filter.startDate;
@@ -407,7 +408,9 @@ export const gamesApi = {
     if (filter?.page) params.page = filter.page;
     if (filter?.limit) params.limit = filter.limit;
 
+    console.log('[gamesApi.getTimeSlots] API params:', params);
     const response = await apiClient.get<any>(`/admin/games/${gameId}/time-slots`, params);
+    console.log('[gamesApi.getTimeSlots] API response:', response.data);
     const responseData = response.data;
 
     let timeSlots: GameTimeSlot[] = [];

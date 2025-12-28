@@ -39,7 +39,11 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
     endDate: dateRange.endDate,
   }), [filters, dateRange]);
 
-  const { data: timeSlotsData, isLoading, refetch } = useGameTimeSlots(gameId, queryFilters);
+  console.log('[GameTimeSlotTab] gameId:', gameId, 'queryFilters:', queryFilters);
+
+  const { data: timeSlotsData, isLoading, refetch, isFetching } = useGameTimeSlots(gameId, queryFilters);
+
+  console.log('[GameTimeSlotTab] timeSlotsData:', timeSlotsData, 'isLoading:', isLoading, 'isFetching:', isFetching);
   const deleteMutation = useDeleteTimeSlot();
   const updateMutation = useUpdateTimeSlot();
 
