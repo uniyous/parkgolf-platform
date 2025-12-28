@@ -191,6 +191,7 @@ export const useGenerateTimeSlots = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    meta: { globalLoading: false },
     mutationFn: ({
       gameId,
       startDate,

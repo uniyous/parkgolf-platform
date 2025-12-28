@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import {
   useGameTimeSlots,
-  useGenerateTimeSlots,
   useDeleteTimeSlot,
   useUpdateTimeSlot,
 } from '@/hooks/queries';
 import type { GameTimeSlot, GameTimeSlotFilter, UpdateGameTimeSlotDto } from '@/lib/api/gamesApi';
+import { TimeSlotWizard } from './TimeSlotWizard';
 
 interface GameTimeSlotTabProps {
   gameId: number;
@@ -29,12 +29,8 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
     endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   });
 
-  // 생성 모달 상태
-  const [showGenerateModal, setShowGenerateModal] = useState(false);
-  const [generateDates, setGenerateDates] = useState({
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-  });
+  // 생성 마법사 상태
+  const [showWizard, setShowWizard] = useState(false);
 
   // Queries
   const queryFilters = useMemo(() => ({
@@ -44,7 +40,6 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
   }), [filters, dateRange]);
 
   const { data: timeSlotsData, isLoading, refetch } = useGameTimeSlots(gameId, queryFilters);
-  const generateMutation = useGenerateTimeSlots();
   const deleteMutation = useDeleteTimeSlot();
   const updateMutation = useUpdateTimeSlot();
 
@@ -64,23 +59,6 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
     // 날짜순 정렬
     return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [timeSlots]);
-
-  // 타임슬롯 생성
-  const handleGenerate = async () => {
-    try {
-      await generateMutation.mutateAsync({
-        gameId,
-        startDate: generateDates.startDate,
-        endDate: generateDates.endDate,
-      });
-      setShowGenerateModal(false);
-      refetch();
-      alert('타임슬롯이 성공적으로 생성되었습니다.');
-    } catch (error) {
-      console.error('Failed to generate time slots:', error);
-      alert('타임슬롯 생성에 실패했습니다. 먼저 주간 스케줄을 설정해주세요.');
-    }
-  };
 
   // 타임슬롯 삭제
   const handleDelete = async (timeSlotId: number) => {
@@ -130,7 +108,7 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
           </p>
         </div>
         <button
-          onClick={() => setShowGenerateModal(true)}
+          onClick={() => setShowWizard(true)}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -178,7 +156,7 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
           </p>
           <div className="mt-6">
             <button
-              onClick={() => setShowGenerateModal(true)}
+              onClick={() => setShowWizard(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               타임슬롯 생성하기
@@ -270,60 +248,13 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
         </div>
       )}
 
-      {/* 생성 모달 */}
-      {showGenerateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              타임슬롯 자동 생성
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              주간 스케줄 템플릿을 기반으로 지정된 기간의 타임슬롯을 생성합니다.
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  시작일
-                </label>
-                <input
-                  type="date"
-                  value={generateDates.startDate}
-                  onChange={(e) => setGenerateDates({ ...generateDates, startDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  종료일
-                </label>
-                <input
-                  type="date"
-                  value={generateDates.endDate}
-                  onChange={(e) => setGenerateDates({ ...generateDates, endDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end space-x-2">
-              <button
-                onClick={() => setShowGenerateModal(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleGenerate}
-                disabled={generateMutation.isPending}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-              >
-                {generateMutation.isPending ? '생성 중...' : '생성'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 생성 마법사 */}
+      <TimeSlotWizard
+        gameId={gameId}
+        open={showWizard}
+        onClose={() => setShowWizard(false)}
+        onSuccess={() => refetch()}
+      />
     </div>
   );
 };
