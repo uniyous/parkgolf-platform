@@ -5,24 +5,23 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsEnum,
 } from 'class-validator';
 
 export class CreateBookingDto {
-  @ApiProperty({ description: '코스 ID', example: 1 })
+  @ApiProperty({ description: '게임 ID (18홀 코스 조합)', example: 1 })
   @IsNumber()
   @IsNotEmpty()
-  courseId: number;
+  gameId: number;
+
+  @ApiProperty({ description: '게임 타임슬롯 ID', example: 1 })
+  @IsNumber()
+  @IsNotEmpty()
+  gameTimeSlotId: number;
 
   @ApiProperty({ description: '예약 날짜', example: '2024-07-15' })
   @IsDateString()
   @IsNotEmpty()
   bookingDate: string;
-
-  @ApiProperty({ description: '시간 슬롯', example: '09:00' })
-  @IsString()
-  @IsNotEmpty()
-  timeSlot: string;
 
   @ApiProperty({ description: '플레이어 수', example: 2 })
   @IsNumber()
@@ -96,10 +95,10 @@ export class SearchBookingDto {
   @IsOptional()
   status?: string;
 
-  @ApiProperty({ description: '코스 ID', example: 1, required: false })
+  @ApiProperty({ description: '게임 ID', example: 1, required: false })
   @IsNumber()
   @IsOptional()
-  courseId?: number;
+  gameId?: number;
 
   @ApiProperty({
     description: '시작 날짜',

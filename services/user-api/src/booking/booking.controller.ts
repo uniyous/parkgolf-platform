@@ -142,25 +142,24 @@ export class BookingController {
     return this.bookingService.cancelBooking(id, req.user.id, cancelDto.reason);
   }
 
-  @Get('courses/:courseId/time-slots')
-  @ApiOperation({ summary: '특정 코스의 타임슬롯 가용성 조회' })
+  @Get('games/:gameId/time-slots')
+  @ApiOperation({ summary: '특정 게임의 타임슬롯 가용성 조회' })
   @ApiResponse({
     status: 200,
     description: '타임슬롯 가용성을 성공적으로 조회했습니다.',
   })
   async getTimeSlotAvailability(
-    @Param('courseId') courseId: number,
+    @Param('gameId') gameId: number,
     @Query('date') date: string,
   ) {
     this.logger.log(
-      `Getting time slot availability for course ${courseId} on ${date}`,
+      `Getting time slot availability for game ${gameId} on ${date}`,
     );
 
     if (!date) {
-      // 기본값: 오늘 날짜
       date = new Date().toISOString().split('T')[0];
     }
 
-    return this.bookingService.getTimeSlotAvailability(courseId, date);
+    return this.bookingService.getTimeSlotAvailability(gameId, date);
   }
 }

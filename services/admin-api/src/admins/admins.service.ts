@@ -19,9 +19,9 @@ export class AdminService {
   // Admin CRUD Operations
   // ============================================
 
-  async getAdminList(filters: any, token: string) {
+  async getAdminList(filters: any, page: number = 1, limit: number = 20, token: string) {
     this.logger.log('Fetching admin list');
-    return this.natsClient.send('admins.list', { filters, token }, NATS_TIMEOUTS.LIST_QUERY);
+    return this.natsClient.send('admins.list', { filters, page, limit, token }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   async getAdminById(adminId: string, token: string) {
@@ -72,5 +72,24 @@ export class AdminService {
   async getPermissionList(token: string) {
     this.logger.log('Fetching permission list');
     return this.natsClient.send('permissions.list', { token });
+  }
+
+  // ============================================
+  // Role Management
+  // ============================================
+
+  async getRoleList(userType: string | undefined, token: string) {
+    this.logger.log('Fetching role list');
+    return this.natsClient.send('roles.list', { userType, token });
+  }
+
+  async getRolePermissions(roleCode: string, token: string) {
+    this.logger.log(`Fetching permissions for role: ${roleCode}`);
+    return this.natsClient.send('roles.permissions', { roleCode, token });
+  }
+
+  async getRolesWithPermissions(userType: string | undefined, token: string) {
+    this.logger.log('Fetching roles with permissions');
+    return this.natsClient.send('roles.withPermissions', { userType, token }, NATS_TIMEOUTS.LIST_QUERY);
   }
 }

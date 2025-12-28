@@ -1,56 +1,34 @@
 import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CompanyService } from '../service/company.service';
+import {
+  successResponse,
+  errorResponse,
+  paginationMeta,
+  mapCompanyToResponse,
+} from '../../common/utils/response.util';
 
 @Controller()
 export class CompanyNatsController {
   private readonly logger = new Logger(CompanyNatsController.name);
 
-  constructor(
-    private readonly companyService: CompanyService,
-  ) {}
+  constructor(private readonly companyService: CompanyService) {}
 
-  // Company NATS Message Handlers
   @MessagePattern('companies.list')
   async getCompanies(@Payload() data: any) {
     try {
-      this.logger.log(`NATS: Getting companies list`);
-      
-      const { page = 1, limit = 20 } = data;
-      const companies = await this.companyService.findAll();
-      
-      // Apply pagination manually
-      const startIndex = (Number(page) - 1) * Number(limit);
-      const endIndex = startIndex + Number(limit);
-      const paginatedCompanies = companies.slice(startIndex, endIndex);
-      
-      const result = {
-        companies: paginatedCompanies.map((company: any) => ({
-          id: company.id,
-          name: company.name,
-          businessNumber: company.businessNumber,
-          description: company.description,
-          address: company.address,
-          phoneNumber: company.phoneNumber,
-          email: company.email,
-          website: company.website,
-          establishedDate: company.establishedDate?.toISOString(),
-          logoUrl: company.logoUrl,
-          status: company.status,
-          isActive: company.isActive,
-          createdAt: company.createdAt.toISOString(),
-          updatedAt: company.updatedAt.toISOString()
-        })),
-        totalCount: companies.length,
-        totalPages: Math.ceil(companies.length / Number(limit)),
-        page: Number(page)
-      };
+      this.logger.log('NATS: Getting companies list');
 
-      this.logger.log(`NATS: Returning ${result.companies.length} companies`);
-      return result;
+      const { page = 1, limit = 20 } = data;
+      const result = await this.companyService.findAll(Number(page), Number(limit));
+
+      return successResponse(
+        { companies: result.companies.map(mapCompanyToResponse) },
+        paginationMeta(result.total, result.page, result.limit)
+      );
     } catch (error) {
       this.logger.error('NATS: Failed to get companies', error);
-      throw error;
+      return errorResponse('COMPANIES_LIST_FAILED', error.message || 'Failed to get companies');
     }
   }
 
@@ -58,63 +36,24 @@ export class CompanyNatsController {
   async getCompanyById(@Payload() data: any) {
     try {
       this.logger.log(`NATS: Getting company ${data.companyId}`);
-      
       const company = await this.companyService.findOne(Number(data.companyId));
-      
-      const result = {
-        id: company.id,
-        name: company.name,
-        businessNumber: company.businessNumber,
-        description: company.description,
-        address: company.address,
-        phoneNumber: company.phoneNumber,
-        email: company.email,
-        website: company.website,
-        establishedDate: company.establishedDate?.toISOString(),
-        logoUrl: company.logoUrl,
-        status: company.status,
-        isActive: company.isActive,
-        createdAt: company.createdAt.toISOString(),
-        updatedAt: company.updatedAt.toISOString()
-      };
-
-      this.logger.log(`NATS: Returning company ${company.id}`);
-      return result;
+      return successResponse(mapCompanyToResponse(company));
     } catch (error) {
       this.logger.error('NATS: Failed to get company', error);
-      throw error;
+      return errorResponse('COMPANY_NOT_FOUND', error.message || 'Company not found');
     }
   }
 
   @MessagePattern('companies.create')
   async createCompany(@Payload() data: any) {
     try {
-      this.logger.log(`NATS: Creating company`);
-      
+      this.logger.log('NATS: Creating company');
       const company = await this.companyService.create(data.data);
-      
-      const result = {
-        id: company.id,
-        name: company.name,
-        businessNumber: company.businessNumber,
-        description: company.description,
-        address: company.address,
-        phoneNumber: company.phoneNumber,
-        email: company.email,
-        website: company.website,
-        establishedDate: company.establishedDate?.toISOString(),
-        logoUrl: company.logoUrl,
-        status: company.status,
-        isActive: company.isActive,
-        createdAt: company.createdAt.toISOString(),
-        updatedAt: company.updatedAt.toISOString()
-      };
-
       this.logger.log(`NATS: Created company with ID ${company.id}`);
-      return result;
+      return successResponse(mapCompanyToResponse(company));
     } catch (error) {
       this.logger.error('NATS: Failed to create company', error);
-      throw error;
+      return errorResponse('COMPANY_CREATE_FAILED', error.message || 'Failed to create company');
     }
   }
 
@@ -122,31 +61,12 @@ export class CompanyNatsController {
   async updateCompany(@Payload() data: any) {
     try {
       this.logger.log(`NATS: Updating company ${data.companyId}`);
-      
       const company = await this.companyService.update(Number(data.companyId), data.data);
-      
-      const result = {
-        id: company.id,
-        name: company.name,
-        businessNumber: company.businessNumber,
-        description: company.description,
-        address: company.address,
-        phoneNumber: company.phoneNumber,
-        email: company.email,
-        website: company.website,
-        establishedDate: company.establishedDate?.toISOString(),
-        logoUrl: company.logoUrl,
-        status: company.status,
-        isActive: company.isActive,
-        createdAt: company.createdAt.toISOString(),
-        updatedAt: company.updatedAt.toISOString()
-      };
-
       this.logger.log(`NATS: Updated company ${company.id}`);
-      return result;
+      return successResponse(mapCompanyToResponse(company));
     } catch (error) {
       this.logger.error('NATS: Failed to update company', error);
-      throw error;
+      return errorResponse('COMPANY_UPDATE_FAILED', error.message || 'Failed to update company');
     }
   }
 
@@ -154,14 +74,12 @@ export class CompanyNatsController {
   async deleteCompany(@Payload() data: any) {
     try {
       this.logger.log(`NATS: Deleting company ${data.companyId}`);
-      
       await this.companyService.remove(Number(data.companyId));
-      
       this.logger.log(`NATS: Deleted company ${data.companyId}`);
-      return { success: true };
+      return successResponse({ deleted: true });
     } catch (error) {
       this.logger.error('NATS: Failed to delete company', error);
-      throw error;
+      return errorResponse('COMPANY_DELETE_FAILED', error.message || 'Failed to delete company');
     }
   }
 }

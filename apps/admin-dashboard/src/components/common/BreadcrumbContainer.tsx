@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useBreadcrumb } from '../../redux/hooks/useBreadcrumb';
+import { useBreadcrumb } from '@/stores';
 
 export const BreadcrumbContainer: React.FC = () => {
   const { items } = useBreadcrumb();

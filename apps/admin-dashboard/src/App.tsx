@@ -1,43 +1,29 @@
-import React, { useEffect } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { PrivateRoute } from './components/PrivateRoute';
+import { PrivateRoute } from '@/components/auth';
+import { GlobalLoading } from '@/components/common';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { AdminManagementPage } from './pages/system/AdminManagementPage';
-import { AdminRoleDemoPage } from './pages/system/AdminRoleDemoPage';
 import { UserManagementPage } from './pages/system/UserManagementPage';
+import { RolePermissionPage } from './pages/system/RolePermissionPage';
 import { CompanyPage } from './pages/company/CompanyPage';
 import { BookingManagementPage } from './pages/booking/BookingManagementPage';
-import { BookingManagement } from './components/booking/BookingManagement';
 import { ClubListPage } from './pages/club/ClubListPage';
 import { ClubDetailPage } from './pages/club/ClubDetailPage';
-import { TimeSlotPage } from './pages/timeslot/TimeSlotPage';
-import { getCurrentUser, checkAuthStatus } from './redux/slices/authSlice';
+import { GameListPage } from './pages/game/GameListPage';
+import { GameDetailPage } from './pages/game/GameDetailPage';
+import { ScheduleListPage } from './pages/schedule/ScheduleListPage';
+import { useAuthInitialize } from './hooks/useAuth';
 
 function App() {
-  const dispatch = useDispatch();
+  // 앱 시작 시 인증 상태 초기화
+  const { isInitializing } = useAuthInitialize();
 
-  useEffect(() => {
-    // 앱 시작 시 인증 상태 확인
-    const initializeAuth = async () => {
-      try {
-        // 먼저 localStorage에서 토큰 확인
-        const checkResult = await dispatch(checkAuthStatus()).unwrap();
-        
-        // checkAuthStatus가 성공했을 때만 API 호출
-        if (checkResult?.token) {
-          console.log('Token found, fetching current user from API');
-          await dispatch(getCurrentUser());
-        }
-      } catch (error) {
-        console.log('Auth initialization failed, user needs to login');
-      }
-    };
-
-    initializeAuth();
-  }, [dispatch]);
+  // 인증 상태 초기화 중 로딩 표시
+  if (isInitializing) {
+    return <GlobalLoading message="인증 확인 중..." />;
+  }
 
   return (
     <Router>
@@ -47,12 +33,26 @@ function App() {
         <Route element={<PrivateRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/admin-management" element={<AdminManagementPage />} />
-          <Route path="/admin-role-demo" element={<AdminRoleDemoPage />} />
           <Route path="/user-management" element={<UserManagementPage />} />
+          <Route path="/roles" element={<RolePermissionPage />} />
           <Route path="/companies" element={<CompanyPage />} />
-          <Route path="/club" element={<ClubListPage />} />
+
+          {/* 골프장 관리 (Master Data) */}
+          <Route path="/clubs" element={<ClubListPage />} />
+          <Route path="/clubs/:clubId" element={<ClubDetailPage />} />
+
+          {/* 라운드 관리 (Game) */}
+          <Route path="/games" element={<GameListPage />} />
+          <Route path="/games/:gameId" element={<GameDetailPage />} />
+
+          {/* 일정 관리 (Schedules) */}
+          <Route path="/schedules" element={<ScheduleListPage />} />
+
+          {/* 하위 호환 리다이렉트 */}
+          <Route path="/club" element={<Navigate to="/clubs" replace />} />
           <Route path="/club/clubs/:clubId" element={<ClubDetailPage />} />
-          <Route path="/club/clubs/:clubId/timeslots" element={<TimeSlotPage />} />
+          <Route path="/club/clubs/:clubId/timeslots" element={<Navigate to="/games" replace />} />
+
           <Route path="/bookings" element={<BookingManagementPage />} />
           <Route path="/profile" element={
             <div className="text-center py-12">
@@ -72,32 +72,8 @@ function App() {
               <p className="text-gray-600">개인 설정 페이지입니다.</p>
             </div>
           } />
-          <Route path="/permissions" element={
-            <div className="text-center py-12">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">권한 관리</h1>
-              <p className="text-gray-600">권한 관리 페이지입니다.</p>
-            </div>
-          } />
-          <Route path="/settings" element={
-            <div className="text-center py-12">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">시스템 설정</h1>
-              <p className="text-gray-600">시스템 설정 페이지입니다.</p>
-            </div>
-          } />
-          <Route path="/logs" element={
-            <div className="text-center py-12">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">로그 관리</h1>
-              <p className="text-gray-600">로그 관리 페이지입니다.</p>
-            </div>
-          } />
-          <Route path="/backups" element={
-            <div className="text-center py-12">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">백업 관리</h1>
-              <p className="text-gray-600">백업 관리 페이지입니다.</p>
-            </div>
-          } />
         </Route>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Router>
   );

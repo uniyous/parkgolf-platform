@@ -28,7 +28,7 @@ export class BookingsController {
   @ApiQuery({ name: 'page', required: false, description: 'Page number', example: 1 })
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page', example: 20 })
   @ApiQuery({ name: 'status', required: false, description: 'Filter by status' })
-  @ApiQuery({ name: 'courseId', required: false, description: 'Filter by course ID' })
+  @ApiQuery({ name: 'gameId', required: false, description: 'Filter by game ID' })
   @ApiQuery({ name: 'userId', required: false, description: 'Filter by user ID' })
   @ApiQuery({ name: 'startDate', required: false, description: 'Filter from date (YYYY-MM-DD)' })
   @ApiQuery({ name: 'endDate', required: false, description: 'Filter to date (YYYY-MM-DD)' })
@@ -37,7 +37,7 @@ export class BookingsController {
     @Query('page') page = 1,
     @Query('limit') limit = 20,
     @Query('status') status?: string,
-    @Query('courseId') courseId?: string,
+    @Query('gameId') gameId?: string,
     @Query('userId') userId?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
@@ -48,7 +48,7 @@ export class BookingsController {
       
       const filters: any = {};
       if (status) filters.status = status;
-      if (courseId) filters.courseId = courseId;
+      if (gameId) filters.gameId = gameId;
       if (userId) filters.userId = userId;
       if (startDate) filters.startDate = startDate;
       if (endDate) filters.endDate = endDate;
@@ -289,7 +289,7 @@ export class BookingsController {
   @ApiQuery({ name: 'page', required: false, description: 'Page number', example: 1 })
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page', example: 20 })
   @ApiQuery({ name: 'userId', required: false, description: 'Filter by user ID' })
-  @ApiQuery({ name: 'courseId', required: false, description: 'Filter by course ID' })
+  @ApiQuery({ name: 'gameId', required: false, description: 'Filter by game ID' })
   @ApiQuery({ name: 'startDate', required: false, description: 'Filter from date (YYYY-MM-DD)' })
   @ApiQuery({ name: 'endDate', required: false, description: 'Filter to date (YYYY-MM-DD)' })
   @ApiResponse({ status: 200, description: 'Booking history retrieved successfully' })
@@ -297,7 +297,7 @@ export class BookingsController {
     @Query('page') page = 1,
     @Query('limit') limit = 20,
     @Query('userId') userId?: string,
-    @Query('courseId') courseId?: string,
+    @Query('gameId') gameId?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Headers('authorization') authorization?: string
@@ -307,7 +307,7 @@ export class BookingsController {
       
       const filters: any = {};
       if (userId) filters.userId = userId;
-      if (courseId) filters.courseId = courseId;
+      if (gameId) filters.gameId = gameId;
       if (startDate) filters.startDate = startDate;
       if (endDate) filters.endDate = endDate;
       
@@ -410,14 +410,14 @@ export class BookingsController {
     }
   }
 
-  @Get('course/:courseId')
-  @ApiOperation({ summary: 'Get course bookings' })
+  @Get('game/:gameId')
+  @ApiOperation({ summary: 'Get game bookings' })
   @ApiQuery({ name: 'date', required: false, description: 'Filter by date (YYYY-MM-DD)' })
   @ApiQuery({ name: 'page', required: false, description: 'Page number', example: 1 })
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page', example: 20 })
-  @ApiResponse({ status: 200, description: 'Course bookings retrieved successfully' })
-  async getCourseBookings(
-    @Param('courseId') courseId: string,
+  @ApiResponse({ status: 200, description: 'Game bookings retrieved successfully' })
+  async getGameBookings(
+    @Param('gameId') gameId: string,
     @Query('date') date?: string,
     @Query('page') page = 1,
     @Query('limit') limit = 20,
@@ -425,12 +425,12 @@ export class BookingsController {
   ) {
     try {
       const token = authorization ? this.extractToken(authorization) : undefined;
-      this.logger.log(`Fetching bookings for course: ${courseId}, date: ${date || 'all'}`);
-      
-      const result = await this.bookingService.getCourseBookings(courseId, date, page, limit, token);
+      this.logger.log(`Fetching bookings for game: ${gameId}, date: ${date || 'all'}`);
+
+      const result = await this.bookingService.getGameBookings(gameId, date, page, limit, token);
       return result;
     } catch (error) {
-      this.logger.error(`Failed to fetch bookings for course: ${courseId}`, error);
+      this.logger.error(`Failed to fetch bookings for game: ${gameId}`, error);
       throw this.handleError(error);
     }
   }

@@ -1,18 +1,18 @@
 import React from 'react';
-import { CompanyManagementContainer } from '../../components/company/CompanyManagementContainer';
-import { PageLayout } from '../../components/common/Layout/PageLayout';
-import { useSetBreadcrumb } from '../../redux/hooks/useBreadcrumb';
+import { CompanyList } from '@/components/features/company';
+import { PageLayout } from '@/components/layout';
+import { Breadcrumb } from '@/components/common';
 
 export const CompanyPage: React.FC = () => {
-  // Redux breadcrumb 설정
-  useSetBreadcrumb([
-    { label: '회사 관리', icon: '🏢' }
-  ]);
-
   return (
     <PageLayout>
+      <Breadcrumb
+        items={[
+          { label: '회사 관리' }
+        ]}
+      />
       <PageLayout.Content>
-        <CompanyManagementContainer />
+        <CompanyList />
       </PageLayout.Content>
     </PageLayout>
   );

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useClub } from '../../redux/hooks/useClub';
-import type { Club, ClubFilters } from '../../types/club';
+import { useClub } from '@/hooks';
+import type { Club, ClubFilters } from '@/types/club';
 
 export const ClubListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -49,7 +49,7 @@ export const ClubListPage: React.FC = () => {
 
   // 골프장 선택
   const handleClubSelect = (club: Club) => {
-    navigate(`/club/clubs/${club.id}`);
+    navigate(`/clubs/${club.id}`);
   };
 
   // 에러 처리
@@ -77,7 +77,7 @@ export const ClubListPage: React.FC = () => {
             <p className="text-gray-600 mt-1">9홀 단위 코스 관리 및 18홀 조합 운영</p>
           </div>
           <button
-            onClick={() => navigate('/club/clubs/new')}
+            onClick={() => navigate('/clubs/new')}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,7 +147,7 @@ export const ClubListPage: React.FC = () => {
             {!searchKeyword && (
               <div className="mt-6">
                 <button
-                  onClick={() => navigate('/club/clubs/new')}
+                  onClick={() => navigate('/clubs/new')}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   첫 번째 골프장 추가하기

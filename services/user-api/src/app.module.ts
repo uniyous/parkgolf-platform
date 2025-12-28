@@ -4,6 +4,7 @@ import { CommonModule } from './common/common.module';
 import { AuthModule } from './auth/auth.module';
 import { BookingModule } from './booking/booking.module';
 import { CoursesModule } from './courses/courses.module';
+import { GamesModule } from './games/games.module';
 import { NotifyModule } from './notify/notify.module';
 import { NatsModule } from './common/nats';
 
@@ -17,6 +18,7 @@ import { NatsModule } from './common/nats';
     AuthModule,
     BookingModule,
     CoursesModule,
+    GamesModule,
     NotifyModule,
   ],
   controllers: [],

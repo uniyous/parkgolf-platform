@@ -25,6 +25,9 @@ model Company {
   courses         Course[]
   clubs           Club[]
 
+  @@index([status])
+  @@index([isActive])
+  @@index([createdAt])
   @@map("companies")
 }
 
@@ -47,8 +50,12 @@ model Club {
   createdAt      DateTime   @default(now()) @map("created_at")
   updatedAt      DateTime   @updatedAt @map("updated_at")
   courses        Course[]
+  games          Game[]
   company        Company    @relation(fields: [companyId], references: [id])
 
+  @@index([companyId])
+  @@index([status])
+  @@index([isActive])
   @@map("clubs")
 }
 
@@ -72,12 +79,16 @@ model Course {
   isActive          Boolean                @default(true) @map("is_active")
   createdAt         DateTime               @default(now()) @map("created_at")
   updatedAt         DateTime               @updatedAt @map("updated_at")
-  course_time_slots CourseTimeSlot[]
-  weeklySchedules   CourseWeeklySchedule[]
   club              Club                   @relation(fields: [clubId], references: [id])
   company           Company                @relation(fields: [companyId], references: [id])
   holes             Hole[]
+  gamesAsFrontNine  Game[]                 @relation("FrontNine")
+  gamesAsBackNine   Game[]                 @relation("BackNine")
 
+  @@index([clubId])
+  @@index([companyId])
+  @@index([status])
+  @@index([isActive])
   @@map("courses")
 }
 
@@ -97,6 +108,7 @@ model Hole {
   teeBoxes    TeeBox[]
 
   @@unique([courseId, holeNumber])
+  @@index([courseId])
   @@map("holes")
 }
 
@@ -111,39 +123,125 @@ model TeeBox {
   updatedAt  DateTime    @updatedAt @map("updated_at")
   hole       Hole        @relation(fields: [holeId], references: [id])
 
+  @@index([holeId])
   @@map("tee_boxes")
 }
 
-model CourseTimeSlot {
-  id         Int      @id @default(autoincrement())
-  date       String
-  startTime  String   @map("start_time")
-  endTime    String   @map("end_time")
-  maxPlayers Int      @default(4) @map("max_players")
-  price      Decimal  @db.Decimal(10, 2)
-  courseId   Int      @map("course_id")
-  isActive   Boolean  @default(true) @map("is_active")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-  courses    Course   @relation(fields: [courseId], references: [id])
+// =====================================================
+// Game: 코스 조합 정의 (18홀 = 2개 9홀 코스)
+// =====================================================
+model Game {
+  id                   Int          @id @default(autoincrement())
 
-  @@unique([courseId, date, startTime, endTime])
-  @@map("course_time_slots")
+  // 기본 정보
+  name                 String       // "A+B 코스", "C+D 코스"
+  code                 String       @unique // "GAME-AB", "GAME-CD"
+  description          String?
+
+  // 코스 조합
+  frontNineCourseId    Int          @map("front_nine_course_id")
+  backNineCourseId     Int          @map("back_nine_course_id")
+  frontNineCourse      Course       @relation("FrontNine", fields: [frontNineCourseId], references: [id])
+  backNineCourse       Course       @relation("BackNine", fields: [backNineCourseId], references: [id])
+
+  // 게임 설정
+  totalHoles           Int          @default(18) @map("total_holes")
+  estimatedDuration    Int          @default(180) @map("estimated_duration") // 분 단위
+  breakDuration        Int          @default(10) @map("break_duration") // 전반/후반 사이 휴식
+  maxPlayers           Int          @default(4) @map("max_players")
+
+  // 가격 정책
+  basePrice            Decimal      @db.Decimal(10, 2) @map("base_price")
+  weekendPrice         Decimal?     @db.Decimal(10, 2) @map("weekend_price")
+  holidayPrice         Decimal?     @db.Decimal(10, 2) @map("holiday_price")
+
+  // 상태
+  clubId               Int          @map("club_id")
+  club                 Club         @relation(fields: [clubId], references: [id])
+  status               GameStatus   @default(ACTIVE)
+  isActive             Boolean      @default(true) @map("is_active")
+
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  timeSlots            GameTimeSlot[]
+  weeklySchedules      GameWeeklySchedule[]
+
+  @@unique([frontNineCourseId, backNineCourseId])
+  @@index([clubId])
+  @@map("games")
 }
 
-model CourseWeeklySchedule {
-  id        Int      @id @default(autoincrement())
-  dayOfWeek Int      @map("day_of_week")
-  openTime  String   @map("open_time")
-  closeTime String   @map("close_time")
-  courseId  Int      @map("course_id")
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  course    Course   @relation(fields: [courseId], references: [id])
+// =====================================================
+// GameTimeSlot: 특정 날짜의 예약 가능 시간대
+// =====================================================
+model GameTimeSlot {
+  id            Int            @id @default(autoincrement())
 
-  @@unique([courseId, dayOfWeek])
-  @@map("course_weekly_schedules")
+  // Game 참조
+  gameId        Int            @map("game_id")
+  game          Game           @relation(fields: [gameId], references: [id])
+
+  // 시간 정보
+  date          DateTime       @db.Date
+  startTime     String         @map("start_time") // "08:00"
+  endTime       String         @map("end_time")   // "11:00"
+
+  // 가용성
+  maxPlayers    Int            @default(4) @map("max_players")
+  bookedPlayers Int            @default(0) @map("booked_players")
+
+  // 가격 (Game 기본가 override 가능)
+  price         Decimal        @db.Decimal(10, 2)
+  isPremium     Boolean        @default(false) @map("is_premium") // 주말/휴일
+
+  // 상태
+  status        TimeSlotStatus @default(AVAILABLE)
+  isActive      Boolean        @default(true) @map("is_active")
+
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  @@unique([gameId, date, startTime])
+  @@index([date])
+  @@index([status])
+  @@map("game_time_slots")
+}
+
+// =====================================================
+// GameWeeklySchedule: 주간 운영 스케줄 템플릿
+// =====================================================
+model GameWeeklySchedule {
+  id            Int      @id @default(autoincrement())
+
+  gameId        Int      @map("game_id")
+  game          Game     @relation(fields: [gameId], references: [id])
+
+  dayOfWeek     Int      @map("day_of_week") // 0=일, 1=월, ...
+  startTime     String   @map("start_time")  // 첫 타임 시작
+  endTime       String   @map("end_time")    // 마지막 타임 시작
+  interval      Int      @default(10) // 타임 간격 (분)
+
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([gameId, dayOfWeek])
+  @@map("game_weekly_schedules")
+}
+
+enum GameStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum TimeSlotStatus {
+  AVAILABLE
+  FULLY_BOOKED
+  CLOSED
+  MAINTENANCE
 }
 
 enum CourseStatus {

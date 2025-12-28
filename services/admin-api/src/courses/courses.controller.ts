@@ -216,6 +216,19 @@ export class CoursesController {
     return this.courseService.getCourseStats(dateRange, token);
   }
 
+  @Get('club/:clubId')
+  @ApiOperation({ summary: 'Get courses by club' })
+  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
+  @ApiResponse({ status: 200, description: 'Courses retrieved successfully' })
+  async getCoursesByClub(
+    @Param('clubId', ParseIntPipe) clubId: number,
+    @Headers('authorization') authorization?: string,
+  ) {
+    const token = authorization ? this.extractToken(authorization) : undefined;
+    this.logger.log(`Fetching courses by club: ${clubId}`);
+    return this.courseService.getCoursesByClub(clubId, token);
+  }
+
   @Get(':courseId')
   @ApiOperation({ summary: 'Get course by ID' })
   @ApiResponse({ status: 200, description: 'Course retrieved successfully' })
@@ -339,93 +352,6 @@ export class CoursesController {
     const token = this.extractToken(authorization);
     this.logger.log(`Deleting hole: ${holeId}`);
     return this.courseService.deleteHole(courseId, holeId, token);
-  }
-
-  // ============================================
-  // Weekly Schedule Management
-  // ============================================
-  @Get(':courseId/weekly-schedules')
-  @ApiOperation({ summary: 'Get all weekly schedules for course' })
-  @ApiResponse({ status: 200, description: 'Weekly schedules retrieved successfully' })
-  async getWeeklySchedules(
-    @Param('courseId') courseId: string,
-    @Headers('authorization') authorization?: string
-  ) {
-    const token = authorization ? this.extractToken(authorization) : undefined;
-    this.logger.log(`Fetching weekly schedules for course: ${courseId}`);
-    return this.courseService.getWeeklySchedules(courseId, token);
-  }
-
-  @Get(':courseId/weekly-schedules/day/:dayOfWeek')
-  @ApiOperation({ summary: 'Get weekly schedule by day of week' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
-  @ApiResponse({ status: 200, description: 'Weekly schedule retrieved successfully' })
-  async getWeeklyScheduleByDay(
-    @Param('courseId') courseId: string,
-    @Param('dayOfWeek') dayOfWeek: string,
-    @Headers('authorization') authorization: string
-  ) {
-    const token = this.extractToken(authorization);
-    this.logger.log(`Fetching weekly schedule for course: ${courseId}, day: ${dayOfWeek}`);
-    return this.courseService.getWeeklyScheduleByDay(courseId, dayOfWeek, token);
-  }
-
-  @Get(':courseId/weekly-schedules/:scheduleId')
-  @ApiOperation({ summary: 'Get weekly schedule by ID' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
-  @ApiResponse({ status: 200, description: 'Weekly schedule retrieved successfully' })
-  async getWeeklyScheduleById(
-    @Param('courseId') courseId: string,
-    @Param('scheduleId') scheduleId: string,
-    @Headers('authorization') authorization: string
-  ) {
-    const token = this.extractToken(authorization);
-    this.logger.log(`Fetching weekly schedule: ${scheduleId} for course: ${courseId}`);
-    return this.courseService.getWeeklyScheduleById(scheduleId, token);
-  }
-
-  @Post(':courseId/weekly-schedules')
-  @ApiOperation({ summary: 'Create weekly schedule for course' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
-  @ApiResponse({ status: 201, description: 'Weekly schedule created successfully' })
-  async createWeeklySchedule(
-    @Param('courseId') courseId: string,
-    @Body() scheduleData: any,
-    @Headers('authorization') authorization: string
-  ) {
-    const token = this.extractToken(authorization);
-    this.logger.log(`Creating weekly schedule for course: ${courseId}`);
-    const data = { ...scheduleData, courseId: Number(courseId) };
-    return this.courseService.createWeeklySchedule(data, token);
-  }
-
-  @Patch(':courseId/weekly-schedules/:scheduleId')
-  @ApiOperation({ summary: 'Update weekly schedule' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
-  @ApiResponse({ status: 200, description: 'Weekly schedule updated successfully' })
-  async updateWeeklySchedule(
-    @Param('courseId') courseId: string,
-    @Param('scheduleId') scheduleId: string,
-    @Body() scheduleData: any,
-    @Headers('authorization') authorization: string
-  ) {
-    const token = this.extractToken(authorization);
-    this.logger.log(`Updating weekly schedule: ${scheduleId} for course: ${courseId}`);
-    return this.courseService.updateWeeklySchedule(scheduleId, scheduleData, token);
-  }
-
-  @Delete(':courseId/weekly-schedules/:scheduleId')
-  @ApiOperation({ summary: 'Delete weekly schedule' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
-  @ApiResponse({ status: 200, description: 'Weekly schedule deleted successfully' })
-  async deleteWeeklySchedule(
-    @Param('courseId') courseId: string,
-    @Param('scheduleId') scheduleId: string,
-    @Headers('authorization') authorization: string
-  ) {
-    const token = this.extractToken(authorization);
-    this.logger.log(`Deleting weekly schedule: ${scheduleId} for course: ${courseId}`);
-    return this.courseService.deleteWeeklySchedule(scheduleId, token);
   }
 
   private extractToken(authorization?: string): string {

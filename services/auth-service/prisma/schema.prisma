@@ -1,3 +1,4 @@
+// Schema v3 - Role-based permissions (2025-12-26)
 generator client {
   provider = "prisma-client-js"
 }
@@ -16,12 +17,13 @@ model User {
   isActive      Boolean          @default(true) @map("is_active")
   createdAt     DateTime         @default(now()) @map("created_at")
   updatedAt     DateTime         @updatedAt @map("updated_at")
-  
+
   // 관계
   role          RoleMaster       @relation(fields: [roleCode], references: [code])
-  permissions   UserPermission[]
   refreshTokens RefreshToken[]
 
+  @@index([roleCode])
+  @@index([isActive])
   @@map("users")
 }
 
@@ -41,7 +43,7 @@ model Admin {
   email         String              @unique
   password      String
   name          String
-  roleCode      String              @default("READONLY_STAFF") @map("role_code") // RoleMaster 참조 (필수)
+  roleCode      String              @default("VIEWER") @map("role_code") // RoleMaster 참조 (필수)
   phone         String?
   department    String?
   description   String?
@@ -49,13 +51,15 @@ model Admin {
   lastLoginAt   DateTime?           @map("last_login_at")
   createdAt     DateTime            @default(now()) @map("created_at")
   updatedAt     DateTime            @updatedAt @map("updated_at")
-  
+
   // 관계
   role          RoleMaster          @relation(fields: [roleCode], references: [code])
-  permissions   AdminPermission[]
   activityLogs  AdminActivityLog[]
   refreshTokens AdminRefreshToken[]
 
+  @@index([roleCode])
+  @@index([isActive])
+  @@index([createdAt])
   @@map("admins")
 }
 
@@ -86,6 +90,8 @@ model PermissionMaster {
   // 관계
   rolePermissions RolePermission[]
 
+  @@index([category])
+  @@index([isActive])
   @@map("permission_masters")
 }
 
@@ -105,6 +111,8 @@ model RoleMaster {
   admins          Admin[]
   rolePermissions RolePermission[]
 
+  @@index([userType])
+  @@index([isActive])
   @@map("role_masters")
 }
 
@@ -118,33 +126,10 @@ model RolePermission {
   permission     PermissionMaster @relation(fields: [permissionCode], references: [code], onDelete: Cascade)
 
   @@id([roleCode, permissionCode])
+  @@index([roleCode])
+  @@index([permissionCode])
   @@map("role_permissions")
 }
-
-// 기존 AdminPermission (일시적으로 기존 구조 유지)
-model AdminPermission {
-  id          Int      @id @default(autoincrement())
-  adminId     Int      @map("admin_id")
-  permission  String   // 권한 코드를 직접 저장
-  createdAt   DateTime @default(now()) @map("created_at")
-  admin       Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
-
-  @@unique([adminId, permission])
-  @@map("admin_permissions")
-}
-
-// 기존 UserPermission (일시적으로 기존 구조 유지)
-model UserPermission {
-  id          Int      @id @default(autoincrement())
-  userId      Int      @map("user_id")
-  permission  String   // 권한 코드를 직접 저장
-  createdAt   DateTime @default(now()) @map("created_at")
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, permission])
-  @@map("user_permissions")
-}
-
 
 model AdminActivityLog {
   id        Int      @id @default(autoincrement())
@@ -157,7 +142,7 @@ model AdminActivityLog {
   createdAt DateTime @default(now()) @map("created_at")
   admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
+  @@index([adminId])
+  @@index([createdAt])
   @@map("admin_activity_logs")
 }
-
-// enum Role과 AdminRole은 RoleMaster로 대체됨

@@ -35,6 +35,9 @@ async function bootstrap() {
       origin: [
         'http://localhost:3000', // Admin frontend dev
         'http://localhost:3001', // Admin frontend port 2
+        'http://localhost:3002', // Admin frontend port 3
+        'http://localhost:5173', // Vite default
+        /^https:\/\/.*\.run\.app$/, // Cloud Run domains
       ],
       credentials: true,
     });

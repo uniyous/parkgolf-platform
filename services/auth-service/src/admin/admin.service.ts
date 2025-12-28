@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, UnauthorizedException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminDto } from './dto/update-admin.dto';
@@ -7,6 +7,8 @@ import { Admin, Prisma } from '@prisma/client';
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async create(createAdminDto: CreateAdminDto): Promise<Admin> {
@@ -32,7 +34,7 @@ export class AdminService {
       data: {
         ...data,
         password: hashedPassword,
-        roleCode: data.roleCode || 'READONLY_STAFF',
+        roleCode: data.roleCode || 'VIEWER',
       },
     });
   }
@@ -40,27 +42,76 @@ export class AdminService {
   async findAll(params?: {
     skip?: number;
     take?: number;
+    page?: number;
+    limit?: number;
     where?: Prisma.AdminWhereInput;
     orderBy?: Prisma.AdminOrderByWithRelationInput;
-  }): Promise<Admin[]> {
-    const { skip, take, where, orderBy } = params || {};
-    
-    return this.prisma.admin.findMany({
-      skip,
-      take,
-      where,
-      orderBy,
-      include: {
-        permissions: true,
-      },
-    });
+  }): Promise<{ admins: any[]; total: number; page: number; limit: number; totalPages: number }> {
+    const { where, orderBy } = params || {};
+
+    // 페이지네이션 처리
+    const page = params?.page || 1;
+    const limit = params?.limit || params?.take || 20;
+    const skip = params?.skip || (page - 1) * limit;
+
+    // 병렬로 데이터와 카운트 조회 (목록에서는 권한 정보 제외)
+    const [admins, total] = await Promise.all([
+      this.prisma.admin.findMany({
+        skip,
+        take: limit,
+        where,
+        orderBy: orderBy || { createdAt: 'desc' },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          roleCode: true,
+          phone: true,
+          department: true,
+          isActive: true,
+          lastLoginAt: true,
+          createdAt: true,
+          updatedAt: true,
+          role: {
+            select: {
+              code: true,
+              name: true,
+              level: true,
+            },
+          },
+        },
+      }),
+      this.prisma.admin.count({ where }),
+    ]);
+
+    // 목록용 변환 (권한은 상세 조회에서만 포함)
+    const transformedAdmins = admins.map((admin) => ({
+      ...admin,
+      permissions: [],
+    }));
+
+    return {
+      admins: transformedAdmins,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
-  async findOne(id: number): Promise<Admin> {
+  async findOne(id: number): Promise<any> {
     const admin = await this.prisma.admin.findUnique({
       where: { id },
       include: {
-        permissions: true,
+        role: {
+          include: {
+            rolePermissions: {
+              include: {
+                permission: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -68,19 +119,46 @@ export class AdminService {
       throw new NotFoundException(`Admin with ID ${id} not found`);
     }
 
-    return admin;
+    // 역할 기반 권한을 permissions 배열로 변환
+    return {
+      ...admin,
+      permissions: admin.role?.rolePermissions?.map((rp) => ({
+        permission: rp.permission.code,
+      })) || [],
+    };
   }
 
   async findByEmail(email: string): Promise<any> {
     const admin = await this.prisma.admin.findUnique({
       where: { email },
       include: {
-        permissions: true,
+        role: {
+          include: {
+            rolePermissions: {
+              include: {
+                permission: true,
+              },
+            },
+          },
+        },
       },
     });
-    
-    console.log('🔍 findByEmail - admin permissions count:', admin?.permissions?.length || 0);
-    return admin;
+
+    if (!admin) {
+      return null;
+    }
+
+    // 역할 기반 권한을 permissions 배열로 변환
+    const permissions = admin.role?.rolePermissions?.map((rp) => ({
+      permission: rp.permission.code,
+    })) || [];
+
+    this.logger.debug(`findByEmail - ${email} permissions: [${permissions.map(p => p.permission).join(', ')}]`);
+
+    return {
+      ...admin,
+      permissions,
+    };
   }
 
   async update(id: number, updateAdminDto: UpdateAdminDto): Promise<Admin> {
@@ -115,26 +193,26 @@ export class AdminService {
       updateData.password = await bcrypt.hash(password, 10);
     }
 
-    return this.prisma.admin.update({
+    await this.prisma.admin.update({
       where: { id },
       data: updateData,
-      include: {
-        permissions: true,
-      },
     });
+
+    // 업데이트된 admin을 역할 기반 권한과 함께 반환
+    return this.findOne(id);
   }
 
   async remove(id: number): Promise<Admin> {
     const admin = await this.findOne(id);
-    
-    // Prevent deleting the last PLATFORM_OWNER
-    if (admin.roleCode === 'PLATFORM_OWNER') {
-      const ownerCount = await this.prisma.admin.count({
-        where: { roleCode: 'PLATFORM_OWNER' },
+
+    // Prevent deleting the last ADMIN
+    if (admin.roleCode === 'ADMIN') {
+      const adminCount = await this.prisma.admin.count({
+        where: { roleCode: 'ADMIN' },
       });
-      
-      if (ownerCount <= 1) {
-        throw new ConflictException('Cannot delete the last PLATFORM_OWNER');
+
+      if (adminCount <= 1) {
+        throw new ConflictException('Cannot delete the last ADMIN');
       }
     }
 
@@ -175,29 +253,20 @@ export class AdminService {
   }
 
   async getStats(): Promise<any> {
-    // Get all active admin roles from RoleMaster
-    const adminRoles = await this.prisma.roleMaster.findMany({
-      where: { 
-        userType: 'ADMIN',
-        isActive: true 
-      },
-      orderBy: { level: 'desc' },
-    });
-
-    const [total, active, byRole] = await Promise.all([
-      this.count(),
-      this.count({ isActive: true }),
-      Promise.all(
-        adminRoles.map(role => 
-          this.count({ roleCode: role.code })
-        )
-      ),
+    // 단일 쿼리로 전체 통계와 역할별 카운트 조회
+    const [total, active, roleGrouped] = await Promise.all([
+      this.prisma.admin.count(),
+      this.prisma.admin.count({ where: { isActive: true } }),
+      this.prisma.admin.groupBy({
+        by: ['roleCode'],
+        _count: { id: true },
+      }),
     ]);
 
-    // Build dynamic byRole object
+    // Build byRole object from grouped results
     const byRoleStats: Record<string, number> = {};
-    adminRoles.forEach((role, index) => {
-      byRoleStats[role.code] = byRole[index];
+    roleGrouped.forEach((group) => {
+      byRoleStats[group.roleCode] = group._count.id;
     });
 
     return {
@@ -262,9 +331,9 @@ export class AdminService {
 
   async getAdminRoles(): Promise<any[]> {
     return this.prisma.roleMaster.findMany({
-      where: { 
+      where: {
         userType: 'ADMIN',
-        isActive: true 
+        isActive: true
       },
       orderBy: [
         { level: 'desc' },
@@ -273,22 +342,48 @@ export class AdminService {
     });
   }
 
-  async updatePermissions(adminId: number, permissions: string[]): Promise<Admin> {
-    // First, delete all existing permissions
-    await this.prisma.adminPermission.deleteMany({
-      where: { adminId },
-    });
-
-    // Then, create new permissions
-    if (permissions.length > 0) {
-      await this.prisma.adminPermission.createMany({
-        data: permissions.map(permission => ({
-          adminId,
-          permission,
-        })),
-      });
+  async getRolesWithPermissions(userType?: string): Promise<any[]> {
+    const where: any = { isActive: true };
+    if (userType) {
+      where.userType = userType;
     }
 
+    // 단일 쿼리로 역할과 권한을 함께 조회
+    const roles = await this.prisma.roleMaster.findMany({
+      where,
+      orderBy: [
+        { userType: 'asc' },
+        { level: 'desc' },
+      ],
+      include: {
+        rolePermissions: {
+          select: {
+            permissionCode: true,
+          },
+        },
+      },
+    });
+
+    // 권한 코드 배열로 변환
+    return roles.map(role => ({
+      code: role.code,
+      name: role.name,
+      description: role.description,
+      userType: role.userType,
+      level: role.level,
+      isActive: role.isActive,
+      createdAt: role.createdAt,
+      updatedAt: role.updatedAt,
+      permissions: role.rolePermissions.map(rp => rp.permissionCode),
+    }));
+  }
+
+  // 개별 권한 관리는 제거됨 - 역할 기반 권한만 사용
+  // 권한 변경은 역할(roleCode) 변경을 통해 수행
+  async updatePermissions(adminId: number, _permissions: string[]): Promise<Admin> {
+    // 개별 권한 테이블이 삭제되어 역할 기반으로만 권한 관리
+    // 권한을 변경하려면 admin.update()를 통해 roleCode를 변경해야 함
+    this.logger.warn(`updatePermissions is deprecated. Use role-based permissions by updating roleCode.`);
     return this.findOne(adminId);
   }
 

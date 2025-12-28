@@ -141,13 +141,13 @@ export class BookingService {
     }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
-  // Course Booking Management
-  async getCourseBookings(courseId: string, date?: string, page = 1, limit = 20, adminToken?: string): Promise<any> {
-    this.logger.log(`Fetching course bookings: ${courseId}`);
-    const params: any = { courseId, page, limit };
+  // Game Booking Management
+  async getGameBookings(gameId: string, date?: string, page = 1, limit = 20, adminToken?: string): Promise<any> {
+    this.logger.log(`Fetching game bookings: ${gameId}`);
+    const params: any = { gameId, page, limit };
     if (date) params.date = date;
     if (adminToken) params.token = adminToken;
-    return this.natsClient.send('bookings.course', params, NATS_TIMEOUTS.LIST_QUERY);
+    return this.natsClient.send('bookings.game', params, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   // Dashboard Analytics

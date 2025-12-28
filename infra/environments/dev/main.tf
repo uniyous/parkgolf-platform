@@ -132,17 +132,29 @@ module "networking" {
 # VPC Peering to uniyous-319808 (PostgreSQL Database)
 # ============================================================================
 # Dev environment connects to existing PostgreSQL on Compute Engine in uniyous-319808 project
-# VPC peering was created manually (not managed by Terraform):
+
+# Peering from parkgolf-uniyous (parkgolf-dev) -> uniyous-319808 (default)
+resource "google_compute_network_peering" "parkgolf_to_uniyous" {
+  name         = "parkgolf-to-uniyous-peering"
+  network      = module.networking.vpc_self_link
+  peer_network = "projects/uniyous-319808/global/networks/default"
+
+  export_custom_routes = true
+  import_custom_routes = true
+
+  depends_on = [module.networking]
+}
+
+# Note: The reverse peering (uniyous-319808 -> parkgolf-uniyous) must be created
+# in the uniyous-319808 project. Run the following command manually:
 #
-# parkgolf-uniyous -> uniyous-319808:
-#   gcloud compute networks peerings create parkgolf-to-uniyous-peering \
-#     --network=parkgolf-dev --peer-project=uniyous-319808 --peer-network=default \
-#     --export-custom-routes --import-custom-routes --project=parkgolf-uniyous
-#
-# uniyous-319808 -> parkgolf-uniyous:
 #   gcloud compute networks peerings create uniyous-to-parkgolf-peering \
-#     --network=default --peer-project=parkgolf-uniyous --peer-network=parkgolf-dev \
-#     --export-custom-routes --import-custom-routes --project=uniyous-319808
+#     --network=default \
+#     --peer-project=parkgolf-uniyous \
+#     --peer-network=parkgolf-dev \
+#     --export-custom-routes \
+#     --import-custom-routes \
+#     --project=uniyous-319808
 
 # ============================================================================
 # Messaging Module (NATS)

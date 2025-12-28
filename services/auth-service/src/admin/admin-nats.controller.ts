@@ -18,12 +18,18 @@ export class AdminNatsController {
   constructor(private readonly adminService: AdminService) {}
 
   @MessagePattern('admins.list')
-  async getAdminList(@Payload() data: { filters?: any; token?: string }) {
+  async getAdminList(@Payload() data: { filters?: any; page?: number; limit?: number; token?: string }) {
     try {
       this.logger.log('Get admin list request');
-      const { filters } = data;
-      const admins = await this.adminService.findAll(filters);
-      return successResponse(omitPasswordFromArray(admins));
+      const { filters, page = 1, limit = 20 } = data;
+      const result = await this.adminService.findAll({ ...filters, page, limit });
+      return successResponse({
+        admins: omitPasswordFromArray(result.admins),
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
+      });
     } catch (error) {
       this.logger.error('Get admin list failed', error);
       return errorResponse('FETCH_FAILED', error.message);
@@ -132,6 +138,49 @@ export class AdminNatsController {
       return successResponse(permissions);
     } catch (error) {
       this.logger.error('Get permission list failed', error);
+      return errorResponse('FETCH_FAILED', error.message);
+    }
+  }
+
+  // ============================================
+  // Role Management
+  // ============================================
+
+  @MessagePattern('roles.list')
+  async getRoleList(@Payload() data: { userType?: string; token?: string }) {
+    try {
+      this.logger.log('Get role list request');
+      const roles = data.userType === 'ADMIN'
+        ? await this.adminService.getAdminRoles()
+        : await this.adminService.getAllRoles();
+      return successResponse(roles);
+    } catch (error) {
+      this.logger.error('Get role list failed', error);
+      return errorResponse('FETCH_FAILED', error.message);
+    }
+  }
+
+  @MessagePattern('roles.permissions')
+  async getRolePermissions(@Payload() data: { roleCode: string; token?: string }) {
+    try {
+      this.logger.log(`Get permissions for role: ${data.roleCode}`);
+      const permissions = await this.adminService.getRolePermissions(data.roleCode);
+      return successResponse(permissions);
+    } catch (error) {
+      this.logger.error(`Get role permissions failed: ${data.roleCode}`, error);
+      return errorResponse('FETCH_FAILED', error.message);
+    }
+  }
+
+  @MessagePattern('roles.withPermissions')
+  async getRolesWithPermissions(@Payload() data: { userType?: string; token?: string }) {
+    try {
+      this.logger.log('Get roles with permissions request');
+      // 단일 쿼리로 역할과 권한을 함께 조회 (N+1 제거)
+      const rolesWithPermissions = await this.adminService.getRolesWithPermissions(data.userType);
+      return successResponse(rolesWithPermissions);
+    } catch (error) {
+      this.logger.error('Get roles with permissions failed', error);
       return errorResponse('FETCH_FAILED', error.message);
     }
   }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeftIcon } from '@heroicons/react/24/outline';
+import { ChevronLeft } from 'lucide-react';
 
 interface PageHeaderProps {
   title: string;
@@ -44,7 +44,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
               onClick={onBack}
               className="inline-flex items-center px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors group"
             >
-              <ChevronLeftIcon className="w-4 h-4 mr-1 group-hover:-translate-x-0.5 transition-transform" />
+              <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-0.5 transition-transform" />
               <span>{backLabel}</span>
             </button>
           )}

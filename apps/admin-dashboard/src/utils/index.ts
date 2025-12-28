@@ -1,6 +1,5 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+// Utils barrel export
+export * from './admin-permissions';
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+// Re-export cn from lib/utils for backward compatibility
+export { cn } from '@/lib/utils';

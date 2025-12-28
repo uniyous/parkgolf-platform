@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsEnum, IsArray } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsEnum } from 'class-validator';
 import { BookingStatus } from '@prisma/client';
 
 export class CreateBookingRequestDto {
@@ -8,19 +8,10 @@ export class CreateBookingRequestDto {
   @IsNotEmpty()
   userId: number;
 
-  @ApiProperty({ description: '코스 ID', example: 1 })
-  @IsNumber() 
+  @ApiProperty({ description: 'GameTimeSlot ID (course-service)', example: 1 })
+  @IsNumber()
   @IsNotEmpty()
-  courseId: number;
-
-  @ApiProperty({ description: '예약 날짜', example: '2024-07-15' })
-  @IsDateString()
-  @IsNotEmpty()
-  bookingDate: string;
-
-  @ApiProperty({ description: '시간 슬롯', example: '09:00' })
-  @IsNotEmpty()
-  timeSlot: string;
+  gameTimeSlotId: number;
 
   @ApiProperty({ description: '플레이어 수', example: 2 })
   @IsNumber()
@@ -85,10 +76,15 @@ export class SearchBookingDto {
   @IsOptional()
   status?: BookingStatus;
 
-  @ApiProperty({ description: '코스 ID', example: 1, required: false })
+  @ApiProperty({ description: 'Game ID', example: 1, required: false })
   @IsNumber()
   @IsOptional()
-  courseId?: number;
+  gameId?: number;
+
+  @ApiProperty({ description: 'Club ID', example: 1, required: false })
+  @IsNumber()
+  @IsOptional()
+  clubId?: number;
 
   @ApiProperty({ description: '사용자 ID', example: 1, required: false })
   @IsNumber()
@@ -106,18 +102,54 @@ export class SearchBookingDto {
   endDate?: string;
 }
 
-export class TimeSlotAvailabilityDto {
-  @ApiProperty({ description: '타임슬롯 ID' })
+export class GameTimeSlotAvailabilityDto {
+  @ApiProperty({ description: 'ID' })
   id: number;
 
-  @ApiProperty({ description: '시간', example: '09:00' })
-  time: string;
+  @ApiProperty({ description: 'GameTimeSlot ID' })
+  gameTimeSlotId: number;
+
+  @ApiProperty({ description: 'Game ID' })
+  gameId: number;
+
+  @ApiProperty({ description: '게임명' })
+  gameName: string;
+
+  @ApiProperty({ description: '게임 코드' })
+  gameCode: string;
+
+  @ApiProperty({ description: '전반 9홀 코스명' })
+  frontNineCourseName: string;
+
+  @ApiProperty({ description: '후반 9홀 코스명' })
+  backNineCourseName: string;
+
+  @ApiProperty({ description: '클럽 ID' })
+  clubId: number;
+
+  @ApiProperty({ description: '클럽명' })
+  clubName: string;
 
   @ApiProperty({ description: '날짜', example: '2024-07-15' })
   date: string;
 
+  @ApiProperty({ description: '시작 시간', example: '09:00' })
+  startTime: string;
+
+  @ApiProperty({ description: '종료 시간', example: '12:00' })
+  endTime: string;
+
+  @ApiProperty({ description: '최대 인원' })
+  maxPlayers: number;
+
+  @ApiProperty({ description: '예약된 인원' })
+  bookedPlayers: number;
+
+  @ApiProperty({ description: '가용 인원' })
+  availablePlayers: number;
+
   @ApiProperty({ description: '예약 가능 여부' })
-  available: boolean;
+  isAvailable: boolean;
 
   @ApiProperty({ description: '가격' })
   price: number;
@@ -125,8 +157,8 @@ export class TimeSlotAvailabilityDto {
   @ApiProperty({ description: '프리미엄 시간대 여부' })
   isPremium: boolean;
 
-  @ApiProperty({ description: '남은 자리' })
-  remaining: number;
+  @ApiProperty({ description: '상태' })
+  status: string;
 }
 
 export class BookingResponseDto {
@@ -140,19 +172,43 @@ export class BookingResponseDto {
   userId: number;
 
   @ApiProperty()
-  courseId: number;
+  gameId: number;
 
   @ApiProperty()
-  courseName: string;
+  gameTimeSlotId: number;
 
   @ApiProperty()
-  courseLocation: string;
+  gameName: string;
 
   @ApiProperty()
-  timeSlot: string;
+  gameCode: string;
+
+  @ApiProperty()
+  frontNineCourseId: number;
+
+  @ApiProperty()
+  frontNineCourseName: string;
+
+  @ApiProperty()
+  backNineCourseId: number;
+
+  @ApiProperty()
+  backNineCourseName: string;
+
+  @ApiProperty()
+  clubId: number;
+
+  @ApiProperty()
+  clubName: string;
 
   @ApiProperty()
   bookingDate: string;
+
+  @ApiProperty()
+  startTime: string;
+
+  @ApiProperty()
+  endTime: string;
 
   @ApiProperty()
   playerCount: number;
@@ -202,8 +258,10 @@ export interface BookingConfirmedEvent {
   bookingId: number;
   bookingNumber: string;
   userId: number;
-  courseId: number;
-  courseName: string;
+  gameId: number;
+  gameName: string;
+  frontNineCourseName: string;
+  backNineCourseName: string;
   bookingDate: string;
   timeSlot: string;
   playerCount: number;
@@ -216,8 +274,8 @@ export interface BookingCancelledEvent {
   bookingId: number;
   bookingNumber: string;
   userId: number;
-  courseId: number;
-  courseName: string;
+  gameId: number;
+  gameName: string;
   bookingDate: string;
   timeSlot: string;
   reason: string;

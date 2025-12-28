@@ -12,53 +12,56 @@ datasource db {
 
 model Booking {
   id                    Int           @id @default(autoincrement())
-  
-  // 타임슬롯 참조 (course-service의 time slot ID)
-  timeSlotId            Int           @map("time_slot_id") // course-service의 CourseTimeSlot ID
-  
-  // 타임슬롯 정보 캐시 (성능 최적화용)
-  slotType              SlotType      @map("slot_type") // NINE_HOLE 또는 EIGHTEEN_HOLE
-  bookingDate           DateTime      @map("booking_date") // 예약 날짜
-  startTime             String        @map("start_time") // 시작 시간 (HH:MM)
-  endTime               String        @map("end_time") // 종료 시간 (HH:MM)
-  
-  // 9홀 예약용
-  singleCourseId        Int?          @map("single_course_id") // 단일 코스 ID
-  singleCourseName      String?       @map("single_course_name") // 단일 코스명 (캐시)
-  
-  // 18홀 예약용
+
+  // Game 기반 예약 (course-service의 GameTimeSlot 참조)
+  gameTimeSlotId        Int           @map("game_time_slot_id") // course-service의 GameTimeSlot ID
+  gameId                Int           @map("game_id") // course-service의 Game ID
+
+  // 캐시된 Game 정보 (성능 최적화용)
+  gameName              String?       @map("game_name") // 게임 조합명 (예: "A+B 코스")
+  gameCode              String?       @map("game_code") // 게임 코드
+
+  // 캐시된 코스 정보
   frontNineCourseId     Int?          @map("front_nine_course_id") // 전반 9홀 코스 ID
   frontNineCourseName   String?       @map("front_nine_course_name") // 전반 코스명 (캐시)
   backNineCourseId      Int?          @map("back_nine_course_id") // 후반 9홀 코스 ID
   backNineCourseName    String?       @map("back_nine_course_name") // 후반 코스명 (캐시)
-  breakDurationMinutes  Int?          @map("break_duration_minutes") // 휴식 시간
-  
+
+  // 예약 시간 정보
+  bookingDate           DateTime      @map("booking_date") // 예약 날짜
+  startTime             String        @map("start_time") // 시작 시간 (HH:MM)
+  endTime               String        @map("end_time") // 종료 시간 (HH:MM)
+
+  // 클럽 정보 캐시
+  clubId                Int?          @map("club_id")
+  clubName              String?       @map("club_name")
+
   // 예약자 정보
   userId                Int?          @map("user_id") // 등록된 사용자 (null이면 비회원)
   guestName             String?       @map("guest_name") // 비회원 예약자명
   guestEmail            String?       @map("guest_email") // 비회원 이메일
   guestPhone            String?       @map("guest_phone") // 비회원 전화번호
-  
+
   // 예약 상세 정보
   playerCount           Int           @default(1) @map("player_count")
   pricePerPerson        Decimal       @db.Decimal(10, 2) @map("price_per_person")
   serviceFee            Decimal       @db.Decimal(10, 2) @default(0) @map("service_fee")
   totalPrice            Decimal       @db.Decimal(10, 2) @map("total_price")
   status                BookingStatus @default(PENDING)
-  
+
   // 결제 정보
   paymentMethod         String?       @map("payment_method") // card, kakaopay, naverpay, tosspay, bank
-  
+
   // 메타 정보
   specialRequests       String?       @map("special_requests") // 특별 요청사항
-  bookingNumber         String        @unique @map("booking_number") // BK12345678 형식
+  bookingNumber         String        @unique @map("booking_number") // BK-XXXXXXXX-XXXX 형식
   notes                 String?       // 관리자 메모
-  
+
   // 캐시된 사용자 정보 (성능 최적화용)
   userEmail             String?       @map("user_email") // 사용자 이메일
   userName              String?       @map("user_name") // 사용자 이름
   userPhone             String?       @map("user_phone") // 사용자 전화번호
-  
+
   createdAt             DateTime      @default(now()) @map("created_at")
   updatedAt             DateTime      @updatedAt @map("updated_at")
 
@@ -67,21 +70,14 @@ model Booking {
   histories             BookingHistory[]
 
   @@index([userId])
-  @@index([timeSlotId])
-  @@index([singleCourseId])
+  @@index([gameTimeSlotId])
+  @@index([gameId])
+  @@index([clubId])
   @@index([frontNineCourseId, backNineCourseId])
   @@index([bookingDate])
   @@index([bookingNumber])
   @@index([status])
-  @@index([slotType])
   @@map("bookings")
-}
-
-enum SlotType {
-  NINE_HOLE     // 9홀 단일 코스
-  EIGHTEEN_HOLE // 18홀 듀얼 코스
-  
-  @@map("slot_type")
 }
 
 model Payment {
@@ -112,70 +108,91 @@ model BookingHistory {
   @@map("booking_history")
 }
 
-// 타임슬롯 가용성 캐시 (course-service와 동기화)
-model TimeSlotAvailability {
+// Game 정보 캐시 (course-service에서 동기화)
+model GameCache {
   id                   Int      @id @default(autoincrement())
-  
-  // course-service의 time slot 참조
-  timeSlotId           Int      @unique @map("time_slot_id") // course-service의 CourseTimeSlot ID
-  
-  // 캐시된 타임슬롯 정보
-  slotType             SlotType @map("slot_type")
-  date                 DateTime
-  startTime            String   @map("start_time") // HH:MM format
-  endTime              String   @map("end_time") // HH:MM format
-  
-  // 9홀 정보
-  singleCourseId       Int?     @map("single_course_id")
-  singleCourseName     String?  @map("single_course_name")
-  
-  // 18홀 정보  
-  frontNineCourseId    Int?     @map("front_nine_course_id")
-  frontNineCourseName  String?  @map("front_nine_course_name")
-  backNineCourseId     Int?     @map("back_nine_course_id")
-  backNineCourseName   String?  @map("back_nine_course_name")
-  
-  // 가용성 정보
-  maxCapacity          Int      @default(4) @map("max_capacity")
-  currentBookings      Int      @default(0) @map("current_bookings")
-  availableSlots       Int      @default(4) @map("available_slots") // maxCapacity - currentBookings
-  isAvailable          Boolean  @default(true) @map("is_available")
-  
-  // 가격 정보
-  price                Decimal  @db.Decimal(10, 2)
-  isPremium            Boolean  @default(false) @map("is_premium")
-  
-  // 메타데이터
-  lastSyncAt           DateTime @default(now()) @map("last_sync_at") // course-service와 마지막 동기화 시간
+  gameId               Int      @unique @map("game_id") // course-service의 Game ID
+  name                 String   // 게임명 (예: "A+B 코스")
+  code                 String   // 게임 코드
+  description          String?
+
+  // 코스 정보
+  frontNineCourseId    Int      @map("front_nine_course_id")
+  frontNineCourseName  String   @map("front_nine_course_name")
+  backNineCourseId     Int      @map("back_nine_course_id")
+  backNineCourseName   String   @map("back_nine_course_name")
+
+  // 게임 설정
+  totalHoles           Int      @default(18) @map("total_holes")
+  estimatedDuration    Int      @default(180) @map("estimated_duration")
+  breakDuration        Int      @default(10) @map("break_duration")
+  maxPlayers           Int      @default(4) @map("max_players")
+
+  // 가격
+  basePrice            Decimal  @db.Decimal(10, 2) @map("base_price")
+  weekendPrice         Decimal? @db.Decimal(10, 2) @map("weekend_price")
+  holidayPrice         Decimal? @db.Decimal(10, 2) @map("holiday_price")
+
+  // 클럽 정보
+  clubId               Int      @map("club_id")
+  clubName             String   @map("club_name")
+
+  // 상태
+  isActive             Boolean  @default(true) @map("is_active")
+  lastSyncAt           DateTime @default(now()) @map("last_sync_at")
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")
 
-  @@index([slotType])
-  @@index([singleCourseId, date])
-  @@index([frontNineCourseId, backNineCourseId, date])
-  @@index([date, startTime])
-  @@index([isAvailable])
-  @@map("time_slot_availability")
+  @@index([clubId])
+  @@map("game_cache")
 }
 
-// 추가: 코스 정보 캐시 (course-service에서 동기화)
-model CourseCache {
-  id           Int      @id @default(autoincrement())
-  courseId     Int      @unique @map("course_id")
-  name         String
-  location     String
-  description  String?
-  rating       Decimal  @db.Decimal(3, 2)
-  pricePerHour Decimal  @db.Decimal(10, 2) @map("price_per_hour")
-  imageUrl     String?  @map("image_url")
-  amenities    String[] // PostgreSQL array
-  openTime     String   @map("open_time") // HH:MM format
-  closeTime    String   @map("close_time") // HH:MM format
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+// GameTimeSlot 가용성 캐시 (course-service와 동기화)
+model GameTimeSlotCache {
+  id                   Int      @id @default(autoincrement())
 
-  @@map("course_cache")
+  // course-service의 GameTimeSlot 참조
+  gameTimeSlotId       Int      @unique @map("game_time_slot_id")
+  gameId               Int      @map("game_id")
+
+  // 캐시된 게임 정보
+  gameName             String?  @map("game_name")
+  gameCode             String?  @map("game_code")
+  frontNineCourseName  String?  @map("front_nine_course_name")
+  backNineCourseName   String?  @map("back_nine_course_name")
+  clubId               Int?     @map("club_id")
+  clubName             String?  @map("club_name")
+
+  // 시간 정보
+  date                 DateTime @db.Date
+  startTime            String   @map("start_time") // HH:MM format
+  endTime              String   @map("end_time") // HH:MM format
+
+  // 가용성 정보
+  maxPlayers           Int      @default(4) @map("max_players")
+  bookedPlayers        Int      @default(0) @map("booked_players")
+  availablePlayers     Int      @default(4) @map("available_players") // maxPlayers - bookedPlayers
+  isAvailable          Boolean  @default(true) @map("is_available")
+
+  // 가격 정보
+  price                Decimal  @db.Decimal(10, 2)
+  isPremium            Boolean  @default(false) @map("is_premium")
+
+  // 상태
+  status               String   @default("AVAILABLE") // AVAILABLE, FULLY_BOOKED, CLOSED, MAINTENANCE
+
+  // 메타데이터
+  lastSyncAt           DateTime @default(now()) @map("last_sync_at")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@index([gameId])
+  @@index([clubId])
+  @@index([date])
+  @@index([date, startTime])
+  @@index([isAvailable])
+  @@index([status])
+  @@map("game_time_slot_cache")
 }
 
 enum BookingStatus {

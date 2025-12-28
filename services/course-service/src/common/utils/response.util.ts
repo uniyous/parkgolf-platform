@@ -68,15 +68,68 @@ export function mapCourseToResponse(course: any) {
 }
 
 /**
- * Weekly Schedule 엔티티를 응답용으로 매핑
+ * Game 엔티티를 응답용으로 매핑
  */
-export function mapWeeklyScheduleToResponse(schedule: any) {
+export function mapGameToResponse(game: any) {
+  return {
+    id: game.id,
+    name: game.name,
+    code: game.code,
+    description: game.description,
+    frontNineCourseId: game.frontNineCourseId,
+    backNineCourseId: game.backNineCourseId,
+    frontNineCourse: game.frontNineCourse ? mapCourseToResponse(game.frontNineCourse) : null,
+    backNineCourse: game.backNineCourse ? mapCourseToResponse(game.backNineCourse) : null,
+    totalHoles: game.totalHoles,
+    estimatedDuration: game.estimatedDuration,
+    breakDuration: game.breakDuration,
+    maxPlayers: game.maxPlayers,
+    basePrice: Number(game.basePrice),
+    weekendPrice: game.weekendPrice ? Number(game.weekendPrice) : null,
+    holidayPrice: game.holidayPrice ? Number(game.holidayPrice) : null,
+    clubId: game.clubId,
+    club: game.club ? mapClubToResponse(game.club) : null,
+    status: game.status,
+    isActive: game.isActive,
+    createdAt: toISOString(game.createdAt),
+    updatedAt: toISOString(game.updatedAt),
+  };
+}
+
+/**
+ * GameTimeSlot 엔티티를 응답용으로 매핑
+ */
+export function mapGameTimeSlotToResponse(slot: any) {
+  return {
+    id: slot.id,
+    gameId: slot.gameId,
+    game: slot.game ? mapGameToResponse(slot.game) : null,
+    date: slot.date instanceof Date ? slot.date.toISOString().split('T')[0] : slot.date,
+    startTime: slot.startTime,
+    endTime: slot.endTime,
+    maxPlayers: slot.maxPlayers,
+    bookedPlayers: slot.bookedPlayers,
+    availablePlayers: slot.maxPlayers - slot.bookedPlayers,
+    price: Number(slot.price),
+    isPremium: slot.isPremium,
+    status: slot.status,
+    isActive: slot.isActive,
+    createdAt: toISOString(slot.createdAt),
+    updatedAt: toISOString(slot.updatedAt),
+  };
+}
+
+/**
+ * GameWeeklySchedule 엔티티를 응답용으로 매핑
+ */
+export function mapGameWeeklyScheduleToResponse(schedule: any) {
   return {
     id: schedule.id,
-    courseId: schedule.courseId,
+    gameId: schedule.gameId,
     dayOfWeek: schedule.dayOfWeek,
-    openTime: schedule.openTime,
-    closeTime: schedule.closeTime,
+    startTime: schedule.startTime,
+    endTime: schedule.endTime,
+    interval: schedule.interval,
     isActive: schedule.isActive,
     createdAt: toISOString(schedule.createdAt),
     updatedAt: toISOString(schedule.updatedAt),
@@ -91,3 +144,72 @@ export function toISOString(date: Date | string | null | undefined): string | nu
   if (typeof date === 'string') return date;
   return date.toISOString();
 }
+
+/**
+ * Club 엔티티를 응답용으로 매핑
+ */
+export function mapClubToResponse(club: any) {
+  return {
+    id: club.id,
+    name: club.name,
+    companyId: club.companyId,
+    location: club.location,
+    address: club.address,
+    phone: club.phone,
+    email: club.email,
+    website: club.website,
+    totalHoles: club.totalHoles,
+    totalCourses: club.totalCourses,
+    status: club.status,
+    operatingHours: club.operatingHours,
+    seasonInfo: club.seasonInfo,
+    facilities: club.facilities,
+    isActive: club.isActive,
+    createdAt: toISOString(club.createdAt),
+    updatedAt: toISOString(club.updatedAt),
+  };
+}
+
+/**
+ * Company 엔티티를 응답용으로 매핑
+ */
+export function mapCompanyToResponse(company: any) {
+  return {
+    id: company.id,
+    name: company.name,
+    businessNumber: company.businessNumber,
+    description: company.description,
+    address: company.address,
+    phoneNumber: company.phoneNumber,
+    email: company.email,
+    website: company.website,
+    establishedDate: toISOString(company.establishedDate),
+    logoUrl: company.logoUrl,
+    status: company.status,
+    isActive: company.isActive,
+    coursesCount: company.coursesCount || 0,
+    clubsCount: company.clubsCount || 0,
+    createdAt: toISOString(company.createdAt),
+    updatedAt: toISOString(company.updatedAt),
+  };
+}
+
+/**
+ * Hole 엔티티를 응답용으로 매핑
+ */
+export function mapHoleToResponse(hole: any) {
+  return {
+    id: hole.id,
+    courseId: hole.courseId,
+    holeNumber: hole.holeNumber,
+    par: hole.par,
+    distance: hole.distance,
+    handicap: hole.handicap,
+    description: hole.description,
+    tips: hole.tips,
+    imageUrl: hole.imageUrl,
+    createdAt: toISOString(hole.createdAt),
+    updatedAt: toISOString(hole.updatedAt),
+  };
+}
+

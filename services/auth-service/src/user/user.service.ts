@@ -234,7 +234,9 @@ export class UserService {
         return this.omitPassword(updatedUser);
     }
 
-    async updatePermissions(id: string, permissionCodes: string[]): Promise<Omit<User, 'password'>> {
+    // 개별 권한 관리는 제거됨 - 역할 기반 권한만 사용
+    // 권한 변경은 역할(roleCode) 변경을 통해 수행
+    async updatePermissions(id: string, _permissionCodes: string[]): Promise<Omit<User, 'password'>> {
         const userId = parseInt(id);
         const user = await this.prisma.user.findUnique({
             where: { id: userId }
@@ -243,25 +245,10 @@ export class UserService {
             throw new NotFoundException(`User with ID ${id} not found.`);
         }
 
-        // Delete existing permissions
-        await this.prisma.userPermission.deleteMany({
-            where: { userId }
-        });
+        // 개별 권한 테이블이 삭제되어 역할 기반으로만 권한 관리
+        // 권한을 변경하려면 updateRole()을 통해 roleCode를 변경해야 함
+        console.warn('updatePermissions is deprecated. Use role-based permissions by updating roleCode.');
 
-        // Add new permissions (using permission code directly)
-        if (permissionCodes.length > 0) {
-            await this.prisma.userPermission.createMany({
-                data: permissionCodes.map(permission => ({
-                    userId,
-                    permission
-                }))
-            });
-        }
-
-        const updatedUser = await this.prisma.user.findUnique({
-            where: { id: userId }
-        });
-
-        return this.omitPassword(updatedUser!);
+        return this.omitPassword(user);
     }
 }
