@@ -64,9 +64,11 @@ export const GlobalLoading: React.FC<GlobalLoadingProps> = ({
   return (
     <Dialog.Root open={open}>
       <Dialog.Portal>
-        {/* 반투명 배경 - 콘텐츠가 보이도록 */}
+        {/* 그라데이션 배경 - 콘텐츠가 보이도록 */}
         <Dialog.Overlay
-          className="fixed inset-0 z-50 bg-gray-900/20 backdrop-blur-[2px]
+          className="fixed inset-0 z-50
+                     bg-gradient-to-br from-blue-500/10 via-transparent to-indigo-500/10
+                     backdrop-blur-[1px]
                      data-[state=open]:animate-in data-[state=closed]:animate-out
                      data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0
                      duration-200"
@@ -83,20 +85,15 @@ export const GlobalLoading: React.FC<GlobalLoadingProps> = ({
             <Dialog.Title>로딩</Dialog.Title>
           </VisuallyHidden.Root>
 
-          {/* 세련된 로딩 카드 */}
-          <div className="flex flex-col items-center justify-center
-                          px-8 py-6 rounded-2xl
-                          bg-white/90 backdrop-blur-md
-                          shadow-xl shadow-gray-900/10
-                          border border-white/50">
-            {/* 커스텀 스피너 */}
+          {/* 스피너 */}
+          <div className="flex flex-col items-center justify-center">
             <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 blur-md opacity-30" />
-              <Spinner size="xl" className="relative text-blue-600" />
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 blur-lg opacity-40 scale-150" />
+              <Spinner size="xl" className="relative text-blue-600 drop-shadow-lg" />
             </div>
 
             {message && (
-              <p className="mt-4 text-sm font-medium text-gray-600 tracking-wide">
+              <p className="mt-4 text-sm font-medium text-gray-700 tracking-wide drop-shadow-sm">
                 {message}
               </p>
             )}
