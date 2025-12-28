@@ -27,7 +27,7 @@ export const GameListPage: React.FC = () => {
     limit: 50,
   }), [selectedClubId]);
 
-  const { data: gamesData, isLoading, error, refetch } = useGames(filters);
+  const { data: gamesData, isLoading, error } = useGames(filters);
   const { data: clubsData } = useClubs();
 
   const games = gamesData?.data || [];

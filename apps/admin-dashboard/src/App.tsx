@@ -13,7 +13,6 @@ import { ClubListPage } from './pages/club/ClubListPage';
 import { ClubDetailPage } from './pages/club/ClubDetailPage';
 import { GameListPage } from './pages/game/GameListPage';
 import { GameDetailPage } from './pages/game/GameDetailPage';
-import { ScheduleListPage } from './pages/schedule/ScheduleListPage';
 import { useAuthInitialize } from './hooks/useAuth';
 
 function App() {
@@ -44,9 +43,6 @@ function App() {
           {/* 라운드 관리 (Game) */}
           <Route path="/games" element={<GameListPage />} />
           <Route path="/games/:gameId" element={<GameDetailPage />} />
-
-          {/* 일정 관리 (Schedules) */}
-          <Route path="/schedules" element={<ScheduleListPage />} />
 
           {/* 하위 호환 리다이렉트 */}
           <Route path="/club" element={<Navigate to="/clubs" replace />} />

@@ -12,7 +12,7 @@ export const DashboardPage: React.FC = () => {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-xs">
           <span className="font-medium text-blue-900">
             {isAuthenticated ? '✅' : '❌'} {currentAdmin?.name || '미로그인'}
-            {currentAdmin?.roles?.[0] && ` (${currentAdmin.roles[0]})`}
+            {currentAdmin?.role && ` (${currentAdmin.role})`}
           </span>
         </div>
       )}

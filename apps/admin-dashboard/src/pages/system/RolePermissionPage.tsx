@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { PageLayout } from '@/components/layout';
 import { Breadcrumb } from '@/components/common';
 import { useAdmins, useAdminStats, usePermissions, useRolesWithPermissions, useUpdateRolePermissions } from '@/hooks/queries/admin';
-import type { AdminRole } from '@/types';
 
 // 권한 레벨 및 카테고리 정보
 const permissionMeta: Record<string, { name: string; description: string; level: 'high' | 'medium' | 'low'; category: string; icon: string }> = {

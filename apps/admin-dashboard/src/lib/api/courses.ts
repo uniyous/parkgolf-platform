@@ -42,6 +42,15 @@ export interface Club {
     startDate: string;
     endDate: string;
   };
+  totalHoles: number;
+  totalCourses: number;
+  isActive: boolean;
+  courses?: Course[];
+  company?: {
+    id: number;
+    name: string;
+    description?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

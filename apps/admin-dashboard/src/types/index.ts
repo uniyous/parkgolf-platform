@@ -278,6 +278,7 @@ export interface Admin {
   // 관계 필드 (선택)
   companyId?: number;
   company?: Company;
+  courseIds?: number[];  // 접근 가능한 코스 ID 목록
 }
 
 export interface CreateAdminDto {

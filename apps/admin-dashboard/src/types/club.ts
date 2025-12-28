@@ -40,24 +40,31 @@ export interface Club {
 export interface Course {
   id: number;
   name: string;
-  code: string;
+  code?: string;
   subtitle?: string;
   description?: string;
-  holeCount: number;
-  par: number;
+  holeCount?: number;
+  par?: number;
   totalDistance?: number;
-  difficulty: number;
-  scenicRating: number;
+  difficulty?: number;
+  scenicRating?: number;
   courseRating?: number;
   slopeRating?: number;
   imageUrl?: string;
-  status: CourseStatus;
-  clubId: number;
-  companyId: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  status?: CourseStatus;
+  clubId?: number;
+  companyId?: number;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
   holes?: Hole[];
+  // 추가 호환성 필드
+  totalBookings?: number;
+  monthlyBookings?: number;
+  totalRevenue?: number;
+  monthlyRevenue?: number;
+  location?: string;
+  address?: string;
 }
 
 export interface Hole {

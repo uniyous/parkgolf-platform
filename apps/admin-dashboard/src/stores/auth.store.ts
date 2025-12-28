@@ -215,7 +215,7 @@ export const useAuthStore = create<AuthState>()(
         return {
           name: admin.name,
           role: ADMIN_ROLE_LABELS[admin.role],
-          scope: admin.scope,
+          scope: admin.scope ?? '',
           company: admin.company?.name,
         };
       },

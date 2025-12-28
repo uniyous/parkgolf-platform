@@ -68,20 +68,6 @@ export const menuConfig: MenuGroup[] = [
     defaultOpen: true
   },
   {
-    name: '일정',
-    items: [
-      {
-        name: '타임슬롯 관리',
-        href: '/schedules',
-        icon: '📆',
-        description: '타임슬롯 일괄 조회 및 관리',
-        permission: 'MANAGE_SCHEDULES'
-      },
-    ],
-    collapsible: true,
-    defaultOpen: true
-  },
-  {
     name: '예약',
     items: [
       {
