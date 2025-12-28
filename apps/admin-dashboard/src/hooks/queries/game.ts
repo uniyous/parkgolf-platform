@@ -120,6 +120,7 @@ export const useCreateWeeklySchedule = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    meta: { globalLoading: false }, // 로컬 프로그레스 바 사용
     mutationFn: ({ gameId, data }: { gameId: number; data: CreateGameWeeklyScheduleDto }) =>
       gamesApi.createWeeklySchedule(gameId, data),
     onSuccess: (_, { gameId }) => {
