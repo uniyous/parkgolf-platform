@@ -75,22 +75,23 @@ export interface GameFilter {
 export interface GameWeeklySchedule {
   id: number;
   gameId: number;
+  gameName?: string;
   dayOfWeek: number; // 0-6 (Sunday-Saturday)
+  dayName?: string; // 요일 이름
   startTime: string; // HH:mm
   endTime: string; // HH:mm
-  interval: number; // 분
-  maxBookings: number;
+  interval?: number; // 분
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateGameWeeklyScheduleDto {
+  gameId?: number; // URL 파라미터에서 제공되므로 optional
   dayOfWeek: number;
   startTime: string;
   endTime: string;
-  interval: number;
-  maxBookings: number;
+  interval?: number;
   isActive?: boolean;
 }
 
@@ -99,7 +100,6 @@ export interface UpdateGameWeeklyScheduleDto {
   startTime?: string;
   endTime?: string;
   interval?: number;
-  maxBookings?: number;
   isActive?: boolean;
 }
 

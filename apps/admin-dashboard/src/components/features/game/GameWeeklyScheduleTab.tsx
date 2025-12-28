@@ -18,7 +18,6 @@ const defaultSchedule: Omit<CreateGameWeeklyScheduleDto, 'dayOfWeek'> = {
   startTime: '06:00',
   endTime: '18:00',
   interval: 30,
-  maxBookings: 4,
   isActive: true,
 };
 
@@ -43,8 +42,7 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
         dayOfWeek,
         startTime: existing.startTime,
         endTime: existing.endTime,
-        interval: existing.interval,
-        maxBookings: existing.maxBookings,
+        interval: existing.interval ?? 30,
         isActive: existing.isActive,
       });
     } else {
@@ -210,17 +208,6 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
                       <option value={60}>60분</option>
                     </select>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <input
-                      type="number"
-                      value={formData.maxBookings}
-                      onChange={(e) => setFormData({ ...formData, maxBookings: Number(e.target.value) })}
-                      min={1}
-                      max={10}
-                      className="w-full px-1 py-1 text-xs border rounded"
-                    />
-                    <span className="text-xs text-gray-500">팀</span>
-                  </div>
                   <div className="flex items-center">
                     <input
                       type="checkbox"
@@ -253,10 +240,7 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
                     {schedule.startTime} ~ {schedule.endTime}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {schedule.interval}분 간격
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    최대 {schedule.maxBookings}팀
+                    {schedule.interval ?? 30}분 간격
                   </div>
                   {!schedule.isActive && (
                     <span className="inline-block px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">
