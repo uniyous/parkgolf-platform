@@ -385,7 +385,7 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
                                 {slot.startTime.slice(0, 5)}
                               </div>
                               <div className="text-xs text-gray-500">
-                                {slot.currentBookings}/{slot.maxBookings}
+                                {slot.currentBookings ?? 0}/{slot.maxBookings ?? 0}
                               </div>
                               <div className={`mt-1 px-1 py-0.5 rounded text-[10px] font-medium ${statusInfo.bgColor} ${statusInfo.color}`}>
                                 {statusInfo.label}
