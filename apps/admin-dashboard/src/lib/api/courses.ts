@@ -268,8 +268,30 @@ export const courseApi = {
    * 골프장별 코스 목록
    */
   async getCoursesByClub(clubId: number): Promise<Course[]> {
-    const response = await apiClient.get<{ data: Course[] }>(`/admin/courses/club/${clubId}`);
-    return response.data?.data || [];
+    const response = await apiClient.get<any>(`/admin/courses/club/${clubId}`);
+    const responseData = response.data;
+
+    // 다양한 API 응답 구조 처리
+    if (!responseData) return [];
+
+    // { success: true, data: { courses: [...] } } 형식
+    if (responseData.data?.courses) {
+      return responseData.data.courses;
+    }
+    // { success: true, data: [...] } 형식
+    if (Array.isArray(responseData.data)) {
+      return responseData.data;
+    }
+    // { courses: [...] } 형식
+    if (Array.isArray(responseData.courses)) {
+      return responseData.courses;
+    }
+    // 직접 배열인 경우
+    if (Array.isArray(responseData)) {
+      return responseData;
+    }
+
+    return [];
   },
 
   /**

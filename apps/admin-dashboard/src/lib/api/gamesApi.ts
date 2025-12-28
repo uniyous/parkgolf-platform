@@ -16,13 +16,30 @@ import { apiClient } from './client';
 export interface Game {
   id: number;
   clubId: number;
+  clubName?: string;
   name: string;
+  code?: string;
   description?: string;
-  courseIds: number[];
+  // Course references
+  courseIds?: number[];
+  frontNineCourseId?: number;
+  frontNineCourseName?: string;
+  backNineCourseId?: number;
+  backNineCourseName?: string;
+  totalHoles?: number;
+  // Time & Players
   maxPlayers: number;
-  duration: number; // 분
-  price: number;
+  duration: number; // 분 (estimatedDuration에서 매핑)
+  estimatedDuration?: number;
+  breakDuration?: number;
+  // Pricing
+  price: number; // basePrice에서 매핑
+  basePrice?: number;
+  weekendPrice?: number;
+  holidayPrice?: number;
+  // Status
   status: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
+  isActive?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -138,6 +155,21 @@ export interface PaginatedResponse<T> {
 }
 
 // ============================================
+// Helper: Normalize Game Response
+// ============================================
+
+function normalizeGame(game: any): Game {
+  if (!game) return game;
+  return {
+    ...game,
+    // Map alternative field names
+    duration: game.duration ?? game.estimatedDuration ?? 0,
+    price: game.price ?? game.basePrice ?? 0,
+    courseIds: game.courseIds ?? [game.frontNineCourseId, game.backNineCourseId].filter(Boolean),
+  };
+}
+
+// ============================================
 // Games API
 // ============================================
 
@@ -194,7 +226,7 @@ export const gamesApi = {
     }
 
     return {
-      data: games,
+      data: games.map(normalizeGame),
       pagination: {
         page,
         limit,
@@ -211,16 +243,19 @@ export const gamesApi = {
     const response = await apiClient.get<any>(`/admin/games/club/${clubId}`);
     const responseData = response.data;
 
+    let games: any[] = [];
+
     if (Array.isArray(responseData)) {
-      return responseData;
+      games = responseData;
+    } else if (responseData?.data?.games) {
+      games = responseData.data.games;
+    } else if (Array.isArray(responseData?.data)) {
+      games = responseData.data;
+    } else {
+      games = responseData?.games || [];
     }
-    if (responseData?.data?.games) {
-      return responseData.data.games;
-    }
-    if (Array.isArray(responseData?.data)) {
-      return responseData.data;
-    }
-    return responseData?.games || [];
+
+    return games.map(normalizeGame);
   },
 
   /**
@@ -230,11 +265,36 @@ export const gamesApi = {
     const response = await apiClient.get<any>(`/admin/games/${gameId}`);
     const responseData = response.data;
 
-    // 다양한 응답 형식 처리
-    if (responseData?.data && !Array.isArray(responseData.data)) {
-      return responseData.data;
+    console.log('[gamesApi.getGameById] Response:', responseData);
+
+    if (!responseData) {
+      throw new Error('Game not found');
     }
-    return responseData;
+
+    let game: any = null;
+
+    // { success: true, data: { game: {...} } } 형식
+    if (responseData.data?.game) {
+      game = responseData.data.game;
+    }
+    // { success: true, data: {...} } 형식 (data가 객체)
+    else if (responseData.data && typeof responseData.data === 'object' && !Array.isArray(responseData.data)) {
+      game = responseData.data;
+    }
+    // { success: true, game: {...} } 형식
+    else if (responseData.game) {
+      game = responseData.game;
+    }
+    // 직접 game 객체
+    else if (responseData.id && responseData.name) {
+      game = responseData;
+    }
+
+    if (!game) {
+      throw new Error('Invalid game response structure');
+    }
+
+    return normalizeGame(game);
   },
 
   /**

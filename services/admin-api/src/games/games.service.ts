@@ -21,14 +21,14 @@ export class GamesService {
     this.logger.log(`Fetching game: ${gameId}`);
     const params: any = { gameId };
     if (adminToken) params.token = adminToken;
-    return this.natsClient.send('games.findById', params, NATS_TIMEOUTS.QUICK);
+    return this.natsClient.send('games.get', params, NATS_TIMEOUTS.QUICK);
   }
 
   async getGamesByClub(clubId: number, adminToken?: string): Promise<any> {
     this.logger.log(`Fetching games for club: ${clubId}`);
     const params: any = { clubId };
     if (adminToken) params.token = adminToken;
-    return this.natsClient.send('games.findByClub', params, NATS_TIMEOUTS.LIST_QUERY);
+    return this.natsClient.send('games.getByClub', params, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   async createGame(gameData: any, adminToken: string): Promise<any> {
@@ -92,7 +92,7 @@ export class GamesService {
     this.logger.log(`Fetching game time slot: ${timeSlotId}`);
     const params: any = { timeSlotId };
     if (adminToken) params.token = adminToken;
-    return this.natsClient.send('gameTimeSlots.findById', params, NATS_TIMEOUTS.QUICK);
+    return this.natsClient.send('gameTimeSlots.get', params, NATS_TIMEOUTS.QUICK);
   }
 
   async getTimeSlotsByGame(gameId: number, date?: string, adminToken?: string): Promise<any> {

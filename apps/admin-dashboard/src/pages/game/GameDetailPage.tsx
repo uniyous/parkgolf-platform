@@ -54,7 +54,9 @@ export const GameDetailPage: React.FC = () => {
     );
   }
 
-  if (error || !game) {
+  // game이 없거나 id가 없는 경우 에러로 처리
+  if (error || !game || !game.id) {
+    console.log('[GameDetailPage] Error or no game:', { error, game });
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -64,6 +66,9 @@ export const GameDetailPage: React.FC = () => {
           <h3 className="mt-2 text-lg font-medium text-gray-900">라운드 정보를 찾을 수 없습니다</h3>
           <p className="mt-1 text-sm text-gray-500">
             {error?.message || '라운드 정보를 불러오는 중 문제가 발생했습니다.'}
+          </p>
+          <p className="mt-1 text-xs text-gray-400">
+            Game ID: {gameId}
           </p>
           <div className="mt-6">
             <button
@@ -93,14 +98,14 @@ export const GameDetailPage: React.FC = () => {
               </svg>
             </button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{game.name}</h1>
+              <h1 className="text-3xl font-bold text-gray-900">{game.name || '라운드'}</h1>
               <div className="flex items-center space-x-4 mt-2">
                 <p className="text-gray-600 flex items-center">
-                  👥 최대 {game.maxPlayers}명
+                  👥 최대 {game.maxPlayers ?? '-'}명
                 </p>
-                <p className="text-gray-600">⏱️ {game.duration}분</p>
+                <p className="text-gray-600">⏱️ {game.duration ?? '-'}분</p>
                 <p className="text-gray-600 font-medium text-blue-600">
-                  ₩{game.price.toLocaleString()}
+                  ₩{(game.price ?? 0).toLocaleString()}
                 </p>
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                   statusLabels[game.status]?.color || 'bg-gray-100 text-gray-800'
