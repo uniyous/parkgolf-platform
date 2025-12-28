@@ -6,6 +6,7 @@ import {
   useDeleteWeeklySchedule,
 } from '@/hooks/queries';
 import type { GameWeeklySchedule, CreateGameWeeklyScheduleDto } from '@/lib/api/gamesApi';
+import { WeeklyScheduleWizard } from './WeeklyScheduleWizard';
 
 interface GameWeeklyScheduleTabProps {
   gameId: number;
@@ -24,6 +25,7 @@ const defaultSchedule: Omit<CreateGameWeeklyScheduleDto, 'dayOfWeek'> = {
 export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ gameId }) => {
   const [editingDay, setEditingDay] = useState<number | null>(null);
   const [formData, setFormData] = useState<CreateGameWeeklyScheduleDto | null>(null);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
 
   // Queries
   const { data: schedules, isLoading, refetch } = useGameWeeklySchedules(gameId);
@@ -31,9 +33,12 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
   const updateMutation = useUpdateWeeklySchedule();
   const deleteMutation = useDeleteWeeklySchedule();
 
+  // 스케줄 배열 안전하게 처리
+  const scheduleList = Array.isArray(schedules) ? schedules : [];
+
   // 요일별 스케줄 맵
   const scheduleMap = new Map<number, GameWeeklySchedule>();
-  schedules?.forEach((s) => scheduleMap.set(s.dayOfWeek, s));
+  scheduleList.forEach((s) => scheduleMap.set(s.dayOfWeek, s));
 
   const handleEdit = (dayOfWeek: number) => {
     const existing = scheduleMap.get(dayOfWeek);
@@ -101,28 +106,6 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
     setFormData(null);
   };
 
-  // 전체 요일 일괄 생성
-  const handleBulkCreate = async () => {
-    const confirmed = window.confirm(
-      '월요일~일요일 전체 요일에 기본 스케줄을 생성하시겠습니까?\n(06:00~18:00, 30분 간격)'
-    );
-    if (!confirmed) return;
-
-    try {
-      for (let day = 0; day < 7; day++) {
-        if (!scheduleMap.has(day)) {
-          await createMutation.mutateAsync({
-            gameId,
-            data: { ...defaultSchedule, dayOfWeek: day },
-          });
-        }
-      }
-      refetch();
-    } catch (error) {
-      console.error('Failed to bulk create schedules:', error);
-      alert('일괄 생성에 실패했습니다.');
-    }
-  };
 
   if (isLoading) {
     return (
@@ -143,11 +126,13 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
           </p>
         </div>
         <button
-          onClick={handleBulkCreate}
-          disabled={createMutation.isPending}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+          onClick={() => setIsWizardOpen(true)}
+          className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors flex items-center"
         >
-          전체 요일 일괄 생성
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          스케줄 일괄 생성
         </button>
       </div>
 
@@ -289,6 +274,15 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
           <li>• 비활성 요일은 타임슬롯 생성 시 제외됩니다</li>
         </ul>
       </div>
+
+      {/* 마법사 */}
+      <WeeklyScheduleWizard
+        gameId={gameId}
+        existingSchedules={scheduleList}
+        open={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+        onSuccess={() => refetch()}
+      />
     </div>
   );
 };
