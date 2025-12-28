@@ -129,9 +129,8 @@ export const courseApi = {
   async getClubs(filters: ClubFilters = {}): Promise<PaginatedResponse<Club>> {
     const response = await apiClient.get<any>('/admin/courses/clubs', filters);
 
-    // API 응답 구조: { success: true, data: { clubs: [...], total, ... } } 또는 { data: [...], total, ... }
+    // API 응답 구조: { success: true, data: { clubs: [...] }, total, page, limit, totalPages }
     const responseData = response.data;
-    console.log('getClubs API response:', responseData);
 
     // BFF 응답 구조 처리
     let clubs: Club[] = [];
@@ -141,13 +140,13 @@ export const courseApi = {
     let totalPages = 1;
 
     if (responseData) {
-      // { success: true, data: { clubs: [...] } } 형식
+      // { success: true, data: { clubs: [...] }, total, page, limit, totalPages } 형식
       if (responseData.data?.clubs) {
         clubs = responseData.data.clubs;
-        total = responseData.data.total || responseData.total || clubs.length;
-        page = responseData.data.page || responseData.page || 1;
-        limit = responseData.data.limit || responseData.limit || 20;
-        totalPages = responseData.data.totalPages || responseData.totalPages || 1;
+        total = responseData.total || clubs.length;
+        page = responseData.page || 1;
+        limit = responseData.limit || 20;
+        totalPages = responseData.totalPages || 1;
       }
       // { success: true, data: [...] } 형식
       else if (Array.isArray(responseData.data)) {
