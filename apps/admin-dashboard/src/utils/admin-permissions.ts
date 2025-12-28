@@ -23,9 +23,8 @@ export const ADMIN_ROLE_COLORS: Record<AdminRole, string> = {
   VIEWER: 'bg-gray-100 text-gray-600',
 };
 
-// Admin Permission Labels (10개)
+// Admin Permission Labels (9개)
 export const ADMIN_PERMISSION_LABELS: Record<string, string> = {
-  ALL: '전체 권한',
   COMPANIES: '회사 관리',
   COURSES: '코스 관리',
   TIMESLOTS: '타임슬롯 관리',
@@ -66,7 +65,8 @@ export const ADMIN_HIERARCHY: Record<AdminRole, number> = {
 
 // Role default permissions (관리자 역할)
 export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
-  ADMIN: ['ALL'],
+  // ADMIN: 모든 개별 권한 부여
+  ADMIN: ['COMPANIES', 'COURSES', 'TIMESLOTS', 'BOOKINGS', 'USERS', 'ADMINS', 'ANALYTICS', 'SUPPORT', 'VIEW'],
   SUPPORT: ['BOOKINGS', 'USERS', 'ANALYTICS', 'SUPPORT', 'VIEW'],
   MANAGER: ['COMPANIES', 'COURSES', 'TIMESLOTS', 'BOOKINGS', 'USERS', 'ADMINS', 'ANALYTICS', 'VIEW'],
   STAFF: ['TIMESLOTS', 'BOOKINGS', 'SUPPORT', 'VIEW'],
@@ -105,10 +105,6 @@ export const isCourseAdmin = (role: AdminRole): boolean => role === 'STAFF' || r
 // Check if user has a specific permission
 export const hasPermission = (permissions: Permission[], requiredPermission: Permission): boolean => {
   if (!permissions || permissions.length === 0) return false;
-
-  // ALL grants everything
-  if (permissions.includes('ALL')) return true;
-
   return permissions.includes(requiredPermission);
 };
 

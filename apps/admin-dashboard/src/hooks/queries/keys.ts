@@ -81,3 +81,16 @@ export const bookingKeys = {
   stats: () => [...bookingKeys.all, 'stats'] as const,
   calendar: (date: string) => [...bookingKeys.all, 'calendar', date] as const,
 };
+
+// Game Keys
+export const gameKeys = {
+  all: ['games'] as const,
+  lists: () => [...gameKeys.all, 'list'] as const,
+  list: (filters?: Record<string, unknown>) => [...gameKeys.lists(), filters] as const,
+  details: () => [...gameKeys.all, 'detail'] as const,
+  detail: (id: number) => [...gameKeys.details(), id] as const,
+  byClub: (clubId: number) => [...gameKeys.all, 'club', clubId] as const,
+  weeklySchedules: (gameId: number) => [...gameKeys.all, 'weekly-schedules', gameId] as const,
+  timeSlots: (gameId: number, filter?: Record<string, unknown>) => [...gameKeys.all, 'time-slots', gameId, filter] as const,
+  timeSlotStats: (filter?: Record<string, unknown>) => [...gameKeys.all, 'time-slot-stats', filter] as const,
+};

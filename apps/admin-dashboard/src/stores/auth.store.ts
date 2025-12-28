@@ -32,25 +32,57 @@ interface AuthState {
   getDisplayInfo: () => { name: string; role: string; scope: string; company?: string };
 }
 
+// 백엔드 역할 코드를 프론트엔드 AdminRole로 매핑
+const mapToAdminRole = (role: string): AdminRole => {
+  const roleUpper = (role || '').toUpperCase();
+
+  // 시스템 관리자 역할들
+  if (['ADMIN', 'SUPER_ADMIN', 'SYSTEM_ADMIN', 'PLATFORM_ADMIN', 'PLATFORM_OWNER'].includes(roleUpper)) {
+    return 'ADMIN';
+  }
+  // 고객지원 역할
+  if (['SUPPORT', 'CUSTOMER_SUPPORT'].includes(roleUpper)) {
+    return 'SUPPORT';
+  }
+  // 운영 관리자 역할
+  if (['MANAGER', 'OPERATION_MANAGER', 'COMPANY_ADMIN'].includes(roleUpper)) {
+    return 'MANAGER';
+  }
+  // 현장 직원 역할
+  if (['STAFF', 'COURSE_STAFF', 'OPERATOR'].includes(roleUpper)) {
+    return 'STAFF';
+  }
+  // 그 외는 조회 전용
+  return 'VIEWER';
+};
+
 const convertUserToAdmin = (user: any): Admin => {
   // roles 배열 또는 role/roleCode 문자열 처리
-  let adminRole: AdminRole = 'VIEWER';
+  let rawRole = '';
   if (user.roleCode) {
-    adminRole = user.roleCode as AdminRole;
+    rawRole = user.roleCode;
   } else if (user.role) {
-    adminRole = user.role as AdminRole;
+    rawRole = user.role;
   } else if (Array.isArray(user.roles) && user.roles.length > 0) {
-    adminRole = user.roles[0] as AdminRole;
+    rawRole = user.roles[0];
   }
+
+  const adminRole = mapToAdminRole(rawRole);
   const scope = getRoleScope(adminRole);
 
   let permissions: Permission[];
-  if (user.permissions) {
+  if (user.permissions && user.permissions.length > 0) {
     permissions = user.permissions.map((p: any) =>
       typeof p === 'string' ? p : p.permission
     ) as Permission[];
   } else {
+    // 권한이 없으면 역할 기반 기본 권한 사용
     permissions = getDefaultPermissions(adminRole);
+  }
+
+  // 디버그 로그 (개발 환경에서만)
+  if (import.meta.env.DEV) {
+    console.log('[Auth] User role mapping:', { rawRole, adminRole, permissions });
   }
 
   return {

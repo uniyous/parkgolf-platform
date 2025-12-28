@@ -150,22 +150,56 @@ export const gamesApi = {
    * 게임 목록 조회
    */
   async getGames(filters: GameFilter = {}): Promise<PaginatedResponse<Game>> {
-    const response = await apiClient.get<{
-      data: Game[];
-      total: number;
-      totalPages: number;
-      page: number;
-      limit: number;
-    }>('/admin/games', filters);
+    const response = await apiClient.get<any>('/admin/games', filters);
 
-    const result = response.data;
+    // API 응답 구조 처리 (courseApi.getClubs 패턴 적용)
+    const responseData = response.data;
+
+    let games: Game[] = [];
+    let total = 0;
+    let page = 1;
+    let limit = 20;
+    let totalPages = 1;
+
+    if (responseData) {
+      // { success: true, data: { games: [...] }, total, page, limit, totalPages } 형식
+      if (responseData.data?.games) {
+        games = responseData.data.games;
+        total = responseData.total || games.length;
+        page = responseData.page || 1;
+        limit = responseData.limit || 20;
+        totalPages = responseData.totalPages || 1;
+      }
+      // { success: true, data: [...] } 형식
+      else if (Array.isArray(responseData.data)) {
+        games = responseData.data;
+        total = responseData.total || games.length;
+        page = responseData.page || 1;
+        limit = responseData.limit || 20;
+        totalPages = responseData.totalPages || 1;
+      }
+      // { data: [...], total, page, ... } 형식 (직접 응답)
+      else if (Array.isArray(responseData)) {
+        games = responseData;
+        total = games.length;
+      }
+      // 기타 형식
+      else {
+        games = responseData.games || responseData.data || [];
+        total = responseData.total || games.length;
+        page = responseData.page || 1;
+        limit = responseData.limit || 20;
+        totalPages = responseData.totalPages || 1;
+      }
+    }
+
     return {
-      data: result?.data || [],
+      data: games,
       pagination: {
-        page: result?.page || 1,
-        limit: result?.limit || 20,
-        total: result?.total || 0,
-        totalPages: result?.totalPages || 1,
+        page,
+        limit,
+        total,
+        totalPages,
       },
     };
   },
@@ -174,16 +208,33 @@ export const gamesApi = {
    * 골프장별 게임 목록
    */
   async getGamesByClub(clubId: number): Promise<Game[]> {
-    const response = await apiClient.get<{ data: Game[] }>(`/admin/games/club/${clubId}`);
-    return response.data?.data || [];
+    const response = await apiClient.get<any>(`/admin/games/club/${clubId}`);
+    const responseData = response.data;
+
+    if (Array.isArray(responseData)) {
+      return responseData;
+    }
+    if (responseData?.data?.games) {
+      return responseData.data.games;
+    }
+    if (Array.isArray(responseData?.data)) {
+      return responseData.data;
+    }
+    return responseData?.games || [];
   },
 
   /**
    * 게임 상세 조회
    */
   async getGameById(gameId: number): Promise<Game> {
-    const response = await apiClient.get<Game>(`/admin/games/${gameId}`);
-    return response.data;
+    const response = await apiClient.get<any>(`/admin/games/${gameId}`);
+    const responseData = response.data;
+
+    // 다양한 응답 형식 처리
+    if (responseData?.data && !Array.isArray(responseData.data)) {
+      return responseData.data;
+    }
+    return responseData;
   },
 
   /**
@@ -217,10 +268,16 @@ export const gamesApi = {
    * 게임의 주간 스케줄 조회
    */
   async getWeeklySchedules(gameId: number): Promise<GameWeeklySchedule[]> {
-    const response = await apiClient.get<{ success: boolean; data: GameWeeklySchedule[] }>(
-      `/admin/games/${gameId}/weekly-schedules`
-    );
-    return response.data?.data || [];
+    const response = await apiClient.get<any>(`/admin/games/${gameId}/weekly-schedules`);
+    const responseData = response.data;
+
+    if (Array.isArray(responseData)) {
+      return responseData;
+    }
+    if (Array.isArray(responseData?.data)) {
+      return responseData.data;
+    }
+    return responseData?.weeklySchedules || responseData?.schedules || [];
   },
 
   /**
@@ -282,24 +339,50 @@ export const gamesApi = {
     if (filter?.page) params.page = filter.page;
     if (filter?.limit) params.limit = filter.limit;
 
-    const response = await apiClient.get<{
-      success: boolean;
-      data: {
-        timeSlots: GameTimeSlot[];
-        totalCount: number;
-        totalPages: number;
-        page: number;
-      };
-    }>(`/admin/games/${gameId}/time-slots`, params);
+    const response = await apiClient.get<any>(`/admin/games/${gameId}/time-slots`, params);
+    const responseData = response.data;
 
-    const result = response.data?.data;
+    let timeSlots: GameTimeSlot[] = [];
+    let total = 0;
+    let page = 1;
+    let totalPages = 1;
+
+    if (responseData) {
+      // { success: true, data: { timeSlots: [...], ... } } 형식
+      if (responseData.data?.timeSlots) {
+        timeSlots = responseData.data.timeSlots;
+        total = responseData.data.totalCount || timeSlots.length;
+        page = responseData.data.page || 1;
+        totalPages = responseData.data.totalPages || 1;
+      }
+      // { timeSlots: [...], totalCount, page, totalPages } 형식
+      else if (responseData.timeSlots) {
+        timeSlots = responseData.timeSlots;
+        total = responseData.totalCount || timeSlots.length;
+        page = responseData.page || 1;
+        totalPages = responseData.totalPages || 1;
+      }
+      // { data: [...] } 형식
+      else if (Array.isArray(responseData.data)) {
+        timeSlots = responseData.data;
+        total = responseData.total || timeSlots.length;
+        page = responseData.page || 1;
+        totalPages = responseData.totalPages || 1;
+      }
+      // 배열 직접 반환
+      else if (Array.isArray(responseData)) {
+        timeSlots = responseData;
+        total = timeSlots.length;
+      }
+    }
+
     return {
-      data: result?.timeSlots || [],
+      data: timeSlots,
       pagination: {
-        page: result?.page || 1,
+        page,
         limit: filter?.limit || 20,
-        total: result?.totalCount || 0,
-        totalPages: result?.totalPages || 1,
+        total,
+        totalPages,
       },
     };
   },
@@ -378,13 +461,26 @@ export const gamesApi = {
     bookedSlots: number;
     utilizationRate: number;
   }> {
-    const response = await apiClient.get<{
-      totalSlots: number;
-      availableSlots: number;
-      bookedSlots: number;
-      utilizationRate: number;
-    }>('/admin/games/time-slots/stats', filter || {});
-    return response.data;
+    const response = await apiClient.get<any>('/admin/games/time-slots/stats', filter || {});
+    const responseData = response.data;
+
+    // 기본값
+    const defaultStats = {
+      totalSlots: 0,
+      availableSlots: 0,
+      bookedSlots: 0,
+      utilizationRate: 0,
+    };
+
+    if (!responseData) return defaultStats;
+
+    // { success: true, data: {...} } 형식
+    if (responseData.data && typeof responseData.data === 'object') {
+      return { ...defaultStats, ...responseData.data };
+    }
+
+    // 직접 stats 객체
+    return { ...defaultStats, ...responseData };
   },
 } as const;
 

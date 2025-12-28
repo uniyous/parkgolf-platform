@@ -18,3 +18,6 @@ export * from './booking';
 
 // User Queries & Mutations
 export * from './user';
+
+// Game Queries & Mutations
+export * from './game';

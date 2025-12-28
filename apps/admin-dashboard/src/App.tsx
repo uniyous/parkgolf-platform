@@ -11,7 +11,9 @@ import { CompanyPage } from './pages/company/CompanyPage';
 import { BookingManagementPage } from './pages/booking/BookingManagementPage';
 import { ClubListPage } from './pages/club/ClubListPage';
 import { ClubDetailPage } from './pages/club/ClubDetailPage';
-import { TimeSlotPage } from './pages/timeslot/TimeSlotPage';
+import { GameListPage } from './pages/game/GameListPage';
+import { GameDetailPage } from './pages/game/GameDetailPage';
+import { ScheduleListPage } from './pages/schedule/ScheduleListPage';
 import { useAuthInitialize } from './hooks/useAuth';
 
 function App() {
@@ -34,9 +36,23 @@ function App() {
           <Route path="/user-management" element={<UserManagementPage />} />
           <Route path="/roles" element={<RolePermissionPage />} />
           <Route path="/companies" element={<CompanyPage />} />
-          <Route path="/club" element={<ClubListPage />} />
+
+          {/* 골프장 관리 (Master Data) */}
+          <Route path="/clubs" element={<ClubListPage />} />
+          <Route path="/clubs/:clubId" element={<ClubDetailPage />} />
+
+          {/* 라운드 관리 (Game) */}
+          <Route path="/games" element={<GameListPage />} />
+          <Route path="/games/:gameId" element={<GameDetailPage />} />
+
+          {/* 일정 관리 (Schedules) */}
+          <Route path="/schedules" element={<ScheduleListPage />} />
+
+          {/* 하위 호환 리다이렉트 */}
+          <Route path="/club" element={<Navigate to="/clubs" replace />} />
           <Route path="/club/clubs/:clubId" element={<ClubDetailPage />} />
-          <Route path="/club/clubs/:clubId/timeslots" element={<TimeSlotPage />} />
+          <Route path="/club/clubs/:clubId/timeslots" element={<Navigate to="/games" replace />} />
+
           <Route path="/bookings" element={<BookingManagementPage />} />
           <Route path="/profile" element={
             <div className="text-center py-12">

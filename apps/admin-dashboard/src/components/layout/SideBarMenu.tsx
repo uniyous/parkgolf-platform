@@ -44,10 +44,38 @@ export const menuConfig: MenuGroup[] = [
       },
       {
         name: '골프장 관리',
-        href: '/club',
+        href: '/clubs',
         icon: '🏌️',
-        description: '9홀 단위 골프장 및 코스 관리',
+        description: '골프장, 코스, 홀 마스터 데이터 관리',
         permission: 'MANAGE_GOLF_CLUBS'
+      },
+    ],
+    collapsible: true,
+    defaultOpen: true
+  },
+  {
+    name: '라운드',
+    items: [
+      {
+        name: '라운드 목록',
+        href: '/games',
+        icon: '🎮',
+        description: '18홀 라운드 조합 및 가격 설정',
+        permission: 'MANAGE_GAMES'
+      },
+    ],
+    collapsible: true,
+    defaultOpen: true
+  },
+  {
+    name: '일정',
+    items: [
+      {
+        name: '타임슬롯 관리',
+        href: '/schedules',
+        icon: '📆',
+        description: '타임슬롯 일괄 조회 및 관리',
+        permission: 'MANAGE_SCHEDULES'
       },
     ],
     collapsible: true,

@@ -231,10 +231,9 @@ export type AdminRole =
 // 관리자 범위 타입 (역할에서 자동 추론되므로 단순화)
 export type AdminScope = 'SYSTEM' | 'OPERATION' | 'VIEW';
 
-// 권한 정의 (18개: 관리자 10개 + 사용자 8개)
+// 권한 정의 (17개: 관리자 9개 + 사용자 8개)
 export type Permission =
-  // 관리자 권한 (10개)
-  | 'ALL'              // 전체 권한
+  // 관리자 권한 (9개)
   | 'COMPANIES'        // 회사 관리
   | 'COURSES'          // 코스 관리
   | 'TIMESLOTS'        // 타임슬롯 관리
