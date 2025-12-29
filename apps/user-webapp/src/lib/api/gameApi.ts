@@ -115,11 +115,16 @@ export const gameApi = {
     return response.data;
   },
 
-  getAvailableTimeSlots: async (gameId: number, date: string) => {
-    const response = await apiClient.get<GameTimeSlot[]>(
+  getAvailableTimeSlots: async (gameId: number, date: string): Promise<GameTimeSlot[]> => {
+    const response = await apiClient.get<{ success: boolean; data: GameTimeSlot[] } | GameTimeSlot[]>(
       `/api/user/games/${gameId}/time-slots/available`,
       { date }
     );
-    return response.data;
+    // Handle wrapped response format { success: true, data: [...] }
+    const data = response.data;
+    if (data && typeof data === 'object' && 'data' in data && Array.isArray(data.data)) {
+      return data.data;
+    }
+    return Array.isArray(data) ? data : [];
   },
 };
