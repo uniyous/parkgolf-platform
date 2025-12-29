@@ -1,8 +1,8 @@
 # Park Golf Platform - Development Roadmap
 
 ## 🎯 MVP Target: February 15, 2025
-**Overall Progress**: `███████▓░░` 75%
-**Last Updated**: 2025-10-09
+**Overall Progress**: `████████▓░` 85%
+**Last Updated**: 2025-12-29
 
 ---
 
@@ -44,7 +44,7 @@
 ---
 
 ## 🚀 Milestone 4: Booking Engine
-**Status**: 🟡 IN PROGRESS (90% - Target: October 31, 2025)
+**Status**: 🟢 MOSTLY COMPLETE (95% - Payment gateway remaining)
 
 ### ✅ Completed
 - [x] Booking service API implementation
@@ -56,9 +56,14 @@
 - [x] Member/Guest booking support
 - [x] Booking history tracking
 - [x] Performance optimization (caching strategy)
-- [x] TimeSlotAvailability cache model
-- [x] CourseCache for performance
+- [x] GameCache/GameTimeSlotCache for performance
 - [x] Cloud Run health check integration
+- [x] **Saga Pattern Implementation** (Choreography-based)
+- [x] **Transactional Outbox Pattern** (reliable event publishing)
+- [x] **Idempotency Key** (duplicate request prevention)
+- [x] **Optimistic Locking** (concurrent slot reservation)
+- [x] **Saga Event Handlers** (slot.reserved, slot.reserve.failed)
+- [x] **Saga Scheduler** (timeout cleanup)
 
 ### 🔄 In Progress
 - [ ] Payment gateway integration (20%)
@@ -76,7 +81,7 @@
 ---
 
 ## 🚀 Milestone 5: User Portal
-**Status**: 🔴 BLOCKED (35% - Target: November 15, 2025)
+**Status**: 🟡 IN PROGRESS (55% - Target: January 31, 2025)
 
 ### ✅ Completed
 - [x] React 19.1 project setup with Vite 6.3
@@ -86,19 +91,18 @@
 - [x] Basic component structure
 - [x] Axios 1.10 HTTP client setup
 
-### 🚨 Blocked by User API
-- [ ] **User API NATS Integration** (CRITICAL PATH - P0)
-  - [x] Basic module structure (AuthModule, BookingModule, CoursesModule, NotifyModule)
-  - [x] NATS client registration configured
-  - [ ] Verify NATS connections to microservices
-  - [ ] Connect to auth-service via NATS
-  - [ ] Connect to course-service via NATS
-  - [ ] Connect to booking-service via NATS
-  - [ ] Implement actual BFF API endpoints
-  - [ ] Add caching layer with Redis
-  - [ ] Test end-to-end communication
+### ✅ User API NATS Integration (UNBLOCKED)
+- [x] Basic module structure (AuthModule, BookingModule, GamesModule, ClubsModule)
+- [x] NATS client registration configured
+- [x] NATS connections verified and working
+- [x] Connected to auth-service via NATS
+- [x] Connected to course-service via NATS
+- [x] Connected to booking-service via NATS (with Saga)
+- [x] BFF API endpoints implemented
+- [x] Idempotency key support for bookings
+- [ ] Add caching layer with Redis
 
-### 📋 Pending (After Unblocking)
+### 🔄 In Progress (Now Unblocked)
 - [ ] User authentication UI (login/register)
 - [ ] Course browsing and search interface
 - [ ] Time slot selection interface
@@ -218,39 +222,29 @@
 
 ---
 
-## 🔥 Critical Path Items (Current Sprint: Oct 9-23)
+## 🔥 Critical Path Items (Current Sprint: Dec 29 - Jan 12)
 
-### 1. 🚨 URGENT: Unblock User API (Priority: P0, Est: 3-5 days)
+### 1. ✅ COMPLETED: User API NATS Integration
 ```typescript
-// Required Tasks
+// All tasks completed:
 ✅ Module structure created
 ✅ NATS client configured
-⚠️ Verify NATS connections work
-🚧 Implement actual API endpoints:
-   - POST /api/auth/login
-   - POST /api/auth/register
-   - GET  /api/courses
-   - GET  /api/courses/:id
-   - POST /api/bookings
-   - GET  /api/bookings
-🚧 Test NATS communication with:
-   - auth-service
-   - course-service
-   - booking-service
-   - notify-service
-🚧 Error handling and logging
-🚧 Response formatting
-🚧 Add Redis caching layer
+✅ NATS connections verified and working
+✅ API endpoints implemented:
+   - POST /api/user/auth/login
+   - POST /api/user/auth/register
+   - GET  /api/user/clubs
+   - GET  /api/user/games
+   - POST /api/user/bookings (with Saga pattern)
+   - GET  /api/user/bookings
+✅ NATS communication with all services
+✅ Saga pattern integration (booking data integrity)
+✅ Idempotency key support
 
-// Dependencies
-- None (Can start immediately)
-
-// Impact
-- Blocks: User WebApp development
-- Blocks: End-to-end booking flow testing
+// No longer blocking User WebApp development!
 ```
 
-### 2. 🔴 Complete Payment Integration (Priority: P0, Est: 3-4 days)
+### 2. 🔴 Complete Payment Integration (Priority: P0)
 ```typescript
 // Payment gateway tasks
 📋 Provider selection (TossPayments vs KakaoPay)
@@ -262,48 +256,49 @@
 🚧 Payment status management
 
 // Dependencies
-- Requires: Booking service (already done)
+- Requires: Booking service with Saga (✅ Done)
 
 // Impact
 - Blocks: Complete booking flow
 - Blocks: MVP launch
 ```
 
-### 3. 📋 User Booking Flow UI (Priority: P1, Est: 4-5 days)
+### 3. 🟡 User Booking Flow UI (Priority: P1 - Now Unblocked!)
 ```typescript
-// Frontend components (After User API unblocked)
+// Frontend components - Can start immediately!
 📋 Course list view with filters
-📋 Time slot selector (9-hole/18-hole)
+📋 Time slot selector (Game-based 18-hole)
 📋 Booking form (member/guest)
 📋 Booking confirmation UI
 📋 Payment form integration
 📋 Booking success/error screens
 
 // Dependencies
-- Requires: User API NATS integration complete
-- Requires: Payment integration complete
+- User API NATS integration (✅ Complete)
+- Payment integration (🔄 In Progress)
 
 // Impact
 - Required for: MVP launch
 ```
 
-### 4. 📋 Testing & Quality Assurance (Priority: P1, Est: Ongoing)
+### 4. 📋 Testing & Quality Assurance (Priority: P1)
 ```typescript
 // Test Coverage
 🚧 Unit tests (Target: 80% coverage)
    - Auth service
-   - Booking service
+   - Booking service (with Saga tests)
    - Course service
 🚧 Integration tests
    - Service-to-service via NATS
+   - Saga flow testing
    - BFF to microservices
 🚧 E2E tests
-   - Complete booking flow
+   - Complete booking flow with Saga
    - Payment flow
    - Admin workflows
 🚧 Performance testing
    - Load testing
-   - Database query optimization
+   - Optimistic locking concurrency tests
    - NATS message throughput
 
 // Impact
@@ -352,31 +347,38 @@
 
 ## 📅 Sprint Schedule
 
-### Current Sprint (Jan 15-22)
-**Goal**: Unblock user features and implement payment
-- Mon-Tue: User API NATS integration
-- Wed-Thu: Payment gateway research & implementation
-- Fri: Testing and bug fixes
+### Current Sprint (Dec 29 - Jan 12)
+**Goal**: User Booking Flow UI (Now Unblocked!)
+- User webapp booking UI components
+- Course/Game search interface
+- Time slot selection UI
+- Booking confirmation flow
 
-### Next Sprint (Jan 23-29)
-**Goal**: Complete user booking flow
-- User webapp booking UI
+### Next Sprint (Jan 13-19)
+**Goal**: Payment Integration
+- Payment gateway SDK integration (TossPayments/KakaoPay)
+- Payment API endpoints
 - Payment UI integration
-- E2E testing of booking flow
 
-### Sprint 3 (Jan 30 - Feb 5)
-**Goal**: Search and discovery
-- Elasticsearch implementation
-- Search UI components
+### Sprint 3 (Jan 20-26)
+**Goal**: Complete booking flow
+- E2E testing of booking flow with Saga
+- Booking history and management UI
+- User profile management
+
+### Sprint 4 (Jan 27 - Feb 5)
+**Goal**: Search and polish
+- Basic search functionality
 - Performance optimization
-
-### Sprint 4 (Feb 6-12)
-**Goal**: Testing and polish
-- Comprehensive testing
 - Bug fixes
-- Performance tuning
 
-### Sprint 5 (Feb 13-15)
+### Sprint 5 (Feb 6-12)
+**Goal**: Testing and QA
+- Comprehensive testing (unit, integration, E2E)
+- Saga concurrency testing
+- Performance benchmarks
+
+### Sprint 6 (Feb 13-15)
 **Goal**: Production deployment
 - Final testing
 - Deployment
@@ -384,19 +386,25 @@
 
 ---
 
-**Last Updated**: 2025-10-09
-**Next Review**: 2025-10-16
-**Version**: 2.1.0
+**Last Updated**: 2025-12-29
+**Next Review**: 2026-01-12
+**Version**: 2.2.0
 
 *This roadmap is the single source of truth for development priorities and progress.*
 
-## 📋 Recent Updates (2025-10-09)
-- Overall progress updated to 75%
-- Milestone 4 (Booking Engine) updated to 90% with detailed completion status
-- Milestone 5 (User Portal) updated with more granular blocking details
-- Critical Path Items rewritten with current priorities and dependencies
-- Added Testing & QA as critical path item
-- Updated all target dates to realistic timeframes
-- Added technical debt section for User Portal
-- Clarified User API NATS integration requirements
-- Payment integration details expanded with specific tasks
+## 📋 Recent Updates (2025-12-29)
+- Overall progress updated to 85%
+- Milestone 4 (Booking Engine) updated to 95% - Saga pattern fully implemented
+- Milestone 5 (User Portal) status changed from BLOCKED to IN PROGRESS (55%)
+- User API NATS integration marked as COMPLETED
+- Added Saga pattern related items to Booking Engine milestone:
+  - Transactional Outbox Pattern
+  - Idempotency Key support
+  - Optimistic Locking
+  - Saga Event Handlers
+  - Saga Scheduler for timeout cleanup
+- Critical Path Items updated:
+  - User API NATS Integration marked as COMPLETED
+  - User Booking Flow UI now unblocked and ready
+- Sprint Schedule updated with new realistic timeframes
+- Added Saga concurrency testing to QA tasks
