@@ -37,11 +37,11 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
 
   return (
     <div className={cn('flex items-baseline gap-1', className)}>
-      <span className={cn('text-emerald-600', sizeStyles[size])}>
+      <span className={cn('text-white', sizeStyles[size])}>
         {formatPrice(price)}
       </span>
       {showUnit && (
-        <span className={cn('text-gray-500', unitSizeStyles[size])}>
+        <span className={cn('text-white/60', unitSizeStyles[size])}>
           {unit}
         </span>
       )}
