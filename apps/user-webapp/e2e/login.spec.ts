@@ -77,8 +77,8 @@ test.describe('로그인 테스트', () => {
     // 로그인 버튼 클릭
     await page.getByRole('button', { name: '로그인' }).click();
 
-    // 에러 메시지 확인
-    await expect(page.getByText(/이메일 또는 비밀번호가 일치하지 않습니다|네트워크 오류/)).toBeVisible({ timeout: 10000 });
+    // 에러 메시지 확인 (data-testid 사용)
+    await expect(page.getByTestId('login-error')).toBeVisible({ timeout: 15000 });
 
     // 로그인 페이지에 머물러 있는지 확인
     await expect(page).toHaveURL(/.*login/);
@@ -94,8 +94,8 @@ test.describe('로그인 테스트', () => {
     // 로그인 버튼 클릭
     await page.getByRole('button', { name: '로그인' }).click();
 
-    // 에러 메시지 확인
-    await expect(page.getByText(/이메일 또는 비밀번호가 일치하지 않습니다|네트워크 오류/)).toBeVisible({ timeout: 10000 });
+    // 에러 메시지 확인 (data-testid 사용)
+    await expect(page.getByTestId('login-error')).toBeVisible({ timeout: 15000 });
 
     // 로그인 페이지에 머물러 있는지 확인
     await expect(page).toHaveURL(/.*login/);

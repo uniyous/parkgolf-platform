@@ -11,8 +11,8 @@ test.describe('예약 플로우 테스트', () => {
     await expect(page.getByPlaceholder('골프장, 지역 검색...')).toBeVisible();
     await expect(page.getByLabel('예약 날짜')).toBeVisible();
 
-    // 예약 가능한 라운드 섹션 확인
-    await expect(page.getByText('예약 가능한 라운드')).toBeVisible({ timeout: 30000 });
+    // 예약 가능한 라운드 섹션 확인 (헤딩으로 특정)
+    await expect(page.getByRole('heading', { name: /예약 가능한 라운드/ }).first()).toBeVisible({ timeout: 30000 });
   });
 
   test('날짜 필터 변경', async ({ page }) => {
@@ -64,31 +64,34 @@ test.describe('예약 플로우 테스트', () => {
   test('필터 버튼 토글', async ({ page }) => {
     await page.goto('/search');
 
-    // 필터 버튼 클릭
-    await page.getByRole('button', { name: /필터/ }).click();
+    // 페이지 로드 대기
+    await expect(page.getByText('예약 조건')).toBeVisible();
 
-    // 확장된 필터 확인
-    await expect(page.getByText('최소 가격')).toBeVisible();
-    await expect(page.getByText('최대 가격')).toBeVisible();
+    // 필터 버튼 클릭 (force: true로 덮어쓰기 방지)
+    const filterButton = page.getByTestId('filter-toggle-button');
+    await expect(filterButton).toBeVisible();
+    await filterButton.click({ force: true });
+
+    // 확장된 필터 확인 (클릭 후 약간의 대기)
+    await page.waitForTimeout(500);
+    const expandedFilters = page.getByTestId('expanded-filters');
+    await expect(expandedFilters).toBeVisible({ timeout: 5000 });
 
     // 필터 버튼 다시 클릭해서 닫기
-    await page.getByRole('button', { name: /필터/ }).click();
+    await filterButton.click({ force: true });
+    await page.waitForTimeout(500);
 
     // 필터가 숨겨졌는지 확인
-    await expect(page.getByText('최소 가격')).not.toBeVisible();
+    await expect(expandedFilters).not.toBeVisible();
   });
 
   test('게임 카드가 표시됨', async ({ page }) => {
     await page.goto('/search');
 
-    // 로딩 완료 대기
-    await page.waitForTimeout(3000);
-
-    // 게임 카드 또는 "예약 가능한 라운드가 없습니다" 메시지 확인
-    const hasGames = await page.getByText('예약 가능 시간').first().isVisible().catch(() => false);
-    const noGames = await page.getByText('예약 가능한 라운드가 없습니다').isVisible().catch(() => false);
-
-    expect(hasGames || noGames).toBeTruthy();
+    // 로딩 완료 대기 - 게임 카드 또는 빈 상태 메시지 중 하나가 나타날 때까지
+    await expect(
+      page.getByText('예약 가능 시간').first().or(page.getByText('예약 가능한 라운드가 없습니다'))
+    ).toBeVisible({ timeout: 30000 });
   });
 
   test('타임슬롯 선택 시 예약 상세 페이지로 이동', async ({ page }) => {

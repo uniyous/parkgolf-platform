@@ -98,7 +98,7 @@ export const LoginPage: React.FC = () => {
           />
 
           {errors.submit && (
-            <div className="mb-5 p-4 bg-red-500/20 border border-red-500/30 rounded-xl backdrop-blur-sm">
+            <div className="mb-5 p-4 bg-red-500/20 border border-red-500/30 rounded-xl backdrop-blur-sm" data-testid="login-error">
               <p className="text-red-200">{errors.submit}</p>
             </div>
           )}

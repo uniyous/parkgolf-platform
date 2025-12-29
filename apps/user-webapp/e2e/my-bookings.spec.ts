@@ -9,8 +9,8 @@ test.describe('내 예약 페이지 테스트', () => {
     // 헤더 확인
     await expect(page.getByText('내 예약')).toBeVisible();
 
-    // 예정된 예약 또는 지난 예약 탭 확인
-    await expect(page.getByText(/예정된 예약|지난 예약/)).toBeVisible();
+    // 예정된 예약 헤딩 확인
+    await expect(page.getByRole('heading', { name: '예정된 예약' })).toBeVisible();
   });
 
   test('예정된 예약 표시', async ({ page }) => {

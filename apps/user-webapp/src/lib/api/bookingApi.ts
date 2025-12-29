@@ -86,23 +86,38 @@ export interface SearchBookingsResponse {
   limit: number;
 }
 
+// NATS 응답 래퍼 타입
+interface NatsResponse<T> {
+  success: boolean;
+  data: T;
+  error?: { code: string; message: string };
+}
+
+// NATS 응답에서 data 추출 헬퍼
+function unwrapNatsResponse<T>(response: NatsResponse<T>): T {
+  if (!response.success) {
+    throw new Error(response.error?.message || 'Request failed');
+  }
+  return response.data;
+}
+
 export const bookingApi = {
   getTimeSlotAvailability: async (gameId: number, date: string) => {
-    const response = await apiClient.get<TimeSlot[]>(
+    const response = await apiClient.get<NatsResponse<TimeSlot[]>>(
       `/api/user/bookings/games/${gameId}/time-slots`,
       { date }
     );
-    return response.data;
+    return unwrapNatsResponse(response.data);
   },
 
   createBooking: async (bookingData: CreateBookingRequest) => {
-    const response = await apiClient.post<BookingResponse>('/api/user/bookings', bookingData);
-    return response.data;
+    const response = await apiClient.post<NatsResponse<BookingResponse>>('/api/user/bookings', bookingData);
+    return unwrapNatsResponse(response.data);
   },
 
   getMyBookings: async () => {
-    const response = await apiClient.get<BookingResponse[]>('/api/user/bookings');
-    return response.data;
+    const response = await apiClient.get<NatsResponse<BookingResponse[]>>('/api/user/bookings');
+    return unwrapNatsResponse(response.data);
   },
 
   searchBookings: async (params: SearchBookingParams): Promise<SearchBookingsResponse> => {
@@ -117,31 +132,31 @@ export const bookingApi = {
     if (params.sortOrder) queryParams.sortOrder = params.sortOrder;
     if (params.timeFilter) queryParams.timeFilter = params.timeFilter;
 
-    const response = await apiClient.get<SearchBookingsResponse>('/api/user/bookings/search', queryParams);
-    return response.data;
+    const response = await apiClient.get<NatsResponse<SearchBookingsResponse>>('/api/user/bookings/search', queryParams);
+    return unwrapNatsResponse(response.data);
   },
 
   getBookingByNumber: async (bookingNumber: string) => {
-    const response = await apiClient.get<BookingResponse>(
+    const response = await apiClient.get<NatsResponse<BookingResponse>>(
       `/api/user/bookings/number/${bookingNumber}`
     );
-    return response.data;
+    return unwrapNatsResponse(response.data);
   },
 
   getBookingById: async (id: number) => {
-    const response = await apiClient.get<BookingResponse>(`/api/user/bookings/${id}`);
-    return response.data;
+    const response = await apiClient.get<NatsResponse<BookingResponse>>(`/api/user/bookings/${id}`);
+    return unwrapNatsResponse(response.data);
   },
 
   updateBooking: async (id: number, updates: UpdateBookingRequest) => {
-    const response = await apiClient.put<BookingResponse>(`/api/user/bookings/${id}`, updates);
-    return response.data;
+    const response = await apiClient.put<NatsResponse<BookingResponse>>(`/api/user/bookings/${id}`, updates);
+    return unwrapNatsResponse(response.data);
   },
 
   cancelBooking: async (id: number, reason?: string) => {
-    const response = await apiClient.delete<BookingResponse>(`/api/user/bookings/${id}`, {
+    const response = await apiClient.delete<NatsResponse<BookingResponse>>(`/api/user/bookings/${id}`, {
       reason,
     });
-    return response.data;
+    return unwrapNatsResponse(response.data);
   },
 };

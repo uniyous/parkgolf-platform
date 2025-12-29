@@ -87,7 +87,7 @@ export const SearchPage: React.FC = () => {
   ];
 
   const playerOptions = [
-    { value: '', label: '인원 제한 없음' },
+    { value: 'all', label: '인원 제한 없음' },
     { value: '1', label: '1명 이상' },
     { value: '2', label: '2명 이상' },
     { value: '3', label: '3명 이상' },
@@ -148,6 +148,7 @@ export const SearchPage: React.FC = () => {
               size="sm"
               onClick={() => setShowFilters(!showFilters)}
               className="flex items-center gap-2"
+              data-testid="filter-toggle-button"
             >
               <SlidersHorizontal className="w-4 h-4" />
               필터 {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -209,7 +210,7 @@ export const SearchPage: React.FC = () => {
 
           {/* Advanced Filters - Expandable */}
           {showFilters && (
-            <div className="border-t border-white/20 pt-5 mt-5">
+            <div className="border-t border-white/20 pt-5 mt-5" data-testid="expanded-filters">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
                 {/* 가격 범위 */}
                 <div>
@@ -242,8 +243,8 @@ export const SearchPage: React.FC = () => {
                 <div>
                   <label className="block text-sm font-semibold text-white/90 mb-1">인원</label>
                   <Select
-                    value={String(filters.minPlayers ?? '')}
-                    onValueChange={(value) => updateFilters({ minPlayers: value ? Number(value) : null })}
+                    value={filters.minPlayers ? String(filters.minPlayers) : 'all'}
+                    onValueChange={(value) => updateFilters({ minPlayers: value === 'all' ? null : Number(value) })}
                     options={playerOptions}
                     glass
                   />
