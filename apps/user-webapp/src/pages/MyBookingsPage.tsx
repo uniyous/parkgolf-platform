@@ -166,7 +166,7 @@ export const MyBookingsPage: React.FC = () => {
         )}
 
         {/* Empty State */}
-        {!isLoading && !isError && data?.bookings.length === 0 && (
+        {!isLoading && !isError && data?.bookings?.length === 0 && (
           <div className="glass-card p-8 text-center">
             <Search className="w-16 h-16 mx-auto mb-4 text-white/30" />
             <h3 className="text-lg font-semibold text-white mb-2">
@@ -193,7 +193,7 @@ export const MyBookingsPage: React.FC = () => {
         )}
 
         {/* Booking List */}
-        {!isLoading && !isError && data && data.bookings.length > 0 && (
+        {!isLoading && !isError && data?.bookings && data.bookings.length > 0 && (
           <>
             <div className="space-y-4">
               {data.bookings.map((booking) => (
