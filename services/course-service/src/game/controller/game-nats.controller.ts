@@ -173,6 +173,54 @@ export class GameNatsController {
     }
   }
 
+  @MessagePattern('gameTimeSlots.available')
+  async getAvailableGameTimeSlots(@Payload() data: any) {
+    try {
+      this.logger.log(`NATS: Getting available time slots for game ${data.gameId} on ${data.date}`);
+      const slots = await this.gameTimeSlotService.findByGameAndDate(
+        Number(data.gameId),
+        data.date
+      );
+
+      // Filter for available slots and map to response format
+      const availableSlots = slots
+        .filter(slot => slot.bookedPlayers < slot.maxPlayers)
+        .map(slot => ({
+          id: slot.id,
+          gameId: slot.gameId,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          dayOfWeek: new Date(slot.date).getDay(),
+          isActive: slot.isActive,
+          maxCapacity: slot.maxPlayers,
+          currentBookings: slot.bookedPlayers,
+          available: slot.bookedPlayers < slot.maxPlayers,
+          price: Number(slot.price),
+          isPremium: slot.isPremium,
+        }));
+
+      return successResponse(availableSlots);
+    } catch (error) {
+      this.logger.error('NATS: Failed to get available game time slots', error);
+      return errorResponse('GAME_TIMESLOTS_AVAILABLE_FAILED', error.message);
+    }
+  }
+
+  @MessagePattern('gameTimeSlots.findByGame')
+  async findGameTimeSlotsByGame(@Payload() data: any) {
+    try {
+      this.logger.log(`NATS: Finding time slots for game ${data.gameId}`);
+      const slots = await this.gameTimeSlotService.findByGameAndDate(
+        Number(data.gameId),
+        data.date || new Date().toISOString().split('T')[0]
+      );
+      return successResponse({ timeSlots: slots.map(s => this.mapTimeSlotToResponse(s)) });
+    } catch (error) {
+      this.logger.error('NATS: Failed to find game time slots by game', error);
+      return errorResponse('GAME_TIMESLOTS_BY_GAME_FAILED', error.message);
+    }
+  }
+
   @MessagePattern('gameTimeSlots.update')
   async updateGameTimeSlot(@Payload() data: any) {
     try {
