@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, Search, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Calendar, Search, RefreshCw, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSearchBookingsQuery } from '@/hooks/queries/booking';
 import { useProfileQuery } from '@/hooks/queries/auth';
@@ -8,13 +8,7 @@ import { BookingCard, BookingCardSkeleton } from '@/components/BookingCard';
 import { CancelBookingModal } from '@/components/CancelBookingModal';
 import { type BookingWithCancel } from '@/lib/api/bookingApi';
 
-type TimeFilter = 'upcoming' | 'past' | 'all';
-
-const tabs: { value: TimeFilter; label: string }[] = [
-  { value: 'upcoming', label: '예정된 예약' },
-  { value: 'past', label: '지난 예약' },
-  { value: 'all', label: '전체' },
-];
+type TimeFilter = 'upcoming' | 'past';
 
 export const MyBookingsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -117,23 +111,22 @@ export const MyBookingsPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Tabs */}
-      <div className="sticky top-16 z-30 bg-black/20 backdrop-blur-sm px-4 py-2">
-        <div className="flex gap-2">
-          {tabs.map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => handleTabChange(tab.value)}
-              className={cn(
-                'flex-1 py-2 text-sm font-medium rounded-lg transition-colors',
-                timeFilter === tab.value
-                  ? 'bg-green-500 text-white'
-                  : 'bg-white/10 text-white/70 hover:bg-white/20'
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
+      {/* Sub Header */}
+      <div className="sticky top-16 z-30 bg-black/20 backdrop-blur-sm px-4 py-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-white">
+            {timeFilter === 'upcoming' ? '예정된 예약' : '지난 예약'}
+          </h2>
+          <button
+            onClick={() => handleTabChange(timeFilter === 'upcoming' ? 'past' : 'upcoming')}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors',
+              'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+            )}
+          >
+            <History className="w-4 h-4" />
+            {timeFilter === 'upcoming' ? '지난 예약 보기' : '예정된 예약 보기'}
+          </button>
         </div>
       </div>
 
@@ -170,14 +163,10 @@ export const MyBookingsPage: React.FC = () => {
           <div className="glass-card p-8 text-center">
             <Search className="w-16 h-16 mx-auto mb-4 text-white/30" />
             <h3 className="text-lg font-semibold text-white mb-2">
-              {timeFilter === 'upcoming'
-                ? '예정된 예약이 없습니다'
-                : timeFilter === 'past'
-                ? '지난 예약이 없습니다'
-                : '예약 내역이 없습니다'}
+              {timeFilter === 'upcoming' ? '예정된 예약이 없습니다' : '지난 예약이 없습니다'}
             </h3>
             <p className="text-white/60 mb-6">
-              새로운 라운드를 예약해 보세요!
+              {timeFilter === 'upcoming' ? '새로운 라운드를 예약해 보세요!' : '아직 완료된 라운드가 없습니다.'}
             </p>
             <button
               onClick={() => navigate('/search')}
