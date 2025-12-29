@@ -120,11 +120,4 @@ test.describe('로그인 테스트', () => {
     await expect(page).toHaveURL(/.*signup/);
   });
 
-  test('로그인 없이 둘러보기 링크 동작', async ({ page }) => {
-    // 둘러보기 링크 클릭
-    await page.getByRole('link', { name: /로그인 없이 둘러보기/ }).click();
-
-    // 예약 페이지로 이동 확인
-    await expect(page).toHaveURL(/.*booking/);
-  });
 });

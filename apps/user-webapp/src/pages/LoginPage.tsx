@@ -161,15 +161,6 @@ export const LoginPage: React.FC = () => {
               회원가입
             </a>
           </div>
-          <div>
-            <a
-              href="/booking"
-              className="text-white/70 hover:text-white text-sm inline-flex items-center gap-1 transition-colors duration-200"
-            >
-              로그인 없이 둘러보기
-              <span className="text-xs">→</span>
-            </a>
-          </div>
         </div>
       </div>
     </div>

@@ -100,7 +100,7 @@ export const SignupPage: React.FC = () => {
       });
 
       if (success) {
-        navigate('/booking');
+        navigate('/search');
       } else {
         setErrors({ submit: '회원가입에 실패했습니다.' });
       }

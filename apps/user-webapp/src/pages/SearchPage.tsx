@@ -20,7 +20,7 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-export const GameSearchPage: React.FC = () => {
+export const SearchPage: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { filters, updateFilters, resetFilters } = useGameSearchParams();
@@ -548,5 +548,3 @@ const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSe
   );
 };
 
-// Alias for backward compatibility
-export const SearchPage = GameSearchPage;

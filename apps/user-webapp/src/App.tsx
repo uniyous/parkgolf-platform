@@ -7,7 +7,6 @@ import {
   BookingDetailPage,
   BookingViewPage,
   BookingCompletePage,
-  EnhancedBookingPage,
   MyBookingsPage,
 } from './pages';
 
@@ -23,7 +22,6 @@ function App() {
           <Route path="/booking/:bookingNumber" element={<BookingViewPage />} />
           <Route path="/booking-detail" element={<BookingDetailPage />} />
           <Route path="/booking-complete" element={<BookingCompletePage />} />
-          <Route path="/booking" element={<EnhancedBookingPage />} />
         </Route>
         <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>
