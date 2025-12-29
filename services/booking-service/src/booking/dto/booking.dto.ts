@@ -3,6 +3,11 @@ import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsEnum } from
 import { BookingStatus } from '@prisma/client';
 
 export class CreateBookingRequestDto {
+  @ApiProperty({ description: '멱등성 키 (UUID)', example: '550e8400-e29b-41d4-a716-446655440000' })
+  @IsString()
+  @IsNotEmpty()
+  idempotencyKey: string;
+
   @ApiProperty({ description: '사용자 ID', example: 1 })
   @IsNumber()
   @IsNotEmpty()
@@ -177,94 +182,118 @@ export class GameTimeSlotAvailabilityDto {
 }
 
 export class BookingResponseDto {
-  @ApiProperty()
+  @ApiProperty({ description: '예약 ID' })
   id: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: '예약번호 (BK-XXXXXXXX-XXXX 형식)' })
   bookingNumber: string;
 
-  @ApiProperty()
-  userId: number;
+  @ApiProperty({ description: '사용자 ID (회원 예약 시)' })
+  userId?: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: '게임 ID' })
   gameId: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: '게임 타임슬롯 ID' })
   gameTimeSlotId: number;
 
-  @ApiProperty()
-  gameName: string;
+  @ApiProperty({ description: '게임명 (예: A+B 코스)' })
+  gameName?: string;
 
-  @ApiProperty()
-  gameCode: string;
+  @ApiProperty({ description: '게임 코드' })
+  gameCode?: string;
 
-  @ApiProperty()
-  frontNineCourseId: number;
+  @ApiProperty({ description: '전반 9홀 코스 ID' })
+  frontNineCourseId?: number;
 
-  @ApiProperty()
-  frontNineCourseName: string;
+  @ApiProperty({ description: '전반 9홀 코스명' })
+  frontNineCourseName?: string;
 
-  @ApiProperty()
-  backNineCourseId: number;
+  @ApiProperty({ description: '후반 9홀 코스 ID' })
+  backNineCourseId?: number;
 
-  @ApiProperty()
-  backNineCourseName: string;
+  @ApiProperty({ description: '후반 9홀 코스명' })
+  backNineCourseName?: string;
 
-  @ApiProperty()
-  clubId: number;
+  @ApiProperty({ description: '클럽 ID' })
+  clubId?: number;
 
-  @ApiProperty()
-  clubName: string;
+  @ApiProperty({ description: '클럽명' })
+  clubName?: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: '예약 날짜 (YYYY-MM-DD)' })
   bookingDate: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: '시작 시간 (HH:MM)' })
   startTime: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: '종료 시간 (HH:MM)' })
   endTime: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: '플레이어 수' })
   playerCount: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: '1인당 가격' })
   pricePerPerson: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: '서비스 수수료' })
   serviceFee: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: '총 결제 금액' })
   totalPrice: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: '예약 상태', enum: BookingStatus })
   status: BookingStatus;
 
-  @ApiProperty()
+  @ApiProperty({ description: '결제 방법' })
   paymentMethod?: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: '특별 요청사항' })
   specialRequests?: string;
 
-  @ApiProperty()
-  userEmail: string;
+  @ApiProperty({ description: '관리자 메모' })
+  notes?: string;
 
-  @ApiProperty()
-  userName: string;
+  // 회원 예약자 정보
+  @ApiProperty({ description: '회원 이메일' })
+  userEmail?: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: '회원 이름' })
+  userName?: string;
+
+  @ApiProperty({ description: '회원 전화번호' })
   userPhone?: string;
 
-  @ApiProperty()
+  // 비회원 예약자 정보
+  @ApiProperty({ description: '비회원 예약자명' })
+  guestName?: string;
+
+  @ApiProperty({ description: '비회원 이메일' })
+  guestEmail?: string;
+
+  @ApiProperty({ description: '비회원 전화번호' })
+  guestPhone?: string;
+
+  // Saga 관련
+  @ApiProperty({ description: '멱등성 키' })
+  idempotencyKey?: string;
+
+  @ApiProperty({ description: 'Saga 실패 사유 (status가 FAILED일 때)' })
+  sagaFailReason?: string;
+
+  @ApiProperty({ description: '결제 목록' })
   payments: any[];
 
-  @ApiProperty()
+  @ApiProperty({ description: '예약 히스토리' })
   histories: any[];
 
-  @ApiProperty()
+  @ApiProperty({ description: '예약 취소 가능 여부' })
+  canCancel?: boolean;
+
+  @ApiProperty({ description: '생성일시' })
   createdAt: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: '수정일시' })
   updatedAt: string;
 }
 
@@ -297,4 +326,42 @@ export interface BookingCancelledEvent {
   cancelledAt: string;
   userEmail: string;
   userName: string;
+}
+
+// =====================================================
+// Saga 이벤트 페이로드
+// =====================================================
+
+// booking-service → course-service: 슬롯 예약 요청
+export interface SlotReserveRequest {
+  bookingId: number;
+  bookingNumber: string;
+  gameTimeSlotId: number;
+  playerCount: number;
+  requestedAt: string;
+}
+
+// course-service → booking-service: 슬롯 예약 성공
+export interface SlotReservedEvent {
+  bookingId: number;
+  gameTimeSlotId: number;
+  playerCount: number;
+  reservedAt: string;
+}
+
+// course-service → booking-service: 슬롯 예약 실패
+export interface SlotReserveFailedEvent {
+  bookingId: number;
+  gameTimeSlotId: number;
+  reason: string;
+  failedAt: string;
+}
+
+// booking-service → course-service: 슬롯 해제 요청
+export interface SlotReleaseRequest {
+  bookingId: number;
+  gameTimeSlotId: number;
+  playerCount: number;
+  reason: string;
+  requestedAt: string;
 }

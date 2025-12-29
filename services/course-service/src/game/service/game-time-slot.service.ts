@@ -419,4 +419,166 @@ export class GameTimeSlotService {
       totalRevenue,
     };
   }
+
+  // =====================================================
+  // Saga 패턴용 메서드 (Optimistic Locking)
+  // =====================================================
+
+  /**
+   * Saga용 슬롯 예약 (Optimistic Locking 적용)
+   * booking-service의 slot.reserve 요청 처리
+   *
+   * @throws ConflictException - 동시성 충돌 시 (version mismatch)
+   * @throws NotFoundException - 슬롯을 찾을 수 없을 때
+   */
+  async reserveSlotForSaga(
+    timeSlotId: number,
+    playerCount: number,
+    bookingId: number
+  ): Promise<{ success: boolean; slot?: GameTimeSlot; error?: string }> {
+    this.logger.log(`[Saga] Reserving slot ${timeSlotId} for ${playerCount} players (bookingId: ${bookingId})`);
+
+    const MAX_RETRY = 3;
+    let attempt = 0;
+
+    while (attempt < MAX_RETRY) {
+      attempt++;
+
+      try {
+        const result = await this.prisma.$transaction(async (tx) => {
+          // 1. 현재 슬롯 상태 조회
+          const slot = await tx.gameTimeSlot.findUnique({
+            where: { id: timeSlotId },
+            include: {
+              game: {
+                include: {
+                  frontNineCourse: true,
+                  backNineCourse: true,
+                  club: true,
+                },
+              },
+            },
+          });
+
+          if (!slot) {
+            throw new NotFoundException(`GameTimeSlot with ID ${timeSlotId} not found`);
+          }
+
+          // 2. 가용성 검증
+          if (slot.status !== 'AVAILABLE') {
+            throw new ConflictException(`Time slot is not available (status: ${slot.status})`);
+          }
+
+          if (!slot.isActive) {
+            throw new ConflictException(`Time slot is not active`);
+          }
+
+          const newBookedPlayers = slot.bookedPlayers + playerCount;
+          if (newBookedPlayers > slot.maxPlayers) {
+            throw new ConflictException(
+              `Not enough capacity. Available: ${slot.maxPlayers - slot.bookedPlayers}, Requested: ${playerCount}`
+            );
+          }
+
+          // 3. Optimistic Locking: version 체크하며 업데이트
+          const currentVersion = slot.version;
+          const newStatus = newBookedPlayers >= slot.maxPlayers ? 'FULLY_BOOKED' : 'AVAILABLE';
+
+          const updatedSlot = await tx.gameTimeSlot.updateMany({
+            where: {
+              id: timeSlotId,
+              version: currentVersion, // Optimistic Lock
+            },
+            data: {
+              bookedPlayers: newBookedPlayers,
+              status: newStatus,
+              version: currentVersion + 1,
+            },
+          });
+
+          // Version mismatch 체크
+          if (updatedSlot.count === 0) {
+            throw new ConflictException('Concurrent modification detected. Please retry.');
+          }
+
+          this.logger.log(`[Saga] Slot ${timeSlotId} reserved successfully (version: ${currentVersion} -> ${currentVersion + 1})`);
+
+          // 업데이트된 슬롯 정보 반환을 위해 다시 조회
+          return await tx.gameTimeSlot.findUnique({
+            where: { id: timeSlotId },
+            include: {
+              game: {
+                include: {
+                  frontNineCourse: true,
+                  backNineCourse: true,
+                  club: true,
+                },
+              },
+            },
+          });
+        });
+
+        return { success: true, slot: result };
+      } catch (error) {
+        if (error instanceof ConflictException && error.message.includes('Concurrent modification')) {
+          this.logger.warn(`[Saga] Concurrent modification on slot ${timeSlotId}, attempt ${attempt}/${MAX_RETRY}`);
+          if (attempt >= MAX_RETRY) {
+            return { success: false, error: `Failed after ${MAX_RETRY} attempts due to concurrent modifications` };
+          }
+          // 재시도 전 짧은 대기
+          await new Promise(resolve => setTimeout(resolve, 50 * attempt));
+          continue;
+        }
+
+        // 다른 에러는 즉시 반환
+        this.logger.error(`[Saga] Failed to reserve slot ${timeSlotId}: ${error.message}`);
+        return { success: false, error: error.message };
+      }
+    }
+
+    return { success: false, error: 'Max retry attempts reached' };
+  }
+
+  /**
+   * Saga용 슬롯 해제 (예약 취소 시)
+   * booking-service의 slot.release 요청 처리
+   */
+  async releaseSlotForSaga(
+    timeSlotId: number,
+    playerCount: number,
+    bookingId: number,
+    reason: string
+  ): Promise<{ success: boolean; slot?: GameTimeSlot; error?: string }> {
+    this.logger.log(`[Saga] Releasing slot ${timeSlotId} for ${playerCount} players (bookingId: ${bookingId}, reason: ${reason})`);
+
+    try {
+      const result = await this.prisma.$transaction(async (tx) => {
+        const slot = await tx.gameTimeSlot.findUnique({
+          where: { id: timeSlotId },
+        });
+
+        if (!slot) {
+          throw new NotFoundException(`GameTimeSlot with ID ${timeSlotId} not found`);
+        }
+
+        const newBookedPlayers = Math.max(0, slot.bookedPlayers - playerCount);
+        const newStatus = newBookedPlayers < slot.maxPlayers ? 'AVAILABLE' : 'FULLY_BOOKED';
+
+        return await tx.gameTimeSlot.update({
+          where: { id: timeSlotId },
+          data: {
+            bookedPlayers: newBookedPlayers,
+            status: newStatus,
+            version: slot.version + 1,
+          },
+        });
+      });
+
+      this.logger.log(`[Saga] Slot ${timeSlotId} released successfully`);
+      return { success: true, slot: result };
+    } catch (error) {
+      this.logger.error(`[Saga] Failed to release slot ${timeSlotId}: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+  }
 }

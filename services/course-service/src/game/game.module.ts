@@ -3,9 +3,13 @@ import { GameService } from './service/game.service';
 import { GameTimeSlotService } from './service/game-time-slot.service';
 import { GameWeeklyScheduleService } from './service/game-weekly-schedule.service';
 import { GameNatsController } from './controller/game-nats.controller';
+import { GameSagaController } from './controller/game-saga.controller';
 
 @Module({
-  controllers: [GameNatsController],
+  controllers: [
+    GameNatsController,
+    GameSagaController,
+  ],
   providers: [
     GameService,
     GameTimeSlotService,

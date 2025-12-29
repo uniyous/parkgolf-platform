@@ -8,6 +8,15 @@ import {
 } from 'class-validator';
 
 export class CreateBookingDto {
+  @ApiProperty({
+    description: '멱등성 키 (UUID) - 클라이언트가 제공하지 않으면 서버에서 자동 생성',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  idempotencyKey?: string;
+
   @ApiProperty({ description: '게임 ID (18홀 코스 조합)', example: 1 })
   @IsNumber()
   @IsNotEmpty()

@@ -55,7 +55,11 @@ model Booking {
   // 메타 정보
   specialRequests       String?       @map("special_requests") // 특별 요청사항
   bookingNumber         String        @unique @map("booking_number") // BK-XXXXXXXX-XXXX 형식
+  idempotencyKey        String?       @unique @map("idempotency_key") // 멱등성 키
   notes                 String?       // 관리자 메모
+
+  // Saga 관련
+  sagaFailReason        String?       @map("saga_fail_reason") // 실패 사유
 
   // 캐시된 사용자 정보 (성능 최적화용)
   userEmail             String?       @map("user_email") // 사용자 이메일
@@ -196,11 +200,13 @@ model GameTimeSlotCache {
 }
 
 enum BookingStatus {
-  PENDING
-  CONFIRMED
-  CANCELLED
-  COMPLETED
-  NO_SHOW
+  PENDING           // Saga 시작: 예약 생성됨, 슬롯 예약 대기 중
+  SLOT_RESERVED     // course-service에서 슬롯 예약 완료
+  CONFIRMED         // 최종 확정 (결제 완료 등)
+  CANCELLED         // 취소됨
+  COMPLETED         // 완료됨
+  NO_SHOW           // 노쇼
+  FAILED            // Saga 실패 (슬롯 예약 실패 등)
 }
 
 enum PaymentStatus {
@@ -208,4 +214,60 @@ enum PaymentStatus {
   PAID
   FAILED
   REFUNDED
+}
+
+// =====================================================
+// Saga 패턴 지원 모델
+// =====================================================
+
+// Transactional Outbox 패턴: 이벤트 발행 보장
+model OutboxEvent {
+  id            Int      @id @default(autoincrement())
+
+  // 이벤트 정보
+  aggregateType String   @map("aggregate_type")  // 예: "Booking"
+  aggregateId   String   @map("aggregate_id")    // 예: booking.id
+  eventType     String   @map("event_type")      // 예: "slot.reserve"
+  payload       Json                              // 이벤트 페이로드
+
+  // 처리 상태
+  status        OutboxStatus @default(PENDING)
+  retryCount    Int          @default(0) @map("retry_count")
+  lastError     String?      @map("last_error")
+
+  // 타임스탬프
+  createdAt     DateTime @default(now()) @map("created_at")
+  processedAt   DateTime? @map("processed_at")
+
+  @@index([status, createdAt])
+  @@index([aggregateType, aggregateId])
+  @@map("outbox_events")
+}
+
+enum OutboxStatus {
+  PENDING      // 발행 대기
+  PROCESSING   // 발행 중
+  SENT         // 발행 완료
+  FAILED       // 발행 실패 (재시도 한도 초과)
+}
+
+// 멱등성 키: 중복 요청 방지
+model IdempotencyKey {
+  id            Int      @id @default(autoincrement())
+
+  key           String   @unique                  // 클라이언트가 전송한 고유 키
+  aggregateType String   @map("aggregate_type")   // 예: "Booking"
+  aggregateId   String?  @map("aggregate_id")     // 처리 완료된 리소스 ID
+
+  // 응답 캐시 (동일 요청 시 반환)
+  responseStatus Int?    @map("response_status")
+  responseBody   Json?   @map("response_body")
+
+  // 타임스탬프
+  createdAt     DateTime @default(now()) @map("created_at")
+  expiresAt     DateTime @map("expires_at")       // TTL (예: 24시간)
+
+  @@index([key])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
 }

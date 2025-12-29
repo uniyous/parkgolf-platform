@@ -200,6 +200,9 @@ model GameTimeSlot {
   status        TimeSlotStatus @default(AVAILABLE)
   isActive      Boolean        @default(true) @map("is_active")
 
+  // Optimistic Locking을 위한 버전
+  version       Int            @default(1)
+
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
 

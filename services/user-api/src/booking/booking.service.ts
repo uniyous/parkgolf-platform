@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
 import {
   CreateBookingDto,
@@ -12,10 +13,20 @@ export class BookingService {
 
   constructor(private readonly natsClient: NatsClientService) {}
 
+  /**
+   * 예약 생성 (Saga 패턴)
+   *
+   * 멱등성 키를 생성하여 booking-service로 전달
+   * booking-service에서 PENDING 상태로 예약이 생성되고,
+   * 백그라운드에서 course-service와의 Saga가 진행됨
+   */
   async createBooking(userId: number, dto: CreateBookingDto) {
-    this.logger.log(`Creating booking for user ${userId}`);
+    // 멱등성 키 생성 (클라이언트가 제공하지 않은 경우 서버에서 생성)
+    const idempotencyKey = dto.idempotencyKey || randomUUID();
+    this.logger.log(`Creating booking for user ${userId} with idempotencyKey: ${idempotencyKey}`);
 
     const result = await this.natsClient.send<any>('booking.create', {
+      idempotencyKey,
       userId,
       gameId: dto.gameId,
       gameTimeSlotId: dto.gameTimeSlotId,
@@ -28,7 +39,7 @@ export class BookingService {
       userPhone: dto.userPhone,
     });
 
-    this.logger.log(`Booking created successfully: ${result.bookingNumber}`);
+    this.logger.log(`Booking request submitted: ${result.bookingNumber} (status: ${result.status})`);
     return result;
   }
 
