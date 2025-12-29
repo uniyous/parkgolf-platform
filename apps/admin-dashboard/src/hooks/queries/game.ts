@@ -16,7 +16,7 @@ import { gameKeys } from './keys';
 // Game Queries
 // ============================================
 
-export const useGames = (filters?: GameFilter) => {
+export const useGamesQuery = (filters?: GameFilter) => {
   return useQuery({
     queryKey: gameKeys.list(filters),
     queryFn: () => gamesApi.getGames(filters),
@@ -25,7 +25,7 @@ export const useGames = (filters?: GameFilter) => {
   });
 };
 
-export const useGame = (id: number) => {
+export const useGameQuery = (id: number) => {
   return useQuery({
     queryKey: gameKeys.detail(id),
     queryFn: () => gamesApi.getGameById(id),
@@ -35,7 +35,7 @@ export const useGame = (id: number) => {
   });
 };
 
-export const useGamesByClub = (clubId: number) => {
+export const useGamesByClubQuery = (clubId: number) => {
   return useQuery({
     queryKey: gameKeys.byClub(clubId),
     queryFn: () => gamesApi.getGamesByClub(clubId),
@@ -49,7 +49,7 @@ export const useGamesByClub = (clubId: number) => {
 // Weekly Schedule Queries
 // ============================================
 
-export const useGameWeeklySchedules = (gameId: number) => {
+export const useGameWeeklySchedulesQuery = (gameId: number) => {
   return useQuery({
     queryKey: gameKeys.weeklySchedules(gameId),
     queryFn: () => gamesApi.getWeeklySchedules(gameId),
@@ -62,7 +62,7 @@ export const useGameWeeklySchedules = (gameId: number) => {
 // Time Slot Queries
 // ============================================
 
-export const useGameTimeSlots = (gameId: number, filter?: GameTimeSlotFilter) => {
+export const useGameTimeSlotsQuery = (gameId: number, filter?: GameTimeSlotFilter) => {
   return useQuery({
     queryKey: gameKeys.timeSlots(gameId, filter),
     queryFn: () => gamesApi.getTimeSlots(gameId, filter),
@@ -75,7 +75,7 @@ export const useGameTimeSlots = (gameId: number, filter?: GameTimeSlotFilter) =>
   });
 };
 
-export const useGameTimeSlotStats = (filter?: GameTimeSlotFilter) => {
+export const useGameTimeSlotStatsQuery = (filter?: GameTimeSlotFilter) => {
   return useQuery({
     queryKey: gameKeys.timeSlotStats(filter),
     queryFn: () => gamesApi.getTimeSlotStats(filter),
@@ -86,7 +86,7 @@ export const useGameTimeSlotStats = (filter?: GameTimeSlotFilter) => {
 // Game Mutations
 // ============================================
 
-export const useCreateGame = () => {
+export const useCreateGameMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -100,7 +100,7 @@ export const useCreateGame = () => {
   });
 };
 
-export const useUpdateGame = () => {
+export const useUpdateGameMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -113,7 +113,7 @@ export const useUpdateGame = () => {
   });
 };
 
-export const useDeleteGame = () => {
+export const useDeleteGameMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -128,7 +128,7 @@ export const useDeleteGame = () => {
 // Weekly Schedule Mutations
 // ============================================
 
-export const useCreateWeeklySchedule = () => {
+export const useCreateWeeklyScheduleMutation = () => {
   return useMutation({
     meta: { globalLoading: false }, // 로컬 프로그레스 바 사용
     mutationFn: ({ gameId, data }: { gameId: number; data: CreateGameWeeklyScheduleDto }) =>
@@ -137,7 +137,7 @@ export const useCreateWeeklySchedule = () => {
   });
 };
 
-export const useUpdateWeeklySchedule = () => {
+export const useUpdateWeeklyScheduleMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -156,7 +156,7 @@ export const useUpdateWeeklySchedule = () => {
   });
 };
 
-export const useDeleteWeeklySchedule = () => {
+export const useDeleteWeeklyScheduleMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -172,7 +172,7 @@ export const useDeleteWeeklySchedule = () => {
 // Time Slot Mutations
 // ============================================
 
-export const useCreateTimeSlot = () => {
+export const useCreateTimeSlotMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -185,7 +185,7 @@ export const useCreateTimeSlot = () => {
   });
 };
 
-export const useBulkCreateTimeSlots = () => {
+export const useBulkCreateTimeSlotsMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -198,7 +198,7 @@ export const useBulkCreateTimeSlots = () => {
   });
 };
 
-export const useGenerateTimeSlots = () => {
+export const useGenerateTimeSlotsMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -219,7 +219,7 @@ export const useGenerateTimeSlots = () => {
   });
 };
 
-export const useUpdateTimeSlot = () => {
+export const useUpdateTimeSlotMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -239,7 +239,7 @@ export const useUpdateTimeSlot = () => {
   });
 };
 
-export const useDeleteTimeSlot = () => {
+export const useDeleteTimeSlotMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({

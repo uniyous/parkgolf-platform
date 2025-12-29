@@ -1,28 +1,16 @@
-import { useState } from 'react';
 import {
-  useGetTimeSlotsQuery,
+  useTimeSlotAvailabilityQuery,
+  useMyBookingsQuery,
+  useBookingByNumberQuery,
+  useBookingQuery,
   useCreateBookingMutation,
-  useGetMyBookingsQuery,
-  useGetBookingByNumberQuery,
-  useGetBookingByIdQuery,
   useUpdateBookingMutation,
   useCancelBookingMutation,
-  CreateBookingRequest,
-  UpdateBookingRequest,
-} from '../redux/api/bookingApi';
+} from './queries/booking';
+import type { CreateBookingRequest, UpdateBookingRequest } from '@/lib/api/bookingApi';
 
-export const useTimeSlots = (courseId: number, date: string) => {
-  const {
-    data: timeSlots,
-    isLoading,
-    error,
-    refetch,
-  } = useGetTimeSlotsQuery(
-    { courseId, date },
-    {
-      skip: !courseId || !date,
-    }
-  );
+export const useGameTimeSlots = (gameId: number, date: string) => {
+  const { data: timeSlots, isLoading, error, refetch } = useTimeSlotAvailabilityQuery(gameId, date);
 
   return {
     timeSlots: timeSlots || [],
@@ -32,14 +20,17 @@ export const useTimeSlots = (courseId: number, date: string) => {
   };
 };
 
+// Alias for backward compatibility
+export const useTimeSlots = useGameTimeSlots;
+
 export const useBooking = () => {
-  const [createBookingMutation, { isLoading: isCreating }] = useCreateBookingMutation();
-  const [updateBookingMutation, { isLoading: isUpdating }] = useUpdateBookingMutation();
-  const [cancelBookingMutation, { isLoading: isCanceling }] = useCancelBookingMutation();
+  const createBookingMutation = useCreateBookingMutation();
+  const updateBookingMutation = useUpdateBookingMutation();
+  const cancelBookingMutation = useCancelBookingMutation();
 
   const createBooking = async (bookingData: CreateBookingRequest) => {
     try {
-      const result = await createBookingMutation(bookingData).unwrap();
+      const result = await createBookingMutation.mutateAsync(bookingData);
       return { success: true, data: result };
     } catch (error) {
       console.error('Booking creation failed:', error);
@@ -49,7 +40,7 @@ export const useBooking = () => {
 
   const updateBooking = async (id: number, updates: UpdateBookingRequest) => {
     try {
-      const result = await updateBookingMutation({ id, updates }).unwrap();
+      const result = await updateBookingMutation.mutateAsync({ id, updates });
       return { success: true, data: result };
     } catch (error) {
       console.error('Booking update failed:', error);
@@ -59,7 +50,7 @@ export const useBooking = () => {
 
   const cancelBooking = async (id: number, reason?: string) => {
     try {
-      const result = await cancelBookingMutation({ id, reason }).unwrap();
+      const result = await cancelBookingMutation.mutateAsync({ id, reason });
       return { success: true, data: result };
     } catch (error) {
       console.error('Booking cancellation failed:', error);
@@ -71,20 +62,18 @@ export const useBooking = () => {
     createBooking,
     updateBooking,
     cancelBooking,
-    isCreating,
-    isUpdating,
-    isCanceling,
-    isLoading: isCreating || isUpdating || isCanceling,
+    isCreating: createBookingMutation.isPending,
+    isUpdating: updateBookingMutation.isPending,
+    isCanceling: cancelBookingMutation.isPending,
+    isLoading:
+      createBookingMutation.isPending ||
+      updateBookingMutation.isPending ||
+      cancelBookingMutation.isPending,
   };
 };
 
 export const useMyBookings = () => {
-  const {
-    data: bookings,
-    isLoading,
-    error,
-    refetch,
-  } = useGetMyBookingsQuery();
+  const { data: bookings, isLoading, error, refetch } = useMyBookingsQuery();
 
   return {
     bookings: bookings || [],
@@ -99,19 +88,15 @@ export const useBookingDetail = (bookingNumber?: string, bookingId?: number) => 
     data: bookingByNumber,
     isLoading: isLoadingByNumber,
     error: errorByNumber,
-  } = useGetBookingByNumberQuery(bookingNumber!, {
-    skip: !bookingNumber,
-  });
+  } = useBookingByNumberQuery(bookingNumber || '');
 
   const {
     data: bookingById,
     isLoading: isLoadingById,
     error: errorById,
-  } = useGetBookingByIdQuery(bookingId!, {
-    skip: !bookingId,
-  });
+  } = useBookingQuery(bookingId || 0);
 
-  const booking = bookingByNumber || bookingById;
+  const booking = bookingNumber ? bookingByNumber : bookingById;
   const isLoading = isLoadingByNumber || isLoadingById;
   const error = errorByNumber || errorById;
 

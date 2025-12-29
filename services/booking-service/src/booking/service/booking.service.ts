@@ -230,12 +230,24 @@ export class BookingService {
   }
 
   async searchBookings(searchDto: SearchBookingDto): Promise<{
-    bookings: BookingResponseDto[];
+    bookings: (BookingResponseDto & { canCancel: boolean })[];
     total: number;
     page: number;
     limit: number;
   }> {
-    const { page = 1, limit = 10, status, gameId, clubId, userId, startDate, endDate } = searchDto;
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      gameId,
+      clubId,
+      userId,
+      startDate,
+      endDate,
+      sortBy = 'bookingDate',
+      sortOrder = 'desc',
+      timeFilter = 'all'
+    } = searchDto;
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -251,7 +263,17 @@ export class BookingService {
     if (userId) {
       where.userId = userId;
     }
-    if (startDate || endDate) {
+
+    // timeFilter 적용
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    if (timeFilter === 'upcoming') {
+      where.bookingDate = { gte: now };
+    } else if (timeFilter === 'past') {
+      where.bookingDate = { lt: now };
+    } else if (startDate || endDate) {
+      // timeFilter가 'all'이고 날짜 범위가 지정된 경우
       where.bookingDate = {};
       if (startDate) {
         where.bookingDate.gte = new Date(startDate);
@@ -261,12 +283,16 @@ export class BookingService {
       }
     }
 
+    // 정렬 설정
+    const orderBy: any = {};
+    orderBy[sortBy] = sortOrder;
+
     const [bookings, total] = await Promise.all([
       this.prisma.booking.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         include: {
           payments: true
         }
@@ -275,11 +301,31 @@ export class BookingService {
     ]);
 
     return {
-      bookings: bookings.map(booking => this.toResponseDto(booking)),
+      bookings: bookings.map(booking => ({
+        ...this.toResponseDto(booking),
+        canCancel: this.calculateCanCancel(booking.bookingDate, booking.status),
+      })),
       total,
       page,
       limit
     };
+  }
+
+  /**
+   * 예약 취소 가능 여부 계산
+   * - 취소/완료 상태는 취소 불가
+   * - 예약일 3일 전까지만 취소 가능
+   */
+  private calculateCanCancel(bookingDate: Date, status: BookingStatus): boolean {
+    if (status === BookingStatus.CANCELLED || status === BookingStatus.COMPLETED) {
+      return false;
+    }
+
+    const threeDaysFromNow = new Date();
+    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+    threeDaysFromNow.setHours(0, 0, 0, 0);
+
+    return new Date(bookingDate) >= threeDaysFromNow;
   }
 
   async updateBooking(id: number, dto: UpdateBookingDto): Promise<BookingResponseDto> {

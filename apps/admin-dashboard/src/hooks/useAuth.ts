@@ -9,9 +9,9 @@ import {
   initializeAuthFromStorage,
 } from '@/stores';
 import {
-  useLogin as useLoginMutation,
-  useLogout as useLogoutMutation,
-  useGetCurrentUser,
+  useLoginMutation,
+  useLogoutMutation,
+  useGetCurrentUserMutation,
 } from './queries';
 import type { LoginCredentials, Permission, AdminRole } from '@/types';
 
@@ -40,7 +40,7 @@ export const useAuth = () => {
   // Mutations
   const loginMutation = useLoginMutation();
   const logoutMutation = useLogoutMutation();
-  const getCurrentUserMutation = useGetCurrentUser();
+  const getCurrentUserMutation = useGetCurrentUserMutation();
 
   // Login handler
   const login = useCallback(
@@ -105,7 +105,7 @@ export const useAuth = () => {
  * const { isInitializing } = useAuthInitialize();
  */
 export const useAuthInitialize = () => {
-  const getCurrentUserMutation = useGetCurrentUser();
+  const getCurrentUserMutation = useGetCurrentUserMutation();
   const isAuthenticated = useIsAuthenticated();
   const [isInitialized, setIsInitialized] = useState(false);
 

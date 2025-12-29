@@ -1,8 +1,5 @@
-// Atoms
-export * from './atoms';
+// UI Components (Radix UI based)
+export * from './ui';
 
-// Molecules  
-export * from './molecules';
-
-// Existing components
+// Route guard
 export { PrivateRoute } from './PrivateRoute';

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { useGenerateTimeSlots, useGameWeeklySchedules } from '@/hooks/queries';
+import { useGenerateTimeSlotsMutation, useGameWeeklySchedulesQuery } from '@/hooks/queries';
 import type { GameWeeklySchedule } from '@/lib/api/gamesApi';
 
 interface TimeSlotWizardProps {
@@ -38,8 +38,8 @@ export const TimeSlotWizard: React.FC<TimeSlotWizardProps> = ({
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<{ success: boolean; count?: number; error?: string } | null>(null);
 
-  const { data: weeklySchedules = [] } = useGameWeeklySchedules(gameId);
-  const generateMutation = useGenerateTimeSlots();
+  const { data: weeklySchedules = [] } = useGameWeeklySchedulesQuery(gameId);
+  const generateMutation = useGenerateTimeSlotsMutation();
 
   // 주간 스케줄이 있는 요일들
   const scheduledDays = useMemo(() => {

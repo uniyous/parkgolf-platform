@@ -1,0 +1,66 @@
+import { apiClient } from './client';
+
+export interface User {
+  id: number;
+  email: string;
+  name: string;
+  phoneNumber: string;
+  birthDate?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  name: string;
+  phoneNumber: string;
+  birthDate?: string;
+}
+
+export interface AuthResponse {
+  user: User;
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+export const authApi = {
+  login: async (credentials: LoginRequest) => {
+    const response = await apiClient.post<AuthResponse>('/api/user/auth/login', credentials);
+    return response.data;
+  },
+
+  register: async (userData: RegisterRequest) => {
+    const response = await apiClient.post<AuthResponse>('/api/user/auth/register', userData);
+    return response.data;
+  },
+
+  getProfile: async () => {
+    const response = await apiClient.get<User>('/api/user/auth/profile');
+    return response.data;
+  },
+
+  logout: async () => {
+    try {
+      await apiClient.post('/api/user/auth/logout');
+    } catch {
+      // Always clear local storage even if API call fails
+    }
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+  },
+
+  refreshToken: async (refreshToken: string) => {
+    const response = await apiClient.post<{ accessToken: string }>('/api/user/auth/refresh', {
+      refreshToken,
+    });
+    return response.data;
+  },
+};

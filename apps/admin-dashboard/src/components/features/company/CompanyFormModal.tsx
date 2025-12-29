@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
-import { useCreateCompany, useUpdateCompany } from '@/hooks/queries';
+import { useCreateCompanyMutation, useUpdateCompanyMutation } from '@/hooks/queries';
 import PostalSearchModal from './PostalSearchModal';
 import type { Company, CompanyStatus, CreateCompanyDto, UpdateCompanyDto } from '@/types/company';
 
@@ -48,8 +48,8 @@ const STATUS_OPTIONS = [
 ];
 
 export const CompanyFormModal: React.FC<CompanyFormModalProps> = ({ open, company, onClose }) => {
-  const createCompany = useCreateCompany();
-  const updateCompany = useUpdateCompany();
+  const createCompany = useCreateCompanyMutation();
+  const updateCompany = useUpdateCompanyMutation();
   const isEditing = !!company;
 
   const [formData, setFormData] = useState<FormData>(initialFormData);

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useUsers, useDeleteUser, useUpdateUserStatus } from '@/hooks/queries';
+import { useUsersQuery, useDeleteUserMutation, useUpdateUserStatusMutation } from '@/hooks/queries';
 import { Modal } from '@/components/ui';
 import { UserFormModal } from './UserFormModal';
 import type { User, UserStatus, UserMembershipTier } from '@/types';
@@ -39,9 +39,9 @@ const TIER_META: Record<UserMembershipTier, { icon: string; color: string }> = {
 
 export const UserList: React.FC = () => {
   // Queries & Mutations
-  const { data: usersResponse, refetch } = useUsers();
-  const deleteUser = useDeleteUser();
-  const updateStatus = useUpdateUserStatus();
+  const { data: usersResponse, refetch } = useUsersQuery();
+  const deleteUser = useDeleteUserMutation();
+  const updateStatus = useUpdateUserStatusMutation();
 
   const users = usersResponse?.users || [];
 

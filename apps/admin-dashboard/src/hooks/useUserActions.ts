@@ -1,11 +1,11 @@
 import { useCallback } from 'react';
 import {
-  useUsers,
-  useCreateUser,
-  useUpdateUser,
-  useDeleteUser,
-  useUpdateUserStatus,
-  useUpdateUserPermissions,
+  useUsersQuery,
+  useCreateUserMutation,
+  useUpdateUserMutation,
+  useDeleteUserMutation,
+  useUpdateUserStatusMutation,
+  useUpdateUserPermissionsMutation,
 } from './queries';
 import { useUserUIStore } from '@/stores';
 import type { User, CreateAdminDto, UpdateAdminDto, UserStatus } from '@/types';
@@ -29,7 +29,7 @@ export const useUserActions = (): UseUserActionsReturn => {
   const { filters, page, limit, setSelectedUser } = useUserUIStore();
 
   // TanStack Query hooks
-  const { data, isLoading, error, refetch } = useUsers(
+  const { data, isLoading, error, refetch } = useUsersQuery(
     {
       search: filters.search,
       role: filters.membershipTier,
@@ -39,11 +39,11 @@ export const useUserActions = (): UseUserActionsReturn => {
     limit
   );
 
-  const createUserMutation = useCreateUser();
-  const updateUserMutation = useUpdateUser();
-  const deleteUserMutation = useDeleteUser();
-  const updateStatusMutation = useUpdateUserStatus();
-  const updatePermissionsMutation = useUpdateUserPermissions();
+  const createUserMutation = useCreateUserMutation();
+  const updateUserMutation = useUpdateUserMutation();
+  const deleteUserMutation = useDeleteUserMutation();
+  const updateStatusMutation = useUpdateUserStatusMutation();
+  const updatePermissionsMutation = useUpdateUserPermissionsMutation();
 
   const users = data?.users || [];
   const total = data?.total || 0;

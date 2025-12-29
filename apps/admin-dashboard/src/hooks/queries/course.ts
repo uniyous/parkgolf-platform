@@ -7,14 +7,14 @@ import type { CreateCourseDto, UpdateCourseDto, CreateHoleDto, UpdateHoleDto } f
 // Club Queries
 // ============================================
 
-export const useClubs = (filters?: ClubFilters) => {
+export const useClubsQuery = (filters?: ClubFilters) => {
   return useQuery({
     queryKey: clubKeys.list(filters),
     queryFn: () => courseApi.getClubs(filters),
   });
 };
 
-export const useClub = (id: number) => {
+export const useClubQuery = (id: number) => {
   return useQuery({
     queryKey: clubKeys.detail(id),
     queryFn: () => courseApi.getClubById(id),
@@ -22,7 +22,7 @@ export const useClub = (id: number) => {
   });
 };
 
-export const useClubsByCompany = (companyId: number) => {
+export const useClubsByCompanyQuery = (companyId: number) => {
   return useQuery({
     queryKey: clubKeys.byCompany(companyId),
     queryFn: () => courseApi.getClubsByCompany(companyId),
@@ -30,7 +30,7 @@ export const useClubsByCompany = (companyId: number) => {
   });
 };
 
-export const useSearchClubs = (query: string) => {
+export const useSearchClubsQuery = (query: string) => {
   return useQuery({
     queryKey: clubKeys.search(query),
     queryFn: () => courseApi.searchClubs(query),
@@ -42,14 +42,14 @@ export const useSearchClubs = (query: string) => {
 // Course Queries
 // ============================================
 
-export const useCourses = (filters?: CourseFilters, page = 1, limit = 20) => {
+export const useCoursesQuery = (filters?: CourseFilters, page = 1, limit = 20) => {
   return useQuery({
     queryKey: courseKeys.list({ ...filters, page, limit }),
     queryFn: () => courseApi.getCourses(filters, page, limit),
   });
 };
 
-export const useCourse = (id: number) => {
+export const useCourseQuery = (id: number) => {
   return useQuery({
     queryKey: courseKeys.detail(id),
     queryFn: () => courseApi.getCourseById(id),
@@ -57,7 +57,7 @@ export const useCourse = (id: number) => {
   });
 };
 
-export const useCoursesByClub = (clubId: number) => {
+export const useCoursesByClubQuery = (clubId: number) => {
   return useQuery({
     queryKey: courseKeys.byClub(clubId),
     queryFn: () => courseApi.getCoursesByClub(clubId),
@@ -65,7 +65,7 @@ export const useCoursesByClub = (clubId: number) => {
   });
 };
 
-export const useCoursesByCompany = (companyId: number) => {
+export const useCoursesByCompanyQuery = (companyId: number) => {
   return useQuery({
     queryKey: courseKeys.byCompany(companyId),
     queryFn: () => courseApi.getCoursesByCompany(companyId),
@@ -73,7 +73,7 @@ export const useCoursesByCompany = (companyId: number) => {
   });
 };
 
-export const useCourseStats = (startDate?: string, endDate?: string) => {
+export const useCourseStatsQuery = (startDate?: string, endDate?: string) => {
   return useQuery({
     queryKey: courseKeys.stats(),
     queryFn: () => courseApi.getCourseStats(startDate, endDate),
@@ -84,7 +84,7 @@ export const useCourseStats = (startDate?: string, endDate?: string) => {
 // Hole Queries
 // ============================================
 
-export const useHolesByCourse = (courseId: number) => {
+export const useHolesByCourseQuery = (courseId: number) => {
   return useQuery({
     queryKey: courseKeys.holes(courseId),
     queryFn: () => courseApi.getHolesByCourse(courseId),
@@ -96,7 +96,7 @@ export const useHolesByCourse = (courseId: number) => {
 // Club Mutations
 // ============================================
 
-export const useCreateClub = () => {
+export const useCreateClubMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -107,7 +107,7 @@ export const useCreateClub = () => {
   });
 };
 
-export const useUpdateClub = () => {
+export const useUpdateClubMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -120,7 +120,7 @@ export const useUpdateClub = () => {
   });
 };
 
-export const useDeleteClub = () => {
+export const useDeleteClubMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -135,7 +135,7 @@ export const useDeleteClub = () => {
 // Course Mutations
 // ============================================
 
-export const useCreateCourse = () => {
+export const useCreateCourseMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -147,7 +147,7 @@ export const useCreateCourse = () => {
   });
 };
 
-export const useUpdateCourse = () => {
+export const useUpdateCourseMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -161,7 +161,7 @@ export const useUpdateCourse = () => {
   });
 };
 
-export const useDeleteCourse = () => {
+export const useDeleteCourseMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -176,7 +176,7 @@ export const useDeleteCourse = () => {
 // Hole Mutations
 // ============================================
 
-export const useCreateHole = () => {
+export const useCreateHoleMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -189,7 +189,7 @@ export const useCreateHole = () => {
   });
 };
 
-export const useUpdateHole = () => {
+export const useUpdateHoleMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -208,7 +208,7 @@ export const useUpdateHole = () => {
   });
 };
 
-export const useDeleteHole = () => {
+export const useDeleteHoleMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({

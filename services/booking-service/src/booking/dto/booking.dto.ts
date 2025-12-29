@@ -100,6 +100,21 @@ export class SearchBookingDto {
   @IsDateString()
   @IsOptional()
   endDate?: string;
+
+  @ApiProperty({ description: '정렬 기준', example: 'bookingDate', required: false })
+  @IsString()
+  @IsOptional()
+  sortBy?: 'bookingDate' | 'createdAt' | 'totalPrice';
+
+  @ApiProperty({ description: '정렬 순서', example: 'desc', required: false })
+  @IsString()
+  @IsOptional()
+  sortOrder?: 'asc' | 'desc';
+
+  @ApiProperty({ description: '시간 필터', example: 'upcoming', required: false })
+  @IsString()
+  @IsOptional()
+  timeFilter?: 'upcoming' | 'past' | 'all';
 }
 
 export class GameTimeSlotAvailabilityDto {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useUpdateGame, useClubs, useCoursesByClub } from '@/hooks/queries';
+import { useUpdateGameMutation, useClubsQuery, useCoursesByClubQuery } from '@/hooks/queries';
 import type { Game, UpdateGameDto } from '@/lib/api/gamesApi';
 
 interface GameBasicInfoTabProps {
@@ -25,9 +25,9 @@ export const GameBasicInfoTab: React.FC<GameBasicInfoTabProps> = ({ game, onUpda
     courseIds: game.courseIds,
   });
 
-  const updateGameMutation = useUpdateGame();
-  const { data: clubsData } = useClubs();
-  const { data: courses } = useCoursesByClub(game.clubId);
+  const updateGameMutation = useUpdateGameMutation();
+  const { data: clubsData } = useClubsQuery();
+  const { data: courses } = useCoursesByClubQuery(game.clubId);
 
   const clubs = clubsData?.data || [];
   const clubName = clubs.find((c) => c.id === game.clubId)?.name || `Club ${game.clubId}`;

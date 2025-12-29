@@ -7,7 +7,7 @@ import type { CreateAdminDto, UpdateAdminDto, ChangePasswordDto } from '@/types'
 // Queries
 // ============================================
 
-export const useUsers = (filters?: UserFilters, page = 1, limit = 20) => {
+export const useUsersQuery = (filters?: UserFilters, page = 1, limit = 20) => {
   return useQuery({
     queryKey: userKeys.list({ ...filters, page, limit }),
     queryFn: () => adminApi.getUsers(filters, page, limit),
@@ -15,7 +15,7 @@ export const useUsers = (filters?: UserFilters, page = 1, limit = 20) => {
   });
 };
 
-export const useUser = (id: number) => {
+export const useUserQuery = (id: number) => {
   return useQuery({
     queryKey: userKeys.detail(id),
     queryFn: () => adminApi.getUser(id),
@@ -28,7 +28,7 @@ export const useUser = (id: number) => {
 // Mutations
 // ============================================
 
-export const useCreateUser = () => {
+export const useCreateUserMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -42,7 +42,7 @@ export const useCreateUser = () => {
   });
 };
 
-export const useUpdateUser = () => {
+export const useUpdateUserMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -58,7 +58,7 @@ export const useUpdateUser = () => {
   });
 };
 
-export const useDeleteUser = () => {
+export const useDeleteUserMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -73,7 +73,7 @@ export const useDeleteUser = () => {
   });
 };
 
-export const useUpdateUserStatus = () => {
+export const useUpdateUserStatusMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -89,7 +89,7 @@ export const useUpdateUserStatus = () => {
   });
 };
 
-export const useUpdateUserPermissions = () => {
+export const useUpdateUserPermissionsMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -105,7 +105,7 @@ export const useUpdateUserPermissions = () => {
   });
 };
 
-export const useChangeUserPassword = () => {
+export const useChangeUserPasswordMutation = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: ChangePasswordDto }) =>
       adminApi.changeUserPassword(id, data),
@@ -115,7 +115,7 @@ export const useChangeUserPassword = () => {
   });
 };
 
-export const useBulkDeleteUsers = () => {
+export const useBulkDeleteUsersMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -143,7 +143,7 @@ export const useBulkDeleteUsers = () => {
   });
 };
 
-export const useBulkUpdateUserStatus = () => {
+export const useBulkUpdateUserStatusMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useGames, useClubs } from '@/hooks/queries';
+import { useGamesQuery, useClubsQuery } from '@/hooks/queries';
 import { GameFormModal } from '@/components/features/game';
 import type { Game, GameFilter } from '@/lib/api/gamesApi';
 
@@ -27,8 +27,8 @@ export const GameListPage: React.FC = () => {
     limit: 50,
   }), [selectedClubId]);
 
-  const { data: gamesData, error } = useGames(filters);
-  const { data: clubsData } = useClubs();
+  const { data: gamesData, error } = useGamesQuery(filters);
+  const { data: clubsData } = useClubsQuery();
 
   const games = gamesData?.data || [];
   const clubs = clubsData?.data || [];

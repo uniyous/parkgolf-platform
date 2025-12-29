@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useRolesWithPermissions, useUpdateAdmin } from '@/hooks/queries';
+import { useRolesWithPermissionsQuery, useUpdateAdminMutation } from '@/hooks/queries';
 import { Modal } from '@/components/ui';
 import type { Admin, AdminRole } from '@/types';
 import { ADMIN_ROLE_LABELS } from '@/utils';
@@ -18,8 +18,8 @@ interface RoleWithPermissions {
 }
 
 export const RoleManagementModal: React.FC<RoleManagementModalProps> = ({ open, admin, onClose }) => {
-  const { data: rolesData, isLoading: rolesLoading } = useRolesWithPermissions('ADMIN');
-  const updateAdmin = useUpdateAdmin();
+  const { data: rolesData, isLoading: rolesLoading } = useRolesWithPermissionsQuery('ADMIN');
+  const updateAdmin = useUpdateAdminMutation();
 
   const [selectedRole, setSelectedRole] = useState<AdminRole | ''>('');
 

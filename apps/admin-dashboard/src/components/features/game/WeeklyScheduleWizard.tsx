@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { useCreateWeeklySchedule } from '@/hooks/queries';
+import { useCreateWeeklyScheduleMutation } from '@/hooks/queries';
 import type { CreateGameWeeklyScheduleDto, GameWeeklySchedule } from '@/lib/api/gamesApi';
 
 interface WeeklyScheduleWizardProps {
@@ -66,7 +66,7 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
   const [dayStatuses, setDayStatuses] = useState<Record<number, DayStatus>>({});
   const [currentProgress, setCurrentProgress] = useState(0);
 
-  const createMutation = useCreateWeeklySchedule();
+  const createMutation = useCreateWeeklyScheduleMutation();
 
   // 이미 존재하는 요일 확인
   const existingDays = new Set(existingSchedules.map(s => s.dayOfWeek));

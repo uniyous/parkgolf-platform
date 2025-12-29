@@ -3,6 +3,7 @@ import { Button, Input } from '@/components/ui';
 
 // 서버 웜업 API 설정
 const ADMIN_API_URL = import.meta.env.VITE_API_URL || 'https://admin-api-dev-iihuzmuufa-du.a.run.app';
+const USER_API_URL = 'https://user-api-dev-335495814488.asia-northeast3.run.app';
 
 interface ServiceHealth {
   name: string;
@@ -128,63 +129,81 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     setIsWarmingUp(true);
     setShowWarmupPanel(true);
 
-    // admin-api 포함하여 초기 로딩 상태 설정
+    // admin-api, user-api 포함하여 초기 로딩 상태 설정
     setWarmupStatuses([
       { service: 'admin-api', status: 'loading' },
+      { service: 'user-api', status: 'loading' },
       { service: 'auth-service', status: 'pending' },
-      { service: 'user-api', status: 'pending' },
       { service: 'course-service', status: 'pending' },
       { service: 'booking-service', status: 'pending' },
     ]);
 
-    try {
-      const startTime = Date.now();
+    const statuses: WarmupStatus[] = [];
 
-      // admin-api의 warmup 엔드포인트 호출 (다른 서비스들도 함께 웜업)
-      const response = await fetch(`${ADMIN_API_URL}/health/warmup`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const adminApiTime = Date.now() - startTime;
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const data: WarmupResponse = await response.json();
-
-      // admin-api 성공 상태 업데이트
-      const statuses: WarmupStatus[] = [
-        { service: 'admin-api', status: 'success', time: adminApiTime },
-      ];
-
-      // 다른 서비스들 상태 추가
-      data.services.forEach((svc) => {
-        statuses.push({
-          service: svc.name,
-          status: svc.status === 'ok' ? 'success' : 'error',
-          time: svc.responseTime,
-          message: svc.message,
+    // admin-api와 user-api를 병렬로 호출
+    const [adminResult, userResult] = await Promise.allSettled([
+      // admin-api warmup
+      (async () => {
+        const startTime = Date.now();
+        const response = await fetch(`${ADMIN_API_URL}/health/warmup`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
         });
-      });
+        const time = Date.now() - startTime;
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data: WarmupResponse = await response.json();
+        return { time, data };
+      })(),
+      // user-api warmup
+      (async () => {
+        const startTime = Date.now();
+        const response = await fetch(`${USER_API_URL}/health`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const time = Date.now() - startTime;
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return { time };
+      })(),
+    ]);
 
-      setWarmupStatuses(statuses);
-    } catch (err) {
-      // admin-api 자체 호출 실패
-      setWarmupStatuses([
-        {
-          service: 'admin-api',
-          status: 'error',
-          message: err instanceof Error ? err.message : 'Connection failed'
-        },
-        { service: 'auth-service', status: 'pending' },
-        { service: 'user-api', status: 'pending' },
-        { service: 'course-service', status: 'pending' },
-        { service: 'booking-service', status: 'pending' },
-      ]);
+    // admin-api 결과 처리
+    if (adminResult.status === 'fulfilled') {
+      statuses.push({ service: 'admin-api', status: 'success', time: adminResult.value.time });
+      // 다른 서비스들 상태 추가
+      adminResult.value.data.services.forEach((svc) => {
+        if (svc.name !== 'user-api') { // user-api는 별도로 처리
+          statuses.push({
+            service: svc.name,
+            status: svc.status === 'ok' ? 'success' : 'error',
+            time: svc.responseTime,
+            message: svc.message,
+          });
+        }
+      });
+    } else {
+      statuses.push({
+        service: 'admin-api',
+        status: 'error',
+        message: adminResult.reason?.message || 'Connection failed',
+      });
+      statuses.push({ service: 'auth-service', status: 'pending' });
+      statuses.push({ service: 'course-service', status: 'pending' });
+      statuses.push({ service: 'booking-service', status: 'pending' });
     }
 
+    // user-api 결과 처리
+    if (userResult.status === 'fulfilled') {
+      statuses.push({ service: 'user-api', status: 'success', time: userResult.value.time });
+    } else {
+      statuses.push({
+        service: 'user-api',
+        status: 'error',
+        message: userResult.reason?.message || 'Connection failed',
+      });
+    }
+
+    setWarmupStatuses(statuses);
     setIsWarmingUp(false);
   };
 

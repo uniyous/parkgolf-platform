@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import {
-  useGameWeeklySchedules,
-  useCreateWeeklySchedule,
-  useUpdateWeeklySchedule,
-  useDeleteWeeklySchedule,
+  useGameWeeklySchedulesQuery,
+  useCreateWeeklyScheduleMutation,
+  useUpdateWeeklyScheduleMutation,
+  useDeleteWeeklyScheduleMutation,
 } from '@/hooks/queries';
 import type { GameWeeklySchedule, CreateGameWeeklyScheduleDto } from '@/lib/api/gamesApi';
 import { WeeklyScheduleWizard } from './WeeklyScheduleWizard';
@@ -28,10 +28,10 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
   const [isWizardOpen, setIsWizardOpen] = useState(false);
 
   // Queries
-  const { data: schedules, refetch } = useGameWeeklySchedules(gameId);
-  const createMutation = useCreateWeeklySchedule();
-  const updateMutation = useUpdateWeeklySchedule();
-  const deleteMutation = useDeleteWeeklySchedule();
+  const { data: schedules, refetch } = useGameWeeklySchedulesQuery(gameId);
+  const createMutation = useCreateWeeklyScheduleMutation();
+  const updateMutation = useUpdateWeeklyScheduleMutation();
+  const deleteMutation = useDeleteWeeklyScheduleMutation();
 
   // 스케줄 배열 안전하게 처리
   const scheduleList = Array.isArray(schedules) ? schedules : [];

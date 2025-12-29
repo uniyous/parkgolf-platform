@@ -1,0 +1,196 @@
+// API 클라이언트 - user-api 연동
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3092';
+
+export interface ApiResponse<T> {
+  data: T;
+  message?: string;
+  status: number;
+}
+
+export class ApiError extends Error {
+  public readonly status: number;
+  public readonly code?: string;
+  public readonly details?: Record<string, unknown>;
+
+  constructor(
+    message: string,
+    status: number,
+    code?: string,
+    details?: Record<string, unknown>
+  ) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+    this.details = details;
+  }
+}
+
+interface RequestOptions extends RequestInit {
+  params?: Record<string, string | number | boolean | undefined>;
+}
+
+class ApiClient {
+  private baseURL: string;
+
+  constructor(baseURL: string) {
+    this.baseURL = baseURL;
+  }
+
+  private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
+    const { params, ...fetchOptions } = options;
+    let url = `${this.baseURL}${endpoint}`;
+
+    // Query parameters 처리
+    if (params) {
+      const queryParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, String(value));
+        }
+      });
+      if (queryParams.toString()) {
+        url += `?${queryParams.toString()}`;
+      }
+    }
+
+    // 헤더 설정
+    const token = localStorage.getItem('token');
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...fetchOptions.headers,
+    };
+
+    try {
+      const response = await fetch(url, { ...fetchOptions, headers });
+
+      if (!response.ok) {
+        await this.handleErrorResponse(response);
+      }
+
+      // 응답 본문이 없는 경우 처리
+      if (response.status === 204 || response.headers.get('content-length') === '0') {
+        return {
+          data: undefined as T,
+          status: response.status,
+        };
+      }
+
+      const responseData: T = await response.json();
+
+      return {
+        data: responseData,
+        status: response.status,
+      };
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      console.error(`API call failed: ${endpoint}`, error);
+      throw new ApiError('Network error occurred', 0);
+    }
+  }
+
+  private async handleErrorResponse(response: Response): Promise<never> {
+    let errorData: { message?: string; error?: { code?: string; message?: string; details?: unknown } };
+    try {
+      errorData = await response.json();
+    } catch {
+      errorData = {
+        message: response.statusText || 'An error occurred',
+      };
+    }
+
+    const message = errorData.message || errorData.error?.message || 'An error occurred';
+    const code = errorData.error?.code;
+
+    const apiError = new ApiError(
+      message,
+      response.status,
+      code,
+      errorData.error?.details as Record<string, unknown>
+    );
+
+    // 인증 에러 처리
+    if (response.status === 401) {
+      // Try to refresh token
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (refreshToken && !response.url.includes('/auth/refresh')) {
+        try {
+          const refreshResponse = await fetch(`${this.baseURL}/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken }),
+          });
+
+          if (refreshResponse.ok) {
+            const { accessToken } = await refreshResponse.json();
+            localStorage.setItem('token', accessToken);
+            // Note: Caller should retry the request
+          } else {
+            this.clearAuthAndRedirect();
+          }
+        } catch {
+          this.clearAuthAndRedirect();
+        }
+      } else {
+        this.clearAuthAndRedirect();
+      }
+    }
+
+    throw apiError;
+  }
+
+  private clearAuthAndRedirect() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+
+    if (
+      typeof window !== 'undefined' &&
+      !window.location.pathname.includes('/login') &&
+      !sessionStorage.getItem('redirecting_to_login')
+    ) {
+      sessionStorage.setItem('redirecting_to_login', 'true');
+      setTimeout(() => {
+        sessionStorage.removeItem('redirecting_to_login');
+      }, 1000);
+      window.location.href = '/login';
+    }
+  }
+
+  async get<T>(endpoint: string, params?: Record<string, string | number | boolean | undefined>): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, { method: 'GET', params });
+  }
+
+  async post<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async put<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async delete<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'DELETE',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async patch<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+}
+
+export const apiClient = new ApiClient(API_BASE_URL);

@@ -7,14 +7,14 @@ import type { CreateBookingDto, UpdateBookingDto } from '@/types';
 // Queries
 // ============================================
 
-export const useBookings = (filters?: BookingFilters, page = 1, limit = 20) => {
+export const useBookingsQuery = (filters?: BookingFilters, page = 1, limit = 20) => {
   return useQuery({
     queryKey: bookingKeys.list({ ...filters, page, limit } as BookingFilters),
     queryFn: () => bookingApi.getBookings(filters || {}, page, limit),
   });
 };
 
-export const useBooking = (id: number) => {
+export const useBookingQuery = (id: number) => {
   return useQuery({
     queryKey: bookingKeys.detail(id),
     queryFn: () => bookingApi.getBookingById(id),
@@ -22,14 +22,14 @@ export const useBooking = (id: number) => {
   });
 };
 
-export const useBookingStats = () => {
+export const useBookingStatsQuery = () => {
   return useQuery({
     queryKey: bookingKeys.stats(),
     queryFn: () => bookingApi.getBookingStats(),
   });
 };
 
-export const useCalendarBookings = (courseId: number, month: string) => {
+export const useCalendarBookingsQuery = (courseId: number, month: string) => {
   return useQuery({
     queryKey: bookingKeys.calendar(month),
     queryFn: () => bookingApi.getCalendarData(courseId, month),
@@ -41,7 +41,7 @@ export const useCalendarBookings = (courseId: number, month: string) => {
 // Mutations
 // ============================================
 
-export const useCreateBooking = () => {
+export const useCreateBookingMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -53,7 +53,7 @@ export const useCreateBooking = () => {
   });
 };
 
-export const useUpdateBooking = () => {
+export const useUpdateBookingMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -66,7 +66,7 @@ export const useUpdateBooking = () => {
   });
 };
 
-export const useCancelBooking = () => {
+export const useCancelBookingMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -77,7 +77,7 @@ export const useCancelBooking = () => {
   });
 };
 
-export const useConfirmBooking = () => {
+export const useConfirmBookingMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({

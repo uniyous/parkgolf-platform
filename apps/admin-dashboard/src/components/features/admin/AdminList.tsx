@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useAdmins, useDeleteAdmin, useToggleAdminStatus } from '@/hooks/queries';
+import { useAdminsQuery, useDeleteAdminMutation, useToggleAdminStatusMutation } from '@/hooks/queries';
 import { useCurrentAdmin } from '@/stores';
 import { Modal } from '@/components/ui';
 import { AdminFormModal } from './AdminFormModal';
@@ -27,9 +27,9 @@ const ROLE_META: Record<string, { icon: string; color: string }> = {
 
 export const AdminList: React.FC = () => {
   // Queries & Mutations
-  const { data: admins = [], refetch } = useAdmins();
-  const deleteAdmin = useDeleteAdmin();
-  const toggleStatus = useToggleAdminStatus();
+  const { data: admins = [], refetch } = useAdminsQuery();
+  const deleteAdmin = useDeleteAdminMutation();
+  const toggleStatus = useToggleAdminStatusMutation();
   const currentAdmin = useCurrentAdmin();
 
   // Local UI State

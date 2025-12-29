@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { useBookings, useConfirmBooking, useCancelBooking } from '@/hooks/queries/booking';
-import { useClubs } from '@/hooks/queries';
+import { useBookingsQuery, useConfirmBookingMutation, useCancelBookingMutation } from '@/hooks/queries/booking';
+import { useClubsQuery } from '@/hooks/queries';
 import type { BookingFilters } from '@/lib/api/bookingApi';
 import type { Booking } from '@/types';
 
@@ -52,11 +52,11 @@ export const BookingManagementPage: React.FC = () => {
   }), [dateFrom, dateTo, statusFilter, clubFilter, searchKeyword]);
 
   // API Queries
-  const { data: bookingsData } = useBookings(filters);
-  const { data: clubsData } = useClubs();
+  const { data: bookingsData } = useBookingsQuery(filters);
+  const { data: clubsData } = useClubsQuery();
 
-  const confirmMutation = useConfirmBooking();
-  const cancelMutation = useCancelBooking();
+  const confirmMutation = useConfirmBookingMutation();
+  const cancelMutation = useCancelBookingMutation();
 
   const bookings = bookingsData?.data || [];
   const clubs = clubsData?.data || [];

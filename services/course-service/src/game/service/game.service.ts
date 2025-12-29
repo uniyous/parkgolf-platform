@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Game, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { CreateGameDto, UpdateGameDto, FindGamesQueryDto } from '../dto/game.dto';
+import { CreateGameDto, UpdateGameDto, FindGamesQueryDto, SearchGamesQueryDto } from '../dto/game.dto';
 
 @Injectable()
 export class GameService {
@@ -220,5 +220,84 @@ export class GameService {
       }
       throw error;
     }
+  }
+
+  async searchGames(query: SearchGamesQueryDto): Promise<{ data: Game[]; total: number; page: number; limit: number }> {
+    const {
+      search,
+      clubId,
+      minPrice,
+      maxPrice,
+      minPlayers,
+      sortBy = 'name',
+      sortOrder = 'asc',
+      page = 1,
+      limit = 20,
+    } = query;
+
+    this.logger.log(`Searching games - search: ${search || 'none'}, clubId: ${clubId || 'all'}, price: ${minPrice}-${maxPrice}, minPlayers: ${minPlayers}`);
+
+    const where: Prisma.GameWhereInput = {
+      isActive: true,
+    };
+
+    // 텍스트 검색 (게임명, 클럽명, 클럽 위치)
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { club: { name: { contains: search, mode: 'insensitive' } } },
+        { club: { location: { contains: search, mode: 'insensitive' } } },
+      ];
+    }
+
+    // 클럽 필터
+    if (clubId) {
+      where.clubId = clubId;
+    }
+
+    // 가격 범위 필터
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      where.basePrice = {};
+      if (minPrice !== undefined) {
+        where.basePrice.gte = minPrice;
+      }
+      if (maxPrice !== undefined) {
+        where.basePrice.lte = maxPrice;
+      }
+    }
+
+    // 최소 인원수 필터
+    if (minPlayers !== undefined) {
+      where.maxPlayers = { gte: minPlayers };
+    }
+
+    // 정렬 설정
+    const orderBy: Prisma.GameOrderByWithRelationInput = {};
+    if (sortBy === 'price') {
+      orderBy.basePrice = sortOrder;
+    } else if (sortBy === 'name') {
+      orderBy.name = sortOrder;
+    } else if (sortBy === 'createdAt') {
+      orderBy.createdAt = sortOrder;
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [games, total] = await this.prisma.$transaction([
+      this.prisma.game.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          frontNineCourse: true,
+          backNineCourse: true,
+          club: true,
+        },
+      }),
+      this.prisma.game.count({ where }),
+    ]);
+
+    return { data: games, total, page, limit };
   }
 }

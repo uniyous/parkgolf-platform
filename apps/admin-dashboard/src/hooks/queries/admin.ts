@@ -7,7 +7,7 @@ import type { CreateAdminDto, UpdateAdminDto } from '@/types';
 // Queries
 // ============================================
 
-export const useAdmins = (filters?: Record<string, any>) => {
+export const useAdminsQuery = (filters?: Record<string, any>) => {
   return useQuery({
     queryKey: adminKeys.list(filters),
     queryFn: () => adminApi.getAdmins(filters),
@@ -15,7 +15,7 @@ export const useAdmins = (filters?: Record<string, any>) => {
   });
 };
 
-export const useAdmin = (id: number) => {
+export const useAdminQuery = (id: number) => {
   return useQuery({
     queryKey: adminKeys.detail(id),
     queryFn: () => adminApi.getAdmin(id),
@@ -24,7 +24,7 @@ export const useAdmin = (id: number) => {
   });
 };
 
-export const useAdminStats = () => {
+export const useAdminStatsQuery = () => {
   return useQuery({
     queryKey: adminKeys.stats(),
     queryFn: () => adminApi.getAdminStats(),
@@ -32,7 +32,7 @@ export const useAdminStats = () => {
   });
 };
 
-export const usePermissions = () => {
+export const usePermissionsQuery = () => {
   return useQuery({
     queryKey: adminKeys.permissions(),
     queryFn: () => adminApi.getPermissions(),
@@ -44,7 +44,7 @@ export const usePermissions = () => {
 // Mutations
 // ============================================
 
-export const useCreateAdmin = () => {
+export const useCreateAdminMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -59,7 +59,7 @@ export const useCreateAdmin = () => {
   });
 };
 
-export const useUpdateAdmin = () => {
+export const useUpdateAdminMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -75,7 +75,7 @@ export const useUpdateAdmin = () => {
   });
 };
 
-export const useDeleteAdmin = () => {
+export const useDeleteAdminMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -91,7 +91,7 @@ export const useDeleteAdmin = () => {
   });
 };
 
-export const useUpdateAdminStatus = () => {
+export const useUpdateAdminStatusMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -107,7 +107,7 @@ export const useUpdateAdminStatus = () => {
   });
 };
 
-export const useToggleAdminStatus = () => {
+export const useToggleAdminStatusMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -122,7 +122,7 @@ export const useToggleAdminStatus = () => {
   });
 };
 
-export const useUpdateAdminPermissions = () => {
+export const useUpdateAdminPermissionsMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -138,7 +138,7 @@ export const useUpdateAdminPermissions = () => {
   });
 };
 
-export const useBulkDeleteAdmins = () => {
+export const useBulkDeleteAdminsMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -167,7 +167,7 @@ export const useBulkDeleteAdmins = () => {
   });
 };
 
-export const useBulkUpdateAdminStatus = () => {
+export const useBulkUpdateAdminStatusMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -196,7 +196,7 @@ export const useBulkUpdateAdminStatus = () => {
 // Role Queries
 // ============================================
 
-export const useRoles = (userType?: string) => {
+export const useRolesQuery = (userType?: string) => {
   return useQuery({
     queryKey: roleKeys.list(userType),
     queryFn: () => adminApi.getRoles(userType),
@@ -204,7 +204,7 @@ export const useRoles = (userType?: string) => {
   });
 };
 
-export const useRolesWithPermissions = (userType?: string) => {
+export const useRolesWithPermissionsQuery = (userType?: string) => {
   return useQuery({
     queryKey: roleKeys.withPermissions(userType),
     queryFn: () => adminApi.getRolesWithPermissions(userType),
@@ -212,7 +212,7 @@ export const useRolesWithPermissions = (userType?: string) => {
   });
 };
 
-export const useRolePermissions = (roleCode: string) => {
+export const useRolePermissionsQuery = (roleCode: string) => {
   return useQuery({
     queryKey: roleKeys.permissions(roleCode),
     queryFn: () => adminApi.getRolePermissions(roleCode),
@@ -221,7 +221,7 @@ export const useRolePermissions = (roleCode: string) => {
   });
 };
 
-export const useUpdateRolePermissions = () => {
+export const useUpdateRolePermissionsMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({

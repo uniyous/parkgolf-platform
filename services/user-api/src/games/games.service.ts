@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
+import { SearchGamesDto } from './dto/search-games.dto';
 
 @Injectable()
 export class GamesService {
@@ -12,6 +13,11 @@ export class GamesService {
     const params: any = { page, limit };
     if (clubId) params.clubId = clubId;
     return this.natsClient.send('games.list', params, NATS_TIMEOUTS.LIST_QUERY);
+  }
+
+  async searchGames(searchDto: SearchGamesDto): Promise<any> {
+    this.logger.log(`Searching games - search: ${searchDto.search || 'all'}`);
+    return this.natsClient.send('games.search', searchDto, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   async getGameById(gameId: number): Promise<any> {

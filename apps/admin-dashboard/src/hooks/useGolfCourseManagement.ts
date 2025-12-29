@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useCourses, useCourse, useCreateCourse, useUpdateCourse, useDeleteCourse } from './queries';
+import { useCoursesQuery, useCourseQuery, useCreateCourseMutation, useUpdateCourseMutation, useDeleteCourseMutation } from './queries';
 import type { Course, CreateCourseDto, UpdateCourseDto } from '@/types';
 
 type ViewMode = 'list' | 'detail' | 'create' | 'edit';
@@ -11,13 +11,13 @@ export const useGolfCourseManagement = () => {
   const [limit, setLimit] = useState(20);
 
   // Queries
-  const coursesQuery = useCourses({}, page, limit);
-  const selectedCourseQuery = useCourse(selectedCourseState?.id ?? 0);
+  const coursesQuery = useCoursesQuery({}, page, limit);
+  const selectedCourseQuery = useCourseQuery(selectedCourseState?.id ?? 0);
 
   // Mutations
-  const createCourseMutation = useCreateCourse();
-  const updateCourseMutation = useUpdateCourse();
-  const deleteCourseMutation = useDeleteCourse();
+  const createCourseMutation = useCreateCourseMutation();
+  const updateCourseMutation = useUpdateCourseMutation();
+  const deleteCourseMutation = useDeleteCourseMutation();
 
   // Derived data
   const courses = coursesQuery.data?.data ?? [];

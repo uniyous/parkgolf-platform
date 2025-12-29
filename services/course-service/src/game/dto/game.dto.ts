@@ -210,3 +210,54 @@ export class FindGamesQueryDto {
   @Max(100)
   limit?: number;
 }
+
+export class SearchGamesQueryDto {
+  @IsString()
+  @IsOptional()
+  search?: string;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  clubId?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  minPrice?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  maxPrice?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  @Min(1)
+  @Max(8)
+  minPlayers?: number;
+
+  @IsString()
+  @IsOptional()
+  sortBy?: 'price' | 'name' | 'createdAt';
+
+  @IsString()
+  @IsOptional()
+  sortOrder?: 'asc' | 'desc';
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  @Min(1)
+  page?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  @Min(1)
+  @Max(100)
+  limit?: number;
+}

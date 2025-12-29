@@ -1,11 +1,15 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
-import { PrivateRoute } from './components/PrivateRoute';
-import { BookingCompletePage } from './pages/BookingCompletePage';
-import { BookingDetailPage } from './pages/BookingDetailPage';
-import { EnhancedBookingPage } from './pages/EnhancedBookingPage';
-import { LoginPage } from './pages/LoginPage';
-import { SearchPage } from './pages/SearchPage';
-import { SignupPage } from './pages/SignupPage';
+import { PrivateRoute } from './components';
+import {
+  LoginPage,
+  SignupPage,
+  SearchPage,
+  BookingDetailPage,
+  BookingViewPage,
+  BookingCompletePage,
+  EnhancedBookingPage,
+  MyBookingsPage,
+} from './pages';
 
 function App() {
   return (
@@ -15,6 +19,8 @@ function App() {
         <Route path="/signup" element={<SignupPage />} />
         <Route element={<PrivateRoute />}>
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/my-bookings" element={<MyBookingsPage />} />
+          <Route path="/booking/:bookingNumber" element={<BookingViewPage />} />
           <Route path="/booking-detail" element={<BookingDetailPage />} />
           <Route path="/booking-complete" element={<BookingCompletePage />} />
           <Route path="/booking" element={<EnhancedBookingPage />} />

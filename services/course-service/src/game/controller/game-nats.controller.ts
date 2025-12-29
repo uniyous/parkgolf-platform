@@ -99,6 +99,21 @@ export class GameNatsController {
     }
   }
 
+  @MessagePattern('games.search')
+  async searchGames(@Payload() data: any) {
+    try {
+      this.logger.log(`NATS: Searching games - search: ${data.search || 'all'}`);
+      const { data: games, total, page, limit } = await this.gameService.searchGames(data);
+      return successResponse(
+        { games: games.map(g => this.mapGameToResponse(g)) },
+        paginationMeta(total, page, limit)
+      );
+    } catch (error) {
+      this.logger.error('NATS: Failed to search games', error);
+      return errorResponse('GAMES_SEARCH_FAILED', error.message);
+    }
+  }
+
   // =====================================================
   // GameTimeSlot
   // =====================================================
@@ -357,6 +372,7 @@ export class GameNatsController {
       holidayPrice: game.holidayPrice ? Number(game.holidayPrice) : null,
       clubId: game.clubId,
       clubName: game.club?.name,
+      clubLocation: game.club?.location,
       status: game.status,
       isActive: game.isActive,
       createdAt: game.createdAt?.toISOString(),

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useCompanies, useDeleteCompany, useUpdateCompanyStatus } from '@/hooks/queries';
+import { useCompaniesQuery, useDeleteCompanyMutation, useUpdateCompanyStatusMutation } from '@/hooks/queries';
 import { useAuthStore, useCurrentAdmin } from '@/stores';
 import { Modal } from '@/components/ui';
 import { CompanyFormModal } from './CompanyFormModal';
@@ -29,9 +29,9 @@ const STATUS_META: Record<CompanyStatus, { icon: string; color: string }> = {
 
 export const CompanyList: React.FC = () => {
   // Queries & Mutations
-  const { data: companiesResponse, refetch } = useCompanies();
-  const deleteCompany = useDeleteCompany();
-  const updateStatus = useUpdateCompanyStatus();
+  const { data: companiesResponse, refetch } = useCompaniesQuery();
+  const deleteCompany = useDeleteCompanyMutation();
+  const updateStatus = useUpdateCompanyStatusMutation();
 
   const companies = companiesResponse?.data || [];
 

@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
-  useGameTimeSlots,
-  useDeleteTimeSlot,
-  useUpdateTimeSlot,
+  useGameTimeSlotsQuery,
+  useDeleteTimeSlotMutation,
+  useUpdateTimeSlotMutation,
 } from '@/hooks/queries';
 import type { GameTimeSlot, GameTimeSlotFilter, UpdateGameTimeSlotDto } from '@/lib/api/gamesApi';
 import { TimeSlotWizard } from './TimeSlotWizard';
@@ -51,9 +51,9 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
     limit: 1000, // 일주일치 충분히 커버
   }), [weekRange]);
 
-  const { data: timeSlotsData, isFetching, refetch } = useGameTimeSlots(gameId, queryFilters);
-  const deleteMutation = useDeleteTimeSlot();
-  const updateMutation = useUpdateTimeSlot();
+  const { data: timeSlotsData, isFetching, refetch } = useGameTimeSlotsQuery(gameId, queryFilters);
+  const deleteMutation = useDeleteTimeSlotMutation();
+  const updateMutation = useUpdateTimeSlotMutation();
 
   const timeSlots = timeSlotsData?.data || [];
   const totalCount = timeSlotsData?.pagination?.total || timeSlots.length;

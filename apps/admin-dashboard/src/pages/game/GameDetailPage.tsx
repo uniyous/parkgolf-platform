@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useGame, useDeleteGame } from '@/hooks/queries';
+import { useGameQuery, useDeleteGameMutation } from '@/hooks/queries';
 import { GameBasicInfoTab } from '@/components/features/game/GameBasicInfoTab';
 import { GameWeeklyScheduleTab } from '@/components/features/game/GameWeeklyScheduleTab';
 import { GameTimeSlotTab } from '@/components/features/game/GameTimeSlotTab';
@@ -20,8 +20,8 @@ export const GameDetailPage: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Queries
-  const { data: game, error, refetch } = useGame(Number(gameId));
-  const deleteGameMutation = useDeleteGame();
+  const { data: game, error, refetch } = useGameQuery(Number(gameId));
+  const deleteGameMutation = useDeleteGameMutation();
 
   // 게임 삭제
   const handleDeleteGame = async () => {

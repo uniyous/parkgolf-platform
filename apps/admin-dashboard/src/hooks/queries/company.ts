@@ -7,14 +7,14 @@ import type { CreateCompanyDto, UpdateCompanyDto, CompanyStatus } from '@/types/
 // Queries
 // ============================================
 
-export const useCompanies = (filters?: CompanyFiltersQuery, page = 1, limit = 20) => {
+export const useCompaniesQuery = (filters?: CompanyFiltersQuery, page = 1, limit = 20) => {
   return useQuery({
     queryKey: companyKeys.list({ ...filters, page, limit }),
     queryFn: () => companyApi.getCompanies(filters, page, limit),
   });
 };
 
-export const useCompany = (id: number, options?: { enabled?: boolean }) => {
+export const useCompanyQuery = (id: number, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: companyKeys.detail(id),
     queryFn: () => companyApi.getCompanyById(id),
@@ -22,7 +22,7 @@ export const useCompany = (id: number, options?: { enabled?: boolean }) => {
   });
 };
 
-export const useCompanyStats = () => {
+export const useCompanyStatsQuery = () => {
   return useQuery({
     queryKey: companyKeys.stats(),
     queryFn: () => companyApi.getCompanyStats(),
@@ -33,7 +33,7 @@ export const useCompanyStats = () => {
 // Mutations
 // ============================================
 
-export const useCreateCompany = () => {
+export const useCreateCompanyMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -45,7 +45,7 @@ export const useCreateCompany = () => {
   });
 };
 
-export const useUpdateCompany = () => {
+export const useUpdateCompanyMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -59,7 +59,7 @@ export const useUpdateCompany = () => {
   });
 };
 
-export const useDeleteCompany = () => {
+export const useDeleteCompanyMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -71,7 +71,7 @@ export const useDeleteCompany = () => {
   });
 };
 
-export const useUpdateCompanyStatus = () => {
+export const useUpdateCompanyStatusMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -85,7 +85,7 @@ export const useUpdateCompanyStatus = () => {
   });
 };
 
-export const useBulkUpdateCompanyStatus = () => {
+export const useBulkUpdateCompanyStatusMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -97,7 +97,7 @@ export const useBulkUpdateCompanyStatus = () => {
   });
 };
 
-export const useBulkDeleteCompanies = () => {
+export const useBulkDeleteCompaniesMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({

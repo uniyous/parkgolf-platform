@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { PageLayout } from '@/components/layout';
 import { Breadcrumb } from '@/components/common';
-import { useAdmins, useAdminStats, usePermissions, useRolesWithPermissions, useUpdateRolePermissions } from '@/hooks/queries/admin';
+import { useAdminsQuery, useAdminStatsQuery, usePermissionsQuery, useRolesWithPermissionsQuery, useUpdateRolePermissionsMutation } from '@/hooks/queries/admin';
 
 // 권한 레벨 및 카테고리 정보
 const permissionMeta: Record<string, { name: string; description: string; level: 'high' | 'medium' | 'low'; category: string; icon: string }> = {
@@ -39,11 +39,11 @@ export const RolePermissionPage: React.FC = () => {
   const [editedPermissions, setEditedPermissions] = useState<string[]>([]);
 
   // API 호출
-  const { data: admins = [] } = useAdmins();
-  const { data: stats } = useAdminStats();
-  const { data: apiPermissions = [] } = usePermissions();
-  const { data: rolesWithPermissions = [] } = useRolesWithPermissions('ADMIN');
-  const updateRolePermissions = useUpdateRolePermissions();
+  const { data: admins = [] } = useAdminsQuery();
+  const { data: stats } = useAdminStatsQuery();
+  const { data: apiPermissions = [] } = usePermissionsQuery();
+  const { data: rolesWithPermissions = [] } = useRolesWithPermissionsQuery('ADMIN');
+  const updateRolePermissions = useUpdateRolePermissionsMutation();
 
   // 현재 선택된 역할 (API 데이터에서)
   const selectedRole = useMemo(() =>

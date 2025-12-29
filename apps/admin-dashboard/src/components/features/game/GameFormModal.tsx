@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
-import { useCreateGame, useClubs, useCoursesByClub } from '@/hooks/queries';
+import { useCreateGameMutation, useClubsQuery, useCoursesByClubQuery } from '@/hooks/queries';
 import type { Game, CreateGameDto } from '@/lib/api/gamesApi';
 
 interface GameFormModalProps {
@@ -39,15 +39,15 @@ const STATUS_OPTIONS = [
 ];
 
 export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onSuccess }) => {
-  const createGame = useCreateGame();
-  const { data: clubsData } = useClubs();
+  const createGame = useCreateGameMutation();
+  const { data: clubsData } = useClubsQuery();
   const clubs = clubsData?.data || [];
 
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
 
   // 선택된 클럽의 코스 목록
-  const { data: coursesData } = useCoursesByClub(formData.clubId ?? 0);
+  const { data: coursesData } = useCoursesByClubQuery(formData.clubId ?? 0);
   const courses = Array.isArray(coursesData) ? coursesData : [];
 
   useEffect(() => {
