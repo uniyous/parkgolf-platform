@@ -1,13 +1,20 @@
 import { apiClient } from './client';
 
+/**
+ * User 응답 DTO - auth-service의 UserResponseDto와 일치
+ */
 export interface User {
   id: number;
   email: string;
-  name: string;
-  phoneNumber: string;
+  name: string | null;
+  roleCode: string;
+  isActive: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+  // 추가 사용자 필드
+  phoneNumber?: string;
   birthDate?: string;
-  createdAt: string;
-  updatedAt?: string;
+  lastLoginAt?: string | null;
 }
 
 export interface LoginRequest {
@@ -19,7 +26,7 @@ export interface RegisterRequest {
   email: string;
   password: string;
   name: string;
-  phoneNumber: string;
+  phoneNumber?: string;
   birthDate?: string;
 }
 
@@ -27,7 +34,7 @@ export interface AuthResponse {
   user: User;
   accessToken: string;
   refreshToken: string;
-  expiresIn: number;
+  expiresIn?: number;
 }
 
 export const authApi = {

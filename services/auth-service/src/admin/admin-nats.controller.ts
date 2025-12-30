@@ -1,7 +1,8 @@
 import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AdminService } from './admin.service';
-import { successResponse, errorResponse, omitPassword, omitPasswordFromArray } from '../common/utils/response.util';
+import { successResponse, errorResponse } from '../common/utils/response.util';
+import { AdminResponseDto } from './dto/create-admin.dto';
 
 /**
  * Admin Management NATS Controller
@@ -24,7 +25,7 @@ export class AdminNatsController {
       const { filters, page = 1, limit = 20 } = data;
       const result = await this.adminService.findAll({ ...filters, page, limit });
       return successResponse({
-        admins: omitPasswordFromArray(result.admins),
+        admins: AdminResponseDto.fromEntities(result.admins),
         total: result.total,
         page: result.page,
         limit: result.limit,
@@ -41,7 +42,7 @@ export class AdminNatsController {
     try {
       this.logger.log(`Get admin by ID: ${data.adminId}`);
       const admin = await this.adminService.findOne(parseInt(data.adminId, 10));
-      return successResponse(omitPassword(admin));
+      return successResponse(AdminResponseDto.fromEntity(admin));
     } catch (error) {
       this.logger.error(`Get admin failed: ${data.adminId}`, error);
       return errorResponse('NOT_FOUND', error.message);
@@ -54,7 +55,7 @@ export class AdminNatsController {
       this.logger.log(`Create admin: ${data.adminData?.email}`);
       const admin = await this.adminService.create(data.adminData);
       this.logger.log(`Admin created: ${admin.email}`);
-      return successResponse(omitPassword(admin));
+      return successResponse(AdminResponseDto.fromEntity(admin));
     } catch (error) {
       this.logger.error('Create admin failed', error);
       return errorResponse('CREATE_FAILED', error.message);
@@ -69,7 +70,7 @@ export class AdminNatsController {
         parseInt(data.adminId, 10),
         data.updateData
       );
-      return successResponse(omitPassword(admin));
+      return successResponse(AdminResponseDto.fromEntity(admin));
     } catch (error) {
       this.logger.error(`Update admin failed: ${data.adminId}`, error);
       return errorResponse('UPDATE_FAILED', error.message);
@@ -81,7 +82,7 @@ export class AdminNatsController {
     try {
       this.logger.log(`Delete admin: ${data.adminId}`);
       const admin = await this.adminService.remove(parseInt(data.adminId, 10));
-      return successResponse(omitPassword(admin));
+      return successResponse(AdminResponseDto.fromEntity(admin));
     } catch (error) {
       this.logger.error(`Delete admin failed: ${data.adminId}`, error);
       return errorResponse('DELETE_FAILED', error.message);
@@ -96,7 +97,7 @@ export class AdminNatsController {
         parseInt(data.adminId, 10),
         { isActive: data.isActive }
       );
-      return successResponse(omitPassword(admin));
+      return successResponse(AdminResponseDto.fromEntity(admin));
     } catch (error) {
       this.logger.error(`Update admin status failed: ${data.adminId}`, error);
       return errorResponse('UPDATE_FAILED', error.message);
@@ -111,7 +112,7 @@ export class AdminNatsController {
         parseInt(data.adminId, 10),
         data.permissions
       );
-      return successResponse(omitPassword(admin));
+      return successResponse(AdminResponseDto.fromEntity(admin));
     } catch (error) {
       this.logger.error(`Update admin permissions failed: ${data.adminId}`, error);
       return errorResponse('UPDATE_FAILED', error.message);

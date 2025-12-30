@@ -19,6 +19,8 @@ const MEMBERSHIP_LABELS: Record<UserMembershipTier, string> = {
   GOLD: '골드',
   PLATINUM: '플래티넘',
   VIP: 'VIP',
+  PREMIUM: '프리미엄',
+  GUEST: '게스트',
 };
 
 const STATUS_LABELS: Record<UserStatus, string> = {
@@ -35,6 +37,8 @@ const TIER_META: Record<UserMembershipTier, { icon: string; color: string }> = {
   GOLD: { icon: '🥇', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
   SILVER: { icon: '🥈', color: 'bg-gray-100 text-gray-800 border-gray-200' },
   REGULAR: { icon: '👤', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+  PREMIUM: { icon: '⭐', color: 'bg-amber-100 text-amber-800 border-amber-200' },
+  GUEST: { icon: '👋', color: 'bg-green-100 text-green-800 border-green-200' },
 };
 
 export const UserList: React.FC = () => {

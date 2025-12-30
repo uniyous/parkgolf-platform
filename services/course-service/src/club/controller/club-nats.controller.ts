@@ -1,13 +1,13 @@
 import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { ClubService } from '../service/club.service';
-import { ClubFilterDto } from '../dto/club.dto';
+import { ClubFilterDto, CreateClubDto, UpdateClubDto, ClubResponseDto } from '../dto/club.dto';
 import {
   successResponse,
   errorResponse,
   paginationMeta,
-  mapClubToResponse,
 } from '../../common/utils/response.util';
+import { ClubPayload } from '../../common/types/response.types';
 
 @Controller()
 export class ClubNatsController {
@@ -16,12 +16,12 @@ export class ClubNatsController {
   constructor(private readonly clubService: ClubService) {}
 
   @MessagePattern('club.create')
-  async createGolfClub(@Payload() data: any) {
+  async createGolfClub(@Payload() data: ClubPayload) {
     try {
       this.logger.log(`Creating club with data: ${JSON.stringify(data)}`);
       const { token, ...createGolfClubDto } = data;
-      const club = await this.clubService.create(createGolfClubDto.data || createGolfClubDto);
-      return successResponse(mapClubToResponse(club));
+      const club = await this.clubService.create((createGolfClubDto.data || createGolfClubDto) as CreateClubDto);
+      return successResponse(ClubResponseDto.fromEntity(club));
     } catch (error) {
       this.logger.error('Failed to create club', error);
       return errorResponse('CLUB_CREATE_FAILED', error.message || 'Failed to create club');
@@ -29,12 +29,12 @@ export class ClubNatsController {
   }
 
   @MessagePattern('club.findAll')
-  async findAllGolfClubs(@Payload() data: any) {
+  async findAllGolfClubs(@Payload() data: ClubPayload & ClubFilterDto) {
     try {
       this.logger.log(`Finding clubs with data: ${JSON.stringify(data)}`);
       const { token, ...filters } = data;
       const result = await this.clubService.findAll(filters);
-      const clubs = result.data.map(mapClubToResponse);
+      const clubs = result.data.map(ClubResponseDto.fromEntity);
       return successResponse({ clubs }, paginationMeta(result.total, result.page, result.limit));
     } catch (error) {
       this.logger.error('Failed to find clubs', error);
@@ -43,12 +43,12 @@ export class ClubNatsController {
   }
 
   @MessagePattern('club.findOne')
-  async findOneGolfClub(@Payload() data: any) {
+  async findOneGolfClub(@Payload() data: ClubPayload) {
     try {
       this.logger.log(`Finding club with data: ${JSON.stringify(data)}`);
       const { token, ...params } = data;
       const club = await this.clubService.findOne(params.id);
-      return successResponse(mapClubToResponse(club));
+      return successResponse(ClubResponseDto.fromEntity(club));
     } catch (error) {
       this.logger.error('Failed to find club', error);
       return errorResponse('CLUB_NOT_FOUND', error.message || 'Club not found');
@@ -56,12 +56,12 @@ export class ClubNatsController {
   }
 
   @MessagePattern('club.update')
-  async updateGolfClub(@Payload() data: any) {
+  async updateGolfClub(@Payload() data: ClubPayload) {
     try {
       this.logger.log(`Updating club with data: ${JSON.stringify(data)}`);
       const { token, ...params } = data;
-      const club = await this.clubService.update(params.id, params.updateClubDto);
-      return successResponse(mapClubToResponse(club));
+      const club = await this.clubService.update(params.id!, params.updateClubDto as UpdateClubDto);
+      return successResponse(ClubResponseDto.fromEntity(club));
     } catch (error) {
       this.logger.error('Failed to update club', error);
       return errorResponse('CLUB_UPDATE_FAILED', error.message || 'Failed to update club');
@@ -69,7 +69,7 @@ export class ClubNatsController {
   }
 
   @MessagePattern('club.remove')
-  async removeGolfClub(@Payload() data: any) {
+  async removeGolfClub(@Payload() data: ClubPayload) {
     try {
       this.logger.log(`Removing club with data: ${JSON.stringify(data)}`);
       const { token, ...params } = data;
@@ -82,12 +82,12 @@ export class ClubNatsController {
   }
 
   @MessagePattern('club.findByCompany')
-  async findGolfClubsByCompany(@Payload() data: any) {
+  async findGolfClubsByCompany(@Payload() data: ClubPayload) {
     try {
       this.logger.log(`Finding clubs by company with data: ${JSON.stringify(data)}`);
       const { token, ...params } = data;
       const clubs = await this.clubService.findByCompany(params.companyId);
-      return successResponse(clubs.map(mapClubToResponse));
+      return successResponse(clubs.map(ClubResponseDto.fromEntity));
     } catch (error) {
       this.logger.error('Failed to find clubs by company', error);
       return errorResponse('CLUBS_BY_COMPANY_FAILED', error.message || 'Failed to find clubs by company');
@@ -107,7 +107,7 @@ export class ClubNatsController {
   }
 
   @MessagePattern('club.search')
-  async searchGolfClubs(@Payload() data: any) {
+  async searchGolfClubs(@Payload() data: ClubPayload) {
     try {
       this.logger.log(`Searching clubs with data: ${JSON.stringify(data)}`);
       const { token, ...params } = data;
@@ -119,7 +119,7 @@ export class ClubNatsController {
       };
 
       const result = await this.clubService.findAll(filters);
-      return successResponse(result.data.map(mapClubToResponse));
+      return successResponse(result.data.map(ClubResponseDto.fromEntity));
     } catch (error) {
       this.logger.error('Failed to search clubs', error);
       return errorResponse('CLUBS_SEARCH_FAILED', error.message || 'Failed to search clubs');
@@ -139,7 +139,7 @@ export class ClubNatsController {
       };
 
       const result = await this.clubService.findAll(filters);
-      return successResponse(result.data.map(mapClubToResponse));
+      return successResponse(result.data.map(ClubResponseDto.fromEntity));
     } catch (error) {
       this.logger.error('Failed to find popular clubs', error);
       return errorResponse('CLUBS_POPULAR_FAILED', error.message || 'Failed to find popular clubs');

@@ -81,7 +81,7 @@ export const BookingDetailPage: React.FC = () => {
     });
   };
 
-  const totalPrice = (timeSlot.price || game.pricePerPerson) * playerCount;
+  const totalPrice = (timeSlot.price || game.basePrice || game.pricePerPerson || 0) * playerCount;
   const serviceFee = Math.floor(totalPrice * 0.03); // 3% 서비스 수수료
   const finalPrice = totalPrice + serviceFee;
 
@@ -98,7 +98,7 @@ export const BookingDetailPage: React.FC = () => {
         playerCount,
         specialRequests: specialRequests || undefined,
         userEmail: user.email,
-        userName: user.name,
+        userName: user.name || undefined,
         userPhone: user.phoneNumber,
         paymentMethod: selectedPaymentMethod,
       };
@@ -224,7 +224,7 @@ export const BookingDetailPage: React.FC = () => {
             <div>
               <div className="text-xs text-white/60 mb-1">기본 요금</div>
               <PriceDisplay
-                price={timeSlot.price || game.pricePerPerson}
+                price={timeSlot.price || game.pricePerPerson || 0}
                 size="md"
                 showUnit={false}
               />

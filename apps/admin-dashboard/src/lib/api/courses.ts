@@ -206,8 +206,15 @@ export const courseApi = {
    * 골프장 상세 조회
    */
   async getClubById(id: number): Promise<Club> {
-    const response = await apiClient.get<Club>(`/admin/courses/clubs/${id}`);
-    return response.data;
+    const response = await apiClient.get<any>(`/admin/courses/clubs/${id}`);
+    const responseData = response.data;
+
+    // BFF 응답 구조 처리: { success: true, data: {...} }
+    if (responseData && responseData.data && typeof responseData.data === 'object' && !Array.isArray(responseData.data)) {
+      return responseData.data;
+    }
+
+    return responseData;
   },
 
   /**

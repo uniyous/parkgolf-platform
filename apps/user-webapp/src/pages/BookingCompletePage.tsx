@@ -194,7 +194,7 @@ export const BookingCompletePage: React.FC = () => {
               {new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(booking.totalPrice)}
             </div>
             <div className="text-xs text-green-200 mt-2">
-              (기본요금: {(timeSlot.price || game.pricePerPerson) * playerCount}원
+              (기본요금: {(timeSlot.price || game.pricePerPerson || 0) * playerCount}원
               {booking.serviceFee ? ` + 수수료: ${booking.serviceFee}원` : ''})
             </div>
           </div>

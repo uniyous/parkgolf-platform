@@ -169,8 +169,8 @@ export const companyApi = {
       console.log('Create company API response:', response);
 
       // API 응답에서 data 추출
-      const companyData = (response.data as any)?.data || response.data;
-      const newCompany = transformCompanyData(companyData);
+      const responseData = (response.data as any)?.data || response.data;
+      const newCompany = transformCompanyData(responseData);
       return newCompany;
     } catch (error) {
       console.error('Failed to create company:', error);
@@ -209,8 +209,8 @@ export const companyApi = {
       console.log('Update company API response:', response);
 
       // API 응답에서 data 추출
-      const companyData = (response.data as any)?.data || response.data;
-      const updatedCompany = transformCompanyData(companyData);
+      const responseData = (response.data as any)?.data || response.data;
+      const updatedCompany = transformCompanyData(responseData);
       return updatedCompany;
     } catch (error) {
       console.error(`Failed to update company ${id}:`, error);

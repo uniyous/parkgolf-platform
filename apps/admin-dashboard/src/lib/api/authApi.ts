@@ -8,7 +8,7 @@
  */
 
 import { apiClient, type BffApiResponse } from './client';
-import type { AuthResponse, LoginCredentials, User } from "../types";
+import type { AuthResponse, LoginCredentials, User } from "@/types";
 
 export const authApi = {
   async login(credentials: LoginCredentials): Promise<BffApiResponse<AuthResponse>> {

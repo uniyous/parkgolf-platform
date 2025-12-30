@@ -104,7 +104,7 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({ open, admin, onC
           data: {
             email: formData.email,
             name: formData.name,
-            role: formData.role,
+            roleCode: formData.role,
             isActive: formData.isActive,
             phone: formData.phone || undefined,
             department: formData.department || undefined,
@@ -116,7 +116,7 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({ open, admin, onC
           email: formData.email,
           name: formData.name,
           password: formData.password,
-          role: formData.role,
+          roleCode: formData.role,
           isActive: formData.isActive,
           phone: formData.phone || undefined,
           department: formData.department || undefined,

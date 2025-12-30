@@ -1,6 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsEnum } from 'class-validator';
-import { BookingStatus } from '@prisma/client';
+import { Booking, BookingStatus, Payment, BookingHistory } from '@prisma/client';
+
+/** Booking 엔티티 타입 (관계 포함) */
+export type BookingWithRelations = Booking & {
+  payments?: Payment[];
+  histories?: BookingHistory[];
+};
 
 export class CreateBookingRequestDto {
   @ApiProperty({ description: '멱등성 키 (UUID)', example: '550e8400-e29b-41d4-a716-446655440000' })
@@ -295,6 +301,85 @@ export class BookingResponseDto {
 
   @ApiProperty({ description: '수정일시' })
   updatedAt: string;
+
+  /**
+   * 엔티티를 DTO로 변환
+   */
+  static fromEntity(entity: BookingWithRelations, includeCanCancel: boolean = false): BookingResponseDto {
+    const dto = new BookingResponseDto();
+    dto.id = entity.id;
+    dto.bookingNumber = entity.bookingNumber;
+    dto.userId = entity.userId ?? undefined;
+    dto.gameId = entity.gameId;
+    dto.gameTimeSlotId = entity.gameTimeSlotId;
+    dto.gameName = entity.gameName ?? undefined;
+    dto.gameCode = entity.gameCode ?? undefined;
+    dto.frontNineCourseId = entity.frontNineCourseId ?? undefined;
+    dto.frontNineCourseName = entity.frontNineCourseName ?? undefined;
+    dto.backNineCourseId = entity.backNineCourseId ?? undefined;
+    dto.backNineCourseName = entity.backNineCourseName ?? undefined;
+    dto.clubId = entity.clubId ?? undefined;
+    dto.clubName = entity.clubName ?? undefined;
+    dto.bookingDate = entity.bookingDate.toISOString().split('T')[0];
+    dto.startTime = entity.startTime;
+    dto.endTime = entity.endTime;
+    dto.playerCount = entity.playerCount;
+    dto.pricePerPerson = Number(entity.pricePerPerson);
+    dto.serviceFee = Number(entity.serviceFee);
+    dto.totalPrice = Number(entity.totalPrice);
+    dto.status = entity.status;
+    dto.paymentMethod = entity.paymentMethod ?? undefined;
+    dto.specialRequests = entity.specialRequests ?? undefined;
+    dto.notes = entity.notes ?? undefined;
+    // 회원 예약자 정보
+    dto.userEmail = entity.userEmail ?? undefined;
+    dto.userName = entity.userName ?? undefined;
+    dto.userPhone = entity.userPhone ?? undefined;
+    // 비회원 예약자 정보
+    dto.guestName = entity.guestName ?? undefined;
+    dto.guestEmail = entity.guestEmail ?? undefined;
+    dto.guestPhone = entity.guestPhone ?? undefined;
+    // Saga 관련
+    dto.idempotencyKey = entity.idempotencyKey ?? undefined;
+    dto.sagaFailReason = entity.sagaFailReason ?? undefined;
+    // 관계 데이터
+    dto.payments = entity.payments || [];
+    dto.histories = entity.histories || [];
+    // 타임스탬프
+    dto.createdAt = entity.createdAt.toISOString();
+    dto.updatedAt = entity.updatedAt.toISOString();
+
+    // 취소 가능 여부 계산 (요청 시)
+    if (includeCanCancel) {
+      dto.canCancel = BookingResponseDto.calculateCanCancel(entity.bookingDate, entity.status);
+    }
+
+    return dto;
+  }
+
+  /**
+   * 엔티티 배열을 DTO 배열로 변환
+   */
+  static fromEntities(entities: BookingWithRelations[], includeCanCancel: boolean = false): BookingResponseDto[] {
+    return entities.map(entity => BookingResponseDto.fromEntity(entity, includeCanCancel));
+  }
+
+  /**
+   * 예약 취소 가능 여부 계산
+   * - 취소/완료 상태는 취소 불가
+   * - 예약일 3일 전까지만 취소 가능
+   */
+  private static calculateCanCancel(bookingDate: Date, status: BookingStatus): boolean {
+    if (status === BookingStatus.CANCELLED || status === BookingStatus.COMPLETED) {
+      return false;
+    }
+
+    const threeDaysFromNow = new Date();
+    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+    threeDaysFromNow.setHours(0, 0, 0, 0);
+
+    return new Date(bookingDate) >= threeDaysFromNow;
+  }
 }
 
 // NATS 이벤트 페이로드

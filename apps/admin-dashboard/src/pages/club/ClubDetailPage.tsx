@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useClub } from '@/hooks';
-import type { CourseCombo } from '@/types/club';
+import type { CourseCombo, Course } from '@/types/club';
 import { CourseManagementTab } from '@/components/features/club/CourseManagementTab';
 import { BasicInfoTab } from '@/components/features/club/BasicInfoTab';
 import { OperationInfoTab } from '@/components/features/club/OperationInfoTab';
+import { courseApi } from '@/lib/api/courses';
 
 type TabType = 'basic' | 'courses' | 'operation';
 
@@ -13,9 +14,11 @@ export const ClubDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('courses');
   const [combos, setCombos] = useState<CourseCombo[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  
+
   // Redux hooks
   const {
     selectedClub,
@@ -32,18 +35,41 @@ export const ClubDetailPage: React.FC = () => {
   useEffect(() => {
     if (clubId) {
       const id = Number(clubId);
-      loadClubById(id); // 이미 courses 데이터가 포함됨
+      loadClubById(id);
     }
   }, [clubId, loadClubById]);
 
+  // 코스 목록 별도 조회
+  useEffect(() => {
+    const fetchCourses = async () => {
+      if (!clubId) return;
+
+      setCoursesLoading(true);
+      try {
+        const clubCourses = await courseApi.getCoursesByClub(Number(clubId));
+        // clubId로 필터링 (백엔드가 필터링 안 할 경우 대비)
+        const filteredCourses = clubCourses.filter(c => c.clubId === Number(clubId));
+        setCourses(filteredCourses as Course[]);
+      } catch (error) {
+        console.error('Failed to fetch courses:', error);
+        setCourses([]);
+      } finally {
+        setCoursesLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, [clubId]);
+
   // TODO: 18홀 조합 조회 추가 (향후 구현)
   useEffect(() => {
-    if (selectedClubCourses.length >= 2) {
+    const activeCourses = courses.length > 0 ? courses : selectedClubCourses;
+    if (activeCourses.length >= 2) {
       // 18홀 조합 생성 로직 추가
       // const combosData = await clubApi.getCombosForClub(Number(clubId));
       // setCombos(combosData);
     }
-  }, [selectedClubCourses]);
+  }, [courses, selectedClubCourses]);
 
   // 탭 변경 시 편집 모드 리셋
   useEffect(() => {
@@ -249,11 +275,20 @@ export const ClubDetailPage: React.FC = () => {
           <BasicInfoTab club={selectedClub} onUpdate={selectClub} initialEditMode={editMode} />
         )}
         {activeTab === 'courses' && (
-          <CourseManagementTab 
-            club={selectedClub} 
-            courses={selectedClubCourses} 
+          <CourseManagementTab
+            club={selectedClub}
+            courses={courses.length > 0 ? courses : selectedClubCourses}
             combos={combos}
-            onCoursesUpdate={() => loadClubById(Number(clubId))}
+            onCoursesUpdate={async () => {
+              // 코스 목록 다시 가져오기
+              try {
+                const clubCourses = await courseApi.getCoursesByClub(Number(clubId));
+                const filteredCourses = clubCourses.filter(c => c.clubId === Number(clubId));
+                setCourses(filteredCourses as Course[]);
+              } catch (error) {
+                console.error('Failed to refresh courses:', error);
+              }
+            }}
             onCombosUpdate={setCombos}
           />
         )}

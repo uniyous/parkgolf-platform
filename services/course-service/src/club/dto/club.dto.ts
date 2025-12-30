@@ -12,6 +12,8 @@ import {
   Max,
   ValidateNested,
 } from 'class-validator';
+import { Club, Company, Course } from '@prisma/client';
+import { CourseResponseDto } from '../../course/dto/course.dto';
 
 export enum ClubStatus {
   ACTIVE = 'ACTIVE',
@@ -198,26 +200,67 @@ export class ClubFilterDto {
   limit?: number;
 }
 
-export interface ClubResponseDto {
+/** Club 엔티티 타입 (관계 포함) */
+export type ClubWithRelations = Club & {
+  company?: Company;
+  courses?: Course[];
+};
+
+/** Club 응답 DTO */
+export class ClubResponseDto {
   id: number;
   name: string;
   companyId: number;
   location: string;
   address: string;
   phone: string;
-  email?: string;
-  website?: string;
+  email: string | null;
+  website: string | null;
   totalHoles: number;
   totalCourses: number;
   status: ClubStatus;
-  operatingHours?: OperatingHoursDto;
-  seasonInfo?: SeasonInfoDto;
+  operatingHours: Record<string, unknown> | null;
+  seasonInfo: Record<string, unknown> | null;
   facilities: string[];
   isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  company?: any;
-  courses?: any[];
+  createdAt: string | null;
+  updatedAt: string | null;
+  company?: Company;
+  courses?: CourseResponseDto[];
+
+  /**
+   * 엔티티를 DTO로 변환
+   */
+  static fromEntity(entity: ClubWithRelations): ClubResponseDto {
+    const dto = new ClubResponseDto();
+    dto.id = entity.id;
+    dto.name = entity.name;
+    dto.companyId = entity.companyId;
+    dto.location = entity.location;
+    dto.address = entity.address;
+    dto.phone = entity.phone;
+    dto.email = entity.email;
+    dto.website = entity.website;
+    dto.totalHoles = entity.totalHoles;
+    dto.totalCourses = entity.totalCourses;
+    dto.status = entity.status as ClubStatus;
+    dto.operatingHours = entity.operatingHours as Record<string, unknown> | null;
+    dto.seasonInfo = entity.seasonInfo as Record<string, unknown> | null;
+    dto.facilities = entity.facilities;
+    dto.isActive = entity.isActive;
+    dto.createdAt = entity.createdAt?.toISOString() ?? null;
+    dto.updatedAt = entity.updatedAt?.toISOString() ?? null;
+    dto.company = entity.company;
+    dto.courses = entity.courses?.map(course => CourseResponseDto.fromEntity(course));
+    return dto;
+  }
+
+  /**
+   * 엔티티 배열을 DTO 배열로 변환
+   */
+  static fromEntities(entities: ClubWithRelations[]): ClubResponseDto[] {
+    return entities.map(entity => ClubResponseDto.fromEntity(entity));
+  }
 }
 
 export interface ClubListResponseDto {

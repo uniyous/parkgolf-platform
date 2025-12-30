@@ -8,6 +8,7 @@ import {
   SearchBookingDto,
   BookingConfirmedEvent,
   SlotReserveRequest,
+  BookingWithRelations,
 } from '../dto/booking.dto';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, retry, catchError, of } from 'rxjs';
@@ -354,7 +355,7 @@ export class BookingService {
 
       this.logger.log(`Booking ${booking.bookingNumber} created with PENDING status (Saga started)`);
 
-      return this.toResponseDto(booking);
+      return BookingResponseDto.fromEntity(booking);
     } catch (error) {
       this.logger.error(`Failed to create booking: ${error.message}`);
       if (error instanceof HttpException) {
@@ -375,7 +376,7 @@ export class BookingService {
       }
     });
 
-    return booking ? this.toResponseDto(booking) : null;
+    return booking ? BookingResponseDto.fromEntity(booking) : null;
   }
 
   async getBookingByNumber(bookingNumber: string): Promise<BookingResponseDto | null> {
@@ -389,7 +390,7 @@ export class BookingService {
       }
     });
 
-    return booking ? this.toResponseDto(booking) : null;
+    return booking ? BookingResponseDto.fromEntity(booking) : null;
   }
 
   async getBookingsByUserId(userId: number): Promise<BookingResponseDto[]> {
@@ -401,7 +402,7 @@ export class BookingService {
       }
     });
 
-    return bookings.map(booking => this.toResponseDto(booking));
+    return bookings.map(booking => BookingResponseDto.fromEntity(booking));
   }
 
   async searchBookings(searchDto: SearchBookingDto): Promise<{
@@ -476,28 +477,11 @@ export class BookingService {
     ]);
 
     return {
-      bookings: bookings.map(booking => this.toResponseDto(booking, true)),
+      bookings: BookingResponseDto.fromEntities(bookings, true),
       total,
       page,
       limit
     };
-  }
-
-  /**
-   * 예약 취소 가능 여부 계산
-   * - 취소/완료 상태는 취소 불가
-   * - 예약일 3일 전까지만 취소 가능
-   */
-  private calculateCanCancel(bookingDate: Date, status: BookingStatus): boolean {
-    if (status === BookingStatus.CANCELLED || status === BookingStatus.COMPLETED) {
-      return false;
-    }
-
-    const threeDaysFromNow = new Date();
-    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
-    threeDaysFromNow.setHours(0, 0, 0, 0);
-
-    return new Date(bookingDate) >= threeDaysFromNow;
   }
 
   async updateBooking(id: number, dto: UpdateBookingDto): Promise<BookingResponseDto> {
@@ -541,7 +525,7 @@ export class BookingService {
       return updatedBooking;
     });
 
-    return this.toResponseDto(booking);
+    return BookingResponseDto.fromEntity(booking);
   }
 
   async cancelBooking(id: number, userId: number, reason?: string): Promise<BookingResponseDto> {
@@ -646,7 +630,7 @@ export class BookingService {
       this.logger.log(`'booking.cancelled' event emitted for booking ${booking.bookingNumber}`);
     }
 
-    return this.toResponseDto(booking);
+    return BookingResponseDto.fromEntity(booking);
   }
 
   // GameTimeSlot 가용성 조회 (Game 기반)
@@ -821,58 +805,5 @@ export class BookingService {
       }
     });
     this.logger.log(`GameTimeSlot cache synced for gameTimeSlotId: ${data.gameTimeSlotId}`);
-  }
-
-  private toResponseDto(booking: any, includeCanCancel: boolean = false): BookingResponseDto {
-    const response: BookingResponseDto = {
-      id: booking.id,
-      bookingNumber: booking.bookingNumber,
-      userId: booking.userId,
-      gameId: booking.gameId,
-      gameTimeSlotId: booking.gameTimeSlotId,
-      gameName: booking.gameName,
-      gameCode: booking.gameCode,
-      frontNineCourseId: booking.frontNineCourseId,
-      frontNineCourseName: booking.frontNineCourseName,
-      backNineCourseId: booking.backNineCourseId,
-      backNineCourseName: booking.backNineCourseName,
-      clubId: booking.clubId,
-      clubName: booking.clubName,
-      bookingDate: booking.bookingDate.toISOString().split('T')[0],
-      startTime: booking.startTime,
-      endTime: booking.endTime,
-      playerCount: booking.playerCount,
-      pricePerPerson: Number(booking.pricePerPerson),
-      serviceFee: Number(booking.serviceFee),
-      totalPrice: Number(booking.totalPrice),
-      status: booking.status,
-      paymentMethod: booking.paymentMethod,
-      specialRequests: booking.specialRequests,
-      notes: booking.notes,
-      // 회원 예약자 정보
-      userEmail: booking.userEmail,
-      userName: booking.userName,
-      userPhone: booking.userPhone,
-      // 비회원 예약자 정보
-      guestName: booking.guestName,
-      guestEmail: booking.guestEmail,
-      guestPhone: booking.guestPhone,
-      // Saga 관련
-      idempotencyKey: booking.idempotencyKey,
-      sagaFailReason: booking.sagaFailReason,
-      // 관계 데이터
-      payments: booking.payments || [],
-      histories: booking.histories || [],
-      // 타임스탬프
-      createdAt: booking.createdAt.toISOString(),
-      updatedAt: booking.updatedAt.toISOString(),
-    };
-
-    // 취소 가능 여부 계산 (요청 시)
-    if (includeCanCancel) {
-      response.canCancel = this.calculateCanCancel(booking.bookingDate, booking.status);
-    }
-
-    return response;
   }
 }

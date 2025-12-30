@@ -1,15 +1,37 @@
 import { apiClient } from './client';
 
+/**
+ * TimeSlot 가용성 응답 DTO
+ */
 export interface TimeSlot {
   id: number;
-  time: string;
+  gameTimeSlotId: number;
+  gameId: number;
+  gameName: string;
+  gameCode: string;
+  frontNineCourseName: string;
+  backNineCourseName: string;
+  clubId: number;
+  clubName: string;
   date: string;
-  available: boolean;
+  startTime: string;
+  endTime: string;
+  maxPlayers: number;
+  bookedPlayers: number;
+  availablePlayers: number;
+  isAvailable: boolean;
   price: number;
-  isPremium?: boolean;
-  remaining: number;
+  isPremium: boolean;
+  status: string;
+  // Legacy fields
+  time?: string;
+  available?: boolean;      // isAvailable alias
+  remaining?: number;       // availablePlayers alias
 }
 
+/**
+ * 예약 생성 요청 DTO
+ */
 export interface CreateBookingRequest {
   gameId: number;
   gameTimeSlotId: number;
@@ -17,27 +39,41 @@ export interface CreateBookingRequest {
   playerCount: number;
   paymentMethod?: string;
   specialRequests?: string;
-  userEmail: string;
-  userName: string;
+  userEmail?: string;
+  userName?: string;
   userPhone?: string;
+  idempotencyKey?: string;  // 멱등성 키
 }
 
-export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
+/**
+ * 예약 상태 타입 - booking-service의 BookingStatus와 일치
+ */
+export type BookingStatus =
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'CANCELLED'
+  | 'COMPLETED'
+  | 'NO_SHOW'
+  | 'SAGA_PENDING'   // Saga 진행 중
+  | 'SAGA_FAILED';   // Saga 실패
 
+/**
+ * 예약 응답 DTO - booking-service의 BookingResponseDto와 일치
+ */
 export interface BookingResponse {
   id: number;
   bookingNumber: string;
-  userId: number;
+  userId?: number;
   gameId: number;
   gameTimeSlotId: number;
-  gameName: string;
-  gameCode: string;
-  frontNineCourseId: number;
-  frontNineCourseName: string;
-  backNineCourseId: number;
-  backNineCourseName: string;
-  clubId: number;
-  clubName: string;
+  gameName?: string;
+  gameCode?: string;
+  frontNineCourseId?: number;
+  frontNineCourseName?: string;
+  backNineCourseId?: number;
+  backNineCourseName?: string;
+  clubId?: number;
+  clubName?: string;
   bookingDate: string;
   startTime: string;
   endTime: string;
@@ -48,11 +84,18 @@ export interface BookingResponse {
   status: BookingStatus;
   paymentMethod?: string;
   specialRequests?: string;
-  userEmail: string;
-  userName: string;
+  notes?: string;
+  userEmail?: string;
+  userName?: string;
   userPhone?: string;
+  guestName?: string;
+  guestEmail?: string;
+  guestPhone?: string;
+  idempotencyKey?: string;
+  sagaFailReason?: string;
   payments: unknown[];
   histories: unknown[];
+  canCancel?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -65,6 +108,8 @@ export interface UpdateBookingRequest {
   playerCount?: number;
   specialRequests?: string;
   userPhone?: string;
+  userName?: string;
+  userEmail?: string;
 }
 
 export interface SearchBookingParams {

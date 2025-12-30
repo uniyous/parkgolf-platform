@@ -41,22 +41,6 @@ export function paginationMeta(total: number, page: number, limit: number) {
 }
 
 /**
- * 객체에서 password 필드 제거
- */
-export function omitPassword<T extends { password?: string }>(obj: T): Omit<T, 'password'> {
-  if (!obj) return obj;
-  const { password, ...result } = obj;
-  return result;
-}
-
-/**
- * 배열에서 password 필드 제거
- */
-export function omitPasswordFromArray<T extends { password?: string }>(arr: T[]): Omit<T, 'password'>[] {
-  return arr.map(omitPassword);
-}
-
-/**
  * 날짜를 ISO 문자열로 변환 (null-safe)
  */
 export function toISOString(date: Date | null | undefined): string | null {

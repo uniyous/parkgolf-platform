@@ -243,6 +243,3 @@ export const bookingApi = {
     }
   }
 } as const;
-
-// courseApi 임포트 (순환 참조 방지)
-import { courseApi } from './courseApi';

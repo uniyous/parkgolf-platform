@@ -87,10 +87,9 @@ const convertUserToAdmin = (user: any): Admin => {
 
   return {
     id: user.id,
-    username: user.username || user.email,
     email: user.email,
     name: user.name || user.username || 'Unknown',
-    role: adminRole,
+    roleCode: adminRole,
     scope: scope,
     permissions: permissions,
     isActive: user.isActive ?? true,
@@ -103,6 +102,9 @@ const convertUserToAdmin = (user: any): Admin => {
     department: user.department,
     description: user.description,
     company: user.company,
+    // Legacy fields for backward compatibility
+    role: adminRole,
+    username: user.username || user.email,
   };
 };
 

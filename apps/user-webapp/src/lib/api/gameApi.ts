@@ -1,20 +1,40 @@
 import { apiClient } from './client';
 
+/**
+ * Game 응답 DTO - course-service의 GameResponseDto와 일치
+ */
 export interface Game {
   id: number;
   name: string;
+  code: string;
+  description?: string;
+  // Course references
+  frontNineCourseId: number;
+  frontNineCourseName: string;
+  backNineCourseId: number;
+  backNineCourseName: string;
+  totalHoles: number;
+  // Time & Players
+  estimatedDuration: number;
+  breakDuration: number;
+  maxPlayers: number;
+  // Pricing
+  basePrice: number;
+  weekendPrice?: number;
+  holidayPrice?: number;
+  // Club info
   clubId: number;
   clubName: string;
   clubLocation?: string;
-  description?: string;
-  duration: number;
-  maxPlayers: number;
-  pricePerPerson: number;
-  basePrice?: number;
-  weekendPrice?: number;
-  holidayPrice?: number;
+  // Status
+  status: string;
   isActive: boolean;
-  courses: GameCourse[];
+  createdAt: string;
+  updatedAt: string;
+  // Legacy/convenience fields
+  duration?: number;          // estimatedDuration alias
+  pricePerPerson?: number;    // basePrice alias
+  courses?: GameCourse[];     // deprecated, use frontNine/backNine instead
 }
 
 export interface GameSearchParams {
@@ -36,18 +56,34 @@ export interface GameCourse {
   sequence: number;
 }
 
+/**
+ * GameTimeSlot 응답 DTO - course-service의 GameTimeSlotResponseDto와 일치
+ */
 export interface GameTimeSlot {
   id: number;
   gameId: number;
+  gameName: string;
+  gameCode: string;
+  frontNineCourseName: string;
+  backNineCourseName: string;
+  clubId?: number;
+  clubName?: string;
+  date: string;
   startTime: string;
   endTime: string;
-  dayOfWeek: number;
-  isActive: boolean;
-  maxCapacity: number;
-  currentBookings: number;
-  available: boolean;
+  maxPlayers: number;
+  bookedPlayers: number;
+  availablePlayers: number;
+  isAvailable: boolean;
   price: number;
-  isPremium?: boolean;
+  isPremium: boolean;
+  status: string;
+  // Legacy fields
+  dayOfWeek?: number;
+  isActive?: boolean;
+  maxCapacity?: number;       // maxPlayers alias
+  currentBookings?: number;   // bookedPlayers alias
+  available?: boolean;        // isAvailable alias
 }
 
 export interface GamesResponse {

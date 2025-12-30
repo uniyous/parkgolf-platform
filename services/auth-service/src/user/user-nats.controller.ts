@@ -1,7 +1,8 @@
 import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { UserService } from './user.service';
-import { successResponse, errorResponse, omitPassword, paginationMeta } from '../common/utils/response.util';
+import { successResponse, errorResponse, paginationMeta } from '../common/utils/response.util';
+import { UserResponseDto } from './dto/create-user.dto';
 
 /**
  * User Management NATS Controller
@@ -110,7 +111,7 @@ export class UserNatsController {
       if (!user) {
         return errorResponse('NOT_FOUND', 'User not found');
       }
-      return successResponse(omitPassword(user));
+      return successResponse(UserResponseDto.fromEntity(user));
     } catch (error) {
       this.logger.error(`Find user by email failed: ${data.email}`, error);
       return errorResponse('FETCH_FAILED', error.message);
@@ -125,7 +126,7 @@ export class UserNatsController {
       if (!user) {
         return errorResponse('INVALID_CREDENTIALS', 'Invalid email or password');
       }
-      return successResponse(omitPassword(user));
+      return successResponse(UserResponseDto.fromEntity(user));
     } catch (error) {
       this.logger.error(`Validate credentials failed: ${data.email}`, error);
       return errorResponse('VALIDATION_FAILED', error.message);

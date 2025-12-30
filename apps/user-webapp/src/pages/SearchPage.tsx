@@ -510,14 +510,18 @@ const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSe
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
             {filteredSlots.map((slot) => {
-              const remaining = slot.maxCapacity - slot.currentBookings;
-              const availabilityColor = getAvailabilityColor(remaining, slot.maxCapacity);
+              const maxCapacity = slot.maxPlayers ?? slot.maxCapacity ?? 4;
+              const currentBookings = slot.bookedPlayers ?? slot.currentBookings ?? 0;
+              const remaining = slot.availablePlayers ?? (maxCapacity - currentBookings);
+              const availabilityColor = getAvailabilityColor(remaining, maxCapacity);
+
+              const isAvailable = slot.isAvailable ?? slot.available ?? false;
 
               return (
                 <button
                   key={slot.id}
                   onClick={() => onTimeSlotSelect(game, slot)}
-                  disabled={!slot.available}
+                  disabled={!isAvailable}
                   className={`
                     p-3 rounded-xl cursor-pointer transition-all duration-200 backdrop-blur-sm border
                     ${
@@ -525,7 +529,7 @@ const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSe
                         ? 'bg-amber-400/20 border-amber-400/50 hover:bg-amber-400/30'
                         : 'bg-white/10 border-white/30 hover:bg-white/20'
                     }
-                    ${!slot.available && 'opacity-50 cursor-not-allowed'}
+                    ${!isAvailable && 'opacity-50 cursor-not-allowed'}
                   `}
                 >
                   <div className="text-base font-semibold text-white">{slot.startTime}</div>

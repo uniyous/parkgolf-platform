@@ -38,7 +38,7 @@ export interface Course {
   location?: string | null;
   description?: string | null;
   holeCount?: number;
-  holes?: Hole[] | number; // Hole 배열 또는 홀 수
+  holes?: Hole[]; // Hole 배열
   par?: number | null;
   totalPar?: number; // 전체 파 수
   courseRating?: number | null;
@@ -87,14 +87,16 @@ export interface Hole {
   id: number;
   holeNumber: number;
   par: number;
-  distance?: number | null;
-  imageUrl?: string | null;
-  mapUrl?: string | null;
-  description?: string | null;
+  distance: number;
+  handicap: number;
+  description?: string;
+  tips?: string;
+  imageUrl?: string;
+  mapUrl?: string;
   courseId: number;
   createdAt: string;
   updatedAt: string;
-  // teeBoxes?: TeeBox[];
+  teeBoxes?: TeeBox[];
 }
 
 export interface TeeBox {
@@ -169,25 +171,29 @@ export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING';
 
 export interface User {
   id: number;
-  username: string;
   email: string;
-  name: string;
+  name: string | null;
+  roleCode: string;
+  isActive: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+  // 추가 필드 (확장된 사용자 정보)
   phoneNumber?: string;
   membershipTier?: UserMembershipTier;
   status?: UserStatus;
-  isActive: boolean;
-  lastLoginAt?: Date | string | null;
-  createdAt: Date | string;
-  updatedAt?: Date | string;
+  lastLoginAt?: string | null;
   // 멤버십 관련 필드
-  membershipStartDate?: Date | null;
-  membershipEndDate?: Date | null;
+  membershipStartDate?: string | null;
+  membershipEndDate?: string | null;
   totalBookings?: number;
   totalSpent?: number;
   loyaltyPoints?: number;
-  
-  // Admin 관련 필드 (관리자 사용자인 경우)
+  // Legacy fields (하위 호환성)
+  /** @deprecated Use email.split('@')[0] for display purposes */
+  username?: string;
+  /** @deprecated Use roleCode instead */
   role?: AdminRole | UserMembershipTier;
+  // Admin 관련 필드 (관리자 사용자인 경우)
   scope?: AdminScope;
   permissions?: Permission[];
   companyId?: number;
@@ -266,49 +272,60 @@ export type CompanyAdminRole = 'MANAGER' | 'STAFF' | 'VIEWER';
 
 export interface Admin {
   id: number;
-  username: string;
   email: string;
   name: string;
-  role: AdminRole;
+  roleCode: AdminRole;
+  role: AdminRole;              // 하위 호환성 (roleCode와 동일 값)
+  isActive: boolean;
+  lastLoginAt?: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  // 추가 필드
+  phone?: string | null;
+  department?: string | null;
+  description?: string | null;
+  // 권한 관련
   scope?: AdminScope;           // 역할에서 자동 추론 가능
   permissions: Permission[];
-  isActive: boolean;
-  lastLoginAt?: string;
-  createdAt: string;
-  updatedAt: string;
-
-  // 추가 필드
-  phone?: string;
-  department?: string;
-  description?: string;
-
   // 관계 필드 (선택)
   companyId?: number;
   company?: Company;
   courseIds?: number[];  // 접근 가능한 코스 ID 목록
+  // Legacy field
+  username?: string;            // email.split('@')[0] 으로 생성
 }
 
 export interface CreateAdminDto {
   email: string;
   name: string;
   password: string;
-  role: AdminRole;
+  roleCode: AdminRole;
   permissions?: Permission[];
   isActive?: boolean;
   phone?: string;
+  phoneNumber?: string;        // 하위 호환성 (phone과 동일)
   department?: string;
   description?: string;
+  membershipTier?: UserMembershipTier;
+  status?: UserStatus;
+  /** @deprecated Use roleCode instead */
+  role?: AdminRole;
 }
 
 export interface UpdateAdminDto {
   email?: string;
   name?: string;
-  role?: AdminRole;
+  roleCode?: AdminRole;
   permissions?: Permission[];
   isActive?: boolean;
   phone?: string;
+  phoneNumber?: string;        // 하위 호환성 (phone과 동일)
   department?: string;
   description?: string;
+  membershipTier?: UserMembershipTier;
+  status?: UserStatus;
+  /** @deprecated Use roleCode instead */
+  role?: AdminRole;
 }
 
 export interface ChangePasswordDto {
@@ -401,6 +418,19 @@ export interface TimeSlotAvailability {
   isAvailable: boolean;
 }
 
+export const BookingStatusEnum = {
+  PENDING: 'PENDING',
+  CONFIRMED: 'CONFIRMED',
+  CANCELLED: 'CANCELLED',
+  COMPLETED: 'COMPLETED',
+  NO_SHOW: 'NO_SHOW',
+  SAGA_PENDING: 'SAGA_PENDING',
+  SAGA_FAILED: 'SAGA_FAILED',
+} as const;
+
+export type BookingStatusType = typeof BookingStatusEnum[keyof typeof BookingStatusEnum];
+
+/** @deprecated Use BookingStatusEnum instead */
 export interface BookingStatus {
   PENDING: 'PENDING';
   CONFIRMED: 'CONFIRMED';
@@ -411,65 +441,136 @@ export interface BookingStatus {
 
 export interface Booking {
   id: number;
-  userId: number;
-  courseId: number;
+  bookingNumber: string;
+  userId?: number;
+  // Game-based fields (새 스키마)
+  gameId: number;
+  gameTimeSlotId: number;
+  gameName?: string;
+  gameCode?: string;
+  frontNineCourseId?: number;
+  frontNineCourseName?: string;
+  backNineCourseId?: number;
+  backNineCourseName?: string;
+  clubId?: number;
+  clubName?: string;
+  // Date & Time
   bookingDate: string; // YYYY-MM-DD format
-  timeSlot: string;    // HH:MM format
-  startTime?: string;  // HH:MM format (optional for display)
-  endTime?: string;    // HH:MM format (optional for display)
+  startTime: string;   // HH:MM format
+  endTime: string;     // HH:MM format
+  // Players & Pricing
   playerCount: number;
-  numberOfPlayers?: number; // alias for playerCount
+  pricePerPerson: number;
+  serviceFee: number;
   totalPrice: number;
-  totalAmount: number; // alias for totalPrice
-  status: keyof BookingStatus;
-  notes?: string;
-  customerName?: string;
-  customerPhone?: string;
-  customerEmail?: string;
-  specialRequests?: string;
+  // Status
+  status: BookingStatusType;
+  // Contact info
+  userEmail?: string;
+  userName?: string;
+  userPhone?: string;
+  guestName?: string;
+  guestEmail?: string;
+  guestPhone?: string;
+  // Additional fields
   paymentMethod?: 'CASH' | 'CARD' | 'TRANSFER' | 'MOBILE';
-  paymentStatus?: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
+  specialRequests?: string;
+  notes?: string;
+  idempotencyKey?: string;
+  sagaFailReason?: string;
+  canCancel?: boolean;
   createdAt: string;
   updatedAt: string;
+  // Legacy fields (하위 호환성)
+  /** @deprecated Use gameId instead */
+  courseId?: number;
+  /** @deprecated Use startTime instead */
+  timeSlot?: string;
+  /** @deprecated Use playerCount instead */
+  numberOfPlayers?: number;
+  /** @deprecated Use totalPrice instead */
+  totalAmount?: number;
+  /** @deprecated Use userName instead */
+  customerName?: string;
+  /** @deprecated Use userPhone instead */
+  customerPhone?: string;
+  /** @deprecated Use userEmail instead */
+  customerEmail?: string;
+  paymentStatus?: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
 }
 
 export interface CreateBookingDto {
-  userId: number;
-  courseId: number;
-  timeSlotId: number;
+  gameId: number;
+  gameTimeSlotId: number;
   bookingDate: string;
-  timeSlot: string;
   playerCount: number;
+  paymentMethod?: 'CASH' | 'CARD' | 'TRANSFER' | 'MOBILE';
+  specialRequests?: string;
+  // User info (for guest bookings or override)
+  userId?: number;
+  userEmail?: string;
+  userName?: string;
+  userPhone?: string;
+  idempotencyKey?: string;
+  // Legacy fields (하위 호환성)
+  /** @deprecated Use gameTimeSlotId instead */
+  timeSlotId?: number;
+  /** @deprecated Use gameId instead */
+  courseId?: number;
+  /** @deprecated Use startTime from timeSlot instead */
+  timeSlot?: string;
   notes?: string;
+  /** @deprecated Use userName instead */
   customerName?: string;
+  /** @deprecated Use userPhone instead */
   customerPhone?: string;
+  /** @deprecated Use userEmail instead */
   customerEmail?: string;
   numberOfPlayers?: number;
-  specialRequests?: string;
-  paymentMethod?: 'CASH' | 'CARD' | 'TRANSFER' | 'MOBILE';
   paymentStatus?: 'PENDING' | 'PAID' | 'FAILED';
 }
 
 export interface BookingFilters {
   search?: string;
-  status?: keyof BookingStatus;
-  courseId?: number;
-  dateFrom?: string;
-  dateTo?: string;
+  status?: BookingStatusType;
+  gameId?: number;
+  clubId?: number;
+  startDate?: string;  // YYYY-MM-DD
+  endDate?: string;    // YYYY-MM-DD
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+  // Legacy fields
+  /** @deprecated Use gameId instead */
+  courseId?: number;
+  /** @deprecated Use startDate instead */
+  dateFrom?: string;
+  /** @deprecated Use endDate instead */
+  dateTo?: string;
 }
 
 export interface UpdateBookingDto {
+  playerCount?: number;
+  specialRequests?: string;
+  notes?: string;
+  status?: BookingStatusType;
+  userEmail?: string;
+  userName?: string;
+  userPhone?: string;
+  // Legacy fields
+  /** @deprecated Use gameId instead */
   courseId?: number;
+  /** @deprecated Use gameTimeSlotId instead */
   timeSlotId?: number;
   bookingDate?: string;
+  /** @deprecated Use startTime instead */
   timeSlot?: string;
-  playerCount?: number;
-  notes?: string;
-  status?: keyof BookingStatus;
+  /** @deprecated Use userName instead */
   customerName?: string;
+  /** @deprecated Use userPhone instead */
   customerPhone?: string;
+  /** @deprecated Use userEmail instead */
   customerEmail?: string;
 }
 

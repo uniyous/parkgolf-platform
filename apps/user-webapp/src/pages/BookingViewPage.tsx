@@ -32,6 +32,16 @@ const statusConfig: Record<BookingStatus, { label: string; className: string; de
     className: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
     description: '예약 시간에 방문하지 않았습니다.',
   },
+  SAGA_PENDING: {
+    label: '처리중',
+    className: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
+    description: '예약이 처리 중입니다. 잠시만 기다려 주세요.',
+  },
+  SAGA_FAILED: {
+    label: '처리실패',
+    className: 'bg-red-500/20 text-red-300 border-red-500/30',
+    description: '예약 처리에 실패했습니다. 다시 시도해 주세요.',
+  },
 };
 
 export const BookingViewPage: React.FC = () => {

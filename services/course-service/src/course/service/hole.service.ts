@@ -58,7 +58,7 @@ export class HoleService {
     return this.prisma.hole.findMany({
       where,
       orderBy: { holeNumber: 'asc' },
-      // include: { teeBoxes: true }, // 필요시 티박스 정보 포함
+      include: { teeBoxes: true },
     });
   }
 
@@ -67,17 +67,17 @@ export class HoleService {
     const hole = await this.prisma.hole.findUnique({
       where: {
         id: holeId,
-        // AND courseId: courseId // Prisma 5.8.0+ extendedWhereUnique 또는 복합 ID 사용 시 가능
-        // 현재는 아래와 같이 조회 후 courseId 확인
       },
-      // include: { teeBoxes: true },
+      include: {
+        teeBoxes: true,
+        course: true,
+      },
     });
 
     if (!hole) {
       throw new NotFoundException(`Hole with ID ${holeId} not found.`);
     }
     if (hole.courseId !== courseId) {
-      // 요청한 courseId와 실제 홀의 courseId가 다르면 권한 문제 또는 잘못된 요청
       throw new NotFoundException(`Hole with ID ${holeId} does not belong to course ID ${courseId}.`);
     }
     return hole;

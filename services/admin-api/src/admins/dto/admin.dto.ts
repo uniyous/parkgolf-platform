@@ -12,15 +12,6 @@ import {
 
 export class CreateAdminDto {
   @ApiProperty({
-    description: 'Admin username',
-    example: 'adminuser',
-  })
-  @IsString()
-  @IsNotEmpty({ message: 'Username is required' })
-  @MinLength(3, { message: 'Username must be at least 3 characters' })
-  username: string;
-
-  @ApiProperty({
     description: 'Admin email address',
     example: 'admin@example.com',
   })
@@ -31,11 +22,11 @@ export class CreateAdminDto {
   @ApiProperty({
     description: 'Admin password',
     example: 'password123',
-    minLength: 6,
+    minLength: 8,
   })
   @IsString()
   @IsNotEmpty({ message: 'Password is required' })
-  @MinLength(6, { message: 'Password must be at least 6 characters' })
+  @MinLength(8, { message: 'Password must be at least 8 characters' })
   password: string;
 
   @ApiProperty({
@@ -47,12 +38,13 @@ export class CreateAdminDto {
   name: string;
 
   @ApiPropertyOptional({
-    description: 'Admin role',
+    description: 'Admin role code',
     example: 'ADMIN',
+    enum: ['ADMIN', 'SUPPORT', 'MANAGER', 'STAFF', 'VIEWER'],
   })
   @IsOptional()
   @IsString()
-  role?: string;
+  roleCode?: string;
 
   @ApiPropertyOptional({
     description: 'Admin phone number',
@@ -61,18 +53,25 @@ export class CreateAdminDto {
   @IsOptional()
   @IsString()
   phone?: string;
-}
 
-export class UpdateAdminDto {
   @ApiPropertyOptional({
-    description: 'Admin username',
-    example: 'adminuser',
+    description: 'Department',
+    example: 'IT',
   })
   @IsOptional()
   @IsString()
-  @MinLength(3, { message: 'Username must be at least 3 characters' })
-  username?: string;
+  department?: string;
 
+  @ApiPropertyOptional({
+    description: 'Description',
+    example: 'System administrator',
+  })
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+export class UpdateAdminDto {
   @ApiPropertyOptional({
     description: 'Admin email address',
     example: 'admin@example.com',
@@ -90,12 +89,13 @@ export class UpdateAdminDto {
   name?: string;
 
   @ApiPropertyOptional({
-    description: 'Admin role',
+    description: 'Admin role code',
     example: 'ADMIN',
+    enum: ['ADMIN', 'SUPPORT', 'MANAGER', 'STAFF', 'VIEWER'],
   })
   @IsOptional()
   @IsString()
-  role?: string;
+  roleCode?: string;
 
   @ApiPropertyOptional({
     description: 'Admin phone number',
@@ -104,6 +104,22 @@ export class UpdateAdminDto {
   @IsOptional()
   @IsString()
   phone?: string;
+
+  @ApiPropertyOptional({
+    description: 'Department',
+    example: 'IT',
+  })
+  @IsOptional()
+  @IsString()
+  department?: string;
+
+  @ApiPropertyOptional({
+    description: 'Description',
+    example: 'System administrator',
+  })
+  @IsOptional()
+  @IsString()
+  description?: string;
 }
 
 export class UpdateAdminStatusDto {
@@ -128,31 +144,38 @@ export class UpdateAdminPermissionsDto {
   permissionIds: number[];
 }
 
+/** Admin 응답 DTO - auth-service AdminResponseDto와 일치 */
 export class AdminResponseDto {
-  @ApiProperty()
-  id: string;
+  @ApiProperty({ description: 'Admin ID' })
+  id: number;
 
-  @ApiProperty()
-  username: string;
-
-  @ApiProperty()
+  @ApiProperty({ description: 'Email address' })
   email: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Admin name' })
   name: string;
 
-  @ApiProperty()
-  role: string;
+  @ApiProperty({ description: 'Role code' })
+  roleCode: string;
 
-  @ApiPropertyOptional()
-  phone?: string;
+  @ApiPropertyOptional({ description: 'Phone number' })
+  phone: string | null;
 
-  @ApiProperty()
+  @ApiPropertyOptional({ description: 'Department' })
+  department: string | null;
+
+  @ApiPropertyOptional({ description: 'Description' })
+  description: string | null;
+
+  @ApiProperty({ description: 'Active status' })
   isActive: boolean;
 
-  @ApiProperty()
-  createdAt: Date;
+  @ApiPropertyOptional({ description: 'Last login at' })
+  lastLoginAt: string | null;
 
-  @ApiProperty()
-  updatedAt: Date;
+  @ApiPropertyOptional({ description: 'Created at' })
+  createdAt: string | null;
+
+  @ApiPropertyOptional({ description: 'Updated at' })
+  updatedAt: string | null;
 }

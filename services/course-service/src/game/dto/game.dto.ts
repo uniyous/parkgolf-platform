@@ -9,6 +9,9 @@ import {
   IsNotEmpty,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { Game, Club, Course } from '@prisma/client';
+import { ClubResponseDto, ClubWithRelations } from '../../club/dto/club.dto';
+import { CourseResponseDto, CourseWithRelations } from '../../course/dto/course.dto';
 
 export enum GameStatus {
   ACTIVE = 'ACTIVE',
@@ -260,4 +263,82 @@ export class SearchGamesQueryDto {
   @Min(1)
   @Max(100)
   limit?: number;
+}
+
+/** Decimal/number를 number로 변환 */
+function toNumber(value: number | { toNumber?: () => number } | null | undefined): number | null {
+  if (value == null) return null;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'object' && typeof value.toNumber === 'function') {
+    return value.toNumber();
+  }
+  return Number(value);
+}
+
+/** Game 엔티티 타입 (관계 포함) */
+export type GameWithRelations = Game & {
+  club?: ClubWithRelations;
+  frontNineCourse?: CourseWithRelations;
+  backNineCourse?: CourseWithRelations;
+};
+
+/** Game 응답 DTO */
+export class GameResponseDto {
+  id: number;
+  name: string;
+  code: string;
+  description: string | null;
+  frontNineCourseId: number;
+  backNineCourseId: number;
+  frontNineCourse: CourseResponseDto | null;
+  backNineCourse: CourseResponseDto | null;
+  totalHoles: number;
+  estimatedDuration: number;
+  breakDuration: number;
+  maxPlayers: number;
+  basePrice: number;
+  weekendPrice: number | null;
+  holidayPrice: number | null;
+  clubId: number;
+  club: ClubResponseDto | null;
+  status: GameStatus;
+  isActive: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+
+  /**
+   * 엔티티를 DTO로 변환
+   */
+  static fromEntity(entity: GameWithRelations): GameResponseDto {
+    const dto = new GameResponseDto();
+    dto.id = entity.id;
+    dto.name = entity.name;
+    dto.code = entity.code;
+    dto.description = entity.description;
+    dto.frontNineCourseId = entity.frontNineCourseId;
+    dto.backNineCourseId = entity.backNineCourseId;
+    dto.frontNineCourse = entity.frontNineCourse ? CourseResponseDto.fromEntity(entity.frontNineCourse) : null;
+    dto.backNineCourse = entity.backNineCourse ? CourseResponseDto.fromEntity(entity.backNineCourse) : null;
+    dto.totalHoles = entity.totalHoles;
+    dto.estimatedDuration = entity.estimatedDuration;
+    dto.breakDuration = entity.breakDuration;
+    dto.maxPlayers = entity.maxPlayers;
+    dto.basePrice = toNumber(entity.basePrice) ?? 0;
+    dto.weekendPrice = toNumber(entity.weekendPrice);
+    dto.holidayPrice = toNumber(entity.holidayPrice);
+    dto.clubId = entity.clubId;
+    dto.club = entity.club ? ClubResponseDto.fromEntity(entity.club) : null;
+    dto.status = entity.status as GameStatus;
+    dto.isActive = entity.isActive;
+    dto.createdAt = entity.createdAt?.toISOString() ?? null;
+    dto.updatedAt = entity.updatedAt?.toISOString() ?? null;
+    return dto;
+  }
+
+  /**
+   * 엔티티 배열을 DTO 배열로 변환
+   */
+  static fromEntities(entities: GameWithRelations[]): GameResponseDto[] {
+    return entities.map(entity => GameResponseDto.fromEntity(entity));
+  }
 }
