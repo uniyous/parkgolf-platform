@@ -1,15 +1,3 @@
-export interface ErrorResponse {
-  success: boolean;
-  error: {
-    code: string;
-    message: string;
-    details?: any;
-  };
-  timestamp: string;
-  path: string;
-  method: string;
-}
-
 export enum ErrorCodes {
   // System errors (SYS)
   SYSTEM_ERROR = 'SYS_001',
