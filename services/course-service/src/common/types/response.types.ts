@@ -353,41 +353,6 @@ export interface GameWeeklyScheduleResponse {
 }
 
 // ============================================
-// API Response Wrapper Types
-// ============================================
-
-/** 성공 응답 타입 */
-export interface SuccessResponse<T> {
-  success: true;
-  data: T;
-  total?: number;
-  page?: number;
-  limit?: number;
-  totalPages?: number;
-}
-
-/** 에러 응답 타입 */
-export interface ErrorResponse {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    details?: unknown;
-  };
-}
-
-/** API 응답 타입 */
-export type ApiResponse<T> = SuccessResponse<T> | ErrorResponse;
-
-/** 페이지네이션 메타 타입 */
-export interface PaginationMeta {
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-// ============================================
 // NATS Payload Types
 // NATS 메시지는 외부에서 들어오므로 data 필드는 unknown으로 정의
 // 컨트롤러에서 필요시 타입 단언 사용
