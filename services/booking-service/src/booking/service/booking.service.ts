@@ -9,6 +9,7 @@ import {
   BookingConfirmedEvent,
   SlotReserveRequest,
   BookingWithRelations,
+  GameTimeSlotAvailabilityDto,
 } from '../dto/booking.dto';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, retry, catchError, of } from 'rxjs';
@@ -637,7 +638,7 @@ export class BookingService {
   async getGameTimeSlotAvailability(
     gameId: number,
     date: string
-  ): Promise<any[]> {
+  ): Promise<GameTimeSlotAvailabilityDto[]> {
     const targetDate = new Date(date + 'T00:00:00.000Z');
 
     const slots = await this.prisma.gameTimeSlotCache.findMany({
@@ -650,27 +651,7 @@ export class BookingService {
       }
     });
 
-    return slots.map(slot => ({
-      id: slot.id,
-      gameTimeSlotId: slot.gameTimeSlotId,
-      gameId: slot.gameId,
-      gameName: slot.gameName,
-      gameCode: slot.gameCode,
-      frontNineCourseName: slot.frontNineCourseName,
-      backNineCourseName: slot.backNineCourseName,
-      clubId: slot.clubId,
-      clubName: slot.clubName,
-      date: slot.date.toISOString().split('T')[0],
-      startTime: slot.startTime,
-      endTime: slot.endTime,
-      maxPlayers: slot.maxPlayers,
-      bookedPlayers: slot.bookedPlayers,
-      availablePlayers: slot.availablePlayers,
-      isAvailable: slot.isAvailable,
-      price: Number(slot.price),
-      isPremium: slot.isPremium,
-      status: slot.status,
-    }));
+    return GameTimeSlotAvailabilityDto.fromEntities(slots);
   }
 
   // Game 캐시 동기화 메서드

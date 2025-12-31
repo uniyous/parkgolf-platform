@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsEnum } from 'class-validator';
-import { Booking, BookingStatus, Payment, BookingHistory } from '@prisma/client';
+import { Booking, BookingStatus, Payment, BookingHistory, GameTimeSlotCache } from '@prisma/client';
 
 /** Booking 엔티티 타입 (관계 포함) */
 export type BookingWithRelations = Booking & {
@@ -185,6 +185,40 @@ export class GameTimeSlotAvailabilityDto {
 
   @ApiProperty({ description: '상태' })
   status: string;
+
+  /**
+   * GameTimeSlotCache 엔티티를 DTO로 변환
+   */
+  static fromEntity(entity: GameTimeSlotCache): GameTimeSlotAvailabilityDto {
+    const dto = new GameTimeSlotAvailabilityDto();
+    dto.id = entity.id;
+    dto.gameTimeSlotId = entity.gameTimeSlotId;
+    dto.gameId = entity.gameId;
+    dto.gameName = entity.gameName;
+    dto.gameCode = entity.gameCode;
+    dto.frontNineCourseName = entity.frontNineCourseName;
+    dto.backNineCourseName = entity.backNineCourseName;
+    dto.clubId = entity.clubId;
+    dto.clubName = entity.clubName;
+    dto.date = entity.date.toISOString().split('T')[0];
+    dto.startTime = entity.startTime;
+    dto.endTime = entity.endTime;
+    dto.maxPlayers = entity.maxPlayers;
+    dto.bookedPlayers = entity.bookedPlayers;
+    dto.availablePlayers = entity.availablePlayers;
+    dto.isAvailable = entity.isAvailable;
+    dto.price = Number(entity.price);
+    dto.isPremium = entity.isPremium;
+    dto.status = entity.status;
+    return dto;
+  }
+
+  /**
+   * 엔티티 배열을 DTO 배열로 변환
+   */
+  static fromEntities(entities: GameTimeSlotCache[]): GameTimeSlotAvailabilityDto[] {
+    return entities.map(entity => GameTimeSlotAvailabilityDto.fromEntity(entity));
+  }
 }
 
 export class BookingResponseDto {
