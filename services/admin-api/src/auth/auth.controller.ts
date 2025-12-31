@@ -37,7 +37,10 @@ export class AuthController {
       this.logger.log(`Admin login attempt for email: ${loginRequest.email}`);
 
       const result = await this.authService.login(loginRequest);
-      
+
+      // Debug: log the actual response from auth-service
+      this.logger.debug(`Auth service response: ${JSON.stringify(result)}`);
+
       if (!result.success || !result.data) {
         throw new HttpException(
           {
