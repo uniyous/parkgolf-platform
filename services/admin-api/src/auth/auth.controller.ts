@@ -39,7 +39,7 @@ export class AuthController {
       const result = await this.authService.login(loginRequest);
 
       // Debug: log the actual response from auth-service
-      this.logger.debug(`Auth service response: ${JSON.stringify(result)}`);
+      this.logger.log(`Auth service response: ${JSON.stringify(result)}`);
 
       if (!result.success || !result.data) {
         throw new HttpException(
