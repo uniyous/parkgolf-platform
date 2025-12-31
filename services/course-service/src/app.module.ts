@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaModule } from '../prisma/prisma.module';
 import { CompanyModule } from './company/company.module';
 import { ClubModule } from './club/club.module';
 import { CourseModule } from './course/course.module';
 import { GameModule } from './game/game.module';
 import { CommonModule } from './common/common.module';
+import { ResponseTransformInterceptor } from './common/interceptor/response-transform.interceptor';
 
 @Module({
   imports: [
@@ -19,6 +21,12 @@ import { CommonModule } from './common/common.module';
     ClubModule,
     CourseModule,
     GameModule,
+  ],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ResponseTransformInterceptor,
+    },
   ],
 })
 export class AppModule {}
