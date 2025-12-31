@@ -4,43 +4,9 @@
  */
 
 /**
- * 페이지네이션 메타 타입
- */
-export interface PaginationMeta {
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-/**
- * 성공 응답 타입
- */
-export interface SuccessResponse<T> {
-  success: true;
-  data: T;
-  total?: number;
-  page?: number;
-  limit?: number;
-  totalPages?: number;
-}
-
-/**
- * 에러 응답 타입
- */
-export interface ErrorResponse {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    details?: unknown;
-  };
-}
-
-/**
  * 성공 응답 생성
  */
-export function successResponse<T>(data: T, meta?: Partial<PaginationMeta>): SuccessResponse<T> {
+export function successResponse<T>(data: T, meta?: Record<string, any>) {
   return {
     success: true,
     data,
@@ -51,7 +17,7 @@ export function successResponse<T>(data: T, meta?: Partial<PaginationMeta>): Suc
 /**
  * 에러 응답 생성
  */
-export function errorResponse(code: string, message: string, details?: unknown): ErrorResponse {
+export function errorResponse(code: string, message: string, details?: any) {
   return {
     success: false,
     error: {
@@ -65,20 +31,11 @@ export function errorResponse(code: string, message: string, details?: unknown):
 /**
  * 페이지네이션 메타 데이터 생성
  */
-export function paginationMeta(total: number, page: number, limit: number): PaginationMeta {
+export function paginationMeta(total: number, page: number, limit: number) {
   return {
     total,
     page,
     limit,
     totalPages: Math.ceil(total / limit),
   };
-}
-
-/**
- * 날짜를 ISO 문자열로 변환 (null-safe)
- */
-export function toISOString(date: Date | string | null | undefined): string | null {
-  if (!date) return null;
-  if (typeof date === 'string') return date;
-  return date.toISOString();
 }
