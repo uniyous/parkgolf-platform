@@ -37,6 +37,9 @@ async function bootstrap() {
     logger.log(`🚀 Course Service is running on port ${port}`);
     logger.log(`🩺 Health check: http://localhost:${port}/health`);
 
+    // Register global interceptor for microservice BEFORE connecting
+    app.useGlobalInterceptors(new ResponseTransformInterceptor());
+
     // Connect NATS microservice asynchronously (optional for Cloud Run)
     if (process.env.NATS_URL) {
       logger.log(`📡 NATS_URL found: ${process.env.NATS_URL}`);
@@ -54,9 +57,8 @@ async function bootstrap() {
             },
           });
 
-          // Global filters and interceptors for microservice
+          // Global filters for microservice
           app.useGlobalFilters(new GlobalRpcExceptionFilter());
-          app.useGlobalInterceptors(new ResponseTransformInterceptor());
 
           await app.startAllMicroservices();
           logger.log(`✅ NATS connected successfully to: ${process.env.NATS_URL}`);
