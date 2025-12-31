@@ -300,19 +300,6 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
               </div>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">코스 현황</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-600">⛳ {club.totalHoles}</p>
-                  <p className="text-xs text-gray-500">총 홀</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600">🎯 {club.totalCourses}</p>
-                  <p className="text-xs text-gray-500">코스 수</p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

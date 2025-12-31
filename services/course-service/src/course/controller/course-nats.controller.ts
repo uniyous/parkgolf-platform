@@ -70,9 +70,9 @@ export class CourseNatsController {
     try {
       const { clubId } = data;
       this.logger.log(`NATS: Getting courses for club ${clubId}`);
-      const result = await this.courseService.findAll({ clubId: Number(clubId), page: 1, limit: 100 });
+      const result = await this.courseService.findAll({ clubId: Number(clubId), page: 1, limit: 100, includeHoles: true });
       const courses = result.data.map(CourseResponseDto.fromEntity);
-      this.logger.log(`NATS: Returning ${courses.length} courses for club ${clubId}`);
+      this.logger.log(`NATS: Returning ${courses.length} courses for club ${clubId} with holes`);
       return successResponse({ courses });
     } catch (error) {
       this.logger.error('NATS: Failed to get courses by club', error);

@@ -174,32 +174,13 @@ export const ClubListPage: React.FC = () => {
                   <div className="flex items-center justify-between py-2 border-t border-gray-100">
                     <div className="flex items-center space-x-3">
                       <span className="text-xs text-gray-600">
-                        ⛳ {club.totalHoles}홀
+                        ⛳ {club.courses?.reduce((sum, course) => sum + (course.holeCount || course.holes?.length || 0), 0) || club.totalHoles || 0}홀
                       </span>
                       <span className="text-xs text-gray-600">
-                        🎯 {club.totalCourses}코스
+                        🎯 {club.courses?.length || club.totalCourses || 0}코스
                       </span>
                     </div>
                   </div>
-
-                  {/* 코스 이름들 (간소화) */}
-                  {club.courses && club.courses.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {club.courses.slice(0, 2).map((course) => (
-                        <span
-                          key={course.id}
-                          className="inline-block px-1.5 py-0.5 bg-gray-100 text-xs text-gray-600 rounded"
-                        >
-                          {course.code}
-                        </span>
-                      ))}
-                      {club.courses.length > 2 && (
-                        <span className="inline-block px-1.5 py-0.5 bg-gray-100 text-xs text-gray-600 rounded">
-                          +{club.courses.length - 2}
-                        </span>
-                      )}
-                    </div>
-                  )}
 
                   {/* 상태 */}
                   <div className="pt-2 border-t border-gray-100">

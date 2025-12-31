@@ -112,14 +112,6 @@ export const ClubDetailPage: React.FC = () => {
     }
   };
 
-  if (loading.detail) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   if (errors.detail || !selectedClub) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -168,8 +160,8 @@ export const ClubDetailPage: React.FC = () => {
                   </svg>
                   {selectedClub.location}
                 </p>
-                <p className="text-gray-600">⛳ {selectedClub.totalHoles}홀</p>
-                <p className="text-gray-600">🎯 {selectedClub.totalCourses}코스</p>
+                <p className="text-gray-600">⛳ {courses.reduce((sum, course) => sum + (course.holeCount || course.holes?.length || 0), 0) || selectedClub.totalHoles || 0}홀</p>
+                <p className="text-gray-600">🎯 {courses.length || selectedClub.totalCourses || 0}코스</p>
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                   selectedClub.status === 'ACTIVE'
                     ? 'bg-green-100 text-green-800'

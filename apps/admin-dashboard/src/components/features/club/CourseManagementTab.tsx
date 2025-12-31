@@ -66,36 +66,12 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
     }
   };
 
-  // 홀 정보 토글
-  const toggleHoles = async (course: Course) => {
-    const isShowing = showHoles[course.id];
+  // 홀 정보 토글 (코스 목록 조회 시 이미 holes 포함됨)
+  const toggleHoles = (course: Course) => {
     setShowHoles(prev => ({
       ...prev,
-      [course.id]: !isShowing
+      [course.id]: !prev[course.id]
     }));
-
-    if (!isShowing && (!course.holes || course.holes.length === 0)) {
-      try {
-        // For now, simulate holes data
-        const mockHoles = Array.from({ length: 9 }, (_, i) => ({
-          id: i + 1,
-          holeNumber: i + 1,
-          par: 3 + Math.floor(Math.random() * 3),
-          distance: 120 + Math.floor(Math.random() * 200),
-          handicap: i + 1,
-          courseId: course.id,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }));
-        
-        const updatedCourses = courses.map(c => 
-          c.id === course.id ? { ...c, holes: mockHoles } : c
-        );
-        onCoursesUpdate(updatedCourses);
-      } catch (error) {
-        console.error('Failed to fetch holes:', error);
-      }
-    }
   };
 
   // 난이도 표시
@@ -108,7 +84,7 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">코스 관리</h2>
+          <h2 className="text-xl font-semibold text-gray-900">코스 목록</h2>
           <p className="text-gray-600 mt-1">9홀 단위로 코스를 관리하고 18홀 조합을 확인하세요</p>
         </div>
         <button
@@ -122,31 +98,8 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
         </button>
       </div>
 
-      {/* 현황 카드 */}
-      <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-blue-600">⛳ {club.totalHoles}</p>
-            <p className="text-sm text-gray-600">총 홀</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-green-600">🎯 {courses.length}</p>
-            <p className="text-sm text-gray-600">코스 수</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-purple-600">🏌️ {combos.length}</p>
-            <p className="text-sm text-gray-600">18홀 조합</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-orange-600">💡 {Math.round(courses.reduce((sum, c) => sum + c.difficulty, 0) / courses.length) || 0}</p>
-            <p className="text-sm text-gray-600">평균 난이도</p>
-          </div>
-        </div>
-      </div>
-
       {/* 코스 목록 */}
       <div className="space-y-4">
-        <h3 className="text-lg font-medium text-gray-900">등록된 코스 ({courses.length}개)</h3>
         
         {courses.length === 0 ? (
           <div className="text-center py-12 bg-gray-50 rounded-lg">
@@ -159,33 +112,45 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
         ) : (
           <div className="space-y-4">
             {courses.map((course) => (
-              <div key={course.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-green-100 rounded-lg flex items-center justify-center">
-                        <span className="text-xl font-bold text-blue-600">{course.code}</span>
+              <div key={course.id} className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                {/* 코스 헤더 */}
+                <div className="p-4 border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4 flex-1 min-w-0">
+                      <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <span className="text-xl font-bold text-white">{course.code}</span>
                       </div>
-                      <div>
-                        <h4 className="text-lg font-semibold text-gray-900">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xl font-bold text-gray-900 truncate">
                           {course.name}
                           {course.subtitle && (
-                            <span className="ml-2 text-sm text-gray-500">({course.subtitle})</span>
+                            <span className="ml-2 text-base font-normal text-gray-500">({course.subtitle})</span>
                           )}
                         </h4>
-                        <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600">
-                          <span>Par {course.par}</span>
-                          <span>{course.totalDistance}m</span>
-                          <span>난이도: {getDifficultyStars(course.difficulty)}</span>
-                          <span>경치: {getDifficultyStars(course.scenicRating)}</span>
+                        <div className="flex items-center flex-wrap gap-3 mt-2">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                            Par {course.par}
+                          </span>
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                            {course.totalDistance}m
+                          </span>
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
+                            난이도 {getDifficultyStars(course.difficulty || 0)}
+                          </span>
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                            경치 {getDifficultyStars(course.scenicRating || 0)}
+                          </span>
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                            {course.holeCount || course.holes?.length || 0}홀
+                          </span>
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1 ml-4">
                       <button
                         onClick={() => toggleHoles(course)}
                         className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                        title="홀 정보 보기"
+                        title={showHoles[course.id] ? "홀 정보 숨기기" : "홀 정보 보기"}
                       >
                         <svg className={`w-5 h-5 transition-transform ${showHoles[course.id] ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -213,121 +178,77 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
                   </div>
 
                   {course.description && (
-                    <p className="text-gray-600 mb-4">{course.description}</p>
-                  )}
-
-                  {/* 홀 정보 - 카드 형태 */}
-                  {showHoles[course.id] && (
-                    <div className="bg-gray-50 rounded-lg p-4 mt-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h5 className="text-sm font-medium text-gray-900">홀별 정보</h5>
-                        <div className="flex items-center space-x-4 text-xs text-gray-600">
-                          <span>총 Par: <span className="font-semibold text-gray-900">{course.par}</span></span>
-                          <span>총 거리: <span className="font-semibold text-gray-900">{course.totalDistance}m</span></span>
-                        </div>
-                      </div>
-                      
-                      {course.holes && course.holes.length > 0 ? (
-                        <>
-                          <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2">
-                            {[...course.holes].sort((a, b) => a.holeNumber - b.holeNumber).map((hole) => (
-                              <div 
-                                key={hole.id} 
-                                className="bg-white rounded-lg border border-gray-200 p-3 hover:shadow-md transition-shadow cursor-pointer group"
-                              >
-                                {/* 홀 번호 */}
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-xs font-bold text-gray-700">Hole</span>
-                                  <span className="text-lg font-bold text-blue-600">{hole.holeNumber}</span>
-                                </div>
-                                
-                                {/* Par 표시 */}
-                                <div className="mb-2">
-                                  <div className="flex items-center justify-center">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
-                                      hole.par === 3 ? 'bg-green-500' : 
-                                      hole.par === 4 ? 'bg-blue-500' : 
-                                      hole.par === 5 ? 'bg-purple-500' : 
-                                      'bg-gray-500'
-                                    }`}>
-                                      {hole.par}
-                                    </div>
-                                  </div>
-                                  <p className="text-xs text-gray-500 text-center mt-1">Par</p>
-                                </div>
-                                
-                                {/* 거리 */}
-                                <div className="text-center mb-2">
-                                  <p className="text-sm font-semibold text-gray-900">{hole.distance}m</p>
-                                  <p className="text-xs text-gray-500">거리</p>
-                                </div>
-                                
-                                {/* 핸디캡 */}
-                                <div className="text-center border-t border-gray-100 pt-2">
-                                  <div className="flex items-center justify-center">
-                                    <span className="text-xs text-gray-500">HC</span>
-                                    <span className="text-xs font-semibold text-gray-700 ml-1">{hole.handicap}</span>
-                                  </div>
-                                </div>
-                                
-                                {/* Tee Box 정보 (있는 경우) */}
-                                {hole.teeBoxes && hole.teeBoxes.length > 0 && (
-                                  <div className="mt-2 pt-2 border-t border-gray-100 space-y-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <p className="text-xs font-medium text-gray-600 mb-1">티박스</p>
-                                    {hole.teeBoxes.slice(0, 2).map((teeBox) => (
-                                      <div key={teeBox.id} className="flex items-center justify-between">
-                                        <span className={`text-xs px-1 py-0.5 rounded ${
-                                          teeBox.color === 'WHITE' ? 'bg-gray-100' :
-                                          teeBox.color === 'BLUE' ? 'bg-blue-100' :
-                                          teeBox.color === 'RED' ? 'bg-red-100' :
-                                          'bg-gray-100'
-                                        }`}>
-                                          {teeBox.name}
-                                        </span>
-                                        <span className="text-xs text-gray-600">{teeBox.distance}m</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                          
-                          <div className="mt-4 pt-4 border-t border-gray-200">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                              <div className="text-center">
-                                <p className="text-xs text-gray-500">파3 홀</p>
-                                <p className="text-lg font-bold text-green-600">
-                                  {course.holes.filter(h => h.par === 3).length}
-                                </p>
-                              </div>
-                              <div className="text-center">
-                                <p className="text-xs text-gray-500">파4 홀</p>
-                                <p className="text-lg font-bold text-blue-600">
-                                  {course.holes.filter(h => h.par === 4).length}
-                                </p>
-                              </div>
-                              <div className="text-center">
-                                <p className="text-xs text-gray-500">파5 홀</p>
-                                <p className="text-lg font-bold text-purple-600">
-                                  {course.holes.filter(h => h.par === 5).length}
-                                </p>
-                              </div>
-                              <div className="text-center">
-                                <p className="text-xs text-gray-500">평균 거리</p>
-                                <p className="text-lg font-bold text-gray-700">
-                                  {Math.round(course.holes.reduce((sum, h) => sum + h.distance, 0) / course.holes.length)}m
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <p className="text-gray-500 text-center py-4">홀 정보가 등록되지 않았습니다.</p>
-                      )}
-                    </div>
+                    <p className="text-gray-600 mt-3 text-sm">{course.description}</p>
                   )}
                 </div>
+
+                {/* 홀별 정보 */}
+                {showHoles[course.id] && (
+                  <div className="p-4 bg-gray-50">
+                    {course.holes && course.holes.length > 0 ? (
+                      <>
+                        {/* 홀 카드 그리드 */}
+                        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-2">
+                          {[...course.holes].sort((a, b) => a.holeNumber - b.holeNumber).map((hole) => (
+                            <div
+                              key={hole.id}
+                              className="bg-white rounded-lg border border-gray-200 p-2 hover:shadow-md transition-shadow"
+                            >
+                              {/* 홀 번호 */}
+                              <div className="text-center mb-1">
+                                <span className="text-lg font-bold text-blue-600">{hole.holeNumber}</span>
+                                <span className="text-xs text-gray-400 ml-0.5">H</span>
+                              </div>
+
+                              {/* Par */}
+                              <div className="flex justify-center mb-1">
+                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-sm font-bold ${
+                                  hole.par === 3 ? 'bg-green-500' :
+                                  hole.par === 4 ? 'bg-blue-500' :
+                                  hole.par === 5 ? 'bg-purple-500' :
+                                  'bg-gray-500'
+                                }`}>
+                                  {hole.par}
+                                </div>
+                              </div>
+
+                              {/* 거리 */}
+                              <div className="text-center">
+                                <p className="text-xs font-semibold text-gray-700">{hole.distance}m</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* 요약 정보 */}
+                        <div className="mt-4 pt-3 border-t border-gray-200">
+                          <div className="flex items-center justify-center gap-6 text-sm">
+                            <div className="flex items-center gap-1">
+                              <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                              <span className="text-gray-600">Par3: {course.holes.filter(h => h.par === 3).length}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                              <span className="text-gray-600">Par4: {course.holes.filter(h => h.par === 4).length}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="w-3 h-3 rounded-full bg-purple-500"></span>
+                              <span className="text-gray-600">Par5: {course.holes.filter(h => h.par === 5).length}</span>
+                            </div>
+                            <div className="text-gray-600">
+                              총 Par: <span className="font-semibold">{course.holes.reduce((sum, h) => sum + h.par, 0)}</span>
+                            </div>
+                            <div className="text-gray-600">
+                              총 거리: <span className="font-semibold">{course.holes.reduce((sum, h) => sum + h.distance, 0)}m</span>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-gray-500 text-center py-6">홀 정보가 등록되지 않았습니다.</p>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>

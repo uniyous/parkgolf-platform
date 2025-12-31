@@ -257,4 +257,7 @@ export class FindCoursesQueryDto {
   @Max(100)
   @IsOptional()
   limit?: number = 10;
+
+  @IsOptional()
+  includeHoles?: boolean = false;
 }
