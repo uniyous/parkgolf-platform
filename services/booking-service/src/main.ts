@@ -4,6 +4,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { BaseExceptionFilter } from './common/exception/base-exception.filter';
 import { GlobalRpcExceptionFilter } from './common/exception/rpc-exception.filter';
+import { ResponseTransformInterceptor } from './common/interceptor/response-transform.interceptor';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -58,8 +59,9 @@ async function bootstrap() {
             },
           });
 
-          // Global filters for microservice
+          // Global filters and interceptors for microservice
           app.useGlobalFilters(new GlobalRpcExceptionFilter());
+          app.useGlobalInterceptors(new ResponseTransformInterceptor());
 
           await app.startAllMicroservices();
           logger.log(`🔗 NATS connected to: ${process.env.NATS_URL}`);
