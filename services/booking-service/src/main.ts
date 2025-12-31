@@ -44,26 +44,28 @@ async function bootstrap() {
     logger.log(`🚀 Booking Service is running on port ${port}`);
     logger.log(`🩺 Health check available at: http://0.0.0.0:${port}/health`);
 
-    // Register global interceptor for microservice BEFORE connecting
+    // Register global interceptor and filters BEFORE connecting microservice
     app.useGlobalInterceptors(new ResponseTransformInterceptor());
+    app.useGlobalFilters(new GlobalRpcExceptionFilter());
 
     // Connect NATS microservice asynchronously (optional for Cloud Run)
     if (process.env.NATS_URL) {
       setImmediate(async () => {
         try {
-          const microservice = app.connectMicroservice<MicroserviceOptions>({
-            transport: Transport.NATS,
-            options: {
-              servers: [process.env.NATS_URL],
-              queue: 'booking-service',
-              reconnect: true,
-              maxReconnectAttempts: 3,
-              reconnectTimeWait: 2000,
+          // inheritAppConfig: true - inherit global pipes, interceptors, guards, filters
+          app.connectMicroservice<MicroserviceOptions>(
+            {
+              transport: Transport.NATS,
+              options: {
+                servers: [process.env.NATS_URL],
+                queue: 'booking-service',
+                reconnect: true,
+                maxReconnectAttempts: 3,
+                reconnectTimeWait: 2000,
+              },
             },
-          });
-
-          // Global filters for microservice
-          app.useGlobalFilters(new GlobalRpcExceptionFilter());
+            { inheritAppConfig: true },
+          );
 
           await app.startAllMicroservices();
           logger.log(`🔗 NATS connected to: ${process.env.NATS_URL}`);
