@@ -26,24 +26,40 @@ export class BaseExceptionFilter implements ExceptionFilter {
       if (exception instanceof HttpException) {
         status = exception.getStatus();
         const exceptionResponse = exception.getResponse();
-        
-        errorResponse = {
-          success: false,
-          error: {
-            code: typeof exceptionResponse === 'object' && 'code' in exceptionResponse 
-              ? (exceptionResponse as any).code 
-              : this.getDefaultErrorCode(status),
-            message: typeof exceptionResponse === 'string' 
-              ? exceptionResponse 
-              : (exceptionResponse as any).message || exception.message,
-            details: typeof exceptionResponse === 'object' && 'details' in exceptionResponse 
-              ? (exceptionResponse as any).details 
-              : undefined,
-          },
-          timestamp: new Date().toISOString(),
-          path: request.url,
-          method: request.method,
-        };
+
+        // Handle NATS error response format: { success: false, error: { code, message } }
+        const isNatsError = typeof exceptionResponse === 'object' &&
+          'success' in exceptionResponse &&
+          (exceptionResponse as any).success === false &&
+          'error' in exceptionResponse;
+
+        if (isNatsError) {
+          // Pass through NATS error response directly
+          errorResponse = {
+            ...(exceptionResponse as any),
+            timestamp: new Date().toISOString(),
+            path: request.url,
+            method: request.method,
+          };
+        } else {
+          errorResponse = {
+            success: false,
+            error: {
+              code: typeof exceptionResponse === 'object' && 'code' in exceptionResponse
+                ? (exceptionResponse as any).code
+                : this.getDefaultErrorCode(status),
+              message: typeof exceptionResponse === 'string'
+                ? exceptionResponse
+                : (exceptionResponse as any).message || exception.message,
+              details: typeof exceptionResponse === 'object' && 'details' in exceptionResponse
+                ? (exceptionResponse as any).details
+                : undefined,
+            },
+            timestamp: new Date().toISOString(),
+            path: request.url,
+            method: request.method,
+          };
+        }
       } else {
         // Handle unknown errors
         status = HttpStatus.INTERNAL_SERVER_ERROR;
