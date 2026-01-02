@@ -62,15 +62,18 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
 
   /**
    * RPC 컨텍스트 예외 처리
+   *
+   * RpcException을 throw하여 NATS를 통해 에러를 전파합니다.
+   * BFF의 NatsClientService.handleError에서 이 에러를 파싱하여 HttpException으로 변환합니다.
    */
   private handleRpcException(exception: unknown, host: ArgumentsHost) {
     const errorResponse = this.createErrorResponse(exception);
 
     this.logError(exception, 'RPC', 'MESSAGE');
 
-    // RPC 컨텍스트에서는 에러 응답 객체를 직접 반환
-    // 클라이언트에서 success: false를 체크하여 에러 처리
-    return errorResponse;
+    // RpcException을 throw하여 NATS 클라이언트가 에러로 수신할 수 있도록 함
+    // JSON 문자열로 변환하여 전달 (NatsClientService.handleError에서 파싱)
+    throw new RpcException(JSON.stringify(errorResponse));
   }
 
   /**
