@@ -1,12 +1,17 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import { HttpExceptionFilter } from './common/exceptions';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+
+  // Global HTTP exception filter (BFF layer - HTTP only)
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -44,8 +49,12 @@ async function bootstrap() {
   const port = configService.get<number>('PORT') || 3092;
   await app.listen(port);
 
-  console.log(`🚀 Parkgolf User API is running on port ${port}`);
-  console.log(`📚 Swagger docs: http://localhost:${port}/api-docs`);
+  logger.log(`🚀 Parkgolf User API is running on port ${port}`);
+  logger.log(`📚 Swagger docs: http://localhost:${port}/api-docs`);
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  const logger = new Logger('Bootstrap');
+  logger.error('Unhandled error during bootstrap', error);
+  process.exit(1);
+});

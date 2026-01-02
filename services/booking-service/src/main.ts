@@ -2,8 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
-import { BaseExceptionFilter } from './common/exception/base-exception.filter';
-import { GlobalRpcExceptionFilter } from './common/exception/rpc-exception.filter';
+import { UnifiedExceptionFilter } from './common/exceptions';
 import { ResponseTransformInterceptor } from './common/interceptor/response-transform.interceptor';
 
 async function bootstrap() {
@@ -23,8 +22,8 @@ async function bootstrap() {
       logger: ['error', 'warn', 'log'],
     });
 
-    // Global exception filter
-    app.useGlobalFilters(new BaseExceptionFilter());
+    // Global unified exception filter (handles both HTTP and RPC)
+    app.useGlobalFilters(new UnifiedExceptionFilter());
 
     app.useGlobalPipes(
       new ValidationPipe({
@@ -44,9 +43,8 @@ async function bootstrap() {
     logger.log(`🚀 Booking Service is running on port ${port}`);
     logger.log(`🩺 Health check available at: http://0.0.0.0:${port}/health`);
 
-    // Register global interceptor and filters BEFORE connecting microservice
+    // Register global interceptor BEFORE connecting microservice
     app.useGlobalInterceptors(new ResponseTransformInterceptor());
-    app.useGlobalFilters(new GlobalRpcExceptionFilter());
 
     // Connect NATS microservice asynchronously (optional for Cloud Run)
     if (process.env.NATS_URL) {

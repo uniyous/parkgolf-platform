@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
-import { GlobalRpcExceptionFilter } from './common/exception/rpc-exception.filter';
+import { UnifiedExceptionFilter } from './common/exceptions';
 import { ResponseTransformInterceptor } from './common/interceptor/response-transform.interceptor';
 
 async function bootstrap() {
@@ -14,6 +14,9 @@ async function bootstrap() {
     // Create HTTP app first for health check
     logger.log('📦 Creating NestJS application...');
     const app = await NestFactory.create(AppModule);
+
+    // Global unified exception filter (handles both HTTP and RPC)
+    app.useGlobalFilters(new UnifiedExceptionFilter());
 
     // Global pipes for validation
     logger.log('🔧 Setting up global validation pipes...');
@@ -37,9 +40,8 @@ async function bootstrap() {
     logger.log(`🚀 Course Service is running on port ${port}`);
     logger.log(`🩺 Health check: http://localhost:${port}/health`);
 
-    // Register global interceptor and filters BEFORE connecting microservice
+    // Register global interceptor BEFORE connecting microservice
     app.useGlobalInterceptors(new ResponseTransformInterceptor());
-    app.useGlobalFilters(new GlobalRpcExceptionFilter());
 
     // Connect NATS microservice asynchronously (optional for Cloud Run)
     if (process.env.NATS_URL) {

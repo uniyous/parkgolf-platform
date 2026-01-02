@@ -1,7 +1,7 @@
 import { Injectable, Inject, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, TimeoutError } from 'rxjs';
-import { ErrorCodes } from '../types/error-response.type';
+import { Errors } from '../exceptions';
 
 /**
  * NATS Timeout Constants
@@ -68,9 +68,10 @@ export class NatsClientService {
         {
           success: false,
           error: {
-            code: ErrorCodes.SERVICE_UNAVAILABLE,
-            message: '서비스 요청 시간이 초과되었습니다. 다시 시도해 주세요.',
+            code: Errors.System.TIMEOUT.code,
+            message: Errors.System.TIMEOUT.message,
           },
+          timestamp: new Date().toISOString(),
         },
         HttpStatus.REQUEST_TIMEOUT,
       );
@@ -94,9 +95,10 @@ export class NatsClientService {
         {
           success: false,
           error: {
-            code: ErrorCodes.SERVICE_UNAVAILABLE,
-            message: '서비스를 일시적으로 사용할 수 없습니다.',
+            code: Errors.System.UNAVAILABLE.code,
+            message: Errors.System.UNAVAILABLE.message,
           },
+          timestamp: new Date().toISOString(),
         },
         HttpStatus.SERVICE_UNAVAILABLE,
       );
@@ -108,9 +110,10 @@ export class NatsClientService {
       {
         success: false,
         error: {
-          code: ErrorCodes.SYSTEM_ERROR,
-          message: '서버 오류가 발생했습니다.',
+          code: Errors.System.INTERNAL.code,
+          message: Errors.System.INTERNAL.message,
         },
+        timestamp: new Date().toISOString(),
       },
       HttpStatus.INTERNAL_SERVER_ERROR,
     );
@@ -118,32 +121,70 @@ export class NatsClientService {
 
   /**
    * 에러 코드에서 HTTP 상태 코드 추출
+   * 에러 카탈로그 코드 패턴: AUTH_xxx, USER_xxx, ADMIN_xxx, BOOK_xxx, COURSE_xxx, VAL_xxx, EXT_xxx, DB_xxx, SYS_xxx
    */
   private getStatusFromErrorCode(code: string): HttpStatus {
     if (!code) return HttpStatus.INTERNAL_SERVER_ERROR;
 
-    // ErrorCodes enum 기반
-    switch (code) {
-      case ErrorCodes.UNAUTHORIZED:
-      case ErrorCodes.TOKEN_EXPIRED:
-      case ErrorCodes.INVALID_CREDENTIALS:
+    // 에러 코드 접두사 기반 매핑
+    const prefix = code.split('_')[0];
+
+    switch (prefix) {
+      case 'AUTH':
+        // AUTH_001 ~ AUTH_004, AUTH_007: 401, AUTH_005 ~ AUTH_006: 403
+        if (['AUTH_005', 'AUTH_006'].includes(code)) {
+          return HttpStatus.FORBIDDEN;
+        }
         return HttpStatus.UNAUTHORIZED;
-      case ErrorCodes.FORBIDDEN:
-        return HttpStatus.FORBIDDEN;
-      case ErrorCodes.RESOURCE_NOT_FOUND:
-        return HttpStatus.NOT_FOUND;
-      case ErrorCodes.DUPLICATE_RESOURCE:
-        return HttpStatus.CONFLICT;
-      case ErrorCodes.VALIDATION_ERROR:
-      case ErrorCodes.BUSINESS_RULE_VIOLATION:
+
+      case 'USER':
+      case 'ADMIN':
+        // NOT_FOUND: 404, EXISTS: 409, INACTIVE: 403
+        if (code.endsWith('001')) return HttpStatus.NOT_FOUND;
+        if (code.endsWith('002') || code.endsWith('003')) return HttpStatus.CONFLICT;
+        if (code.endsWith('004')) return HttpStatus.FORBIDDEN;
         return HttpStatus.BAD_REQUEST;
-      case ErrorCodes.SERVICE_UNAVAILABLE:
-        return HttpStatus.SERVICE_UNAVAILABLE;
+
+      case 'BOOK':
+        // NOT_FOUND: 404, SLOT_UNAVAILABLE: 409, others: 400
+        if (code === 'BOOK_001') return HttpStatus.NOT_FOUND;
+        if (code === 'BOOK_002') return HttpStatus.CONFLICT;
+        return HttpStatus.BAD_REQUEST;
+
+      case 'COURSE':
+        // NOT_FOUND: 404, INACTIVE: 400
+        if (code === 'COURSE_007') return HttpStatus.BAD_REQUEST;
+        return HttpStatus.NOT_FOUND;
+
+      case 'VAL':
+        return HttpStatus.BAD_REQUEST;
+
+      case 'EXT':
+        // UNAVAILABLE: 503, TIMEOUT: 504, others: 502
+        if (code === 'EXT_001') return HttpStatus.SERVICE_UNAVAILABLE;
+        if (code === 'EXT_002') return HttpStatus.GATEWAY_TIMEOUT;
+        return HttpStatus.BAD_GATEWAY;
+
+      case 'DB':
+        // UNIQUE_VIOLATION: 409, NOT_FOUND: 404, FK_VIOLATION: 400, CONNECTION_ERROR: 503
+        if (code === 'DB_001') return HttpStatus.CONFLICT;
+        if (code === 'DB_002') return HttpStatus.NOT_FOUND;
+        if (code === 'DB_003') return HttpStatus.BAD_REQUEST;
+        if (code === 'DB_004') return HttpStatus.SERVICE_UNAVAILABLE;
+        return HttpStatus.INTERNAL_SERVER_ERROR;
+
+      case 'SYS':
+        // INTERNAL: 500, UNAVAILABLE/MAINTENANCE: 503, TIMEOUT: 408, RATE_LIMIT: 429
+        if (code === 'SYS_002' || code === 'SYS_005') return HttpStatus.SERVICE_UNAVAILABLE;
+        if (code === 'SYS_003') return HttpStatus.REQUEST_TIMEOUT;
+        if (code === 'SYS_004') return HttpStatus.TOO_MANY_REQUESTS;
+        return HttpStatus.INTERNAL_SERVER_ERROR;
+
       default:
         break;
     }
 
-    // 문자열 패턴 기반 폴백
+    // 문자열 패턴 기반 폴백 (레거시 코드 호환)
     const codeUpper = code.toUpperCase();
     if (codeUpper.includes('NOT_FOUND')) return HttpStatus.NOT_FOUND;
     if (codeUpper.includes('UNAUTHORIZED') || codeUpper.includes('MISSING_TOKEN'))
