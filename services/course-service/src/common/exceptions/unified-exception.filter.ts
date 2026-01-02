@@ -68,8 +68,9 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
 
     this.logError(exception, 'RPC', 'MESSAGE');
 
-    // RPC 컨텍스트에서는 RpcException을 throw하여 클라이언트에게 전달
-    throw new RpcException(errorResponse);
+    // RPC 컨텍스트에서는 에러 응답 객체를 직접 반환
+    // 클라이언트에서 success: false를 체크하여 에러 처리
+    return errorResponse;
   }
 
   /**

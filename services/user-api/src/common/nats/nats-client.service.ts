@@ -43,6 +43,11 @@ export class NatsClientService {
         this.natsClient.send(subject, payload).pipe(timeout(timeoutMs)),
       );
 
+      // 마이크로서비스에서 반환한 에러 응답 체크 (success: false)
+      if (result && typeof result === 'object' && (result as any).success === false && (result as any).error) {
+        throw this.handleError(result, subject);
+      }
+
       return result as T;
     } catch (error) {
       throw this.handleError(error, subject);
