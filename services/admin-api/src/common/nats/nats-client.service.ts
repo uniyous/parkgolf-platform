@@ -63,6 +63,8 @@ export class NatsClientService {
    * NATS 에러를 HttpException으로 변환
    */
   private handleError(error: any, subject: string): HttpException {
+    this.logger.debug(`NATS handleError: ${subject}, error type: ${error?.constructor?.name}, error: ${JSON.stringify(error)}`);
+
     // 타임아웃 에러
     if (error instanceof TimeoutError) {
       this.logger.error(`NATS timeout: ${subject}`);
@@ -79,10 +81,23 @@ export class NatsClientService {
       );
     }
 
-    // NATS 서비스에서 반환한 에러 응답 (success: false 형식)
-    if (error.success === false && error.error) {
+    // RpcException에서 전달된 에러 (success: false 형식) - 직접 객체
+    if (error?.success === false && error?.error) {
       const statusCode = this.getStatusFromErrorCode(error.error.code);
       return new HttpException(error, statusCode);
+    }
+
+    // RpcException에서 전달된 에러 - message 필드에 JSON 문자열로 포함된 경우
+    if (error?.message) {
+      try {
+        const parsed = JSON.parse(error.message);
+        if (parsed?.success === false && parsed?.error) {
+          const statusCode = this.getStatusFromErrorCode(parsed.error.code);
+          return new HttpException(parsed, statusCode);
+        }
+      } catch {
+        // JSON 파싱 실패시 무시하고 계속 진행
+      }
     }
 
     // 이미 HttpException인 경우
@@ -91,7 +106,7 @@ export class NatsClientService {
     }
 
     // NATS 연결 에러
-    if (error.code === 'ECONNREFUSED' || error.message?.includes('NATS')) {
+    if (error?.code === 'ECONNREFUSED' || error?.message?.includes('NATS')) {
       this.logger.error(`NATS connection error: ${subject}`, error.message);
       return new HttpException(
         {
