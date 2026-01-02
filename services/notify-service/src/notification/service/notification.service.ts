@@ -1,8 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateNotificationDto, UpdateNotificationDto, NotificationQueryDto, SendNotificationDto } from '../dto/notification.dto';
-import { Notification, NotificationStatus, NotificationType } from '@prisma/client';
-import { handlePrismaError } from '../../common/utils/prisma-error.handler';
+import { Notification, NotificationStatus } from '@prisma/client';
 
 @Injectable()
 export class NotificationService {
@@ -12,15 +11,10 @@ export class NotificationService {
 
   async create(createNotificationDto: CreateNotificationDto): Promise<Notification> {
     this.logger.log(`Creating notification for user: ${createNotificationDto.userId}`);
-    
-    try {
-      return await this.prisma.notification.create({
-        data: createNotificationDto,
-      });
-    } catch (error) {
-      this.logger.error(`Failed to create notification for user ${createNotificationDto.userId}`, error);
-      handlePrismaError(error);
-    }
+
+    return this.prisma.notification.create({
+      data: createNotificationDto,
+    });
   }
 
   async findAll(userId: string, query: NotificationQueryDto): Promise<{
