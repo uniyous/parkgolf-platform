@@ -38,12 +38,8 @@ export interface DeleteResponse extends ApiResponse<{ deleted: true }> {}
 /**
  * 원시 데이터 응답 (인터셉터 변환 전 형식)
  */
-export interface RawDataResponse {
+export interface RawDataResponse extends Partial<PaginationMeta> {
   data: unknown;
-  total?: number;
-  page?: number;
-  limit?: number;
-  totalPages?: number;
 }
 
 /**
