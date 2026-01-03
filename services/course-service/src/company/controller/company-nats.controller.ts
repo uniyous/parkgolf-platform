@@ -19,7 +19,7 @@ export class CompanyNatsController {
     const result = await this.companyService.findAll(Number(page), Number(limit));
     const companies = result.companies.map(CompanyResponseDto.fromEntity);
 
-    return NatsResponse.paginated({ companies }, result.total, result.page, result.limit);
+    return NatsResponse.paginated(companies, result.total, result.page, result.limit);
   }
 
   @MessagePattern('companies.findById')

@@ -33,18 +33,6 @@ export interface PaginationMeta {
 export interface PaginatedResponse<T> extends ApiResponse<T[]>, PaginationMeta {}
 
 /**
- * 에러 응답 인터페이스
- */
-export interface ErrorResponse {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    details?: unknown;
-  };
-}
-
-/**
  * 삭제 응답 인터페이스
  */
 export interface DeleteResponse extends ApiResponse<{ deleted: true }> {}

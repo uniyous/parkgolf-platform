@@ -63,7 +63,7 @@ export class ResponseTransformInterceptor implements NestInterceptor {
 
     // data 필드가 있으면 표준 응답 형식으로 변환
     if ('data' in responseObj) {
-      return this.transformDataResponse(responseObj as RawDataResponse);
+      return this.transformDataResponse(responseObj as unknown as RawDataResponse);
     }
 
     // data 필드가 없으면 전체를 data로 래핑

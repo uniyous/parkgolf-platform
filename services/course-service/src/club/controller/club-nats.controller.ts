@@ -24,7 +24,7 @@ export class ClubNatsController {
     const { token, ...filters } = data;
     const result = await this.clubService.findAll(filters);
     const clubs = result.data.map(ClubResponseDto.fromEntity);
-    return NatsResponse.paginated({ clubs }, result.total, result.page, result.limit);
+    return NatsResponse.paginated(clubs, result.total, result.page, result.limit);
   }
 
   @MessagePattern('club.findOne')

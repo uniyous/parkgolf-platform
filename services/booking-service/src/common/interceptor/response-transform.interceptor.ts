@@ -82,7 +82,7 @@ export class ResponseTransformInterceptor implements NestInterceptor {
     return { success: true, data };
   }
 
-  private isPaginationMeta(meta: Record<string, unknown>): meta is PaginationMeta {
+  private isPaginationMeta(meta: Record<string, unknown>): meta is Record<string, unknown> & { total: number; page: number; limit: number; totalPages?: number } {
     return 'total' in meta && 'page' in meta && 'limit' in meta;
   }
 }
