@@ -2,7 +2,7 @@ import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { ClubService } from '../service/club.service';
 import { ClubFilterDto, CreateClubDto, UpdateClubDto, ClubResponseDto } from '../dto/club.dto';
-import { ClubPayload } from '../../common/types/response.types';
+import { ClubPayload, NatsResponse } from '../../common/types/response.types';
 
 @Controller()
 export class ClubNatsController {
@@ -15,7 +15,7 @@ export class ClubNatsController {
     this.logger.log(`Creating club with data: ${JSON.stringify(data)}`);
     const { token, ...createGolfClubDto } = data;
     const club = await this.clubService.create((createGolfClubDto.data || createGolfClubDto) as CreateClubDto);
-    return { success: true, data: ClubResponseDto.fromEntity(club) };
+    return NatsResponse.success(ClubResponseDto.fromEntity(club));
   }
 
   @MessagePattern('club.findAll')
@@ -23,16 +23,8 @@ export class ClubNatsController {
     this.logger.log(`Finding clubs with data: ${JSON.stringify(data)}`);
     const { token, ...filters } = data;
     const result = await this.clubService.findAll(filters);
-    return {
-      success: true,
-      data: {
-        clubs: result.data.map(ClubResponseDto.fromEntity),
-      },
-      total: result.total,
-      page: result.page,
-      limit: result.limit,
-      totalPages: result.totalPages,
-    };
+    const clubs = result.data.map(ClubResponseDto.fromEntity);
+    return NatsResponse.paginated({ clubs }, result.total, result.page, result.limit);
   }
 
   @MessagePattern('club.findOne')
@@ -40,7 +32,7 @@ export class ClubNatsController {
     this.logger.log(`Finding club with data: ${JSON.stringify(data)}`);
     const { token, ...params } = data;
     const club = await this.clubService.findOne(params.id);
-    return { success: true, data: ClubResponseDto.fromEntity(club) };
+    return NatsResponse.success(ClubResponseDto.fromEntity(club));
   }
 
   @MessagePattern('club.update')
@@ -48,7 +40,7 @@ export class ClubNatsController {
     this.logger.log(`Updating club with data: ${JSON.stringify(data)}`);
     const { token, ...params } = data;
     const club = await this.clubService.update(params.id!, params.updateClubDto as UpdateClubDto);
-    return { success: true, data: ClubResponseDto.fromEntity(club) };
+    return NatsResponse.success(ClubResponseDto.fromEntity(club));
   }
 
   @MessagePattern('club.remove')
@@ -56,7 +48,7 @@ export class ClubNatsController {
     this.logger.log(`Removing club with data: ${JSON.stringify(data)}`);
     const { token, ...params } = data;
     await this.clubService.remove(params.id);
-    return { success: true, data: { deleted: true } };
+    return NatsResponse.deleted();
   }
 
   @MessagePattern('club.findByCompany')
@@ -64,14 +56,14 @@ export class ClubNatsController {
     this.logger.log(`Finding clubs by company with data: ${JSON.stringify(data)}`);
     const { token, ...params } = data;
     const clubs = await this.clubService.findByCompany(params.companyId);
-    return { success: true, data: clubs.map(ClubResponseDto.fromEntity) };
+    return NatsResponse.success(clubs.map(ClubResponseDto.fromEntity));
   }
 
   @MessagePattern('club.updateStats')
   async updateGolfClubStats(@Payload() data: { clubId: number }) {
     this.logger.log(`Updating stats for club ID: ${data.clubId}`);
     await this.clubService.updateStats(data.clubId);
-    return { success: true, data: { updated: true } };
+    return NatsResponse.success({ updated: true });
   }
 
   @MessagePattern('club.search')
@@ -86,7 +78,7 @@ export class ClubNatsController {
     };
 
     const result = await this.clubService.findAll(filters);
-    return { success: true, data: result.data.map(ClubResponseDto.fromEntity) };
+    return NatsResponse.success(result.data.map(ClubResponseDto.fromEntity));
   }
 
   @MessagePattern('club.findPopular')
@@ -101,7 +93,7 @@ export class ClubNatsController {
     };
 
     const result = await this.clubService.findAll(filters);
-    return { success: true, data: result.data.map(ClubResponseDto.fromEntity) };
+    return NatsResponse.success(result.data.map(ClubResponseDto.fromEntity));
   }
 
   @MessagePattern('club.getStatusCounts')
@@ -114,7 +106,7 @@ export class ClubNatsController {
       return acc;
     }, {} as { [key: string]: number });
 
-    return { success: true, data: statusCounts };
+    return NatsResponse.success(statusCounts);
   }
 
   @MessagePattern('club.getAverageStats')
@@ -126,13 +118,10 @@ export class ClubNatsController {
     const totalHoles = allGolfClubs.data.reduce((sum, gc) => sum + gc.totalHoles, 0);
     const totalCourses = allGolfClubs.data.reduce((sum, gc) => sum + gc.totalCourses, 0);
 
-    return {
-      success: true,
-      data: {
-        averageHoles: totalGolfClubs > 0 ? Math.round(totalHoles / totalGolfClubs) : 0,
-        averageCourses: totalGolfClubs > 0 ? Math.round(totalCourses / totalGolfClubs) : 0,
-        totalGolfClubs,
-      },
-    };
+    return NatsResponse.success({
+      averageHoles: totalGolfClubs > 0 ? Math.round(totalHoles / totalGolfClubs) : 0,
+      averageCourses: totalGolfClubs > 0 ? Math.round(totalCourses / totalGolfClubs) : 0,
+      totalGolfClubs,
+    });
   }
 }

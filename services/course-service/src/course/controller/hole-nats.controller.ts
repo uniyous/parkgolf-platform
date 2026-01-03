@@ -2,7 +2,7 @@ import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { HoleService } from '../service/hole.service';
 import { CreateHoleDto, UpdateHoleDto, FindHolesQueryDto, HoleResponseDto } from '../dto/hole.dto';
-import { HolePayload } from '../../common/types/response.types';
+import { HolePayload, NatsResponse } from '../../common/types/response.types';
 
 @Controller()
 export class HoleNatsController {
@@ -21,7 +21,7 @@ export class HoleNatsController {
     };
 
     const holes = await this.holeService.findAllByCourseId(Number(courseId), queryDto);
-    return { success: true, data: holes.map(HoleResponseDto.fromEntity) };
+    return NatsResponse.success(holes.map(HoleResponseDto.fromEntity));
   }
 
   @MessagePattern('holes.findById')
@@ -30,7 +30,7 @@ export class HoleNatsController {
     this.logger.log(`NATS: Getting hole ${holeId} for course ${courseId}`);
 
     const hole = await this.holeService.findOne(Number(courseId), Number(holeId));
-    return { success: true, data: HoleResponseDto.fromEntity(hole) };
+    return NatsResponse.success(HoleResponseDto.fromEntity(hole));
   }
 
   @MessagePattern('holes.create')
@@ -47,7 +47,7 @@ export class HoleNatsController {
 
     const hole = await this.holeService.create(Number(courseId), createDto);
     this.logger.log(`NATS: Created hole with ID ${hole.id} for course ${courseId}`);
-    return { success: true, data: HoleResponseDto.fromEntity(hole) };
+    return NatsResponse.success(HoleResponseDto.fromEntity(hole));
   }
 
   @MessagePattern('holes.update')
@@ -63,7 +63,7 @@ export class HoleNatsController {
 
     const hole = await this.holeService.update(Number(courseId), Number(holeId), updateDto);
     this.logger.log(`NATS: Updated hole ${holeId}`);
-    return { success: true, data: HoleResponseDto.fromEntity(hole) };
+    return NatsResponse.success(HoleResponseDto.fromEntity(hole));
   }
 
   @MessagePattern('holes.delete')
@@ -73,7 +73,7 @@ export class HoleNatsController {
 
     await this.holeService.remove(Number(courseId), Number(holeId));
     this.logger.log(`NATS: Deleted hole ${holeId}`);
-    return { success: true, data: { deleted: true } };
+    return NatsResponse.deleted();
   }
 
   @MessagePattern('holes.findByCourse')
@@ -83,6 +83,6 @@ export class HoleNatsController {
 
     const holes = await this.holeService.findAllByCourseId(Number(courseId), {});
     this.logger.log(`NATS: Returning ${holes.length} holes for course ${courseId}`);
-    return { success: true, data: holes.map(HoleResponseDto.fromEntity) };
+    return NatsResponse.success(holes.map(HoleResponseDto.fromEntity));
   }
 }
