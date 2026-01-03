@@ -193,13 +193,15 @@ jobs:
           echo "image=${IMAGE}" >> $GITHUB_OUTPUT
 
           # Environment-specific settings
+          # Note: min_instances=1 prevents cold start, required for NATS microservices
+          # Cold start causes NATS reconnection delay which breaks microservice communication
           if [ "$ENV" == "prod" ]; then
             echo "min_instances=1" >> $GITHUB_OUTPUT
             echo "max_instances=10" >> $GITHUB_OUTPUT
             echo "memory=1Gi" >> $GITHUB_OUTPUT
             echo "cpu=2" >> $GITHUB_OUTPUT
           else
-            echo "min_instances=0" >> $GITHUB_OUTPUT
+            echo "min_instances=1" >> $GITHUB_OUTPUT
             echo "max_instances=2" >> $GITHUB_OUTPUT
             echo "memory=512Mi" >> $GITHUB_OUTPUT
             echo "cpu=1" >> $GITHUB_OUTPUT
