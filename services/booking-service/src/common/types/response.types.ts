@@ -1,82 +1,66 @@
 /**
- * Common API Response Types
- * 모든 NATS 컨트롤러에서 사용하는 표준 응답 타입
+ * NATS 응답 타입
  */
 
-// ============================================
-// Common API Response Types
-// ============================================
+// ===== 타입 =====
 
-/**
- * 기본 API 응답 인터페이스
- */
-export interface ApiResponse<T> {
-  success: true;
-  data: T;
-}
-
-/**
- * 페이지네이션 메타 정보
- */
-export interface PaginationMeta {
+/** 페이지네이션 */
+export interface Pagination {
   total: number;
   page: number;
   limit: number;
   totalPages: number;
 }
 
-/**
- * 페이지네이션이 포함된 API 응답 인터페이스
- */
-export interface PaginatedResponse<T> extends ApiResponse<T[]>, PaginationMeta {}
-
-/**
- * 삭제 응답 인터페이스
- */
-export interface DeleteResponse extends ApiResponse<{ deleted: true }> {}
-
-/**
- * 원시 데이터 응답 (인터셉터 변환 전 형식)
- */
-export interface RawDataResponse extends Partial<PaginationMeta> {
-  data: unknown;
+/** 단일 응답 */
+export interface ApiResponse<T> {
+  success: true;
+  data: T;
 }
 
-/**
- * Response 헬퍼 클래스
- * NATS 컨트롤러에서 일관된 응답 형식을 생성하기 위한 정적 메서드 제공
- */
-export class NatsResponse {
-  /**
-   * 단일 데이터 응답 생성
-   */
-  static success<T>(data: T): ApiResponse<T> {
-    return { success: true, data };
-  }
+/** 페이지네이션 응답 */
+export interface PaginatedResponse<T> extends ApiResponse<T[]>, Pagination {}
 
-  /**
-   * 페이지네이션 응답 생성
-   */
-  static paginated<T>(
+// ===== 타입 가드 =====
+
+export const isWrapped = (v: unknown): v is ApiResponse<unknown> =>
+  typeof v === 'object' && v !== null && 'success' in v;
+
+export const isPaginated = (
+  v: unknown,
+): v is { data: unknown[]; total: number; page: number; limit: number } =>
+  typeof v === 'object' &&
+  v !== null &&
+  'data' in v &&
+  'total' in v &&
+  'page' in v &&
+  'limit' in v;
+
+export const hasData = (v: unknown): v is { data: unknown } =>
+  typeof v === 'object' && v !== null && 'data' in v;
+
+// ===== 응답 빌더 =====
+
+export const NatsResponse = {
+  success: <T>(data: T): ApiResponse<T> => ({ success: true, data }),
+
+  paginated: <T>(
     data: T[],
     total: number,
     page: number,
     limit: number,
-  ): PaginatedResponse<T> {
-    return {
-      success: true,
-      data,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
-  }
+  ): PaginatedResponse<T> => ({
+    success: true,
+    data,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  }),
 
-  /**
-   * 삭제 성공 응답 생성
-   */
-  static deleted(): DeleteResponse {
-    return { success: true, data: { deleted: true } };
-  }
-}
+  deleted: () => ({ success: true, data: { deleted: true } }) as const,
+} as const;
+
+// 타입 별칭 (하위 호환)
+export type PaginationMeta = Pagination;
+export type DeleteResponse = ReturnType<typeof NatsResponse.deleted>;
