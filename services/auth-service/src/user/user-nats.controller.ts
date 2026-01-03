@@ -23,10 +23,12 @@ export class UserNatsController {
     const { filters } = data;
     const result = await this.userService.findAll(filters?.page, filters?.limit);
     return {
+      success: true,
       data: result.users,
       total: result.total,
       page: result.page,
       limit: filters?.limit || 10,
+      totalPages: Math.ceil(result.total / (filters?.limit || 10)),
     };
   }
 
@@ -34,42 +36,42 @@ export class UserNatsController {
   async getUserById(@Payload() data: { userId: string; token?: string }) {
     this.logger.log(`Get user by ID: ${data.userId}`);
     const user = await this.userService.findOne(data.userId);
-    return { data: user };
+    return { success: true, data: user };
   }
 
   @MessagePattern('users.create')
   async createUser(@Payload() data: { userData: any; token?: string }) {
     this.logger.log(`Create user: ${data.userData?.email}`);
     const user = await this.userService.create(data.userData);
-    return { data: user };
+    return { success: true, data: user };
   }
 
   @MessagePattern('users.update')
   async updateUser(@Payload() data: { userId: string; updateData: any; token?: string }) {
     this.logger.log(`Update user: ${data.userId}`);
     const user = await this.userService.update(data.userId, data.updateData);
-    return { data: user };
+    return { success: true, data: user };
   }
 
   @MessagePattern('users.delete')
   async deleteUser(@Payload() data: { userId: string; token?: string }) {
     this.logger.log(`Delete user: ${data.userId}`);
     const result = await this.userService.remove(parseInt(data.userId, 10));
-    return { data: result };
+    return { success: true, data: result };
   }
 
   @MessagePattern('users.updateStatus')
   async updateUserStatus(@Payload() data: { userId: string; isActive: boolean; token?: string }) {
     this.logger.log(`Update user status: ${data.userId} -> ${data.isActive}`);
     const user = await this.userService.update(data.userId, { isActive: data.isActive });
-    return { data: user };
+    return { success: true, data: user };
   }
 
   @MessagePattern('users.stats')
   async getUserStats(@Payload() data: { dateRange?: any; token?: string }) {
     this.logger.log('Get user stats request');
     const stats = await this.userService.getStats();
-    return { data: stats };
+    return { success: true, data: stats };
   }
 
   @MessagePattern('users.findByEmail')
@@ -79,7 +81,7 @@ export class UserNatsController {
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    return { data: UserResponseDto.fromEntity(user) };
+    return { success: true, data: UserResponseDto.fromEntity(user) };
   }
 
   @MessagePattern('users.validateCredentials')
@@ -89,27 +91,27 @@ export class UserNatsController {
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');
     }
-    return { data: UserResponseDto.fromEntity(user) };
+    return { success: true, data: UserResponseDto.fromEntity(user) };
   }
 
   @MessagePattern('users.resetPassword')
   async resetUserPassword(@Payload() data: { userId: string; password: string; token?: string }) {
     this.logger.log(`Reset user password: ${data.userId}`);
     const user = await this.userService.resetPassword(data.userId, data.password);
-    return { data: user };
+    return { success: true, data: user };
   }
 
   @MessagePattern('users.updateRole')
   async updateUserRole(@Payload() data: { userId: string; role: string; token?: string }) {
     this.logger.log(`Update user role: ${data.userId} -> ${data.role}`);
     const user = await this.userService.updateRole(data.userId, data.role);
-    return { data: user };
+    return { success: true, data: user };
   }
 
   @MessagePattern('users.updatePermissions')
   async updateUserPermissions(@Payload() data: { userId: string; permissions: string[]; token?: string }) {
     this.logger.log(`Update user permissions: ${data.userId}`);
     const user = await this.userService.updatePermissions(data.userId, data.permissions);
-    return { data: user };
+    return { success: true, data: user };
   }
 }

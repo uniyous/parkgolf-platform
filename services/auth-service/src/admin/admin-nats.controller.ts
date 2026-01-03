@@ -23,6 +23,7 @@ export class AdminNatsController {
     const { filters, page = 1, limit = 20 } = data;
     const result = await this.adminService.findAll({ ...filters, page, limit });
     return {
+      success: true,
       data: AdminResponseDto.fromEntities(result.admins),
       total: result.total,
       page: result.page,
@@ -35,7 +36,7 @@ export class AdminNatsController {
   async getAdminById(@Payload() data: { adminId: string; token?: string }) {
     this.logger.log(`Get admin by ID: ${data.adminId}`);
     const admin = await this.adminService.findOne(parseInt(data.adminId, 10));
-    return { data: AdminResponseDto.fromEntity(admin) };
+    return { success: true, data: AdminResponseDto.fromEntity(admin) };
   }
 
   @MessagePattern('admins.create')
@@ -43,7 +44,7 @@ export class AdminNatsController {
     this.logger.log(`Create admin: ${data.adminData?.email}`);
     const admin = await this.adminService.create(data.adminData);
     this.logger.log(`Admin created: ${admin.email}`);
-    return { data: AdminResponseDto.fromEntity(admin) };
+    return { success: true, data: AdminResponseDto.fromEntity(admin) };
   }
 
   @MessagePattern('admins.update')
@@ -53,14 +54,14 @@ export class AdminNatsController {
       parseInt(data.adminId, 10),
       data.updateData
     );
-    return { data: AdminResponseDto.fromEntity(admin) };
+    return { success: true, data: AdminResponseDto.fromEntity(admin) };
   }
 
   @MessagePattern('admins.delete')
   async deleteAdmin(@Payload() data: { adminId: string; token?: string }) {
     this.logger.log(`Delete admin: ${data.adminId}`);
     const admin = await this.adminService.remove(parseInt(data.adminId, 10));
-    return { data: AdminResponseDto.fromEntity(admin) };
+    return { success: true, data: AdminResponseDto.fromEntity(admin) };
   }
 
   @MessagePattern('admins.updateStatus')
@@ -70,7 +71,7 @@ export class AdminNatsController {
       parseInt(data.adminId, 10),
       { isActive: data.isActive }
     );
-    return { data: AdminResponseDto.fromEntity(admin) };
+    return { success: true, data: AdminResponseDto.fromEntity(admin) };
   }
 
   @MessagePattern('admins.updatePermissions')
@@ -80,21 +81,21 @@ export class AdminNatsController {
       parseInt(data.adminId, 10),
       data.permissions
     );
-    return { data: AdminResponseDto.fromEntity(admin) };
+    return { success: true, data: AdminResponseDto.fromEntity(admin) };
   }
 
   @MessagePattern('admins.stats')
   async getAdminStats(@Payload() data: { dateRange?: any; token?: string }) {
     this.logger.log('Get admin stats request');
     const stats = await this.adminService.getStats();
-    return { data: stats };
+    return { success: true, data: stats };
   }
 
   @MessagePattern('permissions.list')
   async getPermissionList(@Payload() data: { token?: string }) {
     this.logger.log('Get permission list request');
     const permissions = await this.adminService.getAllPermissions();
-    return { data: permissions };
+    return { success: true, data: permissions };
   }
 
   // ============================================
@@ -107,14 +108,14 @@ export class AdminNatsController {
     const roles = data.userType === 'ADMIN'
       ? await this.adminService.getAdminRoles()
       : await this.adminService.getAllRoles();
-    return { data: roles };
+    return { success: true, data: roles };
   }
 
   @MessagePattern('roles.permissions')
   async getRolePermissions(@Payload() data: { roleCode: string; token?: string }) {
     this.logger.log(`Get permissions for role: ${data.roleCode}`);
     const permissions = await this.adminService.getRolePermissions(data.roleCode);
-    return { data: permissions };
+    return { success: true, data: permissions };
   }
 
   @MessagePattern('roles.withPermissions')
@@ -122,6 +123,6 @@ export class AdminNatsController {
     this.logger.log('Get roles with permissions request');
     // 단일 쿼리로 역할과 권한을 함께 조회 (N+1 제거)
     const rolesWithPermissions = await this.adminService.getRolesWithPermissions(data.userType);
-    return { data: rolesWithPermissions };
+    return { success: true, data: rolesWithPermissions };
   }
 }

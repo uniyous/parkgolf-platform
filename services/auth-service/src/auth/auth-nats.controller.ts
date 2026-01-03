@@ -33,7 +33,7 @@ export class AuthNatsController {
 
     const result = await this.authService.login(user);
     this.logger.log(`User login successful: ${loginDto.email}`);
-    return result;
+    return { success: true, data: result };
   }
 
   @MessagePattern('auth.user.validate')
@@ -46,7 +46,7 @@ export class AuthNatsController {
       throw new BadRequestException('Expected user token, got admin token');
     }
 
-    return decoded;
+    return { success: true, data: decoded };
   }
 
   @MessagePattern('auth.user.refresh')
@@ -59,7 +59,7 @@ export class AuthNatsController {
       throw new BadRequestException('Expected user token, got admin token');
     }
 
-    return result;
+    return { success: true, data: result };
   }
 
   @MessagePattern('auth.user.me')
@@ -73,7 +73,7 @@ export class AuthNatsController {
     }
 
     const userInfo = await this.authService.getCurrentUser(decoded.user);
-    return userInfo;
+    return { success: true, data: userInfo };
   }
 
   // ============================================
@@ -91,7 +91,7 @@ export class AuthNatsController {
 
     const result = await this.authService.adminLogin(admin);
     this.logger.log(`Admin login successful: ${loginDto.email}`);
-    return result;
+    return { success: true, data: result };
   }
 
   @MessagePattern('auth.admin.validate')
@@ -104,14 +104,14 @@ export class AuthNatsController {
       throw new BadRequestException('Expected admin token, got user token');
     }
 
-    return decoded;
+    return { success: true, data: decoded };
   }
 
   @MessagePattern('auth.admin.refresh')
   async refreshAdminToken(@Payload() payload: { refreshToken: string }) {
     this.logger.log('Admin token refresh request');
     const result = await this.authService.adminRefreshToken(payload.refreshToken);
-    return result;
+    return { success: true, data: result };
   }
 
   @MessagePattern('auth.admin.me')
@@ -128,6 +128,6 @@ export class AuthNatsController {
 
     const adminInfo = await this.authService.getCurrentUser(decoded.user);
     this.logger.debug(`Admin info retrieved: ${JSON.stringify({ id: adminInfo.id, email: adminInfo.email, roles: adminInfo.roles })}`);
-    return adminInfo;
+    return { success: true, data: adminInfo };
   }
 }
