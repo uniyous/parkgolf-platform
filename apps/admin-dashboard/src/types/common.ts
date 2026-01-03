@@ -1,3 +1,5 @@
+// ===== 기본 타입 =====
+
 export interface BaseEntity {
   id: number;
   createdAt: Date;
@@ -11,24 +13,23 @@ export interface PaginationParams {
   sortOrder?: 'asc' | 'desc';
 }
 
-export interface PaginatedResponse<T> {
-  data: T[];
+export type ApiStatus = 'idle' | 'loading' | 'success' | 'error';
+
+// ===== 페이지네이션 =====
+
+export interface Pagination {
   total: number;
   page: number;
   limit: number;
   totalPages: number;
 }
 
-export type ApiStatus = 'idle' | 'loading' | 'success' | 'error';
+export interface PaginatedResponse<T> extends Pagination {
+  data: T[];
+}
 
-// ============================================
-// BFF API Response Types
-// ============================================
+// ===== BFF API 응답 =====
 
-/**
- * BFF API 표준 응답 형식
- * 모든 admin-api 엔드포인트는 이 형식으로 응답합니다.
- */
 export interface BffApiResponse<T> {
   success: boolean;
   data?: T;
@@ -36,27 +37,35 @@ export interface BffApiResponse<T> {
   error?: {
     code: string;
     message: string;
-    details?: Record<string, any>;
+    details?: Record<string, unknown>;
   };
 }
 
-/**
- * BFF API 페이지네이션 응답 형식
- */
 export interface BffPaginatedResponse<T> {
   success: boolean;
-  data?: {
-    items: T[];
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
+  data?: T[];
+  total?: number;
+  page?: number;
+  limit?: number;
+  totalPages?: number;
   error?: {
     code: string;
     message: string;
   };
 }
+
+// ===== 타입 가드 =====
+
+export const isSuccess = <T>(res: BffApiResponse<T>): res is BffApiResponse<T> & { data: T } =>
+  res.success === true && res.data !== undefined;
+
+export const isPaginated = <T>(
+  res: BffPaginatedResponse<T>,
+): res is Required<Omit<BffPaginatedResponse<T>, 'error'>> =>
+  res.success === true && res.data !== undefined && res.total !== undefined;
+
+export const isError = <T>(res: BffApiResponse<T>): res is BffApiResponse<T> & { error: NonNullable<BffApiResponse<T>['error']> } =>
+  res.success === false && res.error !== undefined;
 
 /**
  * BFF API 에러 코드

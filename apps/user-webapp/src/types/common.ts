@@ -1,11 +1,18 @@
-// ============================================
-// BFF API Response Types
-// ============================================
+// ===== 페이지네이션 =====
 
-/**
- * BFF API 표준 응답 형식
- * 모든 user-api 엔드포인트는 이 형식으로 응답합니다.
- */
+export interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface PaginatedResponse<T> extends Pagination {
+  data: T[];
+}
+
+// ===== BFF API 응답 =====
+
 export interface BffApiResponse<T> {
   success: boolean;
   data?: T;
@@ -16,6 +23,32 @@ export interface BffApiResponse<T> {
     details?: Record<string, unknown>;
   };
 }
+
+export interface BffPaginatedResponse<T> {
+  success: boolean;
+  data?: T[];
+  total?: number;
+  page?: number;
+  limit?: number;
+  totalPages?: number;
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
+// ===== 타입 가드 =====
+
+export const isSuccess = <T>(res: BffApiResponse<T>): res is BffApiResponse<T> & { data: T } =>
+  res.success === true && res.data !== undefined;
+
+export const isPaginated = <T>(
+  res: BffPaginatedResponse<T>,
+): res is Required<Omit<BffPaginatedResponse<T>, 'error'>> =>
+  res.success === true && res.data !== undefined && res.total !== undefined;
+
+export const isError = <T>(res: BffApiResponse<T>): res is BffApiResponse<T> & { error: NonNullable<BffApiResponse<T>['error']> } =>
+  res.success === false && res.error !== undefined;
 
 /**
  * BFF API 에러 코드
