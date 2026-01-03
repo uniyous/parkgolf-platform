@@ -1,6 +1,6 @@
 /**
  * Common API Response Types
- * 백엔드 서비스에서 반환하는 응답 타입 정의
+ * 모든 NATS 컨트롤러에서 사용하는 표준 응답 타입
  */
 
 // ============================================
@@ -46,9 +46,6 @@ export interface ErrorResponse {
  * 삭제 응답 인터페이스
  */
 export interface DeleteResponse extends ApiResponse<{ deleted: true }> {}
-
-// Legacy alias for backward compatibility
-export type NatsSuccessResponse<T> = ApiResponse<T>;
 
 /**
  * Response 헬퍼 클래스

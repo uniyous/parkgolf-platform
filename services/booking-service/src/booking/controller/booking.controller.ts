@@ -6,6 +6,7 @@ import {
   UpdateBookingDto,
   SearchBookingDto,
 } from '../dto/booking.dto';
+import { NatsResponse } from '../../common/types/response.types';
 
 @Controller()
 export class BookingController {
@@ -19,7 +20,7 @@ export class BookingController {
     this.logger.debug(`NATS: booking.create data: ${JSON.stringify(data)}`);
     const booking = await this.bookingService.createBooking(data);
     this.logger.log(`NATS: Booking created with number: ${booking.bookingNumber}`);
-    return { data: booking };
+    return NatsResponse.success(booking);
   }
 
   @MessagePattern('booking.findById')
@@ -29,7 +30,7 @@ export class BookingController {
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
-    return { data: booking };
+    return NatsResponse.success(booking);
   }
 
   @MessagePattern('booking.findByNumber')
@@ -39,14 +40,14 @@ export class BookingController {
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
-    return { data: booking };
+    return NatsResponse.success(booking);
   }
 
   @MessagePattern('booking.findByUserId')
   async findBookingsByUserId(@Payload() data: { userId: number }) {
     this.logger.log(`NATS: Received booking.findByUserId request for user: ${data.userId}`);
     const bookings = await this.bookingService.getBookingsByUserId(data.userId);
-    return { data: bookings };
+    return NatsResponse.success(bookings);
   }
 
   @MessagePattern('booking.search')
@@ -55,12 +56,7 @@ export class BookingController {
     this.logger.debug(`NATS: booking.search data: ${JSON.stringify(data)}`);
     const result = await this.bookingService.searchBookings(data);
     this.logger.log(`NATS: Found ${result.total} bookings`);
-    return {
-      data: result.bookings,
-      total: result.total,
-      page: result.page,
-      limit: result.limit,
-    };
+    return NatsResponse.paginated(result.bookings, result.total, result.page, result.limit);
   }
 
   @MessagePattern('booking.update')
@@ -68,7 +64,7 @@ export class BookingController {
     this.logger.log(`NATS: Received booking.update request for ID: ${data.id}`);
     const booking = await this.bookingService.updateBooking(data.id, data.dto);
     this.logger.log(`NATS: Booking updated for ID: ${booking.id}`);
-    return { data: booking };
+    return NatsResponse.success(booking);
   }
 
   @MessagePattern('booking.cancel')
@@ -80,7 +76,7 @@ export class BookingController {
     this.logger.log(`NATS: Received booking.cancel request for ID: ${data.id}`);
     const booking = await this.bookingService.cancelBooking(data.id, data.userId, data.reason);
     this.logger.log(`NATS: Booking cancelled for ID: ${booking.id}`);
-    return { data: booking };
+    return NatsResponse.success(booking);
   }
 
   @MessagePattern('booking.gameTimeSlots.availability')
@@ -91,7 +87,7 @@ export class BookingController {
     this.logger.log(`NATS: Received gameTimeSlots.availability request for game: ${data.gameId}, date: ${data.date}`);
     const slots = await this.bookingService.getGameTimeSlotAvailability(data.gameId, data.date);
     this.logger.log(`NATS: Found ${slots.length} game time slots`);
-    return { data: slots };
+    return NatsResponse.success(slots);
   }
 
   @MessagePattern('booking.game.sync')
@@ -118,7 +114,7 @@ export class BookingController {
     this.logger.log(`NATS: Received game.sync request for game: ${data.gameId}`);
     await this.bookingService.syncGameCache(data);
     this.logger.log(`NATS: Game cache synced for: ${data.gameId}`);
-    return { data: { synced: true } };
+    return NatsResponse.success({ synced: true });
   }
 
   @MessagePattern('booking.gameTimeSlot.sync')
@@ -145,6 +141,6 @@ export class BookingController {
     this.logger.log(`NATS: Received gameTimeSlot.sync request for slot: ${data.gameTimeSlotId}`);
     await this.bookingService.syncGameTimeSlotCache(data);
     this.logger.log(`NATS: GameTimeSlot cache synced for: ${data.gameTimeSlotId}`);
-    return { data: { synced: true } };
+    return NatsResponse.success({ synced: true });
   }
 }
