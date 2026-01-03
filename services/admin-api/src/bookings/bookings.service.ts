@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
-import { NatsSuccessResponse } from '../common/types';
+import { ApiResponse } from '../common/types';
 import { CreateBookingDto, UpdateBookingDto, BookingStatusType } from './dto/booking.dto';
 import { BookingFilterDto } from './dto/booking-filter.dto';
 
@@ -101,7 +101,7 @@ export class BookingService {
     page = 1,
     limit = 20,
     adminToken: string,
-  ): Promise<NatsSuccessResponse<BookingListResponse>> {
+  ): Promise<ApiResponse<BookingListResponse>> {
     this.logger.log('Fetching bookings');
     return this.natsClient.send('bookings.list', {
       filters,
@@ -111,7 +111,7 @@ export class BookingService {
     }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
-  async getBookingById(bookingId: string, adminToken: string): Promise<NatsSuccessResponse<BookingResponseDto>> {
+  async getBookingById(bookingId: string, adminToken: string): Promise<ApiResponse<BookingResponseDto>> {
     this.logger.log(`Fetching booking: ${bookingId}`);
     return this.natsClient.send('bookings.findById', {
       bookingId,
@@ -119,7 +119,7 @@ export class BookingService {
     }, NATS_TIMEOUTS.QUICK);
   }
 
-  async createBooking(bookingData: CreateBookingDto, adminToken: string): Promise<NatsSuccessResponse<BookingResponseDto>> {
+  async createBooking(bookingData: CreateBookingDto, adminToken: string): Promise<ApiResponse<BookingResponseDto>> {
     this.logger.log('Creating booking');
     return this.natsClient.send('bookings.create', {
       data: bookingData,
@@ -131,7 +131,7 @@ export class BookingService {
     bookingId: string,
     updateData: UpdateBookingDto,
     adminToken: string,
-  ): Promise<NatsSuccessResponse<BookingResponseDto>> {
+  ): Promise<ApiResponse<BookingResponseDto>> {
     this.logger.log(`Updating booking: ${bookingId}`);
     return this.natsClient.send('bookings.update', {
       bookingId,
@@ -144,7 +144,7 @@ export class BookingService {
     bookingId: string,
     reason?: string,
     adminToken?: string,
-  ): Promise<NatsSuccessResponse<BookingResponseDto>> {
+  ): Promise<ApiResponse<BookingResponseDto>> {
     this.logger.log(`Cancelling booking: ${bookingId}`);
     const params: { bookingId: string; reason?: string; token?: string } = { bookingId };
     if (reason) params.reason = reason;
@@ -152,7 +152,7 @@ export class BookingService {
     return this.natsClient.send('bookings.cancel', params);
   }
 
-  async confirmBooking(bookingId: string, adminToken: string): Promise<NatsSuccessResponse<BookingResponseDto>> {
+  async confirmBooking(bookingId: string, adminToken: string): Promise<ApiResponse<BookingResponseDto>> {
     this.logger.log(`Confirming booking: ${bookingId}`);
     return this.natsClient.send('bookings.confirm', {
       bookingId,
@@ -160,7 +160,7 @@ export class BookingService {
     });
   }
 
-  async completeBooking(bookingId: string, adminToken: string): Promise<NatsSuccessResponse<BookingResponseDto>> {
+  async completeBooking(bookingId: string, adminToken: string): Promise<ApiResponse<BookingResponseDto>> {
     this.logger.log(`Completing booking: ${bookingId}`);
     return this.natsClient.send('bookings.complete', {
       bookingId,
@@ -168,7 +168,7 @@ export class BookingService {
     });
   }
 
-  async markNoShow(bookingId: string, adminToken: string): Promise<NatsSuccessResponse<BookingResponseDto>> {
+  async markNoShow(bookingId: string, adminToken: string): Promise<ApiResponse<BookingResponseDto>> {
     this.logger.log(`Marking no-show: ${bookingId}`);
     return this.natsClient.send('bookings.noShow', {
       bookingId,
@@ -182,7 +182,7 @@ export class BookingService {
     page = 1,
     limit = 20,
     adminToken: string,
-  ): Promise<NatsSuccessResponse<PaymentListResponse>> {
+  ): Promise<ApiResponse<PaymentListResponse>> {
     this.logger.log('Fetching payments');
     return this.natsClient.send('payments.list', {
       filters,
@@ -192,7 +192,7 @@ export class BookingService {
     }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
-  async getPaymentById(paymentId: string, adminToken: string): Promise<NatsSuccessResponse<PaymentResponseDto>> {
+  async getPaymentById(paymentId: string, adminToken: string): Promise<ApiResponse<PaymentResponseDto>> {
     this.logger.log(`Fetching payment: ${paymentId}`);
     return this.natsClient.send('payments.findById', {
       paymentId,
@@ -204,7 +204,7 @@ export class BookingService {
     paymentId: string,
     refundData: { amount?: number; reason?: string },
     adminToken: string,
-  ): Promise<NatsSuccessResponse<PaymentResponseDto>> {
+  ): Promise<ApiResponse<PaymentResponseDto>> {
     this.logger.log(`Processing refund: ${paymentId}`);
     return this.natsClient.send('payments.refund', {
       paymentId,
@@ -219,7 +219,7 @@ export class BookingService {
     page = 1,
     limit = 20,
     adminToken: string,
-  ): Promise<NatsSuccessResponse<BookingListResponse>> {
+  ): Promise<ApiResponse<BookingListResponse>> {
     this.logger.log('Fetching booking history');
     return this.natsClient.send('bookings.history', {
       filters,
@@ -232,7 +232,7 @@ export class BookingService {
   async getBookingStats(
     dateRange: { startDate: string; endDate: string },
     adminToken: string,
-  ): Promise<NatsSuccessResponse<BookingStatsResponse>> {
+  ): Promise<ApiResponse<BookingStatsResponse>> {
     this.logger.log('Fetching booking statistics');
     return this.natsClient.send('bookings.stats', {
       dateRange,
@@ -243,7 +243,7 @@ export class BookingService {
   async getRevenueStats(
     dateRange: { startDate: string; endDate: string },
     adminToken: string,
-  ): Promise<NatsSuccessResponse<RevenueStatsResponse>> {
+  ): Promise<ApiResponse<RevenueStatsResponse>> {
     this.logger.log('Fetching revenue statistics');
     return this.natsClient.send('payments.revenueStats', {
       dateRange,
@@ -257,7 +257,7 @@ export class BookingService {
     page = 1,
     limit = 20,
     adminToken: string,
-  ): Promise<NatsSuccessResponse<BookingListResponse>> {
+  ): Promise<ApiResponse<BookingListResponse>> {
     this.logger.log(`Fetching user bookings: ${userId}`);
     return this.natsClient.send('bookings.user', {
       userId,
@@ -274,7 +274,7 @@ export class BookingService {
     page = 1,
     limit = 20,
     adminToken?: string,
-  ): Promise<NatsSuccessResponse<BookingListResponse>> {
+  ): Promise<ApiResponse<BookingListResponse>> {
     this.logger.log(`Fetching game bookings: ${gameId}`);
     const params: { gameId: string; page: number; limit: number; date?: string; token?: string } = {
       gameId,
@@ -290,7 +290,7 @@ export class BookingService {
   async getDashboardStats(
     dateRange: { startDate: string; endDate: string },
     adminToken: string,
-  ): Promise<NatsSuccessResponse<unknown>> {
+  ): Promise<ApiResponse<unknown>> {
     this.logger.log('Fetching dashboard statistics');
     return this.natsClient.send('dashboard.stats', {
       dateRange,

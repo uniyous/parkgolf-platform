@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
-import { NatsSuccessResponse } from '../common/types';
+import { ApiResponse } from '../common/types';
 import {
   CreateBookingDto,
   SearchBookingDto,
@@ -86,12 +86,12 @@ export class BookingService {
    * booking-service에서 PENDING 상태로 예약이 생성되고,
    * 백그라운드에서 course-service와의 Saga가 진행됨
    */
-  async createBooking(userId: number, dto: CreateBookingDto): Promise<NatsSuccessResponse<BookingResponseDto>> {
+  async createBooking(userId: number, dto: CreateBookingDto): Promise<ApiResponse<BookingResponseDto>> {
     // 멱등성 키 생성 (클라이언트가 제공하지 않은 경우 서버에서 생성)
     const idempotencyKey = dto.idempotencyKey || randomUUID();
     this.logger.log(`Creating booking for user ${userId} with idempotencyKey: ${idempotencyKey}`);
 
-    const result = await this.natsClient.send<NatsSuccessResponse<BookingResponseDto>>('booking.create', {
+    const result = await this.natsClient.send<ApiResponse<BookingResponseDto>>('booking.create', {
       idempotencyKey,
       userId,
       gameId: dto.gameId,
@@ -111,31 +111,31 @@ export class BookingService {
     return result;
   }
 
-  async getBookingById(id: number): Promise<NatsSuccessResponse<BookingResponseDto>> {
+  async getBookingById(id: number): Promise<ApiResponse<BookingResponseDto>> {
     return this.natsClient.send('booking.findById', { id }, NATS_TIMEOUTS.QUICK);
   }
 
-  async getBookingByNumber(bookingNumber: string): Promise<NatsSuccessResponse<BookingResponseDto>> {
+  async getBookingByNumber(bookingNumber: string): Promise<ApiResponse<BookingResponseDto>> {
     return this.natsClient.send('booking.findByNumber', { bookingNumber }, NATS_TIMEOUTS.QUICK);
   }
 
-  async getBookingsByUserId(userId: number): Promise<NatsSuccessResponse<BookingResponseDto[]>> {
+  async getBookingsByUserId(userId: number): Promise<ApiResponse<BookingResponseDto[]>> {
     return this.natsClient.send('booking.findByUserId', { userId }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
-  async searchBookings(searchDto: SearchBookingDto): Promise<NatsSuccessResponse<BookingListResponse>> {
+  async searchBookings(searchDto: SearchBookingDto): Promise<ApiResponse<BookingListResponse>> {
     return this.natsClient.send('booking.search', searchDto, NATS_TIMEOUTS.LIST_QUERY);
   }
 
-  async updateBooking(id: number, dto: UpdateBookingDto): Promise<NatsSuccessResponse<BookingResponseDto>> {
+  async updateBooking(id: number, dto: UpdateBookingDto): Promise<ApiResponse<BookingResponseDto>> {
     return this.natsClient.send('booking.update', { id, dto }, NATS_TIMEOUTS.QUICK);
   }
 
-  async cancelBooking(id: number, userId: number, reason?: string): Promise<NatsSuccessResponse<BookingResponseDto>> {
+  async cancelBooking(id: number, userId: number, reason?: string): Promise<ApiResponse<BookingResponseDto>> {
     return this.natsClient.send('booking.cancel', { id, userId, reason }, NATS_TIMEOUTS.QUICK);
   }
 
-  async getTimeSlotAvailability(gameId: number, date: string): Promise<NatsSuccessResponse<TimeSlotAvailabilityDto[]>> {
+  async getTimeSlotAvailability(gameId: number, date: string): Promise<ApiResponse<TimeSlotAvailabilityDto[]>> {
     return this.natsClient.send('booking.gameTimeSlots.availability', { gameId, date }, NATS_TIMEOUTS.QUICK);
   }
 }

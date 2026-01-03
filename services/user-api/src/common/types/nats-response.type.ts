@@ -47,9 +47,6 @@ export interface ErrorResponse {
  */
 export interface DeleteResponse extends ApiResponse<{ deleted: true }> {}
 
-// Legacy alias for backward compatibility
-export type NatsSuccessResponse<T> = ApiResponse<T>;
-
 /**
  * Response 헬퍼 클래스
  * NATS 컨트롤러에서 일관된 응답 형식을 생성하기 위한 정적 메서드 제공
