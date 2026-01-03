@@ -19,10 +19,14 @@ export class CompanyNatsController {
     const result = await this.companyService.findAll(Number(page), Number(limit));
 
     return {
-      data: result.companies.map(CompanyResponseDto.fromEntity),
+      success: true,
+      data: {
+        companies: result.companies.map(CompanyResponseDto.fromEntity),
+      },
       total: result.total,
       page: result.page,
       limit: result.limit,
+      totalPages: Math.ceil(result.total / result.limit),
     };
   }
 
@@ -30,7 +34,7 @@ export class CompanyNatsController {
   async getCompanyById(@Payload() data: CompanyPayload) {
     this.logger.log(`NATS: Getting company ${data.companyId}`);
     const company = await this.companyService.findOne(Number(data.companyId));
-    return { data: CompanyResponseDto.fromEntity(company) };
+    return { success: true, data: CompanyResponseDto.fromEntity(company) };
   }
 
   @MessagePattern('companies.create')
@@ -38,7 +42,7 @@ export class CompanyNatsController {
     this.logger.log('NATS: Creating company');
     const company = await this.companyService.create(data.data as CreateCompanyDto);
     this.logger.log(`NATS: Created company with ID ${company.id}`);
-    return { data: CompanyResponseDto.fromEntity(company) };
+    return { success: true, data: CompanyResponseDto.fromEntity(company) };
   }
 
   @MessagePattern('companies.update')
@@ -46,7 +50,7 @@ export class CompanyNatsController {
     this.logger.log(`NATS: Updating company ${data.companyId}`);
     const company = await this.companyService.update(Number(data.companyId), data.data as UpdateCompanyDto);
     this.logger.log(`NATS: Updated company ${company.id}`);
-    return { data: CompanyResponseDto.fromEntity(company) };
+    return { success: true, data: CompanyResponseDto.fromEntity(company) };
   }
 
   @MessagePattern('companies.delete')
@@ -54,6 +58,6 @@ export class CompanyNatsController {
     this.logger.log(`NATS: Deleting company ${data.companyId}`);
     await this.companyService.remove(Number(data.companyId));
     this.logger.log(`NATS: Deleted company ${data.companyId}`);
-    return { data: { deleted: true } };
+    return { success: true, data: { deleted: true } };
   }
 }
