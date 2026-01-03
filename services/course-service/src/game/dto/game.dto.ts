@@ -219,6 +219,10 @@ export class SearchGamesQueryDto {
   @IsOptional()
   search?: string;
 
+  @IsString()
+  @IsOptional()
+  date?: string;  // YYYY-MM-DD format - 해당 날짜에 예약 가능한 타임슬롯이 있는 게임만 필터링
+
   @IsNumber()
   @IsOptional()
   @Type(() => Number)

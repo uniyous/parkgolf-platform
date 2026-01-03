@@ -1,4 +1,6 @@
 // API 클라이언트 - user-api 연동
+import { getErrorMessage } from '@/types/common';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3092';
 
 export interface ApiResponse<T> {
@@ -77,10 +79,27 @@ class ApiClient {
         };
       }
 
-      const responseData: T = await response.json();
+      const responseData: unknown = await response.json();
+
+      // BFF API 에러 응답 형식 확인: { success: false, error: { code, message } }
+      if (
+        typeof responseData === 'object' &&
+        responseData !== null &&
+        'success' in responseData &&
+        !(responseData as { success: boolean }).success &&
+        'error' in responseData
+      ) {
+        const errorResponse = responseData as {
+          success: false;
+          error: { code: string; message: string; details?: Record<string, unknown> };
+        };
+        const errorCode = errorResponse.error.code;
+        const errorMessage = getErrorMessage(errorCode, errorResponse.error.message);
+        throw new ApiError(errorMessage, response.status, errorCode, errorResponse.error.details);
+      }
 
       return {
-        data: responseData,
+        data: responseData as T,
         status: response.status,
       };
     } catch (error) {
@@ -93,7 +112,11 @@ class ApiClient {
   }
 
   private async handleErrorResponse(response: Response): Promise<never> {
-    let errorData: { message?: string; error?: { code?: string; message?: string; details?: unknown } };
+    let errorData: {
+      success?: boolean;
+      message?: string;
+      error?: { code?: string; message?: string; details?: Record<string, unknown> };
+    };
     try {
       errorData = await response.json();
     } catch {
@@ -102,15 +125,24 @@ class ApiClient {
       };
     }
 
-    const message = errorData.message || errorData.error?.message || 'An error occurred';
-    const code = errorData.error?.code;
+    // 에러 응답에서 code와 message 추출
+    let errorCode: string | undefined;
+    let errorMessage: string;
+    let errorDetails: Record<string, unknown> | undefined;
 
-    const apiError = new ApiError(
-      message,
-      response.status,
-      code,
-      errorData.error?.details as Record<string, unknown>
-    );
+    if ('success' in errorData && errorData.error) {
+      // BFF API 에러 형식: { success: false, error: { code, message } }
+      errorCode = errorData.error.code;
+      errorMessage = getErrorMessage(errorCode, errorData.error.message);
+      errorDetails = errorData.error.details;
+    } else {
+      // 기타 에러 형식
+      errorCode = errorData.error?.code;
+      errorMessage = getErrorMessage(errorCode, errorData.message || errorData.error?.message || '오류가 발생했습니다');
+      errorDetails = errorData.error?.details;
+    }
+
+    const apiError = new ApiError(errorMessage, response.status, errorCode, errorDetails);
 
     // 인증 에러 처리
     if (response.status === 401) {

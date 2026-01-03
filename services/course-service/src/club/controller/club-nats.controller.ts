@@ -15,7 +15,7 @@ export class ClubNatsController {
     this.logger.log(`Creating club with data: ${JSON.stringify(data)}`);
     const { token, ...createGolfClubDto } = data;
     const club = await this.clubService.create((createGolfClubDto.data || createGolfClubDto) as CreateClubDto);
-    return { data: ClubResponseDto.fromEntity(club) };
+    return { success: true, data: ClubResponseDto.fromEntity(club) };
   }
 
   @MessagePattern('club.findAll')
@@ -24,10 +24,14 @@ export class ClubNatsController {
     const { token, ...filters } = data;
     const result = await this.clubService.findAll(filters);
     return {
-      data: result.data.map(ClubResponseDto.fromEntity),
+      success: true,
+      data: {
+        clubs: result.data.map(ClubResponseDto.fromEntity),
+      },
       total: result.total,
       page: result.page,
       limit: result.limit,
+      totalPages: result.totalPages,
     };
   }
 
@@ -36,7 +40,7 @@ export class ClubNatsController {
     this.logger.log(`Finding club with data: ${JSON.stringify(data)}`);
     const { token, ...params } = data;
     const club = await this.clubService.findOne(params.id);
-    return { data: ClubResponseDto.fromEntity(club) };
+    return { success: true, data: ClubResponseDto.fromEntity(club) };
   }
 
   @MessagePattern('club.update')
@@ -44,7 +48,7 @@ export class ClubNatsController {
     this.logger.log(`Updating club with data: ${JSON.stringify(data)}`);
     const { token, ...params } = data;
     const club = await this.clubService.update(params.id!, params.updateClubDto as UpdateClubDto);
-    return { data: ClubResponseDto.fromEntity(club) };
+    return { success: true, data: ClubResponseDto.fromEntity(club) };
   }
 
   @MessagePattern('club.remove')
@@ -52,7 +56,7 @@ export class ClubNatsController {
     this.logger.log(`Removing club with data: ${JSON.stringify(data)}`);
     const { token, ...params } = data;
     await this.clubService.remove(params.id);
-    return { data: { deleted: true } };
+    return { success: true, data: { deleted: true } };
   }
 
   @MessagePattern('club.findByCompany')
@@ -60,14 +64,14 @@ export class ClubNatsController {
     this.logger.log(`Finding clubs by company with data: ${JSON.stringify(data)}`);
     const { token, ...params } = data;
     const clubs = await this.clubService.findByCompany(params.companyId);
-    return { data: clubs.map(ClubResponseDto.fromEntity) };
+    return { success: true, data: clubs.map(ClubResponseDto.fromEntity) };
   }
 
   @MessagePattern('club.updateStats')
   async updateGolfClubStats(@Payload() data: { clubId: number }) {
     this.logger.log(`Updating stats for club ID: ${data.clubId}`);
     await this.clubService.updateStats(data.clubId);
-    return { data: { updated: true } };
+    return { success: true, data: { updated: true } };
   }
 
   @MessagePattern('club.search')
@@ -82,7 +86,7 @@ export class ClubNatsController {
     };
 
     const result = await this.clubService.findAll(filters);
-    return { data: result.data.map(ClubResponseDto.fromEntity) };
+    return { success: true, data: result.data.map(ClubResponseDto.fromEntity) };
   }
 
   @MessagePattern('club.findPopular')
@@ -97,7 +101,7 @@ export class ClubNatsController {
     };
 
     const result = await this.clubService.findAll(filters);
-    return { data: result.data.map(ClubResponseDto.fromEntity) };
+    return { success: true, data: result.data.map(ClubResponseDto.fromEntity) };
   }
 
   @MessagePattern('club.getStatusCounts')
@@ -110,7 +114,7 @@ export class ClubNatsController {
       return acc;
     }, {} as { [key: string]: number });
 
-    return { data: statusCounts };
+    return { success: true, data: statusCounts };
   }
 
   @MessagePattern('club.getAverageStats')
@@ -123,6 +127,7 @@ export class ClubNatsController {
     const totalCourses = allGolfClubs.data.reduce((sum, gc) => sum + gc.totalCourses, 0);
 
     return {
+      success: true,
       data: {
         averageHoles: totalGolfClubs > 0 ? Math.round(totalHoles / totalGolfClubs) : 0,
         averageCourses: totalGolfClubs > 0 ? Math.round(totalCourses / totalGolfClubs) : 0,

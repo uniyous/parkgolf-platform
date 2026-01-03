@@ -42,6 +42,7 @@ export const SearchPage: React.FC = () => {
   // Prepare search params for API
   const searchParams: GameSearchParams = useMemo(() => ({
     search: filters.search || undefined,
+    date: filters.date || undefined,  // 해당 날짜에 예약 가능한 타임슬롯이 있는 게임만 필터링
     minPrice: filters.minPrice ?? undefined,
     maxPrice: filters.maxPrice ?? undefined,
     minPlayers: filters.minPlayers ?? undefined,
@@ -54,8 +55,14 @@ export const SearchPage: React.FC = () => {
   // Query hooks
   const { data: searchResult, isLoading: isLoadingGames, error: gamesError } = useSearchGamesQuery(searchParams);
 
-  const games = searchResult?.data?.games || [];
-  const pagination = searchResult?.pagination;
+  // 백엔드 응답 구조: { success, data: [...games] } - data가 직접 배열
+  const games = searchResult?.data || [];
+  const pagination = games.length > 0 ? {
+    total: games.length,
+    page: filters.page,
+    limit: 20,
+    totalPages: 1,
+  } : undefined;
 
   const getMinDate = () => new Date().toISOString().split('T')[0];
 

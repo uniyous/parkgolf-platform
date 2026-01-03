@@ -39,6 +39,7 @@ export interface Game {
 
 export interface GameSearchParams {
   search?: string;
+  date?: string;  // YYYY-MM-DD format - 해당 날짜에 예약 가능한 타임슬롯이 있는 게임만 필터링
   clubId?: number;
   minPrice?: number;
   maxPrice?: number;
@@ -93,16 +94,10 @@ export interface GamesResponse {
   limit: number;
 }
 
+// 백엔드 실제 응답 구조: data가 직접 Game 배열
 export interface SearchGamesResponse {
   success: boolean;
-  data: {
-    games: Game[];
-  };
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-  };
+  data: Game[];  // 직접 배열로 반환됨
 }
 
 export const gameApi = {
@@ -117,6 +112,7 @@ export const gameApi = {
   searchGames: async (params: GameSearchParams) => {
     const queryParams: Record<string, string | number | undefined> = {};
     if (params.search) queryParams.search = params.search;
+    if (params.date) queryParams.date = params.date;
     if (params.clubId) queryParams.clubId = params.clubId;
     if (params.minPrice !== undefined) queryParams.minPrice = params.minPrice;
     if (params.maxPrice !== undefined) queryParams.maxPrice = params.maxPrice;

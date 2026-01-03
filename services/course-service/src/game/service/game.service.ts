@@ -225,6 +225,7 @@ export class GameService {
   async searchGames(query: SearchGamesQueryDto): Promise<{ data: Game[]; total: number; page: number; limit: number }> {
     const {
       search,
+      date,
       clubId,
       minPrice,
       maxPrice,
@@ -235,11 +236,44 @@ export class GameService {
       limit = 20,
     } = query;
 
-    this.logger.log(`Searching games - search: ${search || 'none'}, clubId: ${clubId || 'all'}, price: ${minPrice}-${maxPrice}, minPlayers: ${minPlayers}`);
+    this.logger.log(`Searching games - search: ${search || 'none'}, date: ${date || 'none'}, clubId: ${clubId || 'all'}, price: ${minPrice}-${maxPrice}, minPlayers: ${minPlayers}`);
 
     const where: Prisma.GameWhereInput = {
       isActive: true,
     };
+
+    // 날짜 필터 - 해당 날짜에 예약 가능한 타임슬롯이 있는 게임만 필터링
+    if (date) {
+      const targetDate = new Date(date);
+      // Prisma에서 두 컬럼 비교(bookedPlayers < maxPlayers)를 직접 지원하지 않으므로
+      // 먼저 가용 슬롯이 있는 게임 ID를 조회
+      const gamesWithAvailableSlots = await this.prisma.gameTimeSlot.findMany({
+        where: {
+          date: targetDate,
+          status: 'AVAILABLE',
+          isActive: true,
+        },
+        select: {
+          gameId: true,
+          bookedPlayers: true,
+          maxPlayers: true,
+        },
+      });
+
+      // bookedPlayers < maxPlayers 조건을 만족하는 게임 ID만 필터링
+      const availableGameIds = [...new Set(
+        gamesWithAvailableSlots
+          .filter(slot => slot.bookedPlayers < slot.maxPlayers)
+          .map(slot => slot.gameId)
+      )];
+
+      if (availableGameIds.length === 0) {
+        // 가용 슬롯이 없으면 빈 결과 반환
+        return { data: [], total: 0, page, limit };
+      }
+
+      where.id = { in: availableGameIds };
+    }
 
     // 텍스트 검색 (게임명, 클럽명, 클럽 위치)
     if (search) {

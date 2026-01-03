@@ -1,4 +1,5 @@
-import { apiClient } from './client';
+import { apiClient, ApiError } from './client';
+import { getErrorMessage } from '@/types/common';
 
 /**
  * TimeSlot 가용성 응답 DTO
@@ -131,17 +132,19 @@ export interface SearchBookingsResponse {
   limit: number;
 }
 
-// NATS 응답 래퍼 타입
+// NATS 응답 래퍼 타입 (BFF API 표준 응답 형식)
 interface NatsResponse<T> {
   success: boolean;
   data: T;
-  error?: { code: string; message: string };
+  error?: { code: string; message: string; details?: Record<string, unknown> };
 }
 
 // NATS 응답에서 data 추출 헬퍼
 function unwrapNatsResponse<T>(response: NatsResponse<T>): T {
   if (!response.success) {
-    throw new Error(response.error?.message || 'Request failed');
+    const errorCode = response.error?.code;
+    const errorMessage = getErrorMessage(errorCode, response.error?.message);
+    throw new ApiError(errorMessage, 400, errorCode, response.error?.details);
   }
   return response.data;
 }

@@ -112,6 +112,15 @@ export const ClubDetailPage: React.FC = () => {
     }
   };
 
+  // 로딩 상태 처리
+  if (loading.detail) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   if (errors.detail || !selectedClub) {
     return (
       <div className="flex items-center justify-center h-64">

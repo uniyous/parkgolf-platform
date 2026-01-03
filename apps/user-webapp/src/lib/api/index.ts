@@ -1,5 +1,6 @@
 export { apiClient, ApiError } from './client';
 export type { ApiResponse } from './client';
+export type { BffApiResponse } from '@/types/common';
 
 export { authApi } from './authApi';
 export type { User, LoginRequest, RegisterRequest, AuthResponse } from './authApi';
