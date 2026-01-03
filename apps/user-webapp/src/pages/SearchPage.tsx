@@ -504,7 +504,11 @@ const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSe
       <div className="border-t border-white/20 p-6 bg-black/10">
         <h4 className="text-base font-semibold text-white mb-4">예약 가능 시간</h4>
 
-        {isLoadingSlots ? (
+        {!date ? (
+          <div className="text-center py-6 text-white/70">
+            예약 날짜를 선택하면 예약 가능한 시간이 표시됩니다
+          </div>
+        ) : isLoadingSlots ? (
           <div className="grid grid-cols-6 gap-3">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="h-20 bg-white/10 rounded-xl animate-pulse"></div>

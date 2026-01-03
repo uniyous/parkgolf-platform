@@ -3,7 +3,7 @@ import { useCallback, useMemo } from 'react';
 
 export interface GameSearchFilters {
   search: string;
-  date: string;
+  date: string;  // 빈 문자열이면 날짜 필터 없음 (전체 게임 표시)
   timeOfDay: 'all' | 'morning' | 'afternoon';
   minPrice: number | null;
   maxPrice: number | null;
@@ -13,14 +13,12 @@ export interface GameSearchFilters {
   page: number;
 }
 
-const getToday = () => new Date().toISOString().split('T')[0];
-
 export function useGameSearchParams() {
   const [searchParams, setSearchParams] = useRouterSearchParams();
 
   const filters = useMemo<GameSearchFilters>(() => ({
     search: searchParams.get('search') || '',
-    date: searchParams.get('date') || getToday(),
+    date: searchParams.get('date') || '',  // 기본값을 빈 문자열로 변경 - 날짜 필터 없이 전체 게임 표시
     timeOfDay: (searchParams.get('timeOfDay') as GameSearchFilters['timeOfDay']) || 'all',
     minPrice: searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : null,
     maxPrice: searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : null,
