@@ -36,6 +36,17 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]>, PaginationMeta {
 export interface DeleteResponse extends ApiResponse<{ deleted: true }> {}
 
 /**
+ * 원시 데이터 응답 (인터셉터 변환 전 형식)
+ */
+export interface RawDataResponse {
+  data: unknown;
+  total?: number;
+  page?: number;
+  limit?: number;
+  totalPages?: number;
+}
+
+/**
  * Response 헬퍼 클래스
  * NATS 컨트롤러에서 일관된 응답 형식을 생성하기 위한 정적 메서드 제공
  */

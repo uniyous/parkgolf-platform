@@ -6,83 +6,85 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { ApiResponse, PaginatedResponse, PaginationMeta } from '../types/response.types';
+import {
+  ApiResponse,
+  PaginatedResponse,
+  RawDataResponse,
+  NatsResponse,
+} from '../types/response.types';
 
 /**
  * NATS 응답 변환 인터셉터
  *
- * 컨트롤러 반환값을 { success: true, data, ...meta } 형태로 자동 변환
+ * 컨트롤러 반환값을 표준 응답 형식으로 자동 변환합니다.
  *
- * 사용 예시:
- * - 단일 데이터: return { data: entity } → { success: true, data: entity }
- * - 페이지네이션: return { data: [...], total, page, limit } → { success: true, data: [...], total, page, limit, totalPages }
- * - 직접 반환: return entity → { success: true, data: entity }
+ * 변환 규칙:
+ * - null/undefined → { success: true, data: null }
+ * - 이미 success 필드가 있으면 그대로 반환
+ * - { data, total, page, limit } → 페이지네이션 응답
+ * - { data } → 단일 데이터 응답
+ * - 그 외 → 전체를 data로 래핑
  */
 @Injectable()
 export class ResponseTransformInterceptor implements NestInterceptor {
-  intercept(context: ExecutionContext, next: CallHandler): Observable<ApiResponse<unknown> | PaginatedResponse<unknown>> {
-    return next.handle().pipe(
-      map(response => this.transformResponse(response)),
-    );
+  intercept(
+    context: ExecutionContext,
+    next: CallHandler,
+  ): Observable<ApiResponse<unknown> | PaginatedResponse<unknown>> {
+    return next.handle().pipe(map((response) => this.transformResponse(response)));
   }
 
-  private transformResponse(response: unknown): ApiResponse<unknown> | PaginatedResponse<unknown> {
+  private transformResponse(
+    response: unknown,
+  ): ApiResponse<unknown> | PaginatedResponse<unknown> {
     // null/undefined 처리
     if (response === null || response === undefined) {
-      return { success: true, data: null };
+      return NatsResponse.success(null);
     }
 
-    // 이미 success 필드가 있으면 그대로 반환 (이미 래핑된 응답)
-    if (this.isApiResponse(response)) {
-      return response;
+    // 객체가 아닌 경우 (primitive)
+    if (typeof response !== 'object') {
+      return NatsResponse.success(response);
     }
 
-    // data 필드가 있으면 나머지는 메타로 처리
-    if (this.hasDataField(response)) {
-      return this.transformDataResponse(response);
+    const responseObj = response as Record<string, unknown>;
+
+    // 이미 success 필드가 있으면 그대로 반환
+    if ('success' in responseObj) {
+      return response as ApiResponse<unknown>;
     }
 
-    // data 필드가 없으면 전체를 data로
-    return { success: true, data: response };
+    // data 필드가 있으면 표준 응답 형식으로 변환
+    if ('data' in responseObj) {
+      return this.transformDataResponse(responseObj as unknown as RawDataResponse);
+    }
+
+    // data 필드가 없으면 전체를 data로 래핑
+    return NatsResponse.success(response);
   }
 
-  private isApiResponse(response: unknown): response is ApiResponse<unknown> {
-    return (
-      typeof response === 'object' &&
-      response !== null &&
-      'success' in response &&
-      (response as ApiResponse<unknown>).success === true
-    );
-  }
+  private transformDataResponse(
+    response: RawDataResponse,
+  ): ApiResponse<unknown> | PaginatedResponse<unknown> {
+    const { data, total, page, limit, totalPages } = response;
 
-  private hasDataField(response: unknown): response is { data: unknown } & Record<string, unknown> {
-    return typeof response === 'object' && response !== null && 'data' in response;
-  }
-
-  private transformDataResponse(response: { data: unknown } & Record<string, unknown>): ApiResponse<unknown> | PaginatedResponse<unknown> {
-    const { data, ...meta } = response;
-
-    // 페이지네이션 응답인지 확인
-    if (this.isPaginationMeta(meta)) {
-      const paginationMeta: PaginationMeta = {
-        total: meta.total,
-        page: meta.page,
-        limit: meta.limit,
-        totalPages: meta.totalPages ?? Math.ceil(meta.total / meta.limit),
-      };
-
+    // 페이지네이션 메타 정보가 있는 경우
+    if (
+      total !== undefined &&
+      page !== undefined &&
+      limit !== undefined
+    ) {
       return {
         success: true,
-        data: data as unknown[],
-        ...paginationMeta,
+        data,
+        total,
+        page,
+        limit,
+        totalPages: totalPages ?? Math.ceil(total / limit),
       };
     }
 
-    // 일반 응답
-    return { success: true, data };
-  }
-
-  private isPaginationMeta(meta: Record<string, unknown>): meta is Record<string, unknown> & { total: number; page: number; limit: number; totalPages?: number } {
-    return 'total' in meta && 'page' in meta && 'limit' in meta;
+    // 단순 데이터 응답
+    return NatsResponse.success(data);
   }
 }
