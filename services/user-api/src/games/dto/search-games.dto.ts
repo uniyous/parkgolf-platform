@@ -8,6 +8,11 @@ export class SearchGamesDto {
   @IsOptional()
   search?: string;
 
+  @ApiPropertyOptional({ description: '날짜 (YYYY-MM-DD) - 해당 날짜에 예약 가능한 타임슬롯이 있는 게임만 필터링' })
+  @IsString()
+  @IsOptional()
+  date?: string;
+
   @ApiPropertyOptional({ description: '클럽 ID' })
   @IsNumber()
   @IsOptional()

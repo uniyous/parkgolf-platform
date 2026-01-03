@@ -23,7 +23,7 @@ export class GameNatsController {
     const data = payload.data || payload;
     this.logger.log(`NATS: Creating game: ${data.name}`);
     const game = await this.gameService.create(data);
-    return { data: this.mapGameToResponse(game) };
+    return { success: true, data: this.mapGameToResponse(game) };
   }
 
   @MessagePattern('games.list')
@@ -31,6 +31,7 @@ export class GameNatsController {
     this.logger.log(`NATS: Getting games for club ${data.clubId || 'all'}`);
     const { data: games, total, page, limit } = await this.gameService.findAll(data);
     return {
+      success: true,
       data: games.map(g => this.mapGameToResponse(g)),
       total,
       page,
@@ -42,35 +43,36 @@ export class GameNatsController {
   async getGame(@Payload() data: any) {
     this.logger.log(`NATS: Getting game ${data.gameId}`);
     const game = await this.gameService.findOne(Number(data.gameId));
-    return { data: this.mapGameToResponse(game) };
+    return { success: true, data: this.mapGameToResponse(game) };
   }
 
   @MessagePattern('games.getByClub')
   async getGamesByClub(@Payload() data: any) {
     this.logger.log(`NATS: Getting games for club ${data.clubId}`);
     const games = await this.gameService.findByClub(Number(data.clubId));
-    return { data: games.map(g => this.mapGameToResponse(g)) };
+    return { success: true, data: games.map(g => this.mapGameToResponse(g)) };
   }
 
   @MessagePattern('games.update')
   async updateGame(@Payload() data: any) {
     this.logger.log(`NATS: Updating game ${data.gameId}`);
     const game = await this.gameService.update(Number(data.gameId), data.data);
-    return { data: this.mapGameToResponse(game) };
+    return { success: true, data: this.mapGameToResponse(game) };
   }
 
   @MessagePattern('games.delete')
   async deleteGame(@Payload() data: any) {
     this.logger.log(`NATS: Deleting game ${data.gameId}`);
     await this.gameService.remove(Number(data.gameId));
-    return { data: { deleted: true } };
+    return { success: true, data: { deleted: true } };
   }
 
   @MessagePattern('games.search')
   async searchGames(@Payload() data: any) {
-    this.logger.log(`NATS: Searching games - search: ${data.search || 'all'}`);
+    this.logger.log(`NATS: Searching games - search: ${data.search || 'all'}, date: ${data.date || 'none'}`);
     const { data: games, total, page, limit } = await this.gameService.searchGames(data);
     return {
+      success: true,
       data: games.map(g => this.mapGameToResponse(g)),
       total,
       page,
@@ -87,7 +89,7 @@ export class GameNatsController {
     const data = payload.data || payload;
     this.logger.log(`NATS: Creating time slot for game ${data.gameId}`);
     const slot = await this.gameTimeSlotService.create(data);
-    return { data: this.mapTimeSlotToResponse(slot) };
+    return { success: true, data: this.mapTimeSlotToResponse(slot) };
   }
 
   @MessagePattern('gameTimeSlots.list')
@@ -95,6 +97,7 @@ export class GameNatsController {
     this.logger.log(`NATS: Getting time slots for game ${data.gameId || 'all'}`);
     const { data: slots, total, page, limit } = await this.gameTimeSlotService.findAll(data);
     return {
+      success: true,
       data: slots.map(s => this.mapTimeSlotToResponse(s)),
       total,
       page,
@@ -106,7 +109,7 @@ export class GameNatsController {
   async getGameTimeSlot(@Payload() data: any) {
     this.logger.log(`NATS: Getting time slot ${data.timeSlotId}`);
     const slot = await this.gameTimeSlotService.findOne(Number(data.timeSlotId));
-    return { data: this.mapTimeSlotToResponse(slot) };
+    return { success: true, data: this.mapTimeSlotToResponse(slot) };
   }
 
   @MessagePattern('gameTimeSlots.getByGameAndDate')
@@ -116,7 +119,7 @@ export class GameNatsController {
       Number(data.gameId),
       data.date
     );
-    return { data: slots.map(s => this.mapTimeSlotToResponse(s)) };
+    return { success: true, data: slots.map(s => this.mapTimeSlotToResponse(s)) };
   }
 
   @MessagePattern('gameTimeSlots.available')
@@ -144,7 +147,7 @@ export class GameNatsController {
         isPremium: slot.isPremium,
       }));
 
-    return { data: availableSlots };
+    return { success: true, data: availableSlots };
   }
 
   @MessagePattern('gameTimeSlots.findByGame')
@@ -154,21 +157,21 @@ export class GameNatsController {
       Number(data.gameId),
       data.date || new Date().toISOString().split('T')[0]
     );
-    return { data: slots.map(s => this.mapTimeSlotToResponse(s)) };
+    return { success: true, data: slots.map(s => this.mapTimeSlotToResponse(s)) };
   }
 
   @MessagePattern('gameTimeSlots.update')
   async updateGameTimeSlot(@Payload() data: any) {
     this.logger.log(`NATS: Updating time slot ${data.timeSlotId}`);
     const slot = await this.gameTimeSlotService.update(Number(data.timeSlotId), data.data);
-    return { data: this.mapTimeSlotToResponse(slot) };
+    return { success: true, data: this.mapTimeSlotToResponse(slot) };
   }
 
   @MessagePattern('gameTimeSlots.delete')
   async deleteGameTimeSlot(@Payload() data: any) {
     this.logger.log(`NATS: Deleting time slot ${data.timeSlotId}`);
     await this.gameTimeSlotService.remove(Number(data.timeSlotId));
-    return { data: { deleted: true } };
+    return { success: true, data: { deleted: true } };
   }
 
   @MessagePattern('gameTimeSlots.generate')
@@ -176,7 +179,7 @@ export class GameNatsController {
     const data = payload.data || payload;
     this.logger.log(`NATS: Generating time slots for game ${data.gameId}`);
     const result = await this.gameTimeSlotService.generateTimeSlots(data);
-    return { data: result };
+    return { success: true, data: result };
   }
 
   @MessagePattern('gameTimeSlots.book')
@@ -186,7 +189,7 @@ export class GameNatsController {
       Number(data.timeSlotId),
       Number(data.playerCount)
     );
-    return { data: this.mapTimeSlotToResponse(slot) };
+    return { success: true, data: this.mapTimeSlotToResponse(slot) };
   }
 
   @MessagePattern('gameTimeSlots.release')
@@ -196,7 +199,7 @@ export class GameNatsController {
       Number(data.timeSlotId),
       Number(data.playerCount)
     );
-    return { data: this.mapTimeSlotToResponse(slot) };
+    return { success: true, data: this.mapTimeSlotToResponse(slot) };
   }
 
   @MessagePattern('gameTimeSlots.stats')
@@ -207,7 +210,7 @@ export class GameNatsController {
       startDate: data.startDate,
       endDate: data.endDate,
     });
-    return { data: stats };
+    return { success: true, data: stats };
   }
 
   // =====================================================
@@ -219,28 +222,28 @@ export class GameNatsController {
     const data = payload.data || payload;
     this.logger.log(`NATS: Creating weekly schedule for game ${data.gameId}`);
     const schedule = await this.gameWeeklyScheduleService.create(data);
-    return { data: this.mapScheduleToResponse(schedule) };
+    return { success: true, data: this.mapScheduleToResponse(schedule) };
   }
 
   @MessagePattern('gameWeeklySchedules.list')
   async getGameWeeklySchedules(@Payload() data: any) {
     this.logger.log(`NATS: Getting weekly schedules for game ${data.gameId || 'all'}`);
     const schedules = await this.gameWeeklyScheduleService.findAll(data);
-    return { data: schedules.map(s => this.mapScheduleToResponse(s)) };
+    return { success: true, data: schedules.map(s => this.mapScheduleToResponse(s)) };
   }
 
   @MessagePattern('gameWeeklySchedules.get')
   async getGameWeeklySchedule(@Payload() data: any) {
     this.logger.log(`NATS: Getting weekly schedule ${data.scheduleId}`);
     const schedule = await this.gameWeeklyScheduleService.findOne(Number(data.scheduleId));
-    return { data: this.mapScheduleToResponse(schedule) };
+    return { success: true, data: this.mapScheduleToResponse(schedule) };
   }
 
   @MessagePattern('gameWeeklySchedules.getByGame')
   async getGameWeeklySchedulesByGame(@Payload() data: any) {
     this.logger.log(`NATS: Getting weekly schedules for game ${data.gameId}`);
     const schedules = await this.gameWeeklyScheduleService.findByGame(Number(data.gameId));
-    return { data: schedules.map(s => this.mapScheduleToResponse(s)) };
+    return { success: true, data: schedules.map(s => this.mapScheduleToResponse(s)) };
   }
 
   @MessagePattern('gameWeeklySchedules.update')
@@ -250,14 +253,14 @@ export class GameNatsController {
       Number(data.scheduleId),
       data.data
     );
-    return { data: this.mapScheduleToResponse(schedule) };
+    return { success: true, data: this.mapScheduleToResponse(schedule) };
   }
 
   @MessagePattern('gameWeeklySchedules.delete')
   async deleteGameWeeklySchedule(@Payload() data: any) {
     this.logger.log(`NATS: Deleting weekly schedule ${data.scheduleId}`);
     await this.gameWeeklyScheduleService.remove(Number(data.scheduleId));
-    return { data: { deleted: true } };
+    return { success: true, data: { deleted: true } };
   }
 
   @MessagePattern('gameWeeklySchedules.bulkCreate')
@@ -265,7 +268,7 @@ export class GameNatsController {
     const data = payload.data || payload;
     this.logger.log(`NATS: Bulk creating weekly schedules for game ${data.gameId}`);
     const result = await this.gameWeeklyScheduleService.bulkCreate(data);
-    return { data: result };
+    return { success: true, data: result };
   }
 
   // =====================================================
