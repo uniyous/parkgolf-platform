@@ -94,10 +94,14 @@ export interface GamesResponse {
   limit: number;
 }
 
-// 백엔드 실제 응답 구조: data가 직접 Game 배열
+// 백엔드 실제 응답 구조: { success, data, total, page, limit, totalPages }
 export interface SearchGamesResponse {
   success: boolean;
-  data: Game[];  // 직접 배열로 반환됨
+  data: Game[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 export const gameApi = {

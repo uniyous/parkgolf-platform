@@ -55,13 +55,13 @@ export const SearchPage: React.FC = () => {
   // Query hooks
   const { data: searchResult, isLoading: isLoadingGames, error: gamesError } = useSearchGamesQuery(searchParams);
 
-  // 백엔드 응답 구조: { success, data: [...games] } - data가 직접 배열
+  // 백엔드 응답 구조: { success, data: [...games], total, page, limit, totalPages }
   const games = searchResult?.data || [];
-  const pagination = games.length > 0 ? {
-    total: games.length,
-    page: filters.page,
-    limit: 20,
-    totalPages: 1,
+  const pagination = searchResult ? {
+    total: searchResult.total || games.length,
+    page: searchResult.page || filters.page,
+    limit: searchResult.limit || 20,
+    totalPages: searchResult.totalPages || 1,
   } : undefined;
 
   const getMinDate = () => new Date().toISOString().split('T')[0];
