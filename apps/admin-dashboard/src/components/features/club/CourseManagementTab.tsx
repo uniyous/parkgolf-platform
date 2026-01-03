@@ -20,7 +20,6 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
   const { loading } = useClub();
   const [showAddCourse, setShowAddCourse] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-  const [showHoles, setShowHoles] = useState<{ [courseId: number]: boolean }>({});
 
   // 새 코스 추가 폼
   const [newCourse, setNewCourse] = useState<CreateCourseDto>({
@@ -64,14 +63,6 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
       console.error('Failed to delete course:', error);
       alert('코스 삭제에 실패했습니다.');
     }
-  };
-
-  // 홀 정보 토글 (코스 목록 조회 시 이미 holes 포함됨)
-  const toggleHoles = (course: Course) => {
-    setShowHoles(prev => ({
-      ...prev,
-      [course.id]: !prev[course.id]
-    }));
   };
 
   // 난이도 표시
@@ -148,15 +139,6 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
                     </div>
                     <div className="flex items-center space-x-1 ml-4">
                       <button
-                        onClick={() => toggleHoles(course)}
-                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                        title={showHoles[course.id] ? "홀 정보 숨기기" : "홀 정보 보기"}
-                      >
-                        <svg className={`w-5 h-5 transition-transform ${showHoles[course.id] ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                      <button
                         onClick={() => setSelectedCourse(course)}
                         className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
                         title="수정"
@@ -182,9 +164,8 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
                   )}
                 </div>
 
-                {/* 홀별 정보 */}
-                {showHoles[course.id] && (
-                  <div className="p-4 bg-gray-50">
+                {/* 홀별 정보 - 항상 표시 */}
+                <div className="p-4 bg-gray-50">
                     {course.holes && course.holes.length > 0 ? (
                       <>
                         {/* 홀 카드 그리드 */}
@@ -247,8 +228,7 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
                     ) : (
                       <p className="text-gray-500 text-center py-6">홀 정보가 등록되지 않았습니다.</p>
                     )}
-                  </div>
-                )}
+                </div>
               </div>
             ))}
           </div>
