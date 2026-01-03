@@ -21,7 +21,7 @@ export class HoleNatsController {
     };
 
     const holes = await this.holeService.findAllByCourseId(Number(courseId), queryDto);
-    return { data: holes.map(HoleResponseDto.fromEntity) };
+    return { success: true, data: holes.map(HoleResponseDto.fromEntity) };
   }
 
   @MessagePattern('holes.findById')
@@ -30,7 +30,7 @@ export class HoleNatsController {
     this.logger.log(`NATS: Getting hole ${holeId} for course ${courseId}`);
 
     const hole = await this.holeService.findOne(Number(courseId), Number(holeId));
-    return { data: HoleResponseDto.fromEntity(hole) };
+    return { success: true, data: HoleResponseDto.fromEntity(hole) };
   }
 
   @MessagePattern('holes.create')
@@ -47,7 +47,7 @@ export class HoleNatsController {
 
     const hole = await this.holeService.create(Number(courseId), createDto);
     this.logger.log(`NATS: Created hole with ID ${hole.id} for course ${courseId}`);
-    return { data: HoleResponseDto.fromEntity(hole) };
+    return { success: true, data: HoleResponseDto.fromEntity(hole) };
   }
 
   @MessagePattern('holes.update')
@@ -63,7 +63,7 @@ export class HoleNatsController {
 
     const hole = await this.holeService.update(Number(courseId), Number(holeId), updateDto);
     this.logger.log(`NATS: Updated hole ${holeId}`);
-    return { data: HoleResponseDto.fromEntity(hole) };
+    return { success: true, data: HoleResponseDto.fromEntity(hole) };
   }
 
   @MessagePattern('holes.delete')
@@ -73,7 +73,7 @@ export class HoleNatsController {
 
     await this.holeService.remove(Number(courseId), Number(holeId));
     this.logger.log(`NATS: Deleted hole ${holeId}`);
-    return { data: { deleted: true } };
+    return { success: true, data: { deleted: true } };
   }
 
   @MessagePattern('holes.findByCourse')
@@ -83,6 +83,6 @@ export class HoleNatsController {
 
     const holes = await this.holeService.findAllByCourseId(Number(courseId), {});
     this.logger.log(`NATS: Returning ${holes.length} holes for course ${courseId}`);
-    return { data: holes.map(HoleResponseDto.fromEntity) };
+    return { success: true, data: holes.map(HoleResponseDto.fromEntity) };
   }
 }

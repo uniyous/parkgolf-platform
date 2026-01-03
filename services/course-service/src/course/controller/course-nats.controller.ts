@@ -35,10 +35,12 @@ export class CourseNatsController {
 
     this.logger.log(`NATS: Returning ${courses.length} courses from database query`);
     return {
+      success: true,
       data: courses,
       total: result.total,
       page: result.page,
       limit: result.limit,
+      totalPages: Math.ceil(result.total / result.limit),
     };
   }
 
@@ -47,7 +49,7 @@ export class CourseNatsController {
     this.logger.log(`NATS: Getting course ${data.courseId}`);
     const course = await this.courseService.findOne(Number(data.courseId));
     this.logger.log(`NATS: Returning course ${course.id}`);
-    return { data: CourseResponseDto.fromEntity(course) };
+    return { success: true, data: CourseResponseDto.fromEntity(course) };
   }
 
   @MessagePattern('courses.findByClub')
@@ -57,7 +59,7 @@ export class CourseNatsController {
     const result = await this.courseService.findAll({ clubId: Number(clubId), page: 1, limit: 100, includeHoles: true });
     const courses = result.data.map(CourseResponseDto.fromEntity);
     this.logger.log(`NATS: Returning ${courses.length} courses for club ${clubId} with holes`);
-    return { data: courses };
+    return { success: true, data: courses };
   }
 
   @MessagePattern('courses.create')
@@ -65,7 +67,7 @@ export class CourseNatsController {
     this.logger.log('NATS: Creating course');
     const course = await this.courseService.create(data.data as CreateCourseDto);
     this.logger.log(`NATS: Created course with ID ${course.id}`);
-    return { data: CourseResponseDto.fromEntity(course) };
+    return { success: true, data: CourseResponseDto.fromEntity(course) };
   }
 
   @MessagePattern('courses.update')
@@ -73,7 +75,7 @@ export class CourseNatsController {
     this.logger.log(`NATS: Updating course ${data.courseId}`);
     const course = await this.courseService.update(Number(data.courseId), data.data as UpdateCourseDto);
     this.logger.log(`NATS: Updated course ${course.id}`);
-    return { data: CourseResponseDto.fromEntity(course) };
+    return { success: true, data: CourseResponseDto.fromEntity(course) };
   }
 
   @MessagePattern('courses.delete')
@@ -81,6 +83,6 @@ export class CourseNatsController {
     this.logger.log(`NATS: Deleting course ${data.courseId}`);
     await this.courseService.remove(Number(data.courseId));
     this.logger.log(`NATS: Deleted course ${data.courseId}`);
-    return { data: { deleted: true } };
+    return { success: true, data: { deleted: true } };
   }
 }
