@@ -207,6 +207,16 @@ jobs:
             echo "cpu=1" >> $GITHUB_OUTPUT
           fi
 
+          # CPU throttling setting
+          # auth-service needs --no-cpu-throttling because bcrypt is CPU-intensive
+          # Without this, bcrypt takes 10-100x longer due to CPU throttling when idle
+          SERVICE="${{ matrix.service }}"
+          if [ "$SERVICE" == "auth-service" ]; then
+            echo "cpu_throttling=false" >> $GITHUB_OUTPUT
+          else
+            echo "cpu_throttling=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Deploy to Cloud Run
         env:
           # Service-specific DATABASE_URL secrets (for services with Prisma)
@@ -243,6 +253,13 @@ jobs:
             VPC_CONNECTOR="projects/parkgolf-uniyous/locations/asia-northeast3/connectors/parkgolf-connector-dev"
           fi
 
+          # Set CPU throttling flag
+          if [ "${{ steps.vars.outputs.cpu_throttling }}" == "false" ]; then
+            CPU_THROTTLING_FLAG="--no-cpu-throttling"
+          else
+            CPU_THROTTLING_FLAG="--cpu-throttling"
+          fi
+
           gcloud run deploy ${{ steps.vars.outputs.service_name }} \
             --image ${{ steps.vars.outputs.image }} \
             --region ${{ env.REGION }} \
@@ -255,6 +272,7 @@ jobs:
             --timeout 300 \
             --vpc-connector "${VPC_CONNECTOR}" \
             --vpc-egress all-traffic \
+            ${CPU_THROTTLING_FLAG} \
             --set-env-vars "${ENV_VARS}"
 
       - name: Get Service URL
