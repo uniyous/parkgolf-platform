@@ -7,11 +7,12 @@
  * - Token Refresh
  */
 
-import { apiClient, type BffApiResponse } from './client';
+import { apiClient } from './client';
+import type { ApiResponse } from '@/types/common';
 import type { AuthResponse, LoginCredentials, User } from "@/types";
 
 export const authApi = {
-  async login(credentials: LoginCredentials): Promise<BffApiResponse<AuthResponse>> {
+  async login(credentials: LoginCredentials): Promise<ApiResponse<AuthResponse>> {
     try {
       console.log('Attempting login with auth-service directly:', credentials.email);
       const response = await apiClient.post<AuthResponse>('/admin/auth/login', credentials);
@@ -45,7 +46,7 @@ export const authApi = {
     }
   },
 
-  async fetchUserProfile(): Promise<BffApiResponse<User>> {
+  async fetchUserProfile(): Promise<ApiResponse<User>> {
     try {
       const response = await apiClient.get<User>('/admin/auth/profile');
       return {
@@ -64,17 +65,17 @@ export const authApi = {
     }
   },
 
-  async getCurrentUser(): Promise<BffApiResponse<User>> {
+  async getCurrentUser(): Promise<ApiResponse<User>> {
     try {
       // BFF API를 통해 프로필 정보 가져오기 (auth-service는 이제 NATS로만 통신)
       console.log('Fetching user profile from admin-api...');
-      const response = await apiClient.get<BffApiResponse<User>>('/admin/auth/me');
+      const response = await apiClient.get<ApiResponse<User>>('/admin/auth/me');
 
-      // BFF 응답 구조: { success: true, data: {...} }
+      // BFF 응답 구조: { success: true, data: {...} } | { success: false, error: {...} }
       const bffResponse = response.data;
 
-      if (!bffResponse.success || !bffResponse.data) {
-        throw new Error(bffResponse.error?.message || 'Failed to get current user');
+      if (!bffResponse.success) {
+        throw new Error(bffResponse.error.message || 'Failed to get current user');
       }
 
       console.log('Successfully fetched user profile:', bffResponse.data);
@@ -114,7 +115,7 @@ export const authApi = {
     }
   },
 
-  async refreshToken(refreshToken: string): Promise<BffApiResponse<AuthResponse>> {
+  async refreshToken(refreshToken: string): Promise<ApiResponse<AuthResponse>> {
     try {
       const response = await apiClient.post<AuthResponse>('/admin/auth/refresh', { 
         refreshToken 

@@ -38,12 +38,15 @@ export class NatsClientService {
    * @param timeoutMs 타임아웃 (기본 15초)
    */
   async send<T>(subject: string, payload: any, timeoutMs: number = NATS_TIMEOUTS.DEFAULT): Promise<T> {
+    const startTime = Date.now();
     try {
-      this.logger.debug(`NATS send: ${subject}`);
+      this.logger.log(`[PERF] NATS send START: ${subject}`);
 
       const result = await firstValueFrom(
         this.natsClient.send(subject, payload).pipe(timeout(timeoutMs)),
       );
+
+      this.logger.log(`[PERF] NATS send END: ${subject} - ${Date.now() - startTime}ms`);
 
       // 마이크로서비스에서 반환한 에러 응답 체크 (success: false)
       if (result && typeof result === 'object' && (result as any).success === false && (result as any).error) {

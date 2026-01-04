@@ -1,5 +1,5 @@
 // 통합된 API 클라이언트 - BFF API 연동
-import type { BffApiResponse } from '@/types/common';
+import type { ApiResponse, PaginatedResponse } from '@/types/common';
 import { getErrorMessage } from '@/types/common';
 
 // 개발/E2E 환경에서는 Vite 프록시 사용 (CORS 우회)
@@ -10,10 +10,11 @@ const API_BASE_URL = isDev
   ? '/api'  // Vite 프록시 사용
   : ((import.meta as any).env?.VITE_API_BASE_URL || '/api');
 
-// BFF API 응답 타입 re-export (하위 호환성)
-export type { BffApiResponse };
+// API 응답 타입 re-export
+export type { ApiResponse, PaginatedResponse };
 
-export interface ApiResponse<T> {
+// API Client 내부 응답 타입
+export interface ClientResponse<T> {
   data: T;
   message?: string;
   status: number;
@@ -49,7 +50,7 @@ class ApiClient {
     this.baseURL = baseURL;
   }
 
-  private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
+  private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<ClientResponse<T>> {
     const { params, ...fetchOptions } = options;
     let url = `${this.baseURL}${endpoint}`;
 
@@ -171,32 +172,32 @@ class ApiClient {
     throw apiError;
   }
 
-  async get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
+  async get<T>(endpoint: string, params?: Record<string, any>): Promise<ClientResponse<T>> {
     return this.request<T>(endpoint, { method: 'GET', params });
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async post<T>(endpoint: string, data?: any): Promise<ClientResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async put<T>(endpoint: string, data?: any): Promise<ClientResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async delete<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async delete<T>(endpoint: string, data?: any): Promise<ClientResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'DELETE',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async patch<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async patch<T>(endpoint: string, data?: any): Promise<ClientResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'PATCH',
       body: data ? JSON.stringify(data) : undefined,

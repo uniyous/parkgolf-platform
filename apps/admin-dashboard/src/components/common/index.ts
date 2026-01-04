@@ -2,5 +2,6 @@
 export { Breadcrumb } from './Breadcrumb';
 export type { BreadcrumbItem } from './Breadcrumb';
 export { BreadcrumbContainer } from './BreadcrumbContainer';
-export { GlobalLoading } from './GlobalLoading';
+export { DataContainer } from './DataContainer';
+export { GlobalLoading, InlineLoading, Spinner } from './GlobalLoading';
 export { PageHeader } from './PageHeader';

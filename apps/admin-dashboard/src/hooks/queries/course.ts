@@ -11,6 +11,7 @@ export const useClubsQuery = (filters?: ClubFilters) => {
   return useQuery({
     queryKey: clubKeys.list(filters),
     queryFn: () => courseApi.getClubs(filters),
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -19,6 +20,7 @@ export const useClubQuery = (id: number) => {
     queryKey: clubKeys.detail(id),
     queryFn: () => courseApi.getClubById(id),
     enabled: !!id,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 

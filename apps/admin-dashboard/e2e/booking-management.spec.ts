@@ -16,7 +16,7 @@ test.describe('예약 현황 테스트', () => {
 
   test('상태별 카운트 카드 표시', async ({ page }) => {
     // 상태별 카드 확인 (로딩 대기)
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(300);
 
     // 통계 카드 영역 확인 - 각 상태별 카운트가 숫자로 표시됨
     const statsGrid = page.locator('.grid').filter({ hasText: /전체/ }).first();
@@ -61,12 +61,12 @@ test.describe('예약 현황 테스트', () => {
     await pendingCard.click();
 
     // 로딩 대기
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
   });
 
   test('예약 목록 또는 빈 상태 표시', async ({ page }) => {
     // 로딩 완료 대기 - 페이지 로딩 후 데이터 표시까지 대기
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(500);
 
     // 예약 목록 테이블, 빈 상태 메시지, 또는 총 예약 건수 중 하나 확인
     const hasTable = await page.locator('table').isVisible().catch(() => false);
@@ -78,7 +78,7 @@ test.describe('예약 현황 테스트', () => {
 
   test('테이블 헤더 표시 (예약이 있는 경우)', async ({ page }) => {
     // 로딩 완료 대기
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(300);
 
     // 테이블이 있는 경우 헤더 확인
     const table = page.locator('table');
@@ -95,7 +95,7 @@ test.describe('예약 현황 테스트', () => {
 
   test('총 예약 건수 표시', async ({ page }) => {
     // 로딩 완료 대기
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(300);
 
     // 하단 정보 확인
     await expect(page.getByText(/총 \d+건의 예약/)).toBeVisible();
@@ -130,7 +130,7 @@ test.describe('예약 현황 테스트', () => {
 test.describe('예약 테이블 동작 테스트', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/bookings');
-    await page.waitForTimeout(3000); // 데이터 로딩 대기
+    await page.waitForTimeout(300); // 데이터 로딩 대기
   });
 
   test('예약 행에 필수 정보 표시 (데이터가 있는 경우)', async ({ page }) => {

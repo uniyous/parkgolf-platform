@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useClub } from '@/hooks';
+import { DataContainer } from '@/components/common';
+import { CanManageCourses } from '@/components/auth';
+import { PageLayout } from '@/components/layout';
 import type { Club } from '@/types/club';
 
 export const ClubListPage: React.FC = () => {
@@ -57,6 +60,16 @@ export const ClubListPage: React.FC = () => {
   }, [errors.list]);
 
   return (
+    <CanManageCourses
+      fallback={
+        <PageLayout>
+          <div className="text-center py-12">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">접근 권한이 없습니다</h1>
+            <p className="text-gray-600">골프장 관리 권한이 필요합니다.</p>
+          </div>
+        </PageLayout>
+      }
+    >
     <div className="space-y-6">
       {/* 헤더 */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -124,27 +137,28 @@ export const ClubListPage: React.FC = () => {
 
       {/* 골프장 목록 */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
-        {clubs.length === 0 ? (
-          <div className="text-center py-12">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <DataContainer
+          isLoading={loading.list}
+          isEmpty={clubs.length === 0}
+          emptyIcon={
+            <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
-            <h3 className="mt-2 text-lg font-medium text-gray-900">골프장이 없습니다</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchKeyword ? '검색 조건에 맞는 골프장이 없습니다.' : '등록된 골프장이 없습니다.'}
-            </p>
-            {!searchKeyword && (
-              <div className="mt-6">
-                <button
-                  onClick={() => navigate('/clubs/new')}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  첫 번째 골프장 추가하기
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
+          }
+          emptyMessage="골프장이 없습니다"
+          emptyDescription={searchKeyword ? '검색 조건에 맞는 골프장이 없습니다.' : '등록된 골프장이 없습니다.'}
+          emptyAction={
+            !searchKeyword ? (
+              <button
+                onClick={() => navigate('/clubs/new')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                첫 번째 골프장 추가하기
+              </button>
+            ) : undefined
+          }
+          loadingMessage="골프장 목록을 불러오는 중..."
+        >
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
             {clubs.map((club) => (
               <div
@@ -203,7 +217,7 @@ export const ClubListPage: React.FC = () => {
               </div>
             ))}
           </div>
-        )}
+        </DataContainer>
       </div>
 
       {/* 하단 정보 */}
@@ -219,5 +233,6 @@ export const ClubListPage: React.FC = () => {
         </p>
       </div>
     </div>
+    </CanManageCourses>
   );
 };

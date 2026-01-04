@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useClub } from '@/hooks';
+import { DataContainer } from '@/components/common';
 import type { CourseCombo, Course } from '@/types/club';
 import { CourseManagementTab } from '@/components/features/club/CourseManagementTab';
 import { BasicInfoTab } from '@/components/features/club/BasicInfoTab';
@@ -112,40 +113,29 @@ export const ClubDetailPage: React.FC = () => {
     }
   };
 
-  // 로딩 상태 처리
-  if (loading.detail) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (errors.detail || !selectedClub) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16.5c-.77.833.192 3 1.732 3z" />
-          </svg>
-          <h3 className="mt-2 text-lg font-medium text-gray-900">골프장 정보를 찾을 수 없습니다</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            {errors.detail || '골프장 정보를 불러오는 중 문제가 발생했습니다.'}
-          </p>
-          <div className="mt-6">
-            <button
-              onClick={() => navigate('/clubs')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              목록으로 돌아가기
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
+    <DataContainer
+      isLoading={loading.detail}
+      isEmpty={!selectedClub && !loading.detail}
+      emptyIcon={
+        <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16.5c-.77.833.192 3 1.732 3z" />
+        </svg>
+      }
+      emptyMessage="골프장 정보를 찾을 수 없습니다"
+      emptyDescription={errors.detail || '골프장 정보를 불러오는 중 문제가 발생했습니다.'}
+      emptyAction={
+        <button
+          onClick={() => navigate('/clubs')}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          목록으로 돌아가기
+        </button>
+      }
+      loadingMessage="골프장 정보를 불러오는 중..."
+      className="min-h-[16rem]"
+    >
+      {selectedClub && (
     <div className="space-y-6">
       {/* 헤더 */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -297,7 +287,8 @@ export const ClubDetailPage: React.FC = () => {
           <OperationInfoTab club={selectedClub} onUpdate={selectClub} />
         )}
       </div>
-
     </div>
+      )}
+    </DataContainer>
   );
 };

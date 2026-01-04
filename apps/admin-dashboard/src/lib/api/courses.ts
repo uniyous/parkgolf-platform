@@ -105,7 +105,7 @@ export interface CourseFilters {
   companyId?: number;
 }
 
-export interface PaginatedResponse<T> {
+export interface CoursesPaginatedResult<T> {
   data: T[];
   pagination: {
     page: number;
@@ -135,7 +135,7 @@ export const courseApi = {
   /**
    * 골프장 목록 조회
    */
-  async getClubs(filters: ClubFilters = {}): Promise<PaginatedResponse<Club>> {
+  async getClubs(filters: ClubFilters = {}): Promise<CoursesPaginatedResult<Club>> {
     const response = await apiClient.get<any>('/admin/courses/clubs', filters);
 
     // API 응답 구조: { success: true, data: { clubs: [...] }, total, page, limit, totalPages }
@@ -247,7 +247,7 @@ export const courseApi = {
   /**
    * 코스 목록 조회
    */
-  async getCourses(filters: CourseFilters = {}, page = 1, limit = 20): Promise<PaginatedResponse<Course>> {
+  async getCourses(filters: CourseFilters = {}, page = 1, limit = 20): Promise<CoursesPaginatedResult<Course>> {
     const params = { page, limit, ...filters };
     const response = await apiClient.get<{
       courses: Course[];
@@ -419,4 +419,3 @@ export const fetchCourseById = courseApi.getCourseById.bind(courseApi);
 export const createCourse = courseApi.createCourse.bind(courseApi);
 export const updateCourse = courseApi.updateCourse.bind(courseApi);
 export const deleteCourse = courseApi.deleteCourse.bind(courseApi);
-export const golfCourseApi = courseApi;

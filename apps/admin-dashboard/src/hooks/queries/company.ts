@@ -11,6 +11,7 @@ export const useCompaniesQuery = (filters?: CompanyFiltersQuery, page = 1, limit
   return useQuery({
     queryKey: companyKeys.list({ ...filters, page, limit }),
     queryFn: () => companyApi.getCompanies(filters, page, limit),
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 

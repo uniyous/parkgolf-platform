@@ -7,48 +7,77 @@ export interface Pagination {
   totalPages: number;
 }
 
-export interface PaginatedResponse<T> extends Pagination {
+// ===== API 에러 =====
+
+export interface ApiError {
+  code: string;
+  message: string;
+  details?: Record<string, unknown>;
+}
+
+// ===== API 응답 (Discriminated Union) =====
+
+/** 성공 응답 */
+export interface ApiSuccessResponse<T> {
+  success: true;
+  data: T;
+  message?: string;
+}
+
+/** 에러 응답 */
+export interface ApiErrorResponse {
+  success: false;
+  error: ApiError;
+}
+
+/** 통합 응답 타입 */
+export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
+
+/** 페이지네이션 성공 응답 */
+export interface PaginatedSuccessResponse<T> extends Pagination {
+  success: true;
   data: T[];
 }
 
-// ===== BFF API 응답 =====
-
-export interface BffApiResponse<T> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: {
-    code: string;
-    message: string;
-    details?: Record<string, unknown>;
-  };
-}
-
-export interface BffPaginatedResponse<T> {
-  success: boolean;
-  data?: T[];
-  total?: number;
-  page?: number;
-  limit?: number;
-  totalPages?: number;
-  error?: {
-    code: string;
-    message: string;
-  };
-}
+/** 페이지네이션 통합 응답 타입 */
+export type PaginatedResponse<T> = PaginatedSuccessResponse<T> | ApiErrorResponse;
 
 // ===== 타입 가드 =====
 
-export const isSuccess = <T>(res: BffApiResponse<T>): res is BffApiResponse<T> & { data: T } =>
-  res.success === true && res.data !== undefined;
+export const isSuccess = <T>(res: ApiResponse<T>): res is ApiSuccessResponse<T> =>
+  res.success === true;
 
-export const isPaginated = <T>(
-  res: BffPaginatedResponse<T>,
-): res is Required<Omit<BffPaginatedResponse<T>, 'error'>> =>
-  res.success === true && res.data !== undefined && res.total !== undefined;
+export const isPaginated = <T>(res: PaginatedResponse<T>): res is PaginatedSuccessResponse<T> =>
+  res.success === true;
 
-export const isError = <T>(res: BffApiResponse<T>): res is BffApiResponse<T> & { error: NonNullable<BffApiResponse<T>['error']> } =>
-  res.success === false && res.error !== undefined;
+export const isError = <T>(res: ApiResponse<T> | PaginatedResponse<T>): res is ApiErrorResponse =>
+  res.success === false;
+
+// ===== 응답 빌더 (테스트/목업용) =====
+
+export const ApiResponseBuilder = {
+  success: <T>(data: T, message?: string): ApiSuccessResponse<T> =>
+    message ? { success: true, data, message } : { success: true, data },
+
+  error: (code: string, message: string, details?: Record<string, unknown>): ApiErrorResponse => ({
+    success: false,
+    error: details ? { code, message, details } : { code, message },
+  }),
+
+  paginated: <T>(data: T[], pagination: Pagination): PaginatedSuccessResponse<T> => ({
+    success: true,
+    data,
+    ...pagination,
+  }),
+} as const;
+
+// ===== 하위 호환 타입 별칭 =====
+
+/** @deprecated ApiResponse<T> 사용 권장 */
+export type BffApiResponse<T> = ApiResponse<T>;
+
+/** @deprecated PaginatedResponse<T> 사용 권장 */
+export type BffPaginatedResponse<T> = PaginatedResponse<T>;
 
 /**
  * BFF API 에러 코드

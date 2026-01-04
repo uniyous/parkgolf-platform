@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
-import { useAuthStore } from '@/stores';
+import { useAuthStore, type ApiUserResponse } from '@/stores';
 import { authKeys } from './keys';
 import type { LoginCredentials, AuthResponse } from '@/types';
 
@@ -38,7 +38,7 @@ export const useLoginMutation = () => {
       if (data.refreshToken) {
         localStorage.setItem('refreshToken', data.refreshToken);
       }
-      hydrateFromLogin(data.user, data.accessToken);
+      hydrateFromLogin(data.user as ApiUserResponse, data.accessToken);
     },
     onError: (error: Error) => {
       setLoading(false);

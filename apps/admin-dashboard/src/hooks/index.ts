@@ -16,7 +16,6 @@ export { useUserActions } from './useUserActions';
 // Management hooks
 export { useCompanyManagement } from './useCompanyManagement';
 export { useClubManagement, useClub } from './useClubManagement';
-export { useGolfCourseManagement } from './useGolfCourseManagement';
 
 // TanStack Query hooks - re-export all queries
 export * from './queries';

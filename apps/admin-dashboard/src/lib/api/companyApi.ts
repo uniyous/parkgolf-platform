@@ -1,10 +1,44 @@
 import { apiClient } from './client';
-import type { 
-  Company, 
-  CreateCompanyDto, 
-  UpdateCompanyDto, 
-  CompanyStatus 
+import type {
+  Company,
+  CreateCompanyDto,
+  UpdateCompanyDto,
+  CompanyStatus
 } from '@/types/company';
+
+// API 원본 응답 타입
+interface RawCompanyData {
+  id: number;
+  name: string;
+  businessNumber?: string;
+  address?: string;
+  phoneNumber?: string;
+  email?: string;
+  website?: string;
+  description?: string;
+  establishedDate?: string;
+  logoUrl?: string;
+  status?: CompanyStatus;
+  isActive?: boolean;
+  coursesCount?: number;
+  totalRevenue?: number;
+  monthlyRevenue?: number;
+  averageRating?: number;
+  totalBookings?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface BffCompanyResponse {
+  success?: boolean;
+  data?: RawCompanyData[] | RawCompanyData | { companies: RawCompanyData[] };
+  companies?: RawCompanyData[];
+  page?: number;
+  limit?: number;
+  total?: number;
+  totalCount?: number;
+  totalPages?: number;
+}
 
 // Company API 응답 타입
 export interface CompanyListResponse {
@@ -28,9 +62,18 @@ export interface CompanyFiltersQuery {
 }
 
 // 데이터 변환 헬퍼 함수
-function transformCompanyData(rawCompany: any): Company {
+function transformCompanyData(rawCompany: RawCompanyData): Company {
   return {
-    ...rawCompany,
+    id: rawCompany.id,
+    name: rawCompany.name,
+    businessNumber: rawCompany.businessNumber || '',
+    address: rawCompany.address || '',
+    phoneNumber: rawCompany.phoneNumber || '',
+    email: rawCompany.email || '',
+    website: rawCompany.website,
+    description: rawCompany.description,
+    logoUrl: rawCompany.logoUrl,
+    status: rawCompany.status || 'ACTIVE',
     // Date 필드들을 ISO 문자열로 유지 (Redux 직렬화 호환)
     establishedDate: rawCompany.establishedDate || new Date().toISOString(),
     createdAt: rawCompany.createdAt || new Date().toISOString(),
@@ -50,15 +93,22 @@ export const companyApi = {
   // 회사 목록 조회
   async getCompanies(filters: CompanyFiltersQuery = {}, page = 1, limit = 20): Promise<CompanyListResponse> {
     try {
-      const response = await apiClient.get<any>('/admin/companies', { page, limit });
+      const response = await apiClient.get<BffCompanyResponse>('/admin/companies', { page, limit });
 
       console.log('Company API Response:', response);
       console.log('Response.data:', response.data);
 
-      // API 응답 구조: { success: true, data: { companies: [...] }, total, page, limit, totalPages }
+      // API 응답 구조: { success: true, data: [...], total, page, limit, totalPages }
       const bffResponse = response.data;
-      // data.companies 또는 companies 배열 추출
-      const companies = bffResponse?.data?.companies || bffResponse?.companies || [];
+      // data가 배열이면 직접 사용, 아니면 data.companies 또는 companies 배열 추출
+      let companies: RawCompanyData[] = [];
+      if (Array.isArray(bffResponse?.data)) {
+        companies = bffResponse.data;
+      } else if (bffResponse?.data && typeof bffResponse.data === 'object' && 'companies' in bffResponse.data) {
+        companies = bffResponse.data.companies;
+      } else if (bffResponse?.companies) {
+        companies = bffResponse.companies;
+      }
       console.log('Final companies array:', companies);
       console.log('Companies count:', companies.length);
       
@@ -126,11 +176,14 @@ export const companyApi = {
   // 회사 상세 조회
   async getCompanyById(id: number): Promise<Company> {
     try {
-      const response = await apiClient.get<Company>(`/admin/companies/${id}`);
+      const response = await apiClient.get<BffCompanyResponse | RawCompanyData>(`/admin/companies/${id}`);
       console.log('Get company by ID response:', response);
 
       // API 응답에서 data 추출
-      const companyData = (response.data as any)?.data || response.data;
+      const responseData = response.data;
+      const companyData = (responseData && 'data' in responseData && !Array.isArray(responseData.data) && responseData.data && typeof responseData.data === 'object' && !('companies' in responseData.data))
+        ? responseData.data as RawCompanyData
+        : responseData as RawCompanyData;
       return transformCompanyData(companyData);
     } catch (error) {
       console.error(`Failed to fetch company ${id}:`, error);
@@ -139,38 +192,41 @@ export const companyApi = {
   },
 
   // 회사 생성 (실제 API 사용)
-  async createCompany(companyData: CreateCompanyDto): Promise<Company> {
+  async createCompany(createData: CreateCompanyDto): Promise<Company> {
     try {
-      console.log('Creating company with data:', companyData);
-      
+      console.log('Creating company with data:', createData);
+
       // 백엔드가 지원하는 필드만 필터링
       const supportedFields = {
-        name: companyData.name,
-        businessNumber: companyData.businessNumber,
-        address: companyData.address,
-        phoneNumber: companyData.phoneNumber,
-        email: companyData.email,
-        website: companyData.website,
-        description: companyData.description,
-        establishedDate: companyData.establishedDate,
-        logoUrl: companyData.logoUrl,
-        status: companyData.status
+        name: createData.name,
+        businessNumber: createData.businessNumber,
+        address: createData.address,
+        phoneNumber: createData.phoneNumber,
+        email: createData.email,
+        website: createData.website,
+        description: createData.description,
+        establishedDate: createData.establishedDate,
+        logoUrl: createData.logoUrl,
+        status: createData.status
       };
-      
+
       // undefined 값 제거
       const filteredData = Object.entries(supportedFields)
         .filter(([_, value]) => value !== undefined)
         .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
-      
+
       console.log('Filtered data for API:', filteredData);
-      
+
       // 실제 API 호출
-      const response = await apiClient.post<Company>('/admin/companies', filteredData);
+      const response = await apiClient.post<BffCompanyResponse | RawCompanyData>('/admin/companies', filteredData);
       console.log('Create company API response:', response);
 
       // API 응답에서 data 추출
-      const responseData = (response.data as any)?.data || response.data;
-      const newCompany = transformCompanyData(responseData);
+      const respData = response.data;
+      const rawCompanyData = (respData && 'data' in respData && !Array.isArray(respData.data) && respData.data && typeof respData.data === 'object' && !('companies' in respData.data))
+        ? respData.data as RawCompanyData
+        : respData as RawCompanyData;
+      const newCompany = transformCompanyData(rawCompanyData);
       return newCompany;
     } catch (error) {
       console.error('Failed to create company:', error);
@@ -179,38 +235,41 @@ export const companyApi = {
   },
 
   // 회사 수정 (실제 API 사용)
-  async updateCompany(id: number, companyData: UpdateCompanyDto): Promise<Company> {
+  async updateCompany(id: number, updateData: UpdateCompanyDto): Promise<Company> {
     try {
-      console.log(`Updating company ${id} with data:`, companyData);
-      
+      console.log(`Updating company ${id} with data:`, updateData);
+
       // 백엔드가 지원하는 필드만 필터링
       const supportedFields = {
-        name: companyData.name,
-        businessNumber: companyData.businessNumber,
-        address: companyData.address,
-        phoneNumber: companyData.phoneNumber,
-        email: companyData.email,
-        website: companyData.website,
-        description: companyData.description,
-        establishedDate: companyData.establishedDate,
-        logoUrl: companyData.logoUrl,
-        status: companyData.status
+        name: updateData.name,
+        businessNumber: updateData.businessNumber,
+        address: updateData.address,
+        phoneNumber: updateData.phoneNumber,
+        email: updateData.email,
+        website: updateData.website,
+        description: updateData.description,
+        establishedDate: updateData.establishedDate,
+        logoUrl: updateData.logoUrl,
+        status: updateData.status
       };
-      
+
       // undefined 값 제거
       const filteredData = Object.entries(supportedFields)
         .filter(([_, value]) => value !== undefined)
         .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
-      
+
       console.log('Filtered data for API:', filteredData);
-      
+
       // 실제 API 호출
-      const response = await apiClient.patch<Company>(`/admin/companies/${id}`, filteredData);
+      const response = await apiClient.patch<BffCompanyResponse | RawCompanyData>(`/admin/companies/${id}`, filteredData);
       console.log('Update company API response:', response);
 
       // API 응답에서 data 추출
-      const responseData = (response.data as any)?.data || response.data;
-      const updatedCompany = transformCompanyData(responseData);
+      const respData = response.data;
+      const rawCompanyData = (respData && 'data' in respData && !Array.isArray(respData.data) && respData.data && typeof respData.data === 'object' && !('companies' in respData.data))
+        ? respData.data as RawCompanyData
+        : respData as RawCompanyData;
+      const updatedCompany = transformCompanyData(rawCompanyData);
       return updatedCompany;
     } catch (error) {
       console.error(`Failed to update company ${id}:`, error);

@@ -23,7 +23,7 @@ test.describe('사이드바 네비게이션 테스트', () => {
     await expect(page).toHaveURL(/.*companies/);
 
     // 페이지 콘텐츠 확인
-    await expect(page.getByText(/회사|Company/).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/회사|Company/).first()).toBeVisible({ timeout: 5000 });
   });
 
   test('골프장 관리 페이지 이동', async ({ page }) => {
@@ -32,7 +32,7 @@ test.describe('사이드바 네비게이션 테스트', () => {
     await expect(page).toHaveURL(/.*clubs/);
 
     // 페이지 콘텐츠 확인
-    await expect(page.getByText(/골프장|클럽/).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/골프장|클럽/).first()).toBeVisible({ timeout: 5000 });
   });
 
   test('라운드 목록 페이지 이동', async ({ page }) => {
@@ -41,7 +41,7 @@ test.describe('사이드바 네비게이션 테스트', () => {
     await expect(page).toHaveURL(/.*games/);
 
     // 페이지 콘텐츠 확인
-    await expect(page.getByText(/라운드|게임/).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/라운드|게임/).first()).toBeVisible({ timeout: 5000 });
   });
 
   test('예약 현황 페이지 이동', async ({ page }) => {
@@ -50,7 +50,7 @@ test.describe('사이드바 네비게이션 테스트', () => {
     await expect(page).toHaveURL(/.*bookings/);
 
     // 페이지 콘텐츠 확인
-    await expect(page.getByText(/예약/).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/예약/).first()).toBeVisible({ timeout: 5000 });
   });
 
   test('사용자 관리 페이지 이동', async ({ page }) => {
@@ -59,7 +59,7 @@ test.describe('사이드바 네비게이션 테스트', () => {
     await expect(page).toHaveURL(/.*user-management/);
 
     // 페이지 콘텐츠 확인
-    await expect(page.getByText(/사용자|회원/).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/사용자|회원/).first()).toBeVisible({ timeout: 5000 });
   });
 
   test('관리자 관리 페이지 이동', async ({ page }) => {
@@ -68,7 +68,7 @@ test.describe('사이드바 네비게이션 테스트', () => {
     await expect(page).toHaveURL(/.*admin-management/);
 
     // 페이지 콘텐츠 확인
-    await expect(page.getByText(/관리자/).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/관리자/).first()).toBeVisible({ timeout: 5000 });
   });
 
   test('역할 및 권한 관리 페이지 이동', async ({ page }) => {
@@ -77,7 +77,7 @@ test.describe('사이드바 네비게이션 테스트', () => {
     await expect(page).toHaveURL(/.*roles/);
 
     // 페이지 콘텐츠 확인
-    await expect(page.getByText(/역할|권한/).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/역할|권한/).first()).toBeVisible({ timeout: 5000 });
   });
 });
 
@@ -99,7 +99,7 @@ test.describe('헤더 테스트', () => {
 
   test('사용자 메뉴 표시', async ({ page }) => {
     // 대시보드 로드 대기
-    await expect(page.getByRole('heading', { name: '대시보드' })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: '대시보드' })).toBeVisible({ timeout: 5000 });
 
     // 페이지가 로드되면 통과 (대시보드가 표시되면 헤더도 있음)
     expect(true).toBeTruthy();
@@ -118,7 +118,7 @@ test.describe('헤더 테스트', () => {
         await logoutButton.click();
 
         // 로그인 페이지로 이동 확인
-        await expect(page).toHaveURL(/.*login/, { timeout: 10000 });
+        await expect(page).toHaveURL(/.*login/, { timeout: 5000 });
       }
     }
   });

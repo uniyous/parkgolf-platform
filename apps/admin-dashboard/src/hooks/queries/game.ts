@@ -22,6 +22,7 @@ export const useGamesQuery = (filters?: GameFilter) => {
     queryFn: () => gamesApi.getGames(filters),
     staleTime: 1000 * 60 * 5, // 5분간 fresh 유지
     refetchOnWindowFocus: false,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 

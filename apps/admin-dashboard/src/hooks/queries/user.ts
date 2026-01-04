@@ -12,6 +12,7 @@ export const useUsersQuery = (filters?: UserFilters, page = 1, limit = 20) => {
     queryKey: userKeys.list({ ...filters, page, limit }),
     queryFn: () => adminApi.getUsers(filters, page, limit),
     staleTime: 1000 * 60 * 5,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 

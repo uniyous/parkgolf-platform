@@ -57,7 +57,7 @@ export const menuConfig: MenuGroup[] = [
     name: '라운드',
     items: [
       {
-        name: '라운드 목록',
+        name: '라운드 관리',
         href: '/games',
         icon: '🎮',
         description: '18홀 라운드 조합 및 가격 설정',

@@ -12,16 +12,12 @@ import { test, expect } from '@playwright/test';
  * data-setup.spec.ts를 먼저 실행하여 테스트 데이터를 생성하세요.
  */
 
-// 테스트 타임아웃 설정
-const TEST_TIMEOUT = 120000; // 2분
-
 // 골프장 카드를 찾는 헬퍼 함수
 async function findClubCard(page: any) {
-  // 카드가 직접 나타날 때까지 기다림 (최대 20초)
   const cardLocator = page.locator('[class*="cursor-pointer"]').filter({ has: page.locator('h3') }).first();
 
   try {
-    await cardLocator.waitFor({ state: 'visible', timeout: 20000 });
+    await cardLocator.waitFor({ state: 'visible', timeout: 5000 });
     return cardLocator;
   } catch {
     console.log('골프장 카드를 찾을 수 없습니다');
@@ -31,11 +27,10 @@ async function findClubCard(page: any) {
 
 // 라운드 카드를 찾는 헬퍼 함수
 async function findGameCard(page: any) {
-  // 카드가 직접 나타날 때까지 기다림 (최대 20초)
   const cardLocator = page.locator('[class*="cursor-pointer"]').filter({ has: page.locator('h3') }).first();
 
   try {
-    await cardLocator.waitFor({ state: 'visible', timeout: 20000 });
+    await cardLocator.waitFor({ state: 'visible', timeout: 5000 });
     return cardLocator;
   } catch {
     console.log('라운드 카드를 찾을 수 없습니다');
@@ -45,7 +40,6 @@ async function findGameCard(page: any) {
 
 test.describe('Club CRUD 테스트', () => {
   test.use({ storageState: 'e2e/.auth/admin.json' });
-  test.setTimeout(TEST_TIMEOUT);
 
   test('1. 골프장 목록 페이지 로드 확인', async ({ page }) => {
     await page.goto('/clubs');
@@ -73,7 +67,7 @@ test.describe('Club CRUD 테스트', () => {
     await expect(page).toHaveURL(/.*clubs\/\d+/);
 
     // 상세 페이지 요소 확인
-    await expect(page.getByRole('button', { name: /라운드 보기/ })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: /라운드 보기/ })).toBeVisible();
   });
 
   test('3. 골프장 수정 - 기본정보 탭에서 수정', async ({ page }) => {
@@ -97,7 +91,6 @@ test.describe('Club CRUD 테스트', () => {
     await expect(page.locator('button:has-text("기본정보")')).toHaveClass(/border-blue-500/);
 
     // 편집 가능한 필드가 있는지 확인 (BasicInfoTab 내)
-    await page.waitForTimeout(1000);
     const hasInputFields = await page.locator('input').first().isVisible().catch(() => false);
     console.log('편집 가능한 필드 존재:', hasInputFields);
   });
@@ -151,7 +144,7 @@ test.describe('Course CRUD 테스트', () => {
 
     // 코스관리 탭 클릭
     await page.locator('button:has-text("코스관리")').click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 코스관리 탭이 활성화되었는지 확인
     await expect(page.locator('button:has-text("코스관리")')).toHaveClass(/border-blue-500/);
@@ -174,11 +167,11 @@ test.describe('Course CRUD 테스트', () => {
 
     // 코스관리 탭 클릭
     await page.locator('button:has-text("코스관리")').click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 새 코스 추가 버튼 클릭
     await page.getByRole('button', { name: /새 코스 추가/ }).click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // 모달 확인 (코스명 입력 필드 또는 모달 제목)
     const hasModal = await page.getByPlaceholder('코스명').isVisible().catch(() => false) ||
@@ -188,7 +181,7 @@ test.describe('Course CRUD 테스트', () => {
 
     // ESC로 모달 닫기
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
   });
 
   test('3. 코스 생성', async ({ page }) => {
@@ -205,11 +198,11 @@ test.describe('Course CRUD 테스트', () => {
 
     // 코스관리 탭 클릭
     await page.locator('button:has-text("코스관리")').click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 새 코스 추가 버튼 클릭
     await page.getByRole('button', { name: /새 코스 추가/ }).click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // 코스 정보 입력
     createdCourseName = `E2E코스${testId}`;
@@ -229,7 +222,7 @@ test.describe('Course CRUD 테스트', () => {
       const saveButton = page.getByRole('button', { name: /저장|추가/ });
       if (await saveButton.isVisible()) {
         await saveButton.click();
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(300);
 
         // 생성된 코스 확인
         const courseCreated = await page.getByText(createdCourseName).isVisible().catch(() => false);
@@ -252,14 +245,14 @@ test.describe('Course CRUD 테스트', () => {
 
     // 코스관리 탭 클릭
     await page.locator('button:has-text("코스관리")').click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 코스 카드에서 홀 보기 토글 버튼 찾기
     const holeToggleButton = page.locator('button:has-text("홀 정보")').first();
 
     if (await holeToggleButton.isVisible()) {
       await holeToggleButton.click();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(300);
 
       // 홀 정보가 표시되는지 확인
       const hasHoleInfo = await page.getByText(/홀 \d+/).first().isVisible().catch(() => false) ||
@@ -282,7 +275,7 @@ test.describe('Course CRUD 테스트', () => {
 
     // 코스관리 탭 클릭
     await page.locator('button:has-text("코스관리")').click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 삭제 버튼 (휴지통 아이콘) 찾기
     const deleteButton = page.locator('button:has(svg path[d*="M19 7l-.867"])').first();
@@ -295,7 +288,7 @@ test.describe('Course CRUD 테스트', () => {
       });
 
       await deleteButton.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(300);
     }
   });
 });
@@ -317,7 +310,7 @@ test.describe('Hole 조회 테스트', () => {
 
     // 코스관리 탭 클릭
     await page.locator('button:has-text("코스관리")').click();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(300);
 
     // 코스 카드가 있는지 확인
     const courseCard = page.locator('[class*="border-gray-200"]').filter({ hasText: /코스/ }).first();
@@ -329,7 +322,7 @@ test.describe('Hole 조회 테스트', () => {
 
       if (await expandButton.isVisible()) {
         await expandButton.click();
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(300);
 
         // 홀 정보 확인 (Par, 거리 등)
         const holeInfo = await page.getByText(/Par \d+/).first().isVisible().catch(() => false) ||
@@ -356,13 +349,13 @@ test.describe('WeeklySchedule CRUD 테스트', () => {
     }
 
     await gameCard.click();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(300);
 
     // 주간 스케줄 탭 클릭
     const weeklyTab = page.locator('button:has-text("주간 스케줄")');
     if (await weeklyTab.isVisible()) {
       await weeklyTab.click();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(300);
 
       // 스케줄 일괄 생성 버튼 확인
       await expect(page.getByRole('button', { name: /스케줄 일괄 생성/ })).toBeVisible();
@@ -379,13 +372,13 @@ test.describe('WeeklySchedule CRUD 테스트', () => {
     }
 
     await gameCard.click();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(300);
 
     // 주간 스케줄 탭 클릭
     const weeklyTab = page.locator('button:has-text("주간 스케줄")');
     if (await weeklyTab.isVisible()) {
       await weeklyTab.click();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(300);
     }
 
     // 미설정된 요일에서 + 추가 버튼 클릭
@@ -393,7 +386,7 @@ test.describe('WeeklySchedule CRUD 테스트', () => {
 
     if (await addButton.isVisible()) {
       await addButton.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(300);
 
       // 저장/취소 버튼이 나타나는지 확인
       const hasSaveButton = await page.getByRole('button', { name: /저장/ }).first().isVisible().catch(() => false);
@@ -402,7 +395,7 @@ test.describe('WeeklySchedule CRUD 테스트', () => {
       if (hasSaveButton) {
         // 저장 클릭
         await page.getByRole('button', { name: /저장/ }).first().click();
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(300);
       }
     } else {
       console.log('모든 요일에 이미 스케줄이 설정되어 있습니다.');
@@ -419,13 +412,13 @@ test.describe('WeeklySchedule CRUD 테스트', () => {
     }
 
     await gameCard.click();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(300);
 
     // 주간 스케줄 탭 클릭
     const weeklyTab = page.locator('button:has-text("주간 스케줄")');
     if (await weeklyTab.isVisible()) {
       await weeklyTab.click();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(300);
     }
 
     // 기존 스케줄의 수정 버튼 클릭
@@ -433,7 +426,7 @@ test.describe('WeeklySchedule CRUD 테스트', () => {
 
     if (await editButton.isVisible()) {
       await editButton.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(300);
 
       // 시간 입력 필드가 나타나는지 확인
       const hasTimeInput = await page.locator('input[type="time"]').first().isVisible().catch(() => false);
@@ -459,13 +452,13 @@ test.describe('WeeklySchedule CRUD 테스트', () => {
     }
 
     await gameCard.click();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(300);
 
     // 주간 스케줄 탭 클릭
     const weeklyTab = page.locator('button:has-text("주간 스케줄")');
     if (await weeklyTab.isVisible()) {
       await weeklyTab.click();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(300);
     }
 
     // 삭제 버튼 찾기
@@ -479,13 +472,14 @@ test.describe('WeeklySchedule CRUD 테스트', () => {
       });
 
       await deleteButton.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(300);
     } else {
       console.log('삭제할 스케줄이 없습니다.');
     }
   });
 
   test('5. 스케줄 일괄 생성 마법사', async ({ page }) => {
+    test.slow(); // 마법사 테스트는 더 긴 타임아웃 필요
     await page.goto('/games');
 
     const gameCard = await findGameCard(page);
@@ -495,20 +489,20 @@ test.describe('WeeklySchedule CRUD 테스트', () => {
     }
 
     await gameCard.click();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(300);
 
     // 주간 스케줄 탭 클릭
     const weeklyTab = page.locator('button:has-text("주간 스케줄")');
     if (await weeklyTab.isVisible()) {
       await weeklyTab.click();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(300);
     }
 
     // 스케줄 일괄 생성 버튼 클릭
     const wizardButton = page.getByRole('button', { name: /스케줄 일괄 생성/ });
     if (await wizardButton.isVisible()) {
       await wizardButton.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(300);
 
       // 마법사 다이얼로그 확인
       const hasWizard = await page.getByText(/일괄 생성/).isVisible().catch(() => false) ||
@@ -535,13 +529,13 @@ test.describe('TimeSlot CRUD 테스트', () => {
     }
 
     await gameCard.click();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(300);
 
     // 타임슬롯 탭 클릭
     const timeslotTab = page.locator('button:has-text("타임슬롯")');
     if (await timeslotTab.isVisible()) {
       await timeslotTab.click();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(300);
 
       // 타임슬롯 생성 버튼 확인
       await expect(page.getByRole('button', { name: '타임슬롯 생성', exact: true })).toBeVisible();
@@ -549,6 +543,7 @@ test.describe('TimeSlot CRUD 테스트', () => {
   });
 
   test('2. 타임슬롯 생성 마법사', async ({ page }) => {
+    test.slow(); // 마법사 테스트는 더 긴 타임아웃 필요
     await page.goto('/games');
 
     const gameCard = await findGameCard(page);
@@ -558,20 +553,20 @@ test.describe('TimeSlot CRUD 테스트', () => {
     }
 
     await gameCard.click();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(300);
 
     // 타임슬롯 탭 클릭
     const timeslotTab = page.locator('button:has-text("타임슬롯")');
     if (await timeslotTab.isVisible()) {
       await timeslotTab.click();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(300);
     }
 
     // 타임슬롯 생성 버튼 클릭
     const createButton = page.getByRole('button', { name: '타임슬롯 생성', exact: true });
     if (await createButton.isVisible()) {
       await createButton.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(300);
 
       // 마법사 다이얼로그 확인 (날짜 선택 등)
       const hasWizard = await page.getByText(/생성/).isVisible().catch(() => false) ||
@@ -593,13 +588,13 @@ test.describe('TimeSlot CRUD 테스트', () => {
     }
 
     await gameCard.click();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(300);
 
     // 타임슬롯 탭 클릭
     const timeslotTab = page.locator('button:has-text("타임슬롯")');
     if (await timeslotTab.isVisible()) {
       await timeslotTab.click();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(300);
     }
 
     // 이전/다음 주 네비게이션 버튼 확인
@@ -609,14 +604,14 @@ test.describe('TimeSlot CRUD 테스트', () => {
     // 다음 주 이동
     if (await nextButton.isVisible()) {
       await nextButton.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(300);
       console.log('다음 주로 이동');
     }
 
     // 이전 주 이동
     if (await prevButton.isVisible()) {
       await prevButton.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(300);
       console.log('이전 주로 이동');
     }
   });
@@ -631,13 +626,13 @@ test.describe('TimeSlot CRUD 테스트', () => {
     }
 
     await gameCard.click();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(300);
 
     // 타임슬롯 탭 클릭
     const timeslotTab = page.locator('button:has-text("타임슬롯")');
     if (await timeslotTab.isVisible()) {
       await timeslotTab.click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(300);
     }
 
     // 타임슬롯 카드가 있는지 확인
@@ -647,7 +642,7 @@ test.describe('TimeSlot CRUD 테스트', () => {
     if (hasSlots) {
       // 슬롯 클릭하여 상태 변경 메뉴 열기
       await slotCard.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(300);
 
       // 상태 변경 옵션 확인
       const hasStatusOptions = await page.getByText(/활성|비활성|정비/).first().isVisible().catch(() => false);
@@ -667,13 +662,13 @@ test.describe('TimeSlot CRUD 테스트', () => {
     }
 
     await gameCard.click();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(300);
 
     // 타임슬롯 탭 클릭
     const timeslotTab = page.locator('button:has-text("타임슬롯")');
     if (await timeslotTab.isVisible()) {
       await timeslotTab.click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(300);
     }
 
     // 삭제 버튼 찾기 (휴지통 아이콘 또는 삭제 텍스트)
@@ -687,7 +682,7 @@ test.describe('TimeSlot CRUD 테스트', () => {
       });
 
       await deleteButton.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(300);
     } else {
       console.log('삭제할 타임슬롯이 없거나 삭제 버튼이 보이지 않습니다.');
     }
@@ -715,27 +710,27 @@ test.describe('통합 CRUD 시나리오', () => {
 
     // 3. 코스관리 탭 확인
     await page.locator('button:has-text("코스관리")').click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
     await expect(page.getByRole('button', { name: /새 코스 추가/ })).toBeVisible();
     console.log('✓ 코스관리 탭 확인');
 
     // 4. 라운드 페이지로 이동
     await page.getByRole('button', { name: /라운드 보기/ }).click();
     await expect(page).toHaveURL(/.*games/);
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(500);
     console.log('✓ 라운드 목록 페이지 이동');
 
     // 5. 라운드 상세 이동
     const gameCard = await findGameCard(page);
     if (gameCard) {
       await gameCard.click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(300);
 
       // 6. 주간 스케줄 탭 확인
       const weeklyTab = page.locator('button:has-text("주간 스케줄")');
       if (await weeklyTab.isVisible()) {
         await weeklyTab.click();
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(300);
         console.log('✓ 주간 스케줄 탭 확인');
       }
 
@@ -743,7 +738,7 @@ test.describe('통합 CRUD 시나리오', () => {
       const timeslotTab = page.locator('button:has-text("타임슬롯")');
       if (await timeslotTab.isVisible()) {
         await timeslotTab.click();
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(300);
         console.log('✓ 타임슬롯 탭 확인');
       }
     }

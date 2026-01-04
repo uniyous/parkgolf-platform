@@ -6,7 +6,7 @@
  */
 
 // Core client
-export { apiClient, ApiError, type ApiResponse, type BffApiResponse } from './client';
+export { apiClient, ApiError, type ApiResponse, type PaginatedResponse, type ClientResponse } from './client';
 
 // Domain APIs
 export { authApi } from './authApi';
@@ -17,7 +17,7 @@ export { dashboardApi } from './dashboardApi';
 export { notificationApi } from './notificationApi';
 
 // Course/Club Management
-export { courseApi, golfCourseApi } from './courses';
+export { courseApi } from './courses';
 
 // Game-based Scheduling (게임 기반 스케줄링)
 export { gamesApi, timeSlotAdapter } from './gamesApi';
@@ -29,7 +29,7 @@ export type {
   UpdateClubDto,
   ClubFilters,
   CourseFilters,
-  PaginatedResponse,
+  CoursesPaginatedResult,
   CourseStats,
 } from './courses';
 

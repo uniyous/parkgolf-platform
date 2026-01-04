@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGamesQuery, useClubsQuery } from '@/hooks/queries';
+import { DataContainer } from '@/components/common';
+import { CanManageCourses } from '@/components/auth';
+import { PageLayout } from '@/components/layout';
 import { GameFormModal } from '@/components/features/game';
 import type { Game, GameFilter } from '@/lib/api/gamesApi';
 
@@ -27,7 +30,7 @@ export const GameListPage: React.FC = () => {
     limit: 50,
   }), [selectedClubId]);
 
-  const { data: gamesData, error } = useGamesQuery(filters);
+  const { data: gamesData, error, isLoading } = useGamesQuery(filters);
   const { data: clubsData } = useClubsQuery();
 
   const games = gamesData?.data || [];
@@ -66,6 +69,16 @@ export const GameListPage: React.FC = () => {
   };
 
   return (
+    <CanManageCourses
+      fallback={
+        <PageLayout>
+          <div className="text-center py-12">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">접근 권한이 없습니다</h1>
+            <p className="text-gray-600">라운드 관리 권한이 필요합니다.</p>
+          </div>
+        </PageLayout>
+      }
+    >
     <div className="space-y-6">
       {/* 헤더 */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -140,29 +153,32 @@ export const GameListPage: React.FC = () => {
 
       {/* 라운드 목록 */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
-        {filteredGames.length === 0 ? (
-          <div className="text-center py-12">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <DataContainer
+          isLoading={isLoading}
+          isEmpty={filteredGames.length === 0}
+          emptyIcon={
+            <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
-            <h3 className="mt-2 text-lg font-medium text-gray-900">라운드가 없습니다</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchKeyword || selectedClubId
-                ? '검색 조건에 맞는 라운드가 없습니다.'
-                : '등록된 라운드가 없습니다.'}
-            </p>
-            {!searchKeyword && !selectedClubId && (
-              <div className="mt-6">
-                <button
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  첫 번째 라운드 추가하기
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
+          }
+          emptyMessage="라운드가 없습니다"
+          emptyDescription={
+            searchKeyword || selectedClubId
+              ? '검색 조건에 맞는 라운드가 없습니다.'
+              : '등록된 라운드가 없습니다.'
+          }
+          emptyAction={
+            !searchKeyword && !selectedClubId ? (
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                첫 번째 라운드 추가하기
+              </button>
+            ) : undefined
+          }
+          loadingMessage="라운드 목록을 불러오는 중..."
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredGames.map((game) => (
               <div
@@ -222,7 +238,7 @@ export const GameListPage: React.FC = () => {
               </div>
             ))}
           </div>
-        )}
+        </DataContainer>
       </div>
 
       {/* 하단 정보 */}
@@ -243,6 +259,7 @@ export const GameListPage: React.FC = () => {
         }}
       />
     </div>
+    </CanManageCourses>
   );
 };
 

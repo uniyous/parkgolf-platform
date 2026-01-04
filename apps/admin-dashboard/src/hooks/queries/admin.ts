@@ -12,6 +12,7 @@ export const useAdminsQuery = (filters?: Record<string, any>) => {
     queryKey: adminKeys.list(filters),
     queryFn: () => adminApi.getAdmins(filters),
     staleTime: 1000 * 60 * 5,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -209,6 +210,7 @@ export const useRolesWithPermissionsQuery = (userType?: string) => {
     queryKey: roleKeys.withPermissions(userType),
     queryFn: () => adminApi.getRolesWithPermissions(userType),
     staleTime: 1000 * 60 * 30, // 30분
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 

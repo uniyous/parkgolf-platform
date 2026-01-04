@@ -6,13 +6,14 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: ['**/data-setup.spec.ts'], // 테스트 데이터 생성 스크립트 제외
   globalSetup: './e2e/global-setup.ts', // 테스트 전 서버 웜업
   fullyParallel: false, // Cloud Run 콜드 스타트 방지를 위해 순차 실행
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1, // 로컬에서도 1회 재시도
   workers: 1, // 순차 실행
-  timeout: 60000, // 60초 기본 타임아웃 (Cloud Run 콜드 스타트 대비)
-  expect: { timeout: 30000 }, // expect 타임아웃 30초
+  timeout: 10000, // 10초 기본 타임아웃 (마법사 테스트는 test.slow() 사용)
+  expect: { timeout: 5000 }, // expect 타임아웃 5초
   reporter: [
     ['html', { open: 'never' }],
     ['list']

@@ -31,13 +31,11 @@ import { test, expect } from '@playwright/test';
  *    - 삭제 확인 다이얼로그
  */
 
-const TEST_TIMEOUT = 120000; // 2분
-
 // 골프장 카드를 찾는 헬퍼 함수
 async function findClubCard(page: any) {
   const cardLocator = page.locator('[class*="cursor-pointer"]').filter({ has: page.locator('h3') }).first();
   try {
-    await cardLocator.waitFor({ state: 'visible', timeout: 20000 });
+    await cardLocator.waitFor({ state: 'visible', timeout: 5000 });
     return cardLocator;
   } catch {
     return null;
@@ -48,7 +46,7 @@ async function findClubCard(page: any) {
 async function findClubCardByName(page: any, name: string) {
   const cardLocator = page.locator('[class*="cursor-pointer"]').filter({ hasText: name }).first();
   try {
-    await cardLocator.waitFor({ state: 'visible', timeout: 10000 });
+    await cardLocator.waitFor({ state: 'visible', timeout: 5000 });
     return cardLocator;
   } catch {
     return null;
@@ -60,7 +58,6 @@ async function findClubCardByName(page: any, name: string) {
 // ========================================
 test.describe('골프장 목록 페이지', () => {
   test.use({ storageState: 'e2e/.auth/admin.json' });
-  test.setTimeout(TEST_TIMEOUT);
 
   test('1.1 페이지 로드 및 기본 요소 확인', async ({ page }) => {
     await page.goto('/clubs');
@@ -134,7 +131,7 @@ test.describe('골프장 목록 페이지', () => {
 
     // 검색 버튼 클릭
     await page.getByRole('button', { name: '검색' }).click();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(300);
 
     // 검색 결과 확인 (또는 결과 없음 메시지)
     const hasResults = await page.locator('[class*="cursor-pointer"]').first().isVisible().catch(() => false);
@@ -159,7 +156,7 @@ test.describe('골프장 목록 페이지', () => {
 
     // 엔터키 입력
     await searchInput.press('Enter');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(300);
 
     // 전체 보기 버튼이 나타나는지 확인
     const showAllButton = page.getByRole('button', { name: '전체 보기' });
@@ -180,13 +177,13 @@ test.describe('골프장 목록 페이지', () => {
     const searchInput = page.getByPlaceholder(/골프장 이름이나 지역으로 검색/);
     await searchInput.fill('테스트');
     await page.getByRole('button', { name: '검색' }).click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 전체 보기 버튼 클릭
     const showAllButton = page.getByRole('button', { name: '전체 보기' });
     if (await showAllButton.isVisible()) {
       await showAllButton.click();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(300);
 
       // 검색어가 지워졌는지 확인
       await expect(searchInput).toHaveValue('');
@@ -195,7 +192,7 @@ test.describe('골프장 목록 페이지', () => {
 
   test('1.6 하단 페이지네이션 정보 확인', async ({ page }) => {
     await page.goto('/clubs');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(300);
 
     // 하단 정보 영역 확인
     const footerInfo = page.getByText(/총.*개의 골프장이 등록되어 있습니다/);
@@ -208,7 +205,6 @@ test.describe('골프장 목록 페이지', () => {
 // ========================================
 test.describe('골프장 상세 페이지', () => {
   test.use({ storageState: 'e2e/.auth/admin.json' });
-  test.setTimeout(TEST_TIMEOUT);
 
   test('2.1 상세 페이지 이동 및 헤더 확인', async ({ page }) => {
     await page.goto('/clubs');
@@ -224,7 +220,7 @@ test.describe('골프장 상세 페이지', () => {
     await expect(page).toHaveURL(/.*clubs\/\d+/);
 
     // 페이지 로딩 대기
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(300);
 
     // 헤더 정보 확인
     // 뒤로가기 버튼
@@ -234,7 +230,7 @@ test.describe('골프장 상세 페이지', () => {
     await expect(backButton).toBeVisible();
 
     // 페이지 로딩 완료 확인 - 탭 버튼이 보이면 로딩 완료
-    await expect(page.locator('button:has-text("기본정보")')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('button:has-text("기본정보")')).toBeVisible();
 
     // 골프장 이름 h1 존재 확인 (텍스트 내용은 로딩 타이밍에 따라 달라질 수 있음)
     await expect(page.locator('h1.text-3xl')).toBeAttached();
@@ -288,7 +284,7 @@ test.describe('골프장 상세 페이지', () => {
 
     // 클릭 시 기본정보 탭으로 이동하고 편집 모드 활성화
     await editButton.click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // 기본정보 탭이 활성화되었는지 확인
     const basicTab = page.locator('button:has-text("기본정보")');
@@ -346,11 +342,11 @@ test.describe('골프장 상세 페이지', () => {
     }
 
     await clubCard.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 기본정보 탭 클릭
     await page.locator('button:has-text("기본정보")').click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // 탭이 활성화되었는지 확인
     await expect(page.locator('button:has-text("기본정보")')).toHaveClass(/border-blue-500/);
@@ -369,11 +365,11 @@ test.describe('골프장 상세 페이지', () => {
     }
 
     await clubCard.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 코스관리 탭 클릭
     await page.locator('button:has-text("코스관리")').click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // 탭이 활성화되었는지 확인
     await expect(page.locator('button:has-text("코스관리")')).toHaveClass(/border-blue-500/);
@@ -392,11 +388,11 @@ test.describe('골프장 상세 페이지', () => {
     }
 
     await clubCard.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 운영정보 탭 클릭
     await page.locator('button:has-text("운영정보")').click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // 탭이 활성화되었는지 확인
     await expect(page.locator('button:has-text("운영정보")')).toHaveClass(/border-blue-500/);
@@ -411,7 +407,6 @@ test.describe('골프장 상세 페이지', () => {
 // ========================================
 test.describe('기본정보 탭', () => {
   test.use({ storageState: 'e2e/.auth/admin.json' });
-  test.setTimeout(TEST_TIMEOUT);
 
   test('3.1 기본정보 조회 모드', async ({ page }) => {
     await page.goto('/clubs');
@@ -423,11 +418,11 @@ test.describe('기본정보 탭', () => {
     }
 
     await clubCard.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 기본정보 탭 클릭
     await page.locator('button:has-text("기본정보")').click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // 조회 모드 확인 - 수정 버튼이 보여야 함
     const editButton = page.getByRole('button', { name: '수정', exact: true });
@@ -468,15 +463,15 @@ test.describe('기본정보 탭', () => {
     }
 
     await clubCard.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 기본정보 탭 클릭
     await page.locator('button:has-text("기본정보")').click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // 수정 버튼 클릭
     await page.getByRole('button', { name: '수정', exact: true }).click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // 수정 모드 확인 - 취소/저장 버튼이 보여야 함
     await expect(page.getByRole('button', { name: '취소' })).toBeVisible();
@@ -488,7 +483,7 @@ test.describe('기본정보 탭', () => {
 
     // 취소 버튼 클릭
     await page.getByRole('button', { name: '취소' }).click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // 조회 모드로 복귀 확인
     await expect(page.getByRole('button', { name: '수정', exact: true })).toBeVisible();
@@ -504,13 +499,13 @@ test.describe('기본정보 탭', () => {
     }
 
     await clubCard.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 기본정보 탭 -> 수정 모드
     await page.locator('button:has-text("기본정보")').click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
     await page.getByRole('button', { name: '수정', exact: true }).click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // 골프장명 필드 찾기 및 수정
     const nameLabel = page.getByText('골프장명');
@@ -535,13 +530,13 @@ test.describe('기본정보 탭', () => {
     }
 
     await clubCard.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 기본정보 탭 -> 수정 모드
     await page.locator('button:has-text("기본정보")').click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
     await page.getByRole('button', { name: '수정', exact: true }).click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // 운영 상태 select 확인
     const statusSelect = page.locator('select');
@@ -570,13 +565,13 @@ test.describe('기본정보 탭', () => {
     }
 
     await clubCard.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 기본정보 탭 -> 수정 모드
     await page.locator('button:has-text("기본정보")').click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
     await page.getByRole('button', { name: '수정', exact: true }).click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // 운영 시작/종료 time input 확인
     const timeInputs = page.locator('input[type="time"]');
@@ -599,13 +594,13 @@ test.describe('기본정보 탭', () => {
     }
 
     await clubCard.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 기본정보 탭 -> 수정 모드
     await page.locator('button:has-text("기본정보")').click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
     await page.getByRole('button', { name: '수정', exact: true }).click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // 부대시설 체크박스 확인
     const facilities = ['카트도로', '연습장', '클럽하우스', '레스토랑', '프로샵',
@@ -629,7 +624,6 @@ test.describe('기본정보 탭', () => {
 // ========================================
 test.describe('운영정보 탭', () => {
   test.use({ storageState: 'e2e/.auth/admin.json' });
-  test.setTimeout(TEST_TIMEOUT);
 
   test('4.1 실시간 현황 카드 확인', async ({ page }) => {
     await page.goto('/clubs');
@@ -641,11 +635,11 @@ test.describe('운영정보 탭', () => {
     }
 
     await clubCard.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 운영정보 탭 클릭
     await page.locator('button:has-text("운영정보")').click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 실시간 현황 카드 확인
     await expect(page.getByText('오늘 예약 가능')).toBeVisible();
@@ -664,11 +658,11 @@ test.describe('운영정보 탭', () => {
     }
 
     await clubCard.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 운영정보 탭 클릭
     await page.locator('button:has-text("운영정보")').click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 분석 기간 라벨 확인
     await expect(page.getByText('분석 기간:')).toBeVisible();
@@ -689,18 +683,18 @@ test.describe('운영정보 탭', () => {
     }
 
     await clubCard.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 운영정보 탭 클릭
     await page.locator('button:has-text("운영정보")').click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 새로고침 버튼 확인 및 클릭
     const refreshButton = page.getByRole('button', { name: '새로고침' });
     await expect(refreshButton).toBeVisible();
 
     await refreshButton.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 데이터가 다시 로드되었는지 확인 (카드가 여전히 표시됨)
     await expect(page.getByText('오늘 예약 가능')).toBeVisible();
@@ -716,11 +710,11 @@ test.describe('운영정보 탭', () => {
     }
 
     await clubCard.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 운영정보 탭 클릭
     await page.locator('button:has-text("운영정보")').click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 18홀 조합별 분석 테이블 확인
     const analysisSection = page.getByText('18홀 조합별 성과 분석');
@@ -746,11 +740,11 @@ test.describe('운영정보 탭', () => {
     }
 
     await clubCard.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 운영정보 탭 클릭
     await page.locator('button:has-text("운영정보")').click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 시즌 정보 섹션 확인 (h3.text-lg 제목)
     await expect(page.locator('h3.text-lg:has-text("시즌 정보")')).toBeVisible();
@@ -773,11 +767,11 @@ test.describe('운영정보 탭', () => {
     }
 
     await clubCard.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 운영정보 탭 클릭
     await page.locator('button:has-text("운영정보")').click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 운영 개선 제안 섹션 확인
     const suggestionSection = page.getByText('💡 운영 개선 제안');
@@ -790,7 +784,6 @@ test.describe('운영정보 탭', () => {
 // ========================================
 test.describe('골프장 삭제', () => {
   test.use({ storageState: 'e2e/.auth/admin.json' });
-  test.setTimeout(TEST_TIMEOUT);
 
   test('5.1 삭제 확인 다이얼로그 - 취소', async ({ page }) => {
     await page.goto('/clubs');
@@ -818,7 +811,7 @@ test.describe('골프장 삭제', () => {
     });
 
     await deleteButton.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     // 취소 후에도 같은 페이지에 있어야 함
     await expect(page).toHaveURL(/.*clubs\/\d+/);
@@ -830,7 +823,6 @@ test.describe('골프장 삭제', () => {
 // ========================================
 test.describe('골프장 관리 통합 시나리오', () => {
   test.use({ storageState: 'e2e/.auth/admin.json' });
-  test.setTimeout(TEST_TIMEOUT);
 
   test('6.1 전체 워크플로우: 목록 -> 상세 -> 탭 순회 -> 목록 복귀', async ({ page }) => {
     // 1. 목록 페이지 로드
@@ -852,19 +844,19 @@ test.describe('골프장 관리 통합 시나리오', () => {
 
     // 3. 기본정보 탭
     await page.locator('button:has-text("기본정보")').click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
     await expect(page.locator('h2:has-text("기본 정보")')).toBeVisible();
     console.log('✓ 3. 기본정보 탭 확인');
 
     // 4. 코스관리 탭
     await page.locator('button:has-text("코스관리")').click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
     await expect(page.getByRole('button', { name: /새 코스 추가/ })).toBeVisible();
     console.log('✓ 4. 코스관리 탭 확인');
 
     // 5. 운영정보 탭
     await page.locator('button:has-text("운영정보")').click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
     await expect(page.getByRole('heading', { name: '운영 정보' })).toBeVisible();
     console.log('✓ 5. 운영정보 탭 확인');
 
@@ -892,7 +884,7 @@ test.describe('골프장 관리 통합 시나리오', () => {
     const searchInput = page.getByPlaceholder(/골프장 이름이나 지역으로 검색/);
     await searchInput.fill('골프');
     await page.getByRole('button', { name: '검색' }).click();
-    await page.waitForTimeout(3000); // 검색 결과 로딩 대기
+    await page.waitForTimeout(500); // 검색 결과 로딩 대기
     console.log('✓ 1. 검색 실행');
 
     // 검색 결과에서 카드 선택 - 새로 locator를 찾음
@@ -910,7 +902,7 @@ test.describe('골프장 관리 통합 시나리오', () => {
         has: page.locator('svg path[d*="M15 19l-7-7"]')
       });
       await backButton.click();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(300);
       console.log('✓ 3. 목록으로 복귀');
 
       // 검색 상태 유지 확인 또는 전체보기

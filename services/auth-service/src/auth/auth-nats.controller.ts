@@ -83,15 +83,23 @@ export class AuthNatsController {
 
   @MessagePattern('auth.admin.login')
   async adminLogin(@Payload() loginDto: LoginDto) {
-    this.logger.log(`Admin login request: ${loginDto.email}`);
+    const startTime = Date.now();
+    this.logger.log(`[PERF] auth-service adminLogin START - email: ${loginDto.email}`);
 
+    const validateStartTime = Date.now();
     const admin = await this.authService.validateAdmin(loginDto.email, loginDto.password);
+    this.logger.log(`[PERF] auth-service validateAdmin: ${Date.now() - validateStartTime}ms`);
+
     if (!admin) {
+      this.logger.log(`[PERF] auth-service adminLogin FAILED (invalid credentials) - total: ${Date.now() - startTime}ms`);
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    const loginStartTime = Date.now();
     const result = await this.authService.adminLogin(admin);
-    this.logger.log(`Admin login successful: ${loginDto.email}`);
+    this.logger.log(`[PERF] auth-service adminLogin (token gen): ${Date.now() - loginStartTime}ms`);
+
+    this.logger.log(`[PERF] auth-service adminLogin SUCCESS - total: ${Date.now() - startTime}ms`);
     return NatsResponse.success(result);
   }
 

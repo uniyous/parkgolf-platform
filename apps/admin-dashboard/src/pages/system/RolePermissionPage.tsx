@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { PageLayout } from '@/components/layout';
-import { Breadcrumb } from '@/components/common';
+import { Breadcrumb, DataContainer } from '@/components/common';
 import { useAdminsQuery, useAdminStatsQuery, usePermissionsQuery, useRolesWithPermissionsQuery, useUpdateRolePermissionsMutation } from '@/hooks/queries/admin';
 
 // 권한 레벨 및 카테고리 정보
@@ -42,7 +42,7 @@ export const RolePermissionPage: React.FC = () => {
   const { data: admins = [] } = useAdminsQuery();
   const { data: stats } = useAdminStatsQuery();
   const { data: apiPermissions = [] } = usePermissionsQuery();
-  const { data: rolesWithPermissions = [] } = useRolesWithPermissionsQuery('ADMIN');
+  const { data: rolesWithPermissions = [], isLoading } = useRolesWithPermissionsQuery('ADMIN');
   const updateRolePermissions = useUpdateRolePermissionsMutation();
 
   // 현재 선택된 역할 (API 데이터에서)
@@ -215,6 +215,14 @@ export const RolePermissionPage: React.FC = () => {
         ]}
       />
       <PageLayout.Content>
+        <DataContainer
+          isLoading={isLoading}
+          isEmpty={rolesWithPermissions.length === 0 && !isLoading}
+          emptyIcon="🔐"
+          emptyMessage="역할 정보를 불러올 수 없습니다"
+          emptyDescription="역할 및 권한 데이터를 불러오는 중 문제가 발생했습니다."
+          loadingMessage="역할 및 권한 정보를 불러오는 중..."
+        >
         <div className="space-y-6">
           {/* 헤더 */}
           <div className="bg-white shadow rounded-lg p-6">
@@ -526,6 +534,7 @@ export const RolePermissionPage: React.FC = () => {
             각 역할의 권한을 편집하려면 역할을 선택한 후 "권한 편집" 버튼을 클릭하세요.
           </div>
         </div>
+        </DataContainer>
       </PageLayout.Content>
     </PageLayout>
   );

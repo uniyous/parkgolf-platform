@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Admin, AdminRole, Permission } from '@/types';
+import type { Admin, AdminRole, Permission, Company } from '@/types';
 import {
   hasPermission as checkPermission,
   canManageAdmin as checkCanManageAdmin,
@@ -9,6 +9,28 @@ import {
   getDefaultPermissions,
   ADMIN_ROLE_LABELS,
 } from '@/utils/admin-permissions';
+
+// API 응답에서 오는 사용자 데이터 타입
+export interface ApiUserResponse {
+  id: number;
+  email: string;
+  name?: string;
+  username?: string;
+  roleCode?: string;
+  role?: string;
+  roles?: string[];
+  permissions?: (string | { permission: string })[];
+  isActive?: boolean;
+  lastLoginAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  companyId?: number;
+  courseIds?: number[];
+  phone?: string;
+  department?: string;
+  description?: string;
+  company?: Company;
+}
 
 interface AuthState {
   currentAdmin: Admin | null;
@@ -23,8 +45,8 @@ interface AuthState {
   setError: (error: string | null) => void;
   logout: () => void;
   clearError: () => void;
-  hydrateFromLogin: (user: any, token: string) => void;
-  hydrateFromProfile: (apiUser: any, token: string) => void;
+  hydrateFromLogin: (user: ApiUserResponse, token: string) => void;
+  hydrateFromProfile: (apiUser: ApiUserResponse, token: string) => void;
   hasPermission: (permission: Permission) => boolean;
   canManageAdminRole: (targetRole: AdminRole) => boolean;
   canAccessCompany: (companyId: number) => boolean;
@@ -56,7 +78,7 @@ const mapToAdminRole = (role: string): AdminRole => {
   return 'VIEWER';
 };
 
-const convertUserToAdmin = (user: any): Admin => {
+const convertUserToAdmin = (user: ApiUserResponse): Admin => {
   // roles 배열 또는 role/roleCode 문자열 처리
   let rawRole = '';
   if (user.roleCode) {
@@ -72,7 +94,7 @@ const convertUserToAdmin = (user: any): Admin => {
 
   let permissions: Permission[];
   if (user.permissions && user.permissions.length > 0) {
-    permissions = user.permissions.map((p: any) =>
+    permissions = user.permissions.map((p) =>
       typeof p === 'string' ? p : p.permission
     ) as Permission[];
   } else {

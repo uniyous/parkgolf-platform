@@ -129,6 +129,9 @@ export class AdminService {
   }
 
   async findByEmail(email: string): Promise<any> {
+    const startTime = Date.now();
+    this.logger.log(`[PERF] AdminService.findByEmail START - ${email}`);
+
     const admin = await this.prisma.admin.findUnique({
       where: { email },
       include: {
@@ -144,7 +147,10 @@ export class AdminService {
       },
     });
 
+    this.logger.log(`[PERF] AdminService.findByEmail (prisma query): ${Date.now() - startTime}ms`);
+
     if (!admin) {
+      this.logger.log(`[PERF] AdminService.findByEmail NOT FOUND - total: ${Date.now() - startTime}ms`);
       return null;
     }
 
@@ -153,7 +159,7 @@ export class AdminService {
       permission: rp.permission.code,
     })) || [];
 
-    this.logger.debug(`findByEmail - ${email} permissions: [${permissions.map(p => p.permission).join(', ')}]`);
+    this.logger.log(`[PERF] AdminService.findByEmail SUCCESS - ${email}, permissions: ${permissions.length}, total: ${Date.now() - startTime}ms`);
 
     return {
       ...admin,
@@ -222,29 +228,44 @@ export class AdminService {
   }
 
   async validateAdmin(email: string, password: string): Promise<Admin | null> {
+    const startTime = Date.now();
+    this.logger.log(`[PERF] AdminService.validateAdmin START - ${email}`);
+
+    // DB Query: findByEmail
+    const dbStartTime = Date.now();
     const admin = await this.findByEmail(email);
-    console.log('🔍 validateAdmin - admin found with permissions:', admin?.permissions?.length || 0);
-    
+    this.logger.log(`[PERF] AdminService.validateAdmin (DB findByEmail): ${Date.now() - dbStartTime}ms`);
+    this.logger.log(`[PERF] Admin found: ${!!admin}, permissions: ${admin?.permissions?.length || 0}`);
+
     if (!admin) {
+      this.logger.log(`[PERF] AdminService.validateAdmin FAILED (not found) - total: ${Date.now() - startTime}ms`);
       return null;
     }
 
+    // bcrypt compare
+    const bcryptStartTime = Date.now();
     const isPasswordValid = await bcrypt.compare(password, admin.password);
-    
+    this.logger.log(`[PERF] AdminService.validateAdmin (bcrypt compare): ${Date.now() - bcryptStartTime}ms`);
+
     if (!isPasswordValid) {
+      this.logger.log(`[PERF] AdminService.validateAdmin FAILED (wrong password) - total: ${Date.now() - startTime}ms`);
       return null;
     }
 
     if (!admin.isActive) {
+      this.logger.log(`[PERF] AdminService.validateAdmin FAILED (inactive) - total: ${Date.now() - startTime}ms`);
       throw new UnauthorizedException('Account is inactive');
     }
 
     // Update last login
+    const updateStartTime = Date.now();
     await this.prisma.admin.update({
       where: { id: admin.id },
       data: { lastLoginAt: new Date() },
     });
+    this.logger.log(`[PERF] AdminService.validateAdmin (DB updateLastLogin): ${Date.now() - updateStartTime}ms`);
 
+    this.logger.log(`[PERF] AdminService.validateAdmin SUCCESS - total: ${Date.now() - startTime}ms`);
     return admin;
   }
 

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useCompaniesQuery, useDeleteCompanyMutation, useUpdateCompanyStatusMutation } from '@/hooks/queries';
 import { useAuthStore, useCurrentAdmin } from '@/stores';
 import { Modal } from '@/components/ui';
+import { DataContainer } from '@/components/common';
 import { CompanyFormModal } from './CompanyFormModal';
 import { CompanyDetailModal } from './CompanyDetailModal';
 import type { Company, CompanyStatus } from '@/types/company';
@@ -29,7 +30,7 @@ const STATUS_META: Record<CompanyStatus, { icon: string; color: string }> = {
 
 export const CompanyList: React.FC = () => {
   // Queries & Mutations
-  const { data: companiesResponse, refetch } = useCompaniesQuery();
+  const { data: companiesResponse, refetch, isLoading } = useCompaniesQuery();
   const deleteCompany = useDeleteCompanyMutation();
   const updateStatus = useUpdateCompanyStatusMutation();
 
@@ -287,169 +288,14 @@ export const CompanyList: React.FC = () => {
             <span className="text-sm text-blue-600">{selectedIds.length}개 선택됨</span>
           )}
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 w-12">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.length === filteredCompanies.length && filteredCompanies.length > 0}
-                    onChange={handleSelectAll}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                </th>
-                <th
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => handleSort('name')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>회사 정보</span>
-                    {sortField === 'name' && (
-                      <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  연락처
-                </th>
-                <th
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => handleSort('coursesCount')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>코스</span>
-                    {sortField === 'coursesCount' && (
-                      <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => handleSort('status')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>상태</span>
-                    {sortField === 'status' && (
-                      <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                  액션
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredCompanies.map((company) => (
-                <tr
-                  key={company.id}
-                  className="hover:bg-gray-50 transition-colors cursor-pointer"
-                  onClick={() => setDetailModal({ open: true, company })}
-                >
-                  <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(company.id)}
-                      onChange={() => handleSelect(company.id)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold overflow-hidden">
-                        {company.logoUrl ? (
-                          <img
-                            src={company.logoUrl}
-                            alt={company.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          company.name?.charAt(0) || '?'
-                        )}
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900">{company.name}</div>
-                        <div className="text-sm text-gray-500 max-w-xs truncate">{company.address || '-'}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="text-sm text-gray-900">{company.phoneNumber || '-'}</div>
-                    <div className="text-sm text-gray-500">{company.email || '-'}</div>
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className="inline-flex items-center px-2.5 py-1 text-sm font-medium text-gray-900 bg-gray-100 rounded-lg">
-                      <svg className="w-4 h-4 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                      </svg>
-                      {company.coursesCount || 0}개
-                    </span>
-                  </td>
-                  <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                    {hasManageCompanies ? (
-                      <select
-                        value={company.status}
-                        onChange={(e) => handleStatusChange(company, e.target.value as CompanyStatus)}
-                        className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border cursor-pointer transition-colors ${STATUS_META[company.status]?.color}`}
-                      >
-                        <option value="ACTIVE">운영 중</option>
-                        <option value="MAINTENANCE">점검 중</option>
-                        <option value="INACTIVE">비활성</option>
-                      </select>
-                    ) : (
-                      <span className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border ${STATUS_META[company.status]?.color}`}>
-                        <span className="mr-1">{STATUS_META[company.status]?.icon}</span>
-                        {STATUS_LABELS[company.status]}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1">
-                      {hasManageCompanies && (
-                        <>
-                          <button
-                            onClick={() => setFormModal({ open: true, company })}
-                            className="inline-flex items-center px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          >
-                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            수정
-                          </button>
-                          {currentAdmin?.scope === 'SYSTEM' && (
-                            <button
-                              onClick={() => setDeleteConfirm({ open: true, company })}
-                              className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            >
-                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                              삭제
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredCompanies.length === 0 && (
-          <div className="text-center py-16">
-            <div className="text-5xl mb-4">🔍</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {companies.length === 0 ? '등록된 회사가 없습니다' : '검색 결과가 없습니다'}
-            </h3>
-            <p className="text-gray-500 mb-4">
-              {companies.length === 0
-                ? '새 회사를 추가해 보세요'
-                : '다른 검색어나 필터를 시도해 보세요'}
-            </p>
-            {companies.length === 0 && hasManageCompanies && (
+        <DataContainer
+          isLoading={isLoading}
+          isEmpty={filteredCompanies.length === 0}
+          emptyIcon="🔍"
+          emptyMessage={companies.length === 0 ? '등록된 회사가 없습니다' : '검색 결과가 없습니다'}
+          emptyDescription={companies.length === 0 ? '새 회사를 추가해 보세요' : '다른 검색어나 필터를 시도해 보세요'}
+          emptyAction={
+            companies.length === 0 && hasManageCompanies ? (
               <button
                 onClick={() => setFormModal({ open: true })}
                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -459,9 +305,161 @@ export const CompanyList: React.FC = () => {
                 </svg>
                 회사 추가
               </button>
-            )}
+            ) : undefined
+          }
+          loadingMessage="회사 목록을 불러오는 중..."
+        >
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 w-12">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.length === filteredCompanies.length && filteredCompanies.length > 0}
+                      onChange={handleSelectAll}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </th>
+                  <th
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('name')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>회사 정보</span>
+                      {sortField === 'name' && (
+                        <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    연락처
+                  </th>
+                  <th
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('coursesCount')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>코스</span>
+                      {sortField === 'coursesCount' && (
+                        <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>상태</span>
+                      {sortField === 'status' && (
+                        <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                    액션
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredCompanies.map((company) => (
+                  <tr
+                    key={company.id}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => setDetailModal({ open: true, company })}
+                  >
+                    <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(company.id)}
+                        onChange={() => handleSelect(company.id)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold overflow-hidden">
+                          {company.logoUrl ? (
+                            <img
+                              src={company.logoUrl}
+                              alt={company.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            company.name?.charAt(0) || '?'
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">{company.name}</div>
+                          <div className="text-sm text-gray-500 max-w-xs truncate">{company.address || '-'}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="text-sm text-gray-900">{company.phoneNumber || '-'}</div>
+                      <div className="text-sm text-gray-500">{company.email || '-'}</div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="inline-flex items-center px-2.5 py-1 text-sm font-medium text-gray-900 bg-gray-100 rounded-lg">
+                        <svg className="w-4 h-4 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                        </svg>
+                        {company.coursesCount || 0}개
+                      </span>
+                    </td>
+                    <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                      {hasManageCompanies ? (
+                        <select
+                          value={company.status}
+                          onChange={(e) => handleStatusChange(company, e.target.value as CompanyStatus)}
+                          className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border cursor-pointer transition-colors ${STATUS_META[company.status]?.color}`}
+                        >
+                          <option value="ACTIVE">운영 중</option>
+                          <option value="MAINTENANCE">점검 중</option>
+                          <option value="INACTIVE">비활성</option>
+                        </select>
+                      ) : (
+                        <span className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border ${STATUS_META[company.status]?.color}`}>
+                          <span className="mr-1">{STATUS_META[company.status]?.icon}</span>
+                          {STATUS_LABELS[company.status]}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        {hasManageCompanies && (
+                          <>
+                            <button
+                              onClick={() => setFormModal({ open: true, company })}
+                              className="inline-flex items-center px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            >
+                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                              수정
+                            </button>
+                            {currentAdmin?.scope === 'SYSTEM' && (
+                              <button
+                                onClick={() => setDeleteConfirm({ open: true, company })}
+                                className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              >
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                삭제
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
+        </DataContainer>
       </div>
 
       {/* Form Modal */}
