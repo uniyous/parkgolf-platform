@@ -17,9 +17,9 @@ export const useSearchGamesQuery = (params: GameSearchParams) => {
   return useQuery({
     queryKey: gameKeys.search(params),
     queryFn: () => gameApi.searchGames(params),
-    staleTime: 1000 * 60 * 2,
+    staleTime: 0,  // 항상 fresh 상태로 유지하여 파라미터 변경 시 즉시 refetch
     gcTime: 1000 * 60 * 10,
-    placeholderData: keepPreviousData,
+    refetchOnMount: true,
   });
 };
 
