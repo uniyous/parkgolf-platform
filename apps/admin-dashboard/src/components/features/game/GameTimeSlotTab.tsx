@@ -7,7 +7,7 @@ import {
 } from '@/hooks/queries';
 import type { GameTimeSlot, GameTimeSlotFilter, UpdateGameTimeSlotDto } from '@/lib/api/gamesApi';
 import { TimeSlotWizard } from './TimeSlotWizard';
-import { DeleteConfirmPopover } from '@/components/common';
+import { DeleteConfirmPopover, DataContainer } from '@/components/common';
 
 interface GameTimeSlotTabProps {
   gameId: number;
@@ -53,7 +53,7 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
     limit: 1000, // 일주일치 충분히 커버
   }), [weekRange]);
 
-  const { data: timeSlotsData, isFetching, refetch } = useGameTimeSlotsQuery(gameId, queryFilters);
+  const { data: timeSlotsData, isLoading, isFetching, refetch } = useGameTimeSlotsQuery(gameId, queryFilters);
   const deleteMutation = useDeleteTimeSlotMutation();
   const updateMutation = useUpdateTimeSlotMutation();
 
@@ -243,31 +243,39 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
             </button>
           </div>
         </div>
+      </div>
 
+      {/* 타임슬롯 데이터 영역 */}
+      <DataContainer
+        isLoading={isLoading}
+        isEmpty={false}
+        loadingMessage="타임슬롯을 불러오는 중..."
+      >
         {/* 통계 */}
         {stats.total > 0 && (
-          <div className="flex items-center space-x-4 mt-4 pt-4 border-t border-gray-100">
-            <div className="flex items-center space-x-1.5">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              <span className="text-sm text-gray-600">예약가능 {stats.available}개</span>
-            </div>
-            <div className="flex items-center space-x-1.5">
-              <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-              <span className="text-sm text-gray-600">예약마감 {stats.booked}개</span>
-            </div>
-            <div className="flex items-center space-x-1.5">
-              <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-              <span className="text-sm text-gray-600">종료 {stats.closed}개</span>
-            </div>
-            <div className="ml-auto text-sm text-gray-500">
-              총 {stats.total}개 슬롯 / {groupedSlots.length}일
+          <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-1.5">
+                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                <span className="text-sm text-gray-600">예약가능 {stats.available}개</span>
+              </div>
+              <div className="flex items-center space-x-1.5">
+                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                <span className="text-sm text-gray-600">예약마감 {stats.booked}개</span>
+              </div>
+              <div className="flex items-center space-x-1.5">
+                <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                <span className="text-sm text-gray-600">종료 {stats.closed}개</span>
+              </div>
+              <div className="ml-auto text-sm text-gray-500">
+                총 {stats.total}개 슬롯 / {groupedSlots.length}일
+              </div>
             </div>
           </div>
         )}
-      </div>
 
-      {/* 타임슬롯 목록 */}
-      {groupedSlots.length === 0 ? (
+        {/* 타임슬롯 목록 */}
+        {groupedSlots.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-xl">
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -430,6 +438,7 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
           })}
         </div>
       )}
+      </DataContainer>
 
       {/* 생성 마법사 */}
       <TimeSlotWizard
