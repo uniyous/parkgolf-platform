@@ -170,6 +170,9 @@ model Game {
 
   @@unique([frontNineCourseId, backNineCourseId])
   @@index([clubId])
+  @@index([status])
+  @@index([isActive])
+  @@index([clubId, status, isActive])
   @@map("games")
 }
 

@@ -222,7 +222,7 @@ export class GameService {
     }
   }
 
-  async searchGames(query: SearchGamesQueryDto): Promise<{ data: (Game & { timeSlots?: any[] })[]; total: number; page: number; limit: number }> {
+  async searchGames(query: SearchGamesQueryDto): Promise<{ data: any[]; total: number; page: number; limit: number }> {
     const {
       search,
       date,
@@ -241,141 +241,185 @@ export class GameService {
 
     this.logger.log(`Searching games - search: ${search || 'none'}, date: ${searchDate}, clubId: ${clubId || 'all'}, price: ${minPrice}-${maxPrice}, minPlayers: ${minPlayers}`);
 
-    const where: Prisma.GameWhereInput = {
-      isActive: true,
-    };
-
-    // 타임슬롯 맵 (gameId -> timeSlots[])
-    const timeSlotsMap = new Map<number, any[]>();
-
-    // 날짜 필터 - 해당 날짜에 예약 가능한 타임슬롯이 있는 게임만 필터링 (항상 적용)
     const targetDate = new Date(searchDate);
 
-    // 최적화: Raw SQL로 bookedPlayers < maxPlayers 조건을 DB 레벨에서 처리
-    // 불필요한 game 관계 데이터 제외 (나중에 별도로 조회)
-    const availableSlots = await this.prisma.$queryRaw<Array<{
-      id: number;
+    // 최적화: 단일 Raw SQL 쿼리로 Game + Club + Course + TimeSlots 모두 조회
+    // 필요한 필드만 선택하여 over-fetching 방지
+    const searchPattern = search ? `%${search}%` : null;
+
+    // 검색 조건과 타임슬롯을 한 번에 조회
+    const gamesWithData = await this.prisma.$queryRaw<Array<{
+      // Game fields
       game_id: number;
-      date: Date;
-      start_time: string;
-      end_time: string;
+      game_name: string;
+      game_code: string;
+      game_description: string | null;
+      total_holes: number;
+      estimated_duration: number;
+      break_duration: number;
       max_players: number;
-      booked_players: number;
-      price: string;
-      is_premium: boolean;
-      status: string;
-      is_active: boolean;
-      created_at: Date;
-      updated_at: Date;
+      base_price: string;
+      weekend_price: string | null;
+      holiday_price: string | null;
+      game_status: string;
+      game_is_active: boolean;
+      // Club fields
+      club_id: number;
+      club_name: string;
+      club_location: string;
+      club_address: string;
+      club_phone: string;
+      // Course fields
+      front_course_id: number;
+      front_course_name: string;
+      front_course_code: string;
+      back_course_id: number;
+      back_course_name: string;
+      back_course_code: string;
+      // TimeSlot aggregated JSON
+      time_slots: string;
     }>>`
+      WITH available_slots AS (
+        SELECT
+          gts.game_id,
+          json_agg(
+            json_build_object(
+              'id', gts.id,
+              'gameId', gts.game_id,
+              'date', gts.date,
+              'startTime', gts.start_time,
+              'endTime', gts.end_time,
+              'maxPlayers', gts.max_players,
+              'bookedPlayers', gts.booked_players,
+              'availablePlayers', gts.max_players - gts.booked_players,
+              'price', gts.price,
+              'isPremium', gts.is_premium,
+              'status', gts.status
+            ) ORDER BY gts.start_time
+          ) AS slots
+        FROM game_time_slots gts
+        WHERE gts.date = ${targetDate}
+          AND gts.status = 'AVAILABLE'
+          AND gts.is_active = true
+          AND gts.booked_players < gts.max_players
+        GROUP BY gts.game_id
+      )
       SELECT
-        id, game_id, date, start_time, end_time,
-        max_players, booked_players, price,
-        is_premium, status, is_active, created_at, updated_at
-      FROM game_time_slots
-      WHERE date = ${targetDate}
-        AND status = 'AVAILABLE'
-        AND is_active = true
-        AND booked_players < max_players
-      ORDER BY game_id, start_time
+        g.id AS game_id,
+        g.name AS game_name,
+        g.code AS game_code,
+        g.description AS game_description,
+        g.total_holes,
+        g.estimated_duration,
+        g.break_duration,
+        g.max_players,
+        g.base_price::text,
+        g.weekend_price::text,
+        g.holiday_price::text,
+        g.status AS game_status,
+        g.is_active AS game_is_active,
+        c.id AS club_id,
+        c.name AS club_name,
+        c.location AS club_location,
+        c.address AS club_address,
+        c.phone AS club_phone,
+        fc.id AS front_course_id,
+        fc.name AS front_course_name,
+        fc.code AS front_course_code,
+        bc.id AS back_course_id,
+        bc.name AS back_course_name,
+        bc.code AS back_course_code,
+        COALESCE(slots::text, '[]') AS time_slots
+      FROM games g
+      INNER JOIN available_slots a ON g.id = a.game_id
+      INNER JOIN clubs c ON g.club_id = c.id
+      INNER JOIN courses fc ON g.front_nine_course_id = fc.id
+      INNER JOIN courses bc ON g.back_nine_course_id = bc.id
+      WHERE g.is_active = true
+        AND (${searchPattern}::text IS NULL OR (
+          g.name ILIKE ${searchPattern}
+          OR c.name ILIKE ${searchPattern}
+          OR c.location ILIKE ${searchPattern}
+        ))
+        AND (${clubId ?? null}::int IS NULL OR g.club_id = ${clubId ?? null})
+        AND (${minPrice ?? null}::decimal IS NULL OR g.base_price >= ${minPrice ?? null})
+        AND (${maxPrice ?? null}::decimal IS NULL OR g.base_price <= ${maxPrice ?? null})
+        AND (${minPlayers ?? null}::int IS NULL OR g.max_players >= ${minPlayers ?? null})
+      ORDER BY
+        CASE WHEN ${sortBy} = 'price' AND ${sortOrder} = 'asc' THEN g.base_price END ASC,
+        CASE WHEN ${sortBy} = 'price' AND ${sortOrder} = 'desc' THEN g.base_price END DESC,
+        CASE WHEN ${sortBy} = 'name' AND ${sortOrder} = 'asc' THEN g.name END ASC,
+        CASE WHEN ${sortBy} = 'name' AND ${sortOrder} = 'desc' THEN g.name END DESC,
+        CASE WHEN ${sortBy} = 'createdAt' AND ${sortOrder} = 'asc' THEN g.created_at END ASC,
+        CASE WHEN ${sortBy} = 'createdAt' AND ${sortOrder} = 'desc' THEN g.created_at END DESC
+      LIMIT ${limit} OFFSET ${(page - 1) * limit}
     `;
 
-    // 결과 매핑
-    const availableGameIds = new Set<number>();
-    availableSlots.forEach(slot => {
-      availableGameIds.add(slot.game_id);
-      if (!timeSlotsMap.has(slot.game_id)) {
-        timeSlotsMap.set(slot.game_id, []);
-      }
-      // snake_case -> camelCase 변환
-      timeSlotsMap.get(slot.game_id)!.push({
-        id: slot.id,
-        gameId: slot.game_id,
-        date: slot.date,
-        startTime: slot.start_time,
-        endTime: slot.end_time,
-        maxPlayers: slot.max_players,
-        bookedPlayers: slot.booked_players,
-        availablePlayers: slot.max_players - slot.booked_players,
-        price: Number(slot.price),
-        isPremium: slot.is_premium,
-        status: slot.status,
-        isActive: slot.is_active,
-        createdAt: slot.created_at,
-        updatedAt: slot.updated_at,
-      });
-    });
+    // 전체 개수 조회 (별도 쿼리 - 페이징 필요)
+    const countResult = await this.prisma.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(DISTINCT g.id) AS count
+      FROM games g
+      INNER JOIN game_time_slots gts ON g.id = gts.game_id
+        AND gts.date = ${targetDate}
+        AND gts.status = 'AVAILABLE'
+        AND gts.is_active = true
+        AND gts.booked_players < gts.max_players
+      INNER JOIN clubs c ON g.club_id = c.id
+      WHERE g.is_active = true
+        AND (${searchPattern}::text IS NULL OR (
+          g.name ILIKE ${searchPattern}
+          OR c.name ILIKE ${searchPattern}
+          OR c.location ILIKE ${searchPattern}
+        ))
+        AND (${clubId ?? null}::int IS NULL OR g.club_id = ${clubId ?? null})
+        AND (${minPrice ?? null}::decimal IS NULL OR g.base_price >= ${minPrice ?? null})
+        AND (${maxPrice ?? null}::decimal IS NULL OR g.base_price <= ${maxPrice ?? null})
+        AND (${minPlayers ?? null}::int IS NULL OR g.max_players >= ${minPlayers ?? null})
+    `;
 
-    if (availableGameIds.size === 0) {
-      // 가용 슬롯이 없으면 빈 결과 반환
-      return { data: [], total: 0, page, limit };
-    }
+    const total = Number(countResult[0]?.count ?? 0);
 
-    where.id = { in: [...availableGameIds] };
-
-    // 텍스트 검색 (게임명, 클럽명, 클럽 위치)
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { club: { name: { contains: search, mode: 'insensitive' } } },
-        { club: { location: { contains: search, mode: 'insensitive' } } },
-      ];
-    }
-
-    // 클럽 필터
-    if (clubId) {
-      where.clubId = clubId;
-    }
-
-    // 가격 범위 필터
-    if (minPrice !== undefined || maxPrice !== undefined) {
-      where.basePrice = {};
-      if (minPrice !== undefined) {
-        where.basePrice.gte = minPrice;
-      }
-      if (maxPrice !== undefined) {
-        where.basePrice.lte = maxPrice;
-      }
-    }
-
-    // 최소 인원수 필터
-    if (minPlayers !== undefined) {
-      where.maxPlayers = { gte: minPlayers };
-    }
-
-    // 정렬 설정
-    const orderBy: Prisma.GameOrderByWithRelationInput = {};
-    if (sortBy === 'price') {
-      orderBy.basePrice = sortOrder;
-    } else if (sortBy === 'name') {
-      orderBy.name = sortOrder;
-    } else if (sortBy === 'createdAt') {
-      orderBy.createdAt = sortOrder;
-    }
-
-    const skip = (page - 1) * limit;
-
-    const [games, total] = await this.prisma.$transaction([
-      this.prisma.game.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy,
-        include: {
-          frontNineCourse: true,
-          backNineCourse: true,
-          club: true,
-        },
-      }),
-      this.prisma.game.count({ where }),
-    ]);
-
-    // 타임슬롯 항상 포함 (기본 날짜가 오늘로 설정되어 있음)
-    const gamesWithSlots = games.map(game => ({
-      ...game,
-      timeSlots: timeSlotsMap.get(game.id) || [],
+    // 결과를 프론트엔드가 기대하는 형태로 변환
+    const data = gamesWithData.map(row => ({
+      id: row.game_id,
+      name: row.game_name,
+      code: row.game_code,
+      description: row.game_description,
+      totalHoles: row.total_holes,
+      estimatedDuration: row.estimated_duration,
+      duration: row.estimated_duration, // alias for frontend compatibility
+      breakDuration: row.break_duration,
+      maxPlayers: row.max_players,
+      basePrice: Number(row.base_price),
+      pricePerPerson: Number(row.base_price), // alias for frontend compatibility
+      weekendPrice: row.weekend_price ? Number(row.weekend_price) : null,
+      holidayPrice: row.holiday_price ? Number(row.holiday_price) : null,
+      status: row.game_status,
+      isActive: row.game_is_active,
+      clubId: row.club_id,
+      clubName: row.club_name,
+      club: {
+        id: row.club_id,
+        name: row.club_name,
+        location: row.club_location,
+        address: row.club_address,
+        phone: row.club_phone,
+      },
+      frontNineCourseId: row.front_course_id,
+      backNineCourseId: row.back_course_id,
+      frontNineCourse: {
+        id: row.front_course_id,
+        name: row.front_course_name,
+        code: row.front_course_code,
+      },
+      backNineCourse: {
+        id: row.back_course_id,
+        name: row.back_course_name,
+        code: row.back_course_code,
+      },
+      timeSlots: JSON.parse(row.time_slots),
     }));
 
-    return { data: gamesWithSlots, total, page, limit };
+    return { data, total, page, limit };
   }
 }
