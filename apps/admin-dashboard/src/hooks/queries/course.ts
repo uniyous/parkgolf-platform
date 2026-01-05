@@ -30,6 +30,7 @@ export const useClubsByCompanyQuery = (companyId: number) => {
     queryKey: clubKeys.byCompany(companyId),
     queryFn: () => courseApi.getClubsByCompany(companyId),
     enabled: !!companyId,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -38,6 +39,7 @@ export const useSearchClubsQuery = (query: string) => {
     queryKey: clubKeys.search(query),
     queryFn: () => courseApi.searchClubs(query),
     enabled: query.length >= 2,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -49,6 +51,7 @@ export const useCoursesQuery = (filters?: CourseFilters, page = 1, limit = 20) =
   return useQuery({
     queryKey: courseKeys.list({ ...filters, page, limit }),
     queryFn: () => courseApi.getCourses(filters, page, limit),
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -57,6 +60,7 @@ export const useCourseQuery = (id: number) => {
     queryKey: courseKeys.detail(id),
     queryFn: () => courseApi.getCourseById(id),
     enabled: !!id,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -65,6 +69,7 @@ export const useCoursesByClubQuery = (clubId: number) => {
     queryKey: courseKeys.byClub(clubId),
     queryFn: () => courseApi.getCoursesByClub(clubId),
     enabled: !!clubId,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -73,6 +78,7 @@ export const useCoursesByCompanyQuery = (companyId: number) => {
     queryKey: courseKeys.byCompany(companyId),
     queryFn: () => courseApi.getCoursesByCompany(companyId),
     enabled: !!companyId,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -80,6 +86,7 @@ export const useCourseStatsQuery = (startDate?: string, endDate?: string) => {
   return useQuery({
     queryKey: courseKeys.stats(),
     queryFn: () => courseApi.getCourseStats(startDate, endDate),
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -92,6 +99,7 @@ export const useHolesByCourseQuery = (courseId: number) => {
     queryKey: courseKeys.holes(courseId),
     queryFn: () => courseApi.getHolesByCourse(courseId),
     enabled: !!courseId,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 

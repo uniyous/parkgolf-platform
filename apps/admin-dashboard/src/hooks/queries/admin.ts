@@ -23,6 +23,7 @@ export const useAdminQuery = (id: number) => {
     queryFn: () => adminApi.getAdmin(id),
     enabled: !!id,
     staleTime: 1000 * 60 * 5,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -31,6 +32,7 @@ export const useAdminStatsQuery = () => {
     queryKey: adminKeys.stats(),
     queryFn: () => adminApi.getAdminStats(),
     staleTime: 1000 * 60 * 10,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -39,6 +41,7 @@ export const usePermissionsQuery = () => {
     queryKey: adminKeys.permissions(),
     queryFn: () => adminApi.getPermissions(),
     staleTime: 1000 * 60 * 30,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -195,6 +198,7 @@ export const useRolesQuery = (userType?: string) => {
     queryKey: roleKeys.list(userType),
     queryFn: () => adminApi.getRoles(userType),
     staleTime: 1000 * 60 * 30, // 30분
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -213,6 +217,7 @@ export const useRolePermissionsQuery = (roleCode: string) => {
     queryFn: () => adminApi.getRolePermissions(roleCode),
     enabled: !!roleCode,
     staleTime: 1000 * 60 * 30, // 30분
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 

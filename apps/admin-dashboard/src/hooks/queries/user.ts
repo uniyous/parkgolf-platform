@@ -23,6 +23,7 @@ export const useUserQuery = (id: number) => {
     queryFn: () => adminApi.getUser(id),
     enabled: !!id,
     staleTime: 1000 * 60 * 5,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 

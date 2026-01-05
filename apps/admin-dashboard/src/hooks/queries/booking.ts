@@ -12,6 +12,7 @@ export const useBookingsQuery = (filters?: BookingFilters, page = 1, limit = 20)
   return useQuery({
     queryKey: bookingKeys.list({ ...filters, page, limit } as BookingFilters),
     queryFn: () => bookingApi.getBookings(filters || {}, page, limit),
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -20,6 +21,7 @@ export const useBookingQuery = (id: number) => {
     queryKey: bookingKeys.detail(id),
     queryFn: () => bookingApi.getBookingById(id),
     enabled: !!id,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -27,6 +29,7 @@ export const useBookingStatsQuery = () => {
   return useQuery({
     queryKey: bookingKeys.stats(),
     queryFn: () => bookingApi.getBookingStats(),
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -35,6 +38,7 @@ export const useCalendarBookingsQuery = (courseId: number, month: string) => {
     queryKey: bookingKeys.calendar(month),
     queryFn: () => bookingApi.getCalendarData(courseId, month),
     enabled: !!courseId && !!month,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 

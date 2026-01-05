@@ -21,6 +21,7 @@ export const useCompanyQuery = (id: number, options?: { enabled?: boolean }) => 
     queryKey: companyKeys.detail(id),
     queryFn: () => companyApi.getCompanyById(id),
     enabled: options?.enabled ?? !!id,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -28,6 +29,7 @@ export const useCompanyStatsQuery = () => {
   return useQuery({
     queryKey: companyKeys.stats(),
     queryFn: () => companyApi.getCompanyStats(),
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
