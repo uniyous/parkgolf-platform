@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { toast } from 'sonner';
 import { useBookingsQuery, useConfirmBookingMutation, useCancelBookingMutation } from '@/hooks/queries/booking';
 import { useClubsQuery } from '@/hooks/queries';
 import type { BookingFilters } from '@/lib/api/bookingApi';
@@ -96,9 +97,10 @@ export const BookingManagementPage: React.FC = () => {
     if (window.confirm(`${booking.customerName}님의 예약을 확정하시겠습니까?`)) {
       try {
         await confirmMutation.mutateAsync(booking.id);
+        toast.success('예약이 확정되었습니다.');
       } catch (error) {
         console.error('Failed to confirm booking:', error);
-        alert('예약 확정에 실패했습니다.');
+        toast.error('예약 확정에 실패했습니다.');
       }
     }
   };
@@ -108,9 +110,10 @@ export const BookingManagementPage: React.FC = () => {
     if (reason !== null) {
       try {
         await cancelMutation.mutateAsync(booking.id);
+        toast.success('예약이 취소되었습니다.');
       } catch (error) {
         console.error('Failed to cancel booking:', error);
-        alert('예약 취소에 실패했습니다.');
+        toast.error('예약 취소에 실패했습니다.');
       }
     }
   };

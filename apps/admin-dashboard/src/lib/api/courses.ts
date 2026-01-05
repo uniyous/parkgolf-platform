@@ -8,6 +8,7 @@
  */
 
 import { apiClient } from './client';
+import { extractPaginatedList, extractSingle, extractList, type PaginatedResult } from './bffParser';
 import type {
   Course,
   Hole,
@@ -97,23 +98,20 @@ export interface ClubFilters {
   status?: string;
   page?: number;
   limit?: number;
+  [key: string]: unknown;
 }
 
 export interface CourseFilters {
   search?: string;
   status?: string;
   companyId?: number;
+  page?: number;
+  limit?: number;
+  [key: string]: unknown;
 }
 
-export interface CoursesPaginatedResult<T> {
-  data: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
+/** @deprecated PaginatedResult 사용 권장 */
+export type CoursesPaginatedResult<T> = PaginatedResult<T>;
 
 export interface CourseStats {
   totalClubs: number;
@@ -135,86 +133,38 @@ export const courseApi = {
   /**
    * 골프장 목록 조회
    */
-  async getClubs(filters: ClubFilters = {}): Promise<CoursesPaginatedResult<Club>> {
-    const response = await apiClient.get<any>('/admin/courses/clubs', filters);
-
-    // API 응답 구조: { success: true, data: { clubs: [...] }, total, page, limit, totalPages }
-    const responseData = response.data;
-
-    // BFF 응답 구조 처리
-    let clubs: Club[] = [];
-    let total = 0;
-    let page = 1;
-    let limit = 20;
-    let totalPages = 1;
-
-    if (responseData) {
-      // { success: true, data: { clubs: [...] }, total, page, limit, totalPages } 형식
-      if (responseData.data?.clubs) {
-        clubs = responseData.data.clubs;
-        total = responseData.total || clubs.length;
-        page = responseData.page || 1;
-        limit = responseData.limit || 20;
-        totalPages = responseData.totalPages || 1;
-      }
-      // { success: true, data: [...] } 형식
-      else if (Array.isArray(responseData.data)) {
-        clubs = responseData.data;
-        total = responseData.total || clubs.length;
-        page = responseData.page || 1;
-        limit = responseData.limit || 20;
-        totalPages = responseData.totalPages || 1;
-      }
-      // { clubs: [...] } 형식
-      else if (responseData.clubs) {
-        clubs = responseData.clubs;
-        total = responseData.total || clubs.length;
-        page = responseData.page || 1;
-        limit = responseData.limit || 20;
-        totalPages = responseData.totalPages || 1;
-      }
-      // 직접 배열인 경우
-      else if (Array.isArray(responseData)) {
-        clubs = responseData;
-        total = clubs.length;
-      }
-    }
-
-    return {
-      data: clubs,
-      pagination: { page, limit, total, totalPages },
-    };
+  async getClubs(filters: ClubFilters = {}): Promise<PaginatedResult<Club>> {
+    const response = await apiClient.get<unknown>('/admin/courses/clubs', filters);
+    return extractPaginatedList<Club>(response.data, 'clubs', {
+      page: filters.page,
+      limit: filters.limit,
+    });
   },
 
   /**
    * 골프장 검색
    */
   async searchClubs(query: string): Promise<Club[]> {
-    const response = await apiClient.get<{ data: Club[] }>('/admin/courses/clubs/search', { q: query });
-    return response.data?.data || [];
+    const response = await apiClient.get<unknown>('/admin/courses/clubs/search', { q: query });
+    return extractList<Club>(response.data, 'clubs');
   },
 
   /**
    * 회사별 골프장 목록
    */
   async getClubsByCompany(companyId: number): Promise<Club[]> {
-    const response = await apiClient.get<Club[]>(`/admin/courses/clubs/company/${companyId}`);
-    return response.data || [];
+    const response = await apiClient.get<unknown>(`/admin/courses/clubs/company/${companyId}`);
+    return extractList<Club>(response.data, 'clubs');
   },
 
   /**
    * 골프장 상세 조회
    */
   async getClubById(id: number): Promise<Club> {
-    const response = await apiClient.get<any>(`/admin/courses/clubs/${id}`);
-    const responseData = response.data;
-
-    // BFF 응답 구조 처리: { success: true, data: {...} }
-    if (responseData && responseData.data && typeof responseData.data === 'object' && !Array.isArray(responseData.data)) {
-      return responseData.data;
-    }
-
-    return responseData;
+    const response = await apiClient.get<unknown>(`/admin/courses/clubs/${id}`);
+    const club = extractSingle<Club>(response.data, 'club');
+    if (!club) throw new Error('Club not found');
+    return club;
   },
 
   /**
@@ -247,25 +197,10 @@ export const courseApi = {
   /**
    * 코스 목록 조회
    */
-  async getCourses(filters: CourseFilters = {}, page = 1, limit = 20): Promise<CoursesPaginatedResult<Course>> {
+  async getCourses(filters: CourseFilters = {}, page = 1, limit = 20): Promise<PaginatedResult<Course>> {
     const params = { page, limit, ...filters };
-    const response = await apiClient.get<{
-      courses: Course[];
-      totalCount: number;
-      totalPages: number;
-      page: number;
-    }>('/admin/courses', params);
-
-    const result = response.data;
-    return {
-      data: result?.courses || [],
-      pagination: {
-        page: result?.page || page,
-        limit,
-        total: result?.totalCount || 0,
-        totalPages: result?.totalPages || 1,
-      },
-    };
+    const response = await apiClient.get<unknown>('/admin/courses', params);
+    return extractPaginatedList<Course>(response.data, 'courses', { page, limit });
   },
 
   /**
@@ -284,30 +219,8 @@ export const courseApi = {
    * 골프장별 코스 목록
    */
   async getCoursesByClub(clubId: number): Promise<Course[]> {
-    const response = await apiClient.get<any>(`/admin/courses/club/${clubId}`);
-    const responseData = response.data;
-
-    // 다양한 API 응답 구조 처리
-    if (!responseData) return [];
-
-    // { success: true, data: { courses: [...] } } 형식
-    if (responseData.data?.courses) {
-      return responseData.data.courses;
-    }
-    // { success: true, data: [...] } 형식
-    if (Array.isArray(responseData.data)) {
-      return responseData.data;
-    }
-    // { courses: [...] } 형식
-    if (Array.isArray(responseData.courses)) {
-      return responseData.courses;
-    }
-    // 직접 배열인 경우
-    if (Array.isArray(responseData)) {
-      return responseData;
-    }
-
-    return [];
+    const response = await apiClient.get<unknown>(`/admin/courses/club/${clubId}`);
+    return extractList<Course>(response.data, 'courses');
   },
 
   /**
@@ -322,24 +235,30 @@ export const courseApi = {
    * 코스 상세 조회
    */
   async getCourseById(id: number): Promise<Course> {
-    const response = await apiClient.get<Course>(`/admin/courses/${id}`);
-    return response.data;
+    const response = await apiClient.get<unknown>(`/admin/courses/${id}`);
+    const course = extractSingle<Course>(response.data, 'course');
+    if (!course) throw new Error('Course not found');
+    return course;
   },
 
   /**
    * 코스 생성
    */
   async createCourse(data: CreateCourseDto): Promise<Course> {
-    const response = await apiClient.post<{ success: boolean; data: Course }>('/admin/courses', data);
-    return response.data?.data;
+    const response = await apiClient.post<unknown>('/admin/courses', data);
+    const course = extractSingle<Course>(response.data, 'course');
+    if (!course) throw new Error('Failed to create course');
+    return course;
   },
 
   /**
    * 코스 수정
    */
   async updateCourse(id: number, data: UpdateCourseDto): Promise<Course> {
-    const response = await apiClient.patch<{ success: boolean; data: Course }>(`/admin/courses/${id}`, data);
-    return response.data?.data;
+    const response = await apiClient.patch<unknown>(`/admin/courses/${id}`, data);
+    const course = extractSingle<Course>(response.data, 'course');
+    if (!course) throw new Error('Failed to update course');
+    return course;
   },
 
   /**

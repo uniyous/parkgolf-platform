@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { extractList, extractPagination, extractSingle, type PaginatedResult } from './bffParser';
 import type {
   Company,
   CreateCompanyDto,
@@ -92,189 +93,119 @@ function transformCompanyData(rawCompany: RawCompanyData): Company {
 export const companyApi = {
   // 회사 목록 조회
   async getCompanies(filters: CompanyFiltersQuery = {}, page = 1, limit = 20): Promise<CompanyListResponse> {
-    try {
-      const response = await apiClient.get<BffCompanyResponse>('/admin/companies', { page, limit });
+    const response = await apiClient.get<unknown>('/admin/companies', { page, limit });
 
-      console.log('Company API Response:', response);
-      console.log('Response.data:', response.data);
+    // bffParser로 데이터 추출
+    const rawCompanies = extractList<RawCompanyData>(response.data, 'companies');
+    const pagination = extractPagination(response.data, rawCompanies.length, { page, limit });
 
-      // API 응답 구조: { success: true, data: [...], total, page, limit, totalPages }
-      const bffResponse = response.data;
-      // data가 배열이면 직접 사용, 아니면 data.companies 또는 companies 배열 추출
-      let companies: RawCompanyData[] = [];
-      if (Array.isArray(bffResponse?.data)) {
-        companies = bffResponse.data;
-      } else if (bffResponse?.data && typeof bffResponse.data === 'object' && 'companies' in bffResponse.data) {
-        companies = bffResponse.data.companies;
-      } else if (bffResponse?.companies) {
-        companies = bffResponse.companies;
-      }
-      console.log('Final companies array:', companies);
-      console.log('Companies count:', companies.length);
-      
-      // 데이터 변환
-      const transformedCompanies = companies.map(transformCompanyData);
-      
-      // 클라이언트 사이드 필터링 적용
-      let filteredCompanies = transformedCompanies;
-      
-      if (filters.search && filteredCompanies.length > 0) {
-        const searchLower = filters.search.toLowerCase();
-        filteredCompanies = filteredCompanies.filter(company => 
-          company.name.toLowerCase().includes(searchLower) ||
-          (company.businessNumber && company.businessNumber.includes(filters.search!)) ||
-          (company.address && company.address.toLowerCase().includes(searchLower)) ||
-          (company.email && company.email.toLowerCase().includes(searchLower))
-        );
-      }
-      
-      if (filters.status && filteredCompanies.length > 0) {
-        filteredCompanies = filteredCompanies.filter(company => company.status === filters.status);
-      }
-      
-      if (filters.showOnlyActive && filteredCompanies.length > 0) {
-        filteredCompanies = filteredCompanies.filter(company => company.isActive);
-      }
-      
-      // 정렬
-      if (filters.sortBy && filteredCompanies.length > 0) {
-        filteredCompanies.sort((a, b) => {
-          const aValue = a[filters.sortBy as keyof Company] as string | number;
-          const bValue = b[filters.sortBy as keyof Company] as string | number;
-          
-          if (typeof aValue === 'string' && typeof bValue === 'string') {
-            return filters.sortOrder === 'asc' 
-              ? aValue.localeCompare(bValue)
-              : bValue.localeCompare(aValue);
-          }
-          
-          if (typeof aValue === 'number' && typeof bValue === 'number') {
-            return filters.sortOrder === 'asc' 
-              ? aValue - bValue
-              : bValue - aValue;
-          }
-          
-          return 0;
-        });
-      }
-      
-      return {
-        data: filteredCompanies,
-        pagination: {
-          page: bffResponse?.page || page,
-          limit: bffResponse?.limit || limit,
-          total: bffResponse?.total || bffResponse?.totalCount || filteredCompanies.length,
-          totalPages: bffResponse?.totalPages || Math.ceil(filteredCompanies.length / limit) || 1
-        }
-      };
-    } catch (error) {
-      console.error('Failed to fetch companies:', error);
-      throw error;
+    // 데이터 변환
+    let companies = rawCompanies.map(transformCompanyData);
+
+    // 클라이언트 사이드 필터링 적용
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      companies = companies.filter(company =>
+        company.name.toLowerCase().includes(searchLower) ||
+        (company.businessNumber && company.businessNumber.includes(filters.search!)) ||
+        (company.address && company.address.toLowerCase().includes(searchLower)) ||
+        (company.email && company.email.toLowerCase().includes(searchLower))
+      );
     }
+
+    if (filters.status) {
+      companies = companies.filter(company => company.status === filters.status);
+    }
+
+    if (filters.showOnlyActive) {
+      companies = companies.filter(company => company.isActive);
+    }
+
+    // 정렬
+    if (filters.sortBy) {
+      companies.sort((a, b) => {
+        const aValue = a[filters.sortBy as keyof Company] as string | number;
+        const bValue = b[filters.sortBy as keyof Company] as string | number;
+
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return filters.sortOrder === 'asc'
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        }
+
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return filters.sortOrder === 'asc'
+            ? aValue - bValue
+            : bValue - aValue;
+        }
+
+        return 0;
+      });
+    }
+
+    return { data: companies, pagination };
   },
 
   // 회사 상세 조회
   async getCompanyById(id: number): Promise<Company> {
-    try {
-      const response = await apiClient.get<BffCompanyResponse | RawCompanyData>(`/admin/companies/${id}`);
-      console.log('Get company by ID response:', response);
-
-      // API 응답에서 data 추출
-      const responseData = response.data;
-      const companyData = (responseData && 'data' in responseData && !Array.isArray(responseData.data) && responseData.data && typeof responseData.data === 'object' && !('companies' in responseData.data))
-        ? responseData.data as RawCompanyData
-        : responseData as RawCompanyData;
-      return transformCompanyData(companyData);
-    } catch (error) {
-      console.error(`Failed to fetch company ${id}:`, error);
-      throw error;
-    }
+    const response = await apiClient.get<unknown>(`/admin/companies/${id}`);
+    const rawData = extractSingle<RawCompanyData>(response.data, 'company');
+    if (!rawData) throw new Error('Company not found');
+    return transformCompanyData(rawData);
   },
 
-  // 회사 생성 (실제 API 사용)
+  // 회사 생성
   async createCompany(createData: CreateCompanyDto): Promise<Company> {
-    try {
-      console.log('Creating company with data:', createData);
+    // 백엔드가 지원하는 필드만 필터링
+    const supportedFields = {
+      name: createData.name,
+      businessNumber: createData.businessNumber,
+      address: createData.address,
+      phoneNumber: createData.phoneNumber,
+      email: createData.email,
+      website: createData.website,
+      description: createData.description,
+      establishedDate: createData.establishedDate,
+      logoUrl: createData.logoUrl,
+      status: createData.status
+    };
 
-      // 백엔드가 지원하는 필드만 필터링
-      const supportedFields = {
-        name: createData.name,
-        businessNumber: createData.businessNumber,
-        address: createData.address,
-        phoneNumber: createData.phoneNumber,
-        email: createData.email,
-        website: createData.website,
-        description: createData.description,
-        establishedDate: createData.establishedDate,
-        logoUrl: createData.logoUrl,
-        status: createData.status
-      };
+    // undefined 값 제거
+    const filteredData = Object.entries(supportedFields)
+      .filter(([_, value]) => value !== undefined)
+      .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
 
-      // undefined 값 제거
-      const filteredData = Object.entries(supportedFields)
-        .filter(([_, value]) => value !== undefined)
-        .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
-
-      console.log('Filtered data for API:', filteredData);
-
-      // 실제 API 호출
-      const response = await apiClient.post<BffCompanyResponse | RawCompanyData>('/admin/companies', filteredData);
-      console.log('Create company API response:', response);
-
-      // API 응답에서 data 추출
-      const respData = response.data;
-      const rawCompanyData = (respData && 'data' in respData && !Array.isArray(respData.data) && respData.data && typeof respData.data === 'object' && !('companies' in respData.data))
-        ? respData.data as RawCompanyData
-        : respData as RawCompanyData;
-      const newCompany = transformCompanyData(rawCompanyData);
-      return newCompany;
-    } catch (error) {
-      console.error('Failed to create company:', error);
-      throw error;
-    }
+    const response = await apiClient.post<unknown>('/admin/companies', filteredData);
+    const rawData = extractSingle<RawCompanyData>(response.data, 'company');
+    if (!rawData) throw new Error('Failed to create company');
+    return transformCompanyData(rawData);
   },
 
-  // 회사 수정 (실제 API 사용)
+  // 회사 수정
   async updateCompany(id: number, updateData: UpdateCompanyDto): Promise<Company> {
-    try {
-      console.log(`Updating company ${id} with data:`, updateData);
+    // 백엔드가 지원하는 필드만 필터링
+    const supportedFields = {
+      name: updateData.name,
+      businessNumber: updateData.businessNumber,
+      address: updateData.address,
+      phoneNumber: updateData.phoneNumber,
+      email: updateData.email,
+      website: updateData.website,
+      description: updateData.description,
+      establishedDate: updateData.establishedDate,
+      logoUrl: updateData.logoUrl,
+      status: updateData.status
+    };
 
-      // 백엔드가 지원하는 필드만 필터링
-      const supportedFields = {
-        name: updateData.name,
-        businessNumber: updateData.businessNumber,
-        address: updateData.address,
-        phoneNumber: updateData.phoneNumber,
-        email: updateData.email,
-        website: updateData.website,
-        description: updateData.description,
-        establishedDate: updateData.establishedDate,
-        logoUrl: updateData.logoUrl,
-        status: updateData.status
-      };
+    // undefined 값 제거
+    const filteredData = Object.entries(supportedFields)
+      .filter(([_, value]) => value !== undefined)
+      .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
 
-      // undefined 값 제거
-      const filteredData = Object.entries(supportedFields)
-        .filter(([_, value]) => value !== undefined)
-        .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
-
-      console.log('Filtered data for API:', filteredData);
-
-      // 실제 API 호출
-      const response = await apiClient.patch<BffCompanyResponse | RawCompanyData>(`/admin/companies/${id}`, filteredData);
-      console.log('Update company API response:', response);
-
-      // API 응답에서 data 추출
-      const respData = response.data;
-      const rawCompanyData = (respData && 'data' in respData && !Array.isArray(respData.data) && respData.data && typeof respData.data === 'object' && !('companies' in respData.data))
-        ? respData.data as RawCompanyData
-        : respData as RawCompanyData;
-      const updatedCompany = transformCompanyData(rawCompanyData);
-      return updatedCompany;
-    } catch (error) {
-      console.error(`Failed to update company ${id}:`, error);
-      throw error;
-    }
+    const response = await apiClient.patch<unknown>(`/admin/companies/${id}`, filteredData);
+    const rawData = extractSingle<RawCompanyData>(response.data, 'company');
+    if (!rawData) throw new Error('Failed to update company');
+    return transformCompanyData(rawData);
   },
 
   // 회사 삭제 (실제 API 사용)

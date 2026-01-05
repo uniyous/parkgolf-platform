@@ -2,19 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useRolesWithPermissionsQuery, useUpdateAdminMutation } from '@/hooks/queries';
 import { Modal } from '@/components/ui';
 import type { Admin, AdminRole } from '@/types';
+import type { RoleWithPermissions } from '@/lib/api/adminApi';
 import { ADMIN_ROLE_LABELS } from '@/utils';
 
 interface RoleManagementModalProps {
   open: boolean;
   admin?: Admin;
   onClose: () => void;
-}
-
-interface RoleWithPermissions {
-  code: string;
-  name: string;
-  description?: string;
-  permissions?: Array<{ code: string; name: string }>;
 }
 
 export const RoleManagementModal: React.FC<RoleManagementModalProps> = ({ open, admin, onClose }) => {

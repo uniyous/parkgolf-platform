@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 import {
   useGameWeeklySchedulesQuery,
   useCreateWeeklyScheduleMutation,
@@ -7,6 +8,7 @@ import {
 } from '@/hooks/queries';
 import type { GameWeeklySchedule, CreateGameWeeklyScheduleDto } from '@/lib/api/gamesApi';
 import { WeeklyScheduleWizard } from './WeeklyScheduleWizard';
+import { DeleteConfirmPopover } from '@/components/common';
 
 interface GameWeeklyScheduleTabProps {
   gameId: number;
@@ -79,9 +81,10 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
       setEditingDay(null);
       setFormData(null);
       refetch();
+      toast.success('스케줄이 저장되었습니다.');
     } catch (error) {
       console.error('Failed to save schedule:', error);
-      alert('스케줄 저장에 실패했습니다.');
+      toast.error('스케줄 저장에 실패했습니다.');
     }
   };
 
@@ -89,15 +92,13 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
     const existing = scheduleMap.get(dayOfWeek);
     if (!existing) return;
 
-    const confirmed = window.confirm(`${dayNames[dayOfWeek]} 스케줄을 삭제하시겠습니까?`);
-    if (confirmed) {
-      try {
-        await deleteMutation.mutateAsync({ gameId, scheduleId: existing.id });
-        refetch();
-      } catch (error) {
-        console.error('Failed to delete schedule:', error);
-        alert('스케줄 삭제에 실패했습니다.');
-      }
+    try {
+      await deleteMutation.mutateAsync({ gameId, scheduleId: existing.id });
+      refetch();
+      toast.success('스케줄이 삭제되었습니다.');
+    } catch (error) {
+      console.error('Failed to delete schedule:', error);
+      toast.error('스케줄 삭제에 실패했습니다.');
     }
   };
 
@@ -231,13 +232,19 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
                     >
                       수정
                     </button>
-                    <button
-                      onClick={() => handleDelete(dayOfWeek)}
-                      disabled={deleteMutation.isPending}
-                      className="px-2 py-1 text-red-600 text-xs rounded hover:bg-red-50"
+                    <DeleteConfirmPopover
+                      message={`${dayNames[dayOfWeek]} 스케줄을 삭제하시겠습니까?`}
+                      isDeleting={deleteMutation.isPending}
+                      onConfirm={() => handleDelete(dayOfWeek)}
+                      side="top"
+                      align="center"
                     >
-                      삭제
-                    </button>
+                      <button
+                        className="px-2 py-1 text-red-600 text-xs rounded hover:bg-red-50"
+                      >
+                        삭제
+                      </button>
+                    </DeleteConfirmPopover>
                   </div>
                 </div>
               ) : (

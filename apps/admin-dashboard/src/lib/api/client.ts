@@ -1,6 +1,10 @@
 // 통합된 API 클라이언트 - BFF API 연동
 import type { ApiResponse, PaginatedResponse } from '@/types/common';
 import { getErrorMessage } from '@/types/common';
+import { ApiError } from '@/lib/errors';
+
+// ApiError를 re-export하여 기존 import 호환성 유지
+export { ApiError };
 
 // 개발/E2E 환경에서는 Vite 프록시 사용 (CORS 우회)
 // 프로덕션에서는 환경변수 URL 사용
@@ -18,25 +22,6 @@ export interface ClientResponse<T> {
   data: T;
   message?: string;
   status: number;
-}
-
-export class ApiError extends Error {
-  public readonly status: number;
-  public readonly code?: string;
-  public readonly details?: Record<string, any>;
-
-  constructor(
-    message: string,
-    status: number,
-    code?: string,
-    details?: Record<string, any>
-  ) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.code = code;
-    this.details = details;
-  }
 }
 
 interface RequestOptions extends RequestInit {

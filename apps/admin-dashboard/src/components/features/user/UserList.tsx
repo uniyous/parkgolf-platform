@@ -439,17 +439,17 @@ export const UserList: React.FC = () => {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center space-x-2">
-                        <span className="text-lg">{TIER_META[user.membershipTier]?.icon || '👤'}</span>
-                        <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${TIER_META[user.membershipTier]?.color || 'bg-gray-100 text-gray-800'}`}>
-                          {MEMBERSHIP_LABELS[user.membershipTier] || user.membershipTier}
+                        <span className="text-lg">{user.membershipTier ? TIER_META[user.membershipTier]?.icon : '👤'}</span>
+                        <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${user.membershipTier ? TIER_META[user.membershipTier]?.color : 'bg-gray-100 text-gray-800'}`}>
+                          {user.membershipTier ? (MEMBERSHIP_LABELS[user.membershipTier] || user.membershipTier) : '-'}
                         </span>
                       </div>
                     </td>
                     <td className="px-4 py-4">
                       <select
-                        value={user.status}
+                        value={user.status || 'ACTIVE'}
                         onChange={(e) => handleStatusChange(user, e.target.value as UserStatus)}
-                        className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border-0 cursor-pointer transition-colors ${getStatusBadgeStyle(user.status)}`}
+                        className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border-0 cursor-pointer transition-colors ${getStatusBadgeStyle(user.status || 'ACTIVE')}`}
                       >
                         <option value="ACTIVE">활성</option>
                         <option value="INACTIVE">비활성</option>

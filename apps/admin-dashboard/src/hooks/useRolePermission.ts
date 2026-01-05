@@ -65,7 +65,7 @@ export interface UseRolePermissionReturn {
 }
 
 export function useRolePermission(): UseRolePermissionReturn {
-  const { user } = useAuth();
+  const { currentAdmin: user } = useAuth();
 
   const currentAdmin = user as Admin | null;
   const currentRole = currentAdmin?.role as AdminRole | null;

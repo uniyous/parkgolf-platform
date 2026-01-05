@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 import { useUpdateGameMutation, useClubsQuery, useCoursesByClubQuery } from '@/hooks/queries';
 import type { Game, UpdateGameDto } from '@/lib/api/gamesApi';
 
@@ -41,9 +42,10 @@ export const GameBasicInfoTab: React.FC<GameBasicInfoTabProps> = ({ game, onUpda
       await updateGameMutation.mutateAsync({ id: game.id, data: formData });
       setIsEditing(false);
       onUpdate();
+      toast.success('라운드 정보가 수정되었습니다.');
     } catch (error) {
       console.error('Failed to update game:', error);
-      alert('라운드 정보 수정에 실패했습니다.');
+      toast.error('라운드 정보 수정에 실패했습니다.');
     }
   };
 

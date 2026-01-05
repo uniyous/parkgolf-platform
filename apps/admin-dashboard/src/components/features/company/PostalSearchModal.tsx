@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 
 interface PostalData {
   postalCode: string;
@@ -44,7 +45,7 @@ const PostalSearchModal: React.FC<PostalSearchModalProps> = ({ isOpen, onClose, 
 
   const handleSearch = async () => {
     if (!searchKeyword.trim()) {
-      alert('검색어를 입력해주세요.');
+      toast.warning('검색어를 입력해주세요.');
       return;
     }
 
@@ -83,7 +84,7 @@ const PostalSearchModal: React.FC<PostalSearchModalProps> = ({ isOpen, onClose, 
       }
     } catch (error) {
       console.error('우편번호 검색 중 오류 발생:', error);
-      alert('우편번호 검색 중 오류가 발생했습니다. 다시 시도해주세요.');
+      toast.error('우편번호 검색 중 오류가 발생했습니다. 다시 시도해주세요.');
       setSearchResults([]);
     } finally {
       setIsSearching(false);

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bookingApi, type BookingFilters } from '@/lib/api/bookingApi';
 import { bookingKeys } from './keys';
+import { showSuccessToast } from '@/lib/errors';
 import type { CreateBookingDto, UpdateBookingDto } from '@/types';
 
 // ============================================
@@ -49,7 +50,9 @@ export const useCreateBookingMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bookingKeys.lists() });
       queryClient.invalidateQueries({ queryKey: bookingKeys.stats() });
+      showSuccessToast('예약이 생성되었습니다.');
     },
+    meta: { errorMessage: '예약 생성에 실패했습니다.' },
   });
 };
 
@@ -62,7 +65,9 @@ export const useUpdateBookingMutation = () => {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: bookingKeys.lists() });
       queryClient.invalidateQueries({ queryKey: bookingKeys.detail(id) });
+      showSuccessToast('예약 정보가 수정되었습니다.');
     },
+    meta: { errorMessage: '예약 정보 수정에 실패했습니다.' },
   });
 };
 
@@ -73,7 +78,9 @@ export const useCancelBookingMutation = () => {
     mutationFn: (id: number) => bookingApi.cancelBooking(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+      showSuccessToast('예약이 취소되었습니다.');
     },
+    meta: { errorMessage: '예약 취소에 실패했습니다.' },
   });
 };
 
@@ -84,6 +91,8 @@ export const useConfirmBookingMutation = () => {
     mutationFn: (id: number) => bookingApi.confirmBooking(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+      showSuccessToast('예약이 확정되었습니다.');
     },
+    meta: { errorMessage: '예약 확정에 실패했습니다.' },
   });
 };

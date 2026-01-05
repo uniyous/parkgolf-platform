@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useClub } from '@/hooks';
-import { DataContainer } from '@/components/common';
+import { DataContainer, DeleteConfirmPopover } from '@/components/common';
 import type { CourseCombo, Course } from '@/types/club';
 import { CourseManagementTab } from '@/components/features/club/CourseManagementTab';
 import { BasicInfoTab } from '@/components/features/club/BasicInfoTab';
@@ -93,23 +94,17 @@ export const ClubDetailPage: React.FC = () => {
   // 골프장 삭제
   const handleDeleteClub = async () => {
     if (!selectedClub || isDeleting) return;
-    
-    const confirmed = window.confirm(
-      `"${selectedClub.name}" 골프장을 정말 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 연관된 모든 데이터가 함께 삭제됩니다.`
-    );
-    
-    if (confirmed) {
-      setIsDeleting(true);
-      try {
-        await removeClub(selectedClub.id);
-        alert('골프장이 성공적으로 삭제되었습니다.');
-        navigate('/clubs');
-      } catch (error) {
-        console.error('Failed to delete club:', error);
-        alert('골프장 삭제 중 오류가 발생했습니다.');
-      } finally {
-        setIsDeleting(false);
-      }
+
+    setIsDeleting(true);
+    try {
+      await removeClub(selectedClub.id);
+      toast.success('골프장이 성공적으로 삭제되었습니다.');
+      navigate('/clubs');
+    } catch (error) {
+      console.error('Failed to delete club:', error);
+      toast.error('골프장 삭제 중 오류가 발생했습니다.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -193,20 +188,23 @@ export const ClubDetailPage: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
             </button>
-            <button 
-              onClick={handleDeleteClub}
-              disabled={isDeleting}
-              className="p-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title={isDeleting ? "삭제 중..." : "골프장 삭제"}
+            <DeleteConfirmPopover
+              targetName={selectedClub.name}
+              message={`"${selectedClub.name}" 골프장을 삭제하시겠습니까? 연관된 모든 데이터가 함께 삭제됩니다.`}
+              isDeleting={isDeleting}
+              onConfirm={handleDeleteClub}
+              side="bottom"
+              align="end"
             >
-              {isDeleting ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-700"></div>
-              ) : (
+              <button
+                className="p-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
+                title="골프장 삭제"
+              >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
-              )}
-            </button>
+              </button>
+            </DeleteConfirmPopover>
           </div>
         </div>
 

@@ -35,9 +35,9 @@ test.describe('사이드바 네비게이션 테스트', () => {
     await expect(page.getByText(/골프장|클럽/).first()).toBeVisible({ timeout: 5000 });
   });
 
-  test('라운드 목록 페이지 이동', async ({ page }) => {
-    // 라운드 목록 링크 클릭
-    await page.getByRole('link', { name: /라운드 목록/ }).click();
+  test('라운드 관리 페이지 이동', async ({ page }) => {
+    // 라운드 관리 링크 클릭
+    await page.getByRole('link', { name: /라운드 관리/ }).click();
     await expect(page).toHaveURL(/.*games/);
 
     // 페이지 콘텐츠 확인

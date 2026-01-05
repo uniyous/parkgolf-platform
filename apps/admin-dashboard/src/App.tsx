@@ -1,4 +1,5 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { PrivateRoute } from '@/components/auth';
 import { GlobalLoading } from '@/components/common';
 import { LoginPage } from './pages/LoginPage';
@@ -25,8 +26,15 @@ function App() {
   }
 
   return (
-    <Router>
-      <Routes>
+    <>
+      <Toaster
+        position="top-right"
+        richColors
+        closeButton
+        duration={3000}
+      />
+      <Router>
+        <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route element={<PrivateRoute />}>
@@ -72,6 +80,7 @@ function App() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Router>
+    </>
   );
 }
 

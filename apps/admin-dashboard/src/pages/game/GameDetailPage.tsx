@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useGameQuery, useDeleteGameMutation } from '@/hooks/queries';
+import { DeleteConfirmPopover } from '@/components/common';
 import { GameBasicInfoTab } from '@/components/features/game/GameBasicInfoTab';
 import { GameWeeklyScheduleTab } from '@/components/features/game/GameWeeklyScheduleTab';
 import { GameTimeSlotTab } from '@/components/features/game/GameTimeSlotTab';
@@ -27,22 +29,16 @@ export const GameDetailPage: React.FC = () => {
   const handleDeleteGame = async () => {
     if (!game || isDeleting) return;
 
-    const confirmed = window.confirm(
-      `"${game.name}" 라운드를 정말 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 연관된 타임슬롯 데이터가 함께 삭제됩니다.`
-    );
-
-    if (confirmed) {
-      setIsDeleting(true);
-      try {
-        await deleteGameMutation.mutateAsync(game.id);
-        alert('라운드가 성공적으로 삭제되었습니다.');
-        navigate('/games');
-      } catch (error) {
-        console.error('Failed to delete game:', error);
-        alert('라운드 삭제 중 오류가 발생했습니다.');
-      } finally {
-        setIsDeleting(false);
-      }
+    setIsDeleting(true);
+    try {
+      await deleteGameMutation.mutateAsync(game.id);
+      toast.success('라운드가 성공적으로 삭제되었습니다.');
+      navigate('/games');
+    } catch (error) {
+      console.error('Failed to delete game:', error);
+      toast.error('라운드 삭제 중 오류가 발생했습니다.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -108,20 +104,23 @@ export const GameDetailPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center space-x-3">
-            <button
-              onClick={handleDeleteGame}
-              disabled={isDeleting}
-              className="p-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title={isDeleting ? '삭제 중...' : '라운드 삭제'}
+            <DeleteConfirmPopover
+              targetName={game.name}
+              message={`"${game.name}" 라운드를 삭제하시겠습니까? 연관된 타임슬롯 데이터가 함께 삭제됩니다.`}
+              isDeleting={isDeleting}
+              onConfirm={handleDeleteGame}
+              side="bottom"
+              align="end"
             >
-              {isDeleting ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-700"></div>
-              ) : (
+              <button
+                className="p-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
+                title="라운드 삭제"
+              >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
-              )}
-            </button>
+              </button>
+            </DeleteConfirmPopover>
           </div>
         </div>
 

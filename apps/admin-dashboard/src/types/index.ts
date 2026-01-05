@@ -110,25 +110,47 @@ export interface TeeBox {
   updatedAt: string;
 }
 
-// --- DTOs (간략화된 예시, 실제로는 각 엔티티별 DTO 파일에서 가져옴) ---
-export interface CreateCourseDto { 
-  name: string; 
-  companyId: number; 
-  holeCount: number; 
-  location?: string; 
-  description?: string; 
-  imageUrl?: string; 
-  contactInfo?: string; 
-  status?: CourseStatus; 
+// --- DTOs (코스/홀 생성/수정) ---
+export interface CreateCourseDto {
+  name: string;
+  companyId: number;
+  // Club/Golf course fields
+  golfClubId?: number;       // 골프장 ID (클럽 관리용)
+  clubId?: number;           // 클럽 ID 별칭
+  code?: string;             // 코스 코드
+  subtitle?: string;         // 부제목
+  // Course specifications
+  holeCount?: number;
+  par?: number;              // 기준 타수
+  totalDistance?: number;    // 총 거리
+  difficulty?: number;       // 난이도 (1-5)
+  scenicRating?: number;     // 경관 점수 (1-5)
+  courseRating?: number;     // 코스 레이팅
+  slopeRating?: number;      // 슬로프 레이팅
+  // Location & Contact
+  location?: string;
+  description?: string;
+  imageUrl?: string;
+  contactInfo?: string;
+  status?: CourseStatus;
 }
-export interface UpdateCourseDto { 
-  name?: string; 
-  holeCount?: number; 
-  location?: string; 
-  description?: string; 
-  imageUrl?: string; 
-  contactInfo?: string; 
-  status?: CourseStatus; 
+export interface UpdateCourseDto {
+  name?: string;
+  code?: string;
+  subtitle?: string;
+  holeCount?: number;
+  par?: number;
+  totalDistance?: number;
+  difficulty?: number;
+  scenicRating?: number;
+  courseRating?: number;
+  slopeRating?: number;
+  location?: string;
+  description?: string;
+  imageUrl?: string;
+  contactInfo?: string;
+  status?: CourseStatus;
+  isActive?: boolean;
 }
 
 export interface CreateHoleDto { 
@@ -332,6 +354,25 @@ export interface ChangePasswordDto {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
+}
+
+// --- User DTOs (일반 사용자용) ---
+export interface CreateUserDto {
+  email: string;
+  name: string;
+  password: string;
+  phoneNumber?: string;
+  membershipTier?: UserMembershipTier;
+  status?: UserStatus;
+}
+
+export interface UpdateUserDto {
+  email?: string;
+  name?: string;
+  password?: string;
+  phoneNumber?: string;
+  membershipTier?: UserMembershipTier;
+  status?: UserStatus;
 }
 
 export interface LoginDto {
@@ -577,3 +618,21 @@ export interface UpdateBookingDto {
 // Common types re-export
 export * from './common';
 
+// Club types re-export
+export type {
+  Club,
+  ClubStatus,
+  SeasonType,
+  CourseCombo,
+  GolfTimeSlot,
+  CreateClubDto,
+  UpdateClubDto,
+  ClubFilters,
+  TimeSlotFilters,
+  ClubListResponse,
+  TimeSlotListResponse,
+  TimeSlotWizardData,
+  CreateTimeSlotBulkDto,
+  ClubStats,
+  ComboAnalytics,
+} from './club';

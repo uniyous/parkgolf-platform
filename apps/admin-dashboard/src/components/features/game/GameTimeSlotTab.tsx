@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { toast } from 'sonner';
 import {
   useGameTimeSlotsQuery,
   useDeleteTimeSlotMutation,
@@ -6,6 +7,7 @@ import {
 } from '@/hooks/queries';
 import type { GameTimeSlot, GameTimeSlotFilter, UpdateGameTimeSlotDto } from '@/lib/api/gamesApi';
 import { TimeSlotWizard } from './TimeSlotWizard';
+import { DeleteConfirmPopover } from '@/components/common';
 
 interface GameTimeSlotTabProps {
   gameId: number;
@@ -115,13 +117,13 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
 
   // 타임슬롯 삭제
   const handleDelete = async (timeSlotId: number) => {
-    if (!window.confirm('이 타임슬롯을 삭제하시겠습니까?')) return;
     try {
       await deleteMutation.mutateAsync({ gameId, timeSlotId });
       refetch();
+      toast.success('타임슬롯이 삭제되었습니다.');
     } catch (error) {
       console.error('Failed to delete time slot:', error);
-      alert('타임슬롯 삭제에 실패했습니다.');
+      toast.error('타임슬롯 삭제에 실패했습니다.');
     }
   };
 
@@ -134,9 +136,10 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
         data: { status: status as UpdateGameTimeSlotDto['status'] },
       });
       refetch();
+      toast.success('상태가 변경되었습니다.');
     } catch (error) {
       console.error('Failed to update time slot:', error);
-      alert('상태 변경에 실패했습니다.');
+      toast.error('상태 변경에 실패했습니다.');
     }
   };
 
@@ -401,13 +404,20 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
                                     열기
                                   </button>
                                 )}
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleDelete(slot.id); }}
-                                  disabled={deleteMutation.isPending}
-                                  className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                <DeleteConfirmPopover
+                                  message={`${slot.startTime.slice(0, 5)} 타임슬롯을 삭제하시겠습니까?`}
+                                  isDeleting={deleteMutation.isPending}
+                                  onConfirm={() => handleDelete(slot.id)}
+                                  side="left"
+                                  align="center"
                                 >
-                                  삭제
-                                </button>
+                                  <button
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                  >
+                                    삭제
+                                  </button>
+                                </DeleteConfirmPopover>
                               </div>
                             </div>
                           );

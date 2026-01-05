@@ -11,6 +11,7 @@ import {
   type UpdateGameTimeSlotDto,
 } from '@/lib/api/gamesApi';
 import { gameKeys } from './keys';
+import { showSuccessToast } from '@/lib/errors';
 
 // ============================================
 // Game Queries
@@ -97,7 +98,9 @@ export const useCreateGameMutation = () => {
       if (variables.clubId) {
         queryClient.invalidateQueries({ queryKey: gameKeys.byClub(variables.clubId) });
       }
+      showSuccessToast('게임이 생성되었습니다.');
     },
+    meta: { errorMessage: '게임 생성에 실패했습니다.' },
   });
 };
 
@@ -110,7 +113,9 @@ export const useUpdateGameMutation = () => {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: gameKeys.lists() });
       queryClient.invalidateQueries({ queryKey: gameKeys.detail(id) });
+      showSuccessToast('게임 정보가 수정되었습니다.');
     },
+    meta: { errorMessage: '게임 정보 수정에 실패했습니다.' },
   });
 };
 
@@ -121,7 +126,9 @@ export const useDeleteGameMutation = () => {
     mutationFn: (id: number) => gamesApi.deleteGame(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: gameKeys.all });
+      showSuccessToast('게임이 삭제되었습니다.');
     },
+    meta: { errorMessage: '게임 삭제에 실패했습니다.' },
   });
 };
 
@@ -131,7 +138,7 @@ export const useDeleteGameMutation = () => {
 
 export const useCreateWeeklyScheduleMutation = () => {
   return useMutation({
-    meta: { globalLoading: false }, // 로컬 프로그레스 바 사용
+    meta: { globalLoading: false, errorMessage: '주간 스케줄 생성에 실패했습니다.' },
     mutationFn: ({ gameId, data }: { gameId: number; data: CreateGameWeeklyScheduleDto }) =>
       gamesApi.createWeeklySchedule(gameId, data),
     // onSuccess에서 invalidate 하지 않음 - 마법사에서 완료 후 refetch() 호출
@@ -153,7 +160,9 @@ export const useUpdateWeeklyScheduleMutation = () => {
     }) => gamesApi.updateWeeklySchedule(gameId, scheduleId, data),
     onSuccess: (_, { gameId }) => {
       queryClient.invalidateQueries({ queryKey: gameKeys.weeklySchedules(gameId) });
+      showSuccessToast('주간 스케줄이 수정되었습니다.');
     },
+    meta: { errorMessage: '주간 스케줄 수정에 실패했습니다.' },
   });
 };
 
@@ -165,7 +174,9 @@ export const useDeleteWeeklyScheduleMutation = () => {
       gamesApi.deleteWeeklySchedule(gameId, scheduleId),
     onSuccess: (_, { gameId }) => {
       queryClient.invalidateQueries({ queryKey: gameKeys.weeklySchedules(gameId) });
+      showSuccessToast('주간 스케줄이 삭제되었습니다.');
     },
+    meta: { errorMessage: '주간 스케줄 삭제에 실패했습니다.' },
   });
 };
 
@@ -182,7 +193,9 @@ export const useCreateTimeSlotMutation = () => {
     onSuccess: (_, { gameId }) => {
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlots(gameId, undefined) });
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlotStats() });
+      showSuccessToast('타임슬롯이 생성되었습니다.');
     },
+    meta: { errorMessage: '타임슬롯 생성에 실패했습니다.' },
   });
 };
 
@@ -192,10 +205,12 @@ export const useBulkCreateTimeSlotsMutation = () => {
   return useMutation({
     mutationFn: ({ gameId, timeSlots }: { gameId: number; timeSlots: CreateGameTimeSlotDto[] }) =>
       gamesApi.bulkCreateTimeSlots(gameId, timeSlots),
-    onSuccess: (_, { gameId }) => {
+    onSuccess: (_, { gameId, timeSlots }) => {
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlots(gameId, undefined) });
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlotStats() });
+      showSuccessToast(`${timeSlots.length}개의 타임슬롯이 생성되었습니다.`);
     },
+    meta: { errorMessage: '타임슬롯 일괄 생성에 실패했습니다.' },
   });
 };
 
@@ -203,7 +218,7 @@ export const useGenerateTimeSlotsMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    meta: { globalLoading: false },
+    meta: { globalLoading: false, errorMessage: '타임슬롯 자동 생성에 실패했습니다.' },
     mutationFn: ({
       gameId,
       startDate,
@@ -213,9 +228,10 @@ export const useGenerateTimeSlotsMutation = () => {
       startDate: string;
       endDate: string;
     }) => gamesApi.generateTimeSlots(gameId, startDate, endDate),
-    onSuccess: (_, { gameId }) => {
+    onSuccess: (data, { gameId }) => {
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlots(gameId, undefined) });
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlotStats() });
+      showSuccessToast(`${data?.length || 0}개의 타임슬롯이 자동 생성되었습니다.`);
     },
   });
 };
@@ -236,7 +252,9 @@ export const useUpdateTimeSlotMutation = () => {
     onSuccess: (_, { gameId }) => {
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlots(gameId, undefined) });
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlotStats() });
+      showSuccessToast('타임슬롯이 수정되었습니다.');
     },
+    meta: { errorMessage: '타임슬롯 수정에 실패했습니다.' },
   });
 };
 
@@ -249,6 +267,8 @@ export const useDeleteTimeSlotMutation = () => {
     onSuccess: (_, { gameId }) => {
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlots(gameId, undefined) });
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlotStats() });
+      showSuccessToast('타임슬롯이 삭제되었습니다.');
     },
+    meta: { errorMessage: '타임슬롯 삭제에 실패했습니다.' },
   });
 };

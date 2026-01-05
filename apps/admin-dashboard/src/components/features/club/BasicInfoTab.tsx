@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 import type { Club, UpdateClubDto } from '@/types/club';
 import { useClub } from '@/hooks';
 
@@ -34,11 +35,11 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
         setIsEditing(false);
       } else {
         console.error('Update failed: no result received');
-        alert('골프장 정보 수정에 실패했습니다.');
+        toast.error('골프장 정보 수정에 실패했습니다.');
       }
     } catch (error) {
       console.error('Failed to update golf club:', error);
-      alert('골프장 정보 수정에 실패했습니다.');
+      toast.error('골프장 정보 수정에 실패했습니다.');
     }
   };
 

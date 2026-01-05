@@ -8,6 +8,7 @@
  */
 
 import { apiClient } from './client';
+import { extractPaginatedList, extractList, extractSingle, type PaginatedResult } from './bffParser';
 
 // ============================================
 // Types
@@ -70,6 +71,7 @@ export interface GameFilter {
   status?: string;
   page?: number;
   limit?: number;
+  [key: string]: unknown;
 }
 
 export interface GameWeeklySchedule {
@@ -142,17 +144,11 @@ export interface GameTimeSlotFilter {
   status?: string;
   page?: number;
   limit?: number;
+  [key: string]: unknown;
 }
 
-export interface PaginatedResponse<T> {
-  data: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
+/** @deprecated PaginatedResult 사용 권장 (import from './bffParser') */
+export type PaginatedResponse<T> = PaginatedResult<T>;
 
 // ============================================
 // Helper: Normalize Game Response
@@ -181,58 +177,15 @@ export const gamesApi = {
   /**
    * 게임 목록 조회
    */
-  async getGames(filters: GameFilter = {}): Promise<PaginatedResponse<Game>> {
-    const response = await apiClient.get<any>('/admin/games', filters);
-
-    // API 응답 구조 처리 (courseApi.getClubs 패턴 적용)
-    const responseData = response.data;
-
-    let games: Game[] = [];
-    let total = 0;
-    let page = 1;
-    let limit = 20;
-    let totalPages = 1;
-
-    if (responseData) {
-      // { success: true, data: { games: [...] }, total, page, limit, totalPages } 형식
-      if (responseData.data?.games) {
-        games = responseData.data.games;
-        total = responseData.total || games.length;
-        page = responseData.page || 1;
-        limit = responseData.limit || 20;
-        totalPages = responseData.totalPages || 1;
-      }
-      // { success: true, data: [...] } 형식
-      else if (Array.isArray(responseData.data)) {
-        games = responseData.data;
-        total = responseData.total || games.length;
-        page = responseData.page || 1;
-        limit = responseData.limit || 20;
-        totalPages = responseData.totalPages || 1;
-      }
-      // { data: [...], total, page, ... } 형식 (직접 응답)
-      else if (Array.isArray(responseData)) {
-        games = responseData;
-        total = games.length;
-      }
-      // 기타 형식
-      else {
-        games = responseData.games || responseData.data || [];
-        total = responseData.total || games.length;
-        page = responseData.page || 1;
-        limit = responseData.limit || 20;
-        totalPages = responseData.totalPages || 1;
-      }
-    }
-
+  async getGames(filters: GameFilter = {}): Promise<PaginatedResult<Game>> {
+    const response = await apiClient.get<unknown>('/admin/games', filters);
+    const result = extractPaginatedList<Game>(response.data, 'games', {
+      page: filters.page,
+      limit: filters.limit,
+    });
     return {
-      data: games.map(normalizeGame),
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
-      },
+      data: result.data.map(normalizeGame),
+      pagination: result.pagination,
     };
   },
 
@@ -240,21 +193,8 @@ export const gamesApi = {
    * 골프장별 게임 목록
    */
   async getGamesByClub(clubId: number): Promise<Game[]> {
-    const response = await apiClient.get<any>(`/admin/games/club/${clubId}`);
-    const responseData = response.data;
-
-    let games: any[] = [];
-
-    if (Array.isArray(responseData)) {
-      games = responseData;
-    } else if (responseData?.data?.games) {
-      games = responseData.data.games;
-    } else if (Array.isArray(responseData?.data)) {
-      games = responseData.data;
-    } else {
-      games = responseData?.games || [];
-    }
-
+    const response = await apiClient.get<unknown>(`/admin/games/club/${clubId}`);
+    const games = extractList<Game>(response.data, 'games');
     return games.map(normalizeGame);
   },
 
@@ -262,36 +202,9 @@ export const gamesApi = {
    * 게임 상세 조회
    */
   async getGameById(gameId: number): Promise<Game> {
-    const response = await apiClient.get<any>(`/admin/games/${gameId}`);
-    const responseData = response.data;
-
-    if (!responseData) {
-      throw new Error('Game not found');
-    }
-
-    let game: any = null;
-
-    // { success: true, data: { game: {...} } } 형식
-    if (responseData.data?.game) {
-      game = responseData.data.game;
-    }
-    // { success: true, data: {...} } 형식 (data가 객체)
-    else if (responseData.data && typeof responseData.data === 'object' && !Array.isArray(responseData.data)) {
-      game = responseData.data;
-    }
-    // { success: true, game: {...} } 형식
-    else if (responseData.game) {
-      game = responseData.game;
-    }
-    // 직접 game 객체
-    else if (responseData.id && responseData.name) {
-      game = responseData;
-    }
-
-    if (!game) {
-      throw new Error('Invalid game response structure');
-    }
-
+    const response = await apiClient.get<unknown>(`/admin/games/${gameId}`);
+    const game = extractSingle<Game>(response.data, 'game');
+    if (!game) throw new Error('Game not found');
     return normalizeGame(game);
   },
 
@@ -326,22 +239,13 @@ export const gamesApi = {
    * 게임의 주간 스케줄 조회
    */
   async getWeeklySchedules(gameId: number): Promise<GameWeeklySchedule[]> {
-    const response = await apiClient.get<any>(`/admin/games/${gameId}/weekly-schedules`);
-    const responseData = response.data;
-
-    if (Array.isArray(responseData)) {
-      return responseData;
+    const response = await apiClient.get<unknown>(`/admin/games/${gameId}/weekly-schedules`);
+    // schedules 또는 weeklySchedules 키로 추출 시도
+    let schedules = extractList<GameWeeklySchedule>(response.data, 'schedules');
+    if (schedules.length === 0) {
+      schedules = extractList<GameWeeklySchedule>(response.data, 'weeklySchedules');
     }
-    // { success: true, data: { schedules: [...] } } 형식
-    if (responseData?.data?.schedules && Array.isArray(responseData.data.schedules)) {
-      return responseData.data.schedules;
-    }
-    // { success: true, data: [...] } 형식
-    if (Array.isArray(responseData?.data)) {
-      return responseData.data;
-    }
-    // { schedules: [...] } 또는 { weeklySchedules: [...] } 형식
-    return responseData?.schedules || responseData?.weeklySchedules || [];
+    return schedules;
   },
 
   /**
@@ -394,7 +298,7 @@ export const gamesApi = {
   /**
    * 게임의 타임슬롯 조회
    */
-  async getTimeSlots(gameId: number, filter?: GameTimeSlotFilter): Promise<PaginatedResponse<GameTimeSlot>> {
+  async getTimeSlots(gameId: number, filter?: GameTimeSlotFilter): Promise<PaginatedResult<GameTimeSlot>> {
     const params: Record<string, unknown> = {};
     if (filter?.date) params.date = filter.date;
     if (filter?.startDate) params.startDate = filter.startDate;
@@ -403,52 +307,11 @@ export const gamesApi = {
     if (filter?.page) params.page = filter.page;
     if (filter?.limit) params.limit = filter.limit;
 
-    const response = await apiClient.get<any>(`/admin/games/${gameId}/time-slots`, params);
-    const responseData = response.data;
-
-    let timeSlots: GameTimeSlot[] = [];
-    let total = 0;
-    let page = 1;
-    let totalPages = 1;
-
-    if (responseData) {
-      // { success: true, data: { timeSlots: [...], ... } } 형식
-      if (responseData.data?.timeSlots) {
-        timeSlots = responseData.data.timeSlots;
-        total = responseData.data.totalCount || timeSlots.length;
-        page = responseData.data.page || 1;
-        totalPages = responseData.data.totalPages || 1;
-      }
-      // { timeSlots: [...], totalCount, page, totalPages } 형식
-      else if (responseData.timeSlots) {
-        timeSlots = responseData.timeSlots;
-        total = responseData.totalCount || timeSlots.length;
-        page = responseData.page || 1;
-        totalPages = responseData.totalPages || 1;
-      }
-      // { data: [...] } 형식
-      else if (Array.isArray(responseData.data)) {
-        timeSlots = responseData.data;
-        total = responseData.total || timeSlots.length;
-        page = responseData.page || 1;
-        totalPages = responseData.totalPages || 1;
-      }
-      // 배열 직접 반환
-      else if (Array.isArray(responseData)) {
-        timeSlots = responseData;
-        total = timeSlots.length;
-      }
-    }
-
-    return {
-      data: timeSlots,
-      pagination: {
-        page,
-        limit: filter?.limit || 20,
-        total,
-        totalPages,
-      },
-    };
+    const response = await apiClient.get<unknown>(`/admin/games/${gameId}/time-slots`, params);
+    return extractPaginatedList<GameTimeSlot>(response.data, 'timeSlots', {
+      page: filter?.page,
+      limit: filter?.limit,
+    });
   },
 
   /**

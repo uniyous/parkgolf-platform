@@ -1,8 +1,9 @@
 import { apiClient } from './client';
-import type { 
-  Booking, 
+import type {
+  Booking,
   CreateBookingDto,
-  TimeSlotAvailability 
+  UpdateBookingDto,
+  TimeSlotAvailability
 } from '@/types';
 
 // BFF API 응답 타입
@@ -81,6 +82,16 @@ export const bookingApi = {
       return response.data;
     } catch (error) {
       console.error('Failed to create booking:', error);
+      throw error;
+    }
+  },
+
+  async updateBooking(id: number, data: UpdateBookingDto): Promise<Booking> {
+    try {
+      const response = await apiClient.patch<Booking>(`/admin/bookings/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to update booking ${id}:`, error);
       throw error;
     }
   },
@@ -174,6 +185,41 @@ export const bookingApi = {
       };
     } catch (error) {
       console.error(`Failed to fetch daily bookings for course ${courseId} on ${date}:`, error);
+      throw error;
+    }
+  },
+
+  // ===== 캘린더 데이터 =====
+  async getCalendarData(courseId: number, month: string): Promise<DailyBookingData[]> {
+    try {
+      // month format: YYYY-MM
+      const [year, monthNum] = month.split('-');
+      const startDate = `${year}-${monthNum}-01`;
+      const endDate = new Date(parseInt(year), parseInt(monthNum), 0).toISOString().split('T')[0];
+
+      const response = await this.getBookingsByCourse(courseId, {
+        dateFrom: startDate,
+        dateTo: endDate
+      });
+
+      // Group bookings by date
+      const bookingsByDate = new Map<string, Booking[]>();
+      response.forEach((booking) => {
+        const date = booking.bookingDate?.split('T')[0] || '';
+        if (!bookingsByDate.has(date)) {
+          bookingsByDate.set(date, []);
+        }
+        bookingsByDate.get(date)!.push(booking);
+      });
+
+      // Convert to DailyBookingData array
+      return Array.from(bookingsByDate.entries()).map(([date, bookings]) => ({
+        date,
+        bookings,
+        availability: []
+      }));
+    } catch (error) {
+      console.error(`Failed to fetch calendar data for course ${courseId} on ${month}:`, error);
       throw error;
     }
   },
