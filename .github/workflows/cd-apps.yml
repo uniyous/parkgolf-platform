@@ -109,9 +109,9 @@ jobs:
           ENV="${{ needs.setup.outputs.environment }}"
 
           if [ "$ENV" == "prod" ]; then
-            echo "api_url=https://api.parkgolf.app" >> $GITHUB_OUTPUT
+            echo "api_url=https://admin-api-dev-iihuzmuufa-du.a.run.app" >> $GITHUB_OUTPUT
           else
-            echo "api_url=https://dev-api.parkgolf.app" >> $GITHUB_OUTPUT
+            echo "api_url=https://admin-api-dev-iihuzmuufa-du.a.run.app" >> $GITHUB_OUTPUT
           fi
 
       - name: Build
