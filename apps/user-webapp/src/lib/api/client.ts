@@ -1,5 +1,6 @@
 // API 클라이언트 - user-api 연동
 import { getErrorMessage } from '@/types/common';
+import { authStorage } from '@/lib/storage';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3092';
 
@@ -57,7 +58,7 @@ class ApiClient {
     }
 
     // 헤더 설정
-    const token = localStorage.getItem('token');
+    const token = authStorage.getToken();
     const headers = {
       'Content-Type': 'application/json',
       ...(token && { Authorization: `Bearer ${token}` }),
@@ -147,7 +148,7 @@ class ApiClient {
     // 인증 에러 처리
     if (response.status === 401) {
       // Try to refresh token
-      const refreshToken = localStorage.getItem('refreshToken');
+      const refreshToken = authStorage.getRefreshToken();
       if (refreshToken && !response.url.includes('/auth/refresh')) {
         try {
           const refreshResponse = await fetch(`${this.baseURL}/auth/refresh`, {
@@ -158,7 +159,7 @@ class ApiClient {
 
           if (refreshResponse.ok) {
             const { accessToken } = await refreshResponse.json();
-            localStorage.setItem('token', accessToken);
+            authStorage.setToken(accessToken);
             // Note: Caller should retry the request
           } else {
             this.clearAuthAndRedirect();
@@ -175,9 +176,7 @@ class ApiClient {
   }
 
   private clearAuthAndRedirect() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
+    authStorage.clearAuth();
 
     if (
       typeof window !== 'undefined' &&

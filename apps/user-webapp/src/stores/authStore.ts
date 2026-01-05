@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@/lib/api/authApi';
+import { authStorage } from '@/lib/storage';
 
 export type { User } from '@/lib/api/authApi';
 
@@ -40,9 +41,7 @@ export const useAuthStore = create<AuthState>()(
       setError: (error) => set({ error }),
 
       login: (user, token, refreshToken) => {
-        localStorage.setItem('token', token);
-        localStorage.setItem('refreshToken', refreshToken);
-        localStorage.setItem('user', JSON.stringify(user));
+        authStorage.setAuth(token, refreshToken, user);
         set({
           user,
           token,
@@ -54,9 +53,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
+        authStorage.clearAuth();
         set({
           user: null,
           token: null,
@@ -69,9 +66,9 @@ export const useAuthStore = create<AuthState>()(
       clearError: () => set({ error: null }),
 
       updateToken: (token, refreshToken) => {
-        localStorage.setItem('token', token);
+        authStorage.setToken(token);
         if (refreshToken) {
-          localStorage.setItem('refreshToken', refreshToken);
+          authStorage.setRefreshToken(refreshToken);
         }
         set((state) => ({
           token,
@@ -97,20 +94,13 @@ export const useAuthError = () => useAuthStore((state) => state.error);
 
 // Initialize auth from localStorage
 export const initializeAuthFromStorage = () => {
-  const token = localStorage.getItem('token');
-  const refreshToken = localStorage.getItem('refreshToken');
-  const userStr = localStorage.getItem('user');
+  const token = authStorage.getToken();
+  const refreshToken = authStorage.getRefreshToken();
+  const user = authStorage.getUser<User>();
 
-  if (token && userStr) {
-    try {
-      const user = JSON.parse(userStr);
-      useAuthStore.getState().login(user, token, refreshToken || '');
-      return true;
-    } catch (error) {
-      console.error('Failed to parse cached user data:', error);
-      useAuthStore.getState().logout();
-      return false;
-    }
+  if (token && user) {
+    useAuthStore.getState().login(user, token, refreshToken || '');
+    return true;
   }
   return false;
 };

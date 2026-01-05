@@ -3,7 +3,8 @@ import { useAuth } from '../hooks/useAuth';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { BookingResponse } from '@/lib/api/bookingApi';
 import type { Game, GameTimeSlot } from '@/lib/api/gameApi';
-import { Button, PriceDisplay } from '../components';
+import { formatDate } from '@/lib/formatting';
+import { Button } from '../components';
 
 interface PaymentMethod {
   id: string;
@@ -34,15 +35,6 @@ export const BookingCompletePage: React.FC = () => {
   }
 
   const { booking, game, timeSlot, date, playerCount, paymentMethod } = bookingState;
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      weekday: 'long',
-    });
-  };
 
   const handleNewBooking = () => {
     navigate('/search');

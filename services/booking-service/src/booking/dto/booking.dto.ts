@@ -19,10 +19,20 @@ export class CreateBookingRequestDto {
   @IsNotEmpty()
   userId: number;
 
+  @ApiProperty({ description: 'Game ID', example: 1 })
+  @IsNumber()
+  @IsOptional()
+  gameId?: number;
+
   @ApiProperty({ description: 'GameTimeSlot ID (course-service)', example: 1 })
   @IsNumber()
   @IsNotEmpty()
   gameTimeSlotId: number;
+
+  @ApiProperty({ description: '예약 날짜', example: '2024-07-15' })
+  @IsDateString()
+  @IsOptional()
+  bookingDate?: string;
 
   @ApiProperty({ description: '플레이어 수', example: 2 })
   @IsNumber()

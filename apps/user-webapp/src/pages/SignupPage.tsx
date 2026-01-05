@@ -104,7 +104,7 @@ export const SignupPage: React.FC = () => {
       } else {
         setErrors({ submit: '회원가입에 실패했습니다.' });
       }
-    } catch (error) {
+    } catch {
       setErrors({ submit: '네트워크 오류가 발생했습니다.' });
     } finally {
       setIsLoading(false);

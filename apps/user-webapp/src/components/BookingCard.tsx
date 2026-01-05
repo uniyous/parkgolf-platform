@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Clock, Users, MapPin, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatDate, formatPrice } from '@/lib/formatting';
 import { type BookingWithCancel, type BookingStatus } from '@/lib/api/bookingApi';
 
 interface BookingCardProps {
@@ -22,20 +23,6 @@ const statusConfig: Record<BookingStatus, { label: string; className: string }> 
 export const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancelClick }) => {
   const navigate = useNavigate();
   const status = statusConfig[booking.status] || statusConfig.PENDING;
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-    const weekday = weekdays[date.getDay()];
-    return `${year}년 ${month}월 ${day}일 (${weekday})`;
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR').format(price);
-  };
 
   const handleCardClick = () => {
     navigate(`/booking/${booking.bookingNumber}`);

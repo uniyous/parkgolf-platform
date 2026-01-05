@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuthStore, useUser, useIsAuthenticated } from '@/stores/authStore';
+import { useUser, useIsAuthenticated } from '@/stores/authStore';
 import { useLoginMutation, useRegisterMutation, useLogoutMutation, useProfileQuery } from './queries/auth';
 import type { RegisterRequest } from '@/lib/api/authApi';
 

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, Clock, Users, MapPin, Phone, Mail, RefreshCw, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useBookingByNumberQuery, useCancelBookingMutation } from '@/hooks/queries/booking';
+import { formatDate, formatPrice, formatDateTime } from '@/lib/formatting';
+import { useBookingByNumberQuery } from '@/hooks/queries/booking';
 import { CancelBookingModal } from '@/components/CancelBookingModal';
 import { type BookingStatus, type BookingWithCancel } from '@/lib/api/bookingApi';
 
@@ -117,30 +118,6 @@ export const BookingViewPage: React.FC = () => {
   }
 
   const status = statusConfig[booking.status] || statusConfig.PENDING;
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-    const weekday = weekdays[date.getDay()];
-    return `${year}년 ${month}월 ${day}일 (${weekday})`;
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR').format(price);
-  };
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('ko-KR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
 
   // canCancel 계산 (3일 전까지)
   const calculateCanCancel = () => {

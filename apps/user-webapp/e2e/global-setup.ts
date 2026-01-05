@@ -19,7 +19,7 @@ async function warmupServer(url: string): Promise<{ url: string; status: number;
       status: response.status,
       time: Date.now() - start,
     };
-  } catch (error) {
+  } catch {
     return {
       url,
       status: 0,

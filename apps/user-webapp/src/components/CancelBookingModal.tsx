@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, AlertTriangle, Calendar, Clock, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatDate, formatPrice } from '@/lib/formatting';
 import { type BookingWithCancel } from '@/lib/api/bookingApi';
 import { useCancelBookingMutation } from '@/hooks/queries/booking';
 
@@ -31,20 +32,6 @@ export const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
   const cancelMutation = useCancelBookingMutation();
 
   if (!isOpen) return null;
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-    const weekday = weekdays[date.getDay()];
-    return `${year}년 ${month}월 ${day}일 (${weekday})`;
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR').format(price);
-  };
 
   const handleCancel = async () => {
     const reason = selectedReason === '기타' ? customReason : selectedReason;

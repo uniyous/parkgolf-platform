@@ -1,5 +1,4 @@
 import {
-  useTimeSlotAvailabilityQuery,
   useMyBookingsQuery,
   useBookingByNumberQuery,
   useBookingQuery,
@@ -9,19 +8,7 @@ import {
 } from './queries/booking';
 import type { CreateBookingRequest, UpdateBookingRequest } from '@/lib/api/bookingApi';
 
-export const useGameTimeSlots = (gameId: number, date: string) => {
-  const { data: timeSlots, isLoading, error, refetch } = useTimeSlotAvailabilityQuery(gameId, date);
-
-  return {
-    timeSlots: timeSlots || [],
-    isLoading,
-    error,
-    refetch,
-  };
-};
-
-// Alias for backward compatibility
-export const useTimeSlots = useGameTimeSlots;
+// Note: useGameTimeSlots is exported from useGames.ts
 
 export const useBooking = () => {
   const createBookingMutation = useCreateBookingMutation();

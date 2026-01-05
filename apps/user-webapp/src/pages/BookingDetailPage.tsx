@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useBooking } from '../hooks/useBooking';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { Game, GameTimeSlot } from '@/lib/api/gameApi';
+import { formatDate } from '@/lib/formatting';
 import { Button, Select, Textarea, Checkbox, PriceDisplay } from '../components';
 
 
@@ -72,15 +73,6 @@ export const BookingDetailPage: React.FC = () => {
 
   const { game, timeSlot, date } = bookingState;
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      weekday: 'long'
-    });
-  };
-
   const totalPrice = (timeSlot.price || game.basePrice || game.pricePerPerson || 0) * playerCount;
   const serviceFee = Math.floor(totalPrice * 0.03); // 3% 서비스 수수료
   const finalPrice = totalPrice + serviceFee;
@@ -98,8 +90,8 @@ export const BookingDetailPage: React.FC = () => {
         playerCount,
         specialRequests: specialRequests || undefined,
         userEmail: user.email,
-        userName: user.name || undefined,
-        userPhone: user.phoneNumber,
+        userName: user.name || user.email.split('@')[0], // 이름이 없으면 이메일 앞부분 사용
+        userPhone: user.phoneNumber || undefined,
         paymentMethod: selectedPaymentMethod,
       };
 

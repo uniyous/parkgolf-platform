@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { authApi, type LoginRequest, type RegisterRequest } from '@/lib/api/authApi';
 import { useAuthStore } from '@/stores/authStore';
+import { authStorage } from '@/lib/storage';
 import { authKeys } from './keys';
 
 // Profile Query
@@ -8,7 +9,7 @@ export const useProfileQuery = () => {
   return useQuery({
     queryKey: authKeys.profile(),
     queryFn: () => authApi.getProfile(),
-    enabled: !!localStorage.getItem('token'),
+    enabled: authStorage.isAuthenticated(),
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: false,
   });

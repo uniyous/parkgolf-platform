@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { authStorage } from '@/lib/storage';
 
 /**
  * User 응답 DTO - auth-service의 UserResponseDto와 일치
@@ -59,9 +60,7 @@ export const authApi = {
     } catch {
       // Always clear local storage even if API call fails
     }
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
+    authStorage.clearAuth();
   },
 
   refreshToken: async (refreshToken: string) => {

@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
 import { Button, Input } from '../components';
 
 export const LoginPage: React.FC = () => {
   const { login, isLoggingIn } = useAuth();
-  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -37,7 +35,7 @@ export const LoginPage: React.FC = () => {
       if (!success) {
         setErrors({ submit: '이메일 또는 비밀번호가 일치하지 않습니다.' });
       }
-    } catch (error) {
+    } catch {
       setErrors({ submit: '네트워크 오류가 발생했습니다.' });
     }
   };

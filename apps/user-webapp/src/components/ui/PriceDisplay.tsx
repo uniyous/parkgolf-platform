@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/formatting';
 
 interface PriceDisplayProps {
   price: number;
@@ -8,13 +9,6 @@ interface PriceDisplayProps {
   unit?: string;
   className?: string;
 }
-
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('ko-KR', {
-    style: 'currency',
-    currency: 'KRW',
-  }).format(price);
-};
 
 const PriceDisplay: React.FC<PriceDisplayProps> = ({
   price,
@@ -38,7 +32,7 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
   return (
     <div className={cn('flex items-baseline gap-1', className)}>
       <span className={cn('text-white', sizeStyles[size])}>
-        {formatPrice(price)}
+        {formatCurrency(price)}
       </span>
       {showUnit && (
         <span className={cn('text-white/60', unitSizeStyles[size])}>

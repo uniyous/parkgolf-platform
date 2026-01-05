@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, SlidersHorizontal, X, MapPin, Clock, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -424,6 +424,10 @@ interface GameCardProps {
 
 const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSelect }) => {
   const { timeSlots, isLoading: isLoadingSlots } = useGameTimeSlots(game.id, date);
+  const [showAllSlots, setShowAllSlots] = useState(false);
+
+  // 2줄에 표시할 슬롯 수 (xl: 6열, lg: 4열 기준으로 12개)
+  const SLOTS_PER_TWO_ROWS = 12;
 
   const filteredSlots = useMemo(() => {
     return timeSlots.filter((slot) => {
@@ -519,8 +523,9 @@ const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSe
             선택한 조건에 예약 가능한 시간이 없습니다
           </div>
         ) : (
+          <>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-            {filteredSlots.map((slot) => {
+            {(showAllSlots ? filteredSlots : filteredSlots.slice(0, SLOTS_PER_TWO_ROWS)).map((slot) => {
               const maxCapacity = slot.maxPlayers ?? slot.maxCapacity ?? 4;
               const currentBookings = slot.bookedPlayers ?? slot.currentBookings ?? 0;
               const remaining = slot.availablePlayers ?? (maxCapacity - currentBookings);
@@ -544,12 +549,11 @@ const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSe
                   `}
                 >
                   <div className="text-base font-semibold text-white">{slot.startTime}</div>
-                  <PriceDisplay price={slot.price} size="sm" showUnit={false} />
                   <div className="flex items-center justify-center gap-1 mt-1">
+                    <span className="text-sm font-medium text-emerald-300">{slot.price.toLocaleString()}원</span>
+                    <span className="text-white/50">·</span>
                     <div className={`w-2 h-2 rounded-full ${availabilityColor}`}></div>
-                    <span className="text-xs text-white/70">
-                      {getAvailabilityText(remaining)}
-                    </span>
+                    <span className="text-xs text-white/70">{remaining}자리</span>
                   </div>
                   {slot.isPremium && (
                     <div className="text-xs text-amber-300 font-semibold mt-1">프리미엄</div>
@@ -558,6 +562,23 @@ const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSe
               );
             })}
           </div>
+          {filteredSlots.length > SLOTS_PER_TWO_ROWS && (
+            <div className="mt-4 text-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAllSlots(!showAllSlots)}
+                className="text-white/70 hover:text-white"
+              >
+                {showAllSlots
+                  ? '접기'
+                  : `더보기 (+${filteredSlots.length - SLOTS_PER_TWO_ROWS}개)`
+                }
+                {showAllSlots ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+              </Button>
+            </div>
+          )}
+          </>
         )}
       </div>
     </div>
