@@ -12,7 +12,6 @@ on:
         type: choice
         options:
           - dev
-          - staging
           - prod
       apps:
         description: 'Apps to deploy (comma-separated or "all")'
@@ -111,8 +110,6 @@ jobs:
 
           if [ "$ENV" == "prod" ]; then
             echo "api_url=https://api.parkgolf.app" >> $GITHUB_OUTPUT
-          elif [ "$ENV" == "staging" ]; then
-            echo "api_url=https://staging-api.parkgolf.app" >> $GITHUB_OUTPUT
           else
             echo "api_url=https://dev-api.parkgolf.app" >> $GITHUB_OUTPUT
           fi
