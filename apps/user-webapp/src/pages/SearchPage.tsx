@@ -433,7 +433,10 @@ const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSe
   const filteredSlots = useMemo(() => {
     return timeSlots.filter((slot) => {
       // 가용 여부 체크 - 다양한 필드명 지원
-      const isAvailable = slot.isAvailable ?? slot.available ?? (slot.availablePlayers > 0);
+      const maxCapacity = slot.maxPlayers ?? slot.maxCapacity ?? 4;
+      const currentBookings = slot.bookedPlayers ?? slot.currentBookings ?? 0;
+      const remaining = slot.availablePlayers ?? (maxCapacity - currentBookings);
+      const isAvailable = slot.isAvailable ?? slot.available ?? (remaining > 0);
       if (!isAvailable) return false;
 
       const hour = parseInt(slot.startTime.split(':')[0]);
@@ -524,7 +527,8 @@ const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSe
               const remaining = slot.availablePlayers ?? (maxCapacity - currentBookings);
               const availabilityColor = getAvailabilityColor(remaining, maxCapacity);
 
-              const isAvailable = slot.isAvailable ?? slot.available ?? false;
+              // isAvailable 체크: 명시적 필드가 없으면 availablePlayers > 0 으로 판단
+              const isAvailable = slot.isAvailable ?? slot.available ?? (remaining > 0);
 
               return (
                 <button
