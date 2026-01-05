@@ -109,6 +109,11 @@ export class SearchBookingDto {
   @IsOptional()
   gameId?: number;
 
+  @ApiProperty({ description: '사용자 ID', example: 1, required: false })
+  @IsNumber()
+  @IsOptional()
+  userId?: number;
+
   @ApiProperty({
     description: '시작 날짜',
     example: '2024-07-01',

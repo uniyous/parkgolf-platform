@@ -75,11 +75,12 @@ export class BookingController {
     status: 200,
     description: '검색 결과를 성공적으로 조회했습니다.',
   })
-  async searchBookings(@Query() searchDto: SearchBookingDto) {
+  async searchBookings(@Request() req: any, @Query() searchDto: SearchBookingDto) {
     this.logger.log(
-      `Searching bookings with filters: ${JSON.stringify(searchDto)}`,
+      `Searching bookings for user ${req.user.userId} with filters: ${JSON.stringify(searchDto)}`,
     );
-    return this.bookingService.searchBookings(searchDto);
+    // 인증된 사용자의 예약만 조회하도록 userId 추가
+    return this.bookingService.searchBookings({ ...searchDto, userId: req.user.userId });
   }
 
   @Get('number/:bookingNumber')
