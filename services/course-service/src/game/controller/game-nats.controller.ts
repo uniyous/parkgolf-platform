@@ -334,15 +334,25 @@ export class GameNatsController {
 
   /**
    * 게임 응답에 타임슬롯 포함 (검색 API용)
+   * 최적화: Raw SQL 결과에 게임 정보 추가
    */
   private mapGameToResponseWithTimeSlots(game: any) {
     const baseResponse = this.mapGameToResponse(game);
 
-    // 타임슬롯이 포함된 경우 매핑
+    // 타임슬롯이 포함된 경우 매핑 (Raw SQL 결과이므로 게임 정보 추가)
     if (game.timeSlots && Array.isArray(game.timeSlots)) {
       return {
         ...baseResponse,
-        timeSlots: game.timeSlots.map((slot: any) => this.mapTimeSlotToResponse(slot)),
+        timeSlots: game.timeSlots.map((slot: any) => ({
+          ...slot,
+          // 게임 정보 추가 (Raw SQL 결과에는 없음)
+          gameName: baseResponse.name,
+          gameCode: baseResponse.code,
+          frontNineCourseName: baseResponse.frontNineCourseName,
+          backNineCourseName: baseResponse.backNineCourseName,
+          clubId: baseResponse.clubId,
+          clubName: baseResponse.clubName,
+        })),
       };
     }
 

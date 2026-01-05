@@ -248,39 +248,61 @@ export class GameService {
     // 날짜 필터 - 해당 날짜에 예약 가능한 타임슬롯이 있는 게임만 필터링
     if (date) {
       const targetDate = new Date(date);
-      // Prisma에서 두 컬럼 비교(bookedPlayers < maxPlayers)를 직접 지원하지 않으므로
-      // 먼저 가용 슬롯이 있는 게임 ID를 조회
-      const gamesWithAvailableSlots = await this.prisma.gameTimeSlot.findMany({
-        where: {
-          date: targetDate,
-          status: 'AVAILABLE',
-          isActive: true,
-        },
-        include: {
-          game: {
-            include: {
-              frontNineCourse: true,
-              backNineCourse: true,
-              club: true,
-            },
-          },
-        },
-        orderBy: {
-          startTime: 'asc',
-        },
-      });
 
-      // bookedPlayers < maxPlayers 조건을 만족하는 게임 ID만 필터링하고 타임슬롯 매핑
+      // 최적화: Raw SQL로 bookedPlayers < maxPlayers 조건을 DB 레벨에서 처리
+      // 불필요한 game 관계 데이터 제외 (나중에 별도로 조회)
+      const availableSlots = await this.prisma.$queryRaw<Array<{
+        id: number;
+        game_id: number;
+        date: Date;
+        start_time: string;
+        end_time: string;
+        max_players: number;
+        booked_players: number;
+        price: string;
+        is_premium: boolean;
+        status: string;
+        is_active: boolean;
+        created_at: Date;
+        updated_at: Date;
+      }>>`
+        SELECT
+          id, game_id, date, start_time, end_time,
+          max_players, booked_players, price,
+          is_premium, status, is_active, created_at, updated_at
+        FROM game_time_slots
+        WHERE date = ${targetDate}
+          AND status = 'AVAILABLE'
+          AND is_active = true
+          AND booked_players < max_players
+        ORDER BY game_id, start_time
+      `;
+
+      // 결과 매핑
       const availableGameIds = new Set<number>();
-      gamesWithAvailableSlots
-        .filter(slot => slot.bookedPlayers < slot.maxPlayers)
-        .forEach(slot => {
-          availableGameIds.add(slot.gameId);
-          if (!timeSlotsMap.has(slot.gameId)) {
-            timeSlotsMap.set(slot.gameId, []);
-          }
-          timeSlotsMap.get(slot.gameId)!.push(slot);
+      availableSlots.forEach(slot => {
+        availableGameIds.add(slot.game_id);
+        if (!timeSlotsMap.has(slot.game_id)) {
+          timeSlotsMap.set(slot.game_id, []);
+        }
+        // snake_case -> camelCase 변환
+        timeSlotsMap.get(slot.game_id)!.push({
+          id: slot.id,
+          gameId: slot.game_id,
+          date: slot.date,
+          startTime: slot.start_time,
+          endTime: slot.end_time,
+          maxPlayers: slot.max_players,
+          bookedPlayers: slot.booked_players,
+          availablePlayers: slot.max_players - slot.booked_players,
+          price: Number(slot.price),
+          isPremium: slot.is_premium,
+          status: slot.status,
+          isActive: slot.is_active,
+          createdAt: slot.created_at,
+          updatedAt: slot.updated_at,
         });
+      });
 
       if (availableGameIds.size === 0) {
         // 가용 슬롯이 없으면 빈 결과 반환
