@@ -56,7 +56,13 @@ export class BookingController {
     this.logger.debug(`NATS: booking.search data: ${JSON.stringify(data)}`);
     const result = await this.bookingService.searchBookings(data);
     this.logger.log(`NATS: Found ${result.total} bookings`);
-    return NatsResponse.paginated(result.bookings, result.total, result.page, result.limit);
+    // user-api expects { bookings, total, page, limit } format
+    return NatsResponse.success({
+      bookings: result.bookings,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+    });
   }
 
   @MessagePattern('booking.update')
