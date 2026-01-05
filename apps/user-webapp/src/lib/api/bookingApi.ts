@@ -50,13 +50,13 @@ export interface CreateBookingRequest {
  * 예약 상태 타입 - booking-service의 BookingStatus와 일치
  */
 export type BookingStatus =
-  | 'PENDING'
-  | 'CONFIRMED'
-  | 'CANCELLED'
-  | 'COMPLETED'
-  | 'NO_SHOW'
-  | 'SAGA_PENDING'   // Saga 진행 중
-  | 'SAGA_FAILED';   // Saga 실패
+  | 'PENDING'         // Saga 시작: 예약 생성됨, 슬롯 예약 대기 중
+  | 'SLOT_RESERVED'   // course-service에서 슬롯 예약 완료
+  | 'CONFIRMED'       // 최종 확정 (결제 완료 등)
+  | 'CANCELLED'       // 취소됨
+  | 'COMPLETED'       // 완료됨
+  | 'NO_SHOW'         // 노쇼
+  | 'FAILED';         // Saga 실패 (슬롯 예약 실패 등)
 
 /**
  * 예약 응답 DTO - booking-service의 BookingResponseDto와 일치
