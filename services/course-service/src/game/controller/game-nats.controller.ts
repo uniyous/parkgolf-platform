@@ -66,7 +66,7 @@ export class GameNatsController {
   async searchGames(@Payload() data: any) {
     this.logger.log(`NATS: Searching games - search: ${data.search || 'all'}, date: ${data.date || 'none'}`);
     const { data: games, total, page, limit } = await this.gameService.searchGames(data);
-    return NatsResponse.paginated(games.map(g => this.mapGameToResponse(g)), total, page, limit);
+    return NatsResponse.paginated(games.map(g => this.mapGameToResponseWithTimeSlots(g)), total, page, limit);
   }
 
   // =====================================================
@@ -330,5 +330,22 @@ export class GameNatsController {
       createdAt: schedule.createdAt?.toISOString(),
       updatedAt: schedule.updatedAt?.toISOString(),
     };
+  }
+
+  /**
+   * 게임 응답에 타임슬롯 포함 (검색 API용)
+   */
+  private mapGameToResponseWithTimeSlots(game: any) {
+    const baseResponse = this.mapGameToResponse(game);
+
+    // 타임슬롯이 포함된 경우 매핑
+    if (game.timeSlots && Array.isArray(game.timeSlots)) {
+      return {
+        ...baseResponse,
+        timeSlots: game.timeSlots.map((slot: any) => this.mapTimeSlotToResponse(slot)),
+      };
+    }
+
+    return baseResponse;
   }
 }

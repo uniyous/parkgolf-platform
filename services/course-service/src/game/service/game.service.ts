@@ -222,7 +222,7 @@ export class GameService {
     }
   }
 
-  async searchGames(query: SearchGamesQueryDto): Promise<{ data: Game[]; total: number; page: number; limit: number }> {
+  async searchGames(query: SearchGamesQueryDto): Promise<{ data: (Game & { timeSlots?: any[] })[]; total: number; page: number; limit: number }> {
     const {
       search,
       date,
@@ -242,6 +242,9 @@ export class GameService {
       isActive: true,
     };
 
+    // 타임슬롯 맵 (gameId -> timeSlots[])
+    const timeSlotsMap = new Map<number, any[]>();
+
     // 날짜 필터 - 해당 날짜에 예약 가능한 타임슬롯이 있는 게임만 필터링
     if (date) {
       const targetDate = new Date(date);
@@ -253,26 +256,38 @@ export class GameService {
           status: 'AVAILABLE',
           isActive: true,
         },
-        select: {
-          gameId: true,
-          bookedPlayers: true,
-          maxPlayers: true,
+        include: {
+          game: {
+            include: {
+              frontNineCourse: true,
+              backNineCourse: true,
+              club: true,
+            },
+          },
+        },
+        orderBy: {
+          startTime: 'asc',
         },
       });
 
-      // bookedPlayers < maxPlayers 조건을 만족하는 게임 ID만 필터링
-      const availableGameIds = [...new Set(
-        gamesWithAvailableSlots
-          .filter(slot => slot.bookedPlayers < slot.maxPlayers)
-          .map(slot => slot.gameId)
-      )];
+      // bookedPlayers < maxPlayers 조건을 만족하는 게임 ID만 필터링하고 타임슬롯 매핑
+      const availableGameIds = new Set<number>();
+      gamesWithAvailableSlots
+        .filter(slot => slot.bookedPlayers < slot.maxPlayers)
+        .forEach(slot => {
+          availableGameIds.add(slot.gameId);
+          if (!timeSlotsMap.has(slot.gameId)) {
+            timeSlotsMap.set(slot.gameId, []);
+          }
+          timeSlotsMap.get(slot.gameId)!.push(slot);
+        });
 
-      if (availableGameIds.length === 0) {
+      if (availableGameIds.size === 0) {
         // 가용 슬롯이 없으면 빈 결과 반환
         return { data: [], total: 0, page, limit };
       }
 
-      where.id = { in: availableGameIds };
+      where.id = { in: [...availableGameIds] };
     }
 
     // 텍스트 검색 (게임명, 클럽명, 클럽 위치)
@@ -332,6 +347,12 @@ export class GameService {
       this.prisma.game.count({ where }),
     ]);
 
-    return { data: games, total, page, limit };
+    // 날짜가 제공된 경우 타임슬롯 추가
+    const gamesWithSlots = games.map(game => ({
+      ...game,
+      timeSlots: date ? timeSlotsMap.get(game.id) || [] : undefined,
+    }));
+
+    return { data: gamesWithSlots, total, page, limit };
   }
 }

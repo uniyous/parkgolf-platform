@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, SlidersHorizontal, X, MapPin, Clock, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { useGameTimeSlots } from '../hooks/useGames';
 import { useSearchGamesQuery } from '../hooks/queries';
 import { useGameSearchParams } from '../hooks/useSearchParams';
 import type { Game, GameTimeSlot, GameSearchParams } from '@/lib/api/gameApi';
@@ -423,15 +422,19 @@ interface GameCardProps {
 }
 
 const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSelect }) => {
-  const { timeSlots, isLoading: isLoadingSlots } = useGameTimeSlots(game.id, date);
   const [showAllSlots, setShowAllSlots] = useState(false);
 
   // 2줄에 표시할 슬롯 수 (xl: 6열, lg: 4열 기준으로 12개)
   const SLOTS_PER_TWO_ROWS = 12;
 
+  // 게임 검색 응답에 포함된 타임슬롯 사용 (N+1 쿼리 제거)
+  const timeSlots = game.timeSlots || [];
+
   const filteredSlots = useMemo(() => {
     return timeSlots.filter((slot) => {
-      if (!slot.available) return false;
+      // 가용 여부 체크 - 다양한 필드명 지원
+      const isAvailable = slot.isAvailable ?? slot.available ?? (slot.availablePlayers > 0);
+      if (!isAvailable) return false;
 
       const hour = parseInt(slot.startTime.split(':')[0]);
       if (timeOfDay === 'morning') {
@@ -511,12 +514,6 @@ const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSe
         {!date ? (
           <div className="text-center py-6 text-white/70">
             예약 날짜를 선택하면 예약 가능한 시간이 표시됩니다
-          </div>
-        ) : isLoadingSlots ? (
-          <div className="grid grid-cols-6 gap-3">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-20 bg-white/10 rounded-xl animate-pulse"></div>
-            ))}
           </div>
         ) : filteredSlots.length === 0 ? (
           <div className="text-center py-6 text-white/70">

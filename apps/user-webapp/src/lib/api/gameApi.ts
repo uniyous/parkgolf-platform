@@ -35,6 +35,8 @@ export interface Game {
   duration?: number;          // estimatedDuration alias
   pricePerPerson?: number;    // basePrice alias
   courses?: GameCourse[];     // deprecated, use frontNine/backNine instead
+  // Time slots included in search response (when date is provided)
+  timeSlots?: GameTimeSlot[];
 }
 
 export interface GameSearchParams {
