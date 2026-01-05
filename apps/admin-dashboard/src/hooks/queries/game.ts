@@ -34,6 +34,7 @@ export const useGameQuery = (id: number) => {
     enabled: !!id,
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -44,6 +45,7 @@ export const useGamesByClubQuery = (clubId: number) => {
     enabled: !!clubId,
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -81,6 +83,7 @@ export const useGameTimeSlotStatsQuery = (filter?: GameTimeSlotFilter) => {
   return useQuery({
     queryKey: gameKeys.timeSlotStats(filter),
     queryFn: () => gamesApi.getTimeSlotStats(filter),
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
