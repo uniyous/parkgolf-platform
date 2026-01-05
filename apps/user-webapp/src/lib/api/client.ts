@@ -2,7 +2,7 @@
 import { getErrorMessage } from '@/types/common';
 import { authStorage } from '@/lib/storage';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3092';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3092';
 
 export interface ApiResponse<T> {
   data: T;
