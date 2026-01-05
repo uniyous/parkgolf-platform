@@ -1,9 +1,12 @@
 import { useSearchParams as useRouterSearchParams } from 'react-router-dom';
 import { useCallback, useMemo } from 'react';
 
+// 오늘 날짜를 YYYY-MM-DD 형식으로 반환
+const getTodayDateString = () => new Date().toISOString().split('T')[0];
+
 export interface GameSearchFilters {
   search: string;
-  date: string;  // 빈 문자열이면 날짜 필터 없음 (전체 게임 표시)
+  date: string;  // 기본값은 오늘 날짜 (항상 타임슬롯이 있는 게임만 조회)
   timeOfDay: 'all' | 'morning' | 'afternoon';
   minPrice: number | null;
   maxPrice: number | null;
@@ -18,7 +21,7 @@ export function useGameSearchParams() {
 
   const filters = useMemo<GameSearchFilters>(() => ({
     search: searchParams.get('search') || '',
-    date: searchParams.get('date') || '',  // 기본값을 빈 문자열로 변경 - 날짜 필터 없이 전체 게임 표시
+    date: searchParams.get('date') || getTodayDateString(),  // 기본값을 오늘 날짜로 설정 - 항상 타임슬롯이 있는 게임만 조회
     timeOfDay: (searchParams.get('timeOfDay') as GameSearchFilters['timeOfDay']) || 'all',
     minPrice: searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : null,
     maxPrice: searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : null,

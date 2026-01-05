@@ -511,11 +511,7 @@ const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSe
       <div className="border-t border-white/20 p-6 bg-black/10">
         <h4 className="text-base font-semibold text-white mb-4">예약 가능 시간</h4>
 
-        {!date ? (
-          <div className="text-center py-6 text-white/70">
-            예약 날짜를 선택하면 예약 가능한 시간이 표시됩니다
-          </div>
-        ) : filteredSlots.length === 0 ? (
+        {filteredSlots.length === 0 ? (
           <div className="text-center py-6 text-white/70">
             선택한 조건에 예약 가능한 시간이 없습니다
           </div>

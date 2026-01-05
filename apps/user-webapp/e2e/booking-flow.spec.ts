@@ -15,6 +15,73 @@ test.describe('예약 플로우 테스트', () => {
     await expect(page.getByRole('heading', { name: /예약 가능한 라운드/ }).first()).toBeVisible({ timeout: 30000 });
   });
 
+  test('기본 오늘 날짜로 타임슬롯이 있는 게임만 표시', async ({ page }) => {
+    // 검색 페이지 접근 (기본으로 오늘 날짜가 설정됨)
+    await page.goto('/search');
+
+    // 오늘 날짜가 기본으로 설정되어 있는지 확인
+    const dateInput = page.getByLabel('예약 날짜');
+    const today = new Date().toISOString().split('T')[0];
+    await expect(dateInput).toHaveValue(today);
+
+    // 로딩 완료 대기 (게임 목록 또는 빈 상태 메시지)
+    await page.waitForTimeout(5000);
+
+    // 게임이 있는 경우 타임슬롯도 함께 표시되어야 함
+    const gameCards = page.locator('[class*="glass-card"]');
+    const noGamesMessage = page.getByText(/예약 가능한 라운드가 없습니다/);
+
+    const hasGames = await gameCards.first().isVisible().catch(() => false);
+    const hasNoGamesMessage = await noGamesMessage.isVisible().catch(() => false);
+
+    // 둘 중 하나는 표시되어야 함
+    expect(hasGames || hasNoGamesMessage).toBeTruthy();
+
+    if (hasGames) {
+      // 타임슬롯이 있는 게임만 표시되므로 타임슬롯 버튼이 있어야 함
+      const timeSlotButtons = page.locator('button').filter({ hasText: /^\d{2}:\d{2}$/ });
+      const timeSlotCount = await timeSlotButtons.count();
+      expect(timeSlotCount).toBeGreaterThan(0);
+    }
+  });
+
+  test('날짜 선택 후 타임슬롯 표시 확인', async ({ page }) => {
+    await page.goto('/search');
+
+    // 내일 날짜 선택
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    await page.getByLabel('예약 날짜').fill(tomorrowStr);
+
+    // URL 파라미터 확인
+    await expect(page).toHaveURL(new RegExp(`date=${tomorrowStr}`));
+
+    // 로딩 완료 대기 (게임 또는 빈 상태)
+    await page.waitForTimeout(5000);
+
+    // 게임 카드가 있는지 확인
+    const gameCards = page.locator('[class*="glass-card"]');
+    const hasGames = await gameCards.first().isVisible().catch(() => false);
+
+    if (hasGames) {
+      // 날짜가 선택된 상태에서는 타임슬롯이 표시되어야 함
+      const timeSlotSection = page.getByText('예약 가능 시간');
+      const hasTimeSlots = await timeSlotSection.first().isVisible().catch(() => false);
+
+      // 날짜 필터와 함께 검색하면 타임슬롯이 있는 게임만 표시됨
+      if (hasTimeSlots) {
+        const timeSlotButtons = page.locator('button').filter({ hasText: /^\d{2}:\d{2}$/ });
+        const timeSlotCount = await timeSlotButtons.count();
+        expect(timeSlotCount).toBeGreaterThan(0);
+      }
+    } else {
+      // 해당 날짜에 예약 가능한 라운드가 없음
+      await expect(page.getByText(/예약 가능한 라운드가 없습니다|라운드가 없습니다/)).toBeVisible();
+    }
+  });
+
   test('날짜 필터 변경', async ({ page }) => {
     await page.goto('/search');
 
@@ -162,5 +229,130 @@ test.describe('예약 상세 페이지 테스트', () => {
     // 검색 페이지 또는 다른 페이지로 리다이렉트되어야 함
     // (state가 없으면 처리 방식에 따라 다름)
     await page.waitForTimeout(2000);
+  });
+});
+
+test.describe('예약 생성 플로우 테스트', () => {
+  test('타임슬롯 선택 후 예약 상세 페이지 표시', async ({ page }) => {
+    // 내일 날짜로 검색
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    await page.goto(`/search?date=${tomorrowStr}`);
+
+    // 로딩 완료 대기
+    await page.waitForTimeout(5000);
+
+    // 타임슬롯 버튼 찾기
+    const timeSlotButton = page.locator('button').filter({ hasText: /^\d{2}:\d{2}$/ }).first();
+
+    if (await timeSlotButton.isVisible()) {
+      // 타임슬롯 클릭
+      await timeSlotButton.click();
+
+      // 예약 상세 페이지로 이동 확인
+      await expect(page).toHaveURL(/.*booking-detail/, { timeout: 10000 });
+
+      // 예약 상세 정보 표시 확인
+      await expect(page.getByText('예약 정보')).toBeVisible({ timeout: 10000 });
+
+      // 인원 선택 표시 확인
+      await expect(page.getByText(/인원|플레이어/)).toBeVisible();
+
+      // 예약하기 버튼 표시 확인
+      await expect(page.getByRole('button', { name: /예약하기|예약 확인/ })).toBeVisible();
+    }
+  });
+
+  test('예약 인원 변경', async ({ page }) => {
+    // 내일 날짜로 검색
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    await page.goto(`/search?date=${tomorrowStr}`);
+    await page.waitForTimeout(5000);
+
+    // 타임슬롯 버튼 찾기
+    const timeSlotButton = page.locator('button').filter({ hasText: /^\d{2}:\d{2}$/ }).first();
+
+    if (await timeSlotButton.isVisible()) {
+      await timeSlotButton.click();
+      await expect(page).toHaveURL(/.*booking-detail/, { timeout: 10000 });
+
+      // 인원 증가 버튼 찾기
+      const increaseButton = page.locator('button').filter({ has: page.locator('svg.lucide-plus') }).first();
+
+      if (await increaseButton.isVisible()) {
+        // 인원 증가
+        await increaseButton.click();
+
+        // 가격이 변경되는지 확인 (총액 표시)
+        await expect(page.getByText(/총|합계|원/)).toBeVisible();
+      }
+    }
+  });
+
+  test('예약 생성 및 확인', async ({ page }) => {
+    // 내일 날짜로 검색
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    await page.goto(`/search?date=${tomorrowStr}`);
+    await page.waitForTimeout(5000);
+
+    // 타임슬롯 버튼 찾기
+    const timeSlotButton = page.locator('button').filter({ hasText: /^\d{2}:\d{2}$/ }).first();
+
+    if (await timeSlotButton.isVisible()) {
+      await timeSlotButton.click();
+      await expect(page).toHaveURL(/.*booking-detail/, { timeout: 10000 });
+
+      // 예약하기 버튼 클릭
+      const bookButton = page.getByRole('button', { name: /예약하기|예약 확인/ });
+      if (await bookButton.isVisible() && await bookButton.isEnabled()) {
+        await bookButton.click();
+
+        // 예약 성공 시 확인 페이지 또는 내 예약으로 이동
+        await page.waitForTimeout(3000);
+
+        // 성공 메시지 또는 내 예약 페이지 확인
+        const isSuccess = await page.getByText(/예약이 완료|예약 성공|확인되었습니다/).isVisible().catch(() => false);
+        const isMyBookings = await page.url().includes('my-bookings');
+        const isConfirmPage = await page.url().includes('booking-confirm');
+
+        expect(isSuccess || isMyBookings || isConfirmPage).toBeTruthy();
+      }
+    }
+  });
+
+  test('예약 상세에서 뒤로가기', async ({ page }) => {
+    // 내일 날짜로 검색
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    await page.goto(`/search?date=${tomorrowStr}`);
+    await page.waitForTimeout(5000);
+
+    // 타임슬롯 버튼 찾기
+    const timeSlotButton = page.locator('button').filter({ hasText: /^\d{2}:\d{2}$/ }).first();
+
+    if (await timeSlotButton.isVisible()) {
+      await timeSlotButton.click();
+      await expect(page).toHaveURL(/.*booking-detail/, { timeout: 10000 });
+
+      // 뒤로가기 버튼 클릭
+      const backButton = page.locator('button').filter({ has: page.locator('svg.lucide-arrow-left') }).first();
+
+      if (await backButton.isVisible()) {
+        await backButton.click();
+
+        // 검색 페이지로 돌아가는지 확인
+        await expect(page).toHaveURL(/.*search/, { timeout: 5000 });
+      }
+    }
   });
 });

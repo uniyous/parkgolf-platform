@@ -150,3 +150,89 @@ test.describe('페이지네이션 테스트', () => {
     }
   });
 });
+
+test.describe('예약 취소 플로우 테스트', () => {
+  test('예약 취소 확인 다이얼로그', async ({ page }) => {
+    await page.goto('/my-bookings');
+    await page.waitForTimeout(3000);
+
+    // 취소 버튼이 있는지 확인
+    const cancelButton = page.getByRole('button', { name: /취소/ }).first();
+
+    if (await cancelButton.isVisible()) {
+      // 취소 버튼 클릭
+      await cancelButton.click();
+
+      // 취소 확인 다이얼로그 표시 확인
+      await expect(page.getByText(/예약을 취소|취소하시겠습니까/)).toBeVisible({ timeout: 5000 });
+
+      // 취소 다이얼로그에 확인/취소 버튼 있는지 확인
+      const confirmButton = page.getByRole('button', { name: /확인|예/ });
+      const cancelDialogButton = page.getByRole('button', { name: /아니오|닫기|취소/ });
+
+      expect(await confirmButton.isVisible() || await cancelDialogButton.isVisible()).toBeTruthy();
+    }
+  });
+
+  test('예약 취소 다이얼로그 닫기', async ({ page }) => {
+    await page.goto('/my-bookings');
+    await page.waitForTimeout(3000);
+
+    // 취소 버튼이 있는지 확인
+    const cancelButton = page.getByRole('button', { name: /취소/ }).first();
+
+    if (await cancelButton.isVisible()) {
+      // 취소 버튼 클릭
+      await cancelButton.click();
+
+      // 취소 확인 다이얼로그 표시 확인
+      await expect(page.getByText(/예약을 취소|취소하시겠습니까/)).toBeVisible({ timeout: 5000 });
+
+      // 닫기/아니오 버튼 클릭
+      const closeButton = page.getByRole('button', { name: /아니오|닫기/ }).first();
+      if (await closeButton.isVisible()) {
+        await closeButton.click();
+
+        // 다이얼로그가 닫혔는지 확인
+        await expect(page.getByText(/예약을 취소|취소하시겠습니까/)).not.toBeVisible({ timeout: 3000 });
+      }
+    }
+  });
+});
+
+test.describe('예약 상태 표시 테스트', () => {
+  test('예정된 예약 상태 배지 표시', async ({ page }) => {
+    await page.goto('/my-bookings');
+    await page.waitForTimeout(3000);
+
+    // 예약 카드가 있는지 확인
+    const bookingCard = page.locator('[class*="glass-card"]').first();
+
+    if (await bookingCard.isVisible()) {
+      // 예약 상태 배지 확인 (CONFIRMED, PENDING 등)
+      const statusBadge = bookingCard.locator('[class*="badge"], [class*="status"]');
+      if (await statusBadge.first().isVisible()) {
+        // 상태 텍스트 확인
+        const statusText = await statusBadge.first().textContent();
+        expect(statusText).toBeTruthy();
+      }
+    }
+  });
+
+  test('지난 예약 상태 배지 표시', async ({ page }) => {
+    await page.goto('/my-bookings?tab=past');
+    await page.waitForTimeout(3000);
+
+    // 예약 카드가 있는지 확인
+    const bookingCard = page.locator('[class*="glass-card"]').first();
+
+    if (await bookingCard.isVisible()) {
+      // 지난 예약은 COMPLETED, CANCELLED 등의 상태
+      const statusBadge = bookingCard.locator('[class*="badge"], [class*="status"]');
+      if (await statusBadge.first().isVisible()) {
+        const statusText = await statusBadge.first().textContent();
+        expect(statusText).toBeTruthy();
+      }
+    }
+  });
+});
