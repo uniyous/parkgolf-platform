@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import type { Club, Course, CourseCombo, CreateCourseDto } from '@/types/club';
-import type { UpdateCourseDto } from '@/types';
+import type { UpdateCourseDto, Hole, CreateHoleDto, UpdateHoleDto } from '@/types';
 import { useClub } from '@/hooks';
-import { useUpdateCourseMutation, useDeleteCourseMutation } from '@/hooks/queries/course';
+import { useUpdateCourseMutation, useDeleteCourseMutation, useCreateHoleMutation, useUpdateHoleMutation, useDeleteHoleMutation } from '@/hooks/queries/course';
 import { DeleteConfirmPopover } from '@/components/common';
 
 interface CourseManagementTabProps {
@@ -24,9 +24,23 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
   const { loading } = useClub();
   const updateCourseMutation = useUpdateCourseMutation();
   const deleteCourseMutation = useDeleteCourseMutation();
+  const createHoleMutation = useCreateHoleMutation();
+  const updateHoleMutation = useUpdateHoleMutation();
+  const deleteHoleMutation = useDeleteHoleMutation();
 
   const [showAddCourse, setShowAddCourse] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+
+  // 홀 관리 상태
+  const [selectedHole, setSelectedHole] = useState<{ courseId: number; hole: Hole } | null>(null);
+  const [showAddHole, setShowAddHole] = useState<number | null>(null); // courseId to add hole to
+  const [newHole, setNewHole] = useState<Omit<CreateHoleDto, 'courseId'>>({
+    holeNumber: 1,
+    par: 4,
+    distance: 350,
+    description: ''
+  });
+  const [editHole, setEditHole] = useState<UpdateHoleDto>({});
 
   // 수정 폼 상태
   const [editCourse, setEditCourse] = useState<UpdateCourseDto>({});
@@ -46,6 +60,32 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
       });
     }
   }, [selectedCourse]);
+
+  // selectedHole이 변경되면 editHole 초기화
+  useEffect(() => {
+    if (selectedHole) {
+      setEditHole({
+        holeNumber: selectedHole.hole.holeNumber,
+        par: selectedHole.hole.par,
+        distance: selectedHole.hole.distance,
+        description: selectedHole.hole.description || ''
+      });
+    }
+  }, [selectedHole]);
+
+  // 홀 추가 모달 열 때 기본값 설정
+  useEffect(() => {
+    if (showAddHole !== null) {
+      const course = courses.find(c => c.id === showAddHole);
+      const existingHoles = course?.holes?.length || 0;
+      setNewHole({
+        holeNumber: existingHoles + 1,
+        par: 4,
+        distance: 350,
+        description: ''
+      });
+    }
+  }, [showAddHole, courses]);
 
   // 새 코스 추가 폼
   const [newCourse, setNewCourse] = useState<CreateCourseDto>({
@@ -121,6 +161,104 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
     } catch (error) {
       console.error('Failed to delete course:', error);
       toast.error('코스 삭제에 실패했습니다.');
+    }
+  };
+
+  // 홀 추가
+  const handleAddHole = async () => {
+    if (showAddHole === null) return;
+
+    if (!newHole.holeNumber || !newHole.par) {
+      toast.error('홀 번호와 Par는 필수 항목입니다.');
+      return;
+    }
+
+    try {
+      const createdHole = await createHoleMutation.mutateAsync({
+        courseId: showAddHole,
+        data: {
+          ...newHole,
+          courseId: showAddHole
+        }
+      });
+
+      // 로컬 상태 업데이트
+      const updatedCourses = courses.map(c => {
+        if (c.id === showAddHole) {
+          return {
+            ...c,
+            holes: [...(c.holes || []), createdHole]
+          };
+        }
+        return c;
+      });
+      onCoursesUpdate(updatedCourses);
+
+      setShowAddHole(null);
+      toast.success('홀이 성공적으로 추가되었습니다.');
+    } catch (error) {
+      console.error('Failed to create hole:', error);
+      toast.error('홀 추가에 실패했습니다.');
+    }
+  };
+
+  // 홀 수정
+  const handleUpdateHole = async () => {
+    if (!selectedHole) return;
+
+    if (!editHole.holeNumber || !editHole.par) {
+      toast.error('홀 번호와 Par는 필수 항목입니다.');
+      return;
+    }
+
+    try {
+      const updatedHole = await updateHoleMutation.mutateAsync({
+        courseId: selectedHole.courseId,
+        holeId: selectedHole.hole.id,
+        data: editHole
+      });
+
+      // 로컬 상태 업데이트
+      const updatedCourses = courses.map(c => {
+        if (c.id === selectedHole.courseId) {
+          return {
+            ...c,
+            holes: c.holes?.map(h => h.id === selectedHole.hole.id ? { ...h, ...updatedHole } : h)
+          };
+        }
+        return c;
+      });
+      onCoursesUpdate(updatedCourses);
+
+      setSelectedHole(null);
+      toast.success('홀이 성공적으로 수정되었습니다.');
+    } catch (error) {
+      console.error('Failed to update hole:', error);
+      toast.error('홀 수정에 실패했습니다.');
+    }
+  };
+
+  // 홀 삭제
+  const handleDeleteHole = async (courseId: number, holeId: number) => {
+    try {
+      await deleteHoleMutation.mutateAsync({ courseId, holeId });
+
+      // 로컬 상태 업데이트
+      const updatedCourses = courses.map(c => {
+        if (c.id === courseId) {
+          return {
+            ...c,
+            holes: c.holes?.filter(h => h.id !== holeId)
+          };
+        }
+        return c;
+      });
+      onCoursesUpdate(updatedCourses);
+
+      toast.success('홀이 성공적으로 삭제되었습니다.');
+    } catch (error) {
+      console.error('Failed to delete hole:', error);
+      toast.error('홀 삭제에 실패했습니다.');
     }
   };
 
@@ -233,6 +371,20 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
 
                 {/* 홀별 정보 - 항상 표시 */}
                 <div className="p-4 bg-gray-50">
+                    {/* 홀 관리 헤더 */}
+                    <div className="flex items-center justify-between mb-3">
+                      <h5 className="text-sm font-medium text-gray-700">홀 정보</h5>
+                      <button
+                        onClick={() => setShowAddHole(course.id)}
+                        className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        <span>홀 추가</span>
+                      </button>
+                    </div>
+
                     {course.holes && course.holes.length > 0 ? (
                       <>
                         {/* 홀 카드 그리드 */}
@@ -240,8 +392,30 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
                           {[...course.holes].sort((a, b) => a.holeNumber - b.holeNumber).map((hole) => (
                             <div
                               key={hole.id}
-                              className="bg-white rounded-lg border border-gray-200 p-2 hover:shadow-md transition-shadow"
+                              className="bg-white rounded-lg border border-gray-200 p-2 hover:shadow-md transition-shadow group relative"
                             >
+                              {/* 수정/삭제 버튼 - 호버 시 표시 */}
+                              <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-0.5">
+                                <button
+                                  onClick={() => setSelectedHole({ courseId: course.id, hole })}
+                                  className="p-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
+                                  title="수정"
+                                >
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteHole(course.id, hole.id)}
+                                  className="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
+                                  title="삭제"
+                                >
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
+
                               {/* 홀 번호 */}
                               <div className="text-center mb-1">
                                 <span className="text-lg font-bold text-blue-600">{hole.holeNumber}</span>
@@ -293,7 +467,15 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
                         </div>
                       </>
                     ) : (
-                      <p className="text-gray-500 text-center py-6">홀 정보가 등록되지 않았습니다.</p>
+                      <div className="text-center py-6">
+                        <p className="text-gray-500 mb-3">홀 정보가 등록되지 않았습니다.</p>
+                        <button
+                          onClick={() => setShowAddHole(course.id)}
+                          className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        >
+                          첫 번째 홀 추가하기
+                        </button>
+                      </div>
                     )}
                 </div>
               </div>
@@ -590,6 +772,210 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
               >
                 {updateCourseMutation.isPending ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>저장 중...</span>
+                  </>
+                ) : (
+                  <span>저장</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 홀 추가 모달 */}
+      {showAddHole !== null && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">새 홀 추가</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {courses.find(c => c.id === showAddHole)?.name} 코스에 홀을 추가합니다
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddHole(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">홀 번호 *</label>
+                  <input
+                    type="number"
+                    value={newHole.holeNumber}
+                    onChange={(e) => setNewHole(prev => ({ ...prev, holeNumber: Number(e.target.value) }))}
+                    min={1}
+                    max={18}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Par *</label>
+                  <select
+                    value={newHole.par}
+                    onChange={(e) => setNewHole(prev => ({ ...prev, par: Number(e.target.value) }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value={3}>Par 3</option>
+                    <option value={4}>Par 4</option>
+                    <option value={5}>Par 5</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">거리 (m)</label>
+                <input
+                  type="number"
+                  value={newHole.distance}
+                  onChange={(e) => setNewHole(prev => ({ ...prev, distance: Number(e.target.value) }))}
+                  min={50}
+                  max={1000}
+                  placeholder="350"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">설명</label>
+                <textarea
+                  value={newHole.description || ''}
+                  onChange={(e) => setNewHole(prev => ({ ...prev, description: e.target.value }))}
+                  rows={2}
+                  placeholder="홀의 특징이나 공략 포인트 등"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setShowAddHole(null)}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleAddHole}
+                disabled={!newHole.holeNumber || !newHole.par || createHoleMutation.isPending}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
+              >
+                {createHoleMutation.isPending ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>추가 중...</span>
+                  </>
+                ) : (
+                  <span>추가</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 홀 수정 모달 */}
+      {selectedHole && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">홀 수정</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {courses.find(c => c.id === selectedHole.courseId)?.name} 코스 - {selectedHole.hole.holeNumber}번 홀
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedHole(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">홀 번호 *</label>
+                  <input
+                    type="number"
+                    value={editHole.holeNumber || ''}
+                    onChange={(e) => setEditHole(prev => ({ ...prev, holeNumber: Number(e.target.value) }))}
+                    min={1}
+                    max={18}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Par *</label>
+                  <select
+                    value={editHole.par || 4}
+                    onChange={(e) => setEditHole(prev => ({ ...prev, par: Number(e.target.value) }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value={3}>Par 3</option>
+                    <option value={4}>Par 4</option>
+                    <option value={5}>Par 5</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">거리 (m)</label>
+                <input
+                  type="number"
+                  value={editHole.distance || ''}
+                  onChange={(e) => setEditHole(prev => ({ ...prev, distance: Number(e.target.value) }))}
+                  min={50}
+                  max={1000}
+                  placeholder="350"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">설명</label>
+                <textarea
+                  value={editHole.description || ''}
+                  onChange={(e) => setEditHole(prev => ({ ...prev, description: e.target.value }))}
+                  rows={2}
+                  placeholder="홀의 특징이나 공략 포인트 등"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setSelectedHole(null)}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleUpdateHole}
+                disabled={!editHole.holeNumber || !editHole.par || updateHoleMutation.isPending}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
+              >
+                {updateHoleMutation.isPending ? (
                   <>
                     <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
