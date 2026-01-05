@@ -117,8 +117,8 @@ export const authApi = {
 
   async refreshToken(refreshToken: string): Promise<ApiResponse<AuthResponse>> {
     try {
-      const response = await apiClient.post<AuthResponse>('/admin/auth/refresh', { 
-        refreshToken 
+      const response = await apiClient.post<AuthResponse>('/admin/auth/refresh', {
+        refreshToken
       });
       return {
         success: true,
