@@ -182,6 +182,7 @@ jobs:
           firebaseServiceAccount: ${{ secrets.GCP_SA_KEY }}
           projectId: ${{ env.PROJECT_ID }}
           target: ${{ steps.target.outputs.site }}
+          entryPoint: apps/${{ matrix.app }}
           channelId: live
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks

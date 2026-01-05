@@ -6,9 +6,7 @@
     "parkgolf-uniyous": {
       "hosting": {
         "parkgolf-admin": ["parkgolf-admin"],
-        "parkgolf-admin-dev": ["parkgolf-admin-dev"],
-        "parkgolf-user": ["parkgolf-user"],
-        "parkgolf-user-dev": ["parkgolf-user-dev"]
+        "parkgolf-admin-dev": ["parkgolf-admin-dev"]
       }
     }
   }
