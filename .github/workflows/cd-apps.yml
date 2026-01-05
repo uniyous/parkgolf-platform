@@ -64,7 +64,7 @@ jobs:
             if [ "${{ github.event.inputs.apps }}" == "all" ]; then
               echo "list=$ALL_APPS" >> $GITHUB_OUTPUT
             else
-              APPS=$(echo '${{ github.event.inputs.apps }}' | jq -R 'split(",") | map(gsub("^\\s+|\\s+$";""))')
+              APPS=$(echo '${{ github.event.inputs.apps }}' | jq -c -R 'split(",") | map(gsub("^\\s+|\\s+$";""))')
               echo "list=$APPS" >> $GITHUB_OUTPUT
             fi
           else
