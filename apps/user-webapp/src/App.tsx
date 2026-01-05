@@ -1,4 +1,5 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { PrivateRoute } from './components';
 import {
   LoginPage,
@@ -12,8 +13,15 @@ import {
 
 function App() {
   return (
-    <Router>
-      <Routes>
+    <>
+      <Toaster
+        position="top-center"
+        richColors
+        closeButton
+        duration={3000}
+      />
+      <Router>
+        <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route element={<PrivateRoute />}>
@@ -24,8 +32,9 @@ function App() {
           <Route path="/booking-complete" element={<BookingCompletePage />} />
         </Route>
         <Route path="/" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </Router>
+        </Routes>
+      </Router>
+    </>
   );
 }
 

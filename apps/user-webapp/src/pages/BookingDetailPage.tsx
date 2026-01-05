@@ -4,6 +4,7 @@ import { useBooking } from '../hooks/useBooking';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { Game, GameTimeSlot } from '@/lib/api/gameApi';
 import { formatDate } from '@/lib/formatting';
+import { showErrorToast } from '@/lib/toast';
 import { Button, Select, Textarea, Checkbox, PriceDisplay } from '../components';
 
 
@@ -110,11 +111,11 @@ export const BookingDetailPage: React.FC = () => {
           }
         });
       } else {
-        alert('예약 생성에 실패했습니다. 다시 시도해주세요.');
+        showErrorToast('예약 생성에 실패했습니다', '다시 시도해주세요.');
       }
     } catch (error) {
       console.error('Booking failed:', error);
-      alert('예약 생성에 실패했습니다. 다시 시도해주세요.');
+      showErrorToast('예약 생성에 실패했습니다', '다시 시도해주세요.');
     }
   };
 

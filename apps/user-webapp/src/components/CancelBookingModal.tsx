@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, AlertTriangle, Calendar, Clock, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDate, formatPrice } from '@/lib/formatting';
+import { showSuccessToast, showErrorToast } from '@/lib/toast';
 import { type BookingWithCancel } from '@/lib/api/bookingApi';
 import { useCancelBookingMutation } from '@/hooks/queries/booking';
 
@@ -41,10 +42,12 @@ export const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
         id: booking.id,
         reason: reason || undefined,
       });
+      showSuccessToast('예약이 취소되었습니다');
       onSuccess?.();
       onClose();
     } catch (error) {
       console.error('Failed to cancel booking:', error);
+      showErrorToast('예약 취소에 실패했습니다', '다시 시도해주세요.');
     }
   };
 
