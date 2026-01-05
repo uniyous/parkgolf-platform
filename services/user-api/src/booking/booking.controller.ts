@@ -50,8 +50,8 @@ export class BookingController {
     @Request() req: any,
     @Body() createBookingDto: CreateBookingDto,
   ) {
-    this.logger.log(`Creating booking for user ${req.user.id}`);
-    return this.bookingService.createBooking(req.user.id, createBookingDto);
+    this.logger.log(`Creating booking for user ${req.user.userId}`);
+    return this.bookingService.createBooking(req.user.userId, createBookingDto);
   }
 
   @Get()
@@ -63,8 +63,8 @@ export class BookingController {
     description: '예약 목록을 성공적으로 조회했습니다.',
   })
   async getMyBookings(@Request() req: any) {
-    this.logger.log(`Getting bookings for user ${req.user.id}`);
-    return this.bookingService.getBookingsByUserId(req.user.id);
+    this.logger.log(`Getting bookings for user ${req.user.userId}`);
+    return this.bookingService.getBookingsByUserId(req.user.userId);
   }
 
   @Get('search')
@@ -138,8 +138,8 @@ export class BookingController {
     @Param('id') id: number,
     @Body() cancelDto: CancelBookingDto,
   ) {
-    this.logger.log(`Cancelling booking ${id} for user ${req.user.id}`);
-    return this.bookingService.cancelBooking(id, req.user.id, cancelDto.reason);
+    this.logger.log(`Cancelling booking ${id} for user ${req.user.userId}`);
+    return this.bookingService.cancelBooking(id, req.user.userId, cancelDto.reason);
   }
 
   @Get('games/:gameId/time-slots')
