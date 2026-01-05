@@ -146,6 +146,19 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
       // 객체 응답 (NestJS 기본 형식)
       if (typeof response === 'object' && response !== null) {
         const responseObj = response as Record<string, unknown>;
+
+        // ValidationPipe 에러 (class-validator) - message가 배열인 경우
+        if (Array.isArray(responseObj.message)) {
+          return {
+            success: false,
+            error: {
+              code: Errors.Validation.INVALID_INPUT.code,
+              message: responseObj.message.join(', '),
+            },
+            timestamp,
+          };
+        }
+
         return {
           success: false,
           error: {
