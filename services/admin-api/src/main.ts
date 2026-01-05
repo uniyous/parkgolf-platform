@@ -38,6 +38,10 @@ async function bootstrap() {
         'http://localhost:3002', // Admin frontend port 3
         'http://localhost:5173', // Vite default
         /^https:\/\/.*\.run\.app$/, // Cloud Run domains
+        // Firebase Hosting domains
+        'https://parkgolf-admin.web.app',
+        'https://parkgolf-admin-dev.web.app',
+        /^https:\/\/parkgolf-admin.*\.firebaseapp\.com$/,
       ],
       credentials: true,
     });
