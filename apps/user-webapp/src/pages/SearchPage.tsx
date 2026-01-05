@@ -49,7 +49,7 @@ export const SearchPage: React.FC = () => {
     sortOrder: filters.sortOrder,
     page: filters.page,
     limit: 20,
-  }), [filters]);
+  }), [filters.search, filters.date, filters.minPrice, filters.maxPrice, filters.minPlayers, filters.sortBy, filters.sortOrder, filters.page]);
 
   // Query hooks
   const { data: searchResult, isLoading: isLoadingGames, error: gamesError } = useSearchGamesQuery(searchParams);
