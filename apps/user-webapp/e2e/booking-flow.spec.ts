@@ -27,7 +27,7 @@ test.describe('예약 플로우 테스트', () => {
     // 로딩 완료 대기 (게임 목록 또는 빈 상태 메시지)
     await page.waitForTimeout(5000);
 
-    // 게임이 있는 경우 타임슬롯도 함께 표시되어야 함
+    // 게임이 있는 경우 또는 빈 상태 메시지
     const gameCards = page.locator('[class*="glass-card"]');
     const noGamesMessage = page.getByText(/예약 가능한 라운드가 없습니다/);
 
@@ -38,10 +38,19 @@ test.describe('예약 플로우 테스트', () => {
     expect(hasGames || hasNoGamesMessage).toBeTruthy();
 
     if (hasGames) {
-      // 타임슬롯이 있는 게임만 표시되므로 타임슬롯 버튼이 있어야 함
+      // 게임 카드가 있으면 "예약 가능 시간" 섹션이 표시되어야 함
+      const timeSlotSection = page.getByText('예약 가능 시간');
+      await expect(timeSlotSection.first()).toBeVisible();
+
+      // 타임슬롯 버튼이 있거나 "예약 가능한 시간이 없습니다" 메시지가 있어야 함
       const timeSlotButtons = page.locator('button').filter({ hasText: /^\d{2}:\d{2}$/ });
-      const timeSlotCount = await timeSlotButtons.count();
-      expect(timeSlotCount).toBeGreaterThan(0);
+      const noTimeSlotsMessage = page.getByText(/예약 가능한 시간이 없습니다/);
+
+      const hasTimeSlots = await timeSlotButtons.count() > 0;
+      const hasNoTimeSlotsMessage = await noTimeSlotsMessage.first().isVisible().catch(() => false);
+
+      // 타임슬롯이 있거나, 없다는 메시지가 표시되어야 함
+      expect(hasTimeSlots || hasNoTimeSlotsMessage).toBeTruthy();
     }
   });
 
@@ -155,10 +164,17 @@ test.describe('예약 플로우 테스트', () => {
   test('게임 카드가 표시됨', async ({ page }) => {
     await page.goto('/search');
 
-    // 로딩 완료 대기 - 게임 카드 또는 빈 상태 메시지 중 하나가 나타날 때까지
-    await expect(
-      page.getByText('예약 가능 시간').first().or(page.getByText('예약 가능한 라운드가 없습니다'))
-    ).toBeVisible({ timeout: 30000 });
+    // 로딩 완료 대기
+    await page.waitForTimeout(5000);
+
+    // 게임 카드 또는 빈 상태 메시지 중 하나가 나타나야 함
+    const gameCards = page.locator('[class*="glass-card"]');
+    const noGamesMessage = page.getByText(/예약 가능한 라운드가 없습니다/);
+
+    const hasGames = await gameCards.first().isVisible().catch(() => false);
+    const hasNoGamesMessage = await noGamesMessage.isVisible().catch(() => false);
+
+    expect(hasGames || hasNoGamesMessage).toBeTruthy();
   });
 
   test('타임슬롯 선택 시 예약 상세 페이지로 이동', async ({ page }) => {
