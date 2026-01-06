@@ -29,7 +29,9 @@ export class SagaHandlerService {
     playerCount: number;
     reservedAt: string;
   }): Promise<void> {
-    this.logger.log(`Handling slot.reserved for booking ${data.bookingId}`);
+    const startTime = Date.now();
+    this.logger.log(`[SagaHandler] ========== SLOT_RESERVED EVENT RECEIVED ==========`);
+    this.logger.log(`[SagaHandler] bookingId=${data.bookingId}, gameTimeSlotId=${data.gameTimeSlotId}, playerCount=${data.playerCount}, reservedAt=${data.reservedAt}`);
 
     try {
       const booking = await this.prisma.booking.findUnique({
@@ -37,14 +39,15 @@ export class SagaHandlerService {
       });
 
       if (!booking) {
-        this.logger.error(`Booking ${data.bookingId} not found for slot.reserved event`);
+        this.logger.error(`[SagaHandler] Booking ${data.bookingId} NOT FOUND for slot.reserved event`);
         return;
       }
+      this.logger.log(`[SagaHandler] Current booking status: ${booking.status}, bookingNumber=${booking.bookingNumber}`);
 
       // PENDING 상태에서만 전이 가능
       if (booking.status !== BookingStatus.PENDING) {
         this.logger.warn(
-          `Booking ${data.bookingId} is not in PENDING status (current: ${booking.status}), ignoring slot.reserved`
+          `[SagaHandler] Booking ${data.bookingId} is NOT in PENDING status (current: ${booking.status}), IGNORING slot.reserved`
         );
         return;
       }
@@ -92,9 +95,12 @@ export class SagaHandlerService {
         });
       });
 
-      this.logger.log(`Booking ${data.bookingId} confirmed successfully`);
+      const elapsed = Date.now() - startTime;
+      this.logger.log(`[SagaHandler] Booking ${data.bookingId} CONFIRMED successfully in ${elapsed}ms`);
+      this.logger.log(`[SagaHandler] ========== SLOT_RESERVED EVENT COMPLETED ==========`);
     } catch (error) {
-      this.logger.error(`Failed to handle slot.reserved for booking ${data.bookingId}: ${error.message}`);
+      const elapsed = Date.now() - startTime;
+      this.logger.error(`[SagaHandler] FAILED to handle slot.reserved for booking ${data.bookingId} in ${elapsed}ms: ${error.message}`);
       throw error;
     }
   }
@@ -108,7 +114,8 @@ export class SagaHandlerService {
     gameTimeSlotId: number;
     reason: string;
   }): Promise<void> {
-    this.logger.log(`Handling slot.reserve.failed for booking ${data.bookingId}: ${data.reason}`);
+    this.logger.log(`[SagaHandler] ========== SLOT_RESERVE_FAILED EVENT RECEIVED ==========`);
+    this.logger.log(`[SagaHandler] bookingId=${data.bookingId}, gameTimeSlotId=${data.gameTimeSlotId}, reason="${data.reason}"`);
 
     try {
       const booking = await this.prisma.booking.findUnique({

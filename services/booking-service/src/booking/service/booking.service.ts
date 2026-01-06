@@ -200,10 +200,15 @@ export class BookingService {
    * 5. course-service 응답에 따라 CONFIRMED 또는 FAILED로 전이
    */
   async createBooking(dto: CreateBookingRequestDto): Promise<BookingResponseDto> {
+    const requestId = `REQ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    this.logger.log(`[${requestId}] ========== BOOKING CREATE START ==========`);
+    this.logger.log(`[${requestId}] Input: gameTimeSlotId=${dto.gameTimeSlotId}, playerCount=${dto.playerCount}, idempotencyKey=${dto.idempotencyKey}`);
+
     try {
       // =====================================================
       // 1. 멱등성 키 확인
       // =====================================================
+      this.logger.log(`[${requestId}] Step 1: Checking idempotency key...`);
       const existingIdempotencyKey = await this.prisma.idempotencyKey.findUnique({
         where: { key: dto.idempotencyKey },
       });
@@ -211,44 +216,54 @@ export class BookingService {
       if (existingIdempotencyKey) {
         // 이미 처리된 요청 - 기존 예약 반환
         if (existingIdempotencyKey.aggregateId) {
-          this.logger.log(`Idempotency key ${dto.idempotencyKey} already processed, returning cached response`);
+          this.logger.log(`[${requestId}] Idempotency key ${dto.idempotencyKey} already processed, returning cached response (aggregateId: ${existingIdempotencyKey.aggregateId})`);
           const existingBooking = await this.getBookingById(Number(existingIdempotencyKey.aggregateId));
           if (existingBooking) {
+            this.logger.log(`[${requestId}] Returning existing booking: ${existingBooking.bookingNumber}, status=${existingBooking.status}`);
             return existingBooking;
           }
         }
         // aggregateId가 없으면 진행 중인 요청 - 에러 반환
+        this.logger.warn(`[${requestId}] Idempotency key ${dto.idempotencyKey} exists but no aggregateId - request in progress`);
         throw new HttpException('Request is already being processed', HttpStatus.CONFLICT);
       }
+      this.logger.log(`[${requestId}] Step 1: Idempotency key check passed (new request)`);
 
       // =====================================================
       // 2. 슬롯 정보 조회 및 기본 검증
       // =====================================================
+      this.logger.log(`[${requestId}] Step 2: Checking slot cache for gameTimeSlotId=${dto.gameTimeSlotId}...`);
       let slotCache = await this.prisma.gameTimeSlotCache.findUnique({
         where: { gameTimeSlotId: dto.gameTimeSlotId }
       });
 
       // 캐시에 없으면 course-service에서 조회
       if (!slotCache) {
-        this.logger.log(`Slot cache miss for gameTimeSlotId: ${dto.gameTimeSlotId}, fetching from course-service`);
+        this.logger.log(`[${requestId}] Slot cache MISS for gameTimeSlotId: ${dto.gameTimeSlotId}, fetching from course-service`);
         slotCache = await this.fetchAndSyncSlotFromCourseService(dto.gameTimeSlotId);
+      } else {
+        this.logger.log(`[${requestId}] Slot cache HIT: status=${slotCache.status}, isAvailable=${slotCache.isAvailable}, bookedPlayers=${slotCache.bookedPlayers}, availablePlayers=${slotCache.availablePlayers}, maxPlayers=${slotCache.maxPlayers}, lastSyncAt=${slotCache.lastSyncAt}`);
       }
 
       if (!slotCache) {
+        this.logger.error(`[${requestId}] Step 2 FAILED: Game time slot not found`);
         throw new HttpException('Game time slot not found', HttpStatus.NOT_FOUND);
       }
 
       // 기본 가용성 검증 (최종 검증은 course-service에서)
       if (!slotCache.isAvailable || slotCache.status !== 'AVAILABLE') {
+        this.logger.warn(`[${requestId}] Step 2 FAILED: Slot not available (isAvailable=${slotCache.isAvailable}, status=${slotCache.status})`);
         throw new HttpException('Selected time slot is not available', HttpStatus.BAD_REQUEST);
       }
 
       if (slotCache.availablePlayers < dto.playerCount) {
+        this.logger.warn(`[${requestId}] Step 2 FAILED: Not enough capacity (available=${slotCache.availablePlayers}, requested=${dto.playerCount})`);
         throw new HttpException(
           `Not enough capacity. Available: ${slotCache.availablePlayers}, Requested: ${dto.playerCount}`,
           HttpStatus.BAD_REQUEST
         );
       }
+      this.logger.log(`[${requestId}] Step 2: Slot validation passed`);
 
       // Game 정보 조회
       const gameInfo = await this.prisma.gameCache.findUnique({
@@ -268,6 +283,7 @@ export class BookingService {
       // =====================================================
       // 3. PENDING 예약 + OutboxEvent 생성 (Transactional Outbox)
       // =====================================================
+      this.logger.log(`[${requestId}] Step 3: Creating PENDING booking with OutboxEvent...`);
       const bookingNumber = this.generateBookingNumber();
       const idempotencyKeyExpiry = new Date();
       idempotencyKeyExpiry.setHours(idempotencyKeyExpiry.getHours() + IDEMPOTENCY_KEY_TTL_HOURS);
@@ -354,11 +370,12 @@ export class BookingService {
         return newBooking;
       });
 
-      this.logger.log(`Booking ${booking.bookingNumber} created with PENDING status (Saga started)`);
+      this.logger.log(`[${requestId}] Step 3: COMPLETED - Booking ${booking.bookingNumber} created with PENDING status`);
+      this.logger.log(`[${requestId}] ========== BOOKING CREATE SUCCESS (bookingId=${booking.id}, bookingNumber=${booking.bookingNumber}) ==========`);
 
       return BookingResponseDto.fromEntity(booking);
     } catch (error) {
-      this.logger.error(`Failed to create booking: ${error.message}`);
+      this.logger.error(`[${requestId}] ========== BOOKING CREATE FAILED: ${error.message} ==========`);
       if (error instanceof HttpException) {
         throw error;
       }

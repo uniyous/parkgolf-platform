@@ -8,7 +8,7 @@ import { firstValueFrom, timeout, catchError, of } from 'rxjs';
 const POLL_INTERVAL_MS = 1000;       // 1초마다 폴링
 const BATCH_SIZE = 10;               // 한 번에 처리할 이벤트 수
 const MAX_RETRY_COUNT = 5;           // 최대 재시도 횟수
-const NATS_TIMEOUT_MS = 5000;        // NATS 호출 타임아웃
+const NATS_TIMEOUT_MS = 15000;       // NATS 호출 타임아웃 (15초 - Cloud Run cold start 대응)
 const PROCESSING_LOCK_MS = 30000;    // 처리 중 락 시간 (30초)
 
 @Injectable()
@@ -97,12 +97,17 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
     payload: any;
     retry_count: number;
   }): Promise<void> {
+    const bookingId = event.payload?.bookingId || 'N/A';
+    const startTime = Date.now();
+    this.logger.log(`[Outbox] Processing event ${event.id} (${event.event_type}) for bookingId=${bookingId}, retry=${event.retry_count}`);
+
     try {
       // PROCESSING 상태로 변경
       await this.prisma.outboxEvent.update({
         where: { id: event.id },
         data: { status: OutboxStatus.PROCESSING },
       });
+      this.logger.log(`[Outbox] Event ${event.id} marked as PROCESSING`);
 
       // 이벤트 타입에 따라 적절한 클라이언트로 발행
       const client = this.getClientForEventType(event.event_type);
@@ -110,29 +115,35 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
 
       if (isRequestReply) {
         // Request-Reply 패턴 (응답 대기)
+        this.logger.log(`[Outbox] Sending ${event.event_type} to course-service (Request-Reply)...`);
         const response = await firstValueFrom(
           client.send(event.event_type, event.payload).pipe(
             timeout(NATS_TIMEOUT_MS),
             catchError((err) => {
-              this.logger.error(`NATS send failed for ${event.event_type}: ${err.message}`);
+              this.logger.error(`[Outbox] NATS send failed for ${event.event_type}: ${err.message}`);
               return of({ success: false, error: err.message });
             })
           )
         );
 
+        const elapsed = Date.now() - startTime;
         if (response?.success) {
           await this.markEventAsSent(event.id);
-          this.logger.log(`Outbox event ${event.id} (${event.event_type}) sent successfully`);
+          this.logger.log(`[Outbox] Event ${event.id} (${event.event_type}) SUCCESS in ${elapsed}ms - bookingId=${bookingId}`);
         } else {
+          this.logger.warn(`[Outbox] Event ${event.id} (${event.event_type}) FAILED in ${elapsed}ms: ${response?.error} - bookingId=${bookingId}`);
           await this.handleEventFailure(event, response?.error || 'Unknown error');
         }
       } else {
         // Event 패턴 (Fire-and-forget)
         client.emit(event.event_type, event.payload);
         await this.markEventAsSent(event.id);
-        this.logger.log(`Outbox event ${event.id} (${event.event_type}) emitted successfully`);
+        const elapsed = Date.now() - startTime;
+        this.logger.log(`[Outbox] Event ${event.id} (${event.event_type}) emitted in ${elapsed}ms - bookingId=${bookingId}`);
       }
     } catch (error) {
+      const elapsed = Date.now() - startTime;
+      this.logger.error(`[Outbox] Event ${event.id} ERROR in ${elapsed}ms: ${error.message} - bookingId=${bookingId}`);
       await this.handleEventFailure(event, error.message);
     }
   }

@@ -33,7 +33,9 @@ export class GameSagaController {
     playerCount: number;
     requestedAt: string;
   }) {
-    this.logger.log(`[Saga] Received slot.reserve for booking ${data.bookingId} (slot: ${data.gameTimeSlotId})`);
+    const startTime = Date.now();
+    this.logger.log(`[Saga] ========== SLOT_RESERVE REQUEST RECEIVED ==========`);
+    this.logger.log(`[Saga] bookingId=${data.bookingId}, bookingNumber=${data.bookingNumber}, gameTimeSlotId=${data.gameTimeSlotId}, playerCount=${data.playerCount}, requestedAt=${data.requestedAt}`);
 
     try {
       const result = await this.gameTimeSlotService.reserveSlotForSaga(
@@ -42,6 +44,7 @@ export class GameSagaController {
         data.bookingId
       );
 
+      const elapsed = Date.now() - startTime;
       if (result.success) {
         // 성공: slot.reserved 이벤트 발행
         const reservedEvent = {
@@ -52,7 +55,8 @@ export class GameSagaController {
         };
 
         this.bookingServiceClient.emit('slot.reserved', reservedEvent);
-        this.logger.log(`[Saga] Emitted slot.reserved for booking ${data.bookingId}`);
+        this.logger.log(`[Saga] SLOT_RESERVE SUCCESS in ${elapsed}ms - bookingId=${data.bookingId}, emitting slot.reserved`);
+        this.logger.log(`[Saga] ========== SLOT_RESERVE COMPLETED (SUCCESS) ==========`);
 
         return { success: true, message: 'Slot reserved successfully' };
       } else {
@@ -65,11 +69,13 @@ export class GameSagaController {
         };
 
         this.bookingServiceClient.emit('slot.reserve.failed', failedEvent);
-        this.logger.warn(`[Saga] Emitted slot.reserve.failed for booking ${data.bookingId}: ${result.error}`);
+        this.logger.warn(`[Saga] SLOT_RESERVE FAILED in ${elapsed}ms - bookingId=${data.bookingId}, reason="${result.error}", emitting slot.reserve.failed`);
+        this.logger.log(`[Saga] ========== SLOT_RESERVE COMPLETED (FAILED) ==========`);
 
         return { success: false, error: result.error };
       }
     } catch (error) {
+      const elapsed = Date.now() - startTime;
       // 예외 발생: slot.reserve.failed 이벤트 발행
       const failedEvent = {
         bookingId: data.bookingId,
@@ -79,7 +85,8 @@ export class GameSagaController {
       };
 
       this.bookingServiceClient.emit('slot.reserve.failed', failedEvent);
-      this.logger.error(`[Saga] Exception during slot.reserve for booking ${data.bookingId}: ${error.message}`);
+      this.logger.error(`[Saga] SLOT_RESERVE EXCEPTION in ${elapsed}ms - bookingId=${data.bookingId}, error="${error.message}", emitting slot.reserve.failed`);
+      this.logger.log(`[Saga] ========== SLOT_RESERVE COMPLETED (EXCEPTION) ==========`);
 
       return { success: false, error: error.message };
     }
