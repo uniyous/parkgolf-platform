@@ -25,8 +25,9 @@ Park Golf Platform은 골프장 예약 및 관리를 위한 통합 플랫폼으�
 
 ### 📊 Project Status
 - **Current Phase**: MVP Development
-- **Completion**: 75% (as of 2025-10-09)
+- **Completion**: 85% (as of 2025-12-29)
 - **Target Release**: 2025-02-15
+- **Recent Milestone**: Saga Pattern Implementation Complete
 
 ## System Architecture Diagram
 
@@ -292,7 +293,7 @@ graph LR
 - ML Service (분석)
 ```
 
-#### User API (:3092) ⚠️
+#### User API (:3092) ✅
 ```typescript
 // Purpose: 사용자 웹앱 전용 API Gateway
 
@@ -306,15 +307,16 @@ graph LR
 // Connected Services (via NATS)
 - Auth Service (인증)
 - Course Service (골프장 조회)
-- Booking Service (예약)
+- Booking Service (예약 - Saga 패턴)
 - Notify Service (알림)
 
 // Current Status
 - ✅ Basic structure and modules created
 - ✅ NATS client registration configured
-- ⚠️ NATS integration needs verification
-- 🚧 Actual API endpoints implementation pending
-- 🚧 Blocking User WebApp development
+- ✅ NATS integration verified and working
+- ✅ API endpoints implemented (auth, booking, games, clubs)
+- ✅ Saga-based booking with idempotency key support
+- ✅ No longer blocking User WebApp development
 ```
 
 ### 3. Core Microservices
@@ -385,36 +387,44 @@ graph LR
 - Domain-based module structure
 ```
 
-#### Booking Service (:3013 / :8080) ⚠️
+#### Booking Service (:3013 / :8080) ✅
 ```typescript
 // Database: PostgreSQL (booking_db)
 // Communication: NATS + HTTP
 
 // Data Models
-- Booking: 예약 (9홀/18홀 통합)
+- Booking: 예약 (9홀/18홀 통합, Saga 상태 관리)
 - Payment: 결제
 - BookingHistory: 예약 히스토리
-- TimeSlotAvailability: 타임슬롯 가용성 캐시
-- CourseCache: 코스 정보 캐시
+- GameCache: 게임 정보 캐시
+- GameTimeSlotCache: 타임슬롯 가용성 캐시
+- OutboxEvent: Transactional Outbox Pattern
+- IdempotencyKey: 중복 요청 방지
 
 // Core Features
 - ✅ 9홀/18홀 복합 예약 로직
 - ✅ 회원/비회원 예약 지원
 - ✅ 타임슬롯 가용성 체크
-- ✅ 예약 상태 관리 (PENDING → CONFIRMED → COMPLETED)
+- ✅ Saga 패턴 (Choreography) 구현
+- ✅ 예약 상태 관리 (PENDING → SLOT_RESERVED → CONFIRMED / FAILED)
+- ✅ Transactional Outbox Pattern
+- ✅ Idempotency Key 기반 중복 방지
 - ✅ 예약 히스토리 추적
 - ✅ 성능 최적화 (캐싱)
 - ⚠️ 결제 게이트웨이 미완성 (TossPayments/KakaoPay 선택 필요)
 
-// Event Publishing
-- booking.created
-- booking.updated
-- booking.cancelled
-- payment.processed
+// Saga Events
+- slot.reserve (booking → course): 슬롯 예약 요청
+- slot.reserved (course → booking): 슬롯 예약 성공
+- slot.reserve.failed (course → booking): 슬롯 예약 실패
+- slot.release (booking → course): 슬롯 해제 요청
+- booking.confirmed (booking → notification): 예약 확정 알림
+- booking.cancelled (booking → notification): 예약 취소 알림
 
 // Cloud Run Optimization
 - Health check at /health
 - Swagger documentation
+- Saga timeout cleanup scheduler
 ```
 
 #### Notify Service (:3014 / :8080) ✅
@@ -537,6 +547,122 @@ Event Examples:
 | **ML** | - | Sub | Sub | - | - | - |
 
 *Req: Request, Pub: Publish, Sub: Subscribe*
+
+## Saga Pattern (Distributed Transactions)
+
+### Overview
+예약 시스템은 Choreography 기반 Saga 패턴을 사용하여 booking-service와 course-service 간의 분산 트랜잭션을 관리합니다.
+
+### Booking Saga Flow
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant UAPI as User API
+    participant BOOK as Booking Service
+    participant NATS as NATS
+    participant COURSE as Course Service
+
+    U->>UAPI: POST /api/user/bookings
+    UAPI->>BOOK: booking.create (NATS)
+
+    Note over BOOK: 1. Idempotency check
+    Note over BOOK: 2. Create Booking (PENDING)
+    Note over BOOK: 3. Store OutboxEvent
+
+    BOOK->>NATS: slot.reserve (Outbox Processor)
+    NATS->>COURSE: slot.reserve
+
+    alt Slot Available
+        Note over COURSE: Optimistic Lock (version check)
+        Note over COURSE: Update bookedPlayers
+        COURSE->>NATS: slot.reserved
+        NATS->>BOOK: slot.reserved
+        Note over BOOK: Update status → CONFIRMED
+        BOOK->>NATS: booking.confirmed
+    else Slot Unavailable
+        COURSE->>NATS: slot.reserve.failed
+        NATS->>BOOK: slot.reserve.failed
+        Note over BOOK: Update status → FAILED
+    end
+
+    BOOK-->>UAPI: Booking Response
+    UAPI-->>U: Result
+```
+
+### Key Components
+
+| Component | Service | Purpose |
+|-----------|---------|---------|
+| **OutboxEvent** | booking-service | Transactional Outbox Pattern - 이벤트 발행 보장 |
+| **IdempotencyKey** | booking-service | UUID 기반 중복 요청 방지 |
+| **SagaHandlerService** | booking-service | Saga 이벤트 처리 (slot.reserved, slot.reserve.failed) |
+| **OutboxProcessorService** | booking-service | Outbox 이벤트 폴링 및 NATS 발행 |
+| **SagaSchedulerService** | booking-service | 타임아웃 예약 정리 (1분 주기) |
+| **GameSagaController** | course-service | slot.reserve/release 요청 처리 |
+
+### Booking States
+
+```
+PENDING → SLOT_RESERVED → CONFIRMED
+    ↓           ↓             ↓
+  FAILED      FAILED      CANCELLED
+              (timeout)
+```
+
+| Status | Description |
+|--------|-------------|
+| `PENDING` | 예약 생성됨, 슬롯 예약 대기 중 |
+| `SLOT_RESERVED` | 슬롯 예약 성공, 결제 대기 (미래 확장용) |
+| `CONFIRMED` | 예약 확정 완료 |
+| `FAILED` | Saga 실패 (슬롯 부족, 타임아웃 등) |
+| `CANCELLED` | 사용자 취소 |
+| `COMPLETED` | 라운드 완료 |
+
+### Optimistic Locking
+course-service의 GameTimeSlot에 `version` 필드를 사용하여 동시성 제어:
+
+```typescript
+// course-service: reserveSlotForSaga
+const updatedSlot = await tx.gameTimeSlot.updateMany({
+  where: {
+    id: timeSlotId,
+    version: currentVersion  // Optimistic lock
+  },
+  data: {
+    bookedPlayers: newBookedPlayers,
+    version: currentVersion + 1
+  }
+});
+
+if (updatedSlot.count === 0) {
+  throw new ConflictException('Concurrent modification detected');
+}
+```
+
+### Transactional Outbox Pattern
+예약 생성과 이벤트 발행을 동일 트랜잭션에서 처리:
+
+```typescript
+// booking-service: createBooking
+await this.prisma.$transaction(async (tx) => {
+  // 1. Create booking
+  const booking = await tx.booking.create({ ... });
+
+  // 2. Store outbox event (same transaction)
+  await tx.outboxEvent.create({
+    data: {
+      eventType: 'slot.reserve',
+      aggregateId: booking.id.toString(),
+      payload: slotReserveRequest,
+      status: 'PENDING',
+    }
+  });
+
+  return booking;
+});
+
+// OutboxProcessor polls and publishes
+```
 
 ## Database Architecture
 
@@ -779,7 +905,8 @@ graph LR
 ## Future Roadmap
 
 ### Phase 1: MVP Completion (Q1 2025)
-- [ ] Complete User API NATS integration
+- [x] Complete User API NATS integration
+- [x] Implement Saga pattern for booking data integrity
 - [ ] Implement booking flow in User WebApp
 - [ ] Integrate payment gateway
 - [ ] Basic search functionality
@@ -814,22 +941,26 @@ graph LR
 | TD-006 | Monorepo structure | 2024-06 | Code sharing, single source of truth | ✅ Implemented |
 | TD-007 | Prisma over TypeORM | 2024-07 | Better DX, type safety | ✅ Implemented |
 | TD-008 | GCP over AWS | 2024-08 | Regional presence, pricing | ✅ Decided |
+| TD-009 | Saga Pattern (Choreography) | 2025-12 | Distributed transaction for booking integrity | ✅ Implemented |
+| TD-010 | Transactional Outbox | 2025-12 | Reliable event publishing with atomicity | ✅ Implemented |
+| TD-011 | Optimistic Locking | 2025-12 | Concurrency control for slot reservations | ✅ Implemented |
 
 ---
 
-**Document Version**: 2.1.0
-**Last Updated**: 2025-10-09
-**Next Review**: 2025-11-01
+**Document Version**: 2.2.0
+**Last Updated**: 2025-12-29
+**Next Review**: 2026-01-15
 **Maintained By**: Platform Team
 
 *This document is the single source of truth for Park Golf Platform architecture.*
 
-## 📋 Recent Updates (2025-10-09)
-- Updated all technology stack versions to actual implementation
-- Updated service completion status (75% overall)
-- Added Cloud Run optimization details for all microservices
-- Updated Frontend stack (React 19.1, Tailwind CSS 4.1.8)
-- Added detailed status for User API (⚠️ NATS integration needs verification)
-- Added detailed status for Booking Service (⚠️ Payment gateway pending)
-- Updated database schema information based on actual Prisma schemas
-- Added priority labels for Search and ML services
+## 📋 Recent Updates (2025-12-29)
+- Overall completion updated to 85%
+- Added Saga Pattern (Distributed Transactions) section with detailed documentation
+- User API status updated to ✅ (NATS integration complete, no longer blocking)
+- Booking Service status updated to ✅ with Saga pattern details
+- Added Transactional Outbox Pattern documentation
+- Added Optimistic Locking documentation for course-service
+- Added booking state machine documentation (PENDING → CONFIRMED flow)
+- Updated key components table with Saga-related services
+- Payment gateway still pending (TossPayments/KakaoPay)

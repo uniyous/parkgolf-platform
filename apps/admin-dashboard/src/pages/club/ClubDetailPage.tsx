@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useClub } from '@/hooks';
-import type { CourseCombo } from '@/types/club';
+import { DataContainer, DeleteConfirmPopover } from '@/components/common';
+import type { CourseCombo, Course } from '@/types/club';
 import { CourseManagementTab } from '@/components/features/club/CourseManagementTab';
 import { BasicInfoTab } from '@/components/features/club/BasicInfoTab';
 import { OperationInfoTab } from '@/components/features/club/OperationInfoTab';
+import { courseApi } from '@/lib/api/courses';
 
 type TabType = 'basic' | 'courses' | 'operation';
 
@@ -13,9 +16,11 @@ export const ClubDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('courses');
   const [combos, setCombos] = useState<CourseCombo[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  
+
   // Redux hooks
   const {
     selectedClub,
@@ -32,18 +37,41 @@ export const ClubDetailPage: React.FC = () => {
   useEffect(() => {
     if (clubId) {
       const id = Number(clubId);
-      loadClubById(id); // 이미 courses 데이터가 포함됨
+      loadClubById(id);
     }
   }, [clubId, loadClubById]);
 
+  // 코스 목록 별도 조회
+  useEffect(() => {
+    const fetchCourses = async () => {
+      if (!clubId) return;
+
+      setCoursesLoading(true);
+      try {
+        const clubCourses = await courseApi.getCoursesByClub(Number(clubId));
+        // clubId로 필터링 (백엔드가 필터링 안 할 경우 대비)
+        const filteredCourses = clubCourses.filter(c => c.clubId === Number(clubId));
+        setCourses(filteredCourses as Course[]);
+      } catch (error) {
+        console.error('Failed to fetch courses:', error);
+        setCourses([]);
+      } finally {
+        setCoursesLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, [clubId]);
+
   // TODO: 18홀 조합 조회 추가 (향후 구현)
   useEffect(() => {
-    if (selectedClubCourses.length >= 2) {
+    const activeCourses = courses.length > 0 ? courses : selectedClubCourses;
+    if (activeCourses.length >= 2) {
       // 18홀 조합 생성 로직 추가
       // const combosData = await clubApi.getCombosForClub(Number(clubId));
       // setCombos(combosData);
     }
-  }, [selectedClubCourses]);
+  }, [courses, selectedClubCourses]);
 
   // 탭 변경 시 편집 모드 리셋
   useEffect(() => {
@@ -66,59 +94,43 @@ export const ClubDetailPage: React.FC = () => {
   // 골프장 삭제
   const handleDeleteClub = async () => {
     if (!selectedClub || isDeleting) return;
-    
-    const confirmed = window.confirm(
-      `"${selectedClub.name}" 골프장을 정말 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 연관된 모든 데이터가 함께 삭제됩니다.`
-    );
-    
-    if (confirmed) {
-      setIsDeleting(true);
-      try {
-        await removeClub(selectedClub.id);
-        alert('골프장이 성공적으로 삭제되었습니다.');
-        navigate('/clubs');
-      } catch (error) {
-        console.error('Failed to delete club:', error);
-        alert('골프장 삭제 중 오류가 발생했습니다.');
-      } finally {
-        setIsDeleting(false);
-      }
+
+    setIsDeleting(true);
+    try {
+      await removeClub(selectedClub.id);
+      toast.success('골프장이 성공적으로 삭제되었습니다.');
+      navigate('/clubs');
+    } catch (error) {
+      console.error('Failed to delete club:', error);
+      toast.error('골프장 삭제 중 오류가 발생했습니다.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  if (loading.detail) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (errors.detail || !selectedClub) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16.5c-.77.833.192 3 1.732 3z" />
-          </svg>
-          <h3 className="mt-2 text-lg font-medium text-gray-900">골프장 정보를 찾을 수 없습니다</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            {errors.detail || '골프장 정보를 불러오는 중 문제가 발생했습니다.'}
-          </p>
-          <div className="mt-6">
-            <button
-              onClick={() => navigate('/clubs')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              목록으로 돌아가기
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
+    <DataContainer
+      isLoading={loading.detail}
+      isEmpty={!selectedClub && !loading.detail}
+      emptyIcon={
+        <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16.5c-.77.833.192 3 1.732 3z" />
+        </svg>
+      }
+      emptyMessage="골프장 정보를 찾을 수 없습니다"
+      emptyDescription={errors.detail || '골프장 정보를 불러오는 중 문제가 발생했습니다.'}
+      emptyAction={
+        <button
+          onClick={() => navigate('/clubs')}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          목록으로 돌아가기
+        </button>
+      }
+      loadingMessage="골프장 정보를 불러오는 중..."
+      className="min-h-[16rem]"
+    >
+      {selectedClub && (
     <div className="space-y-6">
       {/* 헤더 */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -142,8 +154,8 @@ export const ClubDetailPage: React.FC = () => {
                   </svg>
                   {selectedClub.location}
                 </p>
-                <p className="text-gray-600">⛳ {selectedClub.totalHoles}홀</p>
-                <p className="text-gray-600">🎯 {selectedClub.totalCourses}코스</p>
+                <p className="text-gray-600">⛳ {courses.reduce((sum, course) => sum + (course.holeCount || course.holes?.length || 0), 0) || selectedClub.totalHoles || 0}홀</p>
+                <p className="text-gray-600">🎯 {courses.length || selectedClub.totalCourses || 0}코스</p>
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                   selectedClub.status === 'ACTIVE'
                     ? 'bg-green-100 text-green-800'
@@ -176,20 +188,23 @@ export const ClubDetailPage: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
             </button>
-            <button 
-              onClick={handleDeleteClub}
-              disabled={isDeleting}
-              className="p-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title={isDeleting ? "삭제 중..." : "골프장 삭제"}
+            <DeleteConfirmPopover
+              targetName={selectedClub.name}
+              message={`"${selectedClub.name}" 골프장을 삭제하시겠습니까? 연관된 모든 데이터가 함께 삭제됩니다.`}
+              isDeleting={isDeleting}
+              onConfirm={handleDeleteClub}
+              side="bottom"
+              align="end"
             >
-              {isDeleting ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-700"></div>
-              ) : (
+              <button
+                className="p-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
+                title="골프장 삭제"
+              >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
-              )}
-            </button>
+              </button>
+            </DeleteConfirmPopover>
           </div>
         </div>
 
@@ -249,11 +264,20 @@ export const ClubDetailPage: React.FC = () => {
           <BasicInfoTab club={selectedClub} onUpdate={selectClub} initialEditMode={editMode} />
         )}
         {activeTab === 'courses' && (
-          <CourseManagementTab 
-            club={selectedClub} 
-            courses={selectedClubCourses} 
+          <CourseManagementTab
+            club={selectedClub}
+            courses={courses.length > 0 ? courses : selectedClubCourses}
             combos={combos}
-            onCoursesUpdate={() => loadClubById(Number(clubId))}
+            onCoursesUpdate={async () => {
+              // 코스 목록 다시 가져오기
+              try {
+                const clubCourses = await courseApi.getCoursesByClub(Number(clubId));
+                const filteredCourses = clubCourses.filter(c => c.clubId === Number(clubId));
+                setCourses(filteredCourses as Course[]);
+              } catch (error) {
+                console.error('Failed to refresh courses:', error);
+              }
+            }}
             onCombosUpdate={setCombos}
           />
         )}
@@ -261,7 +285,8 @@ export const ClubDetailPage: React.FC = () => {
           <OperationInfoTab club={selectedClub} onUpdate={selectClub} />
         )}
       </div>
-
     </div>
+      )}
+    </DataContainer>
   );
 };

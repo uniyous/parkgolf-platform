@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useUpdateGame, useClubs, useCoursesByClub } from '@/hooks/queries';
+import { toast } from 'sonner';
+import { useUpdateGameMutation, useClubsQuery, useCoursesByClubQuery } from '@/hooks/queries';
 import type { Game, UpdateGameDto } from '@/lib/api/gamesApi';
 
 interface GameBasicInfoTabProps {
@@ -25,9 +26,9 @@ export const GameBasicInfoTab: React.FC<GameBasicInfoTabProps> = ({ game, onUpda
     courseIds: game.courseIds,
   });
 
-  const updateGameMutation = useUpdateGame();
-  const { data: clubsData } = useClubs();
-  const { data: courses } = useCoursesByClub(game.clubId);
+  const updateGameMutation = useUpdateGameMutation();
+  const { data: clubsData } = useClubsQuery();
+  const { data: courses } = useCoursesByClubQuery(game.clubId);
 
   const clubs = clubsData?.data || [];
   const clubName = clubs.find((c) => c.id === game.clubId)?.name || `Club ${game.clubId}`;
@@ -41,9 +42,10 @@ export const GameBasicInfoTab: React.FC<GameBasicInfoTabProps> = ({ game, onUpda
       await updateGameMutation.mutateAsync({ id: game.id, data: formData });
       setIsEditing(false);
       onUpdate();
+      toast.success('라운드 정보가 수정되었습니다.');
     } catch (error) {
       console.error('Failed to update game:', error);
-      alert('라운드 정보 수정에 실패했습니다.');
+      toast.error('라운드 정보 수정에 실패했습니다.');
     }
   };
 
@@ -236,7 +238,7 @@ export const GameBasicInfoTab: React.FC<GameBasicInfoTabProps> = ({ game, onUpda
           </label>
           <div className="flex flex-wrap gap-2">
             {courses && courses.length > 0 ? (
-              game.courseIds.map((courseId) => {
+              (game.courseIds || []).map((courseId) => {
                 const course = courses.find((c) => c.id === courseId);
                 return (
                   <span
@@ -248,7 +250,7 @@ export const GameBasicInfoTab: React.FC<GameBasicInfoTabProps> = ({ game, onUpda
                 );
               })
             ) : (
-              game.courseIds.map((courseId) => (
+              (game.courseIds || []).map((courseId) => (
                 <span
                   key={courseId}
                   className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm"

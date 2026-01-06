@@ -1,0 +1,26 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:3002",
+      "localStorage": [
+        {
+          "name": "token",
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAcGFya2dvbGYuY29tIiwic3ViIjoyMSwicm9sZXMiOlsiVVNFUiJdLCJ0eXBlIjoidXNlciIsImlhdCI6MTc2NzU5NDYyMywiZXhwIjoxNzY3NTk4MjIzfQ.u3gnaIcIGC_PSpEMwwcLyToN5-MYwRSvyLHp5OLztik"
+        },
+        {
+          "name": "refreshToken",
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAcGFya2dvbGYuY29tIiwic3ViIjoyMSwicm9sZXMiOlsiVVNFUiJdLCJ0eXBlIjoidXNlciIsImlhdCI6MTc2NzU5NDYyMywiZXhwIjoxNzY4MTk5NDIzfQ.85Lhm7mRhUKpZgCArK3bZ7gPy2wZyTWrq7JuJuJbuu4"
+        },
+        {
+          "name": "user",
+          "value": "{\"id\":21,\"email\":\"test@parkgolf.com\",\"name\":\"테스트사용자\",\"phoneNumber\":\"\",\"createdAt\":\"2026-01-05T06:30:23.163Z\"}"
+        },
+        {
+          "name": "auth-storage",
+          "value": "{\"state\":{\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAcGFya2dvbGYuY29tIiwic3ViIjoyMSwicm9sZXMiOlsiVVNFUiJdLCJ0eXBlIjoidXNlciIsImlhdCI6MTc2NzU5NDYyMywiZXhwIjoxNzY3NTk4MjIzfQ.u3gnaIcIGC_PSpEMwwcLyToN5-MYwRSvyLHp5OLztik\",\"refreshToken\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAcGFya2dvbGYuY29tIiwic3ViIjoyMSwicm9sZXMiOlsiVVNFUiJdLCJ0eXBlIjoidXNlciIsImlhdCI6MTc2NzU5NDYyMywiZXhwIjoxNzY4MTk5NDIzfQ.85Lhm7mRhUKpZgCArK3bZ7gPy2wZyTWrq7JuJuJbuu4\"},\"version\":0}"
+        }
+      ]
+    }
+  ]
+}

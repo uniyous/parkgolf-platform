@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useCreateAdmin, useUpdateAdmin } from '@/hooks/queries';
+import { useCreateAdminMutation, useUpdateAdminMutation } from '@/hooks/queries';
 import { Modal } from '@/components/ui';
 import type { Admin, AdminRole } from '@/types';
 
@@ -32,8 +32,8 @@ const initialFormData: FormData = {
 };
 
 export const AdminFormModal: React.FC<AdminFormModalProps> = ({ open, admin, onClose }) => {
-  const createAdmin = useCreateAdmin();
-  const updateAdmin = useUpdateAdmin();
+  const createAdmin = useCreateAdminMutation();
+  const updateAdmin = useUpdateAdminMutation();
   const isEditing = !!admin;
 
   const [formData, setFormData] = useState<FormData>(initialFormData);
@@ -104,7 +104,7 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({ open, admin, onC
           data: {
             email: formData.email,
             name: formData.name,
-            role: formData.role,
+            roleCode: formData.role,
             isActive: formData.isActive,
             phone: formData.phone || undefined,
             department: formData.department || undefined,
@@ -116,7 +116,7 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({ open, admin, onC
           email: formData.email,
           name: formData.name,
           password: formData.password,
-          role: formData.role,
+          roleCode: formData.role,
           isActive: formData.isActive,
           phone: formData.phone || undefined,
           department: formData.department || undefined,

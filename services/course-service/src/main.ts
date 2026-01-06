@@ -2,7 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
-import { GlobalRpcExceptionFilter } from './common/exception/rpc-exception.filter';
+import { UnifiedExceptionFilter } from './common/exceptions';
+import { ResponseTransformInterceptor } from './common/interceptor/response-transform.interceptor';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -13,6 +14,9 @@ async function bootstrap() {
     // Create HTTP app first for health check
     logger.log('📦 Creating NestJS application...');
     const app = await NestFactory.create(AppModule);
+
+    // Global unified exception filter (handles both HTTP and RPC)
+    app.useGlobalFilters(new UnifiedExceptionFilter());
 
     // Global pipes for validation
     logger.log('🔧 Setting up global validation pipes...');
@@ -36,25 +40,29 @@ async function bootstrap() {
     logger.log(`🚀 Course Service is running on port ${port}`);
     logger.log(`🩺 Health check: http://localhost:${port}/health`);
 
+    // Register global interceptor BEFORE connecting microservice
+    app.useGlobalInterceptors(new ResponseTransformInterceptor());
+
     // Connect NATS microservice asynchronously (optional for Cloud Run)
     if (process.env.NATS_URL) {
       logger.log(`📡 NATS_URL found: ${process.env.NATS_URL}`);
       setImmediate(async () => {
         try {
           logger.log('🔗 Attempting NATS connection...');
-          const microservice = app.connectMicroservice<MicroserviceOptions>({
-            transport: Transport.NATS,
-            options: {
-              servers: [process.env.NATS_URL],
-              queue: 'course-service',
-              reconnect: true,
-              maxReconnectAttempts: 3,
-              reconnectTimeWait: 2000,
+          // inheritAppConfig: true - inherit global pipes, interceptors, guards, filters
+          app.connectMicroservice<MicroserviceOptions>(
+            {
+              transport: Transport.NATS,
+              options: {
+                servers: [process.env.NATS_URL],
+                queue: 'course-service',
+                reconnect: true,
+                maxReconnectAttempts: 3,
+                reconnectTimeWait: 2000,
+              },
             },
-          });
-
-          // Global filters for microservice
-          app.useGlobalFilters(new GlobalRpcExceptionFilter());
+            { inheritAppConfig: true },
+          );
 
           await app.startAllMicroservices();
           logger.log(`✅ NATS connected successfully to: ${process.env.NATS_URL}`);

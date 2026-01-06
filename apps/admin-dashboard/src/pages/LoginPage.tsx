@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoginForm } from '@/components/auth';
-import { useLogin } from '@/hooks/queries/auth';
+import { useLoginMutation } from '@/hooks/queries/auth';
 import { useAuthStore } from '@/stores';
 
 export const LoginPage: React.FC = () => {
@@ -10,7 +10,7 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
 
   const { isAuthenticated, error: storeError } = useAuthStore();
-  const loginMutation = useLogin();
+  const loginMutation = useLoginMutation();
 
   // 이미 로그인된 경우 대시보드로 리다이렉트
   useEffect(() => {

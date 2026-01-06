@@ -3,7 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { BaseExceptionFilter } from './common/exception/base-exception.filter';
+import { HttpExceptionFilter } from './common/exceptions';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -12,8 +12,8 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
 
-    // Global exception filter
-    app.useGlobalFilters(new BaseExceptionFilter());
+    // Global HTTP exception filter (BFF layer - HTTP only)
+    app.useGlobalFilters(new HttpExceptionFilter());
 
     // NATS client is configured in app.module.ts, not as microservice
     const natsUrl = configService.get<string>('NATS_URL') || 'nats://localhost:4222';
@@ -38,6 +38,10 @@ async function bootstrap() {
         'http://localhost:3002', // Admin frontend port 3
         'http://localhost:5173', // Vite default
         /^https:\/\/.*\.run\.app$/, // Cloud Run domains
+        // Firebase Hosting domains
+        'https://parkgolf-admin.web.app',
+        'https://parkgolf-admin-dev.web.app',
+        /^https:\/\/parkgolf-admin.*\.firebaseapp\.com$/,
       ],
       credentials: true,
     });

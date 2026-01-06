@@ -13,6 +13,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { GamesService } from './games.service';
+import { SearchGamesDto } from './dto/search-games.dto';
 
 @ApiTags('Games')
 @Controller('api/user/games')
@@ -34,6 +35,22 @@ export class GamesController {
   ) {
     this.logger.log(`Fetching games - clubId: ${clubId || 'all'}, page: ${page}, limit: ${limit}`);
     return this.gamesService.getGames(clubId, page, limit);
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: '게임 검색' })
+  @ApiQuery({ name: 'search', required: false, description: '검색어 (게임명, 클럽명, 지역)' })
+  @ApiQuery({ name: 'minPrice', required: false, description: '최소 가격' })
+  @ApiQuery({ name: 'maxPrice', required: false, description: '최대 가격' })
+  @ApiQuery({ name: 'minPlayers', required: false, description: '최소 인원수' })
+  @ApiQuery({ name: 'sortBy', required: false, enum: ['price', 'name', 'createdAt'], description: '정렬 기준' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['asc', 'desc'], description: '정렬 순서' })
+  @ApiQuery({ name: 'page', required: false, description: '페이지 번호' })
+  @ApiQuery({ name: 'limit', required: false, description: '페이지당 항목 수' })
+  @ApiResponse({ status: 200, description: '게임 검색 결과를 성공적으로 조회했습니다.' })
+  async searchGames(@Query() searchDto: SearchGamesDto) {
+    this.logger.log(`Searching games - search: ${searchDto.search || 'all'}`);
+    return this.gamesService.searchGames(searchDto);
   }
 
   @Get('club/:clubId')

@@ -1,39 +1,44 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bookingApi, type BookingFilters } from '@/lib/api/bookingApi';
 import { bookingKeys } from './keys';
+import { showSuccessToast } from '@/lib/errors';
 import type { CreateBookingDto, UpdateBookingDto } from '@/types';
 
 // ============================================
 // Queries
 // ============================================
 
-export const useBookings = (filters?: BookingFilters, page = 1, limit = 20) => {
+export const useBookingsQuery = (filters?: BookingFilters, page = 1, limit = 20) => {
   return useQuery({
     queryKey: bookingKeys.list({ ...filters, page, limit } as BookingFilters),
     queryFn: () => bookingApi.getBookings(filters || {}, page, limit),
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const useBooking = (id: number) => {
+export const useBookingQuery = (id: number) => {
   return useQuery({
     queryKey: bookingKeys.detail(id),
     queryFn: () => bookingApi.getBookingById(id),
     enabled: !!id,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const useBookingStats = () => {
+export const useBookingStatsQuery = () => {
   return useQuery({
     queryKey: bookingKeys.stats(),
     queryFn: () => bookingApi.getBookingStats(),
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const useCalendarBookings = (courseId: number, month: string) => {
+export const useCalendarBookingsQuery = (courseId: number, month: string) => {
   return useQuery({
     queryKey: bookingKeys.calendar(month),
     queryFn: () => bookingApi.getCalendarData(courseId, month),
     enabled: !!courseId && !!month,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -41,7 +46,7 @@ export const useCalendarBookings = (courseId: number, month: string) => {
 // Mutations
 // ============================================
 
-export const useCreateBooking = () => {
+export const useCreateBookingMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -49,11 +54,13 @@ export const useCreateBooking = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bookingKeys.lists() });
       queryClient.invalidateQueries({ queryKey: bookingKeys.stats() });
+      showSuccessToast('예약이 생성되었습니다.');
     },
+    meta: { errorMessage: '예약 생성에 실패했습니다.' },
   });
 };
 
-export const useUpdateBooking = () => {
+export const useUpdateBookingMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -62,28 +69,34 @@ export const useUpdateBooking = () => {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: bookingKeys.lists() });
       queryClient.invalidateQueries({ queryKey: bookingKeys.detail(id) });
+      showSuccessToast('예약 정보가 수정되었습니다.');
     },
+    meta: { errorMessage: '예약 정보 수정에 실패했습니다.' },
   });
 };
 
-export const useCancelBooking = () => {
+export const useCancelBookingMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (id: number) => bookingApi.cancelBooking(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+      showSuccessToast('예약이 취소되었습니다.');
     },
+    meta: { errorMessage: '예약 취소에 실패했습니다.' },
   });
 };
 
-export const useConfirmBooking = () => {
+export const useConfirmBookingMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (id: number) => bookingApi.confirmBooking(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+      showSuccessToast('예약이 확정되었습니다.');
     },
+    meta: { errorMessage: '예약 확정에 실패했습니다.' },
   });
 };

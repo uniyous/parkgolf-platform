@@ -1,8 +1,8 @@
-import { Controller, Logger } from '@nestjs/common';
+import { Controller, Logger, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { successResponse, errorResponse } from '../common/utils/response.util';
+import { NatsResponse } from '../common/types/response.types';
 
 /**
  * Authentication NATS Controller
@@ -25,76 +25,56 @@ export class AuthNatsController {
 
   @MessagePattern('auth.user.login')
   async userLogin(@Payload() loginDto: LoginDto) {
-    try {
-      this.logger.log(`User login request: ${loginDto.email}`);
+    this.logger.log(`User login request: ${loginDto.email}`);
 
-      const user = await this.authService.validateUser(loginDto.email, loginDto.password);
-      if (!user) {
-        return errorResponse('INVALID_CREDENTIALS', 'Invalid email or password');
-      }
-
-      const result = await this.authService.login(user);
-      this.logger.log(`User login successful: ${loginDto.email}`);
-      return successResponse(result);
-    } catch (error) {
-      this.logger.error(`User login failed: ${loginDto.email}`, error);
-      return errorResponse('AUTH_USER_LOGIN_FAILED', error.message || 'Login failed');
+    const user = await this.authService.validateUser(loginDto.email, loginDto.password);
+    if (!user) {
+      throw new UnauthorizedException('Invalid email or password');
     }
+
+    const result = await this.authService.login(user);
+    this.logger.log(`User login successful: ${loginDto.email}`);
+    return NatsResponse.success(result);
   }
 
   @MessagePattern('auth.user.validate')
   async validateUserToken(@Payload() payload: { token: string }) {
-    try {
-      this.logger.log('User token validation request');
-      const decoded = await this.authService.validateToken(payload.token);
+    this.logger.log('User token validation request');
+    const decoded = await this.authService.validateToken(payload.token);
 
-      // Ensure this is a user token
-      if (decoded.user?.type === 'admin') {
-        return errorResponse('INVALID_TOKEN_TYPE', 'Expected user token, got admin token');
-      }
-
-      return successResponse(decoded);
-    } catch (error) {
-      this.logger.error('User token validation failed', error);
-      return errorResponse('AUTH_VALIDATION_FAILED', error.message || 'Token validation failed');
+    // Ensure this is a user token
+    if (decoded.user?.type === 'admin') {
+      throw new BadRequestException('Expected user token, got admin token');
     }
+
+    return NatsResponse.success(decoded);
   }
 
   @MessagePattern('auth.user.refresh')
   async refreshUserToken(@Payload() payload: { refreshToken: string }) {
-    try {
-      this.logger.log('User token refresh request');
-      const result = await this.authService.refreshToken(payload.refreshToken);
+    this.logger.log('User token refresh request');
+    const result = await this.authService.refreshToken(payload.refreshToken);
 
-      // Ensure this is a user token
-      if (result.user?.type === 'admin') {
-        return errorResponse('INVALID_TOKEN_TYPE', 'Expected user token, got admin token');
-      }
-
-      return successResponse(result);
-    } catch (error) {
-      this.logger.error('User token refresh failed', error);
-      return errorResponse('AUTH_REFRESH_FAILED', error.message || 'Token refresh failed');
+    // Ensure this is a user token
+    if (result.user?.type === 'admin') {
+      throw new BadRequestException('Expected user token, got admin token');
     }
+
+    return NatsResponse.success(result);
   }
 
   @MessagePattern('auth.user.me')
   async getCurrentUser(@Payload() payload: { token: string }) {
-    try {
-      this.logger.log('Get current user request');
-      const decoded = await this.authService.validateToken(payload.token);
+    this.logger.log('Get current user request');
+    const decoded = await this.authService.validateToken(payload.token);
 
-      // Ensure this is a user token
-      if (decoded.user?.type === 'admin') {
-        return errorResponse('INVALID_TOKEN_TYPE', 'Expected user token, got admin token');
-      }
-
-      const userInfo = await this.authService.getCurrentUser(decoded.user);
-      return successResponse(userInfo);
-    } catch (error) {
-      this.logger.error('Get current user failed', error);
-      return errorResponse('GET_CURRENT_USER_FAILED', error.message || 'Failed to get current user');
+    // Ensure this is a user token
+    if (decoded.user?.type === 'admin') {
+      throw new BadRequestException('Expected user token, got admin token');
     }
+
+    const userInfo = await this.authService.getCurrentUser(decoded.user);
+    return NatsResponse.success(userInfo);
   }
 
   // ============================================
@@ -103,74 +83,60 @@ export class AuthNatsController {
 
   @MessagePattern('auth.admin.login')
   async adminLogin(@Payload() loginDto: LoginDto) {
-    try {
-      this.logger.log(`Admin login request: ${loginDto.email}`);
+    const startTime = Date.now();
+    this.logger.log(`[PERF] auth-service adminLogin START - email: ${loginDto.email}`);
 
-      const admin = await this.authService.validateAdmin(loginDto.email, loginDto.password);
-      if (!admin) {
-        return errorResponse('INVALID_CREDENTIALS', 'Invalid email or password');
-      }
+    const validateStartTime = Date.now();
+    const admin = await this.authService.validateAdmin(loginDto.email, loginDto.password);
+    this.logger.log(`[PERF] auth-service validateAdmin: ${Date.now() - validateStartTime}ms`);
 
-      const result = await this.authService.adminLogin(admin);
-      this.logger.log(`Admin login successful: ${loginDto.email}`);
-      return successResponse(result);
-    } catch (error) {
-      this.logger.error(`Admin login failed: ${loginDto.email}`, error);
-      return errorResponse('AUTH_ADMIN_LOGIN_FAILED', error.message || 'Admin login failed');
+    if (!admin) {
+      this.logger.log(`[PERF] auth-service adminLogin FAILED (invalid credentials) - total: ${Date.now() - startTime}ms`);
+      throw new UnauthorizedException('Invalid email or password');
     }
+
+    const loginStartTime = Date.now();
+    const result = await this.authService.adminLogin(admin);
+    this.logger.log(`[PERF] auth-service adminLogin (token gen): ${Date.now() - loginStartTime}ms`);
+
+    this.logger.log(`[PERF] auth-service adminLogin SUCCESS - total: ${Date.now() - startTime}ms`);
+    return NatsResponse.success(result);
   }
 
   @MessagePattern('auth.admin.validate')
   async validateAdminToken(@Payload() payload: { token: string }) {
-    try {
-      this.logger.log('Admin token validation request');
-      const decoded = await this.authService.validateToken(payload.token);
+    this.logger.log('Admin token validation request');
+    const decoded = await this.authService.validateToken(payload.token);
 
-      // Ensure this is an admin token
-      if (decoded.user?.type !== 'admin') {
-        return errorResponse('INVALID_TOKEN_TYPE', 'Expected admin token, got user token');
-      }
-
-      return successResponse(decoded);
-    } catch (error) {
-      this.logger.error('Admin token validation failed', error);
-      return errorResponse('AUTH_VALIDATION_FAILED', error.message || 'Token validation failed');
+    // Ensure this is an admin token
+    if (decoded.user?.type !== 'admin') {
+      throw new BadRequestException('Expected admin token, got user token');
     }
+
+    return NatsResponse.success(decoded);
   }
 
   @MessagePattern('auth.admin.refresh')
   async refreshAdminToken(@Payload() payload: { refreshToken: string }) {
-    try {
-      this.logger.log('Admin token refresh request');
-      const result = await this.authService.adminRefreshToken(payload.refreshToken);
-      return successResponse(result);
-    } catch (error) {
-      this.logger.error('Admin token refresh failed', error);
-      return errorResponse('AUTH_REFRESH_FAILED', error.message || 'Token refresh failed');
-    }
+    this.logger.log('Admin token refresh request');
+    const result = await this.authService.adminRefreshToken(payload.refreshToken);
+    return NatsResponse.success(result);
   }
 
   @MessagePattern('auth.admin.me')
   async getCurrentAdmin(@Payload() payload: { token: string }) {
-    try {
-      this.logger.log('Get current admin request');
-      const decoded = await this.authService.validateToken(payload.token);
-      this.logger.debug(`Token decoded: ${JSON.stringify({ type: decoded.user?.type, sub: decoded.user?.sub })}`);
+    this.logger.log('Get current admin request');
+    const decoded = await this.authService.validateToken(payload.token);
+    this.logger.debug(`Token decoded: ${JSON.stringify({ type: decoded.user?.type, sub: decoded.user?.sub })}`);
 
-      // Ensure this is an admin token
-      if (decoded.user?.type !== 'admin') {
-        this.logger.warn(`Invalid token type: ${decoded.user?.type}`);
-        return errorResponse('INVALID_TOKEN_TYPE', 'Expected admin token, got user token');
-      }
-
-      const adminInfo = await this.authService.getCurrentUser(decoded.user);
-      this.logger.debug(`Admin info retrieved: ${JSON.stringify({ id: adminInfo.id, email: adminInfo.email, roles: adminInfo.roles })}`);
-      const response = successResponse(adminInfo);
-      this.logger.debug(`auth.admin.me response: success=${response.success}`);
-      return response;
-    } catch (error) {
-      this.logger.error('Get current admin failed', error);
-      return errorResponse('GET_CURRENT_ADMIN_FAILED', error.message || 'Failed to get current admin');
+    // Ensure this is an admin token
+    if (decoded.user?.type !== 'admin') {
+      this.logger.warn(`Invalid token type: ${decoded.user?.type}`);
+      throw new BadRequestException('Expected admin token, got user token');
     }
+
+    const adminInfo = await this.authService.getCurrentUser(decoded.user);
+    this.logger.debug(`Admin info retrieved: ${JSON.stringify({ id: adminInfo.id, email: adminInfo.email, roles: adminInfo.roles })}`);
+    return NatsResponse.success(adminInfo);
   }
 }

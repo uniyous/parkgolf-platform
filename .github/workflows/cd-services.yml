@@ -193,16 +193,30 @@ jobs:
           echo "image=${IMAGE}" >> $GITHUB_OUTPUT
 
           # Environment-specific settings
+          # Note: min_instances=1 prevents cold start, required for NATS microservices
+          # Cold start causes NATS reconnection delay which breaks microservice communication
           if [ "$ENV" == "prod" ]; then
             echo "min_instances=1" >> $GITHUB_OUTPUT
             echo "max_instances=10" >> $GITHUB_OUTPUT
             echo "memory=1Gi" >> $GITHUB_OUTPUT
             echo "cpu=2" >> $GITHUB_OUTPUT
           else
-            echo "min_instances=0" >> $GITHUB_OUTPUT
+            echo "min_instances=1" >> $GITHUB_OUTPUT
             echo "max_instances=2" >> $GITHUB_OUTPUT
             echo "memory=512Mi" >> $GITHUB_OUTPUT
             echo "cpu=1" >> $GITHUB_OUTPUT
+          fi
+
+          # CPU throttling setting
+          # --no-cpu-throttling is required for:
+          # - auth-service: bcrypt is CPU-intensive, throttling causes 10-100x slowdown
+          # - course-service: Saga transaction processing requires consistent CPU
+          # - booking-service: Saga transaction processing requires consistent CPU
+          SERVICE="${{ matrix.service }}"
+          if [ "$SERVICE" == "auth-service" ] || [ "$SERVICE" == "course-service" ] || [ "$SERVICE" == "booking-service" ]; then
+            echo "cpu_throttling=false" >> $GITHUB_OUTPUT
+          else
+            echo "cpu_throttling=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Deploy to Cloud Run
@@ -241,6 +255,13 @@ jobs:
             VPC_CONNECTOR="projects/parkgolf-uniyous/locations/asia-northeast3/connectors/parkgolf-connector-dev"
           fi
 
+          # Set CPU throttling flag
+          if [ "${{ steps.vars.outputs.cpu_throttling }}" == "false" ]; then
+            CPU_THROTTLING_FLAG="--no-cpu-throttling"
+          else
+            CPU_THROTTLING_FLAG="--cpu-throttling"
+          fi
+
           gcloud run deploy ${{ steps.vars.outputs.service_name }} \
             --image ${{ steps.vars.outputs.image }} \
             --region ${{ env.REGION }} \
@@ -253,6 +274,7 @@ jobs:
             --timeout 300 \
             --vpc-connector "${VPC_CONNECTOR}" \
             --vpc-egress all-traffic \
+            ${CPU_THROTTLING_FLAG} \
             --set-env-vars "${ENV_VARS}"
 
       - name: Get Service URL

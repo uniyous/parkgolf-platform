@@ -1,6 +1,27 @@
+/**
+ * Club 관련 타입 정의
+ *
+ * Course, Hole, TeeBox 등은 @/types (index.ts)에서 가져오고,
+ * Club, CourseCombo 등 클럽 전용 타입만 정의합니다.
+ */
+
+import type {
+  Course,
+  Hole,
+  TeeBox,
+  CourseStatus,
+  CreateCourseDto,
+  UpdateCourseDto,
+  CreateHoleDto,
+  UpdateHoleDto,
+  Pagination,
+} from '@/types';
+
+// Re-export for convenience
+export type { Course, Hole, TeeBox, CourseStatus, CreateCourseDto, UpdateCourseDto, CreateHoleDto, UpdateHoleDto };
+
 // 상태 타입 정의
 export type ClubStatus = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE' | 'SEASONAL_CLOSED';
-export type CourseStatus = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
 export type SeasonType = 'peak' | 'regular' | 'off';
 
 // 기본 엔티티 타입
@@ -37,54 +58,7 @@ export interface Club {
   courses?: Course[];
 }
 
-export interface Course {
-  id: number;
-  name: string;
-  code: string;
-  subtitle?: string;
-  description?: string;
-  holeCount: number;
-  par: number;
-  totalDistance?: number;
-  difficulty: number;
-  scenicRating: number;
-  courseRating?: number;
-  slopeRating?: number;
-  imageUrl?: string;
-  status: CourseStatus;
-  clubId: number;
-  companyId: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  holes?: Hole[];
-}
-
-export interface Hole {
-  id: number;
-  holeNumber: number;
-  par: number;
-  distance: number;
-  handicap: number;
-  description?: string;
-  tips?: string;
-  imageUrl?: string;
-  courseId: number;
-  createdAt: string;
-  updatedAt: string;
-  teeBoxes?: TeeBox[];
-}
-
-export interface TeeBox {
-  id: number;
-  name: string;
-  color: string;
-  distance: number;
-  difficulty: string;
-  holeId: number;
-  createdAt: string;
-  updatedAt: string;
-}
+// Course, Hole, TeeBox 타입은 @/types에서 import (상단 참조)
 
 export interface CourseCombo {
   id: number;
@@ -116,7 +90,10 @@ export interface GolfTimeSlot {
   };
 }
 
-// DTO 타입 (Create/Update)
+// ============================================
+// Club DTOs (Club 전용 - Course/Hole DTO는 @/types에서 import)
+// ============================================
+
 export interface CreateClubDto {
   name: string;
   companyId: number;
@@ -155,61 +132,6 @@ export interface UpdateClubDto {
   isActive?: boolean;
 }
 
-export interface CreateCourseDto {
-  name: string;
-  code: string;
-  subtitle?: string;
-  description?: string;
-  holeCount?: number;
-  par?: number;
-  totalDistance?: number;
-  difficulty?: number;
-  scenicRating?: number;
-  courseRating?: number;
-  slopeRating?: number;
-  imageUrl?: string;
-  golfClubId: number;
-  companyId: number;
-}
-
-export interface UpdateCourseDto {
-  name?: string;
-  code?: string;
-  subtitle?: string;
-  description?: string;
-  holeCount?: number;
-  par?: number;
-  totalDistance?: number;
-  difficulty?: number;
-  scenicRating?: number;
-  courseRating?: number;
-  slopeRating?: number;
-  imageUrl?: string;
-  status?: CourseStatus;
-  isActive?: boolean;
-}
-
-export interface CreateHoleDto {
-  holeNumber: number;
-  par: number;
-  distance: number;
-  handicap: number;
-  description?: string;
-  tips?: string;
-  imageUrl?: string;
-  courseId: number;
-}
-
-export interface UpdateHoleDto {
-  holeNumber?: number;
-  par?: number;
-  distance?: number;
-  handicap?: number;
-  description?: string;
-  tips?: string;
-  imageUrl?: string;
-}
-
 // 필터 타입
 export interface ClubFilters {
   search?: string;
@@ -220,6 +142,9 @@ export interface ClubFilters {
   maxHoles?: number;
   facilities?: string[];
   isActive?: boolean;
+  page?: number;
+  limit?: number;
+  [key: string]: unknown;
 }
 
 export interface TimeSlotFilters {
@@ -307,10 +232,9 @@ export interface ComboAnalytics {
   peakHours: string[];
 }
 
-// 유틸리티 타입
-export interface PaginationInfo {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
+// ============================================
+// 유틸리티 타입 (Pagination은 @/types/common에서 import)
+// ============================================
+
+/** @deprecated Pagination 사용 권장 (import from '@/types') */
+export type PaginationInfo = Pagination;

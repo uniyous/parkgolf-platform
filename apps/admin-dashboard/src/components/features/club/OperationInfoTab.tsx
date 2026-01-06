@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import type { Club, ClubStats, ComboAnalytics } from '@/types/club';
 import { useClub } from '@/hooks';
 
@@ -78,12 +79,13 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
       });
       if (result) {
         onUpdate(result);
+        toast.success('시즌 정보가 업데이트되었습니다.');
       } else {
-        alert('시즌 정보 업데이트에 실패했습니다.');
+        toast.error('시즌 정보 업데이트에 실패했습니다.');
       }
     } catch (error) {
       console.error('Failed to update season info:', error);
-      alert('시즌 정보 업데이트에 실패했습니다.');
+      toast.error('시즌 정보 업데이트에 실패했습니다.');
     }
   };
 

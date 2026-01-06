@@ -56,12 +56,15 @@ export class CourseService {
   }
 
   async findAll(query: FindCoursesQueryDto): Promise<{ data: Course[]; total: number; page: number; limit: number }> {
-    const { companyId, name, status, page = 1, limit = 10 } = query;
+    const { companyId, clubId, name, status, page = 1, limit = 10, includeHoles = false } = query;
     this.logger.log(`Fetching courses with query: ${JSON.stringify(query)}`);
 
     const where: Prisma.CourseWhereInput = {};
     if (companyId) {
       where.companyId = companyId;
+    }
+    if (clubId) {
+      where.clubId = clubId;
     }
     if (name) {
       where.name = { contains: name, mode: 'insensitive' }; // 대소문자 구분 없이 부분 일치 검색
@@ -72,13 +75,20 @@ export class CourseService {
 
     const skip = (page - 1) * limit;
 
+    // includeHoles가 true이면 holes 정보 포함
+    const include = includeHoles ? {
+      holes: {
+        orderBy: { holeNumber: 'asc' as const },
+      },
+    } : undefined;
+
     const [courses, total] = await this.prisma.$transaction([
       this.prisma.course.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' }, // 예시 정렬
-        // include: { company: true }, // 필요시 관계 데이터 포함
+        orderBy: { createdAt: 'desc' },
+        include,
       }),
       this.prisma.course.count({ where }),
     ]);
@@ -93,7 +103,12 @@ export class CourseService {
       include: {
         company: true,
         club: true,
-        holes: true,
+        holes: {
+          include: {
+            teeBoxes: true,
+          },
+          orderBy: { holeNumber: 'asc' },
+        },
       },
     });
     if (!course) {

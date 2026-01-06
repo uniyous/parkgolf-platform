@@ -1,5 +1,10 @@
 // 통합된 API 클라이언트 - BFF API 연동
-import type { BffApiResponse } from '@/types/common';
+import type { ApiResponse, PaginatedResponse } from '@/types/common';
+import { getErrorMessage } from '@/types/common';
+import { ApiError } from '@/lib/errors';
+
+// ApiError를 re-export하여 기존 import 호환성 유지
+export { ApiError };
 
 // 개발/E2E 환경에서는 Vite 프록시 사용 (CORS 우회)
 // 프로덕션에서는 환경변수 URL 사용
@@ -7,34 +12,16 @@ const mode = (import.meta as any).env?.MODE;
 const isDev = mode === 'development' || mode === 'e2e';
 const API_BASE_URL = isDev
   ? '/api'  // Vite 프록시 사용
-  : ((import.meta as any).env?.VITE_API_BASE_URL || '/api');
+  : ((import.meta as any).env?.VITE_API_URL || '/api');
 
-// BFF API 응답 타입 re-export (하위 호환성)
-export type { BffApiResponse };
+// API 응답 타입 re-export
+export type { ApiResponse, PaginatedResponse };
 
-export interface ApiResponse<T> {
+// API Client 내부 응답 타입
+export interface ClientResponse<T> {
   data: T;
   message?: string;
   status: number;
-}
-
-export class ApiError extends Error {
-  public readonly status: number;
-  public readonly code?: string;
-  public readonly details?: Record<string, any>;
-
-  constructor(
-    message: string,
-    status: number,
-    code?: string,
-    details?: Record<string, any>
-  ) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.code = code;
-    this.details = details;
-  }
 }
 
 interface RequestOptions extends RequestInit {
@@ -48,7 +35,7 @@ class ApiClient {
     this.baseURL = baseURL;
   }
 
-  private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
+  private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<ClientResponse<T>> {
     const { params, ...fetchOptions } = options;
     let url = `${this.baseURL}${endpoint}`;
 
@@ -90,13 +77,14 @@ class ApiClient {
 
       const responseData: any = await response.json();
       
-      // auth-service 직접 응답 처리 (BFF 형식이 아님)
-      // BFF API 응답 형식인지 확인
+      // BFF API 에러 응답 형식 확인: { success: false, error: { code, message } }
       if ('success' in responseData && !responseData.success && responseData.error) {
+        const errorCode = responseData.error.code;
+        const errorMessage = getErrorMessage(errorCode, responseData.error.message);
         throw new ApiError(
-          responseData.error.message,
+          errorMessage,
           response.status,
-          responseData.error.code,
+          errorCode,
           responseData.error.details
         );
       }
@@ -126,26 +114,28 @@ class ApiClient {
       };
     }
 
-    // auth-service 에러 형식 처리
-    let error: { code: string; message: string; details?: any };
-    
+    // 에러 응답에서 code와 message 추출
+    let errorCode: string;
+    let errorMessage: string;
+    let errorDetails: any;
+
     if ('success' in errorData && errorData.error) {
-      // BFF API 에러 형식
-      error = errorData.error;
+      // BFF API 에러 형식: { success: false, error: { code, message } }
+      errorCode = errorData.error.code;
+      errorMessage = getErrorMessage(errorCode, errorData.error.message);
+      errorDetails = errorData.error.details;
     } else {
-      // auth-service 직접 에러 형식
-      error = {
-        code: errorData.error?.code || 'UNKNOWN_ERROR',
-        message: errorData.message || errorData.error?.message || 'An error occurred',
-        details: errorData.error?.details
-      };
+      // 기타 에러 형식
+      errorCode = errorData.error?.code || 'UNKNOWN_ERROR';
+      errorMessage = getErrorMessage(errorCode, errorData.message || errorData.error?.message || 'An error occurred');
+      errorDetails = errorData.error?.details;
     }
 
     const apiError = new ApiError(
-      error.message,
+      errorMessage,
       response.status,
-      error.code,
-      error.details
+      errorCode,
+      errorDetails
     );
 
     // 인증 에러 처리
@@ -167,32 +157,32 @@ class ApiClient {
     throw apiError;
   }
 
-  async get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
+  async get<T>(endpoint: string, params?: Record<string, any>): Promise<ClientResponse<T>> {
     return this.request<T>(endpoint, { method: 'GET', params });
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async post<T>(endpoint: string, data?: any): Promise<ClientResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async put<T>(endpoint: string, data?: any): Promise<ClientResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async delete<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async delete<T>(endpoint: string, data?: any): Promise<ClientResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'DELETE',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async patch<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async patch<T>(endpoint: string, data?: any): Promise<ClientResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'PATCH',
       body: data ? JSON.stringify(data) : undefined,

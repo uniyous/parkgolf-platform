@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useCompanies, useCompany, useCreateCompany, useUpdateCompany, useDeleteCompany } from './queries';
+import { useCompaniesQuery, useCompanyQuery, useCreateCompanyMutation, useUpdateCompanyMutation, useDeleteCompanyMutation } from './queries';
 import type { Company, CompanyStatus, CreateCompanyDto, UpdateCompanyDto } from '@/types/company';
 
 type ViewMode = 'list' | 'detail' | 'create' | 'edit';
@@ -12,15 +12,15 @@ export const useCompanyManagement = () => {
   const [limit, setLimit] = useState(20);
 
   // Queries
-  const companiesQuery = useCompanies({}, page, limit);
-  const selectedCompanyQuery = useCompany(selectedCompanyState?.id ?? 0, {
+  const companiesQuery = useCompaniesQuery({}, page, limit);
+  const selectedCompanyQuery = useCompanyQuery(selectedCompanyState?.id ?? 0, {
     enabled: !!selectedCompanyState?.id
   });
 
   // Mutations
-  const createCompanyMutation = useCreateCompany();
-  const updateCompanyMutation = useUpdateCompany();
-  const deleteCompanyMutation = useDeleteCompany();
+  const createCompanyMutation = useCreateCompanyMutation();
+  const updateCompanyMutation = useUpdateCompanyMutation();
+  const deleteCompanyMutation = useDeleteCompanyMutation();
 
   // Derived data
   const companies = companiesQuery.data?.data ?? [];

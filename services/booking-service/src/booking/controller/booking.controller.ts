@@ -1,13 +1,12 @@
-import { Controller, Logger } from '@nestjs/common';
+import { Controller, Logger, NotFoundException } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { BookingService } from '../service/booking.service';
 import {
   CreateBookingRequestDto,
   UpdateBookingDto,
   SearchBookingDto,
-  BookingResponseDto
 } from '../dto/booking.dto';
-import { successResponse, errorResponse, paginationMeta } from '../../common/utils/response.util';
+import { NatsResponse } from '../../common/types/response.types';
 
 @Controller()
 export class BookingController {
@@ -17,85 +16,61 @@ export class BookingController {
 
   @MessagePattern('booking.create')
   async createBooking(@Payload() data: CreateBookingRequestDto) {
-    try {
-      this.logger.log(`NATS: Received booking.create request`);
-      this.logger.debug(`NATS: booking.create data: ${JSON.stringify(data)}`);
-      const booking = await this.bookingService.createBooking(data);
-      this.logger.log(`NATS: Booking created with number: ${booking.bookingNumber}`);
-      return successResponse(booking);
-    } catch (error) {
-      this.logger.error(`NATS: Error creating booking: ${error.message}`, error.stack);
-      return errorResponse('BOOKING_CREATE_FAILED', error.message || 'Failed to create booking');
-    }
+    this.logger.log(`NATS: Received booking.create request`);
+    this.logger.debug(`NATS: booking.create data: ${JSON.stringify(data)}`);
+    const booking = await this.bookingService.createBooking(data);
+    this.logger.log(`NATS: Booking created with number: ${booking.bookingNumber}`);
+    return NatsResponse.success(booking);
   }
 
   @MessagePattern('booking.findById')
   async findBookingById(@Payload() data: { id: number }) {
-    try {
-      this.logger.log(`NATS: Received booking.findById request for ID: ${data.id}`);
-      const booking = await this.bookingService.getBookingById(data.id);
-      if (!booking) {
-        return errorResponse('BOOKING_NOT_FOUND', 'Booking not found');
-      }
-      return successResponse(booking);
-    } catch (error) {
-      this.logger.error(`NATS: Error finding booking by ID: ${error.message}`, error.stack);
-      return errorResponse('BOOKING_FIND_FAILED', error.message || 'Failed to find booking');
+    this.logger.log(`NATS: Received booking.findById request for ID: ${data.id}`);
+    const booking = await this.bookingService.getBookingById(data.id);
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
     }
+    return NatsResponse.success(booking);
   }
 
   @MessagePattern('booking.findByNumber')
   async findBookingByNumber(@Payload() data: { bookingNumber: string }) {
-    try {
-      this.logger.log(`NATS: Received booking.findByNumber request for: ${data.bookingNumber}`);
-      const booking = await this.bookingService.getBookingByNumber(data.bookingNumber);
-      if (!booking) {
-        return errorResponse('BOOKING_NOT_FOUND', 'Booking not found');
-      }
-      return successResponse(booking);
-    } catch (error) {
-      this.logger.error(`NATS: Error finding booking by number: ${error.message}`, error.stack);
-      return errorResponse('BOOKING_FIND_FAILED', error.message || 'Failed to find booking');
+    this.logger.log(`NATS: Received booking.findByNumber request for: ${data.bookingNumber}`);
+    const booking = await this.bookingService.getBookingByNumber(data.bookingNumber);
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
     }
+    return NatsResponse.success(booking);
   }
 
   @MessagePattern('booking.findByUserId')
   async findBookingsByUserId(@Payload() data: { userId: number }) {
-    try {
-      this.logger.log(`NATS: Received booking.findByUserId request for user: ${data.userId}`);
-      const bookings = await this.bookingService.getBookingsByUserId(data.userId);
-      return successResponse(bookings);
-    } catch (error) {
-      this.logger.error(`NATS: Error finding bookings by user ID: ${error.message}`, error.stack);
-      return errorResponse('BOOKING_LIST_FAILED', error.message || 'Failed to find bookings');
-    }
+    this.logger.log(`NATS: Received booking.findByUserId request for user: ${data.userId}`);
+    const bookings = await this.bookingService.getBookingsByUserId(data.userId);
+    return NatsResponse.success(bookings);
   }
 
   @MessagePattern('booking.search')
   async searchBookings(@Payload() data: SearchBookingDto) {
-    try {
-      this.logger.log(`NATS: Received booking.search request`);
-      this.logger.debug(`NATS: booking.search data: ${JSON.stringify(data)}`);
-      const result = await this.bookingService.searchBookings(data);
-      this.logger.log(`NATS: Found ${result.total} bookings`);
-      return successResponse({ bookings: result.bookings }, paginationMeta(result.total, result.page, result.limit));
-    } catch (error) {
-      this.logger.error(`NATS: Error searching bookings: ${error.message}`, error.stack);
-      return errorResponse('BOOKING_SEARCH_FAILED', error.message || 'Failed to search bookings');
-    }
+    this.logger.log(`NATS: Received booking.search request`);
+    this.logger.debug(`NATS: booking.search data: ${JSON.stringify(data)}`);
+    const result = await this.bookingService.searchBookings(data);
+    this.logger.log(`NATS: Found ${result.total} bookings`);
+    // user-api expects { bookings, total, page, limit } format
+    return NatsResponse.success({
+      bookings: result.bookings,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+    });
   }
 
   @MessagePattern('booking.update')
   async updateBooking(@Payload() data: { id: number; dto: UpdateBookingDto }) {
-    try {
-      this.logger.log(`NATS: Received booking.update request for ID: ${data.id}`);
-      const booking = await this.bookingService.updateBooking(data.id, data.dto);
-      this.logger.log(`NATS: Booking updated for ID: ${booking.id}`);
-      return successResponse(booking);
-    } catch (error) {
-      this.logger.error(`NATS: Error updating booking: ${error.message}`, error.stack);
-      return errorResponse('BOOKING_UPDATE_FAILED', error.message || 'Failed to update booking');
-    }
+    this.logger.log(`NATS: Received booking.update request for ID: ${data.id}`);
+    const booking = await this.bookingService.updateBooking(data.id, data.dto);
+    this.logger.log(`NATS: Booking updated for ID: ${booking.id}`);
+    return NatsResponse.success(booking);
   }
 
   @MessagePattern('booking.cancel')
@@ -104,15 +79,10 @@ export class BookingController {
     userId: number;
     reason?: string;
   }) {
-    try {
-      this.logger.log(`NATS: Received booking.cancel request for ID: ${data.id}`);
-      const booking = await this.bookingService.cancelBooking(data.id, data.userId, data.reason);
-      this.logger.log(`NATS: Booking cancelled for ID: ${booking.id}`);
-      return successResponse(booking);
-    } catch (error) {
-      this.logger.error(`NATS: Error cancelling booking: ${error.message}`, error.stack);
-      return errorResponse('BOOKING_CANCEL_FAILED', error.message || 'Failed to cancel booking');
-    }
+    this.logger.log(`NATS: Received booking.cancel request for ID: ${data.id}`);
+    const booking = await this.bookingService.cancelBooking(data.id, data.userId, data.reason);
+    this.logger.log(`NATS: Booking cancelled for ID: ${booking.id}`);
+    return NatsResponse.success(booking);
   }
 
   @MessagePattern('booking.gameTimeSlots.availability')
@@ -120,15 +90,10 @@ export class BookingController {
     gameId: number;
     date: string;
   }) {
-    try {
-      this.logger.log(`NATS: Received gameTimeSlots.availability request for game: ${data.gameId}, date: ${data.date}`);
-      const slots = await this.bookingService.getGameTimeSlotAvailability(data.gameId, data.date);
-      this.logger.log(`NATS: Found ${slots.length} game time slots`);
-      return successResponse(slots);
-    } catch (error) {
-      this.logger.error(`NATS: Error getting game time slot availability: ${error.message}`, error.stack);
-      return errorResponse('GAME_TIMESLOTS_FETCH_FAILED', error.message || 'Failed to get game time slot availability');
-    }
+    this.logger.log(`NATS: Received gameTimeSlots.availability request for game: ${data.gameId}, date: ${data.date}`);
+    const slots = await this.bookingService.getGameTimeSlotAvailability(data.gameId, data.date);
+    this.logger.log(`NATS: Found ${slots.length} game time slots`);
+    return NatsResponse.success(slots);
   }
 
   @MessagePattern('booking.game.sync')
@@ -152,15 +117,10 @@ export class BookingController {
     clubName: string;
     isActive: boolean;
   }) {
-    try {
-      this.logger.log(`NATS: Received game.sync request for game: ${data.gameId}`);
-      await this.bookingService.syncGameCache(data);
-      this.logger.log(`NATS: Game cache synced for: ${data.gameId}`);
-      return successResponse({ synced: true });
-    } catch (error) {
-      this.logger.error(`NATS: Error syncing game cache: ${error.message}`, error.stack);
-      return errorResponse('GAME_SYNC_FAILED', error.message || 'Failed to sync game cache');
-    }
+    this.logger.log(`NATS: Received game.sync request for game: ${data.gameId}`);
+    await this.bookingService.syncGameCache(data);
+    this.logger.log(`NATS: Game cache synced for: ${data.gameId}`);
+    return NatsResponse.success({ synced: true });
   }
 
   @MessagePattern('booking.gameTimeSlot.sync')
@@ -184,14 +144,9 @@ export class BookingController {
     isPremium: boolean;
     status: string;
   }) {
-    try {
-      this.logger.log(`NATS: Received gameTimeSlot.sync request for slot: ${data.gameTimeSlotId}`);
-      await this.bookingService.syncGameTimeSlotCache(data);
-      this.logger.log(`NATS: GameTimeSlot cache synced for: ${data.gameTimeSlotId}`);
-      return successResponse({ synced: true });
-    } catch (error) {
-      this.logger.error(`NATS: Error syncing game time slot cache: ${error.message}`, error.stack);
-      return errorResponse('GAME_TIMESLOT_SYNC_FAILED', error.message || 'Failed to sync game time slot cache');
-    }
+    this.logger.log(`NATS: Received gameTimeSlot.sync request for slot: ${data.gameTimeSlotId}`);
+    await this.bookingService.syncGameTimeSlotCache(data);
+    this.logger.log(`NATS: GameTimeSlot cache synced for: ${data.gameTimeSlotId}`);
+    return NatsResponse.success({ synced: true });
   }
 }

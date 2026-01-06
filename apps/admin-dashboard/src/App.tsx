@@ -1,4 +1,5 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { PrivateRoute } from '@/components/auth';
 import { GlobalLoading } from '@/components/common';
 import { LoginPage } from './pages/LoginPage';
@@ -13,7 +14,6 @@ import { ClubListPage } from './pages/club/ClubListPage';
 import { ClubDetailPage } from './pages/club/ClubDetailPage';
 import { GameListPage } from './pages/game/GameListPage';
 import { GameDetailPage } from './pages/game/GameDetailPage';
-import { ScheduleListPage } from './pages/schedule/ScheduleListPage';
 import { useAuthInitialize } from './hooks/useAuth';
 
 function App() {
@@ -22,12 +22,19 @@ function App() {
 
   // 인증 상태 초기화 중 로딩 표시
   if (isInitializing) {
-    return <GlobalLoading message="인증 확인 중..." />;
+    return <GlobalLoading />;
   }
 
   return (
-    <Router>
-      <Routes>
+    <>
+      <Toaster
+        position="top-right"
+        richColors
+        closeButton
+        duration={3000}
+      />
+      <Router>
+        <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route element={<PrivateRoute />}>
@@ -44,9 +51,6 @@ function App() {
           {/* 라운드 관리 (Game) */}
           <Route path="/games" element={<GameListPage />} />
           <Route path="/games/:gameId" element={<GameDetailPage />} />
-
-          {/* 일정 관리 (Schedules) */}
-          <Route path="/schedules" element={<ScheduleListPage />} />
 
           {/* 하위 호환 리다이렉트 */}
           <Route path="/club" element={<Navigate to="/clubs" replace />} />
@@ -76,6 +80,7 @@ function App() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Router>
+    </>
   );
 }
 

@@ -1,5 +1,6 @@
-import { CourseStatus, Course as CourseModel } from '@prisma/client';
+import { CourseStatus, Course as CourseModel, Company, Club, Hole } from '@prisma/client';
 import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, IsUrl, Max, MaxLength, Min } from 'class-validator';
+import { HoleResponseDto, HoleWithRelations } from './hole.dto';
 
 export class CreateCourseDto {
   @IsString()
@@ -147,50 +148,74 @@ export class UpdateCourseDto {
   status?: CourseStatus;
 }
 
-export interface CourseResponseDto {
+/** Course 엔티티 타입 (관계 포함) */
+export type CourseWithRelations = CourseModel & {
+  company?: Company;
+  club?: Club;
+  holes?: HoleWithRelations[];
+};
+
+/** Course 응답 DTO */
+export class CourseResponseDto {
   id: number;
   name: string;
   code: string;
-  subtitle?: string;
+  subtitle: string | null;
   clubId: number;
   companyId: number;
   holeCount: number;
   par: number;
-  totalDistance?: number;
+  totalDistance: number | null;
   difficulty: number;
   scenicRating: number;
-  courseRating?: number;
-  slopeRating?: number;
-  imageUrl?: string;
-  description?: string;
+  courseRating: number | null;
+  slopeRating: number | null;
+  imageUrl: string | null;
+  description: string | null;
   status: CourseStatus;
   isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
+  createdAt: string | null;
+  updatedAt: string | null;
+  company?: Company;
+  club?: Club;
+  holes?: HoleResponseDto[];
 
-export function mapCourseFromEntity(entity: CourseModel): CourseResponseDto {
-  return {
-    id: entity.id,
-    name: entity.name,
-    code: entity.code,
-    subtitle: entity.subtitle,
-    clubId: entity.clubId,
-    companyId: entity.companyId,
-    holeCount: entity.holeCount,
-    par: entity.par,
-    totalDistance: entity.totalDistance,
-    difficulty: entity.difficulty,
-    scenicRating: entity.scenicRating,
-    courseRating: entity.courseRating,
-    slopeRating: entity.slopeRating,
-    imageUrl: entity.imageUrl,
-    description: entity.description,
-    status: entity.status,
-    isActive: entity.isActive,
-    createdAt: entity.createdAt,
-    updatedAt: entity.updatedAt,
-  };
+  /**
+   * 엔티티를 DTO로 변환
+   */
+  static fromEntity(entity: CourseWithRelations): CourseResponseDto {
+    const dto = new CourseResponseDto();
+    dto.id = entity.id;
+    dto.name = entity.name;
+    dto.code = entity.code;
+    dto.subtitle = entity.subtitle;
+    dto.clubId = entity.clubId;
+    dto.companyId = entity.companyId;
+    dto.holeCount = entity.holeCount;
+    dto.par = entity.par;
+    dto.totalDistance = entity.totalDistance;
+    dto.difficulty = entity.difficulty;
+    dto.scenicRating = entity.scenicRating;
+    dto.courseRating = entity.courseRating;
+    dto.slopeRating = entity.slopeRating;
+    dto.imageUrl = entity.imageUrl;
+    dto.description = entity.description;
+    dto.status = entity.status;
+    dto.isActive = entity.isActive;
+    dto.createdAt = entity.createdAt?.toISOString() ?? null;
+    dto.updatedAt = entity.updatedAt?.toISOString() ?? null;
+    dto.company = entity.company;
+    dto.club = entity.club;
+    dto.holes = entity.holes?.map(hole => HoleResponseDto.fromEntity(hole));
+    return dto;
+  }
+
+  /**
+   * 엔티티 배열을 DTO 배열로 변환
+   */
+  static fromEntities(entities: CourseWithRelations[]): CourseResponseDto[] {
+    return entities.map(entity => CourseResponseDto.fromEntity(entity));
+  }
 }
 
 export class FindCoursesQueryDto {
@@ -232,4 +257,7 @@ export class FindCoursesQueryDto {
   @Max(100)
   @IsOptional()
   limit?: number = 10;
+
+  @IsOptional()
+  includeHoles?: boolean = false;
 }

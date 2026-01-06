@@ -1,40 +1,67 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { useCourses } from '../hooks/useCourses';
-import { useTimeSlots } from '../hooks/useBooking';
-import { Course } from '../redux/api/courseApi';
-import { TimeSlot } from '../redux/api/bookingApi';
-import { Button, Text, PriceDisplay } from '../components';
+import { Search, SlidersHorizontal, X, MapPin, Clock, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { useSearchGamesQuery } from '../hooks/queries';
+import { useGameSearchParams } from '../hooks/useSearchParams';
+import type { Game, GameTimeSlot, GameSearchParams } from '@/lib/api/gameApi';
+import { Button, Input, Select, PriceDisplay } from '../components';
 
-interface SearchResult {
-  course: Course;
-  timeSlots: TimeSlot[];
+// Debounce hook for search input
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
 }
 
 export const SearchPage: React.FC = () => {
-  const { user, logout } = useAuth();
   const navigate = useNavigate();
-  
-  // Search state
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedTimeOfDay, setSelectedTimeOfDay] = useState<'all' | 'morning' | 'afternoon'>('all');
+  const { filters, updateFilters, resetFilters } = useGameSearchParams();
 
-  // RTK Query hooks
-  const { 
-    courses, 
-    isLoading: isLoadingCourses, 
-    searchCourses,
-    hasSearched,
-    error: coursesError 
-  } = useCourses();
+  // Local state for text input (debounced before sending to URL)
+  const [searchInput, setSearchInput] = useState(filters.search);
+  const [showFilters, setShowFilters] = useState(false);
 
-  // Format functions
+  // Debounce the search input
+  const debouncedSearch = useDebounce(searchInput, 300);
 
-  const getMinDate = () => {
-    return new Date().toISOString().split('T')[0];
-  };
+  // Update URL params when debounced search changes
+  React.useEffect(() => {
+    if (debouncedSearch !== filters.search) {
+      updateFilters({ search: debouncedSearch });
+    }
+  }, [debouncedSearch, filters.search, updateFilters]);
+
+  // Prepare search params for API
+  const searchParams: GameSearchParams = useMemo(() => ({
+    search: filters.search || undefined,
+    date: filters.date || undefined,  // 해당 날짜에 예약 가능한 타임슬롯이 있는 게임만 필터링
+    minPrice: filters.minPrice ?? undefined,
+    maxPrice: filters.maxPrice ?? undefined,
+    minPlayers: filters.minPlayers ?? undefined,
+    sortBy: filters.sortBy,
+    sortOrder: filters.sortOrder,
+    page: filters.page,
+    limit: 20,
+  }), [filters.search, filters.date, filters.minPrice, filters.maxPrice, filters.minPlayers, filters.sortBy, filters.sortOrder, filters.page]);
+
+  // Query hooks
+  const { data: searchResult, isLoading: isLoadingGames, error: gamesError } = useSearchGamesQuery(searchParams);
+
+  // 백엔드 응답 구조: { success, data: [...games], total, page, limit, totalPages }
+  const games = searchResult?.data || [];
+  const pagination = searchResult ? {
+    total: searchResult.total || games.length,
+    page: searchResult.page || filters.page,
+    limit: searchResult.limit || 20,
+    totalPages: searchResult.totalPages || 1,
+  } : undefined;
+
+  const getMinDate = () => new Date().toISOString().split('T')[0];
 
   const getMaxDate = () => {
     const date = new Date();
@@ -42,306 +69,483 @@ export const SearchPage: React.FC = () => {
     return date.toISOString().split('T')[0];
   };
 
-  // Search handler
-  const performSearch = async () => {
-    try {
-      searchCourses({
-        keyword: searchKeyword,
-        priceRange: [50000, 150000],
-        rating: 0,
-        date: selectedDate
-      });
-    } catch (error) {
-      console.error('Search failed:', error);
-    }
-  };
-
   // Time slot selection handler
-  const handleTimeSlotSelect = (course: Course, timeSlot: TimeSlot) => {
+  const handleTimeSlotSelect = (game: Game, timeSlot: GameTimeSlot) => {
     navigate('/booking-detail', {
-      state: { course, timeSlot }
+      state: { game, timeSlot, date: filters.date },
     });
   };
 
-  // Filter time slots based on selected time of day
-  const filterTimeSlots = (timeSlots: TimeSlot[]) => {
-    return timeSlots.filter(slot => {
-      if (selectedTimeOfDay === 'morning') {
-        return parseInt(slot.time.split(':')[0]) < 12;
-      } else if (selectedTimeOfDay === 'afternoon') {
-        return parseInt(slot.time.split(':')[0]) >= 12;
-      }
-      return true;
-    });
+  const timeOfDayOptions = [
+    { value: 'all', label: '전체' },
+    { value: 'morning', label: '오전 (06:00-11:59)' },
+    { value: 'afternoon', label: '오후 (12:00-18:00)' },
+  ];
+
+  const sortOptions = [
+    { value: 'name-asc', label: '이름순 (오름차순)' },
+    { value: 'name-desc', label: '이름순 (내림차순)' },
+    { value: 'price-asc', label: '가격 낮은순' },
+    { value: 'price-desc', label: '가격 높은순' },
+    { value: 'createdAt-desc', label: '최신순' },
+  ];
+
+  const playerOptions = [
+    { value: 'all', label: '인원 제한 없음' },
+    { value: '1', label: '1명 이상' },
+    { value: '2', label: '2명 이상' },
+    { value: '3', label: '3명 이상' },
+    { value: '4', label: '4명 이상' },
+  ];
+
+  const handleSortChange = (value: string | number) => {
+    const [sortBy, sortOrder] = String(value).split('-') as [GameSearchParams['sortBy'], GameSearchParams['sortOrder']];
+    updateFilters({ sortBy, sortOrder });
   };
+
+  const currentSortValue = `${filters.sortBy}-${filters.sortOrder}`;
+
+  const hasActiveFilters = filters.search || filters.minPrice || filters.maxPrice || filters.minPlayers;
 
   return (
-    <div className="min-h-screen gradient-forest relative overflow-hidden">
-      {/* Background decorative elements */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-10 left-10 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 right-20 w-80 h-80 bg-white/5 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
-      </div>
-
-      {/* Header */}
-      <header className="glass-card mx-4 mt-4 mb-8 !p-4 relative z-10">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl backdrop-blur-sm">
-              🔍
-            </div>
-            <Text variant="h2" className="text-white text-2xl font-bold m-0">
-              골프장 검색
-            </Text>
-          </div>
-          
-          {user && (
-            <div className="flex items-center gap-3">
-              <div className="px-4 py-2 bg-white/20 rounded-full text-sm text-white font-medium backdrop-blur-sm">
-                {user.name}님
-              </div>
-              <button
-                onClick={logout}
-                className="bg-white/10 hover:bg-white/20 border border-white/30 text-white px-4 py-2 rounded-xl cursor-pointer text-sm font-medium transition-all duration-200 backdrop-blur-sm"
-              >
-                로그아웃
-              </button>
-            </div>
-          )}
-        </div>
-      </header>
-
-      <div className="max-w-6xl mx-auto px-4 relative z-10">
+    <div className="px-4 py-6">
         {/* Search Filters */}
         <div className="glass-card mb-8">
-          <h2 className="text-xl font-semibold text-white mb-6">
-            🎯 검색 조건
-          </h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-white">예약 조건</h2>
+            <Button
+              variant="glass"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2"
+              data-testid="filter-toggle-button"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              필터 {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Button>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {/* 키워드 검색 */}
-            <div>
-              <label className="block mb-2 text-sm font-semibold text-white/90">
-                🔍 키워드 검색
-              </label>
-              <input
-                type="text"
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                placeholder="골프장명, 지역, 편의시설 검색..."
-                className="w-full px-4 py-3 rounded-xl text-base outline-none transition-all duration-200 bg-white/90 border border-white/30 text-slate-800 placeholder-slate-500 focus:bg-white focus:border-white/50 focus:ring-2 focus:ring-white/20 backdrop-blur-sm"
-              />
+          {/* Basic Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
+            {/* 검색어 */}
+            <div className="relative">
+              <label className="block text-sm font-semibold text-white/90 mb-1">검색</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" />
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="골프장, 지역 검색..."
+                  className="w-full h-10 pl-10 pr-4 py-2 bg-white/10 border border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30"
+                />
+                {searchInput && (
+                  <button
+                    onClick={() => {
+                      setSearchInput('');
+                      updateFilters({ search: '' });
+                    }}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* 날짜 선택 */}
-            <div>
-              <label className="block mb-2 text-sm font-semibold text-white/90">
-                📅 예약 날짜
-              </label>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                min={getMinDate()}
-                max={getMaxDate()}
-                className="w-full px-4 py-3 rounded-xl text-base outline-none transition-all duration-200 bg-white/90 border border-white/30 text-slate-800 focus:bg-white focus:border-white/50 focus:ring-2 focus:ring-white/20 backdrop-blur-sm"
-              />
-            </div>
+            <Input
+              label="예약 날짜"
+              type="date"
+              value={filters.date}
+              onChange={(e) => updateFilters({ date: e.target.value })}
+              min={getMinDate()}
+              max={getMaxDate()}
+              glass
+            />
 
             {/* 시간대 */}
             <div>
-              <label className="block mb-2 text-sm font-semibold text-white/90">
-                🕐 시간대
-              </label>
-              <select
-                value={selectedTimeOfDay}
-                onChange={(e) => setSelectedTimeOfDay(e.target.value as any)}
-                className="w-full px-4 py-3 rounded-xl text-base outline-none transition-all duration-200 bg-white/90 border border-white/30 text-slate-800 focus:bg-white focus:border-white/50 focus:ring-2 focus:ring-white/20 backdrop-blur-sm"
-              >
-                <option value="all">전체</option>
-                <option value="morning">오전 (06:00-11:59)</option>
-                <option value="afternoon">오후 (12:00-18:00)</option>
-              </select>
+              <label className="block text-sm font-semibold text-white/90 mb-1">시간대</label>
+              <Select
+                value={filters.timeOfDay}
+                onValueChange={(value) =>
+                  updateFilters({ timeOfDay: value as 'all' | 'morning' | 'afternoon' })
+                }
+                options={timeOfDayOptions}
+                glass
+              />
             </div>
           </div>
 
-          {/* Search Button */}
-          <div className="flex justify-center mt-6">
-            <Button
-              onClick={performSearch}
-              disabled={isLoadingCourses}
-              loading={isLoadingCourses}
-              variant="primary"
-              size="large"
-              className="!bg-white/90 hover:!bg-white !text-slate-800 font-semibold px-12 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-0"
-            >
-              🔍 골프장 검색
-            </Button>
-          </div>
+          {/* Advanced Filters - Expandable */}
+          {showFilters && (
+            <div className="border-t border-white/20 pt-5 mt-5" data-testid="expanded-filters">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                {/* 가격 범위 */}
+                <div>
+                  <label className="block text-sm font-semibold text-white/90 mb-1">최소 가격</label>
+                  <input
+                    type="number"
+                    value={filters.minPrice ?? ''}
+                    onChange={(e) => updateFilters({ minPrice: e.target.value ? Number(e.target.value) : null })}
+                    placeholder="0"
+                    min={0}
+                    step={1000}
+                    className="w-full h-10 px-4 py-2 bg-white/10 border border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-white/90 mb-1">최대 가격</label>
+                  <input
+                    type="number"
+                    value={filters.maxPrice ?? ''}
+                    onChange={(e) => updateFilters({ maxPrice: e.target.value ? Number(e.target.value) : null })}
+                    placeholder="100,000"
+                    min={0}
+                    step={1000}
+                    className="w-full h-10 px-4 py-2 bg-white/10 border border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  />
+                </div>
+
+                {/* 인원수 */}
+                <div>
+                  <label className="block text-sm font-semibold text-white/90 mb-1">인원</label>
+                  <Select
+                    value={filters.minPlayers ? String(filters.minPlayers) : 'all'}
+                    onValueChange={(value) => updateFilters({ minPlayers: value === 'all' ? null : Number(value) })}
+                    options={playerOptions}
+                    glass
+                  />
+                </div>
+
+                {/* 정렬 */}
+                <div>
+                  <label className="block text-sm font-semibold text-white/90 mb-1">정렬</label>
+                  <Select
+                    value={currentSortValue}
+                    onValueChange={handleSortChange}
+                    options={sortOptions}
+                    glass
+                  />
+                </div>
+              </div>
+
+              {/* Clear Filters */}
+              {hasActiveFilters && (
+                <div className="mt-4 flex justify-end">
+                  <Button variant="ghost" size="sm" onClick={resetFilters} className="text-white/70 hover:text-white">
+                    <X className="w-4 h-4 mr-1" />
+                    필터 초기화
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Error Message */}
-        {coursesError && (
+        {gamesError && (
           <div className="bg-red-500/20 border border-red-500/30 rounded-xl backdrop-blur-sm p-4 mb-6">
-            <Text className="text-red-200">
-              검색 중 오류가 발생했습니다. 다시 시도해주세요.
-            </Text>
+            <p className="text-red-200">게임 목록을 불러오는 중 오류가 발생했습니다.</p>
           </div>
         )}
 
-        {/* Search Results */}
-        {hasSearched && (
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-6">
-              🎯 검색 결과 ({courses.length}개)
-            </h2>
+        {/* Loading State */}
+        {isLoadingGames && (
+          <div className="space-y-6">
+            {[1, 2, 3].map((i) => (
+              <GameCardSkeleton key={i} />
+            ))}
+          </div>
+        )}
 
-            {courses.length === 0 ? (
+        {/* Game List */}
+        {!isLoadingGames && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white">
+                예약 가능한 라운드 ({pagination?.total || games.length}개)
+              </h2>
+              {pagination && pagination.total > pagination.limit && (
+                <div className="text-white/70 text-sm">
+                  {pagination.page} / {Math.ceil(pagination.total / pagination.limit)} 페이지
+                </div>
+              )}
+            </div>
+
+            {games.length === 0 ? (
               <div className="glass-card text-center py-12">
                 <div className="text-6xl mb-4">🏌️</div>
-                <h3 className="text-xl text-white mb-2">
-                  검색 조건에 맞는 골프장이 없습니다
-                </h3>
-                <p className="text-white/70">
-                  다른 조건으로 다시 검색해보세요
-                </p>
+                <h3 className="text-xl text-white mb-2">예약 가능한 라운드가 없습니다</h3>
+                <p className="text-white/70">다른 검색 조건을 선택해 보세요</p>
+                {hasActiveFilters && (
+                  <Button variant="glass" className="mt-4" onClick={resetFilters}>
+                    필터 초기화
+                  </Button>
+                )}
               </div>
             ) : (
-              <div className="grid gap-6">
-                {courses.map((course) => (
-                  <CourseCard 
-                    key={course.id}
-                    course={course}
-                    date={selectedDate}
-                    timeOfDay={selectedTimeOfDay}
-                    onTimeSlotSelect={handleTimeSlotSelect}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="grid gap-6">
+                  {games.map((game) => (
+                    <GameCard
+                      key={game.id}
+                      game={game}
+                      date={filters.date}
+                      timeOfDay={filters.timeOfDay}
+                      onTimeSlotSelect={handleTimeSlotSelect}
+                    />
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {pagination && pagination.total > pagination.limit && (
+                  <div className="flex justify-center gap-2 mt-8">
+                    <Button
+                      variant="glass"
+                      disabled={pagination.page <= 1}
+                      onClick={() => updateFilters({ page: pagination.page - 1 })}
+                    >
+                      이전
+                    </Button>
+                    <span className="px-4 py-2 text-white/70">
+                      {pagination.page} / {Math.ceil(pagination.total / pagination.limit)}
+                    </span>
+                    <Button
+                      variant="glass"
+                      disabled={pagination.page >= Math.ceil(pagination.total / pagination.limit)}
+                      onClick={() => updateFilters({ page: pagination.page + 1 })}
+                    >
+                      다음
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
-      </div>
     </div>
   );
 };
 
-// Course Card Component with Time Slots
-interface CourseCardProps {
-  course: Course;
+// Loading Skeleton
+const GameCardSkeleton: React.FC = () => (
+  <div className="glass-card overflow-hidden !p-0 animate-pulse">
+    <div className="p-4 md:p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 items-start">
+        <div className="lg:col-span-2 space-y-3">
+          <div className="h-7 bg-white/20 rounded w-2/3"></div>
+          <div className="h-4 bg-white/20 rounded w-1/3"></div>
+          <div className="flex gap-2">
+            <div className="h-6 bg-white/20 rounded-full w-20"></div>
+            <div className="h-6 bg-white/20 rounded-full w-24"></div>
+            <div className="h-6 bg-white/20 rounded-full w-16"></div>
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <div className="h-8 bg-white/20 rounded w-24"></div>
+        </div>
+      </div>
+    </div>
+    <div className="border-t border-white/20 p-4 md:p-6 bg-black/10">
+      <div className="h-5 bg-white/20 rounded w-32 mb-4"></div>
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="h-20 bg-white/10 rounded-xl"></div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+// Availability color indicator
+const getAvailabilityColor = (remaining: number, total: number) => {
+  if (total === 0) return 'bg-gray-400';
+  const ratio = remaining / total;
+  if (ratio === 0) return 'bg-gray-400';
+  if (ratio <= 0.25) return 'bg-red-400';
+  if (ratio <= 0.5) return 'bg-amber-400';
+  return 'bg-green-400';
+};
+
+const getAvailabilityText = (remaining: number) => {
+  if (remaining === 0) return '매진';
+  if (remaining <= 2) return `${remaining}자리 (마감임박)`;
+  return `${remaining}자리 남음`;
+};
+
+// Game Card Component with Time Slots
+interface GameCardProps {
+  game: Game;
   date: string;
   timeOfDay: 'all' | 'morning' | 'afternoon';
-  onTimeSlotSelect: (course: Course, timeSlot: TimeSlot) => void;
+  onTimeSlotSelect: (game: Game, timeSlot: GameTimeSlot) => void;
 }
 
-const CourseCard: React.FC<CourseCardProps> = ({ 
-  course, 
-  date, 
-  timeOfDay, 
-  onTimeSlotSelect 
-}) => {
-  const { timeSlots, isLoading: isLoadingSlots } = useTimeSlots(course.id, date);
+const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSelect }) => {
+  const [showAllSlots, setShowAllSlots] = useState(false);
+
+  // 2줄에 표시할 슬롯 수 (xl: 6열, lg: 4열 기준으로 12개)
+  const SLOTS_PER_TWO_ROWS = 12;
+
+  // 게임 검색 응답에 포함된 타임슬롯 사용 (N+1 쿼리 제거)
+  const timeSlots = game.timeSlots || [];
 
   const filteredSlots = useMemo(() => {
-    return timeSlots.filter(slot => {
+    return timeSlots.filter((slot) => {
+      // 가용 여부 체크 - 다양한 필드명 지원
+      const maxCapacity = slot.maxPlayers ?? slot.maxCapacity ?? 4;
+      const currentBookings = slot.bookedPlayers ?? slot.currentBookings ?? 0;
+      const remaining = slot.availablePlayers ?? (maxCapacity - currentBookings);
+
+      // status 필드가 AVAILABLE이 아니면 필터링 (FULLY_BOOKED 등)
+      if (slot.status && slot.status !== 'AVAILABLE') return false;
+
+      const isAvailable = slot.isAvailable ?? slot.available ?? (remaining > 0);
+      if (!isAvailable) return false;
+
+      const hour = parseInt(slot.startTime.split(':')[0]);
       if (timeOfDay === 'morning') {
-        return parseInt(slot.time.split(':')[0]) < 12;
+        return hour < 12;
       } else if (timeOfDay === 'afternoon') {
-        return parseInt(slot.time.split(':')[0]) >= 12;
+        return hour >= 12;
       }
       return true;
     });
   }, [timeSlots, timeOfDay]);
 
+  // Calculate if there's a discount
+  const hasDiscount = game.weekendPrice && game.basePrice && game.weekendPrice < game.basePrice;
 
   return (
-    <div className="glass-card overflow-hidden">
-      {/* Course Info */}
-      <div className="p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+    <div className="glass-card overflow-hidden !p-0">
+      {/* Game Info */}
+      <div className="p-4 md:p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 items-start">
           <div className="lg:col-span-2">
-            <h3 className="text-xl font-bold text-white mb-2">
-              {course.name}
-            </h3>
-            <p className="text-white/80 text-sm mb-3">
-              📍 {course.location}
-            </p>
-            <p className="text-white/70 text-sm mb-4">
-              {course.description}
-            </p>
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-xl font-bold text-white">{game.name}</h3>
+              {game.isActive && (
+                <span className="bg-green-400/20 text-green-300 px-2 py-0.5 rounded-full text-xs font-medium">
+                  운영중
+                </span>
+              )}
+              {hasDiscount && (
+                <span className="bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">
+                  할인
+                </span>
+              )}
+            </div>
+
+            {/* Location */}
+            <div className="flex items-center gap-2 text-white/80 text-sm mb-2">
+              <MapPin className="w-4 h-4" />
+              <span>{game.clubName}</span>
+              {game.clubLocation && (
+                <span className="text-white/60">· {game.clubLocation}</span>
+              )}
+            </div>
+
+            {game.description && (
+              <p className="text-white/70 text-sm mb-4">{game.description}</p>
+            )}
+
             <div className="flex flex-wrap gap-2 mb-4">
-              {course.amenities.map((amenity, index) => (
+              <span className="bg-white/20 text-white/90 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {game.duration}분
+              </span>
+              <span className="bg-white/20 text-white/90 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm flex items-center gap-1">
+                <Users className="w-3 h-3" />
+                최대 {game.maxPlayers}명
+              </span>
+              {game.courses?.map((course, index) => (
                 <span
                   key={index}
-                  className="bg-white/20 text-white/90 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm"
+                  className="bg-emerald-400/20 text-emerald-300 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm"
                 >
-                  {amenity}
+                  {course.courseName}
                 </span>
               ))}
             </div>
           </div>
           <div className="text-right">
-            <PriceDisplay 
-              price={course.pricePerHour} 
-              size="medium" 
-            />
-            <div className="text-sm text-amber-300 mt-1 font-medium">
-              ⭐ {course.rating}
-            </div>
+            <PriceDisplay price={game.pricePerPerson || game.basePrice || 0} size="md" unit="/인" />
           </div>
         </div>
       </div>
 
       {/* Time Slots */}
-      <div className="border-t border-white/20 p-6 bg-black/10">
-        <h4 className="text-base font-semibold text-white mb-4">
-          ⏰ 예약 가능 시간
-        </h4>
-        
-        {isLoadingSlots ? (
-          <div className="text-center py-6 text-white/70">
-            시간 정보를 불러오는 중...
-          </div>
-        ) : filteredSlots.length === 0 ? (
+      <div className="border-t border-white/20 p-4 md:p-6 bg-black/10">
+        <h4 className="text-base font-semibold text-white mb-4">예약 가능 시간</h4>
+
+        {filteredSlots.length === 0 ? (
           <div className="text-center py-6 text-white/70">
             선택한 조건에 예약 가능한 시간이 없습니다
           </div>
         ) : (
+          <>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-            {filteredSlots.map((slot) => (
-              <button
-                key={slot.id}
-                onClick={() => onTimeSlotSelect(course, slot)}
-                className={`
-                  p-3 rounded-xl cursor-pointer transition-all duration-200 backdrop-blur-sm border
-                  ${slot.isPremium 
-                    ? 'bg-amber-400/20 border-amber-400/50 hover:bg-amber-400/30' 
-                    : 'bg-white/10 border-white/30 hover:bg-white/20'
-                  }
-                `}
-              >
-                <div className="text-base font-semibold text-white">
-                  {slot.time}
-                </div>
-                <PriceDisplay 
-                  price={slot.price} 
-                  size="small" 
-                  showUnit={false}
-                />
-                <div className="text-xs text-white/70 mt-1">
-                  {slot.remaining}자리 남음
-                </div>
-                {slot.isPremium && (
-                  <div className="text-xs text-amber-300 font-semibold mt-1">
-                    프리미엄
+            {(showAllSlots ? filteredSlots : filteredSlots.slice(0, SLOTS_PER_TWO_ROWS)).map((slot) => {
+              const maxCapacity = slot.maxPlayers ?? slot.maxCapacity ?? 4;
+              const currentBookings = slot.bookedPlayers ?? slot.currentBookings ?? 0;
+              const remaining = slot.availablePlayers ?? (maxCapacity - currentBookings);
+              const availabilityColor = getAvailabilityColor(remaining, maxCapacity);
+
+              // isAvailable 체크: 명시적 필드가 없으면 availablePlayers > 0 으로 판단
+              const isAvailable = slot.isAvailable ?? slot.available ?? (remaining > 0);
+
+              return (
+                <button
+                  key={slot.id}
+                  onClick={() => onTimeSlotSelect(game, slot)}
+                  disabled={!isAvailable}
+                  className={`
+                    p-3 rounded-xl cursor-pointer transition-all duration-200 backdrop-blur-sm border
+                    ${
+                      slot.isPremium
+                        ? 'bg-amber-400/20 border-amber-400/50 hover:bg-amber-400/30'
+                        : 'bg-white/10 border-white/30 hover:bg-white/20'
+                    }
+                    ${!isAvailable && 'opacity-50 cursor-not-allowed'}
+                  `}
+                >
+                  <div className="text-base font-semibold text-white">{slot.startTime}</div>
+                  <div className="flex items-center justify-center gap-1 mt-1">
+                    <span className="text-sm font-medium text-emerald-300">{slot.price.toLocaleString()}원</span>
+                    <span className="text-white/50">·</span>
+                    <div className={`w-2 h-2 rounded-full ${availabilityColor}`}></div>
+                    <span className="text-xs text-white/70">{remaining}자리</span>
                   </div>
-                )}
-              </button>
-            ))}
+                  {slot.isPremium && (
+                    <div className="text-xs text-amber-300 font-semibold mt-1">프리미엄</div>
+                  )}
+                </button>
+              );
+            })}
           </div>
+          {filteredSlots.length > SLOTS_PER_TWO_ROWS && (
+            <div className="mt-4 text-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAllSlots(!showAllSlots)}
+                className="text-white/70 hover:text-white"
+              >
+                {showAllSlots
+                  ? '접기'
+                  : `더보기 (+${filteredSlots.length - SLOTS_PER_TWO_ROWS}개)`
+                }
+                {showAllSlots ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+              </Button>
+            </div>
+          )}
+          </>
         )}
       </div>
     </div>
   );
 };
+

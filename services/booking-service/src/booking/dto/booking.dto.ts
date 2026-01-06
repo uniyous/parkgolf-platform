@@ -1,17 +1,38 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsEnum } from 'class-validator';
-import { BookingStatus } from '@prisma/client';
+import { Booking, BookingStatus, Payment, BookingHistory, GameTimeSlotCache } from '@prisma/client';
+
+/** Booking 엔티티 타입 (관계 포함) */
+export type BookingWithRelations = Booking & {
+  payments?: Payment[];
+  histories?: BookingHistory[];
+};
 
 export class CreateBookingRequestDto {
+  @ApiProperty({ description: '멱등성 키 (UUID)', example: '550e8400-e29b-41d4-a716-446655440000' })
+  @IsString()
+  @IsNotEmpty()
+  idempotencyKey: string;
+
   @ApiProperty({ description: '사용자 ID', example: 1 })
   @IsNumber()
   @IsNotEmpty()
   userId: number;
 
+  @ApiProperty({ description: 'Game ID', example: 1 })
+  @IsNumber()
+  @IsOptional()
+  gameId?: number;
+
   @ApiProperty({ description: 'GameTimeSlot ID (course-service)', example: 1 })
   @IsNumber()
   @IsNotEmpty()
   gameTimeSlotId: number;
+
+  @ApiProperty({ description: '예약 날짜', example: '2024-07-15' })
+  @IsDateString()
+  @IsOptional()
+  bookingDate?: string;
 
   @ApiProperty({ description: '플레이어 수', example: 2 })
   @IsNumber()
@@ -100,6 +121,21 @@ export class SearchBookingDto {
   @IsDateString()
   @IsOptional()
   endDate?: string;
+
+  @ApiProperty({ description: '정렬 기준', example: 'bookingDate', required: false })
+  @IsString()
+  @IsOptional()
+  sortBy?: 'bookingDate' | 'createdAt' | 'totalPrice';
+
+  @ApiProperty({ description: '정렬 순서', example: 'desc', required: false })
+  @IsString()
+  @IsOptional()
+  sortOrder?: 'asc' | 'desc';
+
+  @ApiProperty({ description: '시간 필터', example: 'upcoming', required: false })
+  @IsString()
+  @IsOptional()
+  timeFilter?: 'upcoming' | 'past' | 'all';
 }
 
 export class GameTimeSlotAvailabilityDto {
@@ -159,98 +195,235 @@ export class GameTimeSlotAvailabilityDto {
 
   @ApiProperty({ description: '상태' })
   status: string;
+
+  /**
+   * GameTimeSlotCache 엔티티를 DTO로 변환
+   */
+  static fromEntity(entity: GameTimeSlotCache): GameTimeSlotAvailabilityDto {
+    const dto = new GameTimeSlotAvailabilityDto();
+    dto.id = entity.id;
+    dto.gameTimeSlotId = entity.gameTimeSlotId;
+    dto.gameId = entity.gameId;
+    dto.gameName = entity.gameName;
+    dto.gameCode = entity.gameCode;
+    dto.frontNineCourseName = entity.frontNineCourseName;
+    dto.backNineCourseName = entity.backNineCourseName;
+    dto.clubId = entity.clubId;
+    dto.clubName = entity.clubName;
+    dto.date = entity.date.toISOString().split('T')[0];
+    dto.startTime = entity.startTime;
+    dto.endTime = entity.endTime;
+    dto.maxPlayers = entity.maxPlayers;
+    dto.bookedPlayers = entity.bookedPlayers;
+    dto.availablePlayers = entity.availablePlayers;
+    dto.isAvailable = entity.isAvailable;
+    dto.price = Number(entity.price);
+    dto.isPremium = entity.isPremium;
+    dto.status = entity.status;
+    return dto;
+  }
+
+  /**
+   * 엔티티 배열을 DTO 배열로 변환
+   */
+  static fromEntities(entities: GameTimeSlotCache[]): GameTimeSlotAvailabilityDto[] {
+    return entities.map(entity => GameTimeSlotAvailabilityDto.fromEntity(entity));
+  }
 }
 
 export class BookingResponseDto {
-  @ApiProperty()
+  @ApiProperty({ description: '예약 ID' })
   id: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: '예약번호 (BK-XXXXXXXX-XXXX 형식)' })
   bookingNumber: string;
 
-  @ApiProperty()
-  userId: number;
+  @ApiProperty({ description: '사용자 ID (회원 예약 시)' })
+  userId?: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: '게임 ID' })
   gameId: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: '게임 타임슬롯 ID' })
   gameTimeSlotId: number;
 
-  @ApiProperty()
-  gameName: string;
+  @ApiProperty({ description: '게임명 (예: A+B 코스)' })
+  gameName?: string;
 
-  @ApiProperty()
-  gameCode: string;
+  @ApiProperty({ description: '게임 코드' })
+  gameCode?: string;
 
-  @ApiProperty()
-  frontNineCourseId: number;
+  @ApiProperty({ description: '전반 9홀 코스 ID' })
+  frontNineCourseId?: number;
 
-  @ApiProperty()
-  frontNineCourseName: string;
+  @ApiProperty({ description: '전반 9홀 코스명' })
+  frontNineCourseName?: string;
 
-  @ApiProperty()
-  backNineCourseId: number;
+  @ApiProperty({ description: '후반 9홀 코스 ID' })
+  backNineCourseId?: number;
 
-  @ApiProperty()
-  backNineCourseName: string;
+  @ApiProperty({ description: '후반 9홀 코스명' })
+  backNineCourseName?: string;
 
-  @ApiProperty()
-  clubId: number;
+  @ApiProperty({ description: '클럽 ID' })
+  clubId?: number;
 
-  @ApiProperty()
-  clubName: string;
+  @ApiProperty({ description: '클럽명' })
+  clubName?: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: '예약 날짜 (YYYY-MM-DD)' })
   bookingDate: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: '시작 시간 (HH:MM)' })
   startTime: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: '종료 시간 (HH:MM)' })
   endTime: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: '플레이어 수' })
   playerCount: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: '1인당 가격' })
   pricePerPerson: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: '서비스 수수료' })
   serviceFee: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: '총 결제 금액' })
   totalPrice: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: '예약 상태', enum: BookingStatus })
   status: BookingStatus;
 
-  @ApiProperty()
+  @ApiProperty({ description: '결제 방법' })
   paymentMethod?: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: '특별 요청사항' })
   specialRequests?: string;
 
-  @ApiProperty()
-  userEmail: string;
+  @ApiProperty({ description: '관리자 메모' })
+  notes?: string;
 
-  @ApiProperty()
-  userName: string;
+  // 회원 예약자 정보
+  @ApiProperty({ description: '회원 이메일' })
+  userEmail?: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: '회원 이름' })
+  userName?: string;
+
+  @ApiProperty({ description: '회원 전화번호' })
   userPhone?: string;
 
-  @ApiProperty()
+  // 비회원 예약자 정보
+  @ApiProperty({ description: '비회원 예약자명' })
+  guestName?: string;
+
+  @ApiProperty({ description: '비회원 이메일' })
+  guestEmail?: string;
+
+  @ApiProperty({ description: '비회원 전화번호' })
+  guestPhone?: string;
+
+  // Saga 관련
+  @ApiProperty({ description: '멱등성 키' })
+  idempotencyKey?: string;
+
+  @ApiProperty({ description: 'Saga 실패 사유 (status가 FAILED일 때)' })
+  sagaFailReason?: string;
+
+  @ApiProperty({ description: '결제 목록' })
   payments: any[];
 
-  @ApiProperty()
+  @ApiProperty({ description: '예약 히스토리' })
   histories: any[];
 
-  @ApiProperty()
+  @ApiProperty({ description: '예약 취소 가능 여부' })
+  canCancel?: boolean;
+
+  @ApiProperty({ description: '생성일시' })
   createdAt: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: '수정일시' })
   updatedAt: string;
+
+  /**
+   * 엔티티를 DTO로 변환
+   */
+  static fromEntity(entity: BookingWithRelations, includeCanCancel: boolean = false): BookingResponseDto {
+    const dto = new BookingResponseDto();
+    dto.id = entity.id;
+    dto.bookingNumber = entity.bookingNumber;
+    dto.userId = entity.userId ?? undefined;
+    dto.gameId = entity.gameId;
+    dto.gameTimeSlotId = entity.gameTimeSlotId;
+    dto.gameName = entity.gameName ?? undefined;
+    dto.gameCode = entity.gameCode ?? undefined;
+    dto.frontNineCourseId = entity.frontNineCourseId ?? undefined;
+    dto.frontNineCourseName = entity.frontNineCourseName ?? undefined;
+    dto.backNineCourseId = entity.backNineCourseId ?? undefined;
+    dto.backNineCourseName = entity.backNineCourseName ?? undefined;
+    dto.clubId = entity.clubId ?? undefined;
+    dto.clubName = entity.clubName ?? undefined;
+    dto.bookingDate = entity.bookingDate.toISOString().split('T')[0];
+    dto.startTime = entity.startTime;
+    dto.endTime = entity.endTime;
+    dto.playerCount = entity.playerCount;
+    dto.pricePerPerson = Number(entity.pricePerPerson);
+    dto.serviceFee = Number(entity.serviceFee);
+    dto.totalPrice = Number(entity.totalPrice);
+    dto.status = entity.status;
+    dto.paymentMethod = entity.paymentMethod ?? undefined;
+    dto.specialRequests = entity.specialRequests ?? undefined;
+    dto.notes = entity.notes ?? undefined;
+    // 회원 예약자 정보
+    dto.userEmail = entity.userEmail ?? undefined;
+    dto.userName = entity.userName ?? undefined;
+    dto.userPhone = entity.userPhone ?? undefined;
+    // 비회원 예약자 정보
+    dto.guestName = entity.guestName ?? undefined;
+    dto.guestEmail = entity.guestEmail ?? undefined;
+    dto.guestPhone = entity.guestPhone ?? undefined;
+    // Saga 관련
+    dto.idempotencyKey = entity.idempotencyKey ?? undefined;
+    dto.sagaFailReason = entity.sagaFailReason ?? undefined;
+    // 관계 데이터
+    dto.payments = entity.payments || [];
+    dto.histories = entity.histories || [];
+    // 타임스탬프
+    dto.createdAt = entity.createdAt.toISOString();
+    dto.updatedAt = entity.updatedAt.toISOString();
+
+    // 취소 가능 여부 계산 (요청 시)
+    if (includeCanCancel) {
+      dto.canCancel = BookingResponseDto.calculateCanCancel(entity.bookingDate, entity.status);
+    }
+
+    return dto;
+  }
+
+  /**
+   * 엔티티 배열을 DTO 배열로 변환
+   */
+  static fromEntities(entities: BookingWithRelations[], includeCanCancel: boolean = false): BookingResponseDto[] {
+    return entities.map(entity => BookingResponseDto.fromEntity(entity, includeCanCancel));
+  }
+
+  /**
+   * 예약 취소 가능 여부 계산
+   * - 취소/완료 상태는 취소 불가
+   * - 예약일 3일 전까지만 취소 가능
+   */
+  private static calculateCanCancel(bookingDate: Date, status: BookingStatus): boolean {
+    if (status === BookingStatus.CANCELLED || status === BookingStatus.COMPLETED) {
+      return false;
+    }
+
+    const threeDaysFromNow = new Date();
+    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+    threeDaysFromNow.setHours(0, 0, 0, 0);
+
+    return new Date(bookingDate) >= threeDaysFromNow;
+  }
 }
 
 // NATS 이벤트 페이로드
@@ -282,4 +455,42 @@ export interface BookingCancelledEvent {
   cancelledAt: string;
   userEmail: string;
   userName: string;
+}
+
+// =====================================================
+// Saga 이벤트 페이로드
+// =====================================================
+
+// booking-service → course-service: 슬롯 예약 요청
+export interface SlotReserveRequest {
+  bookingId: number;
+  bookingNumber: string;
+  gameTimeSlotId: number;
+  playerCount: number;
+  requestedAt: string;
+}
+
+// course-service → booking-service: 슬롯 예약 성공
+export interface SlotReservedEvent {
+  bookingId: number;
+  gameTimeSlotId: number;
+  playerCount: number;
+  reservedAt: string;
+}
+
+// course-service → booking-service: 슬롯 예약 실패
+export interface SlotReserveFailedEvent {
+  bookingId: number;
+  gameTimeSlotId: number;
+  reason: string;
+  failedAt: string;
+}
+
+// booking-service → course-service: 슬롯 해제 요청
+export interface SlotReleaseRequest {
+  bookingId: number;
+  gameTimeSlotId: number;
+  playerCount: number;
+  reason: string;
+  requestedAt: string;
 }

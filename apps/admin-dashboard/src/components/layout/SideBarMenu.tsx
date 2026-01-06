@@ -57,25 +57,11 @@ export const menuConfig: MenuGroup[] = [
     name: '라운드',
     items: [
       {
-        name: '라운드 목록',
+        name: '라운드 관리',
         href: '/games',
         icon: '🎮',
         description: '18홀 라운드 조합 및 가격 설정',
         permission: 'MANAGE_GAMES'
-      },
-    ],
-    collapsible: true,
-    defaultOpen: true
-  },
-  {
-    name: '일정',
-    items: [
-      {
-        name: '타임슬롯 관리',
-        href: '/schedules',
-        icon: '📆',
-        description: '타임슬롯 일괄 조회 및 관리',
-        permission: 'MANAGE_SCHEDULES'
       },
     ],
     collapsible: true,

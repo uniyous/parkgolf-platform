@@ -170,6 +170,9 @@ model Game {
 
   @@unique([frontNineCourseId, backNineCourseId])
   @@index([clubId])
+  @@index([status])
+  @@index([isActive])
+  @@index([clubId, status, isActive])
   @@map("games")
 }
 
@@ -200,12 +203,18 @@ model GameTimeSlot {
   status        TimeSlotStatus @default(AVAILABLE)
   isActive      Boolean        @default(true) @map("is_active")
 
+  // Optimistic Locking을 위한 버전
+  version       Int            @default(1)
+
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
 
   @@unique([gameId, date, startTime])
-  @@index([date])
-  @@index([status])
+  @@index([gameId, date])           // 주간 조회 최적화 (가장 많이 사용)
+  @@index([gameId, status])         // 게임별 상태 필터링
+  @@index([date])                   // 날짜 범위 조회
+  @@index([status])                 // 상태 필터링
+  @@index([isActive])               // 활성화 필터링
   @@map("game_time_slots")
 }
 
@@ -229,6 +238,24 @@ model GameWeeklySchedule {
 
   @@unique([gameId, dayOfWeek])
   @@map("game_weekly_schedules")
+}
+
+// =====================================================
+// ProcessedSlotReservation: Saga 멱등성 처리용 테이블
+// 중복 slot.reserve 요청 방지 (Memory Cache 대체)
+// =====================================================
+model ProcessedSlotReservation {
+  id              Int      @id @default(autoincrement())
+
+  bookingId       Int      @map("booking_id")
+  gameTimeSlotId  Int      @map("game_time_slot_id")
+
+  processedAt     DateTime @default(now()) @map("processed_at")
+  expiresAt       DateTime @map("expires_at") // TTL 만료 시간
+
+  @@unique([bookingId, gameTimeSlotId])
+  @@index([expiresAt]) // 만료된 레코드 정리용
+  @@map("processed_slot_reservations")
 }
 
 enum GameStatus {

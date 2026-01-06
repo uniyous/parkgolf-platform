@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useAdmins, useCreateAdmin, useUpdateAdmin, useDeleteAdmin } from './queries';
+import { useAdminsQuery, useCreateAdminMutation, useUpdateAdminMutation, useDeleteAdminMutation } from './queries';
 import { useAdminUIStore } from '@/stores';
 import type { Admin, CreateAdminDto, UpdateAdminDto } from '@/types';
 
@@ -16,10 +16,10 @@ export interface UseAdminActionsReturn {
 
 export const useAdminActions = (): UseAdminActionsReturn => {
   // TanStack Query hooks
-  const { data: admins = [], isLoading, error, refetch } = useAdmins();
-  const createAdminMutation = useCreateAdmin();
-  const updateAdminMutation = useUpdateAdmin();
-  const deleteAdminMutation = useDeleteAdmin();
+  const { data: admins = [], isLoading, error, refetch } = useAdminsQuery();
+  const createAdminMutation = useCreateAdminMutation();
+  const updateAdminMutation = useUpdateAdminMutation();
+  const deleteAdminMutation = useDeleteAdminMutation();
 
   // UI store
   const { setEditingAdmin } = useAdminUIStore();

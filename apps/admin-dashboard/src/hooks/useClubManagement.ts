@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { useClubs, useClub as useClubQuery, useSearchClubs, useCreateClub, useUpdateClub, useDeleteClub } from './queries';
+import { useClubsQuery, useClubQuery, useSearchClubsQuery, useCreateClubMutation, useUpdateClubMutation, useDeleteClubMutation } from './queries';
 import type { Club, ClubFilters } from '@/types/club';
 import type { CreateClubDto, UpdateClubDto } from '@/lib/api/courses';
 
@@ -12,14 +12,14 @@ export const useClubManagement = () => {
   const [searchKeyword, setSearchKeyword] = useState('');
 
   // Queries
-  const clubsQuery = useClubs(filters);
+  const clubsQuery = useClubsQuery(filters);
   const selectedClubQuery = useClubQuery(selectedClubId ?? 0);
-  const searchQuery = useSearchClubs(searchKeyword);
+  const searchQuery = useSearchClubsQuery(searchKeyword);
 
   // Mutations
-  const createClubMutation = useCreateClub();
-  const updateClubMutation = useUpdateClub();
-  const deleteClubMutation = useDeleteClub();
+  const createClubMutation = useCreateClubMutation();
+  const updateClubMutation = useUpdateClubMutation();
+  const deleteClubMutation = useDeleteClubMutation();
 
   // Derived data - API returns PaginatedResponse<Club> with { data: Club[], pagination: {...} }
   const clubs = useMemo(() => {

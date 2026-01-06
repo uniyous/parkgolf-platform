@@ -36,8 +36,11 @@ export class AuthService {
   constructor(private readonly natsClient: NatsClientService) {}
 
   async login(loginRequest: LoginRequest): Promise<AuthResponse> {
-    this.logger.log(`Admin login: ${loginRequest.email}`);
-    return this.natsClient.send<AuthResponse>('auth.admin.login', loginRequest);
+    const startTime = Date.now();
+    this.logger.log(`[PERF] AuthService.login START - sending NATS message`);
+    const result = await this.natsClient.send<AuthResponse>('auth.admin.login', loginRequest);
+    this.logger.log(`[PERF] AuthService.login END - NATS response received in ${Date.now() - startTime}ms`);
+    return result;
   }
 
   async validateToken(token: string): Promise<any> {

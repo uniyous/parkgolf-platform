@@ -1,15 +1,29 @@
 import { Injectable, HttpException, HttpStatus, Logger, Inject, Optional } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { Booking, BookingStatus, BookingHistory } from '@prisma/client';
+import { Booking, BookingStatus, BookingHistory, OutboxStatus } from '@prisma/client';
 import {
   CreateBookingRequestDto,
   UpdateBookingDto,
   BookingResponseDto,
   SearchBookingDto,
-  BookingConfirmedEvent
+  BookingConfirmedEvent,
+  SlotReserveRequest,
+  BookingWithRelations,
+  GameTimeSlotAvailabilityDto,
 } from '../dto/booking.dto';
 import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom, timeout, retry, catchError, of } from 'rxjs';
 import { randomUUID } from 'crypto';
+
+// NATS 호출 설정
+const NATS_TIMEOUT_MS = 5000;  // 5초 타임아웃
+const NATS_RETRY_COUNT = 2;    // 2회 재시도
+
+// 캐시 설정
+const CACHE_TTL_MS = 5 * 60 * 1000;  // 5분 캐시 유효 기간
+
+// 멱등성 키 설정
+const IDEMPOTENCY_KEY_TTL_HOURS = 24;  // 24시간 TTL
 
 @Injectable()
 export class BookingService {
@@ -27,29 +41,236 @@ export class BookingService {
     return `BK-${uuid.slice(0, 8)}-${uuid.slice(8, 12)}`;
   }
 
-  async createBooking(dto: CreateBookingRequestDto): Promise<BookingResponseDto> {
+  // course-service에서 슬롯 정보 조회 후 캐시 동기화
+  private async fetchAndSyncSlotFromCourseService(gameTimeSlotId: number): Promise<any> {
+    if (!this.courseServiceClient) {
+      this.logger.error('COURSE_SERVICE client is not available');
+      return null;
+    }
+
     try {
-      // 1. GameTimeSlot 캐시에서 가용성 확인
-      const slotCache = await this.prisma.gameTimeSlotCache.findUnique({
-        where: { gameTimeSlotId: dto.gameTimeSlotId }
+      // course-service에서 슬롯 정보 조회 (timeout + retry)
+      const slotResponse = await firstValueFrom(
+        this.courseServiceClient.send('gameTimeSlots.get', { timeSlotId: gameTimeSlotId }).pipe(
+          timeout(NATS_TIMEOUT_MS),
+          retry(NATS_RETRY_COUNT),
+          catchError((err) => {
+            this.logger.error(`gameTimeSlots.get failed after retries: ${err.message}`);
+            return of(null);
+          })
+        )
+      );
+
+      if (!slotResponse?.success || !slotResponse?.data) {
+        this.logger.error(`Failed to fetch slot from course-service: ${JSON.stringify(slotResponse)}`);
+        return null;
+      }
+
+      const slot = slotResponse.data;
+      this.logger.log(`Fetched slot from course-service: gameTimeSlotId=${slot.id}, gameId=${slot.gameId}`);
+
+      // game 정보도 조회해서 GameCache 동기화 (timeout + retry)
+      const gameResponse = await firstValueFrom(
+        this.courseServiceClient.send('games.get', { gameId: slot.gameId }).pipe(
+          timeout(NATS_TIMEOUT_MS),
+          retry(NATS_RETRY_COUNT),
+          catchError((err) => {
+            this.logger.error(`games.get failed after retries: ${err.message}`);
+            return of(null);
+          })
+        )
+      );
+
+      if (gameResponse?.success && gameResponse?.data) {
+        const game = gameResponse.data;
+
+        // GameCache 동기화
+        await this.prisma.gameCache.upsert({
+          where: { gameId: game.id },
+          update: {
+            name: game.name,
+            code: game.code,
+            description: game.description,
+            frontNineCourseId: game.frontNineCourseId,
+            frontNineCourseName: game.frontNineCourseName,
+            backNineCourseId: game.backNineCourseId,
+            backNineCourseName: game.backNineCourseName,
+            totalHoles: game.totalHoles,
+            estimatedDuration: game.estimatedDuration,
+            breakDuration: game.breakDuration,
+            maxPlayers: game.maxPlayers,
+            basePrice: game.basePrice,
+            weekendPrice: game.weekendPrice,
+            holidayPrice: game.holidayPrice,
+            clubId: game.clubId,
+            clubName: game.clubName,
+            isActive: game.isActive,
+            lastSyncAt: new Date(),
+          },
+          create: {
+            gameId: game.id,
+            name: game.name,
+            code: game.code,
+            description: game.description,
+            frontNineCourseId: game.frontNineCourseId,
+            frontNineCourseName: game.frontNineCourseName,
+            backNineCourseId: game.backNineCourseId,
+            backNineCourseName: game.backNineCourseName,
+            totalHoles: game.totalHoles,
+            estimatedDuration: game.estimatedDuration,
+            breakDuration: game.breakDuration,
+            maxPlayers: game.maxPlayers,
+            basePrice: game.basePrice,
+            weekendPrice: game.weekendPrice,
+            holidayPrice: game.holidayPrice,
+            clubId: game.clubId,
+            clubName: game.clubName,
+            isActive: game.isActive,
+          }
+        });
+        this.logger.log(`GameCache synced for gameId: ${game.id}`);
+      }
+
+      // GameTimeSlotCache 동기화
+      const maxPlayers = slot.maxPlayers ?? 4;
+      const bookedPlayers = slot.bookedPlayers ?? slot.currentBookings ?? 0;
+      const availablePlayers = maxPlayers - bookedPlayers;
+      const isAvailable = availablePlayers > 0 && slot.status === 'AVAILABLE';
+
+      const slotCache = await this.prisma.gameTimeSlotCache.upsert({
+        where: { gameTimeSlotId: slot.id },
+        update: {
+          gameId: slot.gameId,
+          gameName: slot.gameName,
+          gameCode: slot.gameCode,
+          frontNineCourseName: slot.frontNineCourseName,
+          backNineCourseName: slot.backNineCourseName,
+          clubId: gameResponse?.data?.clubId,
+          clubName: slot.clubName,
+          date: new Date(slot.date),
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          maxPlayers,
+          bookedPlayers,
+          availablePlayers,
+          isAvailable,
+          price: slot.price || 0,
+          isPremium: slot.isPremium || false,
+          status: slot.status || 'AVAILABLE',
+          lastSyncAt: new Date(),
+        },
+        create: {
+          gameTimeSlotId: slot.id,
+          gameId: slot.gameId,
+          gameName: slot.gameName,
+          gameCode: slot.gameCode,
+          frontNineCourseName: slot.frontNineCourseName,
+          backNineCourseName: slot.backNineCourseName,
+          clubId: gameResponse?.data?.clubId,
+          clubName: slot.clubName,
+          date: new Date(slot.date),
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          maxPlayers,
+          bookedPlayers,
+          availablePlayers,
+          isAvailable,
+          price: slot.price || 0,
+          isPremium: slot.isPremium || false,
+          status: slot.status || 'AVAILABLE',
+        }
       });
 
+      this.logger.log(`GameTimeSlotCache synced for gameTimeSlotId: ${slot.id}`);
+      return slotCache;
+    } catch (error) {
+      this.logger.error(`Failed to fetch and sync slot from course-service: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * 예약 생성 (Saga 패턴)
+   *
+   * 흐름:
+   * 1. 멱등성 키 + 슬롯 캐시 병렬 조회
+   * 2. 검증 및 Game 정보 조회
+   * 3. PENDING 상태로 예약 생성 + OutboxEvent 저장 (같은 트랜잭션)
+   * 4. OutboxProcessor가 slot.reserve 이벤트 발행
+   * 5. course-service 응답에 따라 CONFIRMED 또는 FAILED로 전이
+   */
+  async createBooking(dto: CreateBookingRequestDto): Promise<BookingResponseDto> {
+    const requestId = `REQ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const startTime = Date.now();
+    this.logger.log(`[${requestId}] ========== BOOKING CREATE START ==========`);
+    this.logger.log(`[${requestId}] Input: gameTimeSlotId=${dto.gameTimeSlotId}, playerCount=${dto.playerCount}, idempotencyKey=${dto.idempotencyKey}`);
+
+    try {
+      // =====================================================
+      // 1. 멱등성 키 + 슬롯 캐시 병렬 조회 (성능 최적화)
+      // =====================================================
+      this.logger.log(`[${requestId}] Step 1: Parallel query - idempotency key + slot cache...`);
+      const step1Start = Date.now();
+
+      const [existingIdempotencyKey, slotCacheResult] = await Promise.all([
+        this.prisma.idempotencyKey.findUnique({
+          where: { key: dto.idempotencyKey },
+        }),
+        this.prisma.gameTimeSlotCache.findUnique({
+          where: { gameTimeSlotId: dto.gameTimeSlotId }
+        }),
+      ]);
+
+      this.logger.log(`[${requestId}] Step 1: Parallel queries completed in ${Date.now() - step1Start}ms`);
+
+      // 멱등성 키 확인
+      if (existingIdempotencyKey) {
+        if (existingIdempotencyKey.aggregateId) {
+          this.logger.log(`[${requestId}] Idempotency key ${dto.idempotencyKey} already processed, returning cached response (aggregateId: ${existingIdempotencyKey.aggregateId})`);
+          const existingBooking = await this.getBookingById(Number(existingIdempotencyKey.aggregateId));
+          if (existingBooking) {
+            this.logger.log(`[${requestId}] Returning existing booking: ${existingBooking.bookingNumber}, status=${existingBooking.status}`);
+            return existingBooking;
+          }
+        }
+        this.logger.warn(`[${requestId}] Idempotency key ${dto.idempotencyKey} exists but no aggregateId - request in progress`);
+        throw new HttpException('Request is already being processed', HttpStatus.CONFLICT);
+      }
+
+      // =====================================================
+      // 2. 슬롯 정보 검증 및 Game 정보 조회
+      // =====================================================
+      let slotCache = slotCacheResult;
+
+      // 캐시에 없으면 course-service에서 조회
       if (!slotCache) {
+        this.logger.log(`[${requestId}] Slot cache MISS for gameTimeSlotId: ${dto.gameTimeSlotId}, fetching from course-service`);
+        slotCache = await this.fetchAndSyncSlotFromCourseService(dto.gameTimeSlotId);
+      } else {
+        this.logger.log(`[${requestId}] Slot cache HIT: status=${slotCache.status}, isAvailable=${slotCache.isAvailable}, bookedPlayers=${slotCache.bookedPlayers}, availablePlayers=${slotCache.availablePlayers}, maxPlayers=${slotCache.maxPlayers}`);
+      }
+
+      if (!slotCache) {
+        this.logger.error(`[${requestId}] Step 2 FAILED: Game time slot not found`);
         throw new HttpException('Game time slot not found', HttpStatus.NOT_FOUND);
       }
 
+      // 기본 가용성 검증 (최종 검증은 course-service에서)
       if (!slotCache.isAvailable || slotCache.status !== 'AVAILABLE') {
+        this.logger.warn(`[${requestId}] Step 2 FAILED: Slot not available (isAvailable=${slotCache.isAvailable}, status=${slotCache.status})`);
         throw new HttpException('Selected time slot is not available', HttpStatus.BAD_REQUEST);
       }
 
       if (slotCache.availablePlayers < dto.playerCount) {
+        this.logger.warn(`[${requestId}] Step 2 FAILED: Not enough capacity (available=${slotCache.availablePlayers}, requested=${dto.playerCount})`);
         throw new HttpException(
           `Not enough capacity. Available: ${slotCache.availablePlayers}, Requested: ${dto.playerCount}`,
           HttpStatus.BAD_REQUEST
         );
       }
+      this.logger.log(`[${requestId}] Step 2: Slot validation passed`);
 
-      // 2. Game 정보 가져오기 (캐시에서)
+      // Game 정보 조회
       const gameInfo = await this.prisma.gameCache.findUnique({
         where: { gameId: slotCache.gameId }
       });
@@ -58,30 +279,22 @@ export class BookingService {
         throw new HttpException('Game information not found', HttpStatus.NOT_FOUND);
       }
 
-      // 3. 가격 계산
+      // 가격 계산
       const pricePerPerson = Number(slotCache.price);
       const totalAmount = pricePerPerson * dto.playerCount;
-      const serviceFee = Math.floor(totalAmount * 0.03); // 3% 서비스 수수료
+      const serviceFee = Math.floor(totalAmount * 0.03);
       const totalPrice = totalAmount + serviceFee;
 
-      // 4. 예약 생성
+      // =====================================================
+      // 3. PENDING 예약 + OutboxEvent 생성 (Transactional Outbox)
+      // =====================================================
+      this.logger.log(`[${requestId}] Step 3: Creating PENDING booking with OutboxEvent...`);
+      const bookingNumber = this.generateBookingNumber();
+      const idempotencyKeyExpiry = new Date();
+      idempotencyKeyExpiry.setHours(idempotencyKeyExpiry.getHours() + IDEMPOTENCY_KEY_TTL_HOURS);
+
       const booking = await this.prisma.$transaction(async (prisma) => {
-        // Race Condition 방지를 위해 SELECT FOR UPDATE
-        const slotLock = await prisma.$queryRaw<Array<{id: number, available_players: number}>>`
-          SELECT id, "availablePlayers" as available_players
-          FROM "game_time_slot_cache"
-          WHERE "gameTimeSlotId" = ${dto.gameTimeSlotId}
-          FOR UPDATE
-        `;
-
-        if (slotLock.length === 0 || slotLock[0].available_players < dto.playerCount) {
-          throw new HttpException(
-            'Selected time slot is no longer available',
-            HttpStatus.CONFLICT
-          );
-        }
-
-        // 예약 생성
+        // 예약 생성 (PENDING 상태)
         const newBooking = await prisma.booking.create({
           data: {
             gameTimeSlotId: dto.gameTimeSlotId,
@@ -102,37 +315,51 @@ export class BookingService {
             pricePerPerson,
             serviceFee,
             totalPrice,
-            status: BookingStatus.CONFIRMED,
+            status: BookingStatus.PENDING,  // Saga 시작: PENDING
             paymentMethod: dto.paymentMethod,
             specialRequests: dto.specialRequests,
-            bookingNumber: this.generateBookingNumber(),
+            bookingNumber,
+            idempotencyKey: dto.idempotencyKey,
             userEmail: dto.userEmail,
             userName: dto.userName,
             userPhone: dto.userPhone,
           },
         });
 
-        // 로컬 캐시 업데이트
-        const newBookedPlayers = slotCache.bookedPlayers + dto.playerCount;
-        const newAvailablePlayers = slotCache.maxPlayers - newBookedPlayers;
-        const newStatus = newAvailablePlayers <= 0 ? 'FULLY_BOOKED' : 'AVAILABLE';
+        // OutboxEvent 생성 (slot.reserve 요청)
+        const slotReservePayload = {
+          bookingId: newBooking.id,
+          bookingNumber: newBooking.bookingNumber,
+          gameTimeSlotId: dto.gameTimeSlotId,
+          playerCount: dto.playerCount,
+          requestedAt: new Date().toISOString(),
+        };
 
-        await prisma.gameTimeSlotCache.update({
-          where: { gameTimeSlotId: dto.gameTimeSlotId },
+        await prisma.outboxEvent.create({
           data: {
-            bookedPlayers: newBookedPlayers,
-            availablePlayers: newAvailablePlayers,
-            isAvailable: newAvailablePlayers > 0,
-            status: newStatus,
-            lastSyncAt: new Date(),
-          }
+            aggregateType: 'Booking',
+            aggregateId: String(newBooking.id),
+            eventType: 'slot.reserve',
+            payload: slotReservePayload as any,
+            status: OutboxStatus.PENDING,
+          },
+        });
+
+        // 멱등성 키 저장
+        await prisma.idempotencyKey.create({
+          data: {
+            key: dto.idempotencyKey,
+            aggregateType: 'Booking',
+            aggregateId: String(newBooking.id),
+            expiresAt: idempotencyKeyExpiry,
+          },
         });
 
         // 예약 히스토리 생성
         await prisma.bookingHistory.create({
           data: {
             bookingId: newBooking.id,
-            action: 'CREATED',
+            action: 'SAGA_STARTED',
             userId: dto.userId,
             details: {
               playerCount: dto.playerCount,
@@ -140,6 +367,7 @@ export class BookingService {
               paymentMethod: dto.paymentMethod,
               gameName: slotCache.gameName,
               gameTimeSlotId: dto.gameTimeSlotId,
+              idempotencyKey: dto.idempotencyKey,
             }
           }
         });
@@ -147,41 +375,12 @@ export class BookingService {
         return newBooking;
       });
 
-      this.logger.log(`Booking ${booking.bookingNumber} created successfully.`);
+      this.logger.log(`[${requestId}] Step 3: COMPLETED - Booking ${booking.bookingNumber} created with PENDING status`);
+      this.logger.log(`[${requestId}] ========== BOOKING CREATE SUCCESS (bookingId=${booking.id}, bookingNumber=${booking.bookingNumber}, total=${Date.now() - startTime}ms) ==========`);
 
-      // 5. course-service에 예약 알림 (슬롯 업데이트)
-      if (this.courseServiceClient) {
-        this.courseServiceClient.emit('gameTimeSlots.book', {
-          timeSlotId: dto.gameTimeSlotId,
-          playerCount: dto.playerCount,
-        });
-      }
-
-      // 6. 예약 확정 이벤트 발행
-      const eventPayload: BookingConfirmedEvent = {
-        bookingId: booking.id,
-        bookingNumber: booking.bookingNumber,
-        userId: booking.userId,
-        gameId: booking.gameId,
-        gameName: booking.gameName,
-        frontNineCourseName: booking.frontNineCourseName,
-        backNineCourseName: booking.backNineCourseName,
-        bookingDate: booking.bookingDate.toISOString(),
-        timeSlot: booking.startTime,
-        playerCount: booking.playerCount,
-        totalPrice: Number(booking.totalPrice),
-        userEmail: booking.userEmail,
-        userName: booking.userName,
-      };
-
-      if (this.notificationPublisher) {
-        this.notificationPublisher.emit('booking.confirmed', eventPayload);
-        this.logger.log(`'booking.confirmed' event emitted for booking ${booking.bookingNumber}`);
-      }
-
-      return this.toResponseDto(booking);
+      return BookingResponseDto.fromEntity(booking);
     } catch (error) {
-      this.logger.error(`Failed to create booking: ${error.message}`);
+      this.logger.error(`[${requestId}] ========== BOOKING CREATE FAILED: ${error.message} ==========`);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -200,7 +399,7 @@ export class BookingService {
       }
     });
 
-    return booking ? this.toResponseDto(booking) : null;
+    return booking ? BookingResponseDto.fromEntity(booking) : null;
   }
 
   async getBookingByNumber(bookingNumber: string): Promise<BookingResponseDto | null> {
@@ -214,7 +413,7 @@ export class BookingService {
       }
     });
 
-    return booking ? this.toResponseDto(booking) : null;
+    return booking ? BookingResponseDto.fromEntity(booking) : null;
   }
 
   async getBookingsByUserId(userId: number): Promise<BookingResponseDto[]> {
@@ -226,7 +425,7 @@ export class BookingService {
       }
     });
 
-    return bookings.map(booking => this.toResponseDto(booking));
+    return bookings.map(booking => BookingResponseDto.fromEntity(booking));
   }
 
   async searchBookings(searchDto: SearchBookingDto): Promise<{
@@ -235,7 +434,19 @@ export class BookingService {
     page: number;
     limit: number;
   }> {
-    const { page = 1, limit = 10, status, gameId, clubId, userId, startDate, endDate } = searchDto;
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      gameId,
+      clubId,
+      userId,
+      startDate,
+      endDate,
+      sortBy = 'bookingDate',
+      sortOrder = 'desc',
+      timeFilter = 'all'
+    } = searchDto;
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -251,7 +462,17 @@ export class BookingService {
     if (userId) {
       where.userId = userId;
     }
-    if (startDate || endDate) {
+
+    // timeFilter 적용
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    if (timeFilter === 'upcoming') {
+      where.bookingDate = { gte: now };
+    } else if (timeFilter === 'past') {
+      where.bookingDate = { lt: now };
+    } else if (startDate || endDate) {
+      // timeFilter가 'all'이고 날짜 범위가 지정된 경우
       where.bookingDate = {};
       if (startDate) {
         where.bookingDate.gte = new Date(startDate);
@@ -261,12 +482,16 @@ export class BookingService {
       }
     }
 
+    // 정렬 설정
+    const orderBy: any = {};
+    orderBy[sortBy] = sortOrder;
+
     const [bookings, total] = await Promise.all([
       this.prisma.booking.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         include: {
           payments: true
         }
@@ -275,7 +500,7 @@ export class BookingService {
     ]);
 
     return {
-      bookings: bookings.map(booking => this.toResponseDto(booking)),
+      bookings: BookingResponseDto.fromEntities(bookings, true),
       total,
       page,
       limit
@@ -323,7 +548,7 @@ export class BookingService {
       return updatedBooking;
     });
 
-    return this.toResponseDto(booking);
+    return BookingResponseDto.fromEntity(booking);
   }
 
   async cancelBooking(id: number, userId: number, reason?: string): Promise<BookingResponseDto> {
@@ -428,14 +653,14 @@ export class BookingService {
       this.logger.log(`'booking.cancelled' event emitted for booking ${booking.bookingNumber}`);
     }
 
-    return this.toResponseDto(booking);
+    return BookingResponseDto.fromEntity(booking);
   }
 
   // GameTimeSlot 가용성 조회 (Game 기반)
   async getGameTimeSlotAvailability(
     gameId: number,
     date: string
-  ): Promise<any[]> {
+  ): Promise<GameTimeSlotAvailabilityDto[]> {
     const targetDate = new Date(date + 'T00:00:00.000Z');
 
     const slots = await this.prisma.gameTimeSlotCache.findMany({
@@ -448,27 +673,7 @@ export class BookingService {
       }
     });
 
-    return slots.map(slot => ({
-      id: slot.id,
-      gameTimeSlotId: slot.gameTimeSlotId,
-      gameId: slot.gameId,
-      gameName: slot.gameName,
-      gameCode: slot.gameCode,
-      frontNineCourseName: slot.frontNineCourseName,
-      backNineCourseName: slot.backNineCourseName,
-      clubId: slot.clubId,
-      clubName: slot.clubName,
-      date: slot.date.toISOString().split('T')[0],
-      startTime: slot.startTime,
-      endTime: slot.endTime,
-      maxPlayers: slot.maxPlayers,
-      bookedPlayers: slot.bookedPlayers,
-      availablePlayers: slot.availablePlayers,
-      isAvailable: slot.isAvailable,
-      price: Number(slot.price),
-      isPremium: slot.isPremium,
-      status: slot.status,
-    }));
+    return GameTimeSlotAvailabilityDto.fromEntities(slots);
   }
 
   // Game 캐시 동기화 메서드
@@ -603,40 +808,5 @@ export class BookingService {
       }
     });
     this.logger.log(`GameTimeSlot cache synced for gameTimeSlotId: ${data.gameTimeSlotId}`);
-  }
-
-  private toResponseDto(booking: any): BookingResponseDto {
-    return {
-      id: booking.id,
-      bookingNumber: booking.bookingNumber,
-      userId: booking.userId,
-      gameId: booking.gameId,
-      gameTimeSlotId: booking.gameTimeSlotId,
-      gameName: booking.gameName,
-      gameCode: booking.gameCode,
-      frontNineCourseId: booking.frontNineCourseId,
-      frontNineCourseName: booking.frontNineCourseName,
-      backNineCourseId: booking.backNineCourseId,
-      backNineCourseName: booking.backNineCourseName,
-      clubId: booking.clubId,
-      clubName: booking.clubName,
-      bookingDate: booking.bookingDate.toISOString(),
-      startTime: booking.startTime,
-      endTime: booking.endTime,
-      playerCount: booking.playerCount,
-      pricePerPerson: Number(booking.pricePerPerson),
-      serviceFee: Number(booking.serviceFee),
-      totalPrice: Number(booking.totalPrice),
-      status: booking.status,
-      paymentMethod: booking.paymentMethod,
-      specialRequests: booking.specialRequests,
-      userEmail: booking.userEmail,
-      userName: booking.userName,
-      userPhone: booking.userPhone,
-      payments: booking.payments || [],
-      histories: booking.histories || [],
-      createdAt: booking.createdAt.toISOString(),
-      updatedAt: booking.updatedAt.toISOString(),
-    };
   }
 }

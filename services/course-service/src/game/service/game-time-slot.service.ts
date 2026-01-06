@@ -1,5 +1,5 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { GameTimeSlot, Prisma } from '@prisma/client';
+import { GameTimeSlot, Prisma, TimeSlotStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import {
   CreateGameTimeSlotDto,
@@ -8,11 +8,35 @@ import {
   GenerateTimeSlotsDto,
 } from '../dto/game-time-slot.dto';
 
+// Idempotency TTL 설정
+const IDEMPOTENCY_TTL_MS = 60000; // 1분 TTL
+
 @Injectable()
 export class GameTimeSlotService {
   private readonly logger = new Logger(GameTimeSlotService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {
+    // 5분마다 만료된 레코드 정리
+    setInterval(() => this.cleanupExpiredReservations(), 5 * 60 * 1000);
+  }
+
+  /**
+   * 만료된 ProcessedSlotReservation 레코드 정리
+   */
+  private async cleanupExpiredReservations(): Promise<void> {
+    try {
+      const result = await this.prisma.processedSlotReservation.deleteMany({
+        where: {
+          expiresAt: { lt: new Date() },
+        },
+      });
+      if (result.count > 0) {
+        this.logger.log(`[Saga] Cleaned up ${result.count} expired processed reservations`);
+      }
+    } catch (error) {
+      this.logger.error(`[Saga] Failed to cleanup expired reservations: ${error.message}`);
+    }
+  }
 
   async create(createDto: CreateGameTimeSlotDto): Promise<GameTimeSlot> {
     this.logger.log(`Creating time slot for game ${createDto.gameId} on ${createDto.date}`);
@@ -60,7 +84,7 @@ export class GameTimeSlotService {
   }
 
   async findAll(query: FindGameTimeSlotsQueryDto): Promise<{
-    data: GameTimeSlot[];
+    data: any[]; // select 사용으로 타입 변경
     total: number;
     page: number;
     limit: number;
@@ -90,12 +114,27 @@ export class GameTimeSlotService {
         skip,
         take: limit,
         orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
-        include: {
+        // 목록 조회 시 필요한 필드만 선택 (성능 최적화)
+        select: {
+          id: true,
+          gameId: true,
+          date: true,
+          startTime: true,
+          endTime: true,
+          maxPlayers: true,
+          bookedPlayers: true,
+          price: true,
+          isPremium: true,
+          status: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+          // game 정보는 기본만 포함
           game: {
-            include: {
-              frontNineCourse: true,
-              backNineCourse: true,
-              club: true,
+            select: {
+              id: true,
+              name: true,
+              code: true,
             },
           },
         },
@@ -127,7 +166,7 @@ export class GameTimeSlotService {
     return slot;
   }
 
-  async findByGameAndDate(gameId: number, date: string): Promise<GameTimeSlot[]> {
+  async findByGameAndDate(gameId: number, date: string): Promise<any[]> {
     return this.prisma.gameTimeSlot.findMany({
       where: {
         gameId,
@@ -135,13 +174,18 @@ export class GameTimeSlotService {
         isActive: true,
       },
       orderBy: { startTime: 'asc' },
-      include: {
-        game: {
-          include: {
-            frontNineCourse: true,
-            backNineCourse: true,
-          },
-        },
+      select: {
+        id: true,
+        gameId: true,
+        date: true,
+        startTime: true,
+        endTime: true,
+        maxPlayers: true,
+        bookedPlayers: true,
+        price: true,
+        isPremium: true,
+        status: true,
+        isActive: true,
       },
     });
   }
@@ -398,5 +442,219 @@ export class GameTimeSlotService {
       utilizationRate,
       totalRevenue,
     };
+  }
+
+  // =====================================================
+  // Saga 패턴용 메서드 (Optimistic Locking)
+  // =====================================================
+
+  /**
+   * Saga용 슬롯 예약 (Optimistic Locking 적용)
+   * booking-service의 slot.reserve 요청 처리
+   *
+   * @throws ConflictException - 동시성 충돌 시 (version mismatch)
+   * @throws NotFoundException - 슬롯을 찾을 수 없을 때
+   */
+  async reserveSlotForSaga(
+    timeSlotId: number,
+    playerCount: number,
+    bookingId: number
+  ): Promise<{ success: boolean; slot?: GameTimeSlot; error?: string }> {
+    const startTime = Date.now();
+    this.logger.log(`[Saga] ========== reserveSlotForSaga START ==========`);
+    this.logger.log(`[Saga] timeSlotId=${timeSlotId}, playerCount=${playerCount}, bookingId=${bookingId}`);
+
+    // Idempotency 체크: DB에서 이미 처리된 예약인지 확인
+    const idempotencyStart = Date.now();
+    const existingReservation = await this.prisma.processedSlotReservation.findUnique({
+      where: {
+        bookingId_gameTimeSlotId: {
+          bookingId,
+          gameTimeSlotId: timeSlotId,
+        },
+      },
+    });
+    this.logger.log(`[Saga] Idempotency check completed in ${Date.now() - idempotencyStart}ms`);
+
+    if (existingReservation) {
+      this.logger.warn(`[Saga] DUPLICATE REQUEST DETECTED (DB): bookingId=${bookingId}, slotId=${timeSlotId} - returning cached success (total: ${Date.now() - startTime}ms)`);
+      // 이미 성공한 예약이므로 success 반환 (중복 slot.reserve 방지)
+      return { success: true };
+    }
+
+    const MAX_RETRY = 3;
+    let attempt = 0;
+
+    while (attempt < MAX_RETRY) {
+      attempt++;
+      this.logger.log(`[Saga] Attempt ${attempt}/${MAX_RETRY} for slot ${timeSlotId}`);
+
+      try {
+        const txStart = Date.now();
+        // Prisma transaction timeout: 30초 (Cloud Run cold start + Cloud SQL 지연 대응)
+        const result = await this.prisma.$transaction(async (tx) => {
+          // 1. 현재 슬롯 상태 조회
+          const slotQueryStart = Date.now();
+          const slot = await tx.gameTimeSlot.findUnique({
+            where: { id: timeSlotId },
+            include: {
+              game: {
+                include: {
+                  frontNineCourse: true,
+                  backNineCourse: true,
+                  club: true,
+                },
+              },
+            },
+          });
+          this.logger.log(`[Saga] Slot query completed in ${Date.now() - slotQueryStart}ms`);
+
+          if (!slot) {
+            this.logger.error(`[Saga] Slot ${timeSlotId} NOT FOUND`);
+            throw new NotFoundException(`GameTimeSlot with ID ${timeSlotId} not found`);
+          }
+
+          this.logger.log(`[Saga] Current slot state: status=${slot.status}, isActive=${slot.isActive}, bookedPlayers=${slot.bookedPlayers}, maxPlayers=${slot.maxPlayers}, version=${slot.version}`);
+
+          // 2. 가용성 검증
+          if (slot.status !== 'AVAILABLE') {
+            this.logger.warn(`[Saga] Slot ${timeSlotId} NOT AVAILABLE (status=${slot.status})`);
+            throw new ConflictException(`Time slot is not available (status: ${slot.status})`);
+          }
+
+          if (!slot.isActive) {
+            this.logger.warn(`[Saga] Slot ${timeSlotId} NOT ACTIVE`);
+            throw new ConflictException(`Time slot is not active`);
+          }
+
+          const newBookedPlayers = slot.bookedPlayers + playerCount;
+          if (newBookedPlayers > slot.maxPlayers) {
+            this.logger.warn(`[Saga] Slot ${timeSlotId} NOT ENOUGH CAPACITY: available=${slot.maxPlayers - slot.bookedPlayers}, requested=${playerCount}`);
+            throw new ConflictException(
+              `Not enough capacity. Available: ${slot.maxPlayers - slot.bookedPlayers}, Requested: ${playerCount}`
+            );
+          }
+
+          // 3. Optimistic Locking: version 체크하며 업데이트
+          const currentVersion = slot.version;
+          const newStatus: TimeSlotStatus = newBookedPlayers >= slot.maxPlayers
+            ? TimeSlotStatus.FULLY_BOOKED
+            : TimeSlotStatus.AVAILABLE;
+
+          const updateStart = Date.now();
+          const updatedSlot = await tx.gameTimeSlot.updateMany({
+            where: {
+              id: timeSlotId,
+              version: currentVersion, // Optimistic Lock
+            },
+            data: {
+              bookedPlayers: newBookedPlayers,
+              status: newStatus,
+              version: currentVersion + 1,
+            },
+          });
+          this.logger.log(`[Saga] Slot update completed in ${Date.now() - updateStart}ms`);
+
+          // Version mismatch 체크
+          if (updatedSlot.count === 0) {
+            throw new ConflictException('Concurrent modification detected. Please retry.');
+          }
+
+          this.logger.log(`[Saga] Slot ${timeSlotId} reserved successfully (version: ${currentVersion} -> ${currentVersion + 1})`);
+
+          // 업데이트된 슬롯 정보 반환 (refetch 쿼리 제거 - 성능 최적화)
+          // 이미 조회한 slot 데이터에 업데이트된 값만 반영
+          return {
+            ...slot,
+            bookedPlayers: newBookedPlayers,
+            status: newStatus,
+            version: currentVersion + 1,
+            updatedAt: new Date(),
+          };
+        }, {
+          timeout: 30000, // 30초 (Cloud Run cold start + Cloud SQL 지연 대응)
+          maxWait: 10000, // 최대 10초 대기
+        });
+        this.logger.log(`[Saga] Transaction completed in ${Date.now() - txStart}ms`);
+
+        // 성공 시 DB에 idempotency 레코드 추가 (중복 요청 방지)
+        const idempotencyCreateStart = Date.now();
+        await this.prisma.processedSlotReservation.create({
+          data: {
+            bookingId,
+            gameTimeSlotId: timeSlotId,
+            expiresAt: new Date(Date.now() + IDEMPOTENCY_TTL_MS),
+          },
+        });
+        this.logger.log(`[Saga] Idempotency record created in ${Date.now() - idempotencyCreateStart}ms`);
+        this.logger.log(`[Saga] ========== reserveSlotForSaga SUCCESS (total: ${Date.now() - startTime}ms) ==========`);
+        return { success: true, slot: result };
+      } catch (error) {
+        if (error instanceof ConflictException && error.message.includes('Concurrent modification')) {
+          this.logger.warn(`[Saga] Concurrent modification on slot ${timeSlotId}, attempt ${attempt}/${MAX_RETRY} - will retry`);
+          if (attempt >= MAX_RETRY) {
+            this.logger.error(`[Saga] ========== reserveSlotForSaga FAILED (max retries) ==========`);
+            return { success: false, error: `Failed after ${MAX_RETRY} attempts due to concurrent modifications` };
+          }
+          // 재시도 전 짧은 대기
+          await new Promise(resolve => setTimeout(resolve, 50 * attempt));
+          continue;
+        }
+
+        // 다른 에러는 즉시 반환
+        this.logger.error(`[Saga] Failed to reserve slot ${timeSlotId}: ${error.message}`);
+        this.logger.log(`[Saga] ========== reserveSlotForSaga FAILED ==========`);
+        return { success: false, error: error.message };
+      }
+    }
+
+    this.logger.error(`[Saga] ========== reserveSlotForSaga FAILED (max retry reached) ==========`);
+    return { success: false, error: 'Max retry attempts reached' };
+  }
+
+  /**
+   * Saga용 슬롯 해제 (예약 취소 시)
+   * booking-service의 slot.release 요청 처리
+   */
+  async releaseSlotForSaga(
+    timeSlotId: number,
+    playerCount: number,
+    bookingId: number,
+    reason: string
+  ): Promise<{ success: boolean; slot?: GameTimeSlot; error?: string }> {
+    this.logger.log(`[Saga] Releasing slot ${timeSlotId} for ${playerCount} players (bookingId: ${bookingId}, reason: ${reason})`);
+
+    try {
+      const result = await this.prisma.$transaction(async (tx) => {
+        const slot = await tx.gameTimeSlot.findUnique({
+          where: { id: timeSlotId },
+        });
+
+        if (!slot) {
+          throw new NotFoundException(`GameTimeSlot with ID ${timeSlotId} not found`);
+        }
+
+        const newBookedPlayers = Math.max(0, slot.bookedPlayers - playerCount);
+        const newStatus = newBookedPlayers < slot.maxPlayers ? 'AVAILABLE' : 'FULLY_BOOKED';
+
+        return await tx.gameTimeSlot.update({
+          where: { id: timeSlotId },
+          data: {
+            bookedPlayers: newBookedPlayers,
+            status: newStatus,
+            version: slot.version + 1,
+          },
+        });
+      }, {
+        timeout: 30000, // 30초
+        maxWait: 10000, // 최대 10초 대기
+      });
+
+      this.logger.log(`[Saga] Slot ${timeSlotId} released successfully`);
+      return { success: true, slot: result };
+    } catch (error) {
+      this.logger.error(`[Saga] Failed to release slot ${timeSlotId}: ${error.message}`);
+      return { success: false, error: error.message };
+    }
   }
 }

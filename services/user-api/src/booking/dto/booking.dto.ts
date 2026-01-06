@@ -8,6 +8,15 @@ import {
 } from 'class-validator';
 
 export class CreateBookingDto {
+  @ApiProperty({
+    description: '멱등성 키 (UUID) - 클라이언트가 제공하지 않으면 서버에서 자동 생성',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  idempotencyKey?: string;
+
   @ApiProperty({ description: '게임 ID (18홀 코스 조합)', example: 1 })
   @IsNumber()
   @IsNotEmpty()
@@ -100,6 +109,11 @@ export class SearchBookingDto {
   @IsOptional()
   gameId?: number;
 
+  @ApiProperty({ description: '사용자 ID', example: 1, required: false })
+  @IsNumber()
+  @IsOptional()
+  userId?: number;
+
   @ApiProperty({
     description: '시작 날짜',
     example: '2024-07-01',
@@ -117,6 +131,36 @@ export class SearchBookingDto {
   @IsDateString()
   @IsOptional()
   endDate?: string;
+
+  @ApiProperty({
+    description: '정렬 기준',
+    example: 'bookingDate',
+    required: false,
+    enum: ['bookingDate', 'createdAt', 'totalPrice'],
+  })
+  @IsString()
+  @IsOptional()
+  sortBy?: 'bookingDate' | 'createdAt' | 'totalPrice';
+
+  @ApiProperty({
+    description: '정렬 순서',
+    example: 'desc',
+    required: false,
+    enum: ['asc', 'desc'],
+  })
+  @IsString()
+  @IsOptional()
+  sortOrder?: 'asc' | 'desc';
+
+  @ApiProperty({
+    description: '시간 필터',
+    example: 'upcoming',
+    required: false,
+    enum: ['upcoming', 'past', 'all'],
+  })
+  @IsString()
+  @IsOptional()
+  timeFilter?: 'upcoming' | 'past' | 'all';
 }
 
 export class CancelBookingDto {

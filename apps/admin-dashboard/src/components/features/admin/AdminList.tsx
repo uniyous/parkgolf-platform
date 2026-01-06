@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { useAdmins, useDeleteAdmin, useToggleAdminStatus } from '@/hooks/queries';
+import { useAdminsQuery, useDeleteAdminMutation, useToggleAdminStatusMutation } from '@/hooks/queries';
 import { useCurrentAdmin } from '@/stores';
 import { Modal } from '@/components/ui';
+import { DataContainer } from '@/components/common';
 import { AdminFormModal } from './AdminFormModal';
 import { RoleManagementModal } from './RoleManagementModal';
 import type { Admin, AdminRole, AdminScope } from '@/types';
@@ -27,9 +28,9 @@ const ROLE_META: Record<string, { icon: string; color: string }> = {
 
 export const AdminList: React.FC = () => {
   // Queries & Mutations
-  const { data: admins = [], isLoading, refetch } = useAdmins();
-  const deleteAdmin = useDeleteAdmin();
-  const toggleStatus = useToggleAdminStatus();
+  const { data: admins = [], refetch, isLoading } = useAdminsQuery();
+  const deleteAdmin = useDeleteAdminMutation();
+  const toggleStatus = useToggleAdminStatusMutation();
   const currentAdmin = useCurrentAdmin();
 
   // Local UI State
@@ -149,10 +150,6 @@ export const AdminList: React.FC = () => {
     if (!currentAdmin) return false;
     return canManageAdmin(currentAdmin.role, admin.role);
   };
-
-  if (isLoading) {
-    return null;
-  }
 
   return (
     <div className="space-y-6">
@@ -313,165 +310,14 @@ export const AdminList: React.FC = () => {
             <span className="text-sm text-blue-600">{selectedIds.length}명 선택됨</span>
           )}
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 w-12">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.length === filteredAdmins.length && filteredAdmins.length > 0}
-                    onChange={handleSelectAll}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                </th>
-                <th
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => handleSort('name')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>관리자 정보</span>
-                    {sortField === 'name' && (
-                      <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => handleSort('role')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>역할</span>
-                    {sortField === 'role' && (
-                      <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  상태
-                </th>
-                <th
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => handleSort('lastLoginAt')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>마지막 로그인</span>
-                    {sortField === 'lastLoginAt' && (
-                      <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                  액션
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredAdmins.map((admin) => (
-                <tr key={admin.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-4">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(admin.id)}
-                      onChange={() => handleSelect(admin.id)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold">
-                        {admin.name?.charAt(0) || 'A'}
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900">{admin.name}</div>
-                        <div className="text-sm text-gray-500">{admin.email}</div>
-                        <div className="text-xs text-gray-400">@{admin.username}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-lg">{ROLE_META[admin.role]?.icon || '👤'}</span>
-                      <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${ROLE_META[admin.role]?.color || getRoleBadgeStyle(admin.role)}`}>
-                        {ADMIN_ROLE_LABELS[admin.role] || admin.role}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4">
-                    <button
-                      onClick={() => handleToggleStatus(admin)}
-                      disabled={!canManage(admin)}
-                      className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-                        admin.isActive
-                          ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                          : 'bg-red-100 text-red-800 hover:bg-red-200'
-                      } ${canManage(admin) ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}
-                    >
-                      <span className={`w-2 h-2 rounded-full mr-2 ${admin.isActive ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                      {admin.isActive ? '활성' : '비활성'}
-                    </button>
-                  </td>
-                  <td className="px-4 py-4 text-sm text-gray-500">
-                    {admin.lastLoginAt
-                      ? new Date(admin.lastLoginAt).toLocaleDateString('ko-KR', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                        })
-                      : <span className="text-gray-400">-</span>}
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => setFormModal({ open: true, admin })}
-                        disabled={!canManage(admin)}
-                        className="inline-flex items-center px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        수정
-                      </button>
-                      <button
-                        onClick={() => setRoleModal({ open: true, admin })}
-                        disabled={!canManage(admin)}
-                        className="inline-flex items-center px-3 py-1.5 text-sm text-purple-600 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                        </svg>
-                        권한
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirm({ open: true, admin })}
-                        disabled={!canManage(admin)}
-                        className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        삭제
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredAdmins.length === 0 && (
-          <div className="text-center py-16">
-            <div className="text-5xl mb-4">🔍</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {admins.length === 0 ? '등록된 관리자가 없습니다' : '검색 결과가 없습니다'}
-            </h3>
-            <p className="text-gray-500 mb-4">
-              {admins.length === 0
-                ? '새 관리자를 추가해 보세요'
-                : '다른 검색어나 필터를 시도해 보세요'}
-            </p>
-            {admins.length === 0 && (
+        <DataContainer
+          isLoading={isLoading}
+          isEmpty={filteredAdmins.length === 0}
+          emptyIcon="🔍"
+          emptyMessage={admins.length === 0 ? '등록된 관리자가 없습니다' : '검색 결과가 없습니다'}
+          emptyDescription={admins.length === 0 ? '새 관리자를 추가해 보세요' : '다른 검색어나 필터를 시도해 보세요'}
+          emptyAction={
+            admins.length === 0 ? (
               <button
                 onClick={() => setFormModal({ open: true })}
                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -481,9 +327,157 @@ export const AdminList: React.FC = () => {
                 </svg>
                 관리자 추가
               </button>
-            )}
+            ) : undefined
+          }
+          loadingMessage="관리자 목록을 불러오는 중..."
+        >
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 w-12">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.length === filteredAdmins.length && filteredAdmins.length > 0}
+                      onChange={handleSelectAll}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </th>
+                  <th
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('name')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>관리자 정보</span>
+                      {sortField === 'name' && (
+                        <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('role')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>역할</span>
+                      {sortField === 'role' && (
+                        <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    상태
+                  </th>
+                  <th
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('lastLoginAt')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>마지막 로그인</span>
+                      {sortField === 'lastLoginAt' && (
+                        <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                    액션
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredAdmins.map((admin) => (
+                  <tr key={admin.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(admin.id)}
+                        onChange={() => handleSelect(admin.id)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold">
+                          {admin.name?.charAt(0) || 'A'}
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">{admin.name}</div>
+                          <div className="text-sm text-gray-500">{admin.email}</div>
+                          <div className="text-xs text-gray-400">@{admin.username}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-lg">{ROLE_META[admin.role]?.icon || '👤'}</span>
+                        <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${ROLE_META[admin.role]?.color || getRoleBadgeStyle(admin.role)}`}>
+                          {ADMIN_ROLE_LABELS[admin.role] || admin.role}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <button
+                        onClick={() => handleToggleStatus(admin)}
+                        disabled={!canManage(admin)}
+                        className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                          admin.isActive
+                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                            : 'bg-red-100 text-red-800 hover:bg-red-200'
+                        } ${canManage(admin) ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}
+                      >
+                        <span className={`w-2 h-2 rounded-full mr-2 ${admin.isActive ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                        {admin.isActive ? '활성' : '비활성'}
+                      </button>
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-500">
+                      {admin.lastLoginAt
+                        ? new Date(admin.lastLoginAt).toLocaleDateString('ko-KR', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                          })
+                        : <span className="text-gray-400">-</span>}
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => setFormModal({ open: true, admin })}
+                          disabled={!canManage(admin)}
+                          className="inline-flex items-center px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          수정
+                        </button>
+                        <button
+                          onClick={() => setRoleModal({ open: true, admin })}
+                          disabled={!canManage(admin)}
+                          className="inline-flex items-center px-3 py-1.5 text-sm text-purple-600 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                          </svg>
+                          권한
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm({ open: true, admin })}
+                          disabled={!canManage(admin)}
+                          className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          삭제
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
+        </DataContainer>
       </div>
 
       {/* Form Modal */}

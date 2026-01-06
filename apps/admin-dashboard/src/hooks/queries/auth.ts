@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
-import { useAuthStore } from '@/stores';
+import { useAuthStore, type ApiUserResponse } from '@/stores';
 import { authKeys } from './keys';
 import type { LoginCredentials, AuthResponse } from '@/types';
 
@@ -14,7 +14,7 @@ interface ProfileResponse {
 }
 
 // Login Mutation (로컬 로딩 사용 - LoginForm에서 자체 로딩 처리)
-export const useLogin = () => {
+export const useLoginMutation = () => {
   const { hydrateFromLogin, setLoading, setError } = useAuthStore();
 
   return useMutation({
@@ -38,7 +38,7 @@ export const useLogin = () => {
       if (data.refreshToken) {
         localStorage.setItem('refreshToken', data.refreshToken);
       }
-      hydrateFromLogin(data.user, data.accessToken);
+      hydrateFromLogin(data.user as ApiUserResponse, data.accessToken);
     },
     onError: (error: Error) => {
       setLoading(false);
@@ -48,7 +48,7 @@ export const useLogin = () => {
 };
 
 // Logout Mutation (로컬 로딩 사용)
-export const useLogout = () => {
+export const useLogoutMutation = () => {
   const queryClient = useQueryClient();
   const { logout } = useAuthStore();
 
@@ -69,7 +69,7 @@ export const useLogout = () => {
 };
 
 // Get Current User / Profile Query (로컬 로딩 사용)
-export const useGetCurrentUser = () => {
+export const useGetCurrentUserMutation = () => {
   const { hydrateFromProfile, setError } = useAuthStore();
 
   return useMutation({
@@ -115,7 +115,7 @@ export const useGetCurrentUser = () => {
 };
 
 // Refresh Token Mutation (로컬 로딩 사용 - 백그라운드 처리)
-export const useRefreshToken = () => {
+export const useRefreshTokenMutation = () => {
   const { setToken, setError } = useAuthStore();
 
   return useMutation({
@@ -153,7 +153,7 @@ export const useRefreshToken = () => {
 };
 
 // Check Auth Status (from localStorage) - 로컬 로딩 사용
-export const useCheckAuthStatus = () => {
+export const useCheckAuthStatusMutation = () => {
   const { hydrateFromLogin, logout } = useAuthStore();
 
   return useMutation({

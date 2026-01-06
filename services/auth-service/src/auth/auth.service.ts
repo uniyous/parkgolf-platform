@@ -137,16 +137,19 @@ export class AuthService {
 
     // Admin authentication methods
     async validateAdmin(username: string, pass: string): Promise<Omit<Admin, 'password'> | null> {
-        this.logger.debug(`Validating admin: ${username}`);
+        const startTime = Date.now();
+        this.logger.log(`[PERF] AuthService.validateAdmin START - ${username}`);
+
         const admin = await this.adminService.validateAdmin(username, pass);
+        this.logger.log(`[PERF] AuthService.validateAdmin (adminService call): ${Date.now() - startTime}ms`);
 
         if (admin) {
-            this.logger.log(`Admin validated: ${username}`);
+            this.logger.log(`[PERF] AuthService.validateAdmin SUCCESS - ${username}, total: ${Date.now() - startTime}ms`);
             const { password, ...result } = admin;
             return result;
         }
 
-        this.logger.warn(`Admin login failed for ${username}`);
+        this.logger.warn(`[PERF] AuthService.validateAdmin FAILED - ${username}, total: ${Date.now() - startTime}ms`);
         return null;
     }
 

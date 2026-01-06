@@ -33,11 +33,17 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Body() loginRequest: LoginRequest) {
+    const startTime = Date.now();
     try {
-      this.logger.log(`Admin login attempt for email: ${loginRequest.email}`);
+      this.logger.log(`[PERF] BFF Login START - email: ${loginRequest.email}`);
 
+      const natsStartTime = Date.now();
       const result = await this.authService.login(loginRequest);
-      
+      const natsEndTime = Date.now();
+
+      this.logger.log(`[PERF] BFF NATS round-trip: ${natsEndTime - natsStartTime}ms`);
+      this.logger.log(`[PERF] Auth service response received`);
+
       if (!result.success || !result.data) {
         throw new HttpException(
           {
@@ -65,10 +71,10 @@ export class AuthController {
         );
       }
 
-      this.logger.log(`Admin login successful for: ${loginRequest.email}`);
+      this.logger.log(`[PERF] BFF Login SUCCESS - email: ${loginRequest.email}, total: ${Date.now() - startTime}ms`);
       return result;
     } catch (error) {
-      this.logger.error(`Admin login failed for: ${loginRequest.email}`, error);
+      this.logger.error(`[PERF] BFF Login FAILED - email: ${loginRequest.email}, total: ${Date.now() - startTime}ms`, error);
       
       if (error instanceof HttpException) {
         throw error;

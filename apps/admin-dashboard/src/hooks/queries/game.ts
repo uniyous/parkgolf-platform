@@ -11,31 +11,41 @@ import {
   type UpdateGameTimeSlotDto,
 } from '@/lib/api/gamesApi';
 import { gameKeys } from './keys';
+import { showSuccessToast } from '@/lib/errors';
 
 // ============================================
 // Game Queries
 // ============================================
 
-export const useGames = (filters?: GameFilter) => {
+export const useGamesQuery = (filters?: GameFilter) => {
   return useQuery({
     queryKey: gameKeys.list(filters),
     queryFn: () => gamesApi.getGames(filters),
+    staleTime: 1000 * 60 * 5, // 5분간 fresh 유지
+    refetchOnWindowFocus: false,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const useGame = (id: number) => {
+export const useGameQuery = (id: number) => {
   return useQuery({
     queryKey: gameKeys.detail(id),
     queryFn: () => gamesApi.getGameById(id),
     enabled: !!id,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const useGamesByClub = (clubId: number) => {
+export const useGamesByClubQuery = (clubId: number) => {
   return useQuery({
     queryKey: gameKeys.byClub(clubId),
     queryFn: () => gamesApi.getGamesByClub(clubId),
     enabled: !!clubId,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -43,7 +53,7 @@ export const useGamesByClub = (clubId: number) => {
 // Weekly Schedule Queries
 // ============================================
 
-export const useGameWeeklySchedules = (gameId: number) => {
+export const useGameWeeklySchedulesQuery = (gameId: number) => {
   return useQuery({
     queryKey: gameKeys.weeklySchedules(gameId),
     queryFn: () => gamesApi.getWeeklySchedules(gameId),
@@ -56,18 +66,24 @@ export const useGameWeeklySchedules = (gameId: number) => {
 // Time Slot Queries
 // ============================================
 
-export const useGameTimeSlots = (gameId: number, filter?: GameTimeSlotFilter) => {
+export const useGameTimeSlotsQuery = (gameId: number, filter?: GameTimeSlotFilter) => {
   return useQuery({
     queryKey: gameKeys.timeSlots(gameId, filter),
     queryFn: () => gamesApi.getTimeSlots(gameId, filter),
     enabled: !!gameId,
+    staleTime: 1000 * 60 * 5, // 5분간 fresh 상태 유지
+    gcTime: 1000 * 60 * 30, // 30분간 캐시 유지
+    refetchOnWindowFocus: false, // 창 포커스 시 리패치 방지
+    placeholderData: (previousData) => previousData, // 이전 데이터 유지
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const useGameTimeSlotStats = (filter?: GameTimeSlotFilter) => {
+export const useGameTimeSlotStatsQuery = (filter?: GameTimeSlotFilter) => {
   return useQuery({
     queryKey: gameKeys.timeSlotStats(filter),
     queryFn: () => gamesApi.getTimeSlotStats(filter),
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -75,7 +91,7 @@ export const useGameTimeSlotStats = (filter?: GameTimeSlotFilter) => {
 // Game Mutations
 // ============================================
 
-export const useCreateGame = () => {
+export const useCreateGameMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -85,11 +101,13 @@ export const useCreateGame = () => {
       if (variables.clubId) {
         queryClient.invalidateQueries({ queryKey: gameKeys.byClub(variables.clubId) });
       }
+      showSuccessToast('게임이 생성되었습니다.');
     },
+    meta: { errorMessage: '게임 생성에 실패했습니다.' },
   });
 };
 
-export const useUpdateGame = () => {
+export const useUpdateGameMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -98,18 +116,22 @@ export const useUpdateGame = () => {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: gameKeys.lists() });
       queryClient.invalidateQueries({ queryKey: gameKeys.detail(id) });
+      showSuccessToast('게임 정보가 수정되었습니다.');
     },
+    meta: { errorMessage: '게임 정보 수정에 실패했습니다.' },
   });
 };
 
-export const useDeleteGame = () => {
+export const useDeleteGameMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (id: number) => gamesApi.deleteGame(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: gameKeys.all });
+      showSuccessToast('게임이 삭제되었습니다.');
     },
+    meta: { errorMessage: '게임 삭제에 실패했습니다.' },
   });
 };
 
@@ -117,16 +139,16 @@ export const useDeleteGame = () => {
 // Weekly Schedule Mutations
 // ============================================
 
-export const useCreateWeeklySchedule = () => {
+export const useCreateWeeklyScheduleMutation = () => {
   return useMutation({
-    meta: { globalLoading: false }, // 로컬 프로그레스 바 사용
+    meta: { globalLoading: false, errorMessage: '주간 스케줄 생성에 실패했습니다.' },
     mutationFn: ({ gameId, data }: { gameId: number; data: CreateGameWeeklyScheduleDto }) =>
       gamesApi.createWeeklySchedule(gameId, data),
     // onSuccess에서 invalidate 하지 않음 - 마법사에서 완료 후 refetch() 호출
   });
 };
 
-export const useUpdateWeeklySchedule = () => {
+export const useUpdateWeeklyScheduleMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -141,11 +163,13 @@ export const useUpdateWeeklySchedule = () => {
     }) => gamesApi.updateWeeklySchedule(gameId, scheduleId, data),
     onSuccess: (_, { gameId }) => {
       queryClient.invalidateQueries({ queryKey: gameKeys.weeklySchedules(gameId) });
+      showSuccessToast('주간 스케줄이 수정되었습니다.');
     },
+    meta: { errorMessage: '주간 스케줄 수정에 실패했습니다.' },
   });
 };
 
-export const useDeleteWeeklySchedule = () => {
+export const useDeleteWeeklyScheduleMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -153,7 +177,9 @@ export const useDeleteWeeklySchedule = () => {
       gamesApi.deleteWeeklySchedule(gameId, scheduleId),
     onSuccess: (_, { gameId }) => {
       queryClient.invalidateQueries({ queryKey: gameKeys.weeklySchedules(gameId) });
+      showSuccessToast('주간 스케줄이 삭제되었습니다.');
     },
+    meta: { errorMessage: '주간 스케줄 삭제에 실패했습니다.' },
   });
 };
 
@@ -161,7 +187,7 @@ export const useDeleteWeeklySchedule = () => {
 // Time Slot Mutations
 // ============================================
 
-export const useCreateTimeSlot = () => {
+export const useCreateTimeSlotMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -170,27 +196,32 @@ export const useCreateTimeSlot = () => {
     onSuccess: (_, { gameId }) => {
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlots(gameId, undefined) });
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlotStats() });
+      showSuccessToast('타임슬롯이 생성되었습니다.');
     },
+    meta: { errorMessage: '타임슬롯 생성에 실패했습니다.' },
   });
 };
 
-export const useBulkCreateTimeSlots = () => {
+export const useBulkCreateTimeSlotsMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ gameId, timeSlots }: { gameId: number; timeSlots: CreateGameTimeSlotDto[] }) =>
       gamesApi.bulkCreateTimeSlots(gameId, timeSlots),
-    onSuccess: (_, { gameId }) => {
+    onSuccess: (_, { gameId, timeSlots }) => {
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlots(gameId, undefined) });
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlotStats() });
+      showSuccessToast(`${timeSlots.length}개의 타임슬롯이 생성되었습니다.`);
     },
+    meta: { errorMessage: '타임슬롯 일괄 생성에 실패했습니다.' },
   });
 };
 
-export const useGenerateTimeSlots = () => {
+export const useGenerateTimeSlotsMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    meta: { globalLoading: false, errorMessage: '타임슬롯 자동 생성에 실패했습니다.' },
     mutationFn: ({
       gameId,
       startDate,
@@ -200,14 +231,15 @@ export const useGenerateTimeSlots = () => {
       startDate: string;
       endDate: string;
     }) => gamesApi.generateTimeSlots(gameId, startDate, endDate),
-    onSuccess: (_, { gameId }) => {
+    onSuccess: (data, { gameId }) => {
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlots(gameId, undefined) });
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlotStats() });
+      showSuccessToast(`${data?.length || 0}개의 타임슬롯이 자동 생성되었습니다.`);
     },
   });
 };
 
-export const useUpdateTimeSlot = () => {
+export const useUpdateTimeSlotMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -223,11 +255,13 @@ export const useUpdateTimeSlot = () => {
     onSuccess: (_, { gameId }) => {
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlots(gameId, undefined) });
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlotStats() });
+      showSuccessToast('타임슬롯이 수정되었습니다.');
     },
+    meta: { errorMessage: '타임슬롯 수정에 실패했습니다.' },
   });
 };
 
-export const useDeleteTimeSlot = () => {
+export const useDeleteTimeSlotMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -236,6 +270,8 @@ export const useDeleteTimeSlot = () => {
     onSuccess: (_, { gameId }) => {
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlots(gameId, undefined) });
       queryClient.invalidateQueries({ queryKey: gameKeys.timeSlotStats() });
+      showSuccessToast('타임슬롯이 삭제되었습니다.');
     },
+    meta: { errorMessage: '타임슬롯 삭제에 실패했습니다.' },
   });
 };

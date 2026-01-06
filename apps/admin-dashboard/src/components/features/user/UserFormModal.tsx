@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useCreateUser, useUpdateUser } from '@/hooks/queries';
+import { useCreateUserMutation, useUpdateUserMutation } from '@/hooks/queries';
 import { Modal } from '@/components/ui';
 import type { User, UserStatus, UserMembershipTier } from '@/types';
 
@@ -30,8 +30,8 @@ const initialFormData: FormData = {
 };
 
 export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClose }) => {
-  const createUser = useCreateUser();
-  const updateUser = useUpdateUser();
+  const createUser = useCreateUserMutation();
+  const updateUser = useUpdateUserMutation();
   const isEditing = !!user;
 
   const [formData, setFormData] = useState<FormData>(initialFormData);

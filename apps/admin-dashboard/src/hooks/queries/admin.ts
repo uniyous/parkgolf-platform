@@ -1,42 +1,47 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api/adminApi';
 import { adminKeys, roleKeys } from './keys';
+import { showSuccessToast } from '@/lib/errors';
 import type { CreateAdminDto, UpdateAdminDto } from '@/types';
 
 // ============================================
 // Queries
 // ============================================
 
-export const useAdmins = (filters?: Record<string, any>) => {
+export const useAdminsQuery = (filters?: Record<string, any>) => {
   return useQuery({
     queryKey: adminKeys.list(filters),
     queryFn: () => adminApi.getAdmins(filters),
     staleTime: 1000 * 60 * 5,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const useAdmin = (id: number) => {
+export const useAdminQuery = (id: number) => {
   return useQuery({
     queryKey: adminKeys.detail(id),
     queryFn: () => adminApi.getAdmin(id),
     enabled: !!id,
     staleTime: 1000 * 60 * 5,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const useAdminStats = () => {
+export const useAdminStatsQuery = () => {
   return useQuery({
     queryKey: adminKeys.stats(),
     queryFn: () => adminApi.getAdminStats(),
     staleTime: 1000 * 60 * 10,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const usePermissions = () => {
+export const usePermissionsQuery = () => {
   return useQuery({
     queryKey: adminKeys.permissions(),
     queryFn: () => adminApi.getPermissions(),
     staleTime: 1000 * 60 * 30,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -44,7 +49,7 @@ export const usePermissions = () => {
 // Mutations
 // ============================================
 
-export const useCreateAdmin = () => {
+export const useCreateAdminMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -52,14 +57,13 @@ export const useCreateAdmin = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.lists() });
       queryClient.invalidateQueries({ queryKey: adminKeys.stats() });
+      showSuccessToast('관리자가 생성되었습니다.');
     },
-    onError: (error) => {
-      console.error('Failed to create admin:', error);
-    },
+    meta: { errorMessage: '관리자 생성에 실패했습니다.' },
   });
 };
 
-export const useUpdateAdmin = () => {
+export const useUpdateAdminMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -68,14 +72,13 @@ export const useUpdateAdmin = () => {
     onSuccess: (updatedAdmin, { id }) => {
       queryClient.setQueryData(adminKeys.detail(id), updatedAdmin);
       queryClient.invalidateQueries({ queryKey: adminKeys.lists() });
+      showSuccessToast('관리자 정보가 수정되었습니다.');
     },
-    onError: (error) => {
-      console.error('Failed to update admin:', error);
-    },
+    meta: { errorMessage: '관리자 정보 수정에 실패했습니다.' },
   });
 };
 
-export const useDeleteAdmin = () => {
+export const useDeleteAdminMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -84,30 +87,28 @@ export const useDeleteAdmin = () => {
       queryClient.removeQueries({ queryKey: adminKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: adminKeys.lists() });
       queryClient.invalidateQueries({ queryKey: adminKeys.stats() });
+      showSuccessToast('관리자가 삭제되었습니다.');
     },
-    onError: (error) => {
-      console.error('Failed to delete admin:', error);
-    },
+    meta: { errorMessage: '관리자 삭제에 실패했습니다.' },
   });
 };
 
-export const useUpdateAdminStatus = () => {
+export const useUpdateAdminStatusMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, isActive }: { id: number; isActive: boolean }) =>
       adminApi.updateAdminStatus(id, isActive),
-    onSuccess: (updatedAdmin, { id }) => {
+    onSuccess: (updatedAdmin, { id, isActive }) => {
       queryClient.setQueryData(adminKeys.detail(id), updatedAdmin);
       queryClient.invalidateQueries({ queryKey: adminKeys.lists() });
+      showSuccessToast(isActive ? '관리자가 활성화되었습니다.' : '관리자가 비활성화되었습니다.');
     },
-    onError: (error) => {
-      console.error('Failed to update admin status:', error);
-    },
+    meta: { errorMessage: '상태 변경에 실패했습니다.' },
   });
 };
 
-export const useToggleAdminStatus = () => {
+export const useToggleAdminStatusMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -115,14 +116,13 @@ export const useToggleAdminStatus = () => {
     onSuccess: (updatedAdmin, id) => {
       queryClient.setQueryData(adminKeys.detail(id), updatedAdmin);
       queryClient.invalidateQueries({ queryKey: adminKeys.lists() });
+      showSuccessToast('상태가 변경되었습니다.');
     },
-    onError: (error) => {
-      console.error('Failed to toggle admin status:', error);
-    },
+    meta: { errorMessage: '상태 변경에 실패했습니다.' },
   });
 };
 
-export const useUpdateAdminPermissions = () => {
+export const useUpdateAdminPermissionsMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -131,14 +131,13 @@ export const useUpdateAdminPermissions = () => {
     onSuccess: (updatedAdmin, { id }) => {
       queryClient.setQueryData(adminKeys.detail(id), updatedAdmin);
       queryClient.invalidateQueries({ queryKey: adminKeys.lists() });
+      showSuccessToast('권한이 수정되었습니다.');
     },
-    onError: (error) => {
-      console.error('Failed to update admin permissions:', error);
-    },
+    meta: { errorMessage: '권한 수정에 실패했습니다.' },
   });
 };
 
-export const useBulkDeleteAdmins = () => {
+export const useBulkDeleteAdminsMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -154,20 +153,19 @@ export const useBulkDeleteAdmins = () => {
 
       return { deletedCount: ids.length };
     },
-    onSuccess: (_, ids) => {
+    onSuccess: ({ deletedCount }, ids) => {
       ids.forEach((id) => {
         queryClient.removeQueries({ queryKey: adminKeys.detail(id) });
       });
       queryClient.invalidateQueries({ queryKey: adminKeys.lists() });
       queryClient.invalidateQueries({ queryKey: adminKeys.stats() });
+      showSuccessToast(`${deletedCount}명의 관리자가 삭제되었습니다.`);
     },
-    onError: (error) => {
-      console.error('Failed to bulk delete admins:', error);
-    },
+    meta: { errorMessage: '일괄 삭제에 실패했습니다.' },
   });
 };
 
-export const useBulkUpdateAdminStatus = () => {
+export const useBulkUpdateAdminStatusMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -183,12 +181,11 @@ export const useBulkUpdateAdminStatus = () => {
 
       return { updatedCount: ids.length };
     },
-    onSuccess: () => {
+    onSuccess: ({ updatedCount }, { isActive }) => {
       queryClient.invalidateQueries({ queryKey: adminKeys.lists() });
+      showSuccessToast(`${updatedCount}명의 관리자가 ${isActive ? '활성화' : '비활성화'}되었습니다.`);
     },
-    onError: (error) => {
-      console.error('Failed to bulk update admin status:', error);
-    },
+    meta: { errorMessage: '일괄 상태 변경에 실패했습니다.' },
   });
 };
 
@@ -196,32 +193,35 @@ export const useBulkUpdateAdminStatus = () => {
 // Role Queries
 // ============================================
 
-export const useRoles = (userType?: string) => {
+export const useRolesQuery = (userType?: string) => {
   return useQuery({
     queryKey: roleKeys.list(userType),
     queryFn: () => adminApi.getRoles(userType),
     staleTime: 1000 * 60 * 30, // 30분
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const useRolesWithPermissions = (userType?: string) => {
+export const useRolesWithPermissionsQuery = (userType?: string) => {
   return useQuery({
     queryKey: roleKeys.withPermissions(userType),
     queryFn: () => adminApi.getRolesWithPermissions(userType),
     staleTime: 1000 * 60 * 30, // 30분
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const useRolePermissions = (roleCode: string) => {
+export const useRolePermissionsQuery = (roleCode: string) => {
   return useQuery({
     queryKey: roleKeys.permissions(roleCode),
     queryFn: () => adminApi.getRolePermissions(roleCode),
     enabled: !!roleCode,
     staleTime: 1000 * 60 * 30, // 30분
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const useUpdateRolePermissions = () => {
+export const useUpdateRolePermissionsMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -231,9 +231,8 @@ export const useUpdateRolePermissions = () => {
       queryClient.invalidateQueries({ queryKey: roleKeys.permissions(roleCode) });
       queryClient.invalidateQueries({ queryKey: roleKeys.withPermissions() });
       queryClient.invalidateQueries({ queryKey: roleKeys.list() });
+      showSuccessToast('역할 권한이 수정되었습니다.');
     },
-    onError: (error) => {
-      console.error('Failed to update role permissions:', error);
-    },
+    meta: { errorMessage: '역할 권한 수정에 실패했습니다.' },
   });
 };

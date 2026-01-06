@@ -1,13 +1,21 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, Club } from '@prisma/client';
 import {
   CreateClubDto,
   UpdateClubDto,
   ClubFilterDto,
-  ClubResponseDto,
-  ClubListResponseDto,
+  ClubWithRelations,
 } from '../dto/club.dto';
+
+/** Club 목록 응답 타입 (페이지네이션) */
+export interface ClubListResult {
+  data: ClubWithRelations[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
 
 @Injectable()
 export class ClubService {
@@ -18,7 +26,7 @@ export class ClubService {
   /**
    * 골프클럽 생성
    */
-  async create(createClubDto: CreateClubDto): Promise<ClubResponseDto> {
+  async create(createClubDto: CreateClubDto): Promise<ClubWithRelations> {
     try {
       // 회사 존재 여부 확인
       const company = await this.prisma.company.findUnique({
@@ -59,7 +67,7 @@ export class ClubService {
       });
 
       this.logger.log(`Club created: ${club.name} (ID: ${club.id})`);
-      return this.formatClubResponse(club);
+      return club;
     } catch (error) {
       this.logger.error(`Failed to create club: ${error.message}`, error.stack);
       throw error;
@@ -69,7 +77,7 @@ export class ClubService {
   /**
    * 골프클럽 목록 조회 (필터링, 페이징 지원)
    */
-  async findAll(filters: ClubFilterDto): Promise<ClubListResponseDto> {
+  async findAll(filters: ClubFilterDto): Promise<ClubListResult> {
     try {
       const {
         search,
@@ -126,31 +134,13 @@ export class ClubService {
         skip,
         take: limitNum,
         include: {
-          company: {
-            select: {
-              id: true,
-              name: true,
-              status: true,
-            },
-          },
-          courses: {
-            select: {
-              id: true,
-              name: true,
-              code: true,
-              subtitle: true,
-              par: true,
-              difficulty: true,
-              status: true,
-            },
-          },
+          company: true,
+          courses: true,
         },
       });
 
-      const data = clubs.map(club => this.formatClubResponse(club));
-
       return {
-        data,
+        data: clubs,
         page: pageNum,
         limit: limitNum,
         total,
@@ -165,7 +155,7 @@ export class ClubService {
   /**
    * 골프클럽 상세 조회
    */
-  async findOne(id: number): Promise<ClubResponseDto> {
+  async findOne(id: number): Promise<ClubWithRelations> {
     try {
       const club = await this.prisma.club.findUnique({
         where: { id, isActive: true },
@@ -187,7 +177,7 @@ export class ClubService {
         throw new NotFoundException(`Club with ID ${id} not found`);
       }
 
-      return this.formatClubResponse(club);
+      return club;
     } catch (error) {
       this.logger.error(`Failed to fetch club ${id}: ${error.message}`, error.stack);
       throw error;
@@ -197,7 +187,7 @@ export class ClubService {
   /**
    * 골프클럽 수정
    */
-  async update(id: number, updateClubDto: UpdateClubDto): Promise<ClubResponseDto> {
+  async update(id: number, updateClubDto: UpdateClubDto): Promise<ClubWithRelations> {
     try {
       // 클럽 존재 여부 확인
       const existingClub = await this.prisma.club.findUnique({
@@ -253,7 +243,7 @@ export class ClubService {
       });
 
       this.logger.log(`Club updated: ${club.name} (ID: ${club.id})`);
-      return this.formatClubResponse(club);
+      return club;
     } catch (error) {
       this.logger.error(`Failed to update club ${id}: ${error.message}`, error.stack);
       throw error;
@@ -288,7 +278,7 @@ export class ClubService {
   /**
    * 회사별 골프클럽 목록 조회
    */
-  async findByCompany(companyId: number): Promise<ClubResponseDto[]> {
+  async findByCompany(companyId: number): Promise<ClubWithRelations[]> {
     try {
       const clubs = await this.prisma.club.findMany({
         where: {
@@ -297,22 +287,12 @@ export class ClubService {
         },
         include: {
           company: true,
-          courses: {
-            select: {
-              id: true,
-              name: true,
-              code: true,
-              subtitle: true,
-              par: true,
-              difficulty: true,
-              status: true,
-            },
-          },
+          courses: true,
         },
         orderBy: { name: 'asc' },
       });
 
-      return clubs.map(club => this.formatClubResponse(club));
+      return clubs;
     } catch (error) {
       this.logger.error(`Failed to fetch clubs for company ${companyId}: ${error.message}`, error.stack);
       throw error;
@@ -346,32 +326,5 @@ export class ClubService {
       this.logger.error(`Failed to update club stats ${clubId}: ${error.message}`, error.stack);
       throw error;
     }
-  }
-
-  /**
-   * 골프클럽 응답 포맷팅
-   */
-  private formatClubResponse(club: any): ClubResponseDto {
-    return {
-      id: club.id,
-      name: club.name,
-      companyId: club.companyId,
-      location: club.location,
-      address: club.address,
-      phone: club.phone,
-      email: club.email,
-      website: club.website,
-      totalHoles: club.totalHoles,
-      totalCourses: club.totalCourses,
-      status: club.status,
-      operatingHours: club.operatingHours as any,
-      seasonInfo: club.seasonInfo as any,
-      facilities: club.facilities,
-      isActive: club.isActive,
-      createdAt: club.createdAt,
-      updatedAt: club.updatedAt,
-      company: club.company,
-      courses: club.courses,
-    };
   }
 }

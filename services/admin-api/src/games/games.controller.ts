@@ -213,15 +213,34 @@ export class GamesController {
   @ApiOperation({ summary: 'Get time slots for game' })
   @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiQuery({ name: 'date', required: false, description: 'Filter by date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'startDate', required: false, description: 'Filter start date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'endDate', required: false, description: 'Filter end date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'status', required: false, description: 'Filter by status' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Items per page' })
   @ApiResponse({ status: 200, description: 'Time slots retrieved successfully' })
   async getTimeSlotsByGame(
     @Param('gameId', ParseIntPipe) gameId: number,
     @Query('date') date?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
     @Headers('authorization') authorization?: string,
   ) {
     const token = this.extractToken(authorization);
     this.logger.log(`Fetching time slots for game: ${gameId}`);
-    return this.gamesService.getTimeSlotsByGame(gameId, date, token);
+    const filters = {
+      gameId,
+      date,
+      startDate,
+      endDate,
+      status,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    };
+    return this.gamesService.getTimeSlots(filters, token);
   }
 
   @Get(':gameId/time-slots/:timeSlotId')

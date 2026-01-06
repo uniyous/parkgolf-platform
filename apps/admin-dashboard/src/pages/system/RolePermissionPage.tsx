@@ -1,8 +1,16 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { PageLayout } from '@/components/layout';
-import { Breadcrumb } from '@/components/common';
-import { useAdmins, useAdminStats, usePermissions, useRolesWithPermissions, useUpdateRolePermissions } from '@/hooks/queries/admin';
-import type { AdminRole } from '@/types';
+import { Breadcrumb, DataContainer } from '@/components/common';
+import { useAdminsQuery, useAdminStatsQuery, usePermissionsQuery, useRolesWithPermissionsQuery, useUpdateRolePermissionsMutation } from '@/hooks/queries/admin';
+import type { RoleWithPermissions, PermissionInfo, PermissionDetail } from '@/lib/api/adminApi';
+
+// 확장된 권한 타입 (UI 메타데이터 포함)
+interface EnhancedPermission extends PermissionInfo {
+  name: string;
+  description: string;
+  level: 'high' | 'medium' | 'low';
+  icon: string;
+}
 
 // 권한 레벨 및 카테고리 정보
 const permissionMeta: Record<string, { name: string; description: string; level: 'high' | 'medium' | 'low'; category: string; icon: string }> = {
@@ -40,24 +48,22 @@ export const RolePermissionPage: React.FC = () => {
   const [editedPermissions, setEditedPermissions] = useState<string[]>([]);
 
   // API 호출
-  const { data: admins = [], isLoading: adminsLoading } = useAdmins();
-  const { data: stats, isLoading: statsLoading } = useAdminStats();
-  const { data: apiPermissions = [], isLoading: permissionsLoading } = usePermissions();
-  const { data: rolesWithPermissions = [], isLoading: rolesLoading } = useRolesWithPermissions('ADMIN');
-  const updateRolePermissions = useUpdateRolePermissions();
-
-  const isLoading = adminsLoading || statsLoading || permissionsLoading || rolesLoading;
+  const { data: admins = [] } = useAdminsQuery();
+  const { data: stats } = useAdminStatsQuery();
+  const { data: apiPermissions = [] } = usePermissionsQuery();
+  const { data: rolesWithPermissions = [], isLoading } = useRolesWithPermissionsQuery('ADMIN');
+  const updateRolePermissions = useUpdateRolePermissionsMutation();
 
   // 현재 선택된 역할 (API 데이터에서)
-  const selectedRole = useMemo(() =>
-    rolesWithPermissions.find((r: any) => r.code === selectedRoleCode) || rolesWithPermissions[0],
+  const selectedRole = useMemo((): RoleWithPermissions | undefined =>
+    rolesWithPermissions.find((r) => r.code === selectedRoleCode) || rolesWithPermissions[0],
     [selectedRoleCode, rolesWithPermissions]
   );
 
   // 역할별 사용자 수 계산
   const roleUserCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    rolesWithPermissions.forEach((role: any) => {
+    rolesWithPermissions.forEach((role) => {
       counts[role.code] = 0;
     });
     admins.forEach(admin => {
@@ -69,15 +75,15 @@ export const RolePermissionPage: React.FC = () => {
   }, [admins, rolesWithPermissions]);
 
   // ALL 권한 제외한 실제 권한 목록
-  const adminPermissions = useMemo(() => {
-    return apiPermissions.filter((p: any) => p.category === 'ADMIN' && p.code !== 'ALL');
+  const adminPermissions = useMemo((): PermissionInfo[] => {
+    return apiPermissions.filter((p) => (p as PermissionInfo & { category?: string }).category === 'ADMIN' && p.code !== 'ALL');
   }, [apiPermissions]);
 
   // 권한을 카테고리별로 그룹화 (ALL 제외)
-  const permissionsByCategory = useMemo(() => {
-    const groups: Record<string, any[]> = {};
+  const permissionsByCategory = useMemo((): Record<string, EnhancedPermission[]> => {
+    const groups: Record<string, EnhancedPermission[]> = {};
 
-    adminPermissions.forEach((p: any) => {
+    adminPermissions.forEach((p) => {
       const meta = permissionMeta[p.code];
       const category = meta?.category || '기타';
       if (!groups[category]) {
@@ -106,10 +112,11 @@ export const RolePermissionPage: React.FC = () => {
   useEffect(() => {
     if (isEditing && selectedRole) {
       // ALL 권한이 있으면 모든 권한을 선택된 것으로 표시
-      if (selectedRole.permissions?.includes('ALL')) {
-        setEditedPermissions(adminPermissions.map((p: any) => p.code));
+      const permissionCodes = selectedRole.permissions?.map((p: PermissionDetail | string) => typeof p === 'string' ? p : p.code) || [];
+      if (permissionCodes.includes('ALL')) {
+        setEditedPermissions(adminPermissions.map((p) => p.code));
       } else {
-        setEditedPermissions(selectedRole.permissions || []);
+        setEditedPermissions(permissionCodes);
       }
     }
   }, [isEditing, selectedRole, adminPermissions]);
@@ -118,13 +125,14 @@ export const RolePermissionPage: React.FC = () => {
     setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
   };
 
-  const hasPermission = (permissionCode: string) => {
+  const hasPermission = (permissionCode: string): boolean => {
     if (isEditing) {
       return editedPermissions.includes(permissionCode);
     }
     if (!selectedRole?.permissions) return false;
-    if (selectedRole.permissions.includes('ALL')) return true;
-    return selectedRole.permissions.includes(permissionCode);
+    const permissionCodes = selectedRole.permissions.map((p: PermissionDetail | string) => typeof p === 'string' ? p : p.code);
+    if (permissionCodes.includes('ALL')) return true;
+    return permissionCodes.includes(permissionCode);
   };
 
   const togglePermission = (permissionCode: string) => {
@@ -149,7 +157,7 @@ export const RolePermissionPage: React.FC = () => {
   };
 
   const selectAll = () => {
-    setEditedPermissions(adminPermissions.map((p: any) => p.code));
+    setEditedPermissions(adminPermissions.map((p) => p.code));
   };
 
   const deselectAll = () => {
@@ -209,10 +217,6 @@ export const RolePermissionPage: React.FC = () => {
     return roleMeta[roleCode] || { label: roleCode, description: '', scope: '', color: 'bg-gray-100 text-gray-800' };
   };
 
-  if (isLoading) {
-    return null;
-  }
-
   return (
     <PageLayout>
       <Breadcrumb
@@ -222,6 +226,14 @@ export const RolePermissionPage: React.FC = () => {
         ]}
       />
       <PageLayout.Content>
+        <DataContainer
+          isLoading={isLoading}
+          isEmpty={rolesWithPermissions.length === 0 && !isLoading}
+          emptyIcon="🔐"
+          emptyMessage="역할 정보를 불러올 수 없습니다"
+          emptyDescription="역할 및 권한 데이터를 불러오는 중 문제가 발생했습니다."
+          loadingMessage="역할 및 권한 정보를 불러오는 중..."
+        >
         <div className="space-y-6">
           {/* 헤더 */}
           <div className="bg-white shadow rounded-lg p-6">
@@ -261,7 +273,7 @@ export const RolePermissionPage: React.FC = () => {
           <div className="bg-white shadow rounded-lg overflow-hidden">
             <div className="border-b border-gray-200">
               <nav className="flex -mb-px">
-                {rolesWithPermissions.map((role: any) => {
+                {rolesWithPermissions.map((role: RoleWithPermissions) => {
                   const meta = getRoleMeta(role.code);
                   return (
                     <button
@@ -307,7 +319,7 @@ export const RolePermissionPage: React.FC = () => {
                     </p>
                     <div className="mt-2 flex items-center space-x-4 text-sm text-gray-500">
                       <span>범위: <strong>{getRoleMeta(selectedRole.code).scope || selectedRole.userType}</strong></span>
-                      <span>권한: <strong>{isEditing ? editedPermissions.length : (selectedRole.permissions?.includes('ALL') ? adminPermissions.length : selectedRole.permissions?.length || 0)}개</strong></span>
+                      <span>권한: <strong>{isEditing ? editedPermissions.length : (selectedRole.permissions?.some((p: PermissionDetail | string) => (typeof p === 'string' ? p : p.code) === 'ALL') ? adminPermissions.length : selectedRole.permissions?.length || 0)}개</strong></span>
                       <span>사용자: <strong>{roleUserCounts[selectedRole.code] || 0}명</strong></span>
                     </div>
                   </div>
@@ -415,7 +427,7 @@ export const RolePermissionPage: React.FC = () => {
                   {expandedGroups[category] && (
                     <div className="px-6 pb-4 bg-gray-50">
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {permissions.map((permission: any) => {
+                        {permissions.map((permission: EnhancedPermission) => {
                           const granted = hasPermission(permission.code);
                           return (
                             <div
@@ -480,7 +492,7 @@ export const RolePermissionPage: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50">
                       권한
                     </th>
-                    {rolesWithPermissions.map((role: any) => (
+                    {rolesWithPermissions.map((role: RoleWithPermissions) => (
                       <th key={role.code} className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                         <div className={`inline-block px-2 py-1 rounded ${getRoleColor(role.code)}`}>
                           {getRoleMeta(role.code).label || role.name}
@@ -490,7 +502,7 @@ export const RolePermissionPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {adminPermissions.map((permission: any) => {
+                  {adminPermissions.map((permission: PermissionInfo) => {
                     const meta = permissionMeta[permission.code];
                     return (
                       <tr key={permission.code}>
@@ -500,8 +512,9 @@ export const RolePermissionPage: React.FC = () => {
                             <span>{meta?.name || permission.code}</span>
                           </div>
                         </td>
-                        {rolesWithPermissions.map((role: any) => {
-                          const hasP = role.permissions?.includes('ALL') || role.permissions?.includes(permission.code);
+                        {rolesWithPermissions.map((role: RoleWithPermissions) => {
+                          const permCodes = role.permissions?.map((p: PermissionDetail | string) => typeof p === 'string' ? p : p.code) || [];
+                          const hasP = permCodes.includes('ALL') || permCodes.includes(permission.code);
                           return (
                             <td key={role.code} className="px-4 py-3 text-center">
                               {hasP ? (
@@ -533,6 +546,7 @@ export const RolePermissionPage: React.FC = () => {
             각 역할의 권한을 편집하려면 역할을 선택한 후 "권한 편집" 버튼을 클릭하세요.
           </div>
         </div>
+        </DataContainer>
       </PageLayout.Content>
     </PageLayout>
   );

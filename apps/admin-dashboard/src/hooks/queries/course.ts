@@ -1,40 +1,45 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { courseApi, type CourseFilters, type ClubFilters, type CreateClubDto, type UpdateClubDto } from '@/lib/api/courses';
 import { courseKeys, clubKeys } from './keys';
+import { showSuccessToast } from '@/lib/errors';
 import type { CreateCourseDto, UpdateCourseDto, CreateHoleDto, UpdateHoleDto } from '@/types';
 
 // ============================================
 // Club Queries
 // ============================================
 
-export const useClubs = (filters?: ClubFilters) => {
+export const useClubsQuery = (filters?: ClubFilters) => {
   return useQuery({
     queryKey: clubKeys.list(filters),
     queryFn: () => courseApi.getClubs(filters),
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const useClub = (id: number) => {
+export const useClubQuery = (id: number) => {
   return useQuery({
     queryKey: clubKeys.detail(id),
     queryFn: () => courseApi.getClubById(id),
     enabled: !!id,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const useClubsByCompany = (companyId: number) => {
+export const useClubsByCompanyQuery = (companyId: number) => {
   return useQuery({
     queryKey: clubKeys.byCompany(companyId),
     queryFn: () => courseApi.getClubsByCompany(companyId),
     enabled: !!companyId,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const useSearchClubs = (query: string) => {
+export const useSearchClubsQuery = (query: string) => {
   return useQuery({
     queryKey: clubKeys.search(query),
     queryFn: () => courseApi.searchClubs(query),
     enabled: query.length >= 2,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -42,41 +47,46 @@ export const useSearchClubs = (query: string) => {
 // Course Queries
 // ============================================
 
-export const useCourses = (filters?: CourseFilters, page = 1, limit = 20) => {
+export const useCoursesQuery = (filters?: CourseFilters, page = 1, limit = 20) => {
   return useQuery({
     queryKey: courseKeys.list({ ...filters, page, limit }),
     queryFn: () => courseApi.getCourses(filters, page, limit),
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const useCourse = (id: number) => {
+export const useCourseQuery = (id: number) => {
   return useQuery({
     queryKey: courseKeys.detail(id),
     queryFn: () => courseApi.getCourseById(id),
     enabled: !!id,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const useCoursesByClub = (clubId: number) => {
+export const useCoursesByClubQuery = (clubId: number) => {
   return useQuery({
     queryKey: courseKeys.byClub(clubId),
     queryFn: () => courseApi.getCoursesByClub(clubId),
     enabled: !!clubId,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const useCoursesByCompany = (companyId: number) => {
+export const useCoursesByCompanyQuery = (companyId: number) => {
   return useQuery({
     queryKey: courseKeys.byCompany(companyId),
     queryFn: () => courseApi.getCoursesByCompany(companyId),
     enabled: !!companyId,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
-export const useCourseStats = (startDate?: string, endDate?: string) => {
+export const useCourseStatsQuery = (startDate?: string, endDate?: string) => {
   return useQuery({
     queryKey: courseKeys.stats(),
     queryFn: () => courseApi.getCourseStats(startDate, endDate),
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -84,11 +94,12 @@ export const useCourseStats = (startDate?: string, endDate?: string) => {
 // Hole Queries
 // ============================================
 
-export const useHolesByCourse = (courseId: number) => {
+export const useHolesByCourseQuery = (courseId: number) => {
   return useQuery({
     queryKey: courseKeys.holes(courseId),
     queryFn: () => courseApi.getHolesByCourse(courseId),
     enabled: !!courseId,
+    meta: { globalLoading: false }, // 로컬 로딩 사용
   });
 };
 
@@ -96,18 +107,20 @@ export const useHolesByCourse = (courseId: number) => {
 // Club Mutations
 // ============================================
 
-export const useCreateClub = () => {
+export const useCreateClubMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: CreateClubDto) => courseApi.createClub(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: clubKeys.lists() });
+      showSuccessToast('골프장이 생성되었습니다.');
     },
+    meta: { errorMessage: '골프장 생성에 실패했습니다.' },
   });
 };
 
-export const useUpdateClub = () => {
+export const useUpdateClubMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -116,18 +129,22 @@ export const useUpdateClub = () => {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: clubKeys.lists() });
       queryClient.invalidateQueries({ queryKey: clubKeys.detail(id) });
+      showSuccessToast('골프장 정보가 수정되었습니다.');
     },
+    meta: { errorMessage: '골프장 정보 수정에 실패했습니다.' },
   });
 };
 
-export const useDeleteClub = () => {
+export const useDeleteClubMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (id: number) => courseApi.deleteClub(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: clubKeys.all });
+      showSuccessToast('골프장이 삭제되었습니다.');
     },
+    meta: { errorMessage: '골프장 삭제에 실패했습니다.' },
   });
 };
 
@@ -135,7 +152,7 @@ export const useDeleteClub = () => {
 // Course Mutations
 // ============================================
 
-export const useCreateCourse = () => {
+export const useCreateCourseMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -143,11 +160,13 @@ export const useCreateCourse = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: courseKeys.lists() });
       queryClient.invalidateQueries({ queryKey: courseKeys.stats() });
+      showSuccessToast('코스가 생성되었습니다.');
     },
+    meta: { errorMessage: '코스 생성에 실패했습니다.' },
   });
 };
 
-export const useUpdateCourse = () => {
+export const useUpdateCourseMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -157,18 +176,22 @@ export const useUpdateCourse = () => {
       queryClient.invalidateQueries({ queryKey: courseKeys.lists() });
       queryClient.invalidateQueries({ queryKey: courseKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: courseKeys.stats() });
+      showSuccessToast('코스 정보가 수정되었습니다.');
     },
+    meta: { errorMessage: '코스 정보 수정에 실패했습니다.' },
   });
 };
 
-export const useDeleteCourse = () => {
+export const useDeleteCourseMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (id: number) => courseApi.deleteCourse(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: courseKeys.all });
+      showSuccessToast('코스가 삭제되었습니다.');
     },
+    meta: { errorMessage: '코스 삭제에 실패했습니다.' },
   });
 };
 
@@ -176,7 +199,7 @@ export const useDeleteCourse = () => {
 // Hole Mutations
 // ============================================
 
-export const useCreateHole = () => {
+export const useCreateHoleMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -185,11 +208,13 @@ export const useCreateHole = () => {
     onSuccess: (_, { courseId }) => {
       queryClient.invalidateQueries({ queryKey: courseKeys.holes(courseId) });
       queryClient.invalidateQueries({ queryKey: courseKeys.detail(courseId) });
+      showSuccessToast('홀이 생성되었습니다.');
     },
+    meta: { errorMessage: '홀 생성에 실패했습니다.' },
   });
 };
 
-export const useUpdateHole = () => {
+export const useUpdateHoleMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -204,11 +229,13 @@ export const useUpdateHole = () => {
     }) => courseApi.updateHole(courseId, holeId, data),
     onSuccess: (_, { courseId }) => {
       queryClient.invalidateQueries({ queryKey: courseKeys.holes(courseId) });
+      showSuccessToast('홀 정보가 수정되었습니다.');
     },
+    meta: { errorMessage: '홀 정보 수정에 실패했습니다.' },
   });
 };
 
-export const useDeleteHole = () => {
+export const useDeleteHoleMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -217,6 +244,8 @@ export const useDeleteHole = () => {
     onSuccess: (_, { courseId }) => {
       queryClient.invalidateQueries({ queryKey: courseKeys.holes(courseId) });
       queryClient.invalidateQueries({ queryKey: courseKeys.detail(courseId) });
+      showSuccessToast('홀이 삭제되었습니다.');
     },
+    meta: { errorMessage: '홀 삭제에 실패했습니다.' },
   });
 };

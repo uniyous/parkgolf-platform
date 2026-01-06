@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 import type { Club, UpdateClubDto } from '@/types/club';
 import { useClub } from '@/hooks';
 
@@ -34,11 +35,11 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
         setIsEditing(false);
       } else {
         console.error('Update failed: no result received');
-        alert('골프장 정보 수정에 실패했습니다.');
+        toast.error('골프장 정보 수정에 실패했습니다.');
       }
     } catch (error) {
       console.error('Failed to update golf club:', error);
-      alert('골프장 정보 수정에 실패했습니다.');
+      toast.error('골프장 정보 수정에 실패했습니다.');
     }
   };
 
@@ -300,19 +301,6 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
               </div>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">코스 현황</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-600">⛳ {club.totalHoles}</p>
-                  <p className="text-xs text-gray-500">총 홀</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600">🎯 {club.totalCourses}</p>
-                  <p className="text-xs text-gray-500">코스 수</p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

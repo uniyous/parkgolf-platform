@@ -6,7 +6,7 @@
  */
 
 // Core client
-export { apiClient, ApiError, type ApiResponse, type BffApiResponse } from './client';
+export { apiClient, ApiError, type ApiResponse, type PaginatedResponse, type ClientResponse } from './client';
 
 // Domain APIs
 export { authApi } from './authApi';
@@ -14,19 +14,13 @@ export { adminApi } from './adminApi';
 export { bookingApi } from './bookingApi';
 export { companyApi } from './companyApi';
 export { dashboardApi } from './dashboardApi';
-export { holeApi } from './holeApi';
 export { notificationApi } from './notificationApi';
 
-// Course/Club Management (신규 구조)
-export { courseApi, golfCourseApi } from './courses';
+// Course/Club Management
+export { courseApi } from './courses';
 
 // Game-based Scheduling (게임 기반 스케줄링)
 export { gamesApi, timeSlotAdapter } from './gamesApi';
-export { timeSlotApi } from './timeSlotApi';
-
-// Legacy Course API (마이그레이션 예정)
-// 11개 컴포넌트에서 사용 중 - 점진적 마이그레이션 필요
-export { courseApi as legacyCourseApi } from './courseApi';
 
 // Types - Course/Club
 export type {
@@ -35,7 +29,7 @@ export type {
   UpdateClubDto,
   ClubFilters,
   CourseFilters,
-  PaginatedResponse,
+  CoursesPaginatedResult,
   CourseStats,
 } from './courses';
 
