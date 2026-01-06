@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, SlidersHorizontal, X, MapPin, Clock, Users, ChevronDown, ChevronUp } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
 import { useSearchGamesQuery } from '../hooks/queries';
 import { useGameSearchParams } from '../hooks/useSearchParams';
 import type { Game, GameTimeSlot, GameSearchParams } from '@/lib/api/gameApi';
@@ -20,7 +19,6 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export const SearchPage: React.FC = () => {
-  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { filters, updateFilters, resetFilters } = useGameSearchParams();
 
@@ -110,41 +108,7 @@ export const SearchPage: React.FC = () => {
   const hasActiveFilters = filters.search || filters.minPrice || filters.maxPrice || filters.minPlayers;
 
   return (
-    <div className="min-h-screen gradient-forest relative overflow-hidden">
-      {/* Background decorative elements */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-10 left-10 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 right-20 w-80 h-80 bg-white/5 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
-      </div>
-
-      {/* Header */}
-      <header className="glass-card mx-4 mt-4 mb-8 !p-4 relative z-10">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl backdrop-blur-sm">
-              🏌️
-            </div>
-            <h2 className="text-white text-2xl font-bold m-0">라운드 예약</h2>
-          </div>
-
-          {user && (
-            <div className="flex items-center gap-3">
-              <Button variant="glass" size="sm" onClick={() => navigate('/my-bookings')}>
-                내 예약
-              </Button>
-              <div className="px-4 py-2 bg-white/20 rounded-full text-sm text-white font-medium backdrop-blur-sm">
-                {user.name}님
-              </div>
-              <Button variant="glass" size="sm" onClick={logout}>
-                로그아웃
-              </Button>
-            </div>
-          )}
-        </div>
-      </header>
-
-      <div className="max-w-6xl mx-auto px-4 relative z-10">
+    <div className="px-4 py-6">
         {/* Search Filters */}
         <div className="glass-card mb-8">
           <div className="flex items-center justify-between mb-6">
@@ -173,7 +137,7 @@ export const SearchPage: React.FC = () => {
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="골프장, 지역 검색..."
-                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  className="w-full h-10 pl-10 pr-4 py-2 bg-white/10 border border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30"
                 />
                 {searchInput && (
                   <button
@@ -228,7 +192,7 @@ export const SearchPage: React.FC = () => {
                     placeholder="0"
                     min={0}
                     step={1000}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30"
+                    className="w-full h-10 px-4 py-2 bg-white/10 border border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30"
                   />
                 </div>
 
@@ -241,7 +205,7 @@ export const SearchPage: React.FC = () => {
                     placeholder="100,000"
                     min={0}
                     step={1000}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30"
+                    className="w-full h-10 px-4 py-2 bg-white/10 border border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30"
                   />
                 </div>
 
@@ -362,16 +326,15 @@ export const SearchPage: React.FC = () => {
             )}
           </div>
         )}
-      </div>
     </div>
   );
 };
 
 // Loading Skeleton
 const GameCardSkeleton: React.FC = () => (
-  <div className="glass-card overflow-hidden animate-pulse">
-    <div className="p-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+  <div className="glass-card overflow-hidden !p-0 animate-pulse">
+    <div className="p-4 md:p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 items-start">
         <div className="lg:col-span-2 space-y-3">
           <div className="h-7 bg-white/20 rounded w-2/3"></div>
           <div className="h-4 bg-white/20 rounded w-1/3"></div>
@@ -386,9 +349,9 @@ const GameCardSkeleton: React.FC = () => (
         </div>
       </div>
     </div>
-    <div className="border-t border-white/20 p-6 bg-black/10">
+    <div className="border-t border-white/20 p-4 md:p-6 bg-black/10">
       <div className="h-5 bg-white/20 rounded w-32 mb-4"></div>
-      <div className="grid grid-cols-6 gap-3">
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
         {[1, 2, 3, 4, 5, 6].map((i) => (
           <div key={i} className="h-20 bg-white/10 rounded-xl"></div>
         ))}
@@ -436,6 +399,10 @@ const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSe
       const maxCapacity = slot.maxPlayers ?? slot.maxCapacity ?? 4;
       const currentBookings = slot.bookedPlayers ?? slot.currentBookings ?? 0;
       const remaining = slot.availablePlayers ?? (maxCapacity - currentBookings);
+
+      // status 필드가 AVAILABLE이 아니면 필터링 (FULLY_BOOKED 등)
+      if (slot.status && slot.status !== 'AVAILABLE') return false;
+
       const isAvailable = slot.isAvailable ?? slot.available ?? (remaining > 0);
       if (!isAvailable) return false;
 
@@ -453,10 +420,10 @@ const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSe
   const hasDiscount = game.weekendPrice && game.basePrice && game.weekendPrice < game.basePrice;
 
   return (
-    <div className="glass-card overflow-hidden">
+    <div className="glass-card overflow-hidden !p-0">
       {/* Game Info */}
-      <div className="p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="p-4 md:p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 items-start">
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-2">
               <h3 className="text-xl font-bold text-white">{game.name}</h3>
@@ -511,7 +478,7 @@ const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSe
       </div>
 
       {/* Time Slots */}
-      <div className="border-t border-white/20 p-6 bg-black/10">
+      <div className="border-t border-white/20 p-4 md:p-6 bg-black/10">
         <h4 className="text-base font-semibold text-white mb-4">예약 가능 시간</h4>
 
         {filteredSlots.length === 0 ? (

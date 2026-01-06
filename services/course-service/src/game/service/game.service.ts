@@ -302,6 +302,7 @@ export class GameService {
           AND gts.status = 'AVAILABLE'
           AND gts.is_active = true
           AND gts.booked_players < gts.max_players
+          AND (${minPlayers ?? null}::int IS NULL OR (gts.max_players - gts.booked_players) >= ${minPlayers ?? null})
         GROUP BY gts.game_id
       )
       SELECT
@@ -344,7 +345,6 @@ export class GameService {
         AND (${clubId ?? null}::int IS NULL OR g.club_id = ${clubId ?? null})
         AND (${minPrice ?? null}::decimal IS NULL OR g.base_price >= ${minPrice ?? null})
         AND (${maxPrice ?? null}::decimal IS NULL OR g.base_price <= ${maxPrice ?? null})
-        AND (${minPlayers ?? null}::int IS NULL OR g.max_players >= ${minPlayers ?? null})
       ORDER BY
         CASE WHEN ${sortBy} = 'price' AND ${sortOrder} = 'asc' THEN g.base_price END ASC,
         CASE WHEN ${sortBy} = 'price' AND ${sortOrder} = 'desc' THEN g.base_price END DESC,
@@ -364,6 +364,7 @@ export class GameService {
         AND gts.status = 'AVAILABLE'
         AND gts.is_active = true
         AND gts.booked_players < gts.max_players
+        AND (${minPlayers ?? null}::int IS NULL OR (gts.max_players - gts.booked_players) >= ${minPlayers ?? null})
       INNER JOIN clubs c ON g.club_id = c.id
       WHERE g.is_active = true
         AND (${searchPattern}::text IS NULL OR (
@@ -374,7 +375,6 @@ export class GameService {
         AND (${clubId ?? null}::int IS NULL OR g.club_id = ${clubId ?? null})
         AND (${minPrice ?? null}::decimal IS NULL OR g.base_price >= ${minPrice ?? null})
         AND (${maxPrice ?? null}::decimal IS NULL OR g.base_price <= ${maxPrice ?? null})
-        AND (${minPlayers ?? null}::int IS NULL OR g.max_players >= ${minPlayers ?? null})
     `;
 
     const total = Number(countResult[0]?.count ?? 0);

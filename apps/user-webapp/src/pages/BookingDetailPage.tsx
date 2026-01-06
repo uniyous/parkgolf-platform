@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import React, { useState, useEffect } from 'react';
 import { useBooking } from '../hooks/useBooking';
+import { useAuth } from '../hooks/useAuth';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { Game, GameTimeSlot } from '@/lib/api/gameApi';
 import { formatDate } from '@/lib/formatting';
 import { showErrorToast } from '@/lib/toast';
+import { translateErrorMessage } from '@/types/common';
 import { Button, Select, Textarea, Checkbox, PriceDisplay } from '../components';
 
 
@@ -55,7 +56,7 @@ const paymentMethods: PaymentMethod[] = [
 ];
 
 export const BookingDetailPage: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { createBooking, isCreating } = useBooking();
   const location = useLocation();
   const navigate = useNavigate();
@@ -73,6 +74,18 @@ export const BookingDetailPage: React.FC = () => {
   }
 
   const { game, timeSlot, date } = bookingState;
+
+  // 가용 인원 계산 (타임슬롯의 availablePlayers 또는 maxPlayers - bookedPlayers)
+  const maxPlayers = timeSlot.maxPlayers ?? timeSlot.maxCapacity ?? game.maxPlayers ?? 4;
+  const bookedPlayers = timeSlot.bookedPlayers ?? timeSlot.currentBookings ?? 0;
+  const availablePlayers = timeSlot.availablePlayers ?? (maxPlayers - bookedPlayers);
+
+  // 선택한 인원수가 가용 인원을 초과하면 조정
+  useEffect(() => {
+    if (playerCount > availablePlayers) {
+      setPlayerCount(Math.max(1, availablePlayers));
+    }
+  }, [availablePlayers, playerCount]);
 
   const totalPrice = (timeSlot.price || game.basePrice || game.pricePerPerson || 0) * playerCount;
   const serviceFee = Math.floor(totalPrice * 0.03); // 3% 서비스 수수료
@@ -111,67 +124,34 @@ export const BookingDetailPage: React.FC = () => {
           }
         });
       } else {
-        showErrorToast('예약 생성에 실패했습니다', '다시 시도해주세요.');
+        // 실제 오류 메시지 추출 및 한국어 변환
+        const rawMessage = result.error instanceof Error
+          ? result.error.message
+          : '알 수 없는 오류가 발생했습니다.';
+        const errorMessage = translateErrorMessage(rawMessage);
+        showErrorToast('예약 생성에 실패했습니다', errorMessage);
       }
     } catch (error) {
       console.error('Booking failed:', error);
-      showErrorToast('예약 생성에 실패했습니다', '다시 시도해주세요.');
+      const rawMessage = error instanceof Error
+        ? error.message
+        : '알 수 없는 오류가 발생했습니다.';
+      const errorMessage = translateErrorMessage(rawMessage);
+      showErrorToast('예약 생성에 실패했습니다', errorMessage);
     }
   };
 
-  const playerCountOptions = [
-    { value: 1, label: '1명 (개인 레슨)' },
-    { value: 2, label: '2명' },
-    { value: 3, label: '3명' },
-    { value: 4, label: '4명 (풀 플라이트)' },
-  ];
+  // 가용 인원에 맞게 인원 선택 옵션 생성
+  const playerCountOptions = Array.from({ length: availablePlayers }, (_, i) => {
+    const count = i + 1;
+    let label = `${count}명`;
+    if (count === 1) label = '1명 (개인 레슨)';
+    else if (count === maxPlayers) label = `${count}명 (풀 플라이트)`;
+    return { value: count, label };
+  });
 
   return (
-    <div className="min-h-screen gradient-forest relative overflow-hidden">
-      {/* Background decorative elements */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-20 left-20 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-10 right-10 w-80 h-80 bg-white/5 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
-      </div>
-
-      {/* Header */}
-      <header className="glass-card mx-4 mt-4 mb-8 !p-4 relative z-10">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/search')}
-              className="p-2 hover:bg-white/20 rounded-xl transition-colors duration-200 text-white text-xl backdrop-blur-sm"
-            >
-              ←
-            </button>
-            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl backdrop-blur-sm">
-              📝
-            </div>
-            <div>
-              <div className="text-white text-xl font-bold">예약 정보 입력</div>
-              <div className="text-white/70 text-sm">세부 정보를 입력하세요</div>
-            </div>
-          </div>
-
-          {user && (
-            <div className="flex items-center gap-3">
-              <div className="px-4 py-2 bg-white/20 rounded-full text-sm text-white font-medium backdrop-blur-sm">
-                {user.name}님
-              </div>
-              <Button
-                variant="glass"
-                size="sm"
-                onClick={logout}
-              >
-                로그아웃
-              </Button>
-            </div>
-          )}
-        </div>
-      </header>
-
-      <div className="max-w-4xl mx-auto px-4 relative z-10">
+    <div className="px-4 py-6">
         {/* Selected Booking Info */}
         <div className="glass-card mb-8">
           <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
@@ -194,8 +174,8 @@ export const BookingDetailPage: React.FC = () => {
                 <span className="bg-white/20 text-white/90 px-3 py-1 rounded-full text-xs font-medium">
                   ⏱️ {game.duration}분
                 </span>
-                <span className="bg-white/20 text-white/90 px-3 py-1 rounded-full text-xs font-medium">
-                  👥 최대 {game.maxPlayers}명
+                <span className="bg-emerald-400/20 text-emerald-300 px-3 py-1 rounded-full text-xs font-medium">
+                  👥 {availablePlayers}자리 남음
                 </span>
               </div>
             </div>
@@ -368,7 +348,6 @@ export const BookingDetailPage: React.FC = () => {
             : '필수 항목을 완료해주세요'
           }
         </Button>
-      </div>
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, Search, RefreshCw, History } from 'lucide-react';
+import { Calendar, Search, RefreshCw, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSearchBookingsQuery } from '@/hooks/queries/booking';
 import { useProfileQuery } from '@/hooks/queries/auth';
@@ -62,7 +62,7 @@ export const MyBookingsPage: React.FC = () => {
   // 로그인하지 않은 경우
   if (!profile) {
     return (
-      <div className="min-h-screen gradient-forest flex items-center justify-center p-4">
+      <div className="flex items-center justify-center p-4 min-h-[60vh]">
         <div className="glass-card p-6 text-center max-w-md">
           <Calendar className="w-16 h-16 mx-auto mb-4 text-white/40" />
           <h2 className="text-xl font-bold text-white mb-2">로그인이 필요합니다</h2>
@@ -85,34 +85,9 @@ export const MyBookingsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen gradient-forest">
-      {/* Header */}
-      <header className="sticky top-0 z-40 glass-header px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate(-1)}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 text-white" />
-            </button>
-            <h1 className="text-xl font-bold text-white">내 예약</h1>
-          </div>
-          <button
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className={cn(
-              'p-2 hover:bg-white/10 rounded-full transition-colors',
-              isFetching && 'animate-spin'
-            )}
-          >
-            <RefreshCw className="w-5 h-5 text-white/70" />
-          </button>
-        </div>
-      </header>
-
+    <div>
       {/* Sub Header */}
-      <div className="sticky top-16 z-30 bg-black/20 backdrop-blur-sm px-4 py-3">
+      <div className="sticky top-14 z-30 bg-black/20 backdrop-blur-sm px-4 py-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">
             {timeFilter === 'upcoming' ? '예정된 예약' : '지난 예약'}

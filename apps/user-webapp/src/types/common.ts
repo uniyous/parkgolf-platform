@@ -205,9 +205,63 @@ export const ERROR_MESSAGES: Record<string, string> = {
 };
 
 /**
+ * 영어 오류 메시지를 한국어로 변환하는 매핑
+ */
+const ENGLISH_ERROR_TRANSLATIONS: Array<{ pattern: RegExp; translate: (match: RegExpMatchArray) => string }> = [
+  {
+    pattern: /Not enough capacity\. Available: (\d+), Requested: (\d+)/,
+    translate: (match) => `잔여 인원이 부족합니다. (남은 자리: ${match[1]}명, 요청: ${match[2]}명)`,
+  },
+  {
+    pattern: /Selected time slot is not available/,
+    translate: () => '선택한 시간대는 더 이상 예약할 수 없습니다.',
+  },
+  {
+    pattern: /Game time slot not found/,
+    translate: () => '선택한 예약 시간을 찾을 수 없습니다.',
+  },
+  {
+    pattern: /Game information not found/,
+    translate: () => '라운드 정보를 찾을 수 없습니다.',
+  },
+  {
+    pattern: /Request is already being processed/,
+    translate: () => '이미 처리 중인 요청입니다. 잠시 후 다시 시도해 주세요.',
+  },
+  {
+    pattern: /Booking not found/,
+    translate: () => '예약을 찾을 수 없습니다.',
+  },
+  {
+    pattern: /Cannot cancel booking less than (\d+) days before/,
+    translate: (match) => `예약일 ${match[1]}일 전까지만 취소할 수 있습니다.`,
+  },
+];
+
+/**
+ * 영어 오류 메시지를 한국어로 변환
+ */
+export function translateErrorMessage(message: string): string {
+  for (const { pattern, translate } of ENGLISH_ERROR_TRANSLATIONS) {
+    const match = message.match(pattern);
+    if (match) {
+      return translate(match);
+    }
+  }
+  return message;
+}
+
+/**
  * 에러 코드를 사용자 친화적 메시지로 변환
+ * VAL_xxx 코드의 경우 실제 validation 오류 메시지를 우선 사용
  */
 export function getErrorMessage(code?: string, fallbackMessage?: string): string {
-  if (!code) return fallbackMessage || '오류가 발생했습니다';
-  return ERROR_MESSAGES[code] || fallbackMessage || '오류가 발생했습니다';
+  if (!code) return fallbackMessage ? translateErrorMessage(fallbackMessage) : '오류가 발생했습니다';
+
+  // Validation 에러의 경우 실제 오류 메시지를 우선 사용 (더 구체적인 정보 제공)
+  if (code.startsWith('VAL_') && fallbackMessage && fallbackMessage !== ERROR_MESSAGES[code]) {
+    return translateErrorMessage(fallbackMessage);
+  }
+
+  return ERROR_MESSAGES[code] || (fallbackMessage ? translateErrorMessage(fallbackMessage) : '오류가 발생했습니다');
 }

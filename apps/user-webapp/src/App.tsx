@@ -9,6 +9,7 @@ import {
   BookingViewPage,
   BookingCompletePage,
   MyBookingsPage,
+  ProfilePage,
 } from './pages';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
           <Route path="/booking/:bookingNumber" element={<BookingViewPage />} />
           <Route path="/booking-detail" element={<BookingDetailPage />} />
           <Route path="/booking-complete" element={<BookingCompletePage />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Route>
         <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
