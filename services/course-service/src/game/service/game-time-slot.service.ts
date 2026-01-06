@@ -1,5 +1,5 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { GameTimeSlot, Prisma } from '@prisma/client';
+import { GameTimeSlot, Prisma, TimeSlotStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import {
   CreateGameTimeSlotDto,
@@ -460,10 +460,12 @@ export class GameTimeSlotService {
     playerCount: number,
     bookingId: number
   ): Promise<{ success: boolean; slot?: GameTimeSlot; error?: string }> {
+    const startTime = Date.now();
     this.logger.log(`[Saga] ========== reserveSlotForSaga START ==========`);
     this.logger.log(`[Saga] timeSlotId=${timeSlotId}, playerCount=${playerCount}, bookingId=${bookingId}`);
 
     // Idempotency 체크: DB에서 이미 처리된 예약인지 확인
+    const idempotencyStart = Date.now();
     const existingReservation = await this.prisma.processedSlotReservation.findUnique({
       where: {
         bookingId_gameTimeSlotId: {
@@ -472,9 +474,10 @@ export class GameTimeSlotService {
         },
       },
     });
+    this.logger.log(`[Saga] Idempotency check completed in ${Date.now() - idempotencyStart}ms`);
 
     if (existingReservation) {
-      this.logger.warn(`[Saga] DUPLICATE REQUEST DETECTED (DB): bookingId=${bookingId}, slotId=${timeSlotId} - returning cached success`);
+      this.logger.warn(`[Saga] DUPLICATE REQUEST DETECTED (DB): bookingId=${bookingId}, slotId=${timeSlotId} - returning cached success (total: ${Date.now() - startTime}ms)`);
       // 이미 성공한 예약이므로 success 반환 (중복 slot.reserve 방지)
       return { success: true };
     }
@@ -487,9 +490,11 @@ export class GameTimeSlotService {
       this.logger.log(`[Saga] Attempt ${attempt}/${MAX_RETRY} for slot ${timeSlotId}`);
 
       try {
+        const txStart = Date.now();
         // Prisma transaction timeout: 30초 (Cloud Run cold start + Cloud SQL 지연 대응)
         const result = await this.prisma.$transaction(async (tx) => {
           // 1. 현재 슬롯 상태 조회
+          const slotQueryStart = Date.now();
           const slot = await tx.gameTimeSlot.findUnique({
             where: { id: timeSlotId },
             include: {
@@ -502,6 +507,7 @@ export class GameTimeSlotService {
               },
             },
           });
+          this.logger.log(`[Saga] Slot query completed in ${Date.now() - slotQueryStart}ms`);
 
           if (!slot) {
             this.logger.error(`[Saga] Slot ${timeSlotId} NOT FOUND`);
@@ -531,8 +537,11 @@ export class GameTimeSlotService {
 
           // 3. Optimistic Locking: version 체크하며 업데이트
           const currentVersion = slot.version;
-          const newStatus = newBookedPlayers >= slot.maxPlayers ? 'FULLY_BOOKED' : 'AVAILABLE';
+          const newStatus: TimeSlotStatus = newBookedPlayers >= slot.maxPlayers
+            ? TimeSlotStatus.FULLY_BOOKED
+            : TimeSlotStatus.AVAILABLE;
 
+          const updateStart = Date.now();
           const updatedSlot = await tx.gameTimeSlot.updateMany({
             where: {
               id: timeSlotId,
@@ -544,6 +553,7 @@ export class GameTimeSlotService {
               version: currentVersion + 1,
             },
           });
+          this.logger.log(`[Saga] Slot update completed in ${Date.now() - updateStart}ms`);
 
           // Version mismatch 체크
           if (updatedSlot.count === 0) {
@@ -552,25 +562,23 @@ export class GameTimeSlotService {
 
           this.logger.log(`[Saga] Slot ${timeSlotId} reserved successfully (version: ${currentVersion} -> ${currentVersion + 1})`);
 
-          // 업데이트된 슬롯 정보 반환을 위해 다시 조회
-          return await tx.gameTimeSlot.findUnique({
-            where: { id: timeSlotId },
-            include: {
-              game: {
-                include: {
-                  frontNineCourse: true,
-                  backNineCourse: true,
-                  club: true,
-                },
-              },
-            },
-          });
+          // 업데이트된 슬롯 정보 반환 (refetch 쿼리 제거 - 성능 최적화)
+          // 이미 조회한 slot 데이터에 업데이트된 값만 반영
+          return {
+            ...slot,
+            bookedPlayers: newBookedPlayers,
+            status: newStatus,
+            version: currentVersion + 1,
+            updatedAt: new Date(),
+          };
         }, {
           timeout: 30000, // 30초 (Cloud Run cold start + Cloud SQL 지연 대응)
           maxWait: 10000, // 최대 10초 대기
         });
+        this.logger.log(`[Saga] Transaction completed in ${Date.now() - txStart}ms`);
 
         // 성공 시 DB에 idempotency 레코드 추가 (중복 요청 방지)
+        const idempotencyCreateStart = Date.now();
         await this.prisma.processedSlotReservation.create({
           data: {
             bookingId,
@@ -578,7 +586,8 @@ export class GameTimeSlotService {
             expiresAt: new Date(Date.now() + IDEMPOTENCY_TTL_MS),
           },
         });
-        this.logger.log(`[Saga] ========== reserveSlotForSaga SUCCESS ==========`);
+        this.logger.log(`[Saga] Idempotency record created in ${Date.now() - idempotencyCreateStart}ms`);
+        this.logger.log(`[Saga] ========== reserveSlotForSaga SUCCESS (total: ${Date.now() - startTime}ms) ==========`);
         return { success: true, slot: result };
       } catch (error) {
         if (error instanceof ConflictException && error.message.includes('Concurrent modification')) {

@@ -208,10 +208,12 @@ jobs:
           fi
 
           # CPU throttling setting
-          # auth-service needs --no-cpu-throttling because bcrypt is CPU-intensive
-          # Without this, bcrypt takes 10-100x longer due to CPU throttling when idle
+          # --no-cpu-throttling is required for:
+          # - auth-service: bcrypt is CPU-intensive, throttling causes 10-100x slowdown
+          # - course-service: Saga transaction processing requires consistent CPU
+          # - booking-service: Saga transaction processing requires consistent CPU
           SERVICE="${{ matrix.service }}"
-          if [ "$SERVICE" == "auth-service" ]; then
+          if [ "$SERVICE" == "auth-service" ] || [ "$SERVICE" == "course-service" ] || [ "$SERVICE" == "booking-service" ]; then
             echo "cpu_throttling=false" >> $GITHUB_OUTPUT
           else
             echo "cpu_throttling=true" >> $GITHUB_OUTPUT

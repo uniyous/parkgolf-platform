@@ -193,28 +193,38 @@ export class BookingService {
    * 예약 생성 (Saga 패턴)
    *
    * 흐름:
-   * 1. 멱등성 키 확인 → 중복이면 기존 응답 반환
-   * 2. 슬롯 정보 조회 및 기본 검증
+   * 1. 멱등성 키 + 슬롯 캐시 병렬 조회
+   * 2. 검증 및 Game 정보 조회
    * 3. PENDING 상태로 예약 생성 + OutboxEvent 저장 (같은 트랜잭션)
    * 4. OutboxProcessor가 slot.reserve 이벤트 발행
    * 5. course-service 응답에 따라 CONFIRMED 또는 FAILED로 전이
    */
   async createBooking(dto: CreateBookingRequestDto): Promise<BookingResponseDto> {
     const requestId = `REQ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const startTime = Date.now();
     this.logger.log(`[${requestId}] ========== BOOKING CREATE START ==========`);
     this.logger.log(`[${requestId}] Input: gameTimeSlotId=${dto.gameTimeSlotId}, playerCount=${dto.playerCount}, idempotencyKey=${dto.idempotencyKey}`);
 
     try {
       // =====================================================
-      // 1. 멱등성 키 확인
+      // 1. 멱등성 키 + 슬롯 캐시 병렬 조회 (성능 최적화)
       // =====================================================
-      this.logger.log(`[${requestId}] Step 1: Checking idempotency key...`);
-      const existingIdempotencyKey = await this.prisma.idempotencyKey.findUnique({
-        where: { key: dto.idempotencyKey },
-      });
+      this.logger.log(`[${requestId}] Step 1: Parallel query - idempotency key + slot cache...`);
+      const step1Start = Date.now();
 
+      const [existingIdempotencyKey, slotCacheResult] = await Promise.all([
+        this.prisma.idempotencyKey.findUnique({
+          where: { key: dto.idempotencyKey },
+        }),
+        this.prisma.gameTimeSlotCache.findUnique({
+          where: { gameTimeSlotId: dto.gameTimeSlotId }
+        }),
+      ]);
+
+      this.logger.log(`[${requestId}] Step 1: Parallel queries completed in ${Date.now() - step1Start}ms`);
+
+      // 멱등성 키 확인
       if (existingIdempotencyKey) {
-        // 이미 처리된 요청 - 기존 예약 반환
         if (existingIdempotencyKey.aggregateId) {
           this.logger.log(`[${requestId}] Idempotency key ${dto.idempotencyKey} already processed, returning cached response (aggregateId: ${existingIdempotencyKey.aggregateId})`);
           const existingBooking = await this.getBookingById(Number(existingIdempotencyKey.aggregateId));
@@ -223,26 +233,21 @@ export class BookingService {
             return existingBooking;
           }
         }
-        // aggregateId가 없으면 진행 중인 요청 - 에러 반환
         this.logger.warn(`[${requestId}] Idempotency key ${dto.idempotencyKey} exists but no aggregateId - request in progress`);
         throw new HttpException('Request is already being processed', HttpStatus.CONFLICT);
       }
-      this.logger.log(`[${requestId}] Step 1: Idempotency key check passed (new request)`);
 
       // =====================================================
-      // 2. 슬롯 정보 조회 및 기본 검증
+      // 2. 슬롯 정보 검증 및 Game 정보 조회
       // =====================================================
-      this.logger.log(`[${requestId}] Step 2: Checking slot cache for gameTimeSlotId=${dto.gameTimeSlotId}...`);
-      let slotCache = await this.prisma.gameTimeSlotCache.findUnique({
-        where: { gameTimeSlotId: dto.gameTimeSlotId }
-      });
+      let slotCache = slotCacheResult;
 
       // 캐시에 없으면 course-service에서 조회
       if (!slotCache) {
         this.logger.log(`[${requestId}] Slot cache MISS for gameTimeSlotId: ${dto.gameTimeSlotId}, fetching from course-service`);
         slotCache = await this.fetchAndSyncSlotFromCourseService(dto.gameTimeSlotId);
       } else {
-        this.logger.log(`[${requestId}] Slot cache HIT: status=${slotCache.status}, isAvailable=${slotCache.isAvailable}, bookedPlayers=${slotCache.bookedPlayers}, availablePlayers=${slotCache.availablePlayers}, maxPlayers=${slotCache.maxPlayers}, lastSyncAt=${slotCache.lastSyncAt}`);
+        this.logger.log(`[${requestId}] Slot cache HIT: status=${slotCache.status}, isAvailable=${slotCache.isAvailable}, bookedPlayers=${slotCache.bookedPlayers}, availablePlayers=${slotCache.availablePlayers}, maxPlayers=${slotCache.maxPlayers}`);
       }
 
       if (!slotCache) {
@@ -371,7 +376,7 @@ export class BookingService {
       });
 
       this.logger.log(`[${requestId}] Step 3: COMPLETED - Booking ${booking.bookingNumber} created with PENDING status`);
-      this.logger.log(`[${requestId}] ========== BOOKING CREATE SUCCESS (bookingId=${booking.id}, bookingNumber=${booking.bookingNumber}) ==========`);
+      this.logger.log(`[${requestId}] ========== BOOKING CREATE SUCCESS (bookingId=${booking.id}, bookingNumber=${booking.bookingNumber}, total=${Date.now() - startTime}ms) ==========`);
 
       return BookingResponseDto.fromEntity(booking);
     } catch (error) {
