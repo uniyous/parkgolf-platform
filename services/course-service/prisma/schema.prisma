@@ -240,6 +240,24 @@ model GameWeeklySchedule {
   @@map("game_weekly_schedules")
 }
 
+// =====================================================
+// ProcessedSlotReservation: Saga 멱등성 처리용 테이블
+// 중복 slot.reserve 요청 방지 (Memory Cache 대체)
+// =====================================================
+model ProcessedSlotReservation {
+  id              Int      @id @default(autoincrement())
+
+  bookingId       Int      @map("booking_id")
+  gameTimeSlotId  Int      @map("game_time_slot_id")
+
+  processedAt     DateTime @default(now()) @map("processed_at")
+  expiresAt       DateTime @map("expires_at") // TTL 만료 시간
+
+  @@unique([bookingId, gameTimeSlotId])
+  @@index([expiresAt]) // 만료된 레코드 정리용
+  @@map("processed_slot_reservations")
+}
+
 enum GameStatus {
   ACTIVE
   INACTIVE

@@ -8,28 +8,34 @@ import {
   GenerateTimeSlotsDto,
 } from '../dto/game-time-slot.dto';
 
-// Idempotency 캐시 (중복 slot.reserve 방지)
-// Key: `${bookingId}-${slotId}`, Value: timestamp
-const processedReservations = new Map<string, number>();
+// Idempotency TTL 설정
 const IDEMPOTENCY_TTL_MS = 60000; // 1분 TTL
-
-// 만료된 캐시 정리
-function cleanupExpiredReservations() {
-  const now = Date.now();
-  for (const [key, timestamp] of processedReservations.entries()) {
-    if (now - timestamp > IDEMPOTENCY_TTL_MS) {
-      processedReservations.delete(key);
-    }
-  }
-}
 
 @Injectable()
 export class GameTimeSlotService {
   private readonly logger = new Logger(GameTimeSlotService.name);
 
   constructor(private readonly prisma: PrismaService) {
-    // 30초마다 만료된 캐시 정리
-    setInterval(() => cleanupExpiredReservations(), 30000);
+    // 5분마다 만료된 레코드 정리
+    setInterval(() => this.cleanupExpiredReservations(), 5 * 60 * 1000);
+  }
+
+  /**
+   * 만료된 ProcessedSlotReservation 레코드 정리
+   */
+  private async cleanupExpiredReservations(): Promise<void> {
+    try {
+      const result = await this.prisma.processedSlotReservation.deleteMany({
+        where: {
+          expiresAt: { lt: new Date() },
+        },
+      });
+      if (result.count > 0) {
+        this.logger.log(`[Saga] Cleaned up ${result.count} expired processed reservations`);
+      }
+    } catch (error) {
+      this.logger.error(`[Saga] Failed to cleanup expired reservations: ${error.message}`);
+    }
   }
 
   async create(createDto: CreateGameTimeSlotDto): Promise<GameTimeSlot> {
@@ -457,10 +463,18 @@ export class GameTimeSlotService {
     this.logger.log(`[Saga] ========== reserveSlotForSaga START ==========`);
     this.logger.log(`[Saga] timeSlotId=${timeSlotId}, playerCount=${playerCount}, bookingId=${bookingId}`);
 
-    // Idempotency 체크: 이미 처리된 예약인지 확인
-    const idempotencyKey = `${bookingId}-${timeSlotId}`;
-    if (processedReservations.has(idempotencyKey)) {
-      this.logger.warn(`[Saga] DUPLICATE REQUEST DETECTED: bookingId=${bookingId}, slotId=${timeSlotId} - returning cached success`);
+    // Idempotency 체크: DB에서 이미 처리된 예약인지 확인
+    const existingReservation = await this.prisma.processedSlotReservation.findUnique({
+      where: {
+        bookingId_gameTimeSlotId: {
+          bookingId,
+          gameTimeSlotId: timeSlotId,
+        },
+      },
+    });
+
+    if (existingReservation) {
+      this.logger.warn(`[Saga] DUPLICATE REQUEST DETECTED (DB): bookingId=${bookingId}, slotId=${timeSlotId} - returning cached success`);
       // 이미 성공한 예약이므로 success 반환 (중복 slot.reserve 방지)
       return { success: true };
     }
@@ -556,8 +570,14 @@ export class GameTimeSlotService {
           maxWait: 10000, // 최대 10초 대기
         });
 
-        // 성공 시 idempotency 캐시에 추가 (중복 요청 방지)
-        processedReservations.set(idempotencyKey, Date.now());
+        // 성공 시 DB에 idempotency 레코드 추가 (중복 요청 방지)
+        await this.prisma.processedSlotReservation.create({
+          data: {
+            bookingId,
+            gameTimeSlotId: timeSlotId,
+            expiresAt: new Date(Date.now() + IDEMPOTENCY_TTL_MS),
+          },
+        });
         this.logger.log(`[Saga] ========== reserveSlotForSaga SUCCESS ==========`);
         return { success: true, slot: result };
       } catch (error) {
