@@ -16,7 +16,6 @@ dist
 .gitignore
 .eslintrc*
 .prettierrc*
-tsconfig*.json
 jest.config.*
 *.spec.ts
 *.test.ts
