@@ -2,15 +2,16 @@
 # Manages infrastructure changes through GitOps workflow
 #
 # ============================================================================
-# NATS Infrastructure Notes
+# Infrastructure Architecture (External IP 방식)
 # ============================================================================
-# NATS JetStream은 Compute Engine VM에서 Container-Optimized OS로 실행됩니다.
+# Cloud Run 서비스가 VM의 External IP를 통해 직접 접속합니다.
+# (Direct VPC Egress 대신 External IP 방식 사용 - Serverless IP 문제 해결)
 #
 # 주요 구성요소:
-# - NATS VM: parkgolf-nats-{env} (e2-small/e2-medium)
-# - NATS 포트: 4222 (Client), 6222 (Cluster), 8222 (Monitoring)
-# - VPC Connector: Cloud Run ↔ NATS 통신
-# - Firewall: allow-nats-{env} (4222, 6222, 8222 포트 허용)
+# - PostgreSQL VM: parkgolf-postgres-{env} (External IP)
+# - NATS VM: parkgolf-nats-{env} (External IP)
+# - Cloud Run 서비스: VPC 연결 없음 (External IP로 VM 접속)
+# - Firewall: 0.0.0.0/0 허용 (애플리케이션 레벨 인증으로 보안)
 #
 # NATS 컨테이너 인수 (중요):
 # - NATS 2.10에서 지원되는 인수만 사용해야 함
@@ -21,7 +22,7 @@
 # Terraform 모듈 위치: infra/modules/messaging/main.tf
 # 환경 설정: infra/environments/{env}/main.tf
 #
-# NATS VM 수동 관리 명령:
+# VM 수동 관리 명령:
 #   # VM 시작: gcloud compute instances start parkgolf-nats-{env} --zone=asia-northeast3-a
 #   # SSH 접속: gcloud compute ssh parkgolf-nats-{env} --tunnel-through-iap
 #   # 컨테이너 확인: docker ps -a | grep nats
@@ -196,7 +197,7 @@ jobs:
         run: |
           ENV="${{ needs.detect-environment.outputs.environment }}"
 
-          # Dev environment - uses Cloud SQL
+          # Dev environment - uses PostgreSQL VM
           if [ "$ENV" == "dev" ]; then
             cat > terraform.tfvars << EOF
           db_password        = "${{ secrets.DB_PASSWORD }}"
@@ -205,7 +206,7 @@ jobs:
           EOF
           fi
 
-          # Prod environment - uses Cloud SQL with db_password
+          # Prod environment - uses PostgreSQL (VM or Cloud SQL)
           if [ "$ENV" == "prod" ]; then
             cat > terraform.tfvars << EOF
           db_password        = "${{ secrets.DB_PASSWORD }}"
@@ -412,7 +413,7 @@ jobs:
         run: |
           ENV="${{ needs.detect-environment.outputs.environment }}"
 
-          # Dev environment - uses Cloud SQL
+          # Dev environment - uses PostgreSQL VM
           if [ "$ENV" == "dev" ]; then
             cat > terraform.tfvars << EOF
           db_password        = "${{ secrets.DB_PASSWORD }}"
@@ -421,7 +422,7 @@ jobs:
           EOF
           fi
 
-          # Prod environment - uses Cloud SQL with db_password
+          # Prod environment - uses PostgreSQL (VM or Cloud SQL)
           if [ "$ENV" == "prod" ]; then
             cat > terraform.tfvars << EOF
           db_password        = "${{ secrets.DB_PASSWORD }}"
@@ -456,15 +457,15 @@ jobs:
               -target=${{ github.event.inputs.target }} \
               -auto-approve
           else
-            # Full destroy: services must be destroyed before networking
-            # Step 1: Destroy Cloud Run services first (releases VPC resources)
+            # Full destroy (External IP 방식에서는 순서가 덜 중요하지만 안전하게 순차 삭제)
+            # Step 1: Destroy Cloud Run services first
             echo "📦 Step 1: Destroying Cloud Run services..."
             terraform destroy \
               -var="environment=$ENV" \
               -target=module.services \
               -auto-approve || true
 
-            # Step 2: Destroy remaining infrastructure
+            # Step 2: Destroy remaining infrastructure (VMs, networking)
             echo "🏗️ Step 2: Destroying remaining infrastructure..."
             terraform destroy \
               -var="environment=$ENV" \
