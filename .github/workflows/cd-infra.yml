@@ -444,13 +444,27 @@ jobs:
 
       - name: Terraform Destroy
         run: |
-          TARGET_OPTION=""
-          if [ -n "${{ github.event.inputs.target }}" ]; then
-            TARGET_OPTION="-target=${{ github.event.inputs.target }}"
-            echo "🎯 Targeting: ${{ github.event.inputs.target }}"
-          fi
+          ENV="${{ needs.detect-environment.outputs.environment }}"
 
-          terraform destroy \
-            -var="environment=${{ needs.detect-environment.outputs.environment }}" \
-            $TARGET_OPTION \
-            -auto-approve
+          # If targeting specific module, destroy only that
+          if [ -n "${{ github.event.inputs.target }}" ]; then
+            echo "🎯 Targeting: ${{ github.event.inputs.target }}"
+            terraform destroy \
+              -var="environment=$ENV" \
+              -target=${{ github.event.inputs.target }} \
+              -auto-approve
+          else
+            # Full destroy: services must be destroyed before networking
+            # Step 1: Destroy Cloud Run services first (releases VPC resources)
+            echo "📦 Step 1: Destroying Cloud Run services..."
+            terraform destroy \
+              -var="environment=$ENV" \
+              -target=module.services \
+              -auto-approve || true
+
+            # Step 2: Destroy remaining infrastructure
+            echo "🏗️ Step 2: Destroying remaining infrastructure..."
+            terraform destroy \
+              -var="environment=$ENV" \
+              -auto-approve
+          fi
