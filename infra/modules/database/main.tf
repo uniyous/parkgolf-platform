@@ -51,6 +51,16 @@ variable "storage_gb" {
   description = "Storage size in GB"
 }
 
+variable "disk_type" {
+  type        = string
+  default     = "PD_SSD"
+  description = "Disk type: PD_SSD or PD_HDD"
+  validation {
+    condition     = contains(["PD_SSD", "PD_HDD"], var.disk_type)
+    error_message = "disk_type must be one of: PD_SSD, PD_HDD"
+  }
+}
+
 variable "databases" {
   type        = list(string)
   default     = []
@@ -163,7 +173,7 @@ resource "google_sql_database_instance" "postgres" {
     tier              = local.gcp_tier_map[var.tier]
     availability_type = var.high_availability ? "REGIONAL" : "ZONAL"
     disk_size         = var.storage_gb
-    disk_type         = "PD_SSD"
+    disk_type         = var.disk_type
     disk_autoresize   = true
 
     backup_configuration {

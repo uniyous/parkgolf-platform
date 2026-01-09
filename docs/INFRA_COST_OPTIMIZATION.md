@@ -37,7 +37,7 @@
 | 항목 | 스펙 |
 |------|------|
 | Tier | db-g1-small (1 vCPU, 1.7GB) |
-| Storage | 10GB SSD |
+| Storage | 10GB HDD |
 | PostgreSQL | 15 |
 | High Availability | No |
 | Backup | No (비용 절감) |
@@ -90,9 +90,9 @@
 | 나머지 5개 서비스 (min=0, throttling) | idle 시 | ~$0 |
 | NATS VM (일반 인스턴스) | e2-micro | ~$6-7 |
 | NATS Disk | 10GB pd-standard | ~$0.4 |
-| Cloud SQL (db-g1-small) | 1 vCPU + 1.7GB, 10GB SSD | ~$30 |
+| Cloud SQL (db-g1-small) | 1 vCPU + 1.7GB, 10GB HDD | ~$25 |
 | Firebase Hosting (2개 앱) | 무료 티어 | $0 |
-| **합계** | | **~$92/월** |
+| **합계** | | **~$87/월** |
 
 ---
 
@@ -232,7 +232,7 @@ gcloud compute ssh parkgolf-nats-dev --zone=asia-northeast3-a \
 
 | 환경 | Cloud Run | NATS VM | Database | Firebase Hosting | 네트워킹 | 기타 | 월 합계 |
 |------|-----------|---------|----------|------------------|----------|------|---------|
-| Dev | ~$55 | ~$7 | ~$30 | $0 | $0 | $0 | **~$92** |
+| Dev | ~$55 | ~$7 | ~$25 | $0 | $0 | $0 | **~$87** |
 | Prod | 사용량 기반 | ~$8 | ~$80 | ~$0 | ~$10 | ~$5 | **~$100+** |
 
 ---

@@ -148,6 +148,7 @@ module "database" {
   postgres_version = "15"
   tier             = "small"  # db-g1-small: 1 vCPU, 1.7GB
   storage_gb       = 10       # Minimal storage for dev
+  disk_type        = "PD_HDD" # HDD for cost saving (dev only)
 
   databases       = local.databases
   admin_username  = "parkgolf"
