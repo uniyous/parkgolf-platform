@@ -2,19 +2,20 @@
 # Builds, pushes, and deploys backend services to Cloud Run
 #
 # ============================================================================
-# NATS Connection Notes
+# Infrastructure Architecture (External IP 방식)
 # ============================================================================
-# 모든 백엔드 서비스는 NATS를 통해 서비스 간 통신을 수행합니다.
+# Cloud Run 서비스가 VM의 External IP를 통해 직접 접속합니다.
+# (VPC Connector 대신 External IP 방식 사용)
 #
 # NATS 연결 설정:
 # - 환경변수: NATS_URL (GitHub Secrets에서 관리)
-# - Dev: nats://10.1.2.x:4222 (VPC Connector 경유)
-# - Prod: nats://10.0.2.x:4222 (VPC Connector 경유)
+# - NATS VM External IP를 통해 직접 연결
+# - Firewall: 0.0.0.0/0 → :4222 허용
 #
-# VPC Connector:
-# - Dev: parkgolf-connector-dev
-# - Prod: parkgolf-connector-prod
-# - vpc-egress: all-traffic (VPC Peering을 통한 외부 DB 연결 필요)
+# Database 연결:
+# - PostgreSQL VM External IP를 통해 직접 연결
+# - Firewall: 0.0.0.0/0 → :5432 허용
+# - 보안: DB 비밀번호 인증
 #
 # 서비스별 NATS 사용:
 # - auth-service: auth.*, users.* 패턴 처리
@@ -24,7 +25,7 @@
 # - admin-api: 모든 서비스에 NATS Request 전송
 # - user-api: auth.*, booking.*, course.* Request 전송
 #
-# NATS 연결 문제 해결:
+# 문제 해결:
 # 1. NATS VM 상태 확인: gcloud compute instances list --filter="name~nats"
 # 2. Firewall 확인: gcloud compute firewall-rules list --filter="name~nats"
 # 3. Cloud Run 로그 확인: gcloud run logs read --service={service}-{env}
@@ -41,7 +42,6 @@ on:
         type: choice
         options:
           - dev
-          - staging
           - prod
       services:
         description: 'Services to deploy (comma-separated or "all")'
@@ -247,14 +247,6 @@ jobs:
             ENV_VARS="${ENV_VARS},DATABASE_URL=${DB_URL}"
           fi
 
-          # Set VPC connector based on environment
-          ENV="${{ needs.setup.outputs.environment }}"
-          if [ "$ENV" == "prod" ]; then
-            VPC_CONNECTOR="projects/parkgolf-uniyous/locations/asia-northeast3/connectors/parkgolf-connector-prod"
-          else
-            VPC_CONNECTOR="projects/parkgolf-uniyous/locations/asia-northeast3/connectors/parkgolf-connector-dev"
-          fi
-
           # Set CPU throttling flag
           if [ "${{ steps.vars.outputs.cpu_throttling }}" == "false" ]; then
             CPU_THROTTLING_FLAG="--no-cpu-throttling"
@@ -262,6 +254,7 @@ jobs:
             CPU_THROTTLING_FLAG="--cpu-throttling"
           fi
 
+          # Deploy to Cloud Run (External IP 방식 - VPC Connector 없음)
           gcloud run deploy ${{ steps.vars.outputs.service_name }} \
             --image ${{ steps.vars.outputs.image }} \
             --region ${{ env.REGION }} \
@@ -272,8 +265,6 @@ jobs:
             --memory ${{ steps.vars.outputs.memory }} \
             --cpu ${{ steps.vars.outputs.cpu }} \
             --timeout 300 \
-            --vpc-connector "${VPC_CONNECTOR}" \
-            --vpc-egress all-traffic \
             ${CPU_THROTTLING_FLAG} \
             --set-env-vars "${ENV_VARS}"
 
