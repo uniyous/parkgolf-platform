@@ -211,10 +211,6 @@ jobs:
           db_password        = "${{ secrets.DB_PASSWORD }}"
           jwt_secret         = "${{ secrets.JWT_SECRET }}"
           jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
-          alert_email        = "${{ secrets.ALERT_EMAIL }}"
-          ops_email          = "${{ secrets.OPS_EMAIL }}"
-          slack_channel      = "${{ secrets.SLACK_CHANNEL }}"
-          slack_token        = "${{ secrets.SLACK_TOKEN }}"
           EOF
           fi
 
@@ -418,10 +414,6 @@ jobs:
           db_password        = "${{ secrets.DB_PASSWORD }}"
           jwt_secret         = "${{ secrets.JWT_SECRET }}"
           jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
-          alert_email        = "${{ secrets.ALERT_EMAIL }}"
-          ops_email          = "${{ secrets.OPS_EMAIL }}"
-          slack_channel      = "${{ secrets.SLACK_CHANNEL }}"
-          slack_token        = "${{ secrets.SLACK_TOKEN }}"
           EOF
           fi
 
