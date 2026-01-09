@@ -157,7 +157,10 @@ resource "google_compute_instance" "postgres" {
     network    = module.networking.vpc_name
     subnetwork = module.networking.subnet_ids["data"]
 
-    # No external IP (private only)
+    # External IP for Cloud Run access (Option A: External IP + Firewall)
+    access_config {
+      # Ephemeral external IP
+    }
   }
 
   metadata_startup_script = <<-EOF
@@ -215,7 +218,9 @@ resource "google_compute_instance" "postgres" {
   depends_on = [module.networking]
 }
 
-# Firewall for PostgreSQL from Cloud Run (Direct VPC egress)
+# Firewall for PostgreSQL from Cloud Run (External IP access)
+# Cloud Run uses dynamic external IPs from Google infrastructure
+# Security is maintained via database password authentication
 resource "google_compute_firewall" "postgres_from_cloudrun" {
   name    = "parkgolf-allow-postgres-${local.environment}"
   network = module.networking.vpc_name
@@ -225,7 +230,9 @@ resource "google_compute_firewall" "postgres_from_cloudrun" {
     ports    = ["5432"]
   }
 
-  source_ranges = ["10.2.0.0/16"]  # VPC CIDR
+  # Allow from any IP (Cloud Run uses dynamic IPs)
+  # Application-level security: DB password authentication
+  source_ranges = ["0.0.0.0/0"]
   target_tags   = ["postgres-server"]
 }
 
@@ -249,9 +256,9 @@ module "messaging" {
   jetstream_max_memory = "128M"       # Minimal memory for JetStream
   jetstream_max_file   = "1G"         # Minimal file storage
 
-  vpc_network         = module.networking.vpc_name
-  vpc_subnetwork      = module.networking.subnet_ids["private"]
-  private_subnet_cidr = module.networking.private_subnet_cidr
+  vpc_network    = module.networking.vpc_name
+  vpc_subnetwork = module.networking.subnet_ids["private"]
+  # private_subnet_cidr removed - using External IP access (Option A)
 
   depends_on = [module.networking]
 }
@@ -314,10 +321,9 @@ module "services" {
   port          = each.value.port
   cpu_idle      = each.value.cpu_idle
 
-  # Direct VPC egress (replaces VPC Connector)
-  vpc_network      = module.networking.vpc_network_resource
-  vpc_subnet       = module.networking.subnet_resources["private"]
-  vpc_network_tags = ["cloud-run"]
+  # No VPC configuration (Option A: External IP + Firewall)
+  # Cloud Run connects to VMs via External IP instead of Direct VPC Egress
+  # This eliminates serverless IP issues during terraform destroy
 
   allow_unauthenticated = true
 
@@ -395,9 +401,15 @@ output "database_instance" {
   value       = google_compute_instance.postgres.name
 }
 
-output "database_ip" {
+output "database_private_ip" {
   description = "Database private IP"
   value       = google_compute_instance.postgres.network_interface[0].network_ip
+  sensitive   = true
+}
+
+output "database_external_ip" {
+  description = "Database external IP (for Cloud Run access)"
+  value       = google_compute_instance.postgres.network_interface[0].access_config[0].nat_ip
   sensitive   = true
 }
 

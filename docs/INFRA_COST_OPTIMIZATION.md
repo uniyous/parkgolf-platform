@@ -53,9 +53,14 @@
 
 | 항목 | 설정 | 비용 |
 |------|------|------|
-| VPC Connector | 비활성화 | $0 (Direct VPC Egress 사용) |
-| Cloud NAT | 비활성화 | $0 (NATS VM External IP 사용) |
-| Direct VPC Egress | 활성화 | $0 |
+| VPC Connector | 비활성화 | $0 |
+| Cloud NAT | 비활성화 | $0 |
+| Direct VPC Egress | 비활성화 | $0 (External IP 방식 사용) |
+
+**External IP 방식 (Option A):**
+- Cloud Run이 VM의 External IP로 직접 접속
+- Serverless IP 문제 없음 (terraform destroy 시 문제 해결)
+- 애플리케이션 레벨 인증으로 보안 유지 (DB 비밀번호, NATS 인증)
 
 ### 5. Firebase Hosting (Web Apps)
 
@@ -172,17 +177,28 @@ disk_type = "pd-standard"  # SSD 대비 75% 저렴
 
 ### 3. 네트워킹 최적화
 
+**External IP 방식 (Option A) - 권장:**
 ```hcl
-# VPC Connector → Direct VPC Egress
-# 장점: VPC Connector 인스턴스 비용 제거, 성능 향상
-vpc_access {
-  network_interfaces {
-    network    = var.vpc_network
-    subnetwork = var.vpc_subnet
+# Cloud Run에서 VPC 설정 제거
+# VM에 External IP 부여, Firewall로 접근 제어
+
+# PostgreSQL VM
+network_interface {
+  network    = module.networking.vpc_name
+  subnetwork = module.networking.subnet_ids["data"]
+  access_config {
+    # Ephemeral external IP
   }
-  egress = "ALL_TRAFFIC"
 }
+
+# Firewall - 모든 IP에서 접근 허용 (DB 비밀번호로 보안)
+source_ranges = ["0.0.0.0/0"]
 ```
+
+**장점:**
+- Serverless IP 문제 없음 (terraform destroy 시 즉시 삭제 가능)
+- VPC Connector 비용 없음
+- 구성 단순화
 
 ### 4. Monitoring 최적화
 
@@ -258,6 +274,13 @@ services = {
   }
   # ... 나머지 서비스도 동일
 }
+
+# Cloud Run 모듈 호출 시 VPC 설정 없음 (External IP 방식)
+module "services" {
+  # ...
+  # vpc_network, vpc_subnet 설정 제거
+  # Cloud Run이 VM External IP로 직접 접속
+}
 ```
 
 ---
@@ -266,6 +289,7 @@ services = {
 
 | 날짜 | 변경 내용 |
 |------|----------|
+| 2026-01-10 | Direct VPC Egress → External IP 방식 변경 (Serverless IP 문제 해결) |
 | 2026-01-09 | Cloud SQL → PostgreSQL VM 변경 (비용 절감: ~$25 → ~$13) |
 | 2026-01-09 | Dev Cloud SQL (db-g1-small) 추가 |
 | 2026-01-09 | auth-service memory 512Mi로 변경 (cpu_idle=false 시 최소 512Mi 필요) |

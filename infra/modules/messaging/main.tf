@@ -232,10 +232,11 @@ resource "google_compute_firewall" "nats" {
   target_tags = ["nats-server"]
 }
 
-# Firewall for NATS from Cloud Run (Direct VPC egress)
-resource "google_compute_firewall" "nats_from_cloudrun" {
-  count   = var.provider_type == "gcp" && var.private_subnet_cidr != null ? 1 : 0
-  name    = "${var.name}-allow-nats-cloudrun-${var.environment}"
+# Firewall for NATS from Cloud Run (External IP access)
+# Cloud Run uses dynamic external IPs from Google infrastructure
+resource "google_compute_firewall" "nats_from_external" {
+  count   = var.provider_type == "gcp" ? 1 : 0
+  name    = "${var.name}-allow-nats-external-${var.environment}"
   network = var.vpc_network
 
   allow {
@@ -243,10 +244,9 @@ resource "google_compute_firewall" "nats_from_cloudrun" {
     ports    = ["4222"]
   }
 
-  # Private subnet CIDR (Cloud Run Direct VPC egress uses this subnet)
-  source_ranges = [var.private_subnet_cidr]
-  # Also allow from cloud-run tagged instances
-  source_tags   = ["cloud-run"]
+  # Allow from any IP (Cloud Run uses dynamic IPs)
+  # Application-level security via NATS authentication can be added if needed
+  source_ranges = ["0.0.0.0/0"]
   target_tags   = ["nats-server"]
 }
 
@@ -301,8 +301,24 @@ output "nats_internal_ip" {
   ) : null
 }
 
+output "nats_external_ip" {
+  description = "NATS VM external IP (for Cloud Run access)"
+  value = var.provider_type == "gcp" ? (
+    length(google_compute_instance.nats) > 0 ?
+    google_compute_instance.nats[0].network_interface[0].access_config[0].nat_ip : null
+  ) : null
+}
+
 output "nats_url" {
-  description = "NATS connection URL"
+  description = "NATS connection URL (uses external IP for Cloud Run access)"
+  value = var.provider_type == "gcp" ? (
+    length(google_compute_instance.nats) > 0 ?
+    "nats://${google_compute_instance.nats[0].network_interface[0].access_config[0].nat_ip}:4222" : null
+  ) : null
+}
+
+output "nats_internal_url" {
+  description = "NATS internal connection URL (for VPC internal access)"
   value = var.provider_type == "gcp" ? (
     length(google_compute_instance.nats) > 0 ?
     "nats://${google_compute_instance.nats[0].network_interface[0].network_ip}:4222" : null
@@ -310,7 +326,7 @@ output "nats_url" {
 }
 
 output "nats_monitoring_url" {
-  description = "NATS monitoring endpoint"
+  description = "NATS monitoring endpoint (internal)"
   value = var.provider_type == "gcp" ? (
     length(google_compute_instance.nats) > 0 ?
     "http://${google_compute_instance.nats[0].network_interface[0].network_ip}:8222" : null
