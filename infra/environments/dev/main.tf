@@ -130,36 +130,103 @@ module "networking" {
   enable_vpc_connector = false
   enable_nat           = false  # NATS VM uses external IP instead (cost saving)
 
-  # Enable Private Service Connection for Cloud SQL
-  enable_private_service_connection = true
+  # Disable Private Service Connection (using Compute Engine PostgreSQL)
+  enable_private_service_connection = false
 }
 
 # ============================================================================
-# Database Module (Cloud SQL PostgreSQL)
+# Database VM (PostgreSQL on Compute Engine) - Cost optimized for dev
 # ============================================================================
 
-module "database" {
-  source = "../../modules/database"
+resource "google_compute_instance" "postgres" {
+  name         = "parkgolf-postgres-${local.environment}"
+  machine_type = "e2-small"  # 0.5 vCPU (shared), 2GB - ~$13/month
+  zone         = "${local.region}-a"
 
-  provider_type    = local.provider_type
-  instance_name    = "parkgolf-db"
-  environment      = local.environment
-  region           = local.region
-  postgres_version = "15"
-  tier             = "small"  # db-g1-small: 1 vCPU, 1.7GB
-  storage_gb       = 10       # Minimal storage for dev
-  disk_type        = "PD_HDD" # HDD for cost saving (dev only)
+  tags = ["postgres-server", "internal"]
 
-  databases       = local.databases
-  admin_username  = "parkgolf"
-  admin_password  = var.db_password
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+      size  = 10
+      type  = "pd-standard"  # HDD for cost saving
+    }
+  }
 
-  vpc_network         = module.networking.vpc_self_link
-  backup_enabled      = false  # No backup for dev (cost saving)
-  high_availability   = false
-  deletion_protection = false  # Allow easy cleanup for dev
+  network_interface {
+    network    = module.networking.vpc_name
+    subnetwork = module.networking.subnet_ids["data"]
+
+    # No external IP (private only)
+  }
+
+  metadata_startup_script = <<-EOF
+    #!/bin/bash
+    set -e
+
+    # Install PostgreSQL 15
+    apt-get update
+    apt-get install -y gnupg2 wget
+    echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+    apt-get update
+    apt-get install -y postgresql-15
+
+    # Configure PostgreSQL to listen on all interfaces
+    sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" /etc/postgresql/15/main/postgresql.conf
+
+    # Allow connections from VPC
+    echo "host    all             all             10.2.0.0/16             md5" >> /etc/postgresql/15/main/pg_hba.conf
+
+    # Restart PostgreSQL
+    systemctl restart postgresql
+
+    # Create databases and user
+    sudo -u postgres psql <<EOSQL
+    CREATE USER parkgolf WITH PASSWORD '${var.db_password}';
+    CREATE DATABASE auth_db OWNER parkgolf;
+    CREATE DATABASE course_db OWNER parkgolf;
+    CREATE DATABASE booking_db OWNER parkgolf;
+    CREATE DATABASE notify_db OWNER parkgolf;
+    GRANT ALL PRIVILEGES ON DATABASE auth_db TO parkgolf;
+    GRANT ALL PRIVILEGES ON DATABASE course_db TO parkgolf;
+    GRANT ALL PRIVILEGES ON DATABASE booking_db TO parkgolf;
+    GRANT ALL PRIVILEGES ON DATABASE notify_db TO parkgolf;
+    EOSQL
+
+    echo "PostgreSQL setup completed"
+  EOF
+
+  service_account {
+    scopes = ["cloud-platform"]
+  }
+
+  scheduling {
+    preemptible       = false
+    automatic_restart = true
+  }
+
+  labels = {
+    environment = local.environment
+    service     = "postgres"
+    component   = "database"
+  }
 
   depends_on = [module.networking]
+}
+
+# Firewall for PostgreSQL from Cloud Run (Direct VPC egress)
+resource "google_compute_firewall" "postgres_from_cloudrun" {
+  name    = "parkgolf-allow-postgres-${local.environment}"
+  network = module.networking.vpc_name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["5432"]
+  }
+
+  source_ranges = ["10.2.0.0/16"]  # VPC CIDR
+  target_tags   = ["postgres-server"]
 }
 
 # ============================================================================
@@ -324,13 +391,13 @@ output "nats_url" {
 }
 
 output "database_instance" {
-  description = "Database instance name"
-  value       = module.database.instance_name
+  description = "Database VM instance name"
+  value       = google_compute_instance.postgres.name
 }
 
 output "database_ip" {
   description = "Database private IP"
-  value       = module.database.private_ip
+  value       = google_compute_instance.postgres.network_interface[0].network_ip
   sensitive   = true
 }
 

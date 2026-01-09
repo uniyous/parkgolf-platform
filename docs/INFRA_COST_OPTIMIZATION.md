@@ -32,16 +32,16 @@
 - NATS 메시지 리스닝을 위해 항상 실행 필요
 - 다른 서비스들의 인증 요청 처리
 
-### 2. Cloud SQL (Database)
+### 2. PostgreSQL VM (Database)
 
 | 항목 | 스펙 |
 |------|------|
-| Tier | db-g1-small (1 vCPU, 1.7GB) |
-| Storage | 10GB HDD |
+| Instance | parkgolf-postgres-dev |
+| Machine Type | e2-small (0.5 vCPU shared, 2GB) |
+| Storage | 10GB pd-standard (HDD) |
+| OS | Ubuntu 22.04 LTS |
 | PostgreSQL | 15 |
-| High Availability | No |
-| Backup | No (비용 절감) |
-| Deletion Protection | No |
+| Databases | auth_db, course_db, booking_db, notify_db |
 
 ### 3. NATS VM (Messaging)
 
@@ -80,7 +80,7 @@
 |------|------|------|
 | Monitoring | 비활성화 | $0 (Cloud Logging으로 대체) |
 | Secrets | 3개 (db_password, jwt_secret, jwt_refresh_secret) | $0 (무료 티어) |
-| Database | Cloud SQL (db-g1-small) | ~$30/월 |
+| Database | PostgreSQL VM (e2-small) | ~$13/월 |
 
 ### Dev 환경 월 예상 비용
 
@@ -88,11 +88,10 @@
 |------|------|---------|
 | auth-service (min=1, no-throttling) | 1 vCPU + 512Mi 상시 | ~$55 |
 | 나머지 5개 서비스 (min=0, throttling) | idle 시 | ~$0 |
-| NATS VM (일반 인스턴스) | e2-micro | ~$6-7 |
-| NATS Disk | 10GB pd-standard | ~$0.4 |
-| Cloud SQL (db-g1-small) | 1 vCPU + 1.7GB, 10GB HDD | ~$25 |
+| PostgreSQL VM | e2-small + 10GB HDD | ~$13 |
+| NATS VM | e2-micro + 10GB HDD | ~$6-7 |
 | Firebase Hosting (2개 앱) | 무료 티어 | $0 |
-| **합계** | | **~$87/월** |
+| **합계** | | **~$75/월** |
 
 ---
 
@@ -232,7 +231,7 @@ gcloud compute ssh parkgolf-nats-dev --zone=asia-northeast3-a \
 
 | 환경 | Cloud Run | NATS VM | Database | Firebase Hosting | 네트워킹 | 기타 | 월 합계 |
 |------|-----------|---------|----------|------------------|----------|------|---------|
-| Dev | ~$55 | ~$7 | ~$25 | $0 | $0 | $0 | **~$87** |
+| Dev | ~$55 | ~$7 | ~$13 | $0 | $0 | $0 | **~$75** |
 | Prod | 사용량 기반 | ~$8 | ~$80 | ~$0 | ~$10 | ~$5 | **~$100+** |
 
 ---
@@ -267,6 +266,7 @@ services = {
 
 | 날짜 | 변경 내용 |
 |------|----------|
+| 2026-01-09 | Cloud SQL → PostgreSQL VM 변경 (비용 절감: ~$25 → ~$13) |
 | 2026-01-09 | Dev Cloud SQL (db-g1-small) 추가 |
 | 2026-01-09 | auth-service memory 512Mi로 변경 (cpu_idle=false 시 최소 512Mi 필요) |
 | 2026-01-09 | auth-service CPU 1 vCPU로 변경 (cpu_idle=false 요구사항) |
