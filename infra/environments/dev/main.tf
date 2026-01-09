@@ -119,11 +119,13 @@ module "networking" {
   environment   = local.environment
   region        = local.region
 
+  # IP 정책: Dev=10.2.x.x, Staging=10.3.x.x, Prod=10.4.x.x
+  # (10.1.x.x는 uniyous VPC와 충돌 방지를 위해 예약됨)
   vpc_cidr = "10.2.0.0/16"
   subnet_cidrs = {
-    public  = "10.2.1.0/24"
-    private = "10.2.2.0/24"
-    data    = "10.2.3.0/24"
+    public  = "10.2.1.0/24"   # 외부 접근 가능 (LB, Bastion)
+    private = "10.2.2.0/24"   # 내부 서비스 (NATS VM)
+    data    = "10.2.3.0/24"   # 데이터베이스 (PostgreSQL VM)
   }
 
   # Direct VPC egress replaces VPC Connector (cost savings & better performance)

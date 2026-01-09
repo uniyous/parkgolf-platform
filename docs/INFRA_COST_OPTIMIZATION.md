@@ -11,6 +11,42 @@
 
 ---
 
+## VPC IP 주소 정책 (Standard)
+
+### 환경별 IP 대역
+
+| 환경 | VPC CIDR | Public Subnet | Private Subnet | Data Subnet |
+|------|----------|---------------|----------------|-------------|
+| Reserved | 10.1.0.0/16 | - | - | - |
+| **Dev** | **10.2.0.0/16** | 10.2.1.0/24 | 10.2.2.0/24 | 10.2.3.0/24 |
+| Staging | 10.3.0.0/16 | 10.3.1.0/24 | 10.3.2.0/24 | 10.3.3.0/24 |
+| Prod | 10.4.0.0/16 | 10.4.1.0/24 | 10.4.2.0/24 | 10.4.3.0/24 |
+
+> **Note:** 10.1.x.x는 uniyous VPC와 충돌 방지를 위해 예약됨
+
+### 서브넷 용도
+
+| Subnet | 3rd Octet | 용도 | 배치 리소스 |
+|--------|-----------|------|-------------|
+| Public | x.x.1.0/24 | 외부 접근 가능 | Load Balancer, Bastion |
+| Private | x.x.2.0/24 | 내부 서비스 | NATS VM, 내부 서비스 |
+| Data | x.x.3.0/24 | 데이터베이스 | PostgreSQL VM, Redis |
+
+### IP 정책 자동 적용
+
+networking 모듈은 환경 변수에 따라 자동으로 IP 대역을 설정합니다:
+
+```hcl
+# 명시적 지정 없이 환경만 전달하면 자동 설정
+module "networking" {
+  source      = "../../modules/networking"
+  environment = "dev"  # 자동으로 10.2.x.x 사용
+  # vpc_cidr, subnet_cidrs 생략 가능
+}
+```
+
+---
+
 ## Dev 환경 스펙
 
 ### 1. Cloud Run 서비스
@@ -289,6 +325,7 @@ module "services" {
 
 | 날짜 | 변경 내용 |
 |------|----------|
+| 2026-01-10 | VPC IP 주소 정책 표준화 (환경별 자동 IP 할당) |
 | 2026-01-10 | Direct VPC Egress → External IP 방식 변경 (Serverless IP 문제 해결) |
 | 2026-01-09 | Cloud SQL → PostgreSQL VM 변경 (비용 절감: ~$25 → ~$13) |
 | 2026-01-09 | Dev Cloud SQL (db-g1-small) 추가 |
