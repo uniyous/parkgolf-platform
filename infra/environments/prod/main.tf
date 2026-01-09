@@ -245,8 +245,8 @@ module "services" {
   timeout       = 300
 
   # Direct VPC egress (replaces VPC Connector)
-  vpc_network      = module.networking.vpc_self_link
-  vpc_subnet       = module.networking.subnet_self_links["private"]
+  vpc_network      = module.networking.vpc_network_resource
+  vpc_subnet       = module.networking.subnet_resources["private"]
   vpc_network_tags = ["cloud-run"]
 
   allow_unauthenticated = true
@@ -378,7 +378,7 @@ output "vpc_id" {
 
 output "vpc_subnet" {
   description = "VPC Subnet for Cloud Run Direct VPC egress"
-  value       = module.networking.subnet_self_links["private"]
+  value       = module.networking.subnet_resources["private"]
 }
 
 output "database_instance" {

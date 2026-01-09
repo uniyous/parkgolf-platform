@@ -302,6 +302,22 @@ output "private_subnet_cidr" {
   value       = var.provider_type == "gcp" ? var.subnet_cidrs["private"] : null
 }
 
+# Direct VPC egress requires format: projects/{project}/global/networks/{network}
+output "vpc_network_resource" {
+  description = "VPC network resource path for Direct VPC egress (format: projects/{project}/global/networks/{network})"
+  value       = var.provider_type == "gcp" ? "projects/${google_compute_network.vpc[0].project}/global/networks/${google_compute_network.vpc[0].name}" : null
+}
+
+# Direct VPC egress requires format: projects/{project}/regions/{region}/subnetworks/{subnetwork}
+output "subnet_resources" {
+  description = "Subnet resource paths for Direct VPC egress"
+  value = var.provider_type == "gcp" ? {
+    public  = "projects/${google_compute_subnetwork.public[0].project}/regions/${google_compute_subnetwork.public[0].region}/subnetworks/${google_compute_subnetwork.public[0].name}"
+    private = "projects/${google_compute_subnetwork.private[0].project}/regions/${google_compute_subnetwork.private[0].region}/subnetworks/${google_compute_subnetwork.private[0].name}"
+    data    = "projects/${google_compute_subnetwork.data[0].project}/regions/${google_compute_subnetwork.data[0].region}/subnetworks/${google_compute_subnetwork.data[0].name}"
+  } : {}
+}
+
 output "vpc_connector_id" {
   description = "VPC Connector ID (GCP)"
   value       = var.provider_type == "gcp" && var.enable_vpc_connector ? google_vpc_access_connector.connector[0].id : null
