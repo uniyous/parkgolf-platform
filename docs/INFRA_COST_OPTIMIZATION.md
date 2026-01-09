@@ -46,7 +46,24 @@
 | Cloud NAT | 비활성화 | $0 (NATS VM External IP 사용) |
 | Direct VPC Egress | 활성화 | $0 |
 
-### 4. 기타 리소스
+### 4. Firebase Hosting (Web Apps)
+
+| 앱 | 타입 | 저장 용량 | 전송량 | 비용 |
+|----|------|----------|--------|------|
+| admin-webapp | 정적 (CDN) | 무료 티어 | 무료 티어 | $0 |
+| user-webapp | 정적 (CDN) | 무료 티어 | 무료 티어 | $0 |
+
+**Firebase Hosting 특성:**
+- CPU/Memory 설정 없음 (정적 파일 호스팅)
+- Google CDN 기반 자동 스케일링
+- Cold Start 없음
+- SSL/커스텀 도메인 무료
+
+**무료 티어 한도:**
+- 저장 용량: 10GB
+- 전송량: 360MB/일
+
+### 5. 기타 리소스
 
 | 항목 | 설정 | 비용 |
 |------|------|------|
@@ -62,6 +79,7 @@
 | 나머지 5개 서비스 (min=0, throttling) | idle 시 | ~$0 |
 | NATS VM (일반 인스턴스) | e2-micro | ~$6-7 |
 | NATS Disk | 10GB pd-standard | ~$0.4 |
+| Firebase Hosting (2개 앱) | 무료 티어 | $0 |
 | **합계** | | **~$39/월** |
 
 ---
@@ -101,6 +119,13 @@
 | VPC Connector | 비활성화 (Direct VPC Egress 사용) |
 | Cloud NAT | 활성화 |
 | Private Service Connection | 활성화 (Cloud SQL용) |
+
+### 5. Firebase Hosting (Web Apps)
+
+| 앱 | 타입 | 저장 용량 | 전송량 | 비용 |
+|----|------|----------|--------|------|
+| admin-webapp | 정적 (CDN) | 무료 티어 | 사용량 기반 | ~$0 |
+| user-webapp | 정적 (CDN) | 무료 티어 | 사용량 기반 | ~$0 |
 
 ---
 
@@ -193,10 +218,10 @@ gcloud compute ssh parkgolf-nats-dev --zone=asia-northeast3-a \
 
 ## 환경별 비용 요약
 
-| 환경 | Cloud Run | NATS VM | Database | 네트워킹 | 기타 | 월 합계 |
-|------|-----------|---------|----------|----------|------|---------|
-| Dev | ~$32 | ~$7 | 외부 | $0 | $0 | **~$39** |
-| Prod | 사용량 기반 | ~$8 | ~$80 | ~$10 | ~$5 | **~$100+** |
+| 환경 | Cloud Run | NATS VM | Database | Firebase Hosting | 네트워킹 | 기타 | 월 합계 |
+|------|-----------|---------|----------|------------------|----------|------|---------|
+| Dev | ~$32 | ~$7 | 외부 | $0 | $0 | $0 | **~$39** |
+| Prod | 사용량 기반 | ~$8 | ~$80 | ~$0 | ~$10 | ~$5 | **~$100+** |
 
 ---
 
@@ -235,3 +260,4 @@ services = {
 | 2025-01-09 | Dev Cloud Run 스펙 최적화 (0.5 vCPU, 128Mi) |
 | 2025-01-09 | auth-service만 min_instances=1, no-cpu-throttling 적용 |
 | 2025-01-09 | NATS VM 일반 인스턴스로 유지 (Spot 제외) |
+| 2025-01-09 | Firebase Hosting (Web Apps) 섹션 추가 |
