@@ -99,7 +99,6 @@ test-results.xml
 # ========================================
 # Docker
 # ========================================
-.dockerignore
 docker-compose.override.yml
 Dockerfile.local
 
@@ -582,7 +581,6 @@ apps/*/.DS_Store
 apps/*/Thumbs.db
 
 # Docker and deployment
-services/*/.dockerignore
 
 # Testing
 services/*/test-results/
