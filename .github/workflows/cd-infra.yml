@@ -40,7 +40,6 @@ on:
         type: choice
         options:
           - dev
-          - staging
           - prod
       action:
         description: 'Terraform action'
@@ -219,15 +218,6 @@ jobs:
           EOF
           fi
 
-          # Staging environment
-          if [ "$ENV" == "staging" ]; then
-            cat > terraform.tfvars << EOF
-          db_password        = "${{ secrets.DB_PASSWORD }}"
-          jwt_secret         = "${{ secrets.JWT_SECRET }}"
-          jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
-          alert_email        = "${{ secrets.ALERT_EMAIL }}"
-          EOF
-          fi
 
       - name: Terraform Plan
         id: plan
@@ -435,15 +425,6 @@ jobs:
           EOF
           fi
 
-          # Staging environment
-          if [ "$ENV" == "staging" ]; then
-            cat > terraform.tfvars << EOF
-          db_password        = "${{ secrets.DB_PASSWORD }}"
-          jwt_secret         = "${{ secrets.JWT_SECRET }}"
-          jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
-          alert_email        = "${{ secrets.ALERT_EMAIL }}"
-          EOF
-          fi
 
       - name: Terraform Destroy
         run: |

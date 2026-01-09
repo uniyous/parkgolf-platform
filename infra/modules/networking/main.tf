@@ -7,7 +7,6 @@
 # 환경별 IP 대역 표준:
 #   - 10.1.x.x: 예약됨 (uniyous VPC와 충돌 방지)
 #   - 10.2.x.x: Dev 환경
-#   - 10.3.x.x: Staging 환경
 #   - 10.4.x.x: Prod 환경
 #
 # 서브넷 구성 (3rd octet):
@@ -16,9 +15,8 @@
 #   - x.x.3.0/24: Data (데이터베이스, 스토리지)
 #
 # 예시:
-#   Dev:     10.2.0.0/16, public=10.2.1.0/24, private=10.2.2.0/24, data=10.2.3.0/24
-#   Staging: 10.3.0.0/16, public=10.3.1.0/24, private=10.3.2.0/24, data=10.3.3.0/24
-#   Prod:    10.4.0.0/16, public=10.4.1.0/24, private=10.4.2.0/24, data=10.4.3.0/24
+#   Dev:  10.2.0.0/16, public=10.2.1.0/24, private=10.2.2.0/24, data=10.2.3.0/24
+#   Prod: 10.4.0.0/16, public=10.4.1.0/24, private=10.4.2.0/24, data=10.4.3.0/24
 # ============================================================================
 
 terraform {
@@ -32,9 +30,8 @@ terraform {
 locals {
   # Environment to IP octet mapping
   env_ip_octet = {
-    dev     = 2
-    staging = 3
-    prod    = 4
+    dev  = 2
+    prod = 4
   }
 
   # Get IP octet for current environment (default to 2 if not found)

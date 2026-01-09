@@ -119,7 +119,7 @@ module "networking" {
   environment   = local.environment
   region        = local.region
 
-  # IP 정책: Dev=10.2.x.x, Staging=10.3.x.x, Prod=10.4.x.x
+  # IP 정책: Dev=10.2.x.x, Prod=10.4.x.x
   # (10.1.x.x는 uniyous VPC와 충돌 방지를 위해 예약됨)
   vpc_cidr = "10.2.0.0/16"
   subnet_cidrs = {
