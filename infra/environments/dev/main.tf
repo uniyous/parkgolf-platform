@@ -31,7 +31,7 @@ locals {
   services = {
     "auth-service" = {
       cpu           = "1"   # Must be >= 1 when cpu_idle=false
-      memory        = "256Mi"
+      memory        = "512Mi" # Must be >= 512Mi when cpu_idle=false
       min_instances = 1     # Always running for NATS message listening
       max_instances = 1
       port          = 8080

@@ -17,7 +17,7 @@
 
 | 서비스 | CPU | Memory | Min Instances | Max Instances | CPU Throttling |
 |--------|-----|--------|---------------|---------------|----------------|
-| auth-service | 1 vCPU | 256Mi | 1 | 1 | **No** |
+| auth-service | 1 vCPU | 512Mi | 1 | 1 | **No** |
 | course-service | 0.5 vCPU | 128Mi | 0 | 1 | Yes |
 | booking-service | 0.5 vCPU | 128Mi | 0 | 1 | Yes |
 | notify-service | 0.5 vCPU | 128Mi | 0 | 1 | Yes |
@@ -75,12 +75,12 @@
 
 | 항목 | 계산 | 월 비용 |
 |------|------|---------|
-| auth-service (min=1, no-throttling) | 1 vCPU + 256Mi 상시 | ~$50 |
+| auth-service (min=1, no-throttling) | 1 vCPU + 512Mi 상시 | ~$55 |
 | 나머지 5개 서비스 (min=0, throttling) | idle 시 | ~$0 |
 | NATS VM (일반 인스턴스) | e2-micro | ~$6-7 |
 | NATS Disk | 10GB pd-standard | ~$0.4 |
 | Firebase Hosting (2개 앱) | 무료 티어 | $0 |
-| **합계** | | **~$57/월** |
+| **합계** | | **~$62/월** |
 
 ---
 
@@ -220,7 +220,7 @@ gcloud compute ssh parkgolf-nats-dev --zone=asia-northeast3-a \
 
 | 환경 | Cloud Run | NATS VM | Database | Firebase Hosting | 네트워킹 | 기타 | 월 합계 |
 |------|-----------|---------|----------|------------------|----------|------|---------|
-| Dev | ~$50 | ~$7 | 외부 | $0 | $0 | $0 | **~$57** |
+| Dev | ~$55 | ~$7 | 외부 | $0 | $0 | $0 | **~$62** |
 | Prod | 사용량 기반 | ~$8 | ~$80 | ~$0 | ~$10 | ~$5 | **~$100+** |
 
 ---
@@ -233,7 +233,7 @@ gcloud compute ssh parkgolf-nats-dev --zone=asia-northeast3-a \
 services = {
   "auth-service" = {
     cpu           = "1"     # Must be >= 1 when cpu_idle=false
-    memory        = "256Mi"
+    memory        = "512Mi" # Must be >= 512Mi when cpu_idle=false
     min_instances = 1       # Always running for NATS
     max_instances = 1
     cpu_idle      = false   # No CPU throttling
@@ -255,7 +255,8 @@ services = {
 
 | 날짜 | 변경 내용 |
 |------|----------|
-| 2026-01-09 | auth-service CPU 1 vCPU, 256Mi로 변경 (cpu_idle=false 요구사항) |
+| 2026-01-09 | auth-service memory 512Mi로 변경 (cpu_idle=false 시 최소 512Mi 필요) |
+| 2026-01-09 | auth-service CPU 1 vCPU로 변경 (cpu_idle=false 요구사항) |
 | 2026-01-09 | Direct VPC egress 네트워크 포맷 수정 |
 | 2025-01-09 | VPC Connector → Direct VPC Egress 변경 |
 | 2025-01-09 | Dev Monitoring 모듈 제거 |
