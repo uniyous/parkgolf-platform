@@ -130,37 +130,36 @@ module "networking" {
   enable_vpc_connector = false
   enable_nat           = false  # NATS VM uses external IP instead (cost saving)
 
-  # Disable Private Service Connection - dev uses external Compute Engine PostgreSQL
-  enable_private_service_connection = false
+  # Enable Private Service Connection for Cloud SQL
+  enable_private_service_connection = true
 }
 
 # ============================================================================
-# VPC Peering to uniyous-319808 (PostgreSQL Database)
+# Database Module (Cloud SQL PostgreSQL)
 # ============================================================================
-# Dev environment connects to existing PostgreSQL on Compute Engine in uniyous-319808 project
 
-# Peering from parkgolf-uniyous (parkgolf-dev) -> uniyous-319808 (default)
-resource "google_compute_network_peering" "parkgolf_to_uniyous" {
-  name         = "parkgolf-to-uniyous-peering"
-  network      = module.networking.vpc_self_link
-  peer_network = "projects/uniyous-319808/global/networks/default"
+module "database" {
+  source = "../../modules/database"
 
-  export_custom_routes = true
-  import_custom_routes = true
+  provider_type    = local.provider_type
+  instance_name    = "parkgolf-db"
+  environment      = local.environment
+  region           = local.region
+  postgres_version = "15"
+  tier             = "small"  # db-g1-small: 1 vCPU, 1.7GB
+  storage_gb       = 10       # Minimal storage for dev
+
+  databases       = local.databases
+  admin_username  = "parkgolf"
+  admin_password  = var.db_password
+
+  vpc_network         = module.networking.vpc_self_link
+  backup_enabled      = false  # No backup for dev (cost saving)
+  high_availability   = false
+  deletion_protection = false  # Allow easy cleanup for dev
 
   depends_on = [module.networking]
 }
-
-# Note: The reverse peering (uniyous-319808 -> parkgolf-uniyous) must be created
-# in the uniyous-319808 project. Run the following command manually:
-#
-#   gcloud compute networks peerings create uniyous-to-parkgolf-peering \
-#     --network=default \
-#     --peer-project=parkgolf-uniyous \
-#     --peer-network=parkgolf-dev \
-#     --export-custom-routes \
-#     --import-custom-routes \
-#     --project=uniyous-319808
 
 # ============================================================================
 # Messaging Module (NATS)
@@ -200,17 +199,19 @@ module "secrets" {
   project_id    = local.project_id
   environment   = local.environment
 
-  # Secret names - dev uses external DB, so no db_password needed
-  secret_names = ["jwt_secret", "jwt_refresh_secret"]
+  # Secret names
+  secret_names = ["db_password", "jwt_secret", "jwt_refresh_secret"]
 
   # Secret values (sensitive)
   secret_values = {
+    db_password        = var.db_password
     jwt_secret         = var.jwt_secret
     jwt_refresh_secret = var.jwt_refresh_secret
   }
 
   # Secret descriptions
   secret_descriptions = {
+    db_password        = "Database password"
     jwt_secret         = "JWT signing secret"
     jwt_refresh_secret = "JWT refresh token secret"
   }
@@ -284,6 +285,12 @@ variable "environment" {
   description = "Environment name (passed from workflow, but defaults to dev)"
 }
 
+variable "db_password" {
+  type        = string
+  sensitive   = true
+  description = "Database password"
+}
+
 variable "jwt_secret" {
   type        = string
   sensitive   = true
@@ -313,6 +320,17 @@ output "vpc_subnet" {
 output "nats_url" {
   description = "NATS connection URL"
   value       = module.messaging.nats_url
+}
+
+output "database_instance" {
+  description = "Database instance name"
+  value       = module.database.instance_name
+}
+
+output "database_ip" {
+  description = "Database private IP"
+  value       = module.database.private_ip
+  sensitive   = true
 }
 
 output "service_urls" {

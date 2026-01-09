@@ -196,9 +196,10 @@ jobs:
         run: |
           ENV="${{ needs.detect-environment.outputs.environment }}"
 
-          # Dev environment - uses external DB configured in cd-services.yml
+          # Dev environment - uses Cloud SQL
           if [ "$ENV" == "dev" ]; then
             cat > terraform.tfvars << EOF
+          db_password        = "${{ secrets.DB_PASSWORD }}"
           jwt_secret         = "${{ secrets.JWT_SECRET }}"
           jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
           EOF
@@ -411,9 +412,10 @@ jobs:
         run: |
           ENV="${{ needs.detect-environment.outputs.environment }}"
 
-          # Dev environment - uses external DB configured in cd-services.yml
+          # Dev environment - uses Cloud SQL
           if [ "$ENV" == "dev" ]; then
             cat > terraform.tfvars << EOF
+          db_password        = "${{ secrets.DB_PASSWORD }}"
           jwt_secret         = "${{ secrets.JWT_SECRET }}"
           jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
           EOF
