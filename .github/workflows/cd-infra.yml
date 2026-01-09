@@ -201,7 +201,6 @@ jobs:
             cat > terraform.tfvars << EOF
           jwt_secret         = "${{ secrets.JWT_SECRET }}"
           jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
-          alert_email        = "${{ secrets.ALERT_EMAIL }}"
           EOF
           fi
 
@@ -417,7 +416,6 @@ jobs:
             cat > terraform.tfvars << EOF
           jwt_secret         = "${{ secrets.JWT_SECRET }}"
           jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
-          alert_email        = "${{ secrets.ALERT_EMAIL }}"
           EOF
           fi
 

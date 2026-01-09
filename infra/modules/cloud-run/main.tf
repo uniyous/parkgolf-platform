@@ -92,7 +92,32 @@ variable "secrets" {
 variable "vpc_connector" {
   type        = string
   default     = null
-  description = "VPC connector for private networking (GCP)"
+  description = "VPC connector for private networking (GCP) - DEPRECATED, use vpc_network and vpc_subnet instead"
+}
+
+# Direct VPC egress variables (recommended over VPC Connector)
+variable "vpc_network" {
+  type        = string
+  default     = null
+  description = "VPC network self_link for Direct VPC egress"
+}
+
+variable "vpc_subnet" {
+  type        = string
+  default     = null
+  description = "VPC subnet self_link for Direct VPC egress"
+}
+
+variable "vpc_network_tags" {
+  type        = list(string)
+  default     = ["cloud-run"]
+  description = "Network tags for Direct VPC egress"
+}
+
+variable "cpu_idle" {
+  type        = bool
+  default     = true
+  description = "CPU throttling: true = CPU allocated only during request processing, false = CPU always allocated (--no-cpu-throttling)"
 }
 
 variable "allow_unauthenticated" {
@@ -155,7 +180,7 @@ resource "google_cloud_run_v2_service" "service" {
           cpu    = var.cpu
           memory = var.memory
         }
-        cpu_idle = var.environment != "prod"
+        cpu_idle = var.cpu_idle
       }
 
       # Environment variables
@@ -211,8 +236,22 @@ resource "google_cloud_run_v2_service" "service" {
 
     service_account = var.service_account_email
 
+    # Direct VPC egress (preferred over VPC Connector)
     dynamic "vpc_access" {
-      for_each = var.vpc_connector != null ? [1] : []
+      for_each = var.vpc_network != null && var.vpc_subnet != null ? [1] : []
+      content {
+        network_interfaces {
+          network    = var.vpc_network
+          subnetwork = var.vpc_subnet
+          tags       = var.vpc_network_tags
+        }
+        egress = "ALL_TRAFFIC"
+      }
+    }
+
+    # Legacy VPC Connector (deprecated, for backward compatibility)
+    dynamic "vpc_access" {
+      for_each = var.vpc_connector != null && var.vpc_network == null ? [1] : []
       content {
         connector = var.vpc_connector
         egress    = "ALL_TRAFFIC"

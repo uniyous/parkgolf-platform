@@ -81,6 +81,12 @@ variable "nats_disk_size" {
   description = "Disk size in GB for NATS VM"
 }
 
+variable "nats_disk_type" {
+  type        = string
+  default     = "pd-ssd"
+  description = "Disk type for NATS VM (pd-standard or pd-ssd)"
+}
+
 variable "nats_version" {
   type        = string
   default     = "2.10-alpine"
@@ -97,6 +103,12 @@ variable "vpc_subnetwork" {
   type        = string
   default     = null
   description = "VPC subnetwork for NATS VM"
+}
+
+variable "private_subnet_cidr" {
+  type        = string
+  default     = null
+  description = "Private subnet CIDR for Cloud Run Direct VPC egress firewall rules"
 }
 
 # JetStream Configuration
@@ -135,7 +147,7 @@ resource "google_compute_instance" "nats" {
     initialize_params {
       image = "cos-cloud/cos-stable"
       size  = var.nats_disk_size
-      type  = "pd-ssd"
+      type  = var.nats_disk_type
     }
   }
 
@@ -220,10 +232,10 @@ resource "google_compute_firewall" "nats" {
   target_tags = ["nats-server"]
 }
 
-# Firewall for NATS from VPC Connector (Cloud Run)
-resource "google_compute_firewall" "nats_from_connector" {
-  count   = var.provider_type == "gcp" ? 1 : 0
-  name    = "${var.name}-allow-nats-connector-${var.environment}"
+# Firewall for NATS from Cloud Run (Direct VPC egress)
+resource "google_compute_firewall" "nats_from_cloudrun" {
+  count   = var.provider_type == "gcp" && var.private_subnet_cidr != null ? 1 : 0
+  name    = "${var.name}-allow-nats-cloudrun-${var.environment}"
   network = var.vpc_network
 
   allow {
@@ -231,8 +243,10 @@ resource "google_compute_firewall" "nats_from_connector" {
     ports    = ["4222"]
   }
 
-  # VPC Connector IP range (configured in networking module)
-  source_ranges = var.environment == "prod" ? ["10.0.10.0/28"] : ["10.1.10.0/28"]
+  # Private subnet CIDR (Cloud Run Direct VPC egress uses this subnet)
+  source_ranges = [var.private_subnet_cidr]
+  # Also allow from cloud-run tagged instances
+  source_tags   = ["cloud-run"]
   target_tags   = ["nats-server"]
 }
 

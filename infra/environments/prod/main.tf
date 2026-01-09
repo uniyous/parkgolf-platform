@@ -35,6 +35,7 @@ locals {
       min_instances = 0
       max_instances = 10
       port          = 8080
+      cpu_idle      = false # No CPU throttling for NATS message listening
     }
     "course-service" = {
       cpu           = "1"
@@ -42,6 +43,7 @@ locals {
       min_instances = 0
       max_instances = 10
       port          = 8080
+      cpu_idle      = false
     }
     "booking-service" = {
       cpu           = "1"
@@ -49,6 +51,7 @@ locals {
       min_instances = 0
       max_instances = 15
       port          = 8080
+      cpu_idle      = false
     }
     "notify-service" = {
       cpu           = "1"
@@ -56,6 +59,7 @@ locals {
       min_instances = 0
       max_instances = 5
       port          = 8080
+      cpu_idle      = false
     }
     "admin-api" = {
       cpu           = "1"
@@ -63,6 +67,7 @@ locals {
       min_instances = 0
       max_instances = 10
       port          = 8080
+      cpu_idle      = false
     }
     "user-api" = {
       cpu           = "1"
@@ -70,6 +75,7 @@ locals {
       min_instances = 0
       max_instances = 20
       port          = 8080
+      cpu_idle      = false
     }
   }
 
@@ -120,8 +126,8 @@ module "networking" {
     data    = "10.0.3.0/24"
   }
 
-  vpc_connector_cidr   = "10.0.10.0/28"
-  enable_vpc_connector = true
+  # Direct VPC egress replaces VPC Connector (cost savings & better performance)
+  enable_vpc_connector = false
   enable_nat           = true
 }
 
@@ -168,12 +174,14 @@ module "messaging" {
   # NATS JetStream VM Configuration (cost optimized: 1 CPU, 1GB)
   nats_machine_type    = "e2-micro"
   nats_disk_size       = 20
+  nats_disk_type       = "pd-ssd"     # Performance optimized for production
   nats_version         = "2.10-alpine"
   jetstream_max_memory = "512M"
   jetstream_max_file   = "10G"
 
-  vpc_network    = module.networking.vpc_name
-  vpc_subnetwork = module.networking.subnet_ids["private"]
+  vpc_network         = module.networking.vpc_name
+  vpc_subnetwork      = module.networking.subnet_ids["private"]
+  private_subnet_cidr = module.networking.private_subnet_cidr
 
   depends_on = [module.networking]
 }
@@ -233,9 +241,14 @@ module "services" {
   min_instances = each.value.min_instances
   max_instances = each.value.max_instances
   port          = each.value.port
+  cpu_idle      = each.value.cpu_idle
   timeout       = 300
 
-  vpc_connector         = module.networking.vpc_connector_id
+  # Direct VPC egress (replaces VPC Connector)
+  vpc_network      = module.networking.vpc_self_link
+  vpc_subnet       = module.networking.subnet_self_links["private"]
+  vpc_network_tags = ["cloud-run"]
+
   allow_unauthenticated = true
 
   env_vars = {
@@ -363,9 +376,9 @@ output "vpc_id" {
   value       = module.networking.vpc_id
 }
 
-output "vpc_connector" {
-  description = "VPC Connector for Cloud Run"
-  value       = module.networking.vpc_connector_name
+output "vpc_subnet" {
+  description = "VPC Subnet for Cloud Run Direct VPC egress"
+  value       = module.networking.subnet_self_links["private"]
 }
 
 output "database_instance" {

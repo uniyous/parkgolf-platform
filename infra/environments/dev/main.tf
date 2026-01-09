@@ -30,46 +30,52 @@ locals {
   # Service definitions - Minimal specs for dev (cost optimization)
   services = {
     "auth-service" = {
-      cpu           = "1"
-      memory        = "256Mi"
-      min_instances = 0  # Scale to zero when idle
+      cpu           = "0.5"
+      memory        = "128Mi"
+      min_instances = 1     # Always running for NATS message listening
       max_instances = 1
       port          = 8080
+      cpu_idle      = false # No CPU throttling (--no-cpu-throttling)
     }
     "course-service" = {
-      cpu           = "1"
-      memory        = "256Mi"
-      min_instances = 0
+      cpu           = "0.5"
+      memory        = "128Mi"
+      min_instances = 0     # Scale to zero when idle
       max_instances = 1
       port          = 8080
+      cpu_idle      = true  # CPU throttling enabled
     }
     "booking-service" = {
-      cpu           = "1"
-      memory        = "256Mi"
-      min_instances = 0
-      max_instances = 1
-      port          = 8080
-    }
-    "notify-service" = {
-      cpu           = "1"
+      cpu           = "0.5"
       memory        = "128Mi"
       min_instances = 0
       max_instances = 1
       port          = 8080
+      cpu_idle      = true
+    }
+    "notify-service" = {
+      cpu           = "0.5"
+      memory        = "128Mi"
+      min_instances = 0
+      max_instances = 1
+      port          = 8080
+      cpu_idle      = true
     }
     "admin-api" = {
-      cpu           = "1"
-      memory        = "256Mi"
+      cpu           = "0.5"
+      memory        = "128Mi"
       min_instances = 0
       max_instances = 1
       port          = 8080
+      cpu_idle      = true
     }
     "user-api" = {
-      cpu           = "1"
-      memory        = "256Mi"
+      cpu           = "0.5"
+      memory        = "128Mi"
       min_instances = 0
       max_instances = 1
       port          = 8080
+      cpu_idle      = true
     }
   }
 
@@ -120,8 +126,8 @@ module "networking" {
     data    = "10.1.3.0/24"
   }
 
-  vpc_connector_cidr   = "10.1.10.0/28"
-  enable_vpc_connector = true
+  # Direct VPC egress replaces VPC Connector (cost savings & better performance)
+  enable_vpc_connector = false
   enable_nat           = false  # NATS VM uses external IP instead (cost saving)
 
   # Disable Private Service Connection - dev uses external Compute Engine PostgreSQL
@@ -171,12 +177,14 @@ module "messaging" {
   # NATS JetStream VM Configuration - Minimal for dev
   nats_machine_type    = "e2-micro"   # Smallest instance type
   nats_disk_size       = 10           # Minimal disk
+  nats_disk_type       = "pd-standard" # Cost optimized (75% cheaper than SSD)
   nats_version         = "2.10-alpine"
   jetstream_max_memory = "128M"       # Minimal memory for JetStream
   jetstream_max_file   = "1G"         # Minimal file storage
 
-  vpc_network    = module.networking.vpc_name
-  vpc_subnetwork = module.networking.subnet_ids["private"]
+  vpc_network         = module.networking.vpc_name
+  vpc_subnetwork      = module.networking.subnet_ids["private"]
+  private_subnet_cidr = module.networking.private_subnet_cidr
 
   depends_on = [module.networking]
 }
@@ -235,8 +243,13 @@ module "services" {
   min_instances = each.value.min_instances
   max_instances = each.value.max_instances
   port          = each.value.port
+  cpu_idle      = each.value.cpu_idle
 
-  vpc_connector         = module.networking.vpc_connector_id
+  # Direct VPC egress (replaces VPC Connector)
+  vpc_network      = module.networking.vpc_self_link
+  vpc_subnet       = module.networking.subnet_self_links["private"]
+  vpc_network_tags = ["cloud-run"]
+
   allow_unauthenticated = true
 
   # Using placeholder image (gcr.io/cloudrun/hello), so minimal env vars
@@ -256,33 +269,10 @@ module "services" {
 }
 
 # ============================================================================
-# Monitoring Module
+# Monitoring Module - DISABLED for dev (cost optimization)
 # ============================================================================
-
-module "monitoring" {
-  source = "../../modules/monitoring"
-
-  provider_type = local.provider_type
-  project_id    = local.project_id
-  environment   = local.environment
-
-  services = keys(local.services)
-
-  notification_channels = {
-    dev_email = {
-      type = "email"
-      config = {
-        email = var.alert_email
-      }
-    }
-  }
-
-  latency_threshold_ms = 3000 # More lenient for dev
-  error_rate_threshold = 10
-  enable_uptime_checks = false # Disabled for dev
-
-  depends_on = [module.services]
-}
+# Logs are still available via Cloud Logging (automatic, free)
+# To view logs: gcloud logging read "resource.type=cloud_run_revision" --project=parkgolf-uniyous
 
 # ============================================================================
 # Variables
@@ -306,12 +296,6 @@ variable "jwt_refresh_secret" {
   description = "JWT refresh token secret"
 }
 
-variable "alert_email" {
-  type        = string
-  default     = "dev@uniyous.com"
-  description = "Email for alert notifications"
-}
-
 # ============================================================================
 # Outputs
 # ============================================================================
@@ -321,9 +305,9 @@ output "vpc_id" {
   value       = module.networking.vpc_id
 }
 
-output "vpc_connector" {
-  description = "VPC Connector for Cloud Run"
-  value       = module.networking.vpc_connector_name
+output "vpc_subnet" {
+  description = "VPC Subnet for Cloud Run Direct VPC egress"
+  value       = module.networking.subnet_self_links["private"]
 }
 
 output "nats_url" {

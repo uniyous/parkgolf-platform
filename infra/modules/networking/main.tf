@@ -288,6 +288,20 @@ output "subnet_ids" {
   } : {}
 }
 
+output "subnet_self_links" {
+  description = "Subnet self links (for Direct VPC egress)"
+  value = var.provider_type == "gcp" ? {
+    public  = google_compute_subnetwork.public[0].self_link
+    private = google_compute_subnetwork.private[0].self_link
+    data    = google_compute_subnetwork.data[0].self_link
+  } : {}
+}
+
+output "private_subnet_cidr" {
+  description = "Private subnet CIDR block"
+  value       = var.provider_type == "gcp" ? var.subnet_cidrs["private"] : null
+}
+
 output "vpc_connector_id" {
   description = "VPC Connector ID (GCP)"
   value       = var.provider_type == "gcp" && var.enable_vpc_connector ? google_vpc_access_connector.connector[0].id : null
