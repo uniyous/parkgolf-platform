@@ -119,11 +119,11 @@ module "networking" {
   environment   = local.environment
   region        = local.region
 
-  vpc_cidr = "10.1.0.0/16"
+  vpc_cidr = "10.2.0.0/16"
   subnet_cidrs = {
-    public  = "10.1.1.0/24"
-    private = "10.1.2.0/24"
-    data    = "10.1.3.0/24"
+    public  = "10.2.1.0/24"
+    private = "10.2.2.0/24"
+    data    = "10.2.3.0/24"
   }
 
   # Direct VPC egress replaces VPC Connector (cost savings & better performance)
