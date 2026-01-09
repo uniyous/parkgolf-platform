@@ -80,12 +80,6 @@ variable "azure_tenant_id" {
 locals {
   # Convert list to set for for_each (non-sensitive)
   secret_names_set = var.provider_type == "gcp" ? toset(var.secret_names) : toset([])
-
-  # Filter out secrets with empty values (to avoid "payload required" error)
-  secrets_with_values = var.provider_type == "gcp" ? {
-    for name in var.secret_names : name => var.secret_values[name]
-    if lookup(var.secret_values, name, "") != ""
-  } : {}
 }
 
 resource "google_secret_manager_secret" "secrets" {
@@ -102,9 +96,9 @@ resource "google_secret_manager_secret" "secrets" {
 }
 
 resource "google_secret_manager_secret_version" "versions" {
-  for_each    = local.secrets_with_values
-  secret      = google_secret_manager_secret.secrets[each.key].id
-  secret_data = each.value
+  for_each    = local.secret_names_set
+  secret      = google_secret_manager_secret.secrets[each.value].id
+  secret_data = var.secret_values[each.value]
 }
 
 # Grant access to service accounts
