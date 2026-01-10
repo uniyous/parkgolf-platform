@@ -31,6 +31,22 @@ async function bootstrap() {
       }),
     );
 
+    // CORS 설정
+    app.enableCors({
+      origin: [
+        'http://localhost:3001',  // admin-dashboard
+        'http://localhost:3002',  // user-webapp
+        /^https:\/\/.*\.run\.app$/,  // Cloud Run
+        'https://parkgolf-admin.web.app',
+        'https://parkgolf-admin-dev.web.app',
+        'https://parkgolf-user.web.app',
+        'https://parkgolf-user-dev.web.app',
+      ],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+      credentials: true,
+    });
+
     // Start HTTP server first for Cloud Run health check
     const port = parseInt(process.env.PORT || '8080');
     logger.log(`🌐 Starting HTTP server on port ${port}...`);

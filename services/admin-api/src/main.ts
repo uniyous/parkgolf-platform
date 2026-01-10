@@ -33,16 +33,13 @@ async function bootstrap() {
     // CORS configuration for admin frontend
     app.enableCors({
       origin: [
-        'http://localhost:3000', // Admin frontend dev
-        'http://localhost:3001', // Admin frontend port 2
-        'http://localhost:3002', // Admin frontend port 3
-        'http://localhost:5173', // Vite default
-        /^https:\/\/.*\.run\.app$/, // Cloud Run domains
-        // Firebase Hosting domains
+        'http://localhost:3001',  // admin-dashboard
+        /^https:\/\/.*\.run\.app$/,  // Cloud Run
         'https://parkgolf-admin.web.app',
         'https://parkgolf-admin-dev.web.app',
-        /^https:\/\/parkgolf-admin.*\.firebaseapp\.com$/,
       ],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
       credentials: true,
     });
 

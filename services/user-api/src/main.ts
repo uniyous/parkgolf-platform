@@ -26,15 +26,13 @@ async function bootstrap() {
 
   app.enableCors({
     origin: [
-      'http://localhost:3000',  // admin-dashboard
-      'http://localhost:3001',  // user-webapp
-      'http://localhost:3002',  // user-webapp (alternative port)
-      'http://localhost:5173',  // Vite default
-      /^https:\/\/.*\.run\.app$/, // Cloud Run domains
-      // Firebase Hosting domains
+      'http://localhost:3001',  // admin-dashboard
+      'http://localhost:3002',  // user-webapp
+      /^https:\/\/.*\.run\.app$/,  // Cloud Run
+      'https://parkgolf-admin.web.app',
+      'https://parkgolf-admin-dev.web.app',
       'https://parkgolf-user.web.app',
       'https://parkgolf-user-dev.web.app',
-      /^https:\/\/parkgolf-user.*\.firebaseapp\.com$/,
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
