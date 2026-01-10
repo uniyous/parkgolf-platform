@@ -11,6 +11,16 @@
 
 ---
 
+## GCP 프로젝트 정보
+
+| 항목 | 값 |
+|------|-----|
+| Project ID | parkgolf-uniyous |
+| Region | asia-northeast3 (서울) |
+| Terraform State | gs://parkgolf-uniyous-terraform-state |
+
+---
+
 ## VPC IP 주소 정책 (Standard)
 
 ### 환경별 IP 대역
@@ -48,26 +58,34 @@ module "networking" {
 
 ## Dev 환경 스펙
 
-### 1. Cloud Run 서비스
+### 1. Compute Engine (VM)
 
-| 서비스 | CPU | Memory | Min Instances | Max Instances | CPU Throttling |
-|--------|-----|--------|---------------|---------------|----------------|
-| auth-service | 1 vCPU | 512Mi | 1 | 1 | **No** |
-| course-service | 0.5 vCPU | 128Mi | 0 | 1 | Yes |
-| booking-service | 0.5 vCPU | 128Mi | 0 | 1 | Yes |
-| notify-service | 0.5 vCPU | 128Mi | 0 | 1 | Yes |
-| admin-api | 0.5 vCPU | 128Mi | 0 | 1 | Yes |
-| user-api | 0.5 vCPU | 128Mi | 0 | 1 | Yes |
+| 이름 | Zone | 타입 | CPU | Memory | HDD | External IP | 월 비용 |
+|------|------|------|-----|--------|-----|-------------|---------|
+| parkgolf-nats-dev | asia-northeast3-a | e2-micro | 0.25 vCPU | 1GB | 10GB pd-standard | 34.50.55.9 | ~$7 |
+| parkgolf-postgres-dev | asia-northeast3-a | e2-small | 0.5 vCPU | 2GB | 10GB pd-standard | 34.158.211.242 | ~$13 |
+
+### 2. Cloud Run 서비스
+
+| 서비스 | URL | CPU | Memory | Min/Max | Throttle | 월 비용 |
+|--------|-----|-----|--------|---------|----------|---------|
+| auth-service-dev | https://auth-service-dev-iihuzmuufa-du.a.run.app | 1 | 512Mi | 1/2 | No | ~$55 |
+| admin-api-dev | https://admin-api-dev-iihuzmuufa-du.a.run.app | 0.5 | 128Mi | 0/1 | Yes | ~$0 |
+| booking-service-dev | https://booking-service-dev-iihuzmuufa-du.a.run.app | 0.5 | 128Mi | 0/1 | Yes | ~$0 |
+| course-service-dev | https://course-service-dev-iihuzmuufa-du.a.run.app | 0.5 | 128Mi | 0/1 | Yes | ~$0 |
+| notify-service-dev | https://notify-service-dev-iihuzmuufa-du.a.run.app | 0.5 | 128Mi | 0/1 | Yes | ~$0 |
+| user-api-dev | https://user-api-dev-iihuzmuufa-du.a.run.app | 0.5 | 128Mi | 0/1 | Yes | ~$0 |
 
 **CPU Throttling 설명:**
-- `No (--no-cpu-throttling, cpu_idle=false)`: CPU 항상 할당, NATS 메시지 리스닝/백그라운드 작업에 필수
-- `Yes (cpu_idle=true)`: 요청 처리 시에만 CPU 할당, 비용 절감
+- `No (--no-cpu-throttling)`: CPU 항상 할당, NATS 메시지 리스닝/백그라운드 작업에 필수
+- `Yes (--cpu-throttling)`: 요청 처리 시에만 CPU 할당, 비용 절감
 
 **auth-service가 min_instances=1인 이유:**
 - NATS 메시지 리스닝을 위해 항상 실행 필요
+- bcrypt 비밀번호 해싱이 CPU 집약적
 - 다른 서비스들의 인증 요청 처리
 
-### 2. PostgreSQL VM (Database)
+### 3. PostgreSQL VM (Database)
 
 | 항목 | 스펙 |
 |------|------|
@@ -77,32 +95,70 @@ module "networking" {
 | OS | Ubuntu 22.04 LTS |
 | PostgreSQL | 15 |
 | Databases | auth_db, course_db, booking_db, notify_db |
+| External IP | 34.158.211.242 |
+| pg_hba.conf | 0.0.0.0/0 허용 (애플리케이션 레벨 인증) |
 
-### 3. NATS VM (Messaging)
+### 4. NATS VM (Messaging)
 
-| 리소스 | CPU | Memory | Disk Type | Disk Size | JetStream Memory | JetStream File | Spot |
-|--------|-----|--------|-----------|-----------|------------------|----------------|------|
-| NATS VM | 0.25 vCPU | 1GB | pd-standard | 10GB | 128MB | 1GB | No |
+| 항목 | 스펙 |
+|------|------|
+| Instance | parkgolf-nats-dev |
+| Machine Type | e2-micro (0.25 vCPU, 1GB) |
+| Disk | 10GB pd-standard |
+| NATS Version | 2.10-alpine |
+| JetStream Memory | 128MB |
+| JetStream File | 1GB |
+| External IP | 34.50.55.9 |
+| Port | 4222 |
 
-### 4. VPC 네트워킹
+### 5. VPC 네트워킹
 
 | 항목 | 설정 | 비용 |
 |------|------|------|
+| VPC | parkgolf-dev | $0 |
 | VPC Connector | 비활성화 | $0 |
 | Cloud NAT | 비활성화 | $0 |
-| Direct VPC Egress | 비활성화 | $0 (External IP 방식 사용) |
+| Direct VPC Egress | 비활성화 | $0 |
 
-**External IP 방식 (Option A):**
+**External IP 방식:**
 - Cloud Run이 VM의 External IP로 직접 접속
 - Serverless IP 문제 없음 (terraform destroy 시 문제 해결)
-- 애플리케이션 레벨 인증으로 보안 유지 (DB 비밀번호, NATS 인증)
+- 애플리케이션 레벨 인증으로 보안 유지 (DB 비밀번호)
 
-### 5. Firebase Hosting (Web Apps)
+### 6. Firewall Rules
 
-| 앱 | 타입 | 저장 용량 | 전송량 | 비용 |
-|----|------|----------|--------|------|
-| admin-webapp | 정적 (CDN) | 무료 티어 | 무료 티어 | $0 |
-| user-webapp | 정적 (CDN) | 무료 티어 | 무료 티어 | $0 |
+| 규칙 | 포트 | Source | 용도 |
+|------|------|--------|------|
+| allow-health-check | 80, 443, 8080 | Google Health Check IPs | Cloud Run 헬스체크 |
+| allow-internal | all | 10.2.0.0/16 | VPC 내부 통신 |
+| allow-nats-external | 4222 | 0.0.0.0/0 | Cloud Run → NATS |
+| allow-postgres | 5432 | 0.0.0.0/0 | Cloud Run → PostgreSQL |
+| allow-ssh | 22 | 35.235.240.0/20 | IAP SSH 접속 |
+
+### 7. Secret Manager
+
+| Secret | 용도 |
+|--------|------|
+| db_password-dev | PostgreSQL parkgolf 사용자 비밀번호 |
+| jwt_secret-dev | JWT 서명 키 |
+| jwt_refresh_secret-dev | JWT Refresh 토큰 키 |
+
+### 8. Artifact Registry
+
+| 항목 | 값 |
+|------|-----|
+| Repository | parkgolf |
+| Format | Docker |
+| Location | asia-northeast3 |
+| Size | ~32GB |
+| 월 비용 | ~$3 |
+
+### 9. Firebase Hosting (Web Apps)
+
+| 앱 | 타입 | API URL | 비용 |
+|----|------|---------|------|
+| admin-dashboard | 정적 (CDN) | https://admin-api-dev-iihuzmuufa-du.a.run.app/api | $0 |
+| user-webapp | 정적 (CDN) | https://user-api-dev-iihuzmuufa-du.a.run.app | $0 |
 
 **Firebase Hosting 특성:**
 - CPU/Memory 설정 없음 (정적 파일 호스팅)
@@ -114,24 +170,19 @@ module "networking" {
 - 저장 용량: 10GB
 - 전송량: 360MB/일
 
-### 6. 기타 리소스
-
-| 항목 | 설정 | 비용 |
-|------|------|------|
-| Monitoring | 비활성화 | $0 (Cloud Logging으로 대체) |
-| Secrets | 3개 (db_password, jwt_secret, jwt_refresh_secret) | $0 (무료 티어) |
-| Database | PostgreSQL VM (e2-small) | ~$13/월 |
-
 ### Dev 환경 월 예상 비용
 
-| 항목 | 계산 | 월 비용 |
+| 항목 | 스펙 | 월 비용 |
 |------|------|---------|
-| auth-service (min=1, no-throttling) | 1 vCPU + 512Mi 상시 | ~$55 |
-| 나머지 5개 서비스 (min=0, throttling) | idle 시 | ~$0 |
+| auth-service | 1 vCPU, 512Mi, min=1, no-throttling | ~$55 |
+| 나머지 5개 서비스 | 0.5 vCPU, 128Mi, min=0, throttling | ~$0 (idle) |
 | PostgreSQL VM | e2-small + 10GB HDD | ~$13 |
-| NATS VM | e2-micro + 10GB HDD | ~$6-7 |
-| Firebase Hosting (2개 앱) | 무료 티어 | $0 |
-| **합계** | | **~$75/월** |
+| NATS VM | e2-micro + 10GB HDD | ~$7 |
+| Artifact Registry | ~32GB Docker images | ~$3 |
+| Cloud Storage | Terraform state | ~$0.5 |
+| Firebase Hosting | 무료 티어 | $0 |
+| Secret Manager | 3개 시크릿 | $0 |
+| **합계** | | **~$80/월** |
 
 ---
 
@@ -141,35 +192,35 @@ module "networking" {
 
 | 서비스 | CPU | Memory | Min Instances | Max Instances | CPU Throttling |
 |--------|-----|--------|---------------|---------------|----------------|
-| auth-service | 1 vCPU | 1Gi | 0 | 10 | No |
-| course-service | 1 vCPU | 1Gi | 0 | 10 | No |
-| booking-service | 1 vCPU | 1Gi | 0 | 15 | No |
-| notify-service | 1 vCPU | 1Gi | 0 | 5 | No |
-| admin-api | 1 vCPU | 1Gi | 0 | 10 | No |
-| user-api | 1 vCPU | 1Gi | 0 | 20 | No |
+| auth-service | 2 vCPU | 1Gi | 1 | 10 | No |
+| course-service | 1 vCPU | 512Mi | 0 | 10 | Yes |
+| booking-service | 1 vCPU | 512Mi | 0 | 10 | Yes |
+| notify-service | 1 vCPU | 512Mi | 0 | 5 | Yes |
+| admin-api | 1 vCPU | 512Mi | 0 | 10 | Yes |
+| user-api | 1 vCPU | 512Mi | 0 | 20 | Yes |
 
 ### 2. NATS VM (Messaging)
 
-| 리소스 | CPU | Memory | Disk Type | Disk Size | JetStream Memory | JetStream File | Spot |
-|--------|-----|--------|-----------|-----------|------------------|----------------|------|
-| NATS VM | 0.25 vCPU | 1GB | pd-ssd | 20GB | 512MB | 10GB | No |
+| 리소스 | CPU | Memory | Disk Type | Disk Size | JetStream Memory | JetStream File |
+|--------|-----|--------|-----------|-----------|------------------|----------------|
+| NATS VM | 0.25 vCPU | 1GB | pd-ssd | 20GB | 512MB | 10GB |
 
-### 3. Database (Cloud SQL)
+### 3. Database (Cloud SQL 또는 PostgreSQL VM)
 
 | 항목 | 스펙 |
 |------|------|
-| Tier | db-custom-2-4096 (2 vCPU, 4GB) |
+| Tier | db-custom-2-4096 (2 vCPU, 4GB) 또는 e2-standard-2 |
 | Storage | 100GB SSD |
-| High Availability | Yes |
+| High Availability | Yes (Prod) |
 | Backup | Daily (03:00) |
 
 ### 4. VPC 네트워킹
 
 | 항목 | 설정 |
 |------|------|
-| VPC Connector | 비활성화 (Direct VPC Egress 사용) |
-| Cloud NAT | 활성화 |
-| Private Service Connection | 활성화 (Cloud SQL용) |
+| VPC Connector | 비활성화 (External IP 방식 사용) |
+| Cloud NAT | 필요시 활성화 |
+| Private Service Connection | Cloud SQL 사용 시 활성화 |
 
 ### 5. Firebase Hosting (Web Apps)
 
@@ -184,17 +235,25 @@ module "networking" {
 
 ### 1. Cloud Run 최적화
 
-```hcl
-# CPU Throttling 활성화 (비용 절감, API Gateway 역할)
-cpu_idle = true   # 요청 시에만 CPU 할당
+```yaml
+# .github/workflows/cd-services.yml 설정
 
-# CPU Throttling 비활성화 (백그라운드 서비스, NATS 리스닝)
-cpu_idle = false  # --no-cpu-throttling, CPU 항상 할당
+# auth-service (항상 실행, NATS 리스닝)
+min_instances: 1
+cpu: 1
+memory: 512Mi
+cpu_throttling: false
+
+# 나머지 서비스 (Scale-to-zero)
+min_instances: 0
+cpu: 0.5
+memory: 128Mi
+cpu_throttling: true
 ```
 
 **적용 가이드:**
-- NATS 메시지 리스닝이 필요한 서비스: `cpu_idle = false`
-- HTTP 요청만 처리하는 API Gateway: `cpu_idle = true`
+- NATS 메시지 리스닝이 필요한 서비스: `cpu_throttling = false`
+- HTTP 요청만 처리하는 API Gateway: `cpu_throttling = true`
 - `min_instances = 0`: Scale to zero, idle 시 비용 없음
 - `min_instances = 1`: 항상 실행, Cold Start 없음
 
@@ -212,7 +271,7 @@ disk_type = "pd-standard"  # SSD 대비 75% 저렴
 
 ### 3. 네트워킹 최적화
 
-**External IP 방식 (Option A) - 권장:**
+**External IP 방식 - 권장:**
 ```hcl
 # Cloud Run에서 VPC 설정 제거
 # VM에 External IP 부여, Firewall로 접근 제어
@@ -274,16 +333,19 @@ gcloud logging read "resource.type=cloud_run_revision AND resource.labels.servic
 # NATS VM 로그
 gcloud compute ssh parkgolf-nats-dev --zone=asia-northeast3-a \
   --command="docker logs nats --tail 100"
+
+# PostgreSQL VM 접속
+gcloud compute ssh parkgolf-postgres-dev --zone=asia-northeast3-a --tunnel-through-iap
 ```
 
 ---
 
 ## 환경별 비용 요약
 
-| 환경 | Cloud Run | NATS VM | Database | Firebase Hosting | 네트워킹 | 기타 | 월 합계 |
-|------|-----------|---------|----------|------------------|----------|------|---------|
-| Dev | ~$55 | ~$7 | ~$13 | $0 | $0 | $0 | **~$75** |
-| Prod | 사용량 기반 | ~$8 | ~$80 | ~$0 | ~$10 | ~$5 | **~$100+** |
+| 환경 | Cloud Run | VM (NATS+DB) | Storage | 기타 | 월 합계 |
+|------|-----------|--------------|---------|------|---------|
+| Dev | ~$55 | ~$20 | ~$3.5 | $0 | **~$80** |
+| Prod | 사용량 기반 | ~$50+ | ~$10 | ~$10 | **~$100+** |
 
 ---
 
@@ -297,7 +359,7 @@ services = {
     cpu           = "1"     # Must be >= 1 when cpu_idle=false
     memory        = "512Mi" # Must be >= 512Mi when cpu_idle=false
     min_instances = 1       # Always running for NATS
-    max_instances = 1
+    max_instances = 2
     cpu_idle      = false   # No CPU throttling
   }
   "course-service" = {
@@ -324,16 +386,16 @@ module "services" {
 
 | 날짜 | 변경 내용 |
 |------|----------|
+| 2026-01-10 | Cloud Run 리소스 최적화 (admin-api, booking, course, user-api → 0.5 CPU, 128Mi, min=0) |
+| 2026-01-10 | pg_hba.conf 0.0.0.0/0 허용 추가 (Cloud Run External IP 접속용) |
+| 2026-01-10 | parkgolf 사용자 테이블/시퀀스 권한 부여 |
+| 2026-01-10 | API URL 업데이트 (admin-api, user-api → parkgolf-uniyous 프로젝트) |
 | 2026-01-10 | VPC IP 주소 정책 표준화 (환경별 자동 IP 할당) |
 | 2026-01-10 | Direct VPC Egress → External IP 방식 변경 (Serverless IP 문제 해결) |
 | 2026-01-09 | Cloud SQL → PostgreSQL VM 변경 (비용 절감: ~$25 → ~$13) |
-| 2026-01-09 | Dev Cloud SQL (db-g1-small) 추가 |
 | 2026-01-09 | auth-service memory 512Mi로 변경 (cpu_idle=false 시 최소 512Mi 필요) |
 | 2026-01-09 | auth-service CPU 1 vCPU로 변경 (cpu_idle=false 요구사항) |
-| 2026-01-09 | Direct VPC egress 네트워크 포맷 수정 |
-| 2025-01-09 | VPC Connector → Direct VPC Egress 변경 |
-| 2025-01-09 | Dev Monitoring 모듈 제거 |
-| 2025-01-09 | Dev Cloud Run 스펙 최적화 (0.5 vCPU, 128Mi) |
-| 2025-01-09 | auth-service만 min_instances=1, no-cpu-throttling 적용 |
-| 2025-01-09 | NATS VM 일반 인스턴스로 유지 (Spot 제외) |
-| 2025-01-09 | Firebase Hosting (Web Apps) 섹션 추가 |
+| 2026-01-09 | VPC Connector → Direct VPC Egress 변경 |
+| 2026-01-09 | Dev Monitoring 모듈 제거 |
+| 2026-01-09 | NATS VM 일반 인스턴스로 유지 (Spot 제외) |
+| 2026-01-09 | Firebase Hosting (Web Apps) 섹션 추가 |
