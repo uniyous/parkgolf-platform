@@ -219,7 +219,7 @@ jobs:
               # auth-service: Always running, no CPU throttling (bcrypt CPU-intensive)
               echo "min_instances=1" >> $GITHUB_OUTPUT
               echo "max_instances=1" >> $GITHUB_OUTPUT
-              echo "memory=256Mi" >> $GITHUB_OUTPUT
+              echo "memory=512Mi" >> $GITHUB_OUTPUT
               echo "cpu=1" >> $GITHUB_OUTPUT
               echo "cpu_throttling=false" >> $GITHUB_OUTPUT
             else
