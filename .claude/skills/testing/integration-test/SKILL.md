@@ -19,12 +19,12 @@ Park Golf Platform의 통합 테스트는 다음 레벨로 구성됩니다:
 
 ```bash
 # Base URLs
-ADMIN_API=https://admin-api-dev-335495814488.asia-northeast3.run.app
-USER_API=https://user-api-dev-335495814488.asia-northeast3.run.app
-AUTH_SERVICE=https://auth-service-dev-335495814488.asia-northeast3.run.app
-COURSE_SERVICE=https://course-service-dev-335495814488.asia-northeast3.run.app
-BOOKING_SERVICE=https://booking-service-dev-335495814488.asia-northeast3.run.app
-NOTIFY_SERVICE=https://notify-service-dev-335495814488.asia-northeast3.run.app
+ADMIN_API=https://admin-api-dev-iihuzmuufa-du.a.run.app
+USER_API=https://user-api-dev-iihuzmuufa-du.a.run.app
+AUTH_SERVICE=https://auth-service-dev-iihuzmuufa-du.a.run.app
+COURSE_SERVICE=https://course-service-dev-iihuzmuufa-du.a.run.app
+BOOKING_SERVICE=https://booking-service-dev-iihuzmuufa-du.a.run.app
+NOTIFY_SERVICE=https://notify-service-dev-iihuzmuufa-du.a.run.app
 ```
 
 ---
@@ -38,12 +38,12 @@ NOTIFY_SERVICE=https://notify-service-dev-335495814488.asia-northeast3.run.app
 # health-check.sh
 
 SERVICES=(
-  "admin-api:https://admin-api-dev-335495814488.asia-northeast3.run.app"
-  "user-api:https://user-api-dev-335495814488.asia-northeast3.run.app"
-  "auth-service:https://auth-service-dev-335495814488.asia-northeast3.run.app"
-  "course-service:https://course-service-dev-335495814488.asia-northeast3.run.app"
-  "booking-service:https://booking-service-dev-335495814488.asia-northeast3.run.app"
-  "notify-service:https://notify-service-dev-335495814488.asia-northeast3.run.app"
+  "admin-api:https://admin-api-dev-iihuzmuufa-du.a.run.app"
+  "user-api:https://user-api-dev-iihuzmuufa-du.a.run.app"
+  "auth-service:https://auth-service-dev-iihuzmuufa-du.a.run.app"
+  "course-service:https://course-service-dev-iihuzmuufa-du.a.run.app"
+  "booking-service:https://booking-service-dev-iihuzmuufa-du.a.run.app"
+  "notify-service:https://notify-service-dev-iihuzmuufa-du.a.run.app"
 )
 
 echo "=== Health Check ==="
@@ -246,7 +246,7 @@ testNatsIntegration().catch(console.error);
 #!/bin/bash
 # e2e-user-flow.sh
 
-USER_API="https://user-api-dev-335495814488.asia-northeast3.run.app"
+USER_API="https://user-api-dev-iihuzmuufa-du.a.run.app"
 EMAIL="e2e-test-$(date +%s)@example.com"
 PASSWORD="Test1234!@"
 
@@ -321,7 +321,7 @@ module.exports = {
 // test/integration/user-api.test.ts
 import axios from 'axios';
 
-const USER_API = process.env.USER_API_URL || 'https://user-api-dev-335495814488.asia-northeast3.run.app';
+const USER_API = process.env.USER_API_URL || 'https://user-api-dev-iihuzmuufa-du.a.run.app';
 
 describe('User API Integration Tests', () => {
   let authToken: string;
@@ -417,8 +417,8 @@ jobs:
 
       - name: Run integration tests
         env:
-          USER_API_URL: https://user-api-${{ inputs.environment }}-335495814488.asia-northeast3.run.app
-          ADMIN_API_URL: https://admin-api-${{ inputs.environment }}-335495814488.asia-northeast3.run.app
+          USER_API_URL: https://user-api-${{ inputs.environment }}-iihuzmuufa-du.a.run.app
+          ADMIN_API_URL: https://admin-api-${{ inputs.environment }}-iihuzmuufa-du.a.run.app
         run: npm run test:integration
         working-directory: test
 

@@ -2,7 +2,12 @@
 import { getErrorMessage } from '@/types/common';
 import { authStorage } from '@/lib/storage';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3092';
+// 개발 환경에서는 Vite 프록시 사용, 프로덕션에서는 환경변수 또는 기본 Cloud Run URL 사용
+const mode = (import.meta as any).env?.MODE;
+const isDev = mode === 'development' || mode === 'e2e';
+const API_BASE_URL = isDev
+  ? (import.meta.env.VITE_API_URL || 'http://localhost:3092')
+  : (import.meta.env.VITE_API_URL || 'https://user-api-dev-iihuzmuufa-du.a.run.app');
 
 export interface ApiResponse<T> {
   data: T;

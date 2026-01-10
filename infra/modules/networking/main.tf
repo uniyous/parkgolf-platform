@@ -1,8 +1,53 @@
 # Networking Module
 # Multi-cloud abstraction for VPC and networking components
+#
+# ============================================================================
+# IP Address Policy (Standard)
+# ============================================================================
+# 환경별 IP 대역 표준:
+#   - 10.1.x.x: 예약됨 (uniyous VPC와 충돌 방지)
+#   - 10.2.x.x: Dev 환경
+#   - 10.4.x.x: Prod 환경
+#
+# 서브넷 구성 (3rd octet):
+#   - x.x.1.0/24: Public (외부 접근 가능)
+#   - x.x.2.0/24: Private (내부 서비스, NATS VM 등)
+#   - x.x.3.0/24: Data (데이터베이스, 스토리지)
+#
+# 예시:
+#   Dev:  10.2.0.0/16, public=10.2.1.0/24, private=10.2.2.0/24, data=10.2.3.0/24
+#   Prod: 10.4.0.0/16, public=10.4.1.0/24, private=10.4.2.0/24, data=10.4.3.0/24
+# ============================================================================
 
 terraform {
   required_version = ">= 1.0"
+}
+
+# ============================================================================
+# Locals - Environment-based IP defaults
+# ============================================================================
+
+locals {
+  # Environment to IP octet mapping
+  env_ip_octet = {
+    dev  = 2
+    prod = 4
+  }
+
+  # Get IP octet for current environment (default to 2 if not found)
+  ip_octet = lookup(local.env_ip_octet, var.environment, 2)
+
+  # Default CIDRs based on environment
+  default_vpc_cidr = "10.${local.ip_octet}.0.0/16"
+  default_subnet_cidrs = {
+    public  = "10.${local.ip_octet}.1.0/24"
+    private = "10.${local.ip_octet}.2.0/24"
+    data    = "10.${local.ip_octet}.3.0/24"
+  }
+
+  # Use provided values or defaults
+  vpc_cidr     = var.vpc_cidr != null ? var.vpc_cidr : local.default_vpc_cidr
+  subnet_cidrs = var.subnet_cidrs != null ? var.subnet_cidrs : local.default_subnet_cidrs
 }
 
 # ============================================================================
@@ -35,18 +80,14 @@ variable "region" {
 
 variable "vpc_cidr" {
   type        = string
-  default     = "10.0.0.0/16"
-  description = "VPC CIDR block"
+  default     = null
+  description = "VPC CIDR block (defaults based on environment: dev=10.2.0.0/16, staging=10.3.0.0/16, prod=10.4.0.0/16)"
 }
 
 variable "subnet_cidrs" {
-  type = map(string)
-  default = {
-    public  = "10.0.1.0/24"
-    private = "10.0.2.0/24"
-    data    = "10.0.3.0/24"
-  }
-  description = "Subnet CIDR blocks"
+  type        = map(string)
+  default     = null
+  description = "Subnet CIDR blocks (defaults based on environment)"
 }
 
 variable "enable_nat" {
@@ -95,7 +136,7 @@ resource "google_compute_network" "vpc" {
 resource "google_compute_subnetwork" "public" {
   count                    = var.provider_type == "gcp" ? 1 : 0
   name                     = "${var.network_name}-public-${var.environment}"
-  ip_cidr_range            = var.subnet_cidrs["public"]
+  ip_cidr_range            = local.subnet_cidrs["public"]
   region                   = var.region
   network                  = google_compute_network.vpc[0].id
   private_ip_google_access = true
@@ -105,7 +146,7 @@ resource "google_compute_subnetwork" "public" {
 resource "google_compute_subnetwork" "private" {
   count                    = var.provider_type == "gcp" ? 1 : 0
   name                     = "${var.network_name}-private-${var.environment}"
-  ip_cidr_range            = var.subnet_cidrs["private"]
+  ip_cidr_range            = local.subnet_cidrs["private"]
   region                   = var.region
   network                  = google_compute_network.vpc[0].id
   private_ip_google_access = true
@@ -115,7 +156,7 @@ resource "google_compute_subnetwork" "private" {
 resource "google_compute_subnetwork" "data" {
   count                    = var.provider_type == "gcp" ? 1 : 0
   name                     = "${var.network_name}-data-${var.environment}"
-  ip_cidr_range            = var.subnet_cidrs["data"]
+  ip_cidr_range            = local.subnet_cidrs["data"]
   region                   = var.region
   network                  = google_compute_network.vpc[0].id
   private_ip_google_access = true
@@ -189,7 +230,7 @@ resource "google_compute_firewall" "allow_internal" {
     protocol = "icmp"
   }
 
-  source_ranges = [var.vpc_cidr]
+  source_ranges = [local.vpc_cidr]
 }
 
 resource "google_compute_firewall" "allow_health_check" {
@@ -285,6 +326,41 @@ output "subnet_ids" {
     public  = google_compute_subnetwork.public[0].id
     private = google_compute_subnetwork.private[0].id
     data    = google_compute_subnetwork.data[0].id
+  } : {}
+}
+
+output "subnet_self_links" {
+  description = "Subnet self links (for Direct VPC egress)"
+  value = var.provider_type == "gcp" ? {
+    public  = google_compute_subnetwork.public[0].self_link
+    private = google_compute_subnetwork.private[0].self_link
+    data    = google_compute_subnetwork.data[0].self_link
+  } : {}
+}
+
+output "private_subnet_cidr" {
+  description = "Private subnet CIDR block"
+  value       = var.provider_type == "gcp" ? local.subnet_cidrs["private"] : null
+}
+
+output "vpc_cidr" {
+  description = "VPC CIDR block"
+  value       = var.provider_type == "gcp" ? local.vpc_cidr : null
+}
+
+# Direct VPC egress requires format: projects/{project}/global/networks/{network}
+output "vpc_network_resource" {
+  description = "VPC network resource path for Direct VPC egress (format: projects/{project}/global/networks/{network})"
+  value       = var.provider_type == "gcp" ? "projects/${google_compute_network.vpc[0].project}/global/networks/${google_compute_network.vpc[0].name}" : null
+}
+
+# Direct VPC egress requires format: projects/{project}/regions/{region}/subnetworks/{subnetwork}
+output "subnet_resources" {
+  description = "Subnet resource paths for Direct VPC egress"
+  value = var.provider_type == "gcp" ? {
+    public  = "projects/${google_compute_subnetwork.public[0].project}/regions/${google_compute_subnetwork.public[0].region}/subnetworks/${google_compute_subnetwork.public[0].name}"
+    private = "projects/${google_compute_subnetwork.private[0].project}/regions/${google_compute_subnetwork.private[0].region}/subnetworks/${google_compute_subnetwork.private[0].name}"
+    data    = "projects/${google_compute_subnetwork.data[0].project}/regions/${google_compute_subnetwork.data[0].region}/subnetworks/${google_compute_subnetwork.data[0].name}"
   } : {}
 }
 
