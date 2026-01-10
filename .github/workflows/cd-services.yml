@@ -192,31 +192,44 @@ jobs:
           echo "service_name=${SERVICE_NAME}" >> $GITHUB_OUTPUT
           echo "image=${IMAGE}" >> $GITHUB_OUTPUT
 
-          # Environment-specific settings
-          # Note: min_instances=1 prevents cold start, required for NATS microservices
-          # Cold start causes NATS reconnection delay which breaks microservice communication
-          if [ "$ENV" == "prod" ]; then
-            echo "min_instances=1" >> $GITHUB_OUTPUT
-            echo "max_instances=10" >> $GITHUB_OUTPUT
-            echo "memory=1Gi" >> $GITHUB_OUTPUT
-            echo "cpu=2" >> $GITHUB_OUTPUT
-          else
-            echo "min_instances=1" >> $GITHUB_OUTPUT
-            echo "max_instances=2" >> $GITHUB_OUTPUT
-            echo "memory=512Mi" >> $GITHUB_OUTPUT
-            echo "cpu=1" >> $GITHUB_OUTPUT
-          fi
-
-          # CPU throttling setting
-          # --no-cpu-throttling is required for:
-          # - auth-service: bcrypt is CPU-intensive, throttling causes 10-100x slowdown
-          # - course-service: Saga transaction processing requires consistent CPU
-          # - booking-service: Saga transaction processing requires consistent CPU
+          # Service-specific resource settings
           SERVICE="${{ matrix.service }}"
-          if [ "$SERVICE" == "auth-service" ] || [ "$SERVICE" == "course-service" ] || [ "$SERVICE" == "booking-service" ]; then
-            echo "cpu_throttling=false" >> $GITHUB_OUTPUT
+          ENV="${{ needs.setup.outputs.environment }}"
+
+          if [ "$ENV" == "prod" ]; then
+            # Production: higher resources
+            if [ "$SERVICE" == "auth-service" ]; then
+              # auth-service: Always running, no CPU throttling (bcrypt CPU-intensive)
+              echo "min_instances=1" >> $GITHUB_OUTPUT
+              echo "max_instances=10" >> $GITHUB_OUTPUT
+              echo "memory=1Gi" >> $GITHUB_OUTPUT
+              echo "cpu=2" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=false" >> $GITHUB_OUTPUT
+            else
+              # Other services: scale-to-zero, minimal resources
+              echo "min_instances=0" >> $GITHUB_OUTPUT
+              echo "max_instances=10" >> $GITHUB_OUTPUT
+              echo "memory=512Mi" >> $GITHUB_OUTPUT
+              echo "cpu=1" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
+            fi
           else
-            echo "cpu_throttling=true" >> $GITHUB_OUTPUT
+            # Development: minimal resources for cost optimization
+            if [ "$SERVICE" == "auth-service" ]; then
+              # auth-service: Always running, no CPU throttling (bcrypt CPU-intensive)
+              echo "min_instances=1" >> $GITHUB_OUTPUT
+              echo "max_instances=2" >> $GITHUB_OUTPUT
+              echo "memory=512Mi" >> $GITHUB_OUTPUT
+              echo "cpu=1" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=false" >> $GITHUB_OUTPUT
+            else
+              # Other services: scale-to-zero, minimal resources (same as notify-service)
+              echo "min_instances=0" >> $GITHUB_OUTPUT
+              echo "max_instances=1" >> $GITHUB_OUTPUT
+              echo "memory=128Mi" >> $GITHUB_OUTPUT
+              echo "cpu=0.5" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
+            fi
           fi
 
       - name: Deploy to Cloud Run
