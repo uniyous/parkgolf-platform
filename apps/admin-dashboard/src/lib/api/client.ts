@@ -7,12 +7,13 @@ import { ApiError } from '@/lib/errors';
 export { ApiError };
 
 // 개발/E2E 환경에서는 Vite 프록시 사용 (CORS 우회)
-// 프로덕션에서는 환경변수 URL 사용
+// 프로덕션에서는 환경변수 URL 또는 기본 Cloud Run URL 사용
 const mode = (import.meta as any).env?.MODE;
 const isDev = mode === 'development' || mode === 'e2e';
-const API_BASE_URL = isDev
-  ? '/api'  // Vite 프록시 사용
-  : ((import.meta as any).env?.VITE_API_URL || '/api');
+const SERVER_URL = isDev
+  ? ''  // Vite 프록시 사용
+  : ((import.meta as any).env?.VITE_API_URL || 'https://admin-api-dev-iihuzmuufa-du.a.run.app');
+const API_BASE_URL = `${SERVER_URL}/api`;
 
 // API 응답 타입 re-export
 export type { ApiResponse, PaginatedResponse };

@@ -77,16 +77,16 @@ description: Skill 설명. 트리거 키워드 포함.
 
 | 서비스 | URL |
 |--------|-----|
-| admin-api | https://admin-api-dev-335495814488.asia-northeast3.run.app |
-| user-api | https://user-api-dev-335495814488.asia-northeast3.run.app |
-| auth-service | https://auth-service-dev-335495814488.asia-northeast3.run.app |
-| course-service | https://course-service-dev-335495814488.asia-northeast3.run.app |
-| booking-service | https://booking-service-dev-335495814488.asia-northeast3.run.app |
-| notify-service | https://notify-service-dev-335495814488.asia-northeast3.run.app |
+| admin-api | https://admin-api-dev-iihuzmuufa-du.a.run.app |
+| user-api | https://user-api-dev-iihuzmuufa-du.a.run.app |
+| auth-service | https://auth-service-dev-iihuzmuufa-du.a.run.app |
+| course-service | https://course-service-dev-iihuzmuufa-du.a.run.app |
+| booking-service | https://booking-service-dev-iihuzmuufa-du.a.run.app |
+| notify-service | https://notify-service-dev-iihuzmuufa-du.a.run.app |
 
 ### Swagger 문서
 
 | 서비스 | Swagger URL |
 |--------|-------------|
-| admin-api | https://admin-api-dev-335495814488.asia-northeast3.run.app/api-docs |
-| user-api | https://user-api-dev-335495814488.asia-northeast3.run.app/api-docs |
+| admin-api | https://admin-api-dev-iihuzmuufa-du.a.run.app/api-docs |
+| user-api | https://user-api-dev-iihuzmuufa-du.a.run.app/api-docs |
