@@ -112,16 +112,16 @@ jobs:
           # 앱별 API URL 설정 (백엔드 컨트롤러가 /api prefix 사용)
           if [ "$APP" == "admin-dashboard" ]; then
             if [ "$ENV" == "prod" ]; then
-              echo "api_url=https://admin-api-dev-iihuzmuufa-du.a.run.app/api" >> $GITHUB_OUTPUT
+              echo "api_url=https://admin-api-prod-iihuzmuufa-du.a.run.app/api" >> $GITHUB_OUTPUT
             else
               echo "api_url=https://admin-api-dev-iihuzmuufa-du.a.run.app/api" >> $GITHUB_OUTPUT
             fi
           else
             # user-webapp (프론트엔드 경로가 이미 /api/user/... 형태)
             if [ "$ENV" == "prod" ]; then
-              echo "api_url=https://user-api-dev-335495814488.asia-northeast3.run.app" >> $GITHUB_OUTPUT
+              echo "api_url=https://user-api-prod-iihuzmuufa-du.a.run.app" >> $GITHUB_OUTPUT
             else
-              echo "api_url=https://user-api-dev-335495814488.asia-northeast3.run.app" >> $GITHUB_OUTPUT
+              echo "api_url=https://user-api-dev-iihuzmuufa-du.a.run.app" >> $GITHUB_OUTPUT
             fi
           fi
 
