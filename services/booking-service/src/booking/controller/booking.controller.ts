@@ -100,8 +100,8 @@ export class BookingController {
     this.logger.debug(`NATS: bookings.list data: ${JSON.stringify(data)}`);
     const searchDto: SearchBookingDto = {
       ...data.filters,
-      page: data.page || 1,
-      limit: data.limit || 20,
+      page: Number(data.page) || 1,
+      limit: Number(data.limit) || 20,
     };
     const result = await this.bookingService.searchBookings(searchDto);
     this.logger.log(`NATS: Found ${result.total} bookings`);
