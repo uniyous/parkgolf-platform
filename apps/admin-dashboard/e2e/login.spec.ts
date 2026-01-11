@@ -108,9 +108,8 @@ test.describe('서버 웜업 테스트', () => {
     // 진행 상태 표시 확인 (admin-api 연결중...)
     await expect(page.getByText('admin-api 연결중...')).toBeVisible({ timeout: 5000 });
 
-    // 서비스 목록 표시 확인 (auth-service, user-api, course-service, booking-service)
+    // 서비스 목록 표시 확인 (auth-service, course-service, booking-service)
     await expect(page.getByText('auth-service')).toBeVisible({ timeout: 30000 });
-    await expect(page.getByText('user-api')).toBeVisible();
     await expect(page.getByText('course-service')).toBeVisible();
     await expect(page.getByText('booking-service')).toBeVisible();
 

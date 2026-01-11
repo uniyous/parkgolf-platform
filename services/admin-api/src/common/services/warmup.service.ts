@@ -44,11 +44,6 @@ export class WarmupService {
       isNatsService: true,
     },
     {
-      name: 'user-api',
-      httpUrl: process.env.USER_API_URL || 'https://user-api-dev-iihuzmuufa-du.a.run.app',
-      isNatsService: false, // HTTP-only BFF
-    },
-    {
       name: 'course-service',
       httpUrl: process.env.COURSE_SERVICE_URL || 'https://course-service-dev-iihuzmuufa-du.a.run.app',
       natsPattern: 'course.ping',
