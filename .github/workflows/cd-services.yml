@@ -205,11 +205,18 @@ jobs:
               echo "memory=1Gi" >> $GITHUB_OUTPUT
               echo "cpu=2" >> $GITHUB_OUTPUT
               echo "cpu_throttling=false" >> $GITHUB_OUTPUT
+            elif [ "$SERVICE" == "booking-service" ] || [ "$SERVICE" == "course-service" ]; then
+              # booking-service, course-service: Prisma requires more memory
+              echo "min_instances=0" >> $GITHUB_OUTPUT
+              echo "max_instances=10" >> $GITHUB_OUTPUT
+              echo "memory=512Mi" >> $GITHUB_OUTPUT
+              echo "cpu=1" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
             else
               # Other services: scale-to-zero, minimal resources
               echo "min_instances=0" >> $GITHUB_OUTPUT
               echo "max_instances=10" >> $GITHUB_OUTPUT
-              echo "memory=512Mi" >> $GITHUB_OUTPUT
+              echo "memory=256Mi" >> $GITHUB_OUTPUT
               echo "cpu=1" >> $GITHUB_OUTPUT
               echo "cpu_throttling=true" >> $GITHUB_OUTPUT
             fi
@@ -222,8 +229,15 @@ jobs:
               echo "memory=512Mi" >> $GITHUB_OUTPUT
               echo "cpu=1" >> $GITHUB_OUTPUT
               echo "cpu_throttling=false" >> $GITHUB_OUTPUT
+            elif [ "$SERVICE" == "booking-service" ] || [ "$SERVICE" == "course-service" ]; then
+              # booking-service, course-service: Prisma requires more memory
+              echo "min_instances=0" >> $GITHUB_OUTPUT
+              echo "max_instances=1" >> $GITHUB_OUTPUT
+              echo "memory=256Mi" >> $GITHUB_OUTPUT
+              echo "cpu=0.5" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
             else
-              # Other services: scale-to-zero, minimal resources (same as notify-service)
+              # Other services: scale-to-zero, minimal resources
               echo "min_instances=0" >> $GITHUB_OUTPUT
               echo "max_instances=1" >> $GITHUB_OUTPUT
               echo "memory=128Mi" >> $GITHUB_OUTPUT
