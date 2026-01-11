@@ -97,7 +97,7 @@ const ADMIN_ACCOUNTS: AdminAccount[] = ADMIN_ACCOUNT_GROUPS.flatMap(group => gro
 const SERVICES = [
   { name: 'admin-api', isNats: false },
   { name: 'auth-service', isNats: true },
-  { name: 'user-api', isNats: false },
+  { name: 'user-api', isNats: true },
   { name: 'course-service', isNats: true },
   { name: 'booking-service', isNats: true },
 ];
