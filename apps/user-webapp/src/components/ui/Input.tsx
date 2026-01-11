@@ -22,7 +22,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           <label
             htmlFor={inputId}
             className={cn(
-              'block text-sm font-semibold',
+              'block text-sm font-semibold mb-1',
               glass ? 'text-white/90' : 'text-gray-700'
             )}
           >
