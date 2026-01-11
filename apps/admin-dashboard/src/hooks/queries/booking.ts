@@ -100,3 +100,29 @@ export const useConfirmBookingMutation = () => {
     meta: { errorMessage: '예약 확정에 실패했습니다.' },
   });
 };
+
+export const useCompleteBookingMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => bookingApi.completeBooking(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+      showSuccessToast('예약이 완료 처리되었습니다.');
+    },
+    meta: { errorMessage: '예약 완료 처리에 실패했습니다.' },
+  });
+};
+
+export const useNoShowBookingMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => bookingApi.markNoShow(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+      showSuccessToast('노쇼 처리되었습니다.');
+    },
+    meta: { errorMessage: '노쇼 처리에 실패했습니다.' },
+  });
+};

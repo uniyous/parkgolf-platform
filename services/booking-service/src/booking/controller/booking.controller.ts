@@ -14,6 +14,25 @@ export class BookingController {
 
   constructor(private readonly bookingService: BookingService) {}
 
+  // ============================================
+  // Health Check / Ping
+  // ============================================
+
+  @MessagePattern('booking.ping')
+  async ping(@Payload() payload: { ping: boolean; timestamp: string }) {
+    this.logger.debug(`NATS ping received: ${payload.timestamp}`);
+    return {
+      pong: true,
+      service: 'booking-service',
+      timestamp: new Date().toISOString(),
+      receivedAt: payload.timestamp,
+    };
+  }
+
+  // ============================================
+  // Booking Operations
+  // ============================================
+
   @MessagePattern('booking.create')
   async createBooking(@Payload() data: CreateBookingRequestDto) {
     this.logger.log(`NATS: Received booking.create request`);

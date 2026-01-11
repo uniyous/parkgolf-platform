@@ -12,6 +12,25 @@ export class CourseNatsController {
     private readonly courseService: CourseService,
   ) {}
 
+  // ============================================
+  // Health Check / Ping
+  // ============================================
+
+  @MessagePattern('course.ping')
+  async ping(@Payload() payload: { ping: boolean; timestamp: string }) {
+    this.logger.debug(`NATS ping received: ${payload.timestamp}`);
+    return {
+      pong: true,
+      service: 'course-service',
+      timestamp: new Date().toISOString(),
+      receivedAt: payload.timestamp,
+    };
+  }
+
+  // ============================================
+  // Course Operations
+  // ============================================
+
   @MessagePattern('courses.list')
   async getCourses(@Payload() data: CoursePayload) {
     const { companyId, clubId, page = 1, limit = 20 } = data;

@@ -3,36 +3,39 @@ import { Button, Input } from '@/components/ui';
 
 // 서버 웜업 API 설정
 const ADMIN_API_URL = import.meta.env.VITE_API_URL || 'https://admin-api-dev-iihuzmuufa-du.a.run.app';
-const USER_API_URL = 'https://user-api-dev-iihuzmuufa-du.a.run.app';
-const AUTH_SERVICE_URL = 'https://auth-service-dev-iihuzmuufa-du.a.run.app';
-const COURSE_SERVICE_URL = 'https://course-service-dev-iihuzmuufa-du.a.run.app';
-const BOOKING_SERVICE_URL = 'https://booking-service-dev-iihuzmuufa-du.a.run.app';
 
 interface ServiceHealth {
   name: string;
-  url: string;
-  status: 'ok' | 'error';
-  responseTime: number;
-  message?: string;
+  httpStatus: 'ok' | 'error' | 'skipped';
+  httpResponseTime?: number;
+  httpMessage?: string;
+  natsStatus: 'ok' | 'error' | 'skipped';
+  natsResponseTime?: number;
+  natsMessage?: string;
 }
 
 interface WarmupResponse {
   success: boolean;
   timestamp: string;
+  natsConnected: boolean;
   services: ServiceHealth[];
   summary: {
     total: number;
-    healthy: number;
-    unhealthy: number;
+    httpHealthy: number;
+    natsHealthy: number;
+    fullyHealthy: number;
     totalTime: number;
   };
 }
 
 interface WarmupStatus {
   service: string;
-  status: 'pending' | 'loading' | 'success' | 'error';
-  time?: number;
-  message?: string;
+  httpStatus: 'pending' | 'loading' | 'success' | 'error' | 'skipped';
+  natsStatus: 'pending' | 'loading' | 'success' | 'error' | 'skipped';
+  httpTime?: number;
+  natsTime?: number;
+  httpMessage?: string;
+  natsMessage?: string;
 }
 
 interface AdminAccount {
@@ -128,85 +131,71 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     onPasswordChange(admin.password);
   };
 
+  const [natsConnected, setNatsConnected] = useState<boolean | null>(null);
+  const [warmupSummary, setWarmupSummary] = useState<WarmupResponse['summary'] | null>(null);
+
   const handleWarmup = async () => {
     setIsWarmingUp(true);
     setShowWarmupPanel(true);
+    setNatsConnected(null);
+    setWarmupSummary(null);
 
-    // admin-api, user-api 포함하여 초기 로딩 상태 설정
+    // 초기 로딩 상태 설정
     setWarmupStatuses([
-      { service: 'admin-api', status: 'loading' },
-      { service: 'user-api', status: 'loading' },
-      { service: 'auth-service', status: 'pending' },
-      { service: 'course-service', status: 'pending' },
-      { service: 'booking-service', status: 'pending' },
+      { service: 'auth-service', httpStatus: 'loading', natsStatus: 'pending' },
+      { service: 'user-api', httpStatus: 'loading', natsStatus: 'skipped' },
+      { service: 'course-service', httpStatus: 'loading', natsStatus: 'pending' },
+      { service: 'booking-service', httpStatus: 'loading', natsStatus: 'pending' },
     ]);
 
-    const statuses: WarmupStatus[] = [];
-
-    // admin-api와 user-api를 병렬로 호출
-    const [adminResult, userResult] = await Promise.allSettled([
-      // admin-api warmup
-      (async () => {
-        const startTime = Date.now();
-        const response = await fetch(`${ADMIN_API_URL}/health/warmup`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        const time = Date.now() - startTime;
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data: WarmupResponse = await response.json();
-        return { time, data };
-      })(),
-      // user-api warmup
-      (async () => {
-        const startTime = Date.now();
-        const response = await fetch(`${USER_API_URL}/health`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        const time = Date.now() - startTime;
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return { time };
-      })(),
-    ]);
-
-    // admin-api 결과 처리
-    if (adminResult.status === 'fulfilled') {
-      statuses.push({ service: 'admin-api', status: 'success', time: adminResult.value.time });
-      // 다른 서비스들 상태 추가
-      adminResult.value.data.services.forEach((svc) => {
-        if (svc.name !== 'user-api') { // user-api는 별도로 처리
-          statuses.push({
-            service: svc.name,
-            status: svc.status === 'ok' ? 'success' : 'error',
-            time: svc.responseTime,
-            message: svc.message,
-          });
-        }
+    try {
+      const startTime = Date.now();
+      const response = await fetch(`${ADMIN_API_URL}/api/system/warmup`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
       });
-    } else {
-      statuses.push({
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data: WarmupResponse = await response.json();
+      const adminApiTime = Date.now() - startTime;
+
+      // 응답 데이터를 상태로 변환
+      const statuses: WarmupStatus[] = data.services.map((svc) => ({
+        service: svc.name,
+        httpStatus: svc.httpStatus === 'ok' ? 'success' : svc.httpStatus === 'error' ? 'error' : 'skipped',
+        natsStatus: svc.natsStatus === 'ok' ? 'success' : svc.natsStatus === 'error' ? 'error' : 'skipped',
+        httpTime: svc.httpResponseTime,
+        natsTime: svc.natsResponseTime,
+        httpMessage: svc.httpMessage,
+        natsMessage: svc.natsMessage,
+      }));
+
+      // admin-api 자체 상태 추가 (맨 앞에)
+      statuses.unshift({
         service: 'admin-api',
-        status: 'error',
-        message: adminResult.reason?.message || 'Connection failed',
+        httpStatus: 'success',
+        natsStatus: 'skipped',
+        httpTime: adminApiTime,
       });
-      statuses.push({ service: 'auth-service', status: 'pending' });
-      statuses.push({ service: 'course-service', status: 'pending' });
-      statuses.push({ service: 'booking-service', status: 'pending' });
+
+      setWarmupStatuses(statuses);
+      setNatsConnected(data.natsConnected);
+      setWarmupSummary(data.summary);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Connection failed';
+      setWarmupStatuses([
+        { service: 'admin-api', httpStatus: 'error', natsStatus: 'skipped', httpMessage: message },
+        { service: 'auth-service', httpStatus: 'pending', natsStatus: 'pending' },
+        { service: 'user-api', httpStatus: 'pending', natsStatus: 'skipped' },
+        { service: 'course-service', httpStatus: 'pending', natsStatus: 'pending' },
+        { service: 'booking-service', httpStatus: 'pending', natsStatus: 'pending' },
+      ]);
+      setNatsConnected(false);
     }
 
-    // user-api 결과 처리
-    if (userResult.status === 'fulfilled') {
-      statuses.push({ service: 'user-api', status: 'success', time: userResult.value.time });
-    } else {
-      statuses.push({
-        service: 'user-api',
-        status: 'error',
-        message: userResult.reason?.message || 'Connection failed',
-      });
-    }
-
-    setWarmupStatuses(statuses);
     setIsWarmingUp(false);
   };
 
@@ -369,9 +358,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       <div className="fixed bottom-6 right-6 z-50">
         {/* 웜업 상태 패널 */}
         {showWarmupPanel && (
-          <div className="absolute bottom-14 right-0 w-72 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden mb-2">
+          <div className="absolute bottom-14 right-0 w-96 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden mb-2">
             <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
-              <span className="font-medium text-sm text-gray-700">서버 웜업 상태</span>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm text-gray-700">서버 웜업 상태</span>
+                {natsConnected !== null && (
+                  <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
+                    natsConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                    NATS {natsConnected ? '연결됨' : '오류'}
+                  </span>
+                )}
+              </div>
               <button
                 onClick={() => setShowWarmupPanel(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -381,31 +379,46 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 </svg>
               </button>
             </div>
+            {/* 컬럼 헤더 */}
+            <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-100 grid grid-cols-[1fr_70px_70px] gap-2 text-[10px] text-gray-500 font-medium uppercase">
+              <div>서비스</div>
+              <div className="text-center">HTTP</div>
+              <div className="text-center">NATS</div>
+            </div>
             <div className="p-3 space-y-2 max-h-80 overflow-y-auto">
               {warmupStatuses.map((ws, idx) => (
-                <div key={idx} className="flex items-center justify-between text-sm">
-                  <div className="flex-1 min-w-0">
-                    <span className="text-gray-600">{ws.service}</span>
-                    {ws.message && ws.status === 'error' && (
-                      <p className="text-xs text-red-400 truncate">{ws.message}</p>
+                <div key={idx} className="grid grid-cols-[1fr_70px_70px] gap-2 items-center text-sm">
+                  <div className="min-w-0">
+                    <span className="text-gray-700 font-medium text-xs">{ws.service}</span>
+                    {ws.httpMessage && ws.httpStatus === 'error' && (
+                      <p className="text-[10px] text-red-400 truncate">{ws.httpMessage}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 ml-2">
-                    {ws.time && (
-                      <span className="text-xs text-gray-400">{ws.time}ms</span>
+                  {/* HTTP 상태 */}
+                  <div className="flex items-center justify-center gap-1">
+                    {ws.httpTime !== undefined && ws.httpStatus === 'success' && (
+                      <span className="text-[10px] text-gray-400">{ws.httpTime}ms</span>
                     )}
-                    {ws.status === 'pending' && (
-                      <span className="text-gray-300">○</span>
+                    {ws.httpStatus === 'pending' && <span className="text-gray-300">○</span>}
+                    {ws.httpStatus === 'loading' && (
+                      <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                     )}
-                    {ws.status === 'loading' && (
-                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    {ws.httpStatus === 'success' && <span className="text-green-500">✓</span>}
+                    {ws.httpStatus === 'error' && <span className="text-red-500">✗</span>}
+                    {ws.httpStatus === 'skipped' && <span className="text-gray-300">-</span>}
+                  </div>
+                  {/* NATS 상태 */}
+                  <div className="flex items-center justify-center gap-1">
+                    {ws.natsTime !== undefined && ws.natsStatus === 'success' && (
+                      <span className="text-[10px] text-gray-400">{ws.natsTime}ms</span>
                     )}
-                    {ws.status === 'success' && (
-                      <span className="text-green-500">✓</span>
+                    {ws.natsStatus === 'pending' && <span className="text-gray-300">○</span>}
+                    {ws.natsStatus === 'loading' && (
+                      <div className="w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
                     )}
-                    {ws.status === 'error' && (
-                      <span className="text-red-500">✗</span>
-                    )}
+                    {ws.natsStatus === 'success' && <span className="text-purple-500">✓</span>}
+                    {ws.natsStatus === 'error' && <span className="text-red-500">✗</span>}
+                    {ws.natsStatus === 'skipped' && <span className="text-gray-300">-</span>}
                   </div>
                 </div>
               ))}
@@ -414,15 +427,23 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                   버튼을 클릭하여 서버를 웜업하세요
                 </p>
               )}
-              {warmupStatuses.length > 0 && !isWarmingUp && (
-                <div className="mt-2 pt-2 border-t border-gray-100">
+              {warmupSummary && !isWarmingUp && (
+                <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-500">
-                      완료: {warmupStatuses.filter(s => s.status === 'success').length}/{warmupStatuses.length}
+                    <span className="text-gray-500">HTTP 정상</span>
+                    <span className="font-medium text-gray-700">
+                      {warmupSummary.httpHealthy}/{warmupSummary.total}
                     </span>
-                    <span className="text-gray-500">
-                      총 시간: {Math.max(...warmupStatuses.map(s => s.time || 0))}ms
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-500">NATS 정상</span>
+                    <span className="font-medium text-gray-700">
+                      {warmupSummary.natsHealthy}/3
                     </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-500">총 소요 시간</span>
+                    <span className="font-medium text-gray-700">{warmupSummary.totalTime}ms</span>
                   </div>
                 </div>
               )}

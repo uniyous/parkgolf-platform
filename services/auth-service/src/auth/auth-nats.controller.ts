@@ -20,6 +20,21 @@ export class AuthNatsController {
   constructor(private readonly authService: AuthService) {}
 
   // ============================================
+  // Health Check / Ping
+  // ============================================
+
+  @MessagePattern('auth.ping')
+  async ping(@Payload() payload: { ping: boolean; timestamp: string }) {
+    this.logger.debug(`NATS ping received: ${payload.timestamp}`);
+    return {
+      pong: true,
+      service: 'auth-service',
+      timestamp: new Date().toISOString(),
+      receivedAt: payload.timestamp,
+    };
+  }
+
+  // ============================================
   // User Authentication
   // ============================================
 
