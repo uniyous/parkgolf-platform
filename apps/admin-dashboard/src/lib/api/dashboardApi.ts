@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { extractSingle } from './bffParser';
 
 // Dashboard analytics types
 export interface DashboardOverview {
@@ -229,12 +230,16 @@ export const dashboardApi = {
   // Main dashboard data
   async getDashboardOverview(startDate?: string, endDate?: string): Promise<DashboardOverview> {
     try {
-      const params: any = {};
+      const params: Record<string, string> = {};
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
-      
-      const response = await apiClient.get<DashboardOverview>('/admin/dashboard/overview', params);
-      return response.data;
+
+      const response = await apiClient.get<unknown>('/admin/dashboard/overview', params);
+      const data = extractSingle<DashboardOverview>(response.data);
+      if (!data) {
+        throw new Error('Failed to fetch dashboard overview');
+      }
+      return data;
     } catch (error) {
       console.error('Failed to fetch dashboard overview:', error);
       throw error;
@@ -243,8 +248,12 @@ export const dashboardApi = {
 
   async getRealTimeStats(): Promise<RealTimeStats> {
     try {
-      const response = await apiClient.get<RealTimeStats>('/admin/dashboard/stats/real-time');
-      return response.data;
+      const response = await apiClient.get<unknown>('/admin/dashboard/stats/real-time');
+      const data = extractSingle<RealTimeStats>(response.data);
+      if (!data) {
+        throw new Error('Failed to fetch real-time statistics');
+      }
+      return data;
     } catch (error) {
       console.error('Failed to fetch real-time statistics:', error);
       throw error;
@@ -253,8 +262,12 @@ export const dashboardApi = {
 
   async getTrendAnalytics(period: '7d' | '30d' | '90d' | '1y' = '30d'): Promise<TrendData> {
     try {
-      const response = await apiClient.get<TrendData>('/admin/dashboard/stats/trends', { period });
-      return response.data;
+      const response = await apiClient.get<unknown>('/admin/dashboard/stats/trends', { period });
+      const data = extractSingle<TrendData>(response.data);
+      if (!data) {
+        throw new Error('Failed to fetch trend analytics');
+      }
+      return data;
     } catch (error) {
       console.error('Failed to fetch trend analytics:', error);
       throw error;
@@ -263,8 +276,12 @@ export const dashboardApi = {
 
   async getPerformanceMetrics(): Promise<PerformanceMetrics> {
     try {
-      const response = await apiClient.get<PerformanceMetrics>('/admin/dashboard/stats/performance');
-      return response.data;
+      const response = await apiClient.get<unknown>('/admin/dashboard/stats/performance');
+      const data = extractSingle<PerformanceMetrics>(response.data);
+      if (!data) {
+        throw new Error('Failed to fetch performance metrics');
+      }
+      return data;
     } catch (error) {
       console.error('Failed to fetch performance metrics:', error);
       throw error;
@@ -273,12 +290,16 @@ export const dashboardApi = {
 
   async getTopMetrics(startDate?: string, endDate?: string): Promise<TopMetrics> {
     try {
-      const params: any = {};
+      const params: Record<string, string> = {};
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
-      
-      const response = await apiClient.get<TopMetrics>('/admin/dashboard/stats/top-metrics', params);
-      return response.data;
+
+      const response = await apiClient.get<unknown>('/admin/dashboard/stats/top-metrics', params);
+      const data = extractSingle<TopMetrics>(response.data);
+      if (!data) {
+        throw new Error('Failed to fetch top metrics');
+      }
+      return data;
     } catch (error) {
       console.error('Failed to fetch top metrics:', error);
       throw error;
@@ -287,8 +308,12 @@ export const dashboardApi = {
 
   async getSystemAlerts(): Promise<SystemAlerts> {
     try {
-      const response = await apiClient.get<SystemAlerts>('/admin/dashboard/stats/alerts');
-      return response.data;
+      const response = await apiClient.get<unknown>('/admin/dashboard/stats/alerts');
+      const data = extractSingle<SystemAlerts>(response.data);
+      if (!data) {
+        throw new Error('Failed to fetch system alerts');
+      }
+      return data;
     } catch (error) {
       console.error('Failed to fetch system alerts:', error);
       throw error;
@@ -298,12 +323,16 @@ export const dashboardApi = {
   // Specific analytics
   async getCourseAnalytics(startDate?: string, endDate?: string): Promise<CourseAnalytics> {
     try {
-      const params: any = {};
+      const params: Record<string, string> = {};
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
-      
-      const response = await apiClient.get<CourseAnalytics>('/admin/dashboard/analytics/courses', params);
-      return response.data;
+
+      const response = await apiClient.get<unknown>('/admin/dashboard/analytics/courses', params);
+      const data = extractSingle<CourseAnalytics>(response.data);
+      if (!data) {
+        throw new Error('Failed to fetch course analytics');
+      }
+      return data;
     } catch (error) {
       console.error('Failed to fetch course analytics:', error);
       throw error;
@@ -312,12 +341,16 @@ export const dashboardApi = {
 
   async getUserAnalytics(startDate?: string, endDate?: string): Promise<UserAnalytics> {
     try {
-      const params: any = {};
+      const params: Record<string, string> = {};
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
-      
-      const response = await apiClient.get<UserAnalytics>('/admin/dashboard/analytics/users', params);
-      return response.data;
+
+      const response = await apiClient.get<unknown>('/admin/dashboard/analytics/users', params);
+      const data = extractSingle<UserAnalytics>(response.data);
+      if (!data) {
+        throw new Error('Failed to fetch user analytics');
+      }
+      return data;
     } catch (error) {
       console.error('Failed to fetch user analytics:', error);
       throw error;
@@ -326,12 +359,16 @@ export const dashboardApi = {
 
   async getRevenueAnalytics(startDate?: string, endDate?: string): Promise<RevenueAnalytics> {
     try {
-      const params: any = {};
+      const params: Record<string, string> = {};
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
-      
-      const response = await apiClient.get<RevenueAnalytics>('/admin/dashboard/analytics/revenue', params);
-      return response.data;
+
+      const response = await apiClient.get<unknown>('/admin/dashboard/analytics/revenue', params);
+      const data = extractSingle<RevenueAnalytics>(response.data);
+      if (!data) {
+        throw new Error('Failed to fetch revenue analytics');
+      }
+      return data;
     } catch (error) {
       console.error('Failed to fetch revenue analytics:', error);
       throw error;

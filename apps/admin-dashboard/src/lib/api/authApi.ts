@@ -8,6 +8,7 @@
  */
 
 import { apiClient } from './client';
+import { extractSingle } from './bffParser';
 import type { ApiResponse } from '@/types/common';
 import type { AuthResponse, LoginCredentials, User } from "@/types";
 
@@ -15,27 +16,32 @@ export const authApi = {
   async login(credentials: LoginCredentials): Promise<ApiResponse<AuthResponse>> {
     try {
       console.log('Attempting login with auth-service directly:', credentials.email);
-      const response = await apiClient.post<AuthResponse>('/admin/auth/login', credentials);
-      
+      const response = await apiClient.post<unknown>('/admin/auth/login', credentials);
+      const authData = extractSingle<AuthResponse>(response.data);
+
+      if (!authData) {
+        throw new Error('Invalid login response');
+      }
+
       // 토큰 저장
-      if (response.data.accessToken) {
-        localStorage.setItem('accessToken', response.data.accessToken);
-        localStorage.setItem('refreshToken', response.data.refreshToken);
-        
+      if (authData.accessToken) {
+        localStorage.setItem('accessToken', authData.accessToken);
+        localStorage.setItem('refreshToken', authData.refreshToken);
+
         // 사용자 정보도 캐시에 저장 (getCurrentUser 실패 시 사용)
-        if (response.data.user) {
-          localStorage.setItem('currentUser', JSON.stringify(response.data.user));
+        if (authData.user) {
+          localStorage.setItem('currentUser', JSON.stringify(authData.user));
         }
       }
-      
-      console.log('Login successful:', response.data);
+
+      console.log('Login successful:', authData);
       return {
         success: true,
-        data: response.data
+        data: authData
       };
     } catch (error) {
       console.error('Login failed:', error);
-      
+
       return {
         success: false,
         error: {
@@ -48,10 +54,16 @@ export const authApi = {
 
   async fetchUserProfile(): Promise<ApiResponse<User>> {
     try {
-      const response = await apiClient.get<User>('/admin/auth/profile');
+      const response = await apiClient.get<unknown>('/admin/auth/profile');
+      const user = extractSingle<User>(response.data);
+
+      if (!user) {
+        throw new Error('Invalid profile response');
+      }
+
       return {
         success: true,
-        data: response.data
+        data: user
       };
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
@@ -69,23 +81,21 @@ export const authApi = {
     try {
       // BFF API를 통해 프로필 정보 가져오기 (auth-service는 이제 NATS로만 통신)
       console.log('Fetching user profile from admin-api...');
-      const response = await apiClient.get<ApiResponse<User>>('/admin/auth/me');
+      const response = await apiClient.get<unknown>('/admin/auth/me');
+      const user = extractSingle<User>(response.data);
 
-      // BFF 응답 구조: { success: true, data: {...} } | { success: false, error: {...} }
-      const bffResponse = response.data;
-
-      if (!bffResponse.success) {
-        throw new Error(bffResponse.error.message || 'Failed to get current user');
+      if (!user) {
+        throw new Error('Failed to get current user');
       }
 
-      console.log('Successfully fetched user profile:', bffResponse.data);
+      console.log('Successfully fetched user profile:', user);
 
       // localStorage에 사용자 정보 캐시 업데이트
-      localStorage.setItem('currentUser', JSON.stringify(bffResponse.data));
+      localStorage.setItem('currentUser', JSON.stringify(user));
 
       return {
         success: true,
-        data: bffResponse.data
+        data: user
       };
     } catch (error) {
       console.error('Failed to get current user from admin-api:', error);
@@ -117,12 +127,18 @@ export const authApi = {
 
   async refreshToken(refreshToken: string): Promise<ApiResponse<AuthResponse>> {
     try {
-      const response = await apiClient.post<AuthResponse>('/admin/auth/refresh', {
+      const response = await apiClient.post<unknown>('/admin/auth/refresh', {
         refreshToken
       });
+      const authData = extractSingle<AuthResponse>(response.data);
+
+      if (!authData) {
+        throw new Error('Invalid refresh response');
+      }
+
       return {
         success: true,
-        data: response.data
+        data: authData
       };
     } catch (error) {
       console.error('Token refresh failed:', error);

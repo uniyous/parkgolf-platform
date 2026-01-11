@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { extractPaginatedList, extractSingle, type PaginatedResult } from './bffParser';
 
 // Notification types
 export interface Notification {
@@ -12,10 +13,10 @@ export interface Notification {
   scheduledAt?: Date;
   sentAt?: Date;
   readAt?: Date;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Relations
   user?: {
     id: number;
@@ -42,7 +43,7 @@ export interface NotificationCampaign {
   description?: string;
   templateId: string;
   targetAudience: 'ALL_USERS' | 'ACTIVE_USERS' | 'CUSTOM';
-  targetFilters?: Record<string, any>;
+  targetFilters?: Record<string, unknown>;
   scheduledAt?: Date;
   status: 'DRAFT' | 'SCHEDULED' | 'RUNNING' | 'COMPLETED' | 'CANCELLED';
   totalRecipients: number;
@@ -51,31 +52,14 @@ export interface NotificationCampaign {
   failedCount: number;
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Relations
   template?: NotificationTemplate;
 }
 
-export interface NotificationListResponse {
-  notifications: Notification[];
-  total: number;
-  page: number;
-  limit: number;
-}
-
-export interface TemplateListResponse {
-  templates: NotificationTemplate[];
-  total: number;
-  page: number;
-  limit: number;
-}
-
-export interface CampaignListResponse {
-  campaigns: NotificationCampaign[];
-  total: number;
-  page: number;
-  limit: number;
-}
+export type NotificationListResponse = PaginatedResult<Notification>;
+export type TemplateListResponse = PaginatedResult<NotificationTemplate>;
+export type CampaignListResponse = PaginatedResult<NotificationCampaign>;
 
 export interface NotificationFilters {
   type?: string;
@@ -93,7 +77,7 @@ export interface CreateNotificationDto {
   message: string;
   priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   scheduledAt?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface BulkNotificationDto {
@@ -102,7 +86,7 @@ export interface BulkNotificationDto {
   message: string;
   userIds?: number[];
   targetAudience?: 'ALL_USERS' | 'ACTIVE_USERS' | 'CUSTOM';
-  targetFilters?: Record<string, any>;
+  targetFilters?: Record<string, unknown>;
   priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   scheduledAt?: string;
 }
@@ -129,7 +113,7 @@ export interface CreateCampaignDto {
   description?: string;
   templateId: string;
   targetAudience: 'ALL_USERS' | 'ACTIVE_USERS' | 'CUSTOM';
-  targetFilters?: Record<string, any>;
+  targetFilters?: Record<string, unknown>;
   scheduledAt?: string;
 }
 
@@ -171,8 +155,8 @@ export const notificationApi = {
         limit,
         ...filters
       };
-      const response = await apiClient.get<NotificationListResponse>('/admin/notifications', params);
-      return response.data;
+      const response = await apiClient.get<unknown>('/admin/notifications', params);
+      return extractPaginatedList<Notification>(response.data, 'notifications', { page, limit });
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
       throw error;
@@ -181,8 +165,12 @@ export const notificationApi = {
 
   async getNotificationById(id: string): Promise<Notification> {
     try {
-      const response = await apiClient.get<Notification>(`/admin/notifications/${id}`);
-      return response.data;
+      const response = await apiClient.get<unknown>(`/admin/notifications/${id}`);
+      const notification = extractSingle<Notification>(response.data);
+      if (!notification) {
+        throw new Error(`Notification ${id} not found`);
+      }
+      return notification;
     } catch (error) {
       console.error(`Failed to fetch notification ${id}:`, error);
       throw error;
@@ -191,8 +179,12 @@ export const notificationApi = {
 
   async createNotification(data: CreateNotificationDto): Promise<Notification> {
     try {
-      const response = await apiClient.post<Notification>('/admin/notifications', data);
-      return response.data;
+      const response = await apiClient.post<unknown>('/admin/notifications', data);
+      const notification = extractSingle<Notification>(response.data);
+      if (!notification) {
+        throw new Error('Failed to create notification');
+      }
+      return notification;
     } catch (error) {
       console.error('Failed to create notification:', error);
       throw error;
@@ -201,8 +193,12 @@ export const notificationApi = {
 
   async sendBulkNotification(data: BulkNotificationDto): Promise<{ success: boolean; jobId: string }> {
     try {
-      const response = await apiClient.post<{ success: boolean; jobId: string }>('/admin/notifications/send-bulk', data);
-      return response.data;
+      const response = await apiClient.post<unknown>('/admin/notifications/send-bulk', data);
+      const result = extractSingle<{ success: boolean; jobId: string }>(response.data);
+      if (!result) {
+        throw new Error('Failed to send bulk notification');
+      }
+      return result;
     } catch (error) {
       console.error('Failed to send bulk notification:', error);
       throw error;
@@ -211,8 +207,8 @@ export const notificationApi = {
 
   async getUserNotifications(userId: number, page = 1, limit = 20): Promise<NotificationListResponse> {
     try {
-      const response = await apiClient.get<NotificationListResponse>(`/admin/notifications/user/${userId}`, { page, limit });
-      return response.data;
+      const response = await apiClient.get<unknown>(`/admin/notifications/user/${userId}`, { page, limit });
+      return extractPaginatedList<Notification>(response.data, 'notifications', { page, limit });
     } catch (error) {
       console.error(`Failed to fetch notifications for user ${userId}:`, error);
       throw error;
@@ -240,8 +236,8 @@ export const notificationApi = {
   // Template management
   async getTemplates(page = 1, limit = 20): Promise<TemplateListResponse> {
     try {
-      const response = await apiClient.get<TemplateListResponse>('/admin/notifications/templates/list', { page, limit });
-      return response.data;
+      const response = await apiClient.get<unknown>('/admin/notifications/templates/list', { page, limit });
+      return extractPaginatedList<NotificationTemplate>(response.data, 'templates', { page, limit });
     } catch (error) {
       console.error('Failed to fetch notification templates:', error);
       throw error;
@@ -250,8 +246,12 @@ export const notificationApi = {
 
   async getTemplateById(id: string): Promise<NotificationTemplate> {
     try {
-      const response = await apiClient.get<NotificationTemplate>(`/admin/notifications/templates/${id}`);
-      return response.data;
+      const response = await apiClient.get<unknown>(`/admin/notifications/templates/${id}`);
+      const template = extractSingle<NotificationTemplate>(response.data);
+      if (!template) {
+        throw new Error(`Template ${id} not found`);
+      }
+      return template;
     } catch (error) {
       console.error(`Failed to fetch template ${id}:`, error);
       throw error;
@@ -260,8 +260,12 @@ export const notificationApi = {
 
   async createTemplate(data: CreateTemplateDto): Promise<NotificationTemplate> {
     try {
-      const response = await apiClient.post<NotificationTemplate>('/admin/notifications/templates', data);
-      return response.data;
+      const response = await apiClient.post<unknown>('/admin/notifications/templates', data);
+      const template = extractSingle<NotificationTemplate>(response.data);
+      if (!template) {
+        throw new Error('Failed to create notification template');
+      }
+      return template;
     } catch (error) {
       console.error('Failed to create notification template:', error);
       throw error;
@@ -270,8 +274,12 @@ export const notificationApi = {
 
   async updateTemplate(id: string, data: UpdateTemplateDto): Promise<NotificationTemplate> {
     try {
-      const response = await apiClient.patch<NotificationTemplate>(`/admin/notifications/templates/${id}`, data);
-      return response.data;
+      const response = await apiClient.patch<unknown>(`/admin/notifications/templates/${id}`, data);
+      const template = extractSingle<NotificationTemplate>(response.data);
+      if (!template) {
+        throw new Error(`Failed to update template ${id}`);
+      }
+      return template;
     } catch (error) {
       console.error(`Failed to update template ${id}:`, error);
       throw error;
@@ -287,10 +295,14 @@ export const notificationApi = {
     }
   },
 
-  async testTemplate(id: string, testData: Record<string, any>): Promise<{ success: boolean; preview: string }> {
+  async testTemplate(id: string, testData: Record<string, unknown>): Promise<{ success: boolean; preview: string }> {
     try {
-      const response = await apiClient.post<{ success: boolean; preview: string }>(`/admin/notifications/templates/${id}/test`, testData);
-      return response.data;
+      const response = await apiClient.post<unknown>(`/admin/notifications/templates/${id}/test`, testData);
+      const result = extractSingle<{ success: boolean; preview: string }>(response.data);
+      if (!result) {
+        throw new Error(`Failed to test template ${id}`);
+      }
+      return result;
     } catch (error) {
       console.error(`Failed to test template ${id}:`, error);
       throw error;
@@ -300,8 +312,12 @@ export const notificationApi = {
   // User preferences
   async getUserPreferences(userId: number): Promise<UserPreferences> {
     try {
-      const response = await apiClient.get<UserPreferences>(`/admin/notifications/preferences/${userId}`);
-      return response.data;
+      const response = await apiClient.get<unknown>(`/admin/notifications/preferences/${userId}`);
+      const preferences = extractSingle<UserPreferences>(response.data);
+      if (!preferences) {
+        throw new Error(`Preferences not found for user ${userId}`);
+      }
+      return preferences;
     } catch (error) {
       console.error(`Failed to fetch preferences for user ${userId}:`, error);
       throw error;
@@ -310,8 +326,12 @@ export const notificationApi = {
 
   async updateUserPreferences(userId: number, preferences: Partial<UserPreferences>): Promise<UserPreferences> {
     try {
-      const response = await apiClient.patch<UserPreferences>(`/admin/notifications/preferences/${userId}`, preferences);
-      return response.data;
+      const response = await apiClient.patch<unknown>(`/admin/notifications/preferences/${userId}`, preferences);
+      const updatedPreferences = extractSingle<UserPreferences>(response.data);
+      if (!updatedPreferences) {
+        throw new Error(`Failed to update preferences for user ${userId}`);
+      }
+      return updatedPreferences;
     } catch (error) {
       console.error(`Failed to update preferences for user ${userId}:`, error);
       throw error;
@@ -321,18 +341,22 @@ export const notificationApi = {
   // Statistics
   async getNotificationStats(dateRange: { startDate: string; endDate: string }): Promise<NotificationStats> {
     try {
-      const response = await apiClient.get<NotificationStats>('/admin/notifications/stats/overview', dateRange);
-      return response.data;
+      const response = await apiClient.get<unknown>('/admin/notifications/stats/overview', dateRange);
+      const stats = extractSingle<NotificationStats>(response.data);
+      if (!stats) {
+        throw new Error('Failed to fetch notification statistics');
+      }
+      return stats;
     } catch (error) {
       console.error('Failed to fetch notification statistics:', error);
       throw error;
     }
   },
 
-  async getDeliveryStats(dateRange: { startDate: string; endDate: string }): Promise<any> {
+  async getDeliveryStats(dateRange: { startDate: string; endDate: string }): Promise<unknown> {
     try {
-      const response = await apiClient.get('/admin/notifications/stats/delivery', dateRange);
-      return response.data;
+      const response = await apiClient.get<unknown>('/admin/notifications/stats/delivery', dateRange);
+      return extractSingle(response.data);
     } catch (error) {
       console.error('Failed to fetch delivery statistics:', error);
       throw error;
@@ -342,8 +366,8 @@ export const notificationApi = {
   // Campaign management
   async getCampaigns(page = 1, limit = 20): Promise<CampaignListResponse> {
     try {
-      const response = await apiClient.get<CampaignListResponse>('/admin/notifications/campaigns/list', { page, limit });
-      return response.data;
+      const response = await apiClient.get<unknown>('/admin/notifications/campaigns/list', { page, limit });
+      return extractPaginatedList<NotificationCampaign>(response.data, 'campaigns', { page, limit });
     } catch (error) {
       console.error('Failed to fetch notification campaigns:', error);
       throw error;
@@ -352,8 +376,12 @@ export const notificationApi = {
 
   async createCampaign(data: CreateCampaignDto): Promise<NotificationCampaign> {
     try {
-      const response = await apiClient.post<NotificationCampaign>('/admin/notifications/campaigns', data);
-      return response.data;
+      const response = await apiClient.post<unknown>('/admin/notifications/campaigns', data);
+      const campaign = extractSingle<NotificationCampaign>(response.data);
+      if (!campaign) {
+        throw new Error('Failed to create notification campaign');
+      }
+      return campaign;
     } catch (error) {
       console.error('Failed to create notification campaign:', error);
       throw error;

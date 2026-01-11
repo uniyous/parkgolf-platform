@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { extractPaginatedList, extractSingle, extractList, type PaginatedResult } from './bffParser';
 import type {
   Booking,
   CreateBookingDto,
@@ -7,15 +8,7 @@ import type {
 } from '@/types';
 
 // BFF API 응답 타입
-export interface BookingListResponse {
-  data: Booking[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
+export type BookingListResponse = PaginatedResult<Booking>;
 
 export interface BookingFilters {
   search?: string;
@@ -51,15 +44,10 @@ export const bookingApi = {
         ...filters
       };
       console.log('Fetching bookings from BFF API with params:', params);
-      const response = await apiClient.get<Booking[]>('/admin/bookings', params);
+      const response = await apiClient.get<unknown>('/admin/bookings', params);
       console.log('Bookings fetched successfully:', response.data);
-      
-      const bookings = response.data || [];
-      
-      return {
-        data: bookings,
-        pagination: { page, limit, total: bookings.length, totalPages: 1 }
-      };
+
+      return extractPaginatedList<Booking>(response.data, 'bookings', { page, limit });
     } catch (error) {
       console.error('Failed to fetch bookings:', error);
       throw error;
@@ -68,8 +56,12 @@ export const bookingApi = {
 
   async getBookingById(id: number): Promise<Booking> {
     try {
-      const response = await apiClient.get<Booking>(`/admin/bookings/${id}`);
-      return response.data;
+      const response = await apiClient.get<unknown>(`/admin/bookings/${id}`);
+      const booking = extractSingle<Booking>(response.data);
+      if (!booking) {
+        throw new Error(`Booking ${id} not found`);
+      }
+      return booking;
     } catch (error) {
       console.error(`Failed to fetch booking ${id}:`, error);
       throw error;
@@ -78,8 +70,12 @@ export const bookingApi = {
 
   async createBooking(bookingData: CreateBookingDto): Promise<Booking> {
     try {
-      const response = await apiClient.post<Booking>('/admin/bookings', bookingData);
-      return response.data;
+      const response = await apiClient.post<unknown>('/admin/bookings', bookingData);
+      const booking = extractSingle<Booking>(response.data);
+      if (!booking) {
+        throw new Error('Failed to create booking');
+      }
+      return booking;
     } catch (error) {
       console.error('Failed to create booking:', error);
       throw error;
@@ -88,8 +84,12 @@ export const bookingApi = {
 
   async updateBooking(id: number, data: UpdateBookingDto): Promise<Booking> {
     try {
-      const response = await apiClient.patch<Booking>(`/admin/bookings/${id}`, data);
-      return response.data;
+      const response = await apiClient.patch<unknown>(`/admin/bookings/${id}`, data);
+      const booking = extractSingle<Booking>(response.data);
+      if (!booking) {
+        throw new Error(`Failed to update booking ${id}`);
+      }
+      return booking;
     } catch (error) {
       console.error(`Failed to update booking ${id}:`, error);
       throw error;
@@ -98,8 +98,12 @@ export const bookingApi = {
 
   async updateBookingStatus(id: number, status: string): Promise<Booking> {
     try {
-      const response = await apiClient.patch<Booking>(`/admin/bookings/${id}`, { status });
-      return response.data;
+      const response = await apiClient.patch<unknown>(`/admin/bookings/${id}`, { status });
+      const booking = extractSingle<Booking>(response.data);
+      if (!booking) {
+        throw new Error(`Failed to update booking ${id} status`);
+      }
+      return booking;
     } catch (error) {
       console.error(`Failed to update booking ${id} status:`, error);
       throw error;
@@ -108,8 +112,12 @@ export const bookingApi = {
 
   async cancelBooking(id: number, reason?: string): Promise<Booking> {
     try {
-      const response = await apiClient.patch<Booking>(`/admin/bookings/${id}/cancel`, { reason });
-      return response.data;
+      const response = await apiClient.patch<unknown>(`/admin/bookings/${id}/cancel`, { reason });
+      const booking = extractSingle<Booking>(response.data);
+      if (!booking) {
+        throw new Error(`Failed to cancel booking ${id}`);
+      }
+      return booking;
     } catch (error) {
       console.error(`Failed to cancel booking ${id}:`, error);
       throw error;
@@ -118,8 +126,12 @@ export const bookingApi = {
 
   async confirmBooking(id: number): Promise<Booking> {
     try {
-      const response = await apiClient.patch<Booking>(`/admin/bookings/${id}/confirm`);
-      return response.data;
+      const response = await apiClient.patch<unknown>(`/admin/bookings/${id}/confirm`);
+      const booking = extractSingle<Booking>(response.data);
+      if (!booking) {
+        throw new Error(`Failed to confirm booking ${id}`);
+      }
+      return booking;
     } catch (error) {
       console.error(`Failed to confirm booking ${id}:`, error);
       throw error;
@@ -128,8 +140,12 @@ export const bookingApi = {
 
   async completeBooking(id: number): Promise<Booking> {
     try {
-      const response = await apiClient.patch<Booking>(`/admin/bookings/${id}/complete`);
-      return response.data;
+      const response = await apiClient.patch<unknown>(`/admin/bookings/${id}/complete`);
+      const booking = extractSingle<Booking>(response.data);
+      if (!booking) {
+        throw new Error(`Failed to complete booking ${id}`);
+      }
+      return booking;
     } catch (error) {
       console.error(`Failed to complete booking ${id}:`, error);
       throw error;
@@ -138,8 +154,12 @@ export const bookingApi = {
 
   async markNoShow(id: number): Promise<Booking> {
     try {
-      const response = await apiClient.patch<Booking>(`/admin/bookings/${id}/no-show`);
-      return response.data;
+      const response = await apiClient.patch<unknown>(`/admin/bookings/${id}/no-show`);
+      const booking = extractSingle<Booking>(response.data);
+      if (!booking) {
+        throw new Error(`Failed to mark booking ${id} as no-show`);
+      }
+      return booking;
     } catch (error) {
       console.error(`Failed to mark booking ${id} as no-show:`, error);
       throw error;
@@ -171,7 +191,7 @@ export const bookingApi = {
   async getDailyBookings(courseId: number, date: string): Promise<DailyBookingData> {
     try {
       console.log('Fetching daily bookings for course:', courseId, 'on date:', date);
-      
+
       // 해당 날짜의 예약 목록 조회
       const bookingsResponse = await this.getBookingsByCourse(courseId, {
         dateFrom: date,
@@ -228,9 +248,13 @@ export const bookingApi = {
   async getBookingStats(filters: BookingFilters = {}): Promise<BookingStats> {
     try {
       console.log('Fetching booking stats with filters:', filters);
-      const response = await apiClient.get<BookingStats>('/admin/bookings/stats/overview', filters);
+      const response = await apiClient.get<unknown>('/admin/bookings/stats/overview', filters);
       console.log('Booking stats fetched successfully:', response.data);
-      return response.data;
+      const stats = extractSingle<BookingStats>(response.data);
+      if (!stats) {
+        throw new Error('Failed to fetch booking stats');
+      }
+      return stats;
     } catch (error) {
       console.error('Failed to fetch booking stats:', error);
       // 통계 API가 구현되지 않은 경우 기본값 반환
@@ -254,11 +278,11 @@ export const bookingApi = {
   // ===== 벌크 작업 =====
   async bulkUpdateBookingStatus(bookingIds: number[], status: string): Promise<Booking[]> {
     try {
-      const response = await apiClient.patch<Booking[]>('/admin/bookings/bulk-update', {
+      const response = await apiClient.patch<unknown>('/admin/bookings/bulk-update', {
         bookingIds,
         status
       });
-      return response.data;
+      return extractList<Booking>(response.data, 'bookings');
     } catch (error) {
       console.error('Failed to bulk update booking status:', error);
       throw error;
@@ -267,11 +291,11 @@ export const bookingApi = {
 
   async bulkCancelBookings(bookingIds: number[], reason?: string): Promise<Booking[]> {
     try {
-      const response = await apiClient.patch<Booking[]>('/admin/bookings/bulk-cancel', {
+      const response = await apiClient.patch<unknown>('/admin/bookings/bulk-cancel', {
         bookingIds,
         reason
       });
-      return response.data;
+      return extractList<Booking>(response.data, 'bookings');
     } catch (error) {
       console.error('Failed to bulk cancel bookings:', error);
       throw error;
@@ -281,8 +305,8 @@ export const bookingApi = {
   // ===== 예약 내역 조회 =====
   async getBookingHistory(filters: BookingFilters = {}): Promise<Booking[]> {
     try {
-      const response = await apiClient.get<Booking[]>('/admin/bookings/history/list', filters);
-      return response.data || [];
+      const response = await apiClient.get<unknown>('/admin/bookings/history/list', filters);
+      return extractList<Booking>(response.data, 'bookings');
     } catch (error) {
       console.error('Failed to fetch booking history:', error);
       throw error;
