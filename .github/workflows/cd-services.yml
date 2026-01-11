@@ -222,16 +222,16 @@ jobs:
               echo "memory=512Mi" >> $GITHUB_OUTPUT
               echo "cpu=1" >> $GITHUB_OUTPUT
               echo "cpu_throttling=true" >> $GITHUB_OUTPUT
-            elif [ "$SERVICE" == "course-service" ] || [ "$SERVICE" == "booking-service" ]; then
-              # course-service, booking-service: NATS subscriber - always running to prevent cold start
-              echo "min_instances=1" >> $GITHUB_OUTPUT
+            elif [ "$SERVICE" == "notify-service" ]; then
+              # notify-service: scale to zero
+              echo "min_instances=0" >> $GITHUB_OUTPUT
               echo "max_instances=1" >> $GITHUB_OUTPUT
               echo "memory=256Mi" >> $GITHUB_OUTPUT
               echo "cpu=0.5" >> $GITHUB_OUTPUT
               echo "cpu_throttling=true" >> $GITHUB_OUTPUT
             else
-              # admin-api, user-api, notify-service: scale to zero
-              echo "min_instances=0" >> $GITHUB_OUTPUT
+              # course-service, booking-service, admin-api, user-api: always running
+              echo "min_instances=1" >> $GITHUB_OUTPUT
               echo "max_instances=1" >> $GITHUB_OUTPUT
               echo "memory=256Mi" >> $GITHUB_OUTPUT
               echo "cpu=0.5" >> $GITHUB_OUTPUT
