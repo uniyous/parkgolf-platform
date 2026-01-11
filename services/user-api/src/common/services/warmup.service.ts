@@ -28,37 +28,29 @@ export interface WarmupResult {
 interface ServiceConfig {
   name: string;
   httpUrl: string;
-  natsPattern?: string; // Optional - HTTP-only BFF services don't have NATS
-  isNatsService: boolean;
+  natsPattern: string;
 }
 
 @Injectable()
 export class WarmupService {
   private readonly logger = new Logger(WarmupService.name);
 
+  // user-api가 통신하는 마이크로서비스 목록
   private readonly services: ServiceConfig[] = [
     {
       name: 'auth-service',
       httpUrl: process.env.AUTH_SERVICE_URL || 'https://auth-service-dev-iihuzmuufa-du.a.run.app',
       natsPattern: 'auth.ping',
-      isNatsService: true,
-    },
-    {
-      name: 'user-api',
-      httpUrl: process.env.USER_API_URL || 'https://user-api-dev-iihuzmuufa-du.a.run.app',
-      isNatsService: false, // HTTP-only BFF
     },
     {
       name: 'course-service',
       httpUrl: process.env.COURSE_SERVICE_URL || 'https://course-service-dev-iihuzmuufa-du.a.run.app',
       natsPattern: 'course.ping',
-      isNatsService: true,
     },
     {
       name: 'booking-service',
       httpUrl: process.env.BOOKING_SERVICE_URL || 'https://booking-service-dev-iihuzmuufa-du.a.run.app',
       natsPattern: 'booking.ping',
-      isNatsService: true,
     },
   ];
 
@@ -90,13 +82,12 @@ export class WarmupService {
 
     const httpHealthy = services.filter((s) => s.httpStatus === 'ok').length;
     const natsHealthy = services.filter((s) => s.natsStatus === 'ok').length;
-    // HTTP-only 서비스는 NATS가 skipped이면 fully healthy로 처리
     const fullyHealthy = services.filter(
-      (s) => s.httpStatus === 'ok' && (s.natsStatus === 'ok' || s.natsStatus === 'skipped'),
+      (s) => s.httpStatus === 'ok' && s.natsStatus === 'ok',
     ).length;
 
     const totalTime = Date.now() - startTime;
-    const natsConnected = natsHealthy === this.natsServiceCount;
+    const natsConnected = natsHealthy === this.services.length;
 
     this.logger.log(
       `Warmup completed in ${totalTime}ms - HTTP: ${httpHealthy}/${this.services.length}, NATS: ${natsHealthy}/${this.services.length}`,
@@ -240,20 +231,10 @@ export class WarmupService {
    * NATS Ping 수행
    */
   private async performNatsPingChecks(): Promise<
-    Array<{ natsStatus: 'ok' | 'error' | 'skipped'; natsResponseTime: number; natsMessage?: string }>
+    Array<{ natsStatus: 'ok' | 'error'; natsResponseTime: number; natsMessage?: string }>
   > {
     const results = await Promise.allSettled(
       this.services.map(async (service) => {
-        // Skip NATS check for HTTP-only services
-        if (!service.isNatsService || !service.natsPattern) {
-          this.logger.debug(`[NATS] ${service.name}: Skipped (HTTP-only BFF)`);
-          return {
-            natsStatus: 'skipped' as const,
-            natsResponseTime: 0,
-            natsMessage: 'HTTP-only service',
-          };
-        }
-
         const start = Date.now();
         try {
           const response = await this.natsClient.send<{ pong: boolean; service: string }>(
@@ -297,12 +278,5 @@ export class WarmupService {
         natsMessage: 'Promise rejected',
       };
     });
-  }
-
-  /**
-   * NATS 서비스 수 반환 (HTTP-only 제외)
-   */
-  private get natsServiceCount(): number {
-    return this.services.filter((s) => s.isNatsService).length;
   }
 }
