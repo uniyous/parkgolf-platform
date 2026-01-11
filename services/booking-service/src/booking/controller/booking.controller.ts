@@ -52,6 +52,16 @@ export class BookingController {
     return NatsResponse.success(booking);
   }
 
+  @MessagePattern('bookings.findById')
+  async findBookingByIdAdmin(@Payload() data: { bookingId: string; token?: string }) {
+    this.logger.log(`NATS: Received bookings.findById request for ID: ${data.bookingId}`);
+    const booking = await this.bookingService.getBookingById(parseInt(data.bookingId));
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+    return NatsResponse.success(booking);
+  }
+
   @MessagePattern('booking.findByNumber')
   async findBookingByNumber(@Payload() data: { bookingNumber: string }) {
     this.logger.log(`NATS: Received booking.findByNumber request for: ${data.bookingNumber}`);
@@ -84,6 +94,25 @@ export class BookingController {
     });
   }
 
+  @MessagePattern('bookings.list')
+  async listBookings(@Payload() data: { filters?: SearchBookingDto; page?: number; limit?: number; token?: string }) {
+    this.logger.log(`NATS: Received bookings.list request`);
+    this.logger.debug(`NATS: bookings.list data: ${JSON.stringify(data)}`);
+    const searchDto: SearchBookingDto = {
+      ...data.filters,
+      page: data.page || 1,
+      limit: data.limit || 20,
+    };
+    const result = await this.bookingService.searchBookings(searchDto);
+    this.logger.log(`NATS: Found ${result.total} bookings`);
+    return NatsResponse.success({
+      bookings: result.bookings,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+    });
+  }
+
   @MessagePattern('booking.update')
   async updateBooking(@Payload() data: { id: number; dto: UpdateBookingDto }) {
     this.logger.log(`NATS: Received booking.update request for ID: ${data.id}`);
@@ -101,6 +130,38 @@ export class BookingController {
     this.logger.log(`NATS: Received booking.cancel request for ID: ${data.id}`);
     const booking = await this.bookingService.cancelBooking(data.id, data.userId, data.reason);
     this.logger.log(`NATS: Booking cancelled for ID: ${booking.id}`);
+    return NatsResponse.success(booking);
+  }
+
+  @MessagePattern('bookings.cancel')
+  async cancelBookingAdmin(@Payload() data: { bookingId: string; reason?: string; token?: string }) {
+    this.logger.log(`NATS: Received bookings.cancel request for ID: ${data.bookingId}`);
+    const booking = await this.bookingService.adminCancelBooking(parseInt(data.bookingId), data.reason);
+    this.logger.log(`NATS: Booking cancelled for ID: ${booking.id}`);
+    return NatsResponse.success(booking);
+  }
+
+  @MessagePattern('bookings.confirm')
+  async confirmBookingAdmin(@Payload() data: { bookingId: string; token?: string }) {
+    this.logger.log(`NATS: Received bookings.confirm request for ID: ${data.bookingId}`);
+    const booking = await this.bookingService.confirmBooking(parseInt(data.bookingId));
+    this.logger.log(`NATS: Booking confirmed for ID: ${booking.id}`);
+    return NatsResponse.success(booking);
+  }
+
+  @MessagePattern('bookings.complete')
+  async completeBookingAdmin(@Payload() data: { bookingId: string; token?: string }) {
+    this.logger.log(`NATS: Received bookings.complete request for ID: ${data.bookingId}`);
+    const booking = await this.bookingService.completeBooking(parseInt(data.bookingId));
+    this.logger.log(`NATS: Booking completed for ID: ${booking.id}`);
+    return NatsResponse.success(booking);
+  }
+
+  @MessagePattern('bookings.noShow')
+  async markNoShowAdmin(@Payload() data: { bookingId: string; token?: string }) {
+    this.logger.log(`NATS: Received bookings.noShow request for ID: ${data.bookingId}`);
+    const booking = await this.bookingService.markNoShow(parseInt(data.bookingId));
+    this.logger.log(`NATS: Booking marked as no-show for ID: ${booking.id}`);
     return NatsResponse.success(booking);
   }
 
