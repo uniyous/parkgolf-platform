@@ -150,7 +150,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
     try {
       const startTime = Date.now();
-      const response = await fetch(`${ADMIN_API_URL}/api/system/warmup`, {
+      const response = await fetch(`${ADMIN_API_URL}/system/warmup`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
