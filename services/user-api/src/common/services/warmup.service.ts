@@ -237,18 +237,24 @@ export class WarmupService {
       this.services.map(async (service) => {
         const start = Date.now();
         try {
-          const response = await this.natsClient.send<{ pong: boolean; service: string }>(
+          const response = await this.natsClient.send<{
+            success?: boolean;
+            data?: { pong: boolean; service: string };
+            pong?: boolean;
+          }>(
             service.natsPattern,
             { ping: true, timestamp: new Date().toISOString() },
             NATS_TIMEOUTS.QUICK,
           );
           const responseTime = Date.now() - start;
 
-          if (response?.pong) {
+          // ResponseTransformInterceptor가 { success: true, data: {...} }로 래핑함
+          const pong = response?.data?.pong ?? response?.pong;
+          if (pong) {
             this.logger.debug(`[NATS] ${service.name}: PONG (${responseTime}ms)`);
             return { natsStatus: 'ok' as const, natsResponseTime: responseTime };
           } else {
-            this.logger.warn(`[NATS] ${service.name}: Invalid response`);
+            this.logger.warn(`[NATS] ${service.name}: Invalid response - ${JSON.stringify(response)}`);
             return {
               natsStatus: 'error' as const,
               natsResponseTime: responseTime,
