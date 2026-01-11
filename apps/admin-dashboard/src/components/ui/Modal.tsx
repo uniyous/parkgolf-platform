@@ -126,7 +126,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidt
                 className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:pointer-events-none dark:ring-offset-gray-950 dark:focus:ring-blue-400"
                 aria-label="Close"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5 text-gray-500 hover:text-gray-700" />
               </button>
             </DialogClose>
           </DialogHeader>
