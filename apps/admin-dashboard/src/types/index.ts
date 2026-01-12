@@ -7,28 +7,9 @@ export const CourseStatus = {
 
 export type CourseStatus = typeof CourseStatus[keyof typeof CourseStatus];
 
-export interface Company {
-  id: number;
-  name: string;
-  businessNumber?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  status?: 'active' | 'inactive';
-  isActive: boolean;
-  description?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
+// Company 타입은 company.ts에서 관리
+export type { Company, CompanyType, CompanyStatus, CompanyFilters, CompanyStats, CreateCompanyDto, UpdateCompanyDto } from './company';
 
-export interface CompanyInput {
-  name: string;
-  businessNumber: string;
-  address: string;
-  phone: string;
-  email: string;
-  status: 'active' | 'inactive';
-}
 
 export interface Course {
   id: number;
@@ -246,18 +227,33 @@ export interface AuthResponse {
   user: User;
 }
 
-// --- Admin Types (v2 - 단순화된 구조) ---
+// --- Admin Types (v3 - CompanyType 기반 역할 관리) ---
 
-// 관리자 역할 (5개로 단순화)
-export type AdminRole =
-  | 'ADMIN'     // 시스템 관리자 - 전체 권한
-  | 'SUPPORT'   // 고객지원 - 예약/사용자/분석/지원
-  | 'MANAGER'   // 운영 관리자 - 코스/예약/사용자/관리자/분석
-  | 'STAFF'     // 현장 직원 - 타임슬롯/예약/지원
-  | 'VIEWER';   // 조회 전용 - 조회만
+// 플랫폼 역할 (본사, 협회용)
+export type PlatformRole =
+  | 'PLATFORM_ADMIN'    // 본사 최고 관리자 - 전체 권한
+  | 'PLATFORM_SUPPORT'  // 전체 고객지원/조회
+  | 'PLATFORM_VIEWER';  // 전체 데이터 조회
 
-// 관리자 범위 타입 (역할에서 자동 추론되므로 단순화)
-export type AdminScope = 'SYSTEM' | 'OPERATION' | 'VIEW';
+// 회사 역할 (가맹점용)
+export type CompanyRole =
+  | 'COMPANY_ADMIN'    // 회사 대표/총괄
+  | 'COMPANY_MANAGER'  // 운영 매니저
+  | 'COMPANY_STAFF'    // 현장 직원
+  | 'COMPANY_VIEWER';  // 회사 데이터 조회
+
+// 관리자 역할 (플랫폼 + 회사)
+export type AdminRole = PlatformRole | CompanyRole;
+
+// 역할 범위 (PLATFORM: 전체, COMPANY: 소속 회사만)
+export type AdminScope = 'PLATFORM' | 'COMPANY';
+
+// 회사 유형별 부여 가능 역할
+export const ALLOWED_ROLES_BY_COMPANY_TYPE: Record<string, AdminRole[]> = {
+  PLATFORM: ['PLATFORM_ADMIN', 'PLATFORM_SUPPORT', 'PLATFORM_VIEWER'],
+  ASSOCIATION: ['PLATFORM_SUPPORT', 'PLATFORM_VIEWER'],
+  FRANCHISE: ['COMPANY_ADMIN', 'COMPANY_MANAGER', 'COMPANY_STAFF', 'COMPANY_VIEWER'],
+};
 
 // 권한 정의
 export type Permission =
@@ -288,66 +284,94 @@ export type Permission =
   | 'PRIORITY_BOOKING' // 우선 예약
   | 'ADVANCED_SEARCH'; // 고급 검색
 
-// 하위 호환성을 위한 레거시 타입 별칭 (deprecated)
-export type PlatformAdminRole = 'ADMIN' | 'SUPPORT';
-export type CompanyAdminRole = 'MANAGER' | 'STAFF' | 'VIEWER';
+// 관리자-회사 연결 (AdminCompany)
+export interface AdminCompany {
+  id: number;
+  adminId: number;
+  companyId: number;
+  companyRoleCode: AdminRole;  // 회사 내 역할
+  isPrimary: boolean;          // 주 소속 회사
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  // 관계 (선택적으로 포함)
+  company?: Company;
+}
 
 export interface Admin {
   id: number;
   email: string;
   name: string;
-  roleCode: AdminRole;
-  role: AdminRole;              // 하위 호환성 (roleCode와 동일 값)
   isActive: boolean;
   lastLoginAt?: string | null;
   createdAt: string | null;
   updatedAt: string | null;
-  // 추가 필드
+  // 프로필
   phone?: string | null;
   department?: string | null;
   description?: string | null;
-  // 권한 관련
-  scope?: AdminScope;           // 역할에서 자동 추론 가능
+  avatarUrl?: string | null;
+  // 회사-역할 연결 (모든 관리자는 회사에 소속)
+  companies: AdminCompany[];
+  // 권한 (서버에서 계산하여 반환)
   permissions: Permission[];
-  // 관계 필드 (선택)
+  // 편의 필드 (주 소속 회사 정보)
+  primaryCompany?: AdminCompany;
+  primaryRole?: AdminRole;      // 주 소속 회사의 역할
+  primaryScope?: AdminScope;    // 역할에서 추론된 범위
+  // Legacy fields (하위 호환성)
+  /** @deprecated Use companies instead */
   companyId?: number;
+  /** @deprecated Use companies instead */
   company?: Company;
-  courseIds?: number[];  // 접근 가능한 코스 ID 목록
-  // Legacy field
+  /** @deprecated Use primaryRole instead */
+  roleCode?: AdminRole;
+  /** @deprecated Use primaryRole instead */
+  role?: AdminRole;
   username?: string;            // email.split('@')[0] 으로 생성
+}
+
+// 관리자-회사 할당 DTO
+export interface AdminCompanyAssignment {
+  companyId: number;
+  companyRoleCode: AdminRole;
+  isPrimary?: boolean;
 }
 
 export interface CreateAdminDto {
   email: string;
   name: string;
   password: string;
-  roleCode: AdminRole;
-  permissions?: Permission[];
-  isActive?: boolean;
+  // 회사-역할 할당 (필수)
+  companyAssignments: AdminCompanyAssignment[];
+  // 프로필
   phone?: string;
-  phoneNumber?: string;        // 하위 호환성 (phone과 동일)
   department?: string;
   description?: string;
-  membershipTier?: UserMembershipTier;
-  status?: UserStatus;
-  /** @deprecated Use roleCode instead */
-  role?: AdminRole;
+  isActive?: boolean;
+  // Legacy fields (하위 호환성)
+  /** @deprecated Use companyAssignments instead */
+  roleCode?: AdminRole;
+  /** @deprecated Use companyAssignments instead */
+  companyId?: number;
 }
 
 export interface UpdateAdminDto {
   email?: string;
   name?: string;
-  roleCode?: AdminRole;
-  permissions?: Permission[];
-  isActive?: boolean;
+  password?: string;
+  // 회사-역할 업데이트
+  companyAssignments?: AdminCompanyAssignment[];
+  // 프로필
   phone?: string;
-  phoneNumber?: string;        // 하위 호환성 (phone과 동일)
   department?: string;
   description?: string;
-  membershipTier?: UserMembershipTier;
-  status?: UserStatus;
-  /** @deprecated Use roleCode instead */
-  role?: AdminRole;
+  isActive?: boolean;
+  // Legacy fields (하위 호환성)
+  /** @deprecated Use companyAssignments instead */
+  roleCode?: AdminRole;
+  /** @deprecated Use companyAssignments instead */
+  companyId?: number;
 }
 
 export interface ChangePasswordDto {

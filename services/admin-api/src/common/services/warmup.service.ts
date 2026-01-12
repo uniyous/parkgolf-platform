@@ -40,7 +40,7 @@ export class WarmupService {
     {
       name: 'iam-service',
       httpUrl: process.env.IAM_SERVICE_URL || 'https://iam-service-dev-iihuzmuufa-du.a.run.app',
-      natsPattern: 'iam.ping',
+      natsPattern: 'iam.auth.ping',
       isNatsService: true,
     },
     {

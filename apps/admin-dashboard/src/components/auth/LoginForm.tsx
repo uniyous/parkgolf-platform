@@ -46,47 +46,26 @@ interface AdminAccountGroup {
 
 const ADMIN_ACCOUNT_GROUPS: AdminAccountGroup[] = [
   {
-    title: '시스템 관리',
+    title: '플랫폼 관리 (본사)',
     accounts: [
       {
         email: 'admin@parkgolf.com',
         password: 'admin123!@#',
-        name: '시스템관리자',
-        role: 'ADMIN',
-        description: '전체 시스템 관리 (모든 권한)'
-      },
-      {
-        email: 'support@parkgolf.com',
-        password: 'admin123!@#',
-        name: '고객지원담당',
-        role: 'SUPPORT',
-        description: '고객 문의 및 분석 담당'
+        name: '플랫폼관리자',
+        role: 'PLATFORM_ADMIN',
+        description: '본사 최고 관리자 (모든 권한)'
       },
     ]
   },
   {
-    title: '운영 관리',
+    title: '회사 관리 (가맹점)',
     accounts: [
       {
-        email: 'manager@gangnam-golf.com',
+        email: 'admin@gangnam.com',
         password: 'admin123!@#',
-        name: '운영매니저',
-        role: 'MANAGER',
-        description: '코스/예약/사용자 관리'
-      },
-      {
-        email: 'staff@gangnam-golf.com',
-        password: 'admin123!@#',
-        name: '현장직원',
-        role: 'STAFF',
-        description: '예약 접수 및 고객 응대'
-      },
-      {
-        email: 'viewer@parkgolf.com',
-        password: 'admin123!@#',
-        name: '조회담당',
-        role: 'VIEWER',
-        description: '데이터 조회만 가능'
+        name: '강남대표',
+        role: 'COMPANY_ADMIN',
+        description: '강남 파크골프장 대표 관리자'
       },
     ]
   },
@@ -96,7 +75,7 @@ const ADMIN_ACCOUNTS: AdminAccount[] = ADMIN_ACCOUNT_GROUPS.flatMap(group => gro
 
 const SERVICES = [
   { name: 'admin-api', isNats: false },
-  { name: 'auth-service', isNats: true },
+  { name: 'iam-service', isNats: true },
   { name: 'course-service', isNats: true },
   { name: 'booking-service', isNats: true },
 ];
@@ -292,11 +271,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case 'ADMIN': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'SUPPORT': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'MANAGER': return 'bg-green-100 text-green-800 border-green-200';
-      case 'STAFF': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'VIEWER': return 'bg-gray-100 text-gray-600 border-gray-200';
+      // 플랫폼 역할
+      case 'PLATFORM_ADMIN': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'PLATFORM_SUPPORT': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+      case 'PLATFORM_VIEWER': return 'bg-violet-100 text-violet-800 border-violet-200';
+      // 회사 역할
+      case 'COMPANY_ADMIN': return 'bg-green-100 text-green-800 border-green-200';
+      case 'COMPANY_MANAGER': return 'bg-teal-100 text-teal-800 border-teal-200';
+      case 'COMPANY_STAFF': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'COMPANY_VIEWER': return 'bg-gray-100 text-gray-600 border-gray-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };

@@ -6,7 +6,7 @@ import { DataContainer } from '@/components/common';
 import { AdminFormModal } from './AdminFormModal';
 import { RoleManagementModal } from './RoleManagementModal';
 import type { Admin, AdminRole, AdminScope } from '@/types';
-import { ADMIN_ROLE_LABELS, ADMIN_ROLE_COLORS, canManageAdmin } from '@/utils';
+import { ADMIN_ROLE_LABELS, ADMIN_ROLE_COLORS, canManageAdmin, PLATFORM_ROLES, COMPANY_ROLES } from '@/utils';
 
 type SortField = 'name' | 'email' | 'role' | 'createdAt' | 'lastLoginAt';
 type SortDirection = 'asc' | 'desc';
@@ -20,10 +20,15 @@ interface FilterState {
 
 // 역할별 스타일 정보
 const ROLE_META: Record<string, { icon: string; color: string }> = {
-  SUPER_ADMIN: { icon: '👑', color: 'bg-red-100 text-red-800 border-red-200' },
-  ADMIN: { icon: '🛡️', color: 'bg-blue-100 text-blue-800 border-blue-200' },
-  MANAGER: { icon: '👨‍💼', color: 'bg-purple-100 text-purple-800 border-purple-200' },
-  OPERATOR: { icon: '🎧', color: 'bg-green-100 text-green-800 border-green-200' },
+  // 플랫폼 역할
+  PLATFORM_ADMIN: { icon: '👑', color: 'bg-purple-100 text-purple-800 border-purple-200' },
+  PLATFORM_SUPPORT: { icon: '🎧', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
+  PLATFORM_VIEWER: { icon: '👁️', color: 'bg-violet-100 text-violet-800 border-violet-200' },
+  // 회사 역할
+  COMPANY_ADMIN: { icon: '🏢', color: 'bg-green-100 text-green-800 border-green-200' },
+  COMPANY_MANAGER: { icon: '👨‍💼', color: 'bg-teal-100 text-teal-800 border-teal-200' },
+  COMPANY_STAFF: { icon: '👤', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  COMPANY_VIEWER: { icon: '📖', color: 'bg-gray-100 text-gray-800 border-gray-200' },
 };
 
 export const AdminList: React.FC = () => {
@@ -49,6 +54,11 @@ export const AdminList: React.FC = () => {
   const [roleModal, setRoleModal] = useState<{ open: boolean; admin?: Admin }>({ open: false });
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; admin?: Admin }>({ open: false });
 
+  // Helper: 관리자의 주 역할 가져오기
+  const getAdminRole = (admin: Admin): AdminRole | undefined => {
+    return admin.primaryRole || admin.companies?.[0]?.companyRoleCode || admin.role;
+  };
+
   // Filtered & Sorted Data
   const filteredAdmins = useMemo(() => {
     let result = [...admins];
@@ -60,13 +70,19 @@ export const AdminList: React.FC = () => {
         (a) =>
           a.name?.toLowerCase().includes(search) ||
           a.email?.toLowerCase().includes(search) ||
-          a.username?.toLowerCase().includes(search)
+          a.username?.toLowerCase().includes(search) ||
+          a.primaryCompany?.company?.name?.toLowerCase().includes(search)
       );
     }
 
     // Role filter
     if (filters.role !== 'ALL') {
-      result = result.filter((a) => a.role === filters.role);
+      result = result.filter((a) => getAdminRole(a) === filters.role);
+    }
+
+    // Scope filter
+    if (filters.scope !== 'ALL') {
+      result = result.filter((a) => a.primaryScope === filters.scope);
     }
 
     // Status filter
@@ -76,8 +92,16 @@ export const AdminList: React.FC = () => {
 
     // Sort
     result.sort((a, b) => {
-      let aVal: any = a[sortField];
-      let bVal: any = b[sortField];
+      let aVal: any;
+      let bVal: any;
+
+      if (sortField === 'role') {
+        aVal = getAdminRole(a);
+        bVal = getAdminRole(b);
+      } else {
+        aVal = a[sortField];
+        bVal = b[sortField];
+      }
 
       if (sortField === 'createdAt' || sortField === 'lastLoginAt') {
         aVal = aVal ? new Date(aVal).getTime() : 0;
@@ -97,7 +121,7 @@ export const AdminList: React.FC = () => {
     total: admins.length,
     active: admins.filter((a) => a.isActive).length,
     inactive: admins.filter((a) => !a.isActive).length,
-    roleCount: new Set(admins.map(a => a.role)).size,
+    roleCount: new Set(admins.map(a => getAdminRole(a)).filter(Boolean)).size,
   }), [admins]);
 
   // Handlers
@@ -142,13 +166,16 @@ export const AdminList: React.FC = () => {
     );
   };
 
-  const getRoleBadgeStyle = (role: AdminRole) => {
+  const getRoleBadgeStyle = (role: AdminRole | undefined) => {
+    if (!role) return 'bg-gray-100 text-gray-800';
     return ADMIN_ROLE_COLORS[role] || 'bg-gray-100 text-gray-800';
   };
 
   const canManage = (admin: Admin) => {
-    if (!currentAdmin) return false;
-    return canManageAdmin(currentAdmin.role, admin.role);
+    if (!currentAdmin || !currentAdmin.primaryRole) return false;
+    const targetRole = getAdminRole(admin);
+    if (!targetRole) return false;
+    return canManageAdmin(currentAdmin.primaryRole, targetRole);
   };
 
   return (
@@ -241,10 +268,16 @@ export const AdminList: React.FC = () => {
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
             >
               <option value="ALL">전체 역할</option>
-              <option value="SUPER_ADMIN">슈퍼 관리자</option>
-              <option value="ADMIN">관리자</option>
-              <option value="MANAGER">매니저</option>
-              <option value="OPERATOR">운영자</option>
+              <optgroup label="플랫폼 역할">
+                {PLATFORM_ROLES.map((role) => (
+                  <option key={role} value={role}>{ADMIN_ROLE_LABELS[role]}</option>
+                ))}
+              </optgroup>
+              <optgroup label="회사 역할">
+                {COMPANY_ROLES.map((role) => (
+                  <option key={role} value={role}>{ADMIN_ROLE_LABELS[role]}</option>
+                ))}
+              </optgroup>
             </select>
             <select
               value={filters.status}
@@ -408,12 +441,23 @@ export const AdminList: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg">{ROLE_META[admin.role]?.icon || '👤'}</span>
-                        <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${ROLE_META[admin.role]?.color || getRoleBadgeStyle(admin.role)}`}>
-                          {ADMIN_ROLE_LABELS[admin.role] || admin.role}
-                        </span>
-                      </div>
+                      {(() => {
+                        const role = getAdminRole(admin);
+                        const companyName = admin.primaryCompany?.company?.name;
+                        return (
+                          <div className="flex flex-col space-y-1">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-lg">{role ? ROLE_META[role]?.icon || '👤' : '👤'}</span>
+                              <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${role ? ROLE_META[role]?.color || getRoleBadgeStyle(role) : 'bg-gray-100 text-gray-800'}`}>
+                                {role ? ADMIN_ROLE_LABELS[role] || role : '역할 없음'}
+                              </span>
+                            </div>
+                            {companyName && (
+                              <span className="text-xs text-gray-500 pl-7">@ {companyName}</span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-4">
                       <button

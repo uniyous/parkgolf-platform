@@ -22,8 +22,8 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
   const currentUser = {
     username: currentAdmin?.name || currentAdmin?.username || (isLoading ? '로딩중...' : '개발 관리자'),
     email: currentAdmin?.email || (isLoading ? '...' : 'admin@parkgolf.com'),
-    role: currentAdmin?.role || 'PLATFORM_OWNER',
-    company: currentAdmin?.company?.name || '플랫폼'
+    role: currentAdmin?.primaryRole || currentAdmin?.role || 'PLATFORM_ADMIN',
+    company: currentAdmin?.primaryCompany?.company?.name || currentAdmin?.company?.name || '플랫폼'
   };
 
   const handleLogout = async () => {

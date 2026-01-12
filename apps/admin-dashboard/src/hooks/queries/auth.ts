@@ -20,7 +20,7 @@ export const useLoginMutation = () => {
   return useMutation({
     meta: { globalLoading: false }, // 로컬 로딩 사용
     mutationFn: async (credentials: LoginCredentials) => {
-      const response = await apiClient.post<any>('/admin/auth/login', credentials);
+      const response = await apiClient.post<any>('/admin/iam/login', credentials);
       const result = response.data;
 
       if (!result.success || !result.data) {
@@ -56,7 +56,7 @@ export const useLogoutMutation = () => {
     meta: { globalLoading: false }, // 로컬 로딩 사용
     mutationFn: async () => {
       try {
-        await apiClient.post('/admin/auth/logout');
+        await apiClient.post('/admin/iam/logout');
       } catch (error) {
         console.error('Logout API call failed:', error);
       }
@@ -81,7 +81,7 @@ export const useGetCurrentUserMutation = () => {
         throw new Error('No access token found');
       }
 
-      const response = await apiClient.get<ProfileResponse>('/admin/auth/me');
+      const response = await apiClient.get<ProfileResponse>('/admin/iam/me');
       const result = response.data;
 
       if (!result.success || !result.data) {
@@ -127,7 +127,7 @@ export const useRefreshTokenMutation = () => {
         throw new Error('No refresh token found');
       }
 
-      const response = await apiClient.post<any>('/admin/auth/refresh', {
+      const response = await apiClient.post<any>('/admin/iam/refresh', {
         refreshToken,
       });
 

@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useCreateAdminMutation, useUpdateAdminMutation } from '@/hooks/queries';
 import { Modal } from '@/components/ui';
-import type { Admin, AdminRole } from '@/types';
+import type { Admin, AdminRole, CompanyType } from '@/types';
+import { ADMIN_ROLE_LABELS, getAllowedRolesForCompanyType, PLATFORM_ROLES, COMPANY_ROLES } from '@/utils/admin-permissions';
 
 interface AdminFormModalProps {
   open: boolean;
   admin?: Admin;
   onClose: () => void;
+  companyId?: number;         // 선택된 회사 ID
+  companyType?: CompanyType;  // 회사 유형 (역할 옵션 결정)
 }
 
 interface FormData {
@@ -15,6 +18,7 @@ interface FormData {
   password: string;
   confirmPassword: string;
   role: AdminRole;
+  companyId?: number;
   isActive: boolean;
   phone?: string;
   department?: string;
@@ -25,13 +29,19 @@ const initialFormData: FormData = {
   name: '',
   password: '',
   confirmPassword: '',
-  role: 'STAFF',
+  role: 'COMPANY_STAFF',
   isActive: true,
   phone: '',
   department: '',
 };
 
-export const AdminFormModal: React.FC<AdminFormModalProps> = ({ open, admin, onClose }) => {
+export const AdminFormModal: React.FC<AdminFormModalProps> = ({
+  open,
+  admin,
+  onClose,
+  companyId,
+  companyType = 'FRANCHISE'  // 기본값: 가맹점
+}) => {
   const createAdmin = useCreateAdminMutation();
   const updateAdmin = useUpdateAdminMutation();
   const isEditing = !!admin;
@@ -39,23 +49,37 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({ open, admin, onC
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
 
+  // 회사 유형에 따라 부여 가능한 역할 목록
+  const allowedRoles = getAllowedRolesForCompanyType(companyType);
+
   useEffect(() => {
     if (admin) {
+      // primaryRole 또는 첫 번째 회사의 역할 사용
+      const adminRole = admin.primaryRole || admin.companies?.[0]?.companyRoleCode || 'COMPANY_STAFF';
+      const adminCompanyId = admin.primaryCompany?.companyId || admin.companyId;
+
       setFormData({
         email: admin.email || '',
         name: admin.name || '',
         password: '',
         confirmPassword: '',
-        role: admin.role || 'STAFF',
+        role: adminRole,
+        companyId: adminCompanyId,
         isActive: admin.isActive ?? true,
         phone: admin.phone || '',
         department: admin.department || '',
       });
     } else {
-      setFormData(initialFormData);
+      // 새 관리자 생성 시 회사 ID와 기본 역할 설정
+      const defaultRole = allowedRoles[allowedRoles.length - 1] || 'COMPANY_STAFF'; // 가장 낮은 권한
+      setFormData({
+        ...initialFormData,
+        companyId: companyId,
+        role: defaultRole,
+      });
     }
     setErrors({});
-  }, [admin, open]);
+  }, [admin, open, companyId, allowedRoles]);
 
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof FormData, string>> = {};
@@ -97,6 +121,13 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({ open, admin, onC
     e.preventDefault();
     if (!validate()) return;
 
+    // 회사 ID 확인
+    const targetCompanyId = formData.companyId || companyId;
+    if (!targetCompanyId) {
+      setErrors({ ...errors, role: '회사를 선택해주세요.' });
+      return;
+    }
+
     try {
       if (isEditing && admin) {
         await updateAdmin.mutateAsync({
@@ -104,7 +135,11 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({ open, admin, onC
           data: {
             email: formData.email,
             name: formData.name,
-            roleCode: formData.role,
+            companyAssignments: [{
+              companyId: targetCompanyId,
+              companyRoleCode: formData.role,
+              isPrimary: true,
+            }],
             isActive: formData.isActive,
             phone: formData.phone || undefined,
             department: formData.department || undefined,
@@ -116,7 +151,11 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({ open, admin, onC
           email: formData.email,
           name: formData.name,
           password: formData.password,
-          roleCode: formData.role,
+          companyAssignments: [{
+            companyId: targetCompanyId,
+            companyRoleCode: formData.role,
+            isPrimary: true,
+          }],
           isActive: formData.isActive,
           phone: formData.phone || undefined,
           department: formData.department || undefined,
@@ -222,11 +261,15 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({ open, admin, onC
               onChange={(e) => handleChange('role', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
-              <option value="SUPER_ADMIN">슈퍼 관리자</option>
-              <option value="ADMIN">관리자</option>
-              <option value="MANAGER">매니저</option>
-              <option value="OPERATOR">운영자</option>
+              {allowedRoles.map((role) => (
+                <option key={role} value={role}>
+                  {ADMIN_ROLE_LABELS[role]}
+                </option>
+              ))}
             </select>
+            <p className="mt-1 text-xs text-gray-500">
+              회사 유형에 따라 부여 가능한 역할이 다릅니다
+            </p>
           </div>
 
           {/* Phone */}

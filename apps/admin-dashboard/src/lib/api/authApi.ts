@@ -1,7 +1,7 @@
 /**
- * Auth API - BFF 통합 클라이언트
+ * IAM API - BFF 통합 클라이언트
  *
- * BFF: /api/admin/auth
+ * BFF: /api/admin/iam
  * - Login/Logout
  * - Profile
  * - Token Refresh
@@ -12,11 +12,11 @@ import { extractSingle } from './bffParser';
 import type { ApiResponse } from '@/types/common';
 import type { AuthResponse, LoginCredentials, User } from "@/types";
 
-export const authApi = {
+export const iamApi = {
   async login(credentials: LoginCredentials): Promise<ApiResponse<AuthResponse>> {
     try {
-      console.log('Attempting login with auth-service directly:', credentials.email);
-      const response = await apiClient.post<unknown>('/admin/auth/login', credentials);
+      console.log('Attempting login with iam-service:', credentials.email);
+      const response = await apiClient.post<unknown>('/admin/iam/login', credentials);
       const authData = extractSingle<AuthResponse>(response.data);
 
       if (!authData) {
@@ -54,7 +54,7 @@ export const authApi = {
 
   async fetchUserProfile(): Promise<ApiResponse<User>> {
     try {
-      const response = await apiClient.get<unknown>('/admin/auth/profile');
+      const response = await apiClient.get<unknown>('/admin/iam/profile');
       const user = extractSingle<User>(response.data);
 
       if (!user) {
@@ -79,9 +79,9 @@ export const authApi = {
 
   async getCurrentUser(): Promise<ApiResponse<User>> {
     try {
-      // BFF API를 통해 프로필 정보 가져오기 (auth-service는 이제 NATS로만 통신)
+      // BFF API를 통해 프로필 정보 가져오기 (iam-service는 NATS로 통신)
       console.log('Fetching user profile from admin-api...');
-      const response = await apiClient.get<unknown>('/admin/auth/me');
+      const response = await apiClient.get<unknown>('/admin/iam/me');
       const user = extractSingle<User>(response.data);
 
       if (!user) {
@@ -127,7 +127,7 @@ export const authApi = {
 
   async refreshToken(refreshToken: string): Promise<ApiResponse<AuthResponse>> {
     try {
-      const response = await apiClient.post<unknown>('/admin/auth/refresh', {
+      const response = await apiClient.post<unknown>('/admin/iam/refresh', {
         refreshToken
       });
       const authData = extractSingle<AuthResponse>(response.data);
@@ -154,7 +154,7 @@ export const authApi = {
 
   async logout(): Promise<void> {
     try {
-      await apiClient.post('/admin/auth/logout');
+      await apiClient.post('/admin/iam/logout');
     } catch (error) {
       console.error('Logout failed:', error);
       // Continue with local cleanup even if API call fails
@@ -168,5 +168,6 @@ export const authApi = {
 } as const;
 
 // Legacy exports for backward compatibility
-export const login = authApi.login;
-export const fetchUserProfile = authApi.fetchUserProfile;
+export const authApi = iamApi;  // Alias for backward compatibility
+export const login = iamApi.login;
+export const fetchUserProfile = iamApi.fetchUserProfile;
