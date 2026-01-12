@@ -34,11 +34,15 @@ export class CompanyNatsController {
     }
   ) {
     this.logger.log('Get company list request');
-    const { filters, page = 1, limit = 20 } = data;
+    const { filters, page = 1, limit = 20 } = data || {};
+
+    // filters가 undefined일 경우 빈 객체로 처리
+    const safeFilters = filters || {};
+
     const result = await this.companyService.findAll({
-      ...filters,
-      page,
-      limit,
+      ...safeFilters,
+      page: Number(page) || 1,
+      limit: Number(limit) || 20,
     });
     return NatsResponse.paginated(
       CompanyResponseDto.fromEntities(result.companies),
