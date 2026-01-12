@@ -132,26 +132,20 @@ async function main() {
   await prisma.hole.deleteMany();
   await prisma.course.deleteMany();
   await prisma.club.deleteMany();
-  await prisma.company.deleteMany();
+  // Note: Company는 iam-service(iam_db)에서 관리됨 - 여기서는 companyId만 참조
 
-  console.log('🏢 회사 데이터를 생성합니다...');
-  const companies = [];
+  // 가상의 회사 데이터 (iam-service에서 관리되는 회사의 ID와 정보를 가정)
+  // 실제 환경에서는 iam-service API를 통해 회사 목록을 가져와야 함
+  console.log('🏢 회사 참조 데이터를 준비합니다... (iam-service에서 관리)');
+  const companies = companyNames.map((name, index) => ({
+    id: index + 1, // iam-service의 companies 테이블 ID 가정
+    name,
+    address: locations[index],
+    phoneNumber: generatePhoneNumber(),
+  }));
 
-  for (let i = 0; i < 20; i++) {
-    const company = await prisma.company.create({
-      data: {
-        name: companyNames[i],
-        description: `${companyNames[i]}는 최고의 파크골프 경험을 제공하는 프리미엄 파크골프장입니다.`,
-        address: locations[i],
-        phoneNumber: generatePhoneNumber(),
-        email: generateEmail(companyNames[i]),
-        website: `https://www.${companyNames[i].replace(/\s+/g, '').toLowerCase()}.com`,
-        isActive: Math.random() > 0.1, // 90% 활성
-      },
-    });
-    companies.push(company);
-    console.log(`  ✅ ${company.name} 생성 완료`);
-  }
+  console.log(`  ℹ️  ${companies.length}개 회사 참조 준비 완료 (companyId: 1-${companies.length})`);
+  console.log('  ⚠️  주의: 실제 iam-service의 companies 테이블에 해당 ID가 존재해야 합니다.');
 
   // Golf clubs 생성
   console.log('🏌️ 파크골프클럽 데이터를 생성합니다...');
@@ -299,15 +293,14 @@ async function main() {
 
   console.log('\n🎉 시드 데이터 생성이 완료되었습니다!');
   console.log(`📊 생성된 데이터 통계:`);
-  console.log(`  • 회사: ${companies.length}개`);
+  console.log(`  • 회사 참조: ${companies.length}개 (iam-service 관리)`);
   console.log(`  • 클럽: ${clubs.length}개`);
   console.log(`  • 코스: ${totalCourses}개`);
   console.log(`  • 홀: ${totalHoles}개`);
   console.log(`  • 게임: ${totalGames}개`);
   console.log(`  • 게임 주간 스케줄: ${totalGames * 7}개`);
 
-  // 실제 개수 확인
-  const actualCompanies = await prisma.company.count();
+  // 실제 개수 확인 (Company는 iam-service에서 관리)
   const actualClubs = await prisma.club.count();
   const actualCourses = await prisma.course.count();
   const actualHoles = await prisma.hole.count();
@@ -316,7 +309,6 @@ async function main() {
   const actualSchedules = await prisma.gameWeeklySchedule.count();
 
   console.log(`\n✅ 데이터베이스 확인:`);
-  console.log(`  • 회사: ${actualCompanies}개`);
   console.log(`  • 클럽: ${actualClubs}개`);
   console.log(`  • 코스: ${actualCourses}개`);
   console.log(`  • 홀: ${actualHoles}개`);
