@@ -11,8 +11,8 @@ export interface SignupRequest {
   role: string;
 }
 
-@ApiTags('auth')
-@Controller('api/admin/auth')
+@ApiTags('iam')
+@Controller('api/admin/iam')
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
