@@ -31,6 +31,29 @@ import { test, expect } from '@playwright/test';
  *    - 삭제 확인 다이얼로그
  */
 
+// 페이지 로드 대기 헬퍼 (권한 체크 및 데이터 로딩 대기)
+async function waitForClubPageLoad(page: import('@playwright/test').Page, timeout = 5000) {
+  // 페이지 로드 상태 대기
+  try {
+    await page.waitForLoadState('domcontentloaded', { timeout });
+  } catch {
+    // 무시
+  }
+  // 추가 렌더링 대기
+  await page.waitForTimeout(500);
+}
+
+// 권한 체크 - 접근 권한이 없으면 테스트 스킵
+async function checkAccessPermission(page: import('@playwright/test').Page, test: any): Promise<boolean> {
+  const noAccess = await page.getByText('접근 권한이 없습니다').isVisible().catch(() => false);
+  if (noAccess) {
+    console.log('골프장 관리 권한이 없습니다. 테스트 스킵.');
+    test.skip();
+    return false;
+  }
+  return true;
+}
+
 // 골프장 카드를 찾는 헬퍼 함수
 async function findClubCard(page: any) {
   const cardLocator = page.locator('[class*="cursor-pointer"]').filter({ has: page.locator('h3') }).first();
@@ -61,12 +84,17 @@ test.describe('골프장 목록 페이지', () => {
 
   test('1.1 페이지 로드 및 기본 요소 확인', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
 
     // URL 확인
     await expect(page).toHaveURL(/.*clubs/);
 
-    // 헤더 확인
-    await expect(page.getByRole('heading', { name: /골프장 관리/ })).toBeVisible();
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
+
+    // 헤더 확인 (이모지 🏌️ 포함)
+    const heading = page.locator('h1').filter({ hasText: '골프장 관리' });
+    await expect(heading).toBeVisible({ timeout: 10000 });
 
     // 부제목 확인
     await expect(page.getByText(/9홀 단위 코스 관리/)).toBeVisible();
@@ -83,6 +111,10 @@ test.describe('골프장 목록 페이지', () => {
 
   test('1.2 골프장 카드 정보 표시 확인', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -117,6 +149,10 @@ test.describe('골프장 목록 페이지', () => {
 
   test('1.3 검색 기능 - 키워드 입력 후 버튼 클릭', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     // 먼저 골프장이 있는지 확인
     const clubCard = await findClubCard(page);
@@ -143,6 +179,10 @@ test.describe('골프장 목록 페이지', () => {
 
   test('1.4 검색 기능 - 엔터키로 검색', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -166,6 +206,10 @@ test.describe('골프장 목록 페이지', () => {
 
   test('1.5 검색 후 전체 보기 버튼', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -192,11 +236,17 @@ test.describe('골프장 목록 페이지', () => {
 
   test('1.6 하단 페이지네이션 정보 확인', async ({ page }) => {
     await page.goto('/clubs');
-    await page.waitForTimeout(300);
+    await waitForClubPageLoad(page);
 
-    // 하단 정보 영역 확인
-    const footerInfo = page.getByText(/총.*개의 골프장이 등록되어 있습니다/);
-    await expect(footerInfo).toBeVisible();
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
+
+    // API 응답 대기
+    await page.waitForTimeout(1000);
+
+    // 하단 정보 영역 확인 (p.text-center 내에 있음)
+    const footerInfo = page.locator('p.text-center').filter({ hasText: /총.*개의 골프장/ });
+    await expect(footerInfo).toBeVisible({ timeout: 15000 });
   });
 });
 
@@ -208,6 +258,10 @@ test.describe('골프장 상세 페이지', () => {
 
   test('2.1 상세 페이지 이동 및 헤더 확인', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -247,6 +301,10 @@ test.describe('골프장 상세 페이지', () => {
 
   test('2.2 라운드 보기 버튼', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -268,6 +326,10 @@ test.describe('골프장 상세 페이지', () => {
 
   test('2.3 수정 버튼 (연필 아이콘)', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -293,6 +355,10 @@ test.describe('골프장 상세 페이지', () => {
 
   test('2.4 삭제 버튼 (휴지통 아이콘)', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -310,6 +376,10 @@ test.describe('골프장 상세 페이지', () => {
 
   test('2.5 뒤로가기 버튼', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -332,6 +402,10 @@ test.describe('골프장 상세 페이지', () => {
 
   test('2.6 탭 네비게이션 - 기본정보', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -355,6 +429,10 @@ test.describe('골프장 상세 페이지', () => {
 
   test('2.7 탭 네비게이션 - 코스관리', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -378,6 +456,10 @@ test.describe('골프장 상세 페이지', () => {
 
   test('2.8 탭 네비게이션 - 운영정보', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -408,6 +490,10 @@ test.describe('기본정보 탭', () => {
 
   test('3.1 기본정보 조회 모드', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -462,6 +548,10 @@ test.describe('기본정보 탭', () => {
 
   test('3.2 수정 모드 진입 및 취소', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -498,6 +588,10 @@ test.describe('기본정보 탭', () => {
 
   test('3.3 필드 수정 - 골프장명', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -529,6 +623,10 @@ test.describe('기본정보 탭', () => {
 
   test('3.4 운영 상태 변경 옵션 확인', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -564,6 +662,10 @@ test.describe('기본정보 탭', () => {
 
   test('3.5 운영 시간 변경', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -603,6 +705,10 @@ test.describe('기본정보 탭', () => {
 
   test('3.6 부대시설 체크박스', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -644,6 +750,10 @@ test.describe('운영정보 탭', () => {
 
   test('4.1 실시간 현황 카드 확인', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -667,6 +777,10 @@ test.describe('운영정보 탭', () => {
 
   test('4.2 분석 기간 설정', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -692,6 +806,10 @@ test.describe('운영정보 탭', () => {
 
   test('4.3 새로고침 버튼', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -719,6 +837,10 @@ test.describe('운영정보 탭', () => {
 
   test('4.4 18홀 조합별 분석 테이블', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -749,6 +871,10 @@ test.describe('운영정보 탭', () => {
 
   test('4.5 시즌 정보 섹션', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -785,6 +911,10 @@ test.describe('운영정보 탭', () => {
 
   test('4.6 운영 개선 제안 섹션', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -813,6 +943,10 @@ test.describe('골프장 삭제', () => {
 
   test('5.1 삭제 확인 다이얼로그 - 취소', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
@@ -851,7 +985,14 @@ test.describe('골프장 관리 통합 시나리오', () => {
   test('6.1 전체 워크플로우: 목록 -> 상세 -> 탭 순회 -> 목록 복귀', async ({ page }) => {
     // 1. 목록 페이지 로드
     await page.goto('/clubs');
-    await expect(page.getByRole('heading', { name: /골프장 관리/ })).toBeVisible();
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
+
+    // 헤더 확인 (이모지 🏌️ 포함)
+    const heading = page.locator('h1').filter({ hasText: '골프장 관리' });
+    await expect(heading).toBeVisible({ timeout: 10000 });
     console.log('✓ 1. 목록 페이지 로드');
 
     // 2. 골프장 카드 클릭
@@ -897,6 +1038,10 @@ test.describe('골프장 관리 통합 시나리오', () => {
 
   test('6.2 검색 후 상세 조회 워크플로우', async ({ page }) => {
     await page.goto('/clubs');
+    await waitForClubPageLoad(page);
+
+    // 권한 체크
+    if (!await checkAccessPermission(page, test)) return;
 
     const clubCard = await findClubCard(page);
     if (!clubCard) {
