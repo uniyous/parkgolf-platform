@@ -45,7 +45,7 @@ test.describe('시스템 점검', () => {
     await expect(page.getByText('admin-api 연결중...')).toBeVisible({ timeout: 5000 });
 
     // 서비스 목록 표시 확인
-    await expect(page.getByText('auth-service')).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText('iam-service')).toBeVisible({ timeout: 30000 });
     await expect(page.getByText('course-service')).toBeVisible();
     await expect(page.getByText('booking-service')).toBeVisible();
 

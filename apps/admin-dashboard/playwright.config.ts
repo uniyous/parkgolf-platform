@@ -34,21 +34,14 @@ export default defineConfig({
   },
 
   // 프로젝트 설정
+  // 인증은 globalSetup에서 처리 (API 직접 호출로 토큰 획득)
   projects: [
-    // 로그인 상태 설정
-    {
-      name: 'setup',
-      testMatch: /.*\.setup\.ts/,
-    },
-
-    // Chromium 테스트
     {
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
         storageState: 'e2e/.auth/admin.json',
       },
-      dependencies: ['setup'],
     },
   ],
 
