@@ -229,7 +229,7 @@ jobs:
               # iam-service: Always running for NATS subscription
               echo "min_instances=1" >> $GITHUB_OUTPUT
               echo "max_instances=1" >> $GITHUB_OUTPUT
-              echo "memory=256Mi" >> $GITHUB_OUTPUT
+              echo "memory=512Mi" >> $GITHUB_OUTPUT
               echo "cpu=1" >> $GITHUB_OUTPUT
               echo "cpu_throttling=true" >> $GITHUB_OUTPUT
             elif [ "$SERVICE" == "notify-service" ]; then
