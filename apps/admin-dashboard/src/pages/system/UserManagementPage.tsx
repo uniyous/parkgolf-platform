@@ -20,7 +20,7 @@ export const UserManagementPage: React.FC = () => {
         <Breadcrumb
           items={[
             { label: '시스템' },
-            { label: '회원 관리' }
+            { label: '사용자 관리' }
           ]}
         />
         <PageLayout.Content>
