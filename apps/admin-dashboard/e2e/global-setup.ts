@@ -7,7 +7,7 @@ const API_ENDPOINTS = [
   'https://admin-api-dev-iihuzmuufa-du.a.run.app/health',
   'https://user-api-dev-iihuzmuufa-du.a.run.app/health',
   'https://course-service-dev-iihuzmuufa-du.a.run.app/health',
-  'https://auth-service-dev-iihuzmuufa-du.a.run.app/health',
+  'https://iam-service-dev-iihuzmuufa-du.a.run.app/health',
   'https://booking-service-dev-iihuzmuufa-du.a.run.app/health',
 ];
 
