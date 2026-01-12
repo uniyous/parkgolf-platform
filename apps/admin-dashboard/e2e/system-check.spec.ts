@@ -93,7 +93,7 @@ test.describe('시스템 점검', () => {
     await page.locator('button').filter({ has: page.locator('svg path[d="M6 18L18 6M6 6l12 12"]') }).click();
 
     // 로그인 테스트
-    await page.getByRole('button', { name: /시스템관리자/ }).click();
+    await page.getByRole('button', { name: /플랫폼관리자/ }).click();
     await page.getByRole('button', { name: '로그인' }).click();
 
     await expect(page).toHaveURL(/.*dashboard/, { timeout: 15000 });

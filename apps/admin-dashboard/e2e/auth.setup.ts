@@ -11,8 +11,8 @@ setup('authenticate as admin', async ({ page }) => {
   // 로그인 페이지로 이동
   await page.goto('/login');
 
-  // 테스트 계정 버튼 클릭 (시스템관리자)
-  await page.getByRole('button', { name: /시스템관리자/ }).click();
+  // 테스트 계정 버튼 클릭 (플랫폼관리자)
+  await page.getByRole('button', { name: /플랫폼관리자/ }).click();
 
   // 로그인 버튼 클릭
   await page.getByRole('button', { name: '로그인' }).click();

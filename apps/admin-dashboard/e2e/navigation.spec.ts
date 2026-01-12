@@ -107,7 +107,7 @@ test.describe('헤더 테스트', () => {
 
   test('로그아웃 버튼 동작', async ({ page }) => {
     // 사용자 메뉴 클릭 (있는 경우)
-    const userMenuButton = page.locator('button').filter({ hasText: /시스템관리자|관리자/ }).first();
+    const userMenuButton = page.locator('button').filter({ hasText: /플랫폼관리자|관리자/ }).first();
 
     if (await userMenuButton.isVisible()) {
       await userMenuButton.click();
