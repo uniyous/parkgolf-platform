@@ -226,12 +226,12 @@ jobs:
           else
             # Development: minimal resources for cost optimization
             if [ "$SERVICE" == "iam-service" ]; then
-              # iam-service: Always running for NATS subscription, no CPU throttling (bcrypt CPU-intensive)
+              # iam-service: Always running for NATS subscription, CPU throttling enabled for cost optimization
               echo "min_instances=1" >> $GITHUB_OUTPUT
               echo "max_instances=1" >> $GITHUB_OUTPUT
               echo "memory=512Mi" >> $GITHUB_OUTPUT
               echo "cpu=1" >> $GITHUB_OUTPUT
-              echo "cpu_throttling=false" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
             elif [ "$SERVICE" == "notify-service" ]; then
               # notify-service: scale to zero
               echo "min_instances=0" >> $GITHUB_OUTPUT
