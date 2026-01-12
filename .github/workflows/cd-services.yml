@@ -36,6 +36,11 @@ name: CD Services
 on:
   workflow_dispatch:
     inputs:
+      ref:
+        description: 'Branch to deploy from'
+        required: true
+        type: string
+        default: 'develop'
       environment:
         description: 'Target environment'
         required: true
@@ -43,6 +48,7 @@ on:
         options:
           - dev
           - prod
+        default: 'dev'
       services:
         description: 'Services to deploy (comma-separated or "all")'
         required: true
@@ -76,6 +82,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || 'develop' }}
 
       - name: Determine environment
         id: env
@@ -129,6 +137,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || 'develop' }}
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
