@@ -1,7 +1,7 @@
 {
-  "name": "parkgolf-auth-service",
+  "name": "parkgolf-iam-service",
   "version": "0.0.1",
-  "description": "Authentication service for Park Golf",
+  "description": "Identity & Access Management service for Park Golf",
   "author": "Parkgolf Team",
   "private": true,
   "license": "UNLICENSED",

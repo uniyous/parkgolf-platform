@@ -18,7 +18,7 @@ export class UserNatsController {
 
   constructor(private readonly userService: UserService) {}
 
-  @MessagePattern('users.list')
+  @MessagePattern('iam.users.list')
   async getUserList(@Payload() data: { filters?: any; token?: string }) {
     this.logger.log('Get user list request');
     const { filters } = data;
@@ -27,49 +27,49 @@ export class UserNatsController {
     return NatsResponse.paginated(result.users, result.total, result.page, limit);
   }
 
-  @MessagePattern('users.getById')
+  @MessagePattern('iam.users.getById')
   async getUserById(@Payload() data: { userId: string; token?: string }) {
     this.logger.log(`Get user by ID: ${data.userId}`);
     const user = await this.userService.findOne(data.userId);
     return NatsResponse.success(user);
   }
 
-  @MessagePattern('users.create')
+  @MessagePattern('iam.users.create')
   async createUser(@Payload() data: { userData: any; token?: string }) {
     this.logger.log(`Create user: ${data.userData?.email}`);
     const user = await this.userService.create(data.userData);
     return NatsResponse.success(user);
   }
 
-  @MessagePattern('users.update')
+  @MessagePattern('iam.users.update')
   async updateUser(@Payload() data: { userId: string; updateData: any; token?: string }) {
     this.logger.log(`Update user: ${data.userId}`);
     const user = await this.userService.update(data.userId, data.updateData);
     return NatsResponse.success(user);
   }
 
-  @MessagePattern('users.delete')
+  @MessagePattern('iam.users.delete')
   async deleteUser(@Payload() data: { userId: string; token?: string }) {
     this.logger.log(`Delete user: ${data.userId}`);
     await this.userService.remove(parseInt(data.userId, 10));
     return NatsResponse.deleted();
   }
 
-  @MessagePattern('users.updateStatus')
+  @MessagePattern('iam.users.updateStatus')
   async updateUserStatus(@Payload() data: { userId: string; isActive: boolean; token?: string }) {
     this.logger.log(`Update user status: ${data.userId} -> ${data.isActive}`);
     const user = await this.userService.update(data.userId, { isActive: data.isActive });
     return NatsResponse.success(user);
   }
 
-  @MessagePattern('users.stats')
+  @MessagePattern('iam.users.stats')
   async getUserStats(@Payload() data: { dateRange?: any; token?: string }) {
     this.logger.log('Get user stats request');
     const stats = await this.userService.getStats();
     return NatsResponse.success(stats);
   }
 
-  @MessagePattern('users.findByEmail')
+  @MessagePattern('iam.users.findByEmail')
   async findUserByEmail(@Payload() data: { email: string; token?: string }) {
     this.logger.log(`Find user by email: ${data.email}`);
     const user = await this.userService.findByEmail(data.email);
@@ -79,7 +79,7 @@ export class UserNatsController {
     return NatsResponse.success(UserResponseDto.fromEntity(user));
   }
 
-  @MessagePattern('users.validateCredentials')
+  @MessagePattern('iam.users.validateCredentials')
   async validateUserCredentials(@Payload() data: { email: string; password: string }) {
     this.logger.log(`Validate user credentials: ${data.email}`);
     const user = await this.userService.validateUser(data.email, data.password);
@@ -89,21 +89,21 @@ export class UserNatsController {
     return NatsResponse.success(UserResponseDto.fromEntity(user));
   }
 
-  @MessagePattern('users.resetPassword')
+  @MessagePattern('iam.users.resetPassword')
   async resetUserPassword(@Payload() data: { userId: string; password: string; token?: string }) {
     this.logger.log(`Reset user password: ${data.userId}`);
     const user = await this.userService.resetPassword(data.userId, data.password);
     return NatsResponse.success(user);
   }
 
-  @MessagePattern('users.updateRole')
+  @MessagePattern('iam.users.updateRole')
   async updateUserRole(@Payload() data: { userId: string; role: string; token?: string }) {
     this.logger.log(`Update user role: ${data.userId} -> ${data.role}`);
     const user = await this.userService.updateRole(data.userId, data.role);
     return NatsResponse.success(user);
   }
 
-  @MessagePattern('users.updatePermissions')
+  @MessagePattern('iam.users.updatePermissions')
   async updateUserPermissions(@Payload() data: { userId: string; permissions: string[]; token?: string }) {
     this.logger.log(`Update user permissions: ${data.userId}`);
     const user = await this.userService.updatePermissions(data.userId, data.permissions);

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🧪 Running tests for parkgolf-auth-service..."
+echo "🧪 Running tests for parkgolf-iam-service..."
 
 # 단위 테스트
 echo "Running unit tests..."
@@ -14,4 +14,4 @@ npm run test:e2e
 echo "Generating coverage report..."
 npm run test:cov
 
-echo "✅ All tests completed for parkgolf-auth-service"
+echo "✅ All tests completed for parkgolf-iam-service"

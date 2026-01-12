@@ -24,7 +24,7 @@ mkdir -p "$PID_DIR"
 
 # 서비스 정의 (배열로 변경)
 # 핵심 서비스만 포함 (notify, search, ml 서비스는 MVP 완료 후 추가)
-SERVICES="auth-service:3011 course-service:3012 booking-service:3013 admin-api:3091 user-api:3092 admin-dashboard:3000 user-webapp:3001"
+SERVICES="iam-service:3011 course-service:3012 booking-service:3013 admin-api:3091 user-api:3092 admin-dashboard:3000 user-webapp:3001"
 
 # 서비스 시작 함수
 start_service() {
@@ -118,7 +118,7 @@ echo "Admin Dashboard: http://localhost:3000"
 echo "User WebApp:     http://localhost:3001"
 echo "Admin API (BFF): http://localhost:3091"
 echo "User API (BFF):  http://localhost:3092"
-echo "Auth Service:    http://localhost:3011"
+echo "IAM Service:     http://localhost:3011"
 echo "Course Service:  http://localhost:3012"
 echo "Booking Service: http://localhost:3013"
 echo ""

@@ -56,7 +56,7 @@ async function bootstrap() {
     const port = parseInt(process.env.PORT || '8080');
     await app.listen(port, '0.0.0.0');
 
-    logger.log(`🚀 Auth Service is running on port ${port}`);
+    logger.log(`🚀 IAM Service is running on port ${port}`);
     logger.log(`🩺 Health check available at: http://0.0.0.0:${port}/health`);
 
     // Register global interceptor BEFORE connecting microservice
@@ -72,7 +72,7 @@ async function bootstrap() {
               transport: Transport.NATS,
               options: {
                 servers: [process.env.NATS_URL],
-                queue: 'auth-service',
+                queue: 'iam-service',
                 reconnect: true,
                 maxReconnectAttempts: 3,
                 reconnectTimeWait: 2000,
@@ -91,17 +91,19 @@ async function bootstrap() {
       logger.warn('NATS_URL not provided, running in HTTP-only mode');
     }
 
-    logger.log(`📢 Queue: auth-service`);
+    logger.log(`📢 Queue: iam-service`);
     logger.log(`💬 Available message patterns:`);
-    logger.log(`   [Auth] auth.user.login, auth.user.validate, auth.user.refresh, auth.user.me`);
-    logger.log(`   [Auth] auth.admin.login, auth.admin.validate, auth.admin.refresh, auth.admin.me`);
-    logger.log(`   [Users] users.list, users.getById, users.create, users.update, users.delete, users.resetPassword, users.updateRole, users.updatePermissions`);
-    logger.log(`   [Users] users.updateStatus, users.stats, users.findByEmail, users.validateCredentials`);
-    logger.log(`   [Admins] admins.list, admins.getById, admins.create, admins.update, admins.delete`);
-    logger.log(`   [Admins] admins.updateStatus, admins.updatePermissions, admins.stats`);
-    logger.log(`   [Permissions] permissions.list`);
+    logger.log(`   [Auth] iam.auth.user.login, iam.auth.user.validate, iam.auth.user.refresh, iam.auth.user.me`);
+    logger.log(`   [Auth] iam.auth.admin.login, iam.auth.admin.validate, iam.auth.admin.refresh, iam.auth.admin.me`);
+    logger.log(`   [Users] iam.users.list, iam.users.getById, iam.users.create, iam.users.update, iam.users.delete`);
+    logger.log(`   [Users] iam.users.updateStatus, iam.users.stats, iam.users.findByEmail, iam.users.validateCredentials`);
+    logger.log(`   [Admins] iam.admins.list, iam.admins.getById, iam.admins.create, iam.admins.update, iam.admins.delete`);
+    logger.log(`   [Admins] iam.admins.updateStatus, iam.admins.updatePermissions, iam.admins.stats`);
+    logger.log(`   [Permissions] iam.permissions.list`);
+    logger.log(`   [Roles] iam.roles.list, iam.roles.permissions, iam.roles.withPermissions`);
+    logger.log(`   [Companies] iam.companies.list, iam.companies.getById, iam.companies.create, iam.companies.update, iam.companies.delete`);
   } catch (error) {
-    logger.error('Failed to start Auth Service', error);
+    logger.error('Failed to start IAM Service', error);
     process.exit(1);
   }
 }

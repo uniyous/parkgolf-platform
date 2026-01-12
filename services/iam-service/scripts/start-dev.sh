@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 Starting parkgolf-auth-service in development mode..."
+echo "🚀 Starting parkgolf-iam-service in development mode..."
 
 # 환경 변수 설정
 export NODE_ENV=development

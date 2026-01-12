@@ -18,7 +18,7 @@
 # - 보안: DB 비밀번호 인증
 #
 # 서비스별 NATS 사용:
-# - auth-service: auth.*, users.* 패턴 처리
+# - iam-service: auth.*, users.* 패턴 처리
 # - course-service: course.*, hole.*, company.* 패턴 처리
 # - booking-service: booking.* 패턴 처리
 # - notify-service: notification.> 구독
@@ -91,7 +91,7 @@ jobs:
       - name: Determine services to deploy
         id: services
         run: |
-          ALL_SERVICES='["auth-service","course-service","booking-service","notify-service","admin-api","user-api"]'
+          ALL_SERVICES='["iam-service","course-service","booking-service","notify-service","admin-api","user-api"]'
 
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             INPUT_SERVICES="${{ github.event.inputs.services }}"
@@ -198,8 +198,8 @@ jobs:
 
           if [ "$ENV" == "prod" ]; then
             # Production: higher resources
-            if [ "$SERVICE" == "auth-service" ]; then
-              # auth-service: Always running, no CPU throttling (bcrypt CPU-intensive)
+            if [ "$SERVICE" == "iam-service" ]; then
+              # iam-service: Always running, no CPU throttling (bcrypt CPU-intensive)
               echo "min_instances=1" >> $GITHUB_OUTPUT
               echo "max_instances=10" >> $GITHUB_OUTPUT
               echo "memory=1Gi" >> $GITHUB_OUTPUT
@@ -215,12 +215,12 @@ jobs:
             fi
           else
             # Development: minimal resources for cost optimization
-            if [ "$SERVICE" == "auth-service" ]; then
-              # auth-service: Always running for NATS subscription
+            if [ "$SERVICE" == "iam-service" ]; then
+              # iam-service: Always running for NATS subscription
               echo "min_instances=1" >> $GITHUB_OUTPUT
               echo "max_instances=1" >> $GITHUB_OUTPUT
-              echo "memory=512Mi" >> $GITHUB_OUTPUT
-              echo "cpu=1" >> $GITHUB_OUTPUT
+              echo "memory=256Mi" >> $GITHUB_OUTPUT
+              echo "cpu=0.5" >> $GITHUB_OUTPUT
               echo "cpu_throttling=true" >> $GITHUB_OUTPUT
             elif [ "$SERVICE" == "notify-service" ]; then
               # notify-service: scale to zero
@@ -242,7 +242,7 @@ jobs:
       - name: Deploy to Cloud Run
         env:
           # Service-specific DATABASE_URL secrets (for services with Prisma)
-          DATABASE_URL_AUTH_SERVICE: ${{ secrets.DATABASE_URL_AUTH_SERVICE }}
+          DATABASE_URL_IAM_SERVICE: ${{ secrets.DATABASE_URL_IAM_SERVICE }}
           DATABASE_URL_COURSE_SERVICE: ${{ secrets.DATABASE_URL_COURSE_SERVICE }}
           DATABASE_URL_BOOKING_SERVICE: ${{ secrets.DATABASE_URL_BOOKING_SERVICE }}
           DATABASE_URL_NOTIFY_SERVICE: ${{ secrets.DATABASE_URL_NOTIFY_SERVICE }}

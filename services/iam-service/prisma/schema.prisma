@@ -1,0 +1,250 @@
+// ==============================================
+// iam-service / iam_db - Schema v4
+// Identity & Access Management
+// ==============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==============================================
+// Company (회사/가맹점)
+// ==============================================
+model Company {
+  id              Int             @id @default(autoincrement())
+  name            String
+  code            String          @unique  // 회사 코드 (예: "GANGNAM-GC")
+  description     String?
+  businessNumber  String?         @unique @map("business_number")
+
+  // 연락처 정보
+  address         String?
+  phoneNumber     String?         @map("phone_number")
+  email           String?         @unique
+  website         String?
+  logoUrl         String?         @map("logo_url")
+
+  // 상태
+  status          CompanyStatus   @default(ACTIVE)
+  isActive        Boolean         @default(true) @map("is_active")
+
+  // 메타데이터
+  metadata        Json?           // 추가 설정 (운영시간, 정책 등)
+
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  // 관계
+  adminCompanies  AdminCompany[]
+
+  @@index([code])
+  @@index([status])
+  @@index([isActive])
+  @@map("companies")
+}
+
+enum CompanyStatus {
+  ACTIVE      // 정상 운영
+  INACTIVE    // 비활성
+  SUSPENDED   // 정지
+  PENDING     // 승인 대기
+}
+
+// ==============================================
+// AdminCompany (관리자-회사 연결)
+// ==============================================
+model AdminCompany {
+  id              Int         @id @default(autoincrement())
+  adminId         Int         @map("admin_id")
+  companyId       Int         @map("company_id")
+  companyRoleCode String      @map("company_role_code")  // 회사 내 역할
+
+  isPrimary       Boolean     @default(false) @map("is_primary")  // 주 소속 회사
+  isActive        Boolean     @default(true) @map("is_active")
+
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  // 관계
+  admin           Admin       @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  company         Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyRole     RoleMaster  @relation("CompanyRole", fields: [companyRoleCode], references: [code])
+
+  @@unique([adminId, companyId])
+  @@index([adminId])
+  @@index([companyId])
+  @@index([companyRoleCode])
+  @@map("admin_companies")
+}
+
+// ==============================================
+// Admin (관리자)
+// ==============================================
+model Admin {
+  id              Int                 @id @default(autoincrement())
+  email           String              @unique
+  password        String
+  name            String
+
+  // 플랫폼 역할 (본사 관리자용)
+  roleCode        String              @default("VIEWER") @map("role_code")
+  isPlatformAdmin Boolean             @default(false) @map("is_platform_admin")
+
+  // 프로필
+  phone           String?
+  department      String?
+  description     String?
+  avatarUrl       String?             @map("avatar_url")
+
+  // 상태
+  isActive        Boolean             @default(true) @map("is_active")
+  lastLoginAt     DateTime?           @map("last_login_at")
+
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  // 관계
+  role            RoleMaster          @relation("PlatformRole", fields: [roleCode], references: [code])
+  companies       AdminCompany[]      // 소속 회사들
+  activityLogs    AdminActivityLog[]
+  refreshTokens   AdminRefreshToken[]
+
+  @@index([roleCode])
+  @@index([isActive])
+  @@index([isPlatformAdmin])
+  @@index([createdAt])
+  @@map("admins")
+}
+
+model AdminRefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  adminId   Int      @map("admin_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@map("admin_refresh_tokens")
+}
+
+// ==============================================
+// User (일반 사용자)
+// ==============================================
+model User {
+  id            Int              @id @default(autoincrement())
+  email         String           @unique
+  password      String
+  name          String?
+  phone         String?
+
+  roleCode      String           @default("USER") @map("role_code")
+  isActive      Boolean          @default(true) @map("is_active")
+
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  // 관계
+  role          RoleMaster       @relation(fields: [roleCode], references: [code])
+  refreshTokens RefreshToken[]
+
+  @@index([roleCode])
+  @@index([isActive])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int      @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+// ==============================================
+// Role & Permission Masters
+// ==============================================
+model RoleMaster {
+  code        String   @id
+  name        String
+  description String?
+
+  // 역할 분류
+  userType    String   @map("user_type")  // 'ADMIN' | 'USER'
+  scope       String   @default("PLATFORM")  // 'PLATFORM' | 'COMPANY'
+  level       Int      @default(1)
+
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // 관계
+  users               User[]
+  platformAdmins      Admin[]         @relation("PlatformRole")
+  companyAdmins       AdminCompany[]  @relation("CompanyRole")
+  rolePermissions     RolePermission[]
+
+  @@index([userType])
+  @@index([scope])
+  @@index([isActive])
+  @@map("role_masters")
+}
+
+model PermissionMaster {
+  code        String   @id
+  name        String
+  description String?
+  category    String   // 'COMPANY', 'BOOKING', 'COURSE', 'USER', 'ADMIN', 'ANALYTICS'
+  level       String   @default("low")  // 'low', 'medium', 'high'
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  rolePermissions RolePermission[]
+
+  @@index([category])
+  @@index([isActive])
+  @@map("permission_masters")
+}
+
+model RolePermission {
+  roleCode       String   @map("role_code")
+  permissionCode String   @map("permission_code")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  role           RoleMaster       @relation(fields: [roleCode], references: [code], onDelete: Cascade)
+  permission     PermissionMaster @relation(fields: [permissionCode], references: [code], onDelete: Cascade)
+
+  @@id([roleCode, permissionCode])
+  @@index([roleCode])
+  @@index([permissionCode])
+  @@map("role_permissions")
+}
+
+// ==============================================
+// Activity Logs
+// ==============================================
+model AdminActivityLog {
+  id        Int      @id @default(autoincrement())
+  adminId   Int      @map("admin_id")
+  companyId Int?     @map("company_id")  // 회사 컨텍스트 (있는 경우)
+  action    String
+  resource  String?
+  details   Json?
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([companyId])
+  @@index([createdAt])
+  @@map("admin_activity_logs")
+}

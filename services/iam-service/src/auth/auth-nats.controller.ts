@@ -23,12 +23,12 @@ export class AuthNatsController {
   // Health Check / Ping
   // ============================================
 
-  @MessagePattern('auth.ping')
+  @MessagePattern('iam.auth.ping')
   async ping(@Payload() payload: { ping: boolean; timestamp: string }) {
     this.logger.debug(`NATS ping received: ${payload.timestamp}`);
     return {
       pong: true,
-      service: 'auth-service',
+      service: 'iam-service',
       timestamp: new Date().toISOString(),
       receivedAt: payload.timestamp,
     };
@@ -38,7 +38,7 @@ export class AuthNatsController {
   // User Authentication
   // ============================================
 
-  @MessagePattern('auth.user.login')
+  @MessagePattern('iam.auth.user.login')
   async userLogin(@Payload() loginDto: LoginDto) {
     this.logger.log(`User login request: ${loginDto.email}`);
 
@@ -52,7 +52,7 @@ export class AuthNatsController {
     return NatsResponse.success(result);
   }
 
-  @MessagePattern('auth.user.validate')
+  @MessagePattern('iam.auth.user.validate')
   async validateUserToken(@Payload() payload: { token: string }) {
     this.logger.log('User token validation request');
     const decoded = await this.authService.validateToken(payload.token);
@@ -65,7 +65,7 @@ export class AuthNatsController {
     return NatsResponse.success(decoded);
   }
 
-  @MessagePattern('auth.user.refresh')
+  @MessagePattern('iam.auth.user.refresh')
   async refreshUserToken(@Payload() payload: { refreshToken: string }) {
     this.logger.log('User token refresh request');
     const result = await this.authService.refreshToken(payload.refreshToken);
@@ -78,7 +78,7 @@ export class AuthNatsController {
     return NatsResponse.success(result);
   }
 
-  @MessagePattern('auth.user.me')
+  @MessagePattern('iam.auth.user.me')
   async getCurrentUser(@Payload() payload: { token: string }) {
     this.logger.log('Get current user request');
     const decoded = await this.authService.validateToken(payload.token);
@@ -96,29 +96,29 @@ export class AuthNatsController {
   // Admin Authentication
   // ============================================
 
-  @MessagePattern('auth.admin.login')
+  @MessagePattern('iam.auth.admin.login')
   async adminLogin(@Payload() loginDto: LoginDto) {
     const startTime = Date.now();
-    this.logger.log(`[PERF] auth-service adminLogin START - email: ${loginDto.email}`);
+    this.logger.log(`[PERF] iam-service adminLogin START - email: ${loginDto.email}`);
 
     const validateStartTime = Date.now();
     const admin = await this.authService.validateAdmin(loginDto.email, loginDto.password);
-    this.logger.log(`[PERF] auth-service validateAdmin: ${Date.now() - validateStartTime}ms`);
+    this.logger.log(`[PERF] iam-service validateAdmin: ${Date.now() - validateStartTime}ms`);
 
     if (!admin) {
-      this.logger.log(`[PERF] auth-service adminLogin FAILED (invalid credentials) - total: ${Date.now() - startTime}ms`);
+      this.logger.log(`[PERF] iam-service adminLogin FAILED (invalid credentials) - total: ${Date.now() - startTime}ms`);
       throw new UnauthorizedException('Invalid email or password');
     }
 
     const loginStartTime = Date.now();
     const result = await this.authService.adminLogin(admin);
-    this.logger.log(`[PERF] auth-service adminLogin (token gen): ${Date.now() - loginStartTime}ms`);
+    this.logger.log(`[PERF] iam-service adminLogin (token gen): ${Date.now() - loginStartTime}ms`);
 
-    this.logger.log(`[PERF] auth-service adminLogin SUCCESS - total: ${Date.now() - startTime}ms`);
+    this.logger.log(`[PERF] iam-service adminLogin SUCCESS - total: ${Date.now() - startTime}ms`);
     return NatsResponse.success(result);
   }
 
-  @MessagePattern('auth.admin.validate')
+  @MessagePattern('iam.auth.admin.validate')
   async validateAdminToken(@Payload() payload: { token: string }) {
     this.logger.log('Admin token validation request');
     const decoded = await this.authService.validateToken(payload.token);
@@ -131,14 +131,14 @@ export class AuthNatsController {
     return NatsResponse.success(decoded);
   }
 
-  @MessagePattern('auth.admin.refresh')
+  @MessagePattern('iam.auth.admin.refresh')
   async refreshAdminToken(@Payload() payload: { refreshToken: string }) {
     this.logger.log('Admin token refresh request');
     const result = await this.authService.adminRefreshToken(payload.refreshToken);
     return NatsResponse.success(result);
   }
 
-  @MessagePattern('auth.admin.me')
+  @MessagePattern('iam.auth.admin.me')
   async getCurrentAdmin(@Payload() payload: { token: string }) {
     this.logger.log('Get current admin request');
     const decoded = await this.authService.validateToken(payload.token);

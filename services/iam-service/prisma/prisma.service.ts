@@ -15,7 +15,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
       );
 
       await Promise.race([connectPromise, timeoutPromise]);
-      this.logger.log('🗄️  Database connected for parkgolf-auth-service');
+      this.logger.log('🗄️  Database connected for parkgolf-iam-service');
     } catch (error) {
       this.logger.warn('⚠️  Database connection failed, service will run in limited mode');
       this.logger.warn(`Error: ${error.message}`);

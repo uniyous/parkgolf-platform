@@ -15,7 +15,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # 서비스 정의
 # 핵심 서비스만 포함
-SERVICES="auth-service:3011 course-service:3012 booking-service:3013 admin-api:3091 admin-dashboard:3000 user-webapp:3002"
+SERVICES="iam-service:3011 course-service:3012 booking-service:3013 admin-api:3091 admin-dashboard:3000 user-webapp:3002"
 
 # 인프라 서비스 정의
 INFRA_SERVICES="postgresql:5432 redis:6379 nats:4222 elasticsearch:9200"
@@ -69,7 +69,7 @@ echo "User API:        http://localhost:3092/api"
 echo ""
 echo "Health Endpoints:"
 echo "================"
-for service_info in "admin-api:3091 user-api:3092 auth-service:3011 course-service:3012 booking-service:3013"; do
+for service_info in "admin-api:3091 user-api:3092 iam-service:3011 course-service:3012 booking-service:3013"; do
     IFS=':' read -r service port <<< "$service_info"
     echo "- http://localhost:$port/health"
 done

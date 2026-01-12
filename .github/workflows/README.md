@@ -5,10 +5,10 @@
 
 ## Workflows
 
-### 1. Auth Service (`deploy-auth-service.yml`)
+### 1. IAM Service (`deploy-iam-service.yml`)
 - **포트**: 3011
-- **트리거**: `services/auth-service/` 경로 변경 시
-- **기능**: JWT 인증, 사용자 관리, RBAC 권한 시스템
+- **트리거**: `services/iam-service/` 경로 변경 시
+- **기능**: Identity & Access Management - JWT 인증, 사용자/관리자/회사 관리, RBAC 권한 시스템
 
 ### 2. Course Service (`deploy-course-service.yml`)
 - **포트**: NATS only (HTTP 없음)
@@ -41,8 +41,8 @@
 - `CLOUDSQL_CONNECTION_NAME`: Cloud SQL 연결 이름
 
 ### 데이터베이스
-- `AUTH_DATABASE_URL`: Auth 서비스 DB URL
-- `COURSE_DATABASE_URL`: Course 서비스 DB URL  
+- `IAM_DATABASE_URL`: IAM 서비스 DB URL
+- `COURSE_DATABASE_URL`: Course 서비스 DB URL
 - `BOOKING_DATABASE_URL`: Booking 서비스 DB URL
 
 ### Redis

@@ -7,7 +7,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       status: 'ok',
-      service: 'auth-service',
+      service: 'iam-service',
       timestamp: new Date().toISOString(),
       port: port
     }));

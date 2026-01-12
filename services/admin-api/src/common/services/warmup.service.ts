@@ -38,9 +38,9 @@ export class WarmupService {
 
   private readonly services: ServiceConfig[] = [
     {
-      name: 'auth-service',
-      httpUrl: process.env.AUTH_SERVICE_URL || 'https://auth-service-dev-iihuzmuufa-du.a.run.app',
-      natsPattern: 'auth.ping',
+      name: 'iam-service',
+      httpUrl: process.env.IAM_SERVICE_URL || 'https://iam-service-dev-iihuzmuufa-du.a.run.app',
+      natsPattern: 'iam.ping',
       isNatsService: true,
     },
     {

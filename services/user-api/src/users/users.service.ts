@@ -15,7 +15,7 @@ export interface UserProfileDto {
  * Users Service for User API
  *
  * NATS Patterns:
- * - User CRUD: users.getById, users.update
+ * - User CRUD: iam.users.getById, iam.users.update
  */
 @Injectable()
 export class UsersService {
@@ -27,7 +27,7 @@ export class UsersService {
     this.logger.log(`Get profile: userId=${userId}`);
 
     const response = await this.natsClient.send<any>(
-      'users.getById',
+      'iam.users.getById',
       { userId: String(userId) },
       NATS_TIMEOUTS.QUICK,
     );
@@ -54,7 +54,7 @@ export class UsersService {
   async updateProfile(userId: number, updateData: any): Promise<UserProfileDto> {
     this.logger.log(`Update profile: userId=${userId}`);
 
-    const response = await this.natsClient.send<any>('users.update', {
+    const response = await this.natsClient.send<any>('iam.users.update', {
       userId: String(userId),
       updateData,
     });

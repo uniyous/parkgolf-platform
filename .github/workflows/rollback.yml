@@ -19,7 +19,7 @@ on:
         required: true
         type: choice
         options:
-          - auth-service
+          - iam-service
           - course-service
           - booking-service
           - notify-service
@@ -96,7 +96,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: ${{ github.event.inputs.service == 'all' && fromJson('["auth-service","course-service","booking-service","notify-service","admin-api","user-api"]') || fromJson(format('["{0}"]', github.event.inputs.service)) }}
+        service: ${{ github.event.inputs.service == 'all' && fromJson('["iam-service","course-service","booking-service","notify-service","admin-api","user-api"]') || fromJson(format('["{0}"]', github.event.inputs.service)) }}
     steps:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2

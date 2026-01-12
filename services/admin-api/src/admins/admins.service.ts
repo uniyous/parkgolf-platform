@@ -25,9 +25,10 @@ export interface AdminStatsResponse {
  * Admin Management Service
  *
  * NATS Patterns:
- * - Admin CRUD: admins.list, admins.getById, admins.create, admins.update, admins.delete
- * - Admin Actions: admins.updateStatus, admins.updatePermissions, admins.stats
- * - Permissions: permissions.list
+ * - Admin CRUD: iam.admins.list, iam.admins.getById, iam.admins.create, iam.admins.update, iam.admins.delete
+ * - Admin Actions: iam.admins.updateStatus, iam.admins.updatePermissions, iam.admins.stats
+ * - Permissions: iam.permissions.list
+ * - Roles: iam.roles.list, iam.roles.permissions, iam.roles.withPermissions
  */
 @Injectable()
 export class AdminService {
@@ -46,17 +47,17 @@ export class AdminService {
     token: string,
   ): Promise<ApiResponse<AdminListResponse>> {
     this.logger.log('Fetching admin list');
-    return this.natsClient.send('admins.list', { filters, page, limit, token }, NATS_TIMEOUTS.LIST_QUERY);
+    return this.natsClient.send('iam.admins.list', { filters, page, limit, token }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   async getAdminById(adminId: string, token: string): Promise<ApiResponse<AdminResponseDto>> {
     this.logger.log(`Fetching admin: ${adminId}`);
-    return this.natsClient.send('admins.getById', { adminId, token });
+    return this.natsClient.send('iam.admins.getById', { adminId, token });
   }
 
   async createAdmin(adminData: CreateAdminDto, token: string): Promise<ApiResponse<AdminResponseDto>> {
     this.logger.log('Creating admin');
-    return this.natsClient.send('admins.create', { adminData, token });
+    return this.natsClient.send('iam.admins.create', { adminData, token });
   }
 
   async updateAdmin(
@@ -65,12 +66,12 @@ export class AdminService {
     token: string,
   ): Promise<ApiResponse<AdminResponseDto>> {
     this.logger.log(`Updating admin: ${adminId}`);
-    return this.natsClient.send('admins.update', { adminId, updateData, token });
+    return this.natsClient.send('iam.admins.update', { adminId, updateData, token });
   }
 
   async deleteAdmin(adminId: string, token: string): Promise<ApiResponse<AdminResponseDto>> {
     this.logger.log(`Deleting admin: ${adminId}`);
-    return this.natsClient.send('admins.delete', { adminId, token });
+    return this.natsClient.send('iam.admins.delete', { adminId, token });
   }
 
   // ============================================
@@ -83,7 +84,7 @@ export class AdminService {
     token: string,
   ): Promise<ApiResponse<AdminResponseDto>> {
     this.logger.log(`Updating admin status: ${adminId} -> ${isActive}`);
-    return this.natsClient.send('admins.updateStatus', { adminId, isActive, token });
+    return this.natsClient.send('iam.admins.updateStatus', { adminId, isActive, token });
   }
 
   async updateAdminPermissions(
@@ -94,12 +95,12 @@ export class AdminService {
     this.logger.log(`Updating admin permissions: ${adminId}`);
     // Convert permission IDs to string codes for auth-service compatibility
     const permissions = permissionIds.map(id => String(id));
-    return this.natsClient.send('admins.updatePermissions', { adminId, permissions, token });
+    return this.natsClient.send('iam.admins.updatePermissions', { adminId, permissions, token });
   }
 
   async getAdminStats(dateRange: { startDate?: string; endDate?: string }, token: string): Promise<ApiResponse<AdminStatsResponse>> {
     this.logger.log('Fetching admin statistics');
-    return this.natsClient.send('admins.stats', { dateRange, token }, NATS_TIMEOUTS.ANALYTICS);
+    return this.natsClient.send('iam.admins.stats', { dateRange, token }, NATS_TIMEOUTS.ANALYTICS);
   }
 
   // ============================================
@@ -108,7 +109,7 @@ export class AdminService {
 
   async getPermissionList(token: string): Promise<ApiResponse<string[]>> {
     this.logger.log('Fetching permission list');
-    return this.natsClient.send('permissions.list', { token });
+    return this.natsClient.send('iam.permissions.list', { token });
   }
 
   // ============================================
@@ -117,16 +118,16 @@ export class AdminService {
 
   async getRoleList(userType: string | undefined, token: string): Promise<ApiResponse<unknown[]>> {
     this.logger.log('Fetching role list');
-    return this.natsClient.send('roles.list', { userType, token });
+    return this.natsClient.send('iam.roles.list', { userType, token });
   }
 
   async getRolePermissions(roleCode: string, token: string): Promise<ApiResponse<string[]>> {
     this.logger.log(`Fetching permissions for role: ${roleCode}`);
-    return this.natsClient.send('roles.permissions', { roleCode, token });
+    return this.natsClient.send('iam.roles.permissions', { roleCode, token });
   }
 
   async getRolesWithPermissions(userType: string | undefined, token: string): Promise<ApiResponse<unknown[]>> {
     this.logger.log('Fetching roles with permissions');
-    return this.natsClient.send('roles.withPermissions', { userType, token }, NATS_TIMEOUTS.LIST_QUERY);
+    return this.natsClient.send('iam.roles.withPermissions', { userType, token }, NATS_TIMEOUTS.LIST_QUERY);
   }
 }

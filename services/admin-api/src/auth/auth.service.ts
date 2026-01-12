@@ -38,33 +38,33 @@ export class AuthService {
   async login(loginRequest: LoginRequest): Promise<AuthResponse> {
     const startTime = Date.now();
     this.logger.log(`[PERF] AuthService.login START - sending NATS message`);
-    const result = await this.natsClient.send<AuthResponse>('auth.admin.login', loginRequest);
+    const result = await this.natsClient.send<AuthResponse>('iam.auth.admin.login', loginRequest);
     this.logger.log(`[PERF] AuthService.login END - NATS response received in ${Date.now() - startTime}ms`);
     return result;
   }
 
   async validateToken(token: string): Promise<any> {
     this.logger.log('Validating admin token');
-    return this.natsClient.send('auth.admin.validate', { token });
+    return this.natsClient.send('iam.auth.admin.validate', { token });
   }
 
   async refreshToken(refreshToken: string): Promise<AuthResponse> {
     this.logger.log('Refreshing admin token');
-    return this.natsClient.send<AuthResponse>('auth.admin.refresh', { refreshToken });
+    return this.natsClient.send<AuthResponse>('iam.auth.admin.refresh', { refreshToken });
   }
 
   async getCurrentAdmin(token: string): Promise<any> {
     this.logger.log('Getting current admin info');
-    return this.natsClient.send('auth.admin.me', { token });
+    return this.natsClient.send('iam.auth.admin.me', { token });
   }
 
   async getCurrentUser(token: string): Promise<any> {
     this.logger.log('Getting current user info via admin token');
-    return this.natsClient.send('auth.admin.me', { token });
+    return this.natsClient.send('iam.auth.admin.me', { token });
   }
 
   async createAdmin(adminData: any): Promise<any> {
     this.logger.log(`Creating admin: ${adminData.email}`);
-    return this.natsClient.send('admins.create', { adminData });
+    return this.natsClient.send('iam.admins.create', { adminData });
   }
 }
