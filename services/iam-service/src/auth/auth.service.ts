@@ -154,22 +154,43 @@ export class AuthService {
     }
 
     async adminLogin(admin: any) {
-        this.logger.debug(`Admin login - permissions count: ${admin.permissions?.length || 0}`);
+        this.logger.debug(`Admin login - permissions count: ${admin.permissions?.length || 0}, companies: ${admin.companies?.length || 0}`);
 
         // Get admin permissions
         const adminPermissions = admin.permissions || [];
         const permissionCodes = adminPermissions.map(p => p.permission);
         this.logger.debug(`Permission codes: ${permissionCodes.join(', ')}`);
 
+        // 주 소속 역할 코드 (레거시 호환성)
+        const roleCode = admin.roleCode || 'COMPANY_VIEWER';
+
         const payload: AdminJwtPayload = {
             email: admin.email,
             sub: admin.id,
-            roles: [admin.roleCode],
+            roles: [roleCode],
             type: 'admin',
         };
 
         const accessToken = this.jwtService.sign(payload);
         const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+
+        // companies 배열 변환 (프론트엔드 형식에 맞게)
+        const companies = (admin.companies || []).map((ac: any) => ({
+            id: ac.id,
+            adminId: ac.adminId,
+            companyId: ac.companyId,
+            companyRoleCode: ac.companyRoleCode,
+            isPrimary: ac.isPrimary,
+            isActive: ac.isActive,
+            createdAt: ac.createdAt,
+            updatedAt: ac.updatedAt,
+            company: ac.company ? {
+                id: ac.company.id,
+                name: ac.company.name,
+                code: ac.company.code,
+                companyType: ac.company.companyType,
+            } : undefined,
+        }));
 
         return {
             accessToken,
@@ -178,7 +199,17 @@ export class AuthService {
                 id: admin.id,
                 email: admin.email,
                 name: admin.name,
-                roles: [admin.roleCode],
+                phone: admin.phone,
+                department: admin.department,
+                isActive: admin.isActive,
+                lastLoginAt: admin.lastLoginAt,
+                createdAt: admin.createdAt,
+                updatedAt: admin.updatedAt,
+                // v3 구조: companies 배열
+                companies,
+                // 레거시 호환성
+                roleCode,
+                roles: [roleCode],
                 type: 'admin',
                 permissions: permissionCodes,
             }
@@ -236,21 +267,46 @@ export class AuthService {
 
             // Type assertion for admin with permissions relation
             const adminWithPermissions = admin as any;
+            const permissionCodes = adminWithPermissions.permissions?.map((p: any) => p.permission) || [];
+
+            // companies 배열 변환
+            const companies = (admin.companies || []).map((ac: any) => ({
+                id: ac.id,
+                adminId: ac.adminId,
+                companyId: ac.companyId,
+                companyRoleCode: ac.companyRoleCode,
+                isPrimary: ac.isPrimary,
+                isActive: ac.isActive,
+                createdAt: ac.createdAt,
+                updatedAt: ac.updatedAt,
+                company: ac.company ? {
+                    id: ac.company.id,
+                    name: ac.company.name,
+                    code: ac.company.code,
+                    companyType: ac.company.companyType,
+                } : undefined,
+            }));
+
+            const roleCode = admin.roleCode || 'COMPANY_VIEWER';
 
             return {
                 id: admin.id,
                 email: admin.email,
                 name: admin.name,
-                roles: [admin.roleCode],
-                scope: this.getAdminScope(admin.roleCode),
-                permissions: adminWithPermissions.permissions?.map((p: any) => p.permission) || [],
+                phone: admin.phone,
+                department: admin.department,
+                description: admin.description,
                 isActive: admin.isActive,
                 lastLoginAt: admin.lastLoginAt,
                 createdAt: admin.createdAt,
                 updatedAt: admin.updatedAt,
-                department: admin.department,
-                description: admin.description,
-                phone: admin.phone,
+                // v3 구조: companies 배열
+                companies,
+                // 레거시 호환성
+                roleCode,
+                roles: [roleCode],
+                scope: this.getAdminScope(roleCode),
+                permissions: permissionCodes,
                 type: 'admin'
             };
         } else {
@@ -273,15 +329,25 @@ export class AuthService {
     }
 
     private getAdminScope(roleCode: string): string {
-        // Map role codes to admin scopes (v3 - simplified)
+        // Map role codes to admin scopes (v3 - CompanyType 기반)
         const roleToScope: Record<string, string> = {
-            'ADMIN': 'SYSTEM',
-            'SUPPORT': 'SYSTEM',
-            'MANAGER': 'OPERATION',
-            'STAFF': 'OPERATION',
-            'VIEWER': 'VIEW'
+            // 플랫폼 역할
+            'PLATFORM_ADMIN': 'PLATFORM',
+            'PLATFORM_SUPPORT': 'PLATFORM',
+            'PLATFORM_VIEWER': 'PLATFORM',
+            // 회사 역할
+            'COMPANY_ADMIN': 'COMPANY',
+            'COMPANY_MANAGER': 'COMPANY',
+            'COMPANY_STAFF': 'COMPANY',
+            'COMPANY_VIEWER': 'COMPANY',
+            // 레거시 호환성
+            'ADMIN': 'PLATFORM',
+            'SUPPORT': 'PLATFORM',
+            'MANAGER': 'COMPANY',
+            'STAFF': 'COMPANY',
+            'VIEWER': 'COMPANY'
         };
 
-        return roleToScope[roleCode] || 'VIEW';
+        return roleToScope[roleCode] || 'COMPANY';
     }
 }

@@ -1,9 +1,9 @@
-import { IsEmail, IsString, IsNotEmpty, MinLength, IsIn, IsOptional } from 'class-validator';
+import { IsEmail, IsString, IsNotEmpty, MinLength, IsIn, IsOptional, IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Admin } from '@prisma/client';
 
-/** Admin 엔티티 타입 (관계 포함 가능) */
-export type AdminWithRelations = Admin;
+/** Admin 엔티티 타입 (관계 포함 가능, roleCode는 AdminCompany에서 계산됨) */
+export type AdminWithRelations = Admin & { roleCode?: string; companies?: any[] };
 
 /** Admin 응답 DTO - password 제외 */
 export class AdminResponseDto {
@@ -16,8 +16,8 @@ export class AdminResponseDto {
   @ApiProperty({ description: 'Admin name' })
   name: string;
 
-  @ApiProperty({ description: 'Role code' })
-  roleCode: string;
+  @ApiProperty({ description: 'Role code (from primary company)', required: false })
+  roleCode?: string;
 
   @ApiProperty({ description: 'Phone number' })
   phone: string | null;
@@ -42,13 +42,14 @@ export class AdminResponseDto {
 
   /**
    * 엔티티를 DTO로 변환 (password 제외)
+   * roleCode는 AdminCompany에서 계산된 값을 사용
    */
   static fromEntity(entity: AdminWithRelations): AdminResponseDto {
     const dto = new AdminResponseDto();
     dto.id = entity.id;
     dto.email = entity.email;
     dto.name = entity.name;
-    dto.roleCode = entity.roleCode;
+    dto.roleCode = entity.roleCode || 'COMPANY_VIEWER';
     dto.phone = entity.phone;
     dto.department = entity.department;
     dto.description = entity.description;
@@ -81,8 +82,17 @@ export class CreateAdminDto {
   @IsNotEmpty()
   name: string;
 
-  @IsIn(['ADMIN', 'SUPPORT', 'MANAGER', 'STAFF', 'VIEWER'])
+  @IsNumber()
+  @IsNotEmpty()
+  @ApiProperty({ description: 'Company ID to assign admin to' })
+  companyId: number;
+
+  @IsIn([
+    'PLATFORM_ADMIN', 'PLATFORM_SUPPORT', 'PLATFORM_VIEWER',
+    'COMPANY_ADMIN', 'COMPANY_MANAGER', 'COMPANY_STAFF', 'COMPANY_VIEWER',
+  ])
   @IsOptional()
+  @ApiProperty({ description: 'Role code for the company assignment', required: false })
   roleCode?: string;
 
   @IsString()

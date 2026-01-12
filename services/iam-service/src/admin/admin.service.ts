@@ -11,32 +11,57 @@ export class AdminService {
 
   constructor(private prisma: PrismaService) {}
 
-  async create(createAdminDto: CreateAdminDto): Promise<Admin> {
-    const { password, ...data } = createAdminDto;
-    
-    // Check if admin with same username or email exists
+  async create(createAdminDto: CreateAdminDto): Promise<any> {
+    const { password, companyId, roleCode, ...data } = createAdminDto;
+
+    // Check if admin with same email exists
     const existing = await this.prisma.admin.findFirst({
-      where: {
-        OR: [
-          { email: data.email }
-        ]
-      }
+      where: { email: data.email }
     });
 
     if (existing) {
-      throw new ConflictException('Admin with this username or email already exists');
+      throw new ConflictException('Admin with this email already exists');
+    }
+
+    // Verify company exists
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId }
+    });
+    if (!company) {
+      throw new NotFoundException(`Company with ID ${companyId} not found`);
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    return this.prisma.admin.create({
+    // Create admin with AdminCompany relation
+    const admin = await this.prisma.admin.create({
       data: {
         ...data,
         password: hashedPassword,
-        roleCode: data.roleCode || 'VIEWER',
+        companies: {
+          create: {
+            companyId,
+            companyRoleCode: roleCode || 'COMPANY_VIEWER',
+            isPrimary: true,
+          },
+        },
+      },
+      include: {
+        companies: {
+          include: {
+            company: true,
+          },
+        },
       },
     });
+
+    // Return with computed roleCode
+    const primaryCompany = admin.companies?.find((c) => c.isPrimary) || admin.companies?.[0];
+    return {
+      ...admin,
+      roleCode: primaryCompany?.companyRoleCode || 'COMPANY_VIEWER',
+    };
   }
 
   async findAll(params?: {
@@ -65,18 +90,28 @@ export class AdminService {
           id: true,
           email: true,
           name: true,
-          roleCode: true,
           phone: true,
           department: true,
           isActive: true,
           lastLoginAt: true,
           createdAt: true,
           updatedAt: true,
-          role: {
+          // AdminCompany를 통한 회사-역할 관계
+          companies: {
+            where: { isActive: true },
             select: {
-              code: true,
-              name: true,
-              level: true,
+              id: true,
+              companyId: true,
+              companyRoleCode: true,
+              isPrimary: true,
+              company: {
+                select: {
+                  id: true,
+                  name: true,
+                  code: true,
+                  companyType: true,
+                },
+              },
             },
           },
         },
@@ -84,11 +119,15 @@ export class AdminService {
       this.prisma.admin.count({ where }),
     ]);
 
-    // 목록용 변환 (권한은 상세 조회에서만 포함)
-    const transformedAdmins = admins.map((admin) => ({
-      ...admin,
-      permissions: [],
-    }));
+    // 목록용 변환 (주 소속 역할코드 추가)
+    const transformedAdmins = admins.map((admin) => {
+      const primaryCompany = admin.companies?.find((c) => c.isPrimary) || admin.companies?.[0];
+      return {
+        ...admin,
+        roleCode: primaryCompany?.companyRoleCode || 'COMPANY_VIEWER',
+        permissions: [],
+      };
+    });
 
     return {
       admins: transformedAdmins,
@@ -103,11 +142,18 @@ export class AdminService {
     const admin = await this.prisma.admin.findUnique({
       where: { id },
       include: {
-        role: {
+        // AdminCompany를 통한 회사-역할 관계
+        companies: {
+          where: { isActive: true },
           include: {
-            rolePermissions: {
+            company: true,
+            companyRole: {
               include: {
-                permission: true,
+                rolePermissions: {
+                  include: {
+                    permission: true,
+                  },
+                },
               },
             },
           },
@@ -119,12 +165,20 @@ export class AdminService {
       throw new NotFoundException(`Admin with ID ${id} not found`);
     }
 
+    // 주 소속 회사 찾기 (isPrimary=true 또는 첫 번째)
+    const primaryCompany = admin.companies?.find((c) => c.isPrimary) || admin.companies?.[0];
+    const primaryRole = primaryCompany?.companyRole;
+
     // 역할 기반 권한을 permissions 배열로 변환
+    const permissions = primaryRole?.rolePermissions?.map((rp) => ({
+      permission: rp.permission.code,
+    })) || [];
+
     return {
       ...admin,
-      permissions: admin.role?.rolePermissions?.map((rp) => ({
-        permission: rp.permission.code,
-      })) || [],
+      // 레거시 호환성을 위한 roleCode (주 소속의 역할 코드)
+      roleCode: primaryCompany?.companyRoleCode || 'COMPANY_VIEWER',
+      permissions,
     };
   }
 
@@ -135,11 +189,18 @@ export class AdminService {
     const admin = await this.prisma.admin.findUnique({
       where: { email },
       include: {
-        role: {
+        // AdminCompany를 통한 회사-역할 관계
+        companies: {
+          where: { isActive: true },
           include: {
-            rolePermissions: {
+            company: true,
+            companyRole: {
               include: {
-                permission: true,
+                rolePermissions: {
+                  include: {
+                    permission: true,
+                  },
+                },
               },
             },
           },
@@ -154,15 +215,21 @@ export class AdminService {
       return null;
     }
 
+    // 주 소속 회사 찾기 (isPrimary=true 또는 첫 번째)
+    const primaryCompany = admin.companies?.find((c) => c.isPrimary) || admin.companies?.[0];
+    const primaryRole = primaryCompany?.companyRole;
+
     // 역할 기반 권한을 permissions 배열로 변환
-    const permissions = admin.role?.rolePermissions?.map((rp) => ({
+    const permissions = primaryRole?.rolePermissions?.map((rp) => ({
       permission: rp.permission.code,
     })) || [];
 
-    this.logger.log(`[PERF] AdminService.findByEmail SUCCESS - ${email}, permissions: ${permissions.length}, total: ${Date.now() - startTime}ms`);
+    this.logger.log(`[PERF] AdminService.findByEmail SUCCESS - ${email}, companies: ${admin.companies?.length || 0}, permissions: ${permissions.length}, total: ${Date.now() - startTime}ms`);
 
     return {
       ...admin,
+      // 레거시 호환성을 위한 roleCode (주 소속의 역할 코드)
+      roleCode: primaryCompany?.companyRoleCode || 'COMPANY_VIEWER',
       permissions,
     };
   }
@@ -211,14 +278,17 @@ export class AdminService {
   async remove(id: number): Promise<Admin> {
     const admin = await this.findOne(id);
 
-    // Prevent deleting the last ADMIN
-    if (admin.roleCode === 'ADMIN') {
-      const adminCount = await this.prisma.admin.count({
-        where: { roleCode: 'ADMIN' },
+    // Prevent deleting the last PLATFORM_ADMIN
+    if (admin.roleCode === 'PLATFORM_ADMIN') {
+      const platformAdminCount = await this.prisma.adminCompany.count({
+        where: {
+          companyRoleCode: 'PLATFORM_ADMIN',
+          isActive: true,
+        },
       });
 
-      if (adminCount <= 1) {
-        throw new ConflictException('Cannot delete the last ADMIN');
+      if (platformAdminCount <= 1) {
+        throw new ConflictException('Cannot delete the last PLATFORM_ADMIN');
       }
     }
 
@@ -274,12 +344,13 @@ export class AdminService {
   }
 
   async getStats(): Promise<any> {
-    // 단일 쿼리로 전체 통계와 역할별 카운트 조회
+    // AdminCompany 테이블에서 역할별 통계 조회
     const [total, active, roleGrouped] = await Promise.all([
       this.prisma.admin.count(),
       this.prisma.admin.count({ where: { isActive: true } }),
-      this.prisma.admin.groupBy({
-        by: ['roleCode'],
+      this.prisma.adminCompany.groupBy({
+        by: ['companyRoleCode'],
+        where: { isActive: true },
         _count: { id: true },
       }),
     ]);
@@ -287,7 +358,7 @@ export class AdminService {
     // Build byRole object from grouped results
     const byRoleStats: Record<string, number> = {};
     roleGrouped.forEach((group) => {
-      byRoleStats[group.roleCode] = group._count.id;
+      byRoleStats[group.companyRoleCode] = group._count.id;
     });
 
     return {
