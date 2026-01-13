@@ -12,6 +12,7 @@ import { BookingsModule } from './bookings/bookings.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { UsersModule } from './users/users.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { PoliciesModule } from './policies/policies.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     NotificationsModule,
     UsersModule,
     DashboardModule,
+    PoliciesModule,
   ],
   controllers: [],
   providers: [],

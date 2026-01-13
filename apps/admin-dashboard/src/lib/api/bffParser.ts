@@ -5,13 +5,12 @@
  */
 
 import type { Pagination } from '@/types/common';
+import { getErrorMessage } from '@/types/common';
+import { ApiError } from '@/lib/errors';
 
 // ============================================
 // 타입 정의
 // ============================================
-
-/** @deprecated PaginationInfo 대신 Pagination 사용 권장 */
-export type PaginationInfo = Pagination;
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -28,8 +27,34 @@ export interface BffResponse<T = unknown> {
   limit?: number;
   totalPages?: number;
   message?: string;
-  error?: string;
+  error?: { code?: string; message?: string; details?: Record<string, unknown> } | string;
   [key: string]: unknown;
+}
+
+// ============================================
+// BFF 응답 언래핑
+// ============================================
+
+/**
+ * BFF API 응답에서 data를 추출하고 에러를 처리합니다.
+ *
+ * @param response API 응답 데이터
+ * @returns 추출된 데이터
+ * @throws ApiError 응답이 실패인 경우
+ */
+export function unwrapResponse<T>(response: BffResponse<T>): T {
+  if (response.success === false) {
+    const error = response.error;
+    const errorCode = typeof error === 'object' ? error?.code : undefined;
+    const errorMessage = typeof error === 'object'
+      ? getErrorMessage(errorCode, error?.message)
+      : getErrorMessage(undefined, typeof error === 'string' ? error : '오류가 발생했습니다');
+    const errorDetails = typeof error === 'object' ? error?.details : undefined;
+
+    throw new ApiError(errorMessage, 400, errorCode, errorDetails);
+  }
+
+  return response.data as T;
 }
 
 // ============================================
@@ -237,7 +262,10 @@ export function extractError(response: unknown): string | null {
   const data = response as BffResponse;
 
   if (data.error) {
-    return typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+    if (typeof data.error === 'string') {
+      return data.error;
+    }
+    return data.error.message || JSON.stringify(data.error);
   }
 
   if (data.message && data.success === false) {
@@ -252,6 +280,7 @@ export function extractError(response: unknown): string | null {
 // ============================================
 
 export const bffParser = {
+  unwrapResponse,
   extractList,
   extractPaginatedList,
   extractPagination,

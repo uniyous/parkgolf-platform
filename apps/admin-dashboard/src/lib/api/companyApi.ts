@@ -2,6 +2,7 @@ import { apiClient } from './client';
 import { extractList, extractPagination, extractSingle, type PaginatedResult } from './bffParser';
 import type {
   Company,
+  CompanyType,
   CreateCompanyDto,
   UpdateCompanyDto,
   CompanyStatus
@@ -11,6 +12,8 @@ import type {
 interface RawCompanyData {
   id: number;
   name: string;
+  code?: string;
+  companyType?: CompanyType;
   businessNumber?: string;
   address?: string;
   phoneNumber?: string;
@@ -64,9 +67,23 @@ export interface CompanyFiltersQuery {
 
 // 데이터 변환 헬퍼 함수
 function transformCompanyData(rawCompany: RawCompanyData): Company {
+  // code가 없으면 회사명에서 자동 생성
+  const generateCode = (name: string, id: number): string => {
+    const nameCode = name
+      .replace(/[^\w\s가-힣]/g, '')
+      .split(/\s+/)
+      .map(w => w.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 4);
+    return `${nameCode}-${id}`;
+  };
+
   return {
     id: rawCompany.id,
     name: rawCompany.name,
+    code: rawCompany.code || generateCode(rawCompany.name, rawCompany.id),
+    companyType: rawCompany.companyType || 'FRANCHISE',
     businessNumber: rawCompany.businessNumber || '',
     address: rawCompany.address || '',
     phoneNumber: rawCompany.phoneNumber || '',
@@ -223,65 +240,47 @@ export const companyApi = {
     return transformCompanyData(rawData);
   },
 
-  // 회사 삭제 (실제 API 사용)
+  /**
+   * 회사 삭제
+   */
   async deleteCompany(id: number): Promise<void> {
-    try {
-      console.log(`Deleting company ${id}`);
-      
-      // 실제 API 호출
-      await apiClient.delete(`/admin/companies/${id}`);
-      console.log(`Company ${id} deleted successfully`);
-    } catch (error) {
-      console.error(`Failed to delete company ${id}:`, error);
-      throw error;
-    }
+    await apiClient.delete(`/admin/companies/${id}`);
   },
 
-  // 회사 상태 변경 (iam-service API)
+  /**
+   * 회사 상태 변경
+   */
   async updateCompanyStatus(id: number, status: CompanyStatus): Promise<Company> {
-    try {
-      const response = await apiClient.patch<unknown>(`/admin/companies/${id}/status`, { status });
-      const rawData = extractSingle<RawCompanyData>(response.data, 'company');
-      if (!rawData) throw new Error('Failed to update company status');
-      return transformCompanyData(rawData);
-    } catch (error) {
-      console.error(`Failed to update company ${id} status:`, error);
-      throw error;
-    }
+    const response = await apiClient.patch<unknown>(`/admin/companies/${id}/status`, { status });
+    const rawData = extractSingle<RawCompanyData>(response.data, 'company');
+    if (!rawData) throw new Error('Failed to update company status');
+    return transformCompanyData(rawData);
   },
 
-  // 대량 작업 - 상태 변경 (Mock 구현 - 실제 API 대기)
+  /**
+   * 대량 상태 변경
+   */
   async bulkUpdateStatus(companyIds: number[], status: CompanyStatus): Promise<Company[]> {
-    try {
-      // Mock: 각 회사의 상태를 개별적으로 업데이트
-      const updatedCompanies: Company[] = [];
-      for (const id of companyIds) {
-        const updated = await this.updateCompanyStatus(id, status);
-        updatedCompanies.push(updated);
-      }
-      
-      return updatedCompanies;
-    } catch (error) {
-      console.error('Failed to bulk update company status:', error);
-      throw error;
+    const updatedCompanies: Company[] = [];
+    for (const id of companyIds) {
+      const updated = await this.updateCompanyStatus(id, status);
+      updatedCompanies.push(updated);
     }
+    return updatedCompanies;
   },
 
-  // 대량 작업 - 삭제 (Mock 구현 - 실제 API 대기)
+  /**
+   * 대량 삭제
+   */
   async bulkDeleteCompanies(companyIds: number[]): Promise<void> {
-    try {
-      // Mock: 각 회사를 개별적으로 삭제
-      for (const id of companyIds) {
-        await this.deleteCompany(id);
-      }
-      
-    } catch (error) {
-      console.error('Failed to bulk delete companies:', error);
-      throw error;
+    for (const id of companyIds) {
+      await this.deleteCompany(id);
     }
   },
 
-  // 회사 통계 조회 (iam-service API)
+  /**
+   * 회사 통계 조회
+   */
   async getCompanyStats(): Promise<{
     totalCompanies: number;
     activeCompanies: number;
@@ -291,48 +290,52 @@ export const companyApi = {
     totalRevenue: number;
     averageRevenue: number;
   }> {
-    try {
-      const response = await apiClient.get<{ data?: any }>('/admin/companies/stats');
-      const apiStats = response.data?.data || response.data;
-
-      // API 응답을 프론트엔드 형식으로 변환
-      return {
-        totalCompanies: apiStats?.totalCompanies || apiStats?.total || 0,
-        activeCompanies: apiStats?.activeCompanies || apiStats?.byStatus?.ACTIVE || 0,
-        inactiveCompanies: apiStats?.inactiveCompanies || apiStats?.byStatus?.INACTIVE || 0,
-        maintenanceCompanies: apiStats?.maintenanceCompanies || apiStats?.byStatus?.MAINTENANCE || 0,
-        totalCourses: apiStats?.totalCourses || 0,
-        totalRevenue: apiStats?.totalRevenue || 0,
-        averageRevenue: apiStats?.averageRevenue || 0,
+    interface CompanyStatsResponse {
+      totalCompanies?: number;
+      total?: number;
+      activeCompanies?: number;
+      inactiveCompanies?: number;
+      maintenanceCompanies?: number;
+      totalCourses?: number;
+      totalRevenue?: number;
+      averageRevenue?: number;
+      byStatus?: {
+        ACTIVE?: number;
+        INACTIVE?: number;
+        MAINTENANCE?: number;
       };
-    } catch (error) {
-      console.error('Failed to fetch company stats:', error);
-      throw error;
     }
+
+    const response = await apiClient.get<unknown>('/admin/companies/stats');
+    const apiStats = extractSingle<CompanyStatsResponse>(response.data);
+
+    return {
+      totalCompanies: apiStats?.totalCompanies || apiStats?.total || 0,
+      activeCompanies: apiStats?.activeCompanies || apiStats?.byStatus?.ACTIVE || 0,
+      inactiveCompanies: apiStats?.inactiveCompanies || apiStats?.byStatus?.INACTIVE || 0,
+      maintenanceCompanies: apiStats?.maintenanceCompanies || apiStats?.byStatus?.MAINTENANCE || 0,
+      totalCourses: apiStats?.totalCourses || 0,
+      totalRevenue: apiStats?.totalRevenue || 0,
+      averageRevenue: apiStats?.averageRevenue || 0,
+    };
   },
 
-  // 회사 코드로 조회 (iam-service API)
+  /**
+   * 회사 코드로 조회
+   */
   async getCompanyByCode(code: string): Promise<Company> {
-    try {
-      const response = await apiClient.get<unknown>(`/admin/companies/code/${code}`);
-      const rawData = extractSingle<RawCompanyData>(response.data, 'company');
-      if (!rawData) throw new Error('Company not found');
-      return transformCompanyData(rawData);
-    } catch (error) {
-      console.error(`Failed to fetch company by code ${code}:`, error);
-      throw error;
-    }
+    const response = await apiClient.get<unknown>(`/admin/companies/code/${code}`);
+    const rawData = extractSingle<RawCompanyData>(response.data, 'company');
+    if (!rawData) throw new Error('Company not found');
+    return transformCompanyData(rawData);
   },
 
-  // 회사 관리자 목록 조회 (iam-service API)
-  async getCompanyAdmins(companyId: number): Promise<any[]> {
-    try {
-      const response = await apiClient.get<{ data?: any[] }>(`/admin/companies/${companyId}/admins`);
-      return response.data?.data || [];
-    } catch (error) {
-      console.error(`Failed to fetch admins for company ${companyId}:`, error);
-      throw error;
-    }
+  /**
+   * 회사 관리자 목록 조회
+   */
+  async getCompanyAdmins(companyId: number): Promise<Array<{ id: number; name: string; email: string }>> {
+    const response = await apiClient.get<unknown>(`/admin/companies/${companyId}/admins`);
+    return extractList<{ id: number; name: string; email: string }>(response.data, 'admins');
   }
 } as const;
 

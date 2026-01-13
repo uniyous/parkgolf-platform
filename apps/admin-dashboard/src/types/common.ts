@@ -1,11 +1,19 @@
+/**
+ * 공통 API 타입 정의
+ *
+ * admin-dashboard, user-webapp에서 동일한 구조를 사용합니다.
+ */
+
 // ===== 기본 타입 =====
 
+/** 모든 엔티티의 기본 필드 */
 export interface BaseEntity {
   id: number;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }
 
+/** 페이지네이션 요청 파라미터 */
 export interface PaginationParams {
   page?: number;
   limit?: number;
@@ -13,10 +21,12 @@ export interface PaginationParams {
   sortOrder?: 'asc' | 'desc';
 }
 
+/** API 호출 상태 */
 export type ApiStatus = 'idle' | 'loading' | 'success' | 'error';
 
 // ===== 페이지네이션 =====
 
+/** 페이지네이션 응답 정보 */
 export interface Pagination {
   total: number;
   page: number;
@@ -26,6 +36,7 @@ export interface Pagination {
 
 // ===== API 에러 =====
 
+/** API 에러 구조 */
 export interface ApiError {
   code: string;
   message: string;
@@ -51,9 +62,10 @@ export interface ApiErrorResponse {
 export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 /** 페이지네이션 성공 응답 */
-export interface PaginatedSuccessResponse<T> extends Pagination {
+export interface PaginatedSuccessResponse<T> {
   success: true;
   data: T[];
+  pagination: Pagination;
 }
 
 /** 페이지네이션 통합 응답 타입 */
@@ -61,32 +73,45 @@ export type PaginatedResponse<T> = PaginatedSuccessResponse<T> | ApiErrorRespons
 
 // ===== 타입 가드 =====
 
+/** 성공 응답인지 확인 */
 export const isSuccess = <T>(res: ApiResponse<T>): res is ApiSuccessResponse<T> =>
   res.success === true;
 
+/** 페이지네이션 성공 응답인지 확인 */
 export const isPaginated = <T>(res: PaginatedResponse<T>): res is PaginatedSuccessResponse<T> =>
   res.success === true;
 
-export const isError = <T>(res: ApiResponse<T> | PaginatedResponse<T>): res is ApiErrorResponse =>
-  res.success === false;
+/** 에러 응답인지 확인 */
+export const isError = <T>(
+  res: ApiResponse<T> | PaginatedResponse<T>
+): res is ApiErrorResponse => res.success === false;
 
 // ===== 응답 빌더 (테스트/목업용) =====
 
 export const ApiResponseBuilder = {
+  /** 성공 응답 생성 */
   success: <T>(data: T, message?: string): ApiSuccessResponse<T> =>
     message ? { success: true, data, message } : { success: true, data },
 
-  error: (code: string, message: string, details?: Record<string, unknown>): ApiErrorResponse => ({
+  /** 에러 응답 생성 */
+  error: (
+    code: string,
+    message: string,
+    details?: Record<string, unknown>
+  ): ApiErrorResponse => ({
     success: false,
     error: details ? { code, message, details } : { code, message },
   }),
 
+  /** 페이지네이션 성공 응답 생성 */
   paginated: <T>(data: T[], pagination: Pagination): PaginatedSuccessResponse<T> => ({
     success: true,
     data,
-    ...pagination,
+    pagination,
   }),
 } as const;
+
+// ===== 에러 코드 타입 =====
 
 /**
  * BFF API 에러 코드
@@ -161,6 +186,8 @@ export type BffErrorCode =
   | 'SYS_004' // 요청 한도 초과
   | 'SYS_005'; // 서비스 점검 중입니다
 
+// ===== 에러 메시지 =====
+
 /**
  * 에러 코드에 대한 사용자 친화적 메시지 매핑
  */
@@ -224,10 +251,92 @@ export const ERROR_MESSAGES: Record<string, string> = {
   SYS_005: '서비스 점검 중입니다',
 };
 
+// ===== 영어 메시지 번역 =====
+
+/** 영어 오류 메시지를 한국어로 변환하는 패턴 */
+const ENGLISH_ERROR_TRANSLATIONS: Array<{
+  pattern: RegExp;
+  translate: (match: RegExpMatchArray) => string;
+}> = [
+  {
+    pattern: /Not enough capacity\. Available: (\d+), Requested: (\d+)/,
+    translate: (match) =>
+      `잔여 인원이 부족합니다. (남은 자리: ${match[1]}명, 요청: ${match[2]}명)`,
+  },
+  {
+    pattern: /Selected time slot is not available/,
+    translate: () => '선택한 시간대는 더 이상 예약할 수 없습니다.',
+  },
+  {
+    pattern: /Game time slot not found/,
+    translate: () => '선택한 예약 시간을 찾을 수 없습니다.',
+  },
+  {
+    pattern: /Game information not found/,
+    translate: () => '라운드 정보를 찾을 수 없습니다.',
+  },
+  {
+    pattern: /Request is already being processed/,
+    translate: () => '이미 처리 중인 요청입니다. 잠시 후 다시 시도해 주세요.',
+  },
+  {
+    pattern: /Booking not found/,
+    translate: () => '예약을 찾을 수 없습니다.',
+  },
+  {
+    pattern: /Cannot cancel booking less than (\d+) days before/,
+    translate: (match) => `예약일 ${match[1]}일 전까지만 취소할 수 있습니다.`,
+  },
+  {
+    pattern: /Email already registered/i,
+    translate: () => '이미 등록된 이메일입니다.',
+  },
+  {
+    pattern: /Invalid credentials/i,
+    translate: () => '이메일 또는 비밀번호가 올바르지 않습니다.',
+  },
+  {
+    pattern: /Token expired/i,
+    translate: () => '로그인이 만료되었습니다. 다시 로그인해 주세요.',
+  },
+  {
+    pattern: /Unauthorized/i,
+    translate: () => '로그인이 필요합니다.',
+  },
+  {
+    pattern: /Forbidden/i,
+    translate: () => '이 작업을 수행할 권한이 없습니다.',
+  },
+];
+
+/**
+ * 영어 오류 메시지를 한국어로 변환
+ */
+export function translateErrorMessage(message: string): string {
+  for (const { pattern, translate } of ENGLISH_ERROR_TRANSLATIONS) {
+    const match = message.match(pattern);
+    if (match) {
+      return translate(match);
+    }
+  }
+  return message;
+}
+
 /**
  * 에러 코드를 사용자 친화적 메시지로 변환
  */
 export function getErrorMessage(code?: string, fallbackMessage?: string): string {
-  if (!code) return fallbackMessage || '오류가 발생했습니다';
-  return ERROR_MESSAGES[code] || fallbackMessage || '오류가 발생했습니다';
+  if (!code) {
+    return fallbackMessage ? translateErrorMessage(fallbackMessage) : '오류가 발생했습니다';
+  }
+
+  // Validation 에러의 경우 실제 오류 메시지를 우선 사용 (더 구체적인 정보 제공)
+  if (code.startsWith('VAL_') && fallbackMessage && fallbackMessage !== ERROR_MESSAGES[code]) {
+    return translateErrorMessage(fallbackMessage);
+  }
+
+  return (
+    ERROR_MESSAGES[code] ||
+    (fallbackMessage ? translateErrorMessage(fallbackMessage) : '오류가 발생했습니다')
+  );
 }

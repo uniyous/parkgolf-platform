@@ -19,6 +19,8 @@ const STATUS_LABELS: Record<CompanyStatus, string> = {
   ACTIVE: '활성',
   INACTIVE: '비활성',
   MAINTENANCE: '점검',
+  SUSPENDED: '정지',
+  PENDING: '대기',
 };
 
 // 상태별 스타일 정보
@@ -26,6 +28,8 @@ const STATUS_META: Record<CompanyStatus, { icon: string; color: string }> = {
   ACTIVE: { icon: '✅', color: 'bg-green-100 text-green-800 border-green-200' },
   INACTIVE: { icon: '⏸️', color: 'bg-red-100 text-red-800 border-red-200' },
   MAINTENANCE: { icon: '🔧', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  SUSPENDED: { icon: '🚫', color: 'bg-gray-100 text-gray-800 border-gray-200' },
+  PENDING: { icon: '⏳', color: 'bg-blue-100 text-blue-800 border-blue-200' },
 };
 
 export const CompanyList: React.FC = () => {
@@ -439,7 +443,7 @@ export const CompanyList: React.FC = () => {
                               </svg>
                               수정
                             </button>
-                            {currentAdmin?.scope === 'SYSTEM' && (
+                            {currentAdmin?.primaryScope === 'PLATFORM' && (
                               <button
                                 onClick={() => setDeleteConfirm({ open: true, company })}
                                 className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"

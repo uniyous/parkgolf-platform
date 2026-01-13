@@ -1,3 +1,5 @@
+import type { Company } from './company';
+
 export const CourseStatus = {
   ACTIVE: 'ACTIVE',
   CLOSED: 'CLOSED',
@@ -660,3 +662,23 @@ export type {
   ClubStats,
   ComboAnalytics,
 } from './club';
+
+// Settings types re-export
+export type {
+  CancellationType,
+  CancellationDeadline,
+  CancellationPolicy,
+  RefundRateTier,
+  RefundPolicy,
+  NoShowPenaltyType,
+  NoShowPenalty,
+  NoShowPolicy,
+  SystemSettings,
+  UpdateCancellationPolicyDto,
+  UpdateRefundPolicyDto,
+  UpdateNoShowPolicyDto,
+  PolicyApiResponse,
+  PolicyListResponse,
+} from './settings';
+
+export { DEFAULT_REFUND_TIERS, DEFAULT_NOSHOW_PENALTIES } from './settings';

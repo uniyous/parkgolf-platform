@@ -17,8 +17,8 @@ import { UsersService } from '../users/users.service';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
-@ApiTags('Authentication')
-@Controller('api/user/auth')
+@ApiTags('IAM')
+@Controller('api/user/iam')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,

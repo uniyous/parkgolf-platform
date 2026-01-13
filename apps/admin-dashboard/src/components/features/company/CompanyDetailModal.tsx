@@ -14,6 +14,8 @@ const STATUS_BADGE_STYLES: Record<CompanyStatus, { bg: string; dot: string; labe
   ACTIVE: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', label: '활성' },
   INACTIVE: { bg: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500', label: '비활성' },
   MAINTENANCE: { bg: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500', label: '점검' },
+  SUSPENDED: { bg: 'bg-gray-50 text-gray-700 border-gray-200', dot: 'bg-gray-500', label: '정지' },
+  PENDING: { bg: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500', label: '대기' },
 };
 
 export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
@@ -124,7 +126,7 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
                 </div>
                 <div className="flex">
                   <div className="w-24 text-sm font-medium text-gray-600">설립일</div>
-                  <div className="flex-1 text-gray-900">{formatDate(company.establishedDate)}</div>
+                  <div className="flex-1 text-gray-900">{company.establishedDate ? formatDate(company.establishedDate) : '정보없음'}</div>
                 </div>
                 <div className="flex">
                   <div className="w-24 text-sm font-medium text-gray-600">코스 수</div>

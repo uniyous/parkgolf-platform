@@ -105,6 +105,13 @@ export const menuConfig: MenuGroup[] = [
         description: '플랫폼/회사 역할 및 권한 설정 (IAM)',
         permission: 'SYSTEM'
       },
+      {
+        name: '시스템 설정',
+        href: '/system-settings',
+        icon: '⚙️',
+        description: '예약/알림/시스템 정책 설정',
+        permission: 'SYSTEM'
+      },
     ],
     collapsible: true,
     defaultOpen: true

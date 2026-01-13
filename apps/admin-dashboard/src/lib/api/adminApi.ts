@@ -2,6 +2,7 @@ import { apiClient } from './client';
 import { extractList, extractSingle } from './bffParser';
 import type {
   Admin,
+  AdminScope,
   CreateAdminDto,
   UpdateAdminDto,
   CreateUserDto,
@@ -46,13 +47,8 @@ interface ApiAdminResponse {
 const transformAdminResponse = (apiAdmin: ApiAdminResponse): Admin => {
   const roleCode = apiAdmin.roleCode;
 
-  // scope 추출 (역할에서 자동 추론)
-  let scope: 'SYSTEM' | 'OPERATION' | 'VIEW' = 'OPERATION';
-  if (roleCode === 'ADMIN' || roleCode === 'SUPPORT') {
-    scope = 'SYSTEM';
-  } else if (roleCode === 'VIEWER') {
-    scope = 'VIEW';
-  }
+  // primaryScope 추출 (역할에서 자동 추론)
+  const primaryScope: AdminScope = roleCode?.includes('PLATFORM') ? 'PLATFORM' : 'COMPANY';
 
   // permissions 배열 변환 (객체 배열 → Permission 배열)
   const permissions = Array.isArray(apiAdmin.permissions)
@@ -64,7 +60,7 @@ const transformAdminResponse = (apiAdmin: ApiAdminResponse): Admin => {
     email: apiAdmin.email,
     name: apiAdmin.name,
     roleCode: roleCode as Admin['roleCode'],
-    scope,
+    primaryScope,
     permissions,
     isActive: apiAdmin.isActive ?? true,
     lastLoginAt: apiAdmin.lastLoginAt,
@@ -74,6 +70,7 @@ const transformAdminResponse = (apiAdmin: ApiAdminResponse): Admin => {
     phone: apiAdmin.phone,
     department: apiAdmin.department,
     description: apiAdmin.description,
+    companies: [],
     // Legacy fields for backward compatibility
     role: roleCode as Admin['roleCode'],
     username: apiAdmin.email?.split('@')[0] || apiAdmin.name,
@@ -161,28 +158,14 @@ export const adminApi = {
   },
 
   async createAdmin(data: CreateAdminDto): Promise<Admin> {
-    // 프론트엔드 형식을 API 형식으로 변환
-    const apiData = {
-      ...data,
-      roleCode: data.roleCode || data.role, // 하위 호환성
-    };
-    delete (apiData as Record<string, unknown>).role; // legacy field 제거
-
-    const response = await apiClient.post<unknown>('/admin/admins', apiData);
+    const response = await apiClient.post<unknown>('/admin/admins', data);
     const adminData = extractSingle<ApiAdminResponse>(response.data, 'admin');
     if (!adminData) throw new Error('Failed to create admin');
     return transformAdminResponse(adminData);
   },
 
   async updateAdmin(id: number, data: UpdateAdminDto): Promise<Admin> {
-    // 프론트엔드 형식을 API 형식으로 변환
-    const apiData = {
-      ...data,
-      roleCode: data.roleCode || data.role, // 하위 호환성
-    };
-    delete (apiData as Record<string, unknown>).role; // legacy field 제거
-
-    const response = await apiClient.patch<unknown>(`/admin/admins/${id}`, apiData);
+    const response = await apiClient.patch<unknown>(`/admin/admins/${id}`, data);
     const adminData = extractSingle<ApiAdminResponse>(response.data, 'admin');
     if (!adminData) throw new Error('Failed to update admin');
     return transformAdminResponse(adminData);
@@ -192,217 +175,185 @@ export const adminApi = {
     await apiClient.delete(`/admin/admins/${id}`);
   },
 
+  /**
+   * 관리자 상태 변경
+   */
   async updateAdminStatus(id: number, isActive: boolean): Promise<Admin> {
-    try {
-      const response = await apiClient.patch<BffAdminResponse>(`/admin/admins/${id}/status`, { isActive });
-      const adminData = response.data?.data || response.data as unknown as ApiAdminResponse;
-      return transformAdminResponse(adminData);
-    } catch (error) {
-      console.error(`Failed to update admin status ${id}:`, error);
-      throw error;
-    }
+    const response = await apiClient.patch<unknown>(`/admin/admins/${id}/status`, { isActive });
+    const adminData = extractSingle<ApiAdminResponse>(response.data);
+    if (!adminData) throw new Error('Failed to update admin status');
+    return transformAdminResponse(adminData);
   },
 
+  /**
+   * 관리자 권한 변경
+   */
   async updateAdminPermissions(id: number, permissionIds: number[]): Promise<Admin> {
-    try {
-      const response = await apiClient.post<BffAdminResponse>(`/admin/admins/${id}/permissions`, { permissionIds });
-      const adminData = response.data?.data || response.data as unknown as ApiAdminResponse;
-      return transformAdminResponse(adminData);
-    } catch (error) {
-      console.error(`Failed to update admin permissions ${id}:`, error);
-      throw error;
-    }
+    const response = await apiClient.post<unknown>(`/admin/admins/${id}/permissions`, { permissionIds });
+    const adminData = extractSingle<ApiAdminResponse>(response.data);
+    if (!adminData) throw new Error('Failed to update admin permissions');
+    return transformAdminResponse(adminData);
   },
 
+  /**
+   * 관리자 통계 조회
+   */
   async getAdminStats(): Promise<AdminStatsResponse> {
-    try {
-      const response = await apiClient.get<{ data?: AdminStatsResponse }>('/admin/admins/stats');
-      return response.data?.data || response.data as unknown as AdminStatsResponse;
-    } catch (error) {
-      console.error('Failed to fetch admin stats:', error);
-      throw error;
-    }
+    const response = await apiClient.get<unknown>('/admin/admins/stats');
+    const stats = extractSingle<AdminStatsResponse>(response.data);
+    if (!stats) throw new Error('Failed to fetch admin stats');
+    return stats;
   },
 
+  /**
+   * 권한 목록 조회
+   */
   async getPermissions(): Promise<PermissionInfo[]> {
-    try {
-      const response = await apiClient.get<{ data?: PermissionInfo[] }>('/admin/admins/permissions');
-      return response.data?.data || [];
-    } catch (error) {
-      console.error('Failed to fetch permissions:', error);
-      throw error;
-    }
+    const response = await apiClient.get<unknown>('/admin/admins/permissions');
+    return extractList<PermissionInfo>(response.data) || [];
   },
 
-  // 역할 관리 API
+  // ===== 역할 관리 API =====
+
+  /**
+   * 역할 목록 조회
+   */
   async getRoles(userType?: string): Promise<RoleInfo[]> {
-    try {
-      const params = userType ? { userType } : {};
-      const response = await apiClient.get<{ data?: RoleInfo[] }>('/admin/admins/roles', params);
-      return response.data?.data || [];
-    } catch (error) {
-      console.error('Failed to fetch roles:', error);
-      throw error;
-    }
+    const params = userType ? { userType } : {};
+    const response = await apiClient.get<unknown>('/admin/admins/roles', params);
+    return extractList<RoleInfo>(response.data) || [];
   },
 
+  /**
+   * 권한 포함 역할 목록 조회
+   */
   async getRolesWithPermissions(userType?: string): Promise<RoleWithPermissions[]> {
-    try {
-      const params = userType ? { userType } : {};
-      const response = await apiClient.get<{ data?: any[] }>('/admin/admins/roles/with-permissions', params);
-      const roles = response.data?.data || [];
+    const params = userType ? { userType } : {};
+    const response = await apiClient.get<unknown>('/admin/admins/roles/with-permissions', params);
+    const roles = extractList<RoleWithPermissions>(response.data) || [];
 
-      // API 응답을 RoleWithPermissions 형식으로 변환
-      return roles.map((role: any) => ({
-        ...role,
-        permissions: Array.isArray(role.permissions)
-          ? role.permissions.map((p: string | PermissionDetail) =>
-              typeof p === 'string' ? { code: p, name: p } : p
-            )
-          : [],
-      }));
-    } catch (error) {
-      console.error('Failed to fetch roles with permissions:', error);
-      throw error;
-    }
+    return roles.map((role) => ({
+      ...role,
+      permissions: Array.isArray(role.permissions)
+        ? role.permissions.map((p: string | PermissionDetail) =>
+            typeof p === 'string' ? { code: p, name: p } : p
+          )
+        : [],
+    }));
   },
 
+  /**
+   * 역할별 권한 조회
+   */
   async getRolePermissions(roleCode: string): Promise<string[]> {
-    try {
-      const response = await apiClient.get<{ data?: string[] }>(`/admin/admins/roles/${roleCode}/permissions`);
-      return response.data?.data || [];
-    } catch (error) {
-      console.error(`Failed to fetch permissions for role ${roleCode}:`, error);
-      throw error;
-    }
+    const response = await apiClient.get<unknown>(`/admin/admins/roles/${roleCode}/permissions`);
+    return extractList<string>(response.data) || [];
   },
 
+  /**
+   * 역할 권한 수정
+   */
   async updateRolePermissions(roleCode: string, permissions: string[]): Promise<RoleWithPermissions> {
-    try {
-      const response = await apiClient.patch<{ data?: RoleWithPermissions }>(`/admin/admins/roles/${roleCode}/permissions`, { permissions });
-      return response.data?.data || response.data as unknown as RoleWithPermissions;
-    } catch (error) {
-      console.error(`Failed to update permissions for role ${roleCode}:`, error);
-      throw error;
-    }
+    const response = await apiClient.patch<unknown>(`/admin/admins/roles/${roleCode}/permissions`, { permissions });
+    const role = extractSingle<RoleWithPermissions>(response.data);
+    if (!role) throw new Error('Failed to update role permissions');
+    return role;
   },
 
-  // 사용자 관리 (BFF API)
+  // ===== 사용자 관리 (BFF API) =====
+
+  /**
+   * 사용자 목록 조회
+   */
   async getUsers(filters: UserFilters = {}, page = 1, limit = 20): Promise<UserListResponse> {
-    try {
-      const params = {
-        page,
-        limit,
-        ...filters
-      };
-      const response = await apiClient.get<BffUserListResponse>('/admin/users', params);
-      const responseData = response.data;
+    const params = { page, limit, ...filters };
+    const response = await apiClient.get<BffUserListResponse>('/admin/users', params);
+    const responseData = response.data;
 
-      // API 응답: { success: true, data: [...users], total, page, totalPages, limit }
-      // 프론트엔드 형식: { users: [...], total, page, limit }
-      return {
-        users: responseData?.data || [],
-        total: responseData?.total || 0,
-        page: responseData?.page || page,
-        limit: responseData?.limit || limit,
-      };
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
-      throw error;
-    }
+    return {
+      users: responseData?.data || [],
+      total: responseData?.total || 0,
+      page: responseData?.page || page,
+      limit: responseData?.limit || limit,
+    };
   },
 
+  /**
+   * 사용자 상세 조회
+   */
   async getUser(id: number): Promise<User> {
-    try {
-      const response = await apiClient.get<BffUserResponse>(`/admin/users/${id}`);
-      return response.data?.data || response.data as unknown as User;
-    } catch (error) {
-      console.error(`Failed to fetch user ${id}:`, error);
-      throw error;
-    }
+    const response = await apiClient.get<unknown>(`/admin/users/${id}`);
+    const user = extractSingle<User>(response.data);
+    if (!user) throw new Error('User not found');
+    return user;
   },
 
+  /**
+   * 사용자 생성
+   */
   async createUser(data: CreateUserDto): Promise<User> {
-    try {
-      const response = await apiClient.post<BffUserResponse>('/admin/users', data);
-      return response.data?.data || response.data as unknown as User;
-    } catch (error) {
-      console.error('Failed to create user:', error);
-      throw error;
-    }
+    const response = await apiClient.post<unknown>('/admin/users', data);
+    const user = extractSingle<User>(response.data);
+    if (!user) throw new Error('Failed to create user');
+    return user;
   },
 
+  /**
+   * 사용자 수정
+   */
   async updateUser(id: number, data: UpdateUserDto): Promise<User> {
-    try {
-      // BFF API는 PATCH 메서드 사용
-      const response = await apiClient.patch<BffUserResponse>(`/admin/users/${id}`, data);
-      return response.data?.data || response.data as unknown as User;
-    } catch (error) {
-      console.error(`Failed to update user ${id}:`, error);
-      throw error;
-    }
+    const response = await apiClient.patch<unknown>(`/admin/users/${id}`, data);
+    const user = extractSingle<User>(response.data);
+    if (!user) throw new Error('Failed to update user');
+    return user;
   },
 
+  /**
+   * 사용자 삭제
+   */
   async deleteUser(id: number): Promise<void> {
-    try {
-      await apiClient.delete(`/admin/users/${id}`);
-    } catch (error) {
-      console.error(`Failed to delete user ${id}:`, error);
-      throw error;
-    }
+    await apiClient.delete(`/admin/users/${id}`);
   },
 
+  /**
+   * 사용자 상태 변경
+   */
   async updateUserStatus(id: number, status: string): Promise<User> {
-    try {
-      const response = await apiClient.patch<BffUserResponse>(`/admin/users/${id}/status`, { status });
-      return response.data?.data || response.data as unknown as User;
-    } catch (error) {
-      console.error(`Failed to update user status ${id}:`, error);
-      throw error;
-    }
+    const response = await apiClient.patch<unknown>(`/admin/users/${id}/status`, { status });
+    const user = extractSingle<User>(response.data);
+    if (!user) throw new Error('Failed to update user status');
+    return user;
   },
 
+  /**
+   * 사용자 권한 변경
+   */
   async updateUserPermissions(id: number, permissions: string[]): Promise<User> {
-    try {
-      const response = await apiClient.patch<BffUserResponse>(`/admin/users/${id}/permissions`, { permissions });
-      return response.data?.data || response.data as unknown as User;
-    } catch (error) {
-      console.error(`Failed to update user permissions ${id}:`, error);
-      throw error;
-    }
+    const response = await apiClient.patch<unknown>(`/admin/users/${id}/permissions`, { permissions });
+    const user = extractSingle<User>(response.data);
+    if (!user) throw new Error('Failed to update user permissions');
+    return user;
   },
 
+  /**
+   * 사용자 비밀번호 변경
+   */
   async changeUserPassword(id: number, data: ChangePasswordDto): Promise<void> {
-    try {
-      // BFF API는 { password: string } 형식을 기대
-      await apiClient.patch(`/admin/users/${id}/password`, {
-        password: data.newPassword
-      });
-    } catch (error) {
-      console.error(`Failed to change password for user ${id}:`, error);
-      throw error;
-    }
+    await apiClient.patch(`/admin/users/${id}/password`, { password: data.newPassword });
   },
 
-
+  /**
+   * 관리자 비밀번호 변경 (alias)
+   */
   async changePassword(id: number, data: ChangePasswordDto): Promise<void> {
-    try {
-      await this.changeUserPassword(id, data);
-    } catch (error) {
-      console.error(`Failed to change password for admin ${id}:`, error);
-      throw error;
-    }
+    await this.changeUserPassword(id, data);
   },
 
+  /**
+   * 관리자 상태 토글
+   */
   async toggleAdminStatus(id: number): Promise<Admin> {
-    try {
-      // First get current status, then toggle
-      const currentAdmin = await this.getAdmin(id);
-      const newStatus = !currentAdmin.isActive;
-      return await this.updateAdminStatus(id, newStatus);
-    } catch (error) {
-      console.error(`Failed to toggle admin status ${id}:`, error);
-      throw error;
-    }
+    const currentAdmin = await this.getAdmin(id);
+    return await this.updateAdminStatus(id, !currentAdmin.isActive);
   },
 };

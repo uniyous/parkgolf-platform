@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { extractList, extractSingle, type BffResponse } from './bffParser';
 
 /**
  * Game 응답 DTO - course-service의 GameResponseDto와 일치
@@ -107,15 +108,27 @@ export interface SearchGamesResponse {
 }
 
 export const gameApi = {
-  getGames: async (clubId?: number, page = 1, limit = 20) => {
+  /**
+   * 게임 목록 조회
+   */
+  getGames: async (clubId?: number, page = 1, limit = 20): Promise<GamesResponse> => {
     const params: Record<string, string | number | undefined> = { page, limit };
     if (clubId) params.clubId = clubId;
 
-    const response = await apiClient.get<GamesResponse>('/api/user/games', params);
-    return response.data;
+    const response = await apiClient.get<BffResponse<Game[]>>('/api/user/games', params);
+    const games = extractList<Game>(response.data);
+    return {
+      data: games,
+      total: (response.data as GamesResponse).total || games.length,
+      page: (response.data as GamesResponse).page || page,
+      limit: (response.data as GamesResponse).limit || limit,
+    };
   },
 
-  searchGames: async (params: GameSearchParams) => {
+  /**
+   * 게임 검색
+   */
+  searchGames: async (params: GameSearchParams): Promise<SearchGamesResponse> => {
     const queryParams: Record<string, string | number | undefined> = {};
     if (params.search) queryParams.search = params.search;
     if (params.date) queryParams.date = params.date;
@@ -132,37 +145,48 @@ export const gameApi = {
     return response.data;
   },
 
-  getGamesByClub: async (clubId: number) => {
-    const response = await apiClient.get<Game[]>(`/api/user/games/club/${clubId}`);
-    return response.data;
+  /**
+   * 클럽별 게임 목록 조회
+   */
+  getGamesByClub: async (clubId: number): Promise<Game[]> => {
+    const response = await apiClient.get<BffResponse<Game[]>>(`/api/user/games/club/${clubId}`);
+    return extractList<Game>(response.data);
   },
 
-  getGameById: async (gameId: number) => {
-    const response = await apiClient.get<Game>(`/api/user/games/${gameId}`);
-    return response.data;
+  /**
+   * 게임 상세 조회
+   */
+  getGameById: async (gameId: number): Promise<Game> => {
+    const response = await apiClient.get<BffResponse<Game>>(`/api/user/games/${gameId}`);
+    const game = extractSingle<Game>(response.data);
+    if (!game) {
+      throw new Error(`Game ${gameId} not found`);
+    }
+    return game;
   },
 
-  getTimeSlots: async (gameId: number, date?: string) => {
+  /**
+   * 타임슬롯 조회
+   */
+  getTimeSlots: async (gameId: number, date?: string): Promise<GameTimeSlot[]> => {
     const params: Record<string, string | undefined> = {};
     if (date) params.date = date;
 
-    const response = await apiClient.get<GameTimeSlot[]>(
+    const response = await apiClient.get<BffResponse<GameTimeSlot[]>>(
       `/api/user/games/${gameId}/time-slots`,
       params
     );
-    return response.data;
+    return extractList<GameTimeSlot>(response.data);
   },
 
+  /**
+   * 예약 가능한 타임슬롯 조회
+   */
   getAvailableTimeSlots: async (gameId: number, date: string): Promise<GameTimeSlot[]> => {
-    const response = await apiClient.get<{ success: boolean; data: GameTimeSlot[] } | GameTimeSlot[]>(
+    const response = await apiClient.get<BffResponse<GameTimeSlot[]>>(
       `/api/user/games/${gameId}/time-slots/available`,
       { date }
     );
-    // Handle wrapped response format { success: true, data: [...] }
-    const data = response.data;
-    if (data && typeof data === 'object' && 'data' in data && Array.isArray(data.data)) {
-      return data.data;
-    }
-    return Array.isArray(data) ? data : [];
+    return extractList<GameTimeSlot>(response.data);
   },
 };

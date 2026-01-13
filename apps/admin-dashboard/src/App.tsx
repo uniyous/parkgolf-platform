@@ -8,8 +8,10 @@ import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { AdminManagementPage } from './pages/system/AdminManagementPage';
 import { UserManagementPage } from './pages/system/UserManagementPage';
 import { RolePermissionPage } from './pages/system/RolePermissionPage';
+import { SystemSettingsPage } from './pages/system/SystemSettingsPage';
 import { CompanyPage } from './pages/company/CompanyPage';
 import { BookingManagementPage } from './pages/booking/BookingManagementPage';
+import { CancellationManagementPage } from './pages/booking/CancellationManagementPage';
 import { ClubListPage } from './pages/club/ClubListPage';
 import { ClubDetailPage } from './pages/club/ClubDetailPage';
 import { GameListPage } from './pages/game/GameListPage';
@@ -42,6 +44,7 @@ function App() {
           <Route path="/admin-management" element={<AdminManagementPage />} />
           <Route path="/user-management" element={<UserManagementPage />} />
           <Route path="/roles" element={<RolePermissionPage />} />
+          <Route path="/system-settings" element={<SystemSettingsPage />} />
           <Route path="/companies" element={<CompanyPage />} />
 
           {/* 골프장 관리 (Master Data) */}
@@ -58,6 +61,7 @@ function App() {
           <Route path="/club/clubs/:clubId/timeslots" element={<Navigate to="/games" replace />} />
 
           <Route path="/bookings" element={<BookingManagementPage />} />
+          <Route path="/bookings/cancellations" element={<CancellationManagementPage />} />
           <Route path="/profile" element={
             <div className="text-center py-12">
               <h1 className="text-2xl font-bold text-gray-900 mb-4">프로필 설정</h1>

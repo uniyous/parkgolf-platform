@@ -271,3 +271,252 @@ model IdempotencyKey {
   @@index([expiresAt])
   @@map("idempotency_keys")
 }
+
+// =====================================================
+// 정책 관리 모델 (취소/환불/노쇼)
+// =====================================================
+
+// 취소 정책
+model CancellationPolicy {
+  id                      Int      @id @default(autoincrement())
+
+  name                    String   // 정책명 (예: "기본 취소 정책")
+  code                    String   @unique // 정책 코드 (예: "DEFAULT_CANCEL")
+  description             String?  // 정책 설명
+
+  // 취소 허용 설정
+  allowUserCancel         Boolean  @default(true) @map("allow_user_cancel") // 고객 취소 허용
+  userCancelDeadlineHours Int      @default(72) @map("user_cancel_deadline_hours") // 취소 마감 시간 (예약 시간 기준)
+  allowSameDayCancel      Boolean  @default(false) @map("allow_same_day_cancel") // 당일 취소 허용
+
+  // 상태
+  isDefault               Boolean  @default(false) @map("is_default") // 기본 정책 여부
+  isActive                Boolean  @default(true) @map("is_active")
+
+  // 적용 범위 (null이면 전체 적용)
+  clubId                  Int?     @map("club_id") // 특정 골프장에만 적용
+
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@index([isDefault])
+  @@index([isActive])
+  @@index([clubId])
+  @@map("cancellation_policies")
+}
+
+// 환불 정책
+model RefundPolicy {
+  id                     Int           @id @default(autoincrement())
+
+  name                   String        // 정책명 (예: "기본 환불 정책")
+  code                   String        @unique // 정책 코드
+  description            String?       // 정책 설명
+
+  // 관리자/시스템 취소 시 환불율
+  adminCancelRefundRate  Int           @default(100) @map("admin_cancel_refund_rate") // 관리자 취소 환불율 (%)
+  systemCancelRefundRate Int           @default(100) @map("system_cancel_refund_rate") // 시스템 취소 환불율 (%)
+
+  // 최소 환불 금액 및 수수료
+  minRefundAmount        Int           @default(0) @map("min_refund_amount") // 최소 환불 금액
+  refundFee              Int           @default(0) @map("refund_fee") // 환불 수수료 (고정)
+  refundFeeRate          Int           @default(0) @map("refund_fee_rate") // 환불 수수료율 (%)
+
+  // 상태
+  isDefault              Boolean       @default(false) @map("is_default")
+  isActive               Boolean       @default(true) @map("is_active")
+
+  // 적용 범위
+  clubId                 Int?          @map("club_id")
+
+  createdAt              DateTime      @default(now()) @map("created_at")
+  updatedAt              DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  tiers                  RefundTier[]
+
+  @@index([isDefault])
+  @@index([isActive])
+  @@index([clubId])
+  @@map("refund_policies")
+}
+
+// 환불율 티어 (시점별 환불율)
+model RefundTier {
+  id              Int          @id @default(autoincrement())
+
+  refundPolicyId  Int          @map("refund_policy_id")
+  refundPolicy    RefundPolicy @relation(fields: [refundPolicyId], references: [id], onDelete: Cascade)
+
+  // 적용 조건 (예약 시간 기준 남은 시간)
+  minHoursBefore  Int          @map("min_hours_before") // 최소 시간 (예: 24)
+  maxHoursBefore  Int?         @map("max_hours_before") // 최대 시간 (null이면 무제한)
+
+  // 환불율
+  refundRate      Int          @map("refund_rate") // 환불율 (%)
+
+  // 설명
+  label           String?      // 표시용 라벨 (예: "7일 전")
+
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  @@index([refundPolicyId])
+  @@map("refund_tiers")
+}
+
+// 노쇼 정책
+model NoShowPolicy {
+  id                    Int              @id @default(autoincrement())
+
+  name                  String           // 정책명
+  code                  String           @unique // 정책 코드
+  description           String?          // 정책 설명
+
+  // 노쇼 처리 설정
+  allowRefundOnNoShow   Boolean          @default(false) @map("allow_refund_on_noshow") // 노쇼 시 환불 허용
+  noShowGraceMinutes    Int              @default(30) @map("noshow_grace_minutes") // 노쇼 판정 유예 시간 (분)
+
+  // 페널티 카운트 리셋
+  countResetDays        Int              @default(365) @map("count_reset_days") // 노쇼 카운트 리셋 기간 (일)
+
+  // 상태
+  isDefault             Boolean          @default(false) @map("is_default")
+  isActive              Boolean          @default(true) @map("is_active")
+
+  // 적용 범위
+  clubId                Int?             @map("club_id")
+
+  createdAt             DateTime         @default(now()) @map("created_at")
+  updatedAt             DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  penalties             NoShowPenalty[]
+
+  @@index([isDefault])
+  @@index([isActive])
+  @@index([clubId])
+  @@map("noshow_policies")
+}
+
+// 노쇼 페널티 단계
+model NoShowPenalty {
+  id              Int           @id @default(autoincrement())
+
+  noShowPolicyId  Int           @map("noshow_policy_id")
+  noShowPolicy    NoShowPolicy  @relation(fields: [noShowPolicyId], references: [id], onDelete: Cascade)
+
+  // 적용 조건 (노쇼 횟수)
+  minCount        Int           @map("min_count") // 최소 노쇼 횟수 (예: 1)
+  maxCount        Int?          @map("max_count") // 최대 노쇼 횟수 (null이면 무제한)
+
+  // 페널티 유형
+  penaltyType     NoShowPenaltyType @map("penalty_type")
+
+  // 페널티 상세
+  restrictionDays Int?          @map("restriction_days") // 예약 제한 기간 (일)
+  feeAmount       Int?          @map("fee_amount") // 위약금 (원)
+  feeRate         Int?          @map("fee_rate") // 위약금율 (%)
+
+  // 설명
+  label           String?       // 표시용 라벨 (예: "1회 노쇼")
+  message         String?       // 안내 메시지
+
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  @@index([noShowPolicyId])
+  @@map("noshow_penalties")
+}
+
+enum NoShowPenaltyType {
+  WARNING          // 경고
+  RESTRICTION      // 예약 제한
+  FEE              // 위약금
+  BLACKLIST        // 블랙리스트
+}
+
+// 환불 레코드
+model Refund {
+  id               Int          @id @default(autoincrement())
+
+  // 예약/결제 연결
+  bookingId        Int          @map("booking_id")
+  paymentId        Int?         @map("payment_id")
+
+  // 환불 정보
+  originalAmount   Decimal      @db.Decimal(10, 2) @map("original_amount") // 원래 결제 금액
+  refundAmount     Decimal      @db.Decimal(10, 2) @map("refund_amount") // 환불 금액
+  refundRate       Int          @map("refund_rate") // 적용된 환불율 (%)
+  refundFee        Decimal      @db.Decimal(10, 2) @default(0) @map("refund_fee") // 수수료
+
+  // 상태
+  status           RefundStatus @default(REQUESTED)
+
+  // 취소 유형
+  cancellationType CancellationType @map("cancellation_type")
+  cancelReason     String?      @map("cancel_reason") // 취소 사유
+  cancelledBy      Int?         @map("cancelled_by") // 취소 처리자 (admin/user ID)
+  cancelledByType  String?      @map("cancelled_by_type") // ADMIN, USER, SYSTEM
+
+  // PG 연동 정보
+  pgTransactionId  String?      @map("pg_transaction_id") // PG사 환불 거래 ID
+  pgRefundId       String?      @map("pg_refund_id") // PG사 환불 ID
+
+  // 처리 정보
+  processedAt      DateTime?    @map("processed_at") // 환불 처리 완료 시간
+  processedBy      Int?         @map("processed_by") // 환불 처리자
+  rejectedReason   String?      @map("rejected_reason") // 거절 사유
+
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  @@index([bookingId])
+  @@index([paymentId])
+  @@index([status])
+  @@index([cancellationType])
+  @@map("refunds")
+}
+
+enum RefundStatus {
+  REQUESTED        // 환불 요청됨
+  PENDING          // 환불 대기 (관리자 검토 중)
+  APPROVED         // 환불 승인됨
+  PROCESSING       // 환불 처리 중
+  COMPLETED        // 환불 완료
+  REJECTED         // 환불 거절
+}
+
+enum CancellationType {
+  USER_NORMAL      // 고객 정상 취소 (마감 시한 이전)
+  USER_LATE        // 고객 지연 취소 (1~3일 전)
+  USER_LASTMINUTE  // 고객 긴급 취소 (24시간 이내)
+  ADMIN            // 관리자 취소
+  SYSTEM           // 시스템 취소 (Saga 실패 등)
+}
+
+// 사용자 노쇼 기록
+model UserNoShowRecord {
+  id           Int      @id @default(autoincrement())
+
+  userId       Int      @map("user_id")
+  bookingId    Int      @map("booking_id")
+
+  // 노쇼 처리 정보
+  noShowAt     DateTime @map("noshow_at") // 노쇼 처리 시간
+  processedBy  Int?     @map("processed_by") // 처리자
+  notes        String?  // 메모
+
+  // 리셋 여부
+  isReset      Boolean  @default(false) @map("is_reset") // 카운트에서 제외 여부
+  resetAt      DateTime? @map("reset_at")
+  resetBy      Int?     @map("reset_by")
+  resetReason  String?  @map("reset_reason")
+
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([bookingId])
+  @@index([noShowAt])
+  @@map("user_noshow_records")
+}

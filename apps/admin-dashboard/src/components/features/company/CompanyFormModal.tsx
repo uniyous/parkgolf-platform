@@ -3,7 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { useCreateCompanyMutation, useUpdateCompanyMutation } from '@/hooks/queries';
 import PostalSearchModal from './PostalSearchModal';
-import type { Company, CompanyStatus, CreateCompanyDto, UpdateCompanyDto } from '@/types/company';
+import type { Company, CompanyStatus, CompanyType, CreateCompanyDto, UpdateCompanyDto } from '@/types/company';
 
 interface CompanyFormModalProps {
   open: boolean;
@@ -13,6 +13,7 @@ interface CompanyFormModalProps {
 
 interface FormData {
   name: string;
+  companyType: CompanyType;
   businessNumber: string;
   postalCode: string;
   address1: string;
@@ -28,6 +29,7 @@ interface FormData {
 
 const initialFormData: FormData = {
   name: '',
+  companyType: 'FRANCHISE',
   businessNumber: '',
   postalCode: '',
   address1: '',
@@ -40,6 +42,12 @@ const initialFormData: FormData = {
   logoUrl: '',
   status: 'ACTIVE',
 };
+
+const COMPANY_TYPE_OPTIONS = [
+  { value: 'FRANCHISE', label: '가맹점', icon: '🏢', description: '일반 골프장/파크골프장' },
+  { value: 'ASSOCIATION', label: '협회', icon: '🤝', description: '골프 협회/연맹' },
+  { value: 'PLATFORM', label: '플랫폼', icon: '🌐', description: '본사/플랫폼 운영사' },
+];
 
 const STATUS_OPTIONS = [
   { value: 'ACTIVE', label: '운영 중', icon: '✅', color: 'bg-green-100 text-green-800' },
@@ -65,6 +73,7 @@ export const CompanyFormModal: React.FC<CompanyFormModalProps> = ({ open, compan
 
       setFormData({
         name: company.name || '',
+        companyType: company.companyType || 'FRANCHISE',
         businessNumber: company.businessNumber || '',
         postalCode,
         address1,
@@ -135,9 +144,23 @@ export const CompanyFormModal: React.FC<CompanyFormModalProps> = ({ open, compan
     const combinedAddress = [formData.postalCode, formData.address1, formData.address2].filter(Boolean).join(' ');
 
     try {
+      // 회사명에서 코드 자동 생성
+      const generateCode = (name: string): string => {
+        const timestamp = Date.now().toString(36).toUpperCase();
+        const nameCode = name
+          .replace(/[^\w\s가-힣]/g, '')
+          .split(/\s+/)
+          .map(w => w.charAt(0))
+          .join('')
+          .toUpperCase()
+          .slice(0, 4);
+        return `${nameCode}-${timestamp}`;
+      };
+
       if (isEditing && company) {
         const updateData: UpdateCompanyDto = {
           name: formData.name,
+          companyType: formData.companyType,
           businessNumber: formData.businessNumber,
           address: combinedAddress,
           phoneNumber: formData.phoneNumber,
@@ -152,6 +175,8 @@ export const CompanyFormModal: React.FC<CompanyFormModalProps> = ({ open, compan
       } else {
         const createData: CreateCompanyDto = {
           name: formData.name,
+          code: generateCode(formData.name),
+          companyType: formData.companyType,
           businessNumber: formData.businessNumber,
           address: combinedAddress,
           phoneNumber: formData.phoneNumber,
@@ -283,6 +308,30 @@ export const CompanyFormModal: React.FC<CompanyFormModalProps> = ({ open, compan
                         />
                       </div>
                       {errors.name && <p className="mt-1.5 text-sm text-red-500 flex items-center"><svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>{errors.name}</p>}
+                    </div>
+
+                    {/* 회사 유형 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        회사 유형 <span className="text-red-500">*</span>
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {COMPANY_TYPE_OPTIONS.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => handleChange('companyType', option.value)}
+                            className={`flex flex-col items-center justify-center px-2 py-2.5 rounded-lg border-2 transition-all ${
+                              formData.companyType === option.value
+                                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                            }`}
+                          >
+                            <span className="text-lg mb-0.5">{option.icon}</span>
+                            <span className="text-xs font-medium">{option.label}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     {/* 사업자번호 */}

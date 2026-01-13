@@ -19,7 +19,7 @@ export const SignupPage: React.FC = () => {
     password: '',
     confirmPassword: '',
     name: '',
-    role: 'VIEWER',
+    role: 'COMPANY_VIEWER',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -96,7 +96,7 @@ export const SignupPage: React.FC = () => {
         password: '',
         confirmPassword: '',
         name: '',
-        role: 'VIEWER',
+        role: 'COMPANY_VIEWER',
       });
 
     } catch {
@@ -211,11 +211,17 @@ export const SignupPage: React.FC = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 required
               >
-                <option value="VIEWER">조회 전용</option>
-                <option value="STAFF">현장 직원</option>
-                <option value="MANAGER">운영 관리자</option>
-                <option value="SUPPORT">고객지원</option>
-                <option value="ADMIN">시스템 관리자</option>
+                <optgroup label="회사 역할">
+                  <option value="COMPANY_VIEWER">조회 전용</option>
+                  <option value="COMPANY_STAFF">현장 직원</option>
+                  <option value="COMPANY_MANAGER">운영 관리자</option>
+                  <option value="COMPANY_ADMIN">회사 관리자</option>
+                </optgroup>
+                <optgroup label="플랫폼 역할">
+                  <option value="PLATFORM_VIEWER">플랫폼 조회</option>
+                  <option value="PLATFORM_SUPPORT">고객지원</option>
+                  <option value="PLATFORM_ADMIN">시스템 관리자</option>
+                </optgroup>
               </select>
             </div>
           </div>
