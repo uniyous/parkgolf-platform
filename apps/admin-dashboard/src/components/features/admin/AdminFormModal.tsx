@@ -76,8 +76,8 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
 
-  // 회사 유형에 따라 부여 가능한 역할 목록
-  const allowedRoles = getAllowedRolesForCompanyType(companyType);
+  // 회사 유형에 따라 부여 가능한 역할 목록 (메모이제이션으로 무한 루프 방지)
+  const allowedRoles = useMemo(() => getAllowedRolesForCompanyType(companyType), [companyType]);
 
   // 역할을 플랫폼/회사로 그룹화
   const groupedRoles = useMemo(() => {
