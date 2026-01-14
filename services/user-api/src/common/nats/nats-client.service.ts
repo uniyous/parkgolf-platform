@@ -40,7 +40,7 @@ export class NatsClientService implements OnModuleInit {
    * NATS 메시지 전송 (공통 래퍼)
    * @param subject NATS subject
    * @param payload 전송 데이터
-   * @param timeoutMs 타임아웃 (기본 15초)
+   * @param timeoutMs 타임아웃 (기본 30초)
    */
   async send<T>(subject: string, payload: any, timeoutMs: number = NATS_TIMEOUTS.DEFAULT): Promise<T> {
     const startTime = Date.now();
