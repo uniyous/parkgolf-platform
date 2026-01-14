@@ -14,10 +14,10 @@ import {
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, retry, catchError, of } from 'rxjs';
 import { randomUUID } from 'crypto';
+import { NATS_TIMEOUTS } from '../../common/constants';
 
 // NATS 호출 설정
-const NATS_TIMEOUT_MS = 5000;  // 5초 타임아웃
-const NATS_RETRY_COUNT = 2;    // 2회 재시도
+const NATS_RETRY_COUNT = 2;     // 2회 재시도
 
 // 캐시 설정
 const CACHE_TTL_MS = 5 * 60 * 1000;  // 5분 캐시 유효 기간
@@ -52,7 +52,7 @@ export class BookingService {
       // course-service에서 슬롯 정보 조회 (timeout + retry)
       const slotResponse = await firstValueFrom(
         this.courseServiceClient.send('gameTimeSlots.get', { timeSlotId: gameTimeSlotId }).pipe(
-          timeout(NATS_TIMEOUT_MS),
+          timeout(NATS_TIMEOUTS.DEFAULT),
           retry(NATS_RETRY_COUNT),
           catchError((err) => {
             this.logger.error(`gameTimeSlots.get failed after retries: ${err.message}`);
@@ -72,7 +72,7 @@ export class BookingService {
       // game 정보도 조회해서 GameCache 동기화 (timeout + retry)
       const gameResponse = await firstValueFrom(
         this.courseServiceClient.send('games.get', { gameId: slot.gameId }).pipe(
-          timeout(NATS_TIMEOUT_MS),
+          timeout(NATS_TIMEOUTS.DEFAULT),
           retry(NATS_RETRY_COUNT),
           catchError((err) => {
             this.logger.error(`games.get failed after retries: ${err.message}`);

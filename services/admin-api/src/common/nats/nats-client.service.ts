@@ -2,22 +2,7 @@ import { Injectable, Inject, Logger, HttpException, HttpStatus } from '@nestjs/c
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, TimeoutError } from 'rxjs';
 import { Errors } from '../exceptions';
-
-/**
- * NATS Timeout Constants
- */
-export const NATS_TIMEOUTS = {
-  /** Quick operations (single item fetch, validation) */
-  QUICK: 5000,
-  /** Default operations */
-  DEFAULT: 15000,
-  /** List queries with pagination */
-  LIST_QUERY: 30000,
-  /** Analytics and statistics */
-  ANALYTICS: 30000,
-  /** Bulk operations (time slot generation, batch processing) */
-  BULK_OPERATION: 120000,
-} as const;
+import { NATS_TIMEOUTS } from '../constants';
 
 /**
  * NATS Client Wrapper Service
