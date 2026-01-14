@@ -10,7 +10,7 @@ export const NATS_TIMEOUTS = {
   /** Quick operations (single item fetch, validation) */
   QUICK: 5000,
   /** Default operations */
-  DEFAULT: 15000,
+  DEFAULT: 30000,
   /** List queries with pagination */
   LIST_QUERY: 30000,
   /** Analytics and statistics */
