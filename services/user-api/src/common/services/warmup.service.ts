@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, HttpException } from '@nestjs/common';
 import { NatsClientService, NATS_TIMEOUTS } from '../nats/nats-client.service';
 
 export interface ServiceHealth {
@@ -40,7 +40,7 @@ export class WarmupService {
     {
       name: 'iam-service',
       httpUrl: process.env.IAM_SERVICE_URL || 'https://iam-service-dev-iihuzmuufa-du.a.run.app',
-      natsPattern: 'iam.ping',
+      natsPattern: 'iam.auth.ping',
     },
     {
       name: 'course-service',
@@ -263,8 +263,21 @@ export class WarmupService {
           }
         } catch (error) {
           const responseTime = Date.now() - start;
-          const message = error instanceof Error ? error.message : 'Unknown error';
-          this.logger.error(`[NATS] ${service.name}: ${message}`);
+          let message = 'Unknown error';
+
+          if (error instanceof HttpException) {
+            const response = error.getResponse();
+            if (typeof response === 'object' && response !== null) {
+              const resp = response as Record<string, any>;
+              message = resp.error?.message || resp.message || error.message;
+            } else {
+              message = error.message;
+            }
+          } else if (error instanceof Error) {
+            message = error.message;
+          }
+
+          this.logger.error(`[NATS] ${service.name}: ${message}`, error instanceof Error ? error.stack : undefined);
           return {
             natsStatus: 'error' as const,
             natsResponseTime: responseTime,
