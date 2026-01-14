@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { NatsClientService, NATS_TIMEOUTS } from '../nats/nats-client.service';
+import { NatsClientService, NATS_TIMEOUTS } from '../nats';
 
 export interface ServiceHealth {
   name: string;
