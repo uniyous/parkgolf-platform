@@ -6,6 +6,7 @@ import { useSearchBookingsQuery } from '@/hooks/queries/booking';
 import { useProfileQuery } from '@/hooks/queries/auth';
 import { BookingCard, BookingCardSkeleton } from '@/components/BookingCard';
 import { CancelBookingModal } from '@/components/CancelBookingModal';
+import { Pagination } from '@/components';
 import { type BookingWithCancel } from '@/lib/api/bookingApi';
 
 type TimeFilter = 'upcoming' | 'past';
@@ -170,37 +171,13 @@ export const MyBookingsPage: React.FC = () => {
             </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-6">
-                <button
-                  onClick={() => handlePageChange(page - 1)}
-                  disabled={page === 1}
-                  className={cn(
-                    'px-4 py-2 text-sm font-medium rounded-lg',
-                    'bg-white/10 text-white/70',
-                    'hover:bg-white/20 transition-colors',
-                    'disabled:opacity-50 disabled:cursor-not-allowed'
-                  )}
-                >
-                  이전
-                </button>
-                <span className="text-sm text-white/60">
-                  {page} / {totalPages}
-                </span>
-                <button
-                  onClick={() => handlePageChange(page + 1)}
-                  disabled={page >= totalPages}
-                  className={cn(
-                    'px-4 py-2 text-sm font-medium rounded-lg',
-                    'bg-white/10 text-white/70',
-                    'hover:bg-white/20 transition-colors',
-                    'disabled:opacity-50 disabled:cursor-not-allowed'
-                  )}
-                >
-                  다음
-                </button>
-              </div>
-            )}
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              className="mt-6"
+              variant="default"
+            />
 
             {/* Summary */}
             <p className="text-center text-sm text-white/40 mt-4">

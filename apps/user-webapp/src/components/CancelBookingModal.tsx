@@ -5,6 +5,7 @@ import { formatDate, formatPrice } from '@/lib/formatting';
 import { showSuccessToast, showErrorToast } from '@/lib/toast';
 import { type BookingWithCancel } from '@/lib/api/bookingApi';
 import { useCancelBookingMutation } from '@/hooks/queries/booking';
+import { CANCEL_REASONS } from '@/lib/constants';
 
 interface CancelBookingModalProps {
   booking: BookingWithCancel;
@@ -12,15 +13,6 @@ interface CancelBookingModalProps {
   onClose: () => void;
   onSuccess?: () => void;
 }
-
-const cancelReasons = [
-  '일정 변경',
-  '개인 사정',
-  '건강 문제',
-  '날씨 이유',
-  '다른 예약 확정',
-  '기타',
-];
 
 export const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
   booking,
@@ -110,7 +102,7 @@ export const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
             취소 사유 선택
           </label>
           <div className="grid grid-cols-2 gap-2">
-            {cancelReasons.map((reason) => (
+            {CANCEL_REASONS.map((reason) => (
               <button
                 key={reason}
                 onClick={() => setSelectedReason(reason)}

@@ -1,22 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, SlidersHorizontal, X, MapPin, Clock, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, SlidersHorizontal, X, ChevronUp, ChevronDown } from 'lucide-react';
 import { useSearchGamesQuery } from '../hooks/queries';
 import { useGameSearchParams } from '../hooks/useSearchParams';
 import type { Game, GameTimeSlot, GameSearchParams } from '@/lib/api/gameApi';
-import { Button, Input, Select, PriceDisplay } from '../components';
-
-// Debounce hook for search input
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  React.useEffect(() => {
-    const timer = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-
-  return debouncedValue;
-}
+import { Button, Input, Select, Pagination, GameCard, GameCardSkeleton } from '../components';
+import { useDebounce } from '@/hooks/useDebounce';
+import { SORT_OPTIONS, PLAYER_OPTIONS, DATE_FILTER_MAX_MONTHS, TIME_OF_DAY_OPTIONS } from '@/lib/constants';
 
 export const SearchPage: React.FC = () => {
   const navigate = useNavigate();
@@ -65,7 +55,7 @@ export const SearchPage: React.FC = () => {
 
   const getMaxDate = () => {
     const date = new Date();
-    date.setMonth(date.getMonth() + 2);
+    date.setMonth(date.getMonth() + DATE_FILTER_MAX_MONTHS);
     return date.toISOString().split('T')[0];
   };
 
@@ -75,28 +65,6 @@ export const SearchPage: React.FC = () => {
       state: { game, timeSlot, date: filters.date },
     });
   };
-
-  const timeOfDayOptions = [
-    { value: 'all', label: '전체' },
-    { value: 'morning', label: '오전 (06:00-11:59)' },
-    { value: 'afternoon', label: '오후 (12:00-18:00)' },
-  ];
-
-  const sortOptions = [
-    { value: 'name-asc', label: '이름순 (오름차순)' },
-    { value: 'name-desc', label: '이름순 (내림차순)' },
-    { value: 'price-asc', label: '가격 낮은순' },
-    { value: 'price-desc', label: '가격 높은순' },
-    { value: 'createdAt-desc', label: '최신순' },
-  ];
-
-  const playerOptions = [
-    { value: 'all', label: '인원 제한 없음' },
-    { value: '1', label: '1명 이상' },
-    { value: '2', label: '2명 이상' },
-    { value: '3', label: '3명 이상' },
-    { value: '4', label: '4명 이상' },
-  ];
 
   const handleSortChange = (value: string | number) => {
     const [sortBy, sortOrder] = String(value).split('-') as [GameSearchParams['sortBy'], GameSearchParams['sortOrder']];
@@ -172,7 +140,7 @@ export const SearchPage: React.FC = () => {
                 onValueChange={(value) =>
                   updateFilters({ timeOfDay: value as 'all' | 'morning' | 'afternoon' })
                 }
-                options={timeOfDayOptions}
+                options={TIME_OF_DAY_OPTIONS}
                 glass
               />
             </div>
@@ -215,7 +183,7 @@ export const SearchPage: React.FC = () => {
                   <Select
                     value={filters.minPlayers ? String(filters.minPlayers) : 'all'}
                     onValueChange={(value) => updateFilters({ minPlayers: value === 'all' ? null : Number(value) })}
-                    options={playerOptions}
+                    options={PLAYER_OPTIONS}
                     glass
                   />
                 </div>
@@ -226,7 +194,7 @@ export const SearchPage: React.FC = () => {
                   <Select
                     value={currentSortValue}
                     onValueChange={handleSortChange}
-                    options={sortOptions}
+                    options={SORT_OPTIONS}
                     glass
                   />
                 </div>
@@ -302,25 +270,13 @@ export const SearchPage: React.FC = () => {
 
                 {/* Pagination */}
                 {pagination && pagination.total > pagination.limit && (
-                  <div className="flex justify-center gap-2 mt-8">
-                    <Button
-                      variant="glass"
-                      disabled={pagination.page <= 1}
-                      onClick={() => updateFilters({ page: pagination.page - 1 })}
-                    >
-                      이전
-                    </Button>
-                    <span className="px-4 py-2 text-white/70">
-                      {pagination.page} / {Math.ceil(pagination.total / pagination.limit)}
-                    </span>
-                    <Button
-                      variant="glass"
-                      disabled={pagination.page >= Math.ceil(pagination.total / pagination.limit)}
-                      onClick={() => updateFilters({ page: pagination.page + 1 })}
-                    >
-                      다음
-                    </Button>
-                  </div>
+                  <Pagination
+                    currentPage={pagination.page}
+                    totalPages={Math.ceil(pagination.total / pagination.limit)}
+                    onPageChange={(page) => updateFilters({ page })}
+                    className="mt-8"
+                    variant="glass"
+                  />
                 )}
               </>
             )}
@@ -329,223 +285,3 @@ export const SearchPage: React.FC = () => {
     </div>
   );
 };
-
-// Loading Skeleton
-const GameCardSkeleton: React.FC = () => (
-  <div className="glass-card overflow-hidden !p-0 animate-pulse">
-    <div className="p-4 md:p-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 items-start">
-        <div className="lg:col-span-2 space-y-3">
-          <div className="h-7 bg-white/20 rounded w-2/3"></div>
-          <div className="h-4 bg-white/20 rounded w-1/3"></div>
-          <div className="flex gap-2">
-            <div className="h-6 bg-white/20 rounded-full w-20"></div>
-            <div className="h-6 bg-white/20 rounded-full w-24"></div>
-            <div className="h-6 bg-white/20 rounded-full w-16"></div>
-          </div>
-        </div>
-        <div className="flex justify-end">
-          <div className="h-8 bg-white/20 rounded w-24"></div>
-        </div>
-      </div>
-    </div>
-    <div className="border-t border-white/20 p-4 md:p-6 bg-black/10">
-      <div className="h-5 bg-white/20 rounded w-32 mb-4"></div>
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div key={i} className="h-20 bg-white/10 rounded-xl"></div>
-        ))}
-      </div>
-    </div>
-  </div>
-);
-
-// Availability color indicator
-const getAvailabilityColor = (remaining: number, total: number) => {
-  if (total === 0) return 'bg-gray-400';
-  const ratio = remaining / total;
-  if (ratio === 0) return 'bg-gray-400';
-  if (ratio <= 0.25) return 'bg-red-400';
-  if (ratio <= 0.5) return 'bg-amber-400';
-  return 'bg-green-400';
-};
-
-const getAvailabilityText = (remaining: number) => {
-  if (remaining === 0) return '매진';
-  if (remaining <= 2) return `${remaining}자리 (마감임박)`;
-  return `${remaining}자리 남음`;
-};
-
-// Game Card Component with Time Slots
-interface GameCardProps {
-  game: Game;
-  date: string;
-  timeOfDay: 'all' | 'morning' | 'afternoon';
-  onTimeSlotSelect: (game: Game, timeSlot: GameTimeSlot) => void;
-}
-
-const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSelect }) => {
-  const [showAllSlots, setShowAllSlots] = useState(false);
-
-  // 2줄에 표시할 슬롯 수 (xl: 6열, lg: 4열 기준으로 12개)
-  const SLOTS_PER_TWO_ROWS = 12;
-
-  // 게임 검색 응답에 포함된 타임슬롯 사용 (N+1 쿼리 제거)
-  const timeSlots = game.timeSlots || [];
-
-  const filteredSlots = useMemo(() => {
-    return timeSlots.filter((slot) => {
-      // 가용 여부 체크 - 다양한 필드명 지원
-      const maxCapacity = slot.maxPlayers ?? slot.maxCapacity ?? 4;
-      const currentBookings = slot.bookedPlayers ?? slot.currentBookings ?? 0;
-      const remaining = slot.availablePlayers ?? (maxCapacity - currentBookings);
-
-      // status 필드가 AVAILABLE이 아니면 필터링 (FULLY_BOOKED 등)
-      if (slot.status && slot.status !== 'AVAILABLE') return false;
-
-      const isAvailable = slot.isAvailable ?? slot.available ?? (remaining > 0);
-      if (!isAvailable) return false;
-
-      const hour = parseInt(slot.startTime.split(':')[0]);
-      if (timeOfDay === 'morning') {
-        return hour < 12;
-      } else if (timeOfDay === 'afternoon') {
-        return hour >= 12;
-      }
-      return true;
-    });
-  }, [timeSlots, timeOfDay]);
-
-  // Calculate if there's a discount
-  const hasDiscount = game.weekendPrice && game.basePrice && game.weekendPrice < game.basePrice;
-
-  return (
-    <div className="glass-card overflow-hidden !p-0">
-      {/* Game Info */}
-      <div className="p-4 md:p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 items-start">
-          <div className="lg:col-span-2">
-            <div className="flex items-center gap-3 mb-2">
-              <h3 className="text-xl font-bold text-white">{game.name}</h3>
-              {game.isActive && (
-                <span className="bg-green-400/20 text-green-300 px-2 py-0.5 rounded-full text-xs font-medium">
-                  운영중
-                </span>
-              )}
-              {hasDiscount && (
-                <span className="bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">
-                  할인
-                </span>
-              )}
-            </div>
-
-            {/* Location */}
-            <div className="flex items-center gap-2 text-white/80 text-sm mb-2">
-              <MapPin className="w-4 h-4" />
-              <span>{game.clubName}</span>
-              {game.clubLocation && (
-                <span className="text-white/60">· {game.clubLocation}</span>
-              )}
-            </div>
-
-            {game.description && (
-              <p className="text-white/70 text-sm mb-4">{game.description}</p>
-            )}
-
-            <div className="flex flex-wrap gap-2 mb-4">
-              <span className="bg-white/20 text-white/90 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                {game.duration}분
-              </span>
-              <span className="bg-white/20 text-white/90 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm flex items-center gap-1">
-                <Users className="w-3 h-3" />
-                최대 {game.maxPlayers}명
-              </span>
-              {game.courses?.map((course, index) => (
-                <span
-                  key={index}
-                  className="bg-emerald-400/20 text-emerald-300 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm"
-                >
-                  {course.courseName}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="text-right">
-            <PriceDisplay price={game.pricePerPerson || game.basePrice || 0} size="md" unit="/인" />
-          </div>
-        </div>
-      </div>
-
-      {/* Time Slots */}
-      <div className="border-t border-white/20 p-4 md:p-6 bg-black/10">
-        <h4 className="text-base font-semibold text-white mb-4">예약 가능 시간</h4>
-
-        {filteredSlots.length === 0 ? (
-          <div className="text-center py-6 text-white/70">
-            선택한 조건에 예약 가능한 시간이 없습니다
-          </div>
-        ) : (
-          <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-            {(showAllSlots ? filteredSlots : filteredSlots.slice(0, SLOTS_PER_TWO_ROWS)).map((slot) => {
-              const maxCapacity = slot.maxPlayers ?? slot.maxCapacity ?? 4;
-              const currentBookings = slot.bookedPlayers ?? slot.currentBookings ?? 0;
-              const remaining = slot.availablePlayers ?? (maxCapacity - currentBookings);
-              const availabilityColor = getAvailabilityColor(remaining, maxCapacity);
-
-              // isAvailable 체크: 명시적 필드가 없으면 availablePlayers > 0 으로 판단
-              const isAvailable = slot.isAvailable ?? slot.available ?? (remaining > 0);
-
-              return (
-                <button
-                  key={slot.id}
-                  onClick={() => onTimeSlotSelect(game, slot)}
-                  disabled={!isAvailable}
-                  className={`
-                    p-3 rounded-xl cursor-pointer transition-all duration-200 backdrop-blur-sm border
-                    ${
-                      slot.isPremium
-                        ? 'bg-amber-400/20 border-amber-400/50 hover:bg-amber-400/30'
-                        : 'bg-white/10 border-white/30 hover:bg-white/20'
-                    }
-                    ${!isAvailable && 'opacity-50 cursor-not-allowed'}
-                  `}
-                >
-                  <div className="text-base font-semibold text-white">{slot.startTime}</div>
-                  <div className="flex items-center justify-center gap-1 mt-1">
-                    <span className="text-sm font-medium text-emerald-300">{slot.price.toLocaleString()}원</span>
-                    <span className="text-white/50">·</span>
-                    <div className={`w-2 h-2 rounded-full ${availabilityColor}`}></div>
-                    <span className="text-xs text-white/70">{remaining}자리</span>
-                  </div>
-                  {slot.isPremium && (
-                    <div className="text-xs text-amber-300 font-semibold mt-1">프리미엄</div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          {filteredSlots.length > SLOTS_PER_TWO_ROWS && (
-            <div className="mt-4 text-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowAllSlots(!showAllSlots)}
-                className="text-white/70 hover:text-white"
-              >
-                {showAllSlots
-                  ? '접기'
-                  : `더보기 (+${filteredSlots.length - SLOTS_PER_TWO_ROWS}개)`
-                }
-                {showAllSlots ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
-              </Button>
-            </div>
-          )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-};
-
