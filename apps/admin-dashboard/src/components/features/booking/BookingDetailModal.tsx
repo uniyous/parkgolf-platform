@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal } from '@/components/ui/Modal';
+import { Modal, Button } from '@/components/ui';
 import {
   Calendar,
   Clock,
@@ -279,51 +279,49 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
           {/* CONFIRMED 상태일 때만 완료/노쇼/취소 가능 */}
           {booking.status === 'CONFIRMED' && (
             <>
-              <button
+              <Button
                 onClick={() => onComplete(booking)}
                 disabled={isActionPending}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+                className="bg-green-600 hover:bg-green-700"
               >
-                <CheckCircle className="h-4 w-4" />
+                <CheckCircle className="h-4 w-4 mr-1" />
                 완료 처리
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => onNoShow(booking)}
                 disabled={isActionPending}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 transition-colors"
+                variant="secondary"
+                className="bg-gray-600 text-white hover:bg-gray-700"
               >
-                <UserX className="h-4 w-4" />
+                <UserX className="h-4 w-4 mr-1" />
                 노쇼 처리
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => onCancel(booking)}
                 disabled={isActionPending}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                variant="destructive"
               >
-                <XCircle className="h-4 w-4" />
+                <XCircle className="h-4 w-4 mr-1" />
                 예약 취소
-              </button>
+              </Button>
             </>
           )}
 
           {/* PENDING 상태일 때 취소만 가능 */}
           {booking.status === 'PENDING' && (
-            <button
+            <Button
               onClick={() => onCancel(booking)}
               disabled={isActionPending}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+              variant="destructive"
             >
-              <XCircle className="h-4 w-4" />
+              <XCircle className="h-4 w-4 mr-1" />
               예약 취소
-            </button>
+            </Button>
           )}
 
-          <button
-            onClick={onClose}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-          >
+          <Button variant="outline" onClick={onClose}>
             닫기
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>

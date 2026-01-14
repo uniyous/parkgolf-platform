@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal } from '@/components/ui/Modal';
+import { Modal, Button } from '@/components/ui';
 import { AlertTriangle, CheckCircle, DollarSign } from 'lucide-react';
 import type { CancellationRecord } from './CancellationTable';
 
@@ -189,30 +189,18 @@ export const RefundProcessModal: React.FC<RefundProcessModalProps> = ({
 
         {/* 액션 버튼 */}
         <div className="flex justify-end gap-3 pt-4 border-t">
-          <button
-            onClick={onClose}
-            disabled={isProcessing}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
+          <Button variant="outline" onClick={onClose} disabled={isProcessing}>
             취소
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleConfirm}
-            disabled={!isValidAmount || isProcessing || (isAdjusted && !note.trim())}
-            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            disabled={!isValidAmount || (isAdjusted && !note.trim())}
+            loading={isProcessing}
+            className="bg-green-600 hover:bg-green-700"
           >
-            {isProcessing ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                처리 중...
-              </>
-            ) : (
-              <>
-                <CheckCircle className="h-4 w-4" />
-                환불 처리
-              </>
-            )}
-          </button>
+            <CheckCircle className="h-4 w-4 mr-1" />
+            환불 처리
+          </Button>
         </div>
       </div>
     </Modal>

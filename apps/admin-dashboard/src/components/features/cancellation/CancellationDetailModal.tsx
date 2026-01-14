@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal } from '@/components/ui/Modal';
+import { Modal, Button } from '@/components/ui';
 import {
   Calendar,
   Clock,
@@ -356,21 +356,18 @@ export const CancellationDetailModal: React.FC<CancellationDetailModalProps> = (
         {/* 액션 버튼 */}
         <div className="flex justify-end gap-2 pt-4 border-t">
           {canProcessRefund && (
-            <button
+            <Button
               onClick={() => onProcessRefund(record)}
               disabled={isActionPending}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+              className="bg-green-600 hover:bg-green-700"
             >
-              <DollarSign className="h-4 w-4" />
+              <DollarSign className="h-4 w-4 mr-1" />
               환불 처리
-            </button>
+            </Button>
           )}
-          <button
-            onClick={onClose}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-          >
+          <Button variant="outline" onClick={onClose}>
             닫기
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>

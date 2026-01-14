@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRolesWithPermissionsQuery, useUpdateAdminMutation } from '@/hooks/queries';
-import { Modal } from '@/components/ui';
+import { Modal, Button } from '@/components/ui';
 import type { Admin, AdminRole } from '@/types';
 import type { RoleWithPermissions, PermissionDetail } from '@/lib/api/adminApi';
 import { ADMIN_ROLE_LABELS } from '@/utils';
@@ -295,20 +295,16 @@ export const RoleManagementModal: React.FC<RoleManagementModalProps> = ({ open, 
 
       {/* Buttons */}
       <div className="flex justify-end gap-3 pt-6 mt-4 border-t">
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-        >
+        <Button variant="outline" onClick={onClose}>
           취소
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={handleSave}
-          disabled={updateAdmin.isPending || !selectedRole || selectedRole === currentRole}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={!selectedRole || selectedRole === currentRole}
+          loading={updateAdmin.isPending}
         >
-          {updateAdmin.isPending ? '저장 중...' : '역할 변경'}
-        </button>
+          역할 변경
+        </Button>
       </div>
     </Modal>
   );
