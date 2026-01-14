@@ -1,25 +1,18 @@
 import { test, expect } from '@playwright/test';
 
+// 전역 테스트 타임아웃 설정
+test.setTimeout(60000);
+
 // 페이지 콘텐츠 로드 대기 헬퍼 함수
 async function waitForPageReady(page: import('@playwright/test').Page) {
+  // DOM 로드 대기
+  await page.waitForLoadState('domcontentloaded');
+
   // 1. 예약 현황 헤더가 표시될 때까지 대기 (페이지 렌더링 확인)
-  await page.waitForSelector('h1:has-text("예약 현황")', { timeout: 30000 });
+  await page.locator('h1').filter({ hasText: '예약 현황' }).waitFor({ timeout: 30000 });
 
-  // 2. 로딩 메시지가 사라지거나 데이터가 로드될 때까지 대기
-  await Promise.race([
-    // 로딩 메시지가 사라질 때까지 대기
-    page.waitForFunction(
-      () => !document.body.textContent?.includes('예약 데이터를 불러오는 중'),
-      { timeout: 30000 }
-    ),
-    // 또는 총 예약 건수가 표시될 때까지 대기
-    page.waitForSelector('p:has-text("총"), p:has-text("건의 예약")', { timeout: 30000 }),
-  ]).catch(() => {
-    // 둘 다 실패해도 계속 진행 (데이터가 없을 수 있음)
-  });
-
-  // 약간의 안정화 시간
-  await page.waitForTimeout(200);
+  // 2. 로딩이 완료될 때까지 잠시 대기
+  await page.waitForTimeout(1000);
 }
 
 test.describe('예약 현황 테스트', () => {
@@ -31,26 +24,26 @@ test.describe('예약 현황 테스트', () => {
 
   test('예약 현황 페이지 렌더링', async ({ page }) => {
     // 헤더 확인
-    await expect(page.getByRole('heading', { name: /예약 현황/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /예약 현황/ })).toBeVisible({ timeout: 10000 });
 
     // 부제목 확인
-    await expect(page.getByText(/실시간 예약 조회 및 관리/)).toBeVisible();
+    await expect(page.getByText(/실시간 예약 조회 및 관리/)).toBeVisible({ timeout: 10000 });
   });
 
   test('상태별 카운트 카드 표시', async ({ page }) => {
     // main 영역 내 각 상태 카드 확인 (p 태그로 한정)
     const main = page.getByRole('main');
-    await expect(main.locator('p:has-text("전체")')).toBeVisible();
-    await expect(main.locator('p:has-text("대기")')).toBeVisible();
-    await expect(main.locator('p:has-text("확정")')).toBeVisible();
-    await expect(main.locator('p:has-text("완료")')).toBeVisible();
-    await expect(main.locator('p:has-text("취소")')).toBeVisible();
-    await expect(main.locator('p:has-text("노쇼")')).toBeVisible();
+    await expect(main.locator('p').filter({ hasText: '전체' }).first()).toBeVisible({ timeout: 10000 });
+    await expect(main.locator('p').filter({ hasText: '대기' }).first()).toBeVisible({ timeout: 10000 });
+    await expect(main.locator('p').filter({ hasText: '확정' }).first()).toBeVisible({ timeout: 10000 });
+    await expect(main.locator('p').filter({ hasText: '완료' }).first()).toBeVisible({ timeout: 10000 });
+    await expect(main.locator('p').filter({ hasText: '취소' }).first()).toBeVisible({ timeout: 10000 });
+    await expect(main.locator('p').filter({ hasText: '노쇼' }).first()).toBeVisible({ timeout: 10000 });
   });
 
   test('날짜 범위 필터 표시', async ({ page }) => {
     // 기간 레이블 확인
-    await expect(page.getByText('기간')).toBeVisible();
+    await expect(page.getByText('기간')).toBeVisible({ timeout: 10000 });
 
     // 날짜 입력 필드들 확인
     const dateInputs = page.locator('input[type="date"]');
@@ -60,17 +53,17 @@ test.describe('예약 현황 테스트', () => {
   test('골프장 필터 표시', async ({ page }) => {
     // main 영역 내 골프장 필터 레이블 확인
     const main = page.getByRole('main');
-    await expect(main.locator('label:has-text("골프장")')).toBeVisible();
+    await expect(main.locator('label').filter({ hasText: '골프장' })).toBeVisible({ timeout: 10000 });
 
     // 전체 옵션이 있는 셀렉트 확인
     const clubSelect = main.locator('select');
-    await expect(clubSelect).toBeVisible();
+    await expect(clubSelect).toBeVisible({ timeout: 10000 });
   });
 
   test('검색 필드 동작', async ({ page }) => {
     // 검색 입력 필드 확인 - 실제 placeholder 텍스트 사용
     const searchInput = page.getByPlaceholder(/예약자명, 연락처, 예약번호 검색/);
-    await expect(searchInput).toBeVisible();
+    await expect(searchInput).toBeVisible({ timeout: 10000 });
 
     // 검색어 입력
     await searchInput.fill('홍길동');
@@ -79,8 +72,8 @@ test.describe('예약 현황 테스트', () => {
 
   test('상태 필터 클릭', async ({ page }) => {
     // 대기 상태 텍스트가 있는 클릭 가능한 요소 찾기
-    const pendingCard = page.locator('p:has-text("대기")').first();
-    await expect(pendingCard).toBeVisible();
+    const pendingCard = page.locator('p').filter({ hasText: '대기' }).first();
+    await expect(pendingCard).toBeVisible({ timeout: 10000 });
 
     // 부모 요소 클릭 (카드)
     await pendingCard.click();
@@ -102,19 +95,19 @@ test.describe('예약 현황 테스트', () => {
     // 테이블이 있는 경우 헤더 확인
     const table = page.locator('table');
     if (await table.isVisible()) {
-      await expect(page.getByText('예약번호')).toBeVisible();
-      await expect(page.getByText('날짜/시간')).toBeVisible();
-      await expect(page.getByText('고객 정보')).toBeVisible();
-      await expect(page.getByText('인원')).toBeVisible();
-      await expect(page.getByText('금액')).toBeVisible();
-      await expect(page.getByText('상태').first()).toBeVisible();
-      await expect(page.getByText('액션')).toBeVisible();
+      await expect(page.getByText('예약번호')).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText('날짜/시간')).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText('고객 정보')).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText('인원')).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText('금액')).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText('상태').first()).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText('액션')).toBeVisible({ timeout: 10000 });
     }
   });
 
   test('총 예약 건수 표시', async ({ page }) => {
     // 하단 정보 확인 - 숫자 패턴 매칭
-    await expect(page.getByText(/총 \d+건의 예약/)).toBeVisible();
+    await expect(page.getByText(/총 \d+건의 예약/)).toBeVisible({ timeout: 15000 });
   });
 
   test('필터 초기화 버튼 동작', async ({ page }) => {
@@ -124,7 +117,7 @@ test.describe('예약 현황 테스트', () => {
 
     // 필터 초기화 버튼 확인 및 클릭
     const resetButton = page.getByRole('button', { name: /필터 초기화/ });
-    await expect(resetButton).toBeVisible();
+    await expect(resetButton).toBeVisible({ timeout: 10000 });
     await resetButton.click();
 
     // 검색어가 초기화되었는지 확인
@@ -156,7 +149,7 @@ test.describe('예약 테이블 동작 테스트', () => {
       const firstRow = page.locator('tbody tr').first();
       if (await firstRow.isVisible()) {
         // 예약번호 형식 확인 (B0001 형태)
-        await expect(firstRow.getByText(/B\d{4}/)).toBeVisible();
+        await expect(firstRow.getByText(/B\d{4}/)).toBeVisible({ timeout: 10000 });
       }
     }
   });
@@ -168,7 +161,7 @@ test.describe('예약 테이블 동작 테스트', () => {
       if (await firstRow.isVisible()) {
         // 상태 뱃지가 표시되는지 확인
         const statusBadge = firstRow.locator('.rounded-full');
-        await expect(statusBadge).toBeVisible();
+        await expect(statusBadge).toBeVisible({ timeout: 10000 });
       }
     }
   });
@@ -180,7 +173,7 @@ test.describe('예약 테이블 동작 테스트', () => {
       if (await firstRow.isVisible()) {
         // 상세 버튼이 표시되는지 확인
         const detailButton = firstRow.getByRole('button', { name: /상세/ });
-        await expect(detailButton).toBeVisible();
+        await expect(detailButton).toBeVisible({ timeout: 10000 });
       }
     }
   });

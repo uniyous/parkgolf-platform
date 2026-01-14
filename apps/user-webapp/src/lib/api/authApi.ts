@@ -2,7 +2,7 @@ import { apiClient } from './client';
 import { authStorage } from '@/lib/storage';
 
 /**
- * User 응답 DTO - auth-service의 UserResponseDto와 일치
+ * User 응답 DTO - iam-service의 UserResponseDto와 일치
  */
 export interface User {
   id: number;

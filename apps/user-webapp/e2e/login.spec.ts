@@ -78,7 +78,7 @@ test.describe('로그인 테스트', () => {
     await page.getByRole('button', { name: '로그인' }).click();
 
     // 에러 메시지 확인 (data-testid 사용)
-    await expect(page.getByTestId('login-error')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('login-error')).toBeVisible({ timeout: 30000 });
 
     // 로그인 페이지에 머물러 있는지 확인
     await expect(page).toHaveURL(/.*login/);

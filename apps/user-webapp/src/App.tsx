@@ -1,6 +1,7 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { PrivateRoute } from './components';
+import { ConfirmProvider } from './contexts/ConfirmContext';
 import {
   LoginPage,
   SignupPage,
@@ -14,7 +15,7 @@ import {
 
 function App() {
   return (
-    <>
+    <ConfirmProvider>
       <Toaster
         position="top-center"
         richColors
@@ -36,7 +37,7 @@ function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>
-    </>
+    </ConfirmProvider>
   );
 }
 

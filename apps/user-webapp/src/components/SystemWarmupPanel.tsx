@@ -20,6 +20,7 @@ interface NatsTestResult {
 }
 
 const SERVICES = [
+  { name: 'user-api', isNats: false },
   { name: 'iam-service', isNats: true },
   { name: 'course-service', isNats: true },
   { name: 'booking-service', isNats: true },
@@ -58,14 +59,29 @@ export const SystemWarmupPanel: React.FC<SystemWarmupPanelProps> = ({ isOpen, on
     try {
       setWarmupPhase('user-api 연결중...');
 
+      // user-api 상태를 loading으로 변경
+      setHttpStatuses(prev => prev.map(s =>
+        s.service === 'user-api' ? { ...s, status: 'loading' as StatusType } : s
+      ));
+
+      const userApiStartTime = Date.now();
       const response = await fetch(`${USER_API_URL}/system/warmup/http`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
 
+      const userApiTime = Date.now() - userApiStartTime;
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
+
+      // user-api 응답 성공 - 상태 업데이트
+      setHttpStatuses(prev => prev.map(s =>
+        s.service === 'user-api'
+          ? { ...s, status: 'success' as StatusType, time: userApiTime }
+          : s
+      ));
 
       const data = await response.json();
       setWarmupPhase('서비스 상태 확인중...');

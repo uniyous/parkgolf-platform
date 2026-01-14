@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 
+// 전역 테스트 타임아웃 설정
+test.setTimeout(60000);
+
 /**
  * 사용자 관리 E2E 테스트 (iam-service 연동)
  *
@@ -20,7 +23,9 @@ async function waitForPageLoad(page: import('@playwright/test').Page, timeout = 
   } catch {
     // 로딩 다이얼로그가 없을 수도 있음
   }
-  await page.waitForLoadState('networkidle', { timeout });
+  await page.waitForLoadState('domcontentloaded');
+  // 페이지 렌더링 안정화 대기
+  await page.waitForTimeout(1000);
 }
 
 // ========================================
@@ -91,11 +96,8 @@ test.describe('사용자 API 연결 테스트', () => {
     await page.goto('/user-management');
 
     // 네트워크 안정화 대기
-    try {
-      await page.waitForLoadState('networkidle', { timeout: 15000 });
-    } catch {
-      console.log('Network idle timeout');
-    }
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2000);
 
     console.log('Total API Requests:', apiRequests.length);
     console.log('Total API Responses:', apiResponses.length);

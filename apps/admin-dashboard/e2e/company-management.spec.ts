@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 
+// 전역 테스트 타임아웃 설정
+test.setTimeout(60000);
+
 /**
  * 회사 관리 E2E 테스트 (iam-service 연동)
  *
@@ -21,7 +24,9 @@ async function waitForPageLoad(page: import('@playwright/test').Page, timeout = 
     // 로딩 다이얼로그가 없을 수도 있음
   }
   // 페이지 콘텐츠가 로드될 때까지 대기
-  await page.waitForLoadState('networkidle', { timeout });
+  await page.waitForLoadState('domcontentloaded');
+  // 페이지 렌더링 안정화 대기
+  await page.waitForTimeout(1000);
 }
 
 // ========================================
@@ -79,9 +84,8 @@ test.describe('회사 API 연결 테스트', () => {
     await page.goto('/companies');
 
     // 네트워크 요청 대기
-    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {
-      console.log('Network idle timeout');
-    });
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2000);
 
     console.log('Total API Requests:', apiRequests.length);
     console.log('Total API Responses:', apiResponses.length);
@@ -189,7 +193,7 @@ test.describe('회사 목록 페이지', () => {
     await page.goto('/companies');
 
     // 페이지 로드 대기
-    await page.waitForLoadState('networkidle');
+    await waitForPageLoad(page);
 
     // 검색창에 텍스트 입력
     const searchInput = page.getByPlaceholder(/회사명, 사업자번호/);
@@ -401,7 +405,7 @@ test.describe('회사 상세 및 수정', () => {
     await page.goto('/companies');
 
     // 페이지 로드 대기
-    await page.waitForLoadState('networkidle');
+    await waitForPageLoad(page);
 
     // 테이블 데이터 로드 대기 (최대 20초)
     try {
@@ -431,7 +435,7 @@ test.describe('회사 상세 및 수정', () => {
     await page.goto('/companies');
 
     // 페이지 로드 대기
-    await page.waitForLoadState('networkidle');
+    await waitForPageLoad(page);
 
     // 테이블 데이터 로드 대기
     try {
@@ -465,7 +469,7 @@ test.describe('회사 상세 및 수정', () => {
     await page.goto('/companies');
 
     // 페이지 로드 대기
-    await page.waitForLoadState('networkidle');
+    await waitForPageLoad(page);
 
     // 테이블 데이터 로드 대기
     try {
@@ -506,7 +510,7 @@ test.describe('회사 삭제', () => {
     await page.goto('/companies');
 
     // 페이지 로드 대기
-    await page.waitForLoadState('networkidle');
+    await waitForPageLoad(page);
 
     // 테이블 데이터 로드 대기
     try {

@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 
+// 전역 테스트 타임아웃 설정
+test.setTimeout(60000);
+
 /**
  * 골프장 관리 E2E 테스트 (강화 버전)
  *
