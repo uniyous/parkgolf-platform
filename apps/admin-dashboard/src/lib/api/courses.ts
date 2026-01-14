@@ -92,22 +92,20 @@ export interface UpdateClubDto {
   };
 }
 
-export interface ClubFilters {
+export interface ClubFilters extends Record<string, string | number | boolean | undefined> {
   companyId?: number;
   location?: string;
   status?: string;
   page?: number;
   limit?: number;
-  [key: string]: unknown;
 }
 
-export interface CourseFilters {
+export interface CourseFilters extends Record<string, string | number | boolean | undefined> {
   search?: string;
   status?: string;
   companyId?: number;
   page?: number;
   limit?: number;
-  [key: string]: unknown;
 }
 
 /** @deprecated PaginatedResult 사용 권장 */

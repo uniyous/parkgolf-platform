@@ -10,7 +10,7 @@ import type {
 // BFF API 응답 타입
 export type BookingListResponse = PaginatedResult<Booking>;
 
-export interface BookingFilters {
+export interface BookingFilters extends Record<string, string | number | boolean | undefined> {
   search?: string;
   status?: string;
   courseId?: number;

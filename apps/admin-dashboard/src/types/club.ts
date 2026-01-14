@@ -133,18 +133,16 @@ export interface UpdateClubDto {
 }
 
 // 필터 타입
-export interface ClubFilters {
+export interface ClubFilters extends Record<string, string | number | boolean | undefined> {
   search?: string;
   status?: ClubStatus;
   companyId?: number;
   location?: string;
   minHoles?: number;
   maxHoles?: number;
-  facilities?: string[];
   isActive?: boolean;
   page?: number;
   limit?: number;
-  [key: string]: unknown;
 }
 
 export interface TimeSlotFilters {
