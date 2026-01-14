@@ -46,7 +46,7 @@ export const BookingTrendsChart: React.FC<BookingTrendsChartProps> = ({ data }) 
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setViewMode('hourly')}
-              className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+              className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors ${
                 viewMode === 'hourly'
                   ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
@@ -56,7 +56,7 @@ export const BookingTrendsChart: React.FC<BookingTrendsChartProps> = ({ data }) 
             </button>
             <button
               onClick={() => setViewMode('daily')}
-              className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+              className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors ${
                 viewMode === 'daily'
                   ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'

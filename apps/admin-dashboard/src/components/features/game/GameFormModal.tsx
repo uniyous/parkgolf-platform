@@ -314,7 +314,7 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
                             : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                         }`}
                       >
-                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                        <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors ${
                           formData.courseIds.includes(course.id)
                             ? 'bg-emerald-500 border-emerald-500'
                             : 'border-gray-300'

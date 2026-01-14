@@ -134,7 +134,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ currentUser, onLogout, c
                       <div key={item.href} className="flex items-center group">
                         <Link
                           to={item.href}
-                          className={`flex-1 flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
+                          className={`flex-1 flex items-center px-2 py-2 text-sm font-medium rounded-lg transition-colors ${
                             isActive ? 'bg-blue-100 text-blue-900 border-l-4 border-blue-500' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                           }`}
                           title={item.description}
@@ -190,7 +190,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ currentUser, onLogout, c
           <div className="flex justify-between items-center px-4 sm:px-6 h-16">
             {/* 좌측: 모바일 메뉴 + 검색 */}
             <div className="flex items-center space-x-4">
-              <button className="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 md:hidden" onClick={() => setSidebarOpen(true)}>
+              <button className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 md:hidden" onClick={() => setSidebarOpen(true)}>
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
                 </svg>
@@ -211,11 +211,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ currentUser, onLogout, c
                     placeholder="검색... (Ctrl+K)"
                     value={searchQuery}
                     onChange={(e) => handleSearch(e.target.value)}
-                    className="block w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    className="block w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 {searchResults.length > 0 && (
-                  <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                  <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                     {searchResults.map((item) => (
                       <Link
                         key={item.href}

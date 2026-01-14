@@ -116,7 +116,7 @@ const PostalSearchModal: React.FC<PostalSearchModalProps> = ({ isOpen, onClose, 
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+      <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-lg bg-white">
         <div className="mt-3">
           {/* Header */}
           <div className="flex items-center justify-between pb-4 mb-4 border-b">
@@ -142,7 +142,7 @@ const PostalSearchModal: React.FC<PostalSearchModalProps> = ({ isOpen, onClose, 
                 value={searchKeyword}
                 onChange={(e) => setSearchKeyword(e.target.value)}
                 onKeyPress={handleKeyPress}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="도로명, 건물명, 지번 중 하나를 입력하세요 (예: 강남대로, 테헤란로, 역삼동)"
                 autoFocus
               />

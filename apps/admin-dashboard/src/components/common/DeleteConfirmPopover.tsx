@@ -73,7 +73,7 @@ export const DeleteConfirmPopover: React.FC<DeleteConfirmPopoverProps> = ({
               <button
                 type="button"
                 disabled={isDeleting}
-                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
               >
                 취소
               </button>
@@ -82,7 +82,7 @@ export const DeleteConfirmPopover: React.FC<DeleteConfirmPopoverProps> = ({
               type="button"
               onClick={handleConfirm}
               disabled={isDeleting}
-              className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 flex items-center space-x-1"
+              className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 flex items-center space-x-1"
             >
               {isDeleting ? (
                 <>
