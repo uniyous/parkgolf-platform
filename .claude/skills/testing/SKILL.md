@@ -59,7 +59,7 @@ npm run test:nats-contract
 | Pact Provider | Provider가 계약 충족 검증 |
 | NATS Schema | 메시지 요청/응답 JSON Schema 검증 |
 
-**상세 가이드**: [contract-test/SKILL.md](./contract-test/SKILL.md)
+**상세 가이드**: [contract/SKILL.md](./contract/SKILL.md)
 
 ---
 
@@ -102,7 +102,7 @@ npx ts-node test/integration/nats-test.ts
 | course-service | https://course-service-dev-xxx.a.run.app |
 | booking-service | https://booking-service-dev-xxx.a.run.app |
 
-**상세 가이드**: [integration-test/SKILL.md](./integration-test/SKILL.md)
+**상세 가이드**: [integration/SKILL.md](./integration/SKILL.md)
 
 ---
 
