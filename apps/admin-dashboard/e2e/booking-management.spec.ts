@@ -8,8 +8,8 @@ async function waitForPageReady(page: import('@playwright/test').Page) {
   // DOM 로드 대기
   await page.waitForLoadState('domcontentloaded');
 
-  // 1. 예약 현황 헤더가 표시될 때까지 대기 (페이지 렌더링 확인)
-  await page.locator('h1').filter({ hasText: '예약 현황' }).waitFor({ timeout: 30000 });
+  // 1. 예약 현황 헤더가 표시될 때까지 대기 (h2 태그 - BookingStatsCards)
+  await page.locator('h2').filter({ hasText: '예약 현황' }).waitFor({ timeout: 30000 });
 
   // 2. 로딩이 완료될 때까지 잠시 대기
   await page.waitForTimeout(1000);
@@ -23,22 +23,21 @@ test.describe('예약 현황 테스트', () => {
   });
 
   test('예약 현황 페이지 렌더링', async ({ page }) => {
-    // 헤더 확인
+    // 헤더 확인 (h2)
     await expect(page.getByRole('heading', { name: /예약 현황/ })).toBeVisible({ timeout: 10000 });
 
     // 부제목 확인
-    await expect(page.getByText(/실시간 예약 조회 및 관리/)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/상태별 예약 현황을 확인하세요/)).toBeVisible({ timeout: 10000 });
   });
 
   test('상태별 카운트 카드 표시', async ({ page }) => {
-    // main 영역 내 각 상태 카드 확인 (p 태그로 한정)
-    const main = page.getByRole('main');
-    await expect(main.locator('p').filter({ hasText: '전체' }).first()).toBeVisible({ timeout: 10000 });
-    await expect(main.locator('p').filter({ hasText: '대기' }).first()).toBeVisible({ timeout: 10000 });
-    await expect(main.locator('p').filter({ hasText: '확정' }).first()).toBeVisible({ timeout: 10000 });
-    await expect(main.locator('p').filter({ hasText: '완료' }).first()).toBeVisible({ timeout: 10000 });
-    await expect(main.locator('p').filter({ hasText: '취소' }).first()).toBeVisible({ timeout: 10000 });
-    await expect(main.locator('p').filter({ hasText: '노쇼' }).first()).toBeVisible({ timeout: 10000 });
+    // 각 상태 카드 레이블 확인 (div.text-sm 내부)
+    await expect(page.getByText('전체 예약')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('대기').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('확정').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('완료').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('취소').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('노쇼').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('날짜 범위 필터 표시', async ({ page }) => {
@@ -62,7 +61,7 @@ test.describe('예약 현황 테스트', () => {
 
   test('검색 필드 동작', async ({ page }) => {
     // 검색 입력 필드 확인 - 실제 placeholder 텍스트 사용
-    const searchInput = page.getByPlaceholder(/예약자명, 연락처, 예약번호 검색/);
+    const searchInput = page.getByPlaceholder(/예약자명, 연락처, 예약번호/);
     await expect(searchInput).toBeVisible({ timeout: 10000 });
 
     // 검색어 입력
@@ -71,12 +70,12 @@ test.describe('예약 현황 테스트', () => {
   });
 
   test('상태 필터 클릭', async ({ page }) => {
-    // 대기 상태 텍스트가 있는 클릭 가능한 요소 찾기
-    const pendingCard = page.locator('p').filter({ hasText: '대기' }).first();
-    await expect(pendingCard).toBeVisible({ timeout: 10000 });
+    // 대기 상태 카드 찾기 (div 내 텍스트)
+    const pendingText = page.getByText('대기').first();
+    await expect(pendingText).toBeVisible({ timeout: 10000 });
 
-    // 부모 요소 클릭 (카드)
-    await pendingCard.click();
+    // 카드 클릭 (부모 요소)
+    await pendingText.click();
 
     // 클릭 후 데이터 로딩 대기
     await page.waitForTimeout(500);
@@ -112,7 +111,7 @@ test.describe('예약 현황 테스트', () => {
 
   test('필터 초기화 버튼 동작', async ({ page }) => {
     // 검색어 입력하여 필터 활성화
-    const searchInput = page.getByPlaceholder(/예약자명, 연락처, 예약번호 검색/);
+    const searchInput = page.getByPlaceholder(/예약자명, 연락처, 예약번호/);
     await searchInput.fill('테스트');
 
     // 필터 초기화 버튼 확인 및 클릭

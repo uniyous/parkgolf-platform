@@ -21,7 +21,7 @@ Park Golf Platform의 통합 테스트는 다음 레벨로 구성됩니다:
 # Base URLs
 ADMIN_API=https://admin-api-dev-iihuzmuufa-du.a.run.app
 USER_API=https://user-api-dev-iihuzmuufa-du.a.run.app
-AUTH_SERVICE=https://auth-service-dev-iihuzmuufa-du.a.run.app
+IAM_SERVICE=https://iam-service-dev-iihuzmuufa-du.a.run.app
 COURSE_SERVICE=https://course-service-dev-iihuzmuufa-du.a.run.app
 BOOKING_SERVICE=https://booking-service-dev-iihuzmuufa-du.a.run.app
 NOTIFY_SERVICE=https://notify-service-dev-iihuzmuufa-du.a.run.app
@@ -40,7 +40,7 @@ NOTIFY_SERVICE=https://notify-service-dev-iihuzmuufa-du.a.run.app
 SERVICES=(
   "admin-api:https://admin-api-dev-iihuzmuufa-du.a.run.app"
   "user-api:https://user-api-dev-iihuzmuufa-du.a.run.app"
-  "auth-service:https://auth-service-dev-iihuzmuufa-du.a.run.app"
+  "iam-service:https://iam-service-dev-iihuzmuufa-du.a.run.app"
   "course-service:https://course-service-dev-iihuzmuufa-du.a.run.app"
   "booking-service:https://booking-service-dev-iihuzmuufa-du.a.run.app"
   "notify-service:https://notify-service-dev-iihuzmuufa-du.a.run.app"
@@ -195,8 +195,8 @@ curl -X PUT "$ADMIN_API/courses/{courseId}" \
 
 | 서비스 | 메시지 패턴 |
 |--------|------------|
-| auth-service | `auth.login`, `auth.validate`, `auth.refresh` |
-| auth-service | `users.create`, `users.list`, `users.findById` |
+| iam-service | `auth.login`, `auth.validate`, `auth.refresh` |
+| iam-service | `users.create`, `users.list`, `users.findById` |
 | course-service | `courses.list`, `courses.findById`, `courses.search` |
 | booking-service | `bookings.create`, `bookings.list`, `bookings.cancel` |
 | notify-service | `notifications.send.email`, `notifications.send.sms` |

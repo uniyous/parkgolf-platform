@@ -15,7 +15,7 @@ parkgolf/
 ├── services/                # 백엔드 서비스
 │   ├── admin-api/           # 관리자 BFF
 │   ├── user-api/            # 사용자 BFF
-│   ├── auth-service/        # 인증 서비스
+│   ├── iam-service/         # IAM 서비스 (인증/권한)
 │   ├── booking-service/     # 예약 서비스
 │   ├── course-service/      # 코스 서비스
 │   └── notify-service/      # 알림 서비스
@@ -78,7 +78,7 @@ plan 확인 후:
 ```
 
 **배포되는 서비스:**
-- auth-service
+- iam-service
 - course-service
 - booking-service
 - notify-service
@@ -109,7 +109,7 @@ plan 확인 후:
 워크플로우: CD Services
 입력값:
 - environment: dev
-- services: auth-service
+- services: iam-service
 ```
 
 ### 복수 서비스 배포
@@ -118,7 +118,7 @@ plan 확인 후:
 워크플로우: CD Services
 입력값:
 - environment: dev
-- services: auth-service,user-api   ← 콤마로 구분
+- services: iam-service,user-api   ← 콤마로 구분
 ```
 
 ### 특정 앱만 배포
@@ -149,7 +149,7 @@ plan 확인 후:
 ```
 입력값:
 - environment: dev
-- service: auth-service (또는 all)
+- service: iam-service (또는 all)
 - revision: (빈칸 = 이전 버전)
 ```
 
@@ -204,14 +204,14 @@ plan 확인 후:
 gcloud run services list --region=asia-northeast3
 
 # 특정 서비스 상태
-gcloud run services describe auth-service-dev --region=asia-northeast3
+gcloud run services describe iam-service-dev --region=asia-northeast3
 ```
 
 ### 로그 확인
 ```bash
 # 서비스 로그
-gcloud run services logs read auth-service-dev --region=asia-northeast3
+gcloud run services logs read iam-service-dev --region=asia-northeast3
 
 # 실시간 로그
-gcloud run services logs tail auth-service-dev --region=asia-northeast3
+gcloud run services logs tail iam-service-dev --region=asia-northeast3
 ```

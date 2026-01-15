@@ -1,3 +1,8 @@
+---
+name: nats-patterns
+description: Park Golf Platform NATS 메시징 패턴 가이드. BFF-Microservice 통신, 메시지 패턴 명명 규칙, 타임아웃 설정, 에러 처리 방법 안내. "NATS", "메시징", "마이크로서비스" 관련 질문 시 사용합니다.
+---
+
 # NATS 메시징 패턴 가이드
 
 이 문서는 parkgolf 프로젝트에서 사용하는 NATS 메시징 패턴과 규칙을 정의합니다.
@@ -25,7 +30,7 @@
                         ┌───────────────────────────────────────────┐
                         │              Microservices                 │
                         │  ┌─────────────┐  ┌─────────────────────┐ │
-                        │  │auth-service │  │  course-service     │ │
+                        │  │iam-service │  │  course-service     │ │
                         │  └─────────────┘  └─────────────────────┘ │
                         │  ┌─────────────┐  ┌─────────────────────┐ │
                         │  │booking-svc  │  │  payment-service    │ │

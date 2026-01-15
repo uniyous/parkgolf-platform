@@ -29,7 +29,7 @@ Contract Testing은 서비스 간 통신 계약을 검증하여 독립적인 배
 npm install --save-dev @pact-foundation/pact
 ```
 
-### 1.2 Consumer 테스트 (user-api → auth-service)
+### 1.2 Consumer 테스트 (user-api → iam-service)
 
 ```typescript
 // services/user-api/test/contract/auth-consumer.pact.ts
@@ -40,7 +40,7 @@ import axios from 'axios';
 describe('Auth Service Consumer Contract', () => {
   const provider = new Pact({
     consumer: 'user-api',
-    provider: 'auth-service',
+    provider: 'iam-service',
     port: 1234,
     log: path.resolve(process.cwd(), 'logs', 'pact.log'),
     dir: path.resolve(process.cwd(), 'pacts'),
@@ -128,20 +128,20 @@ describe('Auth Service Consumer Contract', () => {
 });
 ```
 
-### 1.3 Provider 검증 (auth-service)
+### 1.3 Provider 검증 (iam-service)
 
 ```typescript
-// services/auth-service/test/contract/auth-provider.pact.ts
+// services/iam-service/test/contract/auth-provider.pact.ts
 import { Verifier } from '@pact-foundation/pact';
 import path from 'path';
 
 describe('Auth Service Provider Contract', () => {
   it('should validate the expectations of user-api', async () => {
     const opts = {
-      provider: 'auth-service',
+      provider: 'iam-service',
       providerBaseUrl: 'http://localhost:3001',
       pactUrls: [
-        path.resolve(__dirname, '../../pacts/user-api-auth-service.json'),
+        path.resolve(__dirname, '../../pacts/user-api-iam-service.json'),
       ],
       // 또는 Pact Broker 사용
       // pactBrokerUrl: 'https://pact-broker.example.com',
@@ -493,7 +493,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [auth-service, course-service, booking-service]
+        service: [iam-service, course-service, booking-service]
     steps:
       - uses: actions/checkout@v4
 
