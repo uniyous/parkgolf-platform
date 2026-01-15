@@ -64,9 +64,9 @@ export const menuConfig: MenuGroup[] = [
         permission: 'BOOKINGS'
       },
       {
-        name: '취소/환불',
+        name: '환불 관리',
         href: '/bookings/cancellations',
-        icon: '🔄',
+        icon: '💸',
         description: '예약 취소 및 환불 처리',
         permission: 'MANAGE_PAYMENTS'
       },
