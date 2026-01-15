@@ -9,10 +9,6 @@ export { withPermission, PermissionGuard } from './usePermissionGuard';
 export { useAuth, useAuthInitialize } from './useAuth';
 export { useProtectedRoute, useHasPermission, useCanManageRole } from './useAuth';
 
-// Action hooks
-export { useAdminActions } from './useAdminActions';
-export { useUserActions } from './useUserActions';
-
 // Management hooks
 export { useCompanyManagement } from './useCompanyManagement';
 export { useClubManagement, useClub } from './useClubManagement';
