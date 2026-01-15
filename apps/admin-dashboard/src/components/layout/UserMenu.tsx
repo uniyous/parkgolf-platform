@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { ChevronDown } from 'lucide-react';
 import { ADMIN_ROLE_LABELS, ADMIN_ROLE_COLORS } from '@/utils';
 import type { AdminRole } from '@/types';
 
@@ -65,9 +66,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ currentUser, onLogout }) => 
             </span>
           )}
         </div>
-        <svg className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {/* 드롭다운 메뉴 */}

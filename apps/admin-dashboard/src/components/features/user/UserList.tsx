@@ -1,7 +1,15 @@
 import React, { useState, useMemo } from 'react';
+import { Plus, RefreshCw, Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import { useUsersQuery, useDeleteUserMutation, useUpdateUserStatusMutation } from '@/hooks/queries';
 import { Modal } from '@/components/ui';
 import { DataContainer } from '@/components/common';
+import {
+  FilterContainer,
+  FilterSearch,
+  FilterSelect,
+  FilterResetButton,
+  ActiveFilterTags,
+} from '@/components/common/filters';
 import { UserFormModal } from './UserFormModal';
 import type { User, UserStatus, UserMembershipTier } from '@/types';
 
@@ -183,9 +191,7 @@ export const UserList: React.FC = () => {
             onClick={() => setFormModal({ open: true })}
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
           >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
+            <Plus className="w-5 h-5 mr-2" />
             회원 추가
           </button>
         </div>
@@ -231,91 +237,70 @@ export const UserList: React.FC = () => {
         </div>
       </div>
 
-      {/* 필터 & 검색 */}
-      <div className="bg-white shadow rounded-lg p-4">
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
-          <div className="flex-1 relative">
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              placeholder="이름, 이메일, 전화번호 검색..."
-              value={filters.search}
-              onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          <div className="flex items-center gap-3">
-            <select
-              value={filters.membershipTier}
-              onChange={(e) => setFilters((f) => ({ ...f, membershipTier: e.target.value as UserMembershipTier | 'ALL' }))}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="ALL">전체 등급</option>
-              <option value="VIP">VIP</option>
-              <option value="PLATINUM">플래티넘</option>
-              <option value="GOLD">골드</option>
-              <option value="SILVER">실버</option>
-              <option value="REGULAR">일반</option>
-            </select>
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value as UserStatus | 'ALL' }))}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="ALL">전체 상태</option>
-              <option value="ACTIVE">활성</option>
-              <option value="INACTIVE">비활성</option>
-              <option value="SUSPENDED">정지</option>
-              <option value="PENDING">대기</option>
-            </select>
-            <button
-              onClick={() => refetch()}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              새로고침
-            </button>
-          </div>
+      {/* 필터 */}
+      <FilterContainer columns={5}>
+        <FilterSearch
+          label="검색"
+          showLabel
+          value={filters.search}
+          onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
+          placeholder="이름, 이메일, 전화번호..."
+        />
+        <FilterSelect
+          label="등급"
+          value={filters.membershipTier === 'ALL' ? '' : filters.membershipTier}
+          onChange={(value) => setFilters((f) => ({ ...f, membershipTier: (value || 'ALL') as UserMembershipTier | 'ALL' }))}
+          options={[
+            { value: 'VIP', label: 'VIP' },
+            { value: 'PLATINUM', label: '플래티넘' },
+            { value: 'GOLD', label: '골드' },
+            { value: 'SILVER', label: '실버' },
+            { value: 'REGULAR', label: '일반' },
+          ]}
+          placeholder="전체 등급"
+        />
+        <FilterSelect
+          label="상태"
+          value={filters.status === 'ALL' ? '' : filters.status}
+          onChange={(value) => setFilters((f) => ({ ...f, status: (value || 'ALL') as UserStatus | 'ALL' }))}
+          options={[
+            { value: 'ACTIVE', label: '활성' },
+            { value: 'INACTIVE', label: '비활성' },
+            { value: 'SUSPENDED', label: '정지' },
+            { value: 'PENDING', label: '대기' },
+          ]}
+          placeholder="전체 상태"
+        />
+        <div className="flex items-end gap-2">
+          <button
+            onClick={() => refetch()}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            새로고침
+          </button>
+          <FilterResetButton
+            hasActiveFilters={!!(filters.search || filters.membershipTier !== 'ALL' || filters.status !== 'ALL')}
+            onClick={() => setFilters({ search: '', membershipTier: 'ALL', status: 'ALL' })}
+            variant="text"
+          />
         </div>
-        {(filters.search || filters.membershipTier !== 'ALL' || filters.status !== 'ALL') && (
-          <div className="mt-3 flex items-center gap-2">
-            <span className="text-sm text-gray-500">필터:</span>
-            {filters.search && (
-              <span className="inline-flex items-center px-2 py-1 text-xs bg-gray-100 rounded-full">
-                검색: {filters.search}
-                <button onClick={() => setFilters(f => ({ ...f, search: '' }))} className="ml-1 text-gray-400 hover:text-gray-600">×</button>
-              </span>
-            )}
-            {filters.membershipTier !== 'ALL' && (
-              <span className="inline-flex items-center px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full">
-                등급: {MEMBERSHIP_LABELS[filters.membershipTier]}
-                <button onClick={() => setFilters(f => ({ ...f, membershipTier: 'ALL' }))} className="ml-1 text-purple-400 hover:text-purple-600">×</button>
-              </span>
-            )}
-            {filters.status !== 'ALL' && (
-              <span className="inline-flex items-center px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
-                상태: {STATUS_LABELS[filters.status]}
-                <button onClick={() => setFilters(f => ({ ...f, status: 'ALL' }))} className="ml-1 text-green-400 hover:text-green-600">×</button>
-              </span>
-            )}
-            <button
-              onClick={() => setFilters({ search: '', membershipTier: 'ALL', status: 'ALL' })}
-              className="text-xs text-gray-500 hover:text-gray-700 underline"
-            >
-              모두 초기화
-            </button>
-          </div>
-        )}
-      </div>
+      </FilterContainer>
+
+      {/* 활성 필터 태그 */}
+      <ActiveFilterTags
+        filters={[
+          ...(filters.search ? [{ id: 'search', label: '검색', value: filters.search }] : []),
+          ...(filters.membershipTier !== 'ALL' ? [{ id: 'tier', label: '등급', value: MEMBERSHIP_LABELS[filters.membershipTier], color: 'purple' as const }] : []),
+          ...(filters.status !== 'ALL' ? [{ id: 'status', label: '상태', value: STATUS_LABELS[filters.status], color: 'green' as const }] : []),
+        ]}
+        onRemove={(id) => {
+          if (id === 'search') setFilters(f => ({ ...f, search: '' }));
+          if (id === 'tier') setFilters(f => ({ ...f, membershipTier: 'ALL' }));
+          if (id === 'status') setFilters(f => ({ ...f, status: 'ALL' }));
+        }}
+        onResetAll={() => setFilters({ search: '', membershipTier: 'ALL', status: 'ALL' })}
+      />
 
       {/* 회원 목록 테이블 */}
       <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -342,9 +327,7 @@ export const UserList: React.FC = () => {
                 onClick={() => setFormModal({ open: true })}
                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
+                <Plus className="w-5 h-5 mr-2" />
                 회원 추가
               </button>
             ) : undefined
@@ -472,18 +455,14 @@ export const UserList: React.FC = () => {
                           onClick={() => setFormModal({ open: true, user })}
                           className="inline-flex items-center px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         >
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
+                          <Pencil className="w-4 h-4 mr-1" />
                           수정
                         </button>
                         <button
                           onClick={() => setDeleteConfirm({ open: true, user })}
                           className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         >
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                          <Trash2 className="w-4 h-4 mr-1" />
                           삭제
                         </button>
                       </div>
@@ -514,9 +493,7 @@ export const UserList: React.FC = () => {
           <>
             <div className="flex items-center space-x-4 p-4 bg-red-50 rounded-lg mb-6">
               <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
+                <AlertTriangle className="w-6 h-6 text-red-600" />
               </div>
               <div>
                 <div className="font-medium text-gray-900">{deleteConfirm.user.name}</div>

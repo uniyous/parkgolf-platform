@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Check, X, Zap } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 
 // 서버 웜업 API 설정
@@ -414,9 +415,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                                 <p className="text-xs text-gray-500 mt-0.5 truncate">{admin.description}</p>
                               </div>
                               {isSelected && (
-                                <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
+                                <Check className="w-4 h-4 text-blue-500 flex-shrink-0" />
                               )}
                             </div>
                           </button>
@@ -448,9 +447,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 onClick={() => setShowWarmupPanel(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -617,9 +614,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           `}
           title="시스템 상태 점검"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
+          <Zap className="w-4 h-4" />
           <span>시스템 점검</span>
         </button>
       </div>

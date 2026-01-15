@@ -1,8 +1,16 @@
 import React, { useState, useMemo } from 'react';
+import { Plus, RefreshCw, Pencil, Shield, Trash2, AlertTriangle } from 'lucide-react';
 import { useAdminsQuery, useDeleteAdminMutation, useToggleAdminStatusMutation } from '@/hooks/queries';
 import { useCurrentAdmin } from '@/stores';
 import { Modal } from '@/components/ui';
 import { DataContainer } from '@/components/common';
+import {
+  FilterContainer,
+  FilterSearch,
+  FilterSelect,
+  FilterResetButton,
+  ActiveFilterTags,
+} from '@/components/common/filters';
 import { AdminFormModal } from './AdminFormModal';
 import { RoleManagementModal } from './RoleManagementModal';
 import type { Admin, AdminRole, AdminScope } from '@/types';
@@ -193,9 +201,7 @@ export const AdminList: React.FC = () => {
             onClick={() => setFormModal({ open: true })}
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
           >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
+            <Plus className="w-5 h-5 mr-2" />
             관리자 추가
           </button>
         </div>
@@ -241,94 +247,65 @@ export const AdminList: React.FC = () => {
         </div>
       </div>
 
-      {/* 필터 & 검색 */}
-      <div className="bg-white shadow rounded-lg p-4">
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
-          <div className="flex-1 relative">
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              placeholder="이름, 이메일, 아이디 검색..."
-              value={filters.search}
-              onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          <div className="flex items-center gap-3">
-            <select
-              value={filters.role}
-              onChange={(e) => setFilters((f) => ({ ...f, role: e.target.value as AdminRole | 'ALL' }))}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="ALL">전체 역할</option>
-              <optgroup label="플랫폼 역할">
-                {PLATFORM_ROLES.map((role) => (
-                  <option key={role} value={role}>{ADMIN_ROLE_LABELS[role]}</option>
-                ))}
-              </optgroup>
-              <optgroup label="회사 역할">
-                {COMPANY_ROLES.map((role) => (
-                  <option key={role} value={role}>{ADMIN_ROLE_LABELS[role]}</option>
-                ))}
-              </optgroup>
-            </select>
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE' }))}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="ALL">전체 상태</option>
-              <option value="ACTIVE">활성</option>
-              <option value="INACTIVE">비활성</option>
-            </select>
-            <button
-              onClick={() => refetch()}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              새로고침
-            </button>
-          </div>
+      {/* 필터 */}
+      <FilterContainer columns={5}>
+        <FilterSearch
+          label="검색"
+          showLabel
+          value={filters.search}
+          onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
+          placeholder="이름, 이메일, 아이디..."
+        />
+        <FilterSelect
+          label="역할"
+          value={filters.role === 'ALL' ? '' : filters.role}
+          onChange={(value) => setFilters((f) => ({ ...f, role: (value || 'ALL') as AdminRole | 'ALL' }))}
+          groups={[
+            { label: '플랫폼 역할', options: PLATFORM_ROLES.map((role) => ({ value: role, label: ADMIN_ROLE_LABELS[role] })) },
+            { label: '회사 역할', options: COMPANY_ROLES.map((role) => ({ value: role, label: ADMIN_ROLE_LABELS[role] })) },
+          ]}
+          placeholder="전체 역할"
+        />
+        <FilterSelect
+          label="상태"
+          value={filters.status === 'ALL' ? '' : filters.status}
+          onChange={(value) => setFilters((f) => ({ ...f, status: (value || 'ALL') as 'ALL' | 'ACTIVE' | 'INACTIVE' }))}
+          options={[
+            { value: 'ACTIVE', label: '활성' },
+            { value: 'INACTIVE', label: '비활성' },
+          ]}
+          placeholder="전체 상태"
+        />
+        <div className="flex items-end gap-2">
+          <button
+            onClick={() => refetch()}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            새로고침
+          </button>
+          <FilterResetButton
+            hasActiveFilters={!!(filters.search || filters.role !== 'ALL' || filters.status !== 'ALL')}
+            onClick={() => setFilters({ search: '', role: 'ALL', scope: 'ALL', status: 'ALL' })}
+            variant="text"
+          />
         </div>
-        {(filters.search || filters.role !== 'ALL' || filters.status !== 'ALL') && (
-          <div className="mt-3 flex items-center gap-2">
-            <span className="text-sm text-gray-500">필터:</span>
-            {filters.search && (
-              <span className="inline-flex items-center px-2 py-1 text-xs bg-gray-100 rounded-full">
-                검색: {filters.search}
-                <button onClick={() => setFilters(f => ({ ...f, search: '' }))} className="ml-1 text-gray-400 hover:text-gray-600">×</button>
-              </span>
-            )}
-            {filters.role !== 'ALL' && (
-              <span className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
-                역할: {ADMIN_ROLE_LABELS[filters.role]}
-                <button onClick={() => setFilters(f => ({ ...f, role: 'ALL' }))} className="ml-1 text-blue-400 hover:text-blue-600">×</button>
-              </span>
-            )}
-            {filters.status !== 'ALL' && (
-              <span className="inline-flex items-center px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
-                상태: {filters.status === 'ACTIVE' ? '활성' : '비활성'}
-                <button onClick={() => setFilters(f => ({ ...f, status: 'ALL' }))} className="ml-1 text-green-400 hover:text-green-600">×</button>
-              </span>
-            )}
-            <button
-              onClick={() => setFilters({ search: '', role: 'ALL', scope: 'ALL', status: 'ALL' })}
-              className="text-xs text-gray-500 hover:text-gray-700 underline"
-            >
-              모두 초기화
-            </button>
-          </div>
-        )}
-      </div>
+      </FilterContainer>
+
+      {/* 활성 필터 태그 */}
+      <ActiveFilterTags
+        filters={[
+          ...(filters.search ? [{ id: 'search', label: '검색', value: filters.search }] : []),
+          ...(filters.role !== 'ALL' ? [{ id: 'role', label: '역할', value: ADMIN_ROLE_LABELS[filters.role], color: 'blue' as const }] : []),
+          ...(filters.status !== 'ALL' ? [{ id: 'status', label: '상태', value: filters.status === 'ACTIVE' ? '활성' : '비활성', color: 'green' as const }] : []),
+        ]}
+        onRemove={(id) => {
+          if (id === 'search') setFilters(f => ({ ...f, search: '' }));
+          if (id === 'role') setFilters(f => ({ ...f, role: 'ALL' }));
+          if (id === 'status') setFilters(f => ({ ...f, status: 'ALL' }));
+        }}
+        onResetAll={() => setFilters({ search: '', role: 'ALL', scope: 'ALL', status: 'ALL' })}
+      />
 
       {/* 관리자 목록 테이블 */}
       <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -355,9 +332,7 @@ export const AdminList: React.FC = () => {
                 onClick={() => setFormModal({ open: true })}
                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
+                <Plus className="w-5 h-5 mr-2" />
                 관리자 추가
               </button>
             ) : undefined
@@ -489,9 +464,7 @@ export const AdminList: React.FC = () => {
                           disabled={!canManage(admin)}
                           className="inline-flex items-center px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
+                          <Pencil className="w-4 h-4 mr-1" />
                           수정
                         </button>
                         <button
@@ -499,9 +472,7 @@ export const AdminList: React.FC = () => {
                           disabled={!canManage(admin)}
                           className="inline-flex items-center px-3 py-1.5 text-sm text-purple-600 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                          </svg>
+                          <Shield className="w-4 h-4 mr-1" />
                           권한
                         </button>
                         <button
@@ -509,9 +480,7 @@ export const AdminList: React.FC = () => {
                           disabled={!canManage(admin)}
                           className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                          <Trash2 className="w-4 h-4 mr-1" />
                           삭제
                         </button>
                       </div>
@@ -549,9 +518,7 @@ export const AdminList: React.FC = () => {
           <>
             <div className="flex items-center space-x-4 p-4 bg-red-50 rounded-lg mb-6">
               <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
+                <AlertTriangle className="w-6 h-6 text-red-600" />
               </div>
               <div>
                 <div className="font-medium text-gray-900">{deleteConfirm.admin.name}</div>

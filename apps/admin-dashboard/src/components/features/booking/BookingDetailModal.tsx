@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, Button } from '@/components/ui';
+import { ActionConfirmPopover } from '@/components/common/ActionConfirmPopover';
 import {
   Calendar,
   Clock,
@@ -279,44 +280,63 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
           {/* CONFIRMED 상태일 때만 완료/노쇼/취소 가능 */}
           {booking.status === 'CONFIRMED' && (
             <>
-              <Button
-                onClick={() => onComplete(booking)}
-                disabled={isActionPending}
-                className="bg-green-600 hover:bg-green-700"
+              <ActionConfirmPopover
+                actionType="complete"
+                targetName={booking.bookingNumber || `B${String(booking.id).padStart(4, '0')}`}
+                isPending={isActionPending}
+                onConfirm={() => onComplete(booking)}
+                side="top"
+                align="center"
               >
-                <CheckCircle className="h-4 w-4 mr-1" />
-                완료 처리
-              </Button>
-              <Button
-                onClick={() => onNoShow(booking)}
-                disabled={isActionPending}
-                variant="secondary"
-                className="bg-gray-600 text-white hover:bg-gray-700"
+                <Button className="bg-green-600 hover:bg-green-700">
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  완료 처리
+                </Button>
+              </ActionConfirmPopover>
+              <ActionConfirmPopover
+                actionType="noshow"
+                targetName={booking.bookingNumber || `B${String(booking.id).padStart(4, '0')}`}
+                isPending={isActionPending}
+                onConfirm={() => onNoShow(booking)}
+                side="top"
+                align="center"
               >
-                <UserX className="h-4 w-4 mr-1" />
-                노쇼 처리
-              </Button>
-              <Button
-                onClick={() => onCancel(booking)}
-                disabled={isActionPending}
-                variant="destructive"
+                <Button variant="secondary" className="bg-gray-600 text-white hover:bg-gray-700">
+                  <UserX className="h-4 w-4 mr-1" />
+                  노쇼 처리
+                </Button>
+              </ActionConfirmPopover>
+              <ActionConfirmPopover
+                actionType="cancel"
+                targetName={booking.bookingNumber || `B${String(booking.id).padStart(4, '0')}`}
+                isPending={isActionPending}
+                onConfirm={() => onCancel(booking)}
+                side="top"
+                align="center"
               >
-                <XCircle className="h-4 w-4 mr-1" />
-                예약 취소
-              </Button>
+                <Button variant="destructive">
+                  <XCircle className="h-4 w-4 mr-1" />
+                  예약 취소
+                </Button>
+              </ActionConfirmPopover>
             </>
           )}
 
           {/* PENDING 상태일 때 취소만 가능 */}
           {booking.status === 'PENDING' && (
-            <Button
-              onClick={() => onCancel(booking)}
-              disabled={isActionPending}
-              variant="destructive"
+            <ActionConfirmPopover
+              actionType="cancel"
+              targetName={booking.bookingNumber || `B${String(booking.id).padStart(4, '0')}`}
+              isPending={isActionPending}
+              onConfirm={() => onCancel(booking)}
+              side="top"
+              align="center"
             >
-              <XCircle className="h-4 w-4 mr-1" />
-              예약 취소
-            </Button>
+              <Button variant="destructive">
+                <XCircle className="h-4 w-4 mr-1" />
+                예약 취소
+              </Button>
+            </ActionConfirmPopover>
           )}
 
           <Button variant="outline" onClick={onClose}>

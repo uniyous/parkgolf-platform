@@ -1,5 +1,6 @@
 import React from 'react';
 import { Eye, XCircle, CheckCircle, UserX } from 'lucide-react';
+import { ActionConfirmPopover } from '@/components/common/ActionConfirmPopover';
 import type { Booking, BookingStatusType } from '@/types';
 
 const BOOKING_STATUSES: Record<string, { label: string; color: string }> = {
@@ -244,43 +245,71 @@ export const BookingTable: React.FC<BookingTableProps> = ({
                       {/* CONFIRMED 상태일 때만 완료/노쇼/취소 가능 */}
                       {booking.status === 'CONFIRMED' && (
                         <>
-                          <button
-                            onClick={() => onComplete(booking)}
-                            disabled={isActionPending}
-                            className="p-1.5 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
-                            title="완료 처리"
+                          <ActionConfirmPopover
+                            actionType="complete"
+                            targetName={booking.bookingNumber || `B${String(booking.id).padStart(4, '0')}`}
+                            isPending={isActionPending}
+                            onConfirm={() => onComplete(booking)}
+                            side="left"
+                            align="center"
                           >
-                            <CheckCircle className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => onNoShow(booking)}
-                            disabled={isActionPending}
-                            className="p-1.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
-                            title="노쇼 처리"
+                            <button
+                              className="p-1.5 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
+                              title="완료 처리"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </button>
+                          </ActionConfirmPopover>
+                          <ActionConfirmPopover
+                            actionType="noshow"
+                            targetName={booking.bookingNumber || `B${String(booking.id).padStart(4, '0')}`}
+                            isPending={isActionPending}
+                            onConfirm={() => onNoShow(booking)}
+                            side="left"
+                            align="center"
                           >
-                            <UserX className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => onCancel(booking)}
-                            disabled={isActionPending}
-                            className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                            title="취소"
+                            <button
+                              className="p-1.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+                              title="노쇼 처리"
+                            >
+                              <UserX className="h-4 w-4" />
+                            </button>
+                          </ActionConfirmPopover>
+                          <ActionConfirmPopover
+                            actionType="cancel"
+                            targetName={booking.bookingNumber || `B${String(booking.id).padStart(4, '0')}`}
+                            isPending={isActionPending}
+                            onConfirm={() => onCancel(booking)}
+                            side="left"
+                            align="center"
                           >
-                            <XCircle className="h-4 w-4" />
-                          </button>
+                            <button
+                              className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                              title="취소"
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </button>
+                          </ActionConfirmPopover>
                         </>
                       )}
 
                       {/* PENDING 상태일 때 취소만 가능 */}
                       {booking.status === 'PENDING' && (
-                        <button
-                          onClick={() => onCancel(booking)}
-                          disabled={isActionPending}
-                          className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                          title="취소"
+                        <ActionConfirmPopover
+                          actionType="cancel"
+                          targetName={booking.bookingNumber || `B${String(booking.id).padStart(4, '0')}`}
+                          isPending={isActionPending}
+                          onConfirm={() => onCancel(booking)}
+                          side="left"
+                          align="center"
                         >
-                          <XCircle className="h-4 w-4" />
-                        </button>
+                          <button
+                            className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                            title="취소"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </button>
+                        </ActionConfirmPopover>
                       )}
                     </div>
                   </td>

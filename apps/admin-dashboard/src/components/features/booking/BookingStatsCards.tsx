@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@/utils';
 
 type BookingStatusKey = 'ALL' | 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
 
@@ -13,57 +14,50 @@ const STATS_CONFIG: Array<{
   key: BookingStatusKey;
   label: string;
   bgColor: string;
-  bgColorActive: string;
   textColor: string;
-  borderColor: string;
+  icon: string;
 }> = [
   {
     key: 'ALL',
-    label: '전체',
-    bgColor: 'bg-gray-50',
-    bgColorActive: 'bg-blue-50 border-2 border-blue-500',
-    textColor: 'text-gray-900',
-    borderColor: 'hover:bg-gray-100',
+    label: '전체 예약',
+    bgColor: 'bg-blue-50',
+    textColor: 'text-blue-600',
+    icon: '📋',
   },
   {
     key: 'PENDING',
     label: '대기',
-    bgColor: 'bg-yellow-50/50',
-    bgColorActive: 'bg-yellow-50 border-2 border-yellow-500',
-    textColor: 'text-yellow-700',
-    borderColor: 'hover:bg-yellow-100',
+    bgColor: 'bg-yellow-50',
+    textColor: 'text-yellow-600',
+    icon: '⏳',
   },
   {
     key: 'CONFIRMED',
     label: '확정',
-    bgColor: 'bg-blue-50/50',
-    bgColorActive: 'bg-blue-50 border-2 border-blue-500',
-    textColor: 'text-blue-700',
-    borderColor: 'hover:bg-blue-100',
+    bgColor: 'bg-indigo-50',
+    textColor: 'text-indigo-600',
+    icon: '✅',
   },
   {
     key: 'COMPLETED',
     label: '완료',
-    bgColor: 'bg-green-50/50',
-    bgColorActive: 'bg-green-50 border-2 border-green-500',
-    textColor: 'text-green-700',
-    borderColor: 'hover:bg-green-100',
+    bgColor: 'bg-green-50',
+    textColor: 'text-green-600',
+    icon: '🎉',
   },
   {
     key: 'CANCELLED',
     label: '취소',
-    bgColor: 'bg-red-50/50',
-    bgColorActive: 'bg-red-50 border-2 border-red-500',
-    textColor: 'text-red-700',
-    borderColor: 'hover:bg-red-100',
+    bgColor: 'bg-red-50',
+    textColor: 'text-red-600',
+    icon: '❌',
   },
   {
     key: 'NO_SHOW',
     label: '노쇼',
-    bgColor: 'bg-gray-50/50',
-    bgColorActive: 'bg-gray-100 border-2 border-gray-500',
-    textColor: 'text-gray-700',
-    borderColor: 'hover:bg-gray-100',
+    bgColor: 'bg-gray-50',
+    textColor: 'text-gray-600',
+    icon: '🚫',
   },
 ];
 
@@ -74,18 +68,24 @@ export const BookingStatsCards: React.FC<BookingStatsCardsProps> = ({
   todayCount = 0,
 }) => {
   return (
-    <div className="space-y-4">
-      {/* 오늘 예약 배지 */}
-      {todayCount > 0 && (
-        <div className="flex items-center gap-2 text-sm">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-medium">
+    <div className="bg-white shadow rounded-lg p-6">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">예약 현황</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            상태별 예약 현황을 확인하세요
+          </p>
+        </div>
+        {todayCount > 0 && (
+          <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-medium">
             오늘 예약 {todayCount}건
           </span>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* 상태별 카드 */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+      {/* 통계 카드 */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {STATS_CONFIG.map((config) => {
           const isActive = statusFilter === config.key;
           const count = statusCounts[config.key] || 0;
@@ -94,16 +94,23 @@ export const BookingStatsCards: React.FC<BookingStatsCardsProps> = ({
             <div
               key={config.key}
               onClick={() => onStatusFilterChange(config.key)}
-              className={`p-4 rounded-lg cursor-pointer transition-all ${
-                isActive ? config.bgColorActive : `${config.bgColor} ${config.borderColor}`
-              }`}
+              className={cn(
+                'p-4 rounded-lg cursor-pointer transition-all',
+                config.bgColor,
+                isActive ? 'ring-2 ring-offset-1 ring-blue-500' : 'hover:shadow-md'
+              )}
             >
-              <p className={`text-sm ${config.key === 'ALL' ? 'text-gray-500' : config.textColor.replace('700', '600')}`}>
-                {config.label}
-              </p>
-              <p className={`text-2xl font-bold ${config.textColor}`}>
-                {count}
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className={cn('text-2xl font-bold', config.textColor)}>
+                    {count}
+                  </div>
+                  <div className={cn('text-sm', config.textColor)}>
+                    {config.label}
+                  </div>
+                </div>
+                <div className="text-2xl">{config.icon}</div>
+              </div>
             </div>
           );
         })}

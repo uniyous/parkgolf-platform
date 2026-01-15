@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { ChevronDown, X, Menu, Search } from 'lucide-react';
 import { menuConfig, getFavorites, toggleFavorite, isFavorite } from './SideBarMenu';
 import { UserMenu } from './UserMenu';
 import type { MenuItem } from './SideBarMenu';
@@ -116,9 +117,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ currentUser, onLogout, c
                   className="w-full flex items-center justify-between px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide hover:bg-gray-100 rounded"
                 >
                   <span>{group.name}</span>
-                  <svg className={`w-4 h-4 transition-transform ${collapsedGroups[group.name] ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${collapsedGroups[group.name] ? '' : 'rotate-180'}`} />
                 </button>
               ) : (
                 <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">{group.name}</div>
@@ -169,9 +168,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ currentUser, onLogout, c
           <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
           <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
             <button className="absolute top-0 right-0 -mr-12 pt-2 h-10 w-10 flex items-center justify-center" onClick={() => setSidebarOpen(false)}>
-              <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X className="h-6 w-6 text-white" />
             </button>
             <SidebarContent />
           </div>
@@ -191,9 +188,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ currentUser, onLogout, c
             {/* 좌측: 모바일 메뉴 + 검색 */}
             <div className="flex items-center space-x-4">
               <button className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 md:hidden" onClick={() => setSidebarOpen(true)}>
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                </svg>
+                <Menu className="h-6 w-6" />
               </button>
               <div className="md:hidden">
                 <h1 className="text-lg font-semibold text-gray-900">파크골프</h1>
@@ -202,9 +197,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ currentUser, onLogout, c
               {/* 검색 */}
               <div className="hidden md:block relative">
                 <div className="relative">
-                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     id="search-input"
                     type="text"
