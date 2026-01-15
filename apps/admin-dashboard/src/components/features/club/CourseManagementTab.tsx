@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import type { Club, Course, CourseCombo, CreateCourseDto } from '@/types/club';
 import type { UpdateCourseDto, Hole, CreateHoleDto, UpdateHoleDto } from '@/types';
-import { useClub } from '@/hooks';
 import { useUpdateCourseMutation, useDeleteCourseMutation, useCreateHoleMutation, useUpdateHoleMutation, useDeleteHoleMutation } from '@/hooks/queries/course';
 import { DeleteConfirmPopover } from '@/components/common';
 
@@ -10,7 +9,8 @@ interface CourseManagementTabProps {
   club: Club;
   courses: Course[];
   combos: CourseCombo[];
-  onCoursesUpdate: (courses: Course[]) => void;
+  isLoading?: boolean;
+  onCoursesUpdate: () => void | Promise<void>;
   onCombosUpdate: (combos: CourseCombo[]) => void;
 }
 
@@ -18,10 +18,10 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
   club,
   courses,
   combos,
+  isLoading = false,
   onCoursesUpdate,
   onCombosUpdate
 }) => {
-  const { loading } = useClub();
   const updateCourseMutation = useUpdateCourseMutation();
   const deleteCourseMutation = useDeleteCourseMutation();
   const createHoleMutation = useCreateHoleMutation();
@@ -132,13 +132,8 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
         data: editCourse
       });
 
-      // 로컬 상태 업데이트
-      const updatedCourses = courses.map(c =>
-        c.id === selectedCourse.id
-          ? { ...c, ...editCourse }
-          : c
-      );
-      onCoursesUpdate(updatedCourses);
+      // react-query 캐시 무효화 후 refetch
+      await onCoursesUpdate();
 
       setSelectedCourse(null);
       toast.success('코스가 성공적으로 수정되었습니다.');
@@ -153,9 +148,8 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
     try {
       await deleteCourseMutation.mutateAsync(courseId);
 
-      // 로컬 상태 업데이트
-      const updatedCourses = courses.filter(c => c.id !== courseId);
-      onCoursesUpdate(updatedCourses);
+      // react-query 캐시 무효화 후 refetch
+      await onCoursesUpdate();
 
       toast.success('코스가 성공적으로 삭제되었습니다.');
     } catch (error) {
@@ -174,7 +168,7 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
     }
 
     try {
-      const createdHole = await createHoleMutation.mutateAsync({
+      await createHoleMutation.mutateAsync({
         courseId: showAddHole,
         data: {
           ...newHole,
@@ -182,17 +176,8 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
         }
       });
 
-      // 로컬 상태 업데이트
-      const updatedCourses = courses.map(c => {
-        if (c.id === showAddHole) {
-          return {
-            ...c,
-            holes: [...(c.holes || []), createdHole]
-          };
-        }
-        return c;
-      });
-      onCoursesUpdate(updatedCourses);
+      // react-query 캐시 무효화 후 refetch
+      await onCoursesUpdate();
 
       setShowAddHole(null);
       toast.success('홀이 성공적으로 추가되었습니다.');
@@ -212,23 +197,14 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
     }
 
     try {
-      const updatedHole = await updateHoleMutation.mutateAsync({
+      await updateHoleMutation.mutateAsync({
         courseId: selectedHole.courseId,
         holeId: selectedHole.hole.id,
         data: editHole
       });
 
-      // 로컬 상태 업데이트
-      const updatedCourses = courses.map(c => {
-        if (c.id === selectedHole.courseId) {
-          return {
-            ...c,
-            holes: c.holes?.map(h => h.id === selectedHole.hole.id ? { ...h, ...updatedHole } : h)
-          };
-        }
-        return c;
-      });
-      onCoursesUpdate(updatedCourses);
+      // react-query 캐시 무효화 후 refetch
+      await onCoursesUpdate();
 
       setSelectedHole(null);
       toast.success('홀이 성공적으로 수정되었습니다.');
@@ -243,17 +219,8 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
     try {
       await deleteHoleMutation.mutateAsync({ courseId, holeId });
 
-      // 로컬 상태 업데이트
-      const updatedCourses = courses.map(c => {
-        if (c.id === courseId) {
-          return {
-            ...c,
-            holes: c.holes?.filter(h => h.id !== holeId)
-          };
-        }
-        return c;
-      });
-      onCoursesUpdate(updatedCourses);
+      // react-query 캐시 무효화 후 refetch
+      await onCoursesUpdate();
 
       toast.success('홀이 성공적으로 삭제되었습니다.');
     } catch (error) {

@@ -58,11 +58,6 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
     }
   }, [open]);
 
-  // 클럽 변경 시 코스 선택 초기화
-  useEffect(() => {
-    setFormData(prev => ({ ...prev, courseIds: [] }));
-  }, [formData.clubId]);
-
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof FormData, string>> = {};
 
@@ -119,7 +114,14 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
   };
 
   const handleChange = (field: keyof FormData, value: unknown) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const newData = { ...prev, [field]: value };
+      // 클럽 변경 시 코스 선택 초기화
+      if (field === 'clubId' && prev.clubId !== value) {
+        newData.courseIds = [];
+      }
+      return newData;
+    });
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }

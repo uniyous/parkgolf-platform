@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { cancellationPolicyApi } from '@/lib/api/policyApi';
+import {
+  useCancellationPolicyDefaultQuery,
+  useCreateCancellationPolicyMutation,
+  useUpdateCancellationPolicyMutation,
+} from '@/hooks/queries';
 import type { CancellationPolicy } from '@/types/settings';
 
 // 기본 취소 정책 설정 (폴백용)
@@ -19,66 +23,48 @@ export const CancellationPolicySettings: React.FC = () => {
   const [policy, setPolicy] = useState<CancellationPolicy>(defaultPolicy);
   const [originalPolicy, setOriginalPolicy] = useState<CancellationPolicy>(defaultPolicy);
   const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // 기본 정책 로드
+  // React Query 훅 사용
+  const { data: apiPolicy, isLoading } = useCancellationPolicyDefaultQuery();
+  const createMutation = useCreateCancellationPolicyMutation();
+  const updateMutation = useUpdateCancellationPolicyMutation();
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
+  // API 응답으로 상태 설정
   useEffect(() => {
-    loadDefaultPolicy();
-  }, []);
-
-  const loadDefaultPolicy = async () => {
-    setIsLoading(true);
-    try {
-      const response = await cancellationPolicyApi.getDefault();
-      if (response.data?.success && response.data.data) {
-        setPolicy(response.data.data);
-        setOriginalPolicy(response.data.data);
-      }
-    } catch (error) {
-      console.error('Failed to load cancellation policy:', error);
-      // 기본값 사용
-    } finally {
-      setIsLoading(false);
+    if (apiPolicy) {
+      setPolicy(apiPolicy);
+      setOriginalPolicy(apiPolicy);
     }
-  };
+  }, [apiPolicy]);
 
   const handleSave = async () => {
-    setIsSaving(true);
     try {
       if (policy.id) {
         // 기존 정책 업데이트
-        const response = await cancellationPolicyApi.update(policy.id, {
-          name: policy.name,
-          description: policy.description,
-          allowUserCancel: policy.allowUserCancel,
-          userCancelDeadlineHours: policy.userCancelDeadlineHours,
-          allowSameDayCancel: policy.allowSameDayCancel,
-          isActive: policy.isActive,
+        await updateMutation.mutateAsync({
+          id: policy.id,
+          data: {
+            name: policy.name,
+            description: policy.description,
+            allowUserCancel: policy.allowUserCancel,
+            userCancelDeadlineHours: policy.userCancelDeadlineHours,
+            allowSameDayCancel: policy.allowSameDayCancel,
+            isActive: policy.isActive,
+          },
         });
-        if (response.data?.success) {
-          setPolicy(response.data.data);
-          setOriginalPolicy(response.data.data);
-          toast.success('취소 정책이 저장되었습니다.');
-        }
       } else {
         // 새 정책 생성
-        const response = await cancellationPolicyApi.create({
+        await createMutation.mutateAsync({
           ...policy,
           isDefault: true,
         });
-        if (response.data?.success) {
-          setPolicy(response.data.data);
-          setOriginalPolicy(response.data.data);
-          toast.success('취소 정책이 생성되었습니다.');
-        }
       }
       setIsEditing(false);
     } catch (error) {
       console.error('Failed to save cancellation policy:', error);
       toast.error('저장에 실패했습니다.');
-    } finally {
-      setIsSaving(false);
     }
   };
 

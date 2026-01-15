@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, RefreshCw, Flag } from 'lucide-react';
-import { useClub } from '@/hooks';
+import { useClubsQuery, useSearchClubsQuery } from '@/hooks/queries';
 import { DataContainer } from '@/components/common';
 import {
   FilterContainer,
@@ -14,43 +14,22 @@ import type { Club } from '@/types/club';
 
 export const ClubListPage: React.FC = () => {
   const navigate = useNavigate();
-  
-  const [searchKeyword, setSearchKeyword] = useState('');
-  
-  // Redux hooks
-  const {
-    clubs,
-    loading,
-    errors,
-    pagination,
-    loadClubs,
-    searchForClubs,
-  } = useClub();
 
-  // 초기 로드
-  useEffect(() => {
-    loadClubs();
-  }, []);
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [activeSearch, setActiveSearch] = useState('');
+
+  // React Query hooks
+  const { data: clubsData, isLoading: isLoadingClubs, refetch: refetchClubs } = useClubsQuery();
+  const { data: searchData, isLoading: isSearching } = useSearchClubsQuery(activeSearch);
+
+  // 검색어가 있으면 검색 결과, 없으면 전체 목록 사용
+  const clubs = activeSearch ? (searchData ?? []) : (clubsData?.data ?? []);
+  const pagination = clubsData?.pagination ?? { page: 1, limit: 20, total: 0, totalPages: 1 };
+  const isLoading = isLoadingClubs || isSearching;
 
   // 검색 처리
-  const handleSearch = async () => {
-    if (searchKeyword.trim()) {
-      try {
-        await searchForClubs(searchKeyword.trim());
-      } catch (error) {
-        console.error('Search failed:', error);
-      }
-    } else {
-      // 빈 검색어면 전체 목록 로드
-      loadClubs();
-    }
-  };
-
-  // 키보드 엔터 처리
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
+  const handleSearch = () => {
+    setActiveSearch(searchKeyword.trim());
   };
 
   // 골프장 선택
@@ -58,12 +37,12 @@ export const ClubListPage: React.FC = () => {
     navigate(`/clubs/${club.id}`);
   };
 
-  // 에러 처리
-  useEffect(() => {
-    if (errors.list) {
-      console.error('Club list error:', errors.list);
-    }
-  }, [errors.list]);
+  // 전체 보기 (검색 초기화)
+  const handleReset = () => {
+    setSearchKeyword('');
+    setActiveSearch('');
+    refetchClubs();
+  };
 
   // Stats
   const stats = useMemo(() => ({
@@ -157,44 +136,34 @@ export const ClubListPage: React.FC = () => {
         <div className="flex items-end gap-2">
           <button
             onClick={handleSearch}
-            disabled={loading.search}
+            disabled={isSearching}
             className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
           >
-            {loading.search ? (
+            {isSearching ? (
               <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
             ) : (
               <RefreshCw className="w-4 h-4 mr-2" />
             )}
-            {loading.search ? '검색 중...' : '검색'}
+            {isSearching ? '검색 중...' : '검색'}
           </button>
           <FilterResetButton
-            hasActiveFilters={!!searchKeyword}
-            onClick={() => {
-              setSearchKeyword('');
-              loadClubs();
-            }}
+            hasActiveFilters={!!searchKeyword || !!activeSearch}
+            onClick={handleReset}
             label="전체 보기"
           />
         </div>
       </FilterContainer>
 
-      {/* 에러 메시지 */}
-      {(errors.list || errors.search) && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-          {errors.search || errors.list}
-        </div>
-      )}
-
       {/* 골프장 목록 */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <DataContainer
-          isLoading={loading.list}
+          isLoading={isLoading}
           isEmpty={clubs.length === 0}
           emptyIcon={<Flag className="h-12 w-12 text-gray-400" />}
           emptyMessage="골프장이 없습니다"
-          emptyDescription={searchKeyword ? '검색 조건에 맞는 골프장이 없습니다.' : '등록된 골프장이 없습니다.'}
+          emptyDescription={activeSearch ? '검색 조건에 맞는 골프장이 없습니다.' : '등록된 골프장이 없습니다.'}
           emptyAction={
-            !searchKeyword ? (
+            !activeSearch ? (
               <button
                 onClick={() => navigate('/clubs/new')}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -267,11 +236,11 @@ export const ClubListPage: React.FC = () => {
       {/* 하단 정보 */}
       <div className="bg-gray-50 rounded-lg p-4">
         <p className="text-sm text-gray-600 text-center">
-          총 {pagination.totalCount}개의 골프장이 등록되어 있습니다.
-          {searchKeyword && ` '${searchKeyword}' 검색 결과입니다.`}
+          총 {pagination.total}개의 골프장이 등록되어 있습니다.
+          {activeSearch && ` '${activeSearch}' 검색 결과입니다.`}
           {pagination.totalPages > 1 && (
             <span className="ml-2">
-              (페이지 {pagination.currentPage}/{pagination.totalPages})
+              (페이지 {pagination.page}/{pagination.totalPages})
             </span>
           )}
         </p>

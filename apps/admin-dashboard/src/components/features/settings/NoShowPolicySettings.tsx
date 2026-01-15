@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
-import { noShowPolicyApi } from '@/lib/api/policyApi';
+import {
+  useNoShowPolicyDefaultQuery,
+  useCreateNoShowPolicyMutation,
+  useUpdateNoShowPolicyMutation,
+} from '@/hooks/queries';
 import type { NoShowPolicy, NoShowPenalty, NoShowPenaltyType } from '@/types/settings';
 import { DEFAULT_NOSHOW_PENALTIES } from '@/types/settings';
 
@@ -24,103 +28,88 @@ const penaltyTypeLabels: Record<NoShowPenaltyType, { label: string; color: strin
   FEE: { label: '위약금', color: 'bg-purple-100 text-purple-700', icon: '💸' },
 };
 
+// API 응답을 UI 형식으로 변환하는 함수
+const convertApiPolicyToUI = (apiPolicy: any): NoShowPolicy => {
+  return {
+    ...apiPolicy,
+    penalties: apiPolicy.penalties?.map((penalty: any) => ({
+      id: penalty.id,
+      type: penalty.penaltyType,
+      triggerCount: penalty.minCount,
+      withinDays: 30, // 기본값
+      penaltyDays: penalty.restrictionDays,
+      penaltyAmount: penalty.feeAmount,
+      description: penalty.label || penalty.message || '',
+      isActive: true,
+    })) || DEFAULT_NOSHOW_PENALTIES,
+  };
+};
+
+// UI 형식을 API 형식으로 변환하는 함수
+const convertUIPolicyToApi = (policy: NoShowPolicy) => {
+  const apiPenalties = policy.penalties.filter(p => p.isActive).map((penalty) => ({
+    minCount: penalty.triggerCount,
+    maxCount: null,
+    penaltyType: penalty.type,
+    restrictionDays: penalty.penaltyDays,
+    feeAmount: penalty.penaltyAmount,
+    feeRate: null,
+    label: penalty.description,
+    message: penalty.description,
+  }));
+
+  return {
+    name: policy.name,
+    code: policy.code,
+    description: policy.description,
+    allowRefundOnNoShow: policy.allowRefundOnNoShow,
+    noShowGraceMinutes: policy.noShowGraceMinutes,
+    countResetDays: policy.countResetDays,
+    isDefault: policy.isDefault ?? true,
+    isActive: policy.isActive,
+    penalties: apiPenalties,
+  };
+};
+
 export const NoShowPolicySettings: React.FC = () => {
   const [policy, setPolicy] = useState<NoShowPolicy>(defaultPolicy);
   const [originalPolicy, setOriginalPolicy] = useState<NoShowPolicy>(defaultPolicy);
   const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // 기본 정책 로드
+  // React Query 훅 사용
+  const { data: apiPolicy, isLoading } = useNoShowPolicyDefaultQuery();
+  const createMutation = useCreateNoShowPolicyMutation();
+  const updateMutation = useUpdateNoShowPolicyMutation();
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
+  // API 응답을 UI 형식으로 변환하여 상태 설정
   useEffect(() => {
-    loadDefaultPolicy();
-  }, []);
-
-  const loadDefaultPolicy = async () => {
-    setIsLoading(true);
-    try {
-      const response = await noShowPolicyApi.getDefault();
-      if (response.data?.success && response.data.data) {
-        // API 응답의 penalties를 UI 형식으로 변환
-        const apiPolicy = response.data.data;
-        const convertedPolicy: NoShowPolicy = {
-          ...apiPolicy,
-          penalties: apiPolicy.penalties?.map((penalty: any) => ({
-            id: penalty.id,
-            type: penalty.penaltyType,
-            triggerCount: penalty.minCount,
-            withinDays: 30, // 기본값
-            penaltyDays: penalty.restrictionDays,
-            penaltyAmount: penalty.feeAmount,
-            description: penalty.label || penalty.message || '',
-            isActive: true,
-          })) || DEFAULT_NOSHOW_PENALTIES,
-        };
-        setPolicy(convertedPolicy);
-        setOriginalPolicy(convertedPolicy);
-      }
-    } catch (error) {
-      console.error('Failed to load no-show policy:', error);
-      // 기본값 사용
-    } finally {
-      setIsLoading(false);
+    if (apiPolicy) {
+      const convertedPolicy = convertApiPolicyToUI(apiPolicy);
+      setPolicy(convertedPolicy);
+      setOriginalPolicy(convertedPolicy);
     }
-  };
+  }, [apiPolicy]);
 
   const handleSave = async () => {
-    setIsSaving(true);
     try {
-      // UI 형식을 API 형식으로 변환
-      const apiPenalties = policy.penalties.filter(p => p.isActive).map((penalty) => ({
-        minCount: penalty.triggerCount,
-        maxCount: null,
-        penaltyType: penalty.type,
-        restrictionDays: penalty.penaltyDays,
-        feeAmount: penalty.penaltyAmount,
-        feeRate: null,
-        label: penalty.description,
-        message: penalty.description,
-      }));
+      const apiData = convertUIPolicyToApi(policy);
 
       if (policy.id) {
         // 기존 정책 업데이트
-        const response = await noShowPolicyApi.update(policy.id, {
-          name: policy.name,
-          description: policy.description,
-          allowRefundOnNoShow: policy.allowRefundOnNoShow,
-          noShowGraceMinutes: policy.noShowGraceMinutes,
-          countResetDays: policy.countResetDays,
-          isActive: policy.isActive,
-          penalties: apiPenalties,
-        } as any);
-        if (response.data?.success) {
-          toast.success('노쇼 정책이 저장되었습니다.');
-          await loadDefaultPolicy();
-        }
+        await updateMutation.mutateAsync({
+          id: policy.id,
+          data: apiData as any,
+        });
       } else {
         // 새 정책 생성
-        const response = await noShowPolicyApi.create({
-          name: policy.name,
-          code: policy.code,
-          description: policy.description,
-          allowRefundOnNoShow: policy.allowRefundOnNoShow,
-          noShowGraceMinutes: policy.noShowGraceMinutes,
-          countResetDays: policy.countResetDays,
-          isDefault: true,
-          isActive: policy.isActive,
-          penalties: apiPenalties,
-        } as any);
-        if (response.data?.success) {
-          toast.success('노쇼 정책이 생성되었습니다.');
-          await loadDefaultPolicy();
-        }
+        await createMutation.mutateAsync(apiData as any);
       }
       setIsEditing(false);
     } catch (error) {
       console.error('Failed to save no-show policy:', error);
       toast.error('저장에 실패했습니다.');
-    } finally {
-      setIsSaving(false);
     }
   };
 

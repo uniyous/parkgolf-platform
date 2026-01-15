@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { refundPolicyApi } from '@/lib/api/policyApi';
+import {
+  useRefundPolicyDefaultQuery,
+  useCreateRefundPolicyMutation,
+  useUpdateRefundPolicyMutation,
+} from '@/hooks/queries';
 import type { RefundPolicy, RefundRateTier } from '@/types/settings';
 import { DEFAULT_REFUND_TIERS } from '@/types/settings';
 
@@ -17,96 +21,81 @@ const defaultPolicy: RefundPolicy = {
   isActive: true,
 };
 
+// API 응답을 UI 형식으로 변환하는 함수
+const convertApiPolicyToUI = (apiPolicy: any): RefundPolicy => {
+  return {
+    ...apiPolicy,
+    tiers: apiPolicy.tiers?.map((tier: any) => ({
+      id: tier.id,
+      minHoursBeforeBooking: tier.minHoursBefore,
+      maxHoursBeforeBooking: tier.maxHoursBefore,
+      refundRate: tier.refundRate,
+      description: tier.label || '',
+    })) || DEFAULT_REFUND_TIERS,
+  };
+};
+
+// UI 형식을 API 형식으로 변환하는 함수
+const convertUIPolicyToApi = (policy: RefundPolicy) => {
+  const apiTiers = policy.tiers.map((tier) => ({
+    minHoursBefore: tier.minHoursBeforeBooking,
+    maxHoursBefore: tier.maxHoursBeforeBooking,
+    refundRate: tier.refundRate,
+    label: tier.description,
+  }));
+
+  return {
+    name: policy.name,
+    code: policy.code,
+    description: policy.description,
+    adminCancelRefundRate: policy.adminCancelRefundRate,
+    minRefundAmount: policy.minRefundAmount,
+    refundFee: policy.refundFee,
+    isDefault: policy.isDefault ?? true,
+    isActive: policy.isActive,
+    tiers: apiTiers,
+  };
+};
+
 export const RefundPolicySettings: React.FC = () => {
   const [policy, setPolicy] = useState<RefundPolicy>(defaultPolicy);
   const [originalPolicy, setOriginalPolicy] = useState<RefundPolicy>(defaultPolicy);
   const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // 기본 정책 로드
+  // React Query 훅 사용
+  const { data: apiPolicy, isLoading } = useRefundPolicyDefaultQuery();
+  const createMutation = useCreateRefundPolicyMutation();
+  const updateMutation = useUpdateRefundPolicyMutation();
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
+  // API 응답을 UI 형식으로 변환하여 상태 설정
   useEffect(() => {
-    loadDefaultPolicy();
-  }, []);
-
-  const loadDefaultPolicy = async () => {
-    setIsLoading(true);
-    try {
-      const response = await refundPolicyApi.getDefault();
-      if (response.data?.success && response.data.data) {
-        // API 응답의 tiers를 UI 형식으로 변환
-        const apiPolicy = response.data.data;
-        const convertedPolicy: RefundPolicy = {
-          ...apiPolicy,
-          tiers: apiPolicy.tiers?.map((tier: any) => ({
-            id: tier.id,
-            minHoursBeforeBooking: tier.minHoursBefore,
-            maxHoursBeforeBooking: tier.maxHoursBefore,
-            refundRate: tier.refundRate,
-            description: tier.label || '',
-          })) || DEFAULT_REFUND_TIERS,
-        };
-        setPolicy(convertedPolicy);
-        setOriginalPolicy(convertedPolicy);
-      }
-    } catch (error) {
-      console.error('Failed to load refund policy:', error);
-      // 기본값 사용
-    } finally {
-      setIsLoading(false);
+    if (apiPolicy) {
+      const convertedPolicy = convertApiPolicyToUI(apiPolicy);
+      setPolicy(convertedPolicy);
+      setOriginalPolicy(convertedPolicy);
     }
-  };
+  }, [apiPolicy]);
 
   const handleSave = async () => {
-    setIsSaving(true);
     try {
-      // UI 형식을 API 형식으로 변환
-      const apiTiers = policy.tiers.map((tier) => ({
-        minHoursBefore: tier.minHoursBeforeBooking,
-        maxHoursBefore: tier.maxHoursBeforeBooking,
-        refundRate: tier.refundRate,
-        label: tier.description,
-      }));
+      const apiData = convertUIPolicyToApi(policy);
 
       if (policy.id) {
         // 기존 정책 업데이트
-        const response = await refundPolicyApi.update(policy.id, {
-          name: policy.name,
-          description: policy.description,
-          adminCancelRefundRate: policy.adminCancelRefundRate,
-          minRefundAmount: policy.minRefundAmount,
-          refundFee: policy.refundFee,
-          isActive: policy.isActive,
-          tiers: apiTiers,
-        } as any);
-        if (response.data?.success) {
-          toast.success('환불 정책이 저장되었습니다.');
-          await loadDefaultPolicy(); // 새로고침
-        }
+        await updateMutation.mutateAsync({
+          id: policy.id,
+          data: apiData as any,
+        });
       } else {
         // 새 정책 생성
-        const response = await refundPolicyApi.create({
-          name: policy.name,
-          code: policy.code,
-          description: policy.description,
-          adminCancelRefundRate: policy.adminCancelRefundRate,
-          minRefundAmount: policy.minRefundAmount,
-          refundFee: policy.refundFee,
-          isDefault: true,
-          isActive: policy.isActive,
-          tiers: apiTiers,
-        } as any);
-        if (response.data?.success) {
-          toast.success('환불 정책이 생성되었습니다.');
-          await loadDefaultPolicy();
-        }
+        await createMutation.mutateAsync(apiData as any);
       }
       setIsEditing(false);
     } catch (error) {
       console.error('Failed to save refund policy:', error);
       toast.error('저장에 실패했습니다.');
-    } finally {
-      setIsSaving(false);
     }
   };
 
