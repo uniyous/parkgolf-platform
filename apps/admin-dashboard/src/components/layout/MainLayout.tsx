@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronDown, X, Menu, Search } from 'lucide-react';
+import { ChevronDown, X, Menu } from 'lucide-react';
 import { menuConfig, getFavorites, toggleFavorite, isFavorite } from './SideBarMenu';
 import { UserMenu } from './UserMenu';
 import type { MenuItem } from './SideBarMenu';
@@ -15,8 +15,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ currentUser, onLogout, c
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<MenuItem[]>([]);
   const [favorites, setFavorites] = useState<MenuItem[]>([]);
 
   // 메뉴 필터링 (권한 기반 - 현재는 모든 권한 허용)
@@ -37,24 +35,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ currentUser, onLogout, c
     setCollapsedGroups(initialCollapsed);
   }, [filteredMenuConfig]);
 
-  // 검색 기능
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    if (query.trim()) {
-      const results: MenuItem[] = [];
-      filteredMenuConfig.forEach(group => {
-        group.items.forEach(item => {
-          if (item.name.toLowerCase().includes(query.toLowerCase())) {
-            results.push(item);
-          }
-        });
-      });
-      setSearchResults(results);
-    } else {
-      setSearchResults([]);
-    }
-  };
-
   // 그룹 토글
   const toggleGroup = (groupName: string) => {
     setCollapsedGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }));
@@ -65,18 +45,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ currentUser, onLogout, c
     toggleFavorite(item);
     setFavorites(getFavorites());
   };
-
-  // 키보드 단축키 (Ctrl+K: 검색)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === 'k') {
-        e.preventDefault();
-        document.getElementById('search-input')?.focus();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   // 사이드바 컨텐츠
   const SidebarContent = () => (
@@ -185,43 +153,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ currentUser, onLogout, c
         {/* 헤더 */}
         <header className="sticky top-0 z-10 bg-white shadow-sm border-b border-gray-200">
           <div className="flex justify-between items-center px-4 sm:px-6 h-16">
-            {/* 좌측: 모바일 메뉴 + 검색 */}
+            {/* 좌측: 모바일 메뉴 */}
             <div className="flex items-center space-x-4">
               <button className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 md:hidden" onClick={() => setSidebarOpen(true)}>
                 <Menu className="h-6 w-6" />
               </button>
               <div className="md:hidden">
                 <h1 className="text-lg font-semibold text-gray-900">파크골프</h1>
-              </div>
-
-              {/* 검색 */}
-              <div className="hidden md:block relative">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    id="search-input"
-                    type="text"
-                    placeholder="검색... (Ctrl+K)"
-                    value={searchQuery}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    className="block w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                {searchResults.length > 0 && (
-                  <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                    {searchResults.map((item) => (
-                      <Link
-                        key={item.href}
-                        to={item.href}
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={() => { setSearchQuery(''); setSearchResults([]); }}
-                      >
-                        <span className="mr-3">{item.icon}</span>
-                        <span>{item.name}</span>
-                      </Link>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
 
