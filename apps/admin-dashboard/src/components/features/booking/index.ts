@@ -1,4 +1,3 @@
-export { BookingList } from './BookingList';
 export { BookingTable } from './BookingTable';
 export { BookingFilters } from './BookingFilters';
 export { BookingStatsCards } from './BookingStatsCards';

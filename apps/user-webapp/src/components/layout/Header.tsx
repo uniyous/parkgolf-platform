@@ -59,7 +59,7 @@ export const Header = () => {
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
             <span className="text-2xl">🏌️</span>
-            <span className="font-bold text-lg text-white">Parkgolf</span>
+            <span className="font-bold text-lg text-white">ParkMate</span>
           </button>
         </div>
 

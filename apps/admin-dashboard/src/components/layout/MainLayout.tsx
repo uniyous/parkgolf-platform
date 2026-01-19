@@ -52,7 +52,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ currentUser, onLogout, c
       <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
         {/* 브랜드 */}
         <div className="flex items-center flex-shrink-0 px-4 mb-6">
-          <h1 className="text-xl font-semibold text-gray-900">파크골프 관리</h1>
+          <h1 className="text-xl font-semibold text-gray-900">ParkMate 관리</h1>
         </div>
 
         {/* 즐겨찾기 */}
@@ -159,7 +159,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ currentUser, onLogout, c
                 <Menu className="h-6 w-6" />
               </button>
               <div className="md:hidden">
-                <h1 className="text-lg font-semibold text-gray-900">파크골프</h1>
+                <h1 className="text-lg font-semibold text-gray-900">ParkMate</h1>
               </div>
             </div>
 

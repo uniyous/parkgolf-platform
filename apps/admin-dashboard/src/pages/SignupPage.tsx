@@ -140,7 +140,7 @@ export const SignupPage: React.FC = () => {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            파크골프 관리자 시스템
+            ParkMate 관리자
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             새 관리자 계정을 생성하세요
