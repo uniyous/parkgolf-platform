@@ -22,6 +22,8 @@
 # - course-service: course.*, hole.*, company.* 패턴 처리
 # - booking-service: booking.* 패턴 처리
 # - notify-service: notification.> 구독
+# - chat-gateway: WebSocket 게이트웨이, chat.* JetStream 발행/구독
+# - chat-service: chat.rooms.*, chat.messages.* 패턴 처리
 # - admin-api: 모든 서비스에 NATS Request 전송
 # - user-api: auth.*, booking.*, course.* Request 전송
 #
@@ -99,7 +101,7 @@ jobs:
       - name: Determine services to deploy
         id: services
         run: |
-          ALL_SERVICES='["iam-service","course-service","booking-service","notify-service","admin-api","user-api"]'
+          ALL_SERVICES='["iam-service","course-service","booking-service","notify-service","chat-gateway","chat-service","admin-api","user-api"]'
 
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             INPUT_SERVICES="${{ github.event.inputs.services }}"
@@ -215,6 +217,13 @@ jobs:
               echo "memory=1Gi" >> $GITHUB_OUTPUT
               echo "cpu=2" >> $GITHUB_OUTPUT
               echo "cpu_throttling=false" >> $GITHUB_OUTPUT
+            elif [ "$SERVICE" == "chat-gateway" ]; then
+              # chat-gateway: WebSocket persistent connections, always running
+              echo "min_instances=1" >> $GITHUB_OUTPUT
+              echo "max_instances=10" >> $GITHUB_OUTPUT
+              echo "memory=512Mi" >> $GITHUB_OUTPUT
+              echo "cpu=1" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=false" >> $GITHUB_OUTPUT
             else
               # All other services: 512Mi
               echo "min_instances=0" >> $GITHUB_OUTPUT
@@ -231,6 +240,20 @@ jobs:
               echo "max_instances=1" >> $GITHUB_OUTPUT
               echo "memory=512Mi" >> $GITHUB_OUTPUT
               echo "cpu=1" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
+            elif [ "$SERVICE" == "chat-gateway" ]; then
+              # chat-gateway: WebSocket persistent connections, always running
+              echo "min_instances=1" >> $GITHUB_OUTPUT
+              echo "max_instances=1" >> $GITHUB_OUTPUT
+              echo "memory=256Mi" >> $GITHUB_OUTPUT
+              echo "cpu=0.5" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
+            elif [ "$SERVICE" == "chat-service" ]; then
+              # chat-service: scale to zero when not in use
+              echo "min_instances=0" >> $GITHUB_OUTPUT
+              echo "max_instances=1" >> $GITHUB_OUTPUT
+              echo "memory=256Mi" >> $GITHUB_OUTPUT
+              echo "cpu=0.5" >> $GITHUB_OUTPUT
               echo "cpu_throttling=true" >> $GITHUB_OUTPUT
             elif [ "$SERVICE" == "notify-service" ]; then
               # notify-service: scale to zero
@@ -256,6 +279,7 @@ jobs:
           DATABASE_URL_COURSE_SERVICE: ${{ secrets.DATABASE_URL_COURSE_SERVICE }}
           DATABASE_URL_BOOKING_SERVICE: ${{ secrets.DATABASE_URL_BOOKING_SERVICE }}
           DATABASE_URL_NOTIFY_SERVICE: ${{ secrets.DATABASE_URL_NOTIFY_SERVICE }}
+          DATABASE_URL_CHAT_SERVICE: ${{ secrets.DATABASE_URL_CHAT_SERVICE }}
         run: |
           SERVICE="${{ matrix.service }}"
           SERVICE_UPPER=$(echo "$SERVICE" | tr '[:lower:]-' '[:upper:]_')
@@ -266,8 +290,8 @@ jobs:
           ENV_VARS="${ENV_VARS},JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}"
           ENV_VARS="${ENV_VARS},NATS_URL=${{ secrets.NATS_URL }}"
 
-          # Add DATABASE_URL only for services with Prisma (not admin-api, user-api)
-          if [ "$SERVICE" != "admin-api" ] && [ "$SERVICE" != "user-api" ]; then
+          # Add DATABASE_URL only for services with Prisma (not admin-api, user-api, chat-gateway)
+          if [ "$SERVICE" != "admin-api" ] && [ "$SERVICE" != "user-api" ] && [ "$SERVICE" != "chat-gateway" ]; then
             DB_URL_VAR="DATABASE_URL_${SERVICE_UPPER}"
             DB_URL="${!DB_URL_VAR}"
             # Debug: Log DATABASE_URL (masked password)
