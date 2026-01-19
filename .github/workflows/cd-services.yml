@@ -249,15 +249,15 @@ jobs:
               echo "cpu=0.5" >> $GITHUB_OUTPUT
               echo "cpu_throttling=true" >> $GITHUB_OUTPUT
             elif [ "$SERVICE" == "chat-service" ]; then
-              # chat-service: scale to zero when not in use
-              echo "min_instances=0" >> $GITHUB_OUTPUT
+              # chat-service: always running for NATS subscription
+              echo "min_instances=1" >> $GITHUB_OUTPUT
               echo "max_instances=1" >> $GITHUB_OUTPUT
               echo "memory=256Mi" >> $GITHUB_OUTPUT
               echo "cpu=0.5" >> $GITHUB_OUTPUT
               echo "cpu_throttling=true" >> $GITHUB_OUTPUT
             elif [ "$SERVICE" == "notify-service" ]; then
-              # notify-service: scale to zero
-              echo "min_instances=0" >> $GITHUB_OUTPUT
+              # notify-service: always running for NATS subscription
+              echo "min_instances=1" >> $GITHUB_OUTPUT
               echo "max_instances=1" >> $GITHUB_OUTPUT
               echo "memory=256Mi" >> $GITHUB_OUTPUT
               echo "cpu=0.5" >> $GITHUB_OUTPUT
