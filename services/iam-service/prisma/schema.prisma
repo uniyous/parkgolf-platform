@@ -147,6 +147,7 @@ model User {
   password      String
   name          String?
   phone         String?
+  profileImageUrl String?        @map("profile_image_url")
 
   roleCode      String           @default("USER") @map("role_code")
   isActive      Boolean          @default(true) @map("is_active")
@@ -158,8 +159,15 @@ model User {
   role          RoleMaster       @relation(fields: [roleCode], references: [code])
   refreshTokens RefreshToken[]
 
+  // 친구 관계
+  sentFriendRequests     FriendRequest[] @relation("SentRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedRequests")
+  friendsAsUser          Friendship[]    @relation("UserFriends")
+  friendsAsFriend        Friendship[]    @relation("FriendOfUser")
+
   @@index([roleCode])
   @@index([isActive])
+  @@index([name])
   @@map("users")
 }
 
@@ -252,4 +260,54 @@ model AdminActivityLog {
   @@index([companyId])
   @@index([createdAt])
   @@map("admin_activity_logs")
+}
+
+// ==============================================
+// Friend Request (친구 요청)
+// ==============================================
+model FriendRequest {
+  id          Int                 @id @default(autoincrement())
+  fromUserId  Int                 @map("from_user_id")
+  toUserId    Int                 @map("to_user_id")
+  status      FriendRequestStatus @default(PENDING)
+  message     String?             // 요청 메시지 (선택)
+
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  // 관계
+  fromUser    User                @relation("SentRequests", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser      User                @relation("ReceivedRequests", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@unique([fromUserId, toUserId])
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@index([status])
+  @@map("friend_requests")
+}
+
+enum FriendRequestStatus {
+  PENDING   // 대기 중
+  ACCEPTED  // 수락됨
+  REJECTED  // 거절됨
+}
+
+// ==============================================
+// Friendship (친구 관계)
+// ==============================================
+model Friendship {
+  id          Int       @id @default(autoincrement())
+  userId      Int       @map("user_id")
+  friendId    Int       @map("friend_id")
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // 관계
+  user        User      @relation("UserFriends", fields: [userId], references: [id], onDelete: Cascade)
+  friend      User      @relation("FriendOfUser", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
+  @@map("friendships")
 }

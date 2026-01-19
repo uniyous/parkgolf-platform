@@ -6,6 +6,7 @@ import { BookingModule } from './booking/booking.module';
 import { CoursesModule } from './courses/courses.module';
 import { GamesModule } from './games/games.module';
 import { NotifyModule } from './notify/notify.module';
+import { FriendsModule } from './friends/friends.module';
 import { NatsModule } from './common/nats';
 
 @Module({
@@ -20,6 +21,7 @@ import { NatsModule } from './common/nats';
     CoursesModule,
     GamesModule,
     NotifyModule,
+    FriendsModule,
   ],
   controllers: [],
   providers: [],

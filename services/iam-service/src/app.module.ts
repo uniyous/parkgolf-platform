@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { AdminModule } from './admin/admin.module';
 import { CompanyModule } from './company/company.module';
+import { FriendModule } from './friend/friend.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { CommonModule } from './common/common.module';
 import { ResponseTransformInterceptor } from './common/interceptor/response-transform.interceptor';
@@ -21,6 +22,7 @@ import { ResponseTransformInterceptor } from './common/interceptor/response-tran
     UserModule,
     AdminModule,
     CompanyModule,
+    FriendModule,
   ],
   providers: [
     {
