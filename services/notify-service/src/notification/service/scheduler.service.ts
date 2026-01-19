@@ -27,19 +27,4 @@ export class SchedulerService {
       this.logger.error('Failed to retry failed notifications:', error);
     }
   }
-
-  @Cron('0 9 * * *') // Daily at 9 AM
-  async sendBookingReminders() {
-    this.logger.log('Sending daily booking reminders...');
-    // TODO: Implement booking reminder logic
-    // This would query the booking service for bookings tomorrow
-    // and send reminder notifications
-  }
-
-  @Cron('0 18 * * *') // Daily at 6 PM
-  async sendPromotionalNotifications() {
-    this.logger.log('Processing promotional notifications...');
-    // TODO: Implement promotional notification logic
-    // This would send marketing emails to users who opted in
-  }
 }

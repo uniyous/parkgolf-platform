@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 채팅방 유형
+enum RoomType {
+  DIRECT    // 1:1 채팅
+  GROUP     // 그룹 채팅
+  BOOKING   // 예약 관련 채팅방
+}
+
+// 채팅방
+model ChatRoom {
+  id          String    @id @default(uuid())
+  name        String?   // 그룹채팅방 이름 (1:1은 null)
+  type        RoomType  @default(GROUP)
+  bookingId   Int?      // 예약 연동시 예약 ID
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // 관계
+  members     ChatRoomMember[]
+  messages    ChatMessage[]
+
+  @@index([bookingId])
+  @@index([type])
+  @@map("chat_rooms")
+}
+
+// 채팅방 멤버
+model ChatRoomMember {
+  id        String   @id @default(uuid())
+  roomId    String
+  userId    Int
+  userName  String   // 캐시용 (비정규화)
+  joinedAt  DateTime @default(now())
+  leftAt    DateTime?
+  isAdmin   Boolean  @default(false)
+
+  // 마지막 읽은 메시지
+  lastReadMessageId String?
+  lastReadAt        DateTime?
+
+  // 관계
+  room      ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([userId])
+  @@map("chat_room_members")
+}
+
+// 메시지 타입
+enum MessageType {
+  TEXT
+  IMAGE
+  SYSTEM  // 입장/퇴장 등 시스템 메시지
+}
+
+// 채팅 메시지
+model ChatMessage {
+  id         String      @id @default(uuid())
+  roomId     String
+  senderId   Int
+  senderName String      // 캐시용 (비정규화)
+  content    String
+  type       MessageType @default(TEXT)
+  createdAt  DateTime    @default(now())
+
+  // 삭제 처리 (soft delete)
+  deletedAt  DateTime?
+
+  // 관계
+  room       ChatRoom    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
+  @@index([senderId])
+  @@map("chat_messages")
+}
+
+// 읽음 처리 (선택적 - 상세 추적 필요시)
+model MessageRead {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    Int
+  readAt    DateTime @default(now())
+
+  @@unique([messageId, userId])
+  @@index([userId])
+  @@map("message_reads")
+}
