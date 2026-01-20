@@ -2,14 +2,14 @@ import Foundation
 
 // MARK: - Date Helper
 
-enum DateHelper {
+enum DateHelper: Sendable {
     // MARK: - Shared Formatters (Thread-safe, cached)
 
     private static let koreaLocale = Locale(identifier: "ko_KR")
     private static let koreaTimeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
 
     /// ISO8601 날짜 포맷터 (yyyy-MM-dd)
-    static let isoDateFormatter: DateFormatter = {
+    nonisolated(unsafe) static let isoDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.timeZone = koreaTimeZone
@@ -17,14 +17,14 @@ enum DateHelper {
     }()
 
     /// ISO8601 날짜시간 포맷터 (API 응답용)
-    static let iso8601Formatter: ISO8601DateFormatter = {
+    nonisolated(unsafe) static let iso8601Formatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
     }()
 
     /// 한국어 전체 날짜 (yyyy년 M월 d일 (E))
-    static let koreanFullDateFormatter: DateFormatter = {
+    nonisolated(unsafe) static let koreanFullDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = koreaLocale
         formatter.dateFormat = "yyyy년 M월 d일 (E)"
@@ -32,7 +32,7 @@ enum DateHelper {
     }()
 
     /// 한국어 짧은 날짜 (M/d (E))
-    static let koreanShortDateFormatter: DateFormatter = {
+    nonisolated(unsafe) static let koreanShortDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = koreaLocale
         formatter.dateFormat = "M/d (E)"
@@ -40,7 +40,7 @@ enum DateHelper {
     }()
 
     /// 한국어 시간 (a h:mm)
-    static let koreanTimeFormatter: DateFormatter = {
+    nonisolated(unsafe) static let koreanTimeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = koreaLocale
         formatter.dateFormat = "a h:mm"
@@ -48,7 +48,7 @@ enum DateHelper {
     }()
 
     /// 날짜 + 시간 (yyyy.MM.dd HH:mm)
-    static let dateTimeFormatter: DateFormatter = {
+    nonisolated(unsafe) static let dateTimeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = koreaLocale
         formatter.dateFormat = "yyyy.MM.dd HH:mm"
@@ -56,7 +56,7 @@ enum DateHelper {
     }()
 
     /// 짧은 날짜 (M/d)
-    static let shortDateFormatter: DateFormatter = {
+    nonisolated(unsafe) static let shortDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "M/d"
         return formatter

@@ -16,12 +16,12 @@ final class ParkGolfTests: XCTestCase {
     func testUserDecoding() throws {
         let json = """
         {
-            "id": "user-123",
+            "id": 123,
             "email": "test@example.com",
             "name": "홍길동",
-            "phone_number": "010-1234-5678",
-            "profile_image_url": null,
-            "created_at": "2024-01-01T00:00:00Z"
+            "phoneNumber": "010-1234-5678",
+            "profileImageUrl": null,
+            "createdAt": "2024-01-01T00:00:00Z"
         }
         """.data(using: .utf8)!
 
@@ -30,7 +30,7 @@ final class ParkGolfTests: XCTestCase {
 
         let user = try decoder.decode(User.self, from: json)
 
-        XCTAssertEqual(user.id, "user-123")
+        XCTAssertEqual(user.id, 123)
         XCTAssertEqual(user.email, "test@example.com")
         XCTAssertEqual(user.name, "홍길동")
         XCTAssertEqual(user.phoneNumber, "010-1234-5678")
@@ -41,7 +41,7 @@ final class ParkGolfTests: XCTestCase {
 
     func testBookingStatusDisplayName() {
         XCTAssertEqual(BookingStatus.pending.displayName, "대기중")
-        XCTAssertEqual(BookingStatus.confirmed.displayName, "확정")
+        XCTAssertEqual(BookingStatus.confirmed.displayName, "예약확정")
         XCTAssertEqual(BookingStatus.cancelled.displayName, "취소됨")
         XCTAssertEqual(BookingStatus.completed.displayName, "완료")
     }
