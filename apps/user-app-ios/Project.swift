@@ -37,6 +37,7 @@ let project = Project(
                 "UISupportedInterfaceOrientations": ["UIInterfaceOrientationPortrait"],
                 "NSCameraUsageDescription": "QR 코드 스캔을 위해 카메라가 필요합니다.",
                 "NSLocationWhenInUseUsageDescription": "주변 골프장을 찾기 위해 위치 정보가 필요합니다.",
+                "NSContactsUsageDescription": "친구를 찾기 위해 주소록 접근이 필요합니다.",
             ]),
             sources: ["Sources/**"],
             resources: ["Resources/**"],

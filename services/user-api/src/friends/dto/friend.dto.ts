@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class SendFriendRequestDto {
   @ApiProperty({ description: '친구 요청 대상 사용자 ID' })
@@ -10,6 +10,16 @@ export class SendFriendRequestDto {
   @IsOptional()
   @IsString()
   message?: string;
+}
+
+export class FindFromContactsDto {
+  @ApiProperty({
+    description: '검색할 전화번호 목록',
+    example: ['01012345678', '01098765432'],
+  })
+  @IsArray()
+  @IsString({ each: true })
+  phoneNumbers: string[];
 }
 
 export class FriendResponseDto {

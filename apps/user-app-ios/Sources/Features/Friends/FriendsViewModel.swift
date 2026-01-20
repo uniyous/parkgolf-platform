@@ -15,6 +15,11 @@ class FriendsViewModel: ObservableObject {
     @Published var showAddFriendSheet = false
     @Published var selectedSegment: FriendSegment = .friends
 
+    // Contact friends
+    @Published var contactFriends: [UserSearchResult] = []
+    @Published var isLoadingContacts = false
+    @Published var contactsPermissionDenied = false
+
     enum FriendSegment: String, CaseIterable {
         case friends = "친구"
         case requests = "요청"
@@ -146,6 +151,45 @@ class FriendsViewModel: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    // MARK: - Contact Friends
+
+    func loadContactFriends() async {
+        isLoadingContacts = true
+        contactsPermissionDenied = false
+
+        do {
+            // Request contacts access
+            let hasAccess = await ContactsManager.shared.requestAccess()
+
+            guard hasAccess else {
+                contactsPermissionDenied = true
+                isLoadingContacts = false
+                return
+            }
+
+            // Fetch phone numbers from contacts
+            let phoneNumbers = try await ContactsManager.shared.fetchPhoneNumbers()
+
+            guard !phoneNumbers.isEmpty else {
+                contactFriends = []
+                isLoadingContacts = false
+                return
+            }
+
+            // Search for friends with matching phone numbers
+            contactFriends = try await friendService.findFromContacts(phoneNumbers: phoneNumbers)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+
+        isLoadingContacts = false
+    }
+
+    func clearContactFriends() {
+        contactFriends = []
+        contactsPermissionDenied = false
     }
 
     // MARK: - Computed Properties

@@ -19,7 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { FriendsService } from './friends.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { SendFriendRequestDto } from './dto/friend.dto';
+import { SendFriendRequestDto, FindFromContactsDto } from './dto/friend.dto';
 
 @ApiTags('Friends')
 @Controller('api/user/friends')
@@ -51,6 +51,14 @@ export class FriendsController {
   @ApiResponse({ status: 401, description: '인증 필요' })
   async searchUsers(@Request() req: any, @Query('q') query: string) {
     return this.friendsService.searchUsers(req.user.userId, query);
+  }
+
+  @Post('contacts')
+  @ApiOperation({ summary: '연락처에서 친구 찾기' })
+  @ApiResponse({ status: 200, description: '연락처 친구 검색 성공' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  async findFromContacts(@Request() req: any, @Body() dto: FindFromContactsDto) {
+    return this.friendsService.findFromContacts(req.user.userId, dto.phoneNumbers);
   }
 
   @Post('request')

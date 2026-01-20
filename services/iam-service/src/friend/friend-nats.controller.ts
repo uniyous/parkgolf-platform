@@ -108,4 +108,14 @@ export class FriendNatsController {
     const isFriend = await this.friendService.isFriend(data.userId, data.friendId);
     return NatsResponse.success({ isFriend });
   }
+
+  // ==============================================
+  // 연락처에서 친구 찾기
+  // ==============================================
+  @MessagePattern('friends.contacts.search')
+  async findByContacts(@Payload() data: { userId: number; phoneNumbers: string[] }) {
+    this.logger.debug(`Finding friends from contacts for user: ${data.userId}`);
+    const users = await this.friendService.findByPhoneNumbers(data.userId, data.phoneNumbers);
+    return NatsResponse.success(users);
+  }
 }

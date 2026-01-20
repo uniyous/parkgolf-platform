@@ -38,6 +38,7 @@ export interface UserSearchResultDto {
  * - friends.list: 친구 목록 조회
  * - friends.requests: 친구 요청 목록 조회
  * - friends.search: 사용자 검색
+ * - friends.contacts.search: 연락처에서 친구 찾기
  * - friends.request.send: 친구 요청 보내기
  * - friends.request.accept: 친구 요청 수락
  * - friends.request.reject: 친구 요청 거절
@@ -63,6 +64,11 @@ export class FriendsService {
   async searchUsers(userId: number, query: string): Promise<ApiResponse<UserSearchResultDto[]>> {
     this.logger.log(`Search users: userId=${userId}, query=${query}`);
     return this.natsClient.send('friends.search', { userId, query }, NATS_TIMEOUTS.QUICK);
+  }
+
+  async findFromContacts(userId: number, phoneNumbers: string[]): Promise<ApiResponse<UserSearchResultDto[]>> {
+    this.logger.log(`Find friends from contacts: userId=${userId}, phoneCount=${phoneNumbers.length}`);
+    return this.natsClient.send('friends.contacts.search', { userId, phoneNumbers }, NATS_TIMEOUTS.QUICK);
   }
 
   async sendFriendRequest(

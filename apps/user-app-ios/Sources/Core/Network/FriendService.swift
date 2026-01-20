@@ -34,6 +34,21 @@ actor FriendService {
         return try await apiClient.request(endpoint, responseType: [UserSearchResult].self)
     }
 
+    // MARK: - Find From Contacts
+
+    func findFromContacts(phoneNumbers: [String]) async throws -> [UserSearchResult] {
+        struct RequestBody: Codable {
+            let phoneNumbers: [String]
+        }
+
+        let endpoint = Endpoint(
+            path: "/api/user/friends/contacts",
+            method: .post,
+            body: RequestBody(phoneNumbers: phoneNumbers)
+        )
+        return try await apiClient.request(endpoint, responseType: [UserSearchResult].self)
+    }
+
     // MARK: - Send Friend Request
 
     func sendFriendRequest(toUserId: Int) async throws {

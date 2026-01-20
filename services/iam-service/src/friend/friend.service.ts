@@ -298,4 +298,64 @@ export class FriendService {
     });
     return !!friendship;
   }
+
+  // ==============================================
+  // 연락처 전화번호로 사용자 검색
+  // ==============================================
+  async findByPhoneNumbers(userId: number, phoneNumbers: string[]) {
+    if (!phoneNumbers || phoneNumbers.length === 0) {
+      return [];
+    }
+
+    // 전화번호 정규화 (하이픈, 공백 제거)
+    const normalizedPhones = phoneNumbers.map((p) => p.replace(/[-\s]/g, ''));
+
+    // phone 필드로 사용자 검색
+    const users = await this.prisma.user.findMany({
+      where: {
+        phone: { in: normalizedPhones },
+        id: { not: userId },
+        isActive: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        profileImageUrl: true,
+      },
+    });
+
+    if (users.length === 0) {
+      return [];
+    }
+
+    // 친구 관계 및 요청 상태 확인
+    const friendships = await this.prisma.friendship.findMany({
+      where: {
+        userId,
+        friendId: { in: users.map((u) => u.id) },
+      },
+    });
+
+    const pendingRequests = await this.prisma.friendRequest.findMany({
+      where: {
+        fromUserId: userId,
+        toUserId: { in: users.map((u) => u.id) },
+        status: FriendRequestStatus.PENDING,
+      },
+    });
+
+    const friendIds = new Set(friendships.map((f) => f.friendId));
+    const pendingIds = new Set(pendingRequests.map((r) => r.toUserId));
+
+    return users.map((u) => ({
+      id: u.id,
+      email: u.email,
+      name: u.name || u.email,
+      profileImageUrl: u.profileImageUrl,
+      isFriend: friendIds.has(u.id),
+      hasPendingRequest: pendingIds.has(u.id),
+    }));
+  }
 }

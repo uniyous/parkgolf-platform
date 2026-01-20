@@ -278,11 +278,37 @@ struct AddFriendView: View {
                 .cornerRadius(10)
                 .padding()
 
+                // Find from contacts button
+                Button {
+                    Task {
+                        await viewModel.loadContactFriends()
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "person.crop.rectangle.stack")
+                        Text("주소록에서 찾기")
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.green)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.green.opacity(0.1))
+                    .cornerRadius(10)
+                }
+                .padding(.horizontal)
+                .disabled(viewModel.isLoadingContacts)
+
                 // Results
-                if viewModel.isSearching {
+                if viewModel.isSearching || viewModel.isLoadingContacts {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if viewModel.searchResults.isEmpty && !viewModel.searchQuery.isEmpty {
+                } else if viewModel.contactsPermissionDenied {
+                    ContentUnavailableView(
+                        "주소록 접근 권한 필요",
+                        systemImage: "person.crop.rectangle.badge.xmark",
+                        description: Text("설정에서 주소록 접근을 허용해주세요")
+                    )
+                } else if viewModel.searchResults.isEmpty && viewModel.contactFriends.isEmpty && !viewModel.searchQuery.isEmpty {
                     ContentUnavailableView(
                         "검색 결과가 없습니다",
                         systemImage: "person.slash",
@@ -290,10 +316,34 @@ struct AddFriendView: View {
                     )
                 } else {
                     List {
-                        ForEach(viewModel.searchResults) { user in
-                            UserSearchRow(user: user) {
-                                Task {
-                                    await viewModel.sendFriendRequest(toUserId: user.id)
+                        // Contact Friends Section
+                        if !viewModel.contactFriends.isEmpty {
+                            Section {
+                                ForEach(viewModel.contactFriends) { user in
+                                    UserSearchRow(user: user) {
+                                        Task {
+                                            await viewModel.sendFriendRequest(toUserId: user.id)
+                                        }
+                                    }
+                                }
+                            } header: {
+                                Text("주소록 친구")
+                            }
+                        }
+
+                        // Search Results Section
+                        if !viewModel.searchResults.isEmpty {
+                            Section {
+                                ForEach(viewModel.searchResults) { user in
+                                    UserSearchRow(user: user) {
+                                        Task {
+                                            await viewModel.sendFriendRequest(toUserId: user.id)
+                                        }
+                                    }
+                                }
+                            } header: {
+                                if !viewModel.contactFriends.isEmpty {
+                                    Text("검색 결과")
                                 }
                             }
                         }
@@ -306,6 +356,7 @@ struct AddFriendView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("닫기") {
+                        viewModel.clearContactFriends()
                         dismiss()
                     }
                 }
