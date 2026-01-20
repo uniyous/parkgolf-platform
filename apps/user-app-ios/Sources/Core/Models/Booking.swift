@@ -34,30 +34,7 @@ struct Booking: Identifiable, Codable, Sendable {
     }
 }
 
-enum BookingStatus: String, Codable, Sendable {
-    case pending = "PENDING"
-    case confirmed = "CONFIRMED"
-    case cancelled = "CANCELLED"
-    case completed = "COMPLETED"
-
-    var displayName: String {
-        switch self {
-        case .pending: "대기중"
-        case .confirmed: "확정"
-        case .cancelled: "취소됨"
-        case .completed: "완료"
-        }
-    }
-
-    var color: String {
-        switch self {
-        case .pending: "orange"
-        case .confirmed: "green"
-        case .cancelled: "red"
-        case .completed: "gray"
-        }
-    }
-}
+// BookingStatus is defined in BookingService.swift
 
 // MARK: - Club Model
 

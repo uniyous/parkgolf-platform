@@ -22,7 +22,7 @@ struct MainTabView: View {
 
     enum Tab: Hashable {
         case home
-        case booking
+        case search
         case friends
         case chat
         case profile
@@ -36,11 +36,11 @@ struct MainTabView: View {
                 }
                 .tag(Tab.home)
 
-            BookingView()
+            GameSearchView()
                 .tabItem {
-                    Label("예약", systemImage: "calendar")
+                    Label("예약", systemImage: "magnifyingglass")
                 }
-                .tag(Tab.booking)
+                .tag(Tab.search)
 
             FriendsView()
                 .tabItem {
@@ -50,21 +50,21 @@ struct MainTabView: View {
 
             ChatListView()
                 .tabItem {
-                    Label("채팅", systemImage: "message.fill")
+                    Label("채팅", systemImage: "bubble.left.and.bubble.right.fill")
                 }
                 .tag(Tab.chat)
 
             ProfileView()
                 .tabItem {
-                    Label("마이", systemImage: "person.fill")
+                    Label("마이", systemImage: "person.crop.circle.fill")
                 }
                 .tag(Tab.profile)
         }
-        .tint(.green)
+        .tint(.parkPrimary)
     }
 }
 
-// MARK: - Authentication View (Placeholder)
+// MARK: - Authentication View
 
 struct AuthenticationView: View {
     var body: some View {

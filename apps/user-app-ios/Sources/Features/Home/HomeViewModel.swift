@@ -1,56 +1,37 @@
 import Foundation
 
 @MainActor
-final class HomeViewModel: ObservableObject {
-    @Published var upcomingBookings: [Booking] = []
-    @Published var nearbyClubs: [Club] = []
+class HomeViewModel: ObservableObject {
+    @Published var upcomingBookings: [BookingResponse] = []
+    @Published var popularClubs: [Club] = []
     @Published var isLoading = false
-    @Published var error: Error?
+    @Published var errorMessage: String?
 
-    private let apiClient = APIClient.shared
+    private let bookingService = BookingService()
 
     func loadData() async {
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
 
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask {
-                await self.loadUpcomingBookings()
-            }
-
-            group.addTask {
-                await self.loadNearbyClubs()
-            }
+        // Load upcoming bookings
+        do {
+            let response = try await bookingService.getMyBookings(status: .upcoming, page: 1, limit: 5)
+            upcomingBookings = response.data
+        } catch {
+            // Handle error silently for home
         }
+
+        // Mock popular clubs for now
+        popularClubs = [
+            Club(id: "1", name: "서울파크골프장", address: "서울시 강남구", phoneNumber: nil, imageUrl: nil, latitude: nil, longitude: nil, courses: nil),
+            Club(id: "2", name: "부산파크골프장", address: "부산시 해운대구", phoneNumber: nil, imageUrl: nil, latitude: nil, longitude: nil, courses: nil),
+            Club(id: "3", name: "제주파크골프장", address: "제주시 애월읍", phoneNumber: nil, imageUrl: nil, latitude: nil, longitude: nil, courses: nil),
+        ]
+
+        isLoading = false
     }
 
     func refresh() async {
         await loadData()
-    }
-
-    private func loadUpcomingBookings() async {
-        do {
-            let response = try await apiClient.requestList(
-                BookingEndpoints.list(page: 1, limit: 5, status: .confirmed),
-                responseType: Booking.self
-            )
-            upcomingBookings = response.data
-        } catch {
-            self.error = error
-            print("Failed to load bookings: \(error)")
-        }
-    }
-
-    private func loadNearbyClubs() async {
-        do {
-            let response = try await apiClient.requestList(
-                ClubEndpoints.list(page: 1, limit: 10),
-                responseType: Club.self
-            )
-            nearbyClubs = response.data
-        } catch {
-            self.error = error
-            print("Failed to load clubs: \(error)")
-        }
     }
 }

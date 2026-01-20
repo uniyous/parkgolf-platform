@@ -35,7 +35,7 @@ struct BookingView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(BookingFilter.allCases, id: \.self) { filter in
-                    FilterChip(
+                    BookingFilterChip(
                         title: filter.title,
                         isSelected: selectedFilter == filter
                     ) {
@@ -111,9 +111,9 @@ enum BookingFilter: CaseIterable {
     }
 }
 
-// MARK: - Filter Chip
+// MARK: - Booking Filter Chip (Legacy)
 
-struct FilterChip: View {
+struct BookingFilterChip: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
@@ -146,7 +146,7 @@ struct BookingListItem: View {
 
                 Spacer()
 
-                StatusBadge(status: booking.status)
+                StatusBadge(status: .init(from: booking.status.rawValue))
             }
 
             Text(booking.courseName)
@@ -195,10 +195,10 @@ struct BookingDetailView: View {
 
                 // Booking Details
                 VStack(alignment: .leading, spacing: 16) {
-                    DetailRow(icon: "calendar", title: "날짜", value: formatDate(booking.bookingDate))
-                    DetailRow(icon: "clock", title: "시간", value: "\(booking.startTime) - \(booking.endTime)")
-                    DetailRow(icon: "person.2", title: "인원", value: "\(booking.playerCount)명")
-                    DetailRow(icon: "wonsign.circle", title: "금액", value: "\(booking.totalPrice.formatted())원")
+                    BookingDetailRow(icon: "calendar", title: "날짜", value: formatDate(booking.bookingDate))
+                    BookingDetailRow(icon: "clock", title: "시간", value: "\(booking.startTime) - \(booking.endTime)")
+                    BookingDetailRow(icon: "person.2", title: "인원", value: "\(booking.playerCount)명")
+                    BookingDetailRow(icon: "wonsign.circle", title: "금액", value: "\(booking.totalPrice.formatted())원")
                 }
 
                 Divider()
@@ -210,7 +210,7 @@ struct BookingDetailView: View {
 
                     Spacer()
 
-                    StatusBadge(status: booking.status)
+                    StatusBadge(status: .init(from: booking.status.rawValue))
                 }
 
                 // Actions
@@ -238,7 +238,7 @@ struct BookingDetailView: View {
     }
 }
 
-struct DetailRow: View {
+struct BookingDetailRow: View {
     let icon: String
     let title: String
     let value: String

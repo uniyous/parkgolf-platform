@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - Login View
+
 struct LoginView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = LoginViewModel()
@@ -11,32 +13,39 @@ struct LoginView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                Spacer()
-                    .frame(height: 20)
+        ZStack {
+            // Background
+            LinearGradient.parkBackground
+                .ignoresSafeArea()
 
-                // Logo
-                logoSection
+            ScrollView {
+                VStack(spacing: ParkSpacing.lg) {
+                    Spacer()
+                        .frame(height: ParkSpacing.xl)
 
-                // Login Form
-                loginForm
+                    // Logo
+                    logoSection
 
-                // Test Users Section
-                testUsersSection
+                    // Login Form
+                    loginFormCard
 
-                // Divider
-                dividerSection
+                    // Test Users Section
+                    testUsersCard
 
-                // Social Login
-                socialLoginSection
+                    // Divider
+                    dividerSection
 
-                // Sign Up Link
-                signUpSection
+                    // Social Login
+                    socialLoginSection
 
-                Spacer()
+                    // Sign Up Link
+                    signUpSection
+
+                    Spacer()
+                        .frame(height: ParkSpacing.xl)
+                }
+                .padding(.horizontal, ParkSpacing.md)
             }
-            .padding(.horizontal, 24)
         }
         .navigationBarHidden(true)
         .alert("오류", isPresented: $viewModel.showError) {
@@ -46,57 +55,54 @@ struct LoginView: View {
         }
     }
 
-    // MARK: - Test Users Section
-
-    private var testUsersSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("테스트 계정 (탭하여 자동 입력)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                ForEach(TestUser.allUsers, id: \.email) { user in
-                    TestUserButton(user: user) {
-                        viewModel.email = user.email
-                        viewModel.password = user.password
-                    }
-                }
-            }
-        }
-        .padding(16)
-        .background(Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-
     // MARK: - Logo Section
 
     private var logoSection: some View {
-        VStack(spacing: 16) {
-            Text("🏌️")
-                .font(.system(size: 70))
+        VStack(spacing: ParkSpacing.md) {
+            // Animated Logo
+            ZStack {
+                Circle()
+                    .fill(Color.parkPrimary.opacity(0.2))
+                    .frame(width: 100, height: 100)
 
-            Text("ParkMate")
-                .font(.largeTitle)
-                .fontWeight(.bold)
+                Circle()
+                    .fill(Color.parkPrimary.opacity(0.3))
+                    .frame(width: 80, height: 80)
 
-            Text("친구와 함께하는 파크골프")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                Image(systemName: "leaf.fill")
+                    .font(.system(size: 40))
+                    .foregroundStyle(Color.parkPrimary)
+            }
+
+            VStack(spacing: ParkSpacing.xs) {
+                Text("ParkMate")
+                    .font(.parkDisplayMedium)
+                    .foregroundStyle(.white)
+
+                Text("친구와 함께하는 파크골프")
+                    .font(.parkBodyMedium)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
         }
+        .padding(.vertical, ParkSpacing.lg)
     }
 
-    // MARK: - Login Form
+    // MARK: - Login Form Card
 
-    private var loginForm: some View {
-        VStack(spacing: 16) {
-            // Email Field
-            VStack(alignment: .leading, spacing: 8) {
-                Text("이메일")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+    private var loginFormCard: some View {
+        GlassCard {
+            VStack(spacing: ParkSpacing.md) {
+                // Email Field
+                VStack(alignment: .leading, spacing: ParkSpacing.xs) {
+                    Text("이메일")
+                        .font(.parkLabelMedium)
+                        .foregroundStyle(.white.opacity(0.8))
 
-                TextField("이메일을 입력하세요", text: $viewModel.email)
-                    .textFieldStyle(CustomTextFieldStyle())
+                    GlassTextField(
+                        placeholder: "이메일을 입력하세요",
+                        text: $viewModel.email,
+                        icon: "envelope"
+                    )
                     .textContentType(.emailAddress)
                     .keyboardType(.emailAddress)
                     .autocapitalization(.none)
@@ -105,16 +111,19 @@ struct LoginView: View {
                     .onSubmit {
                         focusedField = .password
                     }
-            }
+                }
 
-            // Password Field
-            VStack(alignment: .leading, spacing: 8) {
-                Text("비밀번호")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+                // Password Field
+                VStack(alignment: .leading, spacing: ParkSpacing.xs) {
+                    Text("비밀번호")
+                        .font(.parkLabelMedium)
+                        .foregroundStyle(.white.opacity(0.8))
 
-                SecureField("비밀번호를 입력하세요", text: $viewModel.password)
-                    .textFieldStyle(CustomTextFieldStyle())
+                    GlassSecureField(
+                        placeholder: "비밀번호를 입력하세요",
+                        text: $viewModel.password,
+                        icon: "lock"
+                    )
                     .textContentType(.password)
                     .focused($focusedField, equals: .password)
                     .submitLabel(.done)
@@ -123,97 +132,116 @@ struct LoginView: View {
                             await login()
                         }
                     }
-            }
-
-            // Forgot Password
-            HStack {
-                Spacer()
-                NavigationLink {
-                    ForgotPasswordView()
-                } label: {
-                    Text("비밀번호 찾기")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
                 }
-            }
 
-            // Login Button
-            Button {
-                Task {
-                    await login()
-                }
-            } label: {
+                // Forgot Password
                 HStack {
-                    if viewModel.isLoading {
-                        ProgressView()
-                            .tint(.white)
-                    } else {
-                        Text("로그인")
-                            .fontWeight(.semibold)
+                    Spacer()
+                    NavigationLink {
+                        ForgotPasswordView()
+                    } label: {
+                        Text("비밀번호 찾기")
+                            .font(.parkLabelSmall)
+                            .foregroundStyle(Color.parkPrimary)
                     }
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(Color.green)
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                // Login Button
+                GradientButton(
+                    title: "로그인",
+                    isLoading: viewModel.isLoading,
+                    isDisabled: !viewModel.isFormValid
+                ) {
+                    Task {
+                        await login()
+                    }
+                }
             }
-            .disabled(viewModel.isLoading || !viewModel.isFormValid)
-            .opacity(viewModel.isFormValid ? 1 : 0.6)
+        }
+    }
+
+    // MARK: - Test Users Card
+
+    private var testUsersCard: some View {
+        GlassCard(padding: ParkSpacing.sm) {
+            VStack(alignment: .leading, spacing: ParkSpacing.sm) {
+                HStack {
+                    Image(systemName: "person.crop.circle.badge.questionmark")
+                        .foregroundStyle(Color.parkInfo)
+                    Text("테스트 계정")
+                        .font(.parkLabelMedium)
+                        .foregroundStyle(.white)
+                }
+
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: ParkSpacing.xs) {
+                    ForEach(TestUser.allUsers, id: \.email) { user in
+                        TestUserCard(user: user) {
+                            withAnimation(.spring(response: 0.3)) {
+                                viewModel.email = user.email
+                                viewModel.password = user.password
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
     // MARK: - Divider Section
 
     private var dividerSection: some View {
-        HStack {
+        HStack(spacing: ParkSpacing.md) {
             Rectangle()
-                .fill(Color(.separator))
+                .fill(Color.white.opacity(0.2))
                 .frame(height: 1)
 
             Text("또는")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 16)
+                .font(.parkCaption)
+                .foregroundStyle(.white.opacity(0.5))
 
             Rectangle()
-                .fill(Color(.separator))
+                .fill(Color.white.opacity(0.2))
                 .frame(height: 1)
         }
+        .padding(.vertical, ParkSpacing.xs)
     }
 
     // MARK: - Social Login Section
 
     private var socialLoginSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: ParkSpacing.sm) {
             // Apple Login
             Button {
                 // Apple Sign In
             } label: {
-                HStack {
+                HStack(spacing: ParkSpacing.sm) {
                     Image(systemName: "apple.logo")
+                        .font(.system(size: 18, weight: .medium))
                     Text("Apple로 계속하기")
+                        .font(.parkHeadlineSmall)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(Color.black)
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.vertical, ParkSpacing.md)
+                .background(Color.white)
+                .foregroundStyle(.black)
+                .clipShape(RoundedRectangle(cornerRadius: ParkRadius.lg))
             }
 
             // Kakao Login
             Button {
                 // Kakao Sign In
             } label: {
-                HStack {
+                HStack(spacing: ParkSpacing.sm) {
                     Image(systemName: "message.fill")
+                        .font(.system(size: 18, weight: .medium))
                     Text("카카오로 계속하기")
+                        .font(.parkHeadlineSmall)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(Color.yellow)
-                .foregroundStyle(.black)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.vertical, ParkSpacing.md)
+                .background(Color(hex: "FEE500"))
+                .foregroundStyle(.black.opacity(0.85))
+                .clipShape(RoundedRectangle(cornerRadius: ParkRadius.lg))
             }
         }
     }
@@ -221,19 +249,20 @@ struct LoginView: View {
     // MARK: - Sign Up Section
 
     private var signUpSection: some View {
-        HStack {
+        HStack(spacing: ParkSpacing.xs) {
             Text("계정이 없으신가요?")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.white.opacity(0.6))
 
             NavigationLink {
                 SignUpView()
             } label: {
                 Text("회원가입")
                     .fontWeight(.semibold)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Color.parkPrimary)
             }
         }
-        .font(.subheadline)
+        .font(.parkBodySmall)
+        .padding(.top, ParkSpacing.sm)
     }
 
     // MARK: - Actions
@@ -244,56 +273,157 @@ struct LoginView: View {
     }
 }
 
-// MARK: - Custom Text Field Style
+// MARK: - Glass Secure Field
 
-struct CustomTextFieldStyle: TextFieldStyle {
-    func _body(configuration: TextField<Self._Label>) -> some View {
-        configuration
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(Color(.systemGray6))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+struct GlassSecureField: View {
+    let placeholder: String
+    @Binding var text: String
+    var icon: String? = nil
+    @State private var isSecured = true
+
+    var body: some View {
+        HStack(spacing: ParkSpacing.sm) {
+            if let icon = icon {
+                Image(systemName: icon)
+                    .foregroundStyle(.white.opacity(0.5))
+                    .frame(width: 20)
+            }
+
+            Group {
+                if isSecured {
+                    SecureField("", text: $text, prompt: Text(placeholder).foregroundColor(.white.opacity(0.4)))
+                } else {
+                    TextField("", text: $text, prompt: Text(placeholder).foregroundColor(.white.opacity(0.4)))
+                }
+            }
+            .foregroundStyle(.white)
+            .font(.parkBodyMedium)
+
+            Button {
+                isSecured.toggle()
+            } label: {
+                Image(systemName: isSecured ? "eye.slash" : "eye")
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+        }
+        .padding(.horizontal, ParkSpacing.md)
+        .padding(.vertical, ParkSpacing.sm)
+        .background(Color.white.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: ParkRadius.md))
+        .overlay(
+            RoundedRectangle(cornerRadius: ParkRadius.md)
+                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+        )
+    }
+}
+
+// MARK: - Test User Card
+
+struct TestUserCard: View {
+    let user: TestUser
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(user.name)
+                    .font(.parkLabelSmall)
+                    .foregroundStyle(.white)
+
+                Text(user.email)
+                    .font(.parkCaption)
+                    .foregroundStyle(.white.opacity(0.5))
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(ParkSpacing.sm)
+            .background(Color.white.opacity(0.05))
+            .clipShape(RoundedRectangle(cornerRadius: ParkRadius.sm))
+            .overlay(
+                RoundedRectangle(cornerRadius: ParkRadius.sm)
+                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 
 // MARK: - Forgot Password View
 
 struct ForgotPasswordView: View {
+    @Environment(\.dismiss) private var dismiss
     @State private var email = ""
     @State private var showConfirmation = false
 
     var body: some View {
-        VStack(spacing: 24) {
-            Text("비밀번호 재설정 링크를\n이메일로 보내드립니다")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .multilineTextAlignment(.center)
+        ZStack {
+            LinearGradient.parkBackground
+                .ignoresSafeArea()
 
-            TextField("이메일", text: $email)
-                .textFieldStyle(CustomTextFieldStyle())
-                .textContentType(.emailAddress)
-                .keyboardType(.emailAddress)
-                .autocapitalization(.none)
+            VStack(spacing: ParkSpacing.lg) {
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(Color.parkInfo.opacity(0.2))
+                        .frame(width: 80, height: 80)
 
-            Button {
-                showConfirmation = true
-            } label: {
-                Text("재설정 링크 보내기")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color.green)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    Image(systemName: "envelope.badge.shield.half.filled")
+                        .font(.system(size: 36))
+                        .foregroundStyle(Color.parkInfo)
+                }
+                .padding(.top, ParkSpacing.xl)
+
+                VStack(spacing: ParkSpacing.xs) {
+                    Text("비밀번호 재설정")
+                        .font(.parkHeadlineLarge)
+                        .foregroundStyle(.white)
+
+                    Text("가입하신 이메일로\n재설정 링크를 보내드립니다")
+                        .font(.parkBodyMedium)
+                        .foregroundStyle(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                }
+
+                GlassCard {
+                    VStack(spacing: ParkSpacing.md) {
+                        GlassTextField(
+                            placeholder: "이메일을 입력하세요",
+                            text: $email,
+                            icon: "envelope"
+                        )
+                        .textContentType(.emailAddress)
+                        .keyboardType(.emailAddress)
+                        .autocapitalization(.none)
+
+                        GradientButton(
+                            title: "재설정 링크 보내기",
+                            isDisabled: email.isEmpty || !email.contains("@")
+                        ) {
+                            showConfirmation = true
+                        }
+                    }
+                }
+                .padding(.horizontal, ParkSpacing.md)
+
+                Spacer()
             }
-            .disabled(email.isEmpty)
-
-            Spacer()
         }
-        .padding(24)
-        .navigationTitle("비밀번호 찾기")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .foregroundStyle(.white)
+                }
+            }
+        }
+        .toolbarBackground(.hidden, for: .navigationBar)
         .alert("이메일 전송 완료", isPresented: $showConfirmation) {
-            Button("확인", role: .cancel) {}
+            Button("확인") {
+                dismiss()
+            }
         } message: {
             Text("비밀번호 재설정 링크가 이메일로 전송되었습니다.")
         }
@@ -303,103 +433,169 @@ struct ForgotPasswordView: View {
 // MARK: - Sign Up View
 
 struct SignUpView: View {
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = SignUpViewModel()
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Form Fields
-                VStack(spacing: 16) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("이름")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
+        ZStack {
+            LinearGradient.parkBackground
+                .ignoresSafeArea()
 
-                        TextField("이름을 입력하세요", text: $viewModel.name)
-                            .textFieldStyle(CustomTextFieldStyle())
-                            .textContentType(.name)
+            ScrollView {
+                VStack(spacing: ParkSpacing.lg) {
+                    // Header
+                    VStack(spacing: ParkSpacing.xs) {
+                        Text("회원가입")
+                            .font(.parkDisplaySmall)
+                            .foregroundStyle(.white)
+
+                        Text("ParkMate와 함께 시작하세요")
+                            .font(.parkBodyMedium)
+                            .foregroundStyle(.white.opacity(0.7))
                     }
+                    .padding(.top, ParkSpacing.lg)
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("이메일")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
+                    // Form
+                    GlassCard {
+                        VStack(spacing: ParkSpacing.md) {
+                            // Name
+                            VStack(alignment: .leading, spacing: ParkSpacing.xs) {
+                                Text("이름")
+                                    .font(.parkLabelMedium)
+                                    .foregroundStyle(.white.opacity(0.8))
 
-                        TextField("이메일을 입력하세요", text: $viewModel.email)
-                            .textFieldStyle(CustomTextFieldStyle())
-                            .textContentType(.emailAddress)
-                            .keyboardType(.emailAddress)
-                            .autocapitalization(.none)
-                    }
+                                GlassTextField(
+                                    placeholder: "이름을 입력하세요",
+                                    text: $viewModel.name,
+                                    icon: "person"
+                                )
+                                .textContentType(.name)
+                            }
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("비밀번호")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
+                            // Email
+                            VStack(alignment: .leading, spacing: ParkSpacing.xs) {
+                                Text("이메일")
+                                    .font(.parkLabelMedium)
+                                    .foregroundStyle(.white.opacity(0.8))
 
-                        SecureField("비밀번호를 입력하세요", text: $viewModel.password)
-                            .textFieldStyle(CustomTextFieldStyle())
-                            .textContentType(.newPassword)
-                    }
+                                GlassTextField(
+                                    placeholder: "이메일을 입력하세요",
+                                    text: $viewModel.email,
+                                    icon: "envelope"
+                                )
+                                .textContentType(.emailAddress)
+                                .keyboardType(.emailAddress)
+                                .autocapitalization(.none)
+                            }
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("비밀번호 확인")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
+                            // Password
+                            VStack(alignment: .leading, spacing: ParkSpacing.xs) {
+                                Text("비밀번호")
+                                    .font(.parkLabelMedium)
+                                    .foregroundStyle(.white.opacity(0.8))
 
-                        SecureField("비밀번호를 다시 입력하세요", text: $viewModel.confirmPassword)
-                            .textFieldStyle(CustomTextFieldStyle())
-                            .textContentType(.newPassword)
-                    }
+                                GlassSecureField(
+                                    placeholder: "8자 이상 입력하세요",
+                                    text: $viewModel.password,
+                                    icon: "lock"
+                                )
+                                .textContentType(.newPassword)
+                            }
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("휴대폰 번호")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
+                            // Confirm Password
+                            VStack(alignment: .leading, spacing: ParkSpacing.xs) {
+                                Text("비밀번호 확인")
+                                    .font(.parkLabelMedium)
+                                    .foregroundStyle(.white.opacity(0.8))
 
-                        TextField("휴대폰 번호를 입력하세요", text: $viewModel.phoneNumber)
-                            .textFieldStyle(CustomTextFieldStyle())
-                            .textContentType(.telephoneNumber)
-                            .keyboardType(.phonePad)
-                    }
-                }
+                                GlassSecureField(
+                                    placeholder: "비밀번호를 다시 입력하세요",
+                                    text: $viewModel.confirmPassword,
+                                    icon: "lock.shield"
+                                )
+                                .textContentType(.newPassword)
 
-                // Terms
-                Toggle(isOn: $viewModel.agreeToTerms) {
-                    Text("이용약관 및 개인정보처리방침에 동의합니다")
-                        .font(.subheadline)
-                }
+                                if !viewModel.confirmPassword.isEmpty && viewModel.password != viewModel.confirmPassword {
+                                    Text("비밀번호가 일치하지 않습니다")
+                                        .font(.parkCaption)
+                                        .foregroundStyle(Color.parkError)
+                                }
+                            }
 
-                // Sign Up Button
-                Button {
-                    Task {
-                        if let user = await viewModel.signUp() {
-                            appState.signIn(user: user)
+                            // Phone
+                            VStack(alignment: .leading, spacing: ParkSpacing.xs) {
+                                Text("휴대폰 번호 (선택)")
+                                    .font(.parkLabelMedium)
+                                    .foregroundStyle(.white.opacity(0.8))
+
+                                GlassTextField(
+                                    placeholder: "010-0000-0000",
+                                    text: $viewModel.phoneNumber,
+                                    icon: "phone"
+                                )
+                                .textContentType(.telephoneNumber)
+                                .keyboardType(.phonePad)
+                            }
                         }
                     }
-                } label: {
-                    HStack {
-                        if viewModel.isLoading {
-                            ProgressView()
-                                .tint(.white)
-                        } else {
-                            Text("회원가입")
-                                .fontWeight(.semibold)
+
+                    // Terms
+                    GlassCard(padding: ParkSpacing.sm) {
+                        Button {
+                            viewModel.agreeToTerms.toggle()
+                        } label: {
+                            HStack(spacing: ParkSpacing.sm) {
+                                Image(systemName: viewModel.agreeToTerms ? "checkmark.square.fill" : "square")
+                                    .foregroundStyle(viewModel.agreeToTerms ? Color.parkPrimary : .white.opacity(0.4))
+                                    .font(.system(size: 22))
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("이용약관 및 개인정보처리방침에 동의합니다")
+                                        .font(.parkBodySmall)
+                                        .foregroundStyle(.white.opacity(0.8))
+
+                                    Text("(필수)")
+                                        .font(.parkCaption)
+                                        .foregroundStyle(Color.parkError)
+                                }
+
+                                Spacer()
+                            }
                         }
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color.green)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    // Sign Up Button
+                    GradientButton(
+                        title: "회원가입",
+                        isLoading: viewModel.isLoading,
+                        isDisabled: !viewModel.isFormValid
+                    ) {
+                        Task {
+                            if let user = await viewModel.signUp() {
+                                appState.signIn(user: user)
+                            }
+                        }
+                    }
+
+                    Spacer()
+                        .frame(height: ParkSpacing.xl)
                 }
-                .disabled(!viewModel.isFormValid || viewModel.isLoading)
-                .opacity(viewModel.isFormValid ? 1 : 0.6)
+                .padding(.horizontal, ParkSpacing.md)
             }
-            .padding(24)
         }
-        .navigationTitle("회원가입")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .foregroundStyle(.white)
+                }
+            }
+        }
+        .toolbarBackground(.hidden, for: .navigationBar)
         .alert("오류", isPresented: $viewModel.showError) {
             Button("확인", role: .cancel) {}
         } message: {
@@ -422,38 +618,6 @@ struct TestUser {
         TestUser(email: "park@parkgolf.com", password: "test1234", name: "박영희", role: "USER"),
         TestUser(email: "lee@parkgolf.com", password: "test1234", name: "이민수", role: "USER"),
     ]
-}
-
-// MARK: - Test User Button
-
-struct TestUserButton: View {
-    let user: TestUser
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(user.name)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.primary)
-
-                Text(user.role)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-
-                Text(user.email)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-        }
-        .buttonStyle(.plain)
-    }
 }
 
 #Preview {

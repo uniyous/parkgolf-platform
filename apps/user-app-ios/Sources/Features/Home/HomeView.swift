@@ -1,142 +1,204 @@
 import SwiftUI
 
+// MARK: - Home View
+
 struct HomeView: View {
+    @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = HomeViewModel()
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Welcome Section
-                    welcomeSection
+            ZStack {
+                // Background
+                LinearGradient.parkBackground
+                    .ignoresSafeArea()
 
-                    // Quick Actions
-                    quickActionsSection
+                ScrollView {
+                    VStack(spacing: ParkSpacing.lg) {
+                        // Welcome Header
+                        welcomeHeader
 
-                    // Upcoming Bookings
-                    upcomingBookingsSection
+                        // Search CTA
+                        searchCTA
 
-                    // Nearby Clubs
-                    nearbyClubsSection
+                        // Quick Date Selection
+                        quickDateSection
+
+                        // Upcoming Bookings
+                        upcomingBookingsSection
+
+                        // Popular Clubs
+                        popularClubsSection
+                    }
+                    .padding(.horizontal, ParkSpacing.md)
+                    .padding(.bottom, ParkSpacing.xxl)
                 }
-                .padding()
+                .refreshable {
+                    await viewModel.loadData()
+                }
             }
-            .navigationTitle("ParkMate")
-            .refreshable {
-                await viewModel.refresh()
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    HStack(spacing: ParkSpacing.xs) {
+                        Image(systemName: "leaf.fill")
+                            .foregroundStyle(Color.parkPrimary)
+                        Text("ParkMate")
+                            .font(.parkHeadlineMedium)
+                            .foregroundStyle(.white)
+                    }
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        // Notifications
+                    } label: {
+                        Image(systemName: "bell.fill")
+                            .foregroundStyle(.white)
+                    }
+                }
             }
+            .toolbarBackground(.hidden, for: .navigationBar)
         }
         .task {
             await viewModel.loadData()
         }
     }
 
-    // MARK: - Welcome Section
+    // MARK: - Welcome Header
 
-    private var welcomeSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("안녕하세요! 👋")
-                .font(.title2)
-                .fontWeight(.semibold)
+    private var welcomeHeader: some View {
+        VStack(alignment: .leading, spacing: ParkSpacing.xs) {
+            Text(greetingMessage)
+                .font(.parkDisplaySmall)
+                .foregroundStyle(.white)
 
-            Text("오늘도 즐거운 파크골프 되세요")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            Text(weatherMessage)
+                .font(.parkBodyMedium)
+                .foregroundStyle(.white.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, ParkSpacing.md)
     }
 
-    // MARK: - Quick Actions
+    private var greetingMessage: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        let name = appState.currentUser?.name ?? "회원"
 
-    private var quickActionsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("빠른 메뉴")
-                .font(.headline)
+        if hour < 12 {
+            return "좋은 아침이에요, \(name)님! ☀️"
+        } else if hour < 18 {
+            return "안녕하세요, \(name)님! 👋"
+        } else {
+            return "좋은 저녁이에요, \(name)님! 🌙"
+        }
+    }
 
-            HStack(spacing: 16) {
-                QuickActionButton(
-                    title: "예약하기",
-                    icon: "calendar.badge.plus",
-                    color: .green
-                ) {
-                    // Navigate to booking
+    private var weatherMessage: String {
+        "오늘도 파크골프하기 좋은 날이에요"
+    }
+
+    // MARK: - Search CTA
+
+    private var searchCTA: some View {
+        NavigationLink {
+            GameSearchView()
+        } label: {
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 18, weight: .medium))
+
+                Text("라운드 검색하기")
+                    .font(.parkHeadlineSmall)
+
+                Spacer()
+
+                Image(systemName: "arrow.right")
+            }
+            .foregroundStyle(.white)
+            .padding(ParkSpacing.md)
+            .background(
+                LinearGradient.parkButton
+            )
+            .clipShape(RoundedRectangle(cornerRadius: ParkRadius.lg))
+        }
+    }
+
+    // MARK: - Quick Date Section
+
+    private var quickDateSection: some View {
+        VStack(alignment: .leading, spacing: ParkSpacing.sm) {
+            Text("⚡️ 빠른 예약")
+                .font(.parkHeadlineSmall)
+                .foregroundStyle(.white)
+
+            HStack(spacing: ParkSpacing.sm) {
+                QuickDateButton(title: "오늘", icon: "sun.max.fill", color: .parkAccent) {
+                    // Navigate with today's date
                 }
 
-                QuickActionButton(
-                    title: "골프장 찾기",
-                    icon: "map",
-                    color: .blue
-                ) {
-                    // Navigate to search
+                QuickDateButton(title: "내일", icon: "sunrise.fill", color: .parkInfo) {
+                    // Navigate with tomorrow's date
                 }
 
-                QuickActionButton(
-                    title: "친구 초대",
-                    icon: "person.badge.plus",
-                    color: .orange
-                ) {
-                    // Navigate to invite
+                QuickDateButton(title: "이번 주말", icon: "calendar", color: .parkPrimary) {
+                    // Navigate with weekend date
                 }
             }
         }
     }
 
-    // MARK: - Upcoming Bookings
+    // MARK: - Upcoming Bookings Section
 
     private var upcomingBookingsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: ParkSpacing.sm) {
             HStack {
-                Text("다가오는 예약")
-                    .font(.headline)
+                Text("📅 다가오는 라운드")
+                    .font(.parkHeadlineSmall)
+                    .foregroundStyle(.white)
 
                 Spacer()
 
-                NavigationLink("전체보기") {
-                    BookingView()
+                NavigationLink {
+                    MyBookingsView()
+                } label: {
+                    Text("전체보기")
+                        .font(.parkLabelSmall)
+                        .foregroundStyle(Color.parkPrimary)
                 }
-                .font(.subheadline)
             }
 
-            if viewModel.upcomingBookings.isEmpty {
-                EmptyStateView(
-                    icon: "calendar",
-                    message: "예정된 예약이 없습니다"
-                )
+            if viewModel.isLoading {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    .frame(maxWidth: .infinity)
+                    .padding()
+            } else if viewModel.upcomingBookings.isEmpty {
+                HomeEmptyBookingCard()
             } else {
                 ForEach(viewModel.upcomingBookings.prefix(3)) { booking in
-                    BookingCard(booking: booking)
+                    HomeUpcomingBookingCard(booking: booking)
                 }
             }
         }
     }
 
-    // MARK: - Nearby Clubs
+    // MARK: - Popular Clubs Section
 
-    private var nearbyClubsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private var popularClubsSection: some View {
+        VStack(alignment: .leading, spacing: ParkSpacing.sm) {
             HStack {
-                Text("주변 골프장")
-                    .font(.headline)
+                Text("🏆 이번 주 인기 골프장")
+                    .font(.parkHeadlineSmall)
+                    .foregroundStyle(.white)
 
                 Spacer()
-
-                Button("더보기") {
-                    // Navigate to club list
-                }
-                .font(.subheadline)
             }
 
-            if viewModel.nearbyClubs.isEmpty {
-                EmptyStateView(
-                    icon: "location.slash",
-                    message: "주변 골프장을 찾을 수 없습니다"
-                )
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 16) {
-                        ForEach(viewModel.nearbyClubs) { club in
-                            ClubCard(club: club)
-                        }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: ParkSpacing.sm) {
+                    ForEach(viewModel.popularClubs) { club in
+                        HomePopularClubCard(club: club)
                     }
                 }
             }
@@ -144,9 +206,9 @@ struct HomeView: View {
     }
 }
 
-// MARK: - Quick Action Button
+// MARK: - Quick Date Button
 
-struct QuickActionButton: View {
+struct QuickDateButton: View {
     let title: String
     let icon: String
     let color: Color
@@ -154,150 +216,146 @@ struct QuickActionButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 8) {
+            VStack(spacing: ParkSpacing.xs) {
                 Image(systemName: icon)
-                    .font(.title2)
+                    .font(.system(size: 24))
                     .foregroundStyle(color)
 
                 Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.primary)
+                    .font(.parkLabelMedium)
+                    .foregroundStyle(.white)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(color.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(.vertical, ParkSpacing.md)
+            .glassCard(padding: 0)
         }
-        .buttonStyle(.plain)
     }
 }
 
-// MARK: - Booking Card
+// MARK: - Empty Booking Card
 
-struct BookingCard: View {
-    let booking: Booking
+struct HomeEmptyBookingCard: View {
+    var body: some View {
+        GlassCard {
+            VStack(spacing: ParkSpacing.sm) {
+                Image(systemName: "calendar.badge.plus")
+                    .font(.system(size: 32))
+                    .foregroundStyle(.white.opacity(0.5))
+
+                Text("예정된 라운드가 없습니다")
+                    .font(.parkBodyMedium)
+                    .foregroundStyle(.white.opacity(0.7))
+
+                Text("새로운 라운드를 예약해보세요")
+                    .font(.parkCaption)
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, ParkSpacing.lg)
+        }
+    }
+}
+
+// MARK: - Upcoming Booking Card
+
+struct HomeUpcomingBookingCard: View {
+    let booking: BookingResponse
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(booking.clubName)
-                    .font(.headline)
+        GlassCard {
+            VStack(alignment: .leading, spacing: ParkSpacing.sm) {
+                HStack {
+                    StatusBadge(status: .init(from: booking.status), size: .small)
+                    Spacer()
+                    Text(daysUntilBooking)
+                        .font(.parkLabelSmall)
+                        .foregroundStyle(Color.parkAccent)
+                }
 
-                Spacer()
+                if let gameName = booking.gameName {
+                    Text(gameName)
+                        .font(.parkHeadlineMedium)
+                        .foregroundStyle(.white)
+                }
 
-                StatusBadge(status: booking.status)
+                HStack(spacing: ParkSpacing.md) {
+                    Label(booking.formattedDate, systemImage: "calendar")
+                    Label(booking.startTime, systemImage: "clock")
+                    Label("\(booking.playerCount)명", systemImage: "person.2")
+                }
+                .font(.parkBodySmall)
+                .foregroundStyle(.white.opacity(0.7))
             }
-
-            HStack {
-                Label(formatDate(booking.bookingDate), systemImage: "calendar")
-                Spacer()
-                Label(booking.startTime, systemImage: "clock")
-            }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-
-            HStack {
-                Label("\(booking.playerCount)명", systemImage: "person.2")
-                Spacer()
-                Text(booking.courseName)
-            }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.05), radius: 8, y: 4)
     }
 
-    private func formatDate(_ date: Date) -> String {
+    private var daysUntilBooking: String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "M월 d일 (E)"
-        formatter.locale = Locale(identifier: "ko_KR")
-        return formatter.string(from: date)
-    }
-}
+        formatter.dateFormat = "yyyy-MM-dd"
 
-// MARK: - Status Badge
+        guard let bookingDate = formatter.date(from: booking.bookingDate) else {
+            return ""
+        }
 
-struct StatusBadge: View {
-    let status: BookingStatus
+        let days = Calendar.current.dateComponents([.day], from: Date(), to: bookingDate).day ?? 0
 
-    var body: some View {
-        Text(status.displayName)
-            .font(.caption)
-            .fontWeight(.medium)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(statusColor.opacity(0.1))
-            .foregroundStyle(statusColor)
-            .clipShape(Capsule())
-    }
-
-    private var statusColor: Color {
-        switch status {
-        case .pending: .orange
-        case .confirmed: .green
-        case .cancelled: .red
-        case .completed: .gray
+        if days == 0 {
+            return "오늘"
+        } else if days == 1 {
+            return "내일"
+        } else if days < 0 {
+            return ""
+        } else {
+            return "D-\(days)"
         }
     }
 }
 
-// MARK: - Club Card
+// MARK: - Popular Club Card
 
-struct ClubCard: View {
+struct HomePopularClubCard: View {
     let club: Club
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Placeholder image
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.green.opacity(0.2))
-                .frame(width: 160, height: 100)
-                .overlay {
-                    Image(systemName: "flag.fill")
-                        .font(.largeTitle)
-                        .foregroundStyle(.green)
+        GlassCard(padding: 0, cornerRadius: ParkRadius.lg) {
+            VStack(alignment: .leading, spacing: 0) {
+                // Image placeholder
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.parkPrimary.opacity(0.3), Color.parkSecondary.opacity(0.3)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(height: 100)
+                    .overlay(
+                        Image(systemName: "figure.golf")
+                            .font(.system(size: 32))
+                            .foregroundStyle(.white.opacity(0.5))
+                    )
+
+                VStack(alignment: .leading, spacing: ParkSpacing.xxs) {
+                    Text(club.name)
+                        .font(.parkLabelLarge)
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+
+                    Text(club.address)
+                        .font(.parkCaption)
+                        .foregroundStyle(.white.opacity(0.6))
+                        .lineLimit(1)
                 }
-
-            Text(club.name)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .lineLimit(1)
-
-            Text(club.address)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
+                .padding(ParkSpacing.sm)
+            }
+            .frame(width: 160)
         }
-        .frame(width: 160)
     }
 }
 
-// MARK: - Empty State View
-
-struct EmptyStateView: View {
-    let icon: String
-    let message: String
-
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.largeTitle)
-                .foregroundStyle(.secondary)
-
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 32)
-        .background(Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-}
+// HomeViewModel is defined in HomeViewModel.swift
 
 #Preview {
     HomeView()
+        .environmentObject(AppState())
 }

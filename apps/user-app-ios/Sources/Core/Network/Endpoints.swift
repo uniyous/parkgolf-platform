@@ -146,7 +146,8 @@ enum ChatEndpoints {
 
 // MARK: - Request DTOs
 
-struct CreateBookingRequest: Codable, Sendable {
+// Legacy booking request - deprecated, use CreateBookingRequest from BookingService
+struct LegacyCreateBookingRequest: Codable, Sendable {
     let clubId: String
     let courseId: String
     let bookingDate: String
