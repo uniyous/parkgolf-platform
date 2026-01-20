@@ -9,13 +9,46 @@ actor APIClient {
     private let session: URLSession
     private var accessToken: String?
 
+    // MARK: - Shared Decoders
+
+    private static let jsonDecoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
+
+    private static let flexibleDateDecoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+
+            // Try ISO8601 with fractional seconds first
+            if let date = DateHelper.iso8601Formatter.date(from: dateString) {
+                return date
+            }
+
+            // Fallback to standard ISO8601
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime]
+            if let date = formatter.date(from: dateString) {
+                return date
+            }
+
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Invalid date format: \(dateString)"
+            )
+        }
+        return decoder
+    }()
+
     private init() {
-        // Cloud Run user-api
-        self.baseURL = URL(string: "https://user-api-dev-335495814488.asia-northeast3.run.app")!
+        self.baseURL = Configuration.API.baseURL
 
         let configuration = URLSessionConfiguration.default
-        configuration.timeoutIntervalForRequest = 30
-        configuration.timeoutIntervalForResource = 60
+        configuration.timeoutIntervalForRequest = Configuration.Timeout.request
+        configuration.timeoutIntervalForResource = Configuration.Timeout.resource
         self.session = URLSession(configuration: configuration)
     }
 
@@ -31,22 +64,14 @@ actor APIClient {
         _ endpoint: Endpoint,
         responseType: T.Type
     ) async throws -> T {
-        let request = try buildRequest(for: endpoint)
-        let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw APIError.invalidResponse
-        }
+        let (data, httpResponse) = try await performRequest(endpoint)
 
         guard (200...299).contains(httpResponse.statusCode) else {
             throw APIError.httpError(statusCode: httpResponse.statusCode, data: data)
         }
 
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-
         do {
-            let apiResponse = try decoder.decode(APIResponse<T>.self, from: data)
+            let apiResponse = try Self.jsonDecoder.decode(APIResponse<T>.self, from: data)
             if apiResponse.success, let responseData = apiResponse.data {
                 return responseData
             } else if let error = apiResponse.error {
@@ -61,41 +86,15 @@ actor APIClient {
         }
     }
 
-    /// Direct request without APIResponse wrapper (for auth endpoints)
+    /// Direct request without APIResponse wrapper (for paginated responses, auth endpoints)
     func requestDirect<T: Decodable & Sendable>(
         _ endpoint: Endpoint,
         responseType: T.Type
     ) async throws -> T {
-        let request = try buildRequest(for: endpoint)
-        let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw APIError.invalidResponse
-        }
-
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .custom { decoder in
-            let container = try decoder.singleValueContainer()
-            let dateString = try container.decode(String.self)
-
-            // Try ISO8601 with fractional seconds
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            if let date = formatter.date(from: dateString) {
-                return date
-            }
-
-            // Fallback to standard ISO8601
-            formatter.formatOptions = [.withInternetDateTime]
-            if let date = formatter.date(from: dateString) {
-                return date
-            }
-
-            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid date format")
-        }
+        let (data, httpResponse) = try await performRequest(endpoint)
 
         // Check for error response first
-        if let errorResponse = try? decoder.decode(ErrorOnlyResponse.self, from: data),
+        if let errorResponse = try? Self.flexibleDateDecoder.decode(ErrorOnlyResponse.self, from: data),
            errorResponse.success == false,
            let error = errorResponse.error {
             throw APIError.serverError(code: error.code, message: error.message)
@@ -106,9 +105,11 @@ actor APIClient {
         }
 
         do {
-            return try decoder.decode(T.self, from: data)
-        } catch let decodingError {
-            print("Decoding error: \(decodingError)")
+            return try Self.flexibleDateDecoder.decode(T.self, from: data)
+        } catch {
+            #if DEBUG
+            print("Decoding error: \(error)")
+            #endif
             throw APIError.decodingError
         }
     }
@@ -117,6 +118,18 @@ actor APIClient {
         _ endpoint: Endpoint,
         responseType: T.Type
     ) async throws -> PaginatedResponse<T> {
+        let (data, httpResponse) = try await performRequest(endpoint)
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.httpError(statusCode: httpResponse.statusCode, data: data)
+        }
+
+        return try Self.jsonDecoder.decode(PaginatedResponse<T>.self, from: data)
+    }
+
+    // MARK: - Private Helpers
+
+    private func performRequest(_ endpoint: Endpoint) async throws -> (Data, HTTPURLResponse) {
         let request = try buildRequest(for: endpoint)
         let (data, response) = try await session.data(for: request)
 
@@ -124,14 +137,7 @@ actor APIClient {
             throw APIError.invalidResponse
         }
 
-        guard (200...299).contains(httpResponse.statusCode) else {
-            throw APIError.httpError(statusCode: httpResponse.statusCode, data: data)
-        }
-
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-
-        return try decoder.decode(PaginatedResponse<T>.self, from: data)
+        return (data, httpResponse)
     }
 
     // MARK: - Private Methods
@@ -234,13 +240,6 @@ struct Pagination: Decodable, Sendable {
     let limit: Int
     let total: Int
     let totalPages: Int
-
-    enum CodingKeys: String, CodingKey {
-        case page
-        case limit
-        case total
-        case totalPages = "total_pages"
-    }
 }
 
 // MARK: - API Error

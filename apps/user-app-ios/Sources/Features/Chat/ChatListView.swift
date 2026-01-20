@@ -131,19 +131,12 @@ struct ChatRoomListItem: View {
     }
 
     private func formatTime(_ date: Date) -> String {
-        let calendar = Calendar.current
-
-        if calendar.isDateInToday(date) {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "a h:mm"
-            formatter.locale = Locale(identifier: "ko_KR")
-            return formatter.string(from: date)
-        } else if calendar.isDateInYesterday(date) {
+        if Calendar.current.isDateInToday(date) {
+            return DateHelper.toKoreanTime(date)
+        } else if Calendar.current.isDateInYesterday(date) {
             return "어제"
         } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "M/d"
-            return formatter.string(from: date)
+            return DateHelper.shortDateFormatter.string(from: date)
         }
     }
 }

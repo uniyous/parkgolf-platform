@@ -153,17 +153,10 @@ struct BookingResponse: Codable, Sendable, Identifiable {
     }
 
     var formattedDate: String {
-        let inputFormatter = DateFormatter()
-        inputFormatter.dateFormat = "yyyy-MM-dd"
-
-        let outputFormatter = DateFormatter()
-        outputFormatter.locale = Locale(identifier: "ko_KR")
-        outputFormatter.dateFormat = "yyyy년 M월 d일 (E)"
-
-        if let date = inputFormatter.date(from: bookingDate) {
-            return outputFormatter.string(from: date)
+        guard let date = DateHelper.fromISODateString(bookingDate) else {
+            return bookingDate
         }
-        return bookingDate
+        return DateHelper.toKoreanFullDate(date)
     }
 
     var timeRange: String {

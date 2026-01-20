@@ -171,10 +171,7 @@ struct MessageBubble: View {
     }
 
     private func formatTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "a h:mm"
-        formatter.locale = Locale(identifier: "ko_KR")
-        return formatter.string(from: date)
+        DateHelper.toKoreanTime(date)
     }
 }
 

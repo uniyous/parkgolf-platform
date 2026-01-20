@@ -165,10 +165,7 @@ struct BookingListItem: View {
     }
 
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "M/d (E)"
-        formatter.locale = Locale(identifier: "ko_KR")
-        return formatter.string(from: date)
+        DateHelper.toKoreanShortDate(date)
     }
 }
 
@@ -231,10 +228,7 @@ struct BookingDetailView: View {
     }
 
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy년 M월 d일 (E)"
-        formatter.locale = Locale(identifier: "ko_KR")
-        return formatter.string(from: date)
+        DateHelper.toKoreanFullDate(date)
     }
 }
 

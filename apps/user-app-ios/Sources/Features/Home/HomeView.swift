@@ -290,10 +290,7 @@ struct HomeUpcomingBookingCard: View {
     }
 
     private var daysUntilBooking: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-
-        guard let bookingDate = formatter.date(from: booking.bookingDate) else {
+        guard let bookingDate = DateHelper.fromISODateString(booking.bookingDate) else {
             return ""
         }
 

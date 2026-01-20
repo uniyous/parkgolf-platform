@@ -422,10 +422,7 @@ class BookingFormViewModel: ObservableObject {
     // MARK: - Computed Properties
 
     var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.dateFormat = "yyyy년 M월 d일 (E)"
-        return formatter.string(from: selectedDate)
+        DateHelper.toKoreanFullDate(selectedDate)
     }
 
     var basePrice: Int {
@@ -470,13 +467,10 @@ class BookingFormViewModel: ObservableObject {
 
         Task {
             do {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "yyyy-MM-dd"
-
                 let request = CreateBookingRequest(
                     gameId: game.id,
                     gameTimeSlotId: timeSlot.id,
-                    bookingDate: formatter.string(from: selectedDate),
+                    bookingDate: DateHelper.toISODateString(selectedDate),
                     playerCount: playerCount,
                     paymentMethod: selectedPaymentMethod.rawValue,
                     specialRequests: specialRequests.isEmpty ? nil : specialRequests,

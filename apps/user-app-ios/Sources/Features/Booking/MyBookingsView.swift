@@ -607,24 +607,7 @@ struct BookingDetailSheet: View {
     }
 
     private func formatDateTime(_ dateString: String) -> String {
-        let inputFormatter = ISO8601DateFormatter()
-        inputFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-        let outputFormatter = DateFormatter()
-        outputFormatter.locale = Locale(identifier: "ko_KR")
-        outputFormatter.dateFormat = "yyyy.MM.dd HH:mm"
-
-        if let date = inputFormatter.date(from: dateString) {
-            return outputFormatter.string(from: date)
-        }
-
-        // Try without fractional seconds
-        inputFormatter.formatOptions = [.withInternetDateTime]
-        if let date = inputFormatter.date(from: dateString) {
-            return outputFormatter.string(from: date)
-        }
-
-        return dateString
+        DateHelper.iso8601ToDateTime(dateString) ?? dateString
     }
 }
 

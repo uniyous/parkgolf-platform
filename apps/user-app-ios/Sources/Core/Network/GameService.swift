@@ -24,9 +24,7 @@ actor GameService {
         }
 
         if let date = params.date {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd"
-            queryParameters["date"] = formatter.string(from: date)
+            queryParameters["date"] = DateHelper.toISODateString(date)
         }
 
         if let timeOfDay = params.timeOfDay, timeOfDay != .all,
@@ -70,13 +68,10 @@ actor GameService {
     // MARK: - Get Time Slots
 
     func getTimeSlots(gameId: Int, date: Date) async throws -> [GameTimeSlot] {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-
         let endpoint = Endpoint(
             path: "/api/user/games/\(gameId)/time-slots",
             method: .get,
-            queryParameters: ["date": formatter.string(from: date)]
+            queryParameters: ["date": DateHelper.toISODateString(date)]
         )
 
         return try await apiClient.request(endpoint, responseType: [GameTimeSlot].self)
@@ -85,13 +80,10 @@ actor GameService {
     // MARK: - Get Available Time Slots
 
     func getAvailableTimeSlots(gameId: Int, date: Date) async throws -> [GameTimeSlot] {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-
         let endpoint = Endpoint(
             path: "/api/user/games/\(gameId)/available-time-slots",
             method: .get,
-            queryParameters: ["date": formatter.string(from: date)]
+            queryParameters: ["date": DateHelper.toISODateString(date)]
         )
 
         return try await apiClient.request(endpoint, responseType: [GameTimeSlot].self)

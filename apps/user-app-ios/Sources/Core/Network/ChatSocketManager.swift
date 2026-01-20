@@ -28,7 +28,7 @@ class ChatSocketManager: ObservableObject {
 
     // MARK: - Configuration
 
-    private let socketURL = "https://chat-gateway-dev-iihuzmuufa-du.a.run.app"
+    private var socketURL: URL { Configuration.API.chatSocketURL }
     private let namespace = "/chat"
 
     private init() {}
@@ -41,8 +41,7 @@ class ChatSocketManager: ObservableObject {
         currentToken = token
 
         // Configure Socket.IO
-        let url = URL(string: socketURL)!
-        manager = SocketManager(socketURL: url, config: [
+        manager = SocketManager(socketURL: socketURL, config: [
             .log(false),
             .compress,
             .forceWebsockets(true),

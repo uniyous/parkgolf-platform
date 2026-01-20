@@ -43,7 +43,7 @@ class GameSearchViewModel: ObservableObject {
     }
 
     var dateOptions: [Date] {
-        (0..<14).compactMap { Calendar.current.date(byAdding: .day, value: $0, to: Date()) }
+        DateHelper.dateRange(days: 14)
     }
 
     var activeFiltersCount: Int {
@@ -68,7 +68,7 @@ class GameSearchViewModel: ObservableObject {
         searchTask?.cancel()
 
         searchTask = Task {
-            try? await Task.sleep(nanoseconds: 300_000_000) // 300ms
+            try? await Task.sleep(nanoseconds: Configuration.Debounce.search)
 
             guard !Task.isCancelled else { return }
 
@@ -137,17 +137,7 @@ class GameSearchViewModel: ObservableObject {
     }
 
     func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR")
-
-        if Calendar.current.isDateInToday(date) {
-            return "오늘"
-        } else if Calendar.current.isDateInTomorrow(date) {
-            return "내일"
-        } else {
-            formatter.dateFormat = "M/d (E)"
-            return formatter.string(from: date)
-        }
+        DateHelper.toRelativeDate(date)
     }
 
     // MARK: - Filters

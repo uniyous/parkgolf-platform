@@ -82,7 +82,7 @@ class FriendsViewModel: ObservableObject {
             isSearching = true
 
             // Debounce
-            try? await Task.sleep(nanoseconds: 300_000_000) // 300ms
+            try? await Task.sleep(nanoseconds: Configuration.Debounce.search)
 
             guard !Task.isCancelled else { return }
 

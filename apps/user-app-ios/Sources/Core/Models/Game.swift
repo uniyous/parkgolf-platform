@@ -5,46 +5,50 @@ import Foundation
 struct Game: Identifiable, Codable, Sendable {
     let id: Int
     let name: String
+    let code: String?
     let description: String?
     let clubId: Int
     let clubName: String
-    let clubAddress: String?
-    let courses: [GameCourse]
-    let durationMinutes: Int
+    let club: GameClub?
+    let frontNineCourseId: Int?
+    let backNineCourseId: Int?
+    let frontNineCourse: GameCourse?
+    let backNineCourse: GameCourse?
+    let totalHoles: Int?
+    let estimatedDuration: Int
+    let breakDuration: Int?
     let maxPlayers: Int
     let basePrice: Int
+    let pricePerPerson: Int?
+    let weekendPrice: Int?
+    let holidayPrice: Int?
+    let status: String?
     let isActive: Bool
-    let createdAt: Date?
     let timeSlots: [GameTimeSlot]?
 
-    enum CodingKeys: String, CodingKey {
-        case id, name, description
-        case clubId = "club_id"
-        case clubName = "club_name"
-        case clubAddress = "club_address"
-        case courses
-        case durationMinutes = "duration_minutes"
-        case maxPlayers = "max_players"
-        case basePrice = "base_price"
-        case isActive = "is_active"
-        case createdAt = "created_at"
-        case timeSlots = "time_slots"
-    }
+    var durationMinutes: Int { estimatedDuration }
 
     var durationText: String {
-        if durationMinutes >= 60 {
-            let hours = durationMinutes / 60
-            let mins = durationMinutes % 60
+        if estimatedDuration >= 60 {
+            let hours = estimatedDuration / 60
+            let mins = estimatedDuration % 60
             if mins > 0 {
                 return "\(hours)시간 \(mins)분"
             }
             return "\(hours)시간"
         }
-        return "\(durationMinutes)분"
+        return "\(estimatedDuration)분"
     }
 
     var courseNames: String {
-        courses.map { $0.name }.joined(separator: ", ")
+        var names: [String] = []
+        if let front = frontNineCourse { names.append(front.name) }
+        if let back = backNineCourse { names.append(back.name) }
+        return names.joined(separator: ", ")
+    }
+
+    var clubAddress: String? {
+        club?.address
     }
 
     var priceRange: (min: Int, max: Int)? {
@@ -54,17 +58,23 @@ struct Game: Identifiable, Codable, Sendable {
     }
 }
 
+// MARK: - Game Club
+
+struct GameClub: Codable, Sendable {
+    let id: Int
+    let name: String
+    let location: String?
+    let address: String?
+    let phone: String?
+}
+
 // MARK: - Game Course
 
 struct GameCourse: Identifiable, Codable, Sendable {
     let id: Int
     let name: String
+    let code: String?
     let holeCount: Int?
-
-    enum CodingKeys: String, CodingKey {
-        case id, name
-        case holeCount = "hole_count"
-    }
 }
 
 // MARK: - Game Time Slot
@@ -72,34 +82,26 @@ struct GameCourse: Identifiable, Codable, Sendable {
 struct GameTimeSlot: Identifiable, Codable, Sendable {
     let id: Int
     let gameId: Int
+    let date: String?
     let startTime: String
     let endTime: String
+    let maxPlayers: Int
+    let bookedPlayers: Int?
+    let availablePlayers: Int
     let price: Int
-    let maxCapacity: Int
-    let availableSlots: Int
     let isPremium: Bool
-    let dayOfWeek: Int?
-
-    enum CodingKeys: String, CodingKey {
-        case id
-        case gameId = "game_id"
-        case startTime = "start_time"
-        case endTime = "end_time"
-        case price
-        case maxCapacity = "max_capacity"
-        case availableSlots = "available_slots"
-        case isPremium = "is_premium"
-        case dayOfWeek = "day_of_week"
-    }
+    let status: String?
 
     var stringId: String { String(id) }
 
+    var availableSlots: Int { availablePlayers }
+
     var availabilityStatus: AvailabilityStatus {
-        if availableSlots == 0 {
+        if availablePlayers == 0 {
             return .soldOut
-        } else if availableSlots <= 2 {
+        } else if availablePlayers <= 2 {
             return .almostFull
-        } else if availableSlots <= 4 {
+        } else if availablePlayers <= 4 {
             return .limited
         } else {
             return .available
@@ -190,14 +192,10 @@ struct GameSearchParams: Sendable {
 // MARK: - Game Search Response
 
 struct GameSearchResponse: Codable, Sendable {
+    let success: Bool
     let data: [Game]
     let total: Int
     let page: Int
     let limit: Int
     let totalPages: Int
-
-    enum CodingKeys: String, CodingKey {
-        case data, total, page, limit
-        case totalPages = "total_pages"
-    }
 }
