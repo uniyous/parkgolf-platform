@@ -213,10 +213,10 @@ async function main() {
   // E2E 테스트용 사용자 (user-webapp LoginPage 테스트 계정과 일치)
   const e2ePassword = await bcrypt.hash('test1234', 10);
   const e2eUsers = [
-    { email: 'test@parkgolf.com', name: '테스트사용자', roleCode: 'USER' },
-    { email: 'kim@parkgolf.com', name: '김철수', roleCode: 'USER' },
-    { email: 'park@parkgolf.com', name: '박영희', roleCode: 'USER' },
-    { email: 'lee@parkgolf.com', name: '이민수', roleCode: 'USER' },
+    { email: 'test@parkgolf.com', name: '테스트사용자', phone: '01011112222', roleCode: 'USER' },
+    { email: 'kim@parkgolf.com', name: '김철수', phone: '01033334444', roleCode: 'USER' },
+    { email: 'park@parkgolf.com', name: '박영희', phone: '01055556666', roleCode: 'USER' },
+    { email: 'lee@parkgolf.com', name: '이민수', phone: '01077778888', roleCode: 'USER' },
   ];
   for (const e2eUser of e2eUsers) {
     const created = await prisma.user.create({
@@ -224,11 +224,12 @@ async function main() {
         email: e2eUser.email,
         password: e2ePassword,
         name: e2eUser.name,
+        phone: e2eUser.phone,
         roleCode: e2eUser.roleCode,
         isActive: true,
       },
     });
-    console.log(`  → ${created.email} (${e2eUser.roleCode}) [E2E]`);
+    console.log(`  → ${created.email} / ${e2eUser.phone} (${e2eUser.roleCode}) [E2E]`);
   }
 
   // 결과 요약
