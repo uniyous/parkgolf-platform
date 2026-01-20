@@ -2,21 +2,36 @@ import SwiftUI
 
 struct ChatRoomView: View {
     let room: ChatRoom
+    @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel: ChatRoomViewModel
     @FocusState private var isInputFocused: Bool
 
-    init(room: ChatRoom) {
+    init(room: ChatRoom, currentUserId: String) {
         self.room = room
-        self._viewModel = StateObject(wrappedValue: ChatRoomViewModel(roomId: room.id))
+        self._viewModel = StateObject(wrappedValue: ChatRoomViewModel(
+            roomId: room.id,
+            currentUserId: currentUserId
+        ))
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Messages
-            messageList
+        ZStack {
+            // Background
+            LinearGradient.parkBackground
+                .ignoresSafeArea()
 
-            // Input
-            messageInput
+            VStack(spacing: 0) {
+                // Connection status indicator
+                if !viewModel.isConnected {
+                    connectionStatusBanner
+                }
+
+                // Messages
+                messageList
+
+                // Input
+                messageInput
+            }
         }
         .navigationTitle(room.name)
         .navigationBarTitleDisplayMode(.inline)
@@ -46,18 +61,37 @@ struct ChatRoomView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
+                        .foregroundStyle(.white)
                 }
             }
         }
+        .toolbarBackground(.hidden, for: .navigationBar)
         .task {
             await viewModel.loadMessages()
-            await viewModel.connectWebSocket()
+            await viewModel.connectSocket()
         }
         .onDisappear {
-            Task {
-                await viewModel.disconnectWebSocket()
-            }
+            viewModel.disconnectSocket()
         }
+    }
+
+    // MARK: - Connection Status Banner
+
+    private var connectionStatusBanner: some View {
+        HStack(spacing: ParkSpacing.xs) {
+            ProgressView()
+                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                .scaleEffect(0.8)
+
+            Text("연결 중...")
+                .font(.parkCaption)
+                .foregroundStyle(.white.opacity(0.8))
+        }
+        .padding(.vertical, ParkSpacing.xxs)
+        .padding(.horizontal, ParkSpacing.sm)
+        .background(Color.parkWarning.opacity(0.8))
+        .clipShape(Capsule())
+        .padding(.top, ParkSpacing.xs)
     }
 
     // MARK: - Message List
@@ -65,7 +99,7 @@ struct ChatRoomView: View {
     private var messageList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 12) {
+                LazyVStack(spacing: ParkSpacing.sm) {
                     ForEach(viewModel.messages) { message in
                         MessageBubble(
                             message: message,
@@ -74,11 +108,12 @@ struct ChatRoomView: View {
                         .id(message.id)
                     }
                 }
-                .padding()
+                .padding(.horizontal, ParkSpacing.md)
+                .padding(.vertical, ParkSpacing.md)
             }
             .onChange(of: viewModel.messages.count) { _, _ in
                 if let lastMessage = viewModel.messages.last {
-                    withAnimation {
+                    withAnimation(.spring(response: 0.3)) {
                         proxy.scrollTo(lastMessage.id, anchor: .bottom)
                     }
                 }
@@ -89,41 +124,45 @@ struct ChatRoomView: View {
     // MARK: - Message Input
 
     private var messageInput: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: ParkSpacing.sm) {
             Button {
                 // Add attachment
             } label: {
                 Image(systemName: "plus.circle.fill")
                     .font(.title2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white.opacity(0.6))
             }
 
             TextField("메시지 입력", text: $viewModel.inputText, axis: .vertical)
                 .textFieldStyle(.plain)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color(.systemGray6))
-                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .padding(.horizontal, ParkSpacing.sm)
+                .padding(.vertical, ParkSpacing.xs)
+                .background(Color.white.opacity(0.15))
+                .clipShape(RoundedRectangle(cornerRadius: ParkRadius.full))
+                .foregroundStyle(.white)
                 .focused($isInputFocused)
                 .lineLimit(1...5)
+                .onChange(of: viewModel.inputText) { _, newValue in
+                    viewModel.sendTypingIndicator(!newValue.isEmpty)
+                }
 
             Button {
                 Task {
                     await viewModel.sendMessage()
                 }
             } label: {
-                Image(systemName: "arrow.up.circle.fill")
+                Image(systemName: viewModel.isSending ? "arrow.up.circle" : "arrow.up.circle.fill")
                     .font(.title)
-                    .foregroundStyle(viewModel.inputText.isEmpty ? Color.secondary : Color.green)
+                    .foregroundStyle(viewModel.inputText.isEmpty ? .white.opacity(0.4) : Color.parkPrimary)
             }
-            .disabled(viewModel.inputText.isEmpty)
+            .disabled(viewModel.inputText.isEmpty || viewModel.isSending)
         }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
-        .background(Color(.systemBackground))
-        .overlay(alignment: .top) {
-            Divider()
-        }
+        .padding(.horizontal, ParkSpacing.md)
+        .padding(.vertical, ParkSpacing.sm)
+        .background(
+            Color.black.opacity(0.3)
+                .background(.ultraThinMaterial)
+        )
     }
 }
 
@@ -134,7 +173,7 @@ struct MessageBubble: View {
     let isCurrentUser: Bool
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 8) {
+        HStack(alignment: .bottom, spacing: ParkSpacing.xs) {
             if isCurrentUser {
                 Spacer(minLength: 60)
                 messageTime
@@ -151,23 +190,27 @@ struct MessageBubble: View {
         VStack(alignment: isCurrentUser ? .trailing : .leading, spacing: 4) {
             if !isCurrentUser {
                 Text(message.senderName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.parkCaption)
+                    .foregroundStyle(.white.opacity(0.6))
             }
 
             Text(message.content)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(isCurrentUser ? Color.green : Color(.systemGray5))
-                .foregroundStyle(isCurrentUser ? .white : .primary)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .padding(.horizontal, ParkSpacing.sm)
+                .padding(.vertical, ParkSpacing.xs)
+                .background(
+                    isCurrentUser
+                        ? LinearGradient.parkButton
+                        : LinearGradient(colors: [Color.white.opacity(0.15)], startPoint: .top, endPoint: .bottom)
+                )
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: ParkRadius.lg))
         }
     }
 
     private var messageTime: some View {
         Text(formatTime(message.createdAt))
-            .font(.caption2)
-            .foregroundStyle(.secondary)
+            .font(.system(size: 10))
+            .foregroundStyle(.white.opacity(0.5))
     }
 
     private func formatTime(_ date: Date) -> String {
@@ -175,17 +218,37 @@ struct MessageBubble: View {
     }
 }
 
+// MARK: - Chat Room View Wrapper
+
+/// Wrapper view that gets currentUserId from AppState
+struct ChatRoomViewWrapper: View {
+    let room: ChatRoom
+    @EnvironmentObject private var appState: AppState
+
+    var body: some View {
+        ChatRoomView(
+            room: room,
+            currentUserId: appState.currentUser?.stringId ?? ""
+        )
+        .environmentObject(appState)
+    }
+}
+
 #Preview {
     NavigationStack {
-        ChatRoomView(room: ChatRoom(
-            id: "1",
-            name: "주말 라운딩",
-            type: .group,
-            participants: [],
-            lastMessage: nil,
-            unreadCount: 0,
-            createdAt: Date(),
-            updatedAt: Date()
-        ))
+        ChatRoomView(
+            room: ChatRoom(
+                id: "1",
+                name: "주말 라운딩",
+                type: .group,
+                participants: [],
+                lastMessage: nil,
+                unreadCount: 0,
+                createdAt: Date(),
+                updatedAt: Date()
+            ),
+            currentUserId: "1"
+        )
+        .environmentObject(AppState())
     }
 }

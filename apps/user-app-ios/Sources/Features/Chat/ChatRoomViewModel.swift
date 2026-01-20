@@ -1,22 +1,61 @@
 import Foundation
+import Combine
 
 @MainActor
 final class ChatRoomViewModel: ObservableObject {
+    // MARK: - Published Properties
+
     @Published var messages: [ChatMessage] = []
     @Published var inputText = ""
     @Published var isLoading = false
+    @Published var isSending = false
     @Published var error: Error?
+    @Published var isConnected = false
+
+    // MARK: - Properties
 
     let roomId: String
-    let currentUserId: String = "current-user-id" // TODO: Get from auth state
+    let currentUserId: String
 
     private let apiClient = APIClient.shared
-    private let webSocketClient = WebSocketClient()
+    private let socketManager = ChatSocketManager.shared
+    private var cancellables = Set<AnyCancellable>()
     private var currentPage = 1
     private var hasMorePages = true
 
-    init(roomId: String) {
+    // MARK: - Init
+
+    init(roomId: String, currentUserId: String) {
         self.roomId = roomId
+        self.currentUserId = currentUserId
+        setupSocketSubscriptions()
+    }
+
+    // MARK: - Socket Subscriptions
+
+    private func setupSocketSubscriptions() {
+        // Subscribe to new messages
+        socketManager.messageReceived
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] message in
+                guard let self = self else { return }
+                // Only add messages for this room
+                if message.roomId == self.roomId {
+                    // Avoid duplicates
+                    if !self.messages.contains(where: { $0.id == message.id }) {
+                        self.messages.append(message)
+                    }
+                }
+            }
+            .store(in: &cancellables)
+
+        // Subscribe to connection status
+        socketManager.$isConnected
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] connected in
+                self?.isConnected = connected
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Load Messages
@@ -67,57 +106,86 @@ final class ChatRoomViewModel: ObservableObject {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
 
+        let messageText = text
         inputText = ""
+        isSending = true
 
+        defer { isSending = false }
+
+        // If connected via socket, send through socket
+        if socketManager.isConnected {
+            socketManager.sendMessage(roomId: roomId, content: messageText) { [weak self] message in
+                Task { @MainActor in
+                    guard let self = self else { return }
+                    if let message = message {
+                        // Message was sent successfully, add if not already added
+                        if !self.messages.contains(where: { $0.id == message.id }) {
+                            self.messages.append(message)
+                        }
+                    } else {
+                        // Socket send failed, try REST API
+                        await self.sendMessageViaREST(content: messageText)
+                    }
+                }
+            }
+        } else {
+            // Socket not connected, use REST API
+            await sendMessageViaREST(content: messageText)
+        }
+    }
+
+    private func sendMessageViaREST(content: String) async {
         do {
-            // Send via WebSocket for real-time
-            let wsMessage = WebSocketMessage(
-                type: "chat_message",
-                roomId: roomId,
-                content: text
-            )
-            try await webSocketClient.send(message: wsMessage)
-
-            // Also send via REST as backup
             let message = try await apiClient.request(
-                ChatEndpoints.sendMessage(roomId: roomId, content: text),
+                ChatEndpoints.sendMessage(roomId: roomId, content: content),
                 responseType: ChatMessage.self
             )
 
-            // Add to local messages if not already added by WebSocket
+            // Add to local messages if not already added
             if !messages.contains(where: { $0.id == message.id }) {
                 messages.append(message)
             }
         } catch {
             self.error = error
+            // Restore input text on failure
+            inputText = content
             print("Failed to send message: \(error)")
         }
     }
 
-    // MARK: - WebSocket
+    // MARK: - WebSocket Connection
 
-    func connectWebSocket() async {
-        // TODO: Get token from auth state
-        let token = "user-access-token"
-        let roomId = self.roomId
+    func connectSocket() async {
+        guard let token = await apiClient.getAccessToken() else {
+            print("No access token available for socket connection")
+            return
+        }
 
-        do {
-            try await webSocketClient.connect(token: token)
+        // Connect to socket
+        socketManager.connect(token: token)
 
-            await webSocketClient.setMessageHandler { @Sendable [weak self] message in
-                Task { @MainActor in
-                    guard let self = self else { return }
-                    if message.roomId == roomId {
-                        self.messages.append(message)
-                    }
-                }
+        // Wait for connection
+        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second
+
+        // Join the room
+        socketManager.joinRoom(roomId: roomId) { success in
+            if success {
+                print("✅ Joined room: \(self.roomId)")
+            } else {
+                print("❌ Failed to join room: \(self.roomId)")
             }
-        } catch {
-            print("WebSocket connection failed: \(error)")
         }
     }
 
-    func disconnectWebSocket() async {
-        await webSocketClient.disconnect()
+    func disconnectSocket() {
+        socketManager.leaveRoom(roomId: roomId)
+        // Don't disconnect the socket manager itself as it may be used by other rooms
+    }
+
+    // MARK: - Typing Indicator
+
+    func sendTypingIndicator(_ isTyping: Bool) {
+        guard socketManager.isConnected else { return }
+        socketManager.sendTyping(roomId: roomId, isTyping: isTyping)
     }
 }

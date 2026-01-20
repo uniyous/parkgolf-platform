@@ -106,6 +106,10 @@ actor APIClient {
         self.accessToken = token
     }
 
+    func getAccessToken() -> String? {
+        return accessToken
+    }
+
     // MARK: - Request Methods
 
     func request<T: Decodable & Sendable>(
