@@ -11,6 +11,9 @@ import {
   BookingCompletePage,
   MyBookingsPage,
   ProfilePage,
+  FriendsPage,
+  ChatPage,
+  ChatRoomPage,
 } from './pages';
 
 function App() {
@@ -33,6 +36,9 @@ function App() {
           <Route path="/booking-detail" element={<BookingDetailPage />} />
           <Route path="/booking-complete" element={<BookingCompletePage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/friends" element={<FriendsPage />} />
+          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/chat/:roomId" element={<ChatRoomPage />} />
         </Route>
         <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>

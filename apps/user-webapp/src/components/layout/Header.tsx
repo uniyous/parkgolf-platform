@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Calendar, LogOut, ChevronDown, ArrowLeft } from 'lucide-react';
+import { User, Calendar, LogOut, ChevronDown, ArrowLeft, Users, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 export const Header = () => {
@@ -93,6 +93,26 @@ export const Header = () => {
               >
                 <Calendar className="w-5 h-5" />
                 <span className="font-medium">내 예약</span>
+              </button>
+
+              <button
+                onClick={() => handleNavigate('/friends')}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                  isActive('/friends') ? 'text-emerald-600 bg-emerald-50' : 'text-gray-700'
+                }`}
+              >
+                <Users className="w-5 h-5" />
+                <span className="font-medium">친구</span>
+              </button>
+
+              <button
+                onClick={() => handleNavigate('/chat')}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                  isActive('/chat') || location.pathname.startsWith('/chat/') ? 'text-emerald-600 bg-emerald-50' : 'text-gray-700'
+                }`}
+              >
+                <MessageCircle className="w-5 h-5" />
+                <span className="font-medium">채팅</span>
               </button>
 
               <button

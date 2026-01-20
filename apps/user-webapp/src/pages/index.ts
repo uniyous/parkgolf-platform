@@ -6,3 +6,6 @@ export { BookingViewPage } from './BookingViewPage';
 export { BookingCompletePage } from './BookingCompletePage';
 export { MyBookingsPage } from './MyBookingsPage';
 export { ProfilePage } from './ProfilePage';
+export { FriendsPage } from './FriendsPage';
+export { ChatPage } from './ChatPage';
+export { ChatRoomPage } from './ChatRoomPage';
