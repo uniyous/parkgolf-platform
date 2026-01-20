@@ -20,12 +20,22 @@ export class FriendNatsController {
   }
 
   // ==============================================
-  // 친구 요청 목록 조회
+  // 친구 요청 목록 조회 (받은 요청)
   // ==============================================
   @MessagePattern('friends.requests')
   async getFriendRequests(@Payload() data: { userId: number }) {
-    this.logger.debug(`Getting friend requests for user: ${data.userId}`);
+    this.logger.debug(`Getting received friend requests for user: ${data.userId}`);
     const requests = await this.friendService.getFriendRequests(data.userId);
+    return NatsResponse.success(requests);
+  }
+
+  // ==============================================
+  // 친구 요청 목록 조회 (보낸 요청)
+  // ==============================================
+  @MessagePattern('friends.requests.sent')
+  async getSentFriendRequests(@Payload() data: { userId: number }) {
+    this.logger.debug(`Getting sent friend requests for user: ${data.userId}`);
+    const requests = await this.friendService.getSentFriendRequests(data.userId);
     return NatsResponse.success(requests);
   }
 

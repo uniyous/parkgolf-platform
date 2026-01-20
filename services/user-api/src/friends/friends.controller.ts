@@ -44,6 +44,14 @@ export class FriendsController {
     return this.friendsService.getFriendRequests(req.user.userId);
   }
 
+  @Get('requests/sent')
+  @ApiOperation({ summary: '친구 요청 목록 조회 (보낸 요청)' })
+  @ApiResponse({ status: 200, description: '보낸 요청 목록 조회 성공' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  async getSentFriendRequests(@Request() req: any) {
+    return this.friendsService.getSentFriendRequests(req.user.userId);
+  }
+
   @Get('search')
   @ApiOperation({ summary: '사용자 검색' })
   @ApiQuery({ name: 'q', description: '검색어 (이름 또는 이메일)' })

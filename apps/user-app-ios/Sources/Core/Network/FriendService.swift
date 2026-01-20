@@ -16,11 +16,18 @@ actor FriendService {
         return try await apiClient.request(endpoint, responseType: [Friend].self)
     }
 
-    // MARK: - Friend Requests
+    // MARK: - Friend Requests (Received)
 
     func getFriendRequests() async throws -> [FriendRequest] {
         let endpoint = Endpoint(path: "/api/user/friends/requests", method: .get)
         return try await apiClient.request(endpoint, responseType: [FriendRequest].self)
+    }
+
+    // MARK: - Friend Requests (Sent)
+
+    func getSentFriendRequests() async throws -> [SentFriendRequest] {
+        let endpoint = Endpoint(path: "/api/user/friends/requests/sent", method: .get)
+        return try await apiClient.request(endpoint, responseType: [SentFriendRequest].self)
     }
 
     // MARK: - Search Users

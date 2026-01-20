@@ -22,6 +22,17 @@ export interface FriendRequestDto {
   createdAt: Date;
 }
 
+export interface SentFriendRequestDto {
+  id: number;
+  toUserId: number;
+  toUserName: string;
+  toUserEmail: string;
+  toUserProfileImageUrl?: string;
+  status: string;
+  message?: string;
+  createdAt: Date;
+}
+
 export interface UserSearchResultDto {
   id: number;
   email: string;
@@ -59,6 +70,11 @@ export class FriendsService {
   async getFriendRequests(userId: number): Promise<ApiResponse<FriendRequestDto[]>> {
     this.logger.log(`Get friend requests: userId=${userId}`);
     return this.natsClient.send('friends.requests', { userId }, NATS_TIMEOUTS.QUICK);
+  }
+
+  async getSentFriendRequests(userId: number): Promise<ApiResponse<SentFriendRequestDto[]>> {
+    this.logger.log(`Get sent friend requests: userId=${userId}`);
+    return this.natsClient.send('friends.requests.sent', { userId }, NATS_TIMEOUTS.QUICK);
   }
 
   async searchUsers(userId: number, query: string): Promise<ApiResponse<UserSearchResultDto[]>> {

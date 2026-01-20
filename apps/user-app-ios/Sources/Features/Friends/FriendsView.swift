@@ -104,6 +104,50 @@ struct FriendsView: View {
     // MARK: - Requests List
 
     private var requestsListView: some View {
+        VStack(spacing: 0) {
+            // Sub-tab picker for received/sent requests
+            Picker("", selection: $viewModel.selectedRequestTab) {
+                ForEach(FriendsViewModel.RequestTab.allCases, id: \.self) { tab in
+                    HStack {
+                        Text(tab.rawValue)
+                        if tab == .received && viewModel.receivedRequestsCount > 0 {
+                            Text("\(viewModel.receivedRequestsCount)")
+                                .font(.caption2)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Color.red)
+                                .foregroundStyle(.white)
+                                .clipShape(Capsule())
+                        } else if tab == .sent && viewModel.sentRequestsCount > 0 {
+                            Text("\(viewModel.sentRequestsCount)")
+                                .font(.caption2)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Color.orange)
+                                .foregroundStyle(.white)
+                                .clipShape(Capsule())
+                        }
+                    }
+                    .tag(tab)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.bottom, 8)
+
+            // Content based on selected tab
+            Group {
+                switch viewModel.selectedRequestTab {
+                case .received:
+                    receivedRequestsListView
+                case .sent:
+                    sentRequestsListView
+                }
+            }
+        }
+    }
+
+    private var receivedRequestsListView: some View {
         Group {
             if viewModel.friendRequests.isEmpty {
                 ContentUnavailableView(
@@ -132,6 +176,28 @@ struct FriendsView: View {
                 .listStyle(.plain)
                 .refreshable {
                     await viewModel.loadFriendRequests()
+                }
+            }
+        }
+    }
+
+    private var sentRequestsListView: some View {
+        Group {
+            if viewModel.sentFriendRequests.isEmpty {
+                ContentUnavailableView(
+                    "보낸 요청이 없습니다",
+                    systemImage: "paperplane",
+                    description: Text("친구 요청을 보내면 여기에 표시됩니다")
+                )
+            } else {
+                List {
+                    ForEach(viewModel.sentFriendRequests) { request in
+                        SentFriendRequestRow(request: request)
+                    }
+                }
+                .listStyle(.plain)
+                .refreshable {
+                    await viewModel.loadSentFriendRequests()
                 }
             }
         }
@@ -237,6 +303,49 @@ struct FriendRequestRow: View {
                         .clipShape(Circle())
                 }
             }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Sent Friend Request Row
+
+struct SentFriendRequestRow: View {
+    let request: SentFriendRequest
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Avatar
+            Circle()
+                .fill(Color.orange.opacity(0.2))
+                .frame(width: 50, height: 50)
+                .overlay {
+                    Text(String(request.toUserName.prefix(1)))
+                        .font(.title2)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.orange)
+                }
+
+            // Info
+            VStack(alignment: .leading, spacing: 4) {
+                Text(request.toUserName)
+                    .font(.headline)
+
+                Text(request.toUserEmail)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            // Status Badge
+            Text("대기중")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(12)
         }
         .padding(.vertical, 4)
     }

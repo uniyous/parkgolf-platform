@@ -7,6 +7,7 @@ class FriendsViewModel: ObservableObject {
 
     @Published var friends: [Friend] = []
     @Published var friendRequests: [FriendRequest] = []
+    @Published var sentFriendRequests: [SentFriendRequest] = []
     @Published var searchResults: [UserSearchResult] = []
     @Published var searchQuery: String = ""
     @Published var isLoading = false
@@ -14,6 +15,7 @@ class FriendsViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var showAddFriendSheet = false
     @Published var selectedSegment: FriendSegment = .friends
+    @Published var selectedRequestTab: RequestTab = .received
 
     // Contact friends
     @Published var contactFriends: [UserSearchResult] = []
@@ -23,6 +25,11 @@ class FriendsViewModel: ObservableObject {
     enum FriendSegment: String, CaseIterable {
         case friends = "친구"
         case requests = "요청"
+    }
+
+    enum RequestTab: String, CaseIterable {
+        case received = "받은 요청"
+        case sent = "보낸 요청"
     }
 
     // MARK: - Private Properties
@@ -53,14 +60,23 @@ class FriendsViewModel: ObservableObject {
         }
     }
 
+    func loadSentFriendRequests() async {
+        do {
+            sentFriendRequests = try await friendService.getSentFriendRequests()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func loadAll() async {
         isLoading = true
         errorMessage = nil
 
         async let friendsTask: () = loadFriendsOnly()
         async let requestsTask: () = loadFriendRequests()
+        async let sentRequestsTask: () = loadSentFriendRequests()
 
-        _ = await (friendsTask, requestsTask)
+        _ = await (friendsTask, requestsTask, sentRequestsTask)
 
         isLoading = false
     }
@@ -120,6 +136,20 @@ class FriendsViewModel: ObservableObject {
                     hasPendingRequest: true
                 )
             }
+            // Update contact friends to reflect the pending request
+            if let index = contactFriends.firstIndex(where: { $0.id == toUserId }) {
+                let updated = contactFriends[index]
+                contactFriends[index] = UserSearchResult(
+                    id: updated.id,
+                    email: updated.email,
+                    name: updated.name,
+                    profileImageUrl: updated.profileImageUrl,
+                    isFriend: updated.isFriend,
+                    hasPendingRequest: true
+                )
+            }
+            // Refresh sent requests list
+            await loadSentFriendRequests()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -195,6 +225,14 @@ class FriendsViewModel: ObservableObject {
     // MARK: - Computed Properties
 
     var pendingRequestsCount: Int {
+        friendRequests.count + sentFriendRequests.count
+    }
+
+    var receivedRequestsCount: Int {
         friendRequests.count
+    }
+
+    var sentRequestsCount: Int {
+        sentFriendRequests.count
     }
 }

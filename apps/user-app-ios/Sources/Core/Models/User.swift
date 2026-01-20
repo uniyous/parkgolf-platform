@@ -56,6 +56,17 @@ struct FriendRequest: Identifiable, Codable, Sendable {
     let createdAt: Date?
 }
 
+struct SentFriendRequest: Identifiable, Codable, Sendable {
+    let id: Int
+    let toUserId: Int
+    let toUserName: String
+    let toUserEmail: String
+    let toUserProfileImageUrl: String?
+    let status: String
+    let message: String?
+    let createdAt: Date?
+}
+
 struct UserSearchResult: Identifiable, Codable, Sendable {
     let id: Int
     let email: String

@@ -72,6 +72,40 @@ export class FriendService {
   }
 
   // ==============================================
+  // 친구 요청 목록 조회 (보낸 요청)
+  // ==============================================
+  async getSentFriendRequests(userId: number) {
+    const requests = await this.prisma.friendRequest.findMany({
+      where: {
+        fromUserId: userId,
+        status: FriendRequestStatus.PENDING,
+      },
+      include: {
+        toUser: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            profileImageUrl: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return requests.map((r) => ({
+      id: r.id,
+      toUserId: r.toUser.id,
+      toUserName: r.toUser.name || r.toUser.email,
+      toUserEmail: r.toUser.email,
+      toUserProfileImageUrl: r.toUser.profileImageUrl,
+      status: r.status,
+      message: r.message,
+      createdAt: r.createdAt,
+    }));
+  }
+
+  // ==============================================
   // 사용자 검색
   // ==============================================
   async searchUsers(userId: number, query: string) {
