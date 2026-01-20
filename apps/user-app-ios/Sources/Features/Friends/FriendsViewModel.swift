@@ -105,7 +105,7 @@ class FriendsViewModel: ObservableObject {
             try await friendService.sendFriendRequest(toUserId: toUserId)
             // Update search results to reflect the pending request
             if let index = searchResults.firstIndex(where: { $0.id == toUserId }) {
-                var updated = searchResults[index]
+                let updated = searchResults[index]
                 searchResults[index] = UserSearchResult(
                     id: updated.id,
                     email: updated.email,
