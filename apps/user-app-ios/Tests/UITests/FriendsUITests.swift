@@ -38,7 +38,26 @@ final class FriendsUITests: XCTestCase {
             return
         }
 
-        // 로그인 화면이면 테스트 계정으로 로그인 시도
+        // 방법 1: 테스트 사용자 카드 탭 (UI에 테스트 계정 버튼이 있는 경우)
+        let testUserCard = app.buttons.matching(NSPredicate(format: "label CONTAINS '테스트사용자' OR label CONTAINS 'test@parkgolf'")).firstMatch
+        if testUserCard.waitForExistence(timeout: 3) {
+            testUserCard.tap()
+            sleep(1)
+
+            // 로그인 버튼 탭
+            let loginButton = app.buttons["로그인"]
+            if loginButton.waitForExistence(timeout: 3) {
+                loginButton.tap()
+            }
+
+            // 로그인 완료 대기
+            let tabBar = app.tabBars.firstMatch
+            if tabBar.waitForExistence(timeout: 15) {
+                return
+            }
+        }
+
+        // 방법 2: 직접 입력
         if app.textFields["이메일을 입력하세요"].exists {
             let emailField = app.textFields["이메일을 입력하세요"]
             let passwordField = app.secureTextFields["비밀번호를 입력하세요"]
@@ -54,12 +73,13 @@ final class FriendsUITests: XCTestCase {
 
             // 로그인 완료 대기
             let tabBar = app.tabBars.firstMatch
-            if !tabBar.waitForExistence(timeout: 10) {
-                throw XCTSkip("로그인 실패 - 테스트 계정 설정이 필요합니다.")
+            if tabBar.waitForExistence(timeout: 15) {
+                return
             }
-        } else {
-            throw XCTSkip("로그인 화면을 찾을 수 없습니다.")
         }
+
+        // 로그인 실패 시 스킵
+        throw XCTSkip("로그인 실패 - 테스트 계정 설정이 필요합니다. 서버 연결을 확인하세요.")
     }
 
     /// 친구 화면으로 이동
