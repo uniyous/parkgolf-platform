@@ -98,7 +98,7 @@ class ChatSocketManager: ObservableObject {
         }
 
         // Custom events
-        socket.on("connected") { [weak self] data, _ in
+        socket.on("connected") { data, _ in
             Task { @MainActor in
                 print("✅ Authenticated: \(data)")
             }
