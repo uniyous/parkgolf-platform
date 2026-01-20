@@ -127,6 +127,33 @@ enum DateHelper: Sendable {
         }
     }
 
+    /// 상대 시간 표시 (방금 전, n분 전, n시간 전, n일 전)
+    static func toRelativeTime(_ date: Date) -> String {
+        let now = Date()
+        let interval = now.timeIntervalSince(date)
+
+        if interval < 60 {
+            return "방금 전"
+        } else if interval < 3600 {
+            let minutes = Int(interval / 60)
+            return "\(minutes)분 전"
+        } else if interval < 86400 {
+            let hours = Int(interval / 3600)
+            return "\(hours)시간 전"
+        } else if interval < 604800 {
+            let days = Int(interval / 86400)
+            return "\(days)일 전"
+        } else {
+            return shortDateFormatter.string(from: date)
+        }
+    }
+
+    /// ISO8601 문자열 -> 상대 시간 표시
+    static func iso8601ToRelativeTime(_ string: String) -> String? {
+        guard let date = fromISO8601(string) else { return nil }
+        return toRelativeTime(date)
+    }
+
     // MARK: - Date Range Helpers
 
     /// 오늘부터 n일간의 날짜 배열

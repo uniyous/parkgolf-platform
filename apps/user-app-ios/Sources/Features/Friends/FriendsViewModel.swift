@@ -9,13 +9,13 @@ class FriendsViewModel: ObservableObject {
     @Published var friendRequests: [FriendRequest] = []
     @Published var sentFriendRequests: [SentFriendRequest] = []
     @Published var searchResults: [UserSearchResult] = []
-    @Published var searchQuery: String = ""
+    @Published var searchQuery: String = ""  // Local friend list search
+    @Published var addFriendSearchQuery: String = ""  // Add friend sheet search
     @Published var isLoading = false
     @Published var isSearching = false
     @Published var errorMessage: String?
     @Published var showAddFriendSheet = false
     @Published var selectedSegment: FriendSegment = .friends
-    @Published var selectedRequestTab: RequestTab = .received
 
     // Contact friends
     @Published var contactFriends: [UserSearchResult] = []
@@ -25,11 +25,6 @@ class FriendsViewModel: ObservableObject {
     enum FriendSegment: String, CaseIterable {
         case friends = "친구"
         case requests = "요청"
-    }
-
-    enum RequestTab: String, CaseIterable {
-        case received = "받은 요청"
-        case sent = "보낸 요청"
     }
 
     // MARK: - Private Properties
@@ -94,7 +89,7 @@ class FriendsViewModel: ObservableObject {
     func searchUsers() {
         searchTask?.cancel()
 
-        guard !searchQuery.isEmpty else {
+        guard !addFriendSearchQuery.isEmpty else {
             searchResults = []
             return
         }
@@ -108,7 +103,7 @@ class FriendsViewModel: ObservableObject {
             guard !Task.isCancelled else { return }
 
             do {
-                searchResults = try await friendService.searchUsers(query: searchQuery)
+                searchResults = try await friendService.searchUsers(query: addFriendSearchQuery)
             } catch {
                 if !Task.isCancelled {
                     errorMessage = error.localizedDescription
@@ -234,5 +229,14 @@ class FriendsViewModel: ObservableObject {
 
     var sentRequestsCount: Int {
         sentFriendRequests.count
+    }
+
+    /// 검색어로 필터링된 친구 목록
+    var filteredFriends: [Friend] {
+        guard !searchQuery.isEmpty else { return friends }
+        return friends.filter {
+            $0.friendName.localizedCaseInsensitiveContains(searchQuery) ||
+            $0.friendEmail.localizedCaseInsensitiveContains(searchQuery)
+        }
     }
 }

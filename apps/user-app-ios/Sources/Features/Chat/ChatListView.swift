@@ -1,131 +1,172 @@
 import SwiftUI
 
+// MARK: - Chat List View
+
 struct ChatListView: View {
     @StateObject private var viewModel = ChatListViewModel()
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if viewModel.isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ZStack {
+            // Background
+            LinearGradient.parkBackground
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                // Header
+                chatHeader
+
+                // Content
+                if viewModel.isLoading && viewModel.chatRooms.isEmpty {
+                    ParkLoadingView(message: "채팅 목록 불러오는 중...")
                 } else if viewModel.chatRooms.isEmpty {
-                    ContentUnavailableView(
-                        "채팅이 없습니다",
-                        systemImage: "message",
-                        description: Text("친구를 초대하고 대화를 시작해보세요")
-                    )
-                } else {
-                    List {
-                        ForEach(viewModel.chatRooms) { room in
-                            NavigationLink {
-                                ChatRoomView(room: room)
-                            } label: {
-                                ChatRoomListItem(room: room)
-                            }
-                        }
-                    }
-                    .listStyle(.plain)
-                    .refreshable {
-                        await viewModel.loadChatRooms()
-                    }
-                }
-            }
-            .navigationTitle("채팅")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
+                    ParkEmptyStateView(
+                        icon: "message.badge.filled.fill",
+                        title: "채팅이 없습니다",
+                        description: "친구를 초대하고 대화를 시작해보세요",
+                        actionTitle: "새 채팅"
+                    ) {
                         viewModel.showNewChatSheet = true
-                    } label: {
-                        Image(systemName: "square.and.pencil")
                     }
+                } else {
+                    chatList
                 }
             }
-            .sheet(isPresented: $viewModel.showNewChatSheet) {
-                NewChatView()
-            }
+        }
+        .sheet(isPresented: $viewModel.showNewChatSheet) {
+            NewChatSheet()
         }
         .task {
             await viewModel.loadChatRooms()
         }
     }
+
+    // MARK: - Header
+
+    private var chatHeader: some View {
+        HStack {
+            Text("채팅")
+                .font(.parkDisplaySmall)
+                .foregroundStyle(.white)
+
+            Spacer()
+
+            Button {
+                viewModel.showNewChatSheet = true
+            } label: {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(Color.white.opacity(0.1))
+                    .clipShape(Circle())
+            }
+        }
+        .padding(.horizontal, ParkSpacing.md)
+        .padding(.top, ParkSpacing.sm)
+        .padding(.bottom, ParkSpacing.md)
+    }
+
+    // MARK: - Chat List
+
+    private var chatList: some View {
+        ScrollView {
+            LazyVStack(spacing: ParkSpacing.md) {
+                ForEach(viewModel.chatRooms) { room in
+                    NavigationLink {
+                        ChatRoomView(room: room)
+                    } label: {
+                        ChatRoomCard(room: room)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(ParkSpacing.md)
+        }
+        .refreshable {
+            await viewModel.loadChatRooms()
+        }
+    }
 }
 
-// MARK: - Chat Room List Item
+// MARK: - Chat Room Card
 
-struct ChatRoomListItem: View {
+struct ChatRoomCard: View {
     let room: ChatRoom
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Avatar
-            chatAvatar
+        GlassCard(padding: 0) {
+            HStack(spacing: ParkSpacing.md) {
+                // Avatar
+                chatAvatar
 
-            // Content
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(room.name)
-                        .font(.headline)
-                        .lineLimit(1)
-
-                    Spacer()
-
-                    if let lastMessage = room.lastMessage {
-                        Text(formatTime(lastMessage.createdAt))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                HStack {
-                    if let lastMessage = room.lastMessage {
-                        Text(lastMessage.content)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    } else {
-                        Text("대화를 시작해보세요")
-                            .font(.subheadline)
-                            .foregroundStyle(.tertiary)
-                    }
-
-                    Spacer()
-
-                    if room.unreadCount > 0 {
-                        Text("\(room.unreadCount)")
-                            .font(.caption2)
-                            .fontWeight(.bold)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.green)
+                // Content
+                VStack(alignment: .leading, spacing: ParkSpacing.xxs) {
+                    HStack {
+                        Text(room.name)
+                            .font(.parkHeadlineSmall)
                             .foregroundStyle(.white)
-                            .clipShape(Capsule())
+                            .lineLimit(1)
+
+                        Spacer()
+
+                        if let lastMessage = room.lastMessage {
+                            Text(formatTime(lastMessage.createdAt))
+                                .font(.parkCaption)
+                                .foregroundStyle(.white.opacity(0.5))
+                        }
+                    }
+
+                    HStack {
+                        if let lastMessage = room.lastMessage {
+                            Text(lastMessage.content)
+                                .font(.parkBodySmall)
+                                .foregroundStyle(.white.opacity(0.6))
+                                .lineLimit(1)
+                        } else {
+                            Text("대화를 시작해보세요")
+                                .font(.parkBodySmall)
+                                .foregroundStyle(.white.opacity(0.4))
+                        }
+
+                        Spacer()
+
+                        if room.unreadCount > 0 {
+                            Text("\(room.unreadCount)")
+                                .font(.parkCaption)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.parkPrimary)
+                                .clipShape(Capsule())
+                        }
                     }
                 }
+
+                // Chevron
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.3))
             }
+            .padding(ParkSpacing.md)
         }
-        .padding(.vertical, 4)
     }
 
     private var chatAvatar: some View {
-        Group {
+        ZStack {
+            Circle()
+                .fill(Color.parkPrimary.opacity(0.3))
+                .frame(width: 50, height: 50)
+
             switch room.type {
             case .group, .booking:
-                Circle()
-                    .fill(Color.green.opacity(0.2))
-                    .frame(width: 50, height: 50)
-                    .overlay {
-                        Image(systemName: "person.3.fill")
-                            .foregroundStyle(.green)
-                    }
+                Image(systemName: "person.3.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(.white)
             case .direct:
-                Circle()
-                    .fill(Color.blue.opacity(0.2))
-                    .frame(width: 50, height: 50)
-                    .overlay {
-                        Image(systemName: "person.fill")
-                            .foregroundStyle(.blue)
-                    }
+                Text(String(room.name.prefix(1)))
+                    .font(.parkHeadlineLarge)
+                    .foregroundStyle(.white)
             }
         }
     }
@@ -141,86 +182,68 @@ struct ChatRoomListItem: View {
     }
 }
 
-// MARK: - New Chat View
+// MARK: - New Chat Sheet
 
-struct NewChatView: View {
+struct NewChatSheet: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = NewChatViewModel()
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Search Bar
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
+            ZStack {
+                LinearGradient.parkBackground
+                    .ignoresSafeArea()
 
-                    TextField("친구 검색", text: $viewModel.searchQuery)
-                        .textFieldStyle(.plain)
+                VStack(spacing: 0) {
+                    // Search Bar
+                    HStack(spacing: ParkSpacing.sm) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(.white.opacity(0.5))
 
-                    if !viewModel.searchQuery.isEmpty {
-                        Button {
-                            viewModel.searchQuery = ""
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
+                        TextField("친구 검색", text: $viewModel.searchQuery)
+                            .foregroundStyle(.white)
+                            .font(.parkBodyMedium)
+
+                        if !viewModel.searchQuery.isEmpty {
+                            Button {
+                                viewModel.searchQuery = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.white.opacity(0.5))
+                            }
                         }
                     }
-                }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(10)
-                .padding()
+                    .padding(ParkSpacing.md)
+                    .glassCard(padding: 0, cornerRadius: ParkRadius.lg)
+                    .padding(ParkSpacing.md)
 
-                // Friends List
-                if viewModel.isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if viewModel.filteredFriends.isEmpty {
-                    ContentUnavailableView(
-                        viewModel.searchQuery.isEmpty ? "친구가 없습니다" : "검색 결과 없음",
-                        systemImage: "person.2",
-                        description: Text(viewModel.searchQuery.isEmpty ? "친구를 추가하고 대화를 시작해보세요" : "다른 검색어로 시도해보세요")
-                    )
-                } else {
-                    List {
-                        ForEach(viewModel.filteredFriends) { friend in
-                            Button {
-                                viewModel.selectedFriend = friend
-                                viewModel.createDirectChat()
-                            } label: {
-                                HStack(spacing: 12) {
-                                    Circle()
-                                        .fill(Color.green.opacity(0.2))
-                                        .frame(width: 50, height: 50)
-                                        .overlay {
-                                            Text(String(friend.friendName.prefix(1)))
-                                                .font(.title2)
-                                                .fontWeight(.medium)
-                                                .foregroundStyle(.green)
-                                        }
-
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(friend.friendName)
-                                            .font(.headline)
-                                            .foregroundStyle(.primary)
-
-                                        Text(friend.friendEmail)
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
+                    // Friends List
+                    if viewModel.isLoading {
+                        ParkLoadingView(message: "친구 목록 불러오는 중...")
+                    } else if viewModel.filteredFriends.isEmpty {
+                        ParkEmptyStateView(
+                            icon: viewModel.searchQuery.isEmpty ? "person.2" : "magnifyingglass",
+                            title: viewModel.searchQuery.isEmpty ? "친구가 없습니다" : "검색 결과 없음",
+                            description: viewModel.searchQuery.isEmpty ?
+                                "친구를 추가하고 대화를 시작해보세요" :
+                                "다른 검색어로 시도해보세요"
+                        )
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: ParkSpacing.md) {
+                                ForEach(viewModel.filteredFriends) { friend in
+                                    Button {
+                                        viewModel.selectedFriend = friend
+                                        viewModel.createDirectChat()
+                                    } label: {
+                                        FriendSelectCard(friend: friend)
                                     }
-
-                                    Spacer()
-
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                    .buttonStyle(.plain)
                                 }
                             }
-                            .padding(.vertical, 4)
+                            .padding(ParkSpacing.md)
                         }
                     }
-                    .listStyle(.plain)
                 }
             }
             .navigationTitle("새 채팅")
@@ -230,14 +253,60 @@ struct NewChatView: View {
                     Button("취소") {
                         dismiss()
                     }
+                    .foregroundStyle(.white)
                 }
             }
+            .toolbarBackground(.hidden, for: .navigationBar)
             .navigationDestination(item: $viewModel.createdRoom) { room in
                 ChatRoomView(room: room)
             }
         }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
         .task {
             await viewModel.loadFriends()
+        }
+    }
+}
+
+// MARK: - Friend Select Card
+
+struct FriendSelectCard: View {
+    let friend: Friend
+
+    var body: some View {
+        GlassCard(padding: 0) {
+            HStack(spacing: ParkSpacing.md) {
+                // Avatar
+                ZStack {
+                    Circle()
+                        .fill(Color.parkPrimary.opacity(0.3))
+                        .frame(width: 50, height: 50)
+
+                    Text(String(friend.friendName.prefix(1)))
+                        .font(.parkHeadlineLarge)
+                        .foregroundStyle(.white)
+                }
+
+                // Info
+                VStack(alignment: .leading, spacing: ParkSpacing.xxs) {
+                    Text(friend.friendName)
+                        .font(.parkHeadlineSmall)
+                        .foregroundStyle(.white)
+
+                    Text(friend.friendEmail)
+                        .font(.parkCaption)
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+
+                Spacer()
+
+                // Chevron
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.3))
+            }
+            .padding(ParkSpacing.md)
         }
     }
 }
@@ -294,6 +363,8 @@ class NewChatViewModel: ObservableObject {
         createdRoom = room
     }
 }
+
+// MARK: - Preview
 
 #Preview {
     ChatListView()

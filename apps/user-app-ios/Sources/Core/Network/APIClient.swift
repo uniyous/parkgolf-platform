@@ -13,14 +13,17 @@ actor APIClient {
 
     private static let jsonDecoder: JSONDecoder = {
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return decoder
-    }()
-
-    private static let flexibleDateDecoder: JSONDecoder = {
-        let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
+
+            // Handle null dates
+            if container.decodeNil() {
+                throw DecodingError.valueNotFound(Date.self, DecodingError.Context(
+                    codingPath: decoder.codingPath,
+                    debugDescription: "Date value is null"
+                ))
+            }
+
             let dateString = try container.decode(String.self)
 
             // Try ISO8601 with fractional seconds first
@@ -32,6 +35,51 @@ actor APIClient {
             let formatter = ISO8601DateFormatter()
             formatter.formatOptions = [.withInternetDateTime]
             if let date = formatter.date(from: dateString) {
+                return date
+            }
+
+            // Fallback to simple date format (yyyy-MM-dd)
+            if let date = DateHelper.fromISODateString(dateString) {
+                return date
+            }
+
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Invalid date format: \(dateString)"
+            )
+        }
+        return decoder
+    }()
+
+    private static let flexibleDateDecoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+
+            // Handle null dates
+            if container.decodeNil() {
+                throw DecodingError.valueNotFound(Date.self, DecodingError.Context(
+                    codingPath: decoder.codingPath,
+                    debugDescription: "Date value is null"
+                ))
+            }
+
+            let dateString = try container.decode(String.self)
+
+            // Try ISO8601 with fractional seconds first
+            if let date = DateHelper.iso8601Formatter.date(from: dateString) {
+                return date
+            }
+
+            // Fallback to standard ISO8601
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime]
+            if let date = formatter.date(from: dateString) {
+                return date
+            }
+
+            // Fallback to simple date format (yyyy-MM-dd)
+            if let date = DateHelper.fromISODateString(dateString) {
                 return date
             }
 

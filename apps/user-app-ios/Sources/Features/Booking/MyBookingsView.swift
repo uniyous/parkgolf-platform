@@ -11,6 +11,9 @@ struct MyBookingsView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
+                // Header
+                bookingsHeader
+
                 // Tab Selector
                 tabSelector
 
@@ -42,6 +45,20 @@ struct MyBookingsView: View {
         .task {
             viewModel.loadBookings()
         }
+    }
+
+    // MARK: - Header
+
+    private var bookingsHeader: some View {
+        HStack {
+            Text("라운드 예약")
+                .font(.parkDisplaySmall)
+                .foregroundStyle(.white)
+
+            Spacer()
+        }
+        .padding(.horizontal, ParkSpacing.md)
+        .padding(.top, ParkSpacing.sm)
     }
 
     // MARK: - Tab Selector
