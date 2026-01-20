@@ -102,7 +102,9 @@ struct HomeView: View {
 
     private var searchCTA: some View {
         NavigationLink {
-            GameSearchView()
+            GameSearchView(showTitle: false)
+                .navigationTitle("라운드 예약")
+                .navigationBarTitleDisplayMode(.inline)
         } label: {
             HStack {
                 Image(systemName: "magnifyingglass")

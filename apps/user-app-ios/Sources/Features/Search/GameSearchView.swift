@@ -5,6 +5,9 @@ import SwiftUI
 struct GameSearchView: View {
     @StateObject private var viewModel = GameSearchViewModel()
 
+    /// 타이틀 헤더 표시 여부 (탭에서 직접 접근 시 true, NavigationLink로 접근 시 false)
+    var showTitle: Bool = true
+
     var body: some View {
         ZStack {
             // Background
@@ -12,8 +15,10 @@ struct GameSearchView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Title Header
-                titleHeader
+                // Title Header (탭에서 직접 접근 시에만 표시)
+                if showTitle {
+                    titleHeader
+                }
 
                 // Search Header
                 searchHeader
