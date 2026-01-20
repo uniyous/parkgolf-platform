@@ -24,6 +24,8 @@ actor ContactsManager {
             }
         case .denied, .restricted:
             return false
+        case .limited:
+            return true
         @unknown default:
             return false
         }
