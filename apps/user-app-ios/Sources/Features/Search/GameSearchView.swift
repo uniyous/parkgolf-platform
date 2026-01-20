@@ -67,6 +67,7 @@ struct GameSearchView: View {
             ) {
                 viewModel.search()
             }
+            .accessibilityIdentifier("gameSearchField")
             .onChange(of: viewModel.searchQuery) { _, _ in
                 viewModel.searchDebounced()
             }
@@ -98,6 +99,7 @@ struct GameSearchView: View {
                     }
                 }
             }
+            .accessibilityIdentifier("filterButton")
         }
         .padding(.horizontal, ParkSpacing.md)
         .padding(.top, ParkSpacing.sm)
@@ -158,6 +160,7 @@ struct GameSearchView: View {
                     GameCardView(game: game, selectedDate: viewModel.selectedDate) { timeSlot in
                         viewModel.selectTimeSlot(game: game, timeSlot: timeSlot)
                     }
+                    .accessibilityIdentifier("gameCard_\(game.id)")
                     .onAppear {
                         if game.id == viewModel.games.last?.id {
                             viewModel.loadMore()
@@ -360,6 +363,7 @@ struct TimeSlotChip: View {
         }
         .disabled(slot.availableSlots == 0)
         .opacity(slot.availableSlots == 0 ? 0.4 : 1)
+        .accessibilityIdentifier("timeSlot_\(slot.id)")
     }
 
     private var availabilityColor: Color {
