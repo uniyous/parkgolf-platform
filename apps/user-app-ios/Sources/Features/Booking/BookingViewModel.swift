@@ -56,7 +56,7 @@ final class BookingViewModel: ObservableObject {
             )
 
             // Update local state
-            if let index = bookings.firstIndex(where: { $0.id == booking.id }) {
+            if bookings.contains(where: { $0.id == booking.id }) {
                 // Reload to get updated status
                 await loadBookings()
             }
