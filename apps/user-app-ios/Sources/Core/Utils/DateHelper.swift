@@ -17,7 +17,7 @@ enum DateHelper: Sendable {
     }()
 
     /// ISO8601 날짜시간 포맷터 (API 응답용)
-    static let iso8601Formatter: ISO8601DateFormatter = {
+    nonisolated(unsafe) static let iso8601Formatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
