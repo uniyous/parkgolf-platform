@@ -1,5 +1,6 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
+import { ApiResponse } from '../common/types';
 
 export interface FriendDto {
   id: number;
@@ -49,151 +50,47 @@ export class FriendsService {
 
   constructor(private readonly natsClient: NatsClientService) {}
 
-  async getFriends(userId: number): Promise<FriendDto[]> {
+  async getFriends(userId: number): Promise<ApiResponse<FriendDto[]>> {
     this.logger.log(`Get friends: userId=${userId}`);
-
-    const response = await this.natsClient.send<any>(
-      'friends.list',
-      { userId },
-      NATS_TIMEOUTS.QUICK,
-    );
-
-    if (!response.success) {
-      throw new BadRequestException(
-        response.error?.message || '친구 목록을 불러오는데 실패했습니다.',
-      );
-    }
-
-    return response.data;
+    return this.natsClient.send('friends.list', { userId }, NATS_TIMEOUTS.QUICK);
   }
 
-  async getFriendRequests(userId: number): Promise<FriendRequestDto[]> {
+  async getFriendRequests(userId: number): Promise<ApiResponse<FriendRequestDto[]>> {
     this.logger.log(`Get friend requests: userId=${userId}`);
-
-    const response = await this.natsClient.send<any>(
-      'friends.requests',
-      { userId },
-      NATS_TIMEOUTS.QUICK,
-    );
-
-    if (!response.success) {
-      throw new BadRequestException(
-        response.error?.message || '친구 요청 목록을 불러오는데 실패했습니다.',
-      );
-    }
-
-    return response.data;
+    return this.natsClient.send('friends.requests', { userId }, NATS_TIMEOUTS.QUICK);
   }
 
-  async searchUsers(userId: number, query: string): Promise<UserSearchResultDto[]> {
+  async searchUsers(userId: number, query: string): Promise<ApiResponse<UserSearchResultDto[]>> {
     this.logger.log(`Search users: userId=${userId}, query=${query}`);
-
-    const response = await this.natsClient.send<any>(
-      'friends.search',
-      { userId, query },
-      NATS_TIMEOUTS.QUICK,
-    );
-
-    if (!response.success) {
-      throw new BadRequestException(
-        response.error?.message || '사용자 검색에 실패했습니다.',
-      );
-    }
-
-    return response.data;
+    return this.natsClient.send('friends.search', { userId, query }, NATS_TIMEOUTS.QUICK);
   }
 
   async sendFriendRequest(
     fromUserId: number,
     toUserId: number,
     message?: string,
-  ): Promise<any> {
+  ): Promise<ApiResponse<any>> {
     this.logger.log(`Send friend request: ${fromUserId} -> ${toUserId}`);
-
-    const response = await this.natsClient.send<any>(
-      'friends.request.send',
-      { fromUserId, toUserId, message },
-      NATS_TIMEOUTS.QUICK,
-    );
-
-    if (!response.success) {
-      throw new BadRequestException(
-        response.error?.message || '친구 요청을 보내는데 실패했습니다.',
-      );
-    }
-
-    return response.data;
+    return this.natsClient.send('friends.request.send', { fromUserId, toUserId, message }, NATS_TIMEOUTS.QUICK);
   }
 
-  async acceptFriendRequest(requestId: number, userId: number): Promise<any> {
+  async acceptFriendRequest(requestId: number, userId: number): Promise<ApiResponse<any>> {
     this.logger.log(`Accept friend request: requestId=${requestId}, userId=${userId}`);
-
-    const response = await this.natsClient.send<any>(
-      'friends.request.accept',
-      { requestId, userId },
-      NATS_TIMEOUTS.QUICK,
-    );
-
-    if (!response.success) {
-      throw new BadRequestException(
-        response.error?.message || '친구 요청 수락에 실패했습니다.',
-      );
-    }
-
-    return response.data;
+    return this.natsClient.send('friends.request.accept', { requestId, userId }, NATS_TIMEOUTS.QUICK);
   }
 
-  async rejectFriendRequest(requestId: number, userId: number): Promise<any> {
+  async rejectFriendRequest(requestId: number, userId: number): Promise<ApiResponse<any>> {
     this.logger.log(`Reject friend request: requestId=${requestId}, userId=${userId}`);
-
-    const response = await this.natsClient.send<any>(
-      'friends.request.reject',
-      { requestId, userId },
-      NATS_TIMEOUTS.QUICK,
-    );
-
-    if (!response.success) {
-      throw new BadRequestException(
-        response.error?.message || '친구 요청 거절에 실패했습니다.',
-      );
-    }
-
-    return response.data;
+    return this.natsClient.send('friends.request.reject', { requestId, userId }, NATS_TIMEOUTS.QUICK);
   }
 
-  async removeFriend(userId: number, friendId: number): Promise<any> {
+  async removeFriend(userId: number, friendId: number): Promise<ApiResponse<any>> {
     this.logger.log(`Remove friend: userId=${userId}, friendId=${friendId}`);
-
-    const response = await this.natsClient.send<any>(
-      'friends.remove',
-      { userId, friendId },
-      NATS_TIMEOUTS.QUICK,
-    );
-
-    if (!response.success) {
-      throw new BadRequestException(
-        response.error?.message || '친구 삭제에 실패했습니다.',
-      );
-    }
-
-    return response.data;
+    return this.natsClient.send('friends.remove', { userId, friendId }, NATS_TIMEOUTS.QUICK);
   }
 
-  async isFriend(userId: number, friendId: number): Promise<{ isFriend: boolean }> {
+  async isFriend(userId: number, friendId: number): Promise<ApiResponse<{ isFriend: boolean }>> {
     this.logger.log(`Check friendship: userId=${userId}, friendId=${friendId}`);
-
-    const response = await this.natsClient.send<any>(
-      'friends.check',
-      { userId, friendId },
-      NATS_TIMEOUTS.QUICK,
-    );
-
-    if (!response.success) {
-      throw new BadRequestException(
-        response.error?.message || '친구 여부 확인에 실패했습니다.',
-      );
-    }
-
-    return response.data;
+    return this.natsClient.send('friends.check', { userId, friendId }, NATS_TIMEOUTS.QUICK);
   }
 }

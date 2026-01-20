@@ -131,16 +131,50 @@ export class GameNatsController {
 {domain}.delete  # 삭제
 ```
 
-### 응답 형식
+### API 응답 형식 (필수 준수)
+
+**모든 API 응답은 반드시 아래 형식을 따라야 합니다.**
 
 ```typescript
-// 성공
+// 단일 데이터 응답
 { success: true, data: T }
-{ success: true, data: T[], pagination: { page, limit, total, totalPages } }
 
-// 에러
+// 목록 응답 (페이지네이션)
+{
+  success: true,
+  data: T[],
+  total: number,
+  page: number,
+  limit: number,
+  totalPages: number
+}
+
+// 에러 응답
 { success: false, error: { code: string, message: string } }
 ```
+
+### BFF 응답 처리 규칙
+
+```typescript
+// ✅ 올바른 패턴: Microservice 응답을 그대로 반환
+@Injectable()
+export class ExampleService {
+  async getData(params: any) {
+    return this.natsClient.send('domain.get', params);  // 그대로 반환
+  }
+}
+
+// ❌ 금지 패턴: 응답을 언래핑하거나 변환
+async getData(params: any) {
+  const response = await this.natsClient.send('domain.get', params);
+  return response.data;  // ❌ 절대 금지
+}
+```
+
+**규칙:**
+- BFF(admin-api, user-api)는 Microservice 응답을 그대로 전달 (변환/언래핑 금지)
+- Microservice에서 `NatsResponse.success()`, `NatsResponse.paginated()` 사용
+- ResponseTransformInterceptor 사용 금지
 
 ---
 
