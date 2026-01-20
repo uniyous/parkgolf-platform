@@ -12,7 +12,10 @@ struct GameSearchView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header
+                // Title Header
+                titleHeader
+
+                // Search Header
                 searchHeader
 
                 // Date Selector
@@ -55,6 +58,21 @@ struct GameSearchView: View {
         .task {
             viewModel.search()
         }
+    }
+
+    // MARK: - Title Header
+
+    private var titleHeader: some View {
+        HStack {
+            Text("라운드 예약")
+                .font(.parkDisplaySmall)
+                .foregroundStyle(.white)
+
+            Spacer()
+        }
+        .padding(.horizontal, ParkSpacing.md)
+        .padding(.top, ParkSpacing.sm)
+        .padding(.bottom, ParkSpacing.xs)
     }
 
     // MARK: - Search Header
