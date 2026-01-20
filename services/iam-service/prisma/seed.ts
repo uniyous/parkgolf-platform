@@ -196,21 +196,7 @@ async function main() {
   });
   console.log(`  → ${companyAdmin.email} @ ${franchiseCompany.code} (COMPANY_ADMIN)`);
 
-  // 6. 테스트 사용자
-  console.log('[6/6] Creating test users...');
-  const userPassword = await bcrypt.hash('user123!@#', 10);
-  const user = await prisma.user.create({
-    data: {
-      email: 'user@test.com',
-      password: userPassword,
-      name: '테스트사용자',
-      roleCode: 'USER',
-      isActive: true,
-    },
-  });
-  console.log(`  → ${user.email} (USER)`);
-
-  // E2E 테스트용 사용자 (user-webapp LoginPage 테스트 계정과 일치)
+  // 6. 테스트 사용자 (E2E 테스트용)
   const e2ePassword = await bcrypt.hash('test1234', 10);
   const e2eUsers = [
     { email: 'test@parkgolf.com', name: '테스트사용자', phone: '01011112222', roleCode: 'USER' },
@@ -245,13 +231,11 @@ async function main() {
   console.log(`  - ${platformAdmin.email} / admin123!@# (PLATFORM_ADMIN)`);
   console.log('  [가맹점 관리자]');
   console.log(`  - ${companyAdmin.email} / admin123!@# (COMPANY_ADMIN)`);
-  console.log('  [일반 사용자]');
-  console.log(`  - ${user.email} / user123!@# (USER)`);
-  console.log('  [E2E 테스트용 사용자]');
-  console.log('  - test@parkgolf.com / test1234 (USER)');
-  console.log('  - kim@parkgolf.com / test1234 (USER)');
-  console.log('  - park@parkgolf.com / test1234 (USER)');
-  console.log('  - lee@parkgolf.com / test1234 (USER)');
+  console.log('  [일반 사용자 - E2E 테스트용]');
+  console.log('  - test@parkgolf.com / test1234 / 01011112222');
+  console.log('  - kim@parkgolf.com / test1234 / 01033334444');
+  console.log('  - park@parkgolf.com / test1234 / 01055556666');
+  console.log('  - lee@parkgolf.com / test1234 / 01077778888');
 }
 
 main()
