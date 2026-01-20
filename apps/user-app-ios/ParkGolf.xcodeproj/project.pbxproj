@@ -1,0 +1,911 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		06B7BABC629CA2B7B60D4738 /* KeychainAccess.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8FA7781E67415968317D99A2 /* KeychainAccess.framework */; };
+		0B69CC4639637FDB980350BD /* ChatRoomViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AD9F05659CDE827E5DE116F /* ChatRoomViewModel.swift */; };
+		125B359EAA3D0774FAB93302 /* ParkGolfTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDD2464708846F51E17C42C8 /* ParkGolfTests.swift */; };
+		130F364ED92150D278053A71 /* FriendService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B81F5F98544420CA57DFDC44 /* FriendService.swift */; };
+		14097D34585ADCD3E4FC7909 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 10A39E55B286FF830175386E /* Assets.xcassets */; };
+		174160DA33594118F9BF712A /* Chat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89425BF9DF38E68E383B64D5 /* Chat.swift */; };
+		2E0251B7203D23A84EC52931 /* SocketIO.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1945F2879C86D793A82BE000 /* SocketIO.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		38B36501FA0DD1871D93BE21 /* ProfileViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDFB6F21611EF2011E2D1971 /* ProfileViewModel.swift */; };
+		4768750EBF28F4DC14744D14 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40E101B4CF841C3D29D3AB50 /* HomeView.swift */; };
+		47D795CB0451D744C05EB12C /* ChatSocketManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34BB65C89537E9A443A526DE /* ChatSocketManager.swift */; };
+		504CA8834704C0B94E17D725 /* FriendsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5622CA22113E881C0532A8 /* FriendsViewModel.swift */; };
+		517DC5CCE0EAAF82B41FEC0A /* WebSocketClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 860003A8359916970B174436 /* WebSocketClient.swift */; };
+		51D3930AD6C579767C2ED188 /* BookingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A5C3F9E2AB4ADD370434FAD /* BookingView.swift */; };
+		5E436658935790E0191D6407 /* KeychainAccess.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 8FA7781E67415968317D99A2 /* KeychainAccess.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		66C1F0B2BAD02A6FE332E0AA /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9DA0E8A3C1010CEEC70A5F /* ProfileView.swift */; };
+		6BE62BA55702D2E9464AD1AB /* Alamofire.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 843D0F5C4E6AAEADB31D1366 /* Alamofire.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		70455E2873E7F8101CD91BFB /* ParkGolfApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D1ACDEDC2649EE22183C418 /* ParkGolfApp.swift */; };
+		7A8DBDD4CA6343A18BBF486F /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 786E94AAD9E21DB7A5CFC889 /* User.swift */; };
+		7DF75505037C00F58A50D9D8 /* ChatListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EB2ABAE1EAE4D11226C91A /* ChatListViewModel.swift */; };
+		7E87844221D6B84472BEBA4A /* LoginViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B16C87923031647B092B935 /* LoginViewModel.swift */; };
+		829A0DA96705081D4F635EE7 /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9036C13CA5C44CA0FAD32B2E /* HomeViewModel.swift */; };
+		900E3377CD74C0F75238B147 /* TuistBundle+ParkGolf.swift in Sources */ = {isa = PBXBuildFile; fileRef = 128489985F4AC1F300CF628C /* TuistBundle+ParkGolf.swift */; };
+		95875B41115E528559A0EC87 /* Booking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 880051E9F996505E9E6C7E0D /* Booking.swift */; };
+		975427803D3BDA2873D3F611 /* BookingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 651647EF9DAB12B4A9B21DF3 /* BookingViewModel.swift */; };
+		9B065DAA37ECBD218B179C7D /* TuistStrings+ParkGolf.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63517C1B9E6BCA373EDBE994 /* TuistStrings+ParkGolf.swift */; };
+		9B4D3654635BDD44E16192D7 /* ChatListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC45188362F320C28183A541 /* ChatListView.swift */; };
+		A194603F66C924514E797026 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F9AE35D890EBD4A30E760D /* APIClient.swift */; };
+		A9A4320245DEDFBB9F8FD13E /* TuistAssets+ParkGolf.swift in Sources */ = {isa = PBXBuildFile; fileRef = C993CA8A06E4DA8F5E8CCC48 /* TuistAssets+ParkGolf.swift */; };
+		AB7E5307A6211B4245564E51 /* Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 843D0F5C4E6AAEADB31D1366 /* Alamofire.framework */; };
+		B55F48695D69CD19A0724BFF /* ParkGolfUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52AB2AC3D3A243B207CE8910 /* ParkGolfUITests.swift */; };
+		C3FBF9E3371C29BCD37F8E37 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D9607B8A5692C23A78941A3 /* LoginView.swift */; };
+		D348F918A34B2403F1484182 /* FriendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A23E0AC86E247F4A4D855300 /* FriendsView.swift */; };
+		D4DA98E1BDF82A3E960102CF /* ChatRoomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9625D8645524C3682FBDFD5D /* ChatRoomView.swift */; };
+		D838C870EEFF18F5900CDEF4 /* SocketIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1945F2879C86D793A82BE000 /* SocketIO.framework */; };
+		D879C67B3899AD05986FBE13 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 3B79E216E450AC8711B4A800 /* Localizable.strings */; };
+		E37393C0927DF046ACBD5BF8 /* Endpoints.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD4B375DEE30695ECC01789A /* Endpoints.swift */; };
+		EF22F1A81A96CA11AAB9436E /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B792B32C33EA798BBF9892C3 /* ContentView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		78B151FF4A0472E491ABBAFB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7CD73AF6CFC490F927C5E0BB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8CDB08567552666A75B545C1;
+			remoteInfo = ParkGolf;
+		};
+		D400A21D5B7162A0E71A36A0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7CD73AF6CFC490F927C5E0BB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8CDB08567552666A75B545C1;
+			remoteInfo = ParkGolf;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		6262C3B58903CFD38D8F8232 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B7255CB60B4269086F5CDBC6 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EB4CC0035B2838A560E732E7 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				6BE62BA55702D2E9464AD1AB /* Alamofire.framework in Embed Frameworks */,
+				5E436658935790E0191D6407 /* KeychainAccess.framework in Embed Frameworks */,
+				2E0251B7203D23A84EC52931 /* SocketIO.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		06EB2ABAE1EAE4D11226C91A /* ChatListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListViewModel.swift; sourceTree = "<group>"; };
+		10A39E55B286FF830175386E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		11D0B697033F9057B7E64731 /* ParkGolfTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "ParkGolfTests-Info.plist"; sourceTree = "<group>"; };
+		128489985F4AC1F300CF628C /* TuistBundle+ParkGolf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TuistBundle+ParkGolf.swift"; sourceTree = "<group>"; };
+		1945F2879C86D793A82BE000 /* SocketIO.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = SocketIO.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		2B9DA0E8A3C1010CEEC70A5F /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		2C5622CA22113E881C0532A8 /* FriendsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsViewModel.swift; sourceTree = "<group>"; };
+		34BB65C89537E9A443A526DE /* ChatSocketManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSocketManager.swift; sourceTree = "<group>"; };
+		40E101B4CF841C3D29D3AB50 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		494C590AAABDFF697299705F /* ParkGolfTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ParkGolfTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		52AB2AC3D3A243B207CE8910 /* ParkGolfUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParkGolfUITests.swift; sourceTree = "<group>"; };
+		5C4ECE2178B62086C0C5D9C9 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/Localizable.strings; sourceTree = "<group>"; };
+		5D285F67382916EA6317E86B /* ParkGolf.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ParkGolf.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		63517C1B9E6BCA373EDBE994 /* TuistStrings+ParkGolf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TuistStrings+ParkGolf.swift"; sourceTree = "<group>"; };
+		651647EF9DAB12B4A9B21DF3 /* BookingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingViewModel.swift; sourceTree = "<group>"; };
+		6D1ACDEDC2649EE22183C418 /* ParkGolfApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParkGolfApp.swift; sourceTree = "<group>"; };
+		786E94AAD9E21DB7A5CFC889 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
+		843D0F5C4E6AAEADB31D1366 /* Alamofire.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Alamofire.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		860003A8359916970B174436 /* WebSocketClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketClient.swift; sourceTree = "<group>"; };
+		880051E9F996505E9E6C7E0D /* Booking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Booking.swift; sourceTree = "<group>"; };
+		89425BF9DF38E68E383B64D5 /* Chat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chat.swift; sourceTree = "<group>"; };
+		8A5C3F9E2AB4ADD370434FAD /* BookingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingView.swift; sourceTree = "<group>"; };
+		8AD9F05659CDE827E5DE116F /* ChatRoomViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatRoomViewModel.swift; sourceTree = "<group>"; };
+		8B16C87923031647B092B935 /* LoginViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginViewModel.swift; sourceTree = "<group>"; };
+		8FA7781E67415968317D99A2 /* KeychainAccess.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = KeychainAccess.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		9036C13CA5C44CA0FAD32B2E /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
+		9625D8645524C3682FBDFD5D /* ChatRoomView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatRoomView.swift; sourceTree = "<group>"; };
+		9D9607B8A5692C23A78941A3 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		A23E0AC86E247F4A4D855300 /* FriendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsView.swift; sourceTree = "<group>"; };
+		A2F9AE35D890EBD4A30E760D /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		B792B32C33EA798BBF9892C3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B81F5F98544420CA57DFDC44 /* FriendService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendService.swift; sourceTree = "<group>"; };
+		BDFB6F21611EF2011E2D1971 /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
+		C993CA8A06E4DA8F5E8CCC48 /* TuistAssets+ParkGolf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TuistAssets+ParkGolf.swift"; sourceTree = "<group>"; };
+		CDD2464708846F51E17C42C8 /* ParkGolfTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParkGolfTests.swift; sourceTree = "<group>"; };
+		CEF5BFBD7C403F5B2ED5D233 /* ParkGolfUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ParkGolfUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DC45188362F320C28183A541 /* ChatListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListView.swift; sourceTree = "<group>"; };
+		EAE0D414B8069A1B24F4CCFD /* ParkGolfUITests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "ParkGolfUITests-Info.plist"; sourceTree = "<group>"; };
+		FD4B375DEE30695ECC01789A /* Endpoints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Endpoints.swift; sourceTree = "<group>"; };
+		FE5DD9FD879A1A7621C99F49 /* ParkGolf-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "ParkGolf-Info.plist"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		13962E28C603F2D995B353B1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D7A4CD3FFC5119631C561CA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F8A416C5A30051F46D234BFF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AB7E5307A6211B4245564E51 /* Alamofire.framework in Frameworks */,
+				06B7BABC629CA2B7B60D4738 /* KeychainAccess.framework in Frameworks */,
+				D838C870EEFF18F5900CDEF4 /* SocketIO.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		108532E6A28763E5D39F7F4D /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				2917F27E0B2AB4854C47A12E /* Models */,
+				B315EA331FBC6680C7CDFE26 /* Network */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		112A9FE103D48218C7E62629 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				B82AECD0EFC80ACE648604F7 /* App */,
+				108532E6A28763E5D39F7F4D /* Core */,
+				FFD0C1CDE732AD1656F1332E /* Features */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		1E0F3B2BD95D9E6E43302E43 /* Project */ = {
+			isa = PBXGroup;
+			children = (
+				DEE123896CBD480E57B9ECC5 /* Derived */,
+				5979C30DE3DC646F7A6A060E /* Resources */,
+				112A9FE103D48218C7E62629 /* Sources */,
+				FB3465F726A6D293634F79BC /* Tests */,
+			);
+			name = Project;
+			sourceTree = "<group>";
+		};
+		2917F27E0B2AB4854C47A12E /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				880051E9F996505E9E6C7E0D /* Booking.swift */,
+				89425BF9DF38E68E383B64D5 /* Chat.swift */,
+				786E94AAD9E21DB7A5CFC889 /* User.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		377C70B54811E9D103D0FE27 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				843D0F5C4E6AAEADB31D1366 /* Alamofire.framework */,
+				8FA7781E67415968317D99A2 /* KeychainAccess.framework */,
+				5D285F67382916EA6317E86B /* ParkGolf.app */,
+				494C590AAABDFF697299705F /* ParkGolfTests.xctest */,
+				CEF5BFBD7C403F5B2ED5D233 /* ParkGolfUITests.xctest */,
+				1945F2879C86D793A82BE000 /* SocketIO.framework */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		3C6B3608B68673D99CF63633 /* Friends */ = {
+			isa = PBXGroup;
+			children = (
+				A23E0AC86E247F4A4D855300 /* FriendsView.swift */,
+				2C5622CA22113E881C0532A8 /* FriendsViewModel.swift */,
+			);
+			path = Friends;
+			sourceTree = "<group>";
+		};
+		3F2065EE0721E9BE8E92E5D0 /* UnitTests */ = {
+			isa = PBXGroup;
+			children = (
+				CDD2464708846F51E17C42C8 /* ParkGolfTests.swift */,
+			);
+			path = UnitTests;
+			sourceTree = "<group>";
+		};
+		401734EA071CF180C513923D /* Booking */ = {
+			isa = PBXGroup;
+			children = (
+				8A5C3F9E2AB4ADD370434FAD /* BookingView.swift */,
+				651647EF9DAB12B4A9B21DF3 /* BookingViewModel.swift */,
+			);
+			path = Booking;
+			sourceTree = "<group>";
+		};
+		4230199AC34C9E4F28937F7B /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				52AB2AC3D3A243B207CE8910 /* ParkGolfUITests.swift */,
+			);
+			path = UITests;
+			sourceTree = "<group>";
+		};
+		443823732CCF12D54279911C = {
+			isa = PBXGroup;
+			children = (
+				377C70B54811E9D103D0FE27 /* Products */,
+				1E0F3B2BD95D9E6E43302E43 /* Project */,
+			);
+			sourceTree = "<group>";
+		};
+		5979C30DE3DC646F7A6A060E /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				6931577AE3C24AA3B90A9601 /* Localizations */,
+				10A39E55B286FF830175386E /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		6931577AE3C24AA3B90A9601 /* Localizations */ = {
+			isa = PBXGroup;
+			children = (
+				3B79E216E450AC8711B4A800 /* Localizable.strings */,
+			);
+			path = Localizations;
+			sourceTree = "<group>";
+		};
+		6C136A9F6538ABF1267ADEDD /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				40E101B4CF841C3D29D3AB50 /* HomeView.swift */,
+				9036C13CA5C44CA0FAD32B2E /* HomeViewModel.swift */,
+				9D9607B8A5692C23A78941A3 /* LoginView.swift */,
+				8B16C87923031647B092B935 /* LoginViewModel.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+		B315EA331FBC6680C7CDFE26 /* Network */ = {
+			isa = PBXGroup;
+			children = (
+				A2F9AE35D890EBD4A30E760D /* APIClient.swift */,
+				34BB65C89537E9A443A526DE /* ChatSocketManager.swift */,
+				FD4B375DEE30695ECC01789A /* Endpoints.swift */,
+				B81F5F98544420CA57DFDC44 /* FriendService.swift */,
+				860003A8359916970B174436 /* WebSocketClient.swift */,
+			);
+			path = Network;
+			sourceTree = "<group>";
+		};
+		B82AECD0EFC80ACE648604F7 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				B792B32C33EA798BBF9892C3 /* ContentView.swift */,
+				6D1ACDEDC2649EE22183C418 /* ParkGolfApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		C852F04651357A3E0B7A2A06 /* InfoPlists */ = {
+			isa = PBXGroup;
+			children = (
+				FE5DD9FD879A1A7621C99F49 /* ParkGolf-Info.plist */,
+				11D0B697033F9057B7E64731 /* ParkGolfTests-Info.plist */,
+				EAE0D414B8069A1B24F4CCFD /* ParkGolfUITests-Info.plist */,
+			);
+			path = InfoPlists;
+			sourceTree = "<group>";
+		};
+		C87799E569290EB17E115CBF /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				2B9DA0E8A3C1010CEEC70A5F /* ProfileView.swift */,
+				BDFB6F21611EF2011E2D1971 /* ProfileViewModel.swift */,
+			);
+			path = Profile;
+			sourceTree = "<group>";
+		};
+		D2E987F0D84BD7F3ED7F78DE /* Chat */ = {
+			isa = PBXGroup;
+			children = (
+				DC45188362F320C28183A541 /* ChatListView.swift */,
+				06EB2ABAE1EAE4D11226C91A /* ChatListViewModel.swift */,
+				9625D8645524C3682FBDFD5D /* ChatRoomView.swift */,
+				8AD9F05659CDE827E5DE116F /* ChatRoomViewModel.swift */,
+			);
+			path = Chat;
+			sourceTree = "<group>";
+		};
+		DEE123896CBD480E57B9ECC5 /* Derived */ = {
+			isa = PBXGroup;
+			children = (
+				C852F04651357A3E0B7A2A06 /* InfoPlists */,
+				FE74E7D60DEE1CB4D2449B7C /* Sources */,
+			);
+			path = Derived;
+			sourceTree = "<group>";
+		};
+		FB3465F726A6D293634F79BC /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				4230199AC34C9E4F28937F7B /* UITests */,
+				3F2065EE0721E9BE8E92E5D0 /* UnitTests */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		FE74E7D60DEE1CB4D2449B7C /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				C993CA8A06E4DA8F5E8CCC48 /* TuistAssets+ParkGolf.swift */,
+				128489985F4AC1F300CF628C /* TuistBundle+ParkGolf.swift */,
+				63517C1B9E6BCA373EDBE994 /* TuistStrings+ParkGolf.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		FFD0C1CDE732AD1656F1332E /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				401734EA071CF180C513923D /* Booking */,
+				D2E987F0D84BD7F3ED7F78DE /* Chat */,
+				3C6B3608B68673D99CF63633 /* Friends */,
+				6C136A9F6538ABF1267ADEDD /* Home */,
+				C87799E569290EB17E115CBF /* Profile */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		35259FA8110FAE5DD8128D53 /* ParkGolfTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 761D11FB84594277A4D4BFE7 /* Build configuration list for PBXNativeTarget "ParkGolfTests" */;
+			buildPhases = (
+				5E60B77DED114905B3A786B6 /* Sources */,
+				F1F9AE68DE62A36348CE8CB3 /* Resources */,
+				13962E28C603F2D995B353B1 /* Frameworks */,
+				6262C3B58903CFD38D8F8232 /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7AE656D192ACA4C511796032 /* PBXTargetDependency */,
+			);
+			name = ParkGolfTests;
+			packageProductDependencies = (
+			);
+			productName = ParkGolfTests;
+			productReference = 494C590AAABDFF697299705F /* ParkGolfTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		84B3A26F7DB8887F8DF4CD26 /* ParkGolfUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 56B8181004F6155E823E5395 /* Build configuration list for PBXNativeTarget "ParkGolfUITests" */;
+			buildPhases = (
+				CF3494816368FBBA947EC862 /* Sources */,
+				5555AAACFD021AD9C2101BE5 /* Resources */,
+				4D7A4CD3FFC5119631C561CA /* Frameworks */,
+				B7255CB60B4269086F5CDBC6 /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CA1CA944CCA685BB451213F4 /* PBXTargetDependency */,
+			);
+			name = ParkGolfUITests;
+			packageProductDependencies = (
+			);
+			productName = ParkGolfUITests;
+			productReference = CEF5BFBD7C403F5B2ED5D233 /* ParkGolfUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		8CDB08567552666A75B545C1 /* ParkGolf */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DD901A3A2D81D9195D603B05 /* Build configuration list for PBXNativeTarget "ParkGolf" */;
+			buildPhases = (
+				FD8B59A8F22FEFF837F25979 /* Sources */,
+				79415215D8482C8E8BBB71FD /* Resources */,
+				F8A416C5A30051F46D234BFF /* Frameworks */,
+				EB4CC0035B2838A560E732E7 /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ParkGolf;
+			packageProductDependencies = (
+			);
+			productName = ParkGolf;
+			productReference = 5D285F67382916EA6317E86B /* ParkGolf.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		7CD73AF6CFC490F927C5E0BB /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				ORGANIZATIONNAME = com.parkgolf;
+				TargetAttributes = {
+					35259FA8110FAE5DD8128D53 = {
+						TestTargetID = 8CDB08567552666A75B545C1;
+					};
+					84B3A26F7DB8887F8DF4CD26 = {
+						TestTargetID = 8CDB08567552666A75B545C1;
+					};
+				};
+			};
+			buildConfigurationList = E434057F50571873C2842397 /* Build configuration list for PBXProject "ParkGolf" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+				ko,
+			);
+			mainGroup = 443823732CCF12D54279911C;
+			productRefGroup = 377C70B54811E9D103D0FE27 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8CDB08567552666A75B545C1 /* ParkGolf */,
+				35259FA8110FAE5DD8128D53 /* ParkGolfTests */,
+				84B3A26F7DB8887F8DF4CD26 /* ParkGolfUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		5555AAACFD021AD9C2101BE5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		79415215D8482C8E8BBB71FD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				14097D34585ADCD3E4FC7909 /* Assets.xcassets in Resources */,
+				D879C67B3899AD05986FBE13 /* Localizable.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F1F9AE68DE62A36348CE8CB3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		5E60B77DED114905B3A786B6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				125B359EAA3D0774FAB93302 /* ParkGolfTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CF3494816368FBBA947EC862 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B55F48695D69CD19A0724BFF /* ParkGolfUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FD8B59A8F22FEFF837F25979 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A9A4320245DEDFBB9F8FD13E /* TuistAssets+ParkGolf.swift in Sources */,
+				900E3377CD74C0F75238B147 /* TuistBundle+ParkGolf.swift in Sources */,
+				9B065DAA37ECBD218B179C7D /* TuistStrings+ParkGolf.swift in Sources */,
+				EF22F1A81A96CA11AAB9436E /* ContentView.swift in Sources */,
+				70455E2873E7F8101CD91BFB /* ParkGolfApp.swift in Sources */,
+				95875B41115E528559A0EC87 /* Booking.swift in Sources */,
+				174160DA33594118F9BF712A /* Chat.swift in Sources */,
+				7A8DBDD4CA6343A18BBF486F /* User.swift in Sources */,
+				A194603F66C924514E797026 /* APIClient.swift in Sources */,
+				47D795CB0451D744C05EB12C /* ChatSocketManager.swift in Sources */,
+				E37393C0927DF046ACBD5BF8 /* Endpoints.swift in Sources */,
+				130F364ED92150D278053A71 /* FriendService.swift in Sources */,
+				517DC5CCE0EAAF82B41FEC0A /* WebSocketClient.swift in Sources */,
+				51D3930AD6C579767C2ED188 /* BookingView.swift in Sources */,
+				975427803D3BDA2873D3F611 /* BookingViewModel.swift in Sources */,
+				9B4D3654635BDD44E16192D7 /* ChatListView.swift in Sources */,
+				7DF75505037C00F58A50D9D8 /* ChatListViewModel.swift in Sources */,
+				D4DA98E1BDF82A3E960102CF /* ChatRoomView.swift in Sources */,
+				0B69CC4639637FDB980350BD /* ChatRoomViewModel.swift in Sources */,
+				D348F918A34B2403F1484182 /* FriendsView.swift in Sources */,
+				504CA8834704C0B94E17D725 /* FriendsViewModel.swift in Sources */,
+				4768750EBF28F4DC14744D14 /* HomeView.swift in Sources */,
+				829A0DA96705081D4F635EE7 /* HomeViewModel.swift in Sources */,
+				C3FBF9E3371C29BCD37F8E37 /* LoginView.swift in Sources */,
+				7E87844221D6B84472BEBA4A /* LoginViewModel.swift in Sources */,
+				66C1F0B2BAD02A6FE332E0AA /* ProfileView.swift in Sources */,
+				38B36501FA0DD1871D93BE21 /* ProfileViewModel.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		7AE656D192ACA4C511796032 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = ParkGolf;
+			target = 8CDB08567552666A75B545C1 /* ParkGolf */;
+			targetProxy = D400A21D5B7162A0E71A36A0 /* PBXContainerItemProxy */;
+		};
+		CA1CA944CCA685BB451213F4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = ParkGolf;
+			target = 8CDB08567552666A75B545C1 /* ParkGolf */;
+			targetProxy = 78B151FF4A0472E491ABBAFB /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		3B79E216E450AC8711B4A800 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				5C4ECE2178B62086C0C5D9C9 /* ko */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		0494C5366A50CFD60E5ED510 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 7W4BQTPNLB;
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = "Derived/InfoPlists/ParkGolf-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.parkgolf.app;
+				PRODUCT_NAME = ParkGolf;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_COMPILATION_MODE = singlefile;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		3CA4081A94110904FC310DB6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = "Derived/InfoPlists/ParkGolfTests-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.parkgolf.app.tests;
+				PRODUCT_NAME = ParkGolfTests;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_COMPILATION_MODE = singlefile;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ParkGolf.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ParkGolf";
+				TEST_TARGET_NAME = ParkGolf;
+			};
+			name = Debug;
+		};
+		47A3A0727FA694D0AC138B74 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = "Derived/InfoPlists/ParkGolfTests-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.parkgolf.app.tests;
+				PRODUCT_NAME = ParkGolfTests;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ParkGolf.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ParkGolf";
+				TEST_TARGET_NAME = ParkGolf;
+			};
+			name = Release;
+		};
+		558520BD4215A786822FEBB1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = "Derived/InfoPlists/ParkGolfUITests-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.parkgolf.app.uitests;
+				PRODUCT_NAME = ParkGolfUITests;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = ParkGolf;
+			};
+			name = Release;
+		};
+		758EAFB89A0C4FC060342DCB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		8B18D2DC035BD90D573A9991 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = "Derived/InfoPlists/ParkGolfUITests-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.parkgolf.app.uitests;
+				PRODUCT_NAME = ParkGolfUITests;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_COMPILATION_MODE = singlefile;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = ParkGolf;
+			};
+			name = Debug;
+		};
+		926ACEECF07181B977F315F1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 7W4BQTPNLB;
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = "Derived/InfoPlists/ParkGolf-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.parkgolf.app;
+				PRODUCT_NAME = ParkGolf;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		F67FADAC3D29DA91B222AF3C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		56B8181004F6155E823E5395 /* Build configuration list for PBXNativeTarget "ParkGolfUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8B18D2DC035BD90D573A9991 /* Debug */,
+				558520BD4215A786822FEBB1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		761D11FB84594277A4D4BFE7 /* Build configuration list for PBXNativeTarget "ParkGolfTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3CA4081A94110904FC310DB6 /* Debug */,
+				47A3A0727FA694D0AC138B74 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DD901A3A2D81D9195D603B05 /* Build configuration list for PBXNativeTarget "ParkGolf" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0494C5366A50CFD60E5ED510 /* Debug */,
+				926ACEECF07181B977F315F1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E434057F50571873C2842397 /* Build configuration list for PBXProject "ParkGolf" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				758EAFB89A0C4FC060342DCB /* Debug */,
+				F67FADAC3D29DA91B222AF3C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 7CD73AF6CFC490F927C5E0BB /* Project object */;
+}

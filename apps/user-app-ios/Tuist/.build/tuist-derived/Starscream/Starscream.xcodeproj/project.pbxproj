@@ -1,0 +1,598 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 55;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		034DC8C6E1FF3309746B1B60 /* Framer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EC87B51D3A21940B05009C9 /* Framer.swift */; };
+		06247D620C9325FA706377B8 /* WebSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = F933EA9BBD2A132A6B6F20A7 /* WebSocket.swift */; };
+		183316558A44D6BCD181EA26 /* WSEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58C7628F3055944D78B62AAE /* WSEngine.swift */; };
+		1A9EEEB19B5AD758D1236E5E /* Engine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCBDA8286F27D8BC1B67092 /* Engine.swift */; };
+		1D168EFF585543B7E21A35E4 /* FoundationHTTPServerHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A34F2B4D418612210A3BCEB /* FoundationHTTPServerHandler.swift */; };
+		3B0D9820A2F23F16128DA4DA /* Data+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDD88E2DCD2FDDFF5AC66C7C /* Data+Extensions.swift */; };
+		414FEA8FFEB5469BB7EEBD3A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = BAD7EF2C105946379625E17E /* PrivacyInfo.xcprivacy */; };
+		4F8AE9B0572E3B458594A5E7 /* StringHTTPHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A7F0A8A9C7D28203919B15 /* StringHTTPHandler.swift */; };
+		556154397527D90AF95FA300 /* Compression.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC918BC81131BB009C12EB46 /* Compression.swift */; };
+		5F311EC3CDC37AFA606243FA /* TCPTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D7DD3CABB2CB351098B9A58 /* TCPTransport.swift */; };
+		5FA84B4B789A8E65FA806B84 /* NativeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6ACE5AA292684F892375F90 /* NativeEngine.swift */; };
+		713148105D96CF475A76BA26 /* FoundationSecurity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 715AA1342622A2DD6FA486B8 /* FoundationSecurity.swift */; };
+		731F81CC995F72FF9FC38ED8 /* FoundationHTTPHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E9036ADD6ADA898BAA2C6E4 /* FoundationHTTPHandler.swift */; };
+		86C39D523D769FEC0E883994 /* HTTPHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86A4FE2EEA798679CD19C0B /* HTTPHandler.swift */; };
+		961E2F39C60029B5CC5A4C39 /* Server.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14E5C1147411D6380CD1B8E9 /* Server.swift */; };
+		B1FFBFD518DE605B2964788D /* WebSocketServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CA8979E9C070348F54108B4 /* WebSocketServer.swift */; };
+		B705E770A635CB3C6BA31CC8 /* Security.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FD588C280557D9B6063378D /* Security.swift */; };
+		C07DC009CB3E582C5FF48005 /* WSCompression.swift in Sources */ = {isa = PBXBuildFile; fileRef = 933C99DCF6EF25D49D3C8549 /* WSCompression.swift */; };
+		C528B3A14B394EA36137B9AA /* Transport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E724AEF3BDBDFA6F36B728 /* Transport.swift */; };
+		C906999585A55C34979D2851 /* FrameCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39016DAF4E7B2FE820144E62 /* FrameCollector.swift */; };
+		FA7AA115856E80AF1CFC47D8 /* TuistBundle+Starscream.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFC77C5DC8B3D0C3A2A2A0F4 /* TuistBundle+Starscream.swift */; };
+		FFC1C0681EE31C4B243F89CC /* FoundationTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FDA6646F4236EEEC7BEDF2D /* FoundationTransport.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		1BF167F701E3A3F3C4E1A9BD /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		14E5C1147411D6380CD1B8E9 /* Server.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Server.swift; sourceTree = "<group>"; };
+		1E9036ADD6ADA898BAA2C6E4 /* FoundationHTTPHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationHTTPHandler.swift; sourceTree = "<group>"; };
+		2A34F2B4D418612210A3BCEB /* FoundationHTTPServerHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationHTTPServerHandler.swift; sourceTree = "<group>"; };
+		2D7DD3CABB2CB351098B9A58 /* TCPTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TCPTransport.swift; sourceTree = "<group>"; };
+		2FDA6646F4236EEEC7BEDF2D /* FoundationTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationTransport.swift; sourceTree = "<group>"; };
+		39016DAF4E7B2FE820144E62 /* FrameCollector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameCollector.swift; sourceTree = "<group>"; };
+		44A7F0A8A9C7D28203919B15 /* StringHTTPHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringHTTPHandler.swift; sourceTree = "<group>"; };
+		58C7628F3055944D78B62AAE /* WSEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WSEngine.swift; sourceTree = "<group>"; };
+		5CA8979E9C070348F54108B4 /* WebSocketServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketServer.swift; sourceTree = "<group>"; };
+		6EC87B51D3A21940B05009C9 /* Framer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Framer.swift; sourceTree = "<group>"; };
+		715AA1342622A2DD6FA486B8 /* FoundationSecurity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationSecurity.swift; sourceTree = "<group>"; };
+		933C99DCF6EF25D49D3C8549 /* WSCompression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WSCompression.swift; sourceTree = "<group>"; };
+		9FD588C280557D9B6063378D /* Security.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Security.swift; sourceTree = "<group>"; };
+		ABCBDA8286F27D8BC1B67092 /* Engine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Engine.swift; sourceTree = "<group>"; };
+		AC918BC81131BB009C12EB46 /* Compression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Compression.swift; sourceTree = "<group>"; };
+		BAD7EF2C105946379625E17E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		C6ACE5AA292684F892375F90 /* NativeEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeEngine.swift; sourceTree = "<group>"; };
+		C86A4FE2EEA798679CD19C0B /* HTTPHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPHandler.swift; sourceTree = "<group>"; };
+		CDD88E2DCD2FDDFF5AC66C7C /* Data+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data+Extensions.swift"; sourceTree = "<group>"; };
+		CFC77C5DC8B3D0C3A2A2A0F4 /* TuistBundle+Starscream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TuistBundle+Starscream.swift"; sourceTree = "<group>"; };
+		D4E724AEF3BDBDFA6F36B728 /* Transport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transport.swift; sourceTree = "<group>"; };
+		E763B0BE0BD88564399ED401 /* Starscream-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Starscream-Info.plist"; sourceTree = "<group>"; };
+		E95C38A62709733BFC491C45 /* Starscream.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Starscream.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		F933EA9BBD2A132A6B6F20A7 /* WebSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocket.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		F6AA09FAC6BF5156549AEBF9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		27134D4C9A664A29A6225D3A /* Server */ = {
+			isa = PBXGroup;
+			children = (
+				14E5C1147411D6380CD1B8E9 /* Server.swift */,
+				5CA8979E9C070348F54108B4 /* WebSocketServer.swift */,
+			);
+			path = Server;
+			sourceTree = "<group>";
+		};
+		2AF85F85283B445DEF7CDC6C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E95C38A62709733BFC491C45 /* Starscream.framework */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		587A6C2077300D314650C976 /* Security */ = {
+			isa = PBXGroup;
+			children = (
+				715AA1342622A2DD6FA486B8 /* FoundationSecurity.swift */,
+				9FD588C280557D9B6063378D /* Security.swift */,
+			);
+			path = Security;
+			sourceTree = "<group>";
+		};
+		5C2023FE6937ED83BF7910A5 /* Project */ = {
+			isa = PBXGroup;
+			children = (
+				73051C12CA17738840E0916A /* Sources */,
+				C363DB7149826B8552DBB37B /* tuist-derived */,
+			);
+			name = Project;
+			sourceTree = "<group>";
+		};
+		6009BC738A0D8710AAC336F8 /* Compression */ = {
+			isa = PBXGroup;
+			children = (
+				AC918BC81131BB009C12EB46 /* Compression.swift */,
+				933C99DCF6EF25D49D3C8549 /* WSCompression.swift */,
+			);
+			path = Compression;
+			sourceTree = "<group>";
+		};
+		71315F6E868CA306E7C50B4E /* InfoPlists */ = {
+			isa = PBXGroup;
+			children = (
+				E763B0BE0BD88564399ED401 /* Starscream-Info.plist */,
+			);
+			path = InfoPlists;
+			sourceTree = "<group>";
+		};
+		72FDC03880D68971C179641D /* Framer */ = {
+			isa = PBXGroup;
+			children = (
+				1E9036ADD6ADA898BAA2C6E4 /* FoundationHTTPHandler.swift */,
+				2A34F2B4D418612210A3BCEB /* FoundationHTTPServerHandler.swift */,
+				39016DAF4E7B2FE820144E62 /* FrameCollector.swift */,
+				6EC87B51D3A21940B05009C9 /* Framer.swift */,
+				C86A4FE2EEA798679CD19C0B /* HTTPHandler.swift */,
+				44A7F0A8A9C7D28203919B15 /* StringHTTPHandler.swift */,
+			);
+			path = Framer;
+			sourceTree = "<group>";
+		};
+		73051C12CA17738840E0916A /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				6009BC738A0D8710AAC336F8 /* Compression */,
+				DE010B1FF8011DEEF024050F /* DataBytes */,
+				7CF63AE2F1A6FFA8342CD007 /* Engine */,
+				72FDC03880D68971C179641D /* Framer */,
+				587A6C2077300D314650C976 /* Security */,
+				27134D4C9A664A29A6225D3A /* Server */,
+				8FA4687BD75E22C6C885ACFB /* Starscream */,
+				8EE6C1B199BBADC5B983C329 /* Transport */,
+				BAD7EF2C105946379625E17E /* PrivacyInfo.xcprivacy */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		7CF63AE2F1A6FFA8342CD007 /* Engine */ = {
+			isa = PBXGroup;
+			children = (
+				ABCBDA8286F27D8BC1B67092 /* Engine.swift */,
+				C6ACE5AA292684F892375F90 /* NativeEngine.swift */,
+				58C7628F3055944D78B62AAE /* WSEngine.swift */,
+			);
+			path = Engine;
+			sourceTree = "<group>";
+		};
+		8EE6C1B199BBADC5B983C329 /* Transport */ = {
+			isa = PBXGroup;
+			children = (
+				2FDA6646F4236EEEC7BEDF2D /* FoundationTransport.swift */,
+				2D7DD3CABB2CB351098B9A58 /* TCPTransport.swift */,
+				D4E724AEF3BDBDFA6F36B728 /* Transport.swift */,
+			);
+			path = Transport;
+			sourceTree = "<group>";
+		};
+		8FA4687BD75E22C6C885ACFB /* Starscream */ = {
+			isa = PBXGroup;
+			children = (
+				F933EA9BBD2A132A6B6F20A7 /* WebSocket.swift */,
+			);
+			path = Starscream;
+			sourceTree = "<group>";
+		};
+		C363DB7149826B8552DBB37B /* tuist-derived */ = {
+			isa = PBXGroup;
+			children = (
+				EF382247AEBF427DDEAE0640 /* Starscream */,
+			);
+			name = "tuist-derived";
+			path = "../../tuist-derived";
+			sourceTree = "<group>";
+		};
+		C4484CA7FBC799A820587B96 /* ../../checkouts/Starscream */ = {
+			isa = PBXGroup;
+			children = (
+				2AF85F85283B445DEF7CDC6C /* Products */,
+				5C2023FE6937ED83BF7910A5 /* Project */,
+			);
+			path = ../../checkouts/Starscream;
+			sourceTree = "<group>";
+		};
+		D54926B58EC3222DD74A1BB7 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				CFC77C5DC8B3D0C3A2A2A0F4 /* TuistBundle+Starscream.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		DE010B1FF8011DEEF024050F /* DataBytes */ = {
+			isa = PBXGroup;
+			children = (
+				CDD88E2DCD2FDDFF5AC66C7C /* Data+Extensions.swift */,
+			);
+			path = DataBytes;
+			sourceTree = "<group>";
+		};
+		EF382247AEBF427DDEAE0640 /* Starscream */ = {
+			isa = PBXGroup;
+			children = (
+				71315F6E868CA306E7C50B4E /* InfoPlists */,
+				D54926B58EC3222DD74A1BB7 /* Sources */,
+			);
+			path = Starscream;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		49B615F8242FEFCF783EC8F0 /* Starscream */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A245351F01698B753F656BBD /* Build configuration list for PBXNativeTarget "Starscream" */;
+			buildPhases = (
+				A3B43401C50AE84681AB0885 /* Sources */,
+				7C79B7998F56307552FE8C55 /* Resources */,
+				F6AA09FAC6BF5156549AEBF9 /* Frameworks */,
+				1BF167F701E3A3F3C4E1A9BD /* Embed Frameworks */,
+				8AA455CAAB24F1C83A73ACCE /* Copy Built Products for Explicit Dependencies */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Starscream;
+			packageProductDependencies = (
+			);
+			productName = Starscream;
+			productReference = E95C38A62709733BFC491C45 /* Starscream.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		275C2116BC66F0AC827AEDDC /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 9999;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = FE551F1CF43145CCFFD047A2 /* Build configuration list for PBXProject "Starscream" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = C4484CA7FBC799A820587B96 /* ../../checkouts/Starscream */;
+			productRefGroup = 2AF85F85283B445DEF7CDC6C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				49B615F8242FEFCF783EC8F0 /* Starscream */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		7C79B7998F56307552FE8C55 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				414FEA8FFEB5469BB7EEBD3A /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		8AA455CAAB24F1C83A73ACCE /* Copy Built Products for Explicit Dependencies */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(BUILD_DIR)/Debug$(EFFECTIVE_PLATFORM_NAME)$(TARGET_BUILD_SUBPATH)/$(PRODUCT_NAME)/$(PRODUCT_NAME).framework",
+			);
+			name = "Copy Built Products for Explicit Dependencies";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(BUILD_DIR)/Debug$(EFFECTIVE_PLATFORM_NAME)$(TARGET_BUILD_SUBPATH)/$(PRODUCT_NAME).framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# This script copies built products into the shared directory to be available for app and other targets that don't have scoped directories\n# If you try to archive any of the configurations seen in the output paths, the operation will fail due to `Multiple commands produce` error\n\nFILE=\"$BUILD_DIR/Debug$EFFECTIVE_PLATFORM_NAME$TARGET_BUILD_SUBPATH/$PRODUCT_NAME/$PRODUCT_NAME.framework\"\nDESTINATION_FILE=\"$BUILD_DIR/Debug$EFFECTIVE_PLATFORM_NAME$TARGET_BUILD_SUBPATH/$PRODUCT_NAME.framework\"\nif [[ -d \"$FILE\" && ! -d \"$DESTINATION_FILE\" ]]; then\n    ln -s \"$FILE\" \"$DESTINATION_FILE\"\nfi\n\nif [[ -f \"$FILE\" && ! -f \"$DESTINATION_FILE\" ]]; then\n    ln -s \"$FILE\" \"$DESTINATION_FILE\"\nfi";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A3B43401C50AE84681AB0885 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				556154397527D90AF95FA300 /* Compression.swift in Sources */,
+				C07DC009CB3E582C5FF48005 /* WSCompression.swift in Sources */,
+				3B0D9820A2F23F16128DA4DA /* Data+Extensions.swift in Sources */,
+				1A9EEEB19B5AD758D1236E5E /* Engine.swift in Sources */,
+				5FA84B4B789A8E65FA806B84 /* NativeEngine.swift in Sources */,
+				183316558A44D6BCD181EA26 /* WSEngine.swift in Sources */,
+				731F81CC995F72FF9FC38ED8 /* FoundationHTTPHandler.swift in Sources */,
+				1D168EFF585543B7E21A35E4 /* FoundationHTTPServerHandler.swift in Sources */,
+				C906999585A55C34979D2851 /* FrameCollector.swift in Sources */,
+				034DC8C6E1FF3309746B1B60 /* Framer.swift in Sources */,
+				86C39D523D769FEC0E883994 /* HTTPHandler.swift in Sources */,
+				4F8AE9B0572E3B458594A5E7 /* StringHTTPHandler.swift in Sources */,
+				713148105D96CF475A76BA26 /* FoundationSecurity.swift in Sources */,
+				B705E770A635CB3C6BA31CC8 /* Security.swift in Sources */,
+				961E2F39C60029B5CC5A4C39 /* Server.swift in Sources */,
+				B1FFBFD518DE605B2964788D /* WebSocketServer.swift in Sources */,
+				06247D620C9325FA706377B8 /* WebSocket.swift in Sources */,
+				FFC1C0681EE31C4B243F89CC /* FoundationTransport.swift in Sources */,
+				5F311EC3CDC37AFA606243FA /* TCPTransport.swift in Sources */,
+				C528B3A14B394EA36137B9AA /* Transport.swift in Sources */,
+				FA7AA115856E80AF1CFC47D8 /* TuistBundle+Starscream.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		4C8985A9B1D336C636214E44 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUILT_PRODUCTS_DIR = "$(CONFIGURATION_BUILD_DIR)$(TARGET_BUILD_SUBPATH)/$(PRODUCT_NAME)";
+				CODE_SIGN_IDENTITY = "";
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				FRAMEWORK_SEARCH_PATHS = "$(CONFIGURATION_BUILD_DIR)$(TARGET_BUILD_SUBPATH)";
+				INFOPLIST_FILE = "$(SRCROOT)/../../tuist-derived/Starscream/InfoPlists/Starscream-Info.plist";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACH_O_TYPE = staticlib;
+				OTHER_SWIFT_FLAGS = "$(inherited)";
+				PRODUCT_BUNDLE_IDENTIFIER = dev.tuist.Starscream;
+				PRODUCT_NAME = Starscream;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
+					"$(inherited)",
+					DEBUG,
+				);
+				SWIFT_COMPILATION_MODE = singlefile;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGET_BUILD_DIR = "$(CONFIGURATION_BUILD_DIR)$(TARGET_BUILD_SUBPATH)/$(PRODUCT_NAME)";
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Debug;
+		};
+		4FEE0EE2875B412795CAFF8B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "";
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				INFOPLIST_FILE = "$(SRCROOT)/../../tuist-derived/Starscream/InfoPlists/Starscream-Info.plist";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACH_O_TYPE = staticlib;
+				OTHER_SWIFT_FLAGS = "$(inherited)";
+				PRODUCT_BUNDLE_IDENTIFIER = dev.tuist.Starscream;
+				PRODUCT_NAME = Starscream;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Release;
+		};
+		D1E5776782434ECB3C9AD1A1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = NO;
+				ENABLE_TESTABILITY = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PLATFORM_DIR)/Developer/Library/Frameworks",
+				);
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+					"SWIFT_PACKAGE=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SRCROOT = ../../checkouts/Starscream;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
+					"$(inherited)",
+					SWIFT_PACKAGE,
+				);
+				SWIFT_SUPPRESS_WARNINGS = YES;
+				USE_HEADERMAP = NO;
+			};
+			name = Debug;
+		};
+		D4744D9B58587D20BC561F0B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PLATFORM_DIR)/Developer/Library/Frameworks",
+				);
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = NO;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"SWIFT_PACKAGE=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SRCROOT = ../../checkouts/Starscream;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
+					"$(inherited)",
+					SWIFT_PACKAGE,
+				);
+				SWIFT_SUPPRESS_WARNINGS = YES;
+				USE_HEADERMAP = NO;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A245351F01698B753F656BBD /* Build configuration list for PBXNativeTarget "Starscream" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C8985A9B1D336C636214E44 /* Debug */,
+				4FEE0EE2875B412795CAFF8B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FE551F1CF43145CCFFD047A2 /* Build configuration list for PBXProject "Starscream" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D1E5776782434ECB3C9AD1A1 /* Debug */,
+				D4744D9B58587D20BC561F0B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 275C2116BC66F0AC827AEDDC /* Project object */;
+}
