@@ -15,8 +15,13 @@ class HomeViewModel: ObservableObject {
 
         // Load upcoming bookings
         do {
-            let response = try await bookingService.getMyBookings(status: .upcoming, page: 1, limit: 5)
-            upcomingBookings = response.data
+            let allBookings = try await bookingService.getMyBookings(status: nil, page: 1, limit: 5)
+            let now = Date()
+            upcomingBookings = allBookings.filter { booking in
+                guard let date = DateHelper.fromISODateString(booking.bookingDate) else { return false }
+                return date >= Calendar.current.startOfDay(for: now) &&
+                       (booking.status == "PENDING" || booking.status == "SLOT_RESERVED" || booking.status == "CONFIRMED")
+            }.prefix(5).map { $0 }
         } catch {
             // Handle error silently for home
         }

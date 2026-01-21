@@ -42,25 +42,21 @@ struct FriendsView: View {
         .task {
             await viewModel.loadAll()
         }
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .foregroundStyle(.white)
-                }
-            }
-        }
-        .toolbarBackground(.hidden, for: .navigationBar)
+        .navigationBarHidden(true)
     }
 
     // MARK: - Header
 
     private var friendsHeader: some View {
-        HStack {
+        HStack(spacing: ParkSpacing.sm) {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(.white)
+            }
+
             Text("친구 관리")
                 .font(.parkDisplaySmall)
                 .foregroundStyle(.white)

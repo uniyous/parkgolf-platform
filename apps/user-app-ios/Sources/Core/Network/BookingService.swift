@@ -23,23 +23,13 @@ actor BookingService {
 
     // MARK: - Get My Bookings
 
-    func getMyBookings(status: BookingListStatus?, page: Int = 1, limit: Int = 20) async throws -> BookingListResponse {
-        var queryParams: [String: String] = [
-            "page": String(page),
-            "limit": String(limit)
-        ]
-
-        if let status = status {
-            queryParams["status"] = status.rawValue
-        }
-
+    func getMyBookings(status: BookingListStatus?, page: Int = 1, limit: Int = 20) async throws -> [BookingResponse] {
         let endpoint = Endpoint(
             path: "/api/user/bookings",
-            method: .get,
-            queryParameters: queryParams
+            method: .get
         )
 
-        return try await apiClient.requestDirect(endpoint, responseType: BookingListResponse.self)
+        return try await apiClient.requestArray(endpoint, responseType: BookingResponse.self)
     }
 
     // MARK: - Get Booking by Number
@@ -164,18 +154,6 @@ struct BookingResponse: Codable, Sendable, Identifiable {
     }
 }
 
-struct BookingListResponse: Codable, Sendable {
-    let data: [BookingResponse]
-    let total: Int
-    let page: Int
-    let limit: Int
-    let totalPages: Int
-
-    enum CodingKeys: String, CodingKey {
-        case data, total, page, limit
-        case totalPages = "total_pages"
-    }
-}
 
 enum BookingStatus: String, Codable, Sendable {
     case pending = "PENDING"

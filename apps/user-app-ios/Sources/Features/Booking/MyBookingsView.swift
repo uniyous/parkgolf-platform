@@ -46,25 +46,21 @@ struct MyBookingsView: View {
         .task {
             viewModel.loadBookings()
         }
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .foregroundStyle(.white)
-                }
-            }
-        }
-        .toolbarBackground(.hidden, for: .navigationBar)
+        .navigationBarHidden(true)
     }
 
     // MARK: - Header
 
     private var bookingsHeader: some View {
-        HStack {
+        HStack(spacing: ParkSpacing.sm) {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(.white)
+            }
+
             Text("예약 내역")
                 .font(.parkDisplaySmall)
                 .foregroundStyle(.white)
@@ -279,15 +275,27 @@ class MyBookingsViewModel: ObservableObject {
 
     func loadBookings() {
         isLoading = true
-        currentPage = 1
         errorMessage = nil
 
         Task {
             do {
-                let status: BookingListStatus = selectedTab == .upcoming ? .upcoming : .past
-                let response = try await bookingService.getMyBookings(status: status, page: 1)
-                bookings = response.data
-                totalPages = response.totalPages
+                let allBookings = try await bookingService.getMyBookings(status: nil, page: 1)
+
+                // 클라이언트에서 탭에 따라 필터링
+                let now = Date()
+                if selectedTab == .upcoming {
+                    bookings = allBookings.filter { booking in
+                        guard let date = DateHelper.fromISODateString(booking.bookingDate) else { return false }
+                        return date >= Calendar.current.startOfDay(for: now) &&
+                               (booking.status == "PENDING" || booking.status == "SLOT_RESERVED" || booking.status == "CONFIRMED")
+                    }
+                } else {
+                    bookings = allBookings.filter { booking in
+                        guard let date = DateHelper.fromISODateString(booking.bookingDate) else { return true }
+                        return date < Calendar.current.startOfDay(for: now) ||
+                               booking.status == "COMPLETED" || booking.status == "CANCELLED" || booking.status == "NO_SHOW"
+                    }
+                }
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -296,22 +304,7 @@ class MyBookingsViewModel: ObservableObject {
     }
 
     func loadMore() {
-        guard hasMorePages, !isLoadingMore else { return }
-
-        isLoadingMore = true
-        currentPage += 1
-
-        Task {
-            do {
-                let status: BookingListStatus = selectedTab == .upcoming ? .upcoming : .past
-                let response = try await bookingService.getMyBookings(status: status, page: currentPage)
-                bookings.append(contentsOf: response.data)
-                totalPages = response.totalPages
-            } catch {
-                // Silent fail for pagination
-            }
-            isLoadingMore = false
-        }
+        // 페이지네이션 미지원 - 전체 목록을 한번에 로드
     }
 
     func cancelBooking(_ booking: BookingResponse, reason: String?) {
