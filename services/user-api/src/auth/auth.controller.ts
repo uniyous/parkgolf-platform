@@ -16,6 +16,7 @@ import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { NatsResponse } from '../common/types/nats-response.type';
 
 @ApiTags('IAM')
 @Controller('api/user/iam')
@@ -57,7 +58,8 @@ export class AuthController {
   @ApiResponse({ status: 200, description: '프로필 조회 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async getProfile(@Request() req: any) {
-    return this.usersService.getProfile(req.user.userId);
+    const profile = await this.usersService.getProfile(req.user.userId);
+    return NatsResponse.success(profile);
   }
 
   @Get('stats')
@@ -67,7 +69,8 @@ export class AuthController {
   @ApiResponse({ status: 200, description: '통계 조회 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async getStats(@Request() req: any) {
-    return this.usersService.getStats(req.user.userId);
+    const stats = await this.usersService.getStats(req.user.userId);
+    return NatsResponse.success(stats);
   }
 
   @Post('refresh')
