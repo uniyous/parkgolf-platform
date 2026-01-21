@@ -48,7 +48,6 @@ class GameSearchViewModel: ObservableObject {
 
     var activeFiltersCount: Int {
         var count = 0
-        if selectedTimeOfDay != .all { count += 1 }
         if !minPrice.isEmpty || !maxPrice.isEmpty { count += 1 }
         if selectedPlayerCount != nil { count += 1 }
         return count
@@ -57,6 +56,7 @@ class GameSearchViewModel: ObservableObject {
     // MARK: - Search
 
     func search() {
+        print("🔍 [GameSearchViewModel] search() called - timeOfDay: \(selectedTimeOfDay.rawValue)")
         searchTask?.cancel()
 
         searchTask = Task {
@@ -108,6 +108,8 @@ class GameSearchViewModel: ObservableObject {
             limit: 20
         )
 
+        print("📡 [GameSearchViewModel] API 호출 - timeOfDay: \(params.timeOfDay?.rawValue ?? "nil"), timeRange: \(params.timeOfDay?.timeRange ?? ("nil", "nil"))")
+
         do {
             let response = try await gameService.searchGames(params: params)
 
@@ -143,6 +145,7 @@ class GameSearchViewModel: ObservableObject {
     // MARK: - Time of Day Selection
 
     func selectTimeOfDay(_ timeOfDay: GameSearchParams.TimeOfDay) {
+        print("⏰ [GameSearchViewModel] selectTimeOfDay called: \(timeOfDay.rawValue)")
         selectedTimeOfDay = timeOfDay
         search()
     }

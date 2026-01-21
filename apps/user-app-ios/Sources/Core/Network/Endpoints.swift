@@ -37,6 +37,10 @@ enum AuthEndpoints {
     static func me() -> Endpoint {
         Endpoint(path: "/api/user/iam/profile")
     }
+
+    static func stats() -> Endpoint {
+        Endpoint(path: "/api/user/iam/stats")
+    }
 }
 
 // MARK: - Club Endpoints

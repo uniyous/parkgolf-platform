@@ -46,6 +46,16 @@ struct GameSearchView: View {
                     gameList
                 }
             }
+
+            // 재검색 시 로딩 오버레이
+            if viewModel.isLoading && !viewModel.games.isEmpty {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+
+                ProgressView()
+                    .scaleEffect(1.5)
+                    .tint(.white)
+            }
         }
         .sheet(isPresented: $viewModel.showFilterSheet) {
             FilterSheet(viewModel: viewModel)
@@ -256,6 +266,7 @@ struct FilterChip: View {
             )
             .contentShape(Capsule())
             .onTapGesture {
+                print("⏰ [FilterChip] tapped: \(title)")
                 action()
             }
     }

@@ -11,6 +11,12 @@ export interface UserProfileDto {
   updatedAt?: Date;
 }
 
+export interface UserStatsDto {
+  totalBookings: number;
+  friendCount: number;
+  achievementCount: number;
+}
+
 /**
  * Users Service for User API
  *
@@ -75,6 +81,22 @@ export class UsersService {
       birthDate: userData.birthDate,
       createdAt: userData.createdAt,
       updatedAt: userData.updatedAt,
+    };
+  }
+
+  async getStats(userId: number): Promise<UserStatsDto> {
+    this.logger.log(`Get user stats: userId=${userId}`);
+
+    // 병렬로 친구 수와 예약 수 조회
+    const [friendsResponse, bookingsResponse] = await Promise.all([
+      this.natsClient.send<any>('friends.count', { userId }, NATS_TIMEOUTS.QUICK),
+      this.natsClient.send<any>('booking.userStats', { userId }, NATS_TIMEOUTS.QUICK),
+    ]);
+
+    return {
+      friendCount: friendsResponse.success ? friendsResponse.data?.count ?? 0 : 0,
+      totalBookings: bookingsResponse.success ? bookingsResponse.data?.totalBookings ?? 0 : 0,
+      achievementCount: 0, // 추후 구현
     };
   }
 }

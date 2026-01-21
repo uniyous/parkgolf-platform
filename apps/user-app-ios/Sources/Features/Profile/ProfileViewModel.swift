@@ -4,6 +4,8 @@ import Foundation
 final class ProfileViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var error: Error?
+    @Published var stats: UserStats?
+    @Published var isLoadingStats = false
 
     private let apiClient = APIClient.shared
 
@@ -21,6 +23,20 @@ final class ProfileViewModel: ObservableObject {
             self.error = error
             print("Failed to load profile: \(error)")
             return nil
+        }
+    }
+
+    func loadStats() async {
+        isLoadingStats = true
+        defer { isLoadingStats = false }
+
+        do {
+            stats = try await apiClient.request(
+                AuthEndpoints.stats(),
+                responseType: UserStats.self
+            )
+        } catch {
+            print("Failed to load stats: \(error)")
         }
     }
 

@@ -20,6 +20,16 @@ export class FriendNatsController {
   }
 
   // ==============================================
+  // 친구 수 조회
+  // ==============================================
+  @MessagePattern('friends.count')
+  async getFriendCount(@Payload() data: { userId: number }) {
+    this.logger.debug(`Getting friend count for user: ${data.userId}`);
+    const count = await this.friendService.getFriendCount(data.userId);
+    return NatsResponse.success({ count });
+  }
+
+  // ==============================================
   // 친구 요청 목록 조회 (받은 요청)
   // ==============================================
   @MessagePattern('friends.requests')

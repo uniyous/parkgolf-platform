@@ -60,6 +60,16 @@ export class AuthController {
     return this.usersService.getProfile(req.user.userId);
   }
 
+  @Get('stats')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '사용자 통계 조회' })
+  @ApiResponse({ status: 200, description: '통계 조회 성공' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  async getStats(@Request() req: any) {
+    return this.usersService.getStats(req.user.userId);
+  }
+
   @Post('refresh')
   @ApiOperation({ summary: '토큰 갱신' })
   @ApiResponse({ status: 200, description: '토큰 갱신 성공' })

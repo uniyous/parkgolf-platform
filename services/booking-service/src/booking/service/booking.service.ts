@@ -996,4 +996,13 @@ export class BookingService {
     });
     this.logger.log(`GameTimeSlot cache synced for gameTimeSlotId: ${data.gameTimeSlotId}`);
   }
+
+  // 사용자 예약 통계 조회
+  async getUserStats(userId: number): Promise<{ totalBookings: number }> {
+    const totalBookings = await this.prisma.booking.count({
+      where: { userId },
+    });
+
+    return { totalBookings };
+  }
 }

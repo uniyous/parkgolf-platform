@@ -123,20 +123,35 @@ struct ProfileView: View {
     private var statsCard: some View {
         GlassCard(padding: ParkSpacing.sm) {
             HStack(spacing: 0) {
-                StatItem(icon: "calendar.badge.checkmark", value: "12", label: "총 라운드")
+                StatItem(
+                    icon: "calendar.badge.checkmark",
+                    value: "\(viewModel.stats?.totalBookings ?? 0)",
+                    label: "총 라운드"
+                )
 
                 Divider()
                     .frame(height: 40)
                     .background(Color.white.opacity(0.2))
 
-                StatItem(icon: "person.2.fill", value: "8", label: "친구")
+                StatItem(
+                    icon: "person.2.fill",
+                    value: "\(viewModel.stats?.friendCount ?? 0)",
+                    label: "친구"
+                )
 
                 Divider()
                     .frame(height: 40)
                     .background(Color.white.opacity(0.2))
 
-                StatItem(icon: "trophy.fill", value: "3", label: "업적")
+                StatItem(
+                    icon: "trophy.fill",
+                    value: "\(viewModel.stats?.achievementCount ?? 0)",
+                    label: "업적"
+                )
             }
+        }
+        .task {
+            await viewModel.loadStats()
         }
     }
 

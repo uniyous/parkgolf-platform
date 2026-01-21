@@ -38,6 +38,15 @@ export class FriendService {
   }
 
   // ==============================================
+  // 친구 수 조회
+  // ==============================================
+  async getFriendCount(userId: number): Promise<number> {
+    return this.prisma.friendship.count({
+      where: { userId },
+    });
+  }
+
+  // ==============================================
   // 친구 요청 목록 조회 (받은 요청)
   // ==============================================
   async getFriendRequests(userId: number) {

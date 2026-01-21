@@ -75,3 +75,11 @@ struct UserSearchResult: Identifiable, Codable, Sendable {
     let isFriend: Bool
     let hasPendingRequest: Bool
 }
+
+// MARK: - User Stats
+
+struct UserStats: Codable, Sendable {
+    let totalBookings: Int
+    let friendCount: Int
+    let achievementCount: Int
+}

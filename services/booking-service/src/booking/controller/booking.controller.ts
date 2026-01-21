@@ -229,4 +229,15 @@ export class BookingController {
     this.logger.log(`NATS: GameTimeSlot cache synced for: ${data.gameTimeSlotId}`);
     return NatsResponse.success({ synced: true });
   }
+
+  // ============================================
+  // User Stats
+  // ============================================
+
+  @MessagePattern('booking.userStats')
+  async getUserStats(@Payload() data: { userId: number }) {
+    this.logger.log(`NATS: Received booking.userStats request for user: ${data.userId}`);
+    const stats = await this.bookingService.getUserStats(data.userId);
+    return NatsResponse.success(stats);
+  }
 }
