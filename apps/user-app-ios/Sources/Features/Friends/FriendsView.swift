@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - Friends View
 
 struct FriendsView: View {
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = FriendsViewModel()
 
     var body: some View {
@@ -41,13 +42,26 @@ struct FriendsView: View {
         .task {
             await viewModel.loadAll()
         }
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .foregroundStyle(.white)
+                }
+            }
+        }
+        .toolbarBackground(.hidden, for: .navigationBar)
     }
 
     // MARK: - Header
 
     private var friendsHeader: some View {
         HStack {
-            Text("친구")
+            Text("친구 관리")
                 .font(.parkDisplaySmall)
                 .foregroundStyle(.white)
 

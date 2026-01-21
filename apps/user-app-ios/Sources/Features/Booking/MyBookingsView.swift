@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - My Bookings View
 
 struct MyBookingsView: View {
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = MyBookingsViewModel()
 
     var body: some View {
@@ -45,13 +46,26 @@ struct MyBookingsView: View {
         .task {
             viewModel.loadBookings()
         }
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .foregroundStyle(.white)
+                }
+            }
+        }
+        .toolbarBackground(.hidden, for: .navigationBar)
     }
 
     // MARK: - Header
 
     private var bookingsHeader: some View {
         HStack {
-            Text("라운드 예약")
+            Text("예약 내역")
                 .font(.parkDisplaySmall)
                 .foregroundStyle(.white)
 
