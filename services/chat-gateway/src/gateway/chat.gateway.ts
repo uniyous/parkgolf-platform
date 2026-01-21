@@ -259,31 +259,29 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       createdAt: new Date().toISOString(),
     };
 
-    try {
-      // Save message to DB via chat-service
-      await this.natsService.requestChatService('messages.save', {
-        id: message.id,
-        roomId: message.roomId,
-        senderId: message.senderId,
-        senderName: message.senderName || user.email || 'Unknown',
-        content: message.content,
-        type: message.type.toUpperCase(),
-        createdAt: message.createdAt,
-      });
+    // 1. 즉시 클라이언트에 브로드캐스트 (실시간 전달 우선)
+    this.server.to(roomId).emit('new_message', message);
+    this.logger.debug(`Message sent to room ${roomId} by ${user.name || user.email}`);
 
-      // Publish to NATS JetStream for real-time delivery to other instances
-      await this.natsService.publishMessage(roomId, message);
+    // 2. DB 저장 - 비동기 (응답 대기 없이)
+    this.natsService.requestChatService('messages.save', {
+      id: message.id,
+      roomId: message.roomId,
+      senderId: message.senderId,
+      senderName: message.senderName || user.email || 'Unknown',
+      content: message.content,
+      type: message.type.toUpperCase(),
+      createdAt: message.createdAt,
+    }).catch((error) => {
+      this.logger.error(`Failed to save message to DB: ${error}`);
+    });
 
-      // Also emit directly to the room for instant delivery
-      this.server.to(roomId).emit('new_message', message);
+    // 3. JetStream 발행 - 비동기 (다른 인스턴스 전달용)
+    this.natsService.publishMessage(roomId, message).catch((error) => {
+      this.logger.error(`Failed to publish message to JetStream: ${error}`);
+    });
 
-      this.logger.debug(`Message sent to room ${roomId} by ${user.name || user.email}`);
-
-      return { success: true, message };
-    } catch (error) {
-      this.logger.error(`Failed to send message: ${error}`);
-      return { success: false, error: 'Failed to send message' };
-    }
+    return { success: true, message };
   }
 
   @SubscribeMessage('send_dm')
@@ -310,37 +308,34 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       createdAt: new Date().toISOString(),
     };
 
-    try {
-      // Save message to DB via chat-service
-      await this.natsService.requestChatService('messages.save', {
-        id: message.id,
-        roomId: message.roomId,
-        senderId: message.senderId,
-        senderName: message.senderName || user.email || 'Unknown',
-        content: message.content,
-        type: message.type.toUpperCase(),
-        createdAt: message.createdAt,
-      });
-
-      // Publish to NATS JetStream
-      await this.natsService.publishDirectMessage(userIds, message);
-
-      // Send to target user if online
-      const targetSockets = this.userSockets.get(targetUserId);
-      if (targetSockets) {
-        for (const socketId of targetSockets) {
-          this.server.to(socketId).emit('new_dm', message);
-        }
+    // 1. 즉시 클라이언트에 전달 (실시간 전달 우선)
+    const targetSockets = this.userSockets.get(targetUserId);
+    if (targetSockets) {
+      for (const socketId of targetSockets) {
+        this.server.to(socketId).emit('new_dm', message);
       }
-
-      // Send back to sender
-      client.emit('new_dm', message);
-
-      return { success: true, message };
-    } catch (error) {
-      this.logger.error(`Failed to send DM: ${error}`);
-      return { success: false, error: 'Failed to send message' };
     }
+    client.emit('new_dm', message);
+
+    // 2. DB 저장 - 비동기 (응답 대기 없이)
+    this.natsService.requestChatService('messages.save', {
+      id: message.id,
+      roomId: message.roomId,
+      senderId: message.senderId,
+      senderName: message.senderName || user.email || 'Unknown',
+      content: message.content,
+      type: message.type.toUpperCase(),
+      createdAt: message.createdAt,
+    }).catch((error) => {
+      this.logger.error(`Failed to save DM to DB: ${error}`);
+    });
+
+    // 3. JetStream 발행 - 비동기
+    this.natsService.publishDirectMessage(userIds, message).catch((error) => {
+      this.logger.error(`Failed to publish DM to JetStream: ${error}`);
+    });
+
+    return { success: true, message };
   }
 
   @SubscribeMessage('typing')

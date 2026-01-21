@@ -117,13 +117,14 @@ enum ChatEndpoints {
         )
     }
 
-    static func messages(roomId: String, page: Int = 1, limit: Int = 50) -> Endpoint {
-        Endpoint(
+    static func messages(roomId: String, cursor: String? = nil, limit: Int = 50) -> Endpoint {
+        var params: [String: String] = ["limit": String(limit)]
+        if let cursor = cursor {
+            params["cursor"] = cursor
+        }
+        return Endpoint(
             path: "/api/user/chat/rooms/\(roomId)/messages",
-            queryParameters: [
-                "page": String(page),
-                "limit": String(limit)
-            ]
+            queryParameters: params
         )
     }
 

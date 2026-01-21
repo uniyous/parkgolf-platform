@@ -8,9 +8,11 @@ final class ChatRoomViewModel: ObservableObject {
     @Published var messages: [ChatMessage] = []
     @Published var inputText = ""
     @Published var isLoading = false
+    @Published var isLoadingMore = false
     @Published var isSending = false
     @Published var error: Error?
     @Published var isConnected = false
+    @Published private(set) var hasMoreMessages = true
 
     // MARK: - Properties
 
@@ -20,8 +22,7 @@ final class ChatRoomViewModel: ObservableObject {
     private let apiClient = APIClient.shared
     private let socketManager = ChatSocketManager.shared
     private var cancellables = Set<AnyCancellable>()
-    private var currentPage = 1
-    private var hasMorePages = true
+    private var cursor: String?
     private var connectionCheckTimer: Timer?
     private var cachedToken: String?
 
@@ -64,17 +65,19 @@ final class ChatRoomViewModel: ObservableObject {
 
     func loadMessages() async {
         isLoading = true
-        currentPage = 1
+        cursor = nil
+        hasMoreMessages = true
 
         defer { isLoading = false }
 
         do {
             let response = try await apiClient.request(
-                ChatEndpoints.messages(roomId: roomId, page: currentPage, limit: 50),
+                ChatEndpoints.messages(roomId: roomId, cursor: nil, limit: 50),
                 responseType: ChatMessagesResponse.self
             )
             messages = response.messages.sorted { $0.createdAt < $1.createdAt }
-            hasMorePages = response.hasMore
+            hasMoreMessages = response.hasMore
+            cursor = response.nextCursor
         } catch {
             self.error = error
             print("Failed to load messages: \(error)")
@@ -82,23 +85,24 @@ final class ChatRoomViewModel: ObservableObject {
     }
 
     func loadMoreMessages() async {
-        guard hasMorePages, !isLoading else { return }
+        guard hasMoreMessages, !isLoading, !isLoadingMore else { return }
 
-        currentPage += 1
+        isLoadingMore = true
+        defer { isLoadingMore = false }
 
         do {
             let response = try await apiClient.request(
-                ChatEndpoints.messages(roomId: roomId, page: currentPage, limit: 50),
+                ChatEndpoints.messages(roomId: roomId, cursor: cursor, limit: 50),
                 responseType: ChatMessagesResponse.self
             )
 
-            // Insert at beginning (older messages) and sort
+            // 이전 메시지를 맨 앞에 추가
             let olderMessages = response.messages.sorted { $0.createdAt < $1.createdAt }
             messages.insert(contentsOf: olderMessages, at: 0)
-            hasMorePages = response.hasMore
+            hasMoreMessages = response.hasMore
+            cursor = response.nextCursor
         } catch {
             self.error = error
-            currentPage -= 1
             print("Failed to load more messages: \(error)")
         }
     }

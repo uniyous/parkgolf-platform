@@ -110,22 +110,67 @@ struct ChatRoomView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: ParkSpacing.sm) {
+                    // 이전 메시지 로드 버튼/인디케이터
+                    if viewModel.hasMoreMessages {
+                        loadMoreButton
+                    }
+
                     ForEach(viewModel.messages) { message in
                         MessageBubble(
                             message: message,
                             isCurrentUser: message.senderId == viewModel.currentUserId
                         )
                         .id(message.id)
+                        .onAppear {
+                            // 첫 번째 메시지가 보이면 이전 메시지 로드
+                            if message.id == viewModel.messages.first?.id {
+                                Task {
+                                    await viewModel.loadMoreMessages()
+                                }
+                            }
+                        }
                     }
                 }
                 .padding(.horizontal, ParkSpacing.md)
                 .padding(.vertical, ParkSpacing.md)
             }
-            .onChange(of: viewModel.messages.count) { _, _ in
-                if let lastMessage = viewModel.messages.last {
+            .refreshable {
+                // 당겨서 새로고침 - 이전 메시지 로드
+                await viewModel.loadMoreMessages()
+            }
+            .onChange(of: viewModel.messages.count) { oldCount, newCount in
+                // 새 메시지가 추가된 경우에만 스크롤 (이전 메시지 로드 시에는 스크롤 안함)
+                if newCount > oldCount, let lastMessage = viewModel.messages.last {
+                    // 새 메시지인지 확인 (마지막에 추가된 경우)
                     withAnimation(.spring(response: 0.3)) {
                         proxy.scrollTo(lastMessage.id, anchor: .bottom)
                     }
+                }
+            }
+        }
+    }
+
+    // MARK: - Load More Button
+
+    private var loadMoreButton: some View {
+        Group {
+            if viewModel.isLoadingMore {
+                ProgressView()
+                    .tint(.white)
+                    .padding(.vertical, ParkSpacing.sm)
+            } else {
+                Button {
+                    Task {
+                        await viewModel.loadMoreMessages()
+                    }
+                } label: {
+                    HStack(spacing: ParkSpacing.xs) {
+                        Image(systemName: "arrow.up.circle")
+                        Text("이전 메시지 보기")
+                    }
+                    .font(.parkCaption)
+                    .foregroundStyle(.white.opacity(0.7))
+                    .padding(.vertical, ParkSpacing.sm)
                 }
             }
         }

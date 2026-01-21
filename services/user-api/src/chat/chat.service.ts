@@ -116,22 +116,19 @@ export class ChatService {
   }
 
   /**
-   * 메시지 목록 조회
+   * 메시지 목록 조회 (cursor 기반)
    */
   async getMessages(
     roomId: string,
     userId: number,
-    page: number = 1,
+    cursor?: string,
     limit: number = 50,
-  ): Promise<ApiResponse<{ messages: ChatMessage[]; hasMore: boolean }>> {
-    this.logger.log(`Get messages: roomId=${roomId}, page=${page}, limit=${limit}`);
-
-    // cursor 기반 pagination으로 변환
-    const skip = (page - 1) * limit;
+  ): Promise<ApiResponse<{ messages: ChatMessage[]; hasMore: boolean; nextCursor: string | null }>> {
+    this.logger.log(`Get messages: roomId=${roomId}, cursor=${cursor}, limit=${limit}`);
 
     return this.natsClient.send(
       'chat.messages.list',
-      { roomId, userId, limit, skip },
+      { roomId, userId, cursor, limit },
       NATS_TIMEOUTS.LIST_QUERY,
     );
   }

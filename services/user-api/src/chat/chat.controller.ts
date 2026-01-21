@@ -70,7 +70,7 @@ export class ChatController {
   @Get('rooms/:roomId/messages')
   @ApiOperation({ summary: '메시지 목록 조회' })
   @ApiParam({ name: 'roomId', description: '채팅방 ID' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'cursor', required: false, type: String, description: '이전 응답의 nextCursor' })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiResponse({ status: 200, description: '메시지 목록 조회 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
@@ -82,7 +82,7 @@ export class ChatController {
     return this.chatService.getMessages(
       roomId,
       req.user.userId,
-      query.page || 1,
+      query.cursor,
       query.limit || 50,
     );
   }

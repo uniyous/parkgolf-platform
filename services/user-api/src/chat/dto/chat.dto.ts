@@ -41,12 +41,12 @@ export class SendMessageDto {
 }
 
 export class GetMessagesQueryDto {
-  @ApiPropertyOptional({ default: 1 })
+  @ApiPropertyOptional({ description: '커서 (이전 응답의 nextCursor)' })
   @IsOptional()
-  @IsNumber()
-  page?: number = 1;
+  @IsString()
+  cursor?: string;
 
-  @ApiPropertyOptional({ default: 50 })
+  @ApiPropertyOptional({ default: 50, description: '가져올 메시지 수' })
   @IsOptional()
   @IsNumber()
   limit?: number = 50;
