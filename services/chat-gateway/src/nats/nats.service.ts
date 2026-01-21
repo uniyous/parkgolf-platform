@@ -300,19 +300,38 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
     this.typingHandlers.set(roomId, handler);
   }
 
-  // Request to chat-service via NATS
+  // Request to chat-service via NATS (NestJS microservice format)
   async requestChatService<T>(pattern: string, data: any): Promise<T> {
     if (!this.nc) {
       throw new Error('NATS not connected');
     }
 
+    const subject = `chat.${pattern}`;
+
+    // NestJS microservice expects: { pattern, data, id }
+    const nestMessage = {
+      pattern: subject,
+      data: data,
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    };
+
+    this.logger.debug(`NATS request to ${subject}: ${JSON.stringify(data)}`);
+
     const response = await this.nc.request(
-      `chat.${pattern}`,
-      this.sc.encode(JSON.stringify(data)),
-      { timeout: 5000 },
+      subject,
+      this.sc.encode(JSON.stringify(nestMessage)),
+      { timeout: 10000 },
     );
 
-    return JSON.parse(this.sc.decode(response.data));
+    const responseData = JSON.parse(this.sc.decode(response.data));
+    this.logger.debug(`NATS response from ${subject}: ${JSON.stringify(responseData)}`);
+
+    // NestJS returns { response, id, isDisposed } or just the response
+    if (responseData && responseData.response !== undefined) {
+      return responseData.response;
+    }
+
+    return responseData;
   }
 
   isConnected(): boolean {
