@@ -57,7 +57,7 @@ struct FriendsView: View {
                     .foregroundStyle(.white)
             }
 
-            Text("친구 관리")
+            Text("친구")
                 .font(.parkDisplaySmall)
                 .foregroundStyle(.white)
 

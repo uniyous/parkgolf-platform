@@ -61,7 +61,7 @@ struct MyBookingsView: View {
                     .foregroundStyle(.white)
             }
 
-            Text("예약 내역")
+            Text("예약")
                 .font(.parkDisplaySmall)
                 .foregroundStyle(.white)
 
