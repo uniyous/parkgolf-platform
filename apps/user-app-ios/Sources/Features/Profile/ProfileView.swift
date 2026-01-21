@@ -487,6 +487,7 @@ struct EditProfileView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("프로필 수정")
@@ -572,6 +573,7 @@ struct SettingsView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("설정")
@@ -657,6 +659,7 @@ struct NotificationSettingsView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("알림 설정")
@@ -729,6 +732,7 @@ struct PaymentMethodsView: View {
             )
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("결제 수단")
@@ -764,6 +768,7 @@ struct MyStatsView: View {
             )
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("내 통계")
@@ -799,6 +804,7 @@ struct ThemeSettingsView: View {
             )
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("테마")
@@ -834,6 +840,7 @@ struct LanguageSettingsView: View {
             )
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("언어")
@@ -869,6 +876,7 @@ struct AnnouncementsView: View {
             )
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("공지사항")
@@ -904,6 +912,7 @@ struct FAQView: View {
             )
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("자주 묻는 질문")
@@ -939,6 +948,7 @@ struct ContactUsView: View {
             )
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("문의하기")
@@ -974,6 +984,7 @@ struct ChangePasswordView: View {
             )
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("비밀번호 변경")
@@ -1009,6 +1020,7 @@ struct DeleteAccountView: View {
             )
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("계정 삭제")
@@ -1044,6 +1056,7 @@ struct TermsView: View {
             )
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("이용약관")
@@ -1079,6 +1092,7 @@ struct PrivacyPolicyView: View {
             )
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("개인정보처리방침")
