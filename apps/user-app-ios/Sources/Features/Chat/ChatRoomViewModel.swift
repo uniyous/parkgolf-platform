@@ -22,6 +22,8 @@ final class ChatRoomViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var currentPage = 1
     private var hasMorePages = true
+    private var connectionCheckTimer: Timer?
+    private var cachedToken: String?
 
     // MARK: - Init
 
@@ -71,7 +73,7 @@ final class ChatRoomViewModel: ObservableObject {
                 ChatEndpoints.messages(roomId: roomId, page: currentPage, limit: 50),
                 responseType: ChatMessagesResponse.self
             )
-            messages = response.messages.reversed() // Oldest first
+            messages = response.messages.sorted { $0.createdAt < $1.createdAt }
             hasMorePages = response.hasMore
         } catch {
             self.error = error
@@ -90,8 +92,9 @@ final class ChatRoomViewModel: ObservableObject {
                 responseType: ChatMessagesResponse.self
             )
 
-            // Insert at beginning (older messages)
-            messages.insert(contentsOf: response.messages.reversed(), at: 0)
+            // Insert at beginning (older messages) and sort
+            let olderMessages = response.messages.sorted { $0.createdAt < $1.createdAt }
+            messages.insert(contentsOf: olderMessages, at: 0)
             hasMorePages = response.hasMore
         } catch {
             self.error = error
@@ -161,6 +164,8 @@ final class ChatRoomViewModel: ObservableObject {
             return
         }
 
+        cachedToken = token
+
         // Connect to socket
         socketManager.connect(token: token)
 
@@ -185,11 +190,77 @@ final class ChatRoomViewModel: ObservableObject {
                 print("❌ Failed to join room: \(self.roomId)")
             }
         }
+
+        // Start periodic connection check
+        startConnectionCheck()
     }
 
     func disconnectSocket() {
+        stopConnectionCheck()
         socketManager.leaveRoom(roomId: roomId)
         // Don't disconnect the socket manager itself as it may be used by other rooms
+    }
+
+    // MARK: - Connection Check
+
+    private func startConnectionCheck() {
+        stopConnectionCheck()
+
+        // Check connection every 30 seconds
+        connectionCheckTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.checkAndReconnectIfNeeded()
+            }
+        }
+    }
+
+    private func stopConnectionCheck() {
+        connectionCheckTimer?.invalidate()
+        connectionCheckTimer = nil
+    }
+
+    private func checkAndReconnectIfNeeded() {
+        guard let token = cachedToken else { return }
+
+        if !socketManager.isConnected && socketManager.canReconnect {
+            print("🔄 Periodic check: attempting reconnection...")
+            if socketManager.ensureConnected(token: token) {
+                // Already connected, rejoin room
+                socketManager.joinRoom(roomId: roomId) { success in
+                    print(success ? "✅ Rejoined room: \(self.roomId)" : "❌ Failed to rejoin room")
+                }
+            }
+        }
+    }
+
+    /// 강제 재연결 (UI에서 호출)
+    func forceReconnect() async {
+        let token: String
+        if let cached = cachedToken {
+            token = cached
+        } else if let fetched = await apiClient.getAccessToken() {
+            token = fetched
+        } else {
+            print("No token available for force reconnect")
+            return
+        }
+
+        cachedToken = token
+        socketManager.forceReconnect(token: token)
+
+        // Wait for connection
+        for _ in 0..<50 {
+            if socketManager.isConnected {
+                break
+            }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+
+        if socketManager.isConnected {
+            socketManager.joinRoom(roomId: roomId) { success in
+                print(success ? "✅ Rejoined room after force reconnect" : "❌ Failed to rejoin room")
+            }
+        }
     }
 
     // MARK: - Typing Indicator

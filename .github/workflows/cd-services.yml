@@ -242,12 +242,12 @@ jobs:
               echo "cpu=1" >> $GITHUB_OUTPUT
               echo "cpu_throttling=true" >> $GITHUB_OUTPUT
             elif [ "$SERVICE" == "chat-gateway" ]; then
-              # chat-gateway: WebSocket persistent connections, requires CPU >= 1 for concurrency
+              # chat-gateway: WebSocket persistent connections, no CPU throttling for real-time
               echo "min_instances=1" >> $GITHUB_OUTPUT
               echo "max_instances=1" >> $GITHUB_OUTPUT
               echo "memory=512Mi" >> $GITHUB_OUTPUT
               echo "cpu=1" >> $GITHUB_OUTPUT
-              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=false" >> $GITHUB_OUTPUT
             elif [ "$SERVICE" == "chat-service" ]; then
               # chat-service: always running for NATS subscription
               echo "min_instances=1" >> $GITHUB_OUTPUT

@@ -15,6 +15,7 @@ export interface AdminJwtPayload {
 export interface UserJwtPayload {
     sub: number;
     email: string;
+    name?: string;
     roles: string[];
     type: 'user';
 }

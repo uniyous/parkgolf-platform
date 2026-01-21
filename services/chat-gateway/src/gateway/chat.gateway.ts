@@ -265,9 +265,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         id: message.id,
         roomId: message.roomId,
         senderId: message.senderId,
-        senderName: message.senderName,
+        senderName: message.senderName || user.email || 'Unknown',
         content: message.content,
         type: message.type.toUpperCase(),
+        createdAt: message.createdAt,
       });
 
       // Publish to NATS JetStream for real-time delivery to other instances
@@ -276,7 +277,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Also emit directly to the room for instant delivery
       this.server.to(roomId).emit('new_message', message);
 
-      this.logger.debug(`Message sent to room ${roomId} by ${user.name}`);
+      this.logger.debug(`Message sent to room ${roomId} by ${user.name || user.email}`);
 
       return { success: true, message };
     } catch (error) {
@@ -315,9 +316,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         id: message.id,
         roomId: message.roomId,
         senderId: message.senderId,
-        senderName: message.senderName,
+        senderName: message.senderName || user.email || 'Unknown',
         content: message.content,
         type: message.type.toUpperCase(),
+        createdAt: message.createdAt,
       });
 
       // Publish to NATS JetStream

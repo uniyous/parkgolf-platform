@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, MoreVertical, Users, LogOut, Wifi, WifiOff } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useChatRoomQuery, useMessagesQuery, useSendMessageMutation } from '@/hooks/queries/chat';
 import { chatSocket } from '@/lib/socket/chatSocket';
@@ -31,12 +31,15 @@ export const ChatRoomPage: React.FC = () => {
   // Initialize messages from query
   useEffect(() => {
     if (messagesData?.data) {
-      // Reverse to show oldest first
-      setMessages([...messagesData.data].reverse());
+      // Sort by createdAt ascending (oldest first = newest at bottom)
+      const sorted = [...messagesData.data].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      setMessages(sorted);
     }
   }, [messagesData]);
 
-  // Socket connection
+  // Socket connection with auto-reconnect
   useEffect(() => {
     const token = authStorage.getToken();
     if (!token || !roomId) return;
@@ -68,11 +71,31 @@ export const ChatRoomPage: React.FC = () => {
       console.error('Socket error:', error);
     });
 
+    // Visibility change handler - 탭이 다시 활성화되면 연결 확인
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && token) {
+        if (!chatSocket.isConnected) {
+          console.log('🔄 Tab became visible, checking connection...');
+          chatSocket.ensureConnected(token);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Periodic connection check (30초마다, 연결 안됐을 때만)
+    const connectionCheckInterval = setInterval(() => {
+      if (!chatSocket.isConnected && chatSocket.canReconnect && token) {
+        chatSocket.ensureConnected(token);
+      }
+    }, 30000);
+
     return () => {
       unsubConnect();
       unsubDisconnect();
       unsubMessage();
       unsubError();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(connectionCheckInterval);
       if (roomId) {
         chatSocket.leaveRoom(roomId);
       }
@@ -174,7 +197,19 @@ export const ChatRoomPage: React.FC = () => {
               ) : (
                 <>
                   <WifiOff className="w-3 h-3 text-yellow-400" />
-                  <span className="text-yellow-400">연결 중...</span>
+                  <span className="text-yellow-400">연결 끊김</span>
+                  <button
+                    onClick={() => {
+                      const token = authStorage.getToken();
+                      if (token) {
+                        chatSocket.forceReconnect(token);
+                      }
+                    }}
+                    className="ml-1 p-1 rounded hover:bg-white/10 transition-colors"
+                    title="재연결"
+                  >
+                    <RefreshCw className="w-3 h-3 text-yellow-400" />
+                  </button>
                 </>
               )}
               {(room.participants?.length ?? 0) > 0 && (
@@ -234,10 +269,10 @@ export const ChatRoomPage: React.FC = () => {
 
         <div className="space-y-3">
           {messages.map((message, index) => {
-            const isCurrentUser = message.senderId === currentUserId;
+            const isCurrentUser = String(message.senderId) === String(currentUserId);
             const showSender =
               !isCurrentUser &&
-              (index === 0 || messages[index - 1]?.senderId !== message.senderId);
+              (index === 0 || String(messages[index - 1]?.senderId) !== String(message.senderId));
 
             return (
               <MessageBubble

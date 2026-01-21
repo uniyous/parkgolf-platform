@@ -79,13 +79,23 @@ struct ChatRoomView: View {
 
     private var connectionStatusBanner: some View {
         HStack(spacing: ParkSpacing.xs) {
-            ProgressView()
-                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                .scaleEffect(0.8)
+            Image(systemName: "wifi.slash")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.8))
 
-            Text("연결 중...")
+            Text("연결 끊김")
                 .font(.parkCaption)
                 .foregroundStyle(.white.opacity(0.8))
+
+            Button {
+                Task {
+                    await viewModel.forceReconnect()
+                }
+            } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.caption)
+                    .foregroundStyle(.white)
+            }
         }
         .padding(.vertical, ParkSpacing.xxs)
         .padding(.horizontal, ParkSpacing.sm)
