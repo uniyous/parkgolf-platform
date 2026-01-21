@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - Game Search View
 
 struct GameSearchView: View {
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = GameSearchViewModel()
 
     /// 타이틀 헤더 표시 여부 (탭에서 직접 접근 시 true, NavigationLink로 접근 시 false)
@@ -73,6 +74,21 @@ struct GameSearchView: View {
         .task {
             viewModel.search()
         }
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(!showTitle)
+        .toolbar {
+            if !showTitle {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .foregroundStyle(.white)
+                    }
+                }
+            }
+        }
+        .toolbarBackground(.hidden, for: .navigationBar)
     }
 
     // MARK: - Title Header
