@@ -164,13 +164,14 @@ export const chatApi = {
 
   /**
    * 메시지 목록 조회
+   * API 응답: { success: true, data: { messages: [...], hasMore, nextCursor } }
    */
   getMessages: async (roomId: string, page = 1, limit = 50): Promise<PaginatedResult<ChatMessage>> => {
     const response = await apiClient.get<BffResponse<ChatMessage[]>>(
       `/api/user/chat/rooms/${roomId}/messages`,
       { page, limit }
     );
-    return extractPaginatedList<ChatMessage>(response.data);
+    return extractPaginatedList<ChatMessage>(response.data, 'messages');
   },
 
   /**

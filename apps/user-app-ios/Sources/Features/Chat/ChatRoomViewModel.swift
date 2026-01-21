@@ -164,8 +164,18 @@ final class ChatRoomViewModel: ObservableObject {
         // Connect to socket
         socketManager.connect(token: token)
 
-        // Wait for connection
-        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second
+        // Wait for connection to be established (max 5 seconds)
+        for _ in 0..<50 {
+            if socketManager.isConnected {
+                break
+            }
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
+        }
+
+        guard socketManager.isConnected else {
+            print("❌ Socket connection timeout")
+            return
+        }
 
         // Join the room
         socketManager.joinRoom(roomId: roomId) { success in
