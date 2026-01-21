@@ -96,47 +96,36 @@ struct CreateBookingRequest: Codable, Sendable {
 struct BookingResponse: Codable, Sendable, Identifiable {
     let id: Int
     let bookingNumber: String
-    let userId: Int
+    let userId: Int?
     let gameId: Int
-    let gameName: String?
-    let clubName: String?
-    let courseNames: String?
     let gameTimeSlotId: Int
+    let gameName: String?
+    let gameCode: String?
+    let frontNineCourseId: Int?
+    let frontNineCourseName: String?
+    let backNineCourseId: Int?
+    let backNineCourseName: String?
+    let clubId: Int?
+    let clubName: String?
     let bookingDate: String
     let startTime: String
     let endTime: String
     let playerCount: Int
-    let status: String
-    let totalPrice: Int
-    let serviceFee: Int
     let pricePerPerson: Int
+    let serviceFee: Int
+    let totalPrice: Int
+    let status: String
     let paymentMethod: String?
     let specialRequests: String?
+    let notes: String?
+    let userEmail: String?
+    let userName: String?
+    let userPhone: String?
+    let canCancel: Bool?
     let createdAt: String
     let updatedAt: String?
 
-    enum CodingKeys: String, CodingKey {
-        case id
-        case bookingNumber = "booking_number"
-        case userId = "user_id"
-        case gameId = "game_id"
-        case gameName = "game_name"
-        case clubName = "club_name"
-        case courseNames = "course_names"
-        case gameTimeSlotId = "game_time_slot_id"
-        case bookingDate = "booking_date"
-        case startTime = "start_time"
-        case endTime = "end_time"
-        case playerCount = "player_count"
-        case status
-        case totalPrice = "total_price"
-        case serviceFee = "service_fee"
-        case pricePerPerson = "price_per_person"
-        case paymentMethod = "payment_method"
-        case specialRequests = "special_requests"
-        case createdAt = "created_at"
-        case updatedAt = "updated_at"
-    }
+    // API가 camelCase를 반환하므로 CodingKeys 불필요
 
     var statusEnum: BookingStatus {
         BookingStatus(rawValue: status) ?? .pending
@@ -151,6 +140,13 @@ struct BookingResponse: Codable, Sendable, Identifiable {
 
     var timeRange: String {
         "\(startTime) - \(endTime)"
+    }
+
+    var courseNames: String? {
+        if let front = frontNineCourseName, let back = backNineCourseName {
+            return "\(front) + \(back)"
+        }
+        return frontNineCourseName ?? backNineCourseName
     }
 }
 
