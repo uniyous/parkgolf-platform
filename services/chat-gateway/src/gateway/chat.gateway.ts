@@ -260,7 +260,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     };
 
     try {
-      // Publish to NATS (will be persisted by chat-service)
+      // Save message to DB via chat-service
+      await this.natsService.requestChatService('messages.save', {
+        id: message.id,
+        roomId: message.roomId,
+        senderId: message.senderId,
+        senderName: message.senderName,
+        content: message.content,
+        type: message.type.toUpperCase(),
+      });
+
+      // Publish to NATS JetStream for real-time delivery to other instances
       await this.natsService.publishMessage(roomId, message);
 
       // Also emit directly to the room for instant delivery
@@ -300,7 +310,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     };
 
     try {
-      // Publish to NATS
+      // Save message to DB via chat-service
+      await this.natsService.requestChatService('messages.save', {
+        id: message.id,
+        roomId: message.roomId,
+        senderId: message.senderId,
+        senderName: message.senderName,
+        content: message.content,
+        type: message.type.toUpperCase(),
+      });
+
+      // Publish to NATS JetStream
       await this.natsService.publishDirectMessage(userIds, message);
 
       // Send to target user if online
