@@ -6,19 +6,19 @@
       "localStorage": [
         {
           "name": "accessToken",
-          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAcGFya2dvbGYuY29tIiwic3ViIjozLCJyb2xlcyI6WyJVU0VSIl0sInR5cGUiOiJ1c2VyIiwiaWF0IjoxNzY4MzU2ODIxLCJleHAiOjE3NjgzNjA0MjF9.ipD3E-o0xQTggCysTSd7qUW0r5nGzoCQDw9TR-KH4CI"
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAcGFya2dvbGYuY29tIiwic3ViIjozLCJyb2xlcyI6WyJVU0VSIl0sInR5cGUiOiJ1c2VyIiwiaWF0IjoxNzY4OTc5NjAzLCJleHAiOjE3Njg5ODMyMDN9.n5N3h2_7VwY-cW0Da_dSeJXyzdHLYrmm8e3hYgI4BUs"
         },
         {
           "name": "refreshToken",
-          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAcGFya2dvbGYuY29tIiwic3ViIjozLCJyb2xlcyI6WyJVU0VSIl0sInR5cGUiOiJ1c2VyIiwiaWF0IjoxNzY4MzU2ODIyLCJleHAiOjE3Njg5NjE2MjJ9.8Fkr8GcFQrrH68fX7HDbUkNqLPVzCgYmz8mOqvWus3Q"
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAcGFya2dvbGYuY29tIiwic3ViIjozLCJyb2xlcyI6WyJVU0VSIl0sInR5cGUiOiJ1c2VyIiwiaWF0IjoxNzY4OTc5NjAzLCJleHAiOjE3Njk1ODQ0MDN9.ETMjxCnJUzWdKb-5Qyfje1TFPi_RwqkG6dKYr9qIqIU"
         },
         {
           "name": "currentUser",
-          "value": "{\"id\":3,\"email\":\"test@parkgolf.com\",\"name\":\"테스트사용자\",\"phoneNumber\":\"\",\"createdAt\":\"2026-01-14T02:13:42.575Z\"}"
+          "value": "{\"id\":3,\"email\":\"test@parkgolf.com\",\"name\":\"테스트사용자\",\"phoneNumber\":\"\",\"createdAt\":\"2026-01-21T07:13:23.909Z\"}"
         },
         {
           "name": "auth-storage",
-          "value": "{\"state\":{\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAcGFya2dvbGYuY29tIiwic3ViIjozLCJyb2xlcyI6WyJVU0VSIl0sInR5cGUiOiJ1c2VyIiwiaWF0IjoxNzY4MzU2ODIxLCJleHAiOjE3NjgzNjA0MjF9.ipD3E-o0xQTggCysTSd7qUW0r5nGzoCQDw9TR-KH4CI\",\"refreshToken\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAcGFya2dvbGYuY29tIiwic3ViIjozLCJyb2xlcyI6WyJVU0VSIl0sInR5cGUiOiJ1c2VyIiwiaWF0IjoxNzY4MzU2ODIyLCJleHAiOjE3Njg5NjE2MjJ9.8Fkr8GcFQrrH68fX7HDbUkNqLPVzCgYmz8mOqvWus3Q\"},\"version\":0}"
+          "value": "{\"state\":{\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAcGFya2dvbGYuY29tIiwic3ViIjozLCJyb2xlcyI6WyJVU0VSIl0sInR5cGUiOiJ1c2VyIiwiaWF0IjoxNzY4OTc5NjAzLCJleHAiOjE3Njg5ODMyMDN9.n5N3h2_7VwY-cW0Da_dSeJXyzdHLYrmm8e3hYgI4BUs\",\"refreshToken\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAcGFya2dvbGYuY29tIiwic3ViIjozLCJyb2xlcyI6WyJVU0VSIl0sInR5cGUiOiJ1c2VyIiwiaWF0IjoxNzY4OTc5NjAzLCJleHAiOjE3Njk1ODQ0MDN9.ETMjxCnJUzWdKb-5Qyfje1TFPi_RwqkG6dKYr9qIqIU\"},\"version\":0}"
         }
       ]
     }

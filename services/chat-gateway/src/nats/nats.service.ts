@@ -1,5 +1,7 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Inject, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom, timeout } from 'rxjs';
 import {
   connect,
   NatsConnection,
@@ -47,10 +49,22 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
   private presenceHandlers: ((event: PresenceEvent) => void)[] = [];
   private typingHandlers: Map<string, (event: TypingEvent) => void> = new Map();
 
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    @Inject('CHAT_SERVICE') private chatServiceClient: ClientProxy,
+  ) {}
 
   async onModuleInit() {
+    // Connect raw NATS for JetStream
     await this.connect();
+
+    // Connect NestJS ClientProxy for chat-service
+    try {
+      await this.chatServiceClient.connect();
+      this.logger.log('Connected to chat-service via ClientProxy');
+    } catch (error: any) {
+      this.logger.warn(`Failed to connect chat-service ClientProxy: ${error.message}`);
+    }
   }
 
   async onModuleDestroy() {
@@ -300,38 +314,21 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
     this.typingHandlers.set(roomId, handler);
   }
 
-  // Request to chat-service via NATS (NestJS microservice format)
+  // Request to chat-service via NATS using NestJS ClientProxy
   async requestChatService<T>(pattern: string, data: any): Promise<T> {
-    if (!this.nc) {
-      throw new Error('NATS not connected');
-    }
-
     const subject = `chat.${pattern}`;
-
-    // NestJS microservice expects: { pattern, data, id }
-    const nestMessage = {
-      pattern: subject,
-      data: data,
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    };
-
     this.logger.debug(`NATS request to ${subject}: ${JSON.stringify(data)}`);
 
-    const response = await this.nc.request(
-      subject,
-      this.sc.encode(JSON.stringify(nestMessage)),
-      { timeout: 10000 },
-    );
-
-    const responseData = JSON.parse(this.sc.decode(response.data));
-    this.logger.debug(`NATS response from ${subject}: ${JSON.stringify(responseData)}`);
-
-    // NestJS returns { response, id, isDisposed } or just the response
-    if (responseData && responseData.response !== undefined) {
-      return responseData.response;
+    try {
+      const result = await firstValueFrom(
+        this.chatServiceClient.send<T>(subject, data).pipe(timeout(10000)),
+      );
+      this.logger.debug(`NATS response from ${subject}: ${JSON.stringify(result)}`);
+      return result;
+    } catch (error: any) {
+      this.logger.error(`NATS request failed for ${subject}: ${error.message}`);
+      throw error;
     }
-
-    return responseData;
   }
 
   isConnected(): boolean {
