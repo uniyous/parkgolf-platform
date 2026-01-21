@@ -37,21 +37,22 @@ graph TB
     subgraph "Client Layer"
         AD[Admin Dashboard<br/>React 19 + Redux<br/>:3000]
         UW[User WebApp<br/>React 19<br/>:3001]
-        MA[Mobile App<br/>React Native<br/>Future]
+        IOS[iOS App<br/>SwiftUI + Socket.IO<br/>Native]
+        MA[Mobile App Android<br/>React Native<br/>Future]
     end
 
     subgraph "API Gateway Layer (BFF)"
         AAPI[Admin API<br/>NestJS<br/>:3091]
         UAPI[User API<br/>NestJS<br/>:3092]
+        CHATGW[Chat Gateway<br/>NestJS + Socket.IO<br/>:3095]
     end
 
     subgraph "Microservices Layer"
-        AUTH[Auth Service<br/>NestJS<br/>:3011]
+        IAM[IAM Service<br/>NestJS<br/>:3011]
         COURSE[Course Service<br/>NestJS<br/>NATS Only]
         BOOK[Booking Service<br/>NestJS<br/>:3013]
         NOTIFY[Notify Service<br/>NestJS<br/>:3014]
-        SEARCH[Search Service<br/>NestJS<br/>:3015]
-        ML[ML Service<br/>Express<br/>:4000]
+        CHAT[Chat Service<br/>NestJS<br/>NATS Only]
     end
 
     subgraph "Message Bus"
@@ -61,59 +62,60 @@ graph TB
     subgraph "Data Layer"
         PG[(PostgreSQL<br/>:5432)]
         REDIS[(Redis<br/>:6379)]
-        ES[(Elasticsearch<br/>:9200)]
-        MONGO[(MongoDB<br/>:27017)]
     end
 
     %% Client to BFF connections
     AD --> AAPI
     UW --> UAPI
+    UW -.-> CHATGW
+    IOS --> UAPI
+    IOS --> CHATGW
     MA -.-> UAPI
 
     %% BFF to Services connections
-    AAPI --> AUTH
+    AAPI --> IAM
     AAPI --> COURSE
     AAPI --> BOOK
     AAPI --> NOTIFY
-    AAPI --> SEARCH
-    
-    UAPI --> AUTH
+
+    UAPI --> IAM
     UAPI --> COURSE
     UAPI --> BOOK
-    UAPI --> SEARCH
+
+    %% Chat Gateway connections
+    CHATGW --> CHAT
+    CHATGW --> IAM
 
     %% Service to NATS connections
-    AUTH <--> NATS
+    IAM <--> NATS
     COURSE <--> NATS
     BOOK <--> NATS
     NOTIFY <--> NATS
-    SEARCH <--> NATS
-    ML <--> NATS
+    CHAT <--> NATS
 
     %% Service to Database connections
-    AUTH --> PG
+    IAM --> PG
     COURSE --> PG
     BOOK --> PG
     NOTIFY --> PG
-    SEARCH --> ES
-    ML --> MONGO
+    CHAT --> PG
 
     %% Cache connections
     AAPI --> REDIS
     UAPI --> REDIS
-    AUTH --> REDIS
+    IAM --> REDIS
 
-    classDef frontend fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef bff fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef service fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    classDef data fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
-    classDef message fill:#fce4ec,stroke:#880e4f,stroke-width:2px
-    classDef future fill:#f5f5f5,stroke:#616161,stroke-width:1px,stroke-dasharray: 5 5
+    classDef frontend fill:#4fc3f7,stroke:#01579b,stroke-width:2px,color:#000
+    classDef bff fill:#ffb74d,stroke:#e65100,stroke-width:2px,color:#000
+    classDef service fill:#ba68c8,stroke:#4a148c,stroke-width:2px,color:#fff
+    classDef data fill:#81c784,stroke:#1b5e20,stroke-width:2px,color:#000
+    classDef message fill:#f06292,stroke:#880e4f,stroke-width:2px,color:#fff
+    classDef future fill:#bdbdbd,stroke:#616161,stroke-width:2px,stroke-dasharray: 5 5,color:#000
 
-    class AD,UW frontend
-    class AAPI,UAPI bff
-    class AUTH,COURSE,BOOK,NOTIFY,SEARCH,ML service
-    class PG,REDIS,ES,MONGO data
+    class AD,UW,IOS frontend
+    class AAPI,UAPI,CHATGW bff
+    class IAM,COURSE,BOOK,NOTIFY,CHAT service
+    class PG,REDIS data
     class NATS message
     class MA future
 ```
@@ -125,7 +127,7 @@ sequenceDiagram
     participant UW as User WebApp
     participant UAPI as User API
     participant NATS as NATS
-    participant AUTH as Auth Service
+    participant AUTH as IAM Service
     participant COURSE as Course Service
     participant BOOK as Booking Service
     participant NOTIFY as Notify Service
@@ -152,11 +154,10 @@ sequenceDiagram
 
 | Layer | Purpose | Technologies | Services |
 |-------|---------|--------------|----------|
-| **Presentation** | User Interface | React 19, Redux, Vite | Admin Dashboard, User WebApp |
-| **API Gateway** | Backend for Frontend | NestJS, GraphQL (planned) | Admin API, User API |
-| **Business Logic** | Core Services | NestJS, Express | Auth, Course, Booking, Notify |
-| **Data Processing** | Search & Analytics | NestJS, Python | Search, ML Service |
-| **Data Storage** | Persistence | PostgreSQL, Redis, Elasticsearch | Multiple DBs |
+| **Presentation** | User Interface | React 19, SwiftUI, Redux, Vite | Admin Dashboard, User WebApp, iOS App |
+| **API Gateway** | Backend for Frontend | NestJS, Socket.IO | Admin API, User API, Chat Gateway |
+| **Business Logic** | Core Services | NestJS | IAM, Course, Booking, Notify, Chat |
+| **Data Storage** | Persistence | PostgreSQL, Redis | PostgreSQL (Primary), Redis (Cache) |
 | **Infrastructure** | Messaging & Orchestration | NATS, Docker, Kubernetes | Message Bus, Container |
 
 ### 🔄 Service Dependencies
@@ -164,35 +165,41 @@ sequenceDiagram
 ```mermaid
 graph LR
     subgraph "Core Services"
-        AUTH[Auth Service]
+        IAM[IAM Service]
         COURSE[Course Service]
         BOOK[Booking Service]
     end
 
-    subgraph "Support Services"
-        NOTIFY[Notify Service]
-        SEARCH[Search Service]
-        ML[ML Service]
+    subgraph "Social Services"
+        CHAT[Chat Service]
+        CHATGW[Chat Gateway]
     end
 
-    BOOK --> AUTH
+    subgraph "Support Services"
+        NOTIFY[Notify Service]
+    end
+
+    BOOK --> IAM
     BOOK --> COURSE
     BOOK --> NOTIFY
-    COURSE --> SEARCH
-    BOOK --> ML
-    AUTH --> NOTIFY
+    IAM --> NOTIFY
+    CHATGW --> CHAT
+    CHATGW --> IAM
+    CHAT --> IAM
 
-    style AUTH fill:#ffebee
-    style COURSE fill:#e3f2fd
-    style BOOK fill:#f3e5f5
-    style NOTIFY fill:#e8f5e9
-    style SEARCH fill:#fff3e0
-    style ML fill:#fce4ec
+    style IAM fill:#ef9a9a,stroke:#c62828,stroke-width:2px,color:#000
+    style COURSE fill:#90caf9,stroke:#1565c0,stroke-width:2px,color:#000
+    style BOOK fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px,color:#000
+    style NOTIFY fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px,color:#000
+    style CHAT fill:#81d4fa,stroke:#0277bd,stroke-width:2px,color:#000
+    style CHATGW fill:#ffe082,stroke:#ff8f00,stroke-width:2px,color:#000
 ```
 
 ## Technology Stack
 
 ### Frontend Technologies
+
+#### Web (React)
 | Component | Technology | Version | Purpose |
 |-----------|------------|---------|---------|
 | **Framework** | React | 19.1 | UI Library |
@@ -203,6 +210,17 @@ graph LR
 | **UI Components** | Headless UI, Lucide React | latest | Component Library |
 | **HTTP Client** | Axios | 1.10 | API Communication |
 | **Routing** | React Router | 7.6 | Client-side Routing |
+
+#### iOS (Swift)
+| Component | Technology | Version | Purpose |
+|-----------|------------|---------|---------|
+| **UI Framework** | SwiftUI | 5.0+ | Declarative UI |
+| **Language** | Swift | 5.9+ | Native iOS Development |
+| **Build System** | Tuist | 4.x | Project Generation |
+| **Networking** | Alamofire | 5.x | HTTP Client |
+| **WebSocket** | Socket.IO-Client-Swift | 16.x | Real-time Communication |
+| **Async/Await** | Swift Concurrency | Native | Async Operations |
+| **State** | Combine + @Observable | Native | Reactive Programming |
 
 ### Backend Technologies
 | Component | Technology | Version | Purpose |
@@ -222,8 +240,6 @@ graph LR
 | **Database** | PostgreSQL | 15+ | Primary Database |
 | **Cache** | Redis | 7.x | Session & Cache |
 | **Message Broker** | NATS | 2.29 | Event Streaming |
-| **Search Engine** | Elasticsearch | 8.x | Full-text Search (planned) |
-| **NoSQL** | MongoDB | 5.x | ML Service Data (planned) |
 | **Container** | Docker | 24.x | Containerization |
 | **Orchestration** | Kubernetes | 1.28+ | Container Orchestration |
 | **Cloud** | Google Cloud Platform | - | Cloud Run, GCR |
@@ -250,25 +266,72 @@ graph LR
 - 타임슬롯 관리
 ```
 
-#### User WebApp (:3001) 🚧
+#### User WebApp (:3001) ✅
 ```typescript
 // Tech Stack
 - Framework: React 19.1 + TypeScript 5.8
-- State: Redux Toolkit 2.8
+- State: Zustand (auth only) + React Query (server state)
 - Routing: React Router 7.6
-- UI: Tailwind CSS 4.1.8 + Custom Components
+- UI: Tailwind CSS 4.1.8 + Custom Glass Components
 - Build: Vite 6.3 + SWC
 - HTTP: Axios 1.10
 
-// Features (Planned)
-- 사용자 회원가입/로그인
-- 골프장 검색 및 조회
-- 예약 생성/수정/취소
-- 결제 시스템 연동
-- 예약 히스토리
-- 프로필 관리
+// Features
+- ✅ 사용자 회원가입/로그인
+- ✅ 골프장 검색 및 조회
+- ✅ 예약 생성/수정/취소
+- ✅ 친구 관리 (추가/삭제/검색)
+- ✅ 채팅 (REST + WebSocket)
+- 🚧 결제 시스템 연동
+- ✅ 프로필 관리
 
-// Status: Basic structure only, blocked by User API NATS integration
+// Status: Most features implemented
+```
+
+#### iOS App (user-app-ios) ✅
+```swift
+// Tech Stack
+- UI: SwiftUI 5.0+
+- Language: Swift 5.9+
+- Build: Tuist 4.x (Project Generation)
+- Network: Alamofire 5.x (REST), Socket.IO-Client-Swift 16.x (WebSocket)
+- Concurrency: Swift Concurrency (async/await)
+- State: Combine + @Observable macro
+
+// Architecture
+- MVVM Pattern
+- Feature-based folder structure
+- Centralized APIClient for REST calls
+- ChatSocketManager for real-time messaging
+
+// Features
+- ✅ 사용자 인증 (로그인/회원가입/토큰 갱신)
+- ✅ 골프장 검색 및 상세 조회
+- ✅ 예약 생성/조회/취소
+- ✅ 친구 관리 (추가/삭제/검색/주소록 연동)
+- ✅ 실시간 채팅 (Socket.IO)
+- ✅ 라운드 기록 및 통계
+- ✅ 프로필 관리
+
+// API Endpoints
+- REST: user-api (https://user-api-xxx.run.app)
+- WebSocket: chat-gateway (https://chat-gateway-xxx.run.app)
+
+// Folder Structure
+Sources/
+├── Core/
+│   ├── Network/       # APIClient, Endpoints, ChatSocketManager
+│   ├── Models/        # Data models (User, ChatRoom, Friend, etc.)
+│   └── Utils/         # Configuration, Helpers
+├── Features/
+│   ├── Auth/          # Login, SignUp
+│   ├── Home/          # Dashboard
+│   ├── Booking/       # 예약 관련
+│   ├── Chat/          # 채팅 (ChatListView, ChatRoomView)
+│   ├── Friends/       # 친구 관리
+│   ├── Round/         # 라운드 기록
+│   └── Profile/       # 프로필
+└── App/               # App entry point
 ```
 
 ### 2. BFF Services (Backend for Frontend)
@@ -285,12 +348,10 @@ graph LR
 - Error handling
 
 // Connected Services
-- Auth Service (인증/인가)
+- IAM Service (인증/인가)
 - Course Service (골프장 데이터)
 - Booking Service (예약 관리)
 - Notify Service (알림 발송)
-- Search Service (검색)
-- ML Service (분석)
 ```
 
 #### User API (:3092) ✅
@@ -305,7 +366,7 @@ graph LR
 - Response optimization
 
 // Connected Services (via NATS)
-- Auth Service (인증)
+- IAM Service (인증)
 - Course Service (골프장 조회)
 - Booking Service (예약 - Saga 패턴)
 - Notify Service (알림)
@@ -321,12 +382,12 @@ graph LR
 
 ### 3. Core Microservices
 
-#### Auth Service (:3011 / :8080) ✅
+#### IAM Service (:3011 / :8080) ✅
 ```typescript
-// Database: PostgreSQL (auth_db)
+// Database: PostgreSQL (iam_db)
 // Communication: NATS + HTTP (Cloud Run)
 
-// Core Features
+// Core Features - Authentication
 - JWT 토큰 발급/검증 (Access 15min + Refresh 7days)
 - 사용자 인증 (일반/관리자 분리)
 - RBAC 권한 시스템 (40+ permissions)
@@ -336,13 +397,27 @@ graph LR
 - Admin activity logging
 - Refresh token 관리
 
+// Core Features - Friends ✅
+- 친구 목록 관리
+- 친구 요청 (보내기/수락/거절)
+- 사용자 검색 (이름/이메일)
+- 연락처 기반 친구 찾기 (phone number matching)
+- 친구 관계 상태 관리
+
 // Message Patterns (NATS)
-- auth.login
-- auth.validate
-- auth.refresh
+- auth.login / auth.validate / auth.refresh
 - users.create/list/findById/update/delete
-- auth.admin.*
-- auth.permission.*
+- auth.admin.* / auth.permission.*
+- friends.list              # 친구 목록 조회
+- friends.requests          # 받은 친구 요청
+- friends.requests.sent     # 보낸 친구 요청
+- friends.search            # 사용자 검색
+- friends.contacts.search   # 연락처 기반 검색
+- friends.request.send      # 친구 요청 보내기
+- friends.request.accept    # 친구 요청 수락
+- friends.request.reject    # 친구 요청 거절
+- friends.remove            # 친구 삭제
+- friends.check             # 친구 여부 확인
 
 // Cloud Run Optimization
 - Health check endpoint at /health
@@ -452,58 +527,71 @@ graph LR
 // Note: External service configurations needed (SendGrid, Twilio, FCM)
 ```
 
-### 4. Advanced Services
+### 4. Social Services
 
-#### Search Service (:3015 / :8080) 🚧
+#### Chat Service (NATS only / :8080) ✅
 ```typescript
-// Database: Elasticsearch
-// Communication: NATS + HTTP
+// Database: PostgreSQL (chat_db)
+// Communication: NATS only (no HTTP endpoints)
 
-// Planned Features
-- 골프장 전문 검색
-- 위치 기반 검색
-- 가용 타임슬롯 검색
-- 자동완성
-- 필터링 및 정렬
-- 검색 히스토리
-- 인기 검색어
+// Data Models
+- ChatRoom: 채팅방 (DIRECT, GROUP, BOOKING 타입)
+- ChatMessage: 메시지 (TEXT, IMAGE, SYSTEM, BOOKING_INVITE)
+- ChatRoomMember: 채팅방 멤버
 
-// Current Status
-- ✅ NestJS basic structure created
-- 🚧 Elasticsearch integration not implemented
-- 🚧 Search logic pending
-- 📋 Low priority for MVP
+// Core Features
+- ✅ 채팅방 생성/조회/삭제
+- ✅ 1:1 채팅 (DIRECT)
+- ✅ 그룹 채팅 (GROUP)
+- ✅ 예약 기반 채팅방 (BOOKING)
+- ✅ 메시지 저장/조회
+- ✅ 읽음 처리
+- ✅ 읽지 않은 메시지 카운트
 
-// Priority: P2 (Nice to Have)
+// Message Patterns (NATS)
+- chat.rooms.create       # 채팅방 생성
+- chat.rooms.get          # 채팅방 조회
+- chat.rooms.list         # 사용자 채팅방 목록
+- chat.rooms.addMember    # 멤버 추가
+- chat.rooms.removeMember # 멤버 제거
+- chat.rooms.booking      # 예약 기반 채팅방 생성/조회
+- chat.messages.save      # 메시지 저장
+- chat.messages.list      # 메시지 목록 조회
+- chat.messages.markRead  # 읽음 처리
+- chat.messages.unreadCount # 읽지 않은 메시지 수
+- chat.messages.delete    # 메시지 삭제
 ```
 
-#### ML Service (:4000) 🚧
+#### Chat Gateway (:3095 / :8080) ✅
 ```typescript
-// Database: MongoDB
-// Communication: NATS + HTTP
-// Stack: Express.js (different from others)
+// Communication: Socket.IO (WebSocket) + NATS
+// Namespace: /chat
 
-// Structure
-- Wrapper package for ML/MCP services
-- Separate ml-services/ subdirectory
-- Separate mcp-services/ subdirectory
+// Purpose
+- 실시간 채팅 WebSocket 서버
+- 클라이언트와 chat-service 중개
+- 토큰 기반 인증 (WsAuthGuard)
 
-// Planned Features
-- 수요 예측
-- 가격 최적화
-- 사용자 추천
-- 이상 탐지
-- 예약 패턴 분석
-- 시즌별 트렌드
+// Socket.IO Events (Client → Server)
+- join_room: 채팅방 입장
+- leave_room: 채팅방 퇴장
+- send_message: 메시지 전송
+- typing: 타이핑 표시
 
-// Current Status
-- ✅ Package structure created
-- 🚧 ML logic not implemented
-- 🚧 MongoDB integration pending
-- 📋 Low priority for MVP
+// Socket.IO Events (Server → Client)
+- connected: 연결 성공
+- new_message: 새 메시지 수신
+- user_joined: 사용자 입장 알림
+- user_left: 사용자 퇴장 알림
+- typing: 타이핑 상태 알림
+- error: 에러 알림
 
-// Priority: P2 (Future Enhancement)
-// Note: Uses Express.js instead of NestJS
+// Connection Flow
+1. Client connects with token in query params
+2. WsAuthGuard validates JWT token
+3. Client joins specific chat rooms
+4. Real-time messaging via Socket.IO
+5. Messages persisted via NATS → chat-service
 ```
 
 ## Communication Patterns
@@ -537,16 +625,55 @@ Event Examples:
 
 ### 3. Communication Matrix
 
-| From ↓ To → | Auth | Course | Booking | Notify | Search | ML |
-|-------------|------|--------|---------|--------|--------|-----|
-| **Auth** | - | - | - | Pub | - | - |
-| **Course** | - | - | - | - | Pub | - |
-| **Booking** | Req | Req | - | Pub | - | Pub |
-| **Notify** | Sub | Sub | Sub | - | - | - |
-| **Search** | - | Sub | Sub | - | - | - |
-| **ML** | - | Sub | Sub | - | - | - |
+| From ↓ To → | IAM | Course | Booking | Notify | Chat |
+|-------------|-----|--------|---------|--------|------|
+| **IAM** | - | - | - | Pub | - |
+| **Course** | - | - | - | - | - |
+| **Booking** | Req | Req | - | Pub | Pub |
+| **Notify** | Sub | Sub | Sub | - | - |
+| **Chat** | Req | - | - | - | - |
+| **Chat GW** | Req | - | - | - | Req |
 
 *Req: Request, Pub: Publish, Sub: Subscribe*
+
+### 4. Friends & Chat Communication Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User (iOS/Web)
+    participant UAPI as User API
+    participant CHATGW as Chat Gateway
+    participant IAM as IAM Service
+    participant CHAT as Chat Service
+    participant NATS as NATS
+
+    Note over U,CHAT: Friends Flow
+    U->>UAPI: GET /api/user/friends
+    UAPI->>NATS: friends.list
+    NATS->>IAM: friends.list
+    IAM-->>NATS: Friend List
+    NATS-->>UAPI: Response
+    UAPI-->>U: Friends Data
+
+    Note over U,CHAT: Chat Flow (REST + WebSocket)
+    U->>CHATGW: Connect (Socket.IO + token)
+    CHATGW->>IAM: Validate Token
+    IAM-->>CHATGW: User Info
+    CHATGW-->>U: connected
+
+    U->>CHATGW: join_room
+    CHATGW->>NATS: chat.rooms.get
+    NATS->>CHAT: chat.rooms.get
+    CHAT-->>NATS: Room Data
+    NATS-->>CHATGW: Response
+    CHATGW-->>U: room_joined
+
+    U->>CHATGW: send_message
+    CHATGW->>NATS: chat.messages.save
+    NATS->>CHAT: Save Message
+    CHAT-->>NATS: Saved Message
+    CHATGW-->>U: new_message (broadcast)
+```
 
 ## Saga Pattern (Distributed Transactions)
 
@@ -670,26 +797,24 @@ await this.prisma.$transaction(async (tx) => {
 ```mermaid
 graph TD
     subgraph "PostgreSQL Cluster :5432"
-        AUTH_DB[(auth_db<br/>Users, Admins, Roles)]
+        IAM_DB[(iam_db<br/>Users, Admins, Roles, Friends)]
         COURSE_DB[(course_db<br/>Companies, Courses, TimeSlots)]
         BOOKING_DB[(booking_db<br/>Bookings, Payments)]
         NOTIFY_DB[(notify_db<br/>Templates, Logs)]
+        CHAT_DB[(chat_db<br/>Rooms, Messages)]
     end
 
-    subgraph "NoSQL Databases"
+    subgraph "Cache Layer"
         REDIS[(Redis :6379<br/>Cache, Sessions)]
-        ES[(Elasticsearch :9200<br/>Search Index)]
-        MONGO[(MongoDB :27017<br/>ML Data)]
     end
 
-    AUTH[Auth Service] --> AUTH_DB
+    IAM[IAM Service] --> IAM_DB
     COURSE[Course Service] --> COURSE_DB
     BOOK[Booking Service] --> BOOKING_DB
     NOTIFY[Notify Service] --> NOTIFY_DB
-    
-    AUTH --> REDIS
-    SEARCH[Search Service] --> ES
-    ML[ML Service] --> MONGO
+    CHAT[Chat Service] --> CHAT_DB
+
+    IAM --> REDIS
 ```
 
 ### 2. Data Synchronization Strategy
@@ -777,7 +902,7 @@ graph TD
             end
             
             subgraph "Service Pods"
-                AUTH[Auth Service<br/>Replicas: 2]
+                AUTH[IAM Service<br/>Replicas: 2]
                 COURSE[Course Service<br/>Replicas: 2]
                 BOOK[Booking Service<br/>Replicas: 3]
                 NOTIFY[Notify Service<br/>Replicas: 2]
@@ -912,10 +1037,10 @@ graph LR
 - [ ] Basic search functionality
 
 ### Phase 2: Enhancement (Q2 2025)
-- [ ] Mobile app development
-- [ ] Advanced search with Elasticsearch
-- [ ] ML-based recommendations
+- [ ] Android app development
+- [ ] Advanced search functionality
 - [ ] Multi-language support
+- [ ] Push notification integration
 
 ### Phase 3: Scale (Q3 2025)
 - [ ] GraphQL API layer
@@ -947,14 +1072,26 @@ graph LR
 
 ---
 
-**Document Version**: 2.2.0
-**Last Updated**: 2025-12-29
-**Next Review**: 2026-01-15
+**Document Version**: 2.3.0
+**Last Updated**: 2026-01-21
+**Next Review**: 2026-02-15
 **Maintained By**: Platform Team
 
 *This document is the single source of truth for Park Golf Platform architecture.*
 
-## 📋 Recent Updates (2025-12-29)
+## 📋 Recent Updates (2026-01-21)
+- Added iOS App (user-app-ios) documentation with SwiftUI + Socket.IO stack
+- Added Chat Service and Chat Gateway documentation
+- Added Friends feature to IAM Service (previously Auth Service)
+- Renamed Auth Service → IAM Service
+- Updated Architecture Diagram to include iOS, Chat Gateway, Chat Service
+- Added Friends & Chat Communication Flow diagram
+- Updated Communication Matrix with Chat and Chat GW
+- Added iOS Technologies table (Swift, SwiftUI, Tuist, Alamofire, Socket.IO)
+- User WebApp status updated to ✅ (most features implemented)
+- Removed Search Service, ML Service, Elasticsearch, MongoDB (not in current scope)
+
+## 📋 Previous Updates (2025-12-29)
 - Overall completion updated to 85%
 - Added Saga Pattern (Distributed Transactions) section with detailed documentation
 - User API status updated to ✅ (NATS integration complete, no longer blocking)

@@ -6,13 +6,86 @@
 apps/
 ├── admin-dashboard/    # 관리자 웹 (React + Vite + Tailwind)
 ├── user-webapp/        # 사용자 웹 (React + Vite + Tailwind)
+├── user-app-ios/       # iOS 앱 (SwiftUI + Tuist)
 services/
 ├── admin-api/          # BFF (NestJS) - REST → NATS
 ├── user-api/           # BFF (NestJS) - REST → NATS
-├── iam-service/        # 인증/사용자/회사/역할 (Prisma)
+├── chat-gateway/       # WebSocket 서버 (Socket.IO)
+├── iam-service/        # 인증/사용자/친구 (Prisma)
 ├── course-service/     # 골프장/코스/게임 (Prisma)
-├── booking-service/    # 예약/결제/정책 (Prisma)
+├── booking-service/    # 예약/Saga (Prisma)
+├── chat-service/       # 채팅 (Prisma)
 └── notify-service/     # 알림 (Prisma)
+```
+
+## 상세 문서
+
+| 문서 | 내용 |
+|------|------|
+| `docs/ARCHITECTURE.md` | 전체 시스템 아키텍처, 다이어그램 |
+| `docs/BOOKING-WORKFLOW.md` | 예약 Saga 패턴, 분산 트랜잭션 |
+
+---
+
+## 코드 컨벤션
+
+### 네이밍
+
+| 대상 | 컨벤션 | 예시 |
+|------|--------|------|
+| 파일/폴더 | kebab-case | `user-api`, `game-time-slot.service.ts` |
+| 클래스 | PascalCase | `BookingService`, `GameNatsController` |
+| 함수/변수 | camelCase | `getBookings`, `userId` |
+| 상수 | UPPER_SNAKE | `MAX_RETRY_COUNT`, `SAGA_TIMEOUT_MS` |
+| DB 테이블 | snake_case | `game_time_slots`, `booking_history` |
+| NATS 패턴 | dot.notation | `booking.create`, `slot.reserve` |
+| React 컴포넌트 | PascalCase | `BookingTable`, `ClubFormModal` |
+| React 훅 | use 접두사 | `useBookingsQuery`, `useAuthStore` |
+| Swift 파일 | PascalCase | `BookingViewModel.swift`, `APIClient.swift` |
+
+### 포맷팅
+
+- ESLint + Prettier (자동 적용)
+- 들여쓰기: 2 spaces
+- 세미콜론: 필수 (TypeScript)
+- 따옴표: single quote (JS/TS), double quote (Swift)
+
+### 커밋 메시지
+
+```
+<type>(<scope>): <description>
+
+feat(booking): 예약 생성 API 추가
+fix(iam): 토큰 갱신 버그 수정
+refactor(course): 타임슬롯 조회 로직 개선
+docs(readme): 설치 가이드 업데이트
+test(booking): 예약 취소 테스트 추가
+```
+
+| type | 용도 |
+|------|------|
+| `feat` | 새 기능 |
+| `fix` | 버그 수정 |
+| `refactor` | 리팩토링 (기능 변경 없음) |
+| `docs` | 문서 수정 |
+| `test` | 테스트 추가/수정 |
+| `chore` | 빌드, 설정 변경 |
+
+### TypeScript 규칙
+
+```typescript
+// ✅ 명시적 타입 선언
+function getUser(id: number): Promise<User> { }
+
+// ✅ interface 우선 (type은 union/intersection에만)
+interface User {
+  id: number;
+  name: string;
+}
+
+// ❌ any 사용 금지 (unknown 또는 제네릭 사용)
+function process(data: any) { }      // 금지
+function process<T>(data: T) { }     // 권장
 ```
 
 ---
@@ -200,6 +273,64 @@ async getData(params: any) {
 # Backend
 cd services/{service-name} && npm run start:dev
 
-# Frontend
+# Frontend (Web)
 cd apps/{app-name} && npm run dev
+
+# iOS
+cd apps/user-app-ios && tuist generate && open ParkGolf.xcworkspace
+```
+
+---
+
+## iOS 규칙 (user-app-ios)
+
+### 아키텍처
+
+```
+SwiftUI + MVVM + Combine
+REST API (Alamofire) + WebSocket (Socket.IO)
+```
+
+### 폴더 구조
+
+```
+Sources/
+├── Core/
+│   ├── Network/       # APIClient, ChatSocketManager
+│   ├── Models/        # 데이터 모델
+│   └── Utils/         # Configuration, Helpers
+├── Features/          # 기능별 (Auth, Booking, Chat, Friends...)
+│   └── {Feature}/
+│       ├── {Feature}View.swift
+│       └── {Feature}ViewModel.swift
+└── App/               # 앱 진입점
+```
+
+### API 엔드포인트
+
+```swift
+// REST API: user-api
+let baseURL = "https://user-api-xxx.run.app"
+
+// WebSocket: chat-gateway
+let socketURL = "https://chat-gateway-xxx.run.app"
+```
+
+### 금지 패턴
+
+```swift
+// ❌ View에서 직접 API 호출
+struct MyView: View {
+    var body: some View {
+        Button("Load") { await api.fetch() }  // 금지
+    }
+}
+
+// ✅ ViewModel 사용
+struct MyView: View {
+    @StateObject var viewModel = MyViewModel()
+    var body: some View {
+        Button("Load") { await viewModel.load() }
+    }
+}
 ```
