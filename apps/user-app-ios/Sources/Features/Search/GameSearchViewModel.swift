@@ -9,7 +9,7 @@ class GameSearchViewModel: ObservableObject {
 
     @Published var games: [Game] = []
     @Published var searchQuery: String = ""
-    @Published var selectedDate: Date = Date()
+    @Published var selectedDate: Date = DateHelper.tomorrow()
     @Published var selectedTimeOfDay: GameSearchParams.TimeOfDay = .all
     @Published var minPrice: String = ""
     @Published var maxPrice: String = ""
@@ -138,6 +138,13 @@ class GameSearchViewModel: ObservableObject {
 
     func formatDate(_ date: Date) -> String {
         DateHelper.toRelativeDate(date)
+    }
+
+    // MARK: - Time of Day Selection
+
+    func selectTimeOfDay(_ timeOfDay: GameSearchParams.TimeOfDay) {
+        selectedTimeOfDay = timeOfDay
+        search()
     }
 
     // MARK: - Filters

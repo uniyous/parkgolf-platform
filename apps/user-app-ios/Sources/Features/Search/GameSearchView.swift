@@ -156,8 +156,7 @@ struct GameSearchView: View {
                     title: timeOfDay.rawValue,
                     isSelected: viewModel.selectedTimeOfDay == timeOfDay
                 ) {
-                    viewModel.selectedTimeOfDay = timeOfDay
-                    viewModel.search()
+                    viewModel.selectTimeOfDay(timeOfDay)
                 }
             }
 
@@ -214,21 +213,23 @@ struct DateChip: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.parkLabelMedium)
-                .foregroundStyle(isSelected ? .white : .white.opacity(0.7))
-                .padding(.horizontal, ParkSpacing.md)
-                .padding(.vertical, ParkSpacing.xs)
-                .background(
-                    RoundedRectangle(cornerRadius: ParkRadius.full)
-                        .fill(isSelected ? Color.parkPrimary : Color.white.opacity(0.1))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: ParkRadius.full)
-                        .stroke(isSelected ? Color.parkPrimary : Color.white.opacity(0.2), lineWidth: 1)
-                )
-        }
+        Text(title)
+            .font(.parkLabelMedium)
+            .foregroundStyle(isSelected ? .white : .white.opacity(0.7))
+            .padding(.horizontal, ParkSpacing.md)
+            .padding(.vertical, ParkSpacing.xs)
+            .background(
+                RoundedRectangle(cornerRadius: ParkRadius.full)
+                    .fill(isSelected ? Color.parkPrimary : Color.white.opacity(0.1))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: ParkRadius.full)
+                    .stroke(isSelected ? Color.parkPrimary : Color.white.opacity(0.2), lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+            .onTapGesture {
+                action()
+            }
     }
 }
 
@@ -240,21 +241,23 @@ struct FilterChip: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.parkLabelSmall)
-                .foregroundStyle(isSelected ? .white : .white.opacity(0.6))
-                .padding(.horizontal, ParkSpacing.sm)
-                .padding(.vertical, ParkSpacing.xxs)
-                .background(
-                    Capsule()
-                        .fill(isSelected ? Color.parkPrimary.opacity(0.8) : Color.clear)
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(isSelected ? Color.clear : Color.white.opacity(0.3), lineWidth: 1)
-                )
-        }
+        Text(title)
+            .font(.parkLabelSmall)
+            .foregroundStyle(isSelected ? .white : .white.opacity(0.6))
+            .padding(.horizontal, ParkSpacing.sm)
+            .padding(.vertical, ParkSpacing.xxs)
+            .background(
+                Capsule()
+                    .fill(isSelected ? Color.parkPrimary.opacity(0.8) : Color.clear)
+            )
+            .overlay(
+                Capsule()
+                    .stroke(isSelected ? Color.clear : Color.white.opacity(0.3), lineWidth: 1)
+            )
+            .contentShape(Capsule())
+            .onTapGesture {
+                action()
+            }
     }
 }
 
@@ -269,11 +272,11 @@ struct GameCardView: View {
 
     private var displayedSlots: [GameTimeSlot] {
         guard let slots = game.timeSlots else { return [] }
-        return showAllSlots ? slots : Array(slots.prefix(6))
+        return showAllSlots ? slots : Array(slots.prefix(4))
     }
 
     private var hasMoreSlots: Bool {
-        (game.timeSlots?.count ?? 0) > 6
+        (game.timeSlots?.count ?? 0) > 4
     }
 
     var body: some View {
@@ -331,9 +334,9 @@ struct GameCardView: View {
                                     showAllSlots = true
                                 }
                             } label: {
-                                Text("+ \((game.timeSlots?.count ?? 0) - 6)개 더보기")
+                                Text("+ \((game.timeSlots?.count ?? 0) - 4)개 더보기")
                                     .font(.parkLabelSmall)
-                                    .foregroundStyle(Color.parkPrimary)
+                                    .foregroundStyle(.white)
                             }
                         }
                     }

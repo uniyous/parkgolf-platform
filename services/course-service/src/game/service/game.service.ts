@@ -226,6 +226,8 @@ export class GameService {
     const {
       search,
       date,
+      startTimeFrom,
+      startTimeTo,
       clubId,
       minPrice,
       maxPrice,
@@ -239,7 +241,7 @@ export class GameService {
     // 날짜가 없으면 오늘 날짜를 기본값으로 사용 (항상 타임슬롯이 있는 게임만 조회)
     const searchDate = date || new Date().toISOString().split('T')[0];
 
-    this.logger.log(`Searching games - search: ${search || 'none'}, date: ${searchDate}, clubId: ${clubId || 'all'}, price: ${minPrice}-${maxPrice}, minPlayers: ${minPlayers}`);
+    this.logger.log(`Searching games - search: ${search || 'none'}, date: ${searchDate}, timeRange: ${startTimeFrom || 'any'}-${startTimeTo || 'any'}, clubId: ${clubId || 'all'}, price: ${minPrice}-${maxPrice}, minPlayers: ${minPlayers}`);
 
     const targetDate = new Date(searchDate);
 
@@ -303,6 +305,8 @@ export class GameService {
           AND gts.is_active = true
           AND gts.booked_players < gts.max_players
           AND (${minPlayers ?? null}::int IS NULL OR (gts.max_players - gts.booked_players) >= ${minPlayers ?? null})
+          AND (${startTimeFrom ?? null}::text IS NULL OR gts.start_time >= ${startTimeFrom ?? null})
+          AND (${startTimeTo ?? null}::text IS NULL OR gts.start_time <= ${startTimeTo ?? null})
         GROUP BY gts.game_id
       )
       SELECT
@@ -365,6 +369,8 @@ export class GameService {
         AND gts.is_active = true
         AND gts.booked_players < gts.max_players
         AND (${minPlayers ?? null}::int IS NULL OR (gts.max_players - gts.booked_players) >= ${minPlayers ?? null})
+        AND (${startTimeFrom ?? null}::text IS NULL OR gts.start_time >= ${startTimeFrom ?? null})
+        AND (${startTimeTo ?? null}::text IS NULL OR gts.start_time <= ${startTimeTo ?? null})
       INNER JOIN clubs c ON g.club_id = c.id
       WHERE g.is_active = true
         AND (${searchPattern}::text IS NULL OR (

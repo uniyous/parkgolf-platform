@@ -156,10 +156,15 @@ enum DateHelper: Sendable {
 
     // MARK: - Date Range Helpers
 
-    /// 오늘부터 n일간의 날짜 배열
+    /// 내일부터 n일간의 날짜 배열
     static func dateRange(days: Int) -> [Date] {
-        (0..<days).compactMap {
+        (1...days).compactMap {
             Calendar.current.date(byAdding: .day, value: $0, to: Date())
         }
+    }
+
+    /// 내일 날짜 반환
+    static func tomorrow() -> Date {
+        Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
     }
 }

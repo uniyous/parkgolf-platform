@@ -13,6 +13,16 @@ export class SearchGamesDto {
   @IsOptional()
   date?: string;
 
+  @ApiPropertyOptional({ description: '시작 시간 필터 (HH:mm format, e.g., "06:00")' })
+  @IsString()
+  @IsOptional()
+  startTimeFrom?: string;
+
+  @ApiPropertyOptional({ description: '종료 시간 필터 (HH:mm format, e.g., "11:59")' })
+  @IsString()
+  @IsOptional()
+  startTimeTo?: string;
+
   @ApiPropertyOptional({ description: '클럽 ID' })
   @IsNumber()
   @IsOptional()

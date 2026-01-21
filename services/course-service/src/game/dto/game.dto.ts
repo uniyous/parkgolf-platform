@@ -223,6 +223,14 @@ export class SearchGamesQueryDto {
   @IsOptional()
   date?: string;  // YYYY-MM-DD format - 해당 날짜에 예약 가능한 타임슬롯이 있는 게임만 필터링
 
+  @IsString()
+  @IsOptional()
+  startTimeFrom?: string;  // 시작 시간 필터 (HH:mm format, e.g., "06:00")
+
+  @IsString()
+  @IsOptional()
+  startTimeTo?: string;  // 종료 시간 필터 (HH:mm format, e.g., "11:59")
+
   @IsNumber()
   @IsOptional()
   @Type(() => Number)
