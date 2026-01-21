@@ -49,6 +49,12 @@ export interface SendMessageRequest {
   messageType?: MessageType;
 }
 
+export interface MessagesResponse {
+  messages: ChatMessage[];
+  hasMore: boolean;
+  nextCursor: string | null;
+}
+
 // ============================================
 // Helper Functions
 // ============================================
@@ -163,15 +169,19 @@ export const chatApi = {
   },
 
   /**
-   * 메시지 목록 조회
+   * 메시지 목록 조회 (cursor 기반)
    * API 응답: { success: true, data: { messages: [...], hasMore, nextCursor } }
    */
-  getMessages: async (roomId: string, page = 1, limit = 50): Promise<PaginatedResult<ChatMessage>> => {
-    const response = await apiClient.get<BffResponse<ChatMessage[]>>(
+  getMessages: async (roomId: string, cursor?: string, limit = 50): Promise<MessagesResponse> => {
+    const params: Record<string, string | number> = { limit };
+    if (cursor) {
+      params.cursor = cursor;
+    }
+    const response = await apiClient.get<BffResponse<MessagesResponse>>(
       `/api/user/chat/rooms/${roomId}/messages`,
-      { page, limit }
+      params
     );
-    return extractPaginatedList<ChatMessage>(response.data, 'messages');
+    return unwrapResponse(response.data);
   },
 
   /**

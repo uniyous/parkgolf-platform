@@ -1,5 +1,5 @@
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { chatApi, type CreateChatRoomRequest, type MessageType } from '@/lib/api/chatApi';
+import { useQuery, useMutation, useQueryClient, keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
+import { chatApi, type CreateChatRoomRequest, type MessageType, type MessagesResponse } from '@/lib/api/chatApi';
 
 // ============================================
 // Query Keys
@@ -45,16 +45,30 @@ export const useChatRoomQuery = (roomId: string) => {
 };
 
 /**
- * 메시지 목록 조회
+ * 메시지 목록 조회 (cursor 기반 무한 스크롤)
  */
-export const useMessagesQuery = (roomId: string, page = 1, limit = 50) => {
-  return useQuery({
-    queryKey: chatKeys.messageList(roomId, page, limit),
-    queryFn: () => chatApi.getMessages(roomId, page, limit),
+export const useMessagesInfiniteQuery = (roomId: string, limit = 50) => {
+  return useInfiniteQuery({
+    queryKey: chatKeys.messages(roomId),
+    queryFn: ({ pageParam }) => chatApi.getMessages(roomId, pageParam, limit),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     enabled: !!roomId,
     staleTime: 1000 * 30, // 30 seconds
     gcTime: 1000 * 60 * 10, // 10 minutes
-    placeholderData: keepPreviousData,
+  });
+};
+
+/**
+ * 메시지 목록 조회 (단일 페이지 - 초기 로드용)
+ */
+export const useMessagesQuery = (roomId: string, limit = 50) => {
+  return useQuery({
+    queryKey: [...chatKeys.messages(roomId), 'initial'],
+    queryFn: () => chatApi.getMessages(roomId, undefined, limit),
+    enabled: !!roomId,
+    staleTime: 1000 * 30, // 30 seconds
+    gcTime: 1000 * 60 * 10, // 10 minutes
   });
 };
 

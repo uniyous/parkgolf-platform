@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useChatRoomQuery, useMessagesQuery, useSendMessageMutation } from '@/hooks/queries/chat';
+import { useChatRoomQuery, useMessagesInfiniteQuery, useSendMessageMutation } from '@/hooks/queries/chat';
 import { chatSocket } from '@/lib/socket/chatSocket';
 import { authStorage } from '@/lib/storage';
 import { showErrorToast } from '@/lib/toast';
@@ -15,29 +15,50 @@ export const ChatRoomPage: React.FC = () => {
   const user = useAuthStore((state) => state.user);
   const currentUserId = String(user?.id ?? '');
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [realtimeMessages, setRealtimeMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const prevScrollHeightRef = useRef<number>(0);
 
   // Queries
   const { data: room, isLoading: isLoadingRoom } = useChatRoomQuery(roomId ?? '');
-  const { data: messagesData, isLoading: isLoadingMessages } = useMessagesQuery(roomId ?? '');
+  const {
+    data: messagesData,
+    isLoading: isLoadingMessages,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useMessagesInfiniteQuery(roomId ?? '');
   const sendMessageMutation = useSendMessageMutation();
 
-  // Initialize messages from query
-  useEffect(() => {
-    if (messagesData?.data) {
-      // Sort by createdAt ascending (oldest first = newest at bottom)
-      const sorted = [...messagesData.data].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-      setMessages(sorted);
+  // Merge DB messages from infinite query with realtime messages
+  const messages = useMemo(() => {
+    const dbMessages: ChatMessage[] = [];
+    if (messagesData?.pages) {
+      // Pages are in reverse order (newest first), so we reverse to get oldest first
+      for (let i = messagesData.pages.length - 1; i >= 0; i--) {
+        const page = messagesData.pages[i];
+        dbMessages.push(...page.messages);
+      }
     }
-  }, [messagesData]);
+    // Sort by createdAt ascending (oldest first = newest at bottom)
+    const sorted = [...dbMessages].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    // Add realtime messages that are not in DB yet
+    const allMessages = [...sorted];
+    realtimeMessages.forEach((rtMsg) => {
+      if (!allMessages.some((m) => m.id === rtMsg.id)) {
+        allMessages.push(rtMsg);
+      }
+    });
+    return allMessages;
+  }, [messagesData, realtimeMessages]);
 
   // Socket connection with auto-reconnect
   useEffect(() => {
@@ -59,7 +80,7 @@ export const ChatRoomPage: React.FC = () => {
 
     const unsubMessage = chatSocket.onMessage((message) => {
       if (message.roomId === roomId) {
-        setMessages((prev) => {
+        setRealtimeMessages((prev) => {
           // Avoid duplicates
           if (prev.some((m) => m.id === message.id)) return prev;
           return [...prev, message];
@@ -129,7 +150,7 @@ export const ChatRoomPage: React.FC = () => {
         roomId,
         content: text,
       });
-      setMessages((prev) => {
+      setRealtimeMessages((prev) => {
         if (prev.some((m) => m.id === message.id)) return prev;
         return [...prev, message];
       });
@@ -149,6 +170,33 @@ export const ChatRoomPage: React.FC = () => {
     },
     [handleSendMessage]
   );
+
+  // Handle scroll to load more messages
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const container = e.currentTarget;
+      // Load more when scrolled near top (within 100px)
+      if (container.scrollTop < 100 && hasNextPage && !isFetchingNextPage) {
+        // Save current scroll height to maintain position after loading
+        prevScrollHeightRef.current = container.scrollHeight;
+        fetchNextPage();
+      }
+    },
+    [hasNextPage, isFetchingNextPage, fetchNextPage]
+  );
+
+  // Maintain scroll position after loading more messages
+  useEffect(() => {
+    if (prevScrollHeightRef.current > 0 && messagesContainerRef.current) {
+      const container = messagesContainerRef.current;
+      const newScrollHeight = container.scrollHeight;
+      const scrollDiff = newScrollHeight - prevScrollHeightRef.current;
+      if (scrollDiff > 0) {
+        container.scrollTop = scrollDiff;
+      }
+      prevScrollHeightRef.current = 0;
+    }
+  }, [messagesData?.pages?.length]);
 
   // Loading state
   if (isLoadingRoom) {
@@ -254,7 +302,29 @@ export const ChatRoomPage: React.FC = () => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div
+        ref={messagesContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto px-4 py-4"
+      >
+        {/* Load more indicator */}
+        {isFetchingNextPage && (
+          <div className="flex items-center justify-center py-3 mb-2">
+            <Loader2 className="w-5 h-5 text-white/50 animate-spin" />
+            <span className="ml-2 text-sm text-white/50">이전 메시지 불러오는 중...</span>
+          </div>
+        )}
+
+        {/* Load more button (when there are more messages) */}
+        {hasNextPage && !isFetchingNextPage && (
+          <button
+            onClick={() => fetchNextPage()}
+            className="w-full py-2 mb-3 text-sm text-white/50 hover:text-white/70 transition-colors"
+          >
+            ↑ 이전 메시지 더 보기
+          </button>
+        )}
+
         {isLoadingMessages && (
           <div className="flex items-center justify-center py-8">
             <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
