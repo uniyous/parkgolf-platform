@@ -52,6 +52,16 @@ export class WarmupService {
       httpUrl: process.env.BOOKING_SERVICE_URL || 'https://booking-service-dev-iihuzmuufa-du.a.run.app',
       natsPattern: 'booking.ping',
     },
+    {
+      name: 'chat-gateway',
+      httpUrl: process.env.CHAT_GATEWAY_URL || 'https://chat-gateway-dev-iihuzmuufa-du.a.run.app',
+      natsPattern: '', // chat-gateway는 NATS 직접 연결 안함 (HTTP only)
+    },
+    {
+      name: 'chat-service',
+      httpUrl: process.env.CHAT_SERVICE_URL || 'https://chat-service-dev-iihuzmuufa-du.a.run.app',
+      natsPattern: 'chat.ping',
+    },
   ];
 
   constructor(private readonly natsClient: NatsClientService) {}
@@ -231,10 +241,16 @@ export class WarmupService {
    * NATS Ping 수행
    */
   private async performNatsPingChecks(): Promise<
-    Array<{ natsStatus: 'ok' | 'error'; natsResponseTime: number; natsMessage?: string }>
+    Array<{ natsStatus: 'ok' | 'error' | 'skipped'; natsResponseTime?: number; natsMessage?: string }>
   > {
     const results = await Promise.allSettled(
       this.services.map(async (service) => {
+        // NATS pattern이 없는 서비스는 스킵
+        if (!service.natsPattern) {
+          this.logger.debug(`[NATS] ${service.name}: Skipped (no NATS pattern)`);
+          return { natsStatus: 'skipped' as const };
+        }
+
         const start = Date.now();
         try {
           const response = await this.natsClient.send<{

@@ -8,6 +8,16 @@ export class ChatNatsController {
 
   constructor(private readonly chatService: ChatService) {}
 
+  @MessagePattern('chat.ping')
+  async ping(@Payload() payload: { ping: boolean; timestamp: string }) {
+    this.logger.debug(`NATS ping received: ${payload.timestamp}`);
+    return {
+      pong: true,
+      service: 'chat-service',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   @MessagePattern('chat.messages.save')
   async saveMessage(@Payload() data: SaveMessageDto) {
     this.logger.debug(`Saving message: ${data.id}`);

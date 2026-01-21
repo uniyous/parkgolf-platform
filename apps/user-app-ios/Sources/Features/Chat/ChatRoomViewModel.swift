@@ -67,12 +67,12 @@ final class ChatRoomViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            let response = try await apiClient.requestList(
+            let response = try await apiClient.request(
                 ChatEndpoints.messages(roomId: roomId, page: currentPage, limit: 50),
-                responseType: ChatMessage.self
+                responseType: ChatMessagesResponse.self
             )
-            messages = response.data.reversed() // Oldest first
-            hasMorePages = response.pagination.page < response.pagination.totalPages
+            messages = response.messages.reversed() // Oldest first
+            hasMorePages = response.hasMore
         } catch {
             self.error = error
             print("Failed to load messages: \(error)")
@@ -85,14 +85,14 @@ final class ChatRoomViewModel: ObservableObject {
         currentPage += 1
 
         do {
-            let response = try await apiClient.requestList(
+            let response = try await apiClient.request(
                 ChatEndpoints.messages(roomId: roomId, page: currentPage, limit: 50),
-                responseType: ChatMessage.self
+                responseType: ChatMessagesResponse.self
             )
 
             // Insert at beginning (older messages)
-            messages.insert(contentsOf: response.data.reversed(), at: 0)
-            hasMorePages = response.pagination.page < response.pagination.totalPages
+            messages.insert(contentsOf: response.messages.reversed(), at: 0)
+            hasMorePages = response.hasMore
         } catch {
             self.error = error
             currentPage -= 1

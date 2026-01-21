@@ -50,6 +50,59 @@ export interface SendMessageRequest {
 }
 
 // ============================================
+// Helper Functions
+// ============================================
+
+interface ApiRoomMember {
+  id: string;
+  roomId: string;
+  userId: number;
+  userName: string;
+  joinedAt: string;
+  leftAt: string | null;
+  isAdmin: boolean;
+  lastReadMessageId: string | null;
+  lastReadAt: string | null;
+}
+
+interface ApiRoomResponse {
+  id: string;
+  name: string;
+  type: ChatRoomType;
+  members?: ApiRoomMember[];
+  participants?: ChatParticipant[];
+  lastMessage?: ChatMessage | null;
+  unreadCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * API 응답의 members를 participants로 변환
+ */
+function transformRoomResponse(room: ApiRoomResponse): ChatRoom {
+  const members = room.members ?? [];
+  const participants: ChatParticipant[] = members.map((m) => ({
+    id: m.id,
+    userId: String(m.userId),
+    userName: m.userName,
+    profileImageUrl: null,
+    joinedAt: m.joinedAt,
+  }));
+
+  return {
+    id: room.id,
+    name: room.name,
+    type: room.type,
+    participants,
+    lastMessage: room.lastMessage ?? null,
+    unreadCount: room.unreadCount ?? 0,
+    createdAt: room.createdAt,
+    updatedAt: room.updatedAt,
+  };
+}
+
+// ============================================
 // Chat API
 // ============================================
 
@@ -72,7 +125,9 @@ export const chatApi = {
     const response = await apiClient.get<BffResponse<ChatRoom>>(
       `/api/user/chat/rooms/${roomId}`
     );
-    return unwrapResponse(response.data);
+    const room = unwrapResponse(response.data);
+    // API returns 'members' but frontend expects 'participants'
+    return transformRoomResponse(room);
   },
 
   /**
@@ -87,7 +142,8 @@ export const chatApi = {
         participant_ids: request.participantIds,
       }
     );
-    return unwrapResponse(response.data);
+    const room = unwrapResponse(response.data);
+    return transformRoomResponse(room);
   },
 
   /**
@@ -102,7 +158,8 @@ export const chatApi = {
         participant_ids: [userId],
       }
     );
-    return unwrapResponse(response.data);
+    const room = unwrapResponse(response.data);
+    return transformRoomResponse(room);
   },
 
   /**

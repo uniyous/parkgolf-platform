@@ -14,11 +14,11 @@ final class ChatListViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            let response = try await apiClient.requestList(
+            let rooms = try await apiClient.requestArray(
                 ChatEndpoints.rooms(page: 1, limit: 50),
                 responseType: ChatRoom.self
             )
-            chatRooms = response.data.sorted { $0.updatedAt > $1.updatedAt }
+            chatRooms = rooms.sorted { $0.updatedAt > $1.updatedAt }
         } catch {
             self.error = error
             print("Failed to load chat rooms: \(error)")

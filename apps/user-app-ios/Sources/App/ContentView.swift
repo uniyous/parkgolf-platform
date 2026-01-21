@@ -48,11 +48,13 @@ struct MainTabView: View {
                 }
                 .tag(Tab.friends)
 
-            ChatListView()
-                .tabItem {
-                    Label("채팅", systemImage: "bubble.left.and.bubble.right.fill")
-                }
-                .tag(Tab.chat)
+            NavigationStack {
+                ChatListView()
+            }
+            .tabItem {
+                Label("채팅", systemImage: "bubble.left.and.bubble.right.fill")
+            }
+            .tag(Tab.chat)
 
             ProfileView()
                 .tabItem {

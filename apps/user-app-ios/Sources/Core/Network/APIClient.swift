@@ -179,6 +179,39 @@ actor APIClient {
         return try Self.jsonDecoder.decode(PaginatedResponse<T>.self, from: data)
     }
 
+    /// Request array without pagination (e.g., chat rooms)
+    func requestArray<T: Decodable & Sendable>(
+        _ endpoint: Endpoint,
+        responseType: T.Type
+    ) async throws -> [T] {
+        let (data, httpResponse) = try await performRequest(endpoint)
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.httpError(statusCode: httpResponse.statusCode, data: data)
+        }
+
+        do {
+            let apiResponse = try Self.jsonDecoder.decode(APIResponse<[T]>.self, from: data)
+            if apiResponse.success, let responseData = apiResponse.data {
+                return responseData
+            } else if let error = apiResponse.error {
+                throw APIError.serverError(code: error.code, message: error.message)
+            } else {
+                return []
+            }
+        } catch let error as APIError {
+            throw error
+        } catch {
+            #if DEBUG
+            print("Decoding error for array request: \(error)")
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("Response JSON: \(jsonString.prefix(500))")
+            }
+            #endif
+            throw APIError.decodingError
+        }
+    }
+
     // MARK: - Private Helpers
 
     private func performRequest(_ endpoint: Endpoint) async throws -> (Data, HTTPURLResponse) {

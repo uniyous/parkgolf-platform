@@ -24,6 +24,8 @@ const SERVICES = [
   { name: 'iam-service', isNats: true },
   { name: 'course-service', isNats: true },
   { name: 'booking-service', isNats: true },
+  { name: 'chat-gateway', isNats: false },
+  { name: 'chat-service', isNats: true },
 ];
 
 const NATS_SERVICES = SERVICES.filter(s => s.isNats);
@@ -104,7 +106,11 @@ export const SystemWarmupPanel: React.FC<SystemWarmupPanelProps> = ({ isOpen, on
       setWarmupPhase('서버 웜업 완료');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Connection failed';
-      setHttpStatuses(prev => prev.map(s => ({ ...s, status: 'error' as StatusType, message })));
+      setHttpStatuses(prev => prev.map(s =>
+        s.status === 'pending' || s.status === 'loading'
+          ? { ...s, status: 'error' as StatusType, message }
+          : s
+      ));
       setWarmupPhase('서버 웜업 실패');
     }
 

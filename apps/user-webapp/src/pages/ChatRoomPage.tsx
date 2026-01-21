@@ -177,7 +177,7 @@ export const ChatRoomPage: React.FC = () => {
                   <span className="text-yellow-400">연결 중...</span>
                 </>
               )}
-              {room.participants.length > 0 && (
+              {(room.participants?.length ?? 0) > 0 && (
                 <>
                   <span>•</span>
                   <Users className="w-3 h-3" />
