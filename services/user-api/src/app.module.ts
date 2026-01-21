@@ -7,6 +7,7 @@ import { CoursesModule } from './courses/courses.module';
 import { GamesModule } from './games/games.module';
 import { NotifyModule } from './notify/notify.module';
 import { FriendsModule } from './friends/friends.module';
+import { ChatModule } from './chat/chat.module';
 import { NatsModule } from './common/nats';
 
 @Module({
@@ -22,6 +23,7 @@ import { NatsModule } from './common/nats';
     GamesModule,
     NotifyModule,
     FriendsModule,
+    ChatModule,
   ],
   controllers: [],
   providers: [],
