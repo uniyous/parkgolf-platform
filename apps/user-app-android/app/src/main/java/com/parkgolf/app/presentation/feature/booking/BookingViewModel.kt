@@ -65,7 +65,7 @@ class BookingViewModel @Inject constructor(
 
     private fun loadUserInfo() {
         viewModelScope.launch {
-            authRepository.getCurrentUser().collect { user ->
+            authRepository.currentUser.collect { user ->
                 user?.let {
                     _formState.value = _formState.value.copy(
                         userName = it.name,

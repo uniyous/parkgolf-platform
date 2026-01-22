@@ -34,9 +34,9 @@ class AuthViewModel @Inject constructor(
 
     private fun checkAuthStatus() {
         viewModelScope.launch {
-            authRepository.isLoggedIn().collect { isLoggedIn ->
+            authRepository.isLoggedIn.collect { isLoggedIn ->
                 if (isLoggedIn) {
-                    authRepository.getCurrentUser().collect { user ->
+                    authRepository.currentUser.collect { user ->
                         _uiState.value = _uiState.value.copy(
                             isLoggedIn = true,
                             user = user
@@ -57,11 +57,11 @@ class AuthViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             authRepository.login(email, password)
-                .onSuccess { loginResponse ->
+                .onSuccess { user ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         isLoggedIn = true,
-                        user = loginResponse.user,
+                        user = user,
                         loginSuccess = true,
                         error = null
                     )
@@ -79,7 +79,7 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
-            authRepository.signUp(email, password, name)
+            authRepository.register(email, password, name, null)
                 .onSuccess {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,

@@ -39,7 +39,7 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
-            authRepository.getCurrentUser().collect { user ->
+            authRepository.currentUser.collect { user ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     user = user,

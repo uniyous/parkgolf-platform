@@ -161,34 +161,28 @@ fun BookingFormScreen(
                             GlassTextField(
                                 value = uiState.userName,
                                 onValueChange = { viewModel.updateUserName(it) },
-                                placeholder = "이름",
-                                leadingIcon = {
-                                    Icon(Icons.Default.Person, contentDescription = null)
-                                }
+                                label = "이름",
+                                leadingIcon = Icons.Default.Person
                             )
 
                             GlassTextField(
                                 value = uiState.userEmail,
                                 onValueChange = { viewModel.updateUserEmail(it) },
-                                placeholder = "이메일",
-                                leadingIcon = {
-                                    Icon(Icons.Default.Email, contentDescription = null)
-                                }
+                                label = "이메일",
+                                leadingIcon = Icons.Default.Email
                             )
 
                             GlassTextField(
                                 value = uiState.userPhone,
                                 onValueChange = { viewModel.updateUserPhone(it) },
-                                placeholder = "전화번호 (선택)",
-                                leadingIcon = {
-                                    Icon(Icons.Default.Phone, contentDescription = null)
-                                }
+                                label = "전화번호 (선택)",
+                                leadingIcon = Icons.Default.Phone
                             )
 
                             GlassTextField(
                                 value = uiState.specialRequests,
                                 onValueChange = { viewModel.updateSpecialRequests(it) },
-                                placeholder = "특별 요청사항 (선택)",
+                                label = "특별 요청사항 (선택)",
                                 singleLine = false,
                                 modifier = Modifier.height(100.dp)
                             )

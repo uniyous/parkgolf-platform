@@ -71,7 +71,7 @@ data class GameTimeSlot(
         get() = "$startTime - $endTime"
 
     val availabilityText: String
-        get() = "$availablePlayers/$maxPlayers명"
+        get() = "$availablePlayers/${maxPlayers}명"
 }
 
 data class GameSearchParams(

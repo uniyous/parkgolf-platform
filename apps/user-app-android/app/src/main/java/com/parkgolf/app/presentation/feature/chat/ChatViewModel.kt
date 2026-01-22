@@ -45,7 +45,7 @@ class ChatViewModel @Inject constructor(
 
     private fun loadCurrentUser() {
         viewModelScope.launch {
-            authRepository.getCurrentUser().collect { user ->
+            authRepository.currentUser.collect { user ->
                 _uiState.value = _uiState.value.copy(
                     currentUserId = user?.id?.toString()
                 )

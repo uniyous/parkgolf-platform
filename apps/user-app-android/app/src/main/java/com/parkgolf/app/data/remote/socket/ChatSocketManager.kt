@@ -60,7 +60,7 @@ class ChatSocketManager @Inject constructor() {
                     _connectionState.value = false
                 }
 
-                on(Socket.EVENT_CONNECT_ERROR) { args ->
+                on(Socket.EVENT_CONNECT_ERROR) { _ ->
                     _connectionState.value = false
                 }
 

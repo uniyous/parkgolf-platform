@@ -39,7 +39,7 @@ class HomeViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true)
 
             // Load user
-            authRepository.getCurrentUser().collect { user ->
+            authRepository.currentUser.collect { user ->
                 _uiState.value = _uiState.value.copy(user = user)
             }
         }

@@ -6,6 +6,8 @@ import androidx.compose.ui.graphics.Color
 val ParkPrimary = Color(0xFF10B981)          // Emerald
 val ParkSecondary = Color(0xFF059669)         // Dark Emerald
 val ParkAccent = Color(0xFFF59E0B)            // Amber (Premium)
+val ParkOnPrimary = Color.White               // Text/icons on primary color
+val ParkBackground = Color(0xFF065F46)        // Background color
 
 // Semantic Colors
 val ParkSuccess = Color(0xFF22C55E)
@@ -29,6 +31,7 @@ val GlassCardDark = Color.White.copy(alpha = 0.08f)
 val GradientStart = Color(0xFF065F46)
 val GradientMiddle = Color(0xFF047857)
 val GradientEnd = Color(0xFF10B981)
+
 
 // Text Colors
 val TextPrimary = Color.White

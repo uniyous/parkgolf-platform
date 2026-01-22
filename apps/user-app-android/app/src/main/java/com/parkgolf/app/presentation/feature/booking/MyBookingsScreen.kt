@@ -86,7 +86,7 @@ fun MyBookingsScreen(
                     EmptyStateView(
                         icon = Icons.Default.EventBusy,
                         title = "예약 내역이 없습니다",
-                        message = "새로운 게임을 예약해보세요"
+                        description = "새로운 게임을 예약해보세요"
                     )
                 } else {
                     LazyColumn(
@@ -239,14 +239,14 @@ private fun BookingCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = booking.gameName,
+                    text = booking.gameName ?: "게임",
                     style = MaterialTheme.typography.titleMedium,
                     color = ParkOnPrimary,
                     fontWeight = FontWeight.Bold
                 )
                 StatusBadge(
-                    status = booking.status.displayName,
-                    color = getStatusColor(booking.status)
+                    text = booking.status.displayName,
+                    backgroundColor = getStatusColor(booking.status)
                 )
             }
 
@@ -358,8 +358,10 @@ private fun getStatusColor(status: BookingStatus): androidx.compose.ui.graphics.
     return when (status) {
         BookingStatus.CONFIRMED -> ParkPrimary
         BookingStatus.PENDING -> androidx.compose.ui.graphics.Color(0xFFF59E0B)
+        BookingStatus.SLOT_RESERVED -> androidx.compose.ui.graphics.Color(0xFFF59E0B)
         BookingStatus.CANCELLED -> androidx.compose.ui.graphics.Color(0xFFEF4444)
         BookingStatus.COMPLETED -> androidx.compose.ui.graphics.Color(0xFF6B7280)
+        BookingStatus.NO_SHOW -> androidx.compose.ui.graphics.Color(0xFF6B7280)
         BookingStatus.FAILED -> androidx.compose.ui.graphics.Color(0xFFEF4444)
     }
 }

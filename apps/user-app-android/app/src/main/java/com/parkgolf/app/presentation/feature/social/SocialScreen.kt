@@ -1,5 +1,6 @@
 package com.parkgolf.app.presentation.feature.social
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -36,6 +37,7 @@ import com.parkgolf.app.presentation.theme.ParkPrimary
 import com.parkgolf.app.presentation.theme.TextSecondary
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SocialScreen(
     onNavigate: (String) -> Unit
