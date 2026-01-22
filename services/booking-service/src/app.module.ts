@@ -4,6 +4,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaModule } from '../prisma/prisma.module';
 import { CommonModule } from './common/common.module';
 import { BookingModule } from './booking/booking.module';
+import { PolicyModule } from './policy/policy.module';
 import { ResponseTransformInterceptor } from './common/interceptor/response-transform.interceptor';
 
 @Module({
@@ -13,7 +14,8 @@ import { ResponseTransformInterceptor } from './common/interceptor/response-tran
     }),
     CommonModule,
     PrismaModule,
-    BookingModule
+    BookingModule,
+    PolicyModule,
   ],
   providers: [
     {

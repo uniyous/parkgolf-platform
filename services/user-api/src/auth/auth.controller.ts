@@ -16,9 +16,10 @@ import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { NatsResponse } from '../common/types/nats-response.type';
 
-@ApiTags('Authentication')
-@Controller('api/user/auth')
+@ApiTags('IAM')
+@Controller('api/user/iam')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -57,7 +58,19 @@ export class AuthController {
   @ApiResponse({ status: 200, description: '프로필 조회 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async getProfile(@Request() req: any) {
-    return this.usersService.getProfile(req.user.userId);
+    const profile = await this.usersService.getProfile(req.user.userId);
+    return NatsResponse.success(profile);
+  }
+
+  @Get('stats')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '사용자 통계 조회' })
+  @ApiResponse({ status: 200, description: '통계 조회 성공' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  async getStats(@Request() req: any) {
+    const stats = await this.usersService.getStats(req.user.userId);
+    return NatsResponse.success(stats);
   }
 
   @Post('refresh')

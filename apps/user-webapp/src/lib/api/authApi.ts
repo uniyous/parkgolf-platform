@@ -2,7 +2,7 @@ import { apiClient } from './client';
 import { authStorage } from '@/lib/storage';
 
 /**
- * User 응답 DTO - auth-service의 UserResponseDto와 일치
+ * User 응답 DTO - iam-service의 UserResponseDto와 일치
  */
 export interface User {
   id: number;
@@ -40,23 +40,23 @@ export interface AuthResponse {
 
 export const authApi = {
   login: async (credentials: LoginRequest) => {
-    const response = await apiClient.post<AuthResponse>('/api/user/auth/login', credentials);
+    const response = await apiClient.post<AuthResponse>('/api/user/iam/login', credentials);
     return response.data;
   },
 
   register: async (userData: RegisterRequest) => {
-    const response = await apiClient.post<AuthResponse>('/api/user/auth/register', userData);
+    const response = await apiClient.post<AuthResponse>('/api/user/iam/register', userData);
     return response.data;
   },
 
   getProfile: async () => {
-    const response = await apiClient.get<User>('/api/user/auth/profile');
+    const response = await apiClient.get<User>('/api/user/iam/profile');
     return response.data;
   },
 
   logout: async () => {
     try {
-      await apiClient.post('/api/user/auth/logout');
+      await apiClient.post('/api/user/iam/logout');
     } catch {
       // Always clear local storage even if API call fails
     }
@@ -64,7 +64,7 @@ export const authApi = {
   },
 
   refreshToken: async (refreshToken: string) => {
-    const response = await apiClient.post<{ accessToken: string }>('/api/user/auth/refresh', {
+    const response = await apiClient.post<{ accessToken: string }>('/api/user/iam/refresh', {
       refreshToken,
     });
     return response.data;

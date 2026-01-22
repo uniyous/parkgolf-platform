@@ -66,12 +66,11 @@ export interface UpdateGameDto {
   status?: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
 }
 
-export interface GameFilter {
+export interface GameFilter extends Record<string, string | number | boolean | undefined> {
   clubId?: number;
   status?: string;
   page?: number;
   limit?: number;
-  [key: string]: unknown;
 }
 
 export interface GameWeeklySchedule {
@@ -137,14 +136,13 @@ export interface UpdateGameTimeSlotDto {
   price?: number;
 }
 
-export interface GameTimeSlotFilter {
+export interface GameTimeSlotFilter extends Record<string, string | number | boolean | undefined> {
   date?: string;
   startDate?: string;
   endDate?: string;
   status?: string;
   page?: number;
   limit?: number;
-  [key: string]: unknown;
 }
 
 /** @deprecated PaginatedResult 사용 권장 (import from './bffParser') */
@@ -299,7 +297,7 @@ export const gamesApi = {
    * 게임의 타임슬롯 조회
    */
   async getTimeSlots(gameId: number, filter?: GameTimeSlotFilter): Promise<PaginatedResult<GameTimeSlot>> {
-    const params: Record<string, unknown> = {};
+    const params: Record<string, string | number | boolean | undefined> = {};
     if (filter?.date) params.date = filter.date;
     if (filter?.startDate) params.startDate = filter.startDate;
     if (filter?.endDate) params.endDate = filter.endDate;

@@ -1,3 +1,8 @@
+---
+name: project-structure
+description: Park Golf Platform 프로젝트 구조 가이드. 전체 아키텍처, 디렉토리 구조, 서비스 개요, BFF/Microservice 구조 안내. "구조", "아키텍처", "폴더" 관련 질문 시 사용합니다.
+---
+
 # 프로젝트 구조 가이드
 
 이 문서는 parkgolf 프로젝트의 전체 구조와 각 컴포넌트의 역할을 정의합니다.
@@ -19,8 +24,8 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Clients                                  │
 │     ┌──────────────┐                    ┌──────────────┐        │
-│     │  Admin Web   │                    │  User Mobile │        │
-│     │   (React)    │                    │   (React)    │        │
+│     │admin-dashboard│                    │ user-webapp  │        │
+│     │(React + Vite)│                    │(React + Vite)│        │
 │     └──────┬───────┘                    └──────┬───────┘        │
 └────────────┼────────────────────────────────────┼───────────────┘
              │                                    │
@@ -47,7 +52,7 @@
 │    │                      │                       │              │
 │    ▼                      ▼                       ▼              │
 │ ┌───────────┐      ┌─────────────┐       ┌──────────────┐       │
-│ │auth-service│      │course-service│      │booking-service│      │
+│ │iam-service│      │course-service│      │booking-service│      │
 │ └───────────┘      └─────────────┘       └──────────────┘       │
 │                                                                  │
 │                    ┌───────────────┐                             │
@@ -74,25 +79,22 @@ parkgolf/
 ├── services/                   # 모든 서비스
 │   ├── admin-api/              # 관리자 BFF API
 │   ├── user-api/               # 사용자 BFF API
-│   ├── auth-service/           # 인증 Microservice
+│   ├── iam-service/            # IAM Microservice (인증/권한)
 │   ├── course-service/         # 코스/게임 Microservice
-│   └── booking-service/        # 예약 Microservice
+│   ├── booking-service/        # 예약 Microservice
+│   └── notify-service/         # 알림 Microservice
 │
-├── web/                        # 웹 클라이언트
-│   ├── admin/                  # 관리자 웹 (React)
-│   └── user/                   # 사용자 웹 (React)
+├── apps/                       # 프론트엔드 애플리케이션
+│   ├── admin-dashboard/        # 관리자 대시보드 (React + Vite)
+│   └── user-webapp/            # 사용자 웹앱 (React + Vite)
 │
-├── deploy/                     # 배포 설정 및 가이드
-│   ├── DEPLOYMENT_GUIDE.md
-│   ├── ENVIRONMENT_SETUP.md
-│   └── GCP_INFRASTRUCTURE.md
+├── infra/                      # Terraform 인프라
+│   ├── environments/           # 환경별 설정 (dev, prod)
+│   └── modules/                # 재사용 모듈
 │
-├── docs/                       # 프로젝트 문서
-│   ├── ARCHITECTURE.md
-│   └── ROADMAP.md
-│
-├── docker/                     # Docker 설정 (선택적)
+├── .github/workflows/          # CI/CD 워크플로우
 ├── scripts/                    # 유틸리티 스크립트
+├── CLAUDE.md                   # 프로젝트 개발 규칙
 └── package.json                # 루트 패키지 (워크스페이스)
 ```
 
@@ -106,9 +108,10 @@ parkgolf/
 |--------|------|------|------|
 | admin-api | BFF | 3001 | 관리자 HTTP API |
 | user-api | BFF | 3002 | 사용자 HTTP API |
-| auth-service | Microservice | - | 인증/권한 관리 |
+| iam-service | Microservice | - | 인증/권한 관리 |
 | course-service | Microservice | - | 클럽/코스/게임 관리 |
 | booking-service | Microservice | - | 예약 관리 |
+| notify-service | Microservice | - | 알림/이메일/SMS |
 
 ### 서비스 간 통신
 
@@ -218,10 +221,10 @@ services/{service-name}/
 └── tsconfig.json
 ```
 
-### auth-service 구조
+### iam-service 구조
 
 ```
-services/auth-service/
+services/iam-service/
 ├── src/
 │   ├── admin/                  # 관리자 인증
 │   │   ├── admin.module.ts
@@ -367,7 +370,7 @@ parkgolf-uniyous (Project)
 │   └── parkgolf-nats-dev
 │       ├── NATS Server (Docker)
 │       ├── PostgreSQL (Docker)
-│       ├── auth-service (Docker)
+│       ├── iam-service (Docker)
 │       ├── course-service (Docker)
 │       └── booking-service (Docker)
 │
@@ -382,7 +385,7 @@ parkgolf-uniyous (Project)
 
 ```
 parkgolf-postgres (Docker Container)
-├── parkgolf_auth       # auth-service DB
+├── parkgolf_auth       # iam-service DB
 │   ├── admins
 │   └── users
 │
@@ -446,7 +449,7 @@ await this.natsClient.send('newDomain.list', params);
 
 ## 참고 문서
 
-- [NestJS 코딩 컨벤션](./../nestjs-conventions/SKILL.md)
-- [NATS 메시징 패턴](./../nats-patterns/SKILL.md)
-- [배포 가이드](../../../../deploy/DEPLOYMENT_GUIDE.md)
-- [아키텍처 문서](../../../../docs/ARCHITECTURE.md)
+- [NestJS 코딩 컨벤션](../nestjs-conventions/SKILL.md)
+- [NATS 메시징 패턴](../nats-patterns/SKILL.md)
+- [배포 가이드](../../deployment/deploy-guide/SKILL.md)
+- [CLAUDE.md](/CLAUDE.md) - 프로젝트 개발 규칙

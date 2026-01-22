@@ -3,12 +3,12 @@ import { ClientProxy } from '@nestjs/microservices';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboxStatus } from '@prisma/client';
 import { firstValueFrom, timeout, catchError, of } from 'rxjs';
+import { NATS_TIMEOUTS } from '../../common/constants';
 
 // Outbox 처리 설정
 const POLL_INTERVAL_MS = 1000;       // 1초마다 폴링
 const BATCH_SIZE = 10;               // 한 번에 처리할 이벤트 수
 const MAX_RETRY_COUNT = 5;           // 최대 재시도 횟수
-const NATS_TIMEOUT_MS = 15000;       // NATS 호출 타임아웃 (15초 - Cloud Run cold start 대응)
 const PROCESSING_LOCK_MS = 30000;    // 처리 중 락 시간 (30초)
 
 @Injectable()
@@ -118,7 +118,7 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
         this.logger.log(`[Outbox] Sending ${event.event_type} to course-service (Request-Reply)...`);
         const response = await firstValueFrom(
           client.send(event.event_type, event.payload).pipe(
-            timeout(NATS_TIMEOUT_MS),
+            timeout(NATS_TIMEOUTS.DEFAULT),
             catchError((err) => {
               this.logger.error(`[Outbox] NATS send failed for ${event.event_type}: ${err.message}`);
               return of({ success: false, error: err.message });

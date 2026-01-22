@@ -1,5 +1,5 @@
-import { apiClient, ApiError } from './client';
-import { getErrorMessage } from '@/types/common';
+import { apiClient } from './client';
+import { unwrapResponse, type BffResponse } from './bffParser';
 
 /**
  * TimeSlot 가용성 응답 DTO
@@ -132,42 +132,40 @@ export interface SearchBookingsResponse {
   limit: number;
 }
 
-// NATS 응답 래퍼 타입 (BFF API 표준 응답 형식)
-interface NatsResponse<T> {
-  success: boolean;
-  data: T;
-  error?: { code: string; message: string; details?: Record<string, unknown> };
-}
-
-// NATS 응답에서 data 추출 헬퍼
-function unwrapNatsResponse<T>(response: NatsResponse<T>): T {
-  if (!response.success) {
-    const errorCode = response.error?.code;
-    const errorMessage = getErrorMessage(errorCode, response.error?.message);
-    throw new ApiError(errorMessage, 400, errorCode, response.error?.details);
-  }
-  return response.data;
-}
-
 export const bookingApi = {
-  getTimeSlotAvailability: async (gameId: number, date: string) => {
-    const response = await apiClient.get<NatsResponse<TimeSlot[]>>(
+  /**
+   * 타임슬롯 가용성 조회
+   */
+  getTimeSlotAvailability: async (gameId: number, date: string): Promise<TimeSlot[]> => {
+    const response = await apiClient.get<BffResponse<TimeSlot[]>>(
       `/api/user/bookings/games/${gameId}/time-slots`,
       { date }
     );
-    return unwrapNatsResponse(response.data);
+    return unwrapResponse(response.data);
   },
 
-  createBooking: async (bookingData: CreateBookingRequest) => {
-    const response = await apiClient.post<NatsResponse<BookingResponse>>('/api/user/bookings', bookingData);
-    return unwrapNatsResponse(response.data);
+  /**
+   * 예약 생성
+   */
+  createBooking: async (bookingData: CreateBookingRequest): Promise<BookingResponse> => {
+    const response = await apiClient.post<BffResponse<BookingResponse>>(
+      '/api/user/bookings',
+      bookingData
+    );
+    return unwrapResponse(response.data);
   },
 
-  getMyBookings: async () => {
-    const response = await apiClient.get<NatsResponse<BookingResponse[]>>('/api/user/bookings');
-    return unwrapNatsResponse(response.data);
+  /**
+   * 내 예약 목록 조회
+   */
+  getMyBookings: async (): Promise<BookingResponse[]> => {
+    const response = await apiClient.get<BffResponse<BookingResponse[]>>('/api/user/bookings');
+    return unwrapResponse(response.data);
   },
 
+  /**
+   * 예약 검색
+   */
   searchBookings: async (params: SearchBookingParams): Promise<SearchBookingsResponse> => {
     const queryParams: Record<string, string | number | undefined> = {};
     if (params.page) queryParams.page = params.page;
@@ -180,31 +178,52 @@ export const bookingApi = {
     if (params.sortOrder) queryParams.sortOrder = params.sortOrder;
     if (params.timeFilter) queryParams.timeFilter = params.timeFilter;
 
-    const response = await apiClient.get<NatsResponse<SearchBookingsResponse>>('/api/user/bookings/search', queryParams);
-    return unwrapNatsResponse(response.data);
+    const response = await apiClient.get<BffResponse<SearchBookingsResponse>>(
+      '/api/user/bookings/search',
+      queryParams
+    );
+    return unwrapResponse(response.data);
   },
 
-  getBookingByNumber: async (bookingNumber: string) => {
-    const response = await apiClient.get<NatsResponse<BookingResponse>>(
+  /**
+   * 예약번호로 예약 조회
+   */
+  getBookingByNumber: async (bookingNumber: string): Promise<BookingResponse> => {
+    const response = await apiClient.get<BffResponse<BookingResponse>>(
       `/api/user/bookings/number/${bookingNumber}`
     );
-    return unwrapNatsResponse(response.data);
+    return unwrapResponse(response.data);
   },
 
-  getBookingById: async (id: number) => {
-    const response = await apiClient.get<NatsResponse<BookingResponse>>(`/api/user/bookings/${id}`);
-    return unwrapNatsResponse(response.data);
+  /**
+   * ID로 예약 조회
+   */
+  getBookingById: async (id: number): Promise<BookingResponse> => {
+    const response = await apiClient.get<BffResponse<BookingResponse>>(
+      `/api/user/bookings/${id}`
+    );
+    return unwrapResponse(response.data);
   },
 
-  updateBooking: async (id: number, updates: UpdateBookingRequest) => {
-    const response = await apiClient.put<NatsResponse<BookingResponse>>(`/api/user/bookings/${id}`, updates);
-    return unwrapNatsResponse(response.data);
+  /**
+   * 예약 수정
+   */
+  updateBooking: async (id: number, updates: UpdateBookingRequest): Promise<BookingResponse> => {
+    const response = await apiClient.put<BffResponse<BookingResponse>>(
+      `/api/user/bookings/${id}`,
+      updates
+    );
+    return unwrapResponse(response.data);
   },
 
-  cancelBooking: async (id: number, reason?: string) => {
-    const response = await apiClient.delete<NatsResponse<BookingResponse>>(`/api/user/bookings/${id}`, {
-      reason,
-    });
-    return unwrapNatsResponse(response.data);
+  /**
+   * 예약 취소
+   */
+  cancelBooking: async (id: number, reason?: string): Promise<BookingResponse> => {
+    const response = await apiClient.delete<BffResponse<BookingResponse>>(
+      `/api/user/bookings/${id}`,
+      { reason }
+    );
+    return unwrapResponse(response.data);
   },
 };

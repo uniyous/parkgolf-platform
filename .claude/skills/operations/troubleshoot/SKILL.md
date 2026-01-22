@@ -245,7 +245,7 @@ terraform plan
 ```
 GitHub Actions → Rollback 워크플로우
 - environment: dev
-- service: auth-service
+- service: iam-service
 - revision: (빈칸 = 이전 버전)
 ```
 
@@ -260,7 +260,7 @@ GitHub Actions → CD Infrastructure
 ```
 GitHub Actions → CD Services
 - environment: dev
-- services: auth-service  # 특정 서비스
+- services: iam-service  # 특정 서비스
 ```
 
 ---

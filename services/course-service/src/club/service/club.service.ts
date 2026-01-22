@@ -28,14 +28,8 @@ export class ClubService {
    */
   async create(createClubDto: CreateClubDto): Promise<ClubWithRelations> {
     try {
-      // 회사 존재 여부 확인
-      const company = await this.prisma.company.findUnique({
-        where: { id: createClubDto.companyId },
-      });
-
-      if (!company) {
-        throw new NotFoundException(`Company with ID ${createClubDto.companyId} not found`);
-      }
+      // Note: Company validation should be done via NATS 'iam.companies.getById' if needed
+      // companyId is a cross-database reference to iam_db.companies
 
       // 같은 회사 내에서 클럽명 중복 확인
       const existingClub = await this.prisma.club.findFirst({
@@ -57,7 +51,7 @@ export class ClubService {
           facilities: createClubDto.facilities || [],
         },
         include: {
-          company: true,
+          // company relation removed - use NATS 'iam.companies.getById' for Company data
           courses: {
             include: {
               holes: true,
@@ -134,7 +128,7 @@ export class ClubService {
         skip,
         take: limitNum,
         include: {
-          company: true,
+          // company relation removed - use NATS 'iam.companies.getById' for Company data
           courses: true,
         },
       });
@@ -160,7 +154,7 @@ export class ClubService {
       const club = await this.prisma.club.findUnique({
         where: { id, isActive: true },
         include: {
-          company: true,
+          // company relation removed - use NATS 'iam.companies.getById' for Company data
           courses: {
             include: {
               holes: {
@@ -198,16 +192,8 @@ export class ClubService {
         throw new NotFoundException(`Club with ID ${id} not found`);
       }
 
-      // 회사 변경 시 존재 여부 확인
-      if (updateClubDto.companyId && updateClubDto.companyId !== existingClub.companyId) {
-        const company = await this.prisma.company.findUnique({
-          where: { id: updateClubDto.companyId },
-        });
-
-        if (!company) {
-          throw new NotFoundException(`Company with ID ${updateClubDto.companyId} not found`);
-        }
-      }
+      // Note: Company validation should be done via NATS 'iam.companies.getById' if needed
+      // companyId is a cross-database reference to iam_db.companies
 
       // 이름 변경 시 중복 확인
       if (updateClubDto.name && updateClubDto.name !== existingClub.name) {
@@ -233,7 +219,7 @@ export class ClubService {
           seasonInfo: updateClubDto.seasonInfo ? JSON.parse(JSON.stringify(updateClubDto.seasonInfo)) : undefined,
         },
         include: {
-          company: true,
+          // company relation removed - use NATS 'iam.companies.getById' for Company data
           courses: {
             include: {
               holes: true,
@@ -286,7 +272,7 @@ export class ClubService {
           isActive: true,
         },
         include: {
-          company: true,
+          // company relation removed - use NATS 'iam.companies.getById' for Company data
           courses: true,
         },
         orderBy: { name: 'asc' },

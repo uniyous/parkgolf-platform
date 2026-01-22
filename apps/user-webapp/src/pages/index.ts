@@ -1,8 +1,14 @@
 export { LoginPage } from './LoginPage';
 export { SignupPage } from './SignupPage';
+export { HomePage } from './HomePage';
 export { SearchPage } from './SearchPage';
+export { BookingsPage } from './BookingsPage';
 export { BookingDetailPage } from './BookingDetailPage';
 export { BookingViewPage } from './BookingViewPage';
 export { BookingCompletePage } from './BookingCompletePage';
 export { MyBookingsPage } from './MyBookingsPage';
 export { ProfilePage } from './ProfilePage';
+export { SocialPage } from './SocialPage';
+export { FriendsPage } from './FriendsPage';
+export { ChatPage } from './ChatPage';
+export { ChatRoomPage } from './ChatRoomPage';

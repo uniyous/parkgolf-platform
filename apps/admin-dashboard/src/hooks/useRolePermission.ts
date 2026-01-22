@@ -98,12 +98,12 @@ export function useRolePermission(): UseRolePermissionReturn {
     return currentRole ? roles.includes(currentRole) : false;
   };
 
-  // 역할 체크 함수들 (v3)
-  const isAdmin = (): boolean => isRole('ADMIN');
-  const isSupport = (): boolean => isRole('SUPPORT');
-  const isManager = (): boolean => isRole('MANAGER');
-  const isStaff = (): boolean => isRole('STAFF');
-  const isViewer = (): boolean => isRole('VIEWER');
+  // 역할 체크 함수들 (v3 - 새 AdminRole 타입 사용)
+  const isAdmin = (): boolean => isAnyRole(['PLATFORM_ADMIN', 'COMPANY_ADMIN']);
+  const isSupport = (): boolean => isRole('PLATFORM_SUPPORT');
+  const isManager = (): boolean => isRole('COMPANY_MANAGER');
+  const isStaff = (): boolean => isRole('COMPANY_STAFF');
+  const isViewer = (): boolean => isAnyRole(['PLATFORM_VIEWER', 'COMPANY_VIEWER']);
 
   // 권한 체크 함수들 (v3 - 단순화된 권한)
   const hasFullAccess = (): boolean => hasPermission('ALL');
@@ -117,10 +117,10 @@ export function useRolePermission(): UseRolePermissionReturn {
   const canViewAnalytics = (): boolean => hasPermission('ANALYTICS') || hasPermission('ALL');
   const canManageSupport = (): boolean => hasPermission('SUPPORT') || hasPermission('ALL');
 
-  // 레벨별 권한 체크
-  const isSystemLevel = (): boolean => isAnyRole(['ADMIN', 'SUPPORT']);
-  const isOperationLevel = (): boolean => isAnyRole(['MANAGER', 'STAFF']);
-  const isViewLevel = (): boolean => isRole('VIEWER');
+  // 레벨별 권한 체크 (v3 - 새 AdminRole 타입 사용)
+  const isSystemLevel = (): boolean => isAnyRole(['PLATFORM_ADMIN', 'PLATFORM_SUPPORT', 'PLATFORM_VIEWER']);
+  const isOperationLevel = (): boolean => isAnyRole(['COMPANY_ADMIN', 'COMPANY_MANAGER', 'COMPANY_STAFF', 'COMPANY_VIEWER']);
+  const isViewLevel = (): boolean => isAnyRole(['PLATFORM_VIEWER', 'COMPANY_VIEWER']);
 
   // 하위 호환성 함수들 (deprecated)
   const isPlatformOwner = (): boolean => isAdmin();

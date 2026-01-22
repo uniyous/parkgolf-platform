@@ -6,19 +6,11 @@ import { NotificationService } from './service/notification.service';
 import { TemplateService } from './service/template.service';
 import { PreferencesService } from './service/preferences.service';
 import { SchedulerService } from './service/scheduler.service';
-import { 
-  DeliveryService, 
-  EmailDeliveryChannel, 
-  SmsDeliveryChannel, 
-  PushDeliveryChannel 
-} from './service/delivery.service';
+import { DeliveryService } from './service/delivery.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
-  imports: [
-    PrismaModule,
-    ScheduleModule.forRoot(),
-  ],
+  imports: [PrismaModule, ScheduleModule.forRoot()],
   controllers: [NotificationController, TemplateController],
   providers: [
     NotificationService,
@@ -26,9 +18,6 @@ import { PrismaModule } from '../../prisma/prisma.module';
     PreferencesService,
     SchedulerService,
     DeliveryService,
-    EmailDeliveryChannel,
-    SmsDeliveryChannel,
-    PushDeliveryChannel,
   ],
   exports: [
     NotificationService,

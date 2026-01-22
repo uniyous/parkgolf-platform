@@ -1,4 +1,4 @@
-import { CourseStatus, Course as CourseModel, Company, Club, Hole } from '@prisma/client';
+import { CourseStatus, Course as CourseModel, Club, Hole } from '@prisma/client';
 import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, IsUrl, Max, MaxLength, Min } from 'class-validator';
 import { HoleResponseDto, HoleWithRelations } from './hole.dto';
 
@@ -149,8 +149,8 @@ export class UpdateCourseDto {
 }
 
 /** Course 엔티티 타입 (관계 포함) */
+// Note: company relation removed - use NATS 'iam.companies.getById' for Company data
 export type CourseWithRelations = CourseModel & {
-  company?: Company;
   club?: Club;
   holes?: HoleWithRelations[];
 };
@@ -176,7 +176,7 @@ export class CourseResponseDto {
   isActive: boolean;
   createdAt: string | null;
   updatedAt: string | null;
-  company?: Company;
+  // company field removed - use NATS 'iam.companies.getById' for Company data
   club?: Club;
   holes?: HoleResponseDto[];
 
@@ -204,7 +204,6 @@ export class CourseResponseDto {
     dto.isActive = entity.isActive;
     dto.createdAt = entity.createdAt?.toISOString() ?? null;
     dto.updatedAt = entity.updatedAt?.toISOString() ?? null;
-    dto.company = entity.company;
     dto.club = entity.club;
     dto.holes = entity.holes?.map(hole => HoleResponseDto.fromEntity(hole));
     return dto;

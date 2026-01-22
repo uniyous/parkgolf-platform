@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Check } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 import type { AdminRole } from '../types';
 
@@ -19,7 +20,7 @@ export const SignupPage: React.FC = () => {
     password: '',
     confirmPassword: '',
     name: '',
-    role: 'VIEWER',
+    role: 'COMPANY_VIEWER',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -96,7 +97,7 @@ export const SignupPage: React.FC = () => {
         password: '',
         confirmPassword: '',
         name: '',
-        role: 'VIEWER',
+        role: 'COMPANY_VIEWER',
       });
 
     } catch {
@@ -112,9 +113,7 @@ export const SignupPage: React.FC = () => {
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
             <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
-              <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+              <Check className="h-6 w-6 text-green-600" />
             </div>
             <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
               회원가입 완료!
@@ -125,7 +124,7 @@ export const SignupPage: React.FC = () => {
             <div className="mt-6">
               <Link
                 to="/login"
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 로그인 페이지로 이동
               </Link>
@@ -141,7 +140,7 @@ export const SignupPage: React.FC = () => {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            파크골프 관리자 시스템
+            ParkMate 관리자
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             새 관리자 계정을 생성하세요
@@ -208,14 +207,20 @@ export const SignupPage: React.FC = () => {
                 name="role"
                 value={formData.role}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 required
               >
-                <option value="VIEWER">조회 전용</option>
-                <option value="STAFF">현장 직원</option>
-                <option value="MANAGER">운영 관리자</option>
-                <option value="SUPPORT">고객지원</option>
-                <option value="ADMIN">시스템 관리자</option>
+                <optgroup label="회사 역할">
+                  <option value="COMPANY_VIEWER">조회 전용</option>
+                  <option value="COMPANY_STAFF">현장 직원</option>
+                  <option value="COMPANY_MANAGER">운영 관리자</option>
+                  <option value="COMPANY_ADMIN">회사 관리자</option>
+                </optgroup>
+                <optgroup label="플랫폼 역할">
+                  <option value="PLATFORM_VIEWER">플랫폼 조회</option>
+                  <option value="PLATFORM_SUPPORT">고객지원</option>
+                  <option value="PLATFORM_ADMIN">시스템 관리자</option>
+                </optgroup>
               </select>
             </div>
           </div>

@@ -14,10 +14,10 @@ import {
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, retry, catchError, of } from 'rxjs';
 import { randomUUID } from 'crypto';
+import { NATS_TIMEOUTS } from '../../common/constants';
 
 // NATS 호출 설정
-const NATS_TIMEOUT_MS = 5000;  // 5초 타임아웃
-const NATS_RETRY_COUNT = 2;    // 2회 재시도
+const NATS_RETRY_COUNT = 2;     // 2회 재시도
 
 // 캐시 설정
 const CACHE_TTL_MS = 5 * 60 * 1000;  // 5분 캐시 유효 기간
@@ -52,7 +52,7 @@ export class BookingService {
       // course-service에서 슬롯 정보 조회 (timeout + retry)
       const slotResponse = await firstValueFrom(
         this.courseServiceClient.send('gameTimeSlots.get', { timeSlotId: gameTimeSlotId }).pipe(
-          timeout(NATS_TIMEOUT_MS),
+          timeout(NATS_TIMEOUTS.DEFAULT),
           retry(NATS_RETRY_COUNT),
           catchError((err) => {
             this.logger.error(`gameTimeSlots.get failed after retries: ${err.message}`);
@@ -72,7 +72,7 @@ export class BookingService {
       // game 정보도 조회해서 GameCache 동기화 (timeout + retry)
       const gameResponse = await firstValueFrom(
         this.courseServiceClient.send('games.get', { gameId: slot.gameId }).pipe(
-          timeout(NATS_TIMEOUT_MS),
+          timeout(NATS_TIMEOUTS.DEFAULT),
           retry(NATS_RETRY_COUNT),
           catchError((err) => {
             this.logger.error(`games.get failed after retries: ${err.message}`);
@@ -656,6 +656,193 @@ export class BookingService {
     return BookingResponseDto.fromEntity(booking);
   }
 
+  // 관리자용 예약 취소 (userId 체크 없음)
+  async adminCancelBooking(id: number, reason?: string): Promise<BookingResponseDto> {
+    const booking = await this.prisma.$transaction(async (prisma) => {
+      const existingBooking = await prisma.booking.findUnique({
+        where: { id }
+      });
+
+      if (!existingBooking) {
+        throw new HttpException('Booking not found', HttpStatus.NOT_FOUND);
+      }
+
+      if (existingBooking.status === BookingStatus.CANCELLED) {
+        throw new HttpException('Booking is already cancelled', HttpStatus.BAD_REQUEST);
+      }
+
+      const cancelledBooking = await prisma.booking.update({
+        where: { id },
+        data: {
+          status: BookingStatus.CANCELLED,
+        },
+      });
+
+      // 로컬 캐시 가용성 복구
+      const slotCache = await prisma.gameTimeSlotCache.findUnique({
+        where: { gameTimeSlotId: existingBooking.gameTimeSlotId }
+      });
+
+      if (slotCache) {
+        const newBookedPlayers = Math.max(0, slotCache.bookedPlayers - existingBooking.playerCount);
+        const newAvailablePlayers = slotCache.maxPlayers - newBookedPlayers;
+
+        await prisma.gameTimeSlotCache.update({
+          where: { gameTimeSlotId: existingBooking.gameTimeSlotId },
+          data: {
+            bookedPlayers: newBookedPlayers,
+            availablePlayers: newAvailablePlayers,
+            isAvailable: true,
+            status: 'AVAILABLE',
+            lastSyncAt: new Date(),
+          }
+        });
+      }
+
+      await prisma.bookingHistory.create({
+        data: {
+          bookingId: id,
+          action: 'CANCELLED',
+          userId: existingBooking.userId,
+          details: {
+            reason: reason || 'Admin cancelled',
+            cancelledBy: 'admin'
+          }
+        }
+      });
+
+      return cancelledBooking;
+    });
+
+    return BookingResponseDto.fromEntity(booking);
+  }
+
+  // 예약 확정 (PENDING -> CONFIRMED)
+  async confirmBooking(id: number): Promise<BookingResponseDto> {
+    const booking = await this.prisma.$transaction(async (prisma) => {
+      const existingBooking = await prisma.booking.findUnique({
+        where: { id }
+      });
+
+      if (!existingBooking) {
+        throw new HttpException('Booking not found', HttpStatus.NOT_FOUND);
+      }
+
+      if (existingBooking.status !== BookingStatus.PENDING) {
+        throw new HttpException(
+          `Cannot confirm booking with status: ${existingBooking.status}`,
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      const confirmedBooking = await prisma.booking.update({
+        where: { id },
+        data: {
+          status: BookingStatus.CONFIRMED,
+        },
+      });
+
+      await prisma.bookingHistory.create({
+        data: {
+          bookingId: id,
+          action: 'CONFIRMED',
+          userId: existingBooking.userId,
+          details: {
+            confirmedBy: 'admin'
+          }
+        }
+      });
+
+      return confirmedBooking;
+    });
+
+    return BookingResponseDto.fromEntity(booking);
+  }
+
+  // 예약 완료 (CONFIRMED -> COMPLETED)
+  async completeBooking(id: number): Promise<BookingResponseDto> {
+    const booking = await this.prisma.$transaction(async (prisma) => {
+      const existingBooking = await prisma.booking.findUnique({
+        where: { id }
+      });
+
+      if (!existingBooking) {
+        throw new HttpException('Booking not found', HttpStatus.NOT_FOUND);
+      }
+
+      if (existingBooking.status !== BookingStatus.CONFIRMED) {
+        throw new HttpException(
+          `Cannot complete booking with status: ${existingBooking.status}`,
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      const completedBooking = await prisma.booking.update({
+        where: { id },
+        data: {
+          status: BookingStatus.COMPLETED,
+        },
+      });
+
+      await prisma.bookingHistory.create({
+        data: {
+          bookingId: id,
+          action: 'COMPLETED',
+          userId: existingBooking.userId,
+          details: {
+            completedBy: 'admin'
+          }
+        }
+      });
+
+      return completedBooking;
+    });
+
+    return BookingResponseDto.fromEntity(booking);
+  }
+
+  // 노쇼 처리 (CONFIRMED -> NO_SHOW)
+  async markNoShow(id: number): Promise<BookingResponseDto> {
+    const booking = await this.prisma.$transaction(async (prisma) => {
+      const existingBooking = await prisma.booking.findUnique({
+        where: { id }
+      });
+
+      if (!existingBooking) {
+        throw new HttpException('Booking not found', HttpStatus.NOT_FOUND);
+      }
+
+      if (existingBooking.status !== BookingStatus.CONFIRMED) {
+        throw new HttpException(
+          `Cannot mark no-show for booking with status: ${existingBooking.status}`,
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      const noShowBooking = await prisma.booking.update({
+        where: { id },
+        data: {
+          status: BookingStatus.NO_SHOW,
+        },
+      });
+
+      await prisma.bookingHistory.create({
+        data: {
+          bookingId: id,
+          action: 'NO_SHOW',
+          userId: existingBooking.userId,
+          details: {
+            markedBy: 'admin'
+          }
+        }
+      });
+
+      return noShowBooking;
+    });
+
+    return BookingResponseDto.fromEntity(booking);
+  }
+
   // GameTimeSlot 가용성 조회 (Game 기반)
   async getGameTimeSlotAvailability(
     gameId: number,
@@ -808,5 +995,14 @@ export class BookingService {
       }
     });
     this.logger.log(`GameTimeSlot cache synced for gameTimeSlotId: ${data.gameTimeSlotId}`);
+  }
+
+  // 사용자 예약 통계 조회
+  async getUserStats(userId: number): Promise<{ totalBookings: number }> {
+    const totalBookings = await this.prisma.booking.count({
+      where: { userId },
+    });
+
+    return { totalBookings };
   }
 }

@@ -102,11 +102,11 @@ export const CanManageAnyContent: React.FC<QuickGuardProps> = ({ children, fallb
   return <>{fallback}</>;
 };
 
-// 시스템 관리자 전용 (scope: SYSTEM)
+// 플랫폼 관리자 전용 (primaryScope: PLATFORM)
 export const SystemAdminOnly: React.FC<QuickGuardProps> = ({ children, fallback, hideIfNoAccess }) => {
   const currentAdmin = useCurrentAdmin();
 
-  const isSystemAdmin = currentAdmin?.scope === 'SYSTEM';
+  const isSystemAdmin = currentAdmin?.primaryScope === 'PLATFORM';
 
   if (isSystemAdmin) {
     return <>{children}</>;
@@ -119,11 +119,11 @@ export const SystemAdminOnly: React.FC<QuickGuardProps> = ({ children, fallback,
   return <>{fallback}</>;
 };
 
-// 운영 관리자 이상 (scope: SYSTEM or OPERATION)
+// 운영 관리자 이상 (primaryScope: PLATFORM or COMPANY)
 export const OperationAdminOrAbove: React.FC<QuickGuardProps> = ({ children, fallback, hideIfNoAccess }) => {
   const currentAdmin = useCurrentAdmin();
 
-  const hasAccess = currentAdmin?.scope === 'SYSTEM' || currentAdmin?.scope === 'OPERATION';
+  const hasAccess = currentAdmin?.primaryScope === 'PLATFORM' || currentAdmin?.primaryScope === 'COMPANY';
 
   if (hasAccess) {
     return <>{children}</>;
@@ -136,14 +136,14 @@ export const OperationAdminOrAbove: React.FC<QuickGuardProps> = ({ children, fal
   return <>{fallback}</>;
 };
 
-// 관리자 관리 권한 (ADMINS 권한 + 시스템/운영 레벨)
+// 관리자 관리 권한 (ADMINS 권한 + 플랫폼/회사 레벨)
 export const CanManageCompanyAdmins: React.FC<QuickGuardProps> = ({ children, fallback, hideIfNoAccess }) => {
   const currentAdmin = useCurrentAdmin();
   const hasManageAdmins = useAuthStore((state) => state.hasPermission('ADMINS'));
 
-  // ADMINS 권한이 있고, 시스템 또는 운영 레벨의 관리자
+  // ADMINS 권한이 있고, 플랫폼 또는 회사 레벨의 관리자
   const hasAccess = hasManageAdmins &&
-                   (currentAdmin?.scope === 'SYSTEM' || currentAdmin?.scope === 'OPERATION');
+                   (currentAdmin?.primaryScope === 'PLATFORM' || currentAdmin?.primaryScope === 'COMPANY');
 
   if (hasAccess) {
     return <>{children}</>;

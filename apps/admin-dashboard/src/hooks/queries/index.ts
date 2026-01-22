@@ -21,3 +21,6 @@ export * from './user';
 
 // Game Queries & Mutations
 export * from './game';
+
+// Policy Queries & Mutations
+export * from './policy';

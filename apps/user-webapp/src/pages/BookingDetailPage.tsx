@@ -7,53 +7,13 @@ import { formatDate } from '@/lib/formatting';
 import { showErrorToast } from '@/lib/toast';
 import { translateErrorMessage } from '@/types/common';
 import { Button, Select, Textarea, Checkbox, PriceDisplay } from '../components';
-
+import { PAYMENT_METHODS, SERVICE_FEE_RATE } from '@/lib/constants';
 
 interface BookingState {
   game: Game;
   timeSlot: GameTimeSlot;
   date: string;
 }
-
-interface PaymentMethod {
-  id: string;
-  name: string;
-  icon: string;
-  description: string;
-}
-
-const paymentMethods: PaymentMethod[] = [
-  {
-    id: 'card',
-    name: '신용카드',
-    icon: '💳',
-    description: '신용카드 또는 체크카드로 결제'
-  },
-  {
-    id: 'kakaopay',
-    name: '카카오페이',
-    icon: '💛',
-    description: '카카오페이로 간편결제'
-  },
-  {
-    id: 'naverpay',
-    name: '네이버페이',
-    icon: '💚',
-    description: '네이버페이로 간편결제'
-  },
-  {
-    id: 'tosspay',
-    name: '토스페이',
-    icon: '💙',
-    description: '토스페이로 간편결제'
-  },
-  {
-    id: 'bank',
-    name: '계좌이체',
-    icon: '🏦',
-    description: '실시간 계좌이체'
-  }
-];
 
 export const BookingDetailPage: React.FC = () => {
   const { user } = useAuth();
@@ -88,7 +48,7 @@ export const BookingDetailPage: React.FC = () => {
   }, [availablePlayers, playerCount]);
 
   const totalPrice = (timeSlot.price || game.basePrice || game.pricePerPerson || 0) * playerCount;
-  const serviceFee = Math.floor(totalPrice * 0.03); // 3% 서비스 수수료
+  const serviceFee = Math.floor(totalPrice * SERVICE_FEE_RATE);
   const finalPrice = totalPrice + serviceFee;
 
   const canProceed = selectedPaymentMethod && agreeToTerms && agreeToPrivacy;
@@ -119,7 +79,7 @@ export const BookingDetailPage: React.FC = () => {
             timeSlot,
             date,
             playerCount,
-            paymentMethod: paymentMethods.find(p => p.id === selectedPaymentMethod),
+            paymentMethod: PAYMENT_METHODS.find(p => p.id === selectedPaymentMethod),
             specialRequests
           }
         });
@@ -244,7 +204,7 @@ export const BookingDetailPage: React.FC = () => {
           </h2>
 
           <div className="grid gap-3">
-            {paymentMethods.map((method) => (
+            {PAYMENT_METHODS.map((method) => (
               <label
                 key={method.id}
                 className={`flex items-center p-4 rounded-xl cursor-pointer transition-all duration-200 backdrop-blur-sm border ${

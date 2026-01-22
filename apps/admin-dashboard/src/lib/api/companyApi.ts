@@ -2,6 +2,7 @@ import { apiClient } from './client';
 import { extractList, extractPagination, extractSingle, type PaginatedResult } from './bffParser';
 import type {
   Company,
+  CompanyType,
   CreateCompanyDto,
   UpdateCompanyDto,
   CompanyStatus
@@ -11,6 +12,8 @@ import type {
 interface RawCompanyData {
   id: number;
   name: string;
+  code?: string;
+  companyType?: CompanyType;
   businessNumber?: string;
   address?: string;
   phoneNumber?: string;
@@ -64,9 +67,23 @@ export interface CompanyFiltersQuery {
 
 // 데이터 변환 헬퍼 함수
 function transformCompanyData(rawCompany: RawCompanyData): Company {
+  // code가 없으면 회사명에서 자동 생성
+  const generateCode = (name: string, id: number): string => {
+    const nameCode = name
+      .replace(/[^\w\s가-힣]/g, '')
+      .split(/\s+/)
+      .map(w => w.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 4);
+    return `${nameCode}-${id}`;
+  };
+
   return {
     id: rawCompany.id,
     name: rawCompany.name,
+    code: rawCompany.code || generateCode(rawCompany.name, rawCompany.id),
+    companyType: rawCompany.companyType || 'FRANCHISE',
     businessNumber: rawCompany.businessNumber || '',
     address: rawCompany.address || '',
     phoneNumber: rawCompany.phoneNumber || '',
@@ -156,9 +173,24 @@ export const companyApi = {
 
   // 회사 생성
   async createCompany(createData: CreateCompanyDto): Promise<Company> {
-    // 백엔드가 지원하는 필드만 필터링
+    // code가 없으면 회사명에서 자동 생성
+    const generateCode = (name: string): string => {
+      const timestamp = Date.now().toString(36).toUpperCase();
+      const nameCode = name
+        .replace(/[^\w\s가-힣]/g, '')
+        .split(/\s+/)
+        .map(w => w.charAt(0))
+        .join('')
+        .toUpperCase()
+        .slice(0, 4);
+      return `${nameCode}-${timestamp}`;
+    };
+
+    // 백엔드가 지원하는 필드
     const supportedFields = {
       name: createData.name,
+      code: createData.code || generateCode(createData.name),
+      companyType: createData.companyType || 'FRANCHISE',
       businessNumber: createData.businessNumber,
       address: createData.address,
       phoneNumber: createData.phoneNumber,
@@ -208,70 +240,47 @@ export const companyApi = {
     return transformCompanyData(rawData);
   },
 
-  // 회사 삭제 (실제 API 사용)
+  /**
+   * 회사 삭제
+   */
   async deleteCompany(id: number): Promise<void> {
-    try {
-      console.log(`Deleting company ${id}`);
-      
-      // 실제 API 호출
-      await apiClient.delete(`/admin/companies/${id}`);
-      console.log(`Company ${id} deleted successfully`);
-    } catch (error) {
-      console.error(`Failed to delete company ${id}:`, error);
-      throw error;
-    }
+    await apiClient.delete(`/admin/companies/${id}`);
   },
 
-  // 회사 상태 변경 (Mock 구현 - 실제 API 대기)
+  /**
+   * 회사 상태 변경
+   */
   async updateCompanyStatus(id: number, status: CompanyStatus): Promise<Company> {
-    try {
-      const existingCompany = await this.getCompanyById(id);
-      const updatedCompany: Company = {
-        ...existingCompany,
-        status,
-        isActive: status === 'ACTIVE',
-        updatedAt: new Date().toISOString()
-      };
-      
-      return updatedCompany;
-    } catch (error) {
-      console.error(`Failed to update company ${id} status:`, error);
-      throw error;
-    }
+    const response = await apiClient.patch<unknown>(`/admin/companies/${id}/status`, { status });
+    const rawData = extractSingle<RawCompanyData>(response.data, 'company');
+    if (!rawData) throw new Error('Failed to update company status');
+    return transformCompanyData(rawData);
   },
 
-  // 대량 작업 - 상태 변경 (Mock 구현 - 실제 API 대기)
+  /**
+   * 대량 상태 변경
+   */
   async bulkUpdateStatus(companyIds: number[], status: CompanyStatus): Promise<Company[]> {
-    try {
-      // Mock: 각 회사의 상태를 개별적으로 업데이트
-      const updatedCompanies: Company[] = [];
-      for (const id of companyIds) {
-        const updated = await this.updateCompanyStatus(id, status);
-        updatedCompanies.push(updated);
-      }
-      
-      return updatedCompanies;
-    } catch (error) {
-      console.error('Failed to bulk update company status:', error);
-      throw error;
+    const updatedCompanies: Company[] = [];
+    for (const id of companyIds) {
+      const updated = await this.updateCompanyStatus(id, status);
+      updatedCompanies.push(updated);
     }
+    return updatedCompanies;
   },
 
-  // 대량 작업 - 삭제 (Mock 구현 - 실제 API 대기)
+  /**
+   * 대량 삭제
+   */
   async bulkDeleteCompanies(companyIds: number[]): Promise<void> {
-    try {
-      // Mock: 각 회사를 개별적으로 삭제
-      for (const id of companyIds) {
-        await this.deleteCompany(id);
-      }
-      
-    } catch (error) {
-      console.error('Failed to bulk delete companies:', error);
-      throw error;
+    for (const id of companyIds) {
+      await this.deleteCompany(id);
     }
   },
 
-  // 회사 통계 조회 (Mock 구현 - 실제 API 대기)
+  /**
+   * 회사 통계 조회
+   */
   async getCompanyStats(): Promise<{
     totalCompanies: number;
     activeCompanies: number;
@@ -281,25 +290,52 @@ export const companyApi = {
     totalRevenue: number;
     averageRevenue: number;
   }> {
-    try {
-      const companiesResponse = await this.getCompanies();
-      const companies = companiesResponse.data;
-      
-      const stats = {
-        totalCompanies: companies.length,
-        activeCompanies: companies.filter(c => c.status === 'ACTIVE').length,
-        inactiveCompanies: companies.filter(c => c.status === 'INACTIVE').length,
-        maintenanceCompanies: companies.filter(c => c.status === 'MAINTENANCE').length,
-        totalCourses: companies.reduce((sum, c) => sum + (c.coursesCount || 0), 0),
-        totalRevenue: companies.reduce((sum, c) => sum + (c.totalRevenue || 0), 0),
-        averageRevenue: companies.length > 0 ? companies.reduce((sum, c) => sum + (c.totalRevenue || 0), 0) / companies.length : 0
+    interface CompanyStatsResponse {
+      totalCompanies?: number;
+      total?: number;
+      activeCompanies?: number;
+      inactiveCompanies?: number;
+      maintenanceCompanies?: number;
+      totalCourses?: number;
+      totalRevenue?: number;
+      averageRevenue?: number;
+      byStatus?: {
+        ACTIVE?: number;
+        INACTIVE?: number;
+        MAINTENANCE?: number;
       };
-      
-      return stats;
-    } catch (error) {
-      console.error('Failed to fetch company stats:', error);
-      throw error;
     }
+
+    const response = await apiClient.get<unknown>('/admin/companies/stats');
+    const apiStats = extractSingle<CompanyStatsResponse>(response.data);
+
+    return {
+      totalCompanies: apiStats?.totalCompanies || apiStats?.total || 0,
+      activeCompanies: apiStats?.activeCompanies || apiStats?.byStatus?.ACTIVE || 0,
+      inactiveCompanies: apiStats?.inactiveCompanies || apiStats?.byStatus?.INACTIVE || 0,
+      maintenanceCompanies: apiStats?.maintenanceCompanies || apiStats?.byStatus?.MAINTENANCE || 0,
+      totalCourses: apiStats?.totalCourses || 0,
+      totalRevenue: apiStats?.totalRevenue || 0,
+      averageRevenue: apiStats?.averageRevenue || 0,
+    };
+  },
+
+  /**
+   * 회사 코드로 조회
+   */
+  async getCompanyByCode(code: string): Promise<Company> {
+    const response = await apiClient.get<unknown>(`/admin/companies/code/${code}`);
+    const rawData = extractSingle<RawCompanyData>(response.data, 'company');
+    if (!rawData) throw new Error('Company not found');
+    return transformCompanyData(rawData);
+  },
+
+  /**
+   * 회사 관리자 목록 조회
+   */
+  async getCompanyAdmins(companyId: number): Promise<Array<{ id: number; name: string; email: string }>> {
+    const response = await apiClient.get<unknown>(`/admin/companies/${companyId}/admins`);
+    return extractList<{ id: number; name: string; email: string }>(response.data, 'admins');
   }
 } as const;
 

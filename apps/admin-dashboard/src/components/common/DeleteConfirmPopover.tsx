@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 
 interface DeleteConfirmPopoverProps {
   /** 삭제 버튼 트리거 (children) */
@@ -55,9 +56,7 @@ export const DeleteConfirmPopover: React.FC<DeleteConfirmPopoverProps> = ({
           <div className="flex items-start space-x-3">
             <div className="flex-shrink-0">
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
+                <AlertTriangle className="w-5 h-5 text-red-600" />
               </div>
             </div>
             <div className="flex-1">
@@ -73,7 +72,7 @@ export const DeleteConfirmPopover: React.FC<DeleteConfirmPopoverProps> = ({
               <button
                 type="button"
                 disabled={isDeleting}
-                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
               >
                 취소
               </button>
@@ -82,14 +81,11 @@ export const DeleteConfirmPopover: React.FC<DeleteConfirmPopoverProps> = ({
               type="button"
               onClick={handleConfirm}
               disabled={isDeleting}
-              className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 flex items-center space-x-1"
+              className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 flex items-center space-x-1"
             >
               {isDeleting ? (
                 <>
-                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
+                  <Loader2 className="animate-spin h-4 w-4" />
                   <span>삭제 중...</span>
                 </>
               ) : (

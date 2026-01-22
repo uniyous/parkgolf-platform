@@ -16,8 +16,8 @@ import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
  * Auth Service for User API
  *
  * NATS Patterns:
- * - Authentication: auth.user.login, auth.user.refresh
- * - User Registration: users.create
+ * - Authentication: iam.auth.user.login, iam.auth.user.refresh
+ * - User Registration: iam.users.create
  */
 @Injectable()
 export class AuthService {
@@ -32,7 +32,7 @@ export class AuthService {
     this.logger.log(`Register request: ${registerDto.email}`);
 
     // Create user via users.create
-    const response = await this.natsClient.send<any>('users.create', {
+    const response = await this.natsClient.send<any>('iam.users.create', {
       userData: {
         email: registerDto.email,
         password: registerDto.password,
@@ -50,7 +50,7 @@ export class AuthService {
     const userData = response.data;
 
     // Login to get tokens via auth.user.login
-    const loginResponse = await this.natsClient.send<any>('auth.user.login', {
+    const loginResponse = await this.natsClient.send<any>('iam.auth.user.login', {
       email: registerDto.email,
       password: registerDto.password,
     });
@@ -78,7 +78,7 @@ export class AuthService {
   async login(loginDto: LoginDto): Promise<AuthResponseDto> {
     this.logger.log(`User login: ${loginDto.email}`);
 
-    const response = await this.natsClient.send<any>('auth.user.login', {
+    const response = await this.natsClient.send<any>('iam.auth.user.login', {
       email: loginDto.email,
       password: loginDto.password,
     });
@@ -108,7 +108,7 @@ export class AuthService {
   async refreshToken(refreshTokenStr: string): Promise<AuthResponseDto> {
     this.logger.log('Token refresh request');
 
-    const response = await this.natsClient.send<any>('auth.user.refresh', { refreshToken: refreshTokenStr }, NATS_TIMEOUTS.QUICK);
+    const response = await this.natsClient.send<any>('iam.auth.user.refresh', { refreshToken: refreshTokenStr }, NATS_TIMEOUTS.QUICK);
 
     if (!response.success) {
       throw new UnauthorizedException('유효하지 않은 토큰입니다.');

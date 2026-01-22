@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Plus, Lightbulb } from 'lucide-react';
 import { useGamesQuery, useClubsQuery } from '@/hooks/queries';
 import { DataContainer } from '@/components/common';
+import { FilterContainer, FilterSelect, FilterSearch, FilterResetButton } from '@/components/common/filters';
 import { CanManageCourses } from '@/components/auth';
 import { PageLayout } from '@/components/layout';
 import { GameFormModal } from '@/components/features/game';
@@ -47,6 +49,14 @@ export const GameListPage: React.FC = () => {
     );
   }, [games, searchKeyword]);
 
+  // Stats
+  const stats = useMemo(() => ({
+    total: games.length,
+    active: games.filter((g) => g.status === 'ACTIVE').length,
+    maintenance: games.filter((g) => g.status === 'MAINTENANCE').length,
+    inactive: games.filter((g) => g.status === 'INACTIVE').length,
+  }), [games]);
+
   // 클럽 필터 변경
   const handleClubFilterChange = (clubId: number | null) => {
     setSelectedClubId(clubId);
@@ -80,73 +90,97 @@ export const GameListPage: React.FC = () => {
       }
     >
     <div className="space-y-6">
-      {/* 헤더 */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-6">
+      {/* 헤더 카드 */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">🎮 라운드 관리</h1>
-            <p className="text-gray-600 mt-1">18홀 라운드 조합 및 가격 설정</p>
+            <h2 className="text-xl font-semibold text-gray-900">라운드 관리</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              18홀 라운드 조합 및 가격 설정
+            </p>
           </div>
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            <span>새 라운드 추가</span>
+            <Plus className="w-5 h-5 mr-2" />
+            라운드 추가
           </button>
         </div>
 
-        {/* 필터 바 */}
-        <div className="flex items-center space-x-4">
-          {/* 클럽 필터 */}
-          <div className="w-64">
-            <select
-              value={selectedClubId || ''}
-              onChange={(e) => handleClubFilterChange(e.target.value ? Number(e.target.value) : null)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">전체 골프장</option>
-              {clubs.map((club) => (
-                <option key={club.id} value={club.id}>
-                  {club.name}
-                </option>
-              ))}
-            </select>
+        {/* 통계 */}
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
+                <div className="text-sm text-blue-600">전체 라운드</div>
+              </div>
+              <div className="text-3xl">🎮</div>
+            </div>
           </div>
-
-          {/* 검색 바 */}
-          <div className="flex-1 relative">
-            <input
-              type="text"
-              placeholder="라운드 이름으로 검색하세요..."
-              value={searchKeyword}
-              onChange={(e) => setSearchKeyword(e.target.value)}
-              className="w-full px-4 py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+          <div className="bg-green-50 p-4 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+                <div className="text-sm text-green-600">운영중</div>
+              </div>
+              <div className="text-3xl">✅</div>
+            </div>
           </div>
-
-          {(searchKeyword || selectedClubId) && (
-            <button
-              onClick={() => {
-                setSearchKeyword('');
-                handleClubFilterChange(null);
-              }}
-              className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-            >
-              필터 초기화
-            </button>
-          )}
+          <div className="bg-yellow-50 p-4 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-yellow-600">{stats.maintenance}</div>
+                <div className="text-sm text-yellow-600">정비중</div>
+              </div>
+              <div className="text-3xl">🔧</div>
+            </div>
+          </div>
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-gray-600">{stats.inactive}</div>
+                <div className="text-sm text-gray-600">비활성</div>
+              </div>
+              <div className="text-3xl">⏸️</div>
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* 필터 */}
+      <FilterContainer columns={4}>
+        <FilterSelect
+          label="골프장"
+          value={selectedClubId}
+          onChange={(value) => handleClubFilterChange(value ? Number(value) : null)}
+          options={clubs.map((club) => ({ value: club.id, label: club.name }))}
+          placeholder="전체"
+        />
+        <FilterSearch
+          label="검색"
+          showLabel
+          value={searchKeyword}
+          onChange={setSearchKeyword}
+          placeholder="라운드 이름으로 검색..."
+        />
+        <div className="flex items-end">
+          <FilterResetButton
+            hasActiveFilters={!!(searchKeyword || selectedClubId)}
+            onClick={() => {
+              setSearchKeyword('');
+              handleClubFilterChange(null);
+            }}
+            label="필터 초기화"
+            className="w-full"
+          />
+        </div>
+      </FilterContainer>
+
       {/* 에러 메시지 */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
           {error.message}
         </div>
       )}
@@ -156,11 +190,7 @@ export const GameListPage: React.FC = () => {
         <DataContainer
           isLoading={isLoading}
           isEmpty={filteredGames.length === 0}
-          emptyIcon={
-            <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
-          }
+          emptyIcon={<Lightbulb className="h-12 w-12 text-gray-400" />}
           emptyMessage="라운드가 없습니다"
           emptyDescription={
             searchKeyword || selectedClubId

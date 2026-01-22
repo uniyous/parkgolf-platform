@@ -1,47 +1,69 @@
-import { Injectable, Inject, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Inject, Logger, HttpException, HttpStatus, OnModuleInit } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, TimeoutError } from 'rxjs';
 import { Errors } from '../exceptions';
-
-/**
- * NATS Timeout Constants
- */
-export const NATS_TIMEOUTS = {
-  /** Quick operations (single item fetch, validation) */
-  QUICK: 5000,
-  /** Default operations */
-  DEFAULT: 15000,
-  /** List queries with pagination */
-  LIST_QUERY: 30000,
-  /** Analytics and statistics */
-  ANALYTICS: 30000,
-} as const;
+import { NATS_TIMEOUTS } from '../constants';
 
 /**
  * NATS Client Wrapper Service
  * NATS 통신을 위한 공통 래퍼 - 타임아웃, 에러 핸들링, 로깅 통합
  */
 @Injectable()
-export class NatsClientService {
+export class NatsClientService implements OnModuleInit {
   private readonly logger = new Logger(NatsClientService.name);
+  private isConnected = false;
 
   constructor(
     @Inject('NATS_CLIENT') private readonly natsClient: ClientProxy,
   ) {}
 
+  async onModuleInit() {
+    try {
+      this.logger.log('Connecting to NATS...');
+      await this.natsClient.connect();
+      this.isConnected = true;
+      this.logger.log('NATS connected successfully');
+    } catch (error) {
+      this.isConnected = false;
+      this.logger.error('Failed to connect to NATS', error instanceof Error ? error.message : error);
+    }
+  }
+
+  /**
+   * NATS 연결 상태 확인
+   */
+  getConnectionStatus(): boolean {
+    return this.isConnected;
+  }
+
   /**
    * NATS 메시지 전송 (공통 래퍼)
    * @param subject NATS subject
    * @param payload 전송 데이터
-   * @param timeoutMs 타임아웃 (기본 15초)
+   * @param timeoutMs 타임아웃 (기본 30초)
    */
   async send<T>(subject: string, payload: any, timeoutMs: number = NATS_TIMEOUTS.DEFAULT): Promise<T> {
+    const startTime = Date.now();
     try {
-      this.logger.debug(`NATS send: ${subject}`);
+      this.logger.log(`[PERF] NATS send START: ${subject} (connected: ${this.isConnected})`);
+
+      // 연결이 안 되어 있으면 재연결 시도
+      if (!this.isConnected) {
+        this.logger.warn(`NATS not connected, attempting to reconnect for: ${subject}`);
+        try {
+          await this.natsClient.connect();
+          this.isConnected = true;
+          this.logger.log('NATS reconnected successfully');
+        } catch (connectError) {
+          this.logger.error('NATS reconnection failed', connectError instanceof Error ? connectError.message : connectError);
+        }
+      }
 
       const result = await firstValueFrom(
         this.natsClient.send(subject, payload).pipe(timeout(timeoutMs)),
       );
+
+      this.logger.log(`[PERF] NATS send END: ${subject} - ${Date.now() - startTime}ms`);
 
       // 마이크로서비스에서 반환한 에러 응답 체크 (success: false)
       if (result && typeof result === 'object' && (result as any).success === false && (result as any).error) {
@@ -50,6 +72,8 @@ export class NatsClientService {
 
       return result as T;
     } catch (error) {
+      this.logger.error(`[PERF] NATS send FAILED: ${subject} - ${Date.now() - startTime}ms`,
+        error instanceof Error ? `${error.constructor.name}: ${error.message}` : String(error));
       throw this.handleError(error, subject);
     }
   }
@@ -74,6 +98,7 @@ export class NatsClientService {
       return new HttpException(
         {
           success: false,
+          message: Errors.System.TIMEOUT.message,
           error: {
             code: Errors.System.TIMEOUT.code,
             message: Errors.System.TIMEOUT.message,
@@ -114,6 +139,7 @@ export class NatsClientService {
       return new HttpException(
         {
           success: false,
+          message: Errors.System.UNAVAILABLE.message,
           error: {
             code: Errors.System.UNAVAILABLE.code,
             message: Errors.System.UNAVAILABLE.message,
@@ -125,13 +151,15 @@ export class NatsClientService {
     }
 
     // 알 수 없는 에러
-    this.logger.error(`NATS error: ${subject}`, error);
+    const errorMessage = error instanceof Error ? error.message : Errors.System.INTERNAL.message;
+    this.logger.error(`NATS error: ${subject} - ${errorMessage}`, error);
     return new HttpException(
       {
         success: false,
+        message: errorMessage,
         error: {
           code: Errors.System.INTERNAL.code,
-          message: Errors.System.INTERNAL.message,
+          message: errorMessage,
         },
         timestamp: new Date().toISOString(),
       },

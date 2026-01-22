@@ -42,7 +42,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
           {onBack && (
             <button
               onClick={onBack}
-              className="inline-flex items-center px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors group"
+              className="inline-flex items-center px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors group"
             >
               <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-0.5 transition-transform" />
               <span>{backLabel}</span>
@@ -71,7 +71,7 @@ export const PageHeaderAction: React.FC<{
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex items-center px-4 py-2 rounded-md font-medium transition-colors disabled:cursor-not-allowed ${variantClasses[variant]}`}
+      className={`inline-flex items-center px-4 py-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed ${variantClasses[variant]}`}
     >
       {children}
     </button>

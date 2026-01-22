@@ -12,7 +12,7 @@ import {
   Max,
   ValidateNested,
 } from 'class-validator';
-import { Club, Company, Course } from '@prisma/client';
+import { Club, Course } from '@prisma/client';
 import { CourseResponseDto } from '../../course/dto/course.dto';
 
 export enum ClubStatus {
@@ -201,8 +201,8 @@ export class ClubFilterDto {
 }
 
 /** Club 엔티티 타입 (관계 포함) */
+// Note: company relation removed - use NATS 'iam.companies.getById' for Company data
 export type ClubWithRelations = Club & {
-  company?: Company;
   courses?: Course[];
 };
 
@@ -225,7 +225,7 @@ export class ClubResponseDto {
   isActive: boolean;
   createdAt: string | null;
   updatedAt: string | null;
-  company?: Company;
+  // company field removed - use NATS 'iam.companies.getById' for Company data
   courses?: CourseResponseDto[];
 
   /**
@@ -250,7 +250,6 @@ export class ClubResponseDto {
     dto.isActive = entity.isActive;
     dto.createdAt = entity.createdAt?.toISOString() ?? null;
     dto.updatedAt = entity.updatedAt?.toISOString() ?? null;
-    dto.company = entity.company;
     dto.courses = entity.courses?.map(course => CourseResponseDto.fromEntity(course));
     return dto;
   }

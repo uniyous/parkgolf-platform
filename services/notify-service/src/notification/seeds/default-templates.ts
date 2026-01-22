@@ -21,7 +21,7 @@ export const defaultTemplates = [
       courseName: '코스명',
       bookingDate: '예약날짜',
       bookingTime: '예약시간',
-      bookingId: '예약번호'
+      bookingId: '예약번호',
     },
     isActive: true,
   },
@@ -44,7 +44,7 @@ export const defaultTemplates = [
       courseName: '코스명',
       bookingDate: '예약날짜',
       bookingTime: '예약시간',
-      bookingId: '예약번호'
+      bookingId: '예약번호',
     },
     isActive: true,
   },
@@ -64,7 +64,7 @@ export const defaultTemplates = [
     variables: {
       amount: '결제금액',
       paymentId: '결제번호',
-      bookingId: '예약번호'
+      bookingId: '예약번호',
     },
     isActive: true,
   },
@@ -86,55 +86,7 @@ export const defaultTemplates = [
       amount: '결제금액',
       paymentId: '결제번호',
       bookingId: '예약번호',
-      failureReason: '실패사유'
-    },
-    isActive: true,
-  },
-  {
-    type: NotificationType.BOOKING_REMINDER,
-    title: '내일 예약이 있습니다 - {{courseName}}',
-    content: `안녕하세요!
-
-내일 예약이 있어 알려드립니다.
-
-📅 예약 날짜: {{bookingDate}}
-⏰ 예약 시간: {{bookingTime}}
-🏌️ 코스: {{courseName}}
-📋 예약 번호: {{bookingId}}
-
-준비물과 날씨를 미리 확인하시고, 여유를 가지고 방문해 주세요.
-즐거운 골프 되세요!
-
-감사합니다.`,
-    variables: {
-      courseName: '코스명',
-      bookingDate: '예약날짜',
-      bookingTime: '예약시간',
-      bookingId: '예약번호'
-    },
-    isActive: true,
-  },
-  {
-    type: NotificationType.PROMOTIONAL,
-    title: '🎉 특별 할인 혜택을 놓치지 마세요!',
-    content: `안녕하세요!
-
-{{userName}}님을 위한 특별 혜택을 준비했습니다.
-
-🎁 혜택 내용: {{promotionTitle}}
-💰 할인율: {{discountRate}}%
-📅 유효기간: {{validUntil}}
-
-지금 바로 예약하고 특가 혜택을 받아보세요!
-
-[지금 예약하기]
-
-감사합니다.`,
-    variables: {
-      userName: '사용자명',
-      promotionTitle: '프로모션제목',
-      discountRate: '할인율',
-      validUntil: '유효기간'
+      failureReason: '실패사유',
     },
     isActive: true,
   },
@@ -155,7 +107,7 @@ export const defaultTemplates = [
     variables: {
       alertTitle: '공지제목',
       alertContent: '공지내용',
-      alertDate: '공지일'
+      alertDate: '공지일',
     },
     isActive: true,
   },

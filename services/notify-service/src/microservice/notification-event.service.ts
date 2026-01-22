@@ -34,16 +34,6 @@ interface NotificationRequest {
   scheduledAt?: string;
 }
 
-interface BulkNotificationRequest {
-  userIds: string[];
-  type: NotificationType;
-  title: string;
-  message: string;
-  data?: any;
-  deliveryChannel?: string;
-  scheduledAt?: string;
-}
-
 @Injectable()
 export class NotificationEventService {
   private readonly logger = new Logger(NotificationEventService.name);
@@ -85,7 +75,6 @@ export class NotificationEventService {
         deliveryChannel: 'EMAIL',
       });
 
-      // Immediately deliver the notification
       await this.deliveryService.deliverNotification(notification);
     } catch (error) {
       this.logger.error('Failed to handle booking confirmed event:', error);
@@ -196,7 +185,7 @@ export class NotificationEventService {
     }
   }
 
-  // RPC Message Handlers - Respond to requests from other services
+  // RPC Message Handlers
   @MessagePattern('notification.send')
   async sendNotification(@Payload() data: NotificationRequest) {
     this.logger.log(`Handling send notification request for user: ${data.userId}`);
@@ -204,46 +193,14 @@ export class NotificationEventService {
     try {
       const notification = await this.notificationService.create(data);
       await this.deliveryService.deliverNotification(notification);
-      
+
       return {
         success: true,
         notificationId: notification.id,
         message: 'Notification sent successfully',
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error('Failed to send notification:', error);
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
-  }
-
-  @MessagePattern('notification.send_bulk')
-  async sendBulkNotification(@Payload() data: BulkNotificationRequest) {
-    this.logger.log(`Handling bulk notification request for ${data.userIds.length} users`);
-
-    try {
-      const { userIds, ...notificationData } = data;
-      const notifications = await this.notificationService.sendToMultipleUsers({
-        userIds,
-        ...notificationData,
-      });
-
-      // Deliver all notifications
-      await Promise.all(
-        notifications.map(notification => 
-          this.deliveryService.deliverNotification(notification)
-        )
-      );
-
-      return {
-        success: true,
-        notificationIds: notifications.map(n => n.id),
-        message: `${notifications.length} notifications sent successfully`,
-      };
-    } catch (error) {
-      this.logger.error('Failed to send bulk notifications:', error);
       return {
         success: false,
         error: error.message,
@@ -261,7 +218,7 @@ export class NotificationEventService {
         success: true,
         data: result,
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error('Failed to get user notifications:', error);
       return {
         success: false,
@@ -280,7 +237,7 @@ export class NotificationEventService {
         success: true,
         data: notification,
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error('Failed to mark notification as read:', error);
       return {
         success: false,
@@ -299,7 +256,7 @@ export class NotificationEventService {
         success: true,
         count,
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error('Failed to get unread count:', error);
       return {
         success: false,

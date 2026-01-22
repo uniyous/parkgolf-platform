@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Button, Input } from '../components';
+import { SystemWarmupPanel } from '../components/SystemWarmupPanel';
 
 export const LoginPage: React.FC = () => {
   const { login, isLoggingIn } = useAuth();
@@ -10,12 +11,11 @@ export const LoginPage: React.FC = () => {
     password: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-
+  const [showWarmupPanel, setShowWarmupPanel] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Basic validation
     const newErrors: Record<string, string> = {};
     if (!formData.email) {
       newErrors.email = '이메일을 입력해주세요.';
@@ -49,13 +49,13 @@ export const LoginPage: React.FC = () => {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
       </div>
 
-      <div className="glass-card w-full max-w-md relative z-10">
+      <div className="glass-card w-full max-w-md relative z-10 p-6 md:p-8">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-2xl mb-4 backdrop-blur-sm">
             <span className="text-3xl">⛳</span>
           </div>
           <h1 className="text-white mb-2 text-2xl font-bold">
-            Golf Course
+            ParkMate
           </h1>
           <p className="text-white/80 text-sm">로그인하여 완벽한 골프 경험을 시작하세요</p>
         </div>
@@ -161,6 +161,12 @@ export const LoginPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* System Warmup Panel */}
+      <SystemWarmupPanel
+        isOpen={showWarmupPanel}
+        onToggle={() => setShowWarmupPanel(!showWarmupPanel)}
+      />
     </div>
   );
 };

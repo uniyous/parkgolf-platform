@@ -1,0 +1,379 @@
+// ==============================================
+// iam-service / iam_db - Schema v5
+// Identity & Access Management
+// - CompanyType 기반 역할 관리
+// ==============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==============================================
+// Company (회사/가맹점)
+// ==============================================
+model Company {
+  id              Int             @id @default(autoincrement())
+  name            String
+  code            String          @unique  // 회사 코드 (예: "GANGNAM-GC")
+  description     String?
+  businessNumber  String?         @unique @map("business_number")
+
+  // 회사 유형 (역할 부여 범위 결정)
+  companyType     CompanyType     @default(FRANCHISE) @map("company_type")
+
+  // 연락처 정보
+  address         String?
+  phoneNumber     String?         @map("phone_number")
+  email           String?         @unique
+  website         String?
+  logoUrl         String?         @map("logo_url")
+
+  // 상태
+  status          CompanyStatus   @default(ACTIVE)
+  isActive        Boolean         @default(true) @map("is_active")
+
+  // 메타데이터
+  metadata        Json?           // 추가 설정 (운영시간, 정책 등)
+
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  // 관계
+  adminCompanies  AdminCompany[]
+
+  @@index([code])
+  @@index([companyType])
+  @@index([status])
+  @@index([isActive])
+  @@map("companies")
+}
+
+enum CompanyStatus {
+  ACTIVE      // 정상 운영
+  INACTIVE    // 비활성
+  SUSPENDED   // 정지
+  PENDING     // 승인 대기
+}
+
+enum CompanyType {
+  PLATFORM     // 본사 - PLATFORM_* 역할 부여 가능
+  ASSOCIATION  // 협회 - PLATFORM_SUPPORT, PLATFORM_VIEWER 부여 가능
+  FRANCHISE    // 가맹점 - COMPANY_* 역할만 부여 가능
+}
+
+// ==============================================
+// AdminCompany (관리자-회사 연결)
+// ==============================================
+model AdminCompany {
+  id              Int         @id @default(autoincrement())
+  adminId         Int         @map("admin_id")
+  companyId       Int         @map("company_id")
+  companyRoleCode String      @map("company_role_code")  // 회사 내 역할
+
+  isPrimary       Boolean     @default(false) @map("is_primary")  // 주 소속 회사
+  isActive        Boolean     @default(true) @map("is_active")
+
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  // 관계
+  admin           Admin       @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  company         Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyRole     RoleMaster  @relation("CompanyRole", fields: [companyRoleCode], references: [code])
+
+  @@unique([adminId, companyId])
+  @@index([adminId])
+  @@index([companyId])
+  @@index([companyRoleCode])
+  @@map("admin_companies")
+}
+
+// ==============================================
+// Admin (관리자)
+// - 모든 관리자는 회사(AdminCompany)에 소속
+// - 회사의 companyType에 따라 부여 가능한 역할이 결정됨
+// ==============================================
+model Admin {
+  id              Int                 @id @default(autoincrement())
+  email           String              @unique
+  password        String
+  name            String
+
+  // 프로필
+  phone           String?
+  department      String?
+  description     String?
+  avatarUrl       String?             @map("avatar_url")
+
+  // 상태
+  isActive        Boolean             @default(true) @map("is_active")
+  lastLoginAt     DateTime?           @map("last_login_at")
+
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  // 관계
+  companies       AdminCompany[]      // 소속 회사들 (역할은 AdminCompany에서 관리)
+  activityLogs    AdminActivityLog[]
+  refreshTokens   AdminRefreshToken[]
+
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("admins")
+}
+
+model AdminRefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  adminId   Int      @map("admin_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@map("admin_refresh_tokens")
+}
+
+// ==============================================
+// User (일반 사용자)
+// ==============================================
+model User {
+  id            Int              @id @default(autoincrement())
+  email         String           @unique
+  password      String
+  passwordChangedAt DateTime?    @map("password_changed_at")  // 비밀번호 마지막 변경일
+  name          String?
+  phone         String?
+  profileImageUrl String?        @map("profile_image_url")
+
+  roleCode      String           @default("USER") @map("role_code")
+  isActive      Boolean          @default(true) @map("is_active")
+
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  // 관계
+  role          RoleMaster       @relation(fields: [roleCode], references: [code])
+  refreshTokens RefreshToken[]
+
+  // 친구 관계
+  sentFriendRequests     FriendRequest[] @relation("SentRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedRequests")
+  friendsAsUser          Friendship[]    @relation("UserFriends")
+  friendsAsFriend        Friendship[]    @relation("FriendOfUser")
+
+  // 알림 설정 및 디바이스
+  notificationSetting    UserNotificationSetting?
+  devices                UserDevice[]
+
+  @@index([roleCode])
+  @@index([isActive])
+  @@index([name])
+  @@index([phone])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int      @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+// ==============================================
+// Role & Permission Masters
+// ==============================================
+model RoleMaster {
+  code        String   @id
+  name        String
+  description String?
+
+  // 역할 분류
+  userType    String   @map("user_type")  // 'ADMIN' | 'USER'
+  scope       String   @default("PLATFORM")  // 'PLATFORM' | 'COMPANY'
+  level       Int      @default(1)
+
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // 관계
+  users               User[]
+  adminCompanies      AdminCompany[]  @relation("CompanyRole")  // 관리자-회사 연결의 역할
+  rolePermissions     RolePermission[]
+
+  @@index([userType])
+  @@index([scope])
+  @@index([isActive])
+  @@map("role_masters")
+}
+
+model PermissionMaster {
+  code        String   @id
+  name        String
+  description String?
+  category    String   // 'COMPANY', 'BOOKING', 'COURSE', 'USER', 'ADMIN', 'ANALYTICS'
+  level       String   @default("low")  // 'low', 'medium', 'high'
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  rolePermissions RolePermission[]
+
+  @@index([category])
+  @@index([isActive])
+  @@map("permission_masters")
+}
+
+model RolePermission {
+  roleCode       String   @map("role_code")
+  permissionCode String   @map("permission_code")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  role           RoleMaster       @relation(fields: [roleCode], references: [code], onDelete: Cascade)
+  permission     PermissionMaster @relation(fields: [permissionCode], references: [code], onDelete: Cascade)
+
+  @@id([roleCode, permissionCode])
+  @@index([roleCode])
+  @@index([permissionCode])
+  @@map("role_permissions")
+}
+
+// ==============================================
+// Activity Logs
+// ==============================================
+model AdminActivityLog {
+  id        Int      @id @default(autoincrement())
+  adminId   Int      @map("admin_id")
+  companyId Int?     @map("company_id")  // 회사 컨텍스트 (있는 경우)
+  action    String
+  resource  String?
+  details   Json?
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([companyId])
+  @@index([createdAt])
+  @@map("admin_activity_logs")
+}
+
+// ==============================================
+// Friend Request (친구 요청)
+// ==============================================
+model FriendRequest {
+  id          Int                 @id @default(autoincrement())
+  fromUserId  Int                 @map("from_user_id")
+  toUserId    Int                 @map("to_user_id")
+  status      FriendRequestStatus @default(PENDING)
+  message     String?             // 요청 메시지 (선택)
+
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  // 관계
+  fromUser    User                @relation("SentRequests", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser      User                @relation("ReceivedRequests", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@unique([fromUserId, toUserId])
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@index([status])
+  @@map("friend_requests")
+}
+
+enum FriendRequestStatus {
+  PENDING   // 대기 중
+  ACCEPTED  // 수락됨
+  REJECTED  // 거절됨
+}
+
+// ==============================================
+// Friendship (친구 관계)
+// ==============================================
+model Friendship {
+  id          Int       @id @default(autoincrement())
+  userId      Int       @map("user_id")
+  friendId    Int       @map("friend_id")
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // 관계
+  user        User      @relation("UserFriends", fields: [userId], references: [id], onDelete: Cascade)
+  friend      User      @relation("FriendOfUser", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
+  @@map("friendships")
+}
+
+// ==============================================
+// User Notification Settings (알림 설정)
+// ==============================================
+model UserNotificationSetting {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique @map("user_id")
+
+  // 서비스 알림
+  booking   Boolean  @default(true)   // 예약 알림
+  chat      Boolean  @default(true)   // 채팅 알림
+  friend    Boolean  @default(true)   // 친구 알림
+
+  // 마케팅 알림
+  marketing Boolean  @default(false)  // 마케팅/프로모션
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // 관계
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_notification_settings")
+}
+
+// ==============================================
+// User Device (푸시 토큰 관리)
+// ==============================================
+model UserDevice {
+  id           Int            @id @default(autoincrement())
+  userId       Int            @map("user_id")
+
+  // 디바이스 정보
+  platform     DevicePlatform
+  deviceToken  String         @map("device_token")
+  deviceId     String?        @map("device_id")      // 기기 고유 ID
+  deviceName   String?        @map("device_name")    // "iPhone 15 Pro"
+
+  // 상태
+  isActive     Boolean        @default(true) @map("is_active")
+  lastActiveAt DateTime?      @map("last_active_at")
+
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  // 관계
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceToken])
+  @@index([userId])
+  @@index([platform])
+  @@index([isActive])
+  @@map("user_devices")
+}
+
+enum DevicePlatform {
+  IOS
+  ANDROID
+  WEB
+}

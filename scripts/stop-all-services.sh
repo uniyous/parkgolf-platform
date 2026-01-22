@@ -18,7 +18,7 @@ PID_DIR="$PROJECT_ROOT/.pids"
 
 # 서비스 정의 (배열로 변경)
 # 핵심 서비스만 포함
-SERVICES="auth-service:3011 course-service:3012 booking-service:3013 admin-api:3091 admin-dashboard:3000 user-webapp:3002"
+SERVICES="iam-service:3011 course-service:3012 booking-service:3013 admin-api:3091 admin-dashboard:3000 user-webapp:3002"
 
 # 서비스 종료 함수
 stop_service() {

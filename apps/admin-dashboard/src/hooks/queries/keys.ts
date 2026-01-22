@@ -94,3 +94,17 @@ export const gameKeys = {
   timeSlots: (gameId: number, filter?: Record<string, unknown>) => [...gameKeys.all, 'time-slots', gameId, filter] as const,
   timeSlotStats: (filter?: Record<string, unknown>) => [...gameKeys.all, 'time-slot-stats', filter] as const,
 };
+
+// Policy Keys
+export const policyKeys = {
+  all: ['policies'] as const,
+  cancellation: () => [...policyKeys.all, 'cancellation'] as const,
+  cancellationDefault: (clubId?: number) => [...policyKeys.cancellation(), 'default', clubId] as const,
+  cancellationDetail: (id: number) => [...policyKeys.cancellation(), 'detail', id] as const,
+  refund: () => [...policyKeys.all, 'refund'] as const,
+  refundDefault: (clubId?: number) => [...policyKeys.refund(), 'default', clubId] as const,
+  refundDetail: (id: number) => [...policyKeys.refund(), 'detail', id] as const,
+  noShow: () => [...policyKeys.all, 'noShow'] as const,
+  noShowDefault: (clubId?: number) => [...policyKeys.noShow(), 'default', clubId] as const,
+  noShowDetail: (id: number) => [...policyKeys.noShow(), 'detail', id] as const,
+};

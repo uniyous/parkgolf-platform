@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCreateUserMutation, useUpdateUserMutation } from '@/hooks/queries';
-import { Modal } from '@/components/ui';
+import { Modal, Button } from '@/components/ui';
 import type { User, UserStatus, UserMembershipTier } from '@/types';
 
 interface UserFormModalProps {
@@ -254,20 +254,12 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
 
         {/* Buttons */}
         <div className="flex justify-end gap-3 pt-4 border-t">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-          >
+          <Button type="button" variant="outline" onClick={onClose}>
             취소
-          </button>
-          <button
-            type="submit"
-            disabled={isPending}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
-            {isPending ? '저장 중...' : isEditing ? '수정' : '추가'}
-          </button>
+          </Button>
+          <Button type="submit" loading={isPending}>
+            {isEditing ? '수정' : '추가'}
+          </Button>
         </div>
       </form>
     </Modal>

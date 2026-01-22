@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { useCreateGameMutation, useClubsQuery, useCoursesByClubQuery } from '@/hooks/queries';
+import { Button } from '@/components/ui';
 import type { Game, CreateGameDto } from '@/lib/api/gamesApi';
 
 interface GameFormModalProps {
@@ -56,11 +57,6 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
       setErrors({});
     }
   }, [open]);
-
-  // 클럽 변경 시 코스 선택 초기화
-  useEffect(() => {
-    setFormData(prev => ({ ...prev, courseIds: [] }));
-  }, [formData.clubId]);
 
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof FormData, string>> = {};
@@ -118,7 +114,14 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
   };
 
   const handleChange = (field: keyof FormData, value: unknown) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const newData = { ...prev, [field]: value };
+      // 클럽 변경 시 코스 선택 초기화
+      if (field === 'clubId' && prev.clubId !== value) {
+        newData.courseIds = [];
+      }
+      return newData;
+    });
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
@@ -313,7 +316,7 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
                             : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                         }`}
                       >
-                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                        <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors ${
                           formData.courseIds.includes(course.id)
                             ? 'bg-emerald-500 border-emerald-500'
                             : 'border-gray-300'
@@ -467,35 +470,15 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
 
             {/* Footer */}
             <div className="px-6 py-4 bg-gray-50 border-t flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors font-medium text-gray-700"
-              >
+              <Button type="button" variant="outline" onClick={onClose}>
                 취소
-              </button>
-              <button
-                type="submit"
-                disabled={createGame.isPending}
-                className="px-5 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium shadow-sm flex items-center"
-              >
-                {createGame.isPending ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    저장 중...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    라운드 등록
-                  </>
-                )}
-              </button>
+              </Button>
+              <Button type="submit" loading={createGame.isPending}>
+                <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                라운드 등록
+              </Button>
             </div>
           </form>
         </Dialog.Content>

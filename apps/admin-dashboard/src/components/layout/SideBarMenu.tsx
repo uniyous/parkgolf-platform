@@ -36,26 +36,12 @@ export const menuConfig: MenuGroup[] = [
     name: '골프장',
     items: [
       {
-        name: '회사 관리',
-        href: '/companies',
-        icon: '🏢',
-        description: '골프장 회사 정보 관리',
-        permission: 'COMPANIES'
-      },
-      {
         name: '골프장 관리',
         href: '/clubs',
         icon: '🏌️',
         description: '골프장, 코스, 홀 마스터 데이터 관리',
         permission: 'MANAGE_GOLF_CLUBS'
       },
-    ],
-    collapsible: true,
-    defaultOpen: true
-  },
-  {
-    name: '라운드',
-    items: [
       {
         name: '라운드 관리',
         href: '/games',
@@ -78,9 +64,9 @@ export const menuConfig: MenuGroup[] = [
         permission: 'BOOKINGS'
       },
       {
-        name: '취소/환불',
+        name: '환불 관리',
         href: '/bookings/cancellations',
-        icon: '🔄',
+        icon: '💸',
         description: '예약 취소 및 환불 처리',
         permission: 'MANAGE_PAYMENTS'
       },
@@ -92,24 +78,38 @@ export const menuConfig: MenuGroup[] = [
     name: '시스템',
     items: [
       {
+        name: '회사 관리',
+        href: '/companies',
+        icon: '🏢',
+        description: '플랫폼/협회/가맹점 회사 정보 관리 (IAM)',
+        permission: 'COMPANIES'
+      },
+      {
         name: '사용자 관리',
         href: '/user-management',
         icon: '👥',
-        description: '고객 계정 관리',
+        description: '앱 사용자 계정 및 멤버십 관리 (IAM)',
         permission: 'USERS'
       },
       {
         name: '관리자 관리',
         href: '/admin-management',
         icon: '👨‍💼',
-        description: '시스템 관리자 계정 관리',
+        description: '관리자 계정 및 회사-역할 할당 관리 (IAM)',
         permission: 'ADMINS'
       },
       {
         name: '역할 및 권한 관리',
         href: '/roles',
         icon: '🔐',
-        description: '시스템 역할과 권한 설정',
+        description: '플랫폼/회사 역할 및 권한 설정 (IAM)',
+        permission: 'SYSTEM'
+      },
+      {
+        name: '시스템 설정',
+        href: '/system-settings',
+        icon: '⚙️',
+        description: '예약/알림/시스템 정책 설정',
         permission: 'SYSTEM'
       },
     ],

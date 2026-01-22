@@ -1,0 +1,43 @@
+/*
+  Localizable.strings
+  ParkGolf
+
+  Korean Localization
+*/
+
+// Common
+"common.confirm" = "확인";
+"common.cancel" = "취소";
+"common.save" = "저장";
+"common.delete" = "삭제";
+"common.edit" = "수정";
+"common.close" = "닫기";
+"common.loading" = "로딩 중...";
+"common.error" = "오류";
+"common.retry" = "다시 시도";
+
+// Auth
+"auth.login" = "로그인";
+"auth.logout" = "로그아웃";
+"auth.signup" = "회원가입";
+"auth.email" = "이메일";
+"auth.password" = "비밀번호";
+"auth.forgotPassword" = "비밀번호 찾기";
+
+// Tab
+"tab.home" = "홈";
+"tab.booking" = "예약";
+"tab.chat" = "채팅";
+"tab.profile" = "마이";
+
+// Booking
+"booking.new" = "새 예약";
+"booking.upcoming" = "예정";
+"booking.completed" = "완료";
+"booking.cancelled" = "취소됨";
+"booking.pending" = "대기중";
+"booking.confirmed" = "확정";
+
+// Chat
+"chat.newChat" = "새 채팅";
+"chat.noMessages" = "대화를 시작해보세요";

@@ -1,67 +1,82 @@
-import React, { useState, useEffect } from 'react';
-import { toast } from 'sonner';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { Club, ClubStats, ComboAnalytics } from '@/types/club';
-import { useClub } from '@/hooks';
+import { useUpdateClubMutation } from '@/hooks/queries';
 
 interface OperationInfoTabProps {
   club: Club;
   onUpdate: (updatedClub: Club) => void;
 }
 
-export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpdate }) => {
-  const { loading, updateExistingClub } = useClub();
-  const [stats, setStats] = useState<ClubStats | null>(null);
-  const [analytics, setAnalytics] = useState<ComboAnalytics[]>([]);
-  const [dateRange, setDateRange] = useState({
-    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0]
-  });
-  const [availability, setAvailability] = useState<{available: number, total: number} | null>(null);
+interface DateRange {
+  startDate: string;
+  endDate: string;
+}
 
-  // 통계 데이터 로드
-  const loadStats = async () => {
-    try {
-      // Mock data for now - will be replaced with real API calls later
-      const mockStats: ClubStats = {
-        totalBookings: 150,
-        totalRevenue: 45000000,
-        averageUtilization: 75,
-        monthlyRevenue: 15000000,
-        topCourses: ['A코스', 'B코스'],
-        peakTimes: ['10:00', '14:00']
-      };
-      
-      const mockAnalytics: ComboAnalytics[] = [
-        {
-          comboId: 1,
-          comboName: 'A+B 조합',
-          totalSlots: 20,
-          bookedSlots: 15,
-          utilizationRate: 75,
-          averagePrice: 120000,
-          totalRevenue: 1800000,
-          weekdayBookings: 8,
-          weekendBookings: 7,
-          peakHours: ['10:00', '14:00', '16:00']
-        }
-      ];
+// Mock 데이터 fetch 함수 (실제 API 연동 시 교체)
+const fetchClubOperationStats = async (
+  _clubId: number,
+  _dateRange: DateRange
+): Promise<{
+  stats: ClubStats;
+  analytics: ComboAnalytics[];
+  availability: { available: number; total: number };
+}> => {
+  // TODO: 실제 API 연동 시 아래 코드를 API 호출로 교체
+  // const response = await clubApi.getOperationStats(clubId, dateRange);
+  // return response.data;
 
-      const mockAvailability = {
-        available: 12,
-        total: 20
-      };
-
-      setStats(mockStats);
-      setAnalytics(mockAnalytics);
-      setAvailability(mockAvailability);
-    } catch (error) {
-      console.error('Failed to load operation data:', error);
-    }
+  return {
+    stats: {
+      totalBookings: 150,
+      totalRevenue: 45000000,
+      averageUtilization: 75,
+      monthlyRevenue: 15000000,
+      topCourses: ['A코스', 'B코스'],
+      peakTimes: ['10:00', '14:00'],
+    },
+    analytics: [
+      {
+        comboId: 1,
+        comboName: 'A+B 조합',
+        totalSlots: 20,
+        bookedSlots: 15,
+        utilizationRate: 75,
+        averagePrice: 120000,
+        totalRevenue: 1800000,
+        weekdayBookings: 8,
+        weekendBookings: 7,
+        peakHours: ['10:00', '14:00', '16:00'],
+      },
+    ],
+    availability: {
+      available: 12,
+      total: 20,
+    },
   };
+};
 
-  useEffect(() => {
-    loadStats();
-  }, [club.id, dateRange]);
+export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpdate }) => {
+  const updateClubMutation = useUpdateClubMutation();
+  const [dateRange, setDateRange] = useState<DateRange>({
+    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
+  });
+
+  // React Query로 운영 통계 데이터 조회
+  const {
+    data: operationData,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ['club-operation-stats', club.id, dateRange],
+    queryFn: () => fetchClubOperationStats(club.id, dateRange),
+    staleTime: 5 * 60 * 1000, // 5분
+  });
+
+  const stats = operationData?.stats ?? null;
+  const analytics = operationData?.analytics ?? [];
+  const availability = operationData?.availability ?? null;
 
   // 가동률 색상
   const getUtilizationColor = (rate: number) => {
@@ -74,22 +89,19 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
   // 시즌 정보 업데이트
   const updateSeasonInfo = async (seasonData: any) => {
     try {
-      const result = await updateExistingClub(club.id, {
-        seasonInfo: seasonData
+      const result = await updateClubMutation.mutateAsync({
+        id: club.id,
+        data: { seasonInfo: seasonData },
       });
       if (result) {
         onUpdate(result);
-        toast.success('시즌 정보가 업데이트되었습니다.');
-      } else {
-        toast.error('시즌 정보 업데이트에 실패했습니다.');
       }
     } catch (error) {
       console.error('Failed to update season info:', error);
-      toast.error('시즌 정보 업데이트에 실패했습니다.');
     }
   };
 
-  if (loading.detail && !stats && !analytics.length) {
+  if (isLoading && !stats && !analytics.length) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -123,8 +135,8 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
             />
           </div>
           <button
-            onClick={loadStats}
-            disabled={loading.detail}
+            onClick={() => refetch()}
+            disabled={isLoading}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
             새로고침

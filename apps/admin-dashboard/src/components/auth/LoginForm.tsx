@@ -1,36 +1,23 @@
 import React, { useState } from 'react';
+import { Check, X, Zap } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 
 // 서버 웜업 API 설정
 const ADMIN_API_URL = import.meta.env.VITE_API_URL || 'https://admin-api-dev-iihuzmuufa-du.a.run.app';
-const USER_API_URL = 'https://user-api-dev-iihuzmuufa-du.a.run.app';
-const AUTH_SERVICE_URL = 'https://auth-service-dev-iihuzmuufa-du.a.run.app';
-const COURSE_SERVICE_URL = 'https://course-service-dev-iihuzmuufa-du.a.run.app';
-const BOOKING_SERVICE_URL = 'https://booking-service-dev-iihuzmuufa-du.a.run.app';
 
-interface ServiceHealth {
-  name: string;
-  url: string;
-  status: 'ok' | 'error';
-  responseTime: number;
+type StatusType = 'pending' | 'loading' | 'success' | 'error' | 'skipped';
+
+interface ServiceStatus {
+  service: string;
+  status: StatusType;
+  time?: number;
   message?: string;
 }
 
-interface WarmupResponse {
-  success: boolean;
-  timestamp: string;
-  services: ServiceHealth[];
-  summary: {
-    total: number;
-    healthy: number;
-    unhealthy: number;
-    totalTime: number;
-  };
-}
-
-interface WarmupStatus {
+interface NatsTestResult {
+  attempt: number;
   service: string;
-  status: 'pending' | 'loading' | 'success' | 'error';
+  status: StatusType;
   time?: number;
   message?: string;
 }
@@ -53,7 +40,6 @@ interface LoginFormProps {
   error: string | null;
 }
 
-// 테스트용 관리자 계정 (seed 데이터와 일치)
 interface AdminAccountGroup {
   title: string;
   accounts: AdminAccount[];
@@ -61,54 +47,41 @@ interface AdminAccountGroup {
 
 const ADMIN_ACCOUNT_GROUPS: AdminAccountGroup[] = [
   {
-    title: '시스템 관리',
+    title: '플랫폼 관리 (본사)',
     accounts: [
       {
         email: 'admin@parkgolf.com',
         password: 'admin123!@#',
-        name: '시스템관리자',
-        role: 'ADMIN',
-        description: '전체 시스템 관리 (모든 권한)'
-      },
-      {
-        email: 'support@parkgolf.com',
-        password: 'admin123!@#',
-        name: '고객지원담당',
-        role: 'SUPPORT',
-        description: '고객 문의 및 분석 담당'
+        name: '플랫폼관리자',
+        role: 'PLATFORM_ADMIN',
+        description: '본사 최고 관리자 (모든 권한)'
       },
     ]
   },
   {
-    title: '운영 관리',
+    title: '회사 관리 (가맹점)',
     accounts: [
       {
-        email: 'manager@gangnam-golf.com',
+        email: 'admin@gangnam.com',
         password: 'admin123!@#',
-        name: '운영매니저',
-        role: 'MANAGER',
-        description: '코스/예약/사용자 관리'
-      },
-      {
-        email: 'staff@gangnam-golf.com',
-        password: 'admin123!@#',
-        name: '현장직원',
-        role: 'STAFF',
-        description: '예약 접수 및 고객 응대'
-      },
-      {
-        email: 'viewer@parkgolf.com',
-        password: 'admin123!@#',
-        name: '조회담당',
-        role: 'VIEWER',
-        description: '데이터 조회만 가능'
+        name: '강남대표',
+        role: 'COMPANY_ADMIN',
+        description: '강남 파크골프장 대표 관리자'
       },
     ]
   },
 ];
 
-// 전체 계정 목록 (flat)
 const ADMIN_ACCOUNTS: AdminAccount[] = ADMIN_ACCOUNT_GROUPS.flatMap(group => group.accounts);
+
+const SERVICES = [
+  { name: 'admin-api', isNats: false },
+  { name: 'iam-service', isNats: true },
+  { name: 'course-service', isNats: true },
+  { name: 'booking-service', isNats: true },
+];
+
+const NATS_SERVICES = SERVICES.filter(s => s.isNats);
 
 export const LoginForm: React.FC<LoginFormProps> = ({
   email,
@@ -120,109 +93,209 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   error,
 }) => {
   const [showWarmupPanel, setShowWarmupPanel] = useState(false);
+
+  // 서버 웜업 상태
   const [isWarmingUp, setIsWarmingUp] = useState(false);
-  const [warmupStatuses, setWarmupStatuses] = useState<WarmupStatus[]>([]);
+  const [warmupPhase, setWarmupPhase] = useState<string>('');
+  const [httpStatuses, setHttpStatuses] = useState<ServiceStatus[]>([]);
+  const [warmupTotalTime, setWarmupTotalTime] = useState<number | null>(null);
+
+  // NATS 테스트 상태
+  const [isTestingNats, setIsTestingNats] = useState(false);
+  const [natsTestPhase, setNatsTestPhase] = useState<string>('');
+  const [natsResults, setNatsResults] = useState<NatsTestResult[]>([]);
+  const [natsConnected, setNatsConnected] = useState<boolean | null>(null);
 
   const handleAdminSelect = (admin: AdminAccount) => {
     onEmailChange(admin.email);
     onPasswordChange(admin.password);
   };
 
+  // 서버 웜업 (HTTP만)
   const handleWarmup = async () => {
     setIsWarmingUp(true);
     setShowWarmupPanel(true);
+    setWarmupPhase('서버 웜업 시작중...');
+    setWarmupTotalTime(null);
 
-    // admin-api, user-api 포함하여 초기 로딩 상태 설정
-    setWarmupStatuses([
-      { service: 'admin-api', status: 'loading' },
-      { service: 'user-api', status: 'loading' },
-      { service: 'auth-service', status: 'pending' },
-      { service: 'course-service', status: 'pending' },
-      { service: 'booking-service', status: 'pending' },
-    ]);
+    // 초기 상태
+    setHttpStatuses(SERVICES.map(s => ({
+      service: s.name,
+      status: 'pending' as StatusType
+    })));
 
-    const statuses: WarmupStatus[] = [];
+    const startTime = Date.now();
 
-    // admin-api와 user-api를 병렬로 호출
-    const [adminResult, userResult] = await Promise.allSettled([
-      // admin-api warmup
-      (async () => {
-        const startTime = Date.now();
-        const response = await fetch(`${ADMIN_API_URL}/health/warmup`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        const time = Date.now() - startTime;
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data: WarmupResponse = await response.json();
-        return { time, data };
-      })(),
-      // user-api warmup
-      (async () => {
-        const startTime = Date.now();
-        const response = await fetch(`${USER_API_URL}/health`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        const time = Date.now() - startTime;
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return { time };
-      })(),
-    ]);
+    try {
+      // admin-api 먼저 호출 (다른 서비스 웜업 트리거)
+      setWarmupPhase('admin-api 연결중...');
+      setHttpStatuses(prev => prev.map(s =>
+        s.service === 'admin-api' ? { ...s, status: 'loading' as StatusType } : s
+      ));
 
-    // admin-api 결과 처리
-    if (adminResult.status === 'fulfilled') {
-      statuses.push({ service: 'admin-api', status: 'success', time: adminResult.value.time });
-      // 다른 서비스들 상태 추가
-      adminResult.value.data.services.forEach((svc) => {
-        if (svc.name !== 'user-api') { // user-api는 별도로 처리
-          statuses.push({
-            service: svc.name,
-            status: svc.status === 'ok' ? 'success' : 'error',
-            time: svc.responseTime,
-            message: svc.message,
-          });
-        }
+      const adminStart = Date.now();
+      const response = await fetch(`${ADMIN_API_URL}/system/warmup/http`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
       });
-    } else {
-      statuses.push({
-        service: 'admin-api',
-        status: 'error',
-        message: adminResult.reason?.message || 'Connection failed',
-      });
-      statuses.push({ service: 'auth-service', status: 'pending' });
-      statuses.push({ service: 'course-service', status: 'pending' });
-      statuses.push({ service: 'booking-service', status: 'pending' });
+      const adminTime = Date.now() - adminStart;
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // admin-api 성공
+      setHttpStatuses(prev => prev.map(s =>
+        s.service === 'admin-api'
+          ? { ...s, status: 'success' as StatusType, time: adminTime }
+          : s
+      ));
+
+      // 다른 서비스 결과 업데이트
+      setWarmupPhase('서비스 상태 확인중...');
+
+      for (const svc of data.services || []) {
+        setHttpStatuses(prev => prev.map(s =>
+          s.service === svc.name
+            ? {
+                ...s,
+                status: svc.httpStatus === 'ok' ? 'success' as StatusType : 'error' as StatusType,
+                time: svc.httpResponseTime,
+                message: svc.httpMessage
+              }
+            : s
+        ));
+        // 각 서비스마다 약간의 딜레이로 시각적 효과
+        await new Promise(r => setTimeout(r, 100));
+      }
+
+      setWarmupTotalTime(Date.now() - startTime);
+      setWarmupPhase('서버 웜업 완료');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Connection failed';
+      setHttpStatuses(prev => prev.map(s =>
+        s.service === 'admin-api'
+          ? { ...s, status: 'error' as StatusType, message }
+          : s
+      ));
+      setWarmupPhase('서버 웜업 실패');
     }
 
-    // user-api 결과 처리
-    if (userResult.status === 'fulfilled') {
-      statuses.push({ service: 'user-api', status: 'success', time: userResult.value.time });
-    } else {
-      statuses.push({
-        service: 'user-api',
-        status: 'error',
-        message: userResult.reason?.message || 'Connection failed',
-      });
-    }
-
-    setWarmupStatuses(statuses);
     setIsWarmingUp(false);
   };
 
-  // 현재 선택된 관리자 찾기
+  // NATS 통신 테스트 (3회)
+  const handleNatsTest = async () => {
+    setIsTestingNats(true);
+    setNatsResults([]);
+    setNatsConnected(null);
+
+    const allResults: NatsTestResult[] = [];
+    let successCount = 0;
+    const totalTests = 3;
+
+    for (let attempt = 1; attempt <= totalTests; attempt++) {
+      setNatsTestPhase(`NATS 테스트 ${attempt}/${totalTests} 진행중...`);
+
+      // 현재 시도에 대해 loading 상태 추가
+      const loadingResults = NATS_SERVICES.map(s => ({
+        attempt,
+        service: s.name,
+        status: 'loading' as StatusType,
+      }));
+      setNatsResults(prev => [...prev.filter(r => r.attempt !== attempt), ...loadingResults]);
+
+      try {
+        const response = await fetch(`${ADMIN_API_URL}/system/warmup/nats`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // 결과 업데이트
+        const attemptResults: NatsTestResult[] = (data.services || [])
+          .filter((s: any) => s.natsStatus !== 'skipped')
+          .map((s: any) => ({
+            attempt,
+            service: s.name,
+            status: s.natsStatus === 'ok' ? 'success' as StatusType : 'error' as StatusType,
+            time: s.natsResponseTime,
+            message: s.natsMessage,
+          }));
+
+        allResults.push(...attemptResults);
+        setNatsResults(prev => [
+          ...prev.filter(r => r.attempt !== attempt),
+          ...attemptResults
+        ]);
+
+        // 이번 시도에서 모든 서비스가 성공했는지 확인
+        const attemptSuccess = attemptResults.every(r => r.status === 'success');
+        if (attemptSuccess) successCount++;
+
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Connection failed';
+        const errorResults: NatsTestResult[] = NATS_SERVICES.map(s => ({
+          attempt,
+          service: s.name,
+          status: 'error' as StatusType,
+          message,
+        }));
+        allResults.push(...errorResults);
+        setNatsResults(prev => [
+          ...prev.filter(r => r.attempt !== attempt),
+          ...errorResults
+        ]);
+      }
+
+      // 다음 시도 전 1초 대기 (마지막 시도 제외)
+      if (attempt < totalTests) {
+        setNatsTestPhase(`다음 테스트 대기중... (${attempt}/${totalTests} 완료)`);
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+
+    // 최종 결과 판정 (3회 중 2회 이상 성공시 연결됨으로 판정)
+    setNatsConnected(successCount >= 2);
+    setNatsTestPhase(`NATS 테스트 완료 (${successCount}/${totalTests} 성공)`);
+    setIsTestingNats(false);
+  };
+
   const selectedAdmin = ADMIN_ACCOUNTS.find(admin => admin.email === email);
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case 'ADMIN': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'SUPPORT': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'MANAGER': return 'bg-green-100 text-green-800 border-green-200';
-      case 'STAFF': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'VIEWER': return 'bg-gray-100 text-gray-600 border-gray-200';
+      // 플랫폼 역할
+      case 'PLATFORM_ADMIN': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'PLATFORM_SUPPORT': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+      case 'PLATFORM_VIEWER': return 'bg-violet-100 text-violet-800 border-violet-200';
+      // 회사 역할
+      case 'COMPANY_ADMIN': return 'bg-green-100 text-green-800 border-green-200';
+      case 'COMPANY_MANAGER': return 'bg-teal-100 text-teal-800 border-teal-200';
+      case 'COMPANY_STAFF': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'COMPANY_VIEWER': return 'bg-gray-100 text-gray-600 border-gray-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
+
+  const getStatusIcon = (status: StatusType) => {
+    switch (status) {
+      case 'pending': return <span className="text-gray-300">○</span>;
+      case 'loading': return <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />;
+      case 'success': return <span className="text-green-500">✓</span>;
+      case 'error': return <span className="text-red-500">✗</span>;
+      case 'skipped': return <span className="text-gray-300">-</span>;
+    }
+  };
+
+  const httpSuccessCount = httpStatuses.filter(s => s.status === 'success').length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -233,7 +306,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             <div className="bg-white shadow-xl rounded-lg p-8">
               <div className="text-center mb-8">
                 <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                  🏌️ 파크골프 관리자 시스템
+                  🏌️ ParkMate 관리자
                 </h2>
                 <p className="text-gray-600">
                   관리자 계정으로 로그인하세요
@@ -255,7 +328,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                     </p>
                   </div>
                 )}
-                
+
                 <div className="space-y-4">
                   <Input
                     label="관리자 ID"
@@ -278,7 +351,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 </div>
 
                 {error && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                     <strong>로그인 실패:</strong> {error}
                   </div>
                 )}
@@ -342,9 +415,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                                 <p className="text-xs text-gray-500 mt-0.5 truncate">{admin.description}</p>
                               </div>
                               {isSelected && (
-                                <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
+                                <Check className="w-4 h-4 text-blue-500 flex-shrink-0" />
                               )}
                             </div>
                           </button>
@@ -365,98 +436,186 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         </div>
       </div>
 
-      {/* 서버 웜업 버튼 (우측 하단 고정) */}
+      {/* 서버 웜업 패널 (우측 하단 고정) */}
       <div className="fixed bottom-6 right-6 z-50">
-        {/* 웜업 상태 패널 */}
         {showWarmupPanel && (
-          <div className="absolute bottom-14 right-0 w-72 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden mb-2">
+          <div className="absolute bottom-14 right-0 w-[420px] bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden mb-2">
+            {/* 헤더 */}
             <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
-              <span className="font-medium text-sm text-gray-700">서버 웜업 상태</span>
+              <span className="font-medium text-sm text-gray-700">시스템 상태 점검</span>
               <button
                 onClick={() => setShowWarmupPanel(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="p-3 space-y-2 max-h-80 overflow-y-auto">
-              {warmupStatuses.map((ws, idx) => (
-                <div key={idx} className="flex items-center justify-between text-sm">
-                  <div className="flex-1 min-w-0">
-                    <span className="text-gray-600">{ws.service}</span>
-                    {ws.message && ws.status === 'error' && (
-                      <p className="text-xs text-red-400 truncate">{ws.message}</p>
+
+            <div className="max-h-[500px] overflow-y-auto">
+              {/* 섹션 1: 서버 웜업 */}
+              <div className="p-4 border-b border-gray-100">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm text-gray-800">1. 서버 웜업</span>
+                    {httpStatuses.length > 0 && !isWarmingUp && (
+                      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
+                        httpSuccessCount === SERVICES.length
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {httpSuccessCount}/{SERVICES.length}
+                      </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 ml-2">
-                    {ws.time && (
-                      <span className="text-xs text-gray-400">{ws.time}ms</span>
-                    )}
-                    {ws.status === 'pending' && (
-                      <span className="text-gray-300">○</span>
-                    )}
-                    {ws.status === 'loading' && (
-                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                    )}
-                    {ws.status === 'success' && (
-                      <span className="text-green-500">✓</span>
-                    )}
-                    {ws.status === 'error' && (
-                      <span className="text-red-500">✗</span>
-                    )}
-                  </div>
+                  <button
+                    onClick={handleWarmup}
+                    disabled={isWarmingUp}
+                    className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                      isWarmingUp
+                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                  >
+                    {isWarmingUp ? '진행중...' : '시작'}
+                  </button>
                 </div>
-              ))}
-              {warmupStatuses.length === 0 && (
-                <p className="text-xs text-gray-400 text-center py-2">
-                  버튼을 클릭하여 서버를 웜업하세요
-                </p>
-              )}
-              {warmupStatuses.length > 0 && !isWarmingUp && (
-                <div className="mt-2 pt-2 border-t border-gray-100">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-500">
-                      완료: {warmupStatuses.filter(s => s.status === 'success').length}/{warmupStatuses.length}
-                    </span>
-                    <span className="text-gray-500">
-                      총 시간: {Math.max(...warmupStatuses.map(s => s.time || 0))}ms
-                    </span>
+
+                {/* 진행 상태 */}
+                {warmupPhase && (
+                  <div className="mb-3 flex items-center gap-2 text-xs text-blue-600">
+                    {isWarmingUp && (
+                      <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    )}
+                    <span>{warmupPhase}</span>
                   </div>
+                )}
+
+                {/* 서비스 목록 */}
+                {httpStatuses.length > 0 && (
+                  <div className="space-y-1.5">
+                    {httpStatuses.map((svc, idx) => (
+                      <div key={idx} className="flex items-center justify-between py-1 px-2 bg-gray-50 rounded text-xs">
+                        <span className="text-gray-700">{svc.service}</span>
+                        <div className="flex items-center gap-2">
+                          {svc.time !== undefined && svc.status === 'success' && (
+                            <span className="text-gray-400">{svc.time}ms</span>
+                          )}
+                          {svc.message && svc.status === 'error' && (
+                            <span className="text-red-400 max-w-[100px] truncate" title={svc.message}>
+                              {svc.message}
+                            </span>
+                          )}
+                          {getStatusIcon(svc.status)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {warmupTotalTime !== null && (
+                  <div className="mt-2 text-right text-[10px] text-gray-400">
+                    총 소요시간: {warmupTotalTime}ms
+                  </div>
+                )}
+              </div>
+
+              {/* 섹션 2: NATS 통신 테스트 */}
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm text-gray-800">2. NATS 통신 테스트</span>
+                    {natsConnected !== null && (
+                      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
+                        natsConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        {natsConnected ? '연결됨' : '오류'}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleNatsTest}
+                    disabled={isTestingNats || isWarmingUp}
+                    className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                      isTestingNats || isWarmingUp
+                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        : 'bg-purple-600 text-white hover:bg-purple-700'
+                    }`}
+                  >
+                    {isTestingNats ? '테스트중...' : '3회 테스트'}
+                  </button>
                 </div>
-              )}
+
+                {/* 진행 상태 */}
+                {natsTestPhase && (
+                  <div className="mb-3 flex items-center gap-2 text-xs text-purple-600">
+                    {isTestingNats && (
+                      <div className="w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                    )}
+                    <span>{natsTestPhase}</span>
+                  </div>
+                )}
+
+                {/* NATS 테스트 결과 테이블 */}
+                {natsResults.length > 0 && (
+                  <div className="border border-gray-200 rounded overflow-hidden">
+                    {/* 테이블 헤더 */}
+                    <div className="grid grid-cols-4 gap-1 bg-gray-100 px-2 py-1.5 text-[10px] font-medium text-gray-500">
+                      <div>서비스</div>
+                      <div className="text-center">1차</div>
+                      <div className="text-center">2차</div>
+                      <div className="text-center">3차</div>
+                    </div>
+                    {/* 테이블 바디 */}
+                    {NATS_SERVICES.map((svc) => (
+                      <div key={svc.name} className="grid grid-cols-4 gap-1 px-2 py-1.5 text-xs border-t border-gray-100">
+                        <div className="text-gray-700 truncate">{svc.name}</div>
+                        {[1, 2, 3].map((attempt) => {
+                          const result = natsResults.find(r => r.service === svc.name && r.attempt === attempt);
+                          return (
+                            <div key={attempt} className="flex items-center justify-center gap-1">
+                              {result ? (
+                                <>
+                                  {result.time !== undefined && result.status === 'success' && (
+                                    <span className="text-[10px] text-gray-400">{result.time}ms</span>
+                                  )}
+                                  {getStatusIcon(result.status)}
+                                </>
+                              ) : (
+                                <span className="text-gray-300">-</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {natsResults.length === 0 && !isTestingNats && (
+                  <p className="text-xs text-gray-400 text-center py-3">
+                    서버 웜업 후 NATS 테스트를 진행하세요
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         )}
 
         {/* 웜업 버튼 */}
         <button
-          onClick={handleWarmup}
-          disabled={isWarmingUp}
+          onClick={() => setShowWarmupPanel(!showWarmupPanel)}
           className={`
             flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg
             transition-all duration-200 font-medium text-sm
-            ${isWarmingUp
-              ? 'bg-gray-400 text-white cursor-not-allowed'
+            ${showWarmupPanel
+              ? 'bg-gray-600 text-white'
               : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-xl active:scale-95'
             }
           `}
-          title="Cloud Run 서버 웜업"
+          title="시스템 상태 점검"
         >
-          {isWarmingUp ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              <span>웜업 중...</span>
-            </>
-          ) : (
-            <>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              <span>서버 웜업</span>
-            </>
-          )}
+          <Zap className="w-4 h-4" />
+          <span>시스템 점검</span>
         </button>
       </div>
     </div>

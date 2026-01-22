@@ -7,29 +7,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Company {
-  id              Int           @id @default(autoincrement())
-  name            String
-  description     String?
-  address         String?
-  phoneNumber     String?       @map("phone_number")
-  email           String?       @unique
-  website         String?
-  isActive        Boolean       @default(true) @map("is_active")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
-  businessNumber  String?       @unique @map("business_number")
-  establishedDate DateTime?     @map("established_date")
-  logoUrl         String?       @map("logo_url")
-  status          CompanyStatus @default(ACTIVE)
-  courses         Course[]
-  clubs           Club[]
-
-  @@index([status])
-  @@index([isActive])
-  @@index([createdAt])
-  @@map("companies")
-}
+// Note: Company model has been moved to iam-service (iam_db)
+// companyId fields in Club and Course are cross-database references
+// Use NATS pattern 'iam.companies.*' to fetch Company data
 
 model Club {
   id             Int        @id @default(autoincrement())
@@ -51,7 +31,7 @@ model Club {
   updatedAt      DateTime   @updatedAt @map("updated_at")
   courses        Course[]
   games          Game[]
-  company        Company    @relation(fields: [companyId], references: [id])
+  // company relation removed - use NATS 'iam.companies.getById' for Company data
 
   @@index([companyId])
   @@index([status])
@@ -80,7 +60,7 @@ model Course {
   createdAt         DateTime               @default(now()) @map("created_at")
   updatedAt         DateTime               @updatedAt @map("updated_at")
   club              Club                   @relation(fields: [clubId], references: [id])
-  company           Company                @relation(fields: [companyId], references: [id])
+  // company relation removed - use NATS 'iam.companies.getById' for Company data
   holes             Hole[]
   gamesAsFrontNine  Game[]                 @relation("FrontNine")
   gamesAsBackNine   Game[]                 @relation("BackNine")
@@ -277,11 +257,7 @@ enum CourseStatus {
   MAINTENANCE
 }
 
-enum CompanyStatus {
-  ACTIVE
-  INACTIVE
-  MAINTENANCE
-}
+// CompanyStatus enum moved to iam-service
 
 enum ClubStatus {
   ACTIVE

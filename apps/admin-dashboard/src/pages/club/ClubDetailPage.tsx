@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useClub } from '@/hooks';
+import { useClubDetail } from '@/hooks';
 import { DataContainer, DeleteConfirmPopover } from '@/components/common';
-import type { CourseCombo, Course } from '@/types/club';
+import type { CourseCombo } from '@/types/club';
 import { CourseManagementTab } from '@/components/features/club/CourseManagementTab';
 import { BasicInfoTab } from '@/components/features/club/BasicInfoTab';
 import { OperationInfoTab } from '@/components/features/club/OperationInfoTab';
-import { courseApi } from '@/lib/api/courses';
 
 type TabType = 'basic' | 'courses' | 'operation';
 
@@ -16,62 +15,21 @@ export const ClubDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('courses');
   const [combos, setCombos] = useState<CourseCombo[]>([]);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [coursesLoading, setCoursesLoading] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [editMode, setEditMode] = useState(false);
 
-  // Redux hooks
+  // useClubDetail 훅으로 모든 데이터/액션 관리
   const {
-    selectedClub,
-    selectedClubCourses,
-    loading,
-    errors,
-    loadClubById,
-    selectClub,
-    updateExistingClub,
-    removeClub,
-  } = useClub();
-
-  // 골프장 정보 조회
-  useEffect(() => {
-    if (clubId) {
-      const id = Number(clubId);
-      loadClubById(id);
-    }
-  }, [clubId, loadClubById]);
-
-  // 코스 목록 별도 조회
-  useEffect(() => {
-    const fetchCourses = async () => {
-      if (!clubId) return;
-
-      setCoursesLoading(true);
-      try {
-        const clubCourses = await courseApi.getCoursesByClub(Number(clubId));
-        // clubId로 필터링 (백엔드가 필터링 안 할 경우 대비)
-        const filteredCourses = clubCourses.filter(c => c.clubId === Number(clubId));
-        setCourses(filteredCourses as Course[]);
-      } catch (error) {
-        console.error('Failed to fetch courses:', error);
-        setCourses([]);
-      } finally {
-        setCoursesLoading(false);
-      }
-    };
-
-    fetchCourses();
-  }, [clubId]);
-
-  // TODO: 18홀 조합 조회 추가 (향후 구현)
-  useEffect(() => {
-    const activeCourses = courses.length > 0 ? courses : selectedClubCourses;
-    if (activeCourses.length >= 2) {
-      // 18홀 조합 생성 로직 추가
-      // const combosData = await clubApi.getCombosForClub(Number(clubId));
-      // setCombos(combosData);
-    }
-  }, [courses, selectedClubCourses]);
+    club,
+    courses,
+    stats,
+    isLoading,
+    isCoursesLoading,
+    isDeletingClub,
+    error,
+    deleteClub,
+    refetchClub,
+    refetchCourses,
+  } = useClubDetail(clubId ? Number(clubId) : null);
 
   // 탭 변경 시 편집 모드 리셋
   useEffect(() => {
@@ -93,32 +51,33 @@ export const ClubDetailPage: React.FC = () => {
 
   // 골프장 삭제
   const handleDeleteClub = async () => {
-    if (!selectedClub || isDeleting) return;
+    if (!club || isDeletingClub) return;
 
-    setIsDeleting(true);
     try {
-      await removeClub(selectedClub.id);
+      await deleteClub();
       toast.success('골프장이 성공적으로 삭제되었습니다.');
-      navigate('/clubs');
     } catch (error) {
       console.error('Failed to delete club:', error);
       toast.error('골프장 삭제 중 오류가 발생했습니다.');
-    } finally {
-      setIsDeleting(false);
     }
+  };
+
+  // 코스 업데이트 핸들러
+  const handleCoursesUpdate = async () => {
+    await refetchCourses();
   };
 
   return (
     <DataContainer
-      isLoading={loading.detail}
-      isEmpty={!selectedClub && !loading.detail}
+      isLoading={isLoading}
+      isEmpty={!club && !isLoading}
       emptyIcon={
         <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16.5c-.77.833.192 3 1.732 3z" />
         </svg>
       }
       emptyMessage="골프장 정보를 찾을 수 없습니다"
-      emptyDescription={errors.detail || '골프장 정보를 불러오는 중 문제가 발생했습니다.'}
+      emptyDescription={error || '골프장 정보를 불러오는 중 문제가 발생했습니다.'}
       emptyAction={
         <button
           onClick={() => navigate('/clubs')}
@@ -130,7 +89,7 @@ export const ClubDetailPage: React.FC = () => {
       loadingMessage="골프장 정보를 불러오는 중..."
       className="min-h-[16rem]"
     >
-      {selectedClub && (
+      {club && (
     <div className="space-y-6">
       {/* 헤더 */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -145,25 +104,25 @@ export const ClubDetailPage: React.FC = () => {
               </svg>
             </button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{selectedClub.name}</h1>
+              <h1 className="text-3xl font-bold text-gray-900">{club.name}</h1>
               <div className="flex items-center space-x-4 mt-2">
                 <p className="text-gray-600 flex items-center">
                   <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  {selectedClub.location}
+                  {club.location}
                 </p>
-                <p className="text-gray-600">⛳ {courses.reduce((sum, course) => sum + (course.holeCount || course.holes?.length || 0), 0) || selectedClub.totalHoles || 0}홀</p>
-                <p className="text-gray-600">🎯 {courses.length || selectedClub.totalCourses || 0}코스</p>
+                <p className="text-gray-600">⛳ {stats.totalHoles || club.totalHoles || 0}홀</p>
+                <p className="text-gray-600">🎯 {stats.totalCourses || club.totalCourses || 0}코스</p>
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  selectedClub.status === 'ACTIVE'
+                  club.status === 'ACTIVE'
                     ? 'bg-green-100 text-green-800'
-                    : selectedClub.status === 'MAINTENANCE'
+                    : club.status === 'MAINTENANCE'
                     ? 'bg-yellow-100 text-yellow-800'
                     : 'bg-red-100 text-red-800'
                 }`}>
-                  {selectedClub.status === 'ACTIVE' ? '운영중' : selectedClub.status === 'MAINTENANCE' ? '정비중' : '휴장'}
+                  {club.status === 'ACTIVE' ? '운영중' : club.status === 'MAINTENANCE' ? '정비중' : '휴장'}
                 </span>
               </div>
             </div>
@@ -179,7 +138,7 @@ export const ClubDetailPage: React.FC = () => {
               </svg>
               <span>라운드 보기</span>
             </button>
-            <button 
+            <button
               onClick={handleEditClub}
               className="p-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               title="골프장 수정"
@@ -189,9 +148,9 @@ export const ClubDetailPage: React.FC = () => {
               </svg>
             </button>
             <DeleteConfirmPopover
-              targetName={selectedClub.name}
-              message={`"${selectedClub.name}" 골프장을 삭제하시겠습니까? 연관된 모든 데이터가 함께 삭제됩니다.`}
-              isDeleting={isDeleting}
+              targetName={club.name}
+              message={`"${club.name}" 골프장을 삭제하시겠습니까? 연관된 모든 데이터가 함께 삭제됩니다.`}
+              isDeleting={isDeletingClub}
               onConfirm={handleDeleteClub}
               side="bottom"
               align="end"
@@ -261,28 +220,20 @@ export const ClubDetailPage: React.FC = () => {
       {/* 탭 컨텐츠 */}
       <div className="bg-white rounded-lg border border-gray-200">
         {activeTab === 'basic' && (
-          <BasicInfoTab club={selectedClub} onUpdate={selectClub} initialEditMode={editMode} />
+          <BasicInfoTab club={club} onUpdate={refetchClub} initialEditMode={editMode} />
         )}
         {activeTab === 'courses' && (
           <CourseManagementTab
-            club={selectedClub}
-            courses={courses.length > 0 ? courses : selectedClubCourses}
+            club={club}
+            courses={courses}
             combos={combos}
-            onCoursesUpdate={async () => {
-              // 코스 목록 다시 가져오기
-              try {
-                const clubCourses = await courseApi.getCoursesByClub(Number(clubId));
-                const filteredCourses = clubCourses.filter(c => c.clubId === Number(clubId));
-                setCourses(filteredCourses as Course[]);
-              } catch (error) {
-                console.error('Failed to refresh courses:', error);
-              }
-            }}
+            isLoading={isCoursesLoading}
+            onCoursesUpdate={handleCoursesUpdate}
             onCombosUpdate={setCombos}
           />
         )}
         {activeTab === 'operation' && (
-          <OperationInfoTab club={selectedClub} onUpdate={selectClub} />
+          <OperationInfoTab club={club} onUpdate={refetchClub} />
         )}
       </div>
     </div>

@@ -12,13 +12,8 @@ export class CourseService {
   async create(createDto: CreateCourseDto): Promise<Course> {
     this.logger.log(`Attempting to create a course with name: ${createDto.name} for company ID: ${createDto.companyId}`);
 
-    // Company 존재 여부 확인
-    const company = await this.prisma.company.findUnique({
-      where: { id: createDto.companyId },
-    });
-    if (!company) {
-      throw new NotFoundException(`Company with ID ${createDto.companyId} not found.`);
-    }
+    // Note: Company validation should be done via NATS 'iam.companies.getById' if needed
+    // companyId is a cross-database reference to iam_db.companies
 
     try {
       return await this.prisma.course.create({
@@ -101,7 +96,7 @@ export class CourseService {
     const course = await this.prisma.course.findUnique({
       where: { id },
       include: {
-        company: true,
+        // company relation removed - use NATS 'iam.companies.getById' for Company data
         club: true,
         holes: {
           include: {
@@ -123,15 +118,8 @@ export class CourseService {
     // Course 존재 여부 확인
     await this.findOne(id); // findOne 내부에서 NotFoundException 처리
 
-    // 만약 companyId 변경을 시도하고, 해당 Company가 존재하지 않으면 에러
-    if (updateDto.companyId) {
-      const company = await this.prisma.company.findUnique({
-        where: { id: updateDto.companyId },
-      });
-      if (!company) {
-        throw new NotFoundException(`Target company with ID ${updateDto.companyId} not found for update.`);
-      }
-    }
+    // Note: Company validation should be done via NATS 'iam.companies.getById' if needed
+    // companyId is a cross-database reference to iam_db.companies
 
     try {
       return await this.prisma.course.update({

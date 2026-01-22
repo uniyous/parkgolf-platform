@@ -31,3 +31,28 @@ export {
   useUpdateBookingMutation,
   useCancelBookingMutation,
 } from './booking';
+
+// Friend Queries & Mutations
+export {
+  friendKeys,
+  useFriendsQuery,
+  useFriendRequestsQuery,
+  useSentFriendRequestsQuery,
+  useSearchUsersQuery,
+  useSendFriendRequestMutation,
+  useAcceptFriendRequestMutation,
+  useRejectFriendRequestMutation,
+  useRemoveFriendMutation,
+} from './friend';
+
+// Chat Queries & Mutations
+export {
+  chatKeys,
+  useChatRoomsQuery,
+  useChatRoomQuery,
+  useMessagesQuery,
+  useCreateChatRoomMutation,
+  useGetOrCreateDirectChatMutation,
+  useSendMessageMutation,
+  useLeaveChatRoomMutation,
+} from './chat';

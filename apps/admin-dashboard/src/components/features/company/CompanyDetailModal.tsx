@@ -1,6 +1,7 @@
 import React from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
+import { Button } from '@/components/ui';
 import type { Company, CompanyStatus } from '@/types/company';
 
 interface CompanyDetailModalProps {
@@ -14,6 +15,8 @@ const STATUS_BADGE_STYLES: Record<CompanyStatus, { bg: string; dot: string; labe
   ACTIVE: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', label: '활성' },
   INACTIVE: { bg: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500', label: '비활성' },
   MAINTENANCE: { bg: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500', label: '점검' },
+  SUSPENDED: { bg: 'bg-gray-50 text-gray-700 border-gray-200', dot: 'bg-gray-500', label: '정지' },
+  PENDING: { bg: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500', label: '대기' },
 };
 
 export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
@@ -90,23 +93,17 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
 
             {/* Actions */}
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => onEdit(company)}
-                className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-              >
+              <Button variant="ghost" onClick={() => onEdit(company)}>
                 <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
                 수정
-              </button>
-              <button
-                onClick={onClose}
-                className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-              >
+              </Button>
+              <Button variant="ghost" size="icon" onClick={onClose}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -124,7 +121,7 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
                 </div>
                 <div className="flex">
                   <div className="w-24 text-sm font-medium text-gray-600">설립일</div>
-                  <div className="flex-1 text-gray-900">{formatDate(company.establishedDate)}</div>
+                  <div className="flex-1 text-gray-900">{company.establishedDate ? formatDate(company.establishedDate) : '정보없음'}</div>
                 </div>
                 <div className="flex">
                   <div className="w-24 text-sm font-medium text-gray-600">코스 수</div>
@@ -182,12 +179,9 @@ export const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({
 
           {/* Footer */}
           <div className="px-8 py-4 bg-gray-50 border-t flex justify-end">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 border rounded-lg hover:bg-gray-100 transition-colors"
-            >
+            <Button variant="outline" onClick={onClose}>
               닫기
-            </button>
+            </Button>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

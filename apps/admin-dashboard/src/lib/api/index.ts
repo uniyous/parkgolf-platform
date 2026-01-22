@@ -15,6 +15,7 @@ export { bookingApi } from './bookingApi';
 export { companyApi } from './companyApi';
 export { dashboardApi } from './dashboardApi';
 export { notificationApi } from './notificationApi';
+export { policyApi, cancellationPolicyApi, refundPolicyApi, noShowPolicyApi } from './policyApi';
 
 // Course/Club Management
 export { courseApi } from './courses';

@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { useCreateCompanyMutation, useUpdateCompanyMutation } from '@/hooks/queries';
+import { Button } from '@/components/ui';
 import PostalSearchModal from './PostalSearchModal';
-import type { Company, CompanyStatus, CreateCompanyDto, UpdateCompanyDto } from '@/types/company';
+import type { Company, CompanyStatus, CompanyType, CreateCompanyDto, UpdateCompanyDto } from '@/types/company';
 
 interface CompanyFormModalProps {
   open: boolean;
@@ -13,6 +14,7 @@ interface CompanyFormModalProps {
 
 interface FormData {
   name: string;
+  companyType: CompanyType;
   businessNumber: string;
   postalCode: string;
   address1: string;
@@ -28,6 +30,7 @@ interface FormData {
 
 const initialFormData: FormData = {
   name: '',
+  companyType: 'FRANCHISE',
   businessNumber: '',
   postalCode: '',
   address1: '',
@@ -40,6 +43,12 @@ const initialFormData: FormData = {
   logoUrl: '',
   status: 'ACTIVE',
 };
+
+const COMPANY_TYPE_OPTIONS = [
+  { value: 'FRANCHISE', label: '가맹점', icon: '🏢', description: '일반 골프장/파크골프장' },
+  { value: 'ASSOCIATION', label: '협회', icon: '🤝', description: '골프 협회/연맹' },
+  { value: 'PLATFORM', label: '플랫폼', icon: '🌐', description: '본사/플랫폼 운영사' },
+];
 
 const STATUS_OPTIONS = [
   { value: 'ACTIVE', label: '운영 중', icon: '✅', color: 'bg-green-100 text-green-800' },
@@ -65,6 +74,7 @@ export const CompanyFormModal: React.FC<CompanyFormModalProps> = ({ open, compan
 
       setFormData({
         name: company.name || '',
+        companyType: company.companyType || 'FRANCHISE',
         businessNumber: company.businessNumber || '',
         postalCode,
         address1,
@@ -135,9 +145,23 @@ export const CompanyFormModal: React.FC<CompanyFormModalProps> = ({ open, compan
     const combinedAddress = [formData.postalCode, formData.address1, formData.address2].filter(Boolean).join(' ');
 
     try {
+      // 회사명에서 코드 자동 생성
+      const generateCode = (name: string): string => {
+        const timestamp = Date.now().toString(36).toUpperCase();
+        const nameCode = name
+          .replace(/[^\w\s가-힣]/g, '')
+          .split(/\s+/)
+          .map(w => w.charAt(0))
+          .join('')
+          .toUpperCase()
+          .slice(0, 4);
+        return `${nameCode}-${timestamp}`;
+      };
+
       if (isEditing && company) {
         const updateData: UpdateCompanyDto = {
           name: formData.name,
+          companyType: formData.companyType,
           businessNumber: formData.businessNumber,
           address: combinedAddress,
           phoneNumber: formData.phoneNumber,
@@ -152,6 +176,8 @@ export const CompanyFormModal: React.FC<CompanyFormModalProps> = ({ open, compan
       } else {
         const createData: CreateCompanyDto = {
           name: formData.name,
+          code: generateCode(formData.name),
+          companyType: formData.companyType,
           businessNumber: formData.businessNumber,
           address: combinedAddress,
           phoneNumber: formData.phoneNumber,
@@ -283,6 +309,30 @@ export const CompanyFormModal: React.FC<CompanyFormModalProps> = ({ open, compan
                         />
                       </div>
                       {errors.name && <p className="mt-1.5 text-sm text-red-500 flex items-center"><svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>{errors.name}</p>}
+                    </div>
+
+                    {/* 회사 유형 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        회사 유형 <span className="text-red-500">*</span>
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {COMPANY_TYPE_OPTIONS.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => handleChange('companyType', option.value)}
+                            className={`flex flex-col items-center justify-center px-2 py-2.5 rounded-lg border-2 transition-all ${
+                              formData.companyType === option.value
+                                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                            }`}
+                          >
+                            <span className="text-lg mb-0.5">{option.icon}</span>
+                            <span className="text-xs font-medium">{option.label}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     {/* 사업자번호 */}
@@ -559,35 +609,15 @@ export const CompanyFormModal: React.FC<CompanyFormModalProps> = ({ open, compan
 
               {/* Footer */}
               <div className="px-6 py-4 bg-gray-50 border-t flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors font-medium text-gray-700"
-                >
+                <Button type="button" variant="outline" onClick={onClose}>
                   취소
-                </button>
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium shadow-sm flex items-center"
-                >
-                  {isPending ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      저장 중...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      {isEditing ? '수정 완료' : '회사 등록'}
-                    </>
-                  )}
-                </button>
+                </Button>
+                <Button type="submit" loading={isPending}>
+                  <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {isEditing ? '수정 완료' : '회사 등록'}
+                </Button>
               </div>
             </form>
           </Dialog.Content>

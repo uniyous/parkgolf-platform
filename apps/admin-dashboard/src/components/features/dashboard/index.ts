@@ -1,11 +1,4 @@
 export { DashboardContainer } from './DashboardContainer';
-export { StatsOverview } from './StatsOverview';
-export { QuickActions } from './QuickActions';
-export { RevenueChart } from './RevenueChart';
-export { BookingTrendsChart } from './BookingTrendsChart';
-export { PopularCoursesWidget } from './PopularCoursesWidget';
-export { RecentBookingsWidget } from './RecentBookingsWidget';
-export { ActivityTimeline } from './ActivityTimeline';
-export { SystemHealthWidget } from './SystemHealthWidget';
-export { WeatherWidget } from './WeatherWidget';
-export { NotificationPanel } from './NotificationPanel';
+export { TodayStats } from './TodayStats';
+export { RecentBookingsList } from './RecentBookingsList';
+export { QuickLinks } from './QuickLinks';
