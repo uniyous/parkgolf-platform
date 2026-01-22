@@ -116,11 +116,11 @@ struct FriendsView: View {
     private var friendsContent: some View {
         ScrollView {
             LazyVStack(spacing: ParkSpacing.md) {
-                // Search Bar
-                friendsSearchBar
-
                 // Stats Card
                 friendsStatsCard
+
+                // Search Bar
+                friendsSearchBar
 
                 // Friends List
                 if viewModel.filteredFriends.isEmpty {

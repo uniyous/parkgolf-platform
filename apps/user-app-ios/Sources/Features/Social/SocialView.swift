@@ -153,9 +153,6 @@ struct SocialView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: ParkSpacing.md) {
-                        // Search Bar
-                        friendsSearchBar
-
                         // Stats Card
                         friendsStatsCard
 
@@ -168,6 +165,9 @@ struct SocialView: View {
                         if !friendsViewModel.sentFriendRequests.isEmpty {
                             sentRequestsSection
                         }
+
+                        // Search Bar
+                        friendsSearchBar
 
                         // Friends List
                         friendsListSection
