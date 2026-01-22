@@ -258,6 +258,8 @@ struct NoticeItem: View {
             Text(text)
                 .font(.parkBodySmall)
                 .foregroundStyle(.white.opacity(0.7))
+
+            Spacer()
         }
     }
 }
