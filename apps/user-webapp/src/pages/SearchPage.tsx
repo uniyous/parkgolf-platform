@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, SlidersHorizontal, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { AppLayout, Container } from '@/components/layout';
 import { useSearchGamesQuery } from '../hooks/queries';
 import { useGameSearchParams } from '../hooks/useSearchParams';
 import type { Game, GameTimeSlot, GameSearchParams } from '@/lib/api/gameApi';
@@ -76,9 +77,10 @@ export const SearchPage: React.FC = () => {
   const hasActiveFilters = filters.search || filters.minPrice || filters.maxPrice || filters.minPlayers;
 
   return (
-    <div className="px-4 py-6">
+    <AppLayout title="라운드 검색">
+      <Container className="py-4 md:py-6">
         {/* Search Filters */}
-        <div className="glass-card mb-8">
+        <div className="glass-card p-6 mb-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-white">예약 조건</h2>
             <Button
@@ -282,6 +284,7 @@ export const SearchPage: React.FC = () => {
             )}
           </div>
         )}
-    </div>
+      </Container>
+    </AppLayout>
   );
 };

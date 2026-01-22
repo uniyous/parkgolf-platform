@@ -83,13 +83,22 @@ struct NotificationToggleRow: View {
     let title: String
     let description: String
     @Binding var isOn: Bool
+    var isDisabled: Bool = false
 
     var body: some View {
-        HStack(spacing: ParkSpacing.sm) {
-            Image(systemName: icon)
-                .foregroundStyle(iconColor)
-                .frame(width: 24)
+        HStack(spacing: ParkSpacing.md) {
+            // Icon
+            ZStack {
+                Circle()
+                    .fill(iconColor.opacity(0.2))
+                    .frame(width: 40, height: 40)
 
+                Image(systemName: icon)
+                    .font(.system(size: 16))
+                    .foregroundStyle(iconColor)
+            }
+
+            // Text
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.parkBodyMedium)
@@ -97,16 +106,19 @@ struct NotificationToggleRow: View {
 
                 Text(description)
                     .font(.parkCaption)
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(.white.opacity(0.6))
             }
 
             Spacer()
 
+            // Toggle
             Toggle("", isOn: $isOn)
-                .tint(.parkPrimary)
                 .labelsHidden()
+                .tint(Color.parkPrimary)
+                .disabled(isDisabled)
+                .opacity(isDisabled ? 0.5 : 1.0)
         }
-        .padding(.vertical, ParkSpacing.xxs)
+        .padding(.vertical, ParkSpacing.xs)
     }
 }
 

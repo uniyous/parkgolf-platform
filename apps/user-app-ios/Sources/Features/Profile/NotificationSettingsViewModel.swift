@@ -1,5 +1,6 @@
 import Foundation
 import UserNotifications
+import UIKit
 
 @MainActor
 class NotificationSettingsViewModel: ObservableObject {

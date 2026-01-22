@@ -11,6 +11,8 @@ import {
   Clock,
   Send,
 } from 'lucide-react';
+import { AppLayout, Container } from '@/components/layout';
+import { GlassCard, Button, EmptyState, LoadingView, BottomSheet } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import {
   useFriendsQuery,
@@ -24,15 +26,16 @@ import {
 } from '@/hooks/queries';
 import { useGetOrCreateDirectChatMutation } from '@/hooks/queries/chat';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useResponsive } from '@/hooks/useResponsive';
 import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
 import { showSuccessToast, showErrorToast } from '@/lib/toast';
 import type { Friend, FriendRequest, SentFriendRequest, UserSearchResult } from '@/lib/api/friendApi';
 
 type TabType = 'friends' | 'requests';
 
-export const FriendsPage: React.FC = () => {
+export function FriendsPage() {
   const navigate = useNavigate();
+  const { isMobile } = useResponsive();
   const [activeTab, setActiveTab] = useState<TabType>('friends');
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -126,33 +129,28 @@ export const FriendsPage: React.FC = () => {
     [createDirectChatMutation, navigate]
   );
 
-  return (
-    <div>
-      {/* Header */}
-      <div className="sticky top-14 z-30 bg-black/20 backdrop-blur-sm px-4 py-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">친구</h2>
-          <button
-            onClick={() => setShowAddFriendModal(true)}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors',
-              'bg-emerald-500 text-white hover:bg-emerald-600'
-            )}
-          >
-            <UserPlus className="w-4 h-4" />
-            친구 추가
-          </button>
-        </div>
+  const headerRight = (
+    <Button
+      size="sm"
+      onClick={() => setShowAddFriendModal(true)}
+    >
+      <UserPlus className="w-4 h-4" />
+      <span className="hidden sm:inline">친구 추가</span>
+    </Button>
+  );
 
+  return (
+    <AppLayout title="친구" headerRight={headerRight}>
+      <Container className="py-4 md:py-6">
         {/* Tabs */}
-        <div className="flex gap-2 mt-3">
+        <div className="flex gap-2 mb-4">
           <button
             onClick={() => setActiveTab('friends')}
             className={cn(
-              'flex-1 py-2 text-sm font-medium rounded-lg transition-colors',
+              'flex-1 py-2.5 text-sm font-medium rounded-xl transition-colors',
               activeTab === 'friends'
-                ? 'bg-white/20 text-white'
-                : 'bg-white/5 text-white/60 hover:bg-white/10'
+                ? 'bg-[var(--color-primary)] text-white'
+                : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]'
             )}
           >
             <Users className="w-4 h-4 inline-block mr-1.5" />
@@ -161,81 +159,56 @@ export const FriendsPage: React.FC = () => {
           <button
             onClick={() => setActiveTab('requests')}
             className={cn(
-              'flex-1 py-2 text-sm font-medium rounded-lg transition-colors relative',
+              'flex-1 py-2.5 text-sm font-medium rounded-xl transition-colors relative',
               activeTab === 'requests'
-                ? 'bg-white/20 text-white'
-                : 'bg-white/5 text-white/60 hover:bg-white/10'
+                ? 'bg-[var(--color-primary)] text-white'
+                : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]'
             )}
           >
             <Clock className="w-4 h-4 inline-block mr-1.5" />
             요청
             {friendRequests.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-[var(--color-error)] text-white text-xs rounded-full flex items-center justify-center">
                 {friendRequests.length}
               </span>
             )}
           </button>
         </div>
-      </div>
 
-      {/* Content */}
-      <main className="px-4 py-6">
         {activeTab === 'friends' && (
           <>
             {/* Search */}
             <div className="mb-4">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-                <Input
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
+                <input
+                  type="text"
                   placeholder="친구 검색..."
                   value={friendListSearch}
                   onChange={(e) => setFriendListSearch(e.target.value)}
-                  className="pl-10 bg-white/10 border-white/10 text-white placeholder:text-white/40"
+                  className="input-glass pl-10"
                 />
               </div>
             </div>
 
             {/* Loading */}
-            {isLoadingFriends && (
-              <div className="space-y-3">
-                {Array(3)
-                  .fill(0)
-                  .map((_, i) => (
-                    <div key={i} className="glass-card p-4 animate-pulse">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-white/10" />
-                        <div className="flex-1 space-y-2">
-                          <div className="w-24 h-4 bg-white/10 rounded" />
-                          <div className="w-32 h-3 bg-white/10 rounded" />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            )}
+            {isLoadingFriends && <LoadingView />}
 
             {/* Empty */}
             {!isLoadingFriends && filteredFriends.length === 0 && (
-              <div className="glass-card p-8 text-center">
-                <Users className="w-16 h-16 mx-auto mb-4 text-white/30" />
-                <h3 className="text-lg font-semibold text-white mb-2">
-                  {friendListSearch ? '검색 결과가 없습니다' : '아직 친구가 없습니다'}
-                </h3>
-                <p className="text-white/60 mb-6">
-                  {friendListSearch
-                    ? '다른 검색어로 시도해보세요.'
-                    : '친구를 추가하고 함께 라운드를 즐겨보세요!'}
-                </p>
-                {!friendListSearch && (
-                  <Button
-                    onClick={() => setShowAddFriendModal(true)}
-                    className="bg-emerald-500 hover:bg-emerald-600"
-                  >
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    친구 추가
-                  </Button>
-                )}
-              </div>
+              <GlassCard>
+                <EmptyState
+                  icon={Users}
+                  title={friendListSearch ? '검색 결과가 없습니다' : '아직 친구가 없습니다'}
+                  description={
+                    friendListSearch
+                      ? '다른 검색어로 시도해보세요.'
+                      : '친구를 추가하고 함께 라운드를 즐겨보세요!'
+                  }
+                  actionLabel={friendListSearch ? undefined : '친구 추가'}
+                  onAction={friendListSearch ? undefined : () => setShowAddFriendModal(true)}
+                />
+              </GlassCard>
             )}
 
             {/* Friend List */}
@@ -258,25 +231,15 @@ export const FriendsPage: React.FC = () => {
           <div className="space-y-6">
             {/* Received Requests */}
             <section>
-              <h3 className="text-sm font-medium text-white/60 mb-3 flex items-center gap-2">
+              <h3 className="text-sm font-medium text-[var(--color-text-tertiary)] mb-3 flex items-center gap-2">
                 <UserPlus className="w-4 h-4" />
                 받은 요청 ({friendRequests.length})
               </h3>
-              {isLoadingRequests && (
-                <div className="glass-card p-4 animate-pulse">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-white/10" />
-                    <div className="flex-1 space-y-2">
-                      <div className="w-24 h-4 bg-white/10 rounded" />
-                      <div className="w-32 h-3 bg-white/10 rounded" />
-                    </div>
-                  </div>
-                </div>
-              )}
+              {isLoadingRequests && <LoadingView size="sm" />}
               {!isLoadingRequests && friendRequests.length === 0 && (
-                <div className="glass-card p-6 text-center text-white/40">
+                <GlassCard className="text-center text-[var(--color-text-muted)] py-6">
                   받은 친구 요청이 없습니다.
-                </div>
+                </GlassCard>
               )}
               {!isLoadingRequests && friendRequests.length > 0 && (
                 <div className="space-y-3">
@@ -294,14 +257,14 @@ export const FriendsPage: React.FC = () => {
 
             {/* Sent Requests */}
             <section>
-              <h3 className="text-sm font-medium text-white/60 mb-3 flex items-center gap-2">
+              <h3 className="text-sm font-medium text-[var(--color-text-tertiary)] mb-3 flex items-center gap-2">
                 <Send className="w-4 h-4" />
                 보낸 요청 ({sentRequests.length})
               </h3>
               {sentRequests.length === 0 && (
-                <div className="glass-card p-6 text-center text-white/40">
+                <GlassCard className="text-center text-[var(--color-text-muted)] py-6">
                   보낸 친구 요청이 없습니다.
-                </div>
+                </GlassCard>
               )}
               {sentRequests.length > 0 && (
                 <div className="space-y-3">
@@ -313,26 +276,45 @@ export const FriendsPage: React.FC = () => {
             </section>
           </div>
         )}
-      </main>
+      </Container>
 
       {/* Add Friend Modal */}
-      {showAddFriendModal && (
-        <AddFriendModal
-          isOpen={showAddFriendModal}
+      {isMobile ? (
+        <BottomSheet
+          open={showAddFriendModal}
           onClose={() => {
             setShowAddFriendModal(false);
             setSearchQuery('');
           }}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          searchResults={searchResults}
-          isSearching={isSearching}
-          onSendRequest={handleSendRequest}
-        />
+          title="친구 추가"
+        >
+          <AddFriendContent
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchResults={searchResults}
+            isSearching={isSearching}
+            onSendRequest={handleSendRequest}
+          />
+        </BottomSheet>
+      ) : (
+        showAddFriendModal && (
+          <AddFriendModal
+            isOpen={showAddFriendModal}
+            onClose={() => {
+              setShowAddFriendModal(false);
+              setSearchQuery('');
+            }}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchResults={searchResults}
+            isSearching={isSearching}
+            onSendRequest={handleSendRequest}
+          />
+        )
       )}
-    </div>
+    </AppLayout>
   );
-};
+}
 
 // ============================================
 // Sub Components
@@ -344,44 +326,39 @@ interface FriendCardProps {
   onRemove: () => void;
 }
 
-const FriendCard: React.FC<FriendCardProps> = ({ friend, onChat, onRemove }) => {
+function FriendCard({ friend, onChat, onRemove }: FriendCardProps) {
   return (
-    <div className="glass-card p-4">
+    <GlassCard>
       <div className="flex items-center gap-3">
-        {/* Avatar */}
-        <div className="w-12 h-12 rounded-full bg-emerald-500/30 flex items-center justify-center">
+        <div className="w-12 h-12 rounded-full bg-[var(--color-primary)]/30 flex items-center justify-center flex-shrink-0">
           <span className="text-lg font-semibold text-white">
             {friend.friendName.charAt(0).toUpperCase()}
           </span>
         </div>
-
-        {/* Info */}
         <div className="flex-1 min-w-0">
           <h4 className="text-white font-medium truncate">{friend.friendName}</h4>
-          <p className="text-white/50 text-sm truncate">{friend.friendEmail}</p>
+          <p className="text-[var(--color-text-tertiary)] text-sm truncate">{friend.friendEmail}</p>
         </div>
-
-        {/* Actions */}
         <div className="flex items-center gap-2">
           <button
             onClick={onChat}
-            className="p-2 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-colors"
+            className="p-2 rounded-lg bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-white transition-colors"
             title="채팅"
           >
             <MessageCircle className="w-5 h-5" />
           </button>
           <button
             onClick={onRemove}
-            className="p-2 rounded-lg bg-white/10 text-white/70 hover:bg-red-500/50 hover:text-white transition-colors"
+            className="p-2 rounded-lg bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-error)]/20 hover:text-[var(--color-error)] transition-colors"
             title="삭제"
           >
             <UserMinus className="w-5 h-5" />
           </button>
         </div>
       </div>
-    </div>
+    </GlassCard>
   );
-};
+}
 
 interface FriendRequestCardProps {
   request: FriendRequest;
@@ -389,81 +366,140 @@ interface FriendRequestCardProps {
   onReject: () => void;
 }
 
-const FriendRequestCard: React.FC<FriendRequestCardProps> = ({
-  request,
-  onAccept,
-  onReject,
-}) => {
+function FriendRequestCard({ request, onAccept, onReject }: FriendRequestCardProps) {
   return (
-    <div className="glass-card p-4">
+    <GlassCard>
       <div className="flex items-center gap-3">
-        {/* Avatar */}
-        <div className="w-12 h-12 rounded-full bg-blue-500/30 flex items-center justify-center">
+        <div className="w-12 h-12 rounded-full bg-[var(--color-info)]/30 flex items-center justify-center flex-shrink-0">
           <span className="text-lg font-semibold text-white">
             {request.fromUserName.charAt(0).toUpperCase()}
           </span>
         </div>
-
-        {/* Info */}
         <div className="flex-1 min-w-0">
           <h4 className="text-white font-medium truncate">{request.fromUserName}</h4>
-          <p className="text-white/50 text-sm truncate">{request.fromUserEmail}</p>
+          <p className="text-[var(--color-text-tertiary)] text-sm truncate">{request.fromUserEmail}</p>
         </div>
-
-        {/* Actions */}
         <div className="flex items-center gap-2">
           <button
             onClick={onAccept}
-            className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/40 transition-colors"
+            className="p-2 rounded-lg bg-[var(--color-success)]/20 text-[var(--color-success)] hover:bg-[var(--color-success)]/30 transition-colors"
             title="수락"
           >
             <Check className="w-5 h-5" />
           </button>
           <button
             onClick={onReject}
-            className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/40 transition-colors"
+            className="p-2 rounded-lg bg-[var(--color-error)]/20 text-[var(--color-error)] hover:bg-[var(--color-error)]/30 transition-colors"
             title="거절"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
       </div>
-    </div>
+    </GlassCard>
   );
-};
+}
 
 interface SentRequestCardProps {
   request: SentFriendRequest;
 }
 
-const SentRequestCard: React.FC<SentRequestCardProps> = ({ request }) => {
+function SentRequestCard({ request }: SentRequestCardProps) {
   return (
-    <div className="glass-card p-4">
+    <GlassCard>
       <div className="flex items-center gap-3">
-        {/* Avatar */}
-        <div className="w-12 h-12 rounded-full bg-yellow-500/30 flex items-center justify-center">
+        <div className="w-12 h-12 rounded-full bg-[var(--color-warning)]/30 flex items-center justify-center flex-shrink-0">
           <span className="text-lg font-semibold text-white">
             {request.toUserName.charAt(0).toUpperCase()}
           </span>
         </div>
-
-        {/* Info */}
         <div className="flex-1 min-w-0">
           <h4 className="text-white font-medium truncate">{request.toUserName}</h4>
-          <p className="text-white/50 text-sm truncate">{request.toUserEmail}</p>
+          <p className="text-[var(--color-text-tertiary)] text-sm truncate">{request.toUserEmail}</p>
         </div>
-
-        {/* Status */}
-        <span className="px-3 py-1 text-xs font-medium rounded-full bg-yellow-500/20 text-yellow-400">
-          대기 중
-        </span>
+        <span className="badge-warning">대기 중</span>
       </div>
-    </div>
+    </GlassCard>
   );
-};
+}
 
 // ============================================
-// Add Friend Modal
+// Add Friend Content (shared between modal and bottom sheet)
+// ============================================
+
+interface AddFriendContentProps {
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  searchResults: UserSearchResult[];
+  isSearching: boolean;
+  onSendRequest: (userId: number) => void;
+}
+
+function AddFriendContent({
+  searchQuery,
+  onSearchChange,
+  searchResults,
+  isSearching,
+  onSendRequest,
+}: AddFriendContentProps) {
+  return (
+    <>
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
+        <input
+          type="text"
+          placeholder="이메일 또는 이름으로 검색..."
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="input-glass pl-10"
+          autoFocus
+        />
+      </div>
+
+      <div className="max-h-80 overflow-y-auto space-y-2">
+        {isSearching && <LoadingView size="sm" />}
+
+        {!isSearching && searchQuery.length >= 2 && searchResults.length === 0 && (
+          <div className="p-4 text-center text-[var(--color-text-muted)]">검색 결과가 없습니다.</div>
+        )}
+
+        {!isSearching && searchQuery.length < 2 && (
+          <div className="p-4 text-center text-[var(--color-text-muted)]">2글자 이상 입력해주세요.</div>
+        )}
+
+        {!isSearching &&
+          searchResults.map((user) => (
+            <div
+              key={user.id}
+              className="flex items-center gap-3 p-3 rounded-xl bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition-colors"
+            >
+              <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/30 flex items-center justify-center flex-shrink-0">
+                <span className="text-sm font-semibold text-white">
+                  {user.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-white font-medium truncate">{user.name}</h4>
+                <p className="text-[var(--color-text-muted)] text-xs truncate">{user.email}</p>
+              </div>
+              {user.isFriend ? (
+                <span className="text-xs text-[var(--color-success)]">친구</span>
+              ) : user.hasPendingRequest ? (
+                <span className="text-xs text-[var(--color-warning)]">요청됨</span>
+              ) : (
+                <Button size="sm" onClick={() => onSendRequest(user.id)}>
+                  요청
+                </Button>
+              )}
+            </div>
+          ))}
+      </div>
+    </>
+  );
+}
+
+// ============================================
+// Add Friend Modal (Desktop)
 // ============================================
 
 interface AddFriendModalProps {
@@ -476,7 +512,7 @@ interface AddFriendModalProps {
   onSendRequest: (userId: number) => void;
 }
 
-const AddFriendModal: React.FC<AddFriendModalProps> = ({
+function AddFriendModal({
   isOpen,
   onClose,
   searchQuery,
@@ -484,90 +520,25 @@ const AddFriendModal: React.FC<AddFriendModalProps> = ({
   searchResults,
   isSearching,
   onSendRequest,
-}) => {
+}: AddFriendModalProps) {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-
-      {/* Modal */}
-      <div className="relative w-full max-w-md glass-card p-6 animate-in fade-in slide-in-from-bottom-4 duration-200">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md glass-card p-6 animate-slide-up">
         <h3 className="text-lg font-semibold text-white mb-4">친구 추가</h3>
-
-        {/* Search Input */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-          <Input
-            placeholder="이메일 또는 이름으로 검색..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10 bg-white/10 border-white/10 text-white placeholder:text-white/40"
-            autoFocus
-          />
-        </div>
-
-        {/* Search Results */}
-        <div className="max-h-80 overflow-y-auto space-y-2">
-          {isSearching && (
-            <div className="p-4 text-center text-white/40">
-              <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto" />
-            </div>
-          )}
-
-          {!isSearching && searchQuery.length >= 2 && searchResults.length === 0 && (
-            <div className="p-4 text-center text-white/40">검색 결과가 없습니다.</div>
-          )}
-
-          {!isSearching && searchQuery.length < 2 && (
-            <div className="p-4 text-center text-white/40">2글자 이상 입력해주세요.</div>
-          )}
-
-          {!isSearching &&
-            searchResults.map((user) => (
-              <div
-                key={user.id}
-                className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-              >
-                {/* Avatar */}
-                <div className="w-10 h-10 rounded-full bg-emerald-500/30 flex items-center justify-center">
-                  <span className="text-sm font-semibold text-white">
-                    {user.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-white font-medium truncate">{user.name}</h4>
-                  <p className="text-white/50 text-xs truncate">{user.email}</p>
-                </div>
-
-                {/* Action */}
-                {user.isFriend ? (
-                  <span className="text-xs text-emerald-400">친구</span>
-                ) : user.hasPendingRequest ? (
-                  <span className="text-xs text-yellow-400">요청됨</span>
-                ) : (
-                  <button
-                    onClick={() => onSendRequest(user.id)}
-                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
-                  >
-                    요청
-                  </button>
-                )}
-              </div>
-            ))}
-        </div>
-
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="mt-4 w-full py-2.5 text-sm font-medium rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors"
-        >
+        <AddFriendContent
+          searchQuery={searchQuery}
+          onSearchChange={onSearchChange}
+          searchResults={searchResults}
+          isSearching={isSearching}
+          onSendRequest={onSendRequest}
+        />
+        <Button variant="secondary" className="mt-4 w-full" onClick={onClose}>
           닫기
-        </button>
+        </Button>
       </div>
     </div>
   );
-};
+}

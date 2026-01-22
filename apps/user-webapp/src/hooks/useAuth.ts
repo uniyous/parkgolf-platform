@@ -20,8 +20,8 @@ export const useAuth = () => {
     try {
       await loginMutation.mutateAsync({ email, password });
 
-      // 로그인 후 원래 페이지 또는 기본 페이지로 이동
-      const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/search';
+      // 로그인 후 원래 페이지 또는 홈으로 이동
+      const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
       navigate(from, { replace: true });
       return true;
     } catch (error) {
@@ -33,7 +33,7 @@ export const useAuth = () => {
   const register = async (userData: RegisterRequest) => {
     try {
       await registerMutation.mutateAsync(userData);
-      navigate('/search');
+      navigate('/');
       return true;
     } catch (error) {
       console.error('Registration failed:', error);

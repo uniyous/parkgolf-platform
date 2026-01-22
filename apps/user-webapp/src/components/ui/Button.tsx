@@ -5,28 +5,29 @@ import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-primary)] disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
         default:
-          'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg hover:shadow-xl hover:from-emerald-500 hover:to-emerald-600 focus-visible:ring-emerald-500',
+          'bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-light)] focus-visible:ring-[var(--color-primary)]',
         destructive:
-          'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500',
+          'bg-[var(--color-error)] text-white hover:bg-[var(--color-error)]/90 focus-visible:ring-[var(--color-error)]',
         outline:
-          'border-2 border-emerald-600 bg-transparent text-emerald-600 hover:bg-emerald-600 hover:text-white focus-visible:ring-emerald-500',
+          'border-2 border-[var(--color-primary)] bg-transparent text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white focus-visible:ring-[var(--color-primary)]',
         secondary:
-          'bg-gray-100 text-gray-700 hover:bg-gray-200 focus-visible:ring-gray-500',
+          'bg-[var(--color-surface)] text-white hover:bg-[var(--color-surface-hover)] focus-visible:ring-white/20',
         ghost:
-          'text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-gray-500',
-        link: 'text-emerald-600 underline-offset-4 hover:underline focus-visible:ring-emerald-500',
+          'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-white focus-visible:ring-white/20',
+        link: 'text-[var(--color-primary)] underline-offset-4 hover:underline focus-visible:ring-[var(--color-primary)]',
         glass:
-          'bg-white/20 backdrop-blur-sm border border-white/30 text-white hover:bg-white/30 focus-visible:ring-white/50',
+          'bg-[var(--color-surface)] backdrop-blur-sm border border-[var(--color-border)] text-white hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-border-light)] focus-visible:ring-white/20',
       },
       size: {
         default: 'h-10 px-4 py-2',
         sm: 'h-9 rounded-lg px-3 text-xs',
         lg: 'h-12 rounded-xl px-8 text-base',
+        xl: 'h-14 rounded-xl px-10 text-lg',
         icon: 'h-10 w-10 p-0',
       },
     },
@@ -45,7 +46,19 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, loading = false, children, disabled, ...props }, ref) => {
+  (
+    {
+      className,
+      variant,
+      size,
+      asChild = false,
+      loading = false,
+      children,
+      disabled,
+      ...props
+    },
+    ref
+  ) => {
     const Comp = asChild ? Slot : 'button';
     return (
       <Comp

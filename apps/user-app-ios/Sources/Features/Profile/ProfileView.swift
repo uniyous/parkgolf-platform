@@ -50,14 +50,6 @@ struct ProfileView: View {
                 .foregroundStyle(.white)
 
             Spacer()
-
-            NavigationLink {
-                SettingsView()
-            } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 20))
-                    .foregroundStyle(.white)
-            }
         }
         .padding(.horizontal, ParkSpacing.md)
         .padding(.top, ParkSpacing.sm)
@@ -189,11 +181,19 @@ struct ProfileView: View {
                 }
 
                 ProfileMenuRow(
-                    icon: "trophy.fill",
+                    icon: "key.fill",
                     iconColor: .parkWarning,
-                    title: "내 통계"
+                    title: "비밀번호 변경"
                 ) {
-                    MyStatsView()
+                    ChangePasswordView()
+                }
+
+                ProfileMenuRow(
+                    icon: "trash.fill",
+                    iconColor: .parkError,
+                    title: "계정 삭제"
+                ) {
+                    DeleteAccountView()
                 }
             }
         }
@@ -262,6 +262,22 @@ struct ProfileView: View {
                     title: "문의하기"
                 ) {
                     ContactUsView()
+                }
+
+                ProfileMenuRow(
+                    icon: "doc.plaintext",
+                    iconColor: .parkInfo,
+                    title: "이용약관"
+                ) {
+                    TermsView()
+                }
+
+                ProfileMenuRow(
+                    icon: "hand.raised.fill",
+                    iconColor: .parkWarning,
+                    title: "개인정보처리방침"
+                ) {
+                    PrivacyPolicyView()
                 }
 
                 HStack {

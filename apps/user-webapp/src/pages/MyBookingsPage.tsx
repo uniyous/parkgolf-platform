@@ -1,9 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Calendar, Search, RefreshCw, History } from 'lucide-react';
+import { Calendar, Search, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AppLayout, Container } from '@/components/layout';
+import { GlassCard, Button } from '@/components/ui';
 import { useSearchBookingsQuery } from '@/hooks/queries/booking';
-import { useProfileQuery } from '@/hooks/queries/auth';
 import { BookingCard, BookingCardSkeleton } from '@/components/BookingCard';
 import { CancelBookingModal } from '@/components/CancelBookingModal';
 import { Pagination } from '@/components';
@@ -16,12 +17,10 @@ export const MyBookingsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [cancelModalBooking, setCancelModalBooking] = useState<BookingWithCancel | null>(null);
 
-  const { data: profile } = useProfileQuery();
-
   const timeFilter = (searchParams.get('tab') as TimeFilter) || 'upcoming';
   const page = Number(searchParams.get('page')) || 1;
 
-  const { data, isLoading, isError, refetch, isFetching } = useSearchBookingsQuery({
+  const { data, isLoading, isError, refetch } = useSearchBookingsQuery({
     timeFilter,
     sortBy: 'bookingDate',
     sortOrder: timeFilter === 'past' ? 'desc' : 'asc',
@@ -60,54 +59,22 @@ export const MyBookingsPage: React.FC = () => {
 
   const totalPages = data ? Math.ceil(data.total / data.limit) : 0;
 
-  // 로그인하지 않은 경우
-  if (!profile) {
-    return (
-      <div className="flex items-center justify-center p-4 min-h-[60vh]">
-        <div className="glass-card p-6 text-center max-w-md">
-          <Calendar className="w-16 h-16 mx-auto mb-4 text-white/40" />
-          <h2 className="text-xl font-bold text-white mb-2">로그인이 필요합니다</h2>
-          <p className="text-white/60 mb-6">
-            예약 내역을 확인하려면 로그인해 주세요.
-          </p>
-          <button
-            onClick={() => navigate('/login', { state: { from: '/my-bookings' } })}
-            className={cn(
-              'w-full py-3 text-sm font-medium rounded-lg',
-              'bg-green-500 text-white hover:bg-green-600',
-              'transition-colors'
-            )}
-          >
-            로그인하기
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const headerRight = (
+    <Button
+      variant="secondary"
+      size="sm"
+      onClick={() => handleTabChange(timeFilter === 'upcoming' ? 'past' : 'upcoming')}
+    >
+      <History className="w-4 h-4" />
+      <span className="hidden sm:inline">
+        {timeFilter === 'upcoming' ? '지난 예약' : '예정된 예약'}
+      </span>
+    </Button>
+  );
 
   return (
-    <div>
-      {/* Sub Header */}
-      <div className="sticky top-14 z-30 bg-black/20 backdrop-blur-sm px-4 py-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">
-            {timeFilter === 'upcoming' ? '예정된 예약' : '지난 예약'}
-          </h2>
-          <button
-            onClick={() => handleTabChange(timeFilter === 'upcoming' ? 'past' : 'upcoming')}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors',
-              'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
-            )}
-          >
-            <History className="w-4 h-4" />
-            {timeFilter === 'upcoming' ? '지난 예약 보기' : '예정된 예약 보기'}
-          </button>
-        </div>
-      </div>
-
-      {/* Content */}
-      <main className="px-4 py-6">
+    <AppLayout title="예약 내역" headerRight={headerRight}>
+      <Container className="py-4 md:py-6">
         {/* Loading */}
         {isLoading && (
           <div className="space-y-4">
@@ -119,42 +86,28 @@ export const MyBookingsPage: React.FC = () => {
 
         {/* Error */}
         {isError && (
-          <div className="glass-card p-6 text-center">
-            <p className="text-red-400 mb-4">예약 내역을 불러오는데 실패했습니다.</p>
-            <button
-              onClick={() => refetch()}
-              className={cn(
-                'px-4 py-2 text-sm font-medium rounded-lg',
-                'bg-white/10 text-white hover:bg-white/20',
-                'transition-colors'
-              )}
-            >
+          <GlassCard className="text-center">
+            <p className="text-[var(--color-error)] mb-4">예약 내역을 불러오는데 실패했습니다.</p>
+            <Button variant="secondary" onClick={() => refetch()}>
               다시 시도
-            </button>
-          </div>
+            </Button>
+          </GlassCard>
         )}
 
         {/* Empty State */}
         {!isLoading && !isError && data?.bookings?.length === 0 && (
-          <div className="glass-card p-8 text-center">
-            <Search className="w-16 h-16 mx-auto mb-4 text-white/30" />
+          <GlassCard className="text-center py-12">
+            <Search className="w-16 h-16 mx-auto mb-4 text-[var(--color-text-muted)]" />
             <h3 className="text-lg font-semibold text-white mb-2">
               {timeFilter === 'upcoming' ? '예정된 예약이 없습니다' : '지난 예약이 없습니다'}
             </h3>
-            <p className="text-white/60 mb-6">
+            <p className="text-[var(--color-text-muted)] mb-6">
               {timeFilter === 'upcoming' ? '새로운 라운드를 예약해 보세요!' : '아직 완료된 라운드가 없습니다.'}
             </p>
-            <button
-              onClick={() => navigate('/search')}
-              className={cn(
-                'px-6 py-3 text-sm font-medium rounded-lg',
-                'bg-green-500 text-white hover:bg-green-600',
-                'transition-colors'
-              )}
-            >
+            <Button onClick={() => navigate('/bookings')}>
               라운드 찾기
-            </button>
-          </div>
+            </Button>
+          </GlassCard>
         )}
 
         {/* Booking List */}
@@ -176,16 +129,16 @@ export const MyBookingsPage: React.FC = () => {
               totalPages={totalPages}
               onPageChange={handlePageChange}
               className="mt-6"
-              variant="default"
+              variant="glass"
             />
 
             {/* Summary */}
-            <p className="text-center text-sm text-white/40 mt-4">
+            <p className="text-center text-sm text-[var(--color-text-muted)] mt-4">
               총 {data.total}건의 예약
             </p>
           </>
         )}
-      </main>
+      </Container>
 
       {/* Cancel Modal */}
       {cancelModalBooking && (
@@ -196,6 +149,6 @@ export const MyBookingsPage: React.FC = () => {
           onSuccess={handleCancelSuccess}
         />
       )}
-    </div>
+    </AppLayout>
   );
 };
