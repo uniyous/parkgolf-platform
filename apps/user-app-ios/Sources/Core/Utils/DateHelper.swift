@@ -118,10 +118,12 @@ enum DateHelper: Sendable {
         }
     }
 
-    /// 채팅 시간 표시 (오늘이면 시간, 아니면 날짜)
+    /// 채팅 시간 표시 (오늘이면 시간, 어제면 "어제", 아니면 날짜)
     static func toChatTime(_ date: Date) -> String {
         if Calendar.current.isDateInToday(date) {
             return toKoreanTime(date)
+        } else if Calendar.current.isDateInYesterday(date) {
+            return "어제"
         } else {
             return shortDateFormatter.string(from: date)
         }

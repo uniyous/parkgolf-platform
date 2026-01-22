@@ -21,7 +21,9 @@ final class ChatListViewModel: ObservableObject {
             chatRooms = rooms.sorted { $0.updatedAt > $1.updatedAt }
         } catch {
             self.error = error
+            #if DEBUG
             print("Failed to load chat rooms: \(error)")
+            #endif
         }
     }
 
@@ -44,7 +46,9 @@ final class ChatListViewModel: ObservableObject {
             return room
         } catch {
             self.error = error
+            #if DEBUG
             print("Failed to create chat room: \(error)")
+            #endif
             return nil
         }
     }

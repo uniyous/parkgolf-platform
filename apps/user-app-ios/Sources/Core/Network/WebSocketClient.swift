@@ -91,7 +91,9 @@ actor WebSocketClient {
             }
         } catch {
             isConnected = false
+            #if DEBUG
             print("WebSocket receive error: \(error)")
+            #endif
         }
     }
 
@@ -119,7 +121,9 @@ actor WebSocketClient {
                 break
             }
         } catch {
+            #if DEBUG
             print("Failed to decode WebSocket message: \(error)")
+            #endif
         }
     }
 }

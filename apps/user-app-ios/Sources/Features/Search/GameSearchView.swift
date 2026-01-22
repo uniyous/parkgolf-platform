@@ -10,6 +10,36 @@ struct GameSearchView: View {
     var showTitle: Bool = true
 
     var body: some View {
+        Group {
+            if showTitle {
+                // 탭에서 직접 접근 시: NavigationStack 포함
+                NavigationStack {
+                    gameSearchContent
+                        .navigationBarHidden(true)
+                }
+            } else {
+                // NavigationLink로 접근 시: 부모 NavigationStack 사용
+                gameSearchContent
+                    .navigationBarBackButtonHidden(true)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button {
+                                dismiss()
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "chevron.left")
+                                    Text("뒤로가기")
+                                }
+                                .foregroundStyle(.white)
+                            }
+                        }
+                    }
+                    .toolbarBackground(.hidden, for: .navigationBar)
+            }
+        }
+    }
+
+    private var gameSearchContent: some View {
         ZStack {
             // Background
             LinearGradient.parkBackground
@@ -74,21 +104,6 @@ struct GameSearchView: View {
         .task {
             viewModel.search()
         }
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(!showTitle)
-        .toolbar {
-            if !showTitle {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .foregroundStyle(.white)
-                    }
-                }
-            }
-        }
-        .toolbarBackground(.hidden, for: .navigationBar)
     }
 
     // MARK: - Title Header
@@ -282,7 +297,9 @@ struct FilterChip: View {
             )
             .contentShape(Capsule())
             .onTapGesture {
+                #if DEBUG
                 print("⏰ [FilterChip] tapped: \(title)")
+                #endif
                 action()
             }
     }

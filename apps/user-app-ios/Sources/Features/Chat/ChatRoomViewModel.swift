@@ -80,7 +80,9 @@ final class ChatRoomViewModel: ObservableObject {
             cursor = response.nextCursor
         } catch {
             self.error = error
+            #if DEBUG
             print("Failed to load messages: \(error)")
+            #endif
         }
     }
 
@@ -103,7 +105,9 @@ final class ChatRoomViewModel: ObservableObject {
             cursor = response.nextCursor
         } catch {
             self.error = error
+            #if DEBUG
             print("Failed to load more messages: \(error)")
+            #endif
         }
     }
 
@@ -156,7 +160,9 @@ final class ChatRoomViewModel: ObservableObject {
             self.error = error
             // Restore input text on failure
             inputText = content
+            #if DEBUG
             print("Failed to send message: \(error)")
+            #endif
         }
     }
 
@@ -164,7 +170,9 @@ final class ChatRoomViewModel: ObservableObject {
 
     func connectSocket() async {
         guard let token = await apiClient.getAccessToken() else {
+            #if DEBUG
             print("No access token available for socket connection")
+            #endif
             return
         }
 
@@ -182,17 +190,21 @@ final class ChatRoomViewModel: ObservableObject {
         }
 
         guard socketManager.isConnected else {
+            #if DEBUG
             print("❌ Socket connection timeout")
+            #endif
             return
         }
 
         // Join the room
         socketManager.joinRoom(roomId: roomId) { success in
+            #if DEBUG
             if success {
                 print("✅ Joined room: \(self.roomId)")
             } else {
                 print("❌ Failed to join room: \(self.roomId)")
             }
+            #endif
         }
 
         // Start periodic connection check
@@ -227,11 +239,15 @@ final class ChatRoomViewModel: ObservableObject {
         guard let token = cachedToken else { return }
 
         if !socketManager.isConnected && socketManager.canReconnect {
+            #if DEBUG
             print("🔄 Periodic check: attempting reconnection...")
+            #endif
             if socketManager.ensureConnected(token: token) {
                 // Already connected, rejoin room
                 socketManager.joinRoom(roomId: roomId) { success in
+                    #if DEBUG
                     print(success ? "✅ Rejoined room: \(self.roomId)" : "❌ Failed to rejoin room")
+                    #endif
                 }
             }
         }
@@ -245,7 +261,9 @@ final class ChatRoomViewModel: ObservableObject {
         } else if let fetched = await apiClient.getAccessToken() {
             token = fetched
         } else {
+            #if DEBUG
             print("No token available for force reconnect")
+            #endif
             return
         }
 
@@ -262,7 +280,9 @@ final class ChatRoomViewModel: ObservableObject {
 
         if socketManager.isConnected {
             socketManager.joinRoom(roomId: roomId) { success in
+                #if DEBUG
                 print(success ? "✅ Rejoined room after force reconnect" : "❌ Failed to rejoin room")
+                #endif
             }
         }
     }

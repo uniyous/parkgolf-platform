@@ -81,14 +81,18 @@ class ChatSocketManager: ObservableObject {
     private func handleAppWillEnterForeground() {
         guard let token = currentToken else { return }
         if !isConnected {
+            #if DEBUG
             print("🔄 App entered foreground, checking connection...")
+            #endif
             ensureConnected(token: token)
         }
     }
 
     private func handleAppDidEnterBackground() {
         // 백그라운드 진입 시 특별한 처리 없음 (소켓은 유지)
+        #if DEBUG
         print("📱 App entered background, socket state: \(isConnected ? "connected" : "disconnected")")
+        #endif
     }
 
     // MARK: - Connection
@@ -136,7 +140,9 @@ class ChatSocketManager: ObservableObject {
 
         // 최대 재연결 시도 횟수 초과
         if reconnectAttempts >= maxReconnectAttempts {
+            #if DEBUG
             print("⚠️ Max reconnection attempts (\(maxReconnectAttempts)) exceeded")
+            #endif
             return false
         }
 
@@ -148,7 +154,9 @@ class ChatSocketManager: ObservableObject {
 
         // 재연결 시도
         reconnectAttempts += 1
+        #if DEBUG
         print("🔄 Reconnecting... (attempt \(reconnectAttempts)/\(maxReconnectAttempts))")
+        #endif
 
         // 기존 소켓 정리 후 재연결
         cleanupSocket()
@@ -191,7 +199,9 @@ class ChatSocketManager: ObservableObject {
                 self?.isConnecting = false
                 self?.reconnectAttempts = 0  // 성공 시 카운터 리셋
                 self?.connectionError = nil
+                #if DEBUG
                 print("✅ Socket.IO connected")
+                #endif
             }
         }
 
@@ -199,7 +209,9 @@ class ChatSocketManager: ObservableObject {
             Task { @MainActor in
                 self?.isConnected = false
                 self?.isConnecting = false
+                #if DEBUG
                 print("🔌 Socket.IO disconnected")
+                #endif
             }
         }
 
@@ -209,7 +221,9 @@ class ChatSocketManager: ObservableObject {
                 if let error = data.first as? [String: Any],
                    let message = error["message"] as? String {
                     self?.connectionError = message
+                    #if DEBUG
                     print("❌ Socket.IO error: \(message)")
+                    #endif
                 }
             }
         }
@@ -217,7 +231,9 @@ class ChatSocketManager: ObservableObject {
         // Custom events
         socket.on("connected") { data, _ in
             Task { @MainActor in
+                #if DEBUG
                 print("✅ Authenticated: \(data)")
+                #endif
             }
         }
 

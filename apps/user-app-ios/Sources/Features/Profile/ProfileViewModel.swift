@@ -21,7 +21,9 @@ final class ProfileViewModel: ObservableObject {
             return user
         } catch {
             self.error = error
+            #if DEBUG
             print("Failed to load profile: \(error)")
+            #endif
             return nil
         }
     }
@@ -36,7 +38,9 @@ final class ProfileViewModel: ObservableObject {
                 responseType: UserStats.self
             )
         } catch {
+            #if DEBUG
             print("Failed to load stats: \(error)")
+            #endif
         }
     }
 
@@ -61,7 +65,9 @@ final class ProfileViewModel: ObservableObject {
             return true
         } catch {
             self.error = error
+            #if DEBUG
             print("Failed to logout: \(error)")
+            #endif
             return false
         }
     }

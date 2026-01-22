@@ -56,7 +56,9 @@ class GameSearchViewModel: ObservableObject {
     // MARK: - Search
 
     func search() {
+        #if DEBUG
         print("🔍 [GameSearchViewModel] search() called - timeOfDay: \(selectedTimeOfDay.rawValue)")
+        #endif
         searchTask?.cancel()
 
         searchTask = Task {
@@ -108,7 +110,9 @@ class GameSearchViewModel: ObservableObject {
             limit: 20
         )
 
+        #if DEBUG
         print("📡 [GameSearchViewModel] API 호출 - timeOfDay: \(params.timeOfDay?.rawValue ?? "nil"), timeRange: \(params.timeOfDay?.timeRange ?? ("nil", "nil"))")
+        #endif
 
         do {
             let response = try await gameService.searchGames(params: params)
@@ -145,7 +149,9 @@ class GameSearchViewModel: ObservableObject {
     // MARK: - Time of Day Selection
 
     func selectTimeOfDay(_ timeOfDay: GameSearchParams.TimeOfDay) {
+        #if DEBUG
         print("⏰ [GameSearchViewModel] selectTimeOfDay called: \(timeOfDay.rawValue)")
+        #endif
         selectedTimeOfDay = timeOfDay
         search()
     }

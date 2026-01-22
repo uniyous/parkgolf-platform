@@ -13,56 +13,67 @@ struct HomeView: View {
                 LinearGradient.parkBackground
                     .ignoresSafeArea()
 
-                ScrollView {
-                    VStack(spacing: ParkSpacing.lg) {
-                        // Welcome Header
-                        welcomeHeader
+                VStack(spacing: 0) {
+                    // Header
+                    homeHeader
 
-                        // Search CTA
-                        searchCTA
+                    ScrollView {
+                        VStack(spacing: ParkSpacing.lg) {
+                            // Welcome Header
+                            welcomeHeader
 
-                        // Quick Date Selection
-                        quickDateSection
+                            // Notifications Section
+                            if viewModel.hasNotifications {
+                                notificationsSection
+                            }
 
-                        // Upcoming Bookings
-                        upcomingBookingsSection
+                            // Search CTA
+                            searchCTA
 
-                        // Popular Clubs
-                        popularClubsSection
+                            // Upcoming Bookings
+                            upcomingBookingsSection
+
+                            // Popular Clubs
+                            popularClubsSection
+                        }
+                        .padding(.horizontal, ParkSpacing.md)
+                        .padding(.bottom, ParkSpacing.xxl)
                     }
-                    .padding(.horizontal, ParkSpacing.md)
-                    .padding(.bottom, ParkSpacing.xxl)
-                }
-                .refreshable {
-                    await viewModel.loadData()
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    HStack(spacing: ParkSpacing.xs) {
-                        Image(systemName: "leaf.fill")
-                            .foregroundStyle(Color.parkPrimary)
-                        Text("ParkMate")
-                            .font(.parkHeadlineMedium)
-                            .foregroundStyle(.white)
-                    }
-                }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        // Notifications
-                    } label: {
-                        Image(systemName: "bell.fill")
-                            .foregroundStyle(.white)
+                    .refreshable {
+                        await viewModel.loadData()
                     }
                 }
             }
-            .toolbarBackground(.hidden, for: .navigationBar)
+            .task {
+                await viewModel.loadData()
+            }
+            .navigationBarHidden(true)
         }
-        .task {
-            await viewModel.loadData()
+    }
+
+    // MARK: - Header
+
+    private var homeHeader: some View {
+        HStack {
+            HStack(spacing: ParkSpacing.xs) {
+                Image(systemName: "leaf.fill")
+                    .foregroundStyle(Color.parkPrimary)
+                Text("ParkMate")
+                    .font(.parkHeadlineMedium)
+                    .foregroundStyle(.white)
+            }
+
+            Spacer()
+
+            Button {
+                // Notifications
+            } label: {
+                Image(systemName: "bell.fill")
+                    .foregroundStyle(.white)
+            }
         }
+        .padding(.horizontal, ParkSpacing.md)
+        .padding(.top, ParkSpacing.sm)
     }
 
     // MARK: - Welcome Header
@@ -98,6 +109,61 @@ struct HomeView: View {
         "오늘도 파크골프하기 좋은 날이에요"
     }
 
+    // MARK: - Notifications Section
+
+    private var notificationsSection: some View {
+        VStack(alignment: .leading, spacing: ParkSpacing.sm) {
+            HStack(spacing: ParkSpacing.sm) {
+                // Friend Requests Card - NavigationLink 방식
+                if viewModel.pendingFriendRequestsCount > 0 {
+                    NavigationLink {
+                        HomeFriendRequestsView(requests: viewModel.friendRequests)
+                            .navigationTitle("친구 요청")
+                            .navigationBarTitleDisplayMode(.inline)
+                    } label: {
+                        HomeNotificationCardLabel(
+                            icon: "person.badge.plus.fill",
+                            iconColor: .parkAccent,
+                            title: "친구 요청",
+                            count: viewModel.pendingFriendRequestsCount,
+                            subtitle: latestFriendRequestName
+                        )
+                    }
+                }
+
+                // Unread Messages Card - NavigationLink 방식
+                if viewModel.totalUnreadMessagesCount > 0 {
+                    NavigationLink {
+                        HomeUnreadChatsView(chatRooms: viewModel.unreadChatRooms)
+                            .navigationTitle("새 메시지")
+                            .navigationBarTitleDisplayMode(.inline)
+                    } label: {
+                        HomeNotificationCardLabel(
+                            icon: "bubble.left.fill",
+                            iconColor: .parkInfo,
+                            title: "새 메시지",
+                            count: viewModel.totalUnreadMessagesCount,
+                            subtitle: latestChatRoomName
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private var latestFriendRequestName: String? {
+        guard let request = viewModel.friendRequests.first else { return nil }
+        return "\(request.fromUserName)님이 요청"
+    }
+
+    private var latestChatRoomName: String? {
+        guard let room = viewModel.unreadChatRooms.first else { return nil }
+        if let lastMessage = room.lastMessage {
+            return lastMessage.content
+        }
+        return room.name.isEmpty ? nil : room.name
+    }
+
     // MARK: - Search CTA
 
     private var searchCTA: some View {
@@ -123,30 +189,6 @@ struct HomeView: View {
                 LinearGradient.parkButton
             )
             .clipShape(RoundedRectangle(cornerRadius: ParkRadius.lg))
-        }
-    }
-
-    // MARK: - Quick Date Section
-
-    private var quickDateSection: some View {
-        VStack(alignment: .leading, spacing: ParkSpacing.sm) {
-            Text("⚡️ 빠른 예약")
-                .font(.parkHeadlineSmall)
-                .foregroundStyle(.white)
-
-            HStack(spacing: ParkSpacing.sm) {
-                QuickDateButton(title: "오늘", icon: "sun.max.fill", color: .parkAccent) {
-                    // Navigate with today's date
-                }
-
-                QuickDateButton(title: "내일", icon: "sunrise.fill", color: .parkInfo) {
-                    // Navigate with tomorrow's date
-                }
-
-                QuickDateButton(title: "이번 주말", icon: "calendar", color: .parkPrimary) {
-                    // Navigate with weekend date
-                }
-            }
         }
     }
 
@@ -204,32 +246,6 @@ struct HomeView: View {
                     }
                 }
             }
-        }
-    }
-}
-
-// MARK: - Quick Date Button
-
-struct QuickDateButton: View {
-    let title: String
-    let icon: String
-    let color: Color
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: ParkSpacing.xs) {
-                Image(systemName: icon)
-                    .font(.system(size: 24))
-                    .foregroundStyle(color)
-
-                Text(title)
-                    .font(.parkLabelMedium)
-                    .foregroundStyle(.white)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, ParkSpacing.md)
-            .glassCard(padding: 0)
         }
     }
 }
@@ -348,6 +364,309 @@ struct HomePopularClubCard: View {
                 .padding(ParkSpacing.sm)
             }
             .frame(width: 160)
+        }
+    }
+}
+
+// MARK: - Notification Card Label (for NavigationLink)
+
+struct HomeNotificationCardLabel: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let count: Int
+    let subtitle: String?
+
+    var body: some View {
+        GlassCard(padding: ParkSpacing.sm) {
+            VStack(alignment: .leading, spacing: ParkSpacing.xs) {
+                HStack {
+                    Image(systemName: icon)
+                        .font(.system(size: 20))
+                        .foregroundStyle(iconColor)
+
+                    Spacer()
+
+                    // Badge
+                    Text("\(count)")
+                        .font(.parkLabelSmall)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(iconColor)
+                        .clipShape(Capsule())
+                }
+
+                Text(title)
+                    .font(.parkHeadlineSmall)
+                    .foregroundStyle(.white)
+
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(.parkCaption)
+                        .foregroundStyle(.white.opacity(0.6))
+                        .lineLimit(1)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Friend Requests View (Navigation Push)
+
+struct HomeFriendRequestsView: View {
+    let requests: [FriendRequest]
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var localRequests: [FriendRequest] = []
+    @State private var processingRequestId: Int?
+
+    private let friendService = FriendService()
+
+    var body: some View {
+        ZStack {
+            LinearGradient.parkBackground
+                .ignoresSafeArea()
+
+            if localRequests.isEmpty {
+                ContentUnavailableView(
+                    "친구 요청 없음",
+                    systemImage: "person.badge.plus",
+                    description: Text("새로운 친구 요청이 없습니다")
+                )
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: ParkSpacing.sm) {
+                        ForEach(localRequests) { request in
+                            HomeFriendRequestRow(
+                                request: request,
+                                isProcessing: processingRequestId == request.id,
+                                onAccept: { acceptRequest(request) },
+                                onReject: { rejectRequest(request) }
+                            )
+                        }
+                    }
+                    .padding(ParkSpacing.md)
+                }
+            }
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                        Text("뒤로가기")
+                    }
+                    .foregroundStyle(.white)
+                }
+            }
+        }
+        .onAppear {
+            localRequests = requests
+        }
+    }
+
+    private func acceptRequest(_ request: FriendRequest) {
+        processingRequestId = request.id
+        Task {
+            do {
+                try await friendService.acceptFriendRequest(requestId: request.id)
+                localRequests.removeAll { $0.id == request.id }
+                processingRequestId = nil
+            } catch {
+                processingRequestId = nil
+            }
+        }
+    }
+
+    private func rejectRequest(_ request: FriendRequest) {
+        processingRequestId = request.id
+        Task {
+            do {
+                try await friendService.rejectFriendRequest(requestId: request.id)
+                localRequests.removeAll { $0.id == request.id }
+                processingRequestId = nil
+            } catch {
+                processingRequestId = nil
+            }
+        }
+    }
+}
+
+struct HomeFriendRequestRow: View {
+    let request: FriendRequest
+    let isProcessing: Bool
+    let onAccept: () -> Void
+    let onReject: () -> Void
+
+    var body: some View {
+        GlassCard {
+            HStack(spacing: ParkSpacing.md) {
+                // Profile Image
+                Circle()
+                    .fill(Color.parkPrimary.opacity(0.3))
+                    .frame(width: 50, height: 50)
+                    .overlay(
+                        Text(String(request.fromUserName.prefix(1)))
+                            .font(.parkHeadlineMedium)
+                            .foregroundStyle(.white)
+                    )
+
+                // Info
+                VStack(alignment: .leading, spacing: ParkSpacing.xxs) {
+                    Text(request.fromUserName)
+                        .font(.parkHeadlineSmall)
+                        .foregroundStyle(.white)
+
+                    Text(request.fromUserEmail)
+                        .font(.parkCaption)
+                        .foregroundStyle(.white.opacity(0.6))
+
+                    if let createdAt = request.createdAt {
+                        Text(DateHelper.toRelativeTime(createdAt))
+                            .font(.parkCaption)
+                            .foregroundStyle(.white.opacity(0.4))
+                    }
+                }
+
+                Spacer()
+
+                // Actions
+                if isProcessing {
+                    ProgressView()
+                        .tint(.white)
+                } else {
+                    HStack(spacing: ParkSpacing.xs) {
+                        Button {
+                            onReject()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(.white.opacity(0.6))
+                                .frame(width: 36, height: 36)
+                                .background(Color.white.opacity(0.1))
+                                .clipShape(Circle())
+                        }
+
+                        Button {
+                            onAccept()
+                        } label: {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 36, height: 36)
+                                .background(Color.parkPrimary)
+                                .clipShape(Circle())
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Unread Chats View (Navigation Push)
+
+struct HomeUnreadChatsView: View {
+    let chatRooms: [ChatRoom]
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            LinearGradient.parkBackground
+                .ignoresSafeArea()
+
+            if chatRooms.isEmpty {
+                ContentUnavailableView(
+                    "새 메시지 없음",
+                    systemImage: "bubble.left",
+                    description: Text("읽지 않은 메시지가 없습니다")
+                )
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: ParkSpacing.sm) {
+                        ForEach(chatRooms) { room in
+                            NavigationLink {
+                                ChatRoomViewWrapper(room: room)
+                            } label: {
+                                HomeUnreadChatRowLabel(room: room)
+                            }
+                        }
+                    }
+                    .padding(ParkSpacing.md)
+                }
+            }
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                        Text("뒤로가기")
+                    }
+                    .foregroundStyle(.white)
+                }
+            }
+        }
+    }
+}
+
+struct HomeUnreadChatRowLabel: View {
+    let room: ChatRoom
+
+    var body: some View {
+        GlassCard {
+            HStack(spacing: ParkSpacing.md) {
+                // Room Icon
+                Circle()
+                    .fill(Color.parkInfo.opacity(0.3))
+                    .frame(width: 50, height: 50)
+                    .overlay(
+                        Image(systemName: room.type == .group ? "person.3.fill" : "person.fill")
+                            .foregroundStyle(.white)
+                    )
+
+                // Info
+                VStack(alignment: .leading, spacing: ParkSpacing.xxs) {
+                    HStack {
+                        Text(room.name.isEmpty ? "채팅" : room.name)
+                            .font(.parkHeadlineSmall)
+                            .foregroundStyle(.white)
+
+                        Spacer()
+
+                        // Unread Badge
+                        Text("\(room.unreadCount)")
+                            .font(.parkLabelSmall)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.parkInfo)
+                            .clipShape(Capsule())
+                    }
+
+                    if let lastMessage = room.lastMessage {
+                        Text(lastMessage.content)
+                            .font(.parkBodySmall)
+                            .foregroundStyle(.white.opacity(0.6))
+                            .lineLimit(1)
+                    }
+
+                    Text(DateHelper.toRelativeTime(room.updatedAt))
+                        .font(.parkCaption)
+                        .foregroundStyle(.white.opacity(0.4))
+                }
+
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(.white.opacity(0.4))
+            }
         }
     }
 }

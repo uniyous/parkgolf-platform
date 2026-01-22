@@ -25,7 +25,9 @@ final class BookingViewModel: ObservableObject {
             hasMorePages = response.pagination.page < response.pagination.totalPages
         } catch {
             self.error = error
+            #if DEBUG
             print("Failed to load bookings: \(error)")
+            #endif
         }
     }
 
@@ -44,7 +46,9 @@ final class BookingViewModel: ObservableObject {
         } catch {
             self.error = error
             currentPage -= 1
+            #if DEBUG
             print("Failed to load more bookings: \(error)")
+            #endif
         }
     }
 
@@ -64,7 +68,9 @@ final class BookingViewModel: ObservableObject {
             return true
         } catch {
             self.error = error
+            #if DEBUG
             print("Failed to cancel booking: \(error)")
+            #endif
             return false
         }
     }

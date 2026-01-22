@@ -3,60 +3,53 @@ import SwiftUI
 // MARK: - Friends View
 
 struct FriendsView: View {
-    @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = FriendsViewModel()
 
     var body: some View {
-        ZStack {
-            // Background
-            LinearGradient.parkBackground
-                .ignoresSafeArea()
+        NavigationStack {
+            ZStack {
+                // Background
+                LinearGradient.parkBackground
+                    .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                // Header
-                friendsHeader
+                VStack(spacing: 0) {
+                    // Header
+                    friendsHeader
 
-                // Tab Selector
-                friendsTabSelector
+                    // Tab Selector
+                    friendsTabSelector
 
-                // Content
-                if viewModel.isLoading && viewModel.friends.isEmpty {
-                    ParkLoadingView(message: "친구 목록 불러오는 중...")
-                } else if let error = viewModel.errorMessage, viewModel.friends.isEmpty {
-                    ParkErrorView(message: error) {
-                        Task { await viewModel.loadAll() }
-                    }
-                } else {
-                    switch viewModel.selectedSegment {
-                    case .friends:
-                        friendsContent
-                    case .requests:
-                        requestsContent
+                    // Content
+                    if viewModel.isLoading && viewModel.friends.isEmpty {
+                        ParkLoadingView(message: "친구 목록 불러오는 중...")
+                    } else if let error = viewModel.errorMessage, viewModel.friends.isEmpty {
+                        ParkErrorView(message: error) {
+                            Task { await viewModel.loadAll() }
+                        }
+                    } else {
+                        switch viewModel.selectedSegment {
+                        case .friends:
+                            friendsContent
+                        case .requests:
+                            requestsContent
+                        }
                     }
                 }
             }
+            .sheet(isPresented: $viewModel.showAddFriendSheet) {
+                AddFriendSheet(viewModel: viewModel)
+            }
+            .task {
+                await viewModel.loadAll()
+            }
+            .navigationBarHidden(true)
         }
-        .sheet(isPresented: $viewModel.showAddFriendSheet) {
-            AddFriendSheet(viewModel: viewModel)
-        }
-        .task {
-            await viewModel.loadAll()
-        }
-        .navigationBarHidden(true)
     }
 
     // MARK: - Header
 
     private var friendsHeader: some View {
         HStack(spacing: ParkSpacing.sm) {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(.white)
-            }
-
             Text("친구")
                 .font(.parkDisplaySmall)
                 .foregroundStyle(.white)
@@ -389,453 +382,6 @@ struct FriendsView: View {
                     SentRequestCard(request: request)
                 }
             }
-        }
-    }
-}
-
-// MARK: - Friend Card
-
-struct FriendCard: View {
-    let friend: Friend
-    let onChat: () -> Void
-    let onRemove: () -> Void
-
-    @State private var showDeleteConfirm = false
-
-    var body: some View {
-        GlassCard(padding: 0) {
-            HStack(spacing: ParkSpacing.md) {
-                // Avatar
-                ZStack {
-                    Circle()
-                        .fill(Color.parkPrimary.opacity(0.3))
-                        .frame(width: 50, height: 50)
-
-                    Text(String(friend.friendName.prefix(1)))
-                        .font(.parkHeadlineLarge)
-                        .foregroundStyle(.white)
-                }
-
-                // Info
-                VStack(alignment: .leading, spacing: ParkSpacing.xxs) {
-                    Text(friend.friendName)
-                        .font(.parkHeadlineSmall)
-                        .foregroundStyle(.white)
-
-                    Text(friend.friendEmail)
-                        .font(.parkCaption)
-                        .foregroundStyle(.white.opacity(0.6))
-                }
-
-                Spacer()
-
-                // Chat Button
-                Button(action: onChat) {
-                    Image(systemName: "message.fill")
-                        .font(.system(size: 16))
-                        .foregroundStyle(Color.parkPrimary)
-                        .frame(width: 40, height: 40)
-                        .background(Color.parkPrimary.opacity(0.2))
-                        .clipShape(Circle())
-                }
-            }
-            .padding(ParkSpacing.md)
-        }
-        .contextMenu {
-            Button(role: .destructive) {
-                showDeleteConfirm = true
-            } label: {
-                Label("친구 삭제", systemImage: "person.badge.minus")
-            }
-        }
-        .confirmationDialog(
-            "친구를 삭제하시겠습니까?",
-            isPresented: $showDeleteConfirm,
-            titleVisibility: .visible
-        ) {
-            Button("삭제", role: .destructive, action: onRemove)
-            Button("취소", role: .cancel) {}
-        }
-    }
-}
-
-// MARK: - Friend Request Card
-
-struct FriendRequestCard: View {
-    let request: FriendRequest
-    let onAccept: () -> Void
-    let onReject: () -> Void
-
-    var body: some View {
-        GlassCard(padding: 0) {
-            VStack(alignment: .leading, spacing: 0) {
-                // Header
-                HStack {
-                    Label("친구 요청", systemImage: "person.badge.plus")
-                        .font(.parkCaption)
-                        .foregroundStyle(.white.opacity(0.5))
-
-                    Spacer()
-
-                    if let createdAt = request.createdAt {
-                        Text(DateHelper.toRelativeTime(createdAt))
-                            .font(.parkCaption)
-                            .foregroundStyle(.white.opacity(0.4))
-                    }
-                }
-                .padding(ParkSpacing.md)
-
-                Divider()
-                    .background(Color.white.opacity(0.1))
-
-                // Content
-                HStack(spacing: ParkSpacing.md) {
-                    // Avatar
-                    ZStack {
-                        Circle()
-                            .fill(Color.parkPrimary.opacity(0.3))
-                            .frame(width: 50, height: 50)
-
-                        Text(String(request.fromUserName.prefix(1)))
-                            .font(.parkHeadlineLarge)
-                            .foregroundStyle(.white)
-                    }
-
-                    // Info
-                    VStack(alignment: .leading, spacing: ParkSpacing.xxs) {
-                        Text(request.fromUserName)
-                            .font(.parkHeadlineSmall)
-                            .foregroundStyle(.white)
-
-                        Text(request.fromUserEmail)
-                            .font(.parkCaption)
-                            .foregroundStyle(.white.opacity(0.6))
-                    }
-
-                    Spacer()
-                }
-                .padding(ParkSpacing.md)
-
-                Divider()
-                    .background(Color.white.opacity(0.1))
-
-                // Action Buttons
-                HStack(spacing: ParkSpacing.md) {
-                    // Reject Button
-                    Button(action: onReject) {
-                        HStack(spacing: ParkSpacing.xs) {
-                            Image(systemName: "xmark")
-                            Text("거절")
-                        }
-                        .font(.parkLabelMedium)
-                        .foregroundStyle(Color.parkError)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, ParkSpacing.sm)
-                        .background(Color.parkError.opacity(0.15))
-                        .clipShape(RoundedRectangle(cornerRadius: ParkRadius.md))
-                    }
-
-                    // Accept Button
-                    Button(action: onAccept) {
-                        HStack(spacing: ParkSpacing.xs) {
-                            Image(systemName: "checkmark")
-                            Text("수락")
-                        }
-                        .font(.parkLabelMedium)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, ParkSpacing.sm)
-                        .background(Color.parkPrimary)
-                        .clipShape(RoundedRectangle(cornerRadius: ParkRadius.md))
-                    }
-                }
-                .padding(ParkSpacing.md)
-            }
-        }
-    }
-}
-
-// MARK: - Sent Request Card
-
-struct SentRequestCard: View {
-    let request: SentFriendRequest
-
-    var body: some View {
-        GlassCard(padding: 0) {
-            VStack(alignment: .leading, spacing: 0) {
-                // Header
-                HStack {
-                    Label("보낸 요청", systemImage: "paperplane")
-                        .font(.parkCaption)
-                        .foregroundStyle(.white.opacity(0.5))
-
-                    Spacer()
-
-                    // Status Badge
-                    Text("대기중")
-                        .font(.parkCaption)
-                        .foregroundStyle(Color.statusPending)
-                        .padding(.horizontal, ParkSpacing.sm)
-                        .padding(.vertical, ParkSpacing.xxs)
-                        .background(Color.statusPending.opacity(0.15))
-                        .clipShape(Capsule())
-                }
-                .padding(ParkSpacing.md)
-
-                Divider()
-                    .background(Color.white.opacity(0.1))
-
-                // Content
-                HStack(spacing: ParkSpacing.md) {
-                    // Avatar
-                    ZStack {
-                        Circle()
-                            .fill(Color.statusPending.opacity(0.3))
-                            .frame(width: 50, height: 50)
-
-                        Text(String(request.toUserName.prefix(1)))
-                            .font(.parkHeadlineLarge)
-                            .foregroundStyle(.white)
-                    }
-
-                    // Info
-                    VStack(alignment: .leading, spacing: ParkSpacing.xxs) {
-                        Text(request.toUserName)
-                            .font(.parkHeadlineSmall)
-                            .foregroundStyle(.white)
-
-                        Text(request.toUserEmail)
-                            .font(.parkCaption)
-                            .foregroundStyle(.white.opacity(0.6))
-                    }
-
-                    Spacer()
-
-                    // Time
-                    if let createdAt = request.createdAt {
-                        Text(DateHelper.toRelativeTime(createdAt))
-                            .font(.parkCaption)
-                            .foregroundStyle(.white.opacity(0.4))
-                    }
-                }
-                .padding(ParkSpacing.md)
-            }
-        }
-    }
-}
-
-// MARK: - Add Friend Sheet
-
-struct AddFriendSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: FriendsViewModel
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                LinearGradient.parkBackground
-                    .ignoresSafeArea()
-
-                VStack(spacing: 0) {
-                    // Search Bar
-                    HStack(spacing: ParkSpacing.sm) {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundStyle(.white.opacity(0.5))
-
-                        TextField("이메일 또는 이름으로 검색", text: $viewModel.addFriendSearchQuery)
-                            .foregroundStyle(.white)
-                            .font(.parkBodyMedium)
-                            .autocapitalization(.none)
-                            .onChange(of: viewModel.addFriendSearchQuery) { _, _ in
-                                viewModel.searchUsers()
-                            }
-
-                        if !viewModel.addFriendSearchQuery.isEmpty {
-                            Button {
-                                viewModel.addFriendSearchQuery = ""
-                                viewModel.searchResults = []
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(.white.opacity(0.5))
-                            }
-                        }
-                    }
-                    .padding(ParkSpacing.md)
-                    .glassCard(padding: 0, cornerRadius: ParkRadius.lg)
-                    .padding(ParkSpacing.md)
-
-                    // Find from Contacts Button
-                    Button {
-                        Task {
-                            await viewModel.loadContactFriends()
-                        }
-                    } label: {
-                        HStack(spacing: ParkSpacing.sm) {
-                            Image(systemName: "person.crop.rectangle.stack")
-                            Text("주소록에서 찾기")
-                        }
-                        .font(.parkLabelMedium)
-                        .foregroundStyle(Color.parkPrimary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, ParkSpacing.md)
-                        .background(Color.parkPrimary.opacity(0.15))
-                        .clipShape(RoundedRectangle(cornerRadius: ParkRadius.md))
-                    }
-                    .padding(.horizontal, ParkSpacing.md)
-                    .disabled(viewModel.isLoadingContacts)
-
-                    // Results
-                    if viewModel.isSearching || viewModel.isLoadingContacts {
-                        ParkLoadingView(message: "검색 중...")
-                    } else if viewModel.contactsPermissionDenied {
-                        ParkEmptyStateView(
-                            icon: "person.crop.rectangle.badge.xmark",
-                            title: "주소록 접근 권한 필요",
-                            description: "설정에서 주소록 접근을 허용해주세요"
-                        )
-                    } else if viewModel.searchResults.isEmpty && viewModel.contactFriends.isEmpty {
-                        if viewModel.addFriendSearchQuery.isEmpty {
-                            ParkEmptyStateView(
-                                icon: "magnifyingglass",
-                                title: "친구를 검색하세요",
-                                description: "이메일이나 이름으로 검색하거나\n주소록에서 친구를 찾아보세요"
-                            )
-                        } else {
-                            ParkEmptyStateView(
-                                icon: "person.slash",
-                                title: "검색 결과가 없습니다",
-                                description: "다른 검색어로 시도해보세요"
-                            )
-                        }
-                    } else {
-                        ScrollView {
-                            LazyVStack(spacing: ParkSpacing.md) {
-                                // Contact Friends Section
-                                if !viewModel.contactFriends.isEmpty {
-                                    sectionHeader("주소록 친구")
-
-                                    ForEach(viewModel.contactFriends) { user in
-                                        UserSearchCard(user: user) {
-                                            Task {
-                                                await viewModel.sendFriendRequest(toUserId: user.id)
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // Search Results Section
-                                if !viewModel.searchResults.isEmpty {
-                                    if !viewModel.contactFriends.isEmpty {
-                                        sectionHeader("검색 결과")
-                                    }
-
-                                    ForEach(viewModel.searchResults) { user in
-                                        UserSearchCard(user: user) {
-                                            Task {
-                                                await viewModel.sendFriendRequest(toUserId: user.id)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            .padding(ParkSpacing.md)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("친구 추가")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("닫기") {
-                        viewModel.clearContactFriends()
-                        viewModel.addFriendSearchQuery = ""
-                        viewModel.searchResults = []
-                        dismiss()
-                    }
-                    .foregroundStyle(.white)
-                }
-            }
-            .toolbarBackground(.hidden, for: .navigationBar)
-        }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
-    }
-
-    private func sectionHeader(_ title: String) -> some View {
-        HStack {
-            Text(title)
-                .font(.parkLabelMedium)
-                .foregroundStyle(.white.opacity(0.6))
-            Spacer()
-        }
-        .padding(.top, ParkSpacing.sm)
-    }
-}
-
-// MARK: - User Search Card
-
-struct UserSearchCard: View {
-    let user: UserSearchResult
-    let onAddFriend: () -> Void
-
-    var body: some View {
-        GlassCard(padding: 0) {
-            HStack(spacing: ParkSpacing.md) {
-                // Avatar
-                ZStack {
-                    Circle()
-                        .fill(Color.parkPrimary.opacity(0.3))
-                        .frame(width: 50, height: 50)
-
-                    Text(String(user.name.prefix(1)))
-                        .font(.parkHeadlineLarge)
-                        .foregroundStyle(.white)
-                }
-
-                // Info
-                VStack(alignment: .leading, spacing: ParkSpacing.xxs) {
-                    Text(user.name)
-                        .font(.parkHeadlineSmall)
-                        .foregroundStyle(.white)
-
-                    Text(user.email)
-                        .font(.parkCaption)
-                        .foregroundStyle(.white.opacity(0.6))
-                }
-
-                Spacer()
-
-                // Action Button
-                if user.isFriend {
-                    Text("친구")
-                        .font(.parkLabelSmall)
-                        .foregroundStyle(.white.opacity(0.5))
-                        .padding(.horizontal, ParkSpacing.sm)
-                        .padding(.vertical, ParkSpacing.xs)
-                        .background(Color.white.opacity(0.1))
-                        .clipShape(Capsule())
-                } else if user.hasPendingRequest {
-                    Text("요청됨")
-                        .font(.parkLabelSmall)
-                        .foregroundStyle(Color.statusPending)
-                        .padding(.horizontal, ParkSpacing.sm)
-                        .padding(.vertical, ParkSpacing.xs)
-                        .background(Color.statusPending.opacity(0.15))
-                        .clipShape(Capsule())
-                } else {
-                    Button(action: onAddFriend) {
-                        Text("추가")
-                            .font(.parkLabelMedium)
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, ParkSpacing.md)
-                            .padding(.vertical, ParkSpacing.xs)
-                            .background(Color.parkPrimary)
-                            .clipShape(Capsule())
-                    }
-                }
-            }
-            .padding(ParkSpacing.md)
         }
     }
 }
