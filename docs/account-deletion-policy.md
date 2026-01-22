@@ -151,39 +151,39 @@ DELETE FROM users WHERE id = ?;
 ### 5.2 booking-service (예약/결제)
 
 ```sql
--- 예약 정보 익명화 (완료/취소된 건만)
+-- 예약 정보 익명화 (user_id는 유지하여 UserHistory JOIN 가능)
 UPDATE bookings SET
-  user_id = NULL,
-  user_name = '[삭제된 사용자]',
-  user_email = NULL,
-  user_phone = NULL
+  user_name = '[삭제된 사용자]'
 WHERE user_id = ?;
 
--- 다음 테이블은 유지 (세무/감사 목적)
+-- user_id 유지 이유:
+-- - UserHistory 테이블과 JOIN하여 원래 사용자 정보 조회 가능
+-- - 결제/세무 감사 시 이력 추적 필요
+
+-- 다음 테이블은 그대로 유지 (세무/감사 목적)
 -- - payments (결제 기록)
 -- - booking_history (변경 이력)
 -- - refunds (환불 기록)
-
--- NoShow 기록 익명화
-UPDATE user_noshow_records SET
-  user_id = NULL
-WHERE user_id = ?;
+-- - user_noshow_records (user_id 유지)
 ```
 
 ### 5.3 chat-service (채팅)
 
 ```sql
--- 채팅방 멤버 익명화
+-- 채팅방 멤버 익명화 (user_id는 유지)
 UPDATE chat_room_members SET
   user_name = '[탈퇴한 회원]'
 WHERE user_id = ?;
 
--- 메시지 작성자 익명화
+-- 메시지 작성자 익명화 (sender_id는 유지)
 UPDATE chat_messages SET
   sender_name = '[탈퇴한 회원]'
 WHERE sender_id = ?;
 
--- 메시지 내용은 유지 (대화 맥락 보존)
+-- user_id, sender_id 유지 이유:
+-- - 메시지 그룹핑 및 표시 로직에 필요
+-- - 필요 시 UserHistory JOIN 가능
+-- - 메시지 내용은 유지 (대화 맥락 보존)
 ```
 
 ### 5.4 notify-service (알림)
