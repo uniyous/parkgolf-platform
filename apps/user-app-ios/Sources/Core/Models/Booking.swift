@@ -77,17 +77,10 @@ struct CreateBookingRequest: Codable, Sendable {
     let playerCount: Int
     let paymentMethod: String?
     let specialRequests: String?
-    let idempotencyKey: String
-
-    enum CodingKeys: String, CodingKey {
-        case gameId = "game_id"
-        case gameTimeSlotId = "game_time_slot_id"
-        case bookingDate = "booking_date"
-        case playerCount = "player_count"
-        case paymentMethod = "payment_method"
-        case specialRequests = "special_requests"
-        case idempotencyKey = "idempotency_key"
-    }
+    let userEmail: String
+    let userName: String
+    let userPhone: String?
+    let idempotencyKey: String?
 }
 
 // MARK: - Booking Response
@@ -156,29 +149,29 @@ struct EmptyDataResponse: Codable, Sendable {
 // MARK: - Payment Method
 
 enum PaymentMethod: String, CaseIterable, Sendable {
-    case creditCard = "CREDIT_CARD"
-    case kakaoPay = "KAKAO_PAY"
-    case naverPay = "NAVER_PAY"
-    case tossPay = "TOSS_PAY"
-    case bankTransfer = "BANK_TRANSFER"
+    case card = "card"
+    case kakaopay = "kakaopay"
+    case naverpay = "naverpay"
+    case tosspay = "tosspay"
+    case bank = "bank"
 
     var displayName: String {
         switch self {
-        case .creditCard: return "신용카드"
-        case .kakaoPay: return "카카오페이"
-        case .naverPay: return "네이버페이"
-        case .tossPay: return "토스페이"
-        case .bankTransfer: return "계좌이체"
+        case .card: return "신용카드"
+        case .kakaopay: return "카카오페이"
+        case .naverpay: return "네이버페이"
+        case .tosspay: return "토스페이"
+        case .bank: return "계좌이체"
         }
     }
 
     var icon: String {
         switch self {
-        case .creditCard: return "💳"
-        case .kakaoPay: return "💛"
-        case .naverPay: return "💚"
-        case .tossPay: return "💙"
-        case .bankTransfer: return "🏦"
+        case .card: return "💳"
+        case .kakaopay: return "💛"
+        case .naverpay: return "💚"
+        case .tosspay: return "💙"
+        case .bank: return "🏦"
         }
     }
 }

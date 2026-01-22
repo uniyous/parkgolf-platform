@@ -8,6 +8,7 @@ struct BookingFormView: View {
     let selectedDate: Date
 
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel: BookingFormViewModel
 
     init(game: Game, timeSlot: GameTimeSlot, selectedDate: Date) {
@@ -59,11 +60,11 @@ struct BookingFormView: View {
                     Spacer()
 
                     GradientButton(
-                        title: "💳 결제하기 (준비중)",
+                        title: "💳 결제하기",
                         isLoading: viewModel.isLoading,
                         isDisabled: !viewModel.canProceed
                     ) {
-                        viewModel.createBooking()
+                        viewModel.createBooking(user: appState.currentUser)
                     }
                     .padding(.horizontal, ParkSpacing.md)
                     .padding(.bottom, ParkSpacing.md)
@@ -399,7 +400,7 @@ class BookingFormViewModel: ObservableObject {
 
     @Published var playerCount: Int = 1
     @Published var specialRequests: String = ""
-    @Published var selectedPaymentMethod: PaymentMethod = .creditCard
+    @Published var selectedPaymentMethod: PaymentMethod = .card
     @Published var agreedToTerms: Bool = false
     @Published var agreedToPrivacy: Bool = false
 
@@ -459,8 +460,12 @@ class BookingFormViewModel: ObservableObject {
         return formatter.string(from: NSNumber(value: price)) ?? "\(price)"
     }
 
-    func createBooking() {
+    func createBooking(user: User?) {
         guard canProceed else { return }
+        guard let user = user else {
+            errorMessage = "사용자 정보를 찾을 수 없습니다."
+            return
+        }
 
         isLoading = true
         errorMessage = nil
@@ -474,6 +479,9 @@ class BookingFormViewModel: ObservableObject {
                     playerCount: playerCount,
                     paymentMethod: selectedPaymentMethod.rawValue,
                     specialRequests: specialRequests.isEmpty ? nil : specialRequests,
+                    userEmail: user.email,
+                    userName: user.name,
+                    userPhone: user.phoneNumber,
                     idempotencyKey: UUID().uuidString
                 )
 
@@ -481,11 +489,32 @@ class BookingFormViewModel: ObservableObject {
                 createdBooking = booking
                 showBookingComplete = true
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = translateErrorMessage(error)
             }
 
             isLoading = false
         }
+    }
+
+    private func translateErrorMessage(_ error: Error) -> String {
+        let message = error.localizedDescription
+
+        // 에러 메시지 한글 변환
+        if message.contains("Not enough capacity") {
+            return "잔여 인원이 부족합니다."
+        } else if message.contains("Selected time slot is not available") {
+            return "선택한 시간대는 더 이상 예약할 수 없습니다."
+        } else if message.contains("Game time slot not found") {
+            return "선택한 예약 시간을 찾을 수 없습니다."
+        } else if message.contains("Request is already being processed") {
+            return "이미 처리 중인 요청입니다. 잠시 후 다시 시도해 주세요."
+        } else if message.contains("BOOK_002") {
+            return "해당 시간대는 예약할 수 없습니다."
+        } else if message.contains("BOOK_006") || message.contains("BOOK_007") {
+            return "유효하지 않은 예약 날짜입니다."
+        }
+
+        return message
     }
 }
 
@@ -532,4 +561,5 @@ class BookingFormViewModel: ObservableObject {
         ),
         selectedDate: Date()
     )
+    .environmentObject(AppState())
 }
