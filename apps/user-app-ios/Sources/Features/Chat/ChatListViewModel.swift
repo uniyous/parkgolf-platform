@@ -9,6 +9,10 @@ final class ChatListViewModel: ObservableObject {
 
     private let apiClient = APIClient.shared
 
+    var totalUnreadCount: Int {
+        chatRooms.reduce(0) { $0 + $1.unreadCount }
+    }
+
     func loadChatRooms() async {
         isLoading = true
         defer { isLoading = false }

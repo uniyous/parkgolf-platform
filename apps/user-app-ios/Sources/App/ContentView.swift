@@ -25,8 +25,7 @@ struct MainTabView: View {
     enum Tab: Hashable {
         case home
         case search
-        case friends
-        case chat
+        case social
         case profile
     }
 
@@ -62,17 +61,11 @@ struct MainTabView: View {
                 }
                 .tag(Tab.search)
 
-            FriendsView()
+            SocialView()
                 .tabItem {
-                    Label("친구", systemImage: "person.2.fill")
+                    Label("소셜", systemImage: "person.2.fill")
                 }
-                .tag(Tab.friends)
-
-            ChatListView()
-                .tabItem {
-                    Label("채팅", systemImage: "bubble.left.and.bubble.right.fill")
-                }
-                .tag(Tab.chat)
+                .tag(Tab.social)
 
             ProfileView()
                 .tabItem {
