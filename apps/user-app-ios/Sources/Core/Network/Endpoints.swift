@@ -43,6 +43,22 @@ enum AuthEndpoints {
     }
 }
 
+// MARK: - Account Endpoints
+
+enum AccountEndpoints {
+    static func changePassword(request: ChangePasswordRequest) -> Endpoint {
+        Endpoint(
+            path: "/api/user/account/change-password",
+            method: .post,
+            body: request
+        )
+    }
+
+    static func passwordExpiry() -> Endpoint {
+        Endpoint(path: "/api/user/account/password-expiry")
+    }
+}
+
 // MARK: - Club Endpoints
 
 enum ClubEndpoints {

@@ -145,6 +145,7 @@ model User {
   id            Int              @id @default(autoincrement())
   email         String           @unique
   password      String
+  passwordChangedAt DateTime?    @map("password_changed_at")  // 비밀번호 마지막 변경일
   name          String?
   phone         String?
   profileImageUrl String?        @map("profile_image_url")

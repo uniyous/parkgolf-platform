@@ -3,10 +3,12 @@ import {
     NotFoundException,
     ConflictException,
     BadRequestException,
+    UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import * as bcrypt from 'bcrypt';
 import { User } from '@prisma/client';
 
@@ -212,10 +214,97 @@ export class UserService {
         const hashedPassword = await bcrypt.hash(newPassword, this.SALT_ROUNDS);
         const updatedUser = await this.prisma.user.update({
             where: { id: parseInt(id) },
-            data: { password: hashedPassword },
+            data: {
+                password: hashedPassword,
+                passwordChangedAt: new Date(),
+            },
         });
 
         return this.omitPassword(updatedUser);
+    }
+
+    /**
+     * 비밀번호 변경 (인증된 사용자용)
+     * - 현재 비밀번호 검증
+     * - 새 비밀번호와 확인 일치 검증
+     * - 현재 비밀번호와 새 비밀번호 동일 여부 검증
+     */
+    async changePassword(
+        userId: number,
+        changePasswordDto: ChangePasswordDto,
+    ): Promise<{ message: string; passwordChangedAt: Date }> {
+        const { currentPassword, newPassword, confirmPassword } = changePasswordDto;
+
+        // 새 비밀번호 확인 일치 검증
+        if (newPassword !== confirmPassword) {
+            throw new BadRequestException('새 비밀번호와 비밀번호 확인이 일치하지 않습니다.');
+        }
+
+        // 사용자 조회
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+        });
+        if (!user) {
+            throw new NotFoundException(`사용자를 찾을 수 없습니다.`);
+        }
+
+        // 현재 비밀번호 검증
+        const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+        if (!isCurrentPasswordValid) {
+            throw new UnauthorizedException('현재 비밀번호가 올바르지 않습니다.');
+        }
+
+        // 새 비밀번호가 현재 비밀번호와 동일한지 검증
+        const isSamePassword = await bcrypt.compare(newPassword, user.password);
+        if (isSamePassword) {
+            throw new BadRequestException('새 비밀번호는 현재 비밀번호와 다르게 설정해야 합니다.');
+        }
+
+        // 비밀번호 해시 및 업데이트
+        const hashedPassword = await bcrypt.hash(newPassword, this.SALT_ROUNDS);
+        const passwordChangedAt = new Date();
+
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                password: hashedPassword,
+                passwordChangedAt,
+            },
+        });
+
+        return {
+            message: '비밀번호가 성공적으로 변경되었습니다.',
+            passwordChangedAt,
+        };
+    }
+
+    /**
+     * 비밀번호 변경 필요 여부 확인 (90일 경과)
+     */
+    async checkPasswordExpiry(userId: number): Promise<{
+        needsChange: boolean;
+        daysSinceChange: number | null;
+        passwordChangedAt: Date | null;
+    }> {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { passwordChangedAt: true, createdAt: true },
+        });
+
+        if (!user) {
+            throw new NotFoundException('사용자를 찾을 수 없습니다.');
+        }
+
+        const referenceDate = user.passwordChangedAt || user.createdAt;
+        const daysSinceChange = Math.floor(
+            (Date.now() - referenceDate.getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        return {
+            needsChange: daysSinceChange >= 90,
+            daysSinceChange,
+            passwordChangedAt: user.passwordChangedAt,
+        };
     }
 
     async updateRole(id: string, role: string): Promise<Omit<User, 'password'>> {

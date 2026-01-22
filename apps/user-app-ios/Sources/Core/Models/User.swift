@@ -8,9 +8,31 @@ struct User: Identifiable, Codable, Sendable {
     let name: String
     let phoneNumber: String?
     let profileImageUrl: String?
+    let passwordChangedAt: Date?
     let createdAt: Date?
 
     var stringId: String { String(id) }
+
+    /// 비밀번호 변경이 필요한지 확인 (90일 경과 시)
+    var needsPasswordChange: Bool {
+        guard let changedAt = passwordChangedAt ?? createdAt else {
+            return true // 날짜 정보 없으면 변경 권유
+        }
+        let daysSinceChange = Calendar.current.dateComponents(
+            [.day], from: changedAt, to: Date()
+        ).day ?? 0
+        return daysSinceChange >= 90
+    }
+
+    /// 마지막 비밀번호 변경 후 경과 일수
+    var daysSincePasswordChange: Int? {
+        guard let changedAt = passwordChangedAt ?? createdAt else {
+            return nil
+        }
+        return Calendar.current.dateComponents(
+            [.day], from: changedAt, to: Date()
+        ).day
+    }
 }
 
 // MARK: - Auth Models
@@ -82,4 +104,23 @@ struct UserStats: Codable, Sendable {
     let totalBookings: Int
     let friendCount: Int
     let achievementCount: Int
+}
+
+// MARK: - Password Change Models
+
+struct ChangePasswordRequest: Codable, Sendable {
+    let currentPassword: String
+    let newPassword: String
+    let confirmPassword: String
+}
+
+struct ChangePasswordResponse: Codable, Sendable {
+    let message: String
+    let passwordChangedAt: Date
+}
+
+struct PasswordExpiryResponse: Codable, Sendable {
+    let needsChange: Bool
+    let daysSinceChange: Int?
+    let passwordChangedAt: Date?
 }

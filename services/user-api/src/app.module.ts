@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { CommonModule } from './common/common.module';
 import { AuthModule } from './auth/auth.module';
+import { AccountModule } from './account/account.module';
 import { BookingModule } from './booking/booking.module';
 import { CoursesModule } from './courses/courses.module';
 import { GamesModule } from './games/games.module';
@@ -18,6 +19,7 @@ import { NatsModule } from './common/nats';
     NatsModule,
     CommonModule,
     AuthModule,
+    AccountModule,
     BookingModule,
     CoursesModule,
     GamesModule,

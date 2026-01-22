@@ -109,4 +109,29 @@ export class UserNatsController {
     const user = await this.userService.updatePermissions(data.userId, data.permissions);
     return NatsResponse.success(user);
   }
+
+  @MessagePattern('iam.users.changePassword')
+  async changeUserPassword(
+    @Payload() data: {
+      userId: number;
+      currentPassword: string;
+      newPassword: string;
+      confirmPassword: string;
+    },
+  ) {
+    this.logger.log(`Change password for user: ${data.userId}`);
+    const result = await this.userService.changePassword(data.userId, {
+      currentPassword: data.currentPassword,
+      newPassword: data.newPassword,
+      confirmPassword: data.confirmPassword,
+    });
+    return NatsResponse.success(result);
+  }
+
+  @MessagePattern('iam.users.checkPasswordExpiry')
+  async checkPasswordExpiry(@Payload() data: { userId: number }) {
+    this.logger.log(`Check password expiry for user: ${data.userId}`);
+    const result = await this.userService.checkPasswordExpiry(data.userId);
+    return NatsResponse.success(result);
+  }
 }

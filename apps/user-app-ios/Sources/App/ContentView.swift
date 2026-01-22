@@ -18,7 +18,9 @@ struct ContentView: View {
 // MARK: - Main Tab View
 
 struct MainTabView: View {
+    @EnvironmentObject private var appState: AppState
     @State private var selectedTab: Tab = .home
+    @State private var showChangePasswordSheet = false
 
     enum Tab: Hashable {
         case home
@@ -79,6 +81,94 @@ struct MainTabView: View {
                 .tag(Tab.profile)
         }
         .tint(.parkPrimary)
+        .sheet(isPresented: $appState.showPasswordChangeReminder) {
+            PasswordChangeReminderSheet(
+                expiryInfo: appState.passwordExpiryInfo,
+                onChangeNow: {
+                    appState.showPasswordChangeReminder = false
+                    showChangePasswordSheet = true
+                },
+                onChangeLater: {
+                    appState.skipPasswordReminder()
+                }
+            )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showChangePasswordSheet) {
+            NavigationStack {
+                ChangePasswordView()
+            }
+        }
+    }
+}
+
+// MARK: - Password Change Reminder Sheet
+
+struct PasswordChangeReminderSheet: View {
+    let expiryInfo: PasswordExpiryInfo?
+    let onChangeNow: () -> Void
+    let onChangeLater: () -> Void
+
+    var body: some View {
+        ZStack {
+            LinearGradient.parkBackground
+                .ignoresSafeArea()
+
+            VStack(spacing: ParkSpacing.lg) {
+                // 아이콘
+                ZStack {
+                    Circle()
+                        .fill(Color.parkWarning.opacity(0.2))
+                        .frame(width: 100, height: 100)
+
+                    Image(systemName: "lock.trianglebadge.exclamationmark")
+                        .font(.system(size: 50))
+                        .foregroundStyle(Color.parkWarning)
+                }
+                .padding(.top, ParkSpacing.lg)
+
+                // 제목
+                Text("보안 알림")
+                    .font(.parkDisplaySmall)
+                    .foregroundStyle(.white)
+
+                // 설명
+                VStack(spacing: ParkSpacing.sm) {
+                    if let info = expiryInfo {
+                        Text(info.message)
+                            .font(.parkBodyMedium)
+                            .foregroundStyle(.white.opacity(0.8))
+                            .multilineTextAlignment(.center)
+                    }
+
+                    Text("보안을 위해 비밀번호를 변경해 주세요.")
+                        .font(.parkBodyMedium)
+                        .foregroundStyle(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal, ParkSpacing.lg)
+
+                Spacer()
+
+                // 버튼
+                VStack(spacing: ParkSpacing.sm) {
+                    GradientButton(title: "지금 변경하기") {
+                        onChangeNow()
+                    }
+
+                    Button {
+                        onChangeLater()
+                    } label: {
+                        Text("다음에 변경하기")
+                            .font(.parkBodyMedium)
+                            .foregroundStyle(.white.opacity(0.6))
+                    }
+                }
+                .padding(.horizontal, ParkSpacing.md)
+                .padding(.bottom, ParkSpacing.lg)
+            }
+        }
     }
 }
 

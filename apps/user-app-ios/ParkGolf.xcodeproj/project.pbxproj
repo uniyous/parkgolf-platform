@@ -66,6 +66,7 @@
 		B55F48695D69CD19A0724BFF /* ParkGolfUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52AB2AC3D3A243B207CE8910 /* ParkGolfUITests.swift */; };
 		B65C9C0BA3A7A45D17D45711 /* GameSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED65AF638462BBC09D5ECFFF /* GameSearchView.swift */; };
 		B8F5871459EF0BB00DAFA6B5 /* Spacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC8A2C0B92A34FE85FCB8279 /* Spacing.swift */; };
+		BFFBE3DA2BB4B6E7A60D3193 /* AccountService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA0F2D8E4E83A374880BE68 /* AccountService.swift */; };
 		C3FBF9E3371C29BCD37F8E37 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D9607B8A5692C23A78941A3 /* LoginView.swift */; };
 		C65349DDDCAB835051701150 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AA1A8748BA3DC8EFCF1D4BB /* Typography.swift */; };
 		CCE4CD4C89A5D3849135B94A /* SignUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB7C0FDCBF5B3EAE9D76202C /* SignUpView.swift */; };
@@ -208,6 +209,7 @@
 		D4B1A89F227DECBA510B0AD7 /* GameSearchUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSearchUITests.swift; sourceTree = "<group>"; };
 		DB7C0FDCBF5B3EAE9D76202C /* SignUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpView.swift; sourceTree = "<group>"; };
 		DC45188362F320C28183A541 /* ChatListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListView.swift; sourceTree = "<group>"; };
+		DDA0F2D8E4E83A374880BE68 /* AccountService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountService.swift; sourceTree = "<group>"; };
 		E2613DCF7C9DE5C6464C01A1 /* MyBookingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyBookingsView.swift; sourceTree = "<group>"; };
 		EAE0D414B8069A1B24F4CCFD /* ParkGolfUITests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "ParkGolfUITests-Info.plist"; sourceTree = "<group>"; };
 		EC8A2C0B92A34FE85FCB8279 /* Spacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Spacing.swift; sourceTree = "<group>"; };
@@ -443,6 +445,7 @@
 		B315EA331FBC6680C7CDFE26 /* Network */ = {
 			isa = PBXGroup;
 			children = (
+				DDA0F2D8E4E83A374880BE68 /* AccountService.swift */,
 				A2F9AE35D890EBD4A30E760D /* APIClient.swift */,
 				224FF176DF53A5629FF2D9B8 /* BookingService.swift */,
 				34BB65C89537E9A443A526DE /* ChatSocketManager.swift */,
@@ -722,6 +725,7 @@
 				89A22F0A71FDE3B5CAD7042F /* TestUser.swift in Sources */,
 				7A8DBDD4CA6343A18BBF486F /* User.swift in Sources */,
 				A194603F66C924514E797026 /* APIClient.swift in Sources */,
+				BFFBE3DA2BB4B6E7A60D3193 /* AccountService.swift in Sources */,
 				350C450DC201E3CC2E528DFD /* BookingService.swift in Sources */,
 				47D795CB0451D744C05EB12C /* ChatSocketManager.swift in Sources */,
 				E37393C0927DF046ACBD5BF8 /* Endpoints.swift in Sources */,
