@@ -26,12 +26,15 @@ struct GameSearchView: View {
                             Button {
                                 dismiss()
                             } label: {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "chevron.left")
-                                    Text("뒤로가기")
-                                }
-                                .foregroundStyle(.white)
+                                Image(systemName: "chevron.left")
+                                    .foregroundStyle(.white)
                             }
+                        }
+
+                        ToolbarItem(placement: .principal) {
+                            Text("라운드 예약")
+                                .font(.parkHeadlineMedium)
+                                .foregroundStyle(.white)
                         }
                     }
                     .toolbarBackground(.hidden, for: .navigationBar)

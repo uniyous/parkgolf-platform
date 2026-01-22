@@ -12,11 +12,9 @@ struct MyBookingsView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header
-                bookingsHeader
-
                 // Tab Selector
                 tabSelector
+                    .padding(.top, ParkSpacing.sm)
 
                 // Content
                 if viewModel.isLoading && viewModel.bookings.isEmpty {
@@ -46,29 +44,24 @@ struct MyBookingsView: View {
         .task {
             viewModel.loadBookings()
         }
-        .navigationBarHidden(true)
-    }
-
-    // MARK: - Header
-
-    private var bookingsHeader: some View {
-        HStack(spacing: ParkSpacing.sm) {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(.white)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .foregroundStyle(.white)
+                }
             }
 
-            Text("예약")
-                .font(.parkDisplaySmall)
-                .foregroundStyle(.white)
-
-            Spacer()
+            ToolbarItem(placement: .principal) {
+                Text("예약")
+                    .font(.parkHeadlineMedium)
+                    .foregroundStyle(.white)
+            }
         }
-        .padding(.horizontal, ParkSpacing.md)
-        .padding(.top, ParkSpacing.sm)
+        .toolbarBackground(.hidden, for: .navigationBar)
     }
 
     // MARK: - Tab Selector
