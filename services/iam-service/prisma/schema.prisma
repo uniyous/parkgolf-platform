@@ -166,6 +166,10 @@ model User {
   friendsAsUser          Friendship[]    @relation("UserFriends")
   friendsAsFriend        Friendship[]    @relation("FriendOfUser")
 
+  // 알림 설정 및 디바이스
+  notificationSetting    UserNotificationSetting?
+  devices                UserDevice[]
+
   @@index([roleCode])
   @@index([isActive])
   @@index([name])
@@ -312,4 +316,64 @@ model Friendship {
   @@index([userId])
   @@index([friendId])
   @@map("friendships")
+}
+
+// ==============================================
+// User Notification Settings (알림 설정)
+// ==============================================
+model UserNotificationSetting {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique @map("user_id")
+
+  // 서비스 알림
+  booking   Boolean  @default(true)   // 예약 알림
+  chat      Boolean  @default(true)   // 채팅 알림
+  friend    Boolean  @default(true)   // 친구 알림
+
+  // 마케팅 알림
+  marketing Boolean  @default(false)  // 마케팅/프로모션
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // 관계
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_notification_settings")
+}
+
+// ==============================================
+// User Device (푸시 토큰 관리)
+// ==============================================
+model UserDevice {
+  id           Int            @id @default(autoincrement())
+  userId       Int            @map("user_id")
+
+  // 디바이스 정보
+  platform     DevicePlatform
+  deviceToken  String         @map("device_token")
+  deviceId     String?        @map("device_id")      // 기기 고유 ID
+  deviceName   String?        @map("device_name")    // "iPhone 15 Pro"
+
+  // 상태
+  isActive     Boolean        @default(true) @map("is_active")
+  lastActiveAt DateTime?      @map("last_active_at")
+
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  // 관계
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceToken])
+  @@index([userId])
+  @@index([platform])
+  @@index([isActive])
+  @@map("user_devices")
+}
+
+enum DevicePlatform {
+  IOS
+  ANDROID
+  WEB
 }
