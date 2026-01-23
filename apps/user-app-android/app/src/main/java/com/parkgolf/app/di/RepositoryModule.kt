@@ -6,6 +6,7 @@ import com.parkgolf.app.data.remote.api.BookingApi
 import com.parkgolf.app.data.remote.api.ChatApi
 import com.parkgolf.app.data.remote.api.FriendsApi
 import com.parkgolf.app.data.remote.api.GameApi
+import com.parkgolf.app.data.remote.api.SettingsApi
 import com.parkgolf.app.data.remote.api.UserApi
 import com.parkgolf.app.data.remote.socket.ChatSocketManager
 import com.parkgolf.app.data.repository.AuthRepositoryImpl
@@ -13,6 +14,7 @@ import com.parkgolf.app.data.repository.BookingRepositoryImpl
 import com.parkgolf.app.data.repository.ChatRepositoryImpl
 import com.parkgolf.app.data.repository.FriendsRepositoryImpl
 import com.parkgolf.app.data.repository.GameRepositoryImpl
+import com.parkgolf.app.data.repository.SettingsRepository
 import com.parkgolf.app.data.repository.UserRepositoryImpl
 import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.BookingRepository
@@ -71,4 +73,10 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideChatSocketManager(): ChatSocketManager = ChatSocketManager()
+
+    @Provides
+    @Singleton
+    fun provideSettingsRepository(
+        settingsApi: SettingsApi
+    ): SettingsRepository = SettingsRepository(settingsApi)
 }

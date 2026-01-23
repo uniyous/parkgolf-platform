@@ -27,8 +27,9 @@ class AuthRepositoryImpl @Inject constructor(
         if (name != null) {
             val email = authPreferences.userEmail.first()
             val id = authPreferences.userId.first()?.toIntOrNull()
+            val phoneNumber = authPreferences.userPhone.first()
             if (email != null && id != null) {
-                User(id = id, email = email, name = name)
+                User(id = id, email = email, name = name, phoneNumber = phoneNumber)
             } else null
         } else null
     }
@@ -36,18 +37,14 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun login(email: String, password: String): Result<User> {
         return try {
             val response = authApi.login(LoginRequest(email, password))
-            if (response.success && response.data != null) {
-                val authData = response.data
-                authPreferences.saveTokens(authData.accessToken, authData.refreshToken)
-                authPreferences.saveUserInfo(
-                    userId = authData.user.id.toString(),
-                    email = authData.user.email,
-                    name = authData.user.name
-                )
-                Result.success(authData.user.toDomain())
-            } else {
-                Result.failure(Exception("Login failed"))
-            }
+            authPreferences.saveTokens(response.accessToken, response.refreshToken)
+            authPreferences.saveUserInfo(
+                userId = response.user.id.toString(),
+                email = response.user.email,
+                name = response.user.name,
+                phoneNumber = response.user.phoneNumber
+            )
+            Result.success(response.user.toDomain())
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -68,18 +65,14 @@ class AuthRepositoryImpl @Inject constructor(
                     phoneNumber = phoneNumber
                 )
             )
-            if (response.success && response.data != null) {
-                val authData = response.data
-                authPreferences.saveTokens(authData.accessToken, authData.refreshToken)
-                authPreferences.saveUserInfo(
-                    userId = authData.user.id.toString(),
-                    email = authData.user.email,
-                    name = authData.user.name
-                )
-                Result.success(authData.user.toDomain())
-            } else {
-                Result.failure(Exception("Registration failed"))
-            }
+            authPreferences.saveTokens(response.accessToken, response.refreshToken)
+            authPreferences.saveUserInfo(
+                userId = response.user.id.toString(),
+                email = response.user.email,
+                name = response.user.name,
+                phoneNumber = response.user.phoneNumber
+            )
+            Result.success(response.user.toDomain())
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -87,19 +80,15 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun refreshToken(): Result<Unit> {
         return try {
-            val refreshToken = authPreferences.refreshToken.first()
+            val currentRefreshToken = authPreferences.refreshToken.first()
                 ?: return Result.failure(Exception("No refresh token"))
 
-            val response = authApi.refreshToken(RefreshTokenRequest(refreshToken))
-            if (response.success && response.data != null) {
-                authPreferences.saveTokens(
-                    response.data.accessToken,
-                    response.data.refreshToken
-                )
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Token refresh failed"))
-            }
+            val response = authApi.refreshToken(RefreshTokenRequest(currentRefreshToken))
+            authPreferences.saveTokens(
+                response.accessToken,
+                response.refreshToken
+            )
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -119,7 +108,15 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             val response = authApi.getProfile()
             if (response.success && response.data != null) {
-                Result.success(response.data.toDomain())
+                val user = response.data.toDomain()
+                // Update cached user info with latest data
+                authPreferences.saveUserInfo(
+                    userId = user.id.toString(),
+                    email = user.email,
+                    name = user.name,
+                    phoneNumber = user.phoneNumber
+                )
+                Result.success(user)
             } else {
                 Result.failure(Exception("Failed to get profile"))
             }
@@ -180,7 +177,7 @@ private fun com.parkgolf.app.data.remote.dto.auth.UserDto.toDomain(): User {
         id = id,
         email = email,
         name = name,
-        phoneNumber = phoneNumber,
+        phoneNumber = phoneOrPhoneNumber,  // Use combined field (handles both 'phone' and 'phoneNumber')
         profileImageUrl = profileImageUrl
     )
 }

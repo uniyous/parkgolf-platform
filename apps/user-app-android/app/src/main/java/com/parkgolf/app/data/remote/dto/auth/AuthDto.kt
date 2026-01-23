@@ -23,16 +23,10 @@ data class RefreshTokenRequest(
 
 @Serializable
 data class LoginResponse(
-    val success: Boolean,
-    val data: AuthData? = null
-)
-
-@Serializable
-data class AuthData(
     val accessToken: String,
     val refreshToken: String,
     val user: UserDto,
-    val expiresIn: Int
+    val expiresIn: Int? = null
 )
 
 @Serializable
@@ -41,10 +35,15 @@ data class UserDto(
     val email: String,
     val name: String,
     val phoneNumber: String? = null,
+    val phone: String? = null,  // Profile API uses 'phone' field
     val profileImageUrl: String? = null,
     val passwordChangedAt: String? = null,
     val createdAt: String? = null
-)
+) {
+    // Get phone from either field (profile API uses 'phone', login uses 'phoneNumber')
+    val phoneOrPhoneNumber: String?
+        get() = phone ?: phoneNumber
+}
 
 @Serializable
 data class UserStatsDto(

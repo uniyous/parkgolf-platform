@@ -1,39 +1,46 @@
 package com.parkgolf.app.presentation.navigation
 
-import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.unit.dp
+import com.parkgolf.app.presentation.theme.GradientStart
+import com.parkgolf.app.presentation.theme.ParkPrimary
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.outlined.Groups
-import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.parkgolf.app.presentation.feature.auth.LoginScreen
 import com.parkgolf.app.presentation.feature.auth.SignUpScreen
@@ -41,13 +48,28 @@ import com.parkgolf.app.presentation.feature.booking.BookingFormScreen
 import com.parkgolf.app.presentation.feature.booking.MyBookingsScreen
 import com.parkgolf.app.presentation.feature.chat.ChatRoomScreen
 import com.parkgolf.app.presentation.feature.home.HomeScreen
+import com.parkgolf.app.presentation.feature.profile.AnnouncementsScreen
+import com.parkgolf.app.presentation.feature.profile.ChangePasswordScreen
+import com.parkgolf.app.presentation.feature.profile.ContactScreen
+import com.parkgolf.app.presentation.feature.profile.DeleteAccountScreen
+import com.parkgolf.app.presentation.feature.profile.EditProfileScreen
+import com.parkgolf.app.presentation.feature.profile.FaqScreen
+import com.parkgolf.app.presentation.feature.profile.LanguageSettingsScreen
+import com.parkgolf.app.presentation.feature.profile.PrivacyScreen
+import com.parkgolf.app.presentation.feature.profile.TermsScreen
+import com.parkgolf.app.presentation.feature.profile.ThemeSettingsScreen
+import com.parkgolf.app.presentation.feature.profile.NotificationSettingsScreen
+import com.parkgolf.app.presentation.feature.profile.PaymentMethodsScreen
+import com.parkgolf.app.presentation.feature.profile.ProfileScreen
+import com.parkgolf.app.presentation.feature.profile.SettingsScreen
 import com.parkgolf.app.presentation.feature.search.GameSearchScreen
 import com.parkgolf.app.presentation.feature.social.SocialScreen
-import com.parkgolf.app.presentation.feature.profile.ProfileScreen
-import com.parkgolf.app.presentation.theme.GlassCardDark
-import com.parkgolf.app.presentation.theme.ParkBackgroundGradient
-import com.parkgolf.app.presentation.theme.ParkPrimary
-import com.parkgolf.app.presentation.theme.TextSecondary
+
+/**
+ * Park Golf Navigation
+ *
+ * Material Design 3 스타일 네비게이션
+ */
 
 data class BottomNavItemData(
     val route: String,
@@ -65,7 +87,7 @@ val bottomNavItems = listOf(
     ),
     BottomNavItemData(
         route = Screen.Search.route,
-        label = "검색",
+        label = "예약",
         selectedIcon = Icons.Filled.Search,
         unselectedIcon = Icons.Outlined.Search
     ),
@@ -78,8 +100,8 @@ val bottomNavItems = listOf(
     BottomNavItemData(
         route = Screen.Profile.route,
         label = "마이",
-        selectedIcon = Icons.Filled.Person,
-        unselectedIcon = Icons.Outlined.Person
+        selectedIcon = Icons.Filled.AccountCircle,
+        unselectedIcon = Icons.Outlined.AccountCircle
     )
 )
 
@@ -143,15 +165,6 @@ fun ParkGolfNavHost(
             )
         }
 
-        composable(Screen.MyBookings.route) {
-            MyBookingsScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onBookingClick = { bookingId ->
-                    navController.navigate("booking/detail/$bookingId")
-                }
-            )
-        }
-
         // Chat screen
         composable(
             route = "chat/{roomId}",
@@ -163,6 +176,103 @@ fun ParkGolfNavHost(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+
+        // Social screen (separate from bottom nav for full screen)
+        composable(Screen.Social.route) {
+            SocialScreen(
+                onNavigate = { route -> navController.navigate(route) }
+            )
+        }
+
+        // Profile screens
+        composable(Screen.EditProfile.route) {
+            EditProfileScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.NotificationSettings.route) {
+            NotificationSettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.ChangePassword.route) {
+            ChangePasswordScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.PaymentMethods.route) {
+            PaymentMethodsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.DeleteAccount.route) {
+            DeleteAccountScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.ThemeSettings.route) {
+            ThemeSettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.LanguageSettings.route) {
+            LanguageSettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Announcements.route) {
+            AnnouncementsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Faq.route) {
+            FaqScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Contact.route) {
+            ContactScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Terms.route) {
+            TermsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Privacy.route) {
+            PrivacyScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Settings.route) {
+            SettingsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigate = { route -> navController.navigate(route) }
+            )
+        }
+
+        // My Bookings screen (accessed from Profile menu)
+        composable(Screen.MyBookings.route) {
+            MyBookingsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onBookingClick = { bookingId ->
+                    // Booking detail is shown in bottom sheet, no navigation needed
+                }
+            )
+        }
     }
 }
 
@@ -172,62 +282,79 @@ fun MainScreen(navController: NavHostController) {
     val navBackStackEntry by bottomNavController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
+    // Bottom bar visibility
+    val bottomBarVisible = rememberSaveable { mutableStateOf(true) }
+
     Scaffold(
         bottomBar = {
-            NavigationBar(
-                containerColor = GlassCardDark
+            AnimatedVisibility(
+                visible = bottomBarVisible.value,
+                enter = slideInVertically(initialOffsetY = { it }),
+                exit = slideOutVertically(targetOffsetY = { it })
             ) {
-                bottomNavItems.forEach { item ->
-                    val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
+                NavigationBar(
+                    containerColor = GradientStart,
+                    contentColor = Color.White,
+                    tonalElevation = 0.dp
+                ) {
+                    bottomNavItems.forEach { item ->
+                        val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
 
-                    NavigationBarItem(
-                        icon = {
-                            Icon(
-                                imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                                contentDescription = item.label
-                            )
-                        },
-                        label = { Text(item.label) },
-                        selected = selected,
-                        onClick = {
-                            bottomNavController.navigate(item.route) {
-                                popUpTo(bottomNavController.graph.findStartDestination().id) {
-                                    saveState = true
+                        NavigationBarItem(
+                            icon = {
+                                Icon(
+                                    imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                                    contentDescription = item.label
+                                )
+                            },
+                            label = {
+                                Text(
+                                    text = item.label,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            },
+                            selected = selected,
+                            onClick = {
+                                bottomNavController.navigate(item.route) {
+                                    popUpTo(bottomNavController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = ParkPrimary,
-                            selectedTextColor = ParkPrimary,
-                            unselectedIconColor = TextSecondary,
-                            unselectedTextColor = TextSecondary,
-                            indicatorColor = Color.Transparent
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = ParkPrimary,
+                                selectedTextColor = ParkPrimary,
+                                unselectedIconColor = Color.White.copy(alpha = 0.6f),
+                                unselectedTextColor = Color.White.copy(alpha = 0.6f),
+                                indicatorColor = Color.Transparent
+                            )
                         )
-                    )
+                    }
                 }
             }
         }
     ) { innerPadding ->
-        Box(
+        Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .background(ParkBackgroundGradient)
-                .padding(innerPadding)
+                .padding(innerPadding),
+            color = MaterialTheme.colorScheme.background
         ) {
             NavHost(
                 navController = bottomNavController,
                 startDestination = Screen.Home.route
             ) {
                 composable(Screen.Home.route) {
-                    HomeScreen(onNavigate = { route -> navController.navigate(route) })
+                    HomeScreen(
+                        onNavigate = { route -> navController.navigate(route) }
+                    )
                 }
                 composable(Screen.Search.route) {
-                    GameSearchScreen(onNavigate = { route -> navController.navigate(route) })
-                }
-                composable(Screen.Social.route) {
-                    SocialScreen(onNavigate = { route -> navController.navigate(route) })
+                    GameSearchScreen(
+                        onNavigate = { route -> navController.navigate(route) }
+                    )
                 }
                 composable(Screen.Profile.route) {
                     ProfileScreen(
@@ -237,6 +364,11 @@ fun MainScreen(navController: NavHostController) {
                                 popUpTo(0) { inclusive = true }
                             }
                         }
+                    )
+                }
+                composable(Screen.Social.route) {
+                    SocialScreen(
+                        onNavigate = { route -> navController.navigate(route) }
                     )
                 }
             }

@@ -14,10 +14,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.parkgolf.app.presentation.theme.ButtonShape
 import com.parkgolf.app.presentation.theme.ParkButtonGradient
+import com.parkgolf.app.presentation.theme.ParkError
+
+enum class GradientButtonStyle {
+    Primary,
+    Destructive,
+    Ghost
+}
 
 @Composable
 fun GradientButton(
@@ -25,8 +33,25 @@ fun GradientButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    isLoading: Boolean = false
+    isLoading: Boolean = false,
+    style: GradientButtonStyle = GradientButtonStyle.Primary
 ) {
+    val buttonGradient = when (style) {
+        GradientButtonStyle.Primary -> ParkButtonGradient
+        GradientButtonStyle.Destructive -> Brush.linearGradient(
+            colors = listOf(
+                ParkError,
+                ParkError.copy(alpha = 0.8f)
+            )
+        )
+        GradientButtonStyle.Ghost -> Brush.linearGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.15f),
+                Color.White.copy(alpha = 0.10f)
+            )
+        )
+    }
+
     Button(
         onClick = onClick,
         modifier = modifier
@@ -45,8 +70,8 @@ fun GradientButton(
                 .fillMaxWidth()
                 .height(56.dp)
                 .background(
-                    brush = if (enabled && !isLoading) ParkButtonGradient
-                    else ParkButtonGradient.copy(alpha = 0.5f),
+                    brush = if (enabled && !isLoading) buttonGradient
+                    else buttonGradient.copy(alpha = 0.5f),
                     shape = ButtonShape
                 ),
             contentAlignment = Alignment.Center

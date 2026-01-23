@@ -18,12 +18,7 @@ interface BookingApi {
     suspend fun createBooking(@Body request: CreateBookingRequest): ApiResponse<BookingDto>
 
     @GET("api/user/bookings")
-    suspend fun getMyBookings(
-        @Query("status") status: String? = null,
-        @Query("timeFilter") timeFilter: String? = null,
-        @Query("page") page: Int = 1,
-        @Query("limit") limit: Int = 20
-    ): PaginatedResponse<BookingDto>
+    suspend fun getMyBookings(): ApiResponse<List<BookingDto>>
 
     @GET("api/user/bookings/{id}")
     suspend fun getBooking(@Path("id") id: String): ApiResponse<BookingDto>

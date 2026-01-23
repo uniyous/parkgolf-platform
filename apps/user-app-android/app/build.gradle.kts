@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.kotlin.compose)
 }
 
 android {
@@ -26,8 +27,8 @@ android {
     buildTypes {
         debug {
             isMinifyEnabled = false
-            buildConfigField("String", "API_BASE_URL", "\"https://user-api-dev-335495814488.asia-northeast3.run.app\"")
-            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://chat-gateway-dev-335495814488.asia-northeast3.run.app\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://user-api-dev-335495814488.asia-northeast3.run.app/\"")
+            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://chat-gateway-dev-335495814488.asia-northeast3.run.app/\"")
         }
         release {
             isMinifyEnabled = true
@@ -35,8 +36,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "API_BASE_URL", "\"https://user-api-335495814488.asia-northeast3.run.app\"")
-            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://chat-gateway-335495814488.asia-northeast3.run.app\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://user-api-335495814488.asia-northeast3.run.app/\"")
+            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://chat-gateway-335495814488.asia-northeast3.run.app/\"")
         }
     }
     compileOptions {
@@ -49,9 +50,6 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
-    }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
     }
     packaging {
         resources {
@@ -103,6 +101,9 @@ dependencies {
 
     // Image Loading
     implementation(libs.coil.compose)
+
+    // Accompanist
+    implementation(libs.accompanist.permissions)
 
     // Testing
     testImplementation(libs.junit)

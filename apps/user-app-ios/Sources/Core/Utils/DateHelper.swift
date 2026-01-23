@@ -62,6 +62,14 @@ enum DateHelper: Sendable {
         return formatter
     }()
 
+    /// 요일만 (E) - 월, 화, 수, 목, 금, 토, 일
+    static let weekdayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = koreaLocale
+        formatter.dateFormat = "E"
+        return formatter
+    }()
+
     // MARK: - Formatting Functions
 
     /// Date -> "yyyy-MM-dd" 문자열
@@ -82,6 +90,16 @@ enum DateHelper: Sendable {
     /// Date -> "M/d (E)" 문자열
     static func toKoreanShortDate(_ date: Date) -> String {
         koreanShortDateFormatter.string(from: date)
+    }
+
+    /// Date -> 요일만 (월, 화, 수, 목, 금, 토, 일)
+    static func toWeekday(_ date: Date) -> String {
+        weekdayFormatter.string(from: date)
+    }
+
+    /// Date -> 짧은 날짜 (M/d)
+    static func toShortDate(_ date: Date) -> String {
+        shortDateFormatter.string(from: date)
     }
 
     /// Date -> "a h:mm" 문자열 (오전/오후 시간)

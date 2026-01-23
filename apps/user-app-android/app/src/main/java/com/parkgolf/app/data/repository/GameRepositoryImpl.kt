@@ -47,8 +47,8 @@ class GameRepositoryImpl @Inject constructor(
                 minPrice = params.minPrice,
                 maxPrice = params.maxPrice,
                 minPlayers = params.minPlayers,
-                sortBy = params.sortBy,
-                sortOrder = params.sortOrder,
+                sortBy = params.sortBy.value,
+                sortOrder = params.sortOrder.value,
                 page = params.page,
                 limit = params.limit
             )

@@ -52,15 +52,55 @@ class BookingRepositoryImpl @Inject constructor(
         limit: Int
     ): Result<PaginatedData<Booking>> {
         return try {
-            val response = bookingApi.getMyBookings(status, timeFilter, page, limit)
-            if (response.success) {
+            val response = bookingApi.getMyBookings()
+            if (response.success && response.data != null) {
+                // 백엔드에서 전체 목록 반환 -> 클라이언트에서 필터링 (iOS와 동일)
+                val allBookings = response.data.map { it.toDomain() }
+
+                // timeFilter에 따라 필터링
+                val filteredBookings = when (timeFilter) {
+                    "UPCOMING" -> allBookings.filter { booking ->
+                        val today = LocalDate.now()
+                        booking.bookingDate >= today &&
+                            booking.status in listOf(
+                                BookingStatus.PENDING,
+                                BookingStatus.SLOT_RESERVED,
+                                BookingStatus.CONFIRMED
+                            )
+                    }
+                    "PAST" -> allBookings.filter { booking ->
+                        val today = LocalDate.now()
+                        booking.bookingDate < today ||
+                            booking.status in listOf(
+                                BookingStatus.COMPLETED,
+                                BookingStatus.CANCELLED,
+                                BookingStatus.NO_SHOW
+                            )
+                    }
+                    else -> allBookings
+                }
+
+                // status에 따라 추가 필터링
+                val statusFilteredBookings = if (status != null) {
+                    filteredBookings.filter { it.status.name.equals(status, ignoreCase = true) }
+                } else {
+                    filteredBookings
+                }
+
+                // 날짜순 정렬 (예정된 예약: 오름차순, 지난 예약: 내림차순)
+                val sortedBookings = when (timeFilter) {
+                    "UPCOMING" -> statusFilteredBookings.sortedBy { it.bookingDate }
+                    "PAST" -> statusFilteredBookings.sortedByDescending { it.bookingDate }
+                    else -> statusFilteredBookings.sortedByDescending { it.bookingDate }
+                }
+
                 Result.success(
                     PaginatedData(
-                        data = response.data.map { it.toDomain() },
-                        total = response.total,
-                        page = response.page,
-                        limit = response.limit,
-                        totalPages = response.totalPages
+                        data = sortedBookings,
+                        total = sortedBookings.size,
+                        page = 1,
+                        limit = sortedBookings.size,
+                        totalPages = 1
                     )
                 )
             } else {

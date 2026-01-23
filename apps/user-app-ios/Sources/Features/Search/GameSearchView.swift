@@ -176,10 +176,10 @@ struct GameSearchView: View {
 
     private var dateSelector: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: ParkSpacing.xs) {
+            HStack(spacing: ParkSpacing.xxs) {
                 ForEach(viewModel.dateOptions, id: \.self) { date in
                     DateChip(
-                        title: viewModel.formatDate(date),
+                        date: date,
                         isSelected: Calendar.current.isDate(date, inSameDayAs: viewModel.selectedDate)
                     ) {
                         viewModel.selectDate(date)
@@ -252,28 +252,56 @@ struct GameSearchView: View {
 // MARK: - Date Chip
 
 struct DateChip: View {
-    let title: String
+    let date: Date
     let isSelected: Bool
     let action: () -> Void
 
+    private var weekday: String {
+        DateHelper.toWeekday(date)
+    }
+
+    private var shortDate: String {
+        DateHelper.toShortDate(date)
+    }
+
+    private var isWeekend: Bool {
+        let weekdayNumber = Calendar.current.component(.weekday, from: date)
+        return weekdayNumber == 1 || weekdayNumber == 7 // 일요일(1) 또는 토요일(7)
+    }
+
     var body: some View {
-        Text(title)
-            .font(.parkLabelMedium)
-            .foregroundStyle(isSelected ? .white : .white.opacity(0.7))
-            .padding(.horizontal, ParkSpacing.md)
-            .padding(.vertical, ParkSpacing.xs)
-            .background(
-                RoundedRectangle(cornerRadius: ParkRadius.full)
-                    .fill(isSelected ? Color.parkPrimary : Color.white.opacity(0.1))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: ParkRadius.full)
-                    .stroke(isSelected ? Color.parkPrimary : Color.white.opacity(0.2), lineWidth: 1)
-            )
-            .contentShape(Rectangle())
-            .onTapGesture {
-                action()
-            }
+        VStack(spacing: 2) {
+            Text(weekday)
+                .font(.parkLabelSmall)
+                .foregroundStyle(weekdayColor)
+
+            Text(shortDate)
+                .font(.parkLabelMedium)
+                .foregroundStyle(isSelected ? .white : .white.opacity(0.8))
+        }
+        .frame(width: 44, height: 48)
+        .background(
+            RoundedRectangle(cornerRadius: ParkRadius.sm)
+                .fill(isSelected ? Color.parkPrimary : Color.white.opacity(0.1))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: ParkRadius.sm)
+                .stroke(isSelected ? Color.parkPrimary : Color.white.opacity(0.2), lineWidth: 1)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            action()
+        }
+    }
+
+    private var weekdayColor: Color {
+        if isSelected {
+            return .white
+        } else if isWeekend {
+            return .parkAccent
+        } else {
+            return .white.opacity(0.6)
+        }
     }
 }
 
@@ -319,11 +347,11 @@ struct GameCardView: View {
 
     private var displayedSlots: [GameTimeSlot] {
         guard let slots = game.timeSlots else { return [] }
-        return showAllSlots ? slots : Array(slots.prefix(4))
+        return showAllSlots ? slots : Array(slots.prefix(6))
     }
 
     private var hasMoreSlots: Bool {
-        (game.timeSlots?.count ?? 0) > 4
+        (game.timeSlots?.count ?? 0) > 6
     }
 
     var body: some View {
@@ -366,7 +394,9 @@ struct GameCardView: View {
 
                     VStack(spacing: ParkSpacing.sm) {
                         LazyVGrid(columns: [
-                            GridItem(.adaptive(minimum: 70), spacing: ParkSpacing.xs)
+                            GridItem(.flexible(), spacing: ParkSpacing.xs),
+                            GridItem(.flexible(), spacing: ParkSpacing.xs),
+                            GridItem(.flexible(), spacing: ParkSpacing.xs)
                         ], spacing: ParkSpacing.xs) {
                             ForEach(displayedSlots, id: \.id) { slot in
                                 TimeSlotChip(slot: slot) {
@@ -381,7 +411,7 @@ struct GameCardView: View {
                                     showAllSlots = true
                                 }
                             } label: {
-                                Text("+ \((game.timeSlots?.count ?? 0) - 4)개 더보기")
+                                Text("+ \((game.timeSlots?.count ?? 0) - 6)개 더보기")
                                     .font(.parkLabelSmall)
                                     .foregroundStyle(.white)
                             }
@@ -400,9 +430,15 @@ struct TimeSlotChip: View {
     let slot: GameTimeSlot
     let action: () -> Void
 
+    private var priceText: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        return "\(formatter.string(from: NSNumber(value: slot.price)) ?? "\(slot.price)")원"
+    }
+
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 2) {
+            VStack(spacing: 0) {
                 HStack(spacing: 2) {
                     Text(slot.startTime)
                         .font(.parkLabelMedium)
@@ -412,21 +448,24 @@ struct TimeSlotChip: View {
                     }
                 }
 
-                Text("₩\(slot.price / 1000)k")
-                    .font(.parkCaption)
+                Text(priceText)
+                    .font(.system(size: 9))
                     .foregroundStyle(.white.opacity(0.7))
+
+                Spacer().frame(height: 2)
 
                 HStack(spacing: 2) {
                     Circle()
                         .fill(availabilityColor)
                         .frame(width: 5, height: 5)
-                    Text("\(slot.availableSlots)")
+                    Text("\(slot.availableSlots)명")
                         .font(.system(size: 9))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(.white)
                 }
             }
             .foregroundStyle(.white)
-            .frame(width: 70, height: 54)
+            .frame(maxWidth: .infinity)
+            .frame(height: 48)
             .background(Color.white.opacity(0.1))
             .clipShape(RoundedRectangle(cornerRadius: ParkRadius.sm))
             .overlay(

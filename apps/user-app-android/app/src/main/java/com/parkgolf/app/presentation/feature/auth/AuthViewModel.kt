@@ -114,4 +114,13 @@ class AuthViewModel @Inject constructor(
     fun resetSignUpSuccess() {
         _uiState.value = _uiState.value.copy(signUpSuccess = false)
     }
+
+    fun refreshProfile() {
+        viewModelScope.launch {
+            authRepository.getProfile()
+                .onSuccess { user ->
+                    _uiState.value = _uiState.value.copy(user = user)
+                }
+        }
+    }
 }

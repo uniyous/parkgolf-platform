@@ -25,7 +25,7 @@ import com.parkgolf.app.presentation.theme.GlassBorder
 import com.parkgolf.app.presentation.theme.GlassCard
 import com.parkgolf.app.presentation.theme.ParkPrimary
 import com.parkgolf.app.presentation.theme.TextFieldShape
-import com.parkgolf.app.presentation.theme.TextSecondary
+import com.parkgolf.app.presentation.theme.TextOnGradientSecondary
 
 @Composable
 fun GlassTextField(
@@ -39,7 +39,8 @@ fun GlassTextField(
     errorMessage: String? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
-    singleLine: Boolean = true
+    singleLine: Boolean = true,
+    enabled: Boolean = true
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -49,7 +50,7 @@ fun GlassTextField(
         label = { Text(label) },
         modifier = modifier.fillMaxWidth(),
         leadingIcon = leadingIcon?.let {
-            { Icon(imageVector = it, contentDescription = null, tint = TextSecondary) }
+            { Icon(imageVector = it, contentDescription = null, tint = TextOnGradientSecondary) }
         },
         trailingIcon = if (isPassword) {
             {
@@ -57,7 +58,7 @@ fun GlassTextField(
                     Icon(
                         imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                         contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                        tint = TextSecondary
+                        tint = TextOnGradientSecondary
                     )
                 }
             }
@@ -68,6 +69,7 @@ fun GlassTextField(
             VisualTransformation.None
         },
         isError = isError,
+        enabled = enabled,
         supportingText = if (isError && errorMessage != null) {
             { Text(errorMessage) }
         } else null,
@@ -78,13 +80,16 @@ fun GlassTextField(
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = GlassCard,
             unfocusedContainerColor = GlassCard,
-            disabledContainerColor = GlassCard,
+            disabledContainerColor = GlassCard.copy(alpha = 0.5f),
             focusedBorderColor = ParkPrimary,
             unfocusedBorderColor = GlassBorder,
+            disabledBorderColor = GlassBorder.copy(alpha = 0.5f),
             focusedLabelColor = ParkPrimary,
-            unfocusedLabelColor = TextSecondary,
+            unfocusedLabelColor = TextOnGradientSecondary,
+            disabledLabelColor = TextOnGradientSecondary.copy(alpha = 0.5f),
             focusedTextColor = Color.White,
             unfocusedTextColor = Color.White,
+            disabledTextColor = Color.White.copy(alpha = 0.5f),
             cursorColor = ParkPrimary
         )
     )

@@ -43,7 +43,7 @@ class GameSearchViewModel: ObservableObject {
     }
 
     var dateOptions: [Date] {
-        DateHelper.dateRange(days: 14)
+        DateHelper.dateRange(days: 30)
     }
 
     var activeFiltersCount: Int {

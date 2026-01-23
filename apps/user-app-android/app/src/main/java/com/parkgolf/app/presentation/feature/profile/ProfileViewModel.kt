@@ -3,6 +3,7 @@ package com.parkgolf.app.presentation.feature.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.parkgolf.app.domain.model.User
+import com.parkgolf.app.domain.model.UserStats
 import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,6 +16,7 @@ import javax.inject.Inject
 data class ProfileUiState(
     val isLoading: Boolean = false,
     val user: User? = null,
+    val stats: UserStats? = null,
     val isEditing: Boolean = false,
     val editName: String = "",
     val error: String? = null,
@@ -33,6 +35,7 @@ class ProfileViewModel @Inject constructor(
 
     init {
         loadUser()
+        loadStats()
     }
 
     fun loadUser() {
@@ -46,6 +49,16 @@ class ProfileViewModel @Inject constructor(
                     editName = user?.name ?: ""
                 )
             }
+        }
+    }
+
+    fun loadStats() {
+        viewModelScope.launch {
+            authRepository.getStats()
+                .onSuccess { stats ->
+                    _uiState.value = _uiState.value.copy(stats = stats)
+                }
+                .onFailure { /* 통계 로드 실패는 무시 */ }
         }
     }
 

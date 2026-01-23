@@ -38,6 +38,15 @@ sealed class Screen(val route: String) {
     data object Settings : Screen("settings")
     data object NotificationSettings : Screen("settings/notifications")
     data object ChangePassword : Screen("settings/change_password")
+    data object PaymentMethods : Screen("settings/payment")
+    data object DeleteAccount : Screen("settings/delete_account")
+    data object ThemeSettings : Screen("settings/theme")
+    data object LanguageSettings : Screen("settings/language")
+    data object Announcements : Screen("settings/announcements")
+    data object Faq : Screen("settings/faq")
+    data object Contact : Screen("settings/contact")
+    data object Terms : Screen("settings/terms")
+    data object Privacy : Screen("settings/privacy")
 }
 
 // Bottom Navigation Items
