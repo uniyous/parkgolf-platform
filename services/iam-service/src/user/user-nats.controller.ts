@@ -31,7 +31,7 @@ export class UserNatsController {
   async getUserById(@Payload() data: { userId: string; token?: string }) {
     this.logger.log(`Get user by ID: ${data.userId}`);
     const user = await this.userService.findOne(data.userId);
-    return NatsResponse.success(user);
+    return NatsResponse.success(UserResponseDto.fromEntity(user as any));
   }
 
   @MessagePattern('iam.users.create')
@@ -45,7 +45,7 @@ export class UserNatsController {
   async updateUser(@Payload() data: { userId: string; updateData: any; token?: string }) {
     this.logger.log(`Update user: ${data.userId}`);
     const user = await this.userService.update(data.userId, data.updateData);
-    return NatsResponse.success(user);
+    return NatsResponse.success(UserResponseDto.fromEntity(user as any));
   }
 
   @MessagePattern('iam.users.delete')
