@@ -65,7 +65,7 @@ export const BookingDetailPage: React.FC = () => {
         specialRequests: specialRequests || undefined,
         userEmail: user.email,
         userName: user.name || user.email.split('@')[0], // 이름이 없으면 이메일 앞부분 사용
-        userPhone: user.phoneNumber || undefined,
+        userPhone: user.phone || undefined,
         paymentMethod: selectedPaymentMethod,
       };
 

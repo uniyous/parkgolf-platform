@@ -13,8 +13,8 @@ export interface User {
   createdAt: string | null;
   updatedAt: string | null;
   // 추가 사용자 필드
-  phoneNumber?: string;
-  birthDate?: string;
+  phone?: string | null;
+  profileImageUrl?: string | null;
   lastLoginAt?: string | null;
 }
 

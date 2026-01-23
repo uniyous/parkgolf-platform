@@ -122,7 +122,7 @@ export function ProfilePage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-[var(--color-text-tertiary)]">전화번호</p>
-                  <p className="font-medium text-white">{user?.phoneNumber || '-'}</p>
+                  <p className="font-medium text-white">{user?.phone || '-'}</p>
                 </div>
               </div>
 
