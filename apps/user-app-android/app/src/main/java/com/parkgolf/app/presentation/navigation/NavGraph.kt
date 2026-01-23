@@ -348,7 +348,21 @@ fun MainScreen(navController: NavHostController) {
             ) {
                 composable(Screen.Home.route) {
                     HomeScreen(
-                        onNavigate = { route -> navController.navigate(route) }
+                        onNavigate = { route ->
+                            // 바텀 네비게이션 탭으로 이동하는 경우
+                            if (route == Screen.Search.route) {
+                                bottomNavController.navigate(route) {
+                                    popUpTo(bottomNavController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            } else {
+                                // 다른 화면(상세, 설정 등)으로 이동
+                                navController.navigate(route)
+                            }
+                        }
                     )
                 }
                 composable(Screen.Search.route) {

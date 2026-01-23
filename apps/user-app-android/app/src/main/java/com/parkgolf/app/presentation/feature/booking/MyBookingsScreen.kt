@@ -60,9 +60,9 @@ enum class CancellationReason(val title: String) {
 fun MyBookingsScreen(
     onNavigateBack: () -> Unit,
     onBookingClick: (String) -> Unit,
-    viewModel: BookingViewModel = hiltViewModel()
+    viewModel: MyBookingsViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.myBookingsState.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableStateOf(BookingTab.UPCOMING) }
     var bookingToCancel by remember { mutableStateOf<Booking?>(null) }
     var selectedBooking by remember { mutableStateOf<Booking?>(null) }
@@ -148,7 +148,7 @@ fun MyBookingsScreen(
                                     text = uiState.error ?: "오류가 발생했습니다",
                                     color = ParkError
                                 )
-                                TextButton(onClick = { viewModel.loadMyBookings(refresh = true) }) {
+                                TextButton(onClick = { viewModel.loadBookings(refresh = true) }) {
                                     Text("다시 시도", color = ParkPrimary)
                                 }
                             }
@@ -175,7 +175,7 @@ fun MyBookingsScreen(
                             onCancelClick = { booking ->
                                 bookingToCancel = booking
                             },
-                            onLoadMore = { viewModel.loadMoreBookings() }
+                            onLoadMore = { viewModel.loadMore() }
                         )
                     }
                 }

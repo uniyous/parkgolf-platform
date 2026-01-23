@@ -1,8 +1,6 @@
 package com.parkgolf.app.data.remote.interceptor
 
 import com.parkgolf.app.data.local.datastore.AuthPreferences
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
 import javax.inject.Inject
@@ -22,9 +20,8 @@ class AuthInterceptor @Inject constructor(
             return chain.proceed(originalRequest)
         }
 
-        val token = runBlocking {
-            authPreferences.accessToken.first()
-        }
+        // 캐시된 토큰 사용 (동기적, 스레드 차단 없음)
+        val token = authPreferences.getAccessTokenSync()
 
         val request = if (token != null) {
             originalRequest.newBuilder()

@@ -8,6 +8,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -29,23 +31,25 @@ class AuthViewModel @Inject constructor(
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
     init {
-        checkAuthStatus()
+        observeAuthStatus()
     }
 
-    private fun checkAuthStatus() {
+    /**
+     * 인증 상태와 사용자 정보를 combine으로 동시 관찰
+     * 중첩 collect 대신 단일 collect로 개선하여 메모리 효율성 향상
+     */
+    private fun observeAuthStatus() {
         viewModelScope.launch {
-            authRepository.isLoggedIn.collect { isLoggedIn ->
-                if (isLoggedIn) {
-                    authRepository.currentUser.collect { user ->
-                        _uiState.value = _uiState.value.copy(
-                            isLoggedIn = true,
-                            user = user
-                        )
-                    }
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        isLoggedIn = false,
-                        user = null
+            combine(
+                authRepository.isLoggedIn,
+                authRepository.currentUser
+            ) { isLoggedIn, user ->
+                isLoggedIn to user
+            }.collect { (isLoggedIn, user) ->
+                _uiState.update {
+                    it.copy(
+                        isLoggedIn = isLoggedIn,
+                        user = if (isLoggedIn) user else null
                     )
                 }
             }
@@ -54,44 +58,52 @@ class AuthViewModel @Inject constructor(
 
     fun login(email: String, password: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.update { it.copy(isLoading = true, error = null) }
 
             authRepository.login(email, password)
                 .onSuccess { user ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        isLoggedIn = true,
-                        user = user,
-                        loginSuccess = true,
-                        error = null
-                    )
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isLoggedIn = true,
+                            user = user,
+                            loginSuccess = true,
+                            error = null
+                        )
+                    }
                 }
                 .onFailure { exception ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = exception.message ?: "로그인에 실패했습니다"
-                    )
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = exception.message ?: "로그인에 실패했습니다"
+                        )
+                    }
                 }
         }
     }
 
     fun signUp(email: String, password: String, name: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.update { it.copy(isLoading = true, error = null) }
 
             authRepository.register(email, password, name, null)
                 .onSuccess {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        signUpSuccess = true,
-                        error = null
-                    )
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            signUpSuccess = true,
+                            error = null
+                        )
+                    }
                 }
                 .onFailure { exception ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = exception.message ?: "회원가입에 실패했습니다"
-                    )
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = exception.message ?: "회원가입에 실패했습니다"
+                        )
+                    }
                 }
         }
     }
@@ -104,22 +116,22 @@ class AuthViewModel @Inject constructor(
     }
 
     fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
+        _uiState.update { it.copy(error = null) }
     }
 
     fun resetLoginSuccess() {
-        _uiState.value = _uiState.value.copy(loginSuccess = false)
+        _uiState.update { it.copy(loginSuccess = false) }
     }
 
     fun resetSignUpSuccess() {
-        _uiState.value = _uiState.value.copy(signUpSuccess = false)
+        _uiState.update { it.copy(signUpSuccess = false) }
     }
 
     fun refreshProfile() {
         viewModelScope.launch {
             authRepository.getProfile()
                 .onSuccess { user ->
-                    _uiState.value = _uiState.value.copy(user = user)
+                    _uiState.update { it.copy(user = user) }
                 }
         }
     }

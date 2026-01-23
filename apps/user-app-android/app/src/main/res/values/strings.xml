@@ -1,4 +1,127 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ParkMate</string>
+
+    <!-- Common -->
+    <string name="confirm">확인</string>
+    <string name="cancel">취소</string>
+    <string name="save">저장</string>
+    <string name="delete">삭제</string>
+    <string name="edit">수정</string>
+    <string name="close">닫기</string>
+    <string name="back">뒤로</string>
+    <string name="retry">다시 시도</string>
+    <string name="loading">로딩 중...</string>
+
+    <!-- Auth -->
+    <string name="login">로그인</string>
+    <string name="logout">로그아웃</string>
+    <string name="signup">회원가입</string>
+    <string name="email">이메일</string>
+    <string name="password">비밀번호</string>
+    <string name="name">이름</string>
+    <string name="phone">전화번호</string>
+    <string name="login_failed">로그인에 실패했습니다</string>
+    <string name="signup_failed">회원가입에 실패했습니다</string>
+
+    <!-- Booking -->
+    <string name="booking">예약</string>
+    <string name="my_bookings">내 예약</string>
+    <string name="upcoming_bookings">예정된 예약</string>
+    <string name="past_bookings">지난 예약</string>
+    <string name="booking_cancel">예약 취소</string>
+    <string name="booking_cancelled">예약이 취소되었습니다</string>
+    <string name="booking_cancel_failed">예약 취소 실패</string>
+    <string name="booking_failed">예약에 실패했습니다</string>
+    <string name="select_date">날짜를 선택해주세요</string>
+    <string name="enter_booker_info">예약자 정보를 입력해주세요</string>
+    <string name="no_upcoming_bookings">예정된 예약이 없습니다</string>
+    <string name="no_past_bookings">지난 예약이 없습니다</string>
+    <string name="book_new_round">새로운 라운드를 예약해 보세요!</string>
+    <string name="no_completed_rounds">아직 완료된 라운드가 없습니다</string>
+    <string name="loading_bookings">예약 불러오는 중...</string>
+    <string name="player_count">인원</string>
+    <string name="player_count_format">%d명</string>
+    <string name="special_requests">특별 요청사항</string>
+    <string name="special_requests_optional">특별 요청사항 (선택)</string>
+    <string name="phone_optional">전화번호 (선택)</string>
+    <string name="total_price">총 결제 금액</string>
+    <string name="payment_method">결제 수단</string>
+    <string name="free_cancellation_notice">3일 전까지 무료 취소 가능합니다</string>
+
+    <!-- Cancellation Reasons -->
+    <string name="cancel_reason_schedule">일정 변경</string>
+    <string name="cancel_reason_personal">개인 사정</string>
+    <string name="cancel_reason_health">건강 문제</string>
+    <string name="cancel_reason_weather">날씨 이유</string>
+    <string name="cancel_reason_other_booking">다른 예약 확정</string>
+    <string name="cancel_reason_other">기타</string>
+    <string name="select_cancel_reason">취소 사유 선택</string>
+    <string name="enter_cancel_reason">취소 사유를 입력해주세요...</string>
+    <string name="cancel_booking_confirm">다음 예약을 취소하시겠습니까?</string>
+    <string name="cancel_booking">예약 취소하기</string>
+
+    <!-- Round/Game -->
+    <string name="round_info">라운드 정보</string>
+    <string name="date_selection">날짜 선택</string>
+    <string name="time_selection">시간 선택</string>
+    <string name="no_available_time">선택 가능한 시간이 없습니다</string>
+    <string name="booker_info">예약자 정보</string>
+    <string name="booking_detail">예약 상세</string>
+
+    <!-- Profile -->
+    <string name="profile">프로필</string>
+    <string name="profile_edit">프로필 수정</string>
+    <string name="profile_fetch_failed">프로필 조회에 실패했습니다</string>
+    <string name="profile_update_failed">프로필 수정에 실패했습니다</string>
+    <string name="account_delete">계정 삭제</string>
+    <string name="account_delete_failed">계정 삭제에 실패했습니다</string>
+
+    <!-- Settings -->
+    <string name="settings">설정</string>
+    <string name="notification_settings">알림 설정</string>
+    <string name="notification_fetch_failed">알림 설정을 불러오는데 실패했습니다</string>
+    <string name="notification_update_failed">알림 설정 변경에 실패했습니다</string>
+
+    <!-- Friends -->
+    <string name="friends">친구</string>
+    <string name="friend_request">친구 요청</string>
+    <string name="friend_list_failed">친구 목록 조회에 실패했습니다</string>
+    <string name="friend_request_failed">친구 요청에 실패했습니다</string>
+    <string name="friend_request_sent">친구 요청을 보냈습니다</string>
+    <string name="friend_request_accepted">친구 요청을 수락했습니다</string>
+    <string name="friend_request_rejected">친구 요청을 거절했습니다</string>
+    <string name="friend_removed">친구를 삭제했습니다</string>
+    <string name="search_users">사용자 검색</string>
+
+    <!-- Chat -->
+    <string name="chat">채팅</string>
+    <string name="chat_list">채팅 목록</string>
+    <string name="chat_rooms_failed">채팅방 목록 조회에 실패했습니다</string>
+    <string name="chat_messages_failed">메시지 조회에 실패했습니다</string>
+    <string name="message_send_failed">메시지 전송에 실패했습니다</string>
+    <string name="enter_message">메시지를 입력하세요</string>
+
+    <!-- Password -->
+    <string name="change_password">비밀번호 변경</string>
+    <string name="current_password">현재 비밀번호</string>
+    <string name="new_password">새 비밀번호</string>
+    <string name="confirm_password">비밀번호 확인</string>
+    <string name="password_changed">비밀번호가 변경되었습니다</string>
+    <string name="password_change_failed">비밀번호 변경에 실패했습니다</string>
+    <string name="password_mismatch">비밀번호가 일치하지 않습니다</string>
+    <string name="password_too_short">비밀번호는 최소 8자 이상이어야 합니다</string>
+    <string name="fill_all_fields">모든 필드를 입력해주세요</string>
+
+    <!-- Home -->
+    <string name="home">홈</string>
+    <string name="social">소셜</string>
+    <string name="my_page">마이페이지</string>
+    <string name="nearby_clubs">주변 골프장</string>
+    <string name="available_rounds">예약 가능한 라운드</string>
+
+    <!-- Error Messages -->
+    <string name="error_occurred">오류가 발생했습니다</string>
+    <string name="request_failed">요청에 실패했습니다</string>
+    <string name="network_error">네트워크 오류가 발생했습니다</string>
 </resources>

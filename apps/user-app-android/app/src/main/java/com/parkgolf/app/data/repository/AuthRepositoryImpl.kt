@@ -1,6 +1,7 @@
 package com.parkgolf.app.data.repository
 
 import com.parkgolf.app.data.local.datastore.AuthPreferences
+import com.parkgolf.app.data.mapper.toDomain
 import com.parkgolf.app.data.remote.api.AuthApi
 import com.parkgolf.app.data.remote.dto.auth.ChangePasswordRequest
 import com.parkgolf.app.data.remote.dto.auth.LoginRequest
@@ -9,6 +10,9 @@ import com.parkgolf.app.data.remote.dto.auth.RegisterRequest
 import com.parkgolf.app.domain.model.User
 import com.parkgolf.app.domain.model.UserStats
 import com.parkgolf.app.domain.repository.AuthRepository
+import com.parkgolf.app.util.safeApiCall
+import com.parkgolf.app.util.toResult
+import com.parkgolf.app.util.toUnitResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -104,90 +108,40 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getProfile(): Result<User> {
-        return try {
-            val response = authApi.getProfile()
-            if (response.success && response.data != null) {
-                val user = response.data.toDomain()
-                // Update cached user info with latest data
-                authPreferences.saveUserInfo(
-                    userId = user.id.toString(),
-                    email = user.email,
-                    name = user.name,
-                    phoneNumber = user.phoneNumber
-                )
-                Result.success(user)
-            } else {
-                Result.failure(Exception("Failed to get profile"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+    override suspend fun getProfile(): Result<User> = safeApiCall {
+        authApi.getProfile().toResult("프로필 조회에 실패했습니다") { dto ->
+            val user = dto.toDomain()
+            // Update cached user info with latest data
+            authPreferences.saveUserInfo(
+                userId = user.id.toString(),
+                email = user.email,
+                name = user.name,
+                phoneNumber = user.phoneNumber
+            )
+            user
         }
     }
 
-    override suspend fun getStats(): Result<UserStats> {
-        return try {
-            val response = authApi.getStats()
-            if (response.success && response.data != null) {
-                Result.success(response.data.toDomain())
-            } else {
-                Result.failure(Exception("Failed to get stats"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    override suspend fun getStats(): Result<UserStats> = safeApiCall {
+        authApi.getStats().toResult("통계 조회에 실패했습니다") { it.toDomain() }
     }
 
     override suspend fun changePassword(
         currentPassword: String,
         newPassword: String,
         confirmPassword: String
-    ): Result<Unit> {
-        return try {
-            val response = authApi.changePassword(
-                ChangePasswordRequest(currentPassword, newPassword, confirmPassword)
-            )
-            if (response.success) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Password change failed"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    ): Result<Unit> = safeApiCall {
+        authApi.changePassword(
+            ChangePasswordRequest(currentPassword, newPassword, confirmPassword)
+        ).toUnitResult("비밀번호 변경에 실패했습니다")
     }
 
-    override suspend fun checkPasswordExpiry(): Result<Boolean> {
-        return try {
-            val response = authApi.getPasswordExpiry()
-            if (response.success && response.data != null) {
-                Result.success(response.data.needsChange)
-            } else {
-                Result.failure(Exception("Failed to check password expiry"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+    override suspend fun checkPasswordExpiry(): Result<Boolean> = safeApiCall {
+        val response = authApi.getPasswordExpiry()
+        if (response.success && response.data != null) {
+            Result.success(response.data.needsChange)
+        } else {
+            Result.failure(Exception("비밀번호 만료 확인에 실패했습니다"))
         }
     }
-}
-
-// Extension functions for mapping DTOs to Domain models
-private fun com.parkgolf.app.data.remote.dto.auth.UserDto.toDomain(): User {
-    return User(
-        id = id,
-        email = email,
-        name = name,
-        phoneNumber = phoneOrPhoneNumber,  // Use combined field (handles both 'phone' and 'phoneNumber')
-        profileImageUrl = profileImageUrl
-    )
-}
-
-private fun com.parkgolf.app.data.remote.dto.auth.UserStatsDto.toDomain(): UserStats {
-    return UserStats(
-        totalBookings = totalBookings,
-        upcomingBookings = upcomingBookings,
-        completedBookings = completedBookings,
-        cancelledBookings = cancelledBookings,
-        friendsCount = friendsCount
-    )
 }

@@ -14,7 +14,8 @@ import com.parkgolf.app.data.repository.BookingRepositoryImpl
 import com.parkgolf.app.data.repository.ChatRepositoryImpl
 import com.parkgolf.app.data.repository.FriendsRepositoryImpl
 import com.parkgolf.app.data.repository.RoundRepositoryImpl
-import com.parkgolf.app.data.repository.SettingsRepository
+import com.parkgolf.app.data.repository.SettingsRepositoryImpl
+import com.parkgolf.app.domain.repository.SettingsRepository
 import com.parkgolf.app.data.repository.UserRepositoryImpl
 import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.BookingRepository
@@ -78,5 +79,5 @@ object RepositoryModule {
     @Singleton
     fun provideSettingsRepository(
         settingsApi: SettingsApi
-    ): SettingsRepository = SettingsRepository(settingsApi)
+    ): SettingsRepository = SettingsRepositoryImpl(settingsApi)
 }

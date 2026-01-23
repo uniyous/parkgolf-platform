@@ -2,7 +2,7 @@ package com.parkgolf.app.presentation.feature.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.parkgolf.app.data.repository.SettingsRepository
+import com.parkgolf.app.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,17 +33,18 @@ class EditProfileViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            try {
-                settingsRepository.updateProfile(name, phoneNumber)
-                _uiState.update { it.copy(isLoading = false, isSuccess = true) }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = e.message ?: "프로필 수정에 실패했습니다"
-                    )
+            settingsRepository.updateProfile(name, phoneNumber)
+                .onSuccess {
+                    _uiState.update { it.copy(isLoading = false, isSuccess = true) }
                 }
-            }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = e.message ?: "프로필 수정에 실패했습니다"
+                        )
+                    }
+                }
         }
     }
 

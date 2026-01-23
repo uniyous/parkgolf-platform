@@ -34,9 +34,9 @@ fun BookingFormScreen(
     gameId: Int,  // API 호환성을 위해 파라미터명 유지
     onNavigateBack: () -> Unit,
     onBookingComplete: (String) -> Unit,
-    viewModel: BookingViewModel = hiltViewModel()
+    viewModel: BookingFormViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.formState.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(gameId) {
         viewModel.loadRoundForBooking(gameId)

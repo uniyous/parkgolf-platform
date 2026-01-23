@@ -1,6 +1,8 @@
 package com.parkgolf.app.data.remote.api
 
 import com.parkgolf.app.data.remote.dto.common.ApiResponse
+import com.parkgolf.app.data.remote.dto.user.UpdateProfileRequest
+import com.parkgolf.app.data.remote.dto.user.UserProfileDto
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -16,15 +18,3 @@ interface UserApi {
     @DELETE("api/users/me")
     suspend fun deleteAccount(): ApiResponse<Unit>
 }
-
-data class UserProfileDto(
-    val id: Int,
-    val email: String,
-    val name: String,
-    val profileImageUrl: String?
-)
-
-data class UpdateProfileRequest(
-    val name: String? = null,
-    val profileImageUrl: String? = null
-)
