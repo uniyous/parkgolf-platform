@@ -4,11 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.parkgolf.app.domain.model.Booking
 import com.parkgolf.app.domain.model.CreateBookingParams
-import com.parkgolf.app.domain.model.Game
-import com.parkgolf.app.domain.model.GameTimeSlot
+import com.parkgolf.app.domain.model.Round
+import com.parkgolf.app.domain.model.TimeSlot
 import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.BookingRepository
-import com.parkgolf.app.domain.repository.GameRepository
+import com.parkgolf.app.domain.repository.RoundRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,10 +18,10 @@ import javax.inject.Inject
 
 data class BookingFormUiState(
     val isLoading: Boolean = false,
-    val game: Game? = null,
-    val timeSlots: List<GameTimeSlot> = emptyList(),
+    val round: Round? = null,
+    val timeSlots: List<TimeSlot> = emptyList(),
     val selectedDate: String = "",
-    val selectedTimeSlot: GameTimeSlot? = null,
+    val selectedTimeSlot: TimeSlot? = null,
     val playerCount: Int = 1,
     val specialRequests: String = "",
     val userName: String = "",
@@ -49,7 +49,7 @@ data class MyBookingsUiState(
 @HiltViewModel
 class BookingViewModel @Inject constructor(
     private val bookingRepository: BookingRepository,
-    private val gameRepository: GameRepository,
+    private val roundRepository: RoundRepository,
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
@@ -77,16 +77,16 @@ class BookingViewModel @Inject constructor(
     }
 
     // Booking Form Functions
-    fun loadGameForBooking(gameId: Int) {
+    fun loadRoundForBooking(roundId: Int) {
         viewModelScope.launch {
             _formState.value = _formState.value.copy(isLoading = true)
 
-            gameRepository.getGame(gameId)
-                .onSuccess { game ->
+            roundRepository.getRound(roundId)
+                .onSuccess { round ->
                     _formState.value = _formState.value.copy(
                         isLoading = false,
-                        game = game,
-                        timeSlots = game.timeSlots ?: emptyList()
+                        round = round,
+                        timeSlots = round.timeSlots ?: emptyList()
                     )
                 }
                 .onFailure { exception ->
@@ -98,11 +98,11 @@ class BookingViewModel @Inject constructor(
         }
     }
 
-    fun loadTimeSlotsForDate(gameId: Int, date: String) {
+    fun loadTimeSlotsForDate(roundId: Int, date: String) {
         viewModelScope.launch {
             _formState.value = _formState.value.copy(selectedDate = date, selectedTimeSlot = null)
 
-            gameRepository.getAvailableTimeSlots(gameId, date)
+            roundRepository.getAvailableTimeSlots(roundId, date)
                 .onSuccess { slots ->
                     _formState.value = _formState.value.copy(timeSlots = slots)
                 }
@@ -112,7 +112,7 @@ class BookingViewModel @Inject constructor(
         }
     }
 
-    fun selectTimeSlot(slot: GameTimeSlot) {
+    fun selectTimeSlot(slot: TimeSlot) {
         _formState.value = _formState.value.copy(selectedTimeSlot = slot)
         calculateTotalPrice()
     }
@@ -145,10 +145,10 @@ class BookingViewModel @Inject constructor(
 
     private fun calculateTotalPrice() {
         val slot = _formState.value.selectedTimeSlot
-        val game = _formState.value.game
+        val round = _formState.value.round
         val playerCount = _formState.value.playerCount
 
-        val pricePerPerson = slot?.price ?: game?.pricePerPerson ?: 0
+        val pricePerPerson = slot?.price ?: round?.pricePerPerson ?: 0
         val total = pricePerPerson * playerCount
 
         _formState.value = _formState.value.copy(totalPrice = total)
@@ -156,7 +156,7 @@ class BookingViewModel @Inject constructor(
 
     fun createBooking() {
         val state = _formState.value
-        val game = state.game ?: return
+        val round = state.round ?: return
         val timeSlot = state.selectedTimeSlot ?: return
 
         if (state.selectedDate.isBlank()) {
@@ -173,7 +173,7 @@ class BookingViewModel @Inject constructor(
             _formState.value = state.copy(isLoading = true, error = null)
 
             val params = CreateBookingParams(
-                gameId = game.id,
+                gameId = round.id,  // API 호환성을 위해 gameId 유지
                 gameTimeSlotId = timeSlot.id,
                 bookingDate = state.selectedDate,
                 playerCount = state.playerCount,

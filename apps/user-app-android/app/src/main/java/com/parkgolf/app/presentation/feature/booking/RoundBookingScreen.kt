@@ -1,4 +1,4 @@
-package com.parkgolf.app.presentation.feature.search
+package com.parkgolf.app.presentation.feature.booking
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -56,8 +56,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.parkgolf.app.domain.model.AvailabilityStatus
-import com.parkgolf.app.domain.model.Game
-import com.parkgolf.app.domain.model.GameTimeSlot
+import com.parkgolf.app.domain.model.Round
+import com.parkgolf.app.domain.model.TimeSlot
 import com.parkgolf.app.domain.model.SortOption
 import com.parkgolf.app.domain.model.SortOrder
 import com.parkgolf.app.domain.model.TimeOfDay
@@ -80,9 +80,9 @@ import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GameSearchScreen(
+fun RoundBookingScreen(
     onNavigate: (String) -> Unit,
-    viewModel: GameSearchViewModel = hiltViewModel()
+    viewModel: RoundBookingViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -119,7 +119,7 @@ fun GameSearchScreen(
 
             // Content
             when {
-                uiState.isLoading && uiState.games.isEmpty() -> {
+                uiState.isLoading && uiState.rounds.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -134,14 +134,14 @@ fun GameSearchScreen(
                         }
                     }
                 }
-                uiState.error != null && uiState.games.isEmpty() -> {
+                uiState.error != null && uiState.rounds.isEmpty() -> {
                     EmptyStateView(
                         icon = Icons.Default.Close,
                         title = "오류가 발생했습니다",
                         description = uiState.error ?: "다시 시도해 주세요"
                     )
                 }
-                uiState.games.isEmpty() -> {
+                uiState.rounds.isEmpty() -> {
                     EmptyStateView(
                         icon = Icons.Default.Search,
                         title = "검색 결과가 없습니다",
@@ -149,13 +149,13 @@ fun GameSearchScreen(
                     )
                 }
                 else -> {
-                    GameList(
-                        games = uiState.games,
+                    RoundList(
+                        rounds = uiState.rounds,
                         selectedDate = uiState.selectedDate,
                         isLoadingMore = uiState.isLoadingMore,
                         onLoadMore = { viewModel.loadMore() },
-                        onSelectTimeSlot = { game, timeSlot ->
-                            viewModel.selectTimeSlot(game, timeSlot)
+                        onSelectTimeSlot = { round, timeSlot ->
+                            viewModel.selectTimeSlot(round, timeSlot)
                         }
                     )
                 }
@@ -183,11 +183,9 @@ fun GameSearchScreen(
         }
 
         // Booking Form Navigation
-        if (uiState.showBookingForm && uiState.selectedGame != null && uiState.selectedTimeSlot != null) {
-            // Navigate to booking form
-            // For now, we'll just dismiss - actual navigation would be handled by the parent
+        if (uiState.showBookingForm && uiState.selectedRound != null && uiState.selectedTimeSlot != null) {
             viewModel.dismissBookingForm()
-            onNavigate("booking/${uiState.selectedGame!!.id}/${uiState.selectedTimeSlot!!.id}")
+            onNavigate("booking/${uiState.selectedRound!!.id}/${uiState.selectedTimeSlot!!.id}")
         }
     }
 }
@@ -408,29 +406,29 @@ private fun FilterChip(
     )
 }
 
-// MARK: - Game List
+// MARK: - Round List
 
 @Composable
-private fun GameList(
-    games: List<Game>,
+private fun RoundList(
+    rounds: List<Round>,
     selectedDate: LocalDate,
     isLoadingMore: Boolean,
     onLoadMore: () -> Unit,
-    onSelectTimeSlot: (Game, GameTimeSlot) -> Unit
+    onSelectTimeSlot: (Round, TimeSlot) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(games, key = { it.id }) { game ->
-            GameCardView(
-                game = game,
-                onSelectTimeSlot = { timeSlot -> onSelectTimeSlot(game, timeSlot) }
+        items(rounds, key = { it.id }) { round ->
+            RoundCardView(
+                round = round,
+                onSelectTimeSlot = { timeSlot -> onSelectTimeSlot(round, timeSlot) }
             )
 
             // Load more trigger
-            if (game == games.last()) {
+            if (round == rounds.last()) {
                 onLoadMore()
             }
         }
@@ -457,15 +455,15 @@ private fun GameList(
     }
 }
 
-// MARK: - Game Card
+// MARK: - Round Card
 
 @Composable
-private fun GameCardView(
-    game: Game,
-    onSelectTimeSlot: (GameTimeSlot) -> Unit
+private fun RoundCardView(
+    round: Round,
+    onSelectTimeSlot: (TimeSlot) -> Unit
 ) {
     var showAllSlots by remember { mutableStateOf(false) }
-    val slots = game.timeSlots ?: emptyList()
+    val slots = round.timeSlots ?: emptyList()
     val displayedSlots = if (showAllSlots) slots else slots.take(6)
     val hasMoreSlots = slots.size > 6
 
@@ -474,7 +472,7 @@ private fun GameCardView(
         contentPadding = 0.dp
     ) {
         Column {
-            // Game Info
+            // Round Info
             Column(
                 modifier = Modifier.padding(16.dp)
             ) {
@@ -484,13 +482,13 @@ private fun GameCardView(
                     verticalAlignment = Alignment.Top
                 ) {
                     Text(
-                        text = game.name,
+                        text = round.name,
                         style = MaterialTheme.typography.titleMedium,
                         color = TextOnGradient,
                         fontWeight = FontWeight.SemiBold
                     )
 
-                    game.priceRange?.let { range ->
+                    round.priceRange?.let { range ->
                         PriceRangeDisplay(minPrice = range.min, maxPrice = range.max)
                     }
                 }
@@ -498,17 +496,17 @@ private fun GameCardView(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    InfoLabel(icon = "🏢", text = game.clubName)
-                    if (game.courseNames.isNotEmpty()) {
-                        InfoLabel(icon = "🚩", text = game.courseNames)
+                    InfoLabel(icon = "🏢", text = round.clubName)
+                    if (round.courseNames.isNotEmpty()) {
+                        InfoLabel(icon = "🚩", text = round.courseNames)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    InfoLabel(icon = "⏱", text = game.durationText)
-                    InfoLabel(icon = "👥", text = "최대 ${game.maxPlayers}명")
+                    InfoLabel(icon = "⏱", text = round.durationText)
+                    InfoLabel(icon = "👥", text = "최대 ${round.maxPlayers}명")
                 }
             }
 
@@ -590,7 +588,7 @@ private fun PriceRangeDisplay(minPrice: Int, maxPrice: Int) {
 
 @Composable
 private fun RowScope.TimeSlotChip(
-    slot: GameTimeSlot,
+    slot: TimeSlot,
     onClick: () -> Unit
 ) {
     val availabilityColor = when (slot.availabilityStatus) {
@@ -668,7 +666,7 @@ private fun Modifier.alpha(alpha: Float): Modifier = this.then(
 
 @Composable
 private fun FilterSheetContent(
-    uiState: GameSearchUiState,
+    uiState: RoundBookingUiState,
     onMinPriceChange: (String) -> Unit,
     onMaxPriceChange: (String) -> Unit,
     onPlayerCountChange: (Int?) -> Unit,
@@ -816,4 +814,3 @@ private fun FilterSheetContent(
         Spacer(modifier = Modifier.height(32.dp))
     }
 }
-

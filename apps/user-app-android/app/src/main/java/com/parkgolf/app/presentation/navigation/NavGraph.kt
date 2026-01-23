@@ -62,7 +62,7 @@ import com.parkgolf.app.presentation.feature.profile.NotificationSettingsScreen
 import com.parkgolf.app.presentation.feature.profile.PaymentMethodsScreen
 import com.parkgolf.app.presentation.feature.profile.ProfileScreen
 import com.parkgolf.app.presentation.feature.profile.SettingsScreen
-import com.parkgolf.app.presentation.feature.search.GameSearchScreen
+import com.parkgolf.app.presentation.feature.booking.RoundBookingScreen
 import com.parkgolf.app.presentation.feature.social.SocialScreen
 
 /**
@@ -352,7 +352,7 @@ fun MainScreen(navController: NavHostController) {
                     )
                 }
                 composable(Screen.Search.route) {
-                    GameSearchScreen(
+                    RoundBookingScreen(
                         onNavigate = { route -> navController.navigate(route) }
                     )
                 }

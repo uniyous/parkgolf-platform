@@ -1,26 +1,26 @@
 package com.parkgolf.app.data.repository
 
-import com.parkgolf.app.data.remote.api.GameApi
-import com.parkgolf.app.data.remote.dto.game.GameDto
-import com.parkgolf.app.data.remote.dto.game.GameTimeSlotDto
-import com.parkgolf.app.domain.model.Game
-import com.parkgolf.app.domain.model.GameClub
-import com.parkgolf.app.domain.model.GameCourse
-import com.parkgolf.app.domain.model.GameSearchParams
-import com.parkgolf.app.domain.model.GameTimeSlot
-import com.parkgolf.app.domain.repository.GameRepository
+import com.parkgolf.app.data.remote.api.RoundApi
+import com.parkgolf.app.data.remote.dto.round.RoundDto
+import com.parkgolf.app.data.remote.dto.round.TimeSlotDto
+import com.parkgolf.app.domain.model.Round
+import com.parkgolf.app.domain.model.RoundClub
+import com.parkgolf.app.domain.model.RoundCourse
+import com.parkgolf.app.domain.model.RoundSearchParams
+import com.parkgolf.app.domain.model.TimeSlot
+import com.parkgolf.app.domain.repository.RoundRepository
 import com.parkgolf.app.util.PaginatedData
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class GameRepositoryImpl @Inject constructor(
-    private val gameApi: GameApi
-) : GameRepository {
+class RoundRepositoryImpl @Inject constructor(
+    private val roundApi: RoundApi
+) : RoundRepository {
 
-    override suspend fun getGames(clubId: Int?, page: Int, limit: Int): Result<PaginatedData<Game>> {
+    override suspend fun getRounds(clubId: Int?, page: Int, limit: Int): Result<PaginatedData<Round>> {
         return try {
-            val response = gameApi.getGames(clubId, page, limit)
+            val response = roundApi.getRounds(clubId, page, limit)
             if (response.success) {
                 Result.success(
                     PaginatedData(
@@ -32,16 +32,16 @@ class GameRepositoryImpl @Inject constructor(
                     )
                 )
             } else {
-                Result.failure(Exception("Failed to get games"))
+                Result.failure(Exception("Failed to get rounds"))
             }
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    override suspend fun searchGames(params: GameSearchParams): Result<PaginatedData<Game>> {
+    override suspend fun searchRounds(params: RoundSearchParams): Result<PaginatedData<Round>> {
         return try {
-            val response = gameApi.searchGames(
+            val response = roundApi.searchRounds(
                 search = params.search,
                 date = params.date,
                 minPrice = params.minPrice,
@@ -63,29 +63,29 @@ class GameRepositoryImpl @Inject constructor(
                     )
                 )
             } else {
-                Result.failure(Exception("Failed to search games"))
+                Result.failure(Exception("Failed to search rounds"))
             }
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    override suspend fun getGame(gameId: Int): Result<Game> {
+    override suspend fun getRound(roundId: Int): Result<Round> {
         return try {
-            val response = gameApi.getGame(gameId)
+            val response = roundApi.getRound(roundId)
             if (response.success && response.data != null) {
                 Result.success(response.data.toDomain())
             } else {
-                Result.failure(Exception("Failed to get game"))
+                Result.failure(Exception("Failed to get round"))
             }
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    override suspend fun getTimeSlots(gameId: Int, date: String?): Result<List<GameTimeSlot>> {
+    override suspend fun getTimeSlots(roundId: Int, date: String?): Result<List<TimeSlot>> {
         return try {
-            val response = gameApi.getTimeSlots(gameId, date)
+            val response = roundApi.getTimeSlots(roundId, date)
             if (response.success && response.data != null) {
                 Result.success(response.data.map { it.toDomain() })
             } else {
@@ -96,9 +96,9 @@ class GameRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getAvailableTimeSlots(gameId: Int, date: String): Result<List<GameTimeSlot>> {
+    override suspend fun getAvailableTimeSlots(roundId: Int, date: String): Result<List<TimeSlot>> {
         return try {
-            val response = gameApi.getAvailableTimeSlots(gameId, date)
+            val response = roundApi.getAvailableTimeSlots(roundId, date)
             if (response.success && response.data != null) {
                 Result.success(response.data.map { it.toDomain() })
             } else {
@@ -110,8 +110,8 @@ class GameRepositoryImpl @Inject constructor(
     }
 }
 
-private fun GameDto.toDomain(): Game {
-    return Game(
+private fun RoundDto.toDomain(): Round {
+    return Round(
         id = id,
         name = name,
         code = code,
@@ -119,7 +119,7 @@ private fun GameDto.toDomain(): Game {
         clubId = clubId,
         clubName = clubName,
         club = club?.let {
-            GameClub(
+            RoundClub(
                 id = it.id,
                 name = it.name,
                 address = it.address,
@@ -131,7 +131,7 @@ private fun GameDto.toDomain(): Game {
             )
         },
         frontNineCourse = frontNineCourse?.let {
-            GameCourse(
+            RoundCourse(
                 id = it.id,
                 name = it.name,
                 holes = it.holes,
@@ -140,7 +140,7 @@ private fun GameDto.toDomain(): Game {
             )
         },
         backNineCourse = backNineCourse?.let {
-            GameCourse(
+            RoundCourse(
                 id = it.id,
                 name = it.name,
                 holes = it.holes,
@@ -159,8 +159,8 @@ private fun GameDto.toDomain(): Game {
     )
 }
 
-private fun GameTimeSlotDto.toDomain(): GameTimeSlot {
-    return GameTimeSlot(
+private fun TimeSlotDto.toDomain(): TimeSlot {
+    return TimeSlot(
         id = id,
         gameId = gameId,
         startTime = startTime,

@@ -5,7 +5,7 @@ import com.parkgolf.app.data.remote.api.AuthApi
 import com.parkgolf.app.data.remote.api.BookingApi
 import com.parkgolf.app.data.remote.api.ChatApi
 import com.parkgolf.app.data.remote.api.FriendsApi
-import com.parkgolf.app.data.remote.api.GameApi
+import com.parkgolf.app.data.remote.api.RoundApi
 import com.parkgolf.app.data.remote.api.SettingsApi
 import com.parkgolf.app.data.remote.api.UserApi
 import com.parkgolf.app.data.remote.socket.ChatSocketManager
@@ -13,14 +13,14 @@ import com.parkgolf.app.data.repository.AuthRepositoryImpl
 import com.parkgolf.app.data.repository.BookingRepositoryImpl
 import com.parkgolf.app.data.repository.ChatRepositoryImpl
 import com.parkgolf.app.data.repository.FriendsRepositoryImpl
-import com.parkgolf.app.data.repository.GameRepositoryImpl
+import com.parkgolf.app.data.repository.RoundRepositoryImpl
 import com.parkgolf.app.data.repository.SettingsRepository
 import com.parkgolf.app.data.repository.UserRepositoryImpl
 import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.BookingRepository
 import com.parkgolf.app.domain.repository.ChatRepository
 import com.parkgolf.app.domain.repository.FriendsRepository
-import com.parkgolf.app.domain.repository.GameRepository
+import com.parkgolf.app.domain.repository.RoundRepository
 import com.parkgolf.app.domain.repository.UserRepository
 import dagger.Module
 import dagger.Provides
@@ -47,9 +47,9 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideGameRepository(
-        gameApi: GameApi
-    ): GameRepository = GameRepositoryImpl(gameApi)
+    fun provideRoundRepository(
+        roundApi: RoundApi
+    ): RoundRepository = RoundRepositoryImpl(roundApi)
 
     @Provides
     @Singleton

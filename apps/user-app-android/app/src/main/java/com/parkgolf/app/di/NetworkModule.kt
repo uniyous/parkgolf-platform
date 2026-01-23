@@ -7,7 +7,7 @@ import com.parkgolf.app.data.remote.api.AuthApi
 import com.parkgolf.app.data.remote.api.BookingApi
 import com.parkgolf.app.data.remote.api.ChatApi
 import com.parkgolf.app.data.remote.api.FriendsApi
-import com.parkgolf.app.data.remote.api.GameApi
+import com.parkgolf.app.data.remote.api.RoundApi
 import com.parkgolf.app.data.remote.api.SettingsApi
 import com.parkgolf.app.data.remote.api.UserApi
 import com.parkgolf.app.data.remote.interceptor.AuthInterceptor
@@ -88,8 +88,8 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideGameApi(retrofit: Retrofit): GameApi =
-        retrofit.create(GameApi::class.java)
+    fun provideRoundApi(retrofit: Retrofit): RoundApi =
+        retrofit.create(RoundApi::class.java)
 
     @Provides
     @Singleton

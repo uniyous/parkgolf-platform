@@ -1,18 +1,18 @@
-package com.parkgolf.app.data.remote.dto.game
+package com.parkgolf.app.data.remote.dto.round
 
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class GameDto(
+data class RoundDto(
     val id: Int,
     val name: String,
     val code: String? = null,
     val description: String? = null,
     val clubId: Int,
     val clubName: String,
-    val club: GameClubDto? = null,
-    val frontNineCourse: GameCourseDto? = null,
-    val backNineCourse: GameCourseDto? = null,
+    val club: RoundClubDto? = null,
+    val frontNineCourse: RoundCourseDto? = null,
+    val backNineCourse: RoundCourseDto? = null,
     val totalHoles: Int? = null,
     val estimatedDuration: Int,
     val maxPlayers: Int,
@@ -20,13 +20,13 @@ data class GameDto(
     val pricePerPerson: Int? = null,
     val weekendPrice: Int? = null,
     val isActive: Boolean = true,
-    val timeSlots: List<GameTimeSlotDto>? = null,
+    val timeSlots: List<TimeSlotDto>? = null,
     val createdAt: String? = null,
     val updatedAt: String? = null
 )
 
 @Serializable
-data class GameClubDto(
+data class RoundClubDto(
     val id: Int,
     val name: String,
     val address: String? = null,
@@ -38,7 +38,7 @@ data class GameClubDto(
 )
 
 @Serializable
-data class GameCourseDto(
+data class RoundCourseDto(
     val id: Int,
     val name: String,
     val holes: Int = 9,
@@ -47,7 +47,7 @@ data class GameCourseDto(
 )
 
 @Serializable
-data class GameTimeSlotDto(
+data class TimeSlotDto(
     val id: Int,
     val gameId: Int,
     val startTime: String,

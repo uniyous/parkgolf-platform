@@ -1,15 +1,15 @@
 package com.parkgolf.app.domain.model
 
-data class Game(
+data class Round(
     val id: Int,
     val name: String,
     val code: String? = null,
     val description: String? = null,
     val clubId: Int,
     val clubName: String,
-    val club: GameClub? = null,
-    val frontNineCourse: GameCourse? = null,
-    val backNineCourse: GameCourse? = null,
+    val club: RoundClub? = null,
+    val frontNineCourse: RoundCourse? = null,
+    val backNineCourse: RoundCourse? = null,
     val totalHoles: Int? = null,
     val estimatedDuration: Int,
     val maxPlayers: Int,
@@ -17,7 +17,7 @@ data class Game(
     val pricePerPerson: Int? = null,
     val weekendPrice: Int? = null,
     val isActive: Boolean = true,
-    val timeSlots: List<GameTimeSlot>? = null
+    val timeSlots: List<TimeSlot>? = null
 ) {
     val durationText: String
         get() = if (estimatedDuration >= 60) {
@@ -41,7 +41,7 @@ data class Game(
         }
 }
 
-data class GameClub(
+data class RoundClub(
     val id: Int,
     val name: String,
     val address: String? = null,
@@ -52,7 +52,7 @@ data class GameClub(
     val longitude: Double? = null
 )
 
-data class GameCourse(
+data class RoundCourse(
     val id: Int,
     val name: String,
     val holes: Int = 9,
@@ -60,9 +60,9 @@ data class GameCourse(
     val description: String? = null
 )
 
-data class GameTimeSlot(
+data class TimeSlot(
     val id: Int,
-    val gameId: Int,
+    val gameId: Int,  // API 호환성을 위해 유지
     val startTime: String,
     val endTime: String,
     val availablePlayers: Int,
@@ -104,7 +104,7 @@ data class PriceRange(
     val max: Int
 )
 
-data class GameSearchParams(
+data class RoundSearchParams(
     val search: String? = null,
     val date: String? = null,
     val timeOfDay: TimeOfDay? = null,

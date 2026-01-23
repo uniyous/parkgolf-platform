@@ -1,14 +1,14 @@
-package com.parkgolf.app.presentation.feature.search
+package com.parkgolf.app.presentation.feature.booking
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.parkgolf.app.domain.model.Game
-import com.parkgolf.app.domain.model.GameSearchParams
-import com.parkgolf.app.domain.model.GameTimeSlot
+import com.parkgolf.app.domain.model.Round
+import com.parkgolf.app.domain.model.RoundSearchParams
+import com.parkgolf.app.domain.model.TimeSlot
 import com.parkgolf.app.domain.model.SortOption
 import com.parkgolf.app.domain.model.SortOrder
 import com.parkgolf.app.domain.model.TimeOfDay
-import com.parkgolf.app.domain.repository.GameRepository
+import com.parkgolf.app.domain.repository.RoundRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -21,10 +21,10 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
-data class GameSearchUiState(
+data class RoundBookingUiState(
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
-    val games: List<Game> = emptyList(),
+    val rounds: List<Round> = emptyList(),
     val searchQuery: String = "",
     val selectedDate: LocalDate = LocalDate.now().plusDays(1), // 내일
     val selectedTimeOfDay: TimeOfDay = TimeOfDay.ALL,
@@ -40,8 +40,8 @@ data class GameSearchUiState(
     val error: String? = null,
     val showFilterSheet: Boolean = false,
     val showBookingForm: Boolean = false,
-    val selectedGame: Game? = null,
-    val selectedTimeSlot: GameTimeSlot? = null
+    val selectedRound: Round? = null,
+    val selectedTimeSlot: TimeSlot? = null
 ) {
     val activeFiltersCount: Int
         get() {
@@ -53,12 +53,12 @@ data class GameSearchUiState(
 }
 
 @HiltViewModel
-class GameSearchViewModel @Inject constructor(
-    private val gameRepository: GameRepository
+class RoundBookingViewModel @Inject constructor(
+    private val roundRepository: RoundRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(GameSearchUiState())
-    val uiState: StateFlow<GameSearchUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(RoundBookingUiState())
+    val uiState: StateFlow<RoundBookingUiState> = _uiState.asStateFlow()
 
     private var searchJob: Job? = null
 
@@ -95,7 +95,7 @@ class GameSearchViewModel @Inject constructor(
             _uiState.update { it.copy(isLoadingMore = true, currentPage = state.currentPage + 1) }
         }
 
-        val params = GameSearchParams(
+        val params = RoundSearchParams(
             search = state.searchQuery.takeIf { it.isNotBlank() },
             date = state.selectedDate.format(dateFormatter),
             timeOfDay = state.selectedTimeOfDay.takeIf { it != TimeOfDay.ALL },
@@ -108,19 +108,19 @@ class GameSearchViewModel @Inject constructor(
             limit = 20
         )
 
-        gameRepository.searchGames(params)
+        roundRepository.searchRounds(params)
             .onSuccess { paginatedData ->
-                val games = if (resetPage) {
+                val rounds = if (resetPage) {
                     paginatedData.data
                 } else {
-                    _uiState.value.games + paginatedData.data
+                    _uiState.value.rounds + paginatedData.data
                 }
 
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         isLoadingMore = false,
-                        games = games,
+                        rounds = rounds,
                         currentPage = paginatedData.page,
                         totalPages = paginatedData.totalPages,
                         totalCount = paginatedData.total,
@@ -214,10 +214,10 @@ class GameSearchViewModel @Inject constructor(
     }
 
     // 타임슬롯 선택 (예약 화면으로)
-    fun selectTimeSlot(game: Game, timeSlot: GameTimeSlot) {
+    fun selectTimeSlot(round: Round, timeSlot: TimeSlot) {
         _uiState.update {
             it.copy(
-                selectedGame = game,
+                selectedRound = round,
                 selectedTimeSlot = timeSlot,
                 showBookingForm = true
             )
@@ -229,7 +229,7 @@ class GameSearchViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 showBookingForm = false,
-                selectedGame = null,
+                selectedRound = null,
                 selectedTimeSlot = null
             )
         }

@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.parkgolf.app.domain.model.GameTimeSlot
+import com.parkgolf.app.domain.model.TimeSlot
 import com.parkgolf.app.presentation.components.GlassCard
 import com.parkgolf.app.presentation.components.GlassTextField
 import com.parkgolf.app.presentation.components.GradientButton
@@ -31,7 +31,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookingFormScreen(
-    gameId: Int,
+    gameId: Int,  // API 호환성을 위해 파라미터명 유지
     onNavigateBack: () -> Unit,
     onBookingComplete: (String) -> Unit,
     viewModel: BookingViewModel = hiltViewModel()
@@ -39,7 +39,7 @@ fun BookingFormScreen(
     val uiState by viewModel.formState.collectAsState()
 
     LaunchedEffect(gameId) {
-        viewModel.loadGameForBooking(gameId)
+        viewModel.loadRoundForBooking(gameId)
     }
 
     LaunchedEffect(uiState.bookingSuccess) {
@@ -75,7 +75,7 @@ fun BookingFormScreen(
                 )
                 .padding(paddingValues)
         ) {
-            if (uiState.isLoading && uiState.game == null) {
+            if (uiState.isLoading && uiState.round == null) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center),
                     color = ParkOnPrimary
@@ -88,27 +88,27 @@ fun BookingFormScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Game Info Card
-                    uiState.game?.let { game ->
+                    // Round Info Card
+                    uiState.round?.let { round ->
                         GlassCard {
                             Column(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Text(
-                                    text = game.name,
+                                    text = round.name,
                                     style = MaterialTheme.typography.titleLarge,
                                     color = ParkOnPrimary,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = game.clubName ?: "",
+                                    text = round.clubName ?: "",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = ParkOnPrimary.copy(alpha = 0.8f)
                                 )
-                                if (game.description != null) {
+                                if (round.description != null) {
                                     Text(
-                                        text = game.description,
+                                        text = round.description,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = ParkOnPrimary.copy(alpha = 0.7f)
                                     )
@@ -121,8 +121,8 @@ fun BookingFormScreen(
                     DateSelectionSection(
                         selectedDate = uiState.selectedDate,
                         onDateSelected = { date ->
-                            uiState.game?.let { game ->
-                                viewModel.loadTimeSlotsForDate(game.id, date)
+                            uiState.round?.let { round ->
+                                viewModel.loadTimeSlotsForDate(round.id, date)
                             }
                         }
                     )
@@ -303,9 +303,9 @@ private fun DateSelectionSection(
 
 @Composable
 private fun TimeSlotSection(
-    timeSlots: List<GameTimeSlot>,
-    selectedSlot: GameTimeSlot?,
-    onSlotSelected: (GameTimeSlot) -> Unit
+    timeSlots: List<TimeSlot>,
+    selectedSlot: TimeSlot?,
+    onSlotSelected: (TimeSlot) -> Unit
 ) {
     GlassCard {
         Column(
