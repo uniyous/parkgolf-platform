@@ -50,8 +50,8 @@ export const authApi = {
   },
 
   getProfile: async () => {
-    const response = await apiClient.get<User>('/api/user/iam/profile');
-    return response.data;
+    const response = await apiClient.get<{ success: boolean; data: User }>('/api/user/iam/profile');
+    return response.data.data;
   },
 
   logout: async () => {
