@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AppLayout } from '@/components/layout';
 import { useChatRoomQuery, useMessagesInfiniteQuery, useSendMessageMutation } from '@/hooks/queries/chat';
 import { chatSocket } from '@/lib/socket/chatSocket';
 import { authStorage } from '@/lib/storage';
@@ -201,194 +202,200 @@ export const ChatRoomPage: React.FC = () => {
   // Loading state
   if (isLoadingRoom) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-      </div>
+      <AppLayout showMobileHeader={false} showTabBar={false} fullHeight>
+        <div className="flex items-center justify-center h-full">
+          <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+        </div>
+      </AppLayout>
     );
   }
 
   // Not found
   if (!room) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <h2 className="text-xl font-bold text-white mb-2">채팅방을 찾을 수 없습니다</h2>
-        <button
-          onClick={() => navigate('/chat')}
-          className="mt-4 px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
-        >
-          채팅 목록으로
-        </button>
-      </div>
+      <AppLayout showMobileHeader={false} showTabBar={false} fullHeight>
+        <div className="flex flex-col items-center justify-center h-full p-4">
+          <h2 className="text-xl font-bold text-white mb-2">채팅방을 찾을 수 없습니다</h2>
+          <button
+            onClick={() => navigate('/chat')}
+            className="mt-4 px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
+          >
+            채팅 목록으로
+          </button>
+        </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-56px)]">
-      {/* Header */}
-      <div className="sticky top-0 z-30 bg-black/40 backdrop-blur-md px-4 py-3 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/chat')}
-            className="p-2 -ml-2 rounded-lg hover:bg-white/10 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 text-white" />
-          </button>
+    <AppLayout showMobileHeader={false} showTabBar={false} fullHeight>
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="sticky top-0 z-30 bg-black/40 backdrop-blur-md px-4 py-3 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/social?tab=chat')}
+              className="p-2 -ml-2 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-white" />
+            </button>
 
-          <div className="flex-1 min-w-0">
-            <h2 className="text-white font-semibold truncate">{room.name}</h2>
-            <div className="flex items-center gap-2 text-xs text-white/50">
-              {isConnected ? (
+            <div className="flex-1 min-w-0">
+              <h2 className="text-white font-semibold truncate">{room.name}</h2>
+              <div className="flex items-center gap-2 text-xs text-white/50">
+                {isConnected ? (
+                  <>
+                    <Wifi className="w-3 h-3 text-emerald-400" />
+                    <span className="text-emerald-400">연결됨</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="w-3 h-3 text-yellow-400" />
+                    <span className="text-yellow-400">연결 끊김</span>
+                    <button
+                      onClick={() => {
+                        const token = authStorage.getToken();
+                        if (token) {
+                          chatSocket.forceReconnect(token);
+                        }
+                      }}
+                      className="ml-1 p-1 rounded hover:bg-white/10 transition-colors"
+                      title="재연결"
+                    >
+                      <RefreshCw className="w-3 h-3 text-yellow-400" />
+                    </button>
+                  </>
+                )}
+                {(room.participants?.length ?? 0) > 0 && (
+                  <>
+                    <span>•</span>
+                    <Users className="w-3 h-3" />
+                    <span>{room.participants.length}명</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                <MoreVertical className="w-5 h-5 text-white" />
+              </button>
+
+              {showMenu && (
                 <>
-                  <Wifi className="w-3 h-3 text-emerald-400" />
-                  <span className="text-emerald-400">연결됨</span>
-                </>
-              ) : (
-                <>
-                  <WifiOff className="w-3 h-3 text-yellow-400" />
-                  <span className="text-yellow-400">연결 끊김</span>
-                  <button
-                    onClick={() => {
-                      const token = authStorage.getToken();
-                      if (token) {
-                        chatSocket.forceReconnect(token);
-                      }
-                    }}
-                    className="ml-1 p-1 rounded hover:bg-white/10 transition-colors"
-                    title="재연결"
-                  >
-                    <RefreshCw className="w-3 h-3 text-yellow-400" />
-                  </button>
-                </>
-              )}
-              {(room.participants?.length ?? 0) > 0 && (
-                <>
-                  <span>•</span>
-                  <Users className="w-3 h-3" />
-                  <span>{room.participants.length}명</span>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                  <div className="absolute right-0 top-full mt-1 w-40 bg-gray-800 rounded-lg shadow-xl z-50 overflow-hidden">
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        if (confirm('채팅방을 나가시겠습니까?')) {
+                          navigate('/social?tab=chat');
+                        }
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-white/10 flex items-center gap-2"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      나가기
+                    </button>
+                  </div>
                 </>
               )}
             </div>
           </div>
+        </div>
 
-          <div className="relative">
+        {/* Messages */}
+        <div
+          ref={messagesContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto px-4 py-4"
+        >
+          {/* Load more indicator */}
+          {isFetchingNextPage && (
+            <div className="flex items-center justify-center py-3 mb-2">
+              <Loader2 className="w-5 h-5 text-white/50 animate-spin" />
+              <span className="ml-2 text-sm text-white/50">이전 메시지 불러오는 중...</span>
+            </div>
+          )}
+
+          {/* Load more button (when there are more messages) */}
+          {hasNextPage && !isFetchingNextPage && (
             <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+              onClick={() => fetchNextPage()}
+              className="w-full py-2 mb-3 text-sm text-white/50 hover:text-white/70 transition-colors"
             >
-              <MoreVertical className="w-5 h-5 text-white" />
+              ↑ 이전 메시지 더 보기
             </button>
+          )}
 
-            {showMenu && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-                <div className="absolute right-0 top-full mt-1 w-40 bg-gray-800 rounded-lg shadow-xl z-50 overflow-hidden">
-                  <button
-                    onClick={() => {
-                      setShowMenu(false);
-                      if (confirm('채팅방을 나가시겠습니까?')) {
-                        navigate('/chat');
-                      }
-                    }}
-                    className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-white/10 flex items-center gap-2"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    나가기
-                  </button>
-                </div>
-              </>
-            )}
+          {isLoadingMessages && (
+            <div className="flex items-center justify-center py-8">
+              <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            </div>
+          )}
+
+          {!isLoadingMessages && messages.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full text-white/40">
+              <p>대화를 시작해보세요!</p>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {messages.map((message, index) => {
+              const isCurrentUser = String(message.senderId) === String(currentUserId);
+              const showSender =
+                !isCurrentUser &&
+                (index === 0 || String(messages[index - 1]?.senderId) !== String(message.senderId));
+
+              return (
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  isCurrentUser={isCurrentUser}
+                  showSender={showSender}
+                />
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+
+        {/* Input */}
+        <div className="sticky bottom-0 bg-black/40 backdrop-blur-md px-4 py-3 border-t border-white/10">
+          <div className="flex items-center gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="메시지 입력..."
+              className={cn(
+                'flex-1 px-4 py-2.5 rounded-full',
+                'bg-white/10 text-white placeholder:text-white/40',
+                'border border-white/10 focus:border-emerald-500/50',
+                'outline-none transition-colors'
+              )}
+            />
+            <button
+              onClick={handleSendMessage}
+              disabled={!inputText.trim() || sendMessageMutation.isPending}
+              className={cn(
+                'p-2.5 rounded-full transition-colors',
+                inputText.trim()
+                  ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                  : 'bg-white/10 text-white/40'
+              )}
+            >
+              <Send className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </div>
-
-      {/* Messages */}
-      <div
-        ref={messagesContainerRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-4 py-4"
-      >
-        {/* Load more indicator */}
-        {isFetchingNextPage && (
-          <div className="flex items-center justify-center py-3 mb-2">
-            <Loader2 className="w-5 h-5 text-white/50 animate-spin" />
-            <span className="ml-2 text-sm text-white/50">이전 메시지 불러오는 중...</span>
-          </div>
-        )}
-
-        {/* Load more button (when there are more messages) */}
-        {hasNextPage && !isFetchingNextPage && (
-          <button
-            onClick={() => fetchNextPage()}
-            className="w-full py-2 mb-3 text-sm text-white/50 hover:text-white/70 transition-colors"
-          >
-            ↑ 이전 메시지 더 보기
-          </button>
-        )}
-
-        {isLoadingMessages && (
-          <div className="flex items-center justify-center py-8">
-            <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-          </div>
-        )}
-
-        {!isLoadingMessages && messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-white/40">
-            <p>대화를 시작해보세요!</p>
-          </div>
-        )}
-
-        <div className="space-y-3">
-          {messages.map((message, index) => {
-            const isCurrentUser = String(message.senderId) === String(currentUserId);
-            const showSender =
-              !isCurrentUser &&
-              (index === 0 || String(messages[index - 1]?.senderId) !== String(message.senderId));
-
-            return (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                isCurrentUser={isCurrentUser}
-                showSender={showSender}
-              />
-            );
-          })}
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
-      {/* Input */}
-      <div className="sticky bottom-0 bg-black/40 backdrop-blur-md px-4 py-3 border-t border-white/10">
-        <div className="flex items-center gap-2">
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="메시지 입력..."
-            className={cn(
-              'flex-1 px-4 py-2.5 rounded-full',
-              'bg-white/10 text-white placeholder:text-white/40',
-              'border border-white/10 focus:border-emerald-500/50',
-              'outline-none transition-colors'
-            )}
-          />
-          <button
-            onClick={handleSendMessage}
-            disabled={!inputText.trim() || sendMessageMutation.isPending}
-            className={cn(
-              'p-2.5 rounded-full transition-colors',
-              inputText.trim()
-                ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                : 'bg-white/10 text-white/40'
-            )}
-          >
-            <Send className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-    </div>
+    </AppLayout>
   );
 };
 
