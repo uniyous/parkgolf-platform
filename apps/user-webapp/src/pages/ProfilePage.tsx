@@ -67,6 +67,25 @@ export function ProfilePage() {
     });
   };
 
+  const formatPhone = (phone: string | null | undefined) => {
+    if (!phone) return '-';
+    // 숫자만 추출
+    const digits = phone.replace(/\D/g, '');
+    // 010-1234-5678 형식으로 변환
+    if (digits.length === 11) {
+      return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+    }
+    // 02-1234-5678 형식 (서울)
+    if (digits.length === 10 && digits.startsWith('02')) {
+      return `${digits.slice(0, 2)}-${digits.slice(2, 6)}-${digits.slice(6)}`;
+    }
+    // 031-123-4567 형식 (지역번호)
+    if (digits.length === 10) {
+      return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+    }
+    return phone;
+  };
+
   // Get avatar initial from user name
   const avatarInitial = (user?.name || '사용자').charAt(0).toUpperCase();
 
@@ -122,7 +141,7 @@ export function ProfilePage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-[var(--color-text-tertiary)]">전화번호</p>
-                  <p className="font-medium text-white">{user?.phone || '-'}</p>
+                  <p className="font-medium text-white">{formatPhone(user?.phone)}</p>
                 </div>
               </div>
 
