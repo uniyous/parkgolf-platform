@@ -51,8 +51,11 @@ export const useAuth = () => {
     }
   };
 
+  // profile API 응답이 있으면 우선 사용 (phone 등 추가 필드 포함)
+  const mergedUser = profile ? { ...user, ...profile } : user;
+
   return {
-    user: user || profile,
+    user: mergedUser,
     isAuthenticated,
     isLoggingIn: loginMutation.isPending,
     isRegistering: registerMutation.isPending,
