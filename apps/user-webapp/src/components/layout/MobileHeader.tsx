@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 
 interface MobileHeaderProps {
   title?: string;
@@ -8,6 +9,8 @@ interface MobileHeaderProps {
   showLogo?: boolean;
   rightContent?: React.ReactNode;
   transparent?: boolean;
+  /** Hide user info even on main pages */
+  hideUserInfo?: boolean;
 }
 
 /**
@@ -19,13 +22,19 @@ export function MobileHeader({
   showLogo = false,
   rightContent,
   transparent = false,
+  hideUserInfo = false,
 }: MobileHeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
 
   // Auto detect if back button should show (main tab paths don't need back button)
   const mainPaths = ['/', '/bookings', '/social', '/profile'];
-  const shouldShowBack = showBackButton ?? !mainPaths.includes(location.pathname);
+  const isMainPage = mainPaths.includes(location.pathname);
+  const shouldShowBack = showBackButton ?? !isMainPage;
+
+  // Show user info on main pages
+  const shouldShowUserInfo = isMainPage && !hideUserInfo && user;
 
   return (
     <header
@@ -65,7 +74,24 @@ export function MobileHeader({
         </div>
 
         {/* Right Section */}
-        {rightContent && <div>{rightContent}</div>}
+        <div className="flex items-center gap-2">
+          {rightContent && <div>{rightContent}</div>}
+
+          {/* User Info - shown on main pages */}
+          {shouldShowUserInfo && (
+            <button
+              onClick={() => navigate('/profile')}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-full hover:bg-[var(--color-surface)] transition-colors"
+            >
+              <div className="w-7 h-7 rounded-full bg-[var(--color-primary)] flex items-center justify-center flex-shrink-0">
+                <User className="w-3.5 h-3.5 text-white" />
+              </div>
+              <span className="text-sm font-medium text-white max-w-[80px] truncate">
+                {user.name || '사용자'}
+              </span>
+            </button>
+          )}
+        </div>
       </div>
     </header>
   );
