@@ -1,17 +1,17 @@
 import Foundation
 
-// MARK: - Game Service
+// MARK: - Round Service
 
-actor GameService {
+actor RoundService {
     private let apiClient: APIClient
 
     init(apiClient: APIClient = .shared) {
         self.apiClient = apiClient
     }
 
-    // MARK: - Search Games
+    // MARK: - Search Rounds
 
-    func searchGames(params: GameSearchParams) async throws -> GameSearchResponse {
+    func searchRounds(params: RoundSearchParams) async throws -> RoundSearchResponse {
         var queryParameters: [String: String] = [
             "page": String(params.page),
             "limit": String(params.limit),
@@ -51,56 +51,56 @@ actor GameService {
             queryParameters: queryParameters
         )
 
-        return try await apiClient.requestDirect(endpoint, responseType: GameSearchResponse.self)
+        return try await apiClient.requestDirect(endpoint, responseType: RoundSearchResponse.self)
     }
 
-    // MARK: - Get Game Detail
+    // MARK: - Get Round Detail
 
-    func getGame(id: Int) async throws -> Game {
+    func getRound(id: Int) async throws -> Round {
         let endpoint = Endpoint(
             path: "/api/user/games/\(id)",
             method: .get
         )
 
-        return try await apiClient.request(endpoint, responseType: Game.self)
+        return try await apiClient.request(endpoint, responseType: Round.self)
     }
 
     // MARK: - Get Time Slots
 
-    func getTimeSlots(gameId: Int, date: Date) async throws -> [GameTimeSlot] {
+    func getTimeSlots(roundId: Int, date: Date) async throws -> [TimeSlot] {
         let endpoint = Endpoint(
-            path: "/api/user/games/\(gameId)/time-slots",
+            path: "/api/user/games/\(roundId)/time-slots",
             method: .get,
             queryParameters: ["date": DateHelper.toISODateString(date)]
         )
 
-        return try await apiClient.request(endpoint, responseType: [GameTimeSlot].self)
+        return try await apiClient.request(endpoint, responseType: [TimeSlot].self)
     }
 
     // MARK: - Get Available Time Slots
 
-    func getAvailableTimeSlots(gameId: Int, date: Date) async throws -> [GameTimeSlot] {
+    func getAvailableTimeSlots(roundId: Int, date: Date) async throws -> [TimeSlot] {
         let endpoint = Endpoint(
-            path: "/api/user/games/\(gameId)/available-time-slots",
+            path: "/api/user/games/\(roundId)/available-time-slots",
             method: .get,
             queryParameters: ["date": DateHelper.toISODateString(date)]
         )
 
-        return try await apiClient.request(endpoint, responseType: [GameTimeSlot].self)
+        return try await apiClient.request(endpoint, responseType: [TimeSlot].self)
     }
 }
 
-// MARK: - Game Service Error
+// MARK: - Round Service Error
 
-enum GameServiceError: Error, LocalizedError {
+enum RoundServiceError: Error, LocalizedError {
     case searchFailed(String)
-    case gameNotFound
+    case roundNotFound
     case timeSlotsUnavailable
 
     var errorDescription: String? {
         switch self {
         case .searchFailed(let message): return message
-        case .gameNotFound: return "게임을 찾을 수 없습니다."
+        case .roundNotFound: return "라운드를 찾을 수 없습니다."
         case .timeSlotsUnavailable: return "예약 가능한 시간대가 없습니다."
         }
     }

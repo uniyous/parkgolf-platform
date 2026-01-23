@@ -3,20 +3,20 @@ import SwiftUI
 // MARK: - Booking Form View
 
 struct BookingFormView: View {
-    let game: Game
-    let timeSlot: GameTimeSlot
+    let round: Round
+    let timeSlot: TimeSlot
     let selectedDate: Date
 
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel: BookingFormViewModel
 
-    init(game: Game, timeSlot: GameTimeSlot, selectedDate: Date) {
-        self.game = game
+    init(round: Round, timeSlot: TimeSlot, selectedDate: Date) {
+        self.round = round
         self.timeSlot = timeSlot
         self.selectedDate = selectedDate
         self._viewModel = StateObject(wrappedValue: BookingFormViewModel(
-            game: game,
+            round: round,
             timeSlot: timeSlot,
             selectedDate: selectedDate
         ))
@@ -139,13 +139,13 @@ struct BookingFormView: View {
                     HStack {
                         Image(systemName: "building.2")
                             .frame(width: 20)
-                        Text(game.clubName)
+                        Text(round.clubName)
                     }
 
                     HStack {
                         Image(systemName: "flag")
                             .frame(width: 20)
-                        Text(game.name)
+                        Text(round.name)
                     }
 
                     HStack {
@@ -232,7 +232,7 @@ struct BookingFormView: View {
     private var playerCountLabel: String {
         if viewModel.playerCount == 1 {
             return "개인 라운드"
-        } else if viewModel.playerCount == game.maxPlayers {
+        } else if viewModel.playerCount == round.maxPlayers {
             return "풀 플라이트"
         }
         return "명"
@@ -394,8 +394,8 @@ struct TermsCheckbox: View {
 class BookingFormViewModel: ObservableObject {
     // MARK: - Properties
 
-    let game: Game
-    let timeSlot: GameTimeSlot
+    let round: Round
+    let timeSlot: TimeSlot
     let selectedDate: Date
 
     @Published var playerCount: Int = 1
@@ -414,8 +414,8 @@ class BookingFormViewModel: ObservableObject {
 
     // MARK: - Init
 
-    init(game: Game, timeSlot: GameTimeSlot, selectedDate: Date) {
-        self.game = game
+    init(round: Round, timeSlot: TimeSlot, selectedDate: Date) {
+        self.round = round
         self.timeSlot = timeSlot
         self.selectedDate = selectedDate
     }
@@ -473,7 +473,7 @@ class BookingFormViewModel: ObservableObject {
         Task {
             do {
                 let request = CreateBookingRequest(
-                    gameId: game.id,
+                    gameId: round.id,
                     gameTimeSlotId: timeSlot.id,
                     bookingDate: DateHelper.toISODateString(selectedDate),
                     playerCount: playerCount,
@@ -522,17 +522,17 @@ class BookingFormViewModel: ObservableObject {
 
 #Preview {
     BookingFormView(
-        game: Game(
+        round: Round(
             id: 1,
             name: "주말 특가 라운드",
             code: "WEEKEND01",
             description: nil,
             clubId: 1,
             clubName: "서울파크골프장",
-            club: GameClub(id: 1, name: "서울파크골프장", location: nil, address: "서울시 강남구", phone: nil),
+            club: RoundClub(id: 1, name: "서울파크골프장", location: nil, address: "서울시 강남구", phone: nil),
             frontNineCourseId: 1,
             backNineCourseId: nil,
-            frontNineCourse: GameCourse(id: 1, name: "A코스", code: nil, holeCount: 9),
+            frontNineCourse: RoundCourse(id: 1, name: "A코스", code: nil, holeCount: 9),
             backNineCourse: nil,
             totalHoles: 9,
             estimatedDuration: 120,
@@ -546,7 +546,7 @@ class BookingFormViewModel: ObservableObject {
             isActive: true,
             timeSlots: nil
         ),
-        timeSlot: GameTimeSlot(
+        timeSlot: TimeSlot(
             id: 1,
             gameId: 1,
             date: nil,

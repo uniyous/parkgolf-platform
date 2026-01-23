@@ -1,10 +1,10 @@
 import SwiftUI
 
-// MARK: - Game Search View
+// MARK: - Round Booking View
 
-struct GameSearchView: View {
+struct RoundBookingView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var viewModel = GameSearchViewModel()
+    @StateObject private var viewModel = RoundBookingViewModel()
 
     /// 타이틀 헤더 표시 여부 (탭에서 직접 접근 시 true, NavigationLink로 접근 시 false)
     var showTitle: Bool = true
@@ -14,12 +14,12 @@ struct GameSearchView: View {
             if showTitle {
                 // 탭에서 직접 접근 시: NavigationStack 포함
                 NavigationStack {
-                    gameSearchContent
+                    roundBookingContent
                         .navigationBarHidden(true)
                 }
             } else {
                 // NavigationLink로 접근 시: 부모 NavigationStack 사용
-                gameSearchContent
+                roundBookingContent
                     .navigationBarBackButtonHidden(true)
                     .toolbar {
                         ToolbarItem(placement: .topBarLeading) {
@@ -42,7 +42,7 @@ struct GameSearchView: View {
         }
     }
 
-    private var gameSearchContent: some View {
+    private var roundBookingContent: some View {
         ZStack {
             // Background
             LinearGradient.parkBackground
@@ -64,25 +64,25 @@ struct GameSearchView: View {
                 timeOfDayFilter
 
                 // Results
-                if viewModel.isLoading && viewModel.games.isEmpty {
+                if viewModel.isLoading && viewModel.rounds.isEmpty {
                     ParkLoadingView(message: "라운드 검색 중...")
-                } else if let error = viewModel.errorMessage, viewModel.games.isEmpty {
+                } else if let error = viewModel.errorMessage, viewModel.rounds.isEmpty {
                     ParkErrorView(message: error) {
                         viewModel.search()
                     }
-                } else if viewModel.games.isEmpty {
+                } else if viewModel.rounds.isEmpty {
                     ParkEmptyStateView(
                         icon: "magnifyingglass",
                         title: "검색 결과가 없습니다",
                         description: "다른 날짜나 검색어로 시도해보세요"
                     )
                 } else {
-                    gameList
+                    roundList
                 }
             }
 
             // 재검색 시 로딩 오버레이
-            if viewModel.isLoading && !viewModel.games.isEmpty {
+            if viewModel.isLoading && !viewModel.rounds.isEmpty {
                 Color.black.opacity(0.3)
                     .ignoresSafeArea()
 
@@ -92,13 +92,13 @@ struct GameSearchView: View {
             }
         }
         .sheet(isPresented: $viewModel.showFilterSheet) {
-            FilterSheet(viewModel: viewModel)
+            RoundFilterSheet(viewModel: viewModel)
         }
         .fullScreenCover(isPresented: $viewModel.showBookingForm) {
-            if let game = viewModel.selectedGame,
+            if let round = viewModel.selectedRound,
                let timeSlot = viewModel.selectedTimeSlot {
                 BookingFormView(
-                    game: game,
+                    round: round,
                     timeSlot: timeSlot,
                     selectedDate: viewModel.selectedDate
                 )
@@ -134,7 +134,7 @@ struct GameSearchView: View {
             ) {
                 viewModel.search()
             }
-            .accessibilityIdentifier("gameSearchField")
+            .accessibilityIdentifier("roundSearchField")
             .onChange(of: viewModel.searchQuery) { _, _ in
                 viewModel.searchDebounced()
             }
@@ -195,7 +195,7 @@ struct GameSearchView: View {
 
     private var timeOfDayFilter: some View {
         HStack(spacing: ParkSpacing.xs) {
-            ForEach(GameSearchParams.TimeOfDay.allCases, id: \.self) { timeOfDay in
+            ForEach(RoundSearchParams.TimeOfDay.allCases, id: \.self) { timeOfDay in
                 FilterChip(
                     title: timeOfDay.rawValue,
                     isSelected: viewModel.selectedTimeOfDay == timeOfDay
@@ -217,18 +217,18 @@ struct GameSearchView: View {
         .padding(.bottom, ParkSpacing.sm)
     }
 
-    // MARK: - Game List
+    // MARK: - Round List
 
-    private var gameList: some View {
+    private var roundList: some View {
         ScrollView {
             LazyVStack(spacing: ParkSpacing.md) {
-                ForEach(viewModel.games) { game in
-                    GameCardView(game: game, selectedDate: viewModel.selectedDate) { timeSlot in
-                        viewModel.selectTimeSlot(game: game, timeSlot: timeSlot)
+                ForEach(viewModel.rounds) { round in
+                    RoundCardView(round: round, selectedDate: viewModel.selectedDate) { timeSlot in
+                        viewModel.selectTimeSlot(round: round, timeSlot: timeSlot)
                     }
-                    .accessibilityIdentifier("gameCard_\(game.id)")
+                    .accessibilityIdentifier("roundCard_\(round.id)")
                     .onAppear {
-                        if game.id == viewModel.games.last?.id {
+                        if round.id == viewModel.rounds.last?.id {
                             viewModel.loadMore()
                         }
                     }
@@ -336,51 +336,51 @@ struct FilterChip: View {
     }
 }
 
-// MARK: - Game Card View
+// MARK: - Round Card View
 
-struct GameCardView: View {
-    let game: Game
+struct RoundCardView: View {
+    let round: Round
     let selectedDate: Date
-    let onSelectTimeSlot: (GameTimeSlot) -> Void
+    let onSelectTimeSlot: (TimeSlot) -> Void
 
     @State private var showAllSlots = false
 
-    private var displayedSlots: [GameTimeSlot] {
-        guard let slots = game.timeSlots else { return [] }
+    private var displayedSlots: [TimeSlot] {
+        guard let slots = round.timeSlots else { return [] }
         return showAllSlots ? slots : Array(slots.prefix(6))
     }
 
     private var hasMoreSlots: Bool {
-        (game.timeSlots?.count ?? 0) > 6
+        (round.timeSlots?.count ?? 0) > 6
     }
 
     var body: some View {
         GlassCard(padding: 0) {
             VStack(alignment: .leading, spacing: 0) {
-                // Game Info
+                // Round Info
                 VStack(alignment: .leading, spacing: ParkSpacing.xs) {
                     HStack {
-                        Text(game.name)
+                        Text(round.name)
                             .font(.parkHeadlineMedium)
                             .foregroundStyle(.white)
 
                         Spacer()
 
-                        if let range = game.priceRange {
+                        if let range = round.priceRange {
                             PriceRangeDisplay(minPrice: range.min, maxPrice: range.max, size: .small)
                         }
                     }
 
                     HStack(spacing: ParkSpacing.md) {
-                        Label(game.clubName, systemImage: "building.2")
-                        Label(game.courseNames, systemImage: "flag")
+                        Label(round.clubName, systemImage: "building.2")
+                        Label(round.courseNames, systemImage: "flag")
                     }
                     .font(.parkBodySmall)
                     .foregroundStyle(.white.opacity(0.7))
 
                     HStack(spacing: ParkSpacing.md) {
-                        Label(game.durationText, systemImage: "clock")
-                        Label("최대 \(game.maxPlayers)명", systemImage: "person.2")
+                        Label(round.durationText, systemImage: "clock")
+                        Label("최대 \(round.maxPlayers)명", systemImage: "person.2")
                     }
                     .font(.parkCaption)
                     .foregroundStyle(.white.opacity(0.6))
@@ -411,7 +411,7 @@ struct GameCardView: View {
                                     showAllSlots = true
                                 }
                             } label: {
-                                Text("+ \((game.timeSlots?.count ?? 0) - 6)개 더보기")
+                                Text("+ \((round.timeSlots?.count ?? 0) - 6)개 더보기")
                                     .font(.parkLabelSmall)
                                     .foregroundStyle(.white)
                             }
@@ -427,7 +427,7 @@ struct GameCardView: View {
 // MARK: - Time Slot Chip
 
 struct TimeSlotChip: View {
-    let slot: GameTimeSlot
+    let slot: TimeSlot
     let action: () -> Void
 
     private var priceText: String {
@@ -488,10 +488,10 @@ struct TimeSlotChip: View {
     }
 }
 
-// MARK: - Filter Sheet
+// MARK: - Round Filter Sheet
 
-struct FilterSheet: View {
-    @ObservedObject var viewModel: GameSearchViewModel
+struct RoundFilterSheet: View {
+    @ObservedObject var viewModel: RoundBookingViewModel
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -555,7 +555,7 @@ struct FilterSheet: View {
                                 .foregroundStyle(.white)
 
                             VStack(spacing: ParkSpacing.xs) {
-                                ForEach(GameSearchParams.SortOption.allCases, id: \.self) { option in
+                                ForEach(RoundSearchParams.SortOption.allCases, id: \.self) { option in
                                     HStack {
                                         Image(systemName: viewModel.sortBy == option ? "checkmark.circle.fill" : "circle")
                                             .foregroundStyle(viewModel.sortBy == option ? Color.parkPrimary : .white.opacity(0.4))
@@ -574,7 +574,7 @@ struct FilterSheet: View {
                             }
 
                             HStack(spacing: ParkSpacing.sm) {
-                                ForEach(GameSearchParams.SortOrder.allCases, id: \.self) { order in
+                                ForEach(RoundSearchParams.SortOrder.allCases, id: \.self) { order in
                                     FilterChip(
                                         title: order.rawValue,
                                         isSelected: viewModel.sortOrder == order
@@ -638,5 +638,5 @@ struct FilterSheet: View {
 // MARK: - Preview
 
 #Preview {
-    GameSearchView()
+    RoundBookingView()
 }

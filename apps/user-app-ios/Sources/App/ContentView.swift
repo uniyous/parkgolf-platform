@@ -55,7 +55,7 @@ struct MainTabView: View {
                 }
                 .tag(Tab.home)
 
-            GameSearchView()
+            RoundBookingView()
                 .tabItem {
                     Label("예약", systemImage: "magnifyingglass")
                 }

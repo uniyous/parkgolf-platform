@@ -1,21 +1,21 @@
 import Foundation
 import SwiftUI
 
-// MARK: - Game Search ViewModel
+// MARK: - Round Booking ViewModel
 
 @MainActor
-class GameSearchViewModel: ObservableObject {
+class RoundBookingViewModel: ObservableObject {
     // MARK: - Published Properties
 
-    @Published var games: [Game] = []
+    @Published var rounds: [Round] = []
     @Published var searchQuery: String = ""
     @Published var selectedDate: Date = DateHelper.tomorrow()
-    @Published var selectedTimeOfDay: GameSearchParams.TimeOfDay = .all
+    @Published var selectedTimeOfDay: RoundSearchParams.TimeOfDay = .all
     @Published var minPrice: String = ""
     @Published var maxPrice: String = ""
     @Published var selectedPlayerCount: Int? = nil
-    @Published var sortBy: GameSearchParams.SortOption = .price
-    @Published var sortOrder: GameSearchParams.SortOrder = .asc
+    @Published var sortBy: RoundSearchParams.SortOption = .price
+    @Published var sortOrder: RoundSearchParams.SortOrder = .asc
 
     @Published var isLoading = false
     @Published var isLoadingMore = false
@@ -27,13 +27,13 @@ class GameSearchViewModel: ObservableObject {
     @Published var totalCount = 0
 
     // Selected for booking
-    @Published var selectedGame: Game?
-    @Published var selectedTimeSlot: GameTimeSlot?
+    @Published var selectedRound: Round?
+    @Published var selectedTimeSlot: TimeSlot?
     @Published var showBookingForm = false
 
     // MARK: - Private Properties
 
-    private let gameService = GameService()
+    private let roundService = RoundService()
     private var searchTask: Task<Void, Never>?
 
     // MARK: - Computed Properties
@@ -57,7 +57,7 @@ class GameSearchViewModel: ObservableObject {
 
     func search() {
         #if DEBUG
-        print("🔍 [GameSearchViewModel] search() called - timeOfDay: \(selectedTimeOfDay.rawValue)")
+        print("🔍 [RoundBookingViewModel] search() called - timeOfDay: \(selectedTimeOfDay.rawValue)")
         #endif
         searchTask?.cancel()
 
@@ -97,7 +97,7 @@ class GameSearchViewModel: ObservableObject {
 
         errorMessage = nil
 
-        let params = GameSearchParams(
+        let params = RoundSearchParams(
             query: searchQuery.isEmpty ? nil : searchQuery,
             date: selectedDate,
             timeOfDay: selectedTimeOfDay,
@@ -111,16 +111,16 @@ class GameSearchViewModel: ObservableObject {
         )
 
         #if DEBUG
-        print("📡 [GameSearchViewModel] API 호출 - timeOfDay: \(params.timeOfDay?.rawValue ?? "nil"), timeRange: \(params.timeOfDay?.timeRange ?? ("nil", "nil"))")
+        print("📡 [RoundBookingViewModel] API 호출 - timeOfDay: \(params.timeOfDay?.rawValue ?? "nil"), timeRange: \(params.timeOfDay?.timeRange ?? ("nil", "nil"))")
         #endif
 
         do {
-            let response = try await gameService.searchGames(params: params)
+            let response = try await roundService.searchRounds(params: params)
 
             if resetPage {
-                games = response.data
+                rounds = response.data
             } else {
-                games.append(contentsOf: response.data)
+                rounds.append(contentsOf: response.data)
             }
 
             totalPages = response.totalPages
@@ -148,9 +148,9 @@ class GameSearchViewModel: ObservableObject {
 
     // MARK: - Time of Day Selection
 
-    func selectTimeOfDay(_ timeOfDay: GameSearchParams.TimeOfDay) {
+    func selectTimeOfDay(_ timeOfDay: RoundSearchParams.TimeOfDay) {
         #if DEBUG
-        print("⏰ [GameSearchViewModel] selectTimeOfDay called: \(timeOfDay.rawValue)")
+        print("⏰ [RoundBookingViewModel] selectTimeOfDay called: \(timeOfDay.rawValue)")
         #endif
         selectedTimeOfDay = timeOfDay
         search()
@@ -174,8 +174,8 @@ class GameSearchViewModel: ObservableObject {
 
     // MARK: - Booking
 
-    func selectTimeSlot(game: Game, timeSlot: GameTimeSlot) {
-        selectedGame = game
+    func selectTimeSlot(round: Round, timeSlot: TimeSlot) {
+        selectedRound = round
         selectedTimeSlot = timeSlot
         showBookingForm = true
     }

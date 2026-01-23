@@ -1,19 +1,19 @@
 import Foundation
 
-// MARK: - Game Model
+// MARK: - Round Model
 
-struct Game: Identifiable, Codable, Sendable {
+struct Round: Identifiable, Codable, Sendable {
     let id: Int
     let name: String
     let code: String?
     let description: String?
     let clubId: Int
     let clubName: String
-    let club: GameClub?
+    let club: RoundClub?
     let frontNineCourseId: Int?
     let backNineCourseId: Int?
-    let frontNineCourse: GameCourse?
-    let backNineCourse: GameCourse?
+    let frontNineCourse: RoundCourse?
+    let backNineCourse: RoundCourse?
     let totalHoles: Int?
     let estimatedDuration: Int
     let breakDuration: Int?
@@ -24,7 +24,7 @@ struct Game: Identifiable, Codable, Sendable {
     let holidayPrice: Int?
     let status: String?
     let isActive: Bool
-    let timeSlots: [GameTimeSlot]?
+    let timeSlots: [TimeSlot]?
 
     var durationMinutes: Int { estimatedDuration }
 
@@ -58,9 +58,9 @@ struct Game: Identifiable, Codable, Sendable {
     }
 }
 
-// MARK: - Game Club
+// MARK: - RoundClub
 
-struct GameClub: Codable, Sendable {
+struct RoundClub: Codable, Sendable {
     let id: Int
     let name: String
     let location: String?
@@ -68,20 +68,20 @@ struct GameClub: Codable, Sendable {
     let phone: String?
 }
 
-// MARK: - Game Course
+// MARK: - RoundCourse
 
-struct GameCourse: Identifiable, Codable, Sendable {
+struct RoundCourse: Identifiable, Codable, Sendable {
     let id: Int
     let name: String
     let code: String?
     let holeCount: Int?
 }
 
-// MARK: - Game Time Slot
+// MARK: - Time Slot
 
-struct GameTimeSlot: Identifiable, Codable, Sendable {
+struct TimeSlot: Identifiable, Codable, Sendable {
     let id: Int
-    let gameId: Int
+    let gameId: Int  // API 호환성을 위해 유지
     let date: String?
     let startTime: String
     let endTime: String
@@ -125,9 +125,9 @@ enum AvailabilityStatus {
     }
 }
 
-// MARK: - Game Search Parameters
+// MARK: - Round Search Parameters
 
-struct GameSearchParams: Sendable {
+struct RoundSearchParams: Sendable {
     var query: String?
     var date: Date?
     var timeOfDay: TimeOfDay?
@@ -189,11 +189,11 @@ struct GameSearchParams: Sendable {
     }
 }
 
-// MARK: - Game Search Response
+// MARK: - Round Search Response
 
-struct GameSearchResponse: Codable, Sendable {
+struct RoundSearchResponse: Codable, Sendable {
     let success: Bool
-    let data: [Game]
+    let data: [Round]
     let total: Int
     let page: Int
     let limit: Int

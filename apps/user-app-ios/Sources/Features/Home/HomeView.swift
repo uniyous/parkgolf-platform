@@ -168,7 +168,7 @@ struct HomeView: View {
 
     private var searchCTA: some View {
         NavigationLink {
-            GameSearchView(showTitle: false)
+            RoundBookingView(showTitle: false)
                 .navigationTitle("라운드 예약")
                 .navigationBarTitleDisplayMode(.inline)
         } label: {
