@@ -1,7 +1,7 @@
 /**
  * 통합 API 클라이언트
  *
- * admin-dashboard, user-webapp에서 동일한 구조를 사용합니다.
+ * admin-dashboard, user-app-web에서 동일한 구조를 사용합니다.
  * - Fetch API 기반
  * - 자동 토큰 갱신
  * - 표준 에러 처리

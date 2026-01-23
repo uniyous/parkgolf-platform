@@ -35,7 +35,7 @@ async function bootstrap() {
     app.enableCors({
       origin: [
         'http://localhost:3001',  // admin-dashboard
-        'http://localhost:3002',  // user-webapp
+        'http://localhost:3002',  // user-app-web
         /^https:\/\/.*\.run\.app$/,  // Cloud Run
         'https://parkgolf-admin.web.app',
         'https://parkgolf-admin-dev.web.app',

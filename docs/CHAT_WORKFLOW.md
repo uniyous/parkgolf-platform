@@ -19,7 +19,7 @@
 ```mermaid
 flowchart TB
     subgraph Clients["클라이언트"]
-        WEB["user-webapp<br/>(React + Vite)"]
+        WEB["user-app-web<br/>(React + Vite)"]
         IOS["user-app-ios<br/>(SwiftUI)"]
     end
 
@@ -60,7 +60,7 @@ flowchart TB
 
 | 컴포넌트 | 기술 스택 | 역할 |
 |---------|----------|------|
-| **user-webapp** | React, Vite, Socket.IO Client | 웹 브라우저용 채팅 UI |
+| **user-app-web** | React, Vite, Socket.IO Client | 웹 브라우저용 채팅 UI |
 | **user-app-ios** | SwiftUI, SocketIO | iOS 앱용 채팅 UI |
 
 ### 백엔드
@@ -505,7 +505,7 @@ erDiagram
 
 ## 클라이언트 구현 요약
 
-### user-webapp (React)
+### user-app-web (React)
 
 ```typescript
 // 연결

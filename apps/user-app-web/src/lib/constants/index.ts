@@ -1,5 +1,5 @@
 /**
- * user-webapp 공통 상수 정의
+ * user-app-web 공통 상수 정의
  */
 
 import type { BookingStatus } from '@/lib/api/bookingApi';

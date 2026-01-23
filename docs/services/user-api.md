@@ -2,7 +2,7 @@
 
 ## Overview
 
-user-api는 사용자 웹앱(user-webapp)을 위한 **Backend for Frontend (BFF)** 서비스입니다. 마이크로서비스들과 NATS를 통해 통신하며, 사용자에게 통합된 REST API를 제공합니다.
+user-api는 사용자 웹앱(user-app-web)을 위한 **Backend for Frontend (BFF)** 서비스입니다. 마이크로서비스들과 NATS를 통해 통신하며, 사용자에게 통합된 REST API를 제공합니다.
 
 ### Key Features (2025-12-29 Updated)
 - **BFF Pattern**: 사용자 웹앱 전용 API Gateway
@@ -16,7 +16,7 @@ user-api는 사용자 웹앱(user-webapp)을 위한 **Backend for Frontend (BFF)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                           user-webapp                                   │
+│                           user-app-web                                   │
 │                          (React + Vite)                                 │
 └──────────────────────────────────┬─────────────────────────────────────┘
                                    │ HTTP (REST API)

@@ -1,7 +1,7 @@
 /**
  * 공통 API 타입 정의
  *
- * admin-dashboard, user-webapp에서 동일한 구조를 사용합니다.
+ * admin-dashboard, user-app-web에서 동일한 구조를 사용합니다.
  */
 
 // ===== 기본 타입 =====

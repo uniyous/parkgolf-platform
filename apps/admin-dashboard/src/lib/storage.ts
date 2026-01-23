@@ -1,7 +1,7 @@
 /**
  * localStorage 추상화 레이어
  *
- * admin-dashboard, user-webapp에서 동일한 구조를 사용합니다.
+ * admin-dashboard, user-app-web에서 동일한 구조를 사용합니다.
  * - 타입 안전한 스토리지 접근
  * - 테스트 용이성 향상
  * - 중앙 집중식 스토리지 관리

@@ -5,7 +5,7 @@
 ```
 apps/
 ├── admin-dashboard/    # 관리자 웹 (React + Vite + Tailwind)
-├── user-webapp/        # 사용자 웹 (React + Vite + Tailwind)
+├── user-app-web/        # 사용자 웹 (React + Vite + Tailwind)
 ├── user-app-ios/       # iOS 앱 (SwiftUI + Tuist)
 services/
 ├── admin-api/          # BFF (NestJS) - REST → NATS
@@ -147,7 +147,7 @@ export const useClubsQuery = () => useQuery({
 
 - Tailwind CSS + `class-variance-authority` (cva)
 - `rounded-lg` 통일, `cn()` 유틸리티로 클래스 병합
-- admin: blue-600 (primary), user-webapp: green-600 (primary)
+- admin: blue-600 (primary), user-app-web: green-600 (primary)
 
 ---
 

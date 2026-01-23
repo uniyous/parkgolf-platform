@@ -158,7 +158,7 @@ module "networking" {
 | 앱 | 타입 | API URL | 비용 |
 |----|------|---------|------|
 | admin-dashboard | 정적 (CDN) | https://admin-api-dev-iihuzmuufa-du.a.run.app/api | $0 |
-| user-webapp | 정적 (CDN) | https://user-api-dev-iihuzmuufa-du.a.run.app | $0 |
+| user-app-web | 정적 (CDN) | https://user-api-dev-iihuzmuufa-du.a.run.app | $0 |
 
 **Firebase Hosting 특성:**
 - CPU/Memory 설정 없음 (정적 파일 호스팅)
@@ -227,7 +227,7 @@ module "networking" {
 | 앱 | 타입 | 저장 용량 | 전송량 | 비용 |
 |----|------|----------|--------|------|
 | admin-webapp | 정적 (CDN) | 무료 티어 | 사용량 기반 | ~$0 |
-| user-webapp | 정적 (CDN) | 무료 티어 | 사용량 기반 | ~$0 |
+| user-app-web | 정적 (CDN) | 무료 티어 | 사용량 기반 | ~$0 |
 
 ---
 

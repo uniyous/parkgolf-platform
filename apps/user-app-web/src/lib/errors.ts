@@ -1,7 +1,7 @@
 /**
  * 통합 에러 처리 유틸리티
  *
- * admin-dashboard, user-webapp에서 동일한 구조를 사용합니다.
+ * admin-dashboard, user-app-web에서 동일한 구조를 사용합니다.
  * - ApiError: API 요청 실패 시 발생하는 에러
  * - ValidationError: 클라이언트 유효성 검증 실패
  * - 에러 타입 가드 및 변환 유틸리티
