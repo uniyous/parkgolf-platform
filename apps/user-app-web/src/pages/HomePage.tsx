@@ -43,8 +43,31 @@ export function HomePage() {
     (b) => b.status === 'CONFIRMED' && new Date(b.bookingDate) >= new Date()
   );
 
-  // Check if there are notifications
-  const hasNotifications = friendRequests.length > 0 || totalUnreadCount > 0;
+  // Check notification counts
+  const hasFriendRequests = friendRequests.length > 0;
+  const hasUnreadMessages = totalUnreadCount > 0;
+  const notificationCount = (hasFriendRequests ? 1 : 0) + (hasUnreadMessages ? 1 : 0);
+
+  // Search CTA Component (재사용을 위해 분리)
+  const SearchCTA = ({ className = '' }: { className?: string }) => (
+    <button onClick={() => navigate('/search')} className={cn('text-left', className)}>
+      <GlassCard
+        hoverable
+        className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] h-full"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+            <Search className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-white">라운드 검색하기</h3>
+            <p className="text-sm text-white/70">주변 파크골프장을 찾아보세요</p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-white/70 flex-shrink-0" />
+        </div>
+      </GlassCard>
+    </button>
+  );
 
   return (
     <AppLayout showLogo>
@@ -59,79 +82,101 @@ export function HomePage() {
           </p>
         </div>
 
-        {/* Notifications Section (iOS 스타일) */}
-        {hasNotifications && (
-          <div className="grid grid-cols-2 gap-3">
-            {/* Friend Requests Card */}
-            {friendRequests.length > 0 && (
-              <button
-                onClick={() => navigate('/social?tab=friends')}
-                className="text-left"
-              >
-                <GlassCard hoverable className="h-full">
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <UserPlus className="w-5 h-5 text-[var(--color-warning)]" />
-                      <span className="px-2 py-0.5 text-xs font-medium bg-[var(--color-warning)] text-white rounded-full">
-                        {friendRequests.length}
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-white">친구 요청</h3>
-                      <p className="text-xs text-[var(--color-text-muted)] truncate">
-                        {friendRequests[0]?.fromUserName}님이 요청
-                      </p>
-                    </div>
-                  </div>
-                </GlassCard>
-              </button>
-            )}
+        {/*
+          Desktop Layout:
+          - 알림 2개: [알림1] [알림2] / [검색CTA]
+          - 알림 1개: [알림] [검색CTA]
+          - 알림 0개: [검색CTA 전체]
 
-            {/* Unread Messages Card */}
-            {totalUnreadCount > 0 && (
-              <button
-                onClick={() => navigate('/social?tab=chat')}
-                className="text-left"
-              >
-                <GlassCard hoverable className="h-full">
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <MessageCircle className="w-5 h-5 text-[var(--color-primary)]" />
-                      <span className="px-2 py-0.5 text-xs font-medium bg-[var(--color-primary)] text-white rounded-full">
-                        {totalUnreadCount}
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-white">새 메시지</h3>
-                      <p className="text-xs text-[var(--color-text-muted)] truncate">
-                        {unreadChatRooms[0]?.lastMessage?.content || '새 메시지가 있습니다'}
-                      </p>
-                    </div>
-                  </div>
-                </GlassCard>
-              </button>
-            )}
-          </div>
-        )}
+          Mobile Layout:
+          - 알림이 있으면 알림 섹션 먼저, 그 다음 검색 CTA
+        */}
 
-        {/* Search CTA (iOS 스타일) */}
-        <button onClick={() => navigate('/search')} className="w-full text-left">
-          <GlassCard
-            hoverable
-            className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)]"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                <Search className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white">라운드 검색하기</h3>
-                <p className="text-sm text-white/70">주변 파크골프장을 찾아보세요</p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-white/70 flex-shrink-0" />
+        {/* Mobile Layout */}
+        <div className="md:hidden space-y-4">
+          {/* Notifications */}
+          {notificationCount > 0 && (
+            <div className="grid grid-cols-2 gap-3">
+              {hasFriendRequests && (
+                <NotificationCard
+                  icon={<UserPlus className="w-5 h-5 text-[var(--color-warning)]" />}
+                  badgeColor="var(--color-warning)"
+                  count={friendRequests.length}
+                  title="친구 요청"
+                  subtitle={`${friendRequests[0]?.fromUserName}님이 요청`}
+                  onClick={() => navigate('/social?tab=friends')}
+                />
+              )}
+              {hasUnreadMessages && (
+                <NotificationCard
+                  icon={<MessageCircle className="w-5 h-5 text-[var(--color-primary)]" />}
+                  badgeColor="var(--color-primary)"
+                  count={totalUnreadCount}
+                  title="새 메시지"
+                  subtitle={unreadChatRooms[0]?.lastMessage?.content || '새 메시지가 있습니다'}
+                  onClick={() => navigate('/social?tab=chat')}
+                />
+              )}
             </div>
-          </GlassCard>
-        </button>
+          )}
+          <SearchCTA className="w-full" />
+        </div>
+
+        {/* Desktop Layout */}
+        <div className="hidden md:block space-y-4">
+          {notificationCount === 2 ? (
+            // 알림 2개: 알림들 먼저, 검색 CTA는 다음 줄
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <NotificationCard
+                  icon={<UserPlus className="w-5 h-5 text-[var(--color-warning)]" />}
+                  badgeColor="var(--color-warning)"
+                  count={friendRequests.length}
+                  title="친구 요청"
+                  subtitle={`${friendRequests[0]?.fromUserName}님이 요청`}
+                  onClick={() => navigate('/social?tab=friends')}
+                />
+                <NotificationCard
+                  icon={<MessageCircle className="w-5 h-5 text-[var(--color-primary)]" />}
+                  badgeColor="var(--color-primary)"
+                  count={totalUnreadCount}
+                  title="새 메시지"
+                  subtitle={unreadChatRooms[0]?.lastMessage?.content || '새 메시지가 있습니다'}
+                  onClick={() => navigate('/social?tab=chat')}
+                />
+              </div>
+              <SearchCTA className="w-full" />
+            </>
+          ) : notificationCount === 1 ? (
+            // 알림 1개: 알림과 검색 CTA를 같은 줄에
+            <div className="grid grid-cols-2 gap-3">
+              {hasFriendRequests && (
+                <NotificationCard
+                  icon={<UserPlus className="w-5 h-5 text-[var(--color-warning)]" />}
+                  badgeColor="var(--color-warning)"
+                  count={friendRequests.length}
+                  title="친구 요청"
+                  subtitle={`${friendRequests[0]?.fromUserName}님이 요청`}
+                  onClick={() => navigate('/social?tab=friends')}
+                />
+              )}
+              {hasUnreadMessages && (
+                <NotificationCard
+                  icon={<MessageCircle className="w-5 h-5 text-[var(--color-primary)]" />}
+                  badgeColor="var(--color-primary)"
+                  count={totalUnreadCount}
+                  title="새 메시지"
+                  subtitle={unreadChatRooms[0]?.lastMessage?.content || '새 메시지가 있습니다'}
+                  onClick={() => navigate('/social?tab=chat')}
+                />
+              )}
+              <SearchCTA />
+            </div>
+          ) : (
+            // 알림 0개: 검색 CTA만 전체 너비
+            <SearchCTA className="w-full" />
+          )}
+        </div>
 
         {/* Upcoming Bookings */}
         <div>
@@ -267,6 +312,40 @@ function UpcomingBookingCard({ booking, onClick }: UpcomingBookingCardProps) {
               </span>
             </div>
           )}
+        </div>
+      </GlassCard>
+    </button>
+  );
+}
+
+// Notification card component
+interface NotificationCardProps {
+  icon: React.ReactNode;
+  badgeColor: string;
+  count: number;
+  title: string;
+  subtitle: string;
+  onClick: () => void;
+}
+
+function NotificationCard({ icon, badgeColor, count, title, subtitle, onClick }: NotificationCardProps) {
+  return (
+    <button onClick={onClick} className="text-left">
+      <GlassCard hoverable className="h-full">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            {icon}
+            <span
+              className="px-2 py-0.5 text-xs font-medium text-white rounded-full"
+              style={{ backgroundColor: badgeColor }}
+            >
+              {count}
+            </span>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white">{title}</h3>
+            <p className="text-xs text-[var(--color-text-muted)] truncate">{subtitle}</p>
+          </div>
         </div>
       </GlassCard>
     </button>
