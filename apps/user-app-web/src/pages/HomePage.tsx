@@ -93,31 +93,27 @@ export function HomePage() {
         */}
 
         {/* Mobile Layout */}
-        <div className="md:hidden space-y-4">
-          {/* Notifications */}
-          {notificationCount > 0 && (
-            <div className="grid grid-cols-2 gap-3">
-              {hasFriendRequests && (
-                <NotificationCard
-                  icon={<UserPlus className="w-5 h-5 text-[var(--color-warning)]" />}
-                  badgeColor="var(--color-warning)"
-                  count={friendRequests.length}
-                  title="친구 요청"
-                  subtitle={`${friendRequests[0]?.fromUserName}님이 요청`}
-                  onClick={() => navigate('/social?tab=friends')}
-                />
-              )}
-              {hasUnreadMessages && (
-                <NotificationCard
-                  icon={<MessageCircle className="w-5 h-5 text-[var(--color-primary)]" />}
-                  badgeColor="var(--color-primary)"
-                  count={totalUnreadCount}
-                  title="새 메시지"
-                  subtitle={unreadChatRooms[0]?.lastMessage?.content || '새 메시지가 있습니다'}
-                  onClick={() => navigate('/social?tab=chat')}
-                />
-              )}
-            </div>
+        <div className="md:hidden space-y-3">
+          {/* Notifications - 1열로 표시 */}
+          {hasFriendRequests && (
+            <NotificationCard
+              icon={<UserPlus className="w-5 h-5 text-[var(--color-warning)]" />}
+              badgeColor="var(--color-warning)"
+              count={friendRequests.length}
+              title="친구 요청"
+              subtitle={`${friendRequests[0]?.fromUserName}님이 요청`}
+              onClick={() => navigate('/social?tab=friends')}
+            />
+          )}
+          {hasUnreadMessages && (
+            <NotificationCard
+              icon={<MessageCircle className="w-5 h-5 text-[var(--color-primary)]" />}
+              badgeColor="var(--color-primary)"
+              count={totalUnreadCount}
+              title="새 메시지"
+              subtitle={unreadChatRooms[0]?.lastMessage?.content || '새 메시지가 있습니다'}
+              onClick={() => navigate('/social?tab=chat')}
+            />
           )}
           <SearchCTA className="w-full" />
         </div>
