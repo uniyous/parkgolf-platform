@@ -33,6 +33,7 @@ import type { Friend, FriendRequest, SentFriendRequest, UserSearchResult } from 
 import type { ChatRoom } from '@/lib/api/chatApi';
 
 type MainTab = 'friends' | 'chat';
+type FriendSubTab = 'friends' | 'requests';
 
 export function SocialPage() {
   const navigate = useNavigate();
@@ -41,6 +42,9 @@ export function SocialPage() {
 
   // Tab state from URL
   const mainTab = (searchParams.get('tab') as MainTab) || 'friends';
+
+  // Friend sub tab state
+  const [friendSubTab, setFriendSubTab] = useState<FriendSubTab>('friends');
 
   // Modal states
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
@@ -213,54 +217,49 @@ export function SocialPage() {
 
         {/* Friends Tab Content */}
         {mainTab === 'friends' && (
-          <div className="space-y-6">
-            {/* Received Requests - show only if there are requests */}
-            {friendRequests.length > 0 && (
-              <section>
-                <h3 className="text-sm font-medium text-[var(--color-text-tertiary)] mb-3 flex items-center gap-2">
-                  <UserPlus className="w-4 h-4" />
-                  받은 요청 ({friendRequests.length})
-                </h3>
-                {isLoadingRequests && <LoadingView size="sm" />}
-                {!isLoadingRequests && (
-                  <div className="space-y-3">
-                    {friendRequests.map((request) => (
-                      <FriendRequestCard
-                        key={request.id}
-                        request={request}
-                        onAccept={() => handleAcceptRequest(request.id)}
-                        onReject={() => handleRejectRequest(request.id)}
-                      />
-                    ))}
-                  </div>
+          <div className="space-y-4">
+            {/* Stats Card (iOS 스타일) */}
+            <FriendsStatsCard
+              friendsCount={friends.length}
+              receivedCount={friendRequests.length}
+              sentCount={sentRequests.length}
+            />
+
+            {/* Friend Sub Tabs (칩 스타일) */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setFriendSubTab('friends')}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all',
+                  friendSubTab === 'friends'
+                    ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
+                    : 'text-[var(--color-text-secondary)] hover:text-white'
                 )}
-              </section>
-            )}
+              >
+                친구
+              </button>
+              <button
+                onClick={() => setFriendSubTab('requests')}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all',
+                  friendSubTab === 'requests'
+                    ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
+                    : 'text-[var(--color-text-secondary)] hover:text-white'
+                )}
+              >
+                요청
+                {(friendRequests.length + sentRequests.length) > 0 && (
+                  <span className="px-1.5 py-0.5 text-xs bg-[var(--color-primary)] text-white rounded-full">
+                    {friendRequests.length + sentRequests.length}
+                  </span>
+                )}
+              </button>
+            </div>
 
-            {/* Sent Requests - show only if there are requests */}
-            {sentRequests.length > 0 && (
-              <section>
-                <h3 className="text-sm font-medium text-[var(--color-text-tertiary)] mb-3 flex items-center gap-2">
-                  <Send className="w-4 h-4" />
-                  보낸 요청 ({sentRequests.length})
-                </h3>
-                <div className="space-y-3">
-                  {sentRequests.map((request) => (
-                    <SentRequestCard key={request.id} request={request} />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Friends List */}
-            <section>
-              <h3 className="text-sm font-medium text-[var(--color-text-tertiary)] mb-3 flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                내 친구 ({friends.length})
-              </h3>
-
-              {/* Search */}
-              <div className="mb-4">
+            {/* Friends Sub Tab Content */}
+            {friendSubTab === 'friends' && (
+              <section className="space-y-4">
+                {/* Search */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
                   <input
@@ -271,39 +270,129 @@ export function SocialPage() {
                     className="input-glass pl-10"
                   />
                 </div>
-              </div>
 
-              {isLoadingFriends && <LoadingView />}
+                {isLoadingFriends && <LoadingView />}
 
-              {!isLoadingFriends && filteredFriends.length === 0 && (
-                <GlassCard>
-                  <EmptyState
-                    icon={Users}
-                    title={friendListSearch ? '검색 결과가 없습니다' : '아직 친구가 없습니다'}
-                    description={
-                      friendListSearch
-                        ? '다른 검색어로 시도해보세요.'
-                        : '친구를 추가하고 함께 라운드를 즐겨보세요!'
-                    }
-                    actionLabel={friendListSearch ? undefined : '친구 추가'}
-                    onAction={friendListSearch ? undefined : () => setShowAddFriendModal(true)}
-                  />
-                </GlassCard>
-              )}
-
-              {!isLoadingFriends && filteredFriends.length > 0 && (
-                <div className="space-y-3">
-                  {filteredFriends.map((friend) => (
-                    <FriendCard
-                      key={friend.id}
-                      friend={friend}
-                      onChat={() => handleStartChat(friend)}
-                      onRemove={() => handleRemoveFriend(friend.friendId)}
+                {!isLoadingFriends && filteredFriends.length === 0 && (
+                  <GlassCard>
+                    <EmptyState
+                      icon={Users}
+                      title={friendListSearch ? '검색 결과가 없습니다' : '아직 친구가 없습니다'}
+                      description={
+                        friendListSearch
+                          ? '다른 검색어로 시도해보세요.'
+                          : '친구를 추가하고 함께 라운드를 즐겨보세요!'
+                      }
+                      actionLabel={friendListSearch ? undefined : '친구 추가'}
+                      onAction={friendListSearch ? undefined : () => setShowAddFriendModal(true)}
                     />
-                  ))}
-                </div>
-              )}
-            </section>
+                  </GlassCard>
+                )}
+
+                {!isLoadingFriends && filteredFriends.length > 0 && (
+                  <div className="space-y-3">
+                    {filteredFriends.map((friend) => (
+                      <FriendCard
+                        key={friend.id}
+                        friend={friend}
+                        onChat={() => handleStartChat(friend)}
+                        onRemove={() => handleRemoveFriend(friend.friendId)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* Requests Sub Tab Content */}
+            {friendSubTab === 'requests' && (
+              <div className="space-y-6">
+                {/* Empty State */}
+                {friendRequests.length === 0 && sentRequests.length === 0 && (
+                  <GlassCard>
+                    <EmptyState
+                      icon={UserPlus}
+                      title="친구 요청이 없습니다"
+                      description="친구를 추가하거나 요청이 오면 여기에 표시됩니다"
+                      actionLabel="친구 추가"
+                      onAction={() => setShowAddFriendModal(true)}
+                    />
+                  </GlassCard>
+                )}
+
+                {/* Received Requests */}
+                {(friendRequests.length > 0 || sentRequests.length > 0) && (
+                  <section>
+                    <h3 className="text-sm font-medium text-[var(--color-text-tertiary)] mb-3 flex items-center gap-2">
+                      <UserPlus className="w-4 h-4" />
+                      받은 요청
+                      {friendRequests.length > 0 && (
+                        <span className="px-2 py-0.5 text-xs bg-[var(--color-primary)] text-white rounded-full">
+                          {friendRequests.length}
+                        </span>
+                      )}
+                    </h3>
+                    {isLoadingRequests && <LoadingView size="sm" />}
+                    {!isLoadingRequests && friendRequests.length === 0 && (
+                      <GlassCard>
+                        <div className="flex items-center gap-3 text-[var(--color-text-muted)]">
+                          <UserPlus className="w-6 h-6 opacity-40" />
+                          <div>
+                            <p className="text-sm">받은 요청이 없습니다</p>
+                            <p className="text-xs opacity-70">친구 요청이 오면 여기에 표시됩니다</p>
+                          </div>
+                        </div>
+                      </GlassCard>
+                    )}
+                    {!isLoadingRequests && friendRequests.length > 0 && (
+                      <div className="space-y-3">
+                        {friendRequests.map((request) => (
+                          <FriendRequestCard
+                            key={request.id}
+                            request={request}
+                            onAccept={() => handleAcceptRequest(request.id)}
+                            onReject={() => handleRejectRequest(request.id)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {/* Sent Requests */}
+                {(friendRequests.length > 0 || sentRequests.length > 0) && (
+                  <section>
+                    <h3 className="text-sm font-medium text-[var(--color-text-tertiary)] mb-3 flex items-center gap-2">
+                      <Send className="w-4 h-4" />
+                      보낸 요청
+                      {sentRequests.length > 0 && (
+                        <span className="px-2 py-0.5 text-xs bg-[var(--color-warning)] text-white rounded-full">
+                          {sentRequests.length}
+                        </span>
+                      )}
+                    </h3>
+                    {sentRequests.length === 0 && (
+                      <GlassCard>
+                        <div className="flex items-center gap-3 text-[var(--color-text-muted)]">
+                          <Send className="w-6 h-6 opacity-40" />
+                          <div>
+                            <p className="text-sm">보낸 요청이 없습니다</p>
+                            <p className="text-xs opacity-70">친구 요청을 보내면 여기에 표시됩니다</p>
+                          </div>
+                        </div>
+                      </GlassCard>
+                    )}
+                    {sentRequests.length > 0 && (
+                      <div className="space-y-3">
+                        {sentRequests.map((request) => (
+                          <SentRequestCard key={request.id} request={request} />
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -410,6 +499,47 @@ export function SocialPage() {
 // ============================================
 // Sub Components
 // ============================================
+
+function FriendsStatsCard({
+  friendsCount,
+  receivedCount,
+  sentCount,
+}: {
+  friendsCount: number;
+  receivedCount: number;
+  sentCount: number;
+}) {
+  return (
+    <GlassCard>
+      <div className="flex items-center justify-around">
+        <div className="text-center">
+          <div className="text-2xl font-bold text-[var(--color-primary)]">{friendsCount}</div>
+          <div className="text-xs text-[var(--color-text-muted)]">친구</div>
+        </div>
+        <div className="w-px h-10 bg-[var(--color-border)]" />
+        <div className="text-center">
+          <div className={cn(
+            'text-2xl font-bold',
+            receivedCount > 0 ? 'text-[var(--color-success)]' : 'text-white'
+          )}>
+            {receivedCount}
+          </div>
+          <div className="text-xs text-[var(--color-text-muted)]">받은 요청</div>
+        </div>
+        <div className="w-px h-10 bg-[var(--color-border)]" />
+        <div className="text-center">
+          <div className={cn(
+            'text-2xl font-bold',
+            sentCount > 0 ? 'text-[var(--color-warning)]' : 'text-white'
+          )}>
+            {sentCount}
+          </div>
+          <div className="text-xs text-[var(--color-text-muted)]">보낸 요청</div>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
 
 function FriendCard({
   friend,

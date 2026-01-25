@@ -47,7 +47,9 @@ import com.parkgolf.app.presentation.feature.auth.SignUpScreen
 import com.parkgolf.app.presentation.feature.booking.BookingFormScreen
 import com.parkgolf.app.presentation.feature.booking.MyBookingsScreen
 import com.parkgolf.app.presentation.feature.chat.ChatRoomScreen
+import com.parkgolf.app.presentation.feature.home.FriendRequestsScreen
 import com.parkgolf.app.presentation.feature.home.HomeScreen
+import com.parkgolf.app.presentation.feature.home.UnreadChatsScreen
 import com.parkgolf.app.presentation.feature.profile.AnnouncementsScreen
 import com.parkgolf.app.presentation.feature.profile.ChangePasswordScreen
 import com.parkgolf.app.presentation.feature.profile.ContactScreen
@@ -271,6 +273,21 @@ fun ParkGolfNavHost(
                 onBookingClick = { bookingId ->
                     // Booking detail is shown in bottom sheet, no navigation needed
                 }
+            )
+        }
+
+        // Friend Requests screen (from Home notification card)
+        composable(Screen.FriendRequests.route) {
+            FriendRequestsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Unread Chats screen (from Home notification card)
+        composable(Screen.UnreadChats.route) {
+            UnreadChatsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onChatRoomClick = { roomId -> navController.navigate("chat/$roomId") }
             )
         }
     }

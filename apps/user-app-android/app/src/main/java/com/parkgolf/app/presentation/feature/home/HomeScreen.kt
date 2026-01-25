@@ -105,14 +105,15 @@ fun HomeScreen(
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp)
             ) {
-                // Notifications Section (친구 요청 + 읽지 않은 메시지)
+                // Notifications Section (친구 요청 + 읽지 않은 메시지) - iOS 스타일 요약 카드
                 if (uiState.hasNotifications) {
                     NotificationsSection(
-                        friendRequests = uiState.friendRequests,
-                        unreadChatRooms = uiState.unreadChatRooms,
-                        onAcceptFriendRequest = { viewModel.acceptFriendRequest(it) },
-                        onRejectFriendRequest = { viewModel.rejectFriendRequest(it) },
-                        onChatRoomClick = { roomId -> onNavigate("chat/$roomId") }
+                        pendingFriendRequestsCount = uiState.pendingFriendRequestsCount,
+                        latestFriendRequestName = uiState.friendRequests.firstOrNull()?.fromUserName,
+                        totalUnreadMessagesCount = uiState.totalUnreadMessagesCount,
+                        latestChatMessage = uiState.unreadChatRooms.firstOrNull()?.lastMessage?.content,
+                        onFriendRequestsClick = { onNavigate("friends/requests") },
+                        onUnreadChatsClick = { onNavigate("chats/unread") }
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -359,192 +360,101 @@ private fun getGreetingMessage(name: String): String {
 }
 
 // ============================================
-// Notifications Section
+// Notifications Section (iOS 스타일 요약 카드)
 // ============================================
 @Composable
 private fun NotificationsSection(
-    friendRequests: List<FriendRequest>,
-    unreadChatRooms: List<ChatRoom>,
-    onAcceptFriendRequest: (Int) -> Unit,
-    onRejectFriendRequest: (Int) -> Unit,
-    onChatRoomClick: (String) -> Unit
+    pendingFriendRequestsCount: Int,
+    latestFriendRequestName: String?,
+    totalUnreadMessagesCount: Int,
+    latestChatMessage: String?,
+    onFriendRequestsClick: () -> Unit,
+    onUnreadChatsClick: () -> Unit
 ) {
-    Column {
-        // 친구 요청
-        if (friendRequests.isNotEmpty()) {
-            SectionHeader(title = "친구 요청", actionText = "${friendRequests.size}개")
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            friendRequests.take(3).forEach { request ->
-                FriendRequestCard(
-                    request = request,
-                    onAccept = { onAcceptFriendRequest(request.id) },
-                    onReject = { onRejectFriendRequest(request.id) }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        // 읽지 않은 메시지
-        if (unreadChatRooms.isNotEmpty()) {
-            SectionHeader(title = "읽지 않은 메시지", actionText = "${unreadChatRooms.size}개")
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            unreadChatRooms.take(3).forEach { chatRoom ->
-                UnreadChatCard(
-                    chatRoom = chatRoom,
-                    onClick = { onChatRoomClick(chatRoom.id) }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun FriendRequestCard(
-    request: FriendRequest,
-    onAccept: () -> Unit,
-    onReject: () -> Unit
-) {
-    GlassCard(
-        modifier = Modifier.fillMaxWidth()
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                // Avatar
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(GlassCardColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = TextOnGradient,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+        // 친구 요청 카드
+        if (pendingFriendRequestsCount > 0) {
+            NotificationSummaryCard(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.Person,
+                iconColor = ParkAccent,
+                title = "친구 요청",
+                count = pendingFriendRequestsCount,
+                subtitle = latestFriendRequestName?.let { "${it}님이 요청" },
+                onClick = onFriendRequestsClick
+            )
+        }
 
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column {
-                    Text(
-                        text = request.fromUserName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextOnGradient
-                    )
-                    Text(
-                        text = request.fromUserEmail,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextOnGradientSecondary
-                    )
-                }
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconButton(
-                    onClick = onReject,
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(ParkError.copy(alpha = 0.2f), CircleShape)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "거절",
-                        tint = ParkError,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                IconButton(
-                    onClick = onAccept,
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(ParkPrimary.copy(alpha = 0.2f), CircleShape)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "수락",
-                        tint = ParkPrimary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
+        // 읽지 않은 메시지 카드
+        if (totalUnreadMessagesCount > 0) {
+            NotificationSummaryCard(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.Message,
+                iconColor = ParkPrimary,
+                title = "새 메시지",
+                count = totalUnreadMessagesCount,
+                subtitle = latestChatMessage,
+                onClick = onUnreadChatsClick
+            )
         }
     }
 }
 
 @Composable
-private fun UnreadChatCard(
-    chatRoom: ChatRoom,
+private fun NotificationSummaryCard(
+    modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconColor: Color,
+    title: String,
+    count: Int,
+    subtitle: String?,
     onClick: () -> Unit
 ) {
     GlassCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
         onClick = onClick
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Header: Icon + Badge
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(GlassCardColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Message,
-                        contentDescription = null,
-                        tint = TextOnGradient,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier.size(24.dp)
+                )
 
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column {
-                    Text(
-                        text = chatRoom.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextOnGradient
-                    )
-                    chatRoom.lastMessage?.let { message ->
-                        Text(
-                            text = message.content,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextOnGradientSecondary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                Badge(containerColor = iconColor) {
+                    Text(count.toString())
                 }
             }
 
-            Badge(containerColor = ParkPrimary) {
-                Text(chatRoom.unreadCount.toString())
+            // Title
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = TextOnGradient
+            )
+
+            // Subtitle
+            subtitle?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextOnGradientSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

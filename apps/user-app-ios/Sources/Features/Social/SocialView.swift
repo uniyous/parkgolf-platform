@@ -151,33 +151,115 @@ struct SocialView: View {
                     Task { await friendsViewModel.loadAll() }
                 }
             } else {
-                ScrollView {
-                    LazyVStack(spacing: ParkSpacing.md) {
-                        // Stats Card
-                        friendsStatsCard
+                VStack(spacing: 0) {
+                    // Stats Card (탭 위에 고정)
+                    friendsStatsCard
+                        .padding(.horizontal, ParkSpacing.md)
+                        .padding(.top, ParkSpacing.md)
 
-                        // Received Requests (if any)
-                        if !friendsViewModel.friendRequests.isEmpty {
-                            receivedRequestsSection
-                        }
+                    // Sub Tab (칩 스타일)
+                    friendsSubTabSelector
+                        .padding(.horizontal, ParkSpacing.md)
+                        .padding(.top, ParkSpacing.sm)
 
-                        // Sent Requests (if any)
-                        if !friendsViewModel.sentFriendRequests.isEmpty {
-                            sentRequestsSection
-                        }
-
-                        // Search Bar
-                        friendsSearchBar
-
-                        // Friends List
-                        friendsListSection
+                    // Content based on selected sub tab
+                    switch friendsViewModel.selectedSegment {
+                    case .friends:
+                        friendsListContent
+                    case .requests:
+                        requestsListContent
                     }
-                    .padding(ParkSpacing.md)
-                }
-                .refreshable {
-                    await friendsViewModel.loadAll()
                 }
             }
+        }
+    }
+
+    // MARK: - Friends Sub Tab Selector (칩 스타일)
+
+    private var friendsSubTabSelector: some View {
+        HStack(spacing: ParkSpacing.sm) {
+            ForEach(FriendsViewModel.FriendSegment.allCases, id: \.self) { segment in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        friendsViewModel.selectedSegment = segment
+                    }
+                } label: {
+                    HStack(spacing: ParkSpacing.xs) {
+                        Text(segment.rawValue)
+                            .font(.parkBodyMedium)
+                            .fontWeight(friendsViewModel.selectedSegment == segment ? .semibold : .regular)
+
+                        // Badge for requests
+                        if segment == .requests && friendsViewModel.pendingRequestsCount > 0 {
+                            Text("\(friendsViewModel.pendingRequestsCount)")
+                                .font(.parkCaption)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.parkPrimary)
+                                .clipShape(Capsule())
+                        }
+                    }
+                    .foregroundStyle(friendsViewModel.selectedSegment == segment ? Color.parkPrimary : .white.opacity(0.6))
+                    .padding(.horizontal, ParkSpacing.md)
+                    .padding(.vertical, ParkSpacing.sm)
+                    .background(
+                        friendsViewModel.selectedSegment == segment
+                            ? Color.parkPrimary.opacity(0.2)
+                            : Color.clear
+                    )
+                    .clipShape(Capsule())
+                }
+            }
+
+            Spacer()
+        }
+    }
+
+    // MARK: - Friends List Content (친구 탭)
+
+    private var friendsListContent: some View {
+        ScrollView {
+            LazyVStack(spacing: ParkSpacing.md) {
+                // Search Bar
+                friendsSearchBar
+
+                // Friends List
+                friendsListSection
+            }
+            .padding(ParkSpacing.md)
+        }
+        .refreshable {
+            await friendsViewModel.loadAll()
+        }
+    }
+
+    // MARK: - Requests List Content (요청 탭)
+
+    private var requestsListContent: some View {
+        ScrollView {
+            LazyVStack(spacing: ParkSpacing.lg) {
+                if friendsViewModel.friendRequests.isEmpty && friendsViewModel.sentFriendRequests.isEmpty {
+                    ParkEmptyStateView(
+                        icon: "person.badge.clock",
+                        title: "친구 요청이 없습니다",
+                        description: "친구를 추가하거나 요청이 오면 여기에 표시됩니다",
+                        actionTitle: "친구 추가"
+                    ) {
+                        friendsViewModel.showAddFriendSheet = true
+                    }
+                } else {
+                    // Received Requests
+                    receivedRequestsSection
+
+                    // Sent Requests
+                    sentRequestsSection
+                }
+            }
+            .padding(ParkSpacing.md)
+        }
+        .refreshable {
+            await friendsViewModel.loadAll()
         }
     }
 
@@ -321,25 +403,6 @@ struct SocialView: View {
 
     private var friendsListSection: some View {
         VStack(alignment: .leading, spacing: ParkSpacing.sm) {
-            if !friendsViewModel.friendRequests.isEmpty || !friendsViewModel.sentFriendRequests.isEmpty {
-                HStack {
-                    Label("친구 목록", systemImage: "person.2.fill")
-                        .font(.parkHeadlineSmall)
-                        .foregroundStyle(.white)
-
-                    Text("\(friendsViewModel.friends.count)")
-                        .font(.parkCaption)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(Color.parkPrimary.opacity(0.5))
-                        .clipShape(Capsule())
-
-                    Spacer()
-                }
-                .padding(.horizontal, ParkSpacing.xs)
-            }
-
             if friendsViewModel.filteredFriends.isEmpty {
                 if friendsViewModel.searchQuery.isEmpty {
                     ParkEmptyStateView(
