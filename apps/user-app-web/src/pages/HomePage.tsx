@@ -326,7 +326,7 @@ interface NotificationCardProps {
 
 function NotificationCard({ icon, badgeColor, count, title, subtitle, onClick }: NotificationCardProps) {
   return (
-    <button onClick={onClick} className="text-left">
+    <button onClick={onClick} className="w-full text-left">
       <GlassCard hoverable className="h-full">
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
