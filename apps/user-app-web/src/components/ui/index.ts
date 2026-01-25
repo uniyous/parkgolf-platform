@@ -36,3 +36,10 @@ export { SectionHeader } from './SectionHeader';
 export { LoadingView } from './LoadingView';
 export { EmptyState } from './EmptyState';
 export { BottomSheet } from './BottomSheet';
+export { ConfirmModal, type ConfirmModalProps, type ConfirmModalType } from './ConfirmModal';
+export {
+  PasswordChangeReminderModal,
+  hasRecentlySkipped,
+  clearSkipTimestamp,
+  type PasswordChangeReminderModalProps,
+} from './PasswordChangeReminderModal';

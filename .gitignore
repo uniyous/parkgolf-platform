@@ -364,8 +364,9 @@ temp/
 
 # Local development
 .local/
-local/
+/local/
 dev/
+!**/src/**/local/
 
 # Backup files
 *.bak

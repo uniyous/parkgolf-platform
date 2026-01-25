@@ -5,6 +5,7 @@ import type { GameSearchParams } from '@/lib/api/gameApi';
 export const authKeys = {
   all: ['auth'] as const,
   profile: () => [...authKeys.all, 'profile'] as const,
+  passwordExpiry: () => [...authKeys.all, 'passwordExpiry'] as const,
 };
 
 // Game Keys

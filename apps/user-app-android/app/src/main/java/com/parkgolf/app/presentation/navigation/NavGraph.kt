@@ -66,6 +66,9 @@ import com.parkgolf.app.presentation.feature.profile.ProfileScreen
 import com.parkgolf.app.presentation.feature.profile.SettingsScreen
 import com.parkgolf.app.presentation.feature.booking.RoundBookingScreen
 import com.parkgolf.app.presentation.feature.social.SocialScreen
+import com.parkgolf.app.presentation.components.PasswordChangeReminderDialog
+import androidx.compose.runtime.collectAsState
+import androidx.hilt.navigation.compose.hiltViewModel
 
 /**
  * Park Golf Navigation
@@ -294,13 +297,31 @@ fun ParkGolfNavHost(
 }
 
 @Composable
-fun MainScreen(navController: NavHostController) {
+fun MainScreen(
+    navController: NavHostController,
+    viewModel: MainViewModel = hiltViewModel()
+) {
     val bottomNavController = rememberNavController()
     val navBackStackEntry by bottomNavController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val uiState by viewModel.uiState.collectAsState()
 
     // Bottom bar visibility
     val bottomBarVisible = rememberSaveable { mutableStateOf(true) }
+
+    // Password Change Reminder Dialog
+    if (uiState.showPasswordReminder) {
+        PasswordChangeReminderDialog(
+            daysSinceChange = uiState.passwordExpiryInfo?.daysSinceChange,
+            onChangeNow = {
+                viewModel.onDismissReminder()
+                navController.navigate(Screen.ChangePassword.route)
+            },
+            onLater = {
+                viewModel.onSkipPasswordChange()
+            }
+        )
+    }
 
     Scaffold(
         bottomBar = {

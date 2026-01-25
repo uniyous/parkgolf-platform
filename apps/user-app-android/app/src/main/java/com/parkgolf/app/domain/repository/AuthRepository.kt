@@ -1,5 +1,6 @@
 package com.parkgolf.app.domain.repository
 
+import com.parkgolf.app.domain.model.PasswordExpiryInfo
 import com.parkgolf.app.domain.model.User
 import com.parkgolf.app.domain.model.UserStats
 import kotlinx.coroutines.flow.Flow
@@ -24,5 +25,5 @@ interface AuthRepository {
         newPassword: String,
         confirmPassword: String
     ): Result<Unit>
-    suspend fun checkPasswordExpiry(): Result<Boolean>
+    suspend fun checkPasswordExpiry(): Result<PasswordExpiryInfo>
 }

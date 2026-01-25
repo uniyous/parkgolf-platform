@@ -12,3 +12,4 @@ export { SocialPage } from './SocialPage';
 export { FriendsPage } from './FriendsPage';
 export { ChatPage } from './ChatPage';
 export { ChatRoomPage } from './ChatRoomPage';
+export { ChangePasswordPage } from './ChangePasswordPage';

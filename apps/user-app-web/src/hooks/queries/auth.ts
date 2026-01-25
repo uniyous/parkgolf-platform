@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { authApi, type LoginRequest, type RegisterRequest } from '@/lib/api/authApi';
+import { authApi, type LoginRequest, type RegisterRequest, type ChangePasswordRequest } from '@/lib/api/authApi';
 import { useAuthStore } from '@/stores/authStore';
 import { authStorage } from '@/lib/storage';
 import { authKeys } from './keys';
@@ -59,5 +59,28 @@ export const useLogoutMutation = () => {
       logout();
       queryClient.clear();
     },
+  });
+};
+
+// Change Password Mutation
+export const useChangePasswordMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: ChangePasswordRequest) => authApi.changePassword(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: authKeys.profile() });
+    },
+  });
+};
+
+// Password Expiry Query
+export const usePasswordExpiryQuery = () => {
+  return useQuery({
+    queryKey: authKeys.passwordExpiry(),
+    queryFn: () => authApi.checkPasswordExpiry(),
+    enabled: authStorage.isAuthenticated(),
+    staleTime: 1000 * 60 * 60, // 1 hour
+    retry: false,
   });
 };

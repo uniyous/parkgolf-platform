@@ -42,3 +42,9 @@ data class AuthToken(
     val refreshToken: String,
     val expiresIn: Int
 )
+
+data class PasswordExpiryInfo(
+    val needsChange: Boolean,
+    val daysSinceChange: Int?,
+    val passwordChangedAt: String?
+)

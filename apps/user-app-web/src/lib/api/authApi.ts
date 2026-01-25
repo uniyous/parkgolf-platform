@@ -16,6 +16,24 @@ export interface User {
   phone?: string | null;
   profileImageUrl?: string | null;
   lastLoginAt?: string | null;
+  passwordChangedAt?: string | null;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface ChangePasswordResponse {
+  message: string;
+  passwordChangedAt: string;
+}
+
+export interface PasswordExpiryResponse {
+  needsChange: boolean;
+  daysSinceChange: number | null;
+  passwordChangedAt: string | null;
 }
 
 export interface LoginRequest {
@@ -68,5 +86,20 @@ export const authApi = {
       refreshToken,
     });
     return response.data;
+  },
+
+  changePassword: async (data: ChangePasswordRequest) => {
+    const response = await apiClient.post<{ success: boolean; data: ChangePasswordResponse }>(
+      '/api/user/account/change-password',
+      data
+    );
+    return response.data.data;
+  },
+
+  checkPasswordExpiry: async () => {
+    const response = await apiClient.get<{ success: boolean; data: PasswordExpiryResponse }>(
+      '/api/user/account/password-expiry'
+    );
+    return response.data.data;
   },
 };

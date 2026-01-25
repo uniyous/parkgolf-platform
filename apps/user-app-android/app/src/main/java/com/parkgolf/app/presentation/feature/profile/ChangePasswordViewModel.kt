@@ -2,6 +2,7 @@ package com.parkgolf.app.presentation.feature.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.parkgolf.app.data.local.datastore.AuthPreferences
 import com.parkgolf.app.data.remote.api.AuthApi
 import com.parkgolf.app.data.remote.dto.auth.ChangePasswordRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -39,7 +40,8 @@ data class ChangePasswordUiState(
 
 @HiltViewModel
 class ChangePasswordViewModel @Inject constructor(
-    private val authApi: AuthApi
+    private val authApi: AuthApi,
+    private val authPreferences: AuthPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChangePasswordUiState())
@@ -71,6 +73,8 @@ class ChangePasswordViewModel @Inject constructor(
                         confirmPassword = state.confirmPassword
                     )
                 )
+                // 비밀번호 변경 성공 시 스킵 타임스탬프 제거
+                authPreferences.clearPasswordChangeSkipped()
                 _uiState.update { it.copy(isLoading = false, isSuccess = true) }
             } catch (e: Exception) {
                 _uiState.update {

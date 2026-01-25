@@ -7,6 +7,7 @@ import com.parkgolf.app.data.remote.dto.auth.ChangePasswordRequest
 import com.parkgolf.app.data.remote.dto.auth.LoginRequest
 import com.parkgolf.app.data.remote.dto.auth.RefreshTokenRequest
 import com.parkgolf.app.data.remote.dto.auth.RegisterRequest
+import com.parkgolf.app.domain.model.PasswordExpiryInfo
 import com.parkgolf.app.domain.model.User
 import com.parkgolf.app.domain.model.UserStats
 import com.parkgolf.app.domain.repository.AuthRepository
@@ -136,10 +137,16 @@ class AuthRepositoryImpl @Inject constructor(
         ).toUnitResult("비밀번호 변경에 실패했습니다")
     }
 
-    override suspend fun checkPasswordExpiry(): Result<Boolean> = safeApiCall {
+    override suspend fun checkPasswordExpiry(): Result<PasswordExpiryInfo> = safeApiCall {
         val response = authApi.getPasswordExpiry()
         if (response.success && response.data != null) {
-            Result.success(response.data.needsChange)
+            Result.success(
+                PasswordExpiryInfo(
+                    needsChange = response.data.needsChange,
+                    daysSinceChange = response.data.daysSinceChange,
+                    passwordChangedAt = response.data.passwordChangedAt
+                )
+            )
         } else {
             Result.failure(Exception("비밀번호 만료 확인에 실패했습니다"))
         }
