@@ -28,6 +28,10 @@ class AuthRepositoryImpl @Inject constructor(
 
     override val isLoggedIn: Flow<Boolean> = authPreferences.isLoggedIn
 
+    override suspend fun getAccessToken(): String? {
+        return authPreferences.accessToken.first()
+    }
+
     override val currentUser: Flow<User?> = authPreferences.userName.map { name ->
         if (name != null) {
             val email = authPreferences.userEmail.first()

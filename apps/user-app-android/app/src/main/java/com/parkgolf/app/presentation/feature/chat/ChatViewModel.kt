@@ -1,5 +1,6 @@
 package com.parkgolf.app.presentation.feature.chat
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.parkgolf.app.domain.model.ChatMessage
@@ -7,11 +8,14 @@ import com.parkgolf.app.domain.model.ChatRoom
 import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.ChatRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+private const val TAG = "ChatViewModel"
 
 data class ChatUiState(
     val isLoading: Boolean = false,
@@ -94,13 +98,34 @@ class ChatViewModel @Inject constructor(
      * 연결 시도 횟수를 리셋하고 다시 연결 시도
      */
     fun forceReconnect() {
-        val token = savedToken ?: return
-        chatRepository.forceReconnect(token)
-        // Rejoin room after reconnection
-        currentRoomId?.let { roomId ->
-            chatRepository.joinRoom(roomId)
+        viewModelScope.launch {
+            // Get token from cache or fetch new one (like iOS)
+            val token = savedToken ?: authRepository.getAccessToken()
+            if (token == null) {
+                Log.w(TAG, "No token available for force reconnect")
+                return@launch
+            }
+
+            savedToken = token
+            Log.d(TAG, "Force reconnect initiated")
+            chatRepository.forceReconnect(token)
+
+            // Wait for connection (max 5 seconds, like iOS)
+            repeat(50) {
+                if (chatRepository.isConnected) {
+                    Log.d(TAG, "Reconnected successfully")
+                    // Rejoin room after reconnection
+                    currentRoomId?.let { roomId ->
+                        chatRepository.joinRoom(roomId)
+                        Log.d(TAG, "Rejoined room: $roomId")
+                    }
+                    return@launch
+                }
+                delay(100)
+            }
+            Log.w(TAG, "Force reconnect timeout")
+            _uiState.value = _uiState.value.copy(canReconnect = chatRepository.canReconnect)
         }
-        _uiState.value = _uiState.value.copy(canReconnect = true)
     }
 
     fun loadRoom(roomId: String) {
@@ -108,19 +133,48 @@ class ChatViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(isLoading = true, messages = emptyList())
 
         viewModelScope.launch {
-            // Load room details
+            // 1. Get token and connect socket first (like iOS)
+            val token = authRepository.getAccessToken()
+            if (token != null) {
+                savedToken = token
+                Log.d(TAG, "Connecting socket for room: $roomId")
+                chatRepository.connect(token)
+
+                // Wait for connection (max 5 seconds, like iOS)
+                repeat(50) {
+                    if (chatRepository.isConnected) {
+                        Log.d(TAG, "Socket connected")
+                        return@repeat
+                    }
+                    delay(100)
+                }
+
+                if (!chatRepository.isConnected) {
+                    Log.w(TAG, "Socket connection timeout")
+                }
+
+                // Start periodic connection check
+                chatRepository.startConnectionCheck(token)
+            } else {
+                Log.w(TAG, "No access token available for socket connection")
+            }
+
+            // 2. Load room details
             chatRepository.getChatRoom(roomId)
                 .onSuccess { room ->
                     _uiState.value = _uiState.value.copy(room = room)
                 }
 
-            // Load messages
+            // 3. Load messages
             loadMessages(roomId)
 
-            // Join room via socket
-            chatRepository.joinRoom(roomId)
+            // 4. Join room via socket (if connected)
+            if (chatRepository.isConnected) {
+                chatRepository.joinRoom(roomId)
+                Log.d(TAG, "Joined room: $roomId")
+            }
 
-            // Mark as read
+            // 5. Mark as read
             chatRepository.markAsRead(roomId)
         }
     }

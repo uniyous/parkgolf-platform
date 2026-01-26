@@ -9,6 +9,9 @@ interface AuthRepository {
     val isLoggedIn: Flow<Boolean>
     val currentUser: Flow<User?>
 
+    // Token access for socket connection
+    suspend fun getAccessToken(): String?
+
     suspend fun login(email: String, password: String): Result<User>
     suspend fun register(
         email: String,
