@@ -350,7 +350,8 @@ private fun ChatInputBar(
 ) {
     Surface(
         color = GradientStart.copy(alpha = 0.95f),
-        shadowElevation = 8.dp
+        shadowElevation = 8.dp,
+        modifier = Modifier.navigationBarsPadding()
     ) {
         Row(
             modifier = Modifier
