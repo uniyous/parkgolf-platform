@@ -21,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
@@ -29,7 +28,6 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PrivacyTip
@@ -407,20 +405,6 @@ private fun AppSettingsSection(onNavigate: (String) -> Unit) {
             iconColor = ParkError,
             title = "알림 설정",
             onClick = { onNavigate("settings/notifications") }
-        )
-
-        ProfileMenuItem(
-            icon = Icons.Default.DarkMode,
-            iconColor = Color(0xFF9333EA), // Purple
-            title = "테마",
-            onClick = { onNavigate("settings/theme") }
-        )
-
-        ProfileMenuItem(
-            icon = Icons.Default.Language,
-            iconColor = ParkSuccess,
-            title = "언어",
-            onClick = { onNavigate("settings/language") }
         )
     }
 }

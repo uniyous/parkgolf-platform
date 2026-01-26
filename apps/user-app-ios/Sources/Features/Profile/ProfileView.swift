@@ -213,22 +213,6 @@ struct ProfileView: View {
                 ) {
                     NotificationSettingsView()
                 }
-
-                ProfileMenuRow(
-                    icon: "moon.fill",
-                    iconColor: .purple,
-                    title: "테마"
-                ) {
-                    ThemeSettingsView()
-                }
-
-                ProfileMenuRow(
-                    icon: "globe",
-                    iconColor: .parkSuccess,
-                    title: "언어"
-                ) {
-                    LanguageSettingsView()
-                }
             }
         }
     }

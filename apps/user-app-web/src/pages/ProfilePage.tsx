@@ -17,8 +17,6 @@ import {
   UserX,
   Megaphone,
   MessageSquare,
-  Moon,
-  Globe,
   Star,
 } from 'lucide-react';
 import { AppLayout, Container } from '@/components/layout';
@@ -197,16 +195,6 @@ export function ProfilePage() {
                 icon={<Bell className="w-5 h-5" />}
                 label="알림 설정"
                 onClick={() => navigate('/settings/notifications')}
-              />
-              <MenuItem
-                icon={<Moon className="w-5 h-5" />}
-                label="테마"
-                onClick={() => navigate('/settings/theme')}
-              />
-              <MenuItem
-                icon={<Globe className="w-5 h-5" />}
-                label="언어"
-                onClick={() => navigate('/settings/language')}
               />
             </div>
           </GlassCard>
