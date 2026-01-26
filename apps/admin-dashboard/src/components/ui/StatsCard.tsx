@@ -31,8 +31,8 @@ const variantStyles = {
     value: 'text-white',
   },
   primary: {
-    icon: 'bg-blue-500/20 text-blue-400',
-    value: 'text-blue-400',
+    icon: 'bg-violet-500/20 text-violet-400',
+    value: 'text-violet-400',
   },
   success: {
     icon: 'bg-green-500/20 text-green-400',

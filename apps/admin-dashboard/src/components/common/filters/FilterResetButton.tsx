@@ -31,24 +31,24 @@ const FilterResetButton = React.forwardRef<HTMLButtonElement, FilterResetButtonP
         'flex items-center justify-center gap-2',
         'transition-colors',
         hasActiveFilters
-          ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+          ? 'bg-zinc-700 text-zinc-200 hover:bg-zinc-600'
+          : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
       ),
       text: cn(
         'px-3 py-2 rounded-lg text-sm font-medium',
         'flex items-center justify-center gap-1.5',
         'transition-colors',
         hasActiveFilters
-          ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
-          : 'text-gray-400 cursor-not-allowed'
+          ? 'text-violet-400 hover:text-violet-300 hover:bg-violet-500/10'
+          : 'text-zinc-500 cursor-not-allowed'
       ),
       outline: cn(
         'px-4 py-2 rounded-lg text-sm font-medium',
         'flex items-center justify-center gap-2',
         'border transition-colors',
         hasActiveFilters
-          ? 'border-gray-300 text-gray-700 hover:bg-gray-50'
-          : 'border-gray-200 text-gray-400 cursor-not-allowed'
+          ? 'border-zinc-600 text-zinc-300 hover:bg-zinc-800'
+          : 'border-zinc-700 text-zinc-500 cursor-not-allowed'
       ),
     };
 

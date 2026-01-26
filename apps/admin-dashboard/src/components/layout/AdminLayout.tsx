@@ -10,8 +10,29 @@ import {
   X,
   LogOut,
   ChevronDown,
+  ChevronRight,
+  Gamepad2,
+  CreditCard,
+  Building2,
+  UserCog,
+  Shield,
+  Wrench,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+interface MenuItem {
+  path: string;
+  label: string;
+  icon?: LucideIcon;
+}
+
+interface MenuGroup {
+  label: string;
+  icon: LucideIcon;
+  basePath: string;
+  items: MenuItem[];
+}
 
 interface AdminLayoutProps {
   currentUser: {
@@ -23,12 +44,61 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-const menuItems = [
-  { path: '/dashboard', label: '대시보드', icon: LayoutDashboard },
-  { path: '/bookings', label: '예약', icon: Calendar },
-  { path: '/clubs', label: '골프장', icon: MapPin },
-  { path: '/user-management', label: '회원', icon: Users },
-  { path: '/system-settings', label: '설정', icon: Settings },
+// 대분류 + 서브메뉴 구조 (도메인 관계 기반)
+// 회사 → 골프장 소유, 관리자 소속, 역할/권한 관리
+const menuGroups: MenuGroup[] = [
+  {
+    label: '대시보드',
+    icon: LayoutDashboard,
+    basePath: '/dashboard',
+    items: [
+      { path: '/dashboard', label: '홈 대시보드' },
+    ],
+  },
+  {
+    label: '회사',
+    icon: Building2,
+    basePath: '/companies',
+    items: [
+      { path: '/companies', label: '회사 관리', icon: Building2 },
+      { path: '/admin-management', label: '관리자 관리', icon: UserCog },
+      { path: '/roles', label: '역할 및 권한', icon: Shield },
+    ],
+  },
+  {
+    label: '골프장',
+    icon: MapPin,
+    basePath: '/clubs',
+    items: [
+      { path: '/clubs', label: '골프장 관리', icon: MapPin },
+      { path: '/games', label: '라운드 관리', icon: Gamepad2 },
+    ],
+  },
+  {
+    label: '예약',
+    icon: Calendar,
+    basePath: '/bookings',
+    items: [
+      { path: '/bookings', label: '예약 현황', icon: Calendar },
+      { path: '/bookings/cancellations', label: '환불 관리', icon: CreditCard },
+    ],
+  },
+  {
+    label: '회원',
+    icon: Users,
+    basePath: '/user',
+    items: [
+      { path: '/user-management', label: '사용자 관리', icon: Users },
+    ],
+  },
+  {
+    label: '설정',
+    icon: Settings,
+    basePath: '/settings',
+    items: [
+      { path: '/system-settings', label: '시스템 설정', icon: Wrench },
+    ],
+  },
 ];
 
 export const AdminLayout: React.FC<AdminLayoutProps> = ({
@@ -39,30 +109,105 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(() => {
+    // 현재 경로에 해당하는 그룹을 기본 확장
+    const currentGroup = menuGroups.find(group =>
+      group.items.some(item => location.pathname === item.path || location.pathname.startsWith(item.path + '/'))
+    );
+    return currentGroup ? [currentGroup.label] : ['대시보드'];
+  });
 
   const isActive = (path: string) => {
     if (path === '/dashboard') {
       return location.pathname === '/dashboard';
     }
-    return location.pathname.startsWith(path);
+    // 정확한 매칭 또는 하위 경로 매칭
+    return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  const NavItem = ({ item }: { item: typeof menuItems[0] }) => {
-    const Icon = item.icon;
-    const active = isActive(item.path);
+  const isGroupActive = (group: MenuGroup) => {
+    return group.items.some(item => isActive(item.path));
+  };
+
+  const toggleGroup = (label: string) => {
+    setExpandedGroups(prev =>
+      prev.includes(label)
+        ? prev.filter(g => g !== label)
+        : [...prev, label]
+    );
+  };
+
+  const NavGroup = ({ group }: { group: MenuGroup }) => {
+    const Icon = group.icon;
+    const isExpanded = expandedGroups.includes(group.label);
+    const hasActiveItem = isGroupActive(group);
+    const isSingleItem = group.items.length === 1;
+
+    // 단일 아이템인 경우 바로 링크
+    if (isSingleItem) {
+      const item = group.items[0];
+      return (
+        <Link
+          to={item.path}
+          onClick={() => setSidebarOpen(false)}
+          className={cn(
+            'nav-item',
+            isActive(item.path) && 'active'
+          )}
+        >
+          <Icon className="nav-item-icon" />
+          <span className="font-medium">{group.label}</span>
+        </Link>
+      );
+    }
 
     return (
-      <Link
-        to={item.path}
-        onClick={() => setSidebarOpen(false)}
-        className={cn(
-          'nav-item',
-          active && 'active'
+      <div className="space-y-1">
+        {/* Group Header */}
+        <button
+          onClick={() => toggleGroup(group.label)}
+          className={cn(
+            'w-full nav-item justify-between',
+            hasActiveItem && 'text-[var(--color-primary-light)]'
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <Icon className="nav-item-icon" />
+            <span className="font-medium">{group.label}</span>
+          </div>
+          <ChevronRight
+            className={cn(
+              'w-4 h-4 transition-transform duration-200',
+              isExpanded && 'rotate-90'
+            )}
+          />
+        </button>
+
+        {/* Sub Items */}
+        {isExpanded && (
+          <div className="ml-4 pl-4 border-l border-[var(--color-border)] space-y-1">
+            {group.items.map((item) => {
+              const ItemIcon = item.icon;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
+                    isActive(item.path)
+                      ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary-light)]'
+                      : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-white'
+                  )}
+                >
+                  {ItemIcon && <ItemIcon className="w-4 h-4" />}
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
         )}
-      >
-        <Icon className="nav-item-icon" />
-        <span className="font-medium">{item.label}</span>
-      </Link>
+      </div>
     );
   };
 
@@ -82,9 +227,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-            {menuItems.map((item) => (
-              <NavItem key={item.path} item={item} />
+          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            {menuGroups.map((group) => (
+              <NavGroup key={group.label} group={group} />
             ))}
           </nav>
 
@@ -186,9 +331,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-            {menuItems.map((item) => (
-              <NavItem key={item.path} item={item} />
+          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            {menuGroups.map((group) => (
+              <NavGroup key={group.label} group={group} />
             ))}
           </nav>
 

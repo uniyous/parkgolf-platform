@@ -1,21 +1,21 @@
 @import "tailwindcss";
 
 :root {
-  /* Primary Colors - Blue (Admin Theme) */
-  --color-primary: #3B82F6;
-  --color-primary-light: #60A5FA;
-  --color-primary-dark: #2563EB;
+  /* Primary Colors - Violet (Obsidian Theme) */
+  --color-primary: #A78BFA;
+  --color-primary-light: #C4B5FD;
+  --color-primary-dark: #8B5CF6;
 
   /* Accent Color - Amber */
   --color-accent: #F59E0B;
 
-  /* Background Colors - Blue Gradient */
-  --color-bg-primary: #1E293B;
-  --color-bg-secondary: #0F172A;
-  --color-bg-tertiary: #1E3A5F;
+  /* Background Colors - Obsidian (Pure Dark) */
+  --color-bg-primary: #18181B;
+  --color-bg-secondary: #27272A;
+  --color-bg-tertiary: #3F3F46;
 
-  /* Navigation Bar - Darker */
-  --color-nav-bg: #0B1120;
+  /* Navigation Bar - Almost Pure Black */
+  --color-nav-bg: #09090B;
 
   /* Surface Colors - Glass Effect */
   --color-surface: rgba(255, 255, 255, 0.1);
@@ -116,15 +116,15 @@ body {
 
 /* Gradient Backgrounds */
 .gradient-dark {
-  background: linear-gradient(135deg, #1E3A5F 0%, #1E293B 50%, #0F172A 100%);
+  background: linear-gradient(135deg, #27272A 0%, #18181B 50%, #09090B 100%);
 }
 
 .gradient-primary {
   background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
 }
 
-.gradient-blue {
-  background: linear-gradient(135deg, #1E3A5F 0%, #2563EB 50%, #3B82F6 100%);
+.gradient-violet {
+  background: linear-gradient(135deg, #3F3F46 0%, #8B5CF6 50%, #A78BFA 100%);
 }
 
 .gradient-button {
@@ -228,7 +228,7 @@ body {
 
 .input-glass:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
 }
 
 /* Status Badges */
@@ -273,7 +273,7 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-full);
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(167, 139, 250, 0.2);
   color: var(--color-primary);
 }
 
@@ -417,7 +417,7 @@ body {
 }
 
 .nav-item.active {
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(167, 139, 250, 0.2);
   color: var(--color-primary-light);
 }
 

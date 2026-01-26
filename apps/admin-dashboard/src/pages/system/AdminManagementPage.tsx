@@ -295,7 +295,7 @@ export const AdminManagementPage: React.FC = () => {
       <ActiveFilterTags
         filters={[
           ...(filters.search ? [{ id: 'search', label: '검색', value: filters.search }] : []),
-          ...(filters.role !== 'ALL' ? [{ id: 'role', label: '역할', value: ADMIN_ROLE_LABELS[filters.role], color: 'blue' as const }] : []),
+          ...(filters.role !== 'ALL' ? [{ id: 'role', label: '역할', value: ADMIN_ROLE_LABELS[filters.role], color: 'violet' as const }] : []),
           ...(filters.status !== 'ALL' ? [{ id: 'status', label: '상태', value: filters.status === 'ACTIVE' ? '활성' : '비활성', color: 'green' as const }] : []),
         ]}
         onRemove={(id) => {
