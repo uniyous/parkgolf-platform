@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
 import { ConfirmModal, type ConfirmModalType } from '@/components/ui/ConfirmModal';
 
 export interface ConfirmOptions {
@@ -14,7 +14,6 @@ export interface ConfirmOptions {
 interface ConfirmState extends ConfirmOptions {
   open: boolean;
   loading: boolean;
-  resolve?: (value: boolean) => void;
 }
 
 interface ConfirmContextValue {
@@ -30,17 +29,18 @@ const initialState: ConfirmState = {
   title: '',
 };
 
-export const ConfirmProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const ConfirmProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<ConfirmState>(initialState);
+  const resolveRef = useRef<((value: boolean) => void) | null>(null);
 
   const confirm = useCallback((options: ConfirmOptions): Promise<boolean> => {
     return new Promise((resolve) => {
+      resolveRef.current = resolve;
       setState({
         ...options,
         open: true,
         loading: false,
         showCancel: options.showCancel !== false,
-        resolve,
       });
     });
   }, []);
@@ -51,21 +51,24 @@ export const ConfirmProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const handleOpenChange = useCallback((open: boolean) => {
     if (!open) {
-      state.resolve?.(false);
+      resolveRef.current?.(false);
+      resolveRef.current = null;
       setState(initialState);
     }
-  }, [state]);
+  }, []);
 
-  const handleOk = useCallback(async () => {
+  const handleOk = useCallback(() => {
     setState((prev) => ({ ...prev, loading: true }));
-    state.resolve?.(true);
+    resolveRef.current?.(true);
+    resolveRef.current = null;
     setState(initialState);
-  }, [state]);
+  }, []);
 
   const handleCancel = useCallback(() => {
-    state.resolve?.(false);
+    resolveRef.current?.(false);
+    resolveRef.current = null;
     setState(initialState);
-  }, [state]);
+  }, []);
 
   return (
     <ConfirmContext.Provider value={{ confirm, alert }}>
