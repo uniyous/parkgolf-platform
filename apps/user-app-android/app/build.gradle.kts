@@ -28,7 +28,8 @@ android {
         debug {
             isMinifyEnabled = false
             buildConfigField("String", "API_BASE_URL", "\"https://user-api-dev-335495814488.asia-northeast3.run.app/\"")
-            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://chat-gateway-dev-335495814488.asia-northeast3.run.app/\"")
+            // Use same URL as iOS for chat socket
+            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://chat-gateway-dev-iihuzmuufa-du.a.run.app\"")
         }
         release {
             isMinifyEnabled = true
@@ -37,7 +38,8 @@ android {
                 "proguard-rules.pro"
             )
             buildConfigField("String", "API_BASE_URL", "\"https://user-api-335495814488.asia-northeast3.run.app/\"")
-            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://chat-gateway-335495814488.asia-northeast3.run.app/\"")
+            // Use same URL as iOS for chat socket
+            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://chat-gateway-iihuzmuufa-du.a.run.app\"")
         }
     }
     compileOptions {

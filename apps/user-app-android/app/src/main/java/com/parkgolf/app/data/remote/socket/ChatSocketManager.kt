@@ -102,6 +102,9 @@ class ChatSocketManager @Inject constructor() {
                 // 기존 소켓이 있으면 정리
                 cleanupSocketUnsafe()
 
+                val socketUrl = "${BuildConfig.CHAT_SOCKET_URL}/chat"
+                Log.d(TAG, "Connecting to socket URL: $socketUrl")
+
                 val options = IO.Options().apply {
                     query = "token=$token"
                     forceNew = true
@@ -109,20 +112,22 @@ class ChatSocketManager @Inject constructor() {
                     reconnectionAttempts = MAX_RECONNECT_ATTEMPTS
                     reconnectionDelay = MIN_RECONNECT_INTERVAL_MS
                     timeout = 20000
+                    // Force WebSocket transport like iOS
+                    transports = arrayOf("websocket")
                 }
 
-                socket = IO.socket(URI.create("${BuildConfig.CHAT_SOCKET_URL}/chat"), options).apply {
+                socket = IO.socket(URI.create(socketUrl), options).apply {
                     setupEventListeners()
                 }
 
                 socket?.connect()
-                Log.d(TAG, "Socket connection initiated")
+                Log.d(TAG, "Socket connection initiated to: $socketUrl")
+                // Note: isConnecting will be set to false in EVENT_CONNECT or EVENT_CONNECT_ERROR handlers
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to initialize socket", e)
                 _connectionState.value = false
-                _error.tryEmit(SocketError.ConnectionFailed(e.message ?: "Unknown error"))
-            } finally {
                 isConnecting.set(false)
+                _error.tryEmit(SocketError.ConnectionFailed(e.message ?: "Unknown error"))
             }
         }
     }
@@ -292,10 +297,11 @@ class ChatSocketManager @Inject constructor() {
 
     private fun Socket.setupEventListeners() {
         on(Socket.EVENT_CONNECT) {
+            isConnecting.set(false)
             _connectionState.value = true
             // Reset reconnect counter on successful connection (like iOS)
             reconnectAttempts = 0
-            Log.d(TAG, "Socket connected, reconnect attempts reset")
+            Log.d(TAG, "Socket connected successfully, reconnect attempts reset")
         }
 
         on(Socket.EVENT_DISCONNECT) { args ->
@@ -305,6 +311,7 @@ class ChatSocketManager @Inject constructor() {
         }
 
         on(Socket.EVENT_CONNECT_ERROR) { args ->
+            isConnecting.set(false)
             _connectionState.value = false
             reconnectAttempts++
             val errorMsg = args.firstOrNull()?.toString() ?: "Unknown connection error"
