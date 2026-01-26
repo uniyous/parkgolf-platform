@@ -238,21 +238,25 @@ class ChatViewModel @Inject constructor(
 
         _uiState.value = _uiState.value.copy(isSending = true, messageInput = "")
 
-        // Send via socket for real-time
-        chatRepository.sendMessageViaSocket(roomId, content)
-
-        // Also send via HTTP for persistence
         viewModelScope.launch {
-            chatRepository.sendMessage(roomId, content, "TEXT")
-                .onSuccess {
-                    _uiState.value = _uiState.value.copy(isSending = false)
-                }
-                .onFailure { exception ->
-                    _uiState.value = _uiState.value.copy(
-                        isSending = false,
-                        error = exception.message
-                    )
-                }
+            // iOS와 동일: 소켓 연결 시 소켓으로만, 아니면 HTTP로만 전송
+            if (chatRepository.isConnected) {
+                // Send via socket for real-time (server will persist)
+                chatRepository.sendMessageViaSocket(roomId, content)
+                _uiState.value = _uiState.value.copy(isSending = false)
+            } else {
+                // Socket not connected, use REST API
+                chatRepository.sendMessage(roomId, content, "TEXT")
+                    .onSuccess {
+                        _uiState.value = _uiState.value.copy(isSending = false)
+                    }
+                    .onFailure { exception ->
+                        _uiState.value = _uiState.value.copy(
+                            isSending = false,
+                            error = exception.message
+                        )
+                    }
+            }
         }
     }
 
