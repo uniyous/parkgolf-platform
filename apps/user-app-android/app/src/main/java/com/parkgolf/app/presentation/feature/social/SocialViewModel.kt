@@ -218,17 +218,20 @@ class SocialViewModel @Inject constructor(
     fun loadChatRooms() {
         viewModelScope.launch {
             chatRepository.getChatRooms(page = 1, limit = 50)
-                .onSuccess { paginatedData ->
-                    val rooms = paginatedData.data
-                    val unreadCount = rooms.sumOf { it.unreadCount }
+                .onSuccess { rooms ->
+                    // API returns simple array, sort by updatedAt like iOS
+                    val sortedRooms = rooms.sortedByDescending { it.updatedAt }
+                    val unreadCount = sortedRooms.sumOf { it.unreadCount }
                     _uiState.value = _uiState.value.copy(
-                        chatRooms = rooms,
+                        chatRooms = sortedRooms,
                         totalUnreadCount = unreadCount
                     )
                 }
                 .onFailure { exception ->
-                    // 채팅방 로드 실패는 UI에 표시하지 않음 (친구 탭이 기본이므로)
-                    // 필요시 로깅 추가
+                    // 채팅방 로드 실패 시 에러 표시
+                    _uiState.value = _uiState.value.copy(
+                        error = exception.message ?: "채팅방 목록 로드 실패"
+                    )
                 }
         }
     }

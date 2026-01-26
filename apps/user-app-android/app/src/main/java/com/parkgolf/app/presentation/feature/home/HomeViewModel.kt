@@ -131,9 +131,9 @@ class HomeViewModel @Inject constructor(
 
     private suspend fun loadChatRooms() {
         chatRepository.getChatRooms(page = 1, limit = 20)
-            .onSuccess { paginatedData ->
+            .onSuccess { rooms ->
                 // 읽지 않은 메시지가 있는 채팅방만 필터링
-                val unreadRooms = paginatedData.data.filter { it.unreadCount > 0 }
+                val unreadRooms = rooms.filter { it.unreadCount > 0 }
                 _uiState.value = _uiState.value.copy(unreadChatRooms = unreadRooms)
             }
             .onFailure { exception ->

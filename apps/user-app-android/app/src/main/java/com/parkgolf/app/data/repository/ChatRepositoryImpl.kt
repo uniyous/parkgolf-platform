@@ -10,7 +10,6 @@ import com.parkgolf.app.domain.model.ChatRoom
 import com.parkgolf.app.domain.model.ChatRoomType
 import com.parkgolf.app.domain.repository.ChatRepository
 import com.parkgolf.app.domain.repository.MessagesResult
-import com.parkgolf.app.util.PaginatedData
 import com.parkgolf.app.util.safeApiCall
 import com.parkgolf.app.util.toResult
 import com.parkgolf.app.util.toUnitResult
@@ -28,18 +27,11 @@ class ChatRepositoryImpl @Inject constructor(
 
     override val connectionState: Flow<Boolean> = chatSocketManager.connectionState
 
-    override suspend fun getChatRooms(page: Int, limit: Int): Result<PaginatedData<ChatRoom>> = safeApiCall {
+    // API returns simple array response, not paginated
+    override suspend fun getChatRooms(page: Int, limit: Int): Result<List<ChatRoom>> = safeApiCall {
         val response = chatApi.getChatRooms(page, limit)
-        if (response.success) {
-            Result.success(
-                PaginatedData(
-                    data = response.data.map { it.toDomain() },
-                    total = response.total,
-                    page = response.page,
-                    limit = response.limit,
-                    totalPages = response.totalPages
-                )
-            )
+        if (response.success && response.data != null) {
+            Result.success(response.data.map { it.toDomain() })
         } else {
             Result.failure(Exception("채팅방 목록 조회에 실패했습니다"))
         }

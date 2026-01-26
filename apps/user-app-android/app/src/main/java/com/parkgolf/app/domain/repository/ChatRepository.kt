@@ -3,14 +3,14 @@ package com.parkgolf.app.domain.repository
 import com.parkgolf.app.domain.model.ChatMessage
 import com.parkgolf.app.domain.model.ChatRoom
 import com.parkgolf.app.domain.model.ChatRoomType
-import com.parkgolf.app.util.PaginatedData
 import kotlinx.coroutines.flow.Flow
 
 interface ChatRepository {
     val messageFlow: Flow<ChatMessage>
     val connectionState: Flow<Boolean>
 
-    suspend fun getChatRooms(page: Int = 1, limit: Int = 20): Result<PaginatedData<ChatRoom>>
+    // API returns simple array, not paginated
+    suspend fun getChatRooms(page: Int = 1, limit: Int = 50): Result<List<ChatRoom>>
 
     suspend fun getChatRoom(roomId: String): Result<ChatRoom>
 

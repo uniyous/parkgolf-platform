@@ -16,11 +16,12 @@ import retrofit2.http.Query
 
 interface ChatApi {
 
+    // API returns simple array response, not paginated
     @GET("api/user/chat/rooms")
     suspend fun getChatRooms(
         @Query("page") page: Int = 1,
-        @Query("limit") limit: Int = 20
-    ): PaginatedResponse<ChatRoomDto>
+        @Query("limit") limit: Int = 50
+    ): ApiResponse<List<ChatRoomDto>>
 
     @GET("api/user/chat/rooms/{roomId}")
     suspend fun getChatRoom(@Path("roomId") roomId: String): ApiResponse<ChatRoomDto>
