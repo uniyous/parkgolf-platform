@@ -75,6 +75,14 @@ fun SocialScreen(
         }
     }
 
+    // Handle navigation to chat room
+    LaunchedEffect(uiState.navigateToChatRoom) {
+        uiState.navigateToChatRoom?.let { roomId ->
+            onNavigate("chat/$roomId")
+            viewModel.clearNavigation()
+        }
+    }
+
     Scaffold(
         snackbarHost = {
             SnackbarHost(snackbarHostState) { data ->

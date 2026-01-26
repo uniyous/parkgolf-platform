@@ -62,6 +62,7 @@ data class ChatMessageDto(
 data class CreateChatRoomRequest(
     val name: String,
     val type: String,
+    @SerialName("participant_ids")
     val participantIds: List<String>
 )
 

@@ -211,19 +211,19 @@ jobs:
           if [ "$ENV" == "prod" ]; then
             # Production: higher resources
             if [ "$SERVICE" == "iam-service" ]; then
-              # iam-service: Always running, no CPU throttling (bcrypt CPU-intensive)
+              # iam-service: Always running with CPU throttling for cost optimization
               echo "min_instances=1" >> $GITHUB_OUTPUT
               echo "max_instances=10" >> $GITHUB_OUTPUT
               echo "memory=1Gi" >> $GITHUB_OUTPUT
               echo "cpu=2" >> $GITHUB_OUTPUT
-              echo "cpu_throttling=false" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
             elif [ "$SERVICE" == "chat-gateway" ]; then
-              # chat-gateway: WebSocket persistent connections, always running
+              # chat-gateway: WebSocket persistent connections with CPU throttling
               echo "min_instances=1" >> $GITHUB_OUTPUT
               echo "max_instances=10" >> $GITHUB_OUTPUT
               echo "memory=512Mi" >> $GITHUB_OUTPUT
               echo "cpu=1" >> $GITHUB_OUTPUT
-              echo "cpu_throttling=false" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
             else
               # All other services: 512Mi
               echo "min_instances=0" >> $GITHUB_OUTPUT
@@ -235,19 +235,19 @@ jobs:
           else
             # Development: minimal resources for cost optimization
             if [ "$SERVICE" == "iam-service" ]; then
-              # iam-service: Always running for NATS subscription, no CPU throttling (bcrypt CPU-intensive)
+              # iam-service: Always running for NATS subscription with CPU throttling
               echo "min_instances=1" >> $GITHUB_OUTPUT
               echo "max_instances=1" >> $GITHUB_OUTPUT
               echo "memory=512Mi" >> $GITHUB_OUTPUT
               echo "cpu=1" >> $GITHUB_OUTPUT
-              echo "cpu_throttling=false" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
             elif [ "$SERVICE" == "chat-gateway" ]; then
-              # chat-gateway: WebSocket persistent connections, no CPU throttling for real-time performance
+              # chat-gateway: WebSocket persistent connections with CPU throttling
               echo "min_instances=1" >> $GITHUB_OUTPUT
               echo "max_instances=1" >> $GITHUB_OUTPUT
               echo "memory=512Mi" >> $GITHUB_OUTPUT
               echo "cpu=1" >> $GITHUB_OUTPUT
-              echo "cpu_throttling=false" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
             elif [ "$SERVICE" == "chat-service" ]; then
               # chat-service: always running for NATS subscription
               echo "min_instances=1" >> $GITHUB_OUTPUT

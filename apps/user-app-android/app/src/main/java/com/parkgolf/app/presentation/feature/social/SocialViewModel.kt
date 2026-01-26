@@ -42,6 +42,9 @@ data class SocialUiState(
     val chatRooms: List<ChatRoom> = emptyList(),
     val totalUnreadCount: Int = 0,
 
+    // Navigation
+    val navigateToChatRoom: String? = null,
+
     val error: String? = null,
     val successMessage: String? = null
 )
@@ -268,6 +271,8 @@ class SocialViewModel @Inject constructor(
 
     fun createDirectChat(friend: Friend) {
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+
             chatRepository.createChatRoom(
                 name = friend.friendName,
                 type = com.parkgolf.app.domain.model.ChatRoomType.DIRECT,
@@ -275,16 +280,22 @@ class SocialViewModel @Inject constructor(
             )
                 .onSuccess { chatRoom ->
                     _uiState.value = _uiState.value.copy(
-                        successMessage = "채팅방이 생성되었습니다"
+                        isLoading = false,
+                        navigateToChatRoom = chatRoom.id
                     )
                     loadChatRooms()
                 }
                 .onFailure { exception ->
                     _uiState.value = _uiState.value.copy(
+                        isLoading = false,
                         error = exception.message ?: "채팅방 생성 실패"
                     )
                 }
         }
+    }
+
+    fun clearNavigation() {
+        _uiState.value = _uiState.value.copy(navigateToChatRoom = null)
     }
 
     fun clearError() {

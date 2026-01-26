@@ -4,6 +4,11 @@ import SwiftUI
 
 struct FriendsView: View {
     @StateObject private var viewModel = FriendsViewModel()
+    @StateObject private var chatViewModel = ChatListViewModel()
+
+    // Navigation state for direct chat
+    @State private var navigateToChatRoom: ChatRoom?
+    @State private var isCreatingChat = false
 
     var body: some View {
         NavigationStack {
@@ -145,7 +150,7 @@ struct FriendsView: View {
                         FriendCard(
                             friend: friend,
                             onChat: {
-                                // Navigate to chat
+                                createDirectChat(with: friend)
                             },
                             onRemove: {
                                 Task {
@@ -155,11 +160,63 @@ struct FriendsView: View {
                         )
                     }
                 }
+
+                // Hidden NavigationLink for programmatic navigation
+                NavigationLink(
+                    destination: Group {
+                        if let room = navigateToChatRoom {
+                            ChatRoomViewWrapper(room: room)
+                        }
+                    },
+                    isActive: Binding(
+                        get: { navigateToChatRoom != nil },
+                        set: { if !$0 { navigateToChatRoom = nil } }
+                    )
+                ) {
+                    EmptyView()
+                }
+                .hidden()
             }
             .padding(ParkSpacing.md)
         }
         .refreshable {
             await viewModel.loadFriends()
+        }
+        .overlay {
+            if isCreatingChat {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                    .overlay {
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(1.5)
+                    }
+            }
+        }
+    }
+
+    // MARK: - Create Direct Chat
+
+    private func createDirectChat(with friend: Friend) {
+        guard !isCreatingChat else { return }
+
+        isCreatingChat = true
+
+        Task {
+            if let room = await chatViewModel.createChatRoom(
+                name: friend.friendName,
+                type: .direct,
+                participantIds: [String(friend.friendId)]
+            ) {
+                await MainActor.run {
+                    navigateToChatRoom = room
+                    isCreatingChat = false
+                }
+            } else {
+                await MainActor.run {
+                    isCreatingChat = false
+                }
+            }
         }
     }
 

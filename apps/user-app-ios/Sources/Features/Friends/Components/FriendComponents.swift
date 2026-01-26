@@ -45,15 +45,22 @@ struct FriendCard: View {
                         .background(Color.parkPrimary.opacity(0.2))
                         .clipShape(Circle())
                 }
+
+                // More Menu Button (like Android)
+                Menu {
+                    Button(role: .destructive) {
+                        showDeleteConfirm = true
+                    } label: {
+                        Label("친구 삭제", systemImage: "person.badge.minus")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 16))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .frame(width: 40, height: 40)
+                }
             }
             .padding(ParkSpacing.md)
-        }
-        .contextMenu {
-            Button(role: .destructive) {
-                showDeleteConfirm = true
-            } label: {
-                Label("친구 삭제", systemImage: "person.badge.minus")
-            }
         }
         .confirmationDialog(
             "친구를 삭제하시겠습니까?",

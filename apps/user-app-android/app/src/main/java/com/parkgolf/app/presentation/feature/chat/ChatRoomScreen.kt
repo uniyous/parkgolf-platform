@@ -271,25 +271,6 @@ private fun ChatMessageBubble(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isOwnMessage) Arrangement.End else Arrangement.Start
     ) {
-        if (!isOwnMessage) {
-            // Avatar placeholder
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(ParkPrimary.copy(alpha = 0.3f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = message.senderName.take(1),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = ParkOnPrimary,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-        }
-
         Column(
             horizontalAlignment = if (isOwnMessage) Alignment.End else Alignment.Start
         ) {

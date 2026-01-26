@@ -71,10 +71,13 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             chatRepository.messageFlow.collect { message ->
                 if (message.roomId == currentRoomId) {
-                    val currentMessages = _uiState.value.messages.toMutableList()
-                    // Add to end (oldest first, newest last - like iOS)
-                    currentMessages.add(message)
-                    _uiState.value = _uiState.value.copy(messages = currentMessages)
+                    val currentMessages = _uiState.value.messages
+                    // Avoid duplicates (like iOS)
+                    if (!currentMessages.any { it.id == message.id }) {
+                        val updatedMessages = currentMessages.toMutableList()
+                        updatedMessages.add(message)
+                        _uiState.value = _uiState.value.copy(messages = updatedMessages)
+                    }
                 }
             }
         }
