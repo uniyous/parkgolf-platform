@@ -60,12 +60,12 @@ class ChatRepositoryImpl @Inject constructor(
         limit: Int
     ): Result<MessagesResult> = safeApiCall {
         val response = chatApi.getMessages(roomId, cursor, limit)
-        if (response.success) {
+        if (response.success && response.data != null) {
             Result.success(
                 MessagesResult(
-                    messages = response.data.map { it.toDomain() },
-                    nextCursor = response.nextCursor,
-                    hasMore = response.hasMore
+                    messages = response.data.messages.map { it.toDomain() },
+                    nextCursor = response.data.nextCursor,
+                    hasMore = response.data.hasMore
                 )
             )
         } else {

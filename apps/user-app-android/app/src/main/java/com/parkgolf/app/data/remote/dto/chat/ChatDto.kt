@@ -45,7 +45,7 @@ data class ChatParticipantDto(
 data class ChatMessageDto(
     val id: String,
     val roomId: String,
-    val senderId: String,
+    val senderId: Int, // API returns Int
     val senderName: String,
     val content: String,
     // API may return 'type' or 'messageType'
@@ -71,12 +71,18 @@ data class SendMessageRequest(
     val messageType: String = "TEXT"
 )
 
+// API response wrapper for messages endpoint
 @Serializable
-data class MessagesResponse(
+data class MessagesApiResponse(
     val success: Boolean,
-    val data: List<ChatMessageDto>,
-    val nextCursor: String? = null,
-    val hasMore: Boolean = false
+    val data: MessagesData? = null
+)
+
+@Serializable
+data class MessagesData(
+    val messages: List<ChatMessageDto>,
+    val hasMore: Boolean = false,
+    val nextCursor: String? = null
 )
 
 enum class ChatRoomType(val value: String) {

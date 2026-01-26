@@ -3,10 +3,9 @@ package com.parkgolf.app.data.remote.api
 import com.parkgolf.app.data.remote.dto.chat.ChatMessageDto
 import com.parkgolf.app.data.remote.dto.chat.ChatRoomDto
 import com.parkgolf.app.data.remote.dto.chat.CreateChatRoomRequest
-import com.parkgolf.app.data.remote.dto.chat.MessagesResponse
+import com.parkgolf.app.data.remote.dto.chat.MessagesApiResponse
 import com.parkgolf.app.data.remote.dto.chat.SendMessageRequest
 import com.parkgolf.app.data.remote.dto.common.ApiResponse
-import com.parkgolf.app.data.remote.dto.common.PaginatedResponse
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -34,7 +33,7 @@ interface ChatApi {
         @Path("roomId") roomId: String,
         @Query("cursor") cursor: String? = null,
         @Query("limit") limit: Int = 50
-    ): MessagesResponse
+    ): MessagesApiResponse
 
     @POST("api/user/chat/rooms/{roomId}/messages")
     suspend fun sendMessage(

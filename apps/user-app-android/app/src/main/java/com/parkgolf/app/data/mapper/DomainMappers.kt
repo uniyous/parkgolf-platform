@@ -128,7 +128,7 @@ fun ChatMessageDto.toDomain(): ChatMessage {
     return ChatMessage(
         id = id,
         roomId = roomId,
-        senderId = senderId,
+        senderId = senderId.toString(), // Convert Int to String
         senderName = senderName,
         content = content,
         messageType = MessageType.fromValue(getMessageTypeValue()),
