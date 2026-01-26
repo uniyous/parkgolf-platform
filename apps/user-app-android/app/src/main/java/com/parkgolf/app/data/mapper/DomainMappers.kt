@@ -9,6 +9,7 @@ import com.parkgolf.app.data.remote.dto.chat.ChatParticipantDto
 import com.parkgolf.app.data.remote.dto.chat.ChatRoomDto
 import com.parkgolf.app.data.remote.dto.friends.FriendDto
 import com.parkgolf.app.data.remote.dto.friends.FriendRequestDto
+import com.parkgolf.app.data.remote.dto.friends.SentFriendRequestDto
 import com.parkgolf.app.data.remote.dto.friends.UserSearchResultDto
 import com.parkgolf.app.data.remote.dto.round.RoundDto
 import com.parkgolf.app.data.remote.dto.round.TimeSlotDto
@@ -143,13 +144,13 @@ fun FriendRequestDto.toFriendRequest(): FriendRequest {
     )
 }
 
-fun FriendRequestDto.toSentFriendRequest(): SentFriendRequest {
+fun SentFriendRequestDto.toDomain(): SentFriendRequest {
     return SentFriendRequest(
         id = id,
-        toUserId = toUserId ?: 0,
-        toUserName = toUserName ?: "",
-        toUserEmail = toUserEmail ?: "",
-        toUserProfileImageUrl = null,
+        toUserId = toUserId,
+        toUserName = toUserName,
+        toUserEmail = toUserEmail,
+        toUserProfileImageUrl = toUserProfileImageUrl,
         status = status,
         message = message,
         createdAt = createdAt

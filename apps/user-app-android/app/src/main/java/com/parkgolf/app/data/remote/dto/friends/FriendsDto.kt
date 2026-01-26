@@ -19,9 +19,18 @@ data class FriendRequestDto(
     val fromUserName: String,
     val fromUserEmail: String,
     val fromUserProfileImageUrl: String? = null,
-    val toUserId: Int? = null,
-    val toUserName: String? = null,
-    val toUserEmail: String? = null,
+    val status: String,
+    val message: String? = null,
+    val createdAt: String? = null
+)
+
+@Serializable
+data class SentFriendRequestDto(
+    val id: Int,
+    val toUserId: Int,
+    val toUserName: String,
+    val toUserEmail: String,
+    val toUserProfileImageUrl: String? = null,
     val status: String,
     val message: String? = null,
     val createdAt: String? = null

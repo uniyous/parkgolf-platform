@@ -69,7 +69,7 @@ class SocialViewModel @Inject constructor(
     // Friends functions
     fun loadFriendsData() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             // Load friends
             friendsRepository.getFriends()
@@ -79,17 +79,26 @@ class SocialViewModel @Inject constructor(
                         filteredFriends = filterFriends(friends, _uiState.value.friendSearchQuery)
                     )
                 }
+                .onFailure { e ->
+                    _uiState.value = _uiState.value.copy(error = e.message ?: "친구 목록 로드 실패")
+                }
 
             // Load friend requests
             friendsRepository.getFriendRequests()
                 .onSuccess { requests ->
                     _uiState.value = _uiState.value.copy(friendRequests = requests)
                 }
+                .onFailure { e ->
+                    _uiState.value = _uiState.value.copy(error = e.message ?: "친구 요청 목록 로드 실패")
+                }
 
             // Load sent requests
             friendsRepository.getSentFriendRequests()
                 .onSuccess { sentRequests ->
                     _uiState.value = _uiState.value.copy(sentFriendRequests = sentRequests)
+                }
+                .onFailure { e ->
+                    _uiState.value = _uiState.value.copy(error = e.message ?: "보낸 요청 목록 로드 실패")
                 }
 
             _uiState.value = _uiState.value.copy(isLoading = false)
@@ -218,9 +227,8 @@ class SocialViewModel @Inject constructor(
                     )
                 }
                 .onFailure { exception ->
-                    _uiState.value = _uiState.value.copy(
-                        error = exception.message
-                    )
+                    // 채팅방 로드 실패는 UI에 표시하지 않음 (친구 탭이 기본이므로)
+                    // 필요시 로깅 추가
                 }
         }
     }
@@ -233,6 +241,36 @@ class SocialViewModel @Inject constructor(
                 participantIds = participantIds
             )
                 .onSuccess {
+                    _uiState.value = _uiState.value.copy(
+                        successMessage = "채팅방이 생성되었습니다"
+                    )
+                    loadChatRooms()
+                }
+                .onFailure { exception ->
+                    _uiState.value = _uiState.value.copy(
+                        error = exception.message ?: "채팅방 생성 실패"
+                    )
+                }
+        }
+    }
+
+    fun clearUserSearch() {
+        searchJob?.cancel()
+        _uiState.value = _uiState.value.copy(
+            userSearchQuery = "",
+            userSearchResults = emptyList(),
+            isSearching = false
+        )
+    }
+
+    fun createDirectChat(friend: Friend) {
+        viewModelScope.launch {
+            chatRepository.createChatRoom(
+                name = friend.friendName,
+                type = com.parkgolf.app.domain.model.ChatRoomType.DIRECT,
+                participantIds = listOf(friend.friendId.toString())
+            )
+                .onSuccess { chatRoom ->
                     _uiState.value = _uiState.value.copy(
                         successMessage = "채팅방이 생성되었습니다"
                     )

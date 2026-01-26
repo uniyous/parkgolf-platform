@@ -2,7 +2,6 @@ package com.parkgolf.app.data.repository
 
 import com.parkgolf.app.data.mapper.toDomain
 import com.parkgolf.app.data.mapper.toFriendRequest
-import com.parkgolf.app.data.mapper.toSentFriendRequest
 import com.parkgolf.app.data.remote.api.FriendsApi
 import com.parkgolf.app.data.remote.dto.friends.SendFriendRequestBody
 import com.parkgolf.app.domain.model.Friend
@@ -35,7 +34,7 @@ class FriendsRepositoryImpl @Inject constructor(
 
     override suspend fun getSentFriendRequests(): Result<List<SentFriendRequest>> = safeApiCall {
         friendsApi.getSentFriendRequests().toResult("보낸 친구 요청 목록 조회에 실패했습니다") { data ->
-            data.map { it.toSentFriendRequest() }
+            data.map { it.toDomain() }
         }
     }
 

@@ -4,6 +4,7 @@ import com.parkgolf.app.data.remote.dto.common.ApiResponse
 import com.parkgolf.app.data.remote.dto.friends.FriendDto
 import com.parkgolf.app.data.remote.dto.friends.FriendRequestDto
 import com.parkgolf.app.data.remote.dto.friends.SendFriendRequestBody
+import com.parkgolf.app.data.remote.dto.friends.SentFriendRequestDto
 import com.parkgolf.app.data.remote.dto.friends.UserSearchResultDto
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -21,7 +22,7 @@ interface FriendsApi {
     suspend fun getFriendRequests(): ApiResponse<List<FriendRequestDto>>
 
     @GET("api/user/friends/requests/sent")
-    suspend fun getSentFriendRequests(): ApiResponse<List<FriendRequestDto>>
+    suspend fun getSentFriendRequests(): ApiResponse<List<SentFriendRequestDto>>
 
     @GET("api/user/friends/search")
     suspend fun searchUsers(@Query("q") query: String): ApiResponse<List<UserSearchResultDto>>
