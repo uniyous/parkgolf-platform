@@ -23,7 +23,8 @@ data class ChatUiState(
     val hasMore: Boolean = false,
     val nextCursor: String? = null,
     val currentUserId: String? = null,
-    val error: String? = null
+    val error: String? = null,
+    val canReconnect: Boolean = true
 )
 
 @HiltViewModel
@@ -36,6 +37,7 @@ class ChatViewModel @Inject constructor(
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
     private var currentRoomId: String? = null
+    private var savedToken: String? = null
 
     init {
         observeConnectionState()
@@ -66,8 +68,8 @@ class ChatViewModel @Inject constructor(
             chatRepository.messageFlow.collect { message ->
                 if (message.roomId == currentRoomId) {
                     val currentMessages = _uiState.value.messages.toMutableList()
-                    // Add to beginning (newest first)
-                    currentMessages.add(0, message)
+                    // Add to end (oldest first, newest last - like iOS)
+                    currentMessages.add(message)
                     _uiState.value = _uiState.value.copy(messages = currentMessages)
                 }
             }
@@ -75,12 +77,30 @@ class ChatViewModel @Inject constructor(
     }
 
     fun connectSocket(token: String) {
+        savedToken = token
         chatRepository.connect(token)
+        // Start periodic connection check (like iOS)
+        chatRepository.startConnectionCheck(token)
     }
 
     fun disconnectSocket() {
+        chatRepository.stopConnectionCheck()
         currentRoomId?.let { chatRepository.leaveRoom(it) }
         chatRepository.disconnect()
+    }
+
+    /**
+     * 강제 재연결 (iOS forceReconnect와 동일)
+     * 연결 시도 횟수를 리셋하고 다시 연결 시도
+     */
+    fun forceReconnect() {
+        val token = savedToken ?: return
+        chatRepository.forceReconnect(token)
+        // Rejoin room after reconnection
+        currentRoomId?.let { roomId ->
+            chatRepository.joinRoom(roomId)
+        }
+        _uiState.value = _uiState.value.copy(canReconnect = true)
     }
 
     fun loadRoom(roomId: String) {
@@ -109,10 +129,15 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             chatRepository.getMessages(roomId, cursor, limit = 30)
                 .onSuccess { result ->
+                    // Sort messages by createdAt ascending (oldest first, like iOS)
+                    val sortedMessages = result.messages.sortedBy { it.createdAt }
+
                     val currentMessages = if (cursor == null) {
-                        result.messages
+                        // Initial load: just use sorted messages
+                        sortedMessages
                     } else {
-                        _uiState.value.messages + result.messages
+                        // Pagination: older messages go at the beginning
+                        sortedMessages + _uiState.value.messages
                     }
 
                     _uiState.value = _uiState.value.copy(
@@ -206,6 +231,7 @@ class ChatViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        chatRepository.stopConnectionCheck()
         leaveRoom()
     }
 }

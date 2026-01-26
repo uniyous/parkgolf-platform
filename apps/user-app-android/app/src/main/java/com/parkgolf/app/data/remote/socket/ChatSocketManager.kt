@@ -23,6 +23,9 @@ import javax.inject.Singleton
 import kotlin.concurrent.withLock
 
 private const val TAG = "ChatSocketManager"
+private const val MAX_RECONNECT_ATTEMPTS = 10
+private const val MIN_RECONNECT_INTERVAL_MS = 3000L
+private const val CONNECTION_CHECK_INTERVAL_MS = 30000L
 
 /**
  * Socket.IO 기반 채팅 소켓 매니저
@@ -32,6 +35,7 @@ private const val TAG = "ChatSocketManager"
  * - AtomicBoolean으로 연결 상태 관리
  * - 명시적 리스너 정리
  * - 재연결 로직 개선
+ * - 주기적 연결 체크 (iOS와 동일)
  */
 @Singleton
 class ChatSocketManager @Inject constructor() {
@@ -40,6 +44,14 @@ class ChatSocketManager @Inject constructor() {
     private var socket: Socket? = null
     private val isConnecting = AtomicBoolean(false)
     private var currentRoomId: String? = null
+
+    // Reconnection tracking (like iOS)
+    private var reconnectAttempts = 0
+    private var lastConnectAttempt: Long = 0
+    private var savedToken: String? = null
+
+    // Periodic connection check
+    private var connectionCheckJob: java.util.Timer? = null
 
     private val _connectionState = MutableStateFlow(false)
     val connectionState: StateFlow<Boolean> = _connectionState.asStateFlow()
@@ -70,10 +82,20 @@ class ChatSocketManager @Inject constructor() {
             return
         }
 
+        // Rate limiting check (like iOS)
+        val now = System.currentTimeMillis()
+        if (now - lastConnectAttempt < MIN_RECONNECT_INTERVAL_MS) {
+            Log.d(TAG, "Reconnect attempt too soon, waiting...")
+            return
+        }
+
         if (!isConnecting.compareAndSet(false, true)) {
             Log.d(TAG, "Another connect attempt in progress")
             return
         }
+
+        lastConnectAttempt = now
+        savedToken = token
 
         socketLock.withLock {
             try {
@@ -84,8 +106,8 @@ class ChatSocketManager @Inject constructor() {
                     query = "token=$token"
                     forceNew = true
                     reconnection = true
-                    reconnectionAttempts = 10
-                    reconnectionDelay = 3000
+                    reconnectionAttempts = MAX_RECONNECT_ATTEMPTS
+                    reconnectionDelay = MIN_RECONNECT_INTERVAL_MS
                     timeout = 20000
                 }
 
@@ -109,12 +131,74 @@ class ChatSocketManager @Inject constructor() {
      * 소켓 연결 해제 및 리소스 정리
      */
     fun disconnect() {
+        stopConnectionCheck()
         socketLock.withLock {
             currentRoomId = null
             cleanupSocketUnsafe()
             _connectionState.value = false
             Log.d(TAG, "Socket disconnected and cleaned up")
         }
+    }
+
+    /**
+     * 재연결 가능 여부 (iOS와 동일)
+     */
+    val canReconnect: Boolean
+        get() = reconnectAttempts < MAX_RECONNECT_ATTEMPTS
+
+    /**
+     * 연결 확인 및 필요시 재연결 (iOS checkAndReconnectIfNeeded와 동일)
+     */
+    fun ensureConnected(token: String) {
+        if (!isConnected && canReconnect) {
+            reconnectAttempts++
+            Log.d(TAG, "Attempting reconnect ($reconnectAttempts/$MAX_RECONNECT_ATTEMPTS)")
+            connect(token)
+        }
+    }
+
+    /**
+     * 강제 재연결 - 시도 횟수 리셋 (iOS forceReconnect와 동일)
+     */
+    fun forceReconnect(token: String) {
+        Log.d(TAG, "Force reconnect requested, resetting attempts")
+        reconnectAttempts = 0
+        lastConnectAttempt = 0
+        socketLock.withLock {
+            cleanupSocketUnsafe()
+        }
+        connect(token)
+    }
+
+    /**
+     * 주기적 연결 체크 시작 (30초마다, iOS와 동일)
+     */
+    fun startConnectionCheck(token: String) {
+        stopConnectionCheck()
+        connectionCheckJob = java.util.Timer().apply {
+            scheduleAtFixedRate(object : java.util.TimerTask() {
+                override fun run() {
+                    if (!isConnected && canReconnect) {
+                        Log.d(TAG, "Periodic check: connection lost, attempting reconnect")
+                        ensureConnected(token)
+                        // Rejoin room if we have one
+                        currentRoomId?.let { roomId ->
+                            joinRoom(roomId)
+                        }
+                    }
+                }
+            }, CONNECTION_CHECK_INTERVAL_MS, CONNECTION_CHECK_INTERVAL_MS)
+        }
+        Log.d(TAG, "Connection check started (interval: ${CONNECTION_CHECK_INTERVAL_MS}ms)")
+    }
+
+    /**
+     * 주기적 연결 체크 중지
+     */
+    fun stopConnectionCheck() {
+        connectionCheckJob?.cancel()
+        connectionCheckJob = null
+        Log.d(TAG, "Connection check stopped")
     }
 
     /**
@@ -209,7 +293,9 @@ class ChatSocketManager @Inject constructor() {
     private fun Socket.setupEventListeners() {
         on(Socket.EVENT_CONNECT) {
             _connectionState.value = true
-            Log.d(TAG, "Socket connected")
+            // Reset reconnect counter on successful connection (like iOS)
+            reconnectAttempts = 0
+            Log.d(TAG, "Socket connected, reconnect attempts reset")
         }
 
         on(Socket.EVENT_DISCONNECT) { args ->
@@ -220,8 +306,9 @@ class ChatSocketManager @Inject constructor() {
 
         on(Socket.EVENT_CONNECT_ERROR) { args ->
             _connectionState.value = false
+            reconnectAttempts++
             val errorMsg = args.firstOrNull()?.toString() ?: "Unknown connection error"
-            Log.e(TAG, "Socket connection error: $errorMsg")
+            Log.e(TAG, "Socket connection error ($reconnectAttempts/$MAX_RECONNECT_ATTEMPTS): $errorMsg")
             _error.tryEmit(SocketError.ConnectionFailed(errorMsg))
         }
 

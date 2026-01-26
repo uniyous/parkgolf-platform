@@ -39,10 +39,10 @@ fun ChatRoomScreen(
         viewModel.loadRoom(roomId)
     }
 
-    // Scroll to bottom when new message arrives
+    // Scroll to bottom when new message arrives (newest at bottom)
     LaunchedEffect(uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) {
-            listState.animateScrollToItem(0)
+            listState.animateScrollToItem(uiState.messages.lastIndex)
         }
     }
 
@@ -109,7 +109,7 @@ fun ChatRoomScreen(
             )
         }
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
@@ -119,65 +119,142 @@ fun ChatRoomScreen(
                 )
                 .padding(paddingValues)
         ) {
-            if (uiState.isLoading && uiState.messages.isEmpty()) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                    color = ParkOnPrimary
+            // Connection status banner (like iOS)
+            if (!uiState.isConnected) {
+                ConnectionStatusBanner(
+                    canReconnect = uiState.canReconnect,
+                    onReconnect = { viewModel.forceReconnect() }
                 )
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    reverseLayout = true
-                ) {
-                    items(uiState.messages) { message ->
-                        val isOwnMessage = message.senderId == uiState.currentUserId
-                        ChatMessageBubble(
-                            message = message,
-                            isOwnMessage = isOwnMessage
-                        )
-                    }
+            }
 
-                    if (uiState.hasMore) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (uiState.isLoading) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                        color = ParkOnPrimary
-                                    )
-                                } else {
-                                    TextButton(onClick = { viewModel.loadMoreMessages() }) {
-                                        Text("이전 메시지 보기", color = ParkOnPrimary)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f)
+            ) {
+                if (uiState.isLoading && uiState.messages.isEmpty()) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                        color = ParkOnPrimary
+                    )
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Load more button at top (older messages)
+                        if (uiState.hasMore) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (uiState.isLoading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(24.dp),
+                                            color = ParkOnPrimary
+                                        )
+                                    } else {
+                                        TextButton(onClick = { viewModel.loadMoreMessages() }) {
+                                            Text("이전 메시지 보기", color = ParkOnPrimary)
+                                        }
                                     }
                                 }
                             }
                         }
+
+                        // Messages (oldest first, newest at bottom)
+                        items(uiState.messages) { message ->
+                            val isOwnMessage = message.senderId == uiState.currentUserId
+                            ChatMessageBubble(
+                                message = message,
+                                isOwnMessage = isOwnMessage
+                            )
+                        }
+                    }
+                }
+
+                // Error Snackbar
+                uiState.error?.let { error ->
+                    Snackbar(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(16.dp),
+                        action = {
+                            TextButton(onClick = { viewModel.clearError() }) {
+                                Text("확인")
+                            }
+                        }
+                    ) {
+                        Text(error)
                     }
                 }
             }
+        }
+    }
+}
 
-            // Error Snackbar
-            uiState.error?.let { error ->
-                Snackbar(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp),
-                    action = {
-                        TextButton(onClick = { viewModel.clearError() }) {
-                            Text("확인")
-                        }
-                    }
+/**
+ * 연결 상태 배너 (iOS와 동일한 UI)
+ */
+@Composable
+private fun ConnectionStatusBanner(
+    canReconnect: Boolean,
+    onReconnect: () -> Unit
+) {
+    Surface(
+        color = Color(0xFFEF4444).copy(alpha = 0.9f),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.WifiOff,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "연결 끊김",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White
+                )
+            }
+
+            if (canReconnect) {
+                TextButton(
+                    onClick = onReconnect,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = Color.White
+                    )
                 ) {
-                    Text(error)
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("재연결")
                 }
+            } else {
+                Text(
+                    text = "재연결 불가",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
             }
         }
     }

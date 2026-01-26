@@ -43,6 +43,14 @@ interface ChatRepository {
     fun leaveRoom(roomId: String)
     fun sendMessageViaSocket(roomId: String, content: String)
     fun sendTyping(roomId: String, isTyping: Boolean)
+
+    // Connection management (like iOS)
+    val isConnected: Boolean
+    val canReconnect: Boolean
+    fun ensureConnected(token: String)
+    fun forceReconnect(token: String)
+    fun startConnectionCheck(token: String)
+    fun stopConnectionCheck()
 }
 
 data class MessagesResult(

@@ -114,4 +114,27 @@ class ChatRepositoryImpl @Inject constructor(
     override fun sendTyping(roomId: String, isTyping: Boolean) {
         chatSocketManager.sendTyping(roomId, isTyping)
     }
+
+    // Connection management (like iOS)
+    override val isConnected: Boolean
+        get() = chatSocketManager.isConnected
+
+    override val canReconnect: Boolean
+        get() = chatSocketManager.canReconnect
+
+    override fun ensureConnected(token: String) {
+        chatSocketManager.ensureConnected(token)
+    }
+
+    override fun forceReconnect(token: String) {
+        chatSocketManager.forceReconnect(token)
+    }
+
+    override fun startConnectionCheck(token: String) {
+        chatSocketManager.startConnectionCheck(token)
+    }
+
+    override fun stopConnectionCheck() {
+        chatSocketManager.stopConnectionCheck()
+    }
 }
