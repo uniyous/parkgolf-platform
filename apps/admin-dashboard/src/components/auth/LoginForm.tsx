@@ -79,6 +79,8 @@ const SERVICES = [
   { name: 'iam-service', isNats: true },
   { name: 'course-service', isNats: true },
   { name: 'booking-service', isNats: true },
+  { name: 'chat-gateway', isNats: false },
+  { name: 'chat-service', isNats: true },
 ];
 
 const NATS_SERVICES = SERVICES.filter(s => s.isNats);
