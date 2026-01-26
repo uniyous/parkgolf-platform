@@ -7,6 +7,7 @@ import com.parkgolf.app.data.remote.dto.booking.BookingDto
 import com.parkgolf.app.data.remote.dto.chat.ChatMessageDto
 import com.parkgolf.app.data.remote.dto.chat.ChatParticipantDto
 import com.parkgolf.app.data.remote.dto.chat.ChatRoomDto
+import com.parkgolf.app.data.remote.dto.chat.ChatRoomMemberDto
 import com.parkgolf.app.data.remote.dto.friends.FriendDto
 import com.parkgolf.app.data.remote.dto.friends.FriendRequestDto
 import com.parkgolf.app.data.remote.dto.friends.SentFriendRequestDto
@@ -83,11 +84,18 @@ fun BookingDto.toDomain(): Booking {
 // ==================== Chat ====================
 
 fun ChatRoomDto.toDomain(): ChatRoom {
+    // API returns 'members', convert to 'participants' like iOS
+    val participantsList: List<ChatParticipant> = when {
+        !members.isNullOrEmpty() -> members.map { it.toDomain() }
+        !participants.isNullOrEmpty() -> participants.map { it.toDomain() }
+        else -> emptyList()
+    }
+
     return ChatRoom(
         id = id,
-        name = name,
+        name = name ?: "",
         type = ChatRoomType.fromValue(type),
-        participants = participants.map { it.toDomain() },
+        participants = participantsList,
         lastMessage = lastMessage?.toDomain(),
         unreadCount = unreadCount,
         createdAt = parseDateTime(createdAt),
@@ -95,10 +103,21 @@ fun ChatRoomDto.toDomain(): ChatRoom {
     )
 }
 
+// Convert API 'members' response to domain ChatParticipant
+fun ChatRoomMemberDto.toDomain(): ChatParticipant {
+    return ChatParticipant(
+        id = id,
+        userId = userId.toString(),
+        userName = userName,
+        profileImageUrl = null,
+        joinedAt = parseDateTime(joinedAt)
+    )
+}
+
 fun ChatParticipantDto.toDomain(): ChatParticipant {
     return ChatParticipant(
         id = id,
-        userId = oduserId,
+        userId = oduserId ?: id,
         userName = userName,
         profileImageUrl = profileImageUrl,
         joinedAt = parseDateTime(joinedAt)
@@ -112,7 +131,7 @@ fun ChatMessageDto.toDomain(): ChatMessage {
         senderId = senderId,
         senderName = senderName,
         content = content,
-        messageType = MessageType.fromValue(messageType),
+        messageType = MessageType.fromValue(getMessageTypeValue()),
         createdAt = parseDateTime(createdAt),
         readBy = readBy
     )
