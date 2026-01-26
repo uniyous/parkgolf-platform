@@ -68,6 +68,7 @@ data class CreateChatRoomRequest(
 @Serializable
 data class SendMessageRequest(
     val content: String,
+    @SerialName("message_type")
     val messageType: String = "TEXT"
 )
 
