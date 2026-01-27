@@ -7,7 +7,6 @@ import {
   Query,
   Body,
   UseGuards,
-  Request,
   ParseIntPipe,
 } from '@nestjs/common';
 import {
@@ -20,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { NotifyService } from './notify.service';
+import { CurrentUser } from '../common/decorators';
 import { GetNotificationsQueryDto } from './dto/notification.dto';
 
 @ApiTags('Notifications')
@@ -38,18 +38,18 @@ export class NotifyController {
   @ApiResponse({ status: 200, description: '알림 목록 조회 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async getNotifications(
-    @Request() req: any,
+    @CurrentUser('userId') userId: number,
     @Query() query: GetNotificationsQueryDto,
   ) {
-    return this.notifyService.getNotifications(req.user.userId, query);
+    return this.notifyService.getNotifications(userId, query);
   }
 
   @Get('unread-count')
   @ApiOperation({ summary: '읽지 않은 알림 수 조회' })
   @ApiResponse({ status: 200, description: '읽지 않은 알림 수 조회 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
-  async getUnreadCount(@Request() req: any) {
-    return this.notifyService.getUnreadCount(req.user.userId);
+  async getUnreadCount(@CurrentUser('userId') userId: number) {
+    return this.notifyService.getUnreadCount(userId);
   }
 
   @Post(':id/read')
@@ -59,18 +59,18 @@ export class NotifyController {
   @ApiResponse({ status: 401, description: '인증 필요' })
   @ApiResponse({ status: 404, description: '알림을 찾을 수 없음' })
   async markAsRead(
-    @Request() req: any,
+    @CurrentUser('userId') userId: number,
     @Param('id', ParseIntPipe) id: number,
   ) {
-    return this.notifyService.markAsRead(id, req.user.userId);
+    return this.notifyService.markAsRead(id, userId);
   }
 
   @Post('read-all')
   @ApiOperation({ summary: '모든 알림 읽음 처리' })
   @ApiResponse({ status: 200, description: '모든 알림 읽음 처리 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
-  async markAllAsRead(@Request() req: any) {
-    return this.notifyService.markAllAsRead(req.user.userId);
+  async markAllAsRead(@CurrentUser('userId') userId: number) {
+    return this.notifyService.markAllAsRead(userId);
   }
 
   @Delete(':id')
@@ -80,21 +80,23 @@ export class NotifyController {
   @ApiResponse({ status: 401, description: '인증 필요' })
   @ApiResponse({ status: 404, description: '알림을 찾을 수 없음' })
   async deleteNotification(
-    @Request() req: any,
+    @CurrentUser('userId') userId: number,
     @Param('id', ParseIntPipe) id: number,
   ) {
-    return this.notifyService.deleteNotification(id, req.user.userId);
+    return this.notifyService.deleteNotification(id, userId);
   }
 
   // Legacy endpoints
   @Post('email')
   @ApiOperation({ summary: '이메일 발송' })
+  @ApiResponse({ status: 200, description: '이메일 발송 성공' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
   async sendEmail(
     @Body() data: {
       to: string;
       subject: string;
       template: string;
-      context: any;
+      context: Record<string, unknown>;
     },
   ) {
     return this.notifyService.sendEmail(data);
@@ -102,6 +104,8 @@ export class NotifyController {
 
   @Post('sms')
   @ApiOperation({ summary: 'SMS 발송' })
+  @ApiResponse({ status: 200, description: 'SMS 발송 성공' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
   async sendSMS(
     @Body() data: {
       to: string;

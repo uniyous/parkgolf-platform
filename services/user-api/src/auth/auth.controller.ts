@@ -4,7 +4,6 @@ import {
   Body,
   Get,
   UseGuards,
-  Request,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -17,6 +16,7 @@ import { UsersService } from '../users/users.service';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { NatsResponse } from '../common/types/nats-response.type';
+import { CurrentUser, JwtUser } from '../common/decorators';
 
 @ApiTags('IAM')
 @Controller('api/user/iam')
@@ -57,8 +57,8 @@ export class AuthController {
   @ApiOperation({ summary: '프로필 조회' })
   @ApiResponse({ status: 200, description: '프로필 조회 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
-  async getProfile(@Request() req: any) {
-    const profile = await this.usersService.getProfile(req.user.userId);
+  async getProfile(@CurrentUser('userId') userId: number) {
+    const profile = await this.usersService.getProfile(userId);
     return NatsResponse.success(profile);
   }
 
@@ -68,8 +68,8 @@ export class AuthController {
   @ApiOperation({ summary: '사용자 통계 조회' })
   @ApiResponse({ status: 200, description: '통계 조회 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
-  async getStats(@Request() req: any) {
-    const stats = await this.usersService.getStats(req.user.userId);
+  async getStats(@CurrentUser('userId') userId: number) {
+    const stats = await this.usersService.getStats(userId);
     return NatsResponse.success(stats);
   }
 
@@ -88,7 +88,8 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: '로그아웃' })
   @ApiResponse({ status: 200, description: '로그아웃 성공' })
-  async logout(@Request() req: any) {
-    return this.authService.logout(req.user.userId);
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  async logout(@CurrentUser('userId') userId: number) {
+    return this.authService.logout(userId);
   }
 }

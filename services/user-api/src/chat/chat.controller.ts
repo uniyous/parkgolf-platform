@@ -7,7 +7,6 @@ import {
   Param,
   Query,
   UseGuards,
-  Request,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -19,6 +18,7 @@ import {
 } from '@nestjs/swagger';
 import { ChatService } from './chat.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser, JwtUser } from '../common/decorators';
 import {
   CreateChatRoomDto,
   SendMessageDto,
@@ -40,8 +40,11 @@ export class ChatController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiResponse({ status: 200, description: '채팅방 목록 조회 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
-  async getChatRooms(@Request() req: any, @Query() query: GetRoomsQueryDto) {
-    return this.chatService.getChatRooms(req.user.userId);
+  async getChatRooms(
+    @CurrentUser('userId') userId: number,
+    @Query() query: GetRoomsQueryDto,
+  ) {
+    return this.chatService.getChatRooms(userId);
   }
 
   @Get('rooms/:roomId')
@@ -59,10 +62,13 @@ export class ChatController {
   @ApiResponse({ status: 201, description: '채팅방 생성 성공' })
   @ApiResponse({ status: 400, description: '잘못된 요청' })
   @ApiResponse({ status: 401, description: '인증 필요' })
-  async createChatRoom(@Request() req: any, @Body() dto: CreateChatRoomDto) {
+  async createChatRoom(
+    @CurrentUser() user: JwtUser,
+    @Body() dto: CreateChatRoomDto,
+  ) {
     return this.chatService.createChatRoom(
-      req.user.userId,
-      req.user.name || req.user.email,
+      user.userId,
+      user.name || user.email,
       dto,
     );
   }
@@ -75,13 +81,13 @@ export class ChatController {
   @ApiResponse({ status: 200, description: '메시지 목록 조회 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async getMessages(
-    @Request() req: any,
+    @CurrentUser('userId') userId: number,
     @Param('roomId') roomId: string,
     @Query() query: GetMessagesQueryDto,
   ) {
     return this.chatService.getMessages(
       roomId,
-      req.user.userId,
+      userId,
       query.cursor,
       query.limit || 50,
     );
@@ -94,14 +100,14 @@ export class ChatController {
   @ApiResponse({ status: 400, description: '잘못된 요청' })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async sendMessage(
-    @Request() req: any,
+    @CurrentUser() user: JwtUser,
     @Param('roomId') roomId: string,
     @Body() dto: SendMessageDto,
   ) {
     return this.chatService.sendMessage(
       roomId,
-      req.user.userId,
-      req.user.name || req.user.email,
+      user.userId,
+      user.name || user.email,
       dto.content,
       dto.message_type || MessageType.TEXT,
     );
@@ -112,8 +118,11 @@ export class ChatController {
   @ApiParam({ name: 'roomId', description: '채팅방 ID' })
   @ApiResponse({ status: 200, description: '채팅방 나가기 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
-  async leaveChatRoom(@Request() req: any, @Param('roomId') roomId: string) {
-    return this.chatService.leaveChatRoom(roomId, req.user.userId);
+  async leaveChatRoom(
+    @CurrentUser('userId') userId: number,
+    @Param('roomId') roomId: string,
+  ) {
+    return this.chatService.leaveChatRoom(roomId, userId);
   }
 
   @Post('rooms/:roomId/read')
@@ -122,11 +131,11 @@ export class ChatController {
   @ApiResponse({ status: 200, description: '읽음 처리 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async markAsRead(
-    @Request() req: any,
+    @CurrentUser('userId') userId: number,
     @Param('roomId') roomId: string,
     @Body('messageId') messageId: string,
   ) {
-    return this.chatService.markAsRead(roomId, req.user.userId, messageId);
+    return this.chatService.markAsRead(roomId, userId, messageId);
   }
 
   @Get('rooms/:roomId/unread')
@@ -134,7 +143,10 @@ export class ChatController {
   @ApiParam({ name: 'roomId', description: '채팅방 ID' })
   @ApiResponse({ status: 200, description: '읽지 않은 메시지 수 조회 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
-  async getUnreadCount(@Request() req: any, @Param('roomId') roomId: string) {
-    return this.chatService.getUnreadCount(roomId, req.user.userId);
+  async getUnreadCount(
+    @CurrentUser('userId') userId: number,
+    @Param('roomId') roomId: string,
+  ) {
+    return this.chatService.getUnreadCount(roomId, userId);
   }
 }
