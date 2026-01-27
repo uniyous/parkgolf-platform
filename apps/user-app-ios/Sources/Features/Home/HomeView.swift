@@ -65,11 +65,26 @@ struct HomeView: View {
 
             Spacer()
 
-            Button {
-                // Notifications
+            NavigationLink {
+                NotificationsView()
             } label: {
-                Image(systemName: "bell.fill")
-                    .foregroundStyle(.white)
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: "bell.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(.white)
+
+                    // Badge
+                    if viewModel.totalNotificationBadgeCount > 0 {
+                        Text(viewModel.totalNotificationBadgeCount > 99 ? "99+" : "\(viewModel.totalNotificationBadgeCount)")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.parkError)
+                            .clipShape(Capsule())
+                            .offset(x: 8, y: -8)
+                    }
+                }
             }
         }
         .padding(.horizontal, ParkSpacing.md)

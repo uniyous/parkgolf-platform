@@ -5,6 +5,7 @@ import com.parkgolf.app.data.remote.api.AuthApi
 import com.parkgolf.app.data.remote.api.BookingApi
 import com.parkgolf.app.data.remote.api.ChatApi
 import com.parkgolf.app.data.remote.api.FriendsApi
+import com.parkgolf.app.data.remote.api.NotificationApi
 import com.parkgolf.app.data.remote.api.RoundApi
 import com.parkgolf.app.data.remote.api.SettingsApi
 import com.parkgolf.app.data.remote.api.UserApi
@@ -13,6 +14,7 @@ import com.parkgolf.app.data.repository.AuthRepositoryImpl
 import com.parkgolf.app.data.repository.BookingRepositoryImpl
 import com.parkgolf.app.data.repository.ChatRepositoryImpl
 import com.parkgolf.app.data.repository.FriendsRepositoryImpl
+import com.parkgolf.app.data.repository.NotificationRepositoryImpl
 import com.parkgolf.app.data.repository.RoundRepositoryImpl
 import com.parkgolf.app.data.repository.SettingsRepositoryImpl
 import com.parkgolf.app.domain.repository.SettingsRepository
@@ -21,6 +23,7 @@ import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.BookingRepository
 import com.parkgolf.app.domain.repository.ChatRepository
 import com.parkgolf.app.domain.repository.FriendsRepository
+import com.parkgolf.app.domain.repository.NotificationRepository
 import com.parkgolf.app.domain.repository.RoundRepository
 import com.parkgolf.app.domain.repository.UserRepository
 import dagger.Module
@@ -80,4 +83,10 @@ object RepositoryModule {
     fun provideSettingsRepository(
         settingsApi: SettingsApi
     ): SettingsRepository = SettingsRepositoryImpl(settingsApi)
+
+    @Provides
+    @Singleton
+    fun provideNotificationRepository(
+        notificationApi: NotificationApi
+    ): NotificationRepository = NotificationRepositoryImpl(notificationApi)
 }

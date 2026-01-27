@@ -50,6 +50,7 @@ import com.parkgolf.app.presentation.feature.chat.ChatRoomScreen
 import com.parkgolf.app.presentation.feature.home.FriendRequestsScreen
 import com.parkgolf.app.presentation.feature.home.HomeScreen
 import com.parkgolf.app.presentation.feature.home.UnreadChatsScreen
+import com.parkgolf.app.presentation.feature.notifications.NotificationsScreen
 import com.parkgolf.app.presentation.feature.profile.AnnouncementsScreen
 import com.parkgolf.app.presentation.feature.profile.ChangePasswordScreen
 import com.parkgolf.app.presentation.feature.profile.ContactScreen
@@ -291,6 +292,14 @@ fun ParkGolfNavHost(
             UnreadChatsScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onChatRoomClick = { roomId -> navController.navigate("chat/$roomId") }
+            )
+        }
+
+        // Notifications screen (from Home header bell icon)
+        composable(Screen.Notifications.route) {
+            NotificationsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigate = { route -> navController.navigate(route) }
             )
         }
     }

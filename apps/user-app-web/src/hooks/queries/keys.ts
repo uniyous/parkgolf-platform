@@ -1,5 +1,6 @@
 import type { SearchBookingParams } from '@/lib/api/bookingApi';
 import type { GameSearchParams } from '@/lib/api/gameApi';
+import type { GetNotificationsParams } from '@/lib/api/notificationApi';
 
 // Auth Keys
 export const authKeys = {
@@ -46,4 +47,12 @@ export const bookingKeys = {
   byNumber: (bookingNumber: string) => [...bookingKeys.all, 'number', bookingNumber] as const,
   timeSlotAvailability: (gameId: number, date: string) =>
     [...bookingKeys.all, 'timeSlotAvailability', gameId, date] as const,
+};
+
+// Notification Keys
+export const notificationKeys = {
+  all: ['notifications'] as const,
+  lists: () => [...notificationKeys.all, 'list'] as const,
+  list: (params?: GetNotificationsParams) => [...notificationKeys.lists(), params] as const,
+  unreadCount: () => [...notificationKeys.all, 'unreadCount'] as const,
 };

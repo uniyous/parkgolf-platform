@@ -35,6 +35,9 @@ sealed class Screen(val route: String) {
     data object FriendRequests : Screen("friends/requests")
     data object UnreadChats : Screen("chats/unread")
 
+    // Notifications
+    data object Notifications : Screen("notifications")
+
     // Profile
     data object EditProfile : Screen("profile/edit")
     data object Settings : Screen("settings")

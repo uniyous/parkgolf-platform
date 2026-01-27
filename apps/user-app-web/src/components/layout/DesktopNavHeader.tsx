@@ -1,7 +1,8 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Calendar, Users, User, LucideIcon } from 'lucide-react';
+import { Home, Calendar, Users, User, Bell, LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { useUnreadCountQuery } from '@/hooks/queries/notification';
 
 interface NavItem {
   icon: LucideIcon;
@@ -39,6 +40,7 @@ export function DesktopNavHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { data: unreadCount = 0 } = useUnreadCountQuery();
 
   const isActive = (item: NavItem) => {
     if (item.matchPaths) {
@@ -84,14 +86,31 @@ export function DesktopNavHeader() {
             })}
           </nav>
 
-          {/* User Info */}
-          <div className="flex items-center gap-2 px-3 py-2">
-            <div className="w-8 h-8 rounded-full bg-[var(--color-primary)] flex items-center justify-center">
-              <User className="w-4 h-4 text-white" />
+          {/* Notification & User Info */}
+          <div className="flex items-center gap-3">
+            {/* Notification Bell */}
+            <button
+              onClick={() => navigate('/notifications')}
+              className="relative p-2 rounded-full hover:bg-[var(--color-surface)] transition-colors"
+              aria-label="알림"
+            >
+              <Bell className="w-5 h-5 text-white" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 text-xs font-bold text-white bg-[var(--color-error)] rounded-full flex items-center justify-center">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {/* User Info */}
+            <div className="flex items-center gap-2 px-3 py-2">
+              <div className="w-8 h-8 rounded-full bg-[var(--color-primary)] flex items-center justify-center">
+                <User className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-sm font-medium text-white max-w-[120px] truncate">
+                {user?.name || '사용자'}
+              </span>
             </div>
-            <span className="text-sm font-medium text-white max-w-[120px] truncate">
-              {user?.name || '사용자'}
-            </span>
           </div>
         </div>
       </div>

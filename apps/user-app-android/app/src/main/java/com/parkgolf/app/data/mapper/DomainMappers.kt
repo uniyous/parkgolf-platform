@@ -12,6 +12,8 @@ import com.parkgolf.app.data.remote.dto.friends.FriendDto
 import com.parkgolf.app.data.remote.dto.friends.FriendRequestDto
 import com.parkgolf.app.data.remote.dto.friends.SentFriendRequestDto
 import com.parkgolf.app.data.remote.dto.friends.UserSearchResultDto
+import com.parkgolf.app.data.remote.dto.notification.NotificationDataDto
+import com.parkgolf.app.data.remote.dto.notification.NotificationDto
 import com.parkgolf.app.data.remote.dto.round.RoundDto
 import com.parkgolf.app.data.remote.dto.round.TimeSlotDto
 import com.parkgolf.app.domain.model.*
@@ -276,4 +278,37 @@ fun parseDate(dateStr: String): LocalDate {
     } catch (e: Exception) {
         LocalDate.now()
     }
+}
+
+// ==================== Notification ====================
+
+fun NotificationDto.toDomain(): AppNotification {
+    return AppNotification(
+        id = id,
+        userId = userId,
+        type = NotificationType.valueOf(type),
+        title = title,
+        message = message,
+        data = data?.toDomain(),
+        status = NotificationStatus.valueOf(status),
+        readAt = readAt?.let { parseDateTime(it) },
+        createdAt = parseDateTime(createdAt),
+        updatedAt = parseDateTime(updatedAt)
+    )
+}
+
+fun NotificationDataDto.toDomain(): NotificationData {
+    return NotificationData(
+        bookingId = bookingId,
+        courseId = courseId,
+        courseName = courseName,
+        bookingDate = bookingDate,
+        bookingTime = bookingTime,
+        paymentId = paymentId,
+        amount = amount,
+        failureReason = failureReason,
+        friendId = friendId,
+        friendName = friendName,
+        chatRoomId = chatRoomId
+    )
 }

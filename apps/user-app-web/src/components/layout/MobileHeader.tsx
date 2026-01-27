@@ -1,7 +1,8 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, User } from 'lucide-react';
+import { ArrowLeft, User, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { useUnreadCountQuery } from '@/hooks/queries/notification';
 
 interface MobileHeaderProps {
   title?: string;
@@ -27,6 +28,7 @@ export function MobileHeader({
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { data: unreadCount = 0 } = useUnreadCountQuery();
 
   // Auto detect if back button should show (main tab paths don't need back button)
   const mainPaths = ['/', '/bookings', '/social', '/profile'];
@@ -76,6 +78,22 @@ export function MobileHeader({
         {/* Right Section */}
         <div className="flex items-center gap-2">
           {rightContent && <div>{rightContent}</div>}
+
+          {/* Notification Bell - shown on main pages */}
+          {isMainPage && (
+            <button
+              onClick={() => navigate('/notifications')}
+              className="relative p-2 rounded-full hover:bg-[var(--color-surface)] transition-colors"
+              aria-label="알림"
+            >
+              <Bell className="w-5 h-5 text-white" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 text-[10px] font-bold text-white bg-[var(--color-error)] rounded-full flex items-center justify-center">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
+          )}
 
           {/* User Info - shown on main pages */}
           {shouldShowUserInfo && (

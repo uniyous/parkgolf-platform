@@ -17,6 +17,7 @@ import {
   ChatRoomPage,
   ChangePasswordPage,
 } from './pages';
+import { NotificationsPage } from './pages/NotificationsPage';
 
 function App() {
   return (
@@ -52,6 +53,7 @@ function App() {
             <Route path="/chat" element={<Navigate to="/social?tab=chat" replace />} />
             <Route path="/chat/:roomId" element={<ChatRoomPage />} />
             <Route path="/change-password" element={<ChangePasswordPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

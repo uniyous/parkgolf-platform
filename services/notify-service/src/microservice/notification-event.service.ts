@@ -264,4 +264,42 @@ export class NotificationEventService {
       };
     }
   }
+
+  @MessagePattern('notification.mark_all_as_read')
+  async markAllAsRead(@Payload() data: { userId: string }) {
+    this.logger.log(`Marking all notifications as read for user: ${data.userId}`);
+
+    try {
+      const result = await this.notificationService.markAllAsRead(data.userId);
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error: any) {
+      this.logger.error('Failed to mark all notifications as read:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  @MessagePattern('notification.delete')
+  async deleteNotification(@Payload() data: { notificationId: number; userId: string }) {
+    this.logger.log(`Deleting notification ${data.notificationId} for user: ${data.userId}`);
+
+    try {
+      await this.notificationService.remove(data.notificationId, data.userId);
+      return {
+        success: true,
+        message: 'Notification deleted successfully',
+      };
+    } catch (error: any) {
+      this.logger.error('Failed to delete notification:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
 }
