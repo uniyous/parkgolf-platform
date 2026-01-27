@@ -7,11 +7,11 @@ import {
   Body,
   Param,
   Query,
-  Headers,
   Logger,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { CompaniesService } from './companies.service';
+import { BearerToken } from '../common';
 
 /**
  * Companies Controller (BFF for iam-service)
@@ -28,6 +28,7 @@ import { CompaniesService } from './companies.service';
  * - DELETE /companies/:id -> iam.companies.delete
  */
 @ApiTags('companies')
+@ApiBearerAuth()
 @Controller('api/admin/companies')
 export class CompaniesController {
   private readonly logger = new Logger(CompaniesController.name);
@@ -36,128 +37,118 @@ export class CompaniesController {
 
   @Get()
   @ApiOperation({ summary: 'Get companies list' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'limit', required: false, example: 20 })
   @ApiQuery({ name: 'status', required: false, description: 'Filter by status' })
   @ApiQuery({ name: 'search', required: false, description: 'Search by name or code' })
   @ApiResponse({ status: 200, description: 'Companies retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getCompanies(
+    @BearerToken({ required: false }) token: string | undefined,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('status') status?: string,
     @Query('search') search?: string,
-    @Headers('authorization') authorization?: string,
   ) {
-    const token = authorization?.replace('Bearer ', '') || '';
     const filters = { status, search };
-    // 쿼리 파라미터는 항상 문자열이므로 명시적으로 숫자로 변환
     const pageNum = parseInt(page || '1', 10) || 1;
     const limitNum = parseInt(limit || '20', 10) || 20;
     this.logger.log(`Fetching companies - page: ${pageNum}, limit: ${limitNum}`);
-    return this.companiesService.getCompanies(pageNum, limitNum, token, filters);
+    return this.companiesService.getCompanies(pageNum, limitNum, token || '', filters);
   }
 
   @Get('stats')
   @ApiOperation({ summary: 'Get company statistics' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiResponse({ status: 200, description: 'Company stats retrieved successfully' })
-  async getCompanyStats(@Headers('authorization') authorization?: string) {
-    const token = authorization?.replace('Bearer ', '') || '';
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getCompanyStats(@BearerToken({ required: false }) token: string | undefined) {
     this.logger.log('Fetching company stats');
-    return this.companiesService.getCompanyStats(token);
+    return this.companiesService.getCompanyStats(token || '');
   }
 
   @Get('code/:code')
   @ApiOperation({ summary: 'Get company by code' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiResponse({ status: 200, description: 'Company retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getCompanyByCode(
+    @BearerToken({ required: false }) token: string | undefined,
     @Param('code') code: string,
-    @Headers('authorization') authorization?: string,
   ) {
-    const token = authorization?.replace('Bearer ', '') || '';
     this.logger.log(`Fetching company by code: ${code}`);
-    return this.companiesService.getCompanyByCode(code, token);
+    return this.companiesService.getCompanyByCode(code, token || '');
   }
 
   @Get(':companyId')
   @ApiOperation({ summary: 'Get company by ID' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiResponse({ status: 200, description: 'Company retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getCompanyById(
+    @BearerToken({ required: false }) token: string | undefined,
     @Param('companyId') companyId: string,
-    @Headers('authorization') authorization?: string,
   ) {
-    const token = authorization?.replace('Bearer ', '') || '';
     this.logger.log(`Fetching company: ${companyId}`);
-    return this.companiesService.getCompanyById(companyId, token);
+    return this.companiesService.getCompanyById(companyId, token || '');
   }
 
   @Get(':companyId/admins')
   @ApiOperation({ summary: 'Get admins for a company' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiResponse({ status: 200, description: 'Company admins retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getCompanyAdmins(
+    @BearerToken({ required: false }) token: string | undefined,
     @Param('companyId') companyId: string,
-    @Headers('authorization') authorization?: string,
   ) {
-    const token = authorization?.replace('Bearer ', '') || '';
     this.logger.log(`Fetching admins for company: ${companyId}`);
-    return this.companiesService.getCompanyAdmins(companyId, token);
+    return this.companiesService.getCompanyAdmins(companyId, token || '');
   }
 
   @Post()
   @ApiOperation({ summary: 'Create new company' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiResponse({ status: 201, description: 'Company created successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async createCompany(
-    @Body() companyData: any,
-    @Headers('authorization') authorization?: string,
+    @BearerToken({ required: false }) token: string | undefined,
+    @Body() companyData: Record<string, unknown>,
   ) {
-    const token = authorization?.replace('Bearer ', '') || '';
     this.logger.log('Creating company');
-    return this.companiesService.createCompany(companyData, token);
+    return this.companiesService.createCompany(companyData, token || '');
   }
 
   @Patch(':companyId')
   @ApiOperation({ summary: 'Update company' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiResponse({ status: 200, description: 'Company updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async updateCompany(
+    @BearerToken({ required: false }) token: string | undefined,
     @Param('companyId') companyId: string,
-    @Body() updateData: any,
-    @Headers('authorization') authorization?: string,
+    @Body() updateData: Record<string, unknown>,
   ) {
-    const token = authorization?.replace('Bearer ', '') || '';
     this.logger.log(`Updating company: ${companyId}`);
-    return this.companiesService.updateCompany(companyId, updateData, token);
+    return this.companiesService.updateCompany(companyId, updateData, token || '');
   }
 
   @Patch(':companyId/status')
   @ApiOperation({ summary: 'Update company status' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiResponse({ status: 200, description: 'Company status updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async updateCompanyStatus(
+    @BearerToken({ required: false }) token: string | undefined,
     @Param('companyId') companyId: string,
     @Body() body: { status: string },
-    @Headers('authorization') authorization?: string,
   ) {
-    const token = authorization?.replace('Bearer ', '') || '';
     this.logger.log(`Updating company status: ${companyId} -> ${body.status}`);
-    return this.companiesService.updateCompanyStatus(companyId, body.status, token);
+    return this.companiesService.updateCompanyStatus(companyId, body.status, token || '');
   }
 
   @Delete(':companyId')
   @ApiOperation({ summary: 'Delete company' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiResponse({ status: 200, description: 'Company deleted successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async deleteCompany(
+    @BearerToken({ required: false }) token: string | undefined,
     @Param('companyId') companyId: string,
-    @Headers('authorization') authorization?: string,
   ) {
-    const token = authorization?.replace('Bearer ', '') || '';
     this.logger.log(`Deleting company: ${companyId}`);
-    return this.companiesService.deleteCompany(companyId, token);
+    return this.companiesService.deleteCompany(companyId, token || '');
   }
 }

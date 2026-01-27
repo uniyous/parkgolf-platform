@@ -1,21 +1,21 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Patch, 
-  Delete, 
-  Body, 
-  Param, 
-  Query, 
-  Headers,
-  HttpStatus, 
-  HttpException, 
-  Logger 
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  Logger,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AdminService } from './admins.service';
+import { BearerToken } from '../common';
+import { CreateAdminDto, UpdateAdminDto } from './dto/admin.dto';
 
 @ApiTags('admins')
+@ApiBearerAuth()
 @Controller('api/admin/admins')
 export class AdminsController {
   private readonly logger = new Logger(AdminsController.name);
@@ -24,7 +24,6 @@ export class AdminsController {
 
   @Get()
   @ApiOperation({ summary: 'Get admin list with filtering' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiQuery({ name: 'search', required: false, description: 'Search in name, username, email' })
   @ApiQuery({ name: 'role', required: false, description: 'Filter by admin role' })
   @ApiQuery({ name: 'isActive', required: false, description: 'Filter by active status' })
@@ -33,327 +32,160 @@ export class AdminsController {
   @ApiResponse({ status: 200, description: 'Admin list retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getAdminList(
+    @BearerToken() token: string,
     @Query('search') search?: string,
     @Query('role') role?: string,
     @Query('isActive') isActive?: string,
     @Query('page') page = 1,
     @Query('limit') limit = 20,
-    @Headers('authorization') authorization?: string
   ) {
-    try {
-      const token = this.extractToken(authorization);
-      const pageNum = parseInt(page.toString(), 10) || 1;
-      const limitNum = parseInt(limit.toString(), 10) || 20;
-      const filters = {
-        search,
-        role,
-        isActive: isActive === undefined ? undefined : isActive === 'true',
-      };
+    const pageNum = parseInt(page.toString(), 10) || 1;
+    const limitNum = parseInt(limit.toString(), 10) || 20;
+    const filters = {
+      search,
+      role,
+      isActive: isActive === undefined ? undefined : isActive === 'true',
+    };
 
-      this.logger.log(`Fetching admin list with filters: ${JSON.stringify(filters)}, page: ${pageNum}, limit: ${limitNum}`);
+    this.logger.log(`Fetching admin list with filters: ${JSON.stringify(filters)}, page: ${pageNum}, limit: ${limitNum}`);
 
-      const result = await this.adminService.getAdminList(filters, pageNum, limitNum, token);
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to fetch admin list', error);
-      throw this.handleError(error);
-    }
+    return this.adminService.getAdminList(filters, pageNum, limitNum, token);
   }
 
   @Get('stats')
   @ApiOperation({ summary: 'Get admin statistics' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiResponse({ status: 200, description: 'Admin statistics retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getAdminStats(
-    @Headers('authorization') authorization?: string
-  ) {
-    try {
-      const token = this.extractToken(authorization);
-      
-      this.logger.log('Fetching admin statistics');
-      
-      const result = await this.adminService.getAdminStats({}, token);
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to fetch admin statistics', error);
-      throw this.handleError(error);
-    }
+  async getAdminStats(@BearerToken() token: string) {
+    this.logger.log('Fetching admin statistics');
+    return this.adminService.getAdminStats({}, token);
   }
 
   @Get('permissions')
   @ApiOperation({ summary: 'Get all available permissions' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiResponse({ status: 200, description: 'Permissions retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getPermissions(
-    @Headers('authorization') authorization?: string
-  ) {
-    try {
-      const token = this.extractToken(authorization);
-
-      this.logger.log('Fetching permissions list');
-
-      const result = await this.adminService.getPermissionList(token);
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to fetch permissions', error);
-      throw this.handleError(error);
-    }
+  async getPermissions(@BearerToken() token: string) {
+    this.logger.log('Fetching permissions list');
+    return this.adminService.getPermissionList(token);
   }
 
   @Get('roles')
   @ApiOperation({ summary: 'Get all available roles' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiQuery({ name: 'userType', required: false, description: 'Filter by user type (ADMIN or USER)' })
   @ApiResponse({ status: 200, description: 'Roles retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getRoles(
+    @BearerToken() token: string,
     @Query('userType') userType?: string,
-    @Headers('authorization') authorization?: string
   ) {
-    try {
-      const token = this.extractToken(authorization);
-
-      this.logger.log('Fetching roles list');
-
-      const result = await this.adminService.getRoleList(userType, token);
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to fetch roles', error);
-      throw this.handleError(error);
-    }
+    this.logger.log('Fetching roles list');
+    return this.adminService.getRoleList(userType, token);
   }
 
   @Get('roles/with-permissions')
   @ApiOperation({ summary: 'Get all roles with their permissions' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiQuery({ name: 'userType', required: false, description: 'Filter by user type (ADMIN or USER)' })
   @ApiResponse({ status: 200, description: 'Roles with permissions retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getRolesWithPermissions(
+    @BearerToken() token: string,
     @Query('userType') userType?: string,
-    @Headers('authorization') authorization?: string
   ) {
-    try {
-      const token = this.extractToken(authorization);
-
-      this.logger.log('Fetching roles with permissions');
-
-      const result = await this.adminService.getRolesWithPermissions(userType, token);
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to fetch roles with permissions', error);
-      throw this.handleError(error);
-    }
+    this.logger.log('Fetching roles with permissions');
+    return this.adminService.getRolesWithPermissions(userType, token);
   }
 
   @Get('roles/:roleCode/permissions')
   @ApiOperation({ summary: 'Get permissions for a specific role' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiResponse({ status: 200, description: 'Role permissions retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getRolePermissions(
+    @BearerToken() token: string,
     @Param('roleCode') roleCode: string,
-    @Headers('authorization') authorization?: string
   ) {
-    try {
-      const token = this.extractToken(authorization);
-
-      this.logger.log(`Fetching permissions for role: ${roleCode}`);
-
-      const result = await this.adminService.getRolePermissions(roleCode, token);
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to fetch permissions for role: ${roleCode}`, error);
-      throw this.handleError(error);
-    }
+    this.logger.log(`Fetching permissions for role: ${roleCode}`);
+    return this.adminService.getRolePermissions(roleCode, token);
   }
 
   @Get(':adminId')
   @ApiOperation({ summary: 'Get admin by ID' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiResponse({ status: 200, description: 'Admin retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Admin not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getAdminById(
+    @BearerToken() token: string,
     @Param('adminId') adminId: string,
-    @Headers('authorization') authorization: string
   ) {
-    try {
-      const token = this.extractToken(authorization);
-      this.logger.log(`Fetching admin: ${adminId}`);
-      
-      const result = await this.adminService.getAdminById(adminId, token);
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to fetch admin: ${adminId}`, error);
-      throw this.handleError(error);
-    }
+    this.logger.log(`Fetching admin: ${adminId}`);
+    return this.adminService.getAdminById(adminId, token);
   }
 
   @Post()
   @ApiOperation({ summary: 'Create new admin' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiResponse({ status: 201, description: 'Admin created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid admin data' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async createAdmin(
-    @Body() adminData: any,
-    @Headers('authorization') authorization: string
+    @BearerToken() token: string,
+    @Body() adminData: CreateAdminDto,
   ) {
-    try {
-      const token = this.extractToken(authorization);
-      this.logger.log(`Creating admin: ${adminData.username || adminData.email}`);
-      
-      const result = await this.adminService.createAdmin(adminData, token);
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to create admin', error);
-      throw this.handleError(error);
-    }
+    this.logger.log(`Creating admin: ${adminData.name || adminData.email}`);
+    return this.adminService.createAdmin(adminData, token);
   }
 
   @Patch(':adminId')
   @ApiOperation({ summary: 'Update admin' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiResponse({ status: 200, description: 'Admin updated successfully' })
   @ApiResponse({ status: 404, description: 'Admin not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async updateAdmin(
+    @BearerToken() token: string,
     @Param('adminId') adminId: string,
-    @Body() updateData: any,
-    @Headers('authorization') authorization: string
+    @Body() updateData: UpdateAdminDto,
   ) {
-    try {
-      const token = this.extractToken(authorization);
-      this.logger.log(`Updating admin: ${adminId}`);
-      
-      const result = await this.adminService.updateAdmin(adminId, updateData, token);
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to update admin: ${adminId}`, error);
-      throw this.handleError(error);
-    }
+    this.logger.log(`Updating admin: ${adminId}`);
+    return this.adminService.updateAdmin(adminId, updateData, token);
   }
 
   @Delete(':adminId')
   @ApiOperation({ summary: 'Delete admin' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiResponse({ status: 200, description: 'Admin deleted successfully' })
   @ApiResponse({ status: 404, description: 'Admin not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async deleteAdmin(
+    @BearerToken() token: string,
     @Param('adminId') adminId: string,
-    @Headers('authorization') authorization: string
   ) {
-    try {
-      const token = this.extractToken(authorization);
-      this.logger.log(`Deleting admin: ${adminId}`);
-      
-      const result = await this.adminService.deleteAdmin(adminId, token);
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to delete admin: ${adminId}`, error);
-      throw this.handleError(error);
-    }
+    this.logger.log(`Deleting admin: ${adminId}`);
+    return this.adminService.deleteAdmin(adminId, token);
   }
 
   @Patch(':adminId/status')
   @ApiOperation({ summary: 'Update admin status' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiResponse({ status: 200, description: 'Admin status updated successfully' })
   @ApiResponse({ status: 404, description: 'Admin not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async updateAdminStatus(
+    @BearerToken() token: string,
     @Param('adminId') adminId: string,
     @Body() statusData: { isActive: boolean },
-    @Headers('authorization') authorization: string
   ) {
-    try {
-      const token = this.extractToken(authorization);
-      this.logger.log(`Updating admin status: ${adminId} to ${statusData.isActive}`);
-      
-      const result = await this.adminService.updateAdminStatus(adminId, statusData.isActive, token);
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to update admin status: ${adminId}`, error);
-      throw this.handleError(error);
-    }
+    this.logger.log(`Updating admin status: ${adminId} to ${statusData.isActive}`);
+    return this.adminService.updateAdminStatus(adminId, statusData.isActive, token);
   }
 
   @Post(':adminId/permissions')
   @ApiOperation({ summary: 'Update admin permissions' })
-  @ApiHeader({ name: 'authorization', description: 'Bearer token' })
   @ApiResponse({ status: 200, description: 'Admin permissions updated successfully' })
   @ApiResponse({ status: 404, description: 'Admin not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async updateAdminPermissions(
+    @BearerToken() token: string,
     @Param('adminId') adminId: string,
     @Body() permissionData: { permissionIds: number[] },
-    @Headers('authorization') authorization: string
   ) {
-    try {
-      const token = this.extractToken(authorization);
-      this.logger.log(`Updating admin permissions: ${adminId}`);
-      
-      const result = await this.adminService.updateAdminPermissions(
-        adminId, 
-        permissionData.permissionIds, 
-        token
-      );
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to update admin permissions: ${adminId}`, error);
-      throw this.handleError(error);
-    }
-  }
-
-  private extractToken(authorization: string): string {
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      throw new HttpException(
-        {
-          success: false,
-          error: {
-            code: 'MISSING_TOKEN',
-            message: 'Authorization token required',
-          }
-        },
-        HttpStatus.UNAUTHORIZED
-      );
-    }
-    return authorization.substring(7); // Remove 'Bearer ' prefix
-  }
-
-  private handleError(error: any): HttpException {
-    if (error instanceof HttpException) {
-      return error;
-    }
-
-    // Handle NATS timeout or connection errors
-    if (error.message?.includes('timeout') || error.code === 'ECONNREFUSED') {
-      return new HttpException(
-        {
-          success: false,
-          error: {
-            code: 'SERVICE_UNAVAILABLE',
-            message: 'Admin service temporarily unavailable',
-          }
-        },
-        HttpStatus.SERVICE_UNAVAILABLE
-      );
-    }
-
-    // Default error
-    return new HttpException(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Internal server error',
-        }
-      },
-      HttpStatus.INTERNAL_SERVER_ERROR
-    );
+    this.logger.log(`Updating admin permissions: ${adminId}`);
+    return this.adminService.updateAdminPermissions(adminId, permissionData.permissionIds, token);
   }
 }
