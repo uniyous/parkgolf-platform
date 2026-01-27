@@ -234,12 +234,23 @@ jobs:
             fi
           else
             # Development: minimal resources for cost optimization
-            # All services: 0.5 CPU, 384Mi (usage analysis: CPU < 50%, Memory < 50%)
-            echo "min_instances=1" >> $GITHUB_OUTPUT
-            echo "max_instances=1" >> $GITHUB_OUTPUT
-            echo "memory=384Mi" >> $GITHUB_OUTPUT
-            echo "cpu=0.5" >> $GITHUB_OUTPUT
-            echo "cpu_throttling=true" >> $GITHUB_OUTPUT
+            if [ "$SERVICE" == "chat-gateway" ]; then
+              # chat-gateway: WebSocket needs concurrency > 1, so CPU must be >= 1
+              echo "min_instances=1" >> $GITHUB_OUTPUT
+              echo "max_instances=1" >> $GITHUB_OUTPUT
+              echo "memory=384Mi" >> $GITHUB_OUTPUT
+              echo "cpu=1" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
+              echo "concurrency=80" >> $GITHUB_OUTPUT
+            else
+              # Other services: 0.5 CPU with concurrency=1
+              echo "min_instances=1" >> $GITHUB_OUTPUT
+              echo "max_instances=1" >> $GITHUB_OUTPUT
+              echo "memory=384Mi" >> $GITHUB_OUTPUT
+              echo "cpu=0.5" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
+              echo "concurrency=1" >> $GITHUB_OUTPUT
+            fi
           fi
 
       - name: Deploy to Cloud Run
@@ -278,6 +289,12 @@ jobs:
             CPU_THROTTLING_FLAG="--cpu-throttling"
           fi
 
+          # Set concurrency flag if specified
+          CONCURRENCY_FLAG=""
+          if [ -n "${{ steps.vars.outputs.concurrency }}" ]; then
+            CONCURRENCY_FLAG="--concurrency=${{ steps.vars.outputs.concurrency }}"
+          fi
+
           # Deploy to Cloud Run (External IP 방식 - VPC Connector 없음)
           gcloud run deploy ${{ steps.vars.outputs.service_name }} \
             --image ${{ steps.vars.outputs.image }} \
@@ -290,6 +307,7 @@ jobs:
             --cpu ${{ steps.vars.outputs.cpu }} \
             --timeout 300 \
             ${CPU_THROTTLING_FLAG} \
+            ${CONCURRENCY_FLAG} \
             --set-env-vars "${ENV_VARS}"
 
       - name: Get Service URL
