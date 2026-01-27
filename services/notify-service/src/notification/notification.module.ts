@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
-import { NotificationController } from './controller/notification.controller';
-import { TemplateController } from './controller/template.controller';
 import { NotificationService } from './service/notification.service';
 import { TemplateService } from './service/template.service';
 import { PreferencesService } from './service/preferences.service';
@@ -11,7 +9,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
   imports: [PrismaModule, ScheduleModule.forRoot()],
-  controllers: [NotificationController, TemplateController],
+  controllers: [],
   providers: [
     NotificationService,
     TemplateService,

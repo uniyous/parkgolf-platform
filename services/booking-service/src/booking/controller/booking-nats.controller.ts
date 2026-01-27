@@ -9,8 +9,8 @@ import {
 import { NatsResponse } from '../../common/types/response.types';
 
 @Controller()
-export class BookingController {
-  private readonly logger = new Logger(BookingController.name);
+export class BookingNatsController {
+  private readonly logger = new Logger(BookingNatsController.name);
 
   constructor(private readonly bookingService: BookingService) {}
 

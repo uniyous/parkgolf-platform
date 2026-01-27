@@ -13,8 +13,8 @@ import {
 import { NatsResponse } from '../../common/types/response.types';
 
 @Controller()
-export class PolicyController {
-  private readonly logger = new Logger(PolicyController.name);
+export class PolicyNatsController {
+  private readonly logger = new Logger(PolicyNatsController.name);
 
   constructor(private readonly policyService: PolicyService) {}
 

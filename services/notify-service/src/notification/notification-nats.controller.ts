@@ -1,12 +1,10 @@
 import { Controller, Logger } from '@nestjs/common';
 import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
-import { NotificationService } from '../notification/service/notification.service';
-import { TemplateService } from '../notification/service/template.service';
-import { DeliveryService } from '../notification/service/delivery.service';
+import { NotificationService } from './service/notification.service';
+import { TemplateService } from './service/template.service';
+import { DeliveryService } from './service/delivery.service';
 import { NotificationType } from '@prisma/client';
-import { NatsResponse, NotificationPayload } from '../common/types';
-import { AppException } from '../common/exceptions';
-import { Errors } from '../common/exceptions/catalog/error-catalog';
+import { NatsResponse } from '../common/types';
 
 // ===== Event Payload Interfaces =====
 

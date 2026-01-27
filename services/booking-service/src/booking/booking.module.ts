@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
-import { BookingController } from './controller/booking.controller';
+import { BookingNatsController } from './controller/booking-nats.controller';
 import { BookingSagaController } from './controller/booking-saga.controller';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { BookingService } from './service/booking.service';
@@ -14,7 +14,7 @@ import { SagaSchedulerService } from './service/saga-scheduler.service';
     ScheduleModule.forRoot(),
   ],
   controllers: [
-    BookingController,
+    BookingNatsController,
     BookingSagaController,
   ],
   providers: [
