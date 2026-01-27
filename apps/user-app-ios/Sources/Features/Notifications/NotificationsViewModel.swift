@@ -72,7 +72,7 @@ final class NotificationsViewModel: ObservableObject {
 
             // Update local state
             if let index = notifications.firstIndex(where: { $0.id == notification.id }) {
-                var updatedNotification = notifications[index]
+                let updatedNotification = notifications[index]
                 // Create a new notification with updated readAt
                 notifications[index] = AppNotification(
                     id: updatedNotification.id,
