@@ -28,8 +28,11 @@ model Notification {
   updatedAt       DateTime           @updatedAt @map("updated_at")
 
   @@index([userId, status])
+  @@index([userId, readAt])          // getUnreadCount, markAllAsRead, findAll(unreadOnly)
+  @@index([userId, createdAt(sort: Desc)]) // findAll with pagination (orderBy createdAt desc)
   @@index([type, status])
-  @@index([scheduledAt])
+  @@index([status, scheduledAt])     // findScheduledNotifications
+  @@index([status, retryCount])      // findFailedNotificationsForRetry
   @@map("notifications")
 }
 
@@ -43,6 +46,7 @@ model NotificationTemplate {
   createdAt DateTime         @default(now()) @map("created_at")
   updatedAt DateTime         @updatedAt @map("updated_at")
 
+  @@index([type, isActive])  // findByType (called for every notification)
   @@map("notification_templates")
 }
 
