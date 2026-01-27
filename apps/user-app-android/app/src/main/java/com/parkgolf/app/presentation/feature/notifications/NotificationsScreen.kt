@@ -2,6 +2,7 @@ package com.parkgolf.app.presentation.feature.notifications
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +17,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -57,6 +60,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.parkgolf.app.domain.model.AppNotification
 import com.parkgolf.app.domain.model.NotificationType
@@ -88,7 +92,7 @@ fun NotificationsScreen(
     val shouldLoadMore by remember {
         derivedStateOf {
             val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisibleItem >= uiState.notifications.size - 3 && uiState.hasMorePages && !uiState.isLoadingMore
+            lastVisibleItem >= uiState.filteredNotifications.size - 3 && uiState.hasMorePages && !uiState.isLoadingMore
         }
     }
 
@@ -134,13 +138,20 @@ fun NotificationsScreen(
                 )
             )
 
+            // Filter Tabs
+            FilterTabsRow(
+                selectedFilter = uiState.selectedFilter,
+                unreadCounts = uiState.unreadCounts,
+                onFilterSelected = { viewModel.setFilter(it) }
+            )
+
             // Content
             when {
                 uiState.isLoading && uiState.notifications.isEmpty() -> {
                     LoadingView()
                 }
-                uiState.notifications.isEmpty() -> {
-                    EmptyView()
+                uiState.filteredNotifications.isEmpty() -> {
+                    EmptyView(filter = uiState.selectedFilter)
                 }
                 else -> {
                     LazyColumn(
@@ -151,7 +162,7 @@ fun NotificationsScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(
-                            items = uiState.notifications,
+                            items = uiState.filteredNotifications,
                             key = { it.id }
                         ) { notification ->
                             SwipeableNotificationRow(
@@ -193,6 +204,83 @@ fun NotificationsScreen(
 }
 
 @Composable
+private fun FilterTabsRow(
+    selectedFilter: NotificationFilter,
+    unreadCounts: Map<NotificationFilter, Int>,
+    onFilterSelected: (NotificationFilter) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        NotificationFilter.entries.forEach { filter ->
+            FilterChip(
+                filter = filter,
+                isSelected = selectedFilter == filter,
+                unreadCount = unreadCounts[filter] ?: 0,
+                onClick = { onFilterSelected(filter) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun FilterChip(
+    filter: NotificationFilter,
+    isSelected: Boolean,
+    unreadCount: Int,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(
+                if (isSelected) ParkPrimary else Color.White.copy(alpha = 0.1f)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(
+            imageVector = filter.icon,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = if (isSelected) Color.White else TextOnGradientSecondary
+        )
+
+        Text(
+            text = filter.label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            color = if (isSelected) Color.White else TextOnGradientSecondary
+        )
+
+        if (unreadCount > 0) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(
+                        if (isSelected) Color.White else ParkError
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isSelected) ParkPrimary else Color.White
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun LoadingView() {
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -213,7 +301,9 @@ private fun LoadingView() {
 }
 
 @Composable
-private fun EmptyView() {
+private fun EmptyView(filter: NotificationFilter) {
+    val (title, description) = filter.emptyMessage()
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -229,13 +319,13 @@ private fun EmptyView() {
                 tint = TextOnGradientTertiary
             )
             Text(
-                text = "알림이 없습니다",
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = TextOnGradient
             )
             Text(
-                text = "새로운 알림이 도착하면 여기에 표시됩니다",
+                text = description,
                 style = MaterialTheme.typography.bodySmall,
                 color = TextOnGradientSecondary
             )

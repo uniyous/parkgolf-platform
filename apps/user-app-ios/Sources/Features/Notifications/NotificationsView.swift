@@ -13,10 +13,15 @@ struct NotificationsView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
+                // Filter Tabs
+                filterTabs
+                    .padding(.horizontal, ParkSpacing.md)
+                    .padding(.top, ParkSpacing.sm)
+
                 // Content
                 if viewModel.isLoading && viewModel.notifications.isEmpty {
                     loadingView
-                } else if viewModel.notifications.isEmpty {
+                } else if viewModel.filteredNotifications.isEmpty {
                     emptyView
                 } else {
                     notificationsList
@@ -63,6 +68,27 @@ struct NotificationsView: View {
         }
     }
 
+    // MARK: - Filter Tabs
+
+    private var filterTabs: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: ParkSpacing.sm) {
+                ForEach(NotificationFilter.allCases) { filter in
+                    NotificationFilterChip(
+                        filter: filter,
+                        isSelected: viewModel.selectedFilter == filter,
+                        unreadCount: viewModel.unreadCounts[filter] ?? 0
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.selectedFilter = filter
+                        }
+                    }
+                }
+            }
+            .padding(.vertical, ParkSpacing.xs)
+        }
+    }
+
     // MARK: - Loading View
 
     private var loadingView: some View {
@@ -81,16 +107,18 @@ struct NotificationsView: View {
     // MARK: - Empty View
 
     private var emptyView: some View {
-        VStack(spacing: ParkSpacing.md) {
+        let message = viewModel.emptyMessage(for: viewModel.selectedFilter)
+
+        return VStack(spacing: ParkSpacing.md) {
             Image(systemName: "bell.slash")
                 .font(.system(size: 48))
                 .foregroundStyle(.white.opacity(0.5))
 
-            Text("알림이 없습니다")
+            Text(message.title)
                 .font(.parkHeadlineMedium)
                 .foregroundStyle(.white)
 
-            Text("새로운 알림이 도착하면 여기에 표시됩니다")
+            Text(message.description)
                 .font(.parkBodySmall)
                 .foregroundStyle(.white.opacity(0.6))
                 .multilineTextAlignment(.center)
@@ -104,7 +132,7 @@ struct NotificationsView: View {
     private var notificationsList: some View {
         ScrollView {
             LazyVStack(spacing: ParkSpacing.sm) {
-                ForEach(viewModel.notifications) { notification in
+                ForEach(viewModel.filteredNotifications) { notification in
                     NotificationRow(
                         notification: notification,
                         onTap: {
@@ -153,6 +181,59 @@ struct NotificationsView: View {
             // Show alert or navigate to settings
             break
         }
+    }
+}
+
+// MARK: - Notification Filter Chip
+
+struct NotificationFilterChip: View {
+    let filter: NotificationFilter
+    let isSelected: Bool
+    let unreadCount: Int
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: ParkSpacing.xs) {
+                Image(systemName: filter.icon)
+                    .font(.system(size: 14))
+
+                Text(filter.rawValue)
+                    .font(.parkLabelMedium)
+
+                if unreadCount > 0 {
+                    Text(unreadCount > 99 ? "99+" : "\(unreadCount)")
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            isSelected
+                                ? Color.white
+                                : Color.parkError
+                        )
+                        .foregroundStyle(
+                            isSelected
+                                ? Color.parkPrimary
+                                : Color.white
+                        )
+                        .clipShape(Capsule())
+                }
+            }
+            .padding(.horizontal, ParkSpacing.md)
+            .padding(.vertical, ParkSpacing.sm)
+            .background(
+                isSelected
+                    ? Color.parkPrimary
+                    : Color.white.opacity(0.1)
+            )
+            .foregroundStyle(
+                isSelected
+                    ? Color.white
+                    : Color.white.opacity(0.7)
+            )
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 }
 
