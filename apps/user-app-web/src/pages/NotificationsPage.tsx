@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -12,12 +12,11 @@ import {
   MessageCircle,
   Trash2,
   Check,
+  Calendar,
+  Shield,
 } from 'lucide-react';
-import { GlassCard } from '@/components/ui/GlassCard';
-import { LoadingView } from '@/components/ui/LoadingView';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { PageHeader } from '@/components/ui/PageHeader';
-import { Button } from '@/components/ui/Button';
+import { AppLayout, Container } from '@/components/layout';
+import { GlassCard, LoadingView, EmptyState, Button } from '@/components/ui';
 import {
   useNotificationsQuery,
   useMarkAsReadMutation,
@@ -32,25 +31,87 @@ import {
 } from '@/lib/api/notificationApi';
 import { cn } from '@/lib/utils';
 
+// ============================================
+// Filter Types
+// ============================================
+
+type NotificationFilter = 'all' | 'booking' | 'social' | 'system';
+
+const FILTER_CONFIG: Record<NotificationFilter, {
+  label: string;
+  icon: typeof Bell;
+  types: NotificationType[] | null;
+}> = {
+  all: {
+    label: '전체',
+    icon: Bell,
+    types: null, // all types
+  },
+  booking: {
+    label: '예약',
+    icon: Calendar,
+    types: ['BOOKING_CONFIRMED', 'BOOKING_CANCELLED', 'PAYMENT_SUCCESS', 'PAYMENT_FAILED'],
+  },
+  social: {
+    label: '소셜',
+    icon: Users,
+    types: ['FRIEND_REQUEST', 'FRIEND_ACCEPTED', 'CHAT_MESSAGE'],
+  },
+  system: {
+    label: '시스템',
+    icon: Shield,
+    types: ['SYSTEM_ALERT'],
+  },
+};
+
+// ============================================
+// Main Component
+// ============================================
+
 export function NotificationsPage() {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
+  const [filter, setFilter] = useState<NotificationFilter>('all');
 
-  const { data, isLoading, isError } = useNotificationsQuery({ page, limit: 20 });
+  const { data, isLoading, isError } = useNotificationsQuery({ page, limit: 50 });
   const markAsReadMutation = useMarkAsReadMutation();
   const markAllAsReadMutation = useMarkAllAsReadMutation();
   const deleteMutation = useDeleteNotificationMutation();
 
   const notifications = data?.notifications ?? [];
-  const unreadCount = notifications.filter((n) => !isNotificationRead(n)).length;
+
+  // Filter notifications based on selected filter
+  const filteredNotifications = useMemo(() => {
+    const types = FILTER_CONFIG[filter].types;
+    if (!types) return notifications;
+    return notifications.filter((n) => types.includes(n.type));
+  }, [notifications, filter]);
+
+  // Count unread per filter
+  const unreadCounts = useMemo(() => {
+    const counts: Record<NotificationFilter, number> = {
+      all: 0,
+      booking: 0,
+      social: 0,
+      system: 0,
+    };
+
+    notifications.forEach((n) => {
+      if (isNotificationRead(n)) return;
+      counts.all++;
+
+      if (FILTER_CONFIG.booking.types?.includes(n.type)) counts.booking++;
+      if (FILTER_CONFIG.social.types?.includes(n.type)) counts.social++;
+      if (FILTER_CONFIG.system.types?.includes(n.type)) counts.system++;
+    });
+
+    return counts;
+  }, [notifications]);
 
   const handleNotificationClick = async (notification: AppNotification) => {
-    // Mark as read
     if (!isNotificationRead(notification)) {
       await markAsReadMutation.mutateAsync(notification.id);
     }
-
-    // Navigate based on type
     handleNotificationNavigation(notification);
   };
 
@@ -74,7 +135,6 @@ export function NotificationsPage() {
         }
         break;
       case 'SYSTEM_ALERT':
-        // Stay on page
         break;
     }
   };
@@ -88,53 +148,115 @@ export function NotificationsPage() {
     await markAllAsReadMutation.mutateAsync();
   };
 
-  if (isLoading) {
-    return <LoadingView />;
-  }
+  // Header right content
+  const headerRight = unreadCounts.all > 0 ? (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={handleMarkAllAsRead}
+      disabled={markAllAsReadMutation.isPending}
+      className="text-[var(--color-primary)] hover:text-[var(--color-primary-light)]"
+    >
+      <Check className="w-4 h-4" />
+      <span className="hidden sm:inline ml-1">모두 읽음</span>
+    </Button>
+  ) : undefined;
+
+  // Get empty state message based on filter
+  const getEmptyMessage = () => {
+    switch (filter) {
+      case 'booking':
+        return { title: '예약 알림이 없습니다', description: '예약 관련 알림이 도착하면 여기에 표시됩니다.' };
+      case 'social':
+        return { title: '소셜 알림이 없습니다', description: '친구 요청이나 채팅 알림이 도착하면 여기에 표시됩니다.' };
+      case 'system':
+        return { title: '시스템 알림이 없습니다', description: '시스템 공지사항이 도착하면 여기에 표시됩니다.' };
+      default:
+        return { title: '알림이 없습니다', description: '새로운 알림이 도착하면 여기에 표시됩니다.' };
+    }
+  };
 
   if (isError) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <p className="text-white/70">알림을 불러오는데 실패했습니다.</p>
-        <Button onClick={() => window.location.reload()} className="mt-4">
-          다시 시도
-        </Button>
-      </div>
+      <AppLayout title="알림">
+        <Container className="py-4">
+          <GlassCard>
+            <EmptyState
+              icon={BellOff}
+              title="알림을 불러오는데 실패했습니다"
+              description="잠시 후 다시 시도해주세요."
+              actionLabel="다시 시도"
+              onAction={() => window.location.reload()}
+            />
+          </GlassCard>
+        </Container>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 p-4 sm:p-6">
-      <div className="max-w-2xl mx-auto">
-        <PageHeader
-          title="알림"
-          onBack={() => navigate(-1)}
-          rightContent={
-            unreadCount > 0 ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleMarkAllAsRead}
-                disabled={markAllAsReadMutation.isPending}
-                className="text-emerald-400 hover:text-emerald-300"
-              >
-                <Check className="w-4 h-4 mr-1" />
-                모두 읽음
-              </Button>
-            ) : undefined
-          }
-        />
+    <AppLayout title="알림" headerRight={headerRight}>
+      <Container className="py-4 md:py-6">
+        {/* Filter Tabs */}
+        <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide pb-1">
+          {(Object.keys(FILTER_CONFIG) as NotificationFilter[]).map((key) => {
+            const config = FILTER_CONFIG[key];
+            const Icon = config.icon;
+            const isActive = filter === key;
+            const unread = unreadCounts[key];
 
-        {notifications.length === 0 ? (
-          <EmptyState
-            icon={BellOff}
-            title="알림이 없습니다"
-            description="새로운 알림이 도착하면 여기에 표시됩니다."
-          />
-        ) : (
+            return (
+              <button
+                key={key}
+                onClick={() => {
+                  setFilter(key);
+                  setPage(1);
+                }}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all',
+                  isActive
+                    ? 'bg-[var(--color-primary)] text-white'
+                    : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-white'
+                )}
+              >
+                <Icon className="w-4 h-4" />
+                {config.label}
+                {unread > 0 && (
+                  <span
+                    className={cn(
+                      'min-w-[18px] h-[18px] px-1 text-xs font-bold rounded-full flex items-center justify-center',
+                      isActive
+                        ? 'bg-white text-[var(--color-primary)]'
+                        : 'bg-[var(--color-error)] text-white'
+                    )}
+                  >
+                    {unread > 99 ? '99+' : unread}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Loading */}
+        {isLoading && <LoadingView />}
+
+        {/* Empty State */}
+        {!isLoading && filteredNotifications.length === 0 && (
+          <GlassCard>
+            <EmptyState
+              icon={BellOff}
+              title={getEmptyMessage().title}
+              description={getEmptyMessage().description}
+            />
+          </GlassCard>
+        )}
+
+        {/* Notification List */}
+        {!isLoading && filteredNotifications.length > 0 && (
           <div className="space-y-3">
-            {notifications.map((notification) => (
-              <NotificationRow
+            {filteredNotifications.map((notification) => (
+              <NotificationCard
                 key={notification.id}
                 notification={notification}
                 onClick={() => handleNotificationClick(notification)}
@@ -147,18 +269,18 @@ export function NotificationsPage() {
             {data && data.totalPages > 1 && (
               <div className="flex justify-center gap-2 pt-4">
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
                 >
                   이전
                 </Button>
-                <span className="flex items-center px-4 text-white/70">
+                <span className="flex items-center px-4 text-[var(--color-text-secondary)]">
                   {page} / {data.totalPages}
                 </span>
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
                   disabled={page === data.totalPages}
@@ -169,47 +291,45 @@ export function NotificationsPage() {
             )}
           </div>
         )}
-      </div>
-    </div>
+      </Container>
+    </AppLayout>
   );
 }
 
 // ============================================
-// Notification Row Component
+// Notification Card Component
 // ============================================
 
-interface NotificationRowProps {
+interface NotificationCardProps {
   notification: AppNotification;
   onClick: () => void;
   onDelete: (e: React.MouseEvent) => void;
   isDeleting: boolean;
 }
 
-function NotificationRow({
+function NotificationCard({
   notification,
   onClick,
   onDelete,
   isDeleting,
-}: NotificationRowProps) {
+}: NotificationCardProps) {
   const isRead = isNotificationRead(notification);
   const Icon = getNotificationIcon(notification.type);
   const iconColor = getNotificationIconColor(notification.type);
 
   return (
     <GlassCard
+      hoverable
       className={cn(
-        'cursor-pointer transition-all hover:bg-white/10',
-        isRead && 'opacity-70'
+        'cursor-pointer',
+        isRead && 'opacity-60'
       )}
       onClick={onClick}
     >
       <div className="flex gap-3">
         {/* Icon */}
         <div
-          className={cn(
-            'flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center',
-            `bg-${iconColor}/20`
-          )}
+          className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center"
           style={{ backgroundColor: `${iconColor}20` }}
         >
           <Icon className="w-5 h-5" style={{ color: iconColor }} />
@@ -221,18 +341,18 @@ function NotificationRow({
             <h3 className="font-medium text-white truncate">
               {notification.title}
             </h3>
-            <span className="flex-shrink-0 text-xs text-white/50">
+            <span className="flex-shrink-0 text-xs text-[var(--color-text-muted)]">
               {formatRelativeTime(notification.createdAt)}
             </span>
           </div>
 
-          <p className="mt-1 text-sm text-white/70 line-clamp-2">
+          <p className="mt-1 text-sm text-[var(--color-text-secondary)] line-clamp-2">
             {notification.message}
           </p>
 
           <div className="flex items-center justify-between mt-2">
             <span
-              className="inline-flex items-center px-2 py-0.5 rounded text-xs"
+              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
               style={{
                 backgroundColor: `${iconColor}20`,
                 color: iconColor,
@@ -243,12 +363,12 @@ function NotificationRow({
 
             <div className="flex items-center gap-2">
               {!isRead && (
-                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                <div className="w-2 h-2 rounded-full bg-[var(--color-primary)]" />
               )}
               <button
                 onClick={onDelete}
                 disabled={isDeleting}
-                className="p-1 text-white/40 hover:text-red-400 transition-colors"
+                className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-error)] hover:bg-[var(--color-error)]/10 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
               </button>

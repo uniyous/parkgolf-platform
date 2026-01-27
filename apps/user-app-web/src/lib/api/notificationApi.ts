@@ -99,7 +99,7 @@ export const notificationApi = {
   getNotifications: async (params?: GetNotificationsParams): Promise<NotificationListResult> => {
     const response = await apiClient.get<NotificationsResponse>(
       '/api/user/notifications',
-      params
+      params ? { ...params } : undefined
     );
     // 표준 페이지네이션 응답을 프론트엔드 형식으로 변환
     return {
