@@ -127,7 +127,7 @@ export function NotificationsPage() {
 
         {notifications.length === 0 ? (
           <EmptyState
-            icon={<BellOff className="w-16 h-16" />}
+            icon={BellOff}
             title="알림이 없습니다"
             description="새로운 알림이 도착하면 여기에 표시됩니다."
           />
