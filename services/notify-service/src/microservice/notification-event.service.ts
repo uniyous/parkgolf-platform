@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Controller, Logger } from '@nestjs/common';
 import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
 import { NotificationService } from '../notification/service/notification.service';
 import { TemplateService } from '../notification/service/template.service';
@@ -34,7 +34,7 @@ interface NotificationRequest {
   scheduledAt?: string;
 }
 
-@Injectable()
+@Controller()
 export class NotificationEventService {
   private readonly logger = new Logger(NotificationEventService.name);
 

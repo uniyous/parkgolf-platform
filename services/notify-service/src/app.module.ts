@@ -17,7 +17,7 @@ import { NotificationEventService } from './microservice/notification-event.serv
     PrismaModule,
     NotificationModule,
   ],
-  controllers: [],
-  providers: [NotificationEventService],
+  controllers: [NotificationEventService],
+  providers: [],
 })
 export class AppModule {}
