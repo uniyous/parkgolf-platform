@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { CommonModule } from './common/common.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { NotificationModule } from './notification/notification.module';
-import { NotificationEventService } from './microservice/notification-event.service';
+import { NotificationNatsController } from './microservice/notification-event.service';
 
 @Module({
   imports: [
@@ -17,7 +17,7 @@ import { NotificationEventService } from './microservice/notification-event.serv
     PrismaModule,
     NotificationModule,
   ],
-  controllers: [NotificationEventService],
+  controllers: [NotificationNatsController],
   providers: [],
 })
 export class AppModule {}

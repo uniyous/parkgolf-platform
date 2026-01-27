@@ -4,6 +4,11 @@ import { NotificationService } from '../notification/service/notification.servic
 import { TemplateService } from '../notification/service/template.service';
 import { DeliveryService } from '../notification/service/delivery.service';
 import { NotificationType } from '@prisma/client';
+import { NatsResponse, NotificationPayload } from '../common/types';
+import { AppException } from '../common/exceptions';
+import { Errors } from '../common/exceptions/catalog/error-catalog';
+
+// ===== Event Payload Interfaces =====
 
 interface BookingEvent {
   bookingId: string;
@@ -24,19 +29,43 @@ interface PaymentEvent {
   failureReason?: string;
 }
 
-interface NotificationRequest {
+interface SendNotificationPayload {
   userId: string;
   type: NotificationType;
   title: string;
   message: string;
-  data?: any;
+  data?: Record<string, unknown>;
   deliveryChannel?: string;
   scheduledAt?: string;
 }
 
+interface GetNotificationsPayload {
+  userId: string;
+  query?: {
+    page?: number;
+    limit?: number;
+    type?: NotificationType;
+    unreadOnly?: boolean;
+  };
+}
+
+interface MarkAsReadPayload {
+  notificationId: number;
+  userId: string;
+}
+
+interface GetUnreadCountPayload {
+  userId: string;
+}
+
+interface DeleteNotificationPayload {
+  notificationId: number;
+  userId: string;
+}
+
 @Controller()
-export class NotificationEventService {
-  private readonly logger = new Logger(NotificationEventService.name);
+export class NotificationNatsController {
+  private readonly logger = new Logger(NotificationNatsController.name);
 
   constructor(
     private readonly notificationService: NotificationService,
@@ -44,10 +73,11 @@ export class NotificationEventService {
     private readonly deliveryService: DeliveryService,
   ) {}
 
-  // Event Handlers - Listen to events from other services
+  // ===== Event Handlers (Fire-and-forget) =====
+
   @EventPattern('booking.confirmed')
   async handleBookingConfirmed(@Payload() data: BookingEvent) {
-    this.logger.log(`Handling booking confirmed event: ${data.bookingId}`);
+    this.logger.log(`NATS Event: booking.confirmed - ${data.bookingId}`);
 
     try {
       const templateData = await this.templateService.generateNotificationFromTemplate(
@@ -57,14 +87,16 @@ export class NotificationEventService {
           bookingDate: data.bookingDate,
           bookingTime: data.bookingTime,
           bookingId: data.bookingId,
-        }
+        },
       );
 
       const notification = await this.notificationService.create({
         userId: data.userId,
         type: NotificationType.BOOKING_CONFIRMED,
         title: templateData?.title || '예약이 확정되었습니다',
-        message: templateData?.message || `${data.courseName}에서 ${data.bookingDate} ${data.bookingTime} 예약이 확정되었습니다.`,
+        message:
+          templateData?.message ||
+          `${data.courseName}에서 ${data.bookingDate} ${data.bookingTime} 예약이 확정되었습니다.`,
         data: {
           bookingId: data.bookingId,
           courseId: data.courseId,
@@ -72,18 +104,18 @@ export class NotificationEventService {
           bookingDate: data.bookingDate,
           bookingTime: data.bookingTime,
         },
-        deliveryChannel: 'EMAIL',
+        deliveryChannel: 'PUSH',
       });
 
       await this.deliveryService.deliverNotification(notification);
     } catch (error) {
-      this.logger.error('Failed to handle booking confirmed event:', error);
+      this.logger.error(`Failed to handle booking.confirmed event: ${error}`);
     }
   }
 
   @EventPattern('booking.cancelled')
   async handleBookingCancelled(@Payload() data: BookingEvent) {
-    this.logger.log(`Handling booking cancelled event: ${data.bookingId}`);
+    this.logger.log(`NATS Event: booking.cancelled - ${data.bookingId}`);
 
     try {
       const templateData = await this.templateService.generateNotificationFromTemplate(
@@ -93,14 +125,16 @@ export class NotificationEventService {
           bookingDate: data.bookingDate,
           bookingTime: data.bookingTime,
           bookingId: data.bookingId,
-        }
+        },
       );
 
       const notification = await this.notificationService.create({
         userId: data.userId,
         type: NotificationType.BOOKING_CANCELLED,
         title: templateData?.title || '예약이 취소되었습니다',
-        message: templateData?.message || `${data.courseName}에서 ${data.bookingDate} ${data.bookingTime} 예약이 취소되었습니다.`,
+        message:
+          templateData?.message ||
+          `${data.courseName}에서 ${data.bookingDate} ${data.bookingTime} 예약이 취소되었습니다.`,
         data: {
           bookingId: data.bookingId,
           courseId: data.courseId,
@@ -108,18 +142,18 @@ export class NotificationEventService {
           bookingDate: data.bookingDate,
           bookingTime: data.bookingTime,
         },
-        deliveryChannel: 'EMAIL',
+        deliveryChannel: 'PUSH',
       });
 
       await this.deliveryService.deliverNotification(notification);
     } catch (error) {
-      this.logger.error('Failed to handle booking cancelled event:', error);
+      this.logger.error(`Failed to handle booking.cancelled event: ${error}`);
     }
   }
 
   @EventPattern('payment.success')
   async handlePaymentSuccess(@Payload() data: PaymentEvent) {
-    this.logger.log(`Handling payment success event: ${data.paymentId}`);
+    this.logger.log(`NATS Event: payment.success - ${data.paymentId}`);
 
     try {
       const templateData = await this.templateService.generateNotificationFromTemplate(
@@ -128,31 +162,33 @@ export class NotificationEventService {
           amount: data.amount,
           paymentId: data.paymentId,
           bookingId: data.bookingId,
-        }
+        },
       );
 
       const notification = await this.notificationService.create({
         userId: data.userId,
         type: NotificationType.PAYMENT_SUCCESS,
         title: templateData?.title || '결제가 완료되었습니다',
-        message: templateData?.message || `${data.amount}원 결제가 성공적으로 완료되었습니다.`,
+        message:
+          templateData?.message ||
+          `${data.amount.toLocaleString()}원 결제가 성공적으로 완료되었습니다.`,
         data: {
           paymentId: data.paymentId,
           bookingId: data.bookingId,
           amount: data.amount,
         },
-        deliveryChannel: 'EMAIL',
+        deliveryChannel: 'PUSH',
       });
 
       await this.deliveryService.deliverNotification(notification);
     } catch (error) {
-      this.logger.error('Failed to handle payment success event:', error);
+      this.logger.error(`Failed to handle payment.success event: ${error}`);
     }
   }
 
   @EventPattern('payment.failed')
   async handlePaymentFailed(@Payload() data: PaymentEvent) {
-    this.logger.log(`Handling payment failed event: ${data.paymentId}`);
+    this.logger.log(`NATS Event: payment.failed - ${data.paymentId}`);
 
     try {
       const templateData = await this.templateService.generateNotificationFromTemplate(
@@ -162,144 +198,107 @@ export class NotificationEventService {
           paymentId: data.paymentId,
           bookingId: data.bookingId,
           failureReason: data.failureReason || '알 수 없는 오류',
-        }
+        },
       );
 
       const notification = await this.notificationService.create({
         userId: data.userId,
         type: NotificationType.PAYMENT_FAILED,
         title: templateData?.title || '결제가 실패했습니다',
-        message: templateData?.message || `${data.amount}원 결제가 실패했습니다. 다시 시도해 주세요.`,
+        message:
+          templateData?.message ||
+          `${data.amount.toLocaleString()}원 결제가 실패했습니다. 다시 시도해 주세요.`,
         data: {
           paymentId: data.paymentId,
           bookingId: data.bookingId,
           amount: data.amount,
           failureReason: data.failureReason,
         },
-        deliveryChannel: 'EMAIL',
+        deliveryChannel: 'PUSH',
       });
 
       await this.deliveryService.deliverNotification(notification);
     } catch (error) {
-      this.logger.error('Failed to handle payment failed event:', error);
+      this.logger.error(`Failed to handle payment.failed event: ${error}`);
     }
   }
 
-  // RPC Message Handlers
+  // ===== MessagePattern Handlers (Request-Response) =====
+
   @MessagePattern('notification.send')
-  async sendNotification(@Payload() data: NotificationRequest) {
-    this.logger.log(`Handling send notification request for user: ${data.userId}`);
+  async sendNotification(@Payload() payload: SendNotificationPayload) {
+    const data = (payload as any).data || payload;
+    this.logger.log(`NATS: notification.send for user ${data.userId}`);
 
-    try {
-      const notification = await this.notificationService.create(data);
-      await this.deliveryService.deliverNotification(notification);
+    const notification = await this.notificationService.create(data);
+    await this.deliveryService.deliverNotification(notification);
 
-      return {
-        success: true,
-        notificationId: notification.id,
-        message: 'Notification sent successfully',
-      };
-    } catch (error: any) {
-      this.logger.error('Failed to send notification:', error);
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
+    return NatsResponse.success({ id: notification.id });
   }
 
   @MessagePattern('notification.get_user_notifications')
-  async getUserNotifications(@Payload() data: { userId: string; query?: any }) {
-    this.logger.log(`Getting notifications for user: ${data.userId}`);
+  async getUserNotifications(@Payload() payload: GetNotificationsPayload) {
+    const data = (payload as any).data || payload;
+    const { userId, query = {} } = data;
+    const { page = 1, limit = 20 } = query;
 
-    try {
-      const result = await this.notificationService.findAll(data.userId, data.query || {});
-      return {
-        success: true,
-        data: result,
-      };
-    } catch (error: any) {
-      this.logger.error('Failed to get user notifications:', error);
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
+    this.logger.log(`NATS: notification.get_user_notifications for user ${userId}`);
+
+    const result = await this.notificationService.findAll(userId, query);
+
+    return NatsResponse.paginated(
+      result.notifications,
+      result.total,
+      result.page,
+      limit,
+    );
   }
 
   @MessagePattern('notification.mark_as_read')
-  async markAsRead(@Payload() data: { notificationId: number; userId: string }) {
-    this.logger.log(`Marking notification ${data.notificationId} as read for user ${data.userId}`);
+  async markAsRead(@Payload() payload: MarkAsReadPayload) {
+    const data = (payload as any).data || payload;
+    const { notificationId, userId } = data;
 
-    try {
-      const notification = await this.notificationService.markAsRead(data.notificationId, data.userId);
-      return {
-        success: true,
-        data: notification,
-      };
-    } catch (error: any) {
-      this.logger.error('Failed to mark notification as read:', error);
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
+    this.logger.log(`NATS: notification.mark_as_read - ${notificationId}`);
+
+    const notification = await this.notificationService.markAsRead(notificationId, userId);
+
+    return NatsResponse.success(notification);
   }
 
   @MessagePattern('notification.get_unread_count')
-  async getUnreadCount(@Payload() data: { userId: string }) {
-    this.logger.log(`Getting unread count for user: ${data.userId}`);
+  async getUnreadCount(@Payload() payload: GetUnreadCountPayload) {
+    const data = (payload as any).data || payload;
+    const { userId } = data;
 
-    try {
-      const count = await this.notificationService.getUnreadCount(data.userId);
-      return {
-        success: true,
-        count,
-      };
-    } catch (error: any) {
-      this.logger.error('Failed to get unread count:', error);
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
+    this.logger.log(`NATS: notification.get_unread_count for user ${userId}`);
+
+    const count = await this.notificationService.getUnreadCount(userId);
+
+    return NatsResponse.count(count);
   }
 
   @MessagePattern('notification.mark_all_as_read')
-  async markAllAsRead(@Payload() data: { userId: string }) {
-    this.logger.log(`Marking all notifications as read for user: ${data.userId}`);
+  async markAllAsRead(@Payload() payload: GetUnreadCountPayload) {
+    const data = (payload as any).data || payload;
+    const { userId } = data;
 
-    try {
-      const result = await this.notificationService.markAllAsRead(data.userId);
-      return {
-        success: true,
-        data: result,
-      };
-    } catch (error: any) {
-      this.logger.error('Failed to mark all notifications as read:', error);
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
+    this.logger.log(`NATS: notification.mark_all_as_read for user ${userId}`);
+
+    const result = await this.notificationService.markAllAsRead(userId);
+
+    return NatsResponse.success(result);
   }
 
   @MessagePattern('notification.delete')
-  async deleteNotification(@Payload() data: { notificationId: number; userId: string }) {
-    this.logger.log(`Deleting notification ${data.notificationId} for user: ${data.userId}`);
+  async deleteNotification(@Payload() payload: DeleteNotificationPayload) {
+    const data = (payload as any).data || payload;
+    const { notificationId, userId } = data;
 
-    try {
-      await this.notificationService.remove(data.notificationId, data.userId);
-      return {
-        success: true,
-        message: 'Notification deleted successfully',
-      };
-    } catch (error: any) {
-      this.logger.error('Failed to delete notification:', error);
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
+    this.logger.log(`NATS: notification.delete - ${notificationId}`);
+
+    await this.notificationService.remove(notificationId, userId);
+
+    return NatsResponse.deleted();
   }
 }

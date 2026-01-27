@@ -43,14 +43,14 @@ export interface AppNotification {
   updatedAt: string;
 }
 
+// 표준 페이지네이션 응답 형식
 export interface NotificationsResponse {
   success: boolean;
-  data: {
-    notifications: AppNotification[];
-    total: number;
-    page: number;
-    totalPages: number;
-  };
+  data: AppNotification[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 export interface UnreadCountResponse {
@@ -60,12 +60,17 @@ export interface UnreadCountResponse {
 
 export interface MarkAsReadResponse {
   success: boolean;
-  data: AppNotification | null;
+  data: AppNotification;
 }
 
 export interface MarkAllAsReadResponse {
   success: boolean;
-  data: { count: number } | null;
+  data: { count: number };
+}
+
+export interface DeleteResponse {
+  success: boolean;
+  data: { deleted: boolean };
 }
 
 export interface GetNotificationsParams {
@@ -73,6 +78,14 @@ export interface GetNotificationsParams {
   limit?: number;
   type?: NotificationType;
   unreadOnly?: boolean;
+}
+
+// 프론트엔드에서 사용하는 알림 목록 결과 형식
+export interface NotificationListResult {
+  notifications: AppNotification[];
+  total: number;
+  page: number;
+  totalPages: number;
 }
 
 // ============================================
@@ -83,12 +96,18 @@ export const notificationApi = {
   /**
    * 알림 목록 조회
    */
-  getNotifications: async (params?: GetNotificationsParams) => {
+  getNotifications: async (params?: GetNotificationsParams): Promise<NotificationListResult> => {
     const response = await apiClient.get<NotificationsResponse>(
       '/api/user/notifications',
       params
     );
-    return response.data.data;
+    // 표준 페이지네이션 응답을 프론트엔드 형식으로 변환
+    return {
+      notifications: response.data.data,
+      total: response.data.total,
+      page: response.data.page,
+      totalPages: response.data.totalPages,
+    };
   },
 
   /**
@@ -104,7 +123,7 @@ export const notificationApi = {
   /**
    * 특정 알림 읽음 처리
    */
-  markAsRead: async (notificationId: number): Promise<AppNotification | null> => {
+  markAsRead: async (notificationId: number): Promise<AppNotification> => {
     const response = await apiClient.post<MarkAsReadResponse>(
       `/api/user/notifications/${notificationId}/read`
     );
@@ -125,7 +144,7 @@ export const notificationApi = {
    * 알림 삭제
    */
   deleteNotification: async (notificationId: number): Promise<void> => {
-    await apiClient.delete(`/api/user/notifications/${notificationId}`);
+    await apiClient.delete<DeleteResponse>(`/api/user/notifications/${notificationId}`);
   },
 };
 

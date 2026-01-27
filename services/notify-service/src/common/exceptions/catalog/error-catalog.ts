@@ -113,6 +113,17 @@ export const DatabaseErrors = defineErrors({
 });
 
 // ============================================
+// 알림 에러 (NOTI_xxx)
+// ============================================
+export const NotificationErrors = defineErrors({
+  NOT_FOUND: { code: 'NOTI_001', message: '알림을 찾을 수 없습니다', httpStatus: 404 },
+  SEND_FAILED: { code: 'NOTI_002', message: '알림 발송에 실패했습니다', httpStatus: 500 },
+  TEMPLATE_NOT_FOUND: { code: 'NOTI_003', message: '알림 템플릿을 찾을 수 없습니다', httpStatus: 404 },
+  INVALID_TYPE: { code: 'NOTI_004', message: '유효하지 않은 알림 타입입니다', httpStatus: 400 },
+  DELIVERY_FAILED: { code: 'NOTI_005', message: '알림 전달에 실패했습니다', httpStatus: 500 },
+});
+
+// ============================================
 // 시스템 에러 (SYS_xxx)
 // ============================================
 export const SystemErrors = defineErrors({
@@ -132,6 +143,7 @@ export const Errors = {
   Admin: AdminErrors,
   Booking: BookingErrors,
   Course: CourseErrors,
+  Notification: NotificationErrors,
   Validation: ValidationErrors,
   External: ExternalErrors,
   Database: DatabaseErrors,
