@@ -95,7 +95,7 @@ final class NotificationsViewModel: ObservableObject {
 
     func markAllAsRead() async {
         do {
-            let count = try await notificationService.markAllAsRead()
+            _ = try await notificationService.markAllAsRead()
 
             // Update local state
             notifications = notifications.map { notification in

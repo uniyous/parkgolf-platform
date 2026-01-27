@@ -440,21 +440,9 @@ struct SocialView: View {
                 }
             }
 
-            // Hidden NavigationLink for programmatic navigation
-            NavigationLink(
-                destination: Group {
-                    if let room = navigateToChatRoom {
-                        ChatRoomViewWrapper(room: room)
-                    }
-                },
-                isActive: Binding(
-                    get: { navigateToChatRoom != nil },
-                    set: { if !$0 { navigateToChatRoom = nil } }
-                )
-            ) {
-                EmptyView()
-            }
-            .hidden()
+        }
+        .navigationDestination(item: $navigateToChatRoom) { room in
+            ChatRoomViewWrapper(room: room)
         }
         .overlay {
             if isCreatingChat {
