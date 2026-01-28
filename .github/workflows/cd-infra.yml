@@ -1,33 +1,13 @@
-# Infrastructure CD Pipeline (Terraform)
-# Manages infrastructure changes through GitOps workflow
+# Infrastructure CD Pipeline
+# Manages network infrastructure (Terraform) and GKE cluster
 #
-# ============================================================================
-# Infrastructure Architecture (External IP 방식)
-# ============================================================================
-# Cloud Run 서비스가 VM의 External IP를 통해 직접 접속합니다.
-# (Direct VPC Egress 대신 External IP 방식 사용 - Serverless IP 문제 해결)
-#
-# 주요 구성요소:
-# - PostgreSQL VM: parkgolf-postgres-{env} (External IP)
-# - NATS VM: parkgolf-nats-{env} (External IP)
-# - Cloud Run 서비스: VPC 연결 없음 (External IP로 VM 접속)
-# - Firewall: 0.0.0.0/0 허용 (애플리케이션 레벨 인증으로 보안)
-#
-# NATS 컨테이너 인수 (중요):
-# - NATS 2.10에서 지원되는 인수만 사용해야 함
-# - 올바른 인수: -js, -sd /data, -m 8222
-# - 지원되지 않는 인수: --jetstream_max_memory, --jetstream_max_file
-#   (이 옵션들은 설정 파일(nats.conf)에서만 지원됨)
-#
-# Terraform 모듈 위치: infra/modules/messaging/main.tf
-# 환경 설정: infra/environments/{env}/main.tf
-#
-# VM 수동 관리 명령:
-#   # VM 시작: gcloud compute instances start parkgolf-nats-{env} --zone=asia-northeast3-a
-#   # SSH 접속: gcloud compute ssh parkgolf-nats-{env} --tunnel-through-iap
-#   # 컨테이너 확인: docker ps -a | grep nats
-#   # 컨테이너 로그: docker logs nats
-# ============================================================================
+# Actions:
+#   - status: Check infrastructure status
+#   - network-apply: Create/update VPC and subnets (Terraform)
+#   - gke-setup: Create GKE cluster with PostgreSQL and NATS
+#   - gke-update: Update secrets and configmaps
+#   - gke-destroy: Delete GKE cluster
+#   - network-destroy: Delete VPC and subnets (Terraform)
 
 name: CD Infrastructure
 
@@ -41,353 +21,656 @@ on:
         options:
           - dev
           - prod
+        default: 'dev'
       action:
-        description: 'Terraform action'
+        description: 'Action to perform'
         required: true
         type: choice
         options:
-          - plan
-          - apply
-          - destroy
-      target:
-        description: 'Terraform target module (optional, e.g., module.messaging)'
+          - status
+          - network-apply
+          - gke-setup
+          - gke-update
+          - gke-destroy
+          - network-destroy
+      confirm:
+        description: 'Type "destroy" to confirm destruction'
         required: false
         type: string
-        default: ''
 
 permissions:
   contents: read
-  pull-requests: write
   id-token: write
 
 env:
   TF_VERSION: '1.6.0'
-  TF_VAR_FILE: 'terraform.tfvars'
-  GCP_PROJECT: 'parkgolf-uniyous'
-  GCP_REGION: 'asia-northeast3'
+  REGION: asia-northeast3
+  PROJECT_ID: parkgolf-uniyous
 
 jobs:
   # ============================================================================
-  # Detect Environment
+  # Setup
   # ============================================================================
-  detect-environment:
-    name: Detect Environment
+  setup:
+    name: Setup
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.env.outputs.environment }}
-      tf_dir: ${{ steps.dir.outputs.tf_dir }}
+      cluster_name: ${{ steps.env.outputs.cluster_name }}
+      namespace: ${{ steps.env.outputs.namespace }}
+      tf_dir: ${{ steps.env.outputs.tf_dir }}
     steps:
-      - name: Determine environment
+      - name: Determine environment settings
         id: env
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "environment=prod" >> $GITHUB_OUTPUT
-          else
-            echo "environment=dev" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Determine Terraform directory
-        id: dir
-        run: |
-          ENV=${{ steps.env.outputs.environment }}
-          echo "tf_dir=infra/environments/$ENV" >> $GITHUB_OUTPUT
+          ENV="${{ github.event.inputs.environment }}"
+          echo "environment=$ENV" >> $GITHUB_OUTPUT
+          echo "cluster_name=parkgolf-${ENV}-cluster" >> $GITHUB_OUTPUT
+          echo "namespace=parkgolf-${ENV}" >> $GITHUB_OUTPUT
+          echo "tf_dir=infra/environments/${ENV}" >> $GITHUB_OUTPUT
 
   # ============================================================================
-  # Terraform Validation
+  # Status Check
   # ============================================================================
-  terraform-validate:
-    name: Terraform Validate
-    needs: detect-environment
+  status:
+    name: Infrastructure Status
+    needs: setup
+    if: github.event.inputs.action == 'status'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ${{ needs.detect-environment.outputs.tf_dir }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Authenticate to Google Cloud
+      - name: Google Auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Terraform Format Check
-        id: fmt
-        run: terraform fmt -check -recursive
-        continue-on-error: true
-
-      - name: Terraform Init
-        id: init
-        run: |
-          terraform init -backend=false
-
-      - name: Terraform Validate
-        id: validate
-        run: terraform validate -no-color
-
-      - name: Comment PR - Validation
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const output = `### Terraform Validation Results
-
-            | Check | Status |
-            |-------|--------|
-            | Format | ${{ steps.fmt.outcome == 'success' && '✅ Pass' || '⚠️ Needs formatting' }} |
-            | Init | ${{ steps.init.outcome == 'success' && '✅ Pass' || '❌ Failed' }} |
-            | Validate | ${{ steps.validate.outcome == 'success' && '✅ Pass' || '❌ Failed' }} |
-
-            **Environment:** \`${{ needs.detect-environment.outputs.environment }}\`
-            **Directory:** \`${{ needs.detect-environment.outputs.tf_dir }}\`
-            `;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            })
-
-  # ============================================================================
-  # Terraform Plan
-  # ============================================================================
-  terraform-plan:
-    name: Terraform Plan
-    needs: [detect-environment, terraform-validate]
-    runs-on: ubuntu-latest
-    environment: ${{ needs.detect-environment.outputs.environment }}-plan
-    defaults:
-      run:
-        working-directory: ${{ needs.detect-environment.outputs.tf_dir }}
-    outputs:
-      plan_exitcode: ${{ steps.plan.outputs.exitcode }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Setup gcloud
+      - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: 'gke-gcloud-auth-plugin'
+
+      - name: Check VPC Status
+        run: |
+          echo "=== VPC Networks ==="
+          gcloud compute networks list --filter="name~parkgolf" --format="table(name,autoCreateSubnetworks,routingConfig.routingMode)"
+          echo ""
+          echo "=== Subnets ==="
+          gcloud compute networks subnets list --filter="network~parkgolf" --format="table(name,region,ipCidrRange)"
+
+      - name: Check GKE Status
+        run: |
+          CLUSTER="${{ needs.setup.outputs.cluster_name }}"
+          echo "=== GKE Cluster ==="
+          if gcloud container clusters describe $CLUSTER --region=${{ env.REGION }} 2>/dev/null; then
+            echo "Cluster exists"
+
+            # Get credentials and show resources
+            gcloud container clusters get-credentials $CLUSTER --region=${{ env.REGION }}
+
+            echo ""
+            echo "=== Nodes ==="
+            kubectl get nodes
+
+            echo ""
+            echo "=== Pods in ${{ needs.setup.outputs.namespace }} ==="
+            kubectl get pods -n ${{ needs.setup.outputs.namespace }} -o wide
+
+            echo ""
+            echo "=== Services ==="
+            kubectl get svc -n ${{ needs.setup.outputs.namespace }}
+
+            echo ""
+            echo "=== Ingress ==="
+            kubectl get ingress -n ${{ needs.setup.outputs.namespace }}
+
+            echo ""
+            echo "=== PVC ==="
+            kubectl get pvc -n ${{ needs.setup.outputs.namespace }}
+          else
+            echo "Cluster does not exist"
+          fi
+
+      - name: Summary
+        run: |
+          echo "## Infrastructure Status - ${{ needs.setup.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          # Check VPC
+          if gcloud compute networks describe parkgolf-${{ needs.setup.outputs.environment }} 2>/dev/null; then
+            echo "| VPC | Active |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| VPC | Not Found |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Check GKE
+          if gcloud container clusters describe ${{ needs.setup.outputs.cluster_name }} --region=${{ env.REGION }} 2>/dev/null; then
+            echo "| GKE Cluster | Running |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| GKE Cluster | Not Found |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ============================================================================
+  # Network - Terraform Apply
+  # ============================================================================
+  network-apply:
+    name: Network Apply (Terraform)
+    needs: setup
+    if: github.event.inputs.action == 'network-apply'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ needs.setup.outputs.tf_dir }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Terraform Init
-        run: terraform init
-
-      - name: Create tfvars from secrets
         run: |
-          ENV="${{ needs.detect-environment.outputs.environment }}"
+          # Check if backend bucket exists, create if not
+          BUCKET="parkgolf-uniyous-terraform-state"
+          if ! gcloud storage buckets describe gs://$BUCKET 2>/dev/null; then
+            echo "Creating Terraform state bucket..."
+            gcloud storage buckets create gs://$BUCKET --location=${{ env.REGION }}
+          fi
+          terraform init
 
-          # Dev environment - uses PostgreSQL VM
-          if [ "$ENV" == "dev" ]; then
-            cat > terraform.tfvars << EOF
+      - name: Create tfvars
+        run: |
+          cat > terraform.tfvars << EOF
           db_password        = "${{ secrets.DB_PASSWORD }}"
           jwt_secret         = "${{ secrets.JWT_SECRET }}"
           jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
           EOF
-          fi
-
-          # Prod environment - uses PostgreSQL (VM or Cloud SQL)
-          if [ "$ENV" == "prod" ]; then
-            cat > terraform.tfvars << EOF
-          db_password        = "${{ secrets.DB_PASSWORD }}"
-          jwt_secret         = "${{ secrets.JWT_SECRET }}"
-          jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
-          EOF
-          fi
-
 
       - name: Terraform Plan
-        id: plan
         run: |
-          TARGET_OPTION=""
-          if [ -n "${{ github.event.inputs.target }}" ]; then
-            TARGET_OPTION="-target=${{ github.event.inputs.target }}"
-            echo "🎯 Targeting: ${{ github.event.inputs.target }}"
-          fi
-
           terraform plan \
-            -var="environment=${{ needs.detect-environment.outputs.environment }}" \
-            $TARGET_OPTION \
-            -no-color \
-            -detailed-exitcode \
-            -out=tfplan 2>&1 | tee plan_output.txt
-          echo "exitcode=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
-        continue-on-error: true
-
-      - name: Upload Plan
-        if: steps.plan.outputs.exitcode == '0' || steps.plan.outputs.exitcode == '2'
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan-${{ needs.detect-environment.outputs.environment }}
-          path: |
-            ${{ needs.detect-environment.outputs.tf_dir }}/tfplan
-            ${{ needs.detect-environment.outputs.tf_dir }}/plan_output.txt
-          retention-days: 7
-
-      - name: Fail if plan failed
-        if: steps.plan.outputs.exitcode == '1'
-        run: |
-          echo "❌ Terraform plan failed"
-          exit 1
-
-      - name: Comment PR - Plan
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const planOutput = fs.readFileSync('${{ needs.detect-environment.outputs.tf_dir }}/plan_output.txt', 'utf8');
-
-            // Truncate if too long
-            const maxLength = 60000;
-            const truncated = planOutput.length > maxLength
-              ? planOutput.substring(0, maxLength) + '\n\n... (truncated)'
-              : planOutput;
-
-            const exitCode = '${{ steps.plan.outputs.exitcode }}';
-            let statusEmoji = '✅';
-            let statusText = 'No changes detected';
-
-            if (exitCode === '1') {
-              statusEmoji = '❌';
-              statusText = 'Plan failed';
-            } else if (exitCode === '2') {
-              statusEmoji = '⚠️';
-              statusText = 'Changes detected';
-            }
-
-            const output = `### Terraform Plan ${statusEmoji}
-
-            **Status:** ${statusText}
-            **Environment:** \`${{ needs.detect-environment.outputs.environment }}\`
-
-            <details><summary>Show Plan Output</summary>
-
-            \`\`\`terraform
-            ${truncated}
-            \`\`\`
-
-            </details>
-
-            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            })
-
-  # ============================================================================
-  # Terraform Apply
-  # ============================================================================
-  terraform-apply:
-    name: Terraform Apply
-    needs: [detect-environment, terraform-plan]
-    if: |
-      needs.terraform-plan.outputs.plan_exitcode != '1' &&
-      (
-        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-        (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
-        (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
-      )
-    runs-on: ubuntu-latest
-    environment: ${{ needs.detect-environment.outputs.environment }}
-    defaults:
-      run:
-        working-directory: ${{ needs.detect-environment.outputs.tf_dir }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Download Plan
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan-${{ needs.detect-environment.outputs.environment }}
-          path: ${{ needs.detect-environment.outputs.tf_dir }}
-
-      - name: Verify Plan File
-        run: |
-          if [ ! -f "tfplan" ]; then
-            echo "❌ tfplan file not found!"
-            ls -la
-            exit 1
-          fi
-          echo "✅ tfplan file found"
-
-      - name: Terraform Init
-        run: terraform init
+            -var="environment=${{ needs.setup.outputs.environment }}" \
+            -target=module.networking \
+            -out=tfplan
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
 
-      - name: Notify Success
-        if: success()
+      - name: Summary
         run: |
-          echo "✅ Infrastructure applied successfully to ${{ needs.detect-environment.outputs.environment }}"
-
-      - name: Notify Failure
-        if: failure()
-        run: |
-          echo "❌ Infrastructure apply failed for ${{ needs.detect-environment.outputs.environment }}"
+          echo "## Network Infrastructure Applied" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: ${{ needs.setup.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- VPC: parkgolf-${{ needs.setup.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
 
   # ============================================================================
-  # Terraform Destroy (Manual Only)
+  # GKE Setup
   # ============================================================================
-  terraform-destroy:
-    name: Terraform Destroy
-    needs: detect-environment
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+  gke-setup:
+    name: GKE Setup
+    needs: setup
+    if: github.event.inputs.action == 'gke-setup'
     runs-on: ubuntu-latest
-    environment: ${{ needs.detect-environment.outputs.environment }}-destroy
+    steps:
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: 'gke-gcloud-auth-plugin'
+
+      - name: Validate Secrets
+        run: |
+          if [ -z "${{ secrets.DB_PASSWORD }}" ]; then
+            echo "::error::DB_PASSWORD secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.JWT_SECRET }}" ]; then
+            echo "::error::JWT_SECRET secret is not set"
+            exit 1
+          fi
+          echo "All required secrets are configured"
+
+      - name: Enable GCP APIs
+        run: |
+          gcloud services enable container.googleapis.com
+          gcloud services enable artifactregistry.googleapis.com
+          gcloud services enable compute.googleapis.com
+
+      - name: Create Artifact Registry
+        run: |
+          if gcloud artifacts repositories describe parkgolf --location=${{ env.REGION }} 2>/dev/null; then
+            echo "Artifact Registry already exists"
+          else
+            echo "Creating Artifact Registry..."
+            gcloud artifacts repositories create parkgolf \
+              --repository-format=docker \
+              --location=${{ env.REGION }} \
+              --description="Parkgolf container images"
+          fi
+
+      - name: Check/Create GKE Cluster
+        run: |
+          CLUSTER="${{ needs.setup.outputs.cluster_name }}"
+          ENV="${{ needs.setup.outputs.environment }}"
+
+          if gcloud container clusters describe $CLUSTER --region=${{ env.REGION }} 2>/dev/null; then
+            echo "Cluster already exists"
+          else
+            echo "Creating GKE Autopilot cluster..."
+            gcloud container clusters create-auto $CLUSTER \
+              --region=${{ env.REGION }} \
+              --release-channel=regular \
+              --network=parkgolf-${ENV} \
+              --subnetwork=parkgolf-private-${ENV}
+          fi
+
+      - name: Wait for Cluster Ready
+        run: |
+          CLUSTER="${{ needs.setup.outputs.cluster_name }}"
+          echo "Waiting for cluster to be ready..."
+          for i in {1..40}; do
+            STATUS=$(gcloud container clusters describe $CLUSTER \
+              --region=${{ env.REGION }} \
+              --format="value(status)" 2>/dev/null || echo "PROVISIONING")
+            echo "[$i/40] Cluster status: $STATUS"
+            if [ "$STATUS" = "RUNNING" ]; then
+              echo "Cluster is ready!"
+              break
+            fi
+            sleep 30
+          done
+
+      - name: Get GKE Credentials
+        run: |
+          gcloud container clusters get-credentials ${{ needs.setup.outputs.cluster_name }} \
+            --region=${{ env.REGION }}
+
+      - name: Create Namespace
+        run: |
+          kubectl create namespace ${{ needs.setup.outputs.namespace }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create Secrets
+        run: |
+          kubectl create secret generic parkgolf-secrets \
+            --namespace=${{ needs.setup.outputs.namespace }} \
+            --from-literal=POSTGRES_USER=parkgolf \
+            --from-literal=POSTGRES_PASSWORD='${{ secrets.DB_PASSWORD }}' \
+            --from-literal=JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+            --from-literal=JWT_REFRESH_SECRET='${{ secrets.JWT_REFRESH_SECRET }}' \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create ConfigMap
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: parkgolf-config
+            namespace: ${{ needs.setup.outputs.namespace }}
+          data:
+            NODE_ENV: "${{ needs.setup.outputs.environment == 'prod' && 'production' || 'development' }}"
+            NATS_URL: "nats://nats:4222"
+            DB_HOST: "postgres"
+            DB_PORT: "5432"
+          EOF
+
+      - name: Deploy PostgreSQL
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: postgres
+            namespace: ${{ needs.setup.outputs.namespace }}
+          spec:
+            ports:
+            - port: 5432
+              targetPort: 5432
+            selector:
+              app: postgres
+            clusterIP: None
+          ---
+          apiVersion: apps/v1
+          kind: StatefulSet
+          metadata:
+            name: postgres
+            namespace: ${{ needs.setup.outputs.namespace }}
+          spec:
+            serviceName: postgres
+            replicas: 1
+            selector:
+              matchLabels:
+                app: postgres
+            template:
+              metadata:
+                labels:
+                  app: postgres
+              spec:
+                containers:
+                - name: postgres
+                  image: postgres:15-alpine
+                  ports:
+                  - containerPort: 5432
+                  env:
+                  - name: POSTGRES_USER
+                    valueFrom:
+                      secretKeyRef:
+                        name: parkgolf-secrets
+                        key: POSTGRES_USER
+                  - name: POSTGRES_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: parkgolf-secrets
+                        key: POSTGRES_PASSWORD
+                  - name: PGDATA
+                    value: /var/lib/postgresql/data/pgdata
+                  resources:
+                    requests:
+                      cpu: "250m"
+                      memory: "512Mi"
+                    limits:
+                      cpu: "1000m"
+                      memory: "1Gi"
+                  volumeMounts:
+                  - name: postgres-data
+                    mountPath: /var/lib/postgresql/data
+                  readinessProbe:
+                    exec:
+                      command: ["pg_isready", "-U", "parkgolf"]
+                    initialDelaySeconds: 10
+                    periodSeconds: 5
+                  livenessProbe:
+                    exec:
+                      command: ["pg_isready", "-U", "parkgolf"]
+                    initialDelaySeconds: 30
+                    periodSeconds: 10
+            volumeClaimTemplates:
+            - metadata:
+                name: postgres-data
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                storageClassName: standard-rwo
+                resources:
+                  requests:
+                    storage: 10Gi
+          EOF
+
+      - name: Wait for PostgreSQL
+        run: |
+          echo "Waiting for PostgreSQL..."
+          kubectl wait --for=condition=ready pod -l app=postgres \
+            -n ${{ needs.setup.outputs.namespace }} --timeout=300s
+
+      - name: Initialize Databases
+        run: |
+          echo "Initializing databases..."
+          kubectl run postgres-init-${{ github.run_id }} \
+            --rm -i --restart=Never \
+            --namespace=${{ needs.setup.outputs.namespace }} \
+            --image=postgres:15-alpine \
+            --env="PGHOST=postgres" \
+            --env="PGUSER=parkgolf" \
+            --env="PGPASSWORD=${{ secrets.DB_PASSWORD }}" \
+            -- sh -c "
+              until pg_isready -h postgres; do sleep 2; done
+              psql -h postgres -c 'CREATE DATABASE iam_db;' 2>/dev/null || echo 'iam_db exists'
+              psql -h postgres -c 'CREATE DATABASE course_db;' 2>/dev/null || echo 'course_db exists'
+              psql -h postgres -c 'CREATE DATABASE booking_db;' 2>/dev/null || echo 'booking_db exists'
+              psql -h postgres -c 'CREATE DATABASE chat_db;' 2>/dev/null || echo 'chat_db exists'
+              psql -h postgres -c 'CREATE DATABASE notify_db;' 2>/dev/null || echo 'notify_db exists'
+              echo 'Databases initialized'
+            "
+
+      - name: Deploy NATS
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: nats
+            namespace: ${{ needs.setup.outputs.namespace }}
+          spec:
+            ports:
+            - name: client
+              port: 4222
+              targetPort: 4222
+            - name: monitor
+              port: 8222
+              targetPort: 8222
+            selector:
+              app: nats
+          ---
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: nats
+            namespace: ${{ needs.setup.outputs.namespace }}
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: nats
+            template:
+              metadata:
+                labels:
+                  app: nats
+              spec:
+                containers:
+                - name: nats
+                  image: nats:2.10-alpine
+                  args: ["-js", "-m", "8222"]
+                  ports:
+                  - containerPort: 4222
+                    name: client
+                  - containerPort: 8222
+                    name: monitor
+                  resources:
+                    requests:
+                      cpu: "100m"
+                      memory: "128Mi"
+                    limits:
+                      cpu: "300m"
+                      memory: "256Mi"
+                  readinessProbe:
+                    httpGet:
+                      path: /healthz
+                      port: 8222
+                    initialDelaySeconds: 5
+                    periodSeconds: 5
+                  livenessProbe:
+                    httpGet:
+                      path: /healthz
+                      port: 8222
+                    initialDelaySeconds: 10
+                    periodSeconds: 10
+          EOF
+
+      - name: Wait for NATS
+        run: |
+          echo "Waiting for NATS..."
+          kubectl wait --for=condition=ready pod -l app=nats \
+            -n ${{ needs.setup.outputs.namespace }} --timeout=120s
+
+      - name: Summary
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "       GKE Infrastructure Ready           "
+          echo "=========================================="
+          echo ""
+          echo "Cluster: ${{ needs.setup.outputs.cluster_name }}"
+          echo "Namespace: ${{ needs.setup.outputs.namespace }}"
+          echo ""
+          echo "=== Resources ==="
+          kubectl get all -n ${{ needs.setup.outputs.namespace }}
+          echo ""
+          echo "=== Next Steps ==="
+          echo "Run 'CD Services' workflow to deploy backend services"
+          echo "=========================================="
+
+  # ============================================================================
+  # GKE Update (Secrets/ConfigMap)
+  # ============================================================================
+  gke-update:
+    name: GKE Update
+    needs: setup
+    if: github.event.inputs.action == 'gke-update'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: 'gke-gcloud-auth-plugin'
+
+      - name: Get GKE Credentials
+        run: |
+          gcloud container clusters get-credentials ${{ needs.setup.outputs.cluster_name }} \
+            --region=${{ env.REGION }}
+
+      - name: Update Secrets
+        run: |
+          kubectl create secret generic parkgolf-secrets \
+            --namespace=${{ needs.setup.outputs.namespace }} \
+            --from-literal=POSTGRES_USER=parkgolf \
+            --from-literal=POSTGRES_PASSWORD='${{ secrets.DB_PASSWORD }}' \
+            --from-literal=JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+            --from-literal=JWT_REFRESH_SECRET='${{ secrets.JWT_REFRESH_SECRET }}' \
+            --dry-run=client -o yaml | kubectl apply -f -
+          echo "Secrets updated"
+
+      - name: Update ConfigMap
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: parkgolf-config
+            namespace: ${{ needs.setup.outputs.namespace }}
+          data:
+            NODE_ENV: "${{ needs.setup.outputs.environment == 'prod' && 'production' || 'development' }}"
+            NATS_URL: "nats://nats:4222"
+            DB_HOST: "postgres"
+            DB_PORT: "5432"
+          EOF
+          echo "ConfigMap updated"
+
+      - name: Restart Deployments
+        run: |
+          echo "Restarting deployments to pick up new config..."
+          kubectl rollout restart deployment -n ${{ needs.setup.outputs.namespace }} || true
+
+  # ============================================================================
+  # GKE Destroy
+  # ============================================================================
+  gke-destroy:
+    name: GKE Destroy
+    needs: setup
+    if: github.event.inputs.action == 'gke-destroy'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate Confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "destroy" ]; then
+            echo "::error::You must type 'destroy' in the confirm field to proceed"
+            exit 1
+          fi
+
+      - name: Block Production
+        if: needs.setup.outputs.environment == 'prod'
+        run: |
+          echo "::error::Production destruction requires manual approval"
+          echo "Please delete via GCP Console or gcloud CLI"
+          exit 1
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Delete GKE Cluster
+        run: |
+          CLUSTER="${{ needs.setup.outputs.cluster_name }}"
+          if gcloud container clusters describe $CLUSTER --region=${{ env.REGION }} 2>/dev/null; then
+            echo "Deleting GKE cluster: $CLUSTER"
+            gcloud container clusters delete $CLUSTER \
+              --region=${{ env.REGION }} \
+              --quiet
+            echo "Cluster deleted"
+          else
+            echo "Cluster not found"
+          fi
+
+      - name: Delete Static IP
+        run: |
+          IP_NAME="parkgolf-${{ needs.setup.outputs.cluster_name }}-ip"
+          if gcloud compute addresses describe $IP_NAME --global 2>/dev/null; then
+            echo "Deleting static IP: $IP_NAME"
+            gcloud compute addresses delete $IP_NAME --global --quiet
+          else
+            echo "Static IP not found"
+          fi
+
+      - name: Summary
+        run: |
+          echo "## GKE Cluster Destroyed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Cluster: ${{ needs.setup.outputs.cluster_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Preserved: Artifact Registry, VPC" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # Network Destroy (Terraform)
+  # ============================================================================
+  network-destroy:
+    name: Network Destroy (Terraform)
+    needs: setup
+    if: github.event.inputs.action == 'network-destroy'
+    runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ${{ needs.detect-environment.outputs.tf_dir }}
+        working-directory: ${{ needs.setup.outputs.tf_dir }}
     steps:
+      - name: Validate Confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "destroy" ]; then
+            echo "::error::You must type 'destroy' in the confirm field to proceed"
+            exit 1
+          fi
+
+      - name: Block Production
+        if: needs.setup.outputs.environment == 'prod'
+        run: |
+          echo "::error::Production network destruction is blocked"
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Safety Check
-        if: needs.detect-environment.outputs.environment == 'prod'
-        run: |
-          echo "⚠️ DANGER: Destroying production infrastructure!"
-          echo "This action requires explicit approval."
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
-      - name: Authenticate to Google Cloud
+      - name: Google Auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
@@ -395,52 +678,23 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
-      - name: Create tfvars from secrets
+      - name: Create tfvars
         run: |
-          ENV="${{ needs.detect-environment.outputs.environment }}"
-
-          # Dev environment - uses PostgreSQL VM
-          if [ "$ENV" == "dev" ]; then
-            cat > terraform.tfvars << EOF
+          cat > terraform.tfvars << EOF
           db_password        = "${{ secrets.DB_PASSWORD }}"
           jwt_secret         = "${{ secrets.JWT_SECRET }}"
           jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
           EOF
-          fi
 
-          # Prod environment - uses PostgreSQL (VM or Cloud SQL)
-          if [ "$ENV" == "prod" ]; then
-            cat > terraform.tfvars << EOF
-          db_password        = "${{ secrets.DB_PASSWORD }}"
-          jwt_secret         = "${{ secrets.JWT_SECRET }}"
-          jwt_refresh_secret = "${{ secrets.JWT_REFRESH_SECRET }}"
-          EOF
-          fi
-
-
-      - name: Terraform Destroy
+      - name: Terraform Destroy Network
         run: |
-          ENV="${{ needs.detect-environment.outputs.environment }}"
+          terraform destroy \
+            -var="environment=${{ needs.setup.outputs.environment }}" \
+            -target=module.networking \
+            -auto-approve
 
-          # If targeting specific module, destroy only that
-          if [ -n "${{ github.event.inputs.target }}" ]; then
-            echo "🎯 Targeting: ${{ github.event.inputs.target }}"
-            terraform destroy \
-              -var="environment=$ENV" \
-              -target=${{ github.event.inputs.target }} \
-              -auto-approve
-          else
-            # Full destroy (External IP 방식에서는 순서가 덜 중요하지만 안전하게 순차 삭제)
-            # Step 1: Destroy Cloud Run services first
-            echo "📦 Step 1: Destroying Cloud Run services..."
-            terraform destroy \
-              -var="environment=$ENV" \
-              -target=module.services \
-              -auto-approve || true
-
-            # Step 2: Destroy remaining infrastructure (VMs, networking)
-            echo "🏗️ Step 2: Destroying remaining infrastructure..."
-            terraform destroy \
-              -var="environment=$ENV" \
-              -auto-approve
-          fi
+      - name: Summary
+        run: |
+          echo "## Network Infrastructure Destroyed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: ${{ needs.setup.outputs.environment }}" >> $GITHUB_STEP_SUMMARY

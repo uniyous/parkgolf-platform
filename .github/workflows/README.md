@@ -1,150 +1,218 @@
-# GitHub Actions Workflows for GCP Cloud Run Deployment
+# GitHub Actions Workflows
 
-## Overview
-이 디렉토리는 Park Golf Platform의 마이크로서비스들을 Google Cloud Run에 자동 배포하기 위한 GitHub Actions workflow 파일들을 포함합니다.
+Park Golf Platform CI/CD 파이프라인
 
 ## Workflows
 
-### 1. IAM Service (`deploy-iam-service.yml`)
-- **포트**: 3011
-- **트리거**: `services/iam-service/` 경로 변경 시
-- **기능**: Identity & Access Management - JWT 인증, 사용자/관리자/회사 관리, RBAC 권한 시스템
+| 파일 | 용도 | 트리거 |
+|------|------|--------|
+| `ci.yml` | CI (lint, test, build) | Manual |
+| `cd-infra.yml` | 인프라 관리 (Network + GKE) | Manual |
+| `cd-services.yml` | 백엔드 서비스 배포 | Manual |
+| `cd-apps.yml` | 프론트엔드 앱 배포 | Manual |
 
-### 2. Course Service (`deploy-course-service.yml`)
-- **포트**: NATS only (HTTP 없음)
-- **트리거**: `services/course-service/` 경로 변경 시
-- **기능**: 골프장/코스 관리, 타임슬롯 관리
+---
 
-### 3. Booking Service (`deploy-booking-service.yml`)
-- **포트**: 3013
-- **트리거**: `services/booking-service/` 경로 변경 시
-- **기능**: 예약 생성/관리, 결제 처리
+## 1. CI Pipeline (`ci.yml`)
 
-### 4. Admin API (`deploy-admin-api.yml`)
-- **포트**: 3091
-- **트리거**: `services/admin-api/` 경로 변경 시
-- **기능**: 관리자 대시보드용 BFF, 다중 서비스 통합
-- **특징**: 높은 메모리/CPU, VPC 연결
+코드 품질 검증 파이프라인
 
-### 5. User API (`deploy-user-api.yml`)
-- **포트**: 3092
-- **트리거**: `services/user-api/` 경로 변경 시
-- **기능**: 사용자 웹앱용 BFF, 공개 API
-- **특징**: 높은 동시성, Rate Limiting
-
-## 필요한 GitHub Secrets
-
-### GCP 관련
-- `GCP_PROJECT_ID`: GCP 프로젝트 ID
-- `GCP_SA_KEY`: 서비스 계정 JSON 키
-- `SERVICE_ACCOUNT_EMAIL`: Cloud Run 서비스 계정 이메일
-- `CLOUDSQL_CONNECTION_NAME`: Cloud SQL 연결 이름
-
-### 데이터베이스
-- `IAM_DATABASE_URL`: IAM 서비스 DB URL
-- `COURSE_DATABASE_URL`: Course 서비스 DB URL
-- `BOOKING_DATABASE_URL`: Booking 서비스 DB URL
-
-### Redis
-- `REDIS_HOST`: Redis 호스트 주소
-- `REDIS_PORT`: Redis 포트 (기본: 6379)
-- `REDIS_PASSWORD`: Redis 비밀번호
-
-### NATS
-- `NATS_URL`: NATS 서버 URL
-- `NATS_USER`: NATS 사용자명
-- `NATS_PASSWORD`: NATS 비밀번호
-
-### JWT
-- `JWT_SECRET`: JWT 액세스 토큰 시크릿
-- `JWT_REFRESH_SECRET`: JWT 리프레시 토큰 시크릿
-
-### 결제 (Booking Service)
-- `PAYMENT_GATEWAY`: 결제 게이트웨이 (예: toss, kakao)
-- `PAYMENT_API_KEY`: 결제 API 키
-- `PAYMENT_SECRET_KEY`: 결제 시크릿 키
-
-## GCP 설정 사전 준비
-
-### 1. Artifact Registry 생성
 ```bash
-gcloud artifacts repositories create parkgolf \
-  --repository-format=docker \
-  --location=asia-northeast3 \
-  --description="Park Golf Platform Docker images"
+# 실행
+Actions > CI Pipeline > Run workflow
+  - target: all / apps / services
 ```
 
-### 2. Cloud SQL 인스턴스 생성
+| 단계 | 설명 |
+|------|------|
+| Lint | ESLint 검사 |
+| Test | Jest 테스트 |
+| Build | 빌드 검증 |
+| Security | Trivy 취약점 스캔 |
+
+---
+
+## 2. Infrastructure (`cd-infra.yml`)
+
+네트워크 및 GKE 클러스터 관리
+
 ```bash
-gcloud sql instances create parkgolf-db \
-  --database-version=POSTGRES_15 \
-  --tier=db-g1-small \
-  --region=asia-northeast3
+# 실행
+Actions > CD Infrastructure > Run workflow
+  - environment: dev / prod
+  - action: status / network-apply / gke-setup / gke-update / gke-destroy / network-destroy
+  - confirm: "destroy" (삭제 시 필수)
 ```
 
-### 3. 서비스 계정 생성 및 권한 부여
+### Actions
+
+| Action | 설명 |
+|--------|------|
+| `status` | 인프라 상태 확인 |
+| `network-apply` | VPC/Subnet 생성 (Terraform) |
+| `gke-setup` | GKE 클러스터 + PostgreSQL + NATS 생성 |
+| `gke-update` | Secret/ConfigMap 업데이트 |
+| `gke-destroy` | GKE 클러스터 삭제 |
+| `network-destroy` | VPC/Subnet 삭제 (Terraform) |
+
+### 생성되는 리소스
+
+**GKE Setup:**
+- GKE Autopilot 클러스터
+- Artifact Registry
+- Kubernetes Namespace
+- Secrets (DB 비밀번호, JWT)
+- ConfigMap (환경변수)
+- PostgreSQL StatefulSet + PVC (10Gi)
+- NATS Deployment
+
+---
+
+## 3. Backend Services (`cd-services.yml`)
+
+백엔드 마이크로서비스 배포
+
 ```bash
-# 서비스 계정 생성
-gcloud iam service-accounts create github-actions \
-  --display-name="GitHub Actions Deploy"
-
-# 필요한 권한 부여
-gcloud projects add-iam-policy-binding PROJECT_ID \
-  --member="serviceAccount:github-actions@PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/run.admin"
-
-gcloud projects add-iam-policy-binding PROJECT_ID \
-  --member="serviceAccount:github-actions@PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/iam.serviceAccountUser"
-
-gcloud projects add-iam-policy-binding PROJECT_ID \
-  --member="serviceAccount:github-actions@PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/artifactregistry.writer"
-
-# 키 생성
-gcloud iam service-accounts keys create key.json \
-  --iam-account=github-actions@PROJECT_ID.iam.gserviceaccount.com
+# 실행
+Actions > CD Services > Run workflow
+  - environment: dev / prod
+  - services: all / iam-service,admin-api (쉼표 구분)
 ```
 
-### 4. VPC Connector 생성 (Private 서비스용)
+### 서비스 목록
+
+| 서비스 | 포트 | DB |
+|--------|------|-----|
+| iam-service | 8080 | iam_db |
+| course-service | 8080 | course_db |
+| booking-service | 8080 | booking_db |
+| chat-service | 8080 | chat_db |
+| notify-service | 8080 | notify_db |
+| admin-api | 8080 | - |
+| user-api | 8080 | - |
+| chat-gateway | 8080 | - |
+
+### 배포 프로세스
+
+1. Docker 이미지 빌드 & Artifact Registry 푸시
+2. Kubernetes Deployment 적용
+3. Ingress 설정 (Static IP)
+
+---
+
+## 4. Frontend Apps (`cd-apps.yml`)
+
+프론트엔드 앱 Firebase Hosting 배포
+
 ```bash
-gcloud compute networks vpc-access connectors create parkgolf-connector \
-  --region=asia-northeast3 \
-  --subnet=default \
-  --subnet-project=PROJECT_ID \
-  --min-instances=2 \
-  --max-instances=10
+# 실행
+Actions > CD Apps > Run workflow
+  - environment: dev / prod
+  - apps: all / admin-dashboard,user-app-web
 ```
 
-## 배포 프로세스
+### 앱 목록
 
-1. **코드 푸시**: main 또는 develop 브랜치에 푸시
-2. **Docker 빌드**: Multi-stage 빌드로 최적화된 이미지 생성
-3. **Artifact Registry 푸시**: 빌드된 이미지를 GCP에 업로드
-4. **Cloud Run 배포**: 새 리비전 생성 및 트래픽 라우팅
-5. **헬스 체크**: 배포 완료 후 서비스 상태 확인
+| 앱 | Firebase Site (dev) | Firebase Site (prod) |
+|----|---------------------|----------------------|
+| admin-dashboard | parkgolf-admin-dev | parkgolf-admin |
+| user-app-web | parkgolf-user-dev | parkgolf-user |
 
-## 수동 배포
-워크플로우는 `workflow_dispatch` 이벤트도 지원하므로 GitHub Actions 탭에서 수동으로 실행 가능합니다.
+---
 
-## 모니터링
-- Cloud Run 콘솔: https://console.cloud.google.com/run
-- Cloud Logging: https://console.cloud.google.com/logs
-- Cloud Monitoring: https://console.cloud.google.com/monitoring
+## 배포 순서
 
-## 트러블슈팅
+### 최초 설정
 
-### 빌드 실패
-- Dockerfile 경로 확인
-- package.json 의존성 확인
-- Prisma 스키마 유효성 확인
+```
+1. cd-infra.yml (network-apply)  → VPC/Subnet 생성
+2. cd-infra.yml (gke-setup)      → GKE 클러스터 생성
+3. cd-services.yml               → 백엔드 서비스 배포
+4. cd-apps.yml                   → 프론트엔드 배포
+```
 
-### 배포 실패
-- GCP 권한 확인
-- Secret 값 확인
-- Cloud SQL 연결 확인
+### 서비스 업데이트
 
-### 런타임 에러
-- 환경변수 설정 확인
-- NATS 연결 확인
-- 데이터베이스 마이그레이션 상태 확인
+```
+cd-services.yml  → 변경된 서비스만 배포
+cd-apps.yml      → 변경된 앱만 배포
+```
+
+### 설정 변경
+
+```
+cd-infra.yml (gke-update)  → Secret/ConfigMap 변경 후 서비스 재시작
+```
+
+### 클러스터 삭제 (비용 절감)
+
+```
+cd-infra.yml (gke-destroy)  → GKE 클러스터 삭제 (VPC 보존)
+```
+
+---
+
+## GitHub Secrets
+
+| Secret | 용도 |
+|--------|------|
+| `GCP_SA_KEY` | GCP 서비스 계정 JSON 키 |
+| `DB_PASSWORD` | PostgreSQL 비밀번호 |
+| `JWT_SECRET` | JWT 서명 키 |
+| `JWT_REFRESH_SECRET` | JWT 리프레시 토큰 키 |
+
+---
+
+## 환경별 리소스
+
+### Dev 환경
+
+| 리소스 | 값 |
+|--------|-----|
+| GKE Cluster | parkgolf-dev-cluster |
+| Namespace | parkgolf-dev |
+| Static IP | 34.160.121.150 |
+| VPC | parkgolf-dev |
+
+### Prod 환경
+
+| 리소스 | 값 |
+|--------|-----|
+| GKE Cluster | parkgolf-prod-cluster |
+| Namespace | parkgolf-prod |
+| Domain | api.parkgolf.com (예정) |
+| VPC | parkgolf-prod |
+
+---
+
+## 문제 해결
+
+### 클러스터 상태 확인
+
+```bash
+# GKE 클러스터
+gcloud container clusters list
+
+# 파드 상태
+kubectl get pods -n parkgolf-dev
+
+# 서비스 로그
+kubectl logs -f deployment/iam-service -n parkgolf-dev
+```
+
+### Ingress 확인
+
+```bash
+# Ingress 상태
+kubectl get ingress -n parkgolf-dev
+
+# Static IP
+gcloud compute addresses list --global
+```
+
+### 데이터베이스 접속
+
+```bash
+# PostgreSQL 파드 접속
+kubectl exec -it postgres-0 -n parkgolf-dev -- psql -U parkgolf -d iam_db
+```
