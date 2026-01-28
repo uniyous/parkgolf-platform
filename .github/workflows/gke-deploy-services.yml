@@ -23,7 +23,7 @@ on:
       cluster_name:
         description: 'Target cluster name'
         required: true
-        default: 'parkgolf-dev'
+        default: 'parkgolf-dev-cluster'
         type: string
   # push:
   #   branches: [develop]
@@ -32,7 +32,7 @@ on:
 
 env:
   REGION: asia-northeast3
-  CLUSTER_NAME: ${{ github.event.inputs.cluster_name || 'parkgolf-dev' }}
+  CLUSTER_NAME: ${{ github.event.inputs.cluster_name || 'parkgolf-dev-cluster' }}
   NAMESPACE: parkgolf-dev
   REGISTRY: asia-northeast3-docker.pkg.dev
 

@@ -25,7 +25,7 @@ on:
       cluster_name:
         description: 'Cluster name to destroy'
         required: true
-        default: 'parkgolf-dev'
+        default: 'parkgolf-dev-cluster'
         type: string
       delete_ip:
         description: 'Also delete static IP?'
