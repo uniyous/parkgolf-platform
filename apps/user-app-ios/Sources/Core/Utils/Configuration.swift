@@ -25,7 +25,7 @@ enum Configuration {
         static var baseURL: URL {
             switch Environment.current {
             case .development:
-                return URL(string: "https://user-api-dev-335495814488.asia-northeast3.run.app")!
+                return URL(string: "http://34.160.211.91/api/user")!
             case .staging:
                 return URL(string: "https://user-api-stg-335495814488.asia-northeast3.run.app")!
             case .production:
@@ -36,7 +36,7 @@ enum Configuration {
         static var chatSocketURL: URL {
             switch Environment.current {
             case .development:
-                return URL(string: "https://chat-gateway-dev-iihuzmuufa-du.a.run.app")!
+                return URL(string: "http://34.160.211.91")!
             case .staging:
                 return URL(string: "https://chat-gateway-stg-iihuzmuufa-du.a.run.app")!
             case .production:
@@ -47,7 +47,7 @@ enum Configuration {
         static var webSocketURL: URL {
             switch Environment.current {
             case .development:
-                return URL(string: "wss://user-api-dev-335495814488.asia-northeast3.run.app/ws/chat")!
+                return URL(string: "ws://34.160.211.91/socket.io")!
             case .staging:
                 return URL(string: "wss://user-api-stg-335495814488.asia-northeast3.run.app/ws/chat")!
             case .production:

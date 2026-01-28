@@ -27,9 +27,9 @@ android {
     buildTypes {
         debug {
             isMinifyEnabled = false
-            buildConfigField("String", "API_BASE_URL", "\"https://user-api-dev-335495814488.asia-northeast3.run.app/\"")
-            // Use same URL as iOS for chat socket
-            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://chat-gateway-dev-iihuzmuufa-du.a.run.app\"")
+            buildConfigField("String", "API_BASE_URL", "\"http://34.160.211.91/api/user/\"")
+            // GKE Static IP for chat socket
+            buildConfigField("String", "CHAT_SOCKET_URL", "\"http://34.160.211.91\"")
         }
         release {
             isMinifyEnabled = true
