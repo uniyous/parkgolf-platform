@@ -1,5 +1,8 @@
 import SwiftUI
-import Foundation
+import UIKit
+import UserNotifications
+
+// MARK: - App Entry Point
 
 @main
 struct ParkGolfApp: App {
@@ -33,6 +36,193 @@ struct ParkGolfApp: App {
                     }
                 }
         }
+    }
+}
+
+// MARK: - App Delegate
+
+final class AppDelegate: NSObject, UIApplicationDelegate, @unchecked Sendable {
+
+    // MARK: - Application Lifecycle
+
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        // Set notification delegate
+        UNUserNotificationCenter.current().delegate = self
+
+        // Request push notification permission
+        requestPushNotificationPermission(application: application)
+
+        return true
+    }
+
+    // MARK: - Push Notification Permission
+
+    private func requestPushNotificationPermission(application: UIApplication) {
+        let center = UNUserNotificationCenter.current()
+
+        center.requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+            if let error = error {
+                print("[Push] Authorization error: \(error.localizedDescription)")
+                return
+            }
+
+            if granted {
+                print("[Push] Permission granted")
+                DispatchQueue.main.async {
+                    application.registerForRemoteNotifications()
+                }
+            } else {
+                print("[Push] Permission denied")
+            }
+        }
+    }
+
+    // MARK: - Remote Notification Registration
+
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
+        print("[Push] APNs token received: \(tokenString.prefix(20))...")
+
+        // Store token and register with server
+        Task {
+            await PushNotificationManager.shared.setDeviceToken(deviceToken)
+            await PushNotificationManager.shared.registerDeviceIfNeeded()
+        }
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        print("[Push] Failed to register: \(error.localizedDescription)")
+    }
+
+}
+
+// MARK: - UNUserNotificationCenterDelegate
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    // Handle notification when app is in foreground
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        let userInfo = notification.request.content.userInfo
+        print("[Push] Foreground notification received: \(userInfo)")
+
+        // Show banner and play sound even when app is in foreground
+        completionHandler([.banner, .badge, .sound])
+    }
+
+    // Handle notification tap
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let userInfo = response.notification.request.content.userInfo
+        print("[Push] Notification tapped: \(userInfo)")
+
+        // Copy userInfo to Sendable dictionary
+        let notificationType = userInfo["type"] as? String
+        let bookingId = userInfo["bookingId"] as? Int
+        let requestId = userInfo["requestId"] as? Int
+        let chatRoomId = userInfo["chatRoomId"] as? String
+
+        // Handle notification action on main thread
+        Task { @MainActor in
+            self.handleNotificationAction(
+                type: notificationType,
+                bookingId: bookingId,
+                requestId: requestId,
+                chatRoomId: chatRoomId
+            )
+        }
+
+        completionHandler()
+    }
+
+    // MARK: - Notification Action Handling
+
+    @MainActor
+    fileprivate func handleNotificationAction(
+        type: String?,
+        bookingId: Int?,
+        requestId: Int?,
+        chatRoomId: String?
+    ) {
+        guard let type = type else {
+            print("[Push] Unknown notification type")
+            return
+        }
+
+        switch type {
+        case "BOOKING_CONFIRMED", "BOOKING_CANCELLED":
+            if let bookingId = bookingId {
+                navigateToBookingDetail(bookingId: bookingId)
+            }
+
+        case "FRIEND_REQUEST":
+            if let requestId = requestId {
+                navigateToFriendRequests(requestId: requestId)
+            }
+
+        case "FRIEND_ACCEPTED":
+            navigateToFriendsList()
+
+        case "CHAT_MESSAGE":
+            if let chatRoomId = chatRoomId {
+                navigateToChatRoom(chatRoomId: chatRoomId)
+            }
+
+        default:
+            print("[Push] Unhandled notification type: \(type)")
+        }
+    }
+
+    // MARK: - Navigation Helpers
+
+    @MainActor
+    private func navigateToBookingDetail(bookingId: Int) {
+        NotificationCenter.default.post(
+            name: .navigateToBookingDetail,
+            object: nil,
+            userInfo: ["bookingId": bookingId]
+        )
+    }
+
+    @MainActor
+    private func navigateToFriendRequests(requestId: Int) {
+        NotificationCenter.default.post(
+            name: .navigateToFriendRequests,
+            object: nil,
+            userInfo: ["requestId": requestId]
+        )
+    }
+
+    @MainActor
+    private func navigateToFriendsList() {
+        NotificationCenter.default.post(
+            name: .navigateToFriendsList,
+            object: nil,
+            userInfo: nil
+        )
+    }
+
+    @MainActor
+    private func navigateToChatRoom(chatRoomId: String) {
+        NotificationCenter.default.post(
+            name: .navigateToChatRoom,
+            object: nil,
+            userInfo: ["chatRoomId": chatRoomId]
+        )
     }
 }
 
