@@ -8,9 +8,9 @@ import type { ChatMessage } from '@/lib/api/chatApi';
 const mode = (import.meta as any).env?.MODE;
 const isDev = mode === 'development' || mode === 'e2e';
 
-// 환경 변수로 소켓 URL 지정 가능, 없으면 Cloud Run 사용
+// 환경 변수로 소켓 URL 지정 가능, 없으면 GKE 사용
 const SOCKET_URL = (import.meta as any).env?.VITE_CHAT_SOCKET_URL ||
-  'https://chat-gateway-dev-iihuzmuufa-du.a.run.app';
+  'http://34.160.121.150';
 
 const NAMESPACE = '/chat';
 
