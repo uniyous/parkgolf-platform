@@ -211,19 +211,19 @@ jobs:
           if [ "$ENV" == "prod" ]; then
             # Production: higher resources
             if [ "$SERVICE" == "iam-service" ]; then
-              # iam-service: Always running, no CPU throttling (bcrypt CPU-intensive)
+              # iam-service: Always running with CPU throttling for cost optimization
               echo "min_instances=1" >> $GITHUB_OUTPUT
               echo "max_instances=10" >> $GITHUB_OUTPUT
               echo "memory=1Gi" >> $GITHUB_OUTPUT
               echo "cpu=2" >> $GITHUB_OUTPUT
-              echo "cpu_throttling=false" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
             elif [ "$SERVICE" == "chat-gateway" ]; then
-              # chat-gateway: WebSocket persistent connections, always running
+              # chat-gateway: WebSocket persistent connections with CPU throttling
               echo "min_instances=1" >> $GITHUB_OUTPUT
               echo "max_instances=10" >> $GITHUB_OUTPUT
               echo "memory=512Mi" >> $GITHUB_OUTPUT
               echo "cpu=1" >> $GITHUB_OUTPUT
-              echo "cpu_throttling=false" >> $GITHUB_OUTPUT
+              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
             else
               # All other services: 512Mi
               echo "min_instances=0" >> $GITHUB_OUTPUT
@@ -234,41 +234,22 @@ jobs:
             fi
           else
             # Development: minimal resources for cost optimization
-            if [ "$SERVICE" == "iam-service" ]; then
-              # iam-service: Always running for NATS subscription, CPU throttling enabled for cost optimization
+            if [ "$SERVICE" == "chat-gateway" ]; then
+              # chat-gateway: WebSocket needs concurrency > 1, so CPU must be >= 1
               echo "min_instances=1" >> $GITHUB_OUTPUT
               echo "max_instances=1" >> $GITHUB_OUTPUT
-              echo "memory=512Mi" >> $GITHUB_OUTPUT
+              echo "memory=384Mi" >> $GITHUB_OUTPUT
               echo "cpu=1" >> $GITHUB_OUTPUT
               echo "cpu_throttling=true" >> $GITHUB_OUTPUT
-            elif [ "$SERVICE" == "chat-gateway" ]; then
-              # chat-gateway: WebSocket persistent connections, CPU throttling enabled for cost optimization
-              echo "min_instances=1" >> $GITHUB_OUTPUT
-              echo "max_instances=1" >> $GITHUB_OUTPUT
-              echo "memory=512Mi" >> $GITHUB_OUTPUT
-              echo "cpu=1" >> $GITHUB_OUTPUT
-              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
-            elif [ "$SERVICE" == "chat-service" ]; then
-              # chat-service: always running for NATS subscription
-              echo "min_instances=1" >> $GITHUB_OUTPUT
-              echo "max_instances=1" >> $GITHUB_OUTPUT
-              echo "memory=256Mi" >> $GITHUB_OUTPUT
-              echo "cpu=0.5" >> $GITHUB_OUTPUT
-              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
-            elif [ "$SERVICE" == "notify-service" ]; then
-              # notify-service: always running for NATS subscription
-              echo "min_instances=1" >> $GITHUB_OUTPUT
-              echo "max_instances=1" >> $GITHUB_OUTPUT
-              echo "memory=256Mi" >> $GITHUB_OUTPUT
-              echo "cpu=0.5" >> $GITHUB_OUTPUT
-              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
+              echo "concurrency=80" >> $GITHUB_OUTPUT
             else
-              # course-service, booking-service, admin-api, user-api: 리소스 증가
+              # Other services: 0.5 CPU with concurrency=1
               echo "min_instances=1" >> $GITHUB_OUTPUT
               echo "max_instances=1" >> $GITHUB_OUTPUT
-              echo "memory=512Mi" >> $GITHUB_OUTPUT
-              echo "cpu=1" >> $GITHUB_OUTPUT
+              echo "memory=384Mi" >> $GITHUB_OUTPUT
+              echo "cpu=0.5" >> $GITHUB_OUTPUT
               echo "cpu_throttling=true" >> $GITHUB_OUTPUT
+              echo "concurrency=1" >> $GITHUB_OUTPUT
             fi
           fi
 
@@ -301,11 +282,22 @@ jobs:
             ENV_VARS="${ENV_VARS},DATABASE_URL=${DB_URL}"
           fi
 
+          # Add GCP_SA_KEY for notify-service (Firebase/FCM)
+          if [ "$SERVICE" == "notify-service" ]; then
+            ENV_VARS="${ENV_VARS},GCP_SA_KEY=${{ secrets.GCP_SA_KEY }}"
+          fi
+
           # Set CPU throttling flag
           if [ "${{ steps.vars.outputs.cpu_throttling }}" == "false" ]; then
             CPU_THROTTLING_FLAG="--no-cpu-throttling"
           else
             CPU_THROTTLING_FLAG="--cpu-throttling"
+          fi
+
+          # Set concurrency flag if specified
+          CONCURRENCY_FLAG=""
+          if [ -n "${{ steps.vars.outputs.concurrency }}" ]; then
+            CONCURRENCY_FLAG="--concurrency=${{ steps.vars.outputs.concurrency }}"
           fi
 
           # Deploy to Cloud Run (External IP 방식 - VPC Connector 없음)
@@ -320,6 +312,7 @@ jobs:
             --cpu ${{ steps.vars.outputs.cpu }} \
             --timeout 300 \
             ${CPU_THROTTLING_FLAG} \
+            ${CONCURRENCY_FLAG} \
             --set-env-vars "${ENV_VARS}"
 
       - name: Get Service URL

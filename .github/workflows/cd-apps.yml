@@ -58,7 +58,7 @@ jobs:
       - name: Determine apps to deploy
         id: apps
         run: |
-          ALL_APPS='["admin-dashboard","user-webapp"]'
+          ALL_APPS='["admin-dashboard","user-app-web"]'
 
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             if [ "${{ github.event.inputs.apps }}" == "all" ]; then
@@ -117,7 +117,7 @@ jobs:
               echo "api_url=https://admin-api-dev-iihuzmuufa-du.a.run.app" >> $GITHUB_OUTPUT
             fi
           else
-            # user-webapp (프론트엔드 경로가 이미 /api/user/... 형태)
+            # user-app-web (프론트엔드 경로가 이미 /api/user/... 형태)
             if [ "$ENV" == "prod" ]; then
               echo "api_url=https://user-api-prod-iihuzmuufa-du.a.run.app" >> $GITHUB_OUTPUT
             else

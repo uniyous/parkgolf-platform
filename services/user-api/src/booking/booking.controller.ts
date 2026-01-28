@@ -10,7 +10,6 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
-  Request,
   Logger,
 } from '@nestjs/common';
 import {
@@ -21,6 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { BookingService } from './booking.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators';
 import {
   CreateBookingDto,
   UpdateBookingDto,
@@ -47,11 +47,11 @@ export class BookingController {
   @ApiResponse({ status: 400, description: '잘못된 요청입니다.' })
   @ApiResponse({ status: 401, description: '인증이 필요합니다.' })
   async createBooking(
-    @Request() req: any,
+    @CurrentUser('userId') userId: number,
     @Body() createBookingDto: CreateBookingDto,
   ) {
-    this.logger.log(`Creating booking for user ${req.user.userId}`);
-    return this.bookingService.createBooking(req.user.userId, createBookingDto);
+    this.logger.log(`Creating booking for user ${userId}`);
+    return this.bookingService.createBooking(userId, createBookingDto);
   }
 
   @Get()
@@ -62,9 +62,10 @@ export class BookingController {
     status: 200,
     description: '예약 목록을 성공적으로 조회했습니다.',
   })
-  async getMyBookings(@Request() req: any) {
-    this.logger.log(`Getting bookings for user ${req.user.userId}`);
-    return this.bookingService.getBookingsByUserId(req.user.userId);
+  @ApiResponse({ status: 401, description: '인증이 필요합니다.' })
+  async getMyBookings(@CurrentUser('userId') userId: number) {
+    this.logger.log(`Getting bookings for user ${userId}`);
+    return this.bookingService.getBookingsByUserId(userId);
   }
 
   @Get('search')
@@ -75,12 +76,15 @@ export class BookingController {
     status: 200,
     description: '검색 결과를 성공적으로 조회했습니다.',
   })
-  async searchBookings(@Request() req: any, @Query() searchDto: SearchBookingDto) {
+  @ApiResponse({ status: 401, description: '인증이 필요합니다.' })
+  async searchBookings(
+    @CurrentUser('userId') userId: number,
+    @Query() searchDto: SearchBookingDto,
+  ) {
     this.logger.log(
-      `Searching bookings for user ${req.user.userId} with filters: ${JSON.stringify(searchDto)}`,
+      `Searching bookings for user ${userId} with filters: ${JSON.stringify(searchDto)}`,
     );
-    // 인증된 사용자의 예약만 조회하도록 userId 추가
-    return this.bookingService.searchBookings({ ...searchDto, userId: req.user.userId });
+    return this.bookingService.searchBookings({ ...searchDto, userId });
   }
 
   @Get('number/:bookingNumber')
@@ -88,6 +92,7 @@ export class BookingController {
   @ApiBearerAuth()
   @ApiOperation({ summary: '예약번호로 예약 조회' })
   @ApiResponse({ status: 200, description: '예약을 성공적으로 조회했습니다.' })
+  @ApiResponse({ status: 401, description: '인증이 필요합니다.' })
   @ApiResponse({ status: 404, description: '예약을 찾을 수 없습니다.' })
   async getBookingByNumber(@Param('bookingNumber') bookingNumber: string) {
     this.logger.log(`Getting booking by number: ${bookingNumber}`);
@@ -99,6 +104,7 @@ export class BookingController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'ID로 예약 조회' })
   @ApiResponse({ status: 200, description: '예약을 성공적으로 조회했습니다.' })
+  @ApiResponse({ status: 401, description: '인증이 필요합니다.' })
   @ApiResponse({ status: 404, description: '예약을 찾을 수 없습니다.' })
   async getBookingById(@Param('id') id: number) {
     this.logger.log(`Getting booking by ID: ${id}`);
@@ -113,8 +119,9 @@ export class BookingController {
     status: 200,
     description: '예약이 성공적으로 수정되었습니다.',
   })
-  @ApiResponse({ status: 404, description: '예약을 찾을 수 없습니다.' })
   @ApiResponse({ status: 400, description: '수정할 수 없는 예약입니다.' })
+  @ApiResponse({ status: 401, description: '인증이 필요합니다.' })
+  @ApiResponse({ status: 404, description: '예약을 찾을 수 없습니다.' })
   async updateBooking(
     @Param('id') id: number,
     @Body() updateBookingDto: UpdateBookingDto,
@@ -132,15 +139,16 @@ export class BookingController {
     status: 200,
     description: '예약이 성공적으로 취소되었습니다.',
   })
-  @ApiResponse({ status: 404, description: '예약을 찾을 수 없습니다.' })
   @ApiResponse({ status: 400, description: '취소할 수 없는 예약입니다.' })
+  @ApiResponse({ status: 401, description: '인증이 필요합니다.' })
+  @ApiResponse({ status: 404, description: '예약을 찾을 수 없습니다.' })
   async cancelBooking(
-    @Request() req: any,
+    @CurrentUser('userId') userId: number,
     @Param('id') id: number,
     @Body() cancelDto: CancelBookingDto,
   ) {
-    this.logger.log(`Cancelling booking ${id} for user ${req.user.userId}`);
-    return this.bookingService.cancelBooking(id, req.user.userId, cancelDto.reason);
+    this.logger.log(`Cancelling booking ${id} for user ${userId}`);
+    return this.bookingService.cancelBooking(id, userId, cancelDto.reason);
   }
 
   @Get('games/:gameId/time-slots')
@@ -157,10 +165,7 @@ export class BookingController {
       `Getting time slot availability for game ${gameId} on ${date}`,
     );
 
-    if (!date) {
-      date = new Date().toISOString().split('T')[0];
-    }
-
-    return this.bookingService.getTimeSlotAvailability(gameId, date);
+    const effectiveDate = date || new Date().toISOString().split('T')[0];
+    return this.bookingService.getTimeSlotAvailability(gameId, effectiveDate);
   }
 }

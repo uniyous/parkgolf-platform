@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ChatGatewayModule } from './gateway/chat.gateway.module';
 import { NatsModule } from './nats/nats.module';
 import { AuthModule } from './auth/auth.module';
+import { NotificationModule } from './notification/notification.module';
 import { HealthController } from './common/health.controller';
 
 @Module({
@@ -14,6 +15,7 @@ import { HealthController } from './common/health.controller';
     AuthModule,
     NatsModule,
     ChatGatewayModule,
+    NotificationModule,
   ],
   controllers: [HealthController],
 })

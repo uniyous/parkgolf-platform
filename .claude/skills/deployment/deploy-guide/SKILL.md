@@ -11,7 +11,7 @@ description: Park Golf Platform 배포 가이드. 인프라 구성, 서비스 �
 parkgolf/
 ├── apps/                    # 프론트엔드 애플리케이션
 │   ├── admin-dashboard/     # 관리자 대시보드
-│   └── user-webapp/         # 사용자 웹앱
+│   └── user-app-web/         # 사용자 웹앱
 ├── services/                # 백엔드 서비스
 │   ├── admin-api/           # 관리자 BFF
 │   ├── user-api/            # 사용자 BFF
@@ -97,7 +97,7 @@ plan 확인 후:
 
 **배포되는 앱:**
 - admin-dashboard → Firebase Hosting
-- user-webapp → Firebase Hosting
+- user-app-web → Firebase Hosting
 
 ---
 

@@ -257,7 +257,7 @@ export const CompanyPage: React.FC = () => {
       <ActiveFilterTags
         filters={[
           ...(filters.search ? [{ id: 'search', label: '검색', value: filters.search }] : []),
-          ...(filters.status !== 'ALL' ? [{ id: 'status', label: '상태', value: STATUS_LABELS[filters.status], color: 'blue' as const }] : []),
+          ...(filters.status !== 'ALL' ? [{ id: 'status', label: '상태', value: STATUS_LABELS[filters.status], color: 'violet' as const }] : []),
         ]}
         onRemove={(id) => {
           if (id === 'search') setFilters(f => ({ ...f, search: '' }));

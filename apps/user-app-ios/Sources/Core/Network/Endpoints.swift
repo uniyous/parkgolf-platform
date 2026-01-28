@@ -207,3 +207,55 @@ struct SendMessageRequest: Codable, Sendable {
         case messageType = "message_type"
     }
 }
+
+// MARK: - Notification Endpoints
+
+enum NotificationEndpoints {
+    static func list(
+        page: Int = 1,
+        limit: Int = 20,
+        type: NotificationType? = nil,
+        unreadOnly: Bool = false
+    ) -> Endpoint {
+        var params: [String: String] = [
+            "page": String(page),
+            "limit": String(limit)
+        ]
+        if let type = type {
+            params["type"] = type.rawValue
+        }
+        if unreadOnly {
+            params["unreadOnly"] = "true"
+        }
+
+        return Endpoint(
+            path: "/api/user/notifications",
+            queryParameters: params
+        )
+    }
+
+    static func unreadCount() -> Endpoint {
+        Endpoint(path: "/api/user/notifications/unread-count")
+    }
+
+    static func markAsRead(id: Int) -> Endpoint {
+        Endpoint(
+            path: "/api/user/notifications/\(id)/read",
+            method: .post
+        )
+    }
+
+    static func markAllAsRead() -> Endpoint {
+        Endpoint(
+            path: "/api/user/notifications/read-all",
+            method: .post
+        )
+    }
+
+    static func delete(id: Int) -> Endpoint {
+        Endpoint(
+            path: "/api/user/notifications/\(id)",
+            method: .delete
+        )
+    }
+}

@@ -119,8 +119,8 @@ npm run test:e2e        # Headless
 npm run test:e2e:ui     # UI 모드
 npm run test:e2e:debug  # 디버그
 
-# user-webapp
-cd apps/user-webapp
+# user-app-web
+cd apps/user-app-web
 npm run test:e2e
 npm run test:e2e:ui
 
@@ -134,7 +134,7 @@ npx playwright test booking-flow.spec.ts
 | 앱 | 주요 테스트 |
 |----|------------|
 | admin-dashboard | login, company, club, booking, user, admin, role |
-| user-webapp | login, booking-flow, my-bookings |
+| user-app-web | login, booking-flow, my-bookings |
 
 ### 테스트 계정
 

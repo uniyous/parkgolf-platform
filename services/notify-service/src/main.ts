@@ -2,7 +2,6 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ConfigService } from '@nestjs/config';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { UnifiedExceptionFilter } from './common/exceptions';
 
@@ -10,8 +9,9 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   try {
+    logger.log('🚀 Starting Notify Service...');
+
     const app = await NestFactory.create(AppModule);
-    const configService = app.get(ConfigService);
 
     // Global unified exception filter (handles both HTTP and RPC)
     app.useGlobalFilters(new UnifiedExceptionFilter());
@@ -40,42 +40,46 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api-docs', app, document);
 
-    // Start HTTP server first
-    const port = configService.get<number>('PORT') || 3014;
-    await app.listen(port);
+    // Start HTTP server first for Cloud Run health check
+    const port = parseInt(process.env.PORT || '8080');
+    logger.log(`🌐 Starting HTTP server on port ${port}...`);
+    logger.log(`🔧 Environment: NODE_ENV=${process.env.NODE_ENV}, PORT=${process.env.PORT}`);
+    await app.listen(port, '0.0.0.0');
 
-    const serviceName = 'parkgolf-notify-service';
-    logger.log(`🚀 ${serviceName} is running on port ${port}`);
+    logger.log(`🚀 Notify Service is running on port ${port}`);
+    logger.log(`🩺 Health check: http://localhost:${port}/health`);
     logger.log(`📚 Swagger docs: http://localhost:${port}/api-docs`);
 
-    // Connect NATS microservice asynchronously
-    const natsUrl = configService.get<string>('NATS_URL');
-    if (natsUrl) {
+    // Connect NATS microservice asynchronously (optional for Cloud Run)
+    if (process.env.NATS_URL) {
+      logger.log(`📡 NATS_URL found: ${process.env.NATS_URL}`);
       setImmediate(async () => {
         try {
+          logger.log('🔗 Attempting NATS connection...');
           // inheritAppConfig: true - inherit global pipes, interceptors, guards, filters
           app.connectMicroservice<MicroserviceOptions>(
             {
               transport: Transport.NATS,
               options: {
-                servers: [natsUrl],
+                servers: [process.env.NATS_URL],
                 queue: 'notify-service',
                 reconnect: true,
-                maxReconnectAttempts: 5,
-                reconnectTimeWait: 1000,
+                maxReconnectAttempts: 3,
+                reconnectTimeWait: 2000,
               },
             },
             { inheritAppConfig: true },
           );
 
           await app.startAllMicroservices();
-          logger.log(`🔗 NATS connected to: ${natsUrl}`);
+          logger.log(`✅ NATS connected successfully to: ${process.env.NATS_URL}`);
+          logger.log(`📢 Queue: notify-service`);
         } catch (natsError) {
-          logger.warn(`Failed to connect NATS microservice: ${natsError.message}. Continuing with HTTP only...`);
+          logger.warn(`⚠️ Failed to connect NATS microservice: ${natsError.message}. Continuing with HTTP only...`);
         }
       });
     } else {
-      logger.warn('NATS_URL not provided, running in HTTP-only mode');
+      logger.warn('📵 NATS_URL not provided, running in HTTP-only mode');
     }
   } catch (error) {
     logger.error('Failed to start Notify Service', error);

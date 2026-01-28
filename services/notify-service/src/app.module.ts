@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { CommonModule } from './common/common.module';
+import { NatsModule } from './common/nats/nats.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { NotificationModule } from './notification/notification.module';
-import { NotificationEventService } from './microservice/notification-event.service';
+import { NotificationNatsController } from './notification/notification-nats.controller';
 
 @Module({
   imports: [
@@ -14,10 +15,11 @@ import { NotificationEventService } from './microservice/notification-event.serv
       ignoreEnvFile: process.env.NODE_ENV === 'production',
     }),
     CommonModule,
+    NatsModule,
     PrismaModule,
     NotificationModule,
   ],
-  controllers: [],
-  providers: [NotificationEventService],
+  controllers: [NotificationNatsController],
+  providers: [],
 })
 export class AppModule {}

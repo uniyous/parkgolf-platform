@@ -364,8 +364,9 @@ temp/
 
 # Local development
 .local/
-local/
+/local/
 dev/
+!**/src/**/local/
 
 # Backup files
 *.bak
@@ -409,6 +410,11 @@ DerivedData
 *.hmap
 *.ipa
 
+# iOS App (Monorepo) - Tuist
+apps/user-app-ios/Tuist/.build/
+apps/user-app-ios/Derived/
+apps/user-app-ios/.build/
+
 # Android
 android/app/build/
 android/.gradle/
@@ -419,6 +425,12 @@ android/local.properties
 *.ap_
 *.aab
 *.apk
+
+# Android App (Monorepo)
+apps/user-app-android/.gradle/
+apps/user-app-android/build/
+apps/user-app-android/app/build/
+apps/user-app-android/local.properties
 
 # ========================================
 # Documentation

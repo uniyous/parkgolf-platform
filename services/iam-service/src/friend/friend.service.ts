@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FriendRequestStatus } from '@prisma/client';
 
@@ -6,7 +7,10 @@ import { FriendRequestStatus } from '@prisma/client';
 export class FriendService {
   private readonly logger = new Logger(FriendService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
+  ) {}
 
   // ==============================================
   // 친구 목록 조회
@@ -235,6 +239,21 @@ export class FriendService {
       },
     });
 
+    // 요청자 정보 조회 후 알림 이벤트 발행
+    const fromUser = await this.prisma.user.findUnique({
+      where: { id: fromUserId },
+      select: { name: true, email: true },
+    });
+
+    this.notificationClient.emit('friend.request', {
+      requestId: request.id,
+      fromUserId,
+      toUserId,
+      fromUserName: fromUser?.name || fromUser?.email || 'Unknown',
+      message,
+      createdAt: new Date().toISOString(),
+    });
+
     this.logger.log(`Friend request sent: ${fromUserId} -> ${toUserId}`);
     return request;
   }
@@ -280,6 +299,27 @@ export class FriendService {
         },
       }),
     ]);
+
+    // 사용자 정보 조회 후 알림 이벤트 발행
+    const [fromUser, toUser] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: request.fromUserId },
+        select: { name: true, email: true },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: request.toUserId },
+        select: { name: true, email: true },
+      }),
+    ]);
+
+    this.notificationClient.emit('friend.accepted', {
+      requestId,
+      fromUserId: request.fromUserId,
+      toUserId: request.toUserId,
+      fromUserName: fromUser?.name || fromUser?.email || 'Unknown',
+      toUserName: toUser?.name || toUser?.email || 'Unknown',
+      acceptedAt: new Date().toISOString(),
+    });
 
     this.logger.log(`Friend request accepted: ${request.fromUserId} <-> ${request.toUserId}`);
     return { success: true };

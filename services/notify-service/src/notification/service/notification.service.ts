@@ -1,4 +1,5 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Inject, Optional } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateNotificationDto, UpdateNotificationDto, NotificationQueryDto, SendNotificationDto } from '../dto/notification.dto';
 import { Notification, NotificationStatus } from '@prisma/client';
@@ -7,14 +8,48 @@ import { Notification, NotificationStatus } from '@prisma/client';
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() @Inject('NOTIFICATION_GATEWAY') private readonly notificationGateway?: ClientProxy,
+  ) {}
 
   async create(createNotificationDto: CreateNotificationDto): Promise<Notification> {
     this.logger.log(`Creating notification for user: ${createNotificationDto.userId}`);
 
-    return this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: createNotificationDto,
     });
+
+    // Emit real-time notification event to chat-gateway
+    this.emitNotificationCreated(notification);
+
+    return notification;
+  }
+
+  /**
+   * Emit notification.created event to chat-gateway for real-time delivery
+   */
+  private emitNotificationCreated(notification: Notification): void {
+    if (!this.notificationGateway) {
+      this.logger.debug('NOTIFICATION_GATEWAY not available, skipping real-time delivery');
+      return;
+    }
+
+    try {
+      this.notificationGateway.emit('notification.created', {
+        id: notification.id,
+        userId: notification.userId,
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        data: notification.data,
+        isRead: notification.readAt !== null,
+        createdAt: notification.createdAt.toISOString(),
+      });
+      this.logger.log(`Emitted notification.created event for notification ${notification.id} to user ${notification.userId}`);
+    } catch (error) {
+      this.logger.error(`Failed to emit notification.created event: ${error}`);
+    }
   }
 
   async findAll(userId: string, query: NotificationQueryDto): Promise<{
@@ -166,6 +201,50 @@ export class NotificationService {
         status: NotificationStatus.FAILED,
         retryCount: {
           lt: 3, // maxRetries default value
+        },
+      },
+    });
+  }
+
+  /**
+   * 지수 백오프를 적용한 재시도 대상 알림 조회
+   * retryCount에 따라 다음 재시도 시간이 계산됨:
+   * - retryCount 1: 1분 후
+   * - retryCount 2: 4분 후 (2^2)
+   * - retryCount 3: 8분 후 (2^3)
+   */
+  async findFailedNotificationsForRetryWithBackoff(): Promise<Notification[]> {
+    const now = new Date();
+
+    // 재시도 대상 알림 조회 (maxRetries 미만 && 백오프 시간 경과)
+    const notifications = await this.prisma.notification.findMany({
+      where: {
+        status: NotificationStatus.FAILED,
+        retryCount: {
+          lt: 3,
+        },
+      },
+    });
+
+    // 지수 백오프 필터링
+    return notifications.filter((notification) => {
+      const backoffMinutes = Math.pow(2, notification.retryCount); // 2^retryCount 분
+      const nextRetryTime = new Date(
+        notification.updatedAt.getTime() + backoffMinutes * 60 * 1000,
+      );
+      return now >= nextRetryTime;
+    });
+  }
+
+  /**
+   * 최대 재시도 횟수 초과한 알림 조회 (DLQ 이동 대상)
+   */
+  async findPermanentlyFailedNotifications(): Promise<Notification[]> {
+    return this.prisma.notification.findMany({
+      where: {
+        status: NotificationStatus.FAILED,
+        retryCount: {
+          gte: 3, // maxRetries default value
         },
       },
     });

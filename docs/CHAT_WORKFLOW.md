@@ -1,350 +1,219 @@
-# Chat Workflow Documentation
+# Chat System
 
-채팅 시스템의 전체 아키텍처와 데이터 흐름을 설명합니다.
+Park Golf Platform 채팅 시스템 아키텍처 및 워크플로우 문서입니다.
 
 ## 목차
 
-1. [시스템 아키텍처](#시스템-아키텍처)
-2. [컴포넌트 구성](#컴포넌트-구성)
-3. [데이터 흐름](#데이터-흐름)
-4. [REST API 흐름](#rest-api-흐름)
-5. [WebSocket 실시간 통신](#websocket-실시간-통신)
-6. [데이터베이스 스키마](#데이터베이스-스키마)
-7. [NATS 메시지 패턴](#nats-메시지-패턴)
+1. [시스템 개요](#1-시스템-개요)
+2. [아키텍처](#2-아키텍처)
+3. [WebSocket 실시간 통신](#3-websocket-실시간-통신)
+4. [REST API](#4-rest-api)
+5. [NATS 메시지 패턴](#5-nats-메시지-패턴)
+6. [데이터베이스 스키마](#6-데이터베이스-스키마)
+7. [클라이언트 구현](#7-클라이언트-구현)
+8. [에러 처리 및 복구](#8-에러-처리-및-복구)
+9. [배포 및 운영](#9-배포-및-운영)
 
 ---
 
-## 시스템 아키텍처
+## 1. 시스템 개요
+
+### 핵심 기능
+
+| 기능 | 설명 |
+|------|------|
+| **1:1 채팅 (DIRECT)** | 친구 간 개인 대화 |
+| **그룹 채팅 (GROUP)** | 여러 사용자 참여 채팅방 |
+| **예약 채팅 (BOOKING)** | 예약 기반 자동 생성 채팅방 |
+| **실시간 메시지** | WebSocket 기반 즉시 전달 |
+| **타이핑 표시** | 상대방 입력 중 표시 |
+| **읽음 처리** | 메시지 읽음 상태 동기화 |
+| **REST Fallback** | WebSocket 실패 시 HTTP 전송 |
+
+### 채팅방 타입
+
+```mermaid
+mindmap
+  root((채팅방))
+    DIRECT
+      1:1 대화
+      친구 기반
+      중복 방지
+    GROUP
+      다중 참여자
+      관리자 지정
+      초대/퇴장
+    BOOKING
+      예약 연동
+      자동 생성
+      참가자 동기화
+```
+
+### 메시지 타입
+
+```mermaid
+mindmap
+  root((메시지))
+    TEXT
+      일반 텍스트
+      이모지 지원
+    IMAGE
+      이미지 첨부
+      썸네일 생성
+    SYSTEM
+      입장/퇴장 알림
+      시스템 공지
+```
+
+---
+
+## 2. 아키텍처
+
+### 전체 시스템 구조
 
 ```mermaid
 flowchart TB
     subgraph Clients["클라이언트"]
-        WEB["user-webapp<br/>(React + Vite)"]
-        IOS["user-app-ios<br/>(SwiftUI)"]
+        WEB[Web App<br/>React + Socket.IO]
+        IOS[iOS App<br/>SwiftUI + SocketIO]
+        AND[Android App<br/>Compose + OkHttp]
     end
 
     subgraph Gateway["게이트웨이 레이어"]
-        BFF["user-api<br/>(BFF - NestJS)"]
-        WSG["chat-gateway<br/>(WebSocket Gateway)"]
+        BFF[user-api<br/>REST BFF]
+        WSG[chat-gateway<br/>WebSocket Server]
     end
 
-    subgraph Messaging["메시징 레이어"]
-        NATS["NATS JetStream"]
+    subgraph Messaging["메시징"]
+        NATS{NATS<br/>JetStream}
     end
 
     subgraph Services["마이크로서비스"]
-        CHAT["chat-service<br/>(NestJS + Prisma)"]
+        CHAT[chat-service<br/>비즈니스 로직]
+        NOTIFY[notify-service<br/>오프라인 알림]
     end
 
-    subgraph Database["데이터베이스"]
-        PG["PostgreSQL"]
+    subgraph Storage["스토리지"]
+        DB[(PostgreSQL<br/>chat_db)]
     end
 
-    WEB -->|REST API| BFF
-    IOS -->|REST API| BFF
-    WEB -->|WebSocket| WSG
-    IOS -->|WebSocket| WSG
+    WEB & IOS & AND -->|REST API| BFF
+    WEB & IOS & AND <-->|WebSocket| WSG
 
-    BFF -->|NATS Request/Reply| NATS
-    WSG -->|NATS Pub/Sub| NATS
+    BFF -->|Request/Reply| NATS
+    WSG <-->|Pub/Sub| NATS
 
-    NATS -->|Message Pattern| CHAT
-    CHAT -->|Prisma ORM| PG
+    NATS --> CHAT
+    NATS --> NOTIFY
+    CHAT --> DB
+```
+
+### chat-gateway 내부 구조
+
+```mermaid
+flowchart LR
+    subgraph Gateway["chat-gateway"]
+        WS[WebSocket<br/>Handler]
+        AUTH[Auth<br/>Middleware]
+        ROOM[Room<br/>Manager]
+        MSG[Message<br/>Publisher]
+        SUB[NATS<br/>Subscriber]
+    end
+
+    subgraph State["In-Memory State"]
+        ONLINE[onlineUsers<br/>Map&lt;socketId, user&gt;]
+        SOCKETS[userSockets<br/>Map&lt;userId, Set&lt;socketId&gt;&gt;]
+        ROOMS[roomSubscriptions<br/>Map&lt;roomId, Set&lt;socketId&gt;&gt;]
+    end
+
+    Client -->|connect| AUTH
+    AUTH -->|verified| WS
+    WS --> ROOM
+    WS --> MSG
+    SUB -->|new_message| WS
+
+    ROOM --> ONLINE & SOCKETS & ROOMS
+    MSG --> NATS{NATS}
+    NATS --> SUB
+```
+
+### 통신 방식 비교
+
+```mermaid
+flowchart LR
+    subgraph REST["REST API (조회)"]
+        R1[채팅방 목록]
+        R2[메시지 히스토리]
+        R3[채팅방 생성]
+    end
+
+    subgraph WebSocket["WebSocket (실시간)"]
+        W1[메시지 전송/수신]
+        W2[타이핑 표시]
+        W3[온라인 상태]
+    end
+
+    Client --> REST
+    Client <--> WebSocket
+
+    REST -->|NATS Request| Service
+    WebSocket -->|NATS Publish| Service
 ```
 
 ---
 
-## 컴포넌트 구성
+## 3. WebSocket 실시간 통신
 
-### 클라이언트
-
-| 컴포넌트 | 기술 스택 | 역할 |
-|---------|----------|------|
-| **user-webapp** | React, Vite, Socket.IO Client | 웹 브라우저용 채팅 UI |
-| **user-app-ios** | SwiftUI, SocketIO | iOS 앱용 채팅 UI |
-
-### 백엔드
-
-| 컴포넌트 | 기술 스택 | 역할 |
-|---------|----------|------|
-| **user-api** | NestJS | REST API 제공 (BFF) |
-| **chat-gateway** | NestJS, Socket.IO | WebSocket 실시간 통신 |
-| **chat-service** | NestJS, Prisma | 채팅 비즈니스 로직 + DB |
-| **NATS JetStream** | NATS | 메시지 브로커 |
-
----
-
-## 데이터 흐름
-
-### 전체 흐름 개요
-
-```mermaid
-sequenceDiagram
-    participant Client as Client<br/>(Web/iOS)
-    participant BFF as user-api<br/>(BFF)
-    participant Gateway as chat-gateway<br/>(WebSocket)
-    participant NATS as NATS<br/>JetStream
-    participant Service as chat-service
-    participant DB as PostgreSQL
-
-    Note over Client,DB: REST API를 통한 채팅방/메시지 조회
-    Client->>BFF: GET /api/user/chat/rooms
-    BFF->>NATS: chat.rooms.list
-    NATS->>Service: Message Pattern
-    Service->>DB: Prisma Query
-    DB-->>Service: ChatRoom[]
-    Service-->>NATS: Response
-    NATS-->>BFF: Response
-    BFF-->>Client: { success: true, data: [...] }
-
-    Note over Client,DB: WebSocket을 통한 실시간 메시지 전송
-    Client->>Gateway: connect(token)
-    Gateway->>Gateway: JWT 검증
-    Gateway-->>Client: connected
-
-    Client->>Gateway: join_room({ roomId })
-    Gateway->>NATS: Subscribe chat.room.{roomId}.message
-    Gateway-->>Client: { success: true }
-
-    Client->>Gateway: send_message({ roomId, content })
-    Gateway->>NATS: Publish chat.room.{roomId}.message
-    Gateway-->>Client: new_message (즉시 전달)
-    NATS->>Service: chat.messages.save
-    Service->>DB: Insert ChatMessage
-```
-
----
-
-## REST API 흐름
-
-REST API는 채팅방 목록/상세 조회, 메시지 히스토리 조회, 채팅방 생성 등에 사용됩니다.
-
-### 1. 채팅방 목록 조회
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant BFF as user-api
-    participant NATS
-    participant Service as chat-service
-    participant DB as PostgreSQL
-
-    Client->>BFF: GET /api/user/chat/rooms
-    Note right of Client: Authorization: Bearer {token}
-
-    BFF->>BFF: JWT에서 userId 추출
-    BFF->>NATS: send('chat.rooms.list', { userId })
-
-    NATS->>Service: @MessagePattern('chat.rooms.list')
-    Service->>DB: prisma.chatRoom.findMany({<br/>  where: { members: { some: { userId } } }<br/>})
-    DB-->>Service: ChatRoom[] with members, lastMessage
-
-    Service->>Service: Transform response
-    Service-->>NATS: { success: true, data: rooms }
-    NATS-->>BFF: Response
-    BFF-->>Client: HTTP 200 { success: true, data: [...] }
-```
-
-**엔드포인트:**
-```
-GET /api/user/chat/rooms
-Authorization: Bearer {JWT_TOKEN}
-```
-
-**응답 예시:**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "uuid-1234",
-      "name": "박영희",
-      "type": "DIRECT",
-      "members": [
-        {
-          "id": "member-uuid",
-          "userId": 4,
-          "userName": "김철수",
-          "joinedAt": "2024-01-15T10:00:00Z"
-        }
-      ],
-      "lastMessage": {
-        "id": "msg-uuid",
-        "content": "안녕하세요!",
-        "senderId": 4,
-        "createdAt": "2024-01-15T10:30:00Z"
-      },
-      "createdAt": "2024-01-15T10:00:00Z",
-      "updatedAt": "2024-01-15T10:30:00Z"
-    }
-  ]
-}
-```
-
-### 2. 채팅방 생성
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant BFF as user-api
-    participant NATS
-    participant Service as chat-service
-    participant DB as PostgreSQL
-
-    Client->>BFF: POST /api/user/chat/rooms
-    Note right of Client: { name, type, participant_ids }
-
-    BFF->>BFF: participant_ids에 현재 userId 추가
-    BFF->>NATS: send('chat.rooms.create', {<br/>  name, type, memberIds, memberNames<br/>})
-
-    NATS->>Service: @MessagePattern('chat.rooms.create')
-
-    alt type === 'DIRECT' && memberIds.length === 2
-        Service->>DB: 기존 DIRECT 채팅방 검색
-        alt 기존 채팅방 존재
-            DB-->>Service: Existing ChatRoom
-            Service-->>NATS: { success: true, data: existingRoom }
-        else 새 채팅방 필요
-            Service->>DB: prisma.chatRoom.create({<br/>  data: { name, type, members: {...} }<br/>})
-            DB-->>Service: New ChatRoom
-            Service-->>NATS: { success: true, data: newRoom }
-        end
-    else GROUP or BOOKING
-        Service->>DB: prisma.chatRoom.create()
-        DB-->>Service: New ChatRoom
-        Service-->>NATS: { success: true, data: room }
-    end
-
-    NATS-->>BFF: Response
-    BFF-->>Client: HTTP 201 { success: true, data: room }
-```
-
-**엔드포인트:**
-```
-POST /api/user/chat/rooms
-Authorization: Bearer {JWT_TOKEN}
-Content-Type: application/json
-
-{
-  "name": "그룹 채팅방",
-  "type": "GROUP",
-  "participant_ids": ["5", "6", "7"]
-}
-```
-
-### 3. 메시지 목록 조회
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant BFF as user-api
-    participant NATS
-    participant Service as chat-service
-    participant DB as PostgreSQL
-
-    Client->>BFF: GET /api/user/chat/rooms/{roomId}/messages?page=1&limit=50
-
-    BFF->>NATS: send('chat.messages.list', {<br/>  roomId, userId, limit, skip<br/>})
-
-    NATS->>Service: @MessagePattern('chat.messages.list')
-    Service->>DB: prisma.chatMessage.findMany({<br/>  where: { roomId, deletedAt: null },<br/>  orderBy: { createdAt: 'desc' },<br/>  take: limit + 1<br/>})
-    DB-->>Service: ChatMessage[]
-
-    Service->>Service: Cursor pagination 처리
-    Service-->>NATS: { success: true, data: {<br/>  messages, hasMore, nextCursor<br/>} }
-    NATS-->>BFF: Response
-    BFF-->>Client: HTTP 200 { success: true, data: {...} }
-```
-
-### 4. 메시지 전송 (REST Fallback)
-
-WebSocket 연결이 불안정할 때 REST API로 메시지를 전송할 수 있습니다.
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant BFF as user-api
-    participant NATS
-    participant Service as chat-service
-    participant DB as PostgreSQL
-
-    Client->>BFF: POST /api/user/chat/rooms/{roomId}/messages
-    Note right of Client: { content, message_type }
-
-    BFF->>BFF: 메시지 데이터 구성<br/>{ id: uuid(), roomId, senderId,<br/>senderName, content, messageType }
-    BFF->>NATS: send('chat.messages.save', messageData)
-
-    NATS->>Service: @MessagePattern('chat.messages.save')
-    Service->>DB: 중복 체크 (id로 조회)
-
-    alt 중복 메시지
-        DB-->>Service: Existing message
-        Service-->>NATS: { success: true, data: existingMsg }
-    else 새 메시지
-        Service->>DB: prisma.chatMessage.create()
-        Service->>DB: prisma.chatRoom.update({ updatedAt })
-        DB-->>Service: New ChatMessage
-        Service-->>NATS: { success: true, data: newMsg }
-    end
-
-    NATS-->>BFF: Response
-    BFF-->>Client: HTTP 201 { success: true, data: message }
-```
-
----
-
-## WebSocket 실시간 통신
-
-WebSocket은 실시간 메시지 전송과 수신에 사용됩니다.
-
-### 연결 및 인증
+### 3.1 연결 및 인증
 
 ```mermaid
 sequenceDiagram
     participant Client
     participant Gateway as chat-gateway
-    participant NATS
+    participant JWT as JWT Service
 
     Client->>Gateway: WebSocket Connect<br/>/chat?token={JWT}
 
-    Gateway->>Gateway: JWT 검증<br/>jwtService.verifyAsync(token)
+    Gateway->>JWT: verifyAsync(token)
 
     alt 인증 성공
-        Gateway->>Gateway: 온라인 사용자 추적<br/>onlineUsers.set(socketId, user)
-        Gateway->>NATS: publishPresence(userId, 'online')
-        Gateway-->>Client: emit('connected', {<br/>  userId, name, socketId<br/>})
+        JWT-->>Gateway: { userId, name, ... }
+        Gateway->>Gateway: onlineUsers.set(socketId, user)
+        Gateway->>Gateway: userSockets.get(userId).add(socketId)
+        Gateway-->>Client: emit('connected', { userId, socketId })
     else 인증 실패
-        Gateway-->>Client: emit('error', {<br/>  message: 'Unauthorized'<br/>})
-        Gateway->>Client: disconnect()
+        JWT-->>Gateway: Error
+        Gateway-->>Client: emit('error', { message: 'Unauthorized' })
+        Gateway->>Client: socket.disconnect()
     end
 ```
 
-### 채팅방 입장
+### 3.2 채팅방 입장/퇴장
 
 ```mermaid
 sequenceDiagram
     participant Client
     participant Gateway as chat-gateway
     participant NATS
-    participant OtherClients as 다른 클라이언트
+    participant Others as 같은 방 사용자
 
+    Note over Client,Others: 채팅방 입장
     Client->>Gateway: emit('join_room', { roomId })
+    Gateway->>Gateway: socket.join(roomId)
+    Gateway->>NATS: subscribe('chat.room.{roomId}.message')
+    Gateway->>NATS: subscribe('chat.room.{roomId}.typing')
+    Gateway->>Others: emit('user_joined', { roomId, userId, userName })
+    Gateway-->>Client: callback({ success: true })
 
-    Gateway->>Gateway: Socket.IO room join<br/>client.join(roomId)
-    Gateway->>Gateway: 구독 추적<br/>roomSubscriptions.set(roomId, socketId)
-
-    Gateway->>NATS: subscribeToRoom(roomId)
-    Note right of NATS: NATS JetStream Consumer 생성<br/>Subject: chat.room.{roomId}.message
-
-    Gateway->>NATS: subscribeToTyping(roomId)
-    Note right of NATS: Subject: chat.room.{roomId}.typing
-
-    Gateway->>OtherClients: emit('user_joined', {<br/>  roomId, userId, userName<br/>})
-
-    Gateway-->>Client: callback({ success: true, roomId })
+    Note over Client,Others: 채팅방 퇴장
+    Client->>Gateway: emit('leave_room', { roomId })
+    Gateway->>Gateway: socket.leave(roomId)
+    Gateway->>NATS: unsubscribe('chat.room.{roomId}.*')
+    Gateway->>Others: emit('user_left', { roomId, userId })
+    Gateway-->>Client: callback({ success: true })
 ```
 
-### 메시지 전송 (실시간)
+### 3.3 메시지 전송 흐름
 
 ```mermaid
 sequenceDiagram
@@ -355,254 +224,694 @@ sequenceDiagram
     participant DB as PostgreSQL
     participant Receivers as 수신자들
 
-    Sender->>Gateway: emit('send_message', {<br/>  roomId, content, type<br/>})
+    Sender->>Gateway: emit('send_message', {<br/>roomId, content, type })
 
-    Gateway->>Gateway: 메시지 객체 생성<br/>{ id: uuid(), roomId, senderId,<br/>senderName, content, createdAt }
+    Gateway->>Gateway: 메시지 생성<br/>{ id: uuid(), createdAt, ... }
 
     par 즉시 전달 (실시간)
-        Gateway->>Receivers: emit('new_message', message)<br/>via Socket.IO room
+        Gateway->>Receivers: emit('new_message', message)
+        Note over Receivers: Socket.IO room broadcast
     and 영구 저장 (비동기)
-        Gateway->>NATS: publishMessage(roomId, message)
-        Note right of NATS: JetStream publish<br/>Subject: chat.room.{roomId}.message
-        NATS->>Service: Stream consumer가 메시지 수신
-        Service->>DB: prisma.chatMessage.create()
+        Gateway->>NATS: publish('chat.room.{roomId}.message')
+        NATS->>Service: JetStream Consumer
+        Service->>DB: INSERT INTO chat_messages
+        Service->>DB: UPDATE chat_rooms SET updated_at
     end
 
-    Gateway-->>Sender: callback({<br/>  success: true, message<br/>})
+    Gateway-->>Sender: callback({ success: true, message })
 ```
 
-### 타이핑 표시
+### 3.4 타이핑 표시
 
 ```mermaid
 sequenceDiagram
-    participant Typer as 타이핑 중인 사용자
+    participant Typer as 입력 중인 사용자
     participant Gateway as chat-gateway
-    participant NATS
-    participant Others as 같은 채팅방 사용자
+    participant Others as 같은 방 사용자
 
-    Typer->>Gateway: emit('typing', {<br/>  roomId, isTyping: true<br/>})
+    Typer->>Gateway: emit('typing', { roomId, isTyping: true })
 
-    Gateway->>Gateway: 타이핑 이벤트 생성<br/>{ roomId, userId, userName, isTyping }
+    Gateway->>Others: emit('typing', {<br/>roomId, userId, userName, isTyping })
 
-    par Socket.IO 직접 전달
-        Gateway->>Others: emit('typing', event)<br/>via client.to(roomId)
-    and NATS 발행
-        Gateway->>NATS: publishTyping(roomId, event)
-        Note right of NATS: Subject: chat.room.{roomId}.typing<br/>TTL: 10초
-    end
+    Note over Typer,Others: 3초 후 자동 해제 (클라이언트)
+
+    Typer->>Gateway: emit('typing', { roomId, isTyping: false })
+    Gateway->>Others: emit('typing', { ..., isTyping: false })
 ```
 
-### 연결 해제
+### 3.5 연결 해제 처리
 
 ```mermaid
 sequenceDiagram
     participant Client
     participant Gateway as chat-gateway
     participant NATS
-    participant OtherClients as 같은 채팅방 사용자
+    participant Others as 같은 방 사용자
 
-    Client->>Gateway: disconnect
+    Client->>Gateway: disconnect (의도/네트워크)
 
-    Gateway->>Gateway: 온라인 사용자에서 제거<br/>onlineUsers.delete(socketId)
-    Gateway->>Gateway: 사용자 소켓에서 제거<br/>userSockets.get(userId).delete(socketId)
+    Gateway->>Gateway: onlineUsers.delete(socketId)
+    Gateway->>Gateway: userSockets.get(userId).delete(socketId)
 
     alt 사용자의 마지막 소켓
-        Gateway->>NATS: publishPresence(userId, 'offline')
+        Gateway->>NATS: publish('chat.user.{userId}.presence', 'offline')
     end
 
-    loop 각 구독 채팅방에 대해
-        Gateway->>NATS: unsubscribeFromRoom(roomId, socketId)
-        Gateway->>OtherClients: emit('user_left', {<br/>  roomId, userId, userName<br/>})
+    loop 각 구독 채팅방
+        Gateway->>NATS: unsubscribe('chat.room.{roomId}.*')
+        Gateway->>Others: emit('user_left', { roomId, userId })
     end
 ```
 
+### WebSocket 이벤트 요약
+
+| 이벤트 | 방향 | Payload | 설명 |
+|--------|------|---------|------|
+| `connected` | S→C | `{ userId, socketId }` | 연결 성공 |
+| `join_room` | C→S | `{ roomId }` | 채팅방 입장 |
+| `leave_room` | C→S | `{ roomId }` | 채팅방 퇴장 |
+| `send_message` | C→S | `{ roomId, content, type }` | 메시지 전송 |
+| `new_message` | S→C | `{ id, roomId, senderId, content, ... }` | 새 메시지 수신 |
+| `typing` | C↔S | `{ roomId, userId, isTyping }` | 타이핑 상태 |
+| `user_joined` | S→C | `{ roomId, userId, userName }` | 사용자 입장 |
+| `user_left` | S→C | `{ roomId, userId }` | 사용자 퇴장 |
+| `error` | S→C | `{ message, code }` | 에러 발생 |
+
 ---
 
-## 데이터베이스 스키마
+## 4. REST API
+
+### 4.1 채팅방 API
 
 ```mermaid
-erDiagram
-    ChatRoom ||--o{ ChatRoomMember : has
-    ChatRoom ||--o{ ChatMessage : contains
+flowchart LR
+    subgraph Endpoints["REST Endpoints"]
+        E1[GET /chat/rooms]
+        E2[GET /chat/rooms/:id]
+        E3[POST /chat/rooms]
+        E4[DELETE /chat/rooms/:id/leave]
+    end
 
-    ChatRoom {
-        string id PK "UUID"
-        string name "nullable - 그룹채팅방 이름"
-        enum type "DIRECT | GROUP | BOOKING"
-        int bookingId "nullable - 예약 연동"
-        datetime createdAt
-        datetime updatedAt
+    subgraph NATS["NATS Patterns"]
+        N1[chat.rooms.list]
+        N2[chat.rooms.get]
+        N3[chat.rooms.create]
+        N4[chat.rooms.removeMember]
+    end
+
+    E1 --> N1
+    E2 --> N2
+    E3 --> N3
+    E4 --> N4
+```
+
+#### 채팅방 목록 조회
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant BFF as user-api
+    participant NATS
+    participant Service as chat-service
+    participant DB
+
+    Client->>BFF: GET /api/user/chat/rooms
+    Note right of Client: Authorization: Bearer {token}
+
+    BFF->>BFF: JWT에서 userId 추출
+    BFF->>NATS: send('chat.rooms.list', { userId })
+
+    NATS->>Service: @MessagePattern('chat.rooms.list')
+    Service->>DB: SELECT rooms WHERE member.userId = ?
+
+    DB-->>Service: ChatRoom[] + lastMessage
+    Service-->>NATS: { success: true, data: rooms }
+    NATS-->>BFF: Response
+    BFF-->>Client: 200 OK
+```
+
+**응답 예시:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "room-uuid",
+      "name": null,
+      "type": "DIRECT",
+      "members": [
+        { "userId": 4, "userName": "김철수" }
+      ],
+      "lastMessage": {
+        "content": "안녕하세요!",
+        "createdAt": "2024-01-15T10:30:00Z"
+      },
+      "unreadCount": 3,
+      "updatedAt": "2024-01-15T10:30:00Z"
     }
+  ]
+}
+```
 
-    ChatRoomMember {
-        string id PK "UUID"
-        string roomId FK
-        int userId
-        string userName "캐시용 비정규화"
-        datetime joinedAt
-        datetime leftAt "nullable - 나간 시간"
-        boolean isAdmin "관리자 여부"
-        string lastReadMessageId "nullable"
-        datetime lastReadAt "nullable"
-    }
+#### 채팅방 생성
 
-    ChatMessage {
-        string id PK "UUID"
-        string roomId FK
-        int senderId
-        string senderName "캐시용 비정규화"
-        string content
-        enum type "TEXT | IMAGE | SYSTEM"
-        datetime createdAt
-        datetime deletedAt "nullable - soft delete"
-    }
+```mermaid
+sequenceDiagram
+    participant Client
+    participant BFF as user-api
+    participant NATS
+    participant Service as chat-service
+    participant DB
 
-    MessageRead {
-        string id PK "UUID"
-        string messageId
-        int userId
-        datetime readAt
-    }
+    Client->>BFF: POST /api/user/chat/rooms
+    Note right of Client: { type: "DIRECT", participant_ids: [5] }
 
-    ChatMessage ||--o{ MessageRead : "읽음 처리"
+    BFF->>NATS: send('chat.rooms.create', {<br/>type, memberIds: [currentUser, 5] })
+
+    NATS->>Service: @MessagePattern('chat.rooms.create')
+
+    alt DIRECT && 2명
+        Service->>DB: 기존 DIRECT 방 검색
+        alt 존재
+            DB-->>Service: existingRoom
+            Service-->>NATS: { data: existingRoom }
+        else 없음
+            Service->>DB: INSERT new room
+            Service-->>NATS: { data: newRoom }
+        end
+    else GROUP/BOOKING
+        Service->>DB: INSERT new room
+        Service-->>NATS: { data: newRoom }
+    end
+
+    NATS-->>BFF: Response
+    BFF-->>Client: 201 Created
+```
+
+### 4.2 메시지 API
+
+```mermaid
+flowchart LR
+    subgraph Endpoints["REST Endpoints"]
+        E1[GET /chat/rooms/:id/messages]
+        E2[POST /chat/rooms/:id/messages]
+        E3[POST /chat/rooms/:id/read]
+        E4[GET /chat/unread-count]
+    end
+
+    subgraph NATS["NATS Patterns"]
+        N1[chat.messages.list]
+        N2[chat.messages.save]
+        N3[chat.messages.markRead]
+        N4[chat.messages.unreadCount]
+    end
+
+    E1 --> N1
+    E2 --> N2
+    E3 --> N3
+    E4 --> N4
+```
+
+#### 메시지 조회 (커서 페이지네이션)
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant BFF as user-api
+    participant NATS
+    participant Service as chat-service
+    participant DB
+
+    Client->>BFF: GET /chat/rooms/{roomId}/messages?limit=50&cursor=msg-id
+
+    BFF->>NATS: send('chat.messages.list', {<br/>roomId, limit: 51, cursor })
+
+    NATS->>Service: @MessagePattern('chat.messages.list')
+    Service->>DB: SELECT messages<br/>WHERE roomId = ? AND id < cursor<br/>ORDER BY createdAt DESC<br/>LIMIT 51
+
+    DB-->>Service: ChatMessage[51]
+    Service->>Service: hasMore = messages.length > 50
+    Service-->>NATS: { data: { messages[0:50], hasMore, nextCursor } }
+
+    NATS-->>BFF: Response
+    BFF-->>Client: 200 OK
+```
+
+#### 메시지 전송 (REST Fallback)
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant BFF as user-api
+    participant NATS
+    participant Service as chat-service
+    participant DB
+
+    Note over Client: WebSocket 연결 실패 시 사용
+
+    Client->>BFF: POST /chat/rooms/{roomId}/messages
+    Note right of Client: { content: "Hello", message_type: "TEXT" }
+
+    BFF->>BFF: 메시지 ID 생성 (uuid)
+    BFF->>NATS: send('chat.messages.save', {<br/>id, roomId, senderId, content, ... })
+
+    NATS->>Service: @MessagePattern('chat.messages.save')
+    Service->>DB: SELECT WHERE id = ? (중복 체크)
+
+    alt 중복 메시지
+        DB-->>Service: existing
+        Service-->>NATS: { data: existing }
+    else 새 메시지
+        Service->>DB: INSERT message
+        Service->>DB: UPDATE room.updatedAt
+        Service-->>NATS: { data: newMessage }
+    end
+
+    NATS-->>BFF: Response
+    BFF-->>Client: 201 Created
 ```
 
 ---
 
-## NATS 메시지 패턴
+## 5. NATS 메시지 패턴
 
-### Request/Reply 패턴 (REST API용)
+### Request/Reply 패턴
 
 | 패턴 | 용도 | Payload |
 |------|------|---------|
-| `chat.rooms.list` | 채팅방 목록 조회 | `{ userId: number }` |
-| `chat.rooms.get` | 채팅방 상세 조회 | `{ roomId: string }` |
-| `chat.rooms.create` | 채팅방 생성 | `{ name, type, memberIds, memberNames }` |
+| `chat.rooms.list` | 채팅방 목록 | `{ userId }` |
+| `chat.rooms.get` | 채팅방 상세 | `{ roomId, userId }` |
+| `chat.rooms.create` | 채팅방 생성 | `{ type, name?, memberIds, memberNames }` |
 | `chat.rooms.removeMember` | 채팅방 나가기 | `{ roomId, userId }` |
-| `chat.messages.list` | 메시지 목록 조회 | `{ roomId, limit, skip }` |
-| `chat.messages.save` | 메시지 저장 | `{ id, roomId, senderId, content, ... }` |
+| `chat.messages.list` | 메시지 목록 | `{ roomId, limit, cursor? }` |
+| `chat.messages.save` | 메시지 저장 | `{ id, roomId, senderId, content, type }` |
 | `chat.messages.markRead` | 읽음 처리 | `{ roomId, userId, messageId }` |
-| `chat.messages.unreadCount` | 안읽은 수 조회 | `{ roomId, userId }` |
+| `chat.messages.unreadCount` | 안읽은 수 | `{ userId }` |
 
-### Pub/Sub 패턴 (실시간 통신용)
+### Pub/Sub 패턴 (JetStream)
 
-| Subject | 용도 | Stream |
-|---------|------|--------|
-| `chat.room.{roomId}.message` | 채팅 메시지 | CHAT_MESSAGES |
-| `chat.dm.{userId1}-{userId2}.message` | DM 메시지 | CHAT_MESSAGES |
-| `chat.user.{userId}.presence` | 온라인 상태 | CHAT_PRESENCE |
-| `chat.room.{roomId}.typing` | 타이핑 표시 | CHAT_TYPING |
+```mermaid
+flowchart TB
+    subgraph Publishers["Publishers"]
+        GW[chat-gateway]
+    end
+
+    subgraph Streams["JetStream Streams"]
+        S1[CHAT_MESSAGES<br/>chat.room.*.message<br/>chat.dm.*.message]
+        S2[CHAT_PRESENCE<br/>chat.user.*.presence]
+        S3[CHAT_TYPING<br/>chat.room.*.typing]
+    end
+
+    subgraph Consumers["Consumers"]
+        CS[chat-service]
+        NS[notify-service]
+    end
+
+    GW --> S1 & S2 & S3
+    S1 --> CS
+    S1 --> NS
+    S2 --> CS
+```
 
 ### JetStream 스트림 설정
 
 | 스트림 | Subject 패턴 | 보존 기간 | 저장소 |
 |--------|-------------|----------|--------|
-| CHAT_MESSAGES | `chat.room.*.message`, `chat.dm.*.message` | 30일 | File |
-| CHAT_PRESENCE | `chat.user.*.presence` | 5분 | Memory |
-| CHAT_TYPING | `chat.room.*.typing` | 10초 | Memory |
+| `CHAT_MESSAGES` | `chat.room.*.message`, `chat.dm.*.message` | 30일 | File |
+| `CHAT_PRESENCE` | `chat.user.*.presence` | 5분 | Memory |
+| `CHAT_TYPING` | `chat.room.*.typing` | 10초 | Memory |
 
 ---
 
-## 클라이언트 구현 요약
+## 6. 데이터베이스 스키마
 
-### user-webapp (React)
+### ERD
 
+```mermaid
+erDiagram
+    ChatRoom ||--o{ ChatRoomMember : has
+    ChatRoom ||--o{ ChatMessage : contains
+    ChatMessage ||--o{ MessageRead : "읽음 처리"
+
+    ChatRoom {
+        uuid id PK
+        string name "nullable"
+        enum type "DIRECT|GROUP|BOOKING"
+        int bookingId "nullable FK"
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    ChatRoomMember {
+        uuid id PK
+        uuid roomId FK
+        int userId
+        string userName
+        datetime joinedAt
+        datetime leftAt "nullable"
+        boolean isAdmin
+        uuid lastReadMessageId "nullable"
+        datetime lastReadAt "nullable"
+    }
+
+    ChatMessage {
+        uuid id PK
+        uuid roomId FK
+        int senderId
+        string senderName
+        string content
+        enum type "TEXT|IMAGE|SYSTEM"
+        datetime createdAt
+        datetime deletedAt "nullable"
+    }
+
+    MessageRead {
+        uuid id PK
+        uuid messageId FK
+        int userId
+        datetime readAt
+    }
+```
+
+### 인덱스 설계
+
+| 테이블 | 인덱스 | 용도 |
+|--------|--------|------|
+| chat_rooms | `(type, updated_at DESC)` | 타입별 최신순 정렬 |
+| chat_room_members | `(user_id, left_at)` | 사용자별 활성 채팅방 |
+| chat_room_members | `(room_id, user_id)` | 채팅방 멤버 조회 |
+| chat_messages | `(room_id, created_at DESC)` | 채팅방 메시지 목록 |
+| chat_messages | `(room_id, id)` | 커서 페이지네이션 |
+| message_reads | `(message_id, user_id)` | 읽음 상태 조회 |
+
+---
+
+## 7. 클라이언트 구현
+
+### 7.1 플랫폼별 구현 위치
+
+| 플랫폼 | Socket Manager | API | UI |
+|--------|---------------|-----|-----|
+| Web | `lib/socket/chatSocket.ts` | `lib/api/chatApi.ts` | `pages/ChatPage.tsx` |
+| iOS | `ChatSocketManager.swift` | `ChatService.swift` | `ChatView.swift` |
+| Android | `ChatSocketManager.kt` | `ChatApi.kt` | `ChatScreen.kt` |
+
+### 7.2 Web (React + Socket.IO)
+
+```mermaid
+flowchart TB
+    subgraph Components["React Components"]
+        PAGE[ChatPage]
+        LIST[ChatRoomList]
+        ROOM[ChatRoom]
+        INPUT[MessageInput]
+    end
+
+    subgraph Hooks["Custom Hooks"]
+        QUERY[useChatRoomsQuery]
+        MSG[useMessagesQuery]
+        SOCKET[useChatSocket]
+    end
+
+    subgraph Socket["Socket Manager"]
+        SM[chatSocket.ts<br/>Singleton]
+    end
+
+    PAGE --> LIST & ROOM
+    ROOM --> INPUT
+    LIST --> QUERY
+    ROOM --> MSG & SOCKET
+    SOCKET --> SM
+```
+
+**chatSocket.ts 주요 메서드:**
 ```typescript
 // 연결
-chatSocket.connect(token);
+chatSocket.connect(token: string): void
 
-// 채팅방 입장
-chatSocket.onConnect(() => {
-  chatSocket.joinRoom(roomId);
-});
+// 채팅방
+chatSocket.joinRoom(roomId: string): Promise<boolean>
+chatSocket.leaveRoom(roomId: string): void
 
-// 메시지 수신
-chatSocket.onMessage((message) => {
-  setMessages(prev => [...prev, message]);
-});
+// 메시지
+chatSocket.sendMessage(roomId, content, type): Promise<Message | null>
+chatSocket.onMessage(callback: (msg: Message) => void): void
 
-// 메시지 전송
-const result = await chatSocket.sendMessage(roomId, content);
-if (!result) {
-  // WebSocket 실패 시 REST API fallback
-  await sendMessageMutation.mutateAsync({ roomId, content });
-}
+// 타이핑
+chatSocket.sendTyping(roomId: string, isTyping: boolean): void
+chatSocket.onTyping(callback: (event: TypingEvent) => void): void
+
+// 상태
+chatSocket.isConnected(): boolean
+chatSocket.disconnect(): void
 ```
 
-### user-app-ios (Swift)
+### 7.3 iOS (SwiftUI + SocketIO)
 
+```mermaid
+flowchart TB
+    subgraph Views["SwiftUI Views"]
+        CV[ChatView]
+        RLV[RoomListView]
+        MV[MessageView]
+    end
+
+    subgraph ViewModels["ViewModels"]
+        CVM[ChatViewModel]
+        RVM[RoomListViewModel]
+    end
+
+    subgraph Network["Network Layer"]
+        SM[ChatSocketManager<br/>Actor]
+        API[ChatService]
+    end
+
+    CV --> CVM
+    RLV --> RVM
+    CVM --> SM & API
+    RVM --> API
+```
+
+**ChatSocketManager 주요 메서드:**
 ```swift
 // 연결
-ChatSocketManager.shared.connect(token: token)
+func connect(token: String)
+func disconnect()
 
-// 채팅방 입장
-ChatSocketManager.shared.joinRoom(roomId: roomId) { success in
-    print("Joined room: \(success)")
-}
+// 채팅방
+func joinRoom(roomId: String) async -> Bool
+func leaveRoom(roomId: String)
 
-// 메시지 수신
-ChatSocketManager.shared.messageReceived
-    .receive(on: DispatchQueue.main)
-    .sink { message in
-        self.messages.append(message)
-    }
+// 메시지
+func sendMessage(roomId: String, content: String) async -> ChatMessage?
 
-// 메시지 전송
-ChatSocketManager.shared.sendMessage(roomId: roomId, content: content) { message in
-    if message == nil {
-        // REST API fallback
-    }
-}
+// Publishers (Combine)
+var messageReceived: AnyPublisher<ChatMessage, Never>
+var typingReceived: AnyPublisher<TypingEvent, Never>
+var connectionState: AnyPublisher<ConnectionState, Never>
+```
+
+### 7.4 연결 상태 관리
+
+```mermaid
+stateDiagram-v2
+    [*] --> Disconnected
+
+    Disconnected --> Connecting: connect()
+    Connecting --> Connected: 인증 성공
+    Connecting --> Disconnected: 인증 실패
+
+    Connected --> Reconnecting: 연결 끊김
+    Reconnecting --> Connected: 재연결 성공
+    Reconnecting --> Disconnected: 재연결 실패 (max retry)
+
+    Connected --> Disconnected: disconnect()
 ```
 
 ---
 
-## 에러 처리
+## 8. 에러 처리 및 복구
 
-### NATS 연결 실패
-
-```mermaid
-flowchart TD
-    A[NATS 요청] --> B{연결 상태?}
-    B -->|연결됨| C[정상 처리]
-    B -->|연결 안됨| D[재연결 시도]
-    D --> E{재연결 성공?}
-    E -->|성공| C
-    E -->|실패| F[에러 응답 반환]
-    F --> G["{ success: false, error: 'NATS not connected' }"]
-```
-
-### WebSocket 연결 실패
+### 8.1 WebSocket 연결 실패
 
 ```mermaid
 flowchart TD
-    A[WebSocket 메시지 전송] --> B{연결 상태?}
-    B -->|연결됨| C[WebSocket으로 전송]
-    B -->|연결 안됨| D[REST API Fallback]
+    A[메시지 전송] --> B{WebSocket 연결?}
+    B -->|연결됨| C[WebSocket 전송]
+    B -->|끊김| D[REST API Fallback]
+
     C --> E{전송 성공?}
     E -->|성공| F[완료]
     E -->|실패| D
-    D --> G[POST /api/user/chat/rooms/{roomId}/messages]
+
+    D --> G["POST /chat/rooms/:id/messages"]
+    G --> H{API 성공?}
+    H -->|성공| F
+    H -->|실패| I[에러 표시 + 재시도 버튼]
+```
+
+### 8.2 재연결 전략
+
+```mermaid
+flowchart TB
+    subgraph Reconnect["재연결 로직"]
+        R1[연결 끊김 감지]
+        R2[지수 백오프 대기<br/>3s → 6s → 12s → ... → 30s]
+        R3[재연결 시도]
+        R4{성공?}
+        R5[채팅방 재입장]
+        R6[최대 재시도 초과]
+    end
+
+    R1 --> R2 --> R3 --> R4
+    R4 -->|성공| R5
+    R4 -->|실패| R2
+    R4 -->|max retry| R6
+```
+
+### 8.3 메시지 중복 방지
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Gateway as chat-gateway
+    participant Service as chat-service
+    participant DB
+
+    Note over Client: 메시지 ID를 클라이언트에서 생성 (UUID)
+
+    Client->>Gateway: send_message({ id: "uuid-123", ... })
+    Gateway->>Service: save({ id: "uuid-123", ... })
+
+    Service->>DB: SELECT WHERE id = "uuid-123"
+
+    alt 이미 존재
+        DB-->>Service: existing message
+        Service-->>Gateway: { data: existing, duplicate: true }
+    else 새 메시지
+        Service->>DB: INSERT
+        Service-->>Gateway: { data: new, duplicate: false }
+    end
+```
+
+### 8.4 NATS 연결 실패
+
+```mermaid
+flowchart TD
+    A[NATS 요청] --> B{NATS 연결?}
+    B -->|연결| C[정상 처리]
+    B -->|끊김| D[자동 재연결 시도]
+
+    D --> E{재연결 성공?}
+    E -->|성공| C
+    E -->|실패| F[503 Service Unavailable]
+
+    F --> G[클라이언트 재시도]
 ```
 
 ---
 
-## 배포 환경
+## 9. 배포 및 운영
 
-| 서비스 | 개발 환경 | 프로덕션 환경 |
-|--------|----------|--------------|
-| user-api | `localhost:3001` | Cloud Run |
-| chat-gateway | `localhost:3003` | Cloud Run |
-| chat-service | `localhost:3004` | Cloud Run |
-| NATS | `localhost:4222` | Cloud Run (내부) |
-| PostgreSQL | `localhost:5432` | Cloud SQL |
+### 9.1 서비스 구성
 
-### Cloud Run Cold Start 주의
+| 서비스 | 개발 환경 | 프로덕션 환경 | Min Instances |
+|--------|----------|--------------|---------------|
+| user-api | localhost:3001 | Cloud Run | 1 |
+| chat-gateway | localhost:3003 | Cloud Run | 1 |
+| chat-service | localhost:3004 | Cloud Run | 1 |
+| NATS | localhost:4222 | VM (External IP) | 1 |
+| PostgreSQL | localhost:5432 | VM (External IP) | 1 |
 
-Cloud Run은 트래픽이 없을 때 인스턴스를 0으로 스케일 다운합니다. 이로 인해:
+### 9.2 Cloud Run 설정
 
-1. **첫 번째 요청 지연**: chat-service가 cold start 상태일 때 NATS 구독이 아직 완료되지 않아 "No subscribers" 에러 발생 가능
-2. **해결 방법**:
-   - 최소 인스턴스 수 설정 (`--min-instances=1`)
-   - Health check로 서비스 warm-up
-   - 클라이언트에서 재시도 로직 구현
+```mermaid
+flowchart TB
+    subgraph CloudRun["Cloud Run Services"]
+        GW[chat-gateway<br/>min: 1, max: 10<br/>WebSocket timeout: 3600s]
+        CS[chat-service<br/>min: 1, max: 10<br/>concurrency: 80]
+    end
+
+    subgraph Infra["Infrastructure"]
+        NATS[NATS VM<br/>External IP<br/>:4222]
+        DB[PostgreSQL VM<br/>External IP<br/>:5432]
+    end
+
+    GW <--> NATS
+    CS <--> NATS
+    CS --> DB
+```
+
+### 9.3 WebSocket 타임아웃 설정
+
+Cloud Run에서 WebSocket을 사용하려면 요청 타임아웃을 늘려야 합니다.
+
+```yaml
+# Cloud Run 배포 시
+--timeout=3600  # 1시간
+--cpu-throttling  # CPU 스로틀링 활성화 (비용 절감)
+```
+
+### 9.4 모니터링
+
+```mermaid
+flowchart LR
+    subgraph Metrics["주요 지표"]
+        M1[동시 접속자 수]
+        M2[초당 메시지 수]
+        M3[WebSocket 연결 실패율]
+        M4[평균 메시지 전송 지연]
+    end
+
+    subgraph Logs["로그 확인"]
+        L1[gcloud run logs read<br/>--service=chat-gateway]
+        L2[NATS 연결 상태]
+        L3[JWT 인증 실패]
+    end
+
+    M1 & M2 & M3 & M4 --> Dashboard
+    L1 & L2 & L3 --> Alerting
+```
+
+### 9.5 문제 해결
+
+| 증상 | 원인 | 해결 방법 |
+|------|------|----------|
+| WebSocket 연결 안됨 | Cloud Run 타임아웃 | `--timeout=3600` 설정 |
+| 메시지 전달 지연 | Cold Start | `--min-instances=1` 설정 |
+| "No subscribers" 에러 | chat-service 미시작 | 서비스 상태 확인, health check |
+| 메시지 중복 | 재전송 로직 버그 | 클라이언트 UUID 확인 |
+| 채팅방 목록 안 뜸 | NATS 연결 실패 | NATS VM 상태 확인 |
+
+---
+
+## 부록: 향후 개선 사항
+
+### 실시간 알림 통합
+
+현재 채팅 메시지는 오프라인 사용자에게 Push 알림으로 전달됩니다. 향후 chat-gateway를 통해 웹 클라이언트에도 실시간 알림을 전달할 수 있습니다.
+
+```mermaid
+flowchart LR
+    subgraph Current["현재"]
+        NS[notify-service] -->|FCM/APNs| Mobile
+    end
+
+    subgraph Future["향후"]
+        NS2[notify-service] -->|NATS| GW[chat-gateway]
+        GW -->|WebSocket| Web
+        NS2 -->|FCM/APNs| Mobile2[Mobile]
+    end
+```
+
+### 메시지 검색
+
+- Elasticsearch 연동
+- 채팅방 내 키워드 검색
+- 날짜 범위 필터
+
+### 파일 첨부
+
+- 이미지/파일 업로드 (Cloud Storage)
+- 썸네일 자동 생성
+- 파일 만료 정책

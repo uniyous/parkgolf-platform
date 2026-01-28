@@ -36,6 +36,17 @@ export interface TypingEvent {
   isTyping: boolean;
 }
 
+export interface NotificationEvent {
+  id: number;
+  userId: string;
+  type: string;
+  title: string;
+  message: string;
+  data?: Record<string, any>;
+  isRead: boolean;
+  createdAt: string;
+}
+
 @Injectable()
 export class NatsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(NatsService.name);
@@ -333,5 +344,36 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
 
   isConnected(): boolean {
     return this.nc !== null && !this.nc.isClosed();
+  }
+
+  // Subscribe to notification events from notify-service
+  async subscribeToNotifications(
+    handler: (notification: NotificationEvent) => void,
+  ): Promise<() => void> {
+    if (!this.nc) {
+      this.logger.warn('NATS not connected, cannot subscribe to notifications');
+      return () => {};
+    }
+
+    const subject = 'notification.created';
+    const sub = this.nc.subscribe(subject);
+    this.logger.log(`Subscribed to ${subject} for real-time notifications`);
+
+    (async () => {
+      for await (const msg of sub) {
+        try {
+          const notification = JSON.parse(this.sc.decode(msg.data)) as NotificationEvent;
+          handler(notification);
+        } catch (error) {
+          this.logger.error('Failed to process notification event', error);
+        }
+      }
+    })();
+
+    // Return cleanup function
+    return () => {
+      sub.unsubscribe();
+      this.logger.log(`Unsubscribed from ${subject}`);
+    };
   }
 }

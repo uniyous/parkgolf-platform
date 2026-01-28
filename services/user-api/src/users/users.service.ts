@@ -5,8 +5,8 @@ export interface UserProfileDto {
   id: number;
   email: string;
   name: string;
-  phoneNumber: string;
-  birthDate?: Date;
+  phone: string | null;
+  profileImageUrl: string | null;
   createdAt: Date;
   updatedAt?: Date;
 }
@@ -50,8 +50,8 @@ export class UsersService {
       id: userData.id,
       email: userData.email,
       name: userData.name || userData.email,
-      phoneNumber: userData.phoneNumber || '',
-      birthDate: userData.birthDate,
+      phone: userData.phone || null,
+      profileImageUrl: userData.profileImageUrl || null,
       createdAt: userData.createdAt,
       updatedAt: userData.updatedAt,
     };
@@ -77,8 +77,8 @@ export class UsersService {
       id: userData.id,
       email: userData.email,
       name: userData.name || userData.email,
-      phoneNumber: userData.phoneNumber || '',
-      birthDate: userData.birthDate,
+      phone: userData.phone || null,
+      profileImageUrl: userData.profileImageUrl || null,
       createdAt: userData.createdAt,
       updatedAt: userData.updatedAt,
     };

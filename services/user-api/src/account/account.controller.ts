@@ -4,7 +4,6 @@ import {
   Get,
   Body,
   UseGuards,
-  Request,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -20,6 +19,7 @@ import {
 } from './dto/change-password.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { NatsResponse } from '../common/types/nats-response.type';
+import { CurrentUser } from '../common/decorators';
 
 @ApiTags('Account')
 @Controller('api/user/account')
@@ -38,13 +38,10 @@ export class AccountController {
   @ApiResponse({ status: 400, description: '잘못된 요청 (비밀번호 불일치 등)' })
   @ApiResponse({ status: 401, description: '현재 비밀번호 불일치 또는 인증 실패' })
   async changePassword(
-    @Request() req: any,
+    @CurrentUser('userId') userId: number,
     @Body() dto: ChangePasswordDto,
   ) {
-    const result = await this.accountService.changePassword(
-      req.user.userId,
-      dto,
-    );
+    const result = await this.accountService.changePassword(userId, dto);
     return NatsResponse.success(result);
   }
 
@@ -56,8 +53,8 @@ export class AccountController {
     type: PasswordExpiryResponseDto,
   })
   @ApiResponse({ status: 401, description: '인증 필요' })
-  async checkPasswordExpiry(@Request() req: any) {
-    const result = await this.accountService.checkPasswordExpiry(req.user.userId);
+  async checkPasswordExpiry(@CurrentUser('userId') userId: number) {
+    const result = await this.accountService.checkPasswordExpiry(userId);
     return NatsResponse.success(result);
   }
 }

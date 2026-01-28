@@ -16,6 +16,12 @@ export class UserResponseDto {
   @ApiProperty({ description: 'User name' })
   name: string | null;
 
+  @ApiProperty({ description: 'Phone number' })
+  phone: string | null;
+
+  @ApiProperty({ description: 'Profile image URL' })
+  profileImageUrl: string | null;
+
   @ApiProperty({ description: 'Role code' })
   roleCode: string;
 
@@ -36,6 +42,8 @@ export class UserResponseDto {
     dto.id = entity.id;
     dto.email = entity.email;
     dto.name = entity.name;
+    dto.phone = entity.phone;
+    dto.profileImageUrl = entity.profileImageUrl;
     dto.roleCode = entity.roleCode;
     dto.isActive = entity.isActive;
     dto.createdAt = entity.createdAt?.toISOString() ?? null;

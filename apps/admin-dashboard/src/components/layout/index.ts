@@ -1,3 +1,4 @@
+export { AdminLayout } from './AdminLayout';
 export { MainLayout } from './MainLayout';
 export { PageLayout } from './PageLayout';
 export { menuConfig, getFavorites, toggleFavorite, isFavorite } from './SideBarMenu';

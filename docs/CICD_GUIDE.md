@@ -171,7 +171,7 @@ GitHub Actions → CD Services
 
 **대상 앱:**
 - `admin-dashboard` - 관리자 대시보드
-- `user-webapp` - 사용자 웹앱
+- `user-app-web` - 사용자 웹앱
 
 **실행 단계:**
 1. npm ci → 의존성 설치

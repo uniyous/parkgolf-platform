@@ -30,7 +30,7 @@ async function bootstrap() {
   // CORS
   app.enableCors({
     origin: [
-      'http://localhost:3002', // user-webapp
+      'http://localhost:3002', // user-app-web
       'http://localhost:19006', // iOS Expo (if used)
       /^https:\/\/.*\.run\.app$/,
       'https://parkgolf-user.web.app',

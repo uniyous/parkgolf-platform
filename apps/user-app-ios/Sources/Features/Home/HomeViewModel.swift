@@ -10,6 +10,7 @@ class HomeViewModel: ObservableObject {
     // 알림 데이터
     @Published var friendRequests: [FriendRequest] = []
     @Published var unreadChatRooms: [ChatRoom] = []
+    @Published var unreadNotificationCount: Int = 0
 
     var pendingFriendRequestsCount: Int {
         friendRequests.count
@@ -23,8 +24,14 @@ class HomeViewModel: ObservableObject {
         pendingFriendRequestsCount > 0 || totalUnreadMessagesCount > 0
     }
 
+    // 전체 알림 배지 수 (헤더 벨 아이콘용)
+    var totalNotificationBadgeCount: Int {
+        unreadNotificationCount + pendingFriendRequestsCount + totalUnreadMessagesCount
+    }
+
     private let bookingService = BookingService()
     private let friendService = FriendService()
+    private let notificationService = NotificationService()
     private let apiClient = APIClient.shared
 
     func loadData() async {
@@ -35,13 +42,15 @@ class HomeViewModel: ObservableObject {
         async let bookingsTask = loadBookings()
         async let friendRequestsTask = loadFriendRequests()
         async let chatRoomsTask = loadChatRooms()
+        async let notificationCountTask = loadUnreadNotificationCount()
 
         // Await all tasks
-        let (bookings, requests, rooms) = await (bookingsTask, friendRequestsTask, chatRoomsTask)
+        let (bookings, requests, rooms, notifCount) = await (bookingsTask, friendRequestsTask, chatRoomsTask, notificationCountTask)
 
         upcomingBookings = bookings
         friendRequests = requests
         unreadChatRooms = rooms
+        unreadNotificationCount = notifCount
 
         // Mock popular clubs for now
         popularClubs = [
@@ -84,6 +93,14 @@ class HomeViewModel: ObservableObject {
             return rooms.filter { $0.unreadCount > 0 }
         } catch {
             return []
+        }
+    }
+
+    private func loadUnreadNotificationCount() async -> Int {
+        do {
+            return try await notificationService.getUnreadCount()
+        } catch {
+            return 0
         }
     }
 

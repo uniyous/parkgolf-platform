@@ -28,8 +28,11 @@ model Notification {
   updatedAt       DateTime           @updatedAt @map("updated_at")
 
   @@index([userId, status])
+  @@index([userId, readAt])          // getUnreadCount, markAllAsRead, findAll(unreadOnly)
+  @@index([userId, createdAt(sort: Desc)]) // findAll with pagination (orderBy createdAt desc)
   @@index([type, status])
-  @@index([scheduledAt])
+  @@index([status, scheduledAt])     // findScheduledNotifications
+  @@index([status, retryCount])      // findFailedNotificationsForRetry
   @@map("notifications")
 }
 
@@ -43,6 +46,7 @@ model NotificationTemplate {
   createdAt DateTime         @default(now()) @map("created_at")
   updatedAt DateTime         @updatedAt @map("updated_at")
 
+  @@index([type, isActive])  // findByType (called for every notification)
   @@map("notification_templates")
 }
 
@@ -64,6 +68,9 @@ enum NotificationType {
   BOOKING_CANCELLED
   PAYMENT_SUCCESS
   PAYMENT_FAILED
+  FRIEND_REQUEST
+  FRIEND_ACCEPTED
+  CHAT_MESSAGE
   SYSTEM_ALERT
 }
 
@@ -72,4 +79,22 @@ enum NotificationStatus {
   SENT
   FAILED
   READ
+}
+
+model DeadLetterNotification {
+  id              Int              @id @default(autoincrement())
+  originalId      Int              @map("original_id")
+  userId          String           @map("user_id")
+  type            NotificationType
+  title           String
+  message         String
+  data            Json?
+  deliveryChannel String?          @map("delivery_channel")
+  failureReason   String           @map("failure_reason")
+  retryCount      Int              @map("retry_count")
+  movedAt         DateTime         @default(now()) @map("moved_at")
+
+  @@index([userId])
+  @@index([movedAt])
+  @@map("dead_letter_notifications")
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useIsAuthenticated, useCurrentAdmin, useAuthLoading, useAuthStore } from '@/stores';
-import { MainLayout } from '@/components/layout';
+import { AdminLayout } from '@/components/layout';
 
 interface PrivateRouteProps {
   children?: React.ReactNode;
@@ -23,7 +23,6 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
     username: currentAdmin?.name || currentAdmin?.username || (isLoading ? '로딩중...' : '개발 관리자'),
     email: currentAdmin?.email || (isLoading ? '...' : 'admin@parkgolf.com'),
     role: currentAdmin?.primaryRole || currentAdmin?.role || 'PLATFORM_ADMIN',
-    company: currentAdmin?.primaryCompany?.company?.name || currentAdmin?.company?.name || '플랫폼'
   };
 
   const handleLogout = async () => {
@@ -32,8 +31,8 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
   };
 
   return (
-    <MainLayout currentUser={currentUser} onLogout={handleLogout}>
+    <AdminLayout currentUser={currentUser} onLogout={handleLogout}>
       {children ? children : <Outlet />}
-    </MainLayout>
+    </AdminLayout>
   );
 };

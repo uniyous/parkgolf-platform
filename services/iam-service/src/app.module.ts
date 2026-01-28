@@ -10,6 +10,7 @@ import { SettingsModule } from './settings/settings.module';
 import { DeviceModule } from './device/device.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { CommonModule } from './common/common.module';
+import { NatsModule } from './common/nats/nats.module';
 import { ResponseTransformInterceptor } from './common/interceptor/response-transform.interceptor';
 
 @Module({
@@ -19,6 +20,7 @@ import { ResponseTransformInterceptor } from './common/interceptor/response-tran
       envFilePath: '.env',
     }),
     CommonModule,
+    NatsModule,
     PrismaModule,
     AuthModule,
     UserModule,

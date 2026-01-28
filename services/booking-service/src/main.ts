@@ -36,16 +36,10 @@ async function bootstrap() {
       }),
     );
 
-    // CORS 설정
+    // CORS 설정 (내부 서비스 간 통신용 - 프론트엔드는 BFF를 통해 접근)
     app.enableCors({
       origin: [
-        'http://localhost:3001',  // admin-dashboard
-        'http://localhost:3002',  // user-webapp
-        /^https:\/\/.*\.run\.app$/,  // Cloud Run
-        'https://parkgolf-admin.web.app',
-        'https://parkgolf-admin-dev.web.app',
-        'https://parkgolf-user.web.app',
-        'https://parkgolf-user-dev.web.app',
+        /^https:\/\/.*\.run\.app$/,  // Cloud Run 내부 서비스
       ],
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],

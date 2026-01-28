@@ -6,7 +6,6 @@ import {
   Body,
   Param,
   UseGuards,
-  Request,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -16,6 +15,7 @@ import {
 } from '@nestjs/swagger';
 import { DevicesService } from './devices.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators';
 import { RegisterDeviceDto } from './dto/device.dto';
 
 @ApiTags('Devices')
@@ -29,16 +29,19 @@ export class DevicesController {
   @ApiOperation({ summary: '디바이스 등록/갱신' })
   @ApiResponse({ status: 201, description: '디바이스 등록 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
-  async registerDevice(@Request() req: any, @Body() dto: RegisterDeviceDto) {
-    return this.devicesService.registerDevice(req.user.userId, dto);
+  async registerDevice(
+    @CurrentUser('userId') userId: number,
+    @Body() dto: RegisterDeviceDto,
+  ) {
+    return this.devicesService.registerDevice(userId, dto);
   }
 
   @Get()
   @ApiOperation({ summary: '내 디바이스 목록 조회' })
   @ApiResponse({ status: 200, description: '디바이스 목록 조회 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
-  async getUserDevices(@Request() req: any) {
-    return this.devicesService.getUserDevices(req.user.userId);
+  async getUserDevices(@CurrentUser('userId') userId: number) {
+    return this.devicesService.getUserDevices(userId);
   }
 
   @Delete(':deviceToken')
@@ -46,9 +49,9 @@ export class DevicesController {
   @ApiResponse({ status: 200, description: '디바이스 삭제 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async removeDevice(
-    @Request() req: any,
+    @CurrentUser('userId') userId: number,
     @Param('deviceToken') deviceToken: string,
   ) {
-    return this.devicesService.removeDevice(req.user.userId, deviceToken);
+    return this.devicesService.removeDevice(userId, deviceToken);
   }
 }
