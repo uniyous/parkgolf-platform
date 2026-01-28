@@ -1,4 +1,4 @@
-# Park Golf Platform CI/CD 가이드
+# Park Golf Platform CI/CD 가이드 (GKE Autopilot)
 
 ## 목차
 1. [개요](#개요)
@@ -17,18 +17,48 @@ Park Golf Platform은 **수동 실행(workflow_dispatch)** 기반의 CI/CD 파�
 
 ### 주요 특징
 - 모든 워크플로우는 수동으로만 실행
-- 환경별(dev/staging/prod) 분리 배포
-- 인프라(Terraform)와 애플리케이션(서비스, 앱) 분리
+- 환경별(dev/prod) 분리 배포
+- GKE Autopilot 클러스터 기반 인프라
+- 인프라(GKE)와 애플리케이션(서비스, 앱) 분리
 - 선택적 서비스/앱 배포 지원
 
 ### 기술 스택
 | 구성요소 | 기술 |
 |---------|------|
-| 인프라 관리 | Terraform + GCP |
-| 백엔드 서비스 | Cloud Run |
+| 인프라 관리 | GKE Autopilot + kubectl |
+| 백엔드 서비스 | GKE Deployments |
 | 프론트엔드 앱 | Firebase Hosting |
 | 컨테이너 레지스트리 | Artifact Registry |
 | CI/CD | GitHub Actions |
+
+### 아키텍처 개요
+
+```mermaid
+graph LR
+    subgraph "GitHub Actions"
+        CI[ci.yml]
+        INFRA[cd-infra.yml]
+        SERVICES[cd-services.yml]
+        APPS[cd-apps.yml]
+    end
+
+    subgraph "GCP"
+        subgraph "GKE Autopilot"
+            ING[Ingress<br/>34.160.211.91]
+            PODS[Service Pods]
+            NATS[NATS]
+            PG[PostgreSQL]
+        end
+        AR[Artifact Registry]
+        FH[Firebase Hosting]
+    end
+
+    CI --> AR
+    INFRA --> GKE
+    SERVICES --> AR
+    SERVICES --> PODS
+    APPS --> FH
+```
 
 ---
 
@@ -36,11 +66,10 @@ Park Golf Platform은 **수동 실행(workflow_dispatch)** 기반의 CI/CD 파�
 
 | 워크플로우 | 파일 | 용도 | 트리거 |
 |-----------|------|------|--------|
-| **CD Infrastructure** | `cd-infra.yml` | Terraform 인프라 배포 | 수동 |
-| **CD Services** | `cd-services.yml` | 백엔드 서비스 배포 (Cloud Run) | 수동 |
-| **CD Apps** | `cd-apps.yml` | 프론트엔드 앱 배포 (Firebase) | 수동 |
 | **CI Pipeline** | `ci.yml` | 코드 품질 검증 (lint, test, build) | 수동 |
-| **Rollback** | `rollback.yml` | 서비스 롤백 | 수동 |
+| **CD Infrastructure** | `cd-infra.yml` | GKE 클러스터 및 인프라 관리 | 수동 |
+| **CD Services** | `cd-services.yml` | 백엔드 서비스 배포 (GKE) | 수동 |
+| **CD Apps** | `cd-apps.yml` | 프론트엔드 앱 배포 (Firebase) | 수동 |
 
 ---
 
@@ -49,9 +78,9 @@ Park Golf Platform은 **수동 실행(workflow_dispatch)** 기반의 CI/CD 파�
 ### 최초 환경 구축 시
 
 ```
-1. CD Infrastructure (plan) → 변경사항 확인
+1. CD Infrastructure (network-apply) → 네트워크 설정
            ↓
-2. CD Infrastructure (apply) → 인프라 생성
+2. CD Infrastructure (gke-setup) → GKE 클러스터 생성
            ↓
 3. CD Services (all) → 백엔드 서비스 배포
            ↓
@@ -67,7 +96,13 @@ Park Golf Platform은 **수동 실행(workflow_dispatch)** 기반의 CI/CD 파�
 ### 인프라 변경 시
 
 ```
-Terraform 코드 변경 → CD Infrastructure (plan) → 확인 → CD Infrastructure (apply)
+인프라 변경 필요 → CD Infrastructure 실행
+```
+
+### 환경 삭제 시
+
+```
+CD Infrastructure (gke-destroy) → 클러스터 및 리소스 삭제
 ```
 
 ---
@@ -76,71 +111,88 @@ Terraform 코드 변경 → CD Infrastructure (plan) → 확인 → CD Infrastru
 
 ### 1. CD Infrastructure (`cd-infra.yml`)
 
-Terraform을 사용하여 GCP 인프라를 관리합니다.
+GKE Autopilot 클러스터와 관련 인프라를 관리합니다.
 
 **입력 옵션:**
 | 옵션 | 설명 | 값 |
 |------|------|-----|
-| environment | 대상 환경 | `dev`, `staging`, `prod` |
-| action | Terraform 작업 | `plan`, `apply`, `destroy` |
+| environment | 대상 환경 | `dev`, `prod` |
+| action | 실행할 작업 | `network-apply`, `gke-setup`, `gke-destroy` |
 
-**실행 단계:**
-1. `plan` - 변경사항 미리보기 (필수)
-2. `apply` - 변경사항 적용
-3. `destroy` - 리소스 삭제 (주의 필요)
+**Action 설명:**
 
-**생성되는 리소스:**
-- VPC 네트워크 / 서브넷
-- VPC Connector (Cloud Run ↔ 내부 네트워크)
-- Secret Manager (DB 비밀번호, JWT 시크릿)
-- Cloud Run 서비스
-- Monitoring / Alert Policy
+| Action | 설명 | 생성/삭제 리소스 |
+|--------|------|-----------------|
+| `network-apply` | 네트워크 리소스 설정 | Static IP |
+| `gke-setup` | GKE 클러스터 생성 및 구성 | Cluster, NATS, PostgreSQL, Secrets |
+| `gke-destroy` | GKE 클러스터 및 리소스 삭제 | 전체 클러스터 + PVC 디스크 |
+
+**gke-setup 실행 단계:**
+1. GKE Autopilot 클러스터 생성
+2. 클러스터 인증 정보 획득
+3. Kubernetes Secrets 생성 (DB, JWT)
+4. NATS Deployment 생성
+5. PostgreSQL StatefulSet 생성 (PVC 포함)
+6. 데이터베이스 초기화 (5개 DB 생성)
+
+**gke-destroy 실행 단계:**
+1. GKE 클러스터 삭제
+2. 고아(orphaned) PVC 디스크 정리
 
 **사용 예:**
 ```
+# 네트워크 설정
 GitHub Actions → CD Infrastructure
 - environment: dev
-- action: plan      # 먼저 확인
-```
+- action: network-apply
 
-```
+# GKE 클러스터 생성
 GitHub Actions → CD Infrastructure
 - environment: dev
-- action: apply     # 적용
+- action: gke-setup
+
+# GKE 클러스터 삭제
+GitHub Actions → CD Infrastructure
+- environment: dev
+- action: gke-destroy
 ```
 
 ---
 
 ### 2. CD Services (`cd-services.yml`)
 
-백엔드 서비스를 Cloud Run에 배포합니다.
+백엔드 서비스를 GKE 클러스터에 배포합니다.
 
 **입력 옵션:**
 | 옵션 | 설명 | 값 |
 |------|------|-----|
-| environment | 대상 환경 | `dev`, `staging`, `prod` |
+| environment | 대상 환경 | `dev`, `prod` |
 | services | 배포할 서비스 | `all` 또는 서비스명 (콤마 구분) |
 
 **대상 서비스:**
-- `auth-service` - 인증/인가
+- `iam-service` - 인증/인가
 - `course-service` - 골프장/코스 관리
 - `booking-service` - 예약 관리
 - `notify-service` - 알림 (이메일, 푸시)
+- `chat-service` - 채팅 백엔드
 - `admin-api` - 관리자 BFF
 - `user-api` - 사용자 BFF
+- `chat-gateway` - WebSocket 게이트웨이
 
 **실행 단계:**
 1. Docker 이미지 빌드
 2. Artifact Registry에 푸시
-3. Cloud Run에 배포
-4. 서비스 URL 출력
+3. GKE 클러스터 인증
+4. Kubernetes Deployment 생성/업데이트
+5. Kubernetes Service 생성/업데이트
+6. Ingress 업데이트 (BFF 서비스만)
+7. 롤아웃 상태 확인
 
-**환경별 설정:**
-| 환경 | Min Instances | Max Instances | Memory | CPU |
-|------|--------------|---------------|--------|-----|
-| dev | 0 | 2 | 512Mi | 1 |
-| staging | 0 | 5 | 512Mi | 1 |
-| prod | 1 | 10 | 1Gi | 2 |
+**리소스 스펙:**
+| 환경 | CPU Request | CPU Limit | Memory Request | Memory Limit |
+|------|-------------|-----------|----------------|--------------|
+| dev | 100m | 300m | 128Mi | 256Mi |
+| prod | 200m | 500m | 256Mi | 512Mi |
 
 **사용 예:**
 ```
@@ -148,13 +200,11 @@ GitHub Actions → CD Infrastructure
 GitHub Actions → CD Services
 - environment: dev
 - services: all
-```
 
-```
 # 특정 서비스만 배포
 GitHub Actions → CD Services
 - environment: dev
-- services: auth-service,user-api
+- services: iam-service,user-api
 ```
 
 ---
@@ -166,7 +216,7 @@ GitHub Actions → CD Services
 **입력 옵션:**
 | 옵션 | 설명 | 값 |
 |------|------|-----|
-| environment | 대상 환경 | `dev`, `staging`, `prod` |
+| environment | 대상 환경 | `dev`, `prod` |
 | apps | 배포할 앱 | `all` 또는 앱명 (콤마 구분) |
 
 **대상 앱:**
@@ -175,14 +225,14 @@ GitHub Actions → CD Services
 
 **실행 단계:**
 1. npm ci → 의존성 설치
-2. npm run build → 빌드
-3. Firebase Hosting에 배포
+2. 환경변수 설정 (API URL)
+3. npm run build → 빌드
+4. Firebase Hosting에 배포
 
 **환경별 API URL:**
 | 환경 | API URL |
 |------|---------|
-| dev | `https://dev-api.parkgolf.app` |
-| staging | `https://staging-api.parkgolf.app` |
+| dev | `http://34.160.211.91` |
 | prod | `https://api.parkgolf.app` |
 
 **사용 예:**
@@ -191,9 +241,7 @@ GitHub Actions → CD Services
 GitHub Actions → CD Apps
 - environment: dev
 - apps: all
-```
 
-```
 # 관리자 대시보드만 배포
 GitHub Actions → CD Apps
 - environment: dev
@@ -220,33 +268,6 @@ GitHub Actions → CD Apps
 
 ---
 
-### 5. Rollback (`rollback.yml`)
-
-Cloud Run 서비스를 이전 버전으로 롤백합니다.
-
-**입력 옵션:**
-| 옵션 | 설명 | 값 |
-|------|------|-----|
-| environment | 대상 환경 | `dev`, `staging`, `prod` |
-| service | 롤백할 서비스 | 서비스명 또는 `all` |
-| revision | 대상 리비전 | 빈값 = 이전 버전, 또는 특정 리비전명 |
-
-**실행 단계:**
-1. 현재/대상 리비전 확인
-2. 트래픽 전환
-3. Health Check 검증
-
-**사용 예:**
-```
-# 이전 버전으로 롤백
-GitHub Actions → Rollback
-- environment: dev
-- service: auth-service
-- revision: (빈값)
-```
-
----
-
 ## GitHub Secrets 설정
 
 GitHub 저장소 → Settings → Secrets and variables → Actions
@@ -259,22 +280,6 @@ GitHub 저장소 → Settings → Secrets and variables → Actions
 | `DB_PASSWORD` | PostgreSQL 비밀번호 | `MySecureP@ssw0rd!2024` |
 | `JWT_SECRET` | JWT 서명 키 (32자 이상) | `your-super-secret-jwt-key-min-32-chars` |
 | `JWT_REFRESH_SECRET` | JWT 리프레시 키 | `your-refresh-secret-key-min-32-chars` |
-| `ALERT_EMAIL` | 알림 수신 이메일 | `dev@example.com` |
-
-### Dev 환경 전용
-
-| Secret | 설명 |
-|--------|------|
-| `DEV_DB_HOST` | Dev 환경 DB 호스트 |
-| `DEV_DB_USERNAME` | Dev 환경 DB 사용자명 |
-
-### Prod 환경 전용
-
-| Secret | 설명 |
-|--------|------|
-| `OPS_EMAIL` | 운영팀 이메일 |
-| `SLACK_CHANNEL` | Slack 알림 채널 |
-| `SLACK_TOKEN` | Slack Webhook 토큰 |
 
 ### Secret 생성 방법
 
@@ -293,17 +298,16 @@ openssl rand -base64 32
 
 ## 사용 예시
 
-### 시나리오 1: Dev 환경 전체 배포
+### 시나리오 1: 새 환경 구축 (전체 배포)
 
 ```
 1. GitHub Actions → CD Infrastructure
    - environment: dev
-   - action: plan
+   - action: network-apply
 
-2. (결과 확인 후)
-   GitHub Actions → CD Infrastructure
+2. GitHub Actions → CD Infrastructure
    - environment: dev
-   - action: apply
+   - action: gke-setup
 
 3. GitHub Actions → CD Services
    - environment: dev
@@ -319,29 +323,36 @@ openssl rand -base64 32
 ```
 GitHub Actions → CD Services
 - environment: dev
-- services: auth-service
+- services: iam-service
 ```
 
-### 시나리오 3: 서비스 롤백
+### 시나리오 3: 여러 서비스 동시 업데이트
 
 ```
-GitHub Actions → Rollback
+GitHub Actions → CD Services
 - environment: dev
-- service: auth-service
-- revision: (빈값 = 이전 버전)
+- services: iam-service,booking-service,user-api
 ```
 
 ### 시나리오 4: 프로덕션 배포
 
 ```
-1. GitHub Actions → CD Services
-   - environment: staging
-   - services: all
-
-2. (Staging 테스트 후)
-   GitHub Actions → CD Services
+1. develop 브랜치에서 테스트 완료
+2. main 브랜치로 머지
+3. GitHub Actions → CD Services
    - environment: prod
    - services: all
+4. GitHub Actions → CD Apps
+   - environment: prod
+   - apps: all
+```
+
+### 시나리오 5: 환경 삭제
+
+```
+GitHub Actions → CD Infrastructure
+- environment: dev
+- action: gke-destroy
 ```
 
 ---
@@ -362,7 +373,7 @@ gcloud projects get-iam-policy PROJECT_ID \
 # 권한 추가
 gcloud projects add-iam-policy-binding PROJECT_ID \
   --member="serviceAccount:SA_EMAIL" \
-  --role="roles/run.admin"
+  --role="roles/container.admin"
 ```
 
 ### 2. "Image not found" 오류
@@ -371,66 +382,148 @@ gcloud projects add-iam-policy-binding PROJECT_ID \
 
 **해결:**
 1. CD Services 워크플로우로 이미지 먼저 빌드
-2. 또는 Terraform에서 플레이스홀더 이미지 사용
+2. Artifact Registry에서 이미지 존재 확인
 
-### 3. "Container failed to start" 오류
+```bash
+gcloud artifacts docker images list \
+  asia-northeast3-docker.pkg.dev/uniyous-319808/parkgolf
+```
+
+### 3. "Pod failed to start" 오류
 
 **확인사항:**
 1. Dockerfile CMD/ENTRYPOINT 확인
 2. 포트가 8080인지 확인
 3. 환경변수 누락 여부
+4. 리소스 requests/limits 적절성
 
 **로그 확인:**
 ```bash
-gcloud run services logs read SERVICE_NAME-dev \
-  --region=asia-northeast3 \
-  --limit=50
+# 클러스터 인증
+gcloud container clusters get-credentials parkgolf-cluster-dev \
+  --region asia-northeast3
+
+# Pod 로그 확인
+kubectl logs -l app=<service-name> --tail=50
+
+# Pod 상세 정보
+kubectl describe pod -l app=<service-name>
 ```
 
-### 4. Terraform "PORT env is reserved" 오류
+### 4. Ingress 접근 불가
 
-**원인:** PORT는 Cloud Run 예약 환경변수
-
-**해결:** env_vars에서 PORT 제거 (Cloud Run이 자동 설정)
-
-### 5. Terraform State Lock 오류
+**원인:** Ingress 설정 오류 또는 Backend 서비스 미실행
 
 **해결:**
 ```bash
-cd infra/environments/dev
-terraform force-unlock LOCK_ID
+# Ingress 상태 확인
+kubectl get ingress parkgolf-ingress
+kubectl describe ingress parkgolf-ingress
+
+# Backend 서비스 확인
+kubectl get pods -l app=admin-api
+kubectl get pods -l app=user-api
+
+# 서비스 엔드포인트 확인
+kubectl get endpoints admin-api
+kubectl get endpoints user-api
+```
+
+### 5. Database 연결 실패
+
+**원인:** PostgreSQL Pod 미실행 또는 Secret 오류
+
+**해결:**
+```bash
+# PostgreSQL Pod 상태 확인
+kubectl get pods -l app=postgresql
+kubectl logs postgresql-0
+
+# Secret 확인
+kubectl get secrets db-credentials -o yaml
+
+# 연결 테스트
+kubectl exec -it <app-pod> -- nc -zv postgresql 5432
+```
+
+### 6. NATS 연결 실패
+
+**원인:** NATS Pod 미실행
+
+**해결:**
+```bash
+# NATS Pod 상태 확인
+kubectl get pods -l app=nats
+kubectl logs -l app=nats
+
+# NATS 서비스 확인
+kubectl get svc nats
+
+# 연결 테스트
+kubectl exec -it <app-pod> -- nc -zv nats 4222
+```
+
+### 7. PVC 디스크 삭제 실패 (gke-destroy)
+
+**원인:** GKE 삭제 후 PVC 디스크가 고아 상태로 남음
+
+**해결:**
+```bash
+# 고아 디스크 확인
+gcloud compute disks list --filter="name~^pvc-"
+
+# 수동 삭제
+gcloud compute disks delete <disk-name> --zone=<zone> --quiet
 ```
 
 ---
 
 ## 로그 확인 명령어
 
-### Cloud Run 로그
+### GKE 리소스 확인
+
+```bash
+# 클러스터 인증
+gcloud container clusters get-credentials parkgolf-cluster-dev \
+  --region asia-northeast3
+
+# 모든 리소스 확인
+kubectl get all
+
+# Pod 상태
+kubectl get pods
+
+# 서비스 상태
+kubectl get svc
+
+# Ingress 상태
+kubectl get ingress
+```
+
+### Pod 로그
+
 ```bash
 # 최근 로그
-gcloud run services logs read SERVICE_NAME-dev \
-  --region=asia-northeast3 \
-  --limit=100
+kubectl logs -l app=<service-name> --tail=100
 
 # 실시간 로그
-gcloud run services logs tail SERVICE_NAME-dev \
-  --region=asia-northeast3
+kubectl logs -l app=<service-name> -f
+
+# 이전 Pod 로그 (재시작된 경우)
+kubectl logs -l app=<service-name> --previous
 ```
 
-### Cloud Build 로그
-```bash
-gcloud builds list --limit=5
-gcloud builds log BUILD_ID
-```
+### 디버깅
 
-### Cloud Run 서비스 상태
 ```bash
-# 서비스 목록
-gcloud run services list --region=asia-northeast3
+# Pod 내부 쉘 접근
+kubectl exec -it <pod-name> -- /bin/sh
 
-# 서비스 상세
-gcloud run services describe SERVICE_NAME-dev \
-  --region=asia-northeast3
+# 리소스 사용량
+kubectl top pods
+
+# Pod 이벤트 확인
+kubectl describe pod <pod-name>
 ```
 
 ---
@@ -438,5 +531,10 @@ gcloud run services describe SERVICE_NAME-dev \
 ## 참고 문서
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - 시스템 아키텍처
-- [ROADMAP.md](./ROADMAP.md) - 개발 로드맵
-- [Claude Code Skills](../.claude/skills/) - 자동화 도구
+- [GCP_INFRASTRUCTURE.md](./GCP_INFRASTRUCTURE.md) - GCP 인프라 상세
+
+---
+
+**Document Version**: 2.0.0
+**Last Updated**: 2026-01-28
+**Architecture**: GKE Autopilot (migrated from Cloud Run)
