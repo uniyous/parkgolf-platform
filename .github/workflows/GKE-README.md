@@ -152,13 +152,37 @@ Endpoints:
 
 ### GKE Autopilot (서울 리전)
 
-| 항목 | 리소스 | 월 비용 (USD) |
-|------|--------|--------------|
-| Pod CPU | ~2.5 vCPU | ~$80 |
-| Pod Memory | ~5 GB | ~$18 |
-| PVC (PostgreSQL) | 10 GB | ~$2 |
-| Load Balancer | 1개 | ~$18 |
-| **합계** | | **~$118 (~16만원)** |
+**서비스별 리소스 사양 (개발 환경 최소 사양):**
+
+| 서비스 | CPU (req/limit) | Memory (req/limit) |
+|--------|-----------------|-------------------|
+| iam-service | 100m / 300m | 192Mi / 384Mi |
+| course-service | 100m / 300m | 192Mi / 384Mi |
+| booking-service | 100m / 300m | 192Mi / 384Mi |
+| chat-service | 100m / 300m | 192Mi / 384Mi |
+| notify-service | 100m / 300m | 192Mi / 384Mi |
+| admin-api | 100m / 300m | 192Mi / 384Mi |
+| user-api | 100m / 300m | 192Mi / 384Mi |
+| chat-gateway | 200m / 500m | 192Mi / 384Mi |
+| PostgreSQL | 250m / 1000m | 512Mi / 1Gi |
+| NATS | 100m / 300m | 128Mi / 256Mi |
+
+**월 비용 계산 (Autopilot은 request 기준 과금):**
+
+| 항목 | 리소스 | 계산 | 월 비용 (USD) |
+|------|--------|------|---------------|
+| Pod CPU | 1.25 vCPU | 1.25 × $32.47 | ~$41 |
+| Pod Memory | 2.18 GB | 2.18 × $3.56 | ~$8 |
+| PVC (PostgreSQL) | 10 GB | 10 × $0.10 | ~$1 |
+| Load Balancer | 1개 | 고정 | ~$18 |
+| **합계** | | | **~$68 (~9만원)** |
+
+> **리소스 합계 (requests 기준):**
+> - CPU: 0.1×7 + 0.2 + 0.25 + 0.1 = **1.25 vCPU**
+> - Memory: 0.192×7 + 0.192 + 0.512 + 0.128 = **2.18 GB**
+>
+> ⚠️ **참고**: Autopilot은 Pod당 최소 250m CPU, 512Mi Memory를 요구할 수 있음
+> 이 경우 비용이 증가할 수 있음 (최대 ~$112/월)
 
 ### 비용 절약 팁
 

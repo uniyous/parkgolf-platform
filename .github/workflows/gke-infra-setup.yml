@@ -247,7 +247,7 @@ jobs:
                     value: /var/lib/postgresql/data/pgdata
                   resources:
                     requests:
-                      cpu: "500m"
+                      cpu: "250m"
                       memory: "512Mi"
                     limits:
                       cpu: "1000m"
@@ -358,7 +358,7 @@ jobs:
                       cpu: "100m"
                       memory: "128Mi"
                     limits:
-                      cpu: "500m"
+                      cpu: "300m"
                       memory: "256Mi"
                   readinessProbe:
                     httpGet:

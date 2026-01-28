@@ -147,41 +147,81 @@ jobs:
         run: |
           SERVICE=${{ matrix.service }}
 
-          # 서비스별 설정
+          # 서비스별 설정 (개발 환경 최소 사양)
           case $SERVICE in
             iam-service)
               DB_NAME="iam_db"
               NEEDS_DB="true"
+              CPU_REQ="100m"
+              CPU_LIM="300m"
+              MEM_REQ="192Mi"
+              MEM_LIM="384Mi"
               ;;
             course-service)
               DB_NAME="course_db"
               NEEDS_DB="true"
+              CPU_REQ="100m"
+              CPU_LIM="300m"
+              MEM_REQ="192Mi"
+              MEM_LIM="384Mi"
               ;;
             booking-service)
               DB_NAME="booking_db"
               NEEDS_DB="true"
+              CPU_REQ="100m"
+              CPU_LIM="300m"
+              MEM_REQ="192Mi"
+              MEM_LIM="384Mi"
               ;;
             chat-service)
               DB_NAME="chat_db"
               NEEDS_DB="true"
+              CPU_REQ="100m"
+              CPU_LIM="300m"
+              MEM_REQ="192Mi"
+              MEM_LIM="384Mi"
               ;;
             notify-service)
               DB_NAME="notify_db"
               NEEDS_DB="true"
+              CPU_REQ="100m"
+              CPU_LIM="300m"
+              MEM_REQ="192Mi"
+              MEM_LIM="384Mi"
               ;;
-            admin-api|user-api|chat-gateway)
+            chat-gateway)
               DB_NAME=""
               NEEDS_DB="false"
+              CPU_REQ="200m"
+              CPU_LIM="500m"
+              MEM_REQ="192Mi"
+              MEM_LIM="384Mi"
+              ;;
+            admin-api|user-api)
+              DB_NAME=""
+              NEEDS_DB="false"
+              CPU_REQ="100m"
+              CPU_LIM="300m"
+              MEM_REQ="192Mi"
+              MEM_LIM="384Mi"
               ;;
             *)
               DB_NAME=""
               NEEDS_DB="false"
+              CPU_REQ="100m"
+              CPU_LIM="300m"
+              MEM_REQ="192Mi"
+              MEM_LIM="384Mi"
               ;;
           esac
 
           echo "db_name=$DB_NAME" >> $GITHUB_OUTPUT
           echo "needs_db=$NEEDS_DB" >> $GITHUB_OUTPUT
-          echo "Service: $SERVICE, DB: $DB_NAME, NeedsDB: $NEEDS_DB"
+          echo "cpu_req=$CPU_REQ" >> $GITHUB_OUTPUT
+          echo "cpu_lim=$CPU_LIM" >> $GITHUB_OUTPUT
+          echo "mem_req=$MEM_REQ" >> $GITHUB_OUTPUT
+          echo "mem_lim=$MEM_LIM" >> $GITHUB_OUTPUT
+          echo "Service: $SERVICE, DB: $DB_NAME, CPU: $CPU_REQ/$CPU_LIM, MEM: $MEM_REQ/$MEM_LIM"
 
       - name: Deploy Service
         run: |
@@ -189,8 +229,13 @@ jobs:
           IMAGE=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/parkgolf/$SERVICE:${{ github.sha }}
           DB_NAME=${{ steps.config.outputs.db_name }}
           NEEDS_DB=${{ steps.config.outputs.needs_db }}
+          CPU_REQ=${{ steps.config.outputs.cpu_req }}
+          CPU_LIM=${{ steps.config.outputs.cpu_lim }}
+          MEM_REQ=${{ steps.config.outputs.mem_req }}
+          MEM_LIM=${{ steps.config.outputs.mem_lim }}
 
           echo "Deploying $SERVICE..."
+          echo "Resources: CPU=$CPU_REQ/$CPU_LIM, MEM=$MEM_REQ/$MEM_LIM"
 
           # DB 환경변수 설정
           if [ "$NEEDS_DB" = "true" ]; then
@@ -268,11 +313,11 @@ jobs:
           $DB_ENV
                   resources:
                     requests:
-                      cpu: "250m"
-                      memory: "512Mi"
+                      cpu: "$CPU_REQ"
+                      memory: "$MEM_REQ"
                     limits:
-                      cpu: "500m"
-                      memory: "1Gi"
+                      cpu: "$CPU_LIM"
+                      memory: "$MEM_LIM"
                   readinessProbe:
                     httpGet:
                       path: /health
