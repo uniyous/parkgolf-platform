@@ -273,21 +273,20 @@ sequenceDiagram
     participant IAM as iam-service
     participant FCM as Firebase FCM
     participant APNS as Apple APNs
-    participant AND as Android
-    participant IOS as iOS
+    participant Device as Android/iOS
 
     NS->>PS: sendPushNotification(userId, payload)
     PS->>IAM: NATS: users.devices.tokens
-    IAM-->>PS: [{platform: IOS, token: xxx}, {platform: ANDROID, token: yyy}]
+    IAM-->>PS: [{platform: IOS, token}, {platform: ANDROID, token}]
 
     PS->>FCM: sendEachForMulticast(tokens, message)
 
-    par Android 전송
-        FCM-->>AND: FCM Push
-    and iOS 전송
-        FCM->>APNS: APNs 브릿지
-        APNS-->>IOS: APNs Push
-    end
+    Note over FCM,Device: Android: FCM 직접 전송
+    FCM-->>Device: Push (Android)
+
+    Note over FCM,Device: iOS: APNs 브릿지 경유
+    FCM->>APNS: APNs 전달
+    APNS-->>Device: Push (iOS)
 
     FCM-->>PS: {successCount: 2, failureCount: 0}
     PS-->>NS: PushResult
