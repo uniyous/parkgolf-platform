@@ -125,8 +125,8 @@ jobs:
           gcloud container clusters create-auto ${{ env.CLUSTER_NAME }} \
             --region=${{ env.REGION }} \
             --release-channel=regular \
-            --network=default \
-            --subnetwork=default
+            --network=parkgolf-dev \
+            --subnetwork=parkgolf-dev
 
           echo "Cluster creation initiated, waiting for it to be ready..."
 
