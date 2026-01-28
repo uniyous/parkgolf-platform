@@ -39,32 +39,38 @@ export class WarmupService {
   private readonly services: ServiceConfig[] = [
     {
       name: 'iam-service',
-      httpUrl: process.env.IAM_SERVICE_URL || 'https://iam-service-dev-iihuzmuufa-du.a.run.app',
+      httpUrl: process.env.IAM_SERVICE_URL || 'http://iam-service:8080',
       natsPattern: 'iam.auth.ping',
       isNatsService: true,
     },
     {
       name: 'course-service',
-      httpUrl: process.env.COURSE_SERVICE_URL || 'https://course-service-dev-iihuzmuufa-du.a.run.app',
+      httpUrl: process.env.COURSE_SERVICE_URL || 'http://course-service:8080',
       natsPattern: 'course.ping',
       isNatsService: true,
     },
     {
       name: 'booking-service',
-      httpUrl: process.env.BOOKING_SERVICE_URL || 'https://booking-service-dev-iihuzmuufa-du.a.run.app',
+      httpUrl: process.env.BOOKING_SERVICE_URL || 'http://booking-service:8080',
       natsPattern: 'booking.ping',
       isNatsService: true,
     },
     {
       name: 'chat-gateway',
-      httpUrl: process.env.CHAT_GATEWAY_URL || 'https://chat-gateway-dev-iihuzmuufa-du.a.run.app',
+      httpUrl: process.env.CHAT_GATEWAY_URL || 'http://chat-gateway:8080',
       natsPattern: '', // chat-gateway는 NATS 직접 연결 안함 (HTTP only)
       isNatsService: false,
     },
     {
       name: 'chat-service',
-      httpUrl: process.env.CHAT_SERVICE_URL || 'https://chat-service-dev-iihuzmuufa-du.a.run.app',
+      httpUrl: process.env.CHAT_SERVICE_URL || 'http://chat-service:8080',
       natsPattern: 'chat.ping',
+      isNatsService: true,
+    },
+    {
+      name: 'notify-service',
+      httpUrl: process.env.NOTIFY_SERVICE_URL || 'http://notify-service:8080',
+      natsPattern: 'notification.ping',
       isNatsService: true,
     },
   ];

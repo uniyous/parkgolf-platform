@@ -30,7 +30,7 @@ const isDev = mode === 'development' || mode === 'e2e';
 const SERVER_URL = isDev
   ? '' // Vite 프록시 사용
   : (import.meta as any).env?.VITE_API_URL ||
-    'http://34.160.121.150';
+    'http://34.160.211.91';
 const API_BASE_URL = `${SERVER_URL}/api`;
 
 // 토큰 갱신 엔드포인트

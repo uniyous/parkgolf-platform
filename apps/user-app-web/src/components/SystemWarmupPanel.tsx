@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const USER_API_URL = import.meta.env.VITE_API_URL || 'http://34.160.121.150';
+const USER_API_URL = import.meta.env.VITE_API_URL || 'http://34.160.211.91';
 
 type StatusType = 'pending' | 'loading' | 'success' | 'error' | 'skipped';
 

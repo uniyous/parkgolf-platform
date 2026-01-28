@@ -169,31 +169,31 @@ jobs:
           case $SERVICE in
             iam-service)
               DB_NAME="iam_db"; NEEDS_DB="true"
-              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="192Mi"; MEM_LIM="384Mi"
+              CPU_REQ="200m"; CPU_LIM="500m"; MEM_REQ="256Mi"; MEM_LIM="512Mi"
               ;;
             course-service)
               DB_NAME="course_db"; NEEDS_DB="true"
-              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="192Mi"; MEM_LIM="384Mi"
+              CPU_REQ="200m"; CPU_LIM="500m"; MEM_REQ="256Mi"; MEM_LIM="512Mi"
               ;;
             booking-service)
               DB_NAME="booking_db"; NEEDS_DB="true"
-              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="192Mi"; MEM_LIM="384Mi"
+              CPU_REQ="200m"; CPU_LIM="500m"; MEM_REQ="256Mi"; MEM_LIM="512Mi"
               ;;
             chat-service)
               DB_NAME="chat_db"; NEEDS_DB="true"
-              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="192Mi"; MEM_LIM="384Mi"
+              CPU_REQ="200m"; CPU_LIM="500m"; MEM_REQ="256Mi"; MEM_LIM="512Mi"
               ;;
             notify-service)
               DB_NAME="notify_db"; NEEDS_DB="true"
-              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="192Mi"; MEM_LIM="384Mi"
+              CPU_REQ="200m"; CPU_LIM="500m"; MEM_REQ="256Mi"; MEM_LIM="512Mi"
               ;;
             chat-gateway)
               DB_NAME=""; NEEDS_DB="false"
-              CPU_REQ="200m"; CPU_LIM="500m"; MEM_REQ="192Mi"; MEM_LIM="384Mi"
+              CPU_REQ="200m"; CPU_LIM="500m"; MEM_REQ="256Mi"; MEM_LIM="512Mi"
               ;;
             *)
               DB_NAME=""; NEEDS_DB="false"
-              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="192Mi"; MEM_LIM="384Mi"
+              CPU_REQ="200m"; CPU_LIM="500m"; MEM_REQ="256Mi"; MEM_LIM="512Mi"
               ;;
           esac
           echo "db_name=$DB_NAME" >> $GITHUB_OUTPUT

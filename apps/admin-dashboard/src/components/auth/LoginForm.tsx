@@ -3,7 +3,7 @@ import { Check, X, Zap } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 
 // 서버 웜업 API 설정
-const ADMIN_API_URL = import.meta.env.VITE_API_URL || 'http://34.160.121.150';
+const ADMIN_API_URL = import.meta.env.VITE_API_URL || 'http://34.160.211.91';
 
 type StatusType = 'pending' | 'loading' | 'success' | 'error' | 'skipped';
 
@@ -81,6 +81,7 @@ const SERVICES = [
   { name: 'booking-service', isNats: true },
   { name: 'chat-gateway', isNats: false },
   { name: 'chat-service', isNats: true },
+  { name: 'notify-service', isNats: true },
 ];
 
 const NATS_SERVICES = SERVICES.filter(s => s.isNats);
@@ -458,7 +459,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               <div className="p-4 border-b border-zinc-700">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm text-zinc-200">1. 서버 웜업</span>
+                    <span className="font-medium text-sm text-zinc-200">1. 서버 테스트</span>
                     {httpStatuses.length > 0 && !isWarmingUp && (
                       <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
                         httpSuccessCount === SERVICES.length
