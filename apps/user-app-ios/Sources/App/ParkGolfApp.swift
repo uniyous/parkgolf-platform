@@ -2,12 +2,35 @@ import SwiftUI
 
 @main
 struct ParkGolfApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var appState = AppState()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(appState)
+                .onReceive(NotificationCenter.default.publisher(for: .navigateToBookingDetail)) { notification in
+                    if let bookingId = notification.userInfo?["bookingId"] as? Int {
+                        print("[Navigation] Navigate to booking: \(bookingId)")
+                        // TODO: Handle navigation to booking detail
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .navigateToFriendRequests)) { notification in
+                    if let requestId = notification.userInfo?["requestId"] as? Int {
+                        print("[Navigation] Navigate to friend request: \(requestId)")
+                        // TODO: Handle navigation to friend requests
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .navigateToFriendsList)) { _ in
+                    print("[Navigation] Navigate to friends list")
+                    // TODO: Handle navigation to friends list
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .navigateToChatRoom)) { notification in
+                    if let chatRoomId = notification.userInfo?["chatRoomId"] as? String {
+                        print("[Navigation] Navigate to chat room: \(chatRoomId)")
+                        // TODO: Handle navigation to chat room
+                    }
+                }
         }
     }
 }
@@ -41,9 +64,19 @@ final class AppState: ObservableObject {
 
         // 로그인 시 비밀번호 만료 체크
         checkPasswordExpiry()
+
+        // 로그인 시 푸시 알림 디바이스 등록
+        Task {
+            await PushNotificationManager.shared.onUserLoggedIn()
+        }
     }
 
     func signOut() {
+        // 로그아웃 시 푸시 알림 디바이스 해제
+        Task {
+            await PushNotificationManager.shared.onUserLoggedOut()
+        }
+
         currentUser = nil
         isAuthenticated = false
         hasShownPasswordReminder = false

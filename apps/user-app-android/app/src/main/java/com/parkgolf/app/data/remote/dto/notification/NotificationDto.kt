@@ -1,87 +1,97 @@
 package com.parkgolf.app.data.remote.dto.notification
 
-import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Notification DTO
  */
+@Serializable
 data class NotificationDto(
-    @SerializedName("id") val id: Int,
-    @SerializedName("userId") val userId: String,
-    @SerializedName("type") val type: String,
-    @SerializedName("title") val title: String,
-    @SerializedName("message") val message: String,
-    @SerializedName("data") val data: NotificationDataDto? = null,
-    @SerializedName("status") val status: String,
-    @SerializedName("readAt") val readAt: String? = null,
-    @SerializedName("createdAt") val createdAt: String,
-    @SerializedName("updatedAt") val updatedAt: String
+    @SerialName("id") val id: Int,
+    @SerialName("userId") val userId: String,
+    @SerialName("type") val type: String,
+    @SerialName("title") val title: String,
+    @SerialName("message") val message: String,
+    @SerialName("data") val data: NotificationDataDto? = null,
+    @SerialName("status") val status: String,
+    @SerialName("readAt") val readAt: String? = null,
+    @SerialName("createdAt") val createdAt: String,
+    @SerialName("updatedAt") val updatedAt: String
 )
 
 /**
  * Notification Data DTO
  */
+@Serializable
 data class NotificationDataDto(
-    @SerializedName("bookingId") val bookingId: String? = null,
-    @SerializedName("courseId") val courseId: String? = null,
-    @SerializedName("courseName") val courseName: String? = null,
-    @SerializedName("bookingDate") val bookingDate: String? = null,
-    @SerializedName("bookingTime") val bookingTime: String? = null,
-    @SerializedName("paymentId") val paymentId: String? = null,
-    @SerializedName("amount") val amount: Int? = null,
-    @SerializedName("failureReason") val failureReason: String? = null,
-    @SerializedName("friendId") val friendId: String? = null,
-    @SerializedName("friendName") val friendName: String? = null,
-    @SerializedName("chatRoomId") val chatRoomId: String? = null
+    @SerialName("bookingId") val bookingId: String? = null,
+    @SerialName("courseId") val courseId: String? = null,
+    @SerialName("courseName") val courseName: String? = null,
+    @SerialName("bookingDate") val bookingDate: String? = null,
+    @SerialName("bookingTime") val bookingTime: String? = null,
+    @SerialName("paymentId") val paymentId: String? = null,
+    @SerialName("amount") val amount: Int? = null,
+    @SerialName("failureReason") val failureReason: String? = null,
+    @SerialName("friendId") val friendId: String? = null,
+    @SerialName("friendName") val friendName: String? = null,
+    @SerialName("chatRoomId") val chatRoomId: String? = null
 )
 
 /**
  * Notifications Response
  */
+@Serializable
 data class NotificationsResponse(
-    @SerializedName("success") val success: Boolean,
-    @SerializedName("data") val data: NotificationsData
+    @SerialName("success") val success: Boolean,
+    @SerialName("data") val data: NotificationsData
 )
 
+@Serializable
 data class NotificationsData(
-    @SerializedName("notifications") val notifications: List<NotificationDto>,
-    @SerializedName("total") val total: Int,
-    @SerializedName("page") val page: Int,
-    @SerializedName("totalPages") val totalPages: Int
+    @SerialName("notifications") val notifications: List<NotificationDto>,
+    @SerialName("total") val total: Int,
+    @SerialName("page") val page: Int,
+    @SerialName("totalPages") val totalPages: Int
 )
 
 /**
  * Unread Count Response
  */
+@Serializable
 data class UnreadCountResponse(
-    @SerializedName("success") val success: Boolean,
-    @SerializedName("count") val count: Int
+    @SerialName("success") val success: Boolean,
+    @SerialName("count") val count: Int
 )
 
 /**
  * Mark As Read Response
  */
+@Serializable
 data class MarkAsReadResponse(
-    @SerializedName("success") val success: Boolean,
-    @SerializedName("data") val data: NotificationDto? = null
+    @SerialName("success") val success: Boolean,
+    @SerialName("data") val data: NotificationDto? = null
 )
 
 /**
  * Mark All As Read Response
  */
+@Serializable
 data class MarkAllAsReadResponse(
-    @SerializedName("success") val success: Boolean,
-    @SerializedName("data") val data: MarkAllAsReadData? = null
+    @SerialName("success") val success: Boolean,
+    @SerialName("data") val data: MarkAllAsReadData? = null
 )
 
+@Serializable
 data class MarkAllAsReadData(
-    @SerializedName("count") val count: Int
+    @SerialName("count") val count: Int
 )
 
 /**
  * Delete Notification Response
  */
+@Serializable
 data class DeleteNotificationResponse(
-    @SerializedName("success") val success: Boolean,
-    @SerializedName("message") val message: String? = null
+    @SerialName("success") val success: Boolean,
+    @SerialName("message") val message: String? = null
 )

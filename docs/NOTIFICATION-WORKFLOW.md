@@ -14,6 +14,7 @@ Park Golf Platform 알림 시스템 아키텍처 및 워크플로우 문서입�
 8. [데이터베이스 스키마](#8-데이터베이스-스키마)
 9. [클라이언트 구현](#9-클라이언트-구현)
 10. [설정 및 환경변수](#10-설정-및-환경변수)
+11. [부록: iOS Push 알림 구현 가이드](#부록-ios-push-알림-구현-가이드)
 
 ---
 
@@ -713,3 +714,278 @@ gcloud run logs read --service=notify-service-dev | grep -i firebase
 # Push 전송 로그
 gcloud run logs read --service=notify-service-dev | grep -i "FCM\|Push"
 ```
+
+---
+
+## 부록: iOS Push 알림 구현 가이드
+
+### 현재 구현 상태
+
+| 항목 | 상태 | 파일 위치 |
+|------|------|----------|
+| AppDelegate Push 권한 요청 | ✅ 완료 | `Sources/App/AppDelegate.swift` |
+| APNs 토큰 수신 처리 | ✅ 완료 | `Sources/App/AppDelegate.swift` |
+| PushNotificationManager | ✅ 완료 | `Sources/Core/Network/DeviceService.swift` |
+| 로그인/로그아웃 연동 | ✅ 완료 | `Sources/App/ParkGolfApp.swift` |
+| 알림 탭 시 화면 이동 | ✅ 완료 | `Sources/App/AppDelegate.swift` |
+| Entitlements 설정 | ✅ 완료 | `Project.swift` |
+| Firebase SDK 연동 | ❌ 미완료 | - |
+| APNs 키 등록 | ❌ 미완료 | Firebase Console |
+
+### 추가 작업 순서
+
+```mermaid
+flowchart TB
+    subgraph Step1["1단계: Apple Developer 등록"]
+        A1[Apple Developer Program 가입<br/>$99/년]
+        A2[App ID 생성<br/>com.parkgolf.app]
+        A3[Push Notifications 활성화]
+        A4[APNs Key 생성<br/>.p8 파일 다운로드]
+    end
+
+    subgraph Step2["2단계: Firebase 설정"]
+        B1[Firebase Console 접속]
+        B2[프로젝트 설정 > Cloud Messaging]
+        B3[APNs 인증 키 업로드<br/>.p8 + Key ID + Team ID]
+        B4[GoogleService-Info.plist 다운로드]
+    end
+
+    subgraph Step3["3단계: iOS 앱 Firebase SDK 연동"]
+        C1[Firebase SDK 설치<br/>SPM: firebase-ios-sdk]
+        C2[GoogleService-Info.plist 추가]
+        C3[AppDelegate에 Firebase 초기화]
+        C4[FCM 토큰 수신 코드 추가]
+    end
+
+    subgraph Step4["4단계: 배포 설정"]
+        D1[Provisioning Profile 생성<br/>Push Notifications 포함]
+        D2[Xcode 서명 설정]
+        D3[TestFlight 배포 테스트]
+    end
+
+    A1 --> A2 --> A3 --> A4
+    A4 --> B1
+    B1 --> B2 --> B3 --> B4
+    B4 --> C1
+    C1 --> C2 --> C3 --> C4
+    C4 --> D1
+    D1 --> D2 --> D3
+```
+
+### 1단계: Apple Developer Program 등록
+
+1. **Apple Developer Program 가입**
+   - https://developer.apple.com/programs/ 접속
+   - 연간 $99 (약 13만원)
+   - 등록 완료까지 24-48시간 소요
+
+2. **App ID 생성**
+   - Certificates, Identifiers & Profiles > Identifiers
+   - Bundle ID: `com.parkgolf.app`
+   - Capabilities에서 "Push Notifications" 체크
+
+3. **APNs Key 생성**
+   - Keys 메뉴에서 새 키 생성
+   - "Apple Push Notifications service (APNs)" 체크
+   - `.p8` 파일 다운로드 (한 번만 가능, 안전하게 보관)
+   - Key ID 기록 (10자리 영숫자)
+
+### 2단계: Firebase Console 설정
+
+1. **Firebase Console** 접속: https://console.firebase.google.com
+
+2. **프로젝트 설정 > Cloud Messaging**
+
+3. **APNs 인증 키 등록**
+   - "Apple 앱 구성" 섹션
+   - APNs 인증 키 업로드 (.p8 파일)
+   - Key ID 입력
+   - Team ID 입력 (Apple Developer 계정에서 확인)
+
+4. **GoogleService-Info.plist 다운로드**
+   - 프로젝트 설정 > 일반 > iOS 앱
+   - `GoogleService-Info.plist` 다운로드
+
+### 3단계: iOS 앱 Firebase SDK 연동
+
+#### 3.1 Firebase SDK 설치 (SPM)
+
+`apps/user-app-ios/Tuist/Package.swift` 수정:
+
+```swift
+// Package.swift
+dependencies: [
+    .package(url: "https://github.com/firebase/firebase-ios-sdk", from: "11.0.0"),
+]
+```
+
+`Project.swift` dependencies 추가:
+
+```swift
+dependencies: [
+    .external(name: "Alamofire"),
+    .external(name: "KeychainAccess"),
+    .external(name: "SocketIO"),
+    .external(name: "FirebaseMessaging"),  // 추가
+]
+```
+
+#### 3.2 GoogleService-Info.plist 추가
+
+- `apps/user-app-ios/Resources/GoogleService-Info.plist` 위치에 파일 복사
+
+#### 3.3 AppDelegate Firebase 초기화
+
+```swift
+// AppDelegate.swift
+import FirebaseCore
+import FirebaseMessaging
+
+class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
+
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Firebase 초기화
+        FirebaseApp.configure()
+
+        // FCM delegate 설정
+        Messaging.messaging().delegate = self
+
+        // 기존 Push 알림 설정...
+        UNUserNotificationCenter.current().delegate = self
+        requestPushNotificationPermission(application: application)
+
+        return true
+    }
+
+    // APNs 토큰 수신 시 FCM에 전달
+    func application(_ application: UIApplication,
+                     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        // FCM에 APNs 토큰 전달 (FCM이 자체 토큰 생성)
+        Messaging.messaging().apnsToken = deviceToken
+    }
+
+    // MARK: - MessagingDelegate
+
+    // FCM 토큰 수신 (서버에 등록할 토큰)
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        guard let token = fcmToken else { return }
+        print("[FCM] Token received: \(token.prefix(20))...")
+
+        Task {
+            await PushNotificationManager.shared.setFCMToken(token)
+            await PushNotificationManager.shared.registerDeviceIfNeeded()
+        }
+    }
+}
+```
+
+#### 3.4 PushNotificationManager FCM 토큰 지원
+
+```swift
+// DeviceService.swift - PushNotificationManager 수정
+actor PushNotificationManager {
+    static let shared = PushNotificationManager()
+
+    private var fcmToken: String?  // APNs 대신 FCM 토큰 사용
+    private var isRegistered = false
+    private let deviceService = DeviceService.shared
+
+    /// FCM 토큰 설정 (MessagingDelegate에서 호출)
+    func setFCMToken(_ token: String) {
+        self.fcmToken = token
+        print("[PushNotificationManager] FCM Token set: \(token.prefix(20))...")
+    }
+
+    /// 서버에 디바이스 등록
+    func registerDeviceIfNeeded() async {
+        guard let token = fcmToken else {
+            print("[PushNotificationManager] No FCM token available")
+            return
+        }
+
+        guard !isRegistered else { return }
+
+        do {
+            let response = try await deviceService.registerDevice(deviceToken: token)
+            isRegistered = true
+            print("[PushNotificationManager] Device registered: ID=\(response.id)")
+        } catch {
+            print("[PushNotificationManager] Registration failed: \(error)")
+        }
+    }
+
+    // ... 나머지 메서드 동일
+}
+```
+
+### 4단계: 배포 설정
+
+#### Provisioning Profile 생성
+
+1. Apple Developer > Profiles
+2. iOS App Development (개발용) 또는 App Store (배포용) 선택
+3. App ID 선택 (Push Notifications 포함된 것)
+4. 인증서 및 디바이스 선택
+5. 프로필 다운로드
+
+#### Xcode 서명 설정
+
+```swift
+// Project.swift - entitlements 수정 (배포용)
+entitlements: .dictionary([
+    "aps-environment": .string("production"),  // development → production
+]),
+```
+
+### APNs 토큰 vs FCM 토큰 비교
+
+```mermaid
+flowchart TB
+    subgraph Current["현재 구현 (APNs 직접)"]
+        C1[앱 시작] --> C2[APNs 토큰 수신<br/>Data 타입]
+        C2 --> C3[Hex 문자열 변환]
+        C3 --> C4[서버 등록<br/>64자 hex]
+        C4 --> C5[서버에서 FCM API 호출 시<br/>APNs 토큰 사용 불가 ❌]
+    end
+
+    subgraph Target["목표 구현 (FCM 연동)"]
+        T1[앱 시작] --> T2[Firebase 초기화]
+        T2 --> T3[APNs 토큰 → FCM 전달]
+        T3 --> T4[FCM 토큰 수신<br/>String 타입, ~150자]
+        T4 --> T5[서버 등록]
+        T5 --> T6[서버에서 FCM API로<br/>Push 전송 ✅]
+    end
+```
+
+### 테스트 방법
+
+#### 개발 환경 테스트
+
+```bash
+# Firebase Console > Cloud Messaging > 테스트 메시지 전송
+# FCM 토큰 입력 후 테스트 전송
+```
+
+#### 서버 로그 확인
+
+```bash
+# notify-service 로그에서 Push 전송 확인
+gcloud run logs read --service=notify-service-dev | grep -i "FCM\|Push"
+
+# 예상 로그:
+# [PushService] Sending push to user 123 (2 devices)
+# [PushService] FCM multicast result: 2 success, 0 failures
+```
+
+### 예상 일정
+
+| 작업 | 예상 소요 |
+|------|----------|
+| Apple Developer 가입 | 1-2일 (심사) |
+| APNs Key 생성 | 30분 |
+| Firebase 설정 | 30분 |
+| iOS SDK 연동 | 2-4시간 |
+| 테스트 및 디버깅 | 1-2일 |
+
+> **참고**: Apple Developer Program 가입 완료 후 진행하세요.
