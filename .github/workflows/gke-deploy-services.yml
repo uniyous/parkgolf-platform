@@ -159,6 +159,7 @@ jobs:
           SERVICE=${{ matrix.service }}
 
           # 서비스별 설정 (개발 환경 최소 사양)
+          # 모든 서비스는 PORT=8080 으로 통일
           case $SERVICE in
             iam-service)
               DB_NAME="iam_db"
@@ -246,7 +247,7 @@ jobs:
           MEM_LIM=${{ steps.config.outputs.mem_lim }}
 
           echo "Deploying $SERVICE..."
-          echo "Resources: CPU=$CPU_REQ/$CPU_LIM, MEM=$MEM_REQ/$MEM_LIM"
+          echo "Port: 8080, Resources: CPU=$CPU_REQ/$CPU_LIM, MEM=$MEM_REQ/$MEM_LIM"
 
           # DB 환경변수 설정
           if [ "$NEEDS_DB" = "true" ]; then
@@ -279,8 +280,8 @@ jobs:
             namespace: ${{ env.NAMESPACE }}
           spec:
             ports:
-            - port: 3000
-              targetPort: 3000
+            - port: 8080
+              targetPort: 8080
             selector:
               app: $SERVICE
           ---
@@ -303,8 +304,10 @@ jobs:
                 - name: $SERVICE
                   image: $IMAGE
                   ports:
-                  - containerPort: 3000
+                  - containerPort: 8080
                   env:
+                  - name: PORT
+                    value: "8080"
                   - name: NODE_ENV
                     valueFrom:
                       configMapKeyRef:
@@ -336,14 +339,14 @@ jobs:
                   readinessProbe:
                     httpGet:
                       path: /health
-                      port: 3000
+                      port: 8080
                     initialDelaySeconds: 15
                     periodSeconds: 5
                     failureThreshold: 3
                   livenessProbe:
                     httpGet:
                       path: /health
-                      port: 3000
+                      port: 8080
                     initialDelaySeconds: 30
                     periodSeconds: 10
                     failureThreshold: 3
@@ -447,14 +450,14 @@ jobs:
                     service:
                       name: admin-api
                       port:
-                        number: 3000
+                        number: 8080
                 - path: /api/admin/*
                   pathType: ImplementationSpecific
                   backend:
                     service:
                       name: admin-api
                       port:
-                        number: 3000
+                        number: 8080
                 # User API
                 - path: /api/user
                   pathType: Prefix
@@ -462,14 +465,14 @@ jobs:
                     service:
                       name: user-api
                       port:
-                        number: 3000
+                        number: 8080
                 - path: /api/user/*
                   pathType: ImplementationSpecific
                   backend:
                     service:
                       name: user-api
                       port:
-                        number: 3000
+                        number: 8080
                 # WebSocket (chat-gateway)
                 - path: /socket.io
                   pathType: Prefix
@@ -477,42 +480,42 @@ jobs:
                     service:
                       name: chat-gateway
                       port:
-                        number: 3000
+                        number: 8080
                 - path: /socket.io/*
                   pathType: ImplementationSpecific
                   backend:
                     service:
                       name: chat-gateway
                       port:
-                        number: 3000
+                        number: 8080
                 - path: /chat
                   pathType: Prefix
                   backend:
                     service:
                       name: chat-gateway
                       port:
-                        number: 3000
+                        number: 8080
                 - path: /chat/*
                   pathType: ImplementationSpecific
                   backend:
                     service:
                       name: chat-gateway
                       port:
-                        number: 3000
+                        number: 8080
                 - path: /notification
                   pathType: Prefix
                   backend:
                     service:
                       name: chat-gateway
                       port:
-                        number: 3000
+                        number: 8080
                 - path: /notification/*
                   pathType: ImplementationSpecific
                   backend:
                     service:
                       name: chat-gateway
                       port:
-                        number: 3000
+                        number: 8080
           EOF
 
       - name: Deployment Summary
