@@ -33,6 +33,7 @@ class NotificationRepositoryImpl @Inject constructor(
                         data = notifications,
                         total = response.data.total,
                         page = response.data.page,
+                        limit = response.data.limit,
                         totalPages = response.data.totalPages
                     )
                 )

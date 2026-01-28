@@ -52,6 +52,7 @@ data class NotificationsData(
     @SerialName("notifications") val notifications: List<NotificationDto>,
     @SerialName("total") val total: Int,
     @SerialName("page") val page: Int,
+    @SerialName("limit") val limit: Int,
     @SerialName("totalPages") val totalPages: Int
 )
 
