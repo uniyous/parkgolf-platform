@@ -410,8 +410,21 @@ jobs:
       - name: Wait for PostgreSQL
         run: |
           echo "Waiting for PostgreSQL..."
-          kubectl wait --for=condition=ready pod -l app=postgres \
-            -n ${{ needs.setup.outputs.namespace }} --timeout=300s
+          NAMESPACE=${{ needs.setup.outputs.namespace }}
+
+          # Wait for StatefulSet to be created
+          for i in {1..30}; do
+            if kubectl get statefulset postgres -n $NAMESPACE &>/dev/null; then
+              echo "PostgreSQL StatefulSet found"
+              break
+            fi
+            echo "Waiting for StatefulSet... ($i/30)"
+            sleep 5
+          done
+
+          # Wait for rollout
+          kubectl rollout status statefulset/postgres -n $NAMESPACE --timeout=300s
+          echo "PostgreSQL is ready"
 
       - name: Initialize Databases
         run: |
@@ -499,9 +512,22 @@ jobs:
 
       - name: Wait for NATS
         run: |
-          echo "Waiting for NATS..."
-          kubectl wait --for=condition=ready pod -l app=nats \
-            -n ${{ needs.setup.outputs.namespace }} --timeout=120s
+          echo "Waiting for NATS deployment..."
+          NAMESPACE=${{ needs.setup.outputs.namespace }}
+
+          # Wait for deployment to be created
+          for i in {1..30}; do
+            if kubectl get deployment nats -n $NAMESPACE &>/dev/null; then
+              echo "NATS deployment found"
+              break
+            fi
+            echo "Waiting for deployment... ($i/30)"
+            sleep 5
+          done
+
+          # Wait for rollout
+          kubectl rollout status deployment/nats -n $NAMESPACE --timeout=120s
+          echo "NATS is ready"
 
       - name: Summary
         run: |
