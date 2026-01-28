@@ -107,22 +107,14 @@ jobs:
         id: env-vars
         run: |
           ENV="${{ needs.setup.outputs.environment }}"
-          APP="${{ matrix.app }}"
 
-          # 앱별 API URL 설정 (admin-dashboard는 클라이언트에서 /api prefix 추가)
-          if [ "$APP" == "admin-dashboard" ]; then
-            if [ "$ENV" == "prod" ]; then
-              echo "api_url=https://admin-api-prod-iihuzmuufa-du.a.run.app" >> $GITHUB_OUTPUT
-            else
-              echo "api_url=https://admin-api-dev-iihuzmuufa-du.a.run.app" >> $GITHUB_OUTPUT
-            fi
+          # GKE Ingress URL (환경별)
+          # dev: http://34.160.121.150 (parkgolf-dev-cluster Static IP)
+          # prod: https://api.parkgolf.com (도메인 설정 시)
+          if [ "$ENV" == "prod" ]; then
+            echo "api_url=https://api.parkgolf.com" >> $GITHUB_OUTPUT
           else
-            # user-app-web (프론트엔드 경로가 이미 /api/user/... 형태)
-            if [ "$ENV" == "prod" ]; then
-              echo "api_url=https://user-api-prod-iihuzmuufa-du.a.run.app" >> $GITHUB_OUTPUT
-            else
-              echo "api_url=https://user-api-dev-iihuzmuufa-du.a.run.app" >> $GITHUB_OUTPUT
-            fi
+            echo "api_url=http://34.160.121.150" >> $GITHUB_OUTPUT
           fi
 
       - name: Build

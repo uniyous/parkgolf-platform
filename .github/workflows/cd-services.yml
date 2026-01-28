@@ -1,48 +1,19 @@
 # Backend Services CD Pipeline
-# Builds, pushes, and deploys backend services to Cloud Run
 #
-# ============================================================================
-# Infrastructure Architecture (External IP 방식)
-# ============================================================================
-# Cloud Run 서비스가 VM의 External IP를 통해 직접 접속합니다.
-# (VPC Connector 대신 External IP 방식 사용)
+# Builds and deploys backend services to GKE Autopilot cluster.
 #
-# NATS 연결 설정:
-# - 환경변수: NATS_URL (GitHub Secrets에서 관리)
-# - NATS VM External IP를 통해 직접 연결
-# - Firewall: 0.0.0.0/0 → :4222 허용
+# Prerequisites:
+#   1. Run cd-infra.yml (gke-setup) to create cluster
+#   2. GitHub Secrets: GCP_SA_KEY
 #
-# Database 연결:
-# - PostgreSQL VM External IP를 통해 직접 연결
-# - Firewall: 0.0.0.0/0 → :5432 허용
-# - 보안: DB 비밀번호 인증
-#
-# 서비스별 NATS 사용:
-# - iam-service: auth.*, users.* 패턴 처리
-# - course-service: course.*, hole.*, company.* 패턴 처리
-# - booking-service: booking.* 패턴 처리
-# - notify-service: notification.> 구독
-# - chat-gateway: WebSocket 게이트웨이, chat.* JetStream 발행/구독
-# - chat-service: chat.rooms.*, chat.messages.* 패턴 처리
-# - admin-api: 모든 서비스에 NATS Request 전송
-# - user-api: auth.*, booking.*, course.* Request 전송
-#
-# 문제 해결:
-# 1. NATS VM 상태 확인: gcloud compute instances list --filter="name~nats"
-# 2. Firewall 확인: gcloud compute firewall-rules list --filter="name~nats"
-# 3. Cloud Run 로그 확인: gcloud run logs read --service={service}-{env}
-# ============================================================================
+# Usage:
+#   Actions > CD Services > Run workflow
 
 name: CD Services
 
 on:
   workflow_dispatch:
     inputs:
-      ref:
-        description: 'Branch to deploy from'
-        required: true
-        type: string
-        default: 'develop'
       environment:
         description: 'Target environment'
         required: true
@@ -55,21 +26,11 @@ on:
         description: 'Services to deploy (comma-separated or "all")'
         required: true
         default: 'all'
-
-permissions:
-  contents: read
-  id-token: write
-
-concurrency:
-  group: cd-services-${{ github.event.inputs.environment || 'dev' }}
-  cancel-in-progress: true
+        type: string
 
 env:
-  NODE_VERSION: '20'
-  REGISTRY: asia-northeast3-docker.pkg.dev
-  PROJECT_ID: parkgolf-uniyous
-  REPOSITORY: parkgolf
   REGION: asia-northeast3
+  REGISTRY: asia-northeast3-docker.pkg.dev
 
 jobs:
   # ============================================================================
@@ -80,246 +41,436 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.env.outputs.environment }}
-      services: ${{ steps.services.outputs.list }}
+      cluster_name: ${{ steps.env.outputs.cluster_name }}
+      namespace: ${{ steps.env.outputs.namespace }}
+      services: ${{ steps.services.outputs.services }}
+      matrix: ${{ steps.services.outputs.matrix }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.ref || 'develop' }}
-
-      - name: Determine environment
+      - name: Set Environment
         id: env
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "environment=prod" >> $GITHUB_OUTPUT
-          else
-            echo "environment=dev" >> $GITHUB_OUTPUT
-          fi
+          ENV="${{ github.event.inputs.environment }}"
+          echo "environment=$ENV" >> $GITHUB_OUTPUT
+          echo "cluster_name=parkgolf-${ENV}-cluster" >> $GITHUB_OUTPUT
+          echo "namespace=parkgolf-${ENV}" >> $GITHUB_OUTPUT
 
-      - name: Determine services to deploy
+      - name: Set Services
         id: services
         run: |
-          ALL_SERVICES='["iam-service","course-service","booking-service","notify-service","chat-gateway","chat-service","admin-api","user-api"]'
-
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            INPUT_SERVICES="${{ github.event.inputs.services }}"
-            # Remove quotes and trim whitespace
-            INPUT_SERVICES=$(echo "$INPUT_SERVICES" | tr -d '"' | tr -d "'" | xargs)
-
-            if [ "$INPUT_SERVICES" == "all" ]; then
-              echo "list=$ALL_SERVICES" >> $GITHUB_OUTPUT
-            else
-              # Split by comma, trim whitespace, and format as JSON array
-              SERVICES=$(echo "$INPUT_SERVICES" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | jq -R -s -c 'split("\n") | map(select(length > 0))')
-              echo "list=$SERVICES" >> $GITHUB_OUTPUT
-            fi
+          INPUT="${{ github.event.inputs.services }}"
+          if [ "$INPUT" = "all" ] || [ -z "$INPUT" ]; then
+            SERVICES="iam-service,course-service,booking-service,chat-service,notify-service,admin-api,user-api,chat-gateway"
           else
-            # For push events, detect changed services
-            CHANGED_SERVICES=$(git diff --name-only HEAD~1 HEAD -- services/ | cut -d'/' -f2 | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
-            if [ "$CHANGED_SERVICES" == "[]" ]; then
-              echo "list=$ALL_SERVICES" >> $GITHUB_OUTPUT
-            else
-              echo "list=$CHANGED_SERVICES" >> $GITHUB_OUTPUT
-            fi
+            SERVICES="$INPUT"
           fi
+          echo "services=$SERVICES" >> $GITHUB_OUTPUT
+          MATRIX=$(echo $SERVICES | tr ',' '\n' | jq -R . | jq -s -c .)
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "Services to deploy: $SERVICES"
 
   # ============================================================================
   # Build and Push
   # ============================================================================
-  build:
+  build-and-push:
     name: Build ${{ matrix.service }}
     needs: setup
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
-        service: ${{ fromJson(needs.setup.outputs.services) }}
+        service: ${{ fromJson(needs.setup.outputs.matrix) }}
+      fail-fast: false
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.ref || 'develop' }}
 
-      - name: Authenticate to Google Cloud
+      - name: Google Auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Setup gcloud
+      - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+
+      - name: Extract Project ID
+        run: |
+          PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')
+          echo "PROJECT_ID=$PROJECT_ID" >> $GITHUB_ENV
 
       - name: Configure Docker
         run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
 
-      - name: Set image tags
-        id: tags
+      - name: Check Service Directory
+        id: check
         run: |
-          ENV="${{ needs.setup.outputs.environment }}"
-          IMAGE_BASE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.service }}"
-          echo "sha_tag=${IMAGE_BASE}:${ENV}-${{ github.sha }}" >> $GITHUB_OUTPUT
-          echo "latest_tag=${IMAGE_BASE}:${ENV}-latest" >> $GITHUB_OUTPUT
+          if [ -d "services/${{ matrix.service }}" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "::warning::Service directory not found: services/${{ matrix.service }}"
+          fi
 
-      - name: Build and push Docker image
+      - name: Build Docker Image
+        if: steps.check.outputs.exists == 'true'
         run: |
+          SERVICE=${{ matrix.service }}
+          IMAGE=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/parkgolf/$SERVICE
+          ENV=${{ needs.setup.outputs.environment }}
+
           docker build \
-            -t ${{ steps.tags.outputs.sha_tag }} \
-            -t ${{ steps.tags.outputs.latest_tag }} \
-            -f services/${{ matrix.service }}/Dockerfile \
-            --build-arg NODE_ENV=${{ needs.setup.outputs.environment == 'prod' && 'production' || 'development' }} \
-            services/${{ matrix.service }}
+            -t $IMAGE:${{ github.sha }} \
+            -t $IMAGE:${ENV}-latest \
+            -f services/$SERVICE/Dockerfile \
+            services/$SERVICE
 
-          docker push ${{ steps.tags.outputs.sha_tag }}
-          docker push ${{ steps.tags.outputs.latest_tag }}
+      - name: Push Docker Image
+        if: steps.check.outputs.exists == 'true'
+        run: |
+          SERVICE=${{ matrix.service }}
+          IMAGE=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/parkgolf/$SERVICE
+          ENV=${{ needs.setup.outputs.environment }}
+
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:${ENV}-latest
 
   # ============================================================================
-  # Deploy to Cloud Run
+  # Deploy
   # ============================================================================
   deploy:
     name: Deploy ${{ matrix.service }}
-    needs: [setup, build]
+    needs: [setup, build-and-push]
     runs-on: ubuntu-latest
     environment: ${{ needs.setup.outputs.environment }}
     strategy:
-      fail-fast: false
       matrix:
-        service: ${{ fromJson(needs.setup.outputs.services) }}
+        service: ${{ fromJson(needs.setup.outputs.matrix) }}
+      max-parallel: 3
+      fail-fast: false
     steps:
-      - name: Authenticate to Google Cloud
+      - name: Google Auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Setup gcloud
+      - name: Extract Project ID
+        run: |
+          PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')
+          echo "PROJECT_ID=$PROJECT_ID" >> $GITHUB_ENV
+
+      - name: Get GKE Credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ needs.setup.outputs.cluster_name }}
+          location: ${{ env.REGION }}
+
+      - name: Set Service Config
+        id: config
+        run: |
+          SERVICE=${{ matrix.service }}
+          case $SERVICE in
+            iam-service)
+              DB_NAME="iam_db"; NEEDS_DB="true"
+              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="192Mi"; MEM_LIM="384Mi"
+              ;;
+            course-service)
+              DB_NAME="course_db"; NEEDS_DB="true"
+              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="192Mi"; MEM_LIM="384Mi"
+              ;;
+            booking-service)
+              DB_NAME="booking_db"; NEEDS_DB="true"
+              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="192Mi"; MEM_LIM="384Mi"
+              ;;
+            chat-service)
+              DB_NAME="chat_db"; NEEDS_DB="true"
+              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="192Mi"; MEM_LIM="384Mi"
+              ;;
+            notify-service)
+              DB_NAME="notify_db"; NEEDS_DB="true"
+              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="192Mi"; MEM_LIM="384Mi"
+              ;;
+            chat-gateway)
+              DB_NAME=""; NEEDS_DB="false"
+              CPU_REQ="200m"; CPU_LIM="500m"; MEM_REQ="192Mi"; MEM_LIM="384Mi"
+              ;;
+            *)
+              DB_NAME=""; NEEDS_DB="false"
+              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="192Mi"; MEM_LIM="384Mi"
+              ;;
+          esac
+          echo "db_name=$DB_NAME" >> $GITHUB_OUTPUT
+          echo "needs_db=$NEEDS_DB" >> $GITHUB_OUTPUT
+          echo "cpu_req=$CPU_REQ" >> $GITHUB_OUTPUT
+          echo "cpu_lim=$CPU_LIM" >> $GITHUB_OUTPUT
+          echo "mem_req=$MEM_REQ" >> $GITHUB_OUTPUT
+          echo "mem_lim=$MEM_LIM" >> $GITHUB_OUTPUT
+
+      - name: Deploy Service
+        run: |
+          SERVICE=${{ matrix.service }}
+          NAMESPACE=${{ needs.setup.outputs.namespace }}
+          IMAGE=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/parkgolf/$SERVICE:${{ github.sha }}
+          DB_NAME=${{ steps.config.outputs.db_name }}
+          NEEDS_DB=${{ steps.config.outputs.needs_db }}
+
+          # Create DATABASE_URL secret if needed
+          if [ "$NEEDS_DB" = "true" ]; then
+            DB_USER=$(kubectl get secret parkgolf-secrets -n $NAMESPACE -o jsonpath='{.data.POSTGRES_USER}' | base64 -d)
+            DB_PASS=$(kubectl get secret parkgolf-secrets -n $NAMESPACE -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d)
+            DATABASE_URL="postgresql://${DB_USER}:${DB_PASS}@postgres:5432/${DB_NAME}"
+            kubectl create secret generic ${SERVICE}-db-secret \
+              --namespace=$NAMESPACE \
+              --from-literal=DATABASE_URL="${DATABASE_URL}" \
+              --dry-run=client -o yaml | kubectl apply -f -
+            DB_ENV="
+                  - name: DATABASE_URL
+                    valueFrom:
+                      secretKeyRef:
+                        name: ${SERVICE}-db-secret
+                        key: DATABASE_URL"
+          else
+            DB_ENV=""
+          fi
+
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: $SERVICE
+            namespace: $NAMESPACE
+          spec:
+            ports:
+            - port: 8080
+              targetPort: 8080
+            selector:
+              app: $SERVICE
+          ---
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: $SERVICE
+            namespace: $NAMESPACE
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: $SERVICE
+            template:
+              metadata:
+                labels:
+                  app: $SERVICE
+              spec:
+                containers:
+                - name: $SERVICE
+                  image: $IMAGE
+                  ports:
+                  - containerPort: 8080
+                  env:
+                  - name: PORT
+                    value: "8080"
+                  - name: NODE_ENV
+                    valueFrom:
+                      configMapKeyRef:
+                        name: parkgolf-config
+                        key: NODE_ENV
+                  - name: NATS_URL
+                    valueFrom:
+                      configMapKeyRef:
+                        name: parkgolf-config
+                        key: NATS_URL
+                  - name: JWT_SECRET
+                    valueFrom:
+                      secretKeyRef:
+                        name: parkgolf-secrets
+                        key: JWT_SECRET
+                  - name: JWT_REFRESH_SECRET
+                    valueFrom:
+                      secretKeyRef:
+                        name: parkgolf-secrets
+                        key: JWT_REFRESH_SECRET
+          $DB_ENV
+                  resources:
+                    requests:
+                      cpu: "${{ steps.config.outputs.cpu_req }}"
+                      memory: "${{ steps.config.outputs.mem_req }}"
+                    limits:
+                      cpu: "${{ steps.config.outputs.cpu_lim }}"
+                      memory: "${{ steps.config.outputs.mem_lim }}"
+                  readinessProbe:
+                    httpGet:
+                      path: /health
+                      port: 8080
+                    initialDelaySeconds: 15
+                    periodSeconds: 5
+                  livenessProbe:
+                    httpGet:
+                      path: /health
+                      port: 8080
+                    initialDelaySeconds: 30
+                    periodSeconds: 10
+          EOF
+
+      - name: Wait for Rollout
+        run: |
+          kubectl rollout status deployment/${{ matrix.service }} \
+            -n ${{ needs.setup.outputs.namespace }} --timeout=300s
+
+  # ============================================================================
+  # Setup Ingress
+  # ============================================================================
+  setup-ingress:
+    name: Setup Ingress
+    needs: [setup, deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: 'gke-gcloud-auth-plugin'
 
-      - name: Set deployment variables
-        id: vars
+      - name: Get GKE Credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ needs.setup.outputs.cluster_name }}
+          location: ${{ env.REGION }}
+
+      - name: Create Static IP
         run: |
-          ENV="${{ needs.setup.outputs.environment }}"
-          SERVICE_NAME="${{ matrix.service }}-${ENV}"
-          IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.service }}:${ENV}-${{ github.sha }}"
-
-          echo "service_name=${SERVICE_NAME}" >> $GITHUB_OUTPUT
-          echo "image=${IMAGE}" >> $GITHUB_OUTPUT
-
-          # Service-specific resource settings
-          SERVICE="${{ matrix.service }}"
-          ENV="${{ needs.setup.outputs.environment }}"
-
-          if [ "$ENV" == "prod" ]; then
-            # Production: higher resources
-            if [ "$SERVICE" == "iam-service" ]; then
-              # iam-service: Always running with CPU throttling for cost optimization
-              echo "min_instances=1" >> $GITHUB_OUTPUT
-              echo "max_instances=10" >> $GITHUB_OUTPUT
-              echo "memory=1Gi" >> $GITHUB_OUTPUT
-              echo "cpu=2" >> $GITHUB_OUTPUT
-              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
-            elif [ "$SERVICE" == "chat-gateway" ]; then
-              # chat-gateway: WebSocket persistent connections with CPU throttling
-              echo "min_instances=1" >> $GITHUB_OUTPUT
-              echo "max_instances=10" >> $GITHUB_OUTPUT
-              echo "memory=512Mi" >> $GITHUB_OUTPUT
-              echo "cpu=1" >> $GITHUB_OUTPUT
-              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
-            else
-              # All other services: 512Mi
-              echo "min_instances=0" >> $GITHUB_OUTPUT
-              echo "max_instances=10" >> $GITHUB_OUTPUT
-              echo "memory=512Mi" >> $GITHUB_OUTPUT
-              echo "cpu=1" >> $GITHUB_OUTPUT
-              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
-            fi
-          else
-            # Development: minimal resources for cost optimization
-            if [ "$SERVICE" == "chat-gateway" ]; then
-              # chat-gateway: WebSocket needs concurrency > 1, so CPU must be >= 1
-              echo "min_instances=1" >> $GITHUB_OUTPUT
-              echo "max_instances=1" >> $GITHUB_OUTPUT
-              echo "memory=384Mi" >> $GITHUB_OUTPUT
-              echo "cpu=1" >> $GITHUB_OUTPUT
-              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
-              echo "concurrency=80" >> $GITHUB_OUTPUT
-            else
-              # Other services: 0.5 CPU with concurrency=1
-              echo "min_instances=1" >> $GITHUB_OUTPUT
-              echo "max_instances=1" >> $GITHUB_OUTPUT
-              echo "memory=384Mi" >> $GITHUB_OUTPUT
-              echo "cpu=0.5" >> $GITHUB_OUTPUT
-              echo "cpu_throttling=true" >> $GITHUB_OUTPUT
-              echo "concurrency=1" >> $GITHUB_OUTPUT
-            fi
+          IP_NAME="parkgolf-${{ needs.setup.outputs.cluster_name }}-ip"
+          if ! gcloud compute addresses describe $IP_NAME --global 2>/dev/null; then
+            gcloud compute addresses create $IP_NAME --global
           fi
+          IP=$(gcloud compute addresses describe $IP_NAME --global --format="value(address)")
+          echo "STATIC_IP=$IP" >> $GITHUB_ENV
+          echo "IP_NAME=$IP_NAME" >> $GITHUB_ENV
 
-      - name: Deploy to Cloud Run
-        env:
-          # Service-specific DATABASE_URL secrets (for services with Prisma)
-          DATABASE_URL_IAM_SERVICE: ${{ secrets.DATABASE_URL_IAM_SERVICE }}
-          DATABASE_URL_COURSE_SERVICE: ${{ secrets.DATABASE_URL_COURSE_SERVICE }}
-          DATABASE_URL_BOOKING_SERVICE: ${{ secrets.DATABASE_URL_BOOKING_SERVICE }}
-          DATABASE_URL_NOTIFY_SERVICE: ${{ secrets.DATABASE_URL_NOTIFY_SERVICE }}
-          DATABASE_URL_CHAT_SERVICE: ${{ secrets.DATABASE_URL_CHAT_SERVICE }}
+      - name: Deploy BackendConfig for WebSocket
         run: |
-          SERVICE="${{ matrix.service }}"
-          SERVICE_UPPER=$(echo "$SERVICE" | tr '[:lower:]-' '[:upper:]_')
+          cat <<EOF | kubectl apply -f -
+          apiVersion: cloud.google.com/v1
+          kind: BackendConfig
+          metadata:
+            name: websocket-backend-config
+            namespace: ${{ needs.setup.outputs.namespace }}
+          spec:
+            timeoutSec: 3600
+            connectionDraining:
+              drainingTimeoutSec: 60
+          EOF
 
-          # Build env vars string (required)
-          ENV_VARS="NODE_ENV=${{ needs.setup.outputs.environment == 'prod' && 'production' || 'development' }}"
-          ENV_VARS="${ENV_VARS},JWT_SECRET=${{ secrets.JWT_SECRET }}"
-          ENV_VARS="${ENV_VARS},JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}"
-          ENV_VARS="${ENV_VARS},NATS_URL=${{ secrets.NATS_URL }}"
-
-          # Add DATABASE_URL only for services with Prisma (not admin-api, user-api, chat-gateway)
-          if [ "$SERVICE" != "admin-api" ] && [ "$SERVICE" != "user-api" ] && [ "$SERVICE" != "chat-gateway" ]; then
-            DB_URL_VAR="DATABASE_URL_${SERVICE_UPPER}"
-            DB_URL="${!DB_URL_VAR}"
-            # Debug: Log DATABASE_URL (masked password)
-            echo "Service: $SERVICE"
-            echo "DB_URL_VAR: $DB_URL_VAR"
-            echo "DATABASE_URL: $(echo "$DB_URL" | sed 's/:[^@]*@/:****@/')"
-            ENV_VARS="${ENV_VARS},DATABASE_URL=${DB_URL}"
-          fi
-
-          # Add GCP_SA_KEY for notify-service (Firebase/FCM)
-          if [ "$SERVICE" == "notify-service" ]; then
-            ENV_VARS="${ENV_VARS},GCP_SA_KEY=${{ secrets.GCP_SA_KEY }}"
-          fi
-
-          # Set CPU throttling flag
-          if [ "${{ steps.vars.outputs.cpu_throttling }}" == "false" ]; then
-            CPU_THROTTLING_FLAG="--no-cpu-throttling"
-          else
-            CPU_THROTTLING_FLAG="--cpu-throttling"
-          fi
-
-          # Set concurrency flag if specified
-          CONCURRENCY_FLAG=""
-          if [ -n "${{ steps.vars.outputs.concurrency }}" ]; then
-            CONCURRENCY_FLAG="--concurrency=${{ steps.vars.outputs.concurrency }}"
-          fi
-
-          # Deploy to Cloud Run (External IP 방식 - VPC Connector 없음)
-          gcloud run deploy ${{ steps.vars.outputs.service_name }} \
-            --image ${{ steps.vars.outputs.image }} \
-            --region ${{ env.REGION }} \
-            --platform managed \
-            --allow-unauthenticated \
-            --min-instances ${{ steps.vars.outputs.min_instances }} \
-            --max-instances ${{ steps.vars.outputs.max_instances }} \
-            --memory ${{ steps.vars.outputs.memory }} \
-            --cpu ${{ steps.vars.outputs.cpu }} \
-            --timeout 300 \
-            ${CPU_THROTTLING_FLAG} \
-            ${CONCURRENCY_FLAG} \
-            --set-env-vars "${ENV_VARS}"
-
-      - name: Get Service URL
+      - name: Patch chat-gateway for WebSocket
         run: |
-          SERVICE_URL=$(gcloud run services describe ${{ steps.vars.outputs.service_name }} \
-            --region=${{ env.REGION }} \
-            --format='value(status.url)')
-          echo "### ${{ matrix.service }} deployed" >> $GITHUB_STEP_SUMMARY
-          echo "- Environment: ${{ needs.setup.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "- URL: $SERVICE_URL" >> $GITHUB_STEP_SUMMARY
+          kubectl patch service chat-gateway -n ${{ needs.setup.outputs.namespace }} --type=merge -p '
+          {
+            "metadata": {
+              "annotations": {
+                "cloud.google.com/backend-config": "{\"default\": \"websocket-backend-config\"}"
+              }
+            }
+          }' || true
+
+      - name: Deploy Ingress
+        run: |
+          NAMESPACE=${{ needs.setup.outputs.namespace }}
+          cat <<EOF | kubectl apply -f -
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name: parkgolf-ingress
+            namespace: $NAMESPACE
+            annotations:
+              kubernetes.io/ingress.class: "gce"
+              kubernetes.io/ingress.global-static-ip-name: "${{ env.IP_NAME }}"
+          spec:
+            rules:
+            - http:
+                paths:
+                - path: /api/admin
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: admin-api
+                      port:
+                        number: 8080
+                - path: /api/admin/*
+                  pathType: ImplementationSpecific
+                  backend:
+                    service:
+                      name: admin-api
+                      port:
+                        number: 8080
+                - path: /api/user
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: user-api
+                      port:
+                        number: 8080
+                - path: /api/user/*
+                  pathType: ImplementationSpecific
+                  backend:
+                    service:
+                      name: user-api
+                      port:
+                        number: 8080
+                - path: /socket.io
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: chat-gateway
+                      port:
+                        number: 8080
+                - path: /socket.io/*
+                  pathType: ImplementationSpecific
+                  backend:
+                    service:
+                      name: chat-gateway
+                      port:
+                        number: 8080
+                - path: /chat
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: chat-gateway
+                      port:
+                        number: 8080
+                - path: /chat/*
+                  pathType: ImplementationSpecific
+                  backend:
+                    service:
+                      name: chat-gateway
+                      port:
+                        number: 8080
+                - path: /notification
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: chat-gateway
+                      port:
+                        number: 8080
+                - path: /notification/*
+                  pathType: ImplementationSpecific
+                  backend:
+                    service:
+                      name: chat-gateway
+                      port:
+                        number: 8080
+          EOF
+
+      - name: Summary
+        run: |
+          echo "## Deployment Summary - ${{ needs.setup.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Resource | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Cluster | ${{ needs.setup.outputs.cluster_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Namespace | ${{ needs.setup.outputs.namespace }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Static IP | ${{ env.STATIC_IP }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Endpoints" >> $GITHUB_STEP_SUMMARY
+          echo "- Admin API: http://${{ env.STATIC_IP }}/api/admin" >> $GITHUB_STEP_SUMMARY
+          echo "- User API: http://${{ env.STATIC_IP }}/api/user" >> $GITHUB_STEP_SUMMARY
+          echo "- WebSocket: ws://${{ env.STATIC_IP }}/socket.io" >> $GITHUB_STEP_SUMMARY

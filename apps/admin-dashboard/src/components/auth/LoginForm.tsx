@@ -3,7 +3,7 @@ import { Check, X, Zap } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 
 // 서버 웜업 API 설정
-const ADMIN_API_URL = import.meta.env.VITE_API_URL || 'https://admin-api-dev-iihuzmuufa-du.a.run.app';
+const ADMIN_API_URL = import.meta.env.VITE_API_URL || 'http://34.160.121.150';
 
 type StatusType = 'pending' | 'loading' | 'success' | 'error' | 'skipped';
 

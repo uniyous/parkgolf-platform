@@ -26,11 +26,11 @@ const mode = (import.meta as any).env?.MODE;
 const isDev = mode === 'development' || mode === 'e2e';
 
 // 개발/E2E 환경에서는 Vite 프록시 사용 (CORS 우회)
-// 프로덕션에서는 환경변수 URL 또는 기본 Cloud Run URL 사용
+// 프로덕션에서는 환경변수 URL 또는 기본 GKE URL 사용
 const SERVER_URL = isDev
   ? '' // Vite 프록시 사용
   : (import.meta as any).env?.VITE_API_URL ||
-    'https://admin-api-dev-iihuzmuufa-du.a.run.app';
+    'http://34.160.121.150';
 const API_BASE_URL = `${SERVER_URL}/api`;
 
 // 토큰 갱신 엔드포인트

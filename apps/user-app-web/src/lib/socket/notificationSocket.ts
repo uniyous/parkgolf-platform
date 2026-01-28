@@ -10,7 +10,7 @@ const isDev = mode === 'development' || mode === 'e2e';
 
 // chat-gateway와 동일한 서버 사용 (namespace만 다름)
 const SOCKET_URL = (import.meta as any).env?.VITE_CHAT_SOCKET_URL ||
-  'https://chat-gateway-dev-iihuzmuufa-du.a.run.app';
+  'http://34.160.121.150';
 
 const NAMESPACE = '/notification';
 

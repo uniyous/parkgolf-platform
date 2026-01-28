@@ -7,9 +7,8 @@ import { fileURLToPath } from 'url';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
-  // API Base URL에서 프록시 타겟 추출
-  const apiBaseUrl = env.VITE_API_BASE_URL || 'http://localhost:3092/api';
-  const proxyTarget = apiBaseUrl.replace(/\/api$/, '');
+  // API URL에서 프록시 타겟 설정
+  const proxyTarget = env.VITE_API_URL || 'http://localhost:3092';
 
   return {
     plugins: [react(), tailwindcss()],

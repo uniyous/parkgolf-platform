@@ -61,8 +61,8 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api-docs', app, document);
 
-    const port = configService.get<number>('PORT') || 3091;
-    await app.listen(port);
+    const port = parseInt(process.env.PORT || '8080');
+    await app.listen(port, '0.0.0.0');
 
     logger.log(`🚀 Parkgolf Admin BFF is running on port ${port}`);
     logger.log(`📚 Swagger docs: http://localhost:${port}/api-docs`);
