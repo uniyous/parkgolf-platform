@@ -13,8 +13,9 @@ Park Golf Platform 알림 시스템 아키텍처 및 워크플로우 문서입�
 7. [API 엔드포인트](#7-api-엔드포인트)
 8. [데이터베이스 스키마](#8-데이터베이스-스키마)
 9. [클라이언트 구현](#9-클라이언트-구현)
-10. [설정 및 환경변수](#10-설정-및-환경변수)
-11. [부록: iOS Push 알림 구현 가이드](#부록-ios-push-알림-구현-가이드)
+10. [실시간 알림 (WebSocket)](#10-실시간-알림-websocket)
+11. [설정 및 환경변수](#11-설정-및-환경변수)
+12. [부록: iOS Push 알림 구현 가이드](#부록-ios-push-알림-구현-가이드)
 
 ---
 
@@ -639,9 +640,260 @@ flowchart LR
 
 ---
 
-## 10. 설정 및 환경변수
+## 10. 실시간 알림 (WebSocket)
 
-### 10.1 notify-service 환경변수
+Web 클라이언트에서 알림을 실시간으로 수신하기 위한 WebSocket 기반 구현입니다.
+
+### 10.1 아키텍처 개요
+
+```mermaid
+flowchart TB
+    subgraph Backend["Backend Services"]
+        NS[notify-service]
+        CG[chat-gateway<br/>/notification namespace]
+    end
+
+    subgraph NATS["Message Broker"]
+        NE{NATS}
+    end
+
+    subgraph Clients["Web Clients"]
+        WEB1[user-app-web<br/>User A]
+        WEB2[user-app-web<br/>User B]
+    end
+
+    NS -->|emit: notification.created| NE
+    NE -->|subscribe| CG
+    CG <-->|WebSocket| WEB1
+    CG <-->|WebSocket| WEB2
+```
+
+### 10.2 이벤트 플로우
+
+```mermaid
+sequenceDiagram
+    participant E as 이벤트 발생<br/>(booking, friend, etc.)
+    participant NS as notify-service
+    participant NATS as NATS
+    participant CG as chat-gateway<br/>/notification
+    participant WEB as user-app-web
+
+    Note over WEB,CG: 사용자 로그인 시 소켓 연결
+    WEB->>CG: connect(token)
+    CG->>CG: JWT 검증
+    CG-->>WEB: connected
+
+    Note over E,WEB: 알림 생성 및 실시간 전달
+    E->>NS: 이벤트 발생
+    NS->>NS: 알림 DB 저장
+    NS->>NATS: emit: notification.created
+    NATS->>CG: notification.created
+    CG->>CG: 사용자 소켓 조회
+    CG-->>WEB: notification (실시간)
+
+    Note over WEB: React Query 캐시 무효화
+    WEB->>WEB: invalidateQueries
+    WEB->>WEB: UI 자동 갱신
+```
+
+### 10.3 서버 구현 (chat-gateway)
+
+#### 네임스페이스 구조
+
+| 네임스페이스 | 용도 | 파일 |
+|-------------|------|------|
+| `/chat` | 채팅 메시지 | `src/gateway/chat.gateway.ts` |
+| `/notification` | 실시간 알림 | `src/notification/notification.gateway.ts` |
+
+#### NotificationGateway 구조
+
+```mermaid
+classDiagram
+    class NotificationGateway {
+        -userSockets: Map~string, Set~string~~
+        -onlineUsers: Map~string, WsUser~
+        +handleConnection(client)
+        +handleDisconnect(client)
+        -subscribeToNotifications()
+        -deliverNotificationToUser(notification)
+    }
+
+    class NatsService {
+        +subscribeToNotifications(handler): cleanup
+    }
+
+    NotificationGateway --> NatsService: uses
+```
+
+#### 주요 이벤트
+
+| 이벤트 | 방향 | 설명 |
+|--------|------|------|
+| `connected` | Server → Client | 연결 성공 확인 |
+| `notification` | Server → Client | 새 알림 수신 |
+| `error` | Server → Client | 인증 실패 등 오류 |
+
+### 10.4 클라이언트 구현 (user-app-web)
+
+#### 파일 구조
+
+```
+apps/user-app-web/src/
+├── lib/socket/
+│   ├── chatSocket.ts          # 채팅 소켓 (기존)
+│   └── notificationSocket.ts  # 알림 소켓 (신규)
+├── hooks/
+│   └── useNotificationSocket.ts  # 알림 소켓 훅
+└── components/
+    └── PrivateRoute.tsx       # 소켓 초기화
+```
+
+#### NotificationSocketManager
+
+```mermaid
+stateDiagram-v2
+    [*] --> Disconnected
+    Disconnected --> Connecting: connect(token)
+    Connecting --> Connected: connect event
+    Connecting --> Disconnected: connect_error
+    Connected --> Disconnected: disconnect
+    Disconnected --> Connecting: ensureConnected / forceReconnect
+```
+
+#### 사용 예시
+
+```typescript
+// useNotificationSocket.ts
+export function useNotificationSocketInitializer() {
+  const queryClient = useQueryClient();
+  const { token, isAuthenticated } = useAuthStore();
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) {
+      notificationSocket.disconnect();
+      return;
+    }
+
+    notificationSocket.connect(token);
+
+    const unsubscribe = notificationSocket.onNotification(() => {
+      // 알림 수신 시 React Query 캐시 무효화
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+    });
+
+    return () => unsubscribe();
+  }, [isAuthenticated, token, queryClient]);
+}
+```
+
+#### PrivateRoute에서 초기화
+
+```typescript
+// PrivateRoute.tsx
+import { useNotificationSocketInitializer } from '@/hooks/useNotificationSocket';
+
+export const PrivateRoute: React.FC = ({ children }) => {
+  // 인증된 사용자에게만 알림 소켓 연결
+  useNotificationSocketInitializer();
+
+  // ... 나머지 로직
+};
+```
+
+### 10.5 notify-service 이벤트 발행
+
+```mermaid
+flowchart LR
+    subgraph NotificationService["NotificationService"]
+        CREATE[create]
+        EMIT[emitNotificationCreated]
+    end
+
+    subgraph NATS["NATS"]
+        EVENT[notification.created]
+    end
+
+    CREATE --> DB[(DB 저장)]
+    CREATE --> EMIT
+    EMIT --> EVENT
+```
+
+#### 이벤트 페이로드
+
+```typescript
+interface NotificationEvent {
+  id: number;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  data?: Record<string, any>;
+  isRead: boolean;
+  createdAt: string;
+}
+```
+
+### 10.6 Polling vs WebSocket 비교
+
+| 방식 | 지연 시간 | 서버 부하 | 배터리 | 구현 복잡도 |
+|------|----------|----------|--------|-----------|
+| Polling (30초) | 0~30초 | 높음 | 높음 | 낮음 |
+| WebSocket | 실시간 (~100ms) | 낮음 | 낮음 | 중간 |
+
+#### 현재 구현 전략
+
+- **기본**: WebSocket 실시간 수신
+- **백업**: 5분 간격 polling (네트워크 장애 복구용)
+
+```typescript
+// notification.ts
+export const useUnreadCountQuery = () => {
+  return useQuery({
+    queryKey: notificationKeys.unreadCount(),
+    queryFn: () => notificationApi.getUnreadCount(),
+    refetchInterval: 5 * 60 * 1000, // 5분 (백업용)
+    refetchOnWindowFocus: true,
+  });
+};
+```
+
+### 10.7 연결 관리
+
+#### 재연결 로직
+
+```mermaid
+flowchart TB
+    START[연결 끊김] --> CHECK{재연결 가능?}
+    CHECK -->|attempts < 10| WAIT[지수 백오프 대기<br/>3초 ~ 30초]
+    CHECK -->|attempts >= 10| FAIL[재연결 포기]
+    WAIT --> RECONNECT[재연결 시도]
+    RECONNECT -->|성공| CONNECTED[연결됨<br/>attempts = 0]
+    RECONNECT -->|실패| CHECK
+```
+
+#### 환경 설정
+
+```typescript
+// notificationSocket.ts
+const SOCKET_URL = import.meta.env.VITE_CHAT_SOCKET_URL ||
+  'https://chat-gateway-dev-iihuzmuufa-du.a.run.app';
+
+const NAMESPACE = '/notification';
+```
+
+### 10.8 플랫폼별 구현 현황
+
+| 플랫폼 | 실시간 알림 방식 | 상태 |
+|--------|----------------|------|
+| Web | WebSocket `/notification` | ✅ 구현 완료 |
+| iOS | Push (APNs/FCM) | ✅ 구현 완료 |
+| Android | Push (FCM) | 🚧 진행 중 |
+
+---
+
+## 11. 설정 및 환경변수
+
+### 11.1 notify-service 환경변수
 
 | 변수명 | 설명 | 필수 |
 |--------|------|------|
@@ -654,7 +906,29 @@ flowchart LR
 
 > `GCP_SA_KEY`가 설정되면 개별 Firebase 변수는 불필요
 
-### 10.2 Firebase 설정 방법
+### 11.2 chat-gateway 환경변수 (WebSocket)
+
+| 변수명 | 설명 | 필수 |
+|--------|------|------|
+| `NATS_URL` | NATS 서버 URL | O |
+| `JWT_SECRET` | JWT 토큰 검증용 시크릿 | O |
+| `JWT_EXPIRATION` | JWT 만료 시간 (기본: 1h) | - |
+
+### 11.3 user-app-web 환경변수
+
+| 변수명 | 설명 | 기본값 |
+|--------|------|--------|
+| `VITE_CHAT_SOCKET_URL` | WebSocket 서버 URL | Cloud Run URL |
+
+```bash
+# .env.development
+VITE_CHAT_SOCKET_URL=http://localhost:3004
+
+# .env.production
+VITE_CHAT_SOCKET_URL=https://chat-gateway-prod-xxx.run.app
+```
+
+### 11.4 Firebase 설정 방법
 
 ```mermaid
 flowchart TB
@@ -680,7 +954,7 @@ flowchart TB
     PROJ --> APNS
 ```
 
-### 10.3 APNs 설정 (iOS Push)
+### 11.5 APNs 설정 (iOS Push)
 
 1. **Apple Developer Program** 등록 ($99/년)
 2. **App ID** 생성 (Push Notifications 활성화)
@@ -701,11 +975,15 @@ flowchart TB
 | Push 알림 안 옴 | Firebase 미설정 | `GCP_SA_KEY` 환경변수 확인 |
 | iOS Push 안 옴 | APNs 키 미등록 | Firebase Console에서 .p8 등록 |
 | 알림 FAILED | 네트워크 오류 | 재시도 후 DLQ 확인 |
+| Web 실시간 알림 안 옴 | WebSocket 연결 안 됨 | 브라우저 DevTools Network 탭 확인 |
+| Web 실시간 알림 안 옴 | JWT 인증 실패 | 로그인 상태 및 토큰 유효성 확인 |
+| Web 실시간 알림 안 옴 | CORS 오류 | chat-gateway CORS 설정 확인 |
+| Web 알림 지연 | WebSocket 미연결 | 5분 polling으로 대체 동작 중 |
 
 ### 로그 확인
 
 ```bash
-# Cloud Run 로그 확인
+# notify-service 로그 확인
 gcloud run logs read --service=notify-service-dev --region=asia-northeast3 --limit=100
 
 # Firebase 초기화 확인
@@ -713,6 +991,15 @@ gcloud run logs read --service=notify-service-dev | grep -i firebase
 
 # Push 전송 로그
 gcloud run logs read --service=notify-service-dev | grep -i "FCM\|Push"
+
+# chat-gateway 로그 확인 (WebSocket)
+gcloud run logs read --service=chat-gateway-dev --region=asia-northeast3 --limit=100
+
+# WebSocket 연결/알림 로그
+gcloud run logs read --service=chat-gateway-dev | grep -i "NotificationSocket\|notification"
+
+# NATS 알림 이벤트 로그
+gcloud run logs read --service=notify-service-dev | grep -i "notification.created"
 ```
 
 ---
