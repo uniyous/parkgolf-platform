@@ -126,7 +126,7 @@ jobs:
             --region=${{ env.REGION }} \
             --release-channel=regular \
             --network=parkgolf-dev \
-            --subnetwork=parkgolf-dev
+            --subnetwork=parkgolf-private-dev
 
           echo "Cluster creation initiated, waiting for it to be ready..."
 
