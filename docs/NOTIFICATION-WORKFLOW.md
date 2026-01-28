@@ -329,15 +329,13 @@ flowchart LR
     subgraph Server["서버"]
         UAPI[user-api]
         IAM[iam-service]
-        DB[(user_devices)]
+        DB[(user_devices<br/>platform, deviceToken,<br/>deviceId, isActive)]
     end
 
     APP --> TOKEN --> REG
     REG -->|POST /devices/register| UAPI
     UAPI -->|users.devices.register| IAM
     IAM --> DB
-
-    Note over DB: platform, deviceToken,<br/>deviceId, isActive
 ```
 
 ---
