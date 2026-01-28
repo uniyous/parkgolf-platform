@@ -328,6 +328,14 @@ jobs:
 
       - name: Deploy PostgreSQL
         run: |
+          # 환경별 스토리지 클래스 설정 (dev: standard-rwo, prod: premium-rwo SSD)
+          if [ "${{ needs.setup.outputs.environment }}" == "prod" ]; then
+            STORAGE_CLASS="premium-rwo"
+          else
+            STORAGE_CLASS="standard-rwo"
+          fi
+          echo "Using storage class: $STORAGE_CLASS"
+
           cat <<EOF | kubectl apply -f -
           apiVersion: v1
           kind: Service
@@ -401,7 +409,7 @@ jobs:
                 name: postgres-data
               spec:
                 accessModes: ["ReadWriteOnce"]
-                storageClassName: standard-rwo
+                storageClassName: $STORAGE_CLASS
                 resources:
                   requests:
                     storage: 10Gi
@@ -410,8 +418,21 @@ jobs:
       - name: Wait for PostgreSQL
         run: |
           echo "Waiting for PostgreSQL..."
-          kubectl wait --for=condition=ready pod -l app=postgres \
-            -n ${{ needs.setup.outputs.namespace }} --timeout=300s
+          NAMESPACE=${{ needs.setup.outputs.namespace }}
+
+          # Wait for StatefulSet to be created
+          for i in {1..30}; do
+            if kubectl get statefulset postgres -n $NAMESPACE &>/dev/null; then
+              echo "PostgreSQL StatefulSet found"
+              break
+            fi
+            echo "Waiting for StatefulSet... ($i/30)"
+            sleep 5
+          done
+
+          # Wait for rollout
+          kubectl rollout status statefulset/postgres -n $NAMESPACE --timeout=300s
+          echo "PostgreSQL is ready"
 
       - name: Initialize Databases
         run: |
@@ -499,9 +520,22 @@ jobs:
 
       - name: Wait for NATS
         run: |
-          echo "Waiting for NATS..."
-          kubectl wait --for=condition=ready pod -l app=nats \
-            -n ${{ needs.setup.outputs.namespace }} --timeout=120s
+          echo "Waiting for NATS deployment..."
+          NAMESPACE=${{ needs.setup.outputs.namespace }}
+
+          # Wait for deployment to be created
+          for i in {1..30}; do
+            if kubectl get deployment nats -n $NAMESPACE &>/dev/null; then
+              echo "NATS deployment found"
+              break
+            fi
+            echo "Waiting for deployment... ($i/30)"
+            sleep 5
+          done
+
+          # Wait for rollout
+          kubectl rollout status deployment/nats -n $NAMESPACE --timeout=120s
+          echo "NATS is ready"
 
       - name: Summary
         run: |
@@ -628,6 +662,31 @@ jobs:
             gcloud compute addresses delete $IP_NAME --global --quiet
           else
             echo "Static IP not found"
+          fi
+
+      - name: Delete Orphaned PVC Disks
+        run: |
+          echo "Checking for orphaned PVC disks..."
+          ZONES=("asia-northeast3-a" "asia-northeast3-b" "asia-northeast3-c")
+          DELETED_COUNT=0
+
+          for ZONE in "${ZONES[@]}"; do
+            # Find PVC disks (they start with 'pvc-')
+            DISKS=$(gcloud compute disks list \
+              --filter="name~^pvc- AND zone:$ZONE" \
+              --format="value(name)" 2>/dev/null || true)
+
+            for DISK in $DISKS; do
+              echo "Deleting orphaned disk: $DISK in $ZONE"
+              gcloud compute disks delete $DISK --zone=$ZONE --quiet || true
+              DELETED_COUNT=$((DELETED_COUNT + 1))
+            done
+          done
+
+          if [ $DELETED_COUNT -eq 0 ]; then
+            echo "No orphaned PVC disks found"
+          else
+            echo "Deleted $DELETED_COUNT orphaned disk(s)"
           fi
 
       - name: Summary

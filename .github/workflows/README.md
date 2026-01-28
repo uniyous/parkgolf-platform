@@ -171,7 +171,7 @@ cd-infra.yml (gke-destroy)  → GKE 클러스터 삭제 (VPC 보존)
 |--------|-----|
 | GKE Cluster | parkgolf-dev-cluster |
 | Namespace | parkgolf-dev |
-| Static IP | 34.160.121.150 |
+| Static IP | 34.160.211.91 |
 | VPC | parkgolf-dev |
 
 ### Prod 환경

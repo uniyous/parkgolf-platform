@@ -109,12 +109,12 @@ jobs:
           ENV="${{ needs.setup.outputs.environment }}"
 
           # GKE Ingress URL (환경별)
-          # dev: http://34.160.121.150 (parkgolf-dev-cluster Static IP)
+          # dev: http://34.160.211.91 (parkgolf-dev-cluster Static IP)
           # prod: https://api.parkgolf.com (도메인 설정 시)
           if [ "$ENV" == "prod" ]; then
             echo "api_url=https://api.parkgolf.com" >> $GITHUB_OUTPUT
           else
-            echo "api_url=http://34.160.121.150" >> $GITHUB_OUTPUT
+            echo "api_url=http://34.160.211.91" >> $GITHUB_OUTPUT
           fi
 
       - name: Build

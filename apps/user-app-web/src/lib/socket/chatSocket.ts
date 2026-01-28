@@ -10,7 +10,7 @@ const isDev = mode === 'development' || mode === 'e2e';
 
 // 환경 변수로 소켓 URL 지정 가능, 없으면 GKE 사용
 const SOCKET_URL = (import.meta as any).env?.VITE_CHAT_SOCKET_URL ||
-  'http://34.160.121.150';
+  'http://34.160.211.91';
 
 const NAMESPACE = '/chat';
 
