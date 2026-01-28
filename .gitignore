@@ -604,3 +604,5 @@ services/*/tmp/
 services/*/temp/
 services/*/*.tmp
 services/*/*.temp
+# Vite cache
+.vite/
