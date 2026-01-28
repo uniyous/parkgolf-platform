@@ -41,12 +41,12 @@ let project = Project(
                 // Push Notification background modes
                 "UIBackgroundModes": ["remote-notification"],
             ]),
+            sources: ["Sources/**"],
+            resources: ["Resources/**"],
             entitlements: .dictionary([
                 // Push Notification entitlement
                 "aps-environment": .string("development"),
             ]),
-            sources: ["Sources/**"],
-            resources: ["Resources/**"],
             dependencies: [
                 // Swift Package Manager dependencies
                 .external(name: "Alamofire"),
