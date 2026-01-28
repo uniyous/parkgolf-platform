@@ -8,14 +8,31 @@ import { NatsResponse } from '../common/types';
 
 // ===== Event Payload Interfaces =====
 
-interface BookingEvent {
-  bookingId: string;
-  userId: string;
-  courseId: string;
-  courseName: string;
+interface BookingConfirmedEvent {
+  bookingId: number;
+  bookingNumber: string;
+  userId: number;
+  gameId: number;
+  gameName: string;
   bookingDate: string;
-  bookingTime: string;
-  status: string;
+  timeSlot: string;
+  confirmedAt: string;
+  userEmail?: string;
+  userName?: string;
+}
+
+interface BookingCancelledEvent {
+  bookingId: number;
+  bookingNumber: string;
+  userId: number;
+  gameId: number;
+  gameName: string;
+  bookingDate: string;
+  timeSlot: string;
+  reason: string;
+  cancelledAt: string;
+  userEmail?: string;
+  userName?: string;
 }
 
 interface PaymentEvent {
@@ -25,6 +42,33 @@ interface PaymentEvent {
   amount: number;
   status: string;
   failureReason?: string;
+}
+
+interface FriendRequestEvent {
+  requestId: number;
+  fromUserId: number;
+  toUserId: number;
+  fromUserName: string;
+  message?: string;
+  createdAt: string;
+}
+
+interface FriendAcceptedEvent {
+  requestId: number;
+  fromUserId: number;
+  toUserId: number;
+  fromUserName: string;
+  toUserName: string;
+  acceptedAt: string;
+}
+
+interface ChatMessageEvent {
+  chatRoomId: string;
+  senderId: number;
+  senderName: string;
+  recipientId: number;
+  messagePreview: string;
+  createdAt: string;
 }
 
 interface SendNotificationPayload {
@@ -74,33 +118,34 @@ export class NotificationNatsController {
   // ===== Event Handlers (Fire-and-forget) =====
 
   @EventPattern('booking.confirmed')
-  async handleBookingConfirmed(@Payload() data: BookingEvent) {
-    this.logger.log(`NATS Event: booking.confirmed - ${data.bookingId}`);
+  async handleBookingConfirmed(@Payload() data: BookingConfirmedEvent) {
+    this.logger.log(`NATS Event: booking.confirmed - ${data.bookingNumber}`);
 
     try {
       const templateData = await this.templateService.generateNotificationFromTemplate(
         NotificationType.BOOKING_CONFIRMED,
         {
-          courseName: data.courseName,
+          courseName: data.gameName,
           bookingDate: data.bookingDate,
-          bookingTime: data.bookingTime,
-          bookingId: data.bookingId,
+          bookingTime: data.timeSlot,
+          bookingId: data.bookingNumber,
         },
       );
 
       const notification = await this.notificationService.create({
-        userId: data.userId,
+        userId: String(data.userId),
         type: NotificationType.BOOKING_CONFIRMED,
         title: templateData?.title || '예약이 확정되었습니다',
         message:
           templateData?.message ||
-          `${data.courseName}에서 ${data.bookingDate} ${data.bookingTime} 예약이 확정되었습니다.`,
+          `${data.gameName}에서 ${data.bookingDate} ${data.timeSlot} 예약이 확정되었습니다.`,
         data: {
           bookingId: data.bookingId,
-          courseId: data.courseId,
-          courseName: data.courseName,
+          bookingNumber: data.bookingNumber,
+          gameId: data.gameId,
+          gameName: data.gameName,
           bookingDate: data.bookingDate,
-          bookingTime: data.bookingTime,
+          timeSlot: data.timeSlot,
         },
         deliveryChannel: 'PUSH',
       });
@@ -112,33 +157,35 @@ export class NotificationNatsController {
   }
 
   @EventPattern('booking.cancelled')
-  async handleBookingCancelled(@Payload() data: BookingEvent) {
-    this.logger.log(`NATS Event: booking.cancelled - ${data.bookingId}`);
+  async handleBookingCancelled(@Payload() data: BookingCancelledEvent) {
+    this.logger.log(`NATS Event: booking.cancelled - ${data.bookingNumber}`);
 
     try {
       const templateData = await this.templateService.generateNotificationFromTemplate(
         NotificationType.BOOKING_CANCELLED,
         {
-          courseName: data.courseName,
+          courseName: data.gameName,
           bookingDate: data.bookingDate,
-          bookingTime: data.bookingTime,
-          bookingId: data.bookingId,
+          bookingTime: data.timeSlot,
+          bookingId: data.bookingNumber,
         },
       );
 
       const notification = await this.notificationService.create({
-        userId: data.userId,
+        userId: String(data.userId),
         type: NotificationType.BOOKING_CANCELLED,
         title: templateData?.title || '예약이 취소되었습니다',
         message:
           templateData?.message ||
-          `${data.courseName}에서 ${data.bookingDate} ${data.bookingTime} 예약이 취소되었습니다.`,
+          `${data.gameName}에서 ${data.bookingDate} ${data.timeSlot} 예약이 취소되었습니다.`,
         data: {
           bookingId: data.bookingId,
-          courseId: data.courseId,
-          courseName: data.courseName,
+          bookingNumber: data.bookingNumber,
+          gameId: data.gameId,
+          gameName: data.gameName,
           bookingDate: data.bookingDate,
-          bookingTime: data.bookingTime,
+          timeSlot: data.timeSlot,
+          reason: data.reason,
         },
         deliveryChannel: 'PUSH',
       });
@@ -218,6 +265,102 @@ export class NotificationNatsController {
       await this.deliveryService.deliverNotification(notification);
     } catch (error) {
       this.logger.error(`Failed to handle payment.failed event: ${error}`);
+    }
+  }
+
+  @EventPattern('friend.request')
+  async handleFriendRequest(@Payload() data: FriendRequestEvent) {
+    this.logger.log(`NATS Event: friend.request - from ${data.fromUserId} to ${data.toUserId}`);
+
+    try {
+      const templateData = await this.templateService.generateNotificationFromTemplate(
+        NotificationType.FRIEND_REQUEST,
+        {
+          fromUserName: data.fromUserName,
+          message: data.message || '',
+        },
+      );
+
+      const notification = await this.notificationService.create({
+        userId: String(data.toUserId),
+        type: NotificationType.FRIEND_REQUEST,
+        title: templateData?.title || `${data.fromUserName}님이 친구 요청을 보냈습니다`,
+        message: templateData?.message || data.message || '친구 요청을 확인해 주세요.',
+        data: {
+          requestId: data.requestId,
+          fromUserId: data.fromUserId,
+          fromUserName: data.fromUserName,
+        },
+        deliveryChannel: 'PUSH',
+      });
+
+      await this.deliveryService.deliverNotification(notification);
+    } catch (error) {
+      this.logger.error(`Failed to handle friend.request event: ${error}`);
+    }
+  }
+
+  @EventPattern('friend.accepted')
+  async handleFriendAccepted(@Payload() data: FriendAcceptedEvent) {
+    this.logger.log(`NATS Event: friend.accepted - ${data.toUserName} accepted ${data.fromUserName}'s request`);
+
+    try {
+      const templateData = await this.templateService.generateNotificationFromTemplate(
+        NotificationType.FRIEND_ACCEPTED,
+        {
+          toUserName: data.toUserName,
+        },
+      );
+
+      // 요청자(fromUserId)에게 알림 발송
+      const notification = await this.notificationService.create({
+        userId: String(data.fromUserId),
+        type: NotificationType.FRIEND_ACCEPTED,
+        title: templateData?.title || '친구 요청이 수락되었습니다',
+        message: templateData?.message || `${data.toUserName}님과 친구가 되었습니다.`,
+        data: {
+          requestId: data.requestId,
+          friendId: data.toUserId,
+          friendName: data.toUserName,
+        },
+        deliveryChannel: 'PUSH',
+      });
+
+      await this.deliveryService.deliverNotification(notification);
+    } catch (error) {
+      this.logger.error(`Failed to handle friend.accepted event: ${error}`);
+    }
+  }
+
+  @EventPattern('chat.message')
+  async handleChatMessage(@Payload() data: ChatMessageEvent) {
+    this.logger.log(`NATS Event: chat.message - from ${data.senderId} to ${data.recipientId}`);
+
+    try {
+      const templateData = await this.templateService.generateNotificationFromTemplate(
+        NotificationType.CHAT_MESSAGE,
+        {
+          senderName: data.senderName,
+          messagePreview: data.messagePreview,
+        },
+      );
+
+      const notification = await this.notificationService.create({
+        userId: String(data.recipientId),
+        type: NotificationType.CHAT_MESSAGE,
+        title: templateData?.title || `${data.senderName}님의 새 메시지`,
+        message: templateData?.message || data.messagePreview,
+        data: {
+          chatRoomId: data.chatRoomId,
+          senderId: data.senderId,
+          senderName: data.senderName,
+        },
+        deliveryChannel: 'PUSH',
+      });
+
+      await this.deliveryService.deliverNotification(notification);
+    } catch (error) {
+      this.logger.error(`Failed to handle chat.message event: ${error}`);
     }
   }
 

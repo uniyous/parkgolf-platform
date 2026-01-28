@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { BookingStatus } from '@prisma/client';
 
@@ -17,7 +18,10 @@ const SAGA_TIMEOUT_MS = 60000; // 1분
 export class SagaHandlerService {
   private readonly logger = new Logger(SagaHandlerService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() @Inject('NOTIFICATION_SERVICE') private readonly notificationPublisher?: ClientProxy,
+  ) {}
 
   /**
    * 슬롯 예약 성공 처리
@@ -94,6 +98,23 @@ export class SagaHandlerService {
           },
         });
       });
+
+      // 예약 확정 이벤트 발행
+      if (this.notificationPublisher) {
+        this.notificationPublisher.emit('booking.confirmed', {
+          bookingId: booking.id,
+          bookingNumber: booking.bookingNumber,
+          userId: booking.userId,
+          gameId: booking.gameId,
+          gameName: booking.gameName,
+          bookingDate: booking.bookingDate.toISOString(),
+          timeSlot: booking.startTime,
+          confirmedAt: new Date().toISOString(),
+          userEmail: booking.userEmail,
+          userName: booking.userName,
+        });
+        this.logger.log(`[SagaHandler] 'booking.confirmed' event emitted for booking ${booking.bookingNumber}`);
+      }
 
       const elapsed = Date.now() - startTime;
       this.logger.log(`[SagaHandler] Booking ${data.bookingId} CONFIRMED successfully in ${elapsed}ms`);

@@ -80,3 +80,21 @@ enum NotificationStatus {
   FAILED
   READ
 }
+
+model DeadLetterNotification {
+  id              Int              @id @default(autoincrement())
+  originalId      Int              @map("original_id")
+  userId          String           @map("user_id")
+  type            NotificationType
+  title           String
+  message         String
+  data            Json?
+  deliveryChannel String?          @map("delivery_channel")
+  failureReason   String           @map("failure_reason")
+  retryCount      Int              @map("retry_count")
+  movedAt         DateTime         @default(now()) @map("moved_at")
+
+  @@index([userId])
+  @@index([movedAt])
+  @@map("dead_letter_notifications")
+}

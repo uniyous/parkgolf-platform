@@ -282,6 +282,11 @@ jobs:
             ENV_VARS="${ENV_VARS},DATABASE_URL=${DB_URL}"
           fi
 
+          # Add GCP_SA_KEY for notify-service (Firebase/FCM)
+          if [ "$SERVICE" == "notify-service" ]; then
+            ENV_VARS="${ENV_VARS},GCP_SA_KEY=${{ secrets.GCP_SA_KEY }}"
+          fi
+
           # Set CPU throttling flag
           if [ "${{ steps.vars.outputs.cpu_throttling }}" == "false" ]; then
             CPU_THROTTLING_FLAG="--no-cpu-throttling"

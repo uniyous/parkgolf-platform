@@ -111,4 +111,41 @@ export const defaultTemplates = [
     },
     isActive: true,
   },
+  {
+    type: NotificationType.FRIEND_REQUEST,
+    title: '{{fromUserName}}님이 친구 요청을 보냈습니다',
+    content: `{{fromUserName}}님이 친구 요청을 보냈습니다.
+
+앱에서 친구 요청을 확인하고 수락하거나 거절할 수 있습니다.
+
+함께 파크골프를 즐겨보세요!`,
+    variables: {
+      fromUserName: '요청자 이름',
+      message: '메시지',
+    },
+    isActive: true,
+  },
+  {
+    type: NotificationType.FRIEND_ACCEPTED,
+    title: '친구 요청이 수락되었습니다',
+    content: `{{toUserName}}님과 친구가 되었습니다!
+
+이제 함께 파크골프 라운딩을 예약하고, 기록을 공유할 수 있습니다.
+
+즐거운 파크골프 되세요!`,
+    variables: {
+      toUserName: '친구 이름',
+    },
+    isActive: true,
+  },
+  {
+    type: NotificationType.CHAT_MESSAGE,
+    title: '{{senderName}}님의 새 메시지',
+    content: `{{senderName}}: {{messagePreview}}`,
+    variables: {
+      senderName: '발신자 이름',
+      messagePreview: '메시지 미리보기',
+    },
+    isActive: true,
+  },
 ];

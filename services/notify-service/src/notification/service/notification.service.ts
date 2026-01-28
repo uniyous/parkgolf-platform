@@ -170,4 +170,48 @@ export class NotificationService {
       },
     });
   }
+
+  /**
+   * 지수 백오프를 적용한 재시도 대상 알림 조회
+   * retryCount에 따라 다음 재시도 시간이 계산됨:
+   * - retryCount 1: 1분 후
+   * - retryCount 2: 4분 후 (2^2)
+   * - retryCount 3: 8분 후 (2^3)
+   */
+  async findFailedNotificationsForRetryWithBackoff(): Promise<Notification[]> {
+    const now = new Date();
+
+    // 재시도 대상 알림 조회 (maxRetries 미만 && 백오프 시간 경과)
+    const notifications = await this.prisma.notification.findMany({
+      where: {
+        status: NotificationStatus.FAILED,
+        retryCount: {
+          lt: 3,
+        },
+      },
+    });
+
+    // 지수 백오프 필터링
+    return notifications.filter((notification) => {
+      const backoffMinutes = Math.pow(2, notification.retryCount); // 2^retryCount 분
+      const nextRetryTime = new Date(
+        notification.updatedAt.getTime() + backoffMinutes * 60 * 1000,
+      );
+      return now >= nextRetryTime;
+    });
+  }
+
+  /**
+   * 최대 재시도 횟수 초과한 알림 조회 (DLQ 이동 대상)
+   */
+  async findPermanentlyFailedNotifications(): Promise<Notification[]> {
+    return this.prisma.notification.findMany({
+      where: {
+        status: NotificationStatus.FAILED,
+        retryCount: {
+          gte: 3, // maxRetries default value
+        },
+      },
+    });
+  }
 }
