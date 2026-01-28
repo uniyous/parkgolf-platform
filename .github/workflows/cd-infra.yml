@@ -656,6 +656,31 @@ jobs:
             echo "Static IP not found"
           fi
 
+      - name: Delete Orphaned PVC Disks
+        run: |
+          echo "Checking for orphaned PVC disks..."
+          ZONES=("asia-northeast3-a" "asia-northeast3-b" "asia-northeast3-c")
+          DELETED_COUNT=0
+
+          for ZONE in "${ZONES[@]}"; do
+            # Find PVC disks (they start with 'pvc-')
+            DISKS=$(gcloud compute disks list \
+              --filter="name~^pvc- AND zone:$ZONE" \
+              --format="value(name)" 2>/dev/null || true)
+
+            for DISK in $DISKS; do
+              echo "Deleting orphaned disk: $DISK in $ZONE"
+              gcloud compute disks delete $DISK --zone=$ZONE --quiet || true
+              DELETED_COUNT=$((DELETED_COUNT + 1))
+            done
+          done
+
+          if [ $DELETED_COUNT -eq 0 ]; then
+            echo "No orphaned PVC disks found"
+          else
+            echo "Deleted $DELETED_COUNT orphaned disk(s)"
+          fi
+
       - name: Summary
         run: |
           echo "## GKE Cluster Destroyed" >> $GITHUB_STEP_SUMMARY
