@@ -22,12 +22,16 @@ export const useNotificationsQuery = (params?: GetNotificationsParams) => {
 
 /**
  * 읽지 않은 알림 수 조회
+ * WebSocket을 통해 실시간으로 갱신되므로 polling 불필요
  */
 export const useUnreadCountQuery = () => {
   return useQuery({
     queryKey: notificationKeys.unreadCount(),
     queryFn: () => notificationApi.getUnreadCount(),
-    refetchInterval: 30000, // 30초마다 자동 갱신
+    // WebSocket 실시간 갱신으로 polling 제거
+    // 네트워크 복구 등 예외 상황을 위해 긴 간격의 백그라운드 갱신 유지
+    refetchInterval: 5 * 60 * 1000, // 5분 (백업용)
+    refetchOnWindowFocus: true,
   });
 };
 

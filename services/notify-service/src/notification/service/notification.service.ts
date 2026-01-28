@@ -1,4 +1,5 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Inject, Optional } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateNotificationDto, UpdateNotificationDto, NotificationQueryDto, SendNotificationDto } from '../dto/notification.dto';
 import { Notification, NotificationStatus } from '@prisma/client';
@@ -7,14 +8,48 @@ import { Notification, NotificationStatus } from '@prisma/client';
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() @Inject('NOTIFICATION_GATEWAY') private readonly notificationGateway?: ClientProxy,
+  ) {}
 
   async create(createNotificationDto: CreateNotificationDto): Promise<Notification> {
     this.logger.log(`Creating notification for user: ${createNotificationDto.userId}`);
 
-    return this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: createNotificationDto,
     });
+
+    // Emit real-time notification event to chat-gateway
+    this.emitNotificationCreated(notification);
+
+    return notification;
+  }
+
+  /**
+   * Emit notification.created event to chat-gateway for real-time delivery
+   */
+  private emitNotificationCreated(notification: Notification): void {
+    if (!this.notificationGateway) {
+      this.logger.debug('NOTIFICATION_GATEWAY not available, skipping real-time delivery');
+      return;
+    }
+
+    try {
+      this.notificationGateway.emit('notification.created', {
+        id: notification.id,
+        userId: notification.userId,
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        data: notification.data,
+        isRead: notification.readAt !== null,
+        createdAt: notification.createdAt.toISOString(),
+      });
+      this.logger.log(`Emitted notification.created event for notification ${notification.id} to user ${notification.userId}`);
+    } catch (error) {
+      this.logger.error(`Failed to emit notification.created event: ${error}`);
+    }
   }
 
   async findAll(userId: string, query: NotificationQueryDto): Promise<{
