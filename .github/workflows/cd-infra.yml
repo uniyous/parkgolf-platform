@@ -328,6 +328,14 @@ jobs:
 
       - name: Deploy PostgreSQL
         run: |
+          # 환경별 스토리지 클래스 설정 (dev: standard-rwo, prod: premium-rwo SSD)
+          if [ "${{ needs.setup.outputs.environment }}" == "prod" ]; then
+            STORAGE_CLASS="premium-rwo"
+          else
+            STORAGE_CLASS="standard-rwo"
+          fi
+          echo "Using storage class: $STORAGE_CLASS"
+
           cat <<EOF | kubectl apply -f -
           apiVersion: v1
           kind: Service
@@ -401,7 +409,7 @@ jobs:
                 name: postgres-data
               spec:
                 accessModes: ["ReadWriteOnce"]
-                storageClassName: standard-rwo
+                storageClassName: $STORAGE_CLASS
                 resources:
                   requests:
                     storage: 10Gi
