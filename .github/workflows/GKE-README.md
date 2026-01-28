@@ -55,11 +55,12 @@ Repository → Settings → Secrets and variables → Actions → New repository
 
 | Secret Name | 설명 | 예시 |
 |-------------|------|------|
-| `GCP_PROJECT_ID` | GCP 프로젝트 ID | `parkgolf-12345` |
-| `GCP_SA_KEY` | 서비스 계정 JSON 키 전체 | `{"type":"service_account",...}` |
-| `POSTGRES_PASSWORD` | PostgreSQL 비밀번호 | `SecureP@ssw0rd!` |
+| `GCP_SA_KEY` | 서비스 계정 JSON 키 전체 (project_id 포함) | `{"type":"service_account",...}` |
+| `DB_PASSWORD` | PostgreSQL 비밀번호 | `SecureP@ssw0rd!` |
 | `JWT_SECRET` | JWT 시크릿 (32자 이상) | `your-super-secret-jwt-key-min-32` |
 | `JWT_REFRESH_SECRET` | JWT 리프레시 시크릿 | `your-refresh-secret-key` |
+
+> **참고**: `GCP_PROJECT_ID`는 `GCP_SA_KEY` JSON에서 자동 추출됩니다.
 
 ---
 

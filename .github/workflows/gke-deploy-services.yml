@@ -4,7 +4,7 @@
 #
 # 사전 요구사항:
 # 1. gke-infra-setup.yml 실행하여 클러스터 생성 완료
-# 2. GitHub Secrets 설정 (GCP_PROJECT_ID, GCP_SA_KEY)
+# 2. GitHub Secrets 설정 (GCP_SA_KEY)
 #
 # 사용법:
 #   - 수동 실행: Actions > Deploy Services to GKE > Run workflow
@@ -31,7 +31,6 @@ on:
   #     - 'services/**'
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: asia-northeast3
   CLUSTER_NAME: ${{ github.event.inputs.cluster_name || 'parkgolf-dev' }}
   NAMESPACE: parkgolf-dev
@@ -79,6 +78,11 @@ jobs:
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+
+      - name: Extract Project ID
+        run: |
+          PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')
+          echo "PROJECT_ID=$PROJECT_ID" >> $GITHUB_ENV
 
       - name: Configure Docker
         run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
@@ -135,6 +139,11 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Extract Project ID
+        run: |
+          PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')
+          echo "PROJECT_ID=$PROJECT_ID" >> $GITHUB_ENV
 
       - name: Get GKE Credentials
         uses: google-github-actions/get-gke-credentials@v2

@@ -4,9 +4,8 @@
 #
 # 사전 요구사항:
 # 1. GitHub Secrets 설정:
-#    - GCP_PROJECT_ID: GCP 프로젝트 ID
 #    - GCP_SA_KEY: 서비스 계정 JSON 키 (container.admin, artifactregistry.admin, compute.admin 권한)
-#    - POSTGRES_PASSWORD: PostgreSQL 비밀번호
+#    - DB_PASSWORD: PostgreSQL 비밀번호
 #    - JWT_SECRET: JWT 시크릿 (최소 32자)
 #    - JWT_REFRESH_SECRET: JWT 리프레시 시크릿
 #
@@ -35,7 +34,6 @@ on:
         type: string
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: asia-northeast3
   CLUSTER_NAME: ${{ github.event.inputs.cluster_name || 'parkgolf-dev' }}
   NAMESPACE: parkgolf-dev
@@ -51,16 +49,12 @@ jobs:
 
       - name: Validate Secrets
         run: |
-          if [ -z "${{ secrets.GCP_PROJECT_ID }}" ]; then
-            echo "::error::GCP_PROJECT_ID secret is not set"
-            exit 1
-          fi
           if [ -z "${{ secrets.GCP_SA_KEY }}" ]; then
             echo "::error::GCP_SA_KEY secret is not set"
             exit 1
           fi
-          if [ -z "${{ secrets.POSTGRES_PASSWORD }}" ]; then
-            echo "::error::POSTGRES_PASSWORD secret is not set"
+          if [ -z "${{ secrets.DB_PASSWORD }}" ]; then
+            echo "::error::DB_PASSWORD secret is not set"
             exit 1
           fi
           if [ -z "${{ secrets.JWT_SECRET }}" ]; then
@@ -68,6 +62,12 @@ jobs:
             exit 1
           fi
           echo "All required secrets are configured"
+
+      - name: Extract Project ID from SA Key
+        run: |
+          PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')
+          echo "PROJECT_ID=$PROJECT_ID" >> $GITHUB_ENV
+          echo "Project ID: $PROJECT_ID"
 
       - name: Google Auth
         uses: google-github-actions/auth@v2
@@ -168,7 +168,7 @@ jobs:
           kubectl create secret generic parkgolf-secrets \
             --namespace=${{ env.NAMESPACE }} \
             --from-literal=POSTGRES_USER=parkgolf \
-            --from-literal=POSTGRES_PASSWORD='${{ secrets.POSTGRES_PASSWORD }}' \
+            --from-literal=POSTGRES_PASSWORD='${{ secrets.DB_PASSWORD }}' \
             --from-literal=JWT_SECRET='${{ secrets.JWT_SECRET }}' \
             --from-literal=JWT_REFRESH_SECRET='${{ secrets.JWT_REFRESH_SECRET }}' \
             --dry-run=client -o yaml | kubectl apply -f -
@@ -295,7 +295,7 @@ jobs:
             --image=postgres:15-alpine \
             --env="PGHOST=postgres" \
             --env="PGUSER=parkgolf" \
-            --env="PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }}" \
+            --env="PGPASSWORD=${{ secrets.DB_PASSWORD }}" \
             -- sh -c "
               echo 'Waiting for PostgreSQL...'
               until pg_isready -h postgres; do sleep 2; done
