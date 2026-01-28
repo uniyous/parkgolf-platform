@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 
 @main
 struct ParkGolfApp: App {
@@ -135,4 +136,13 @@ struct PasswordExpiryInfo {
         }
         return "주기적인 비밀번호 변경을 권장합니다."
     }
+}
+
+// MARK: - Navigation Notification Names
+
+extension Notification.Name {
+    static let navigateToBookingDetail = Notification.Name("navigateToBookingDetail")
+    static let navigateToFriendRequests = Notification.Name("navigateToFriendRequests")
+    static let navigateToFriendsList = Notification.Name("navigateToFriendsList")
+    static let navigateToChatRoom = Notification.Name("navigateToChatRoom")
 }

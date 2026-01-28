@@ -170,11 +170,3 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
 }
 
-// MARK: - Navigation Notification Names
-
-extension Notification.Name {
-    static let navigateToBookingDetail = Notification.Name("navigateToBookingDetail")
-    static let navigateToFriendRequests = Notification.Name("navigateToFriendRequests")
-    static let navigateToFriendsList = Notification.Name("navigateToFriendsList")
-    static let navigateToChatRoom = Notification.Name("navigateToChatRoom")
-}
