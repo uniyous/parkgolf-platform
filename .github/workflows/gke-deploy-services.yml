@@ -250,19 +250,23 @@ jobs:
 
           # DB 환경변수 설정
           if [ "$NEEDS_DB" = "true" ]; then
+            # Secret에서 값 추출하여 DATABASE_URL 생성
+            DB_USER=$(kubectl get secret parkgolf-secrets -n ${{ env.NAMESPACE }} -o jsonpath='{.data.POSTGRES_USER}' | base64 -d)
+            DB_PASS=$(kubectl get secret parkgolf-secrets -n ${{ env.NAMESPACE }} -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d)
+            DATABASE_URL="postgresql://${DB_USER}:${DB_PASS}@postgres:5432/${DB_NAME}"
+
+            # Secret으로 DATABASE_URL 생성/업데이트
+            kubectl create secret generic ${SERVICE}-db-secret \
+              --namespace=${{ env.NAMESPACE }} \
+              --from-literal=DATABASE_URL="${DATABASE_URL}" \
+              --dry-run=client -o yaml | kubectl apply -f -
+
             DB_ENV="
                   - name: DATABASE_URL
-                    value: postgresql://\$(POSTGRES_USER):\$(POSTGRES_PASSWORD)@postgres:5432/$DB_NAME
-                  - name: POSTGRES_USER
                     valueFrom:
                       secretKeyRef:
-                        name: parkgolf-secrets
-                        key: POSTGRES_USER
-                  - name: POSTGRES_PASSWORD
-                    valueFrom:
-                      secretKeyRef:
-                        name: parkgolf-secrets
-                        key: POSTGRES_PASSWORD"
+                        name: ${SERVICE}-db-secret
+                        key: DATABASE_URL"
           else
             DB_ENV=""
           fi
