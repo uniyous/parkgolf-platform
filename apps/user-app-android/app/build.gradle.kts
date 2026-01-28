@@ -27,7 +27,7 @@ android {
     buildTypes {
         debug {
             isMinifyEnabled = false
-            buildConfigField("String", "API_BASE_URL", "\"http://34.160.211.91/api/user/\"")
+            buildConfigField("String", "API_BASE_URL", "\"http://34.160.211.91/\"")
             // GKE Static IP for chat socket
             buildConfigField("String", "CHAT_SOCKET_URL", "\"http://34.160.211.91\"")
         }
@@ -37,7 +37,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "API_BASE_URL", "\"https://user-api-335495814488.asia-northeast3.run.app/\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://api.parkgolf.app/\"")
             // Use same URL as iOS for chat socket
             buildConfigField("String", "CHAT_SOCKET_URL", "\"https://chat-gateway-iihuzmuufa-du.a.run.app\"")
         }
