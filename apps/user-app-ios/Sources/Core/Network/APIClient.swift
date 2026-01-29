@@ -67,6 +67,12 @@ actor APIClient {
         self.session = URLSession(configuration: configuration)
     }
 
+    /// Testable initializer for unit tests with custom URLSession configuration
+    init(baseURL: URL, sessionConfiguration: URLSessionConfiguration) {
+        self.baseURL = baseURL
+        self.session = URLSession(configuration: sessionConfiguration)
+    }
+
     // MARK: - Token Management
 
     func setAccessToken(_ token: String?) {

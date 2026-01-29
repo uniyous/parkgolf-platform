@@ -59,6 +59,15 @@ export default defineConfig({
       },
       dependencies: ['setup'],
     },
+
+    // 독립 실행 테스트 (자체 인증 관리, setup 불필요)
+    {
+      name: 'standalone',
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+      testMatch: /.*token-refresh.*/,
+    },
   ],
 
   // 로컬 개발 서버 자동 실행

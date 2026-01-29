@@ -21,7 +21,7 @@ setup('authenticate as test user', async ({ page }) => {
       await page.goto('/login');
 
       // 페이지 로드 확인
-      await expect(page.getByText('Golf Course')).toBeVisible({ timeout: 30000 });
+      await expect(page.getByText('ParkMate')).toBeVisible({ timeout: 30000 });
 
       // 테스트 계정 버튼 클릭 (테스트사용자)
       await page.getByRole('button', { name: /테스트사용자/ }).click();

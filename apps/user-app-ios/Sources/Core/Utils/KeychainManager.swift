@@ -3,7 +3,7 @@ import KeychainAccess
 
 // MARK: - Keychain Manager
 
-final class KeychainManager: Sendable {
+final class KeychainManager: @unchecked Sendable {
     static let shared = KeychainManager()
 
     private let keychain: Keychain
