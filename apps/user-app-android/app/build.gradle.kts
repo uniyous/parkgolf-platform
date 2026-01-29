@@ -27,9 +27,9 @@ android {
     buildTypes {
         debug {
             isMinifyEnabled = false
-            buildConfigField("String", "API_BASE_URL", "\"http://34.160.211.91/\"")
-            // GKE Static IP for chat socket
-            buildConfigField("String", "CHAT_SOCKET_URL", "\"http://34.160.211.91\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://dev-api.goparkmate.com/\"")
+            // GKE dev domain for chat socket
+            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://dev-api.goparkmate.com\"")
         }
         release {
             isMinifyEnabled = true
@@ -37,9 +37,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "API_BASE_URL", "\"https://api.parkgolf.app/\"")
-            // Use same URL as iOS for chat socket
-            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://chat-gateway-iihuzmuufa-du.a.run.app\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://api.goparkmate.com/\"")
+            // GKE prod domain for chat socket
+            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://api.goparkmate.com\"")
         }
     }
     compileOptions {

@@ -372,6 +372,30 @@ jobs:
             }
           }' || true
 
+      - name: Set Domain
+        id: domain
+        run: |
+          ENV="${{ needs.setup.outputs.environment }}"
+          if [ "$ENV" == "prod" ]; then
+            echo "domain=api.goparkmate.com" >> $GITHUB_OUTPUT
+          else
+            echo "domain=dev-api.goparkmate.com" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy ManagedCertificate
+        run: |
+          NAMESPACE=${{ needs.setup.outputs.namespace }}
+          cat <<EOF | kubectl apply -f -
+          apiVersion: networking.gke.io/v1
+          kind: ManagedCertificate
+          metadata:
+            name: parkgolf-cert
+            namespace: $NAMESPACE
+          spec:
+            domains:
+            - ${{ steps.domain.outputs.domain }}
+          EOF
+
       - name: Deploy Ingress
         run: |
           NAMESPACE=${{ needs.setup.outputs.namespace }}
@@ -384,9 +408,11 @@ jobs:
             annotations:
               kubernetes.io/ingress.class: "gce"
               kubernetes.io/ingress.global-static-ip-name: "${{ env.IP_NAME }}"
+              networking.gke.io/managed-certificates: "parkgolf-cert"
           spec:
             rules:
-            - http:
+            - host: ${{ steps.domain.outputs.domain }}
+              http:
                 paths:
                 - path: /api/admin
                   pathType: Prefix
@@ -471,6 +497,6 @@ jobs:
           echo "| Static IP | ${{ env.STATIC_IP }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Endpoints" >> $GITHUB_STEP_SUMMARY
-          echo "- Admin API: http://${{ env.STATIC_IP }}/api/admin" >> $GITHUB_STEP_SUMMARY
-          echo "- User API: http://${{ env.STATIC_IP }}/api/user" >> $GITHUB_STEP_SUMMARY
-          echo "- WebSocket: ws://${{ env.STATIC_IP }}/socket.io" >> $GITHUB_STEP_SUMMARY
+          echo "- Admin API: https://${{ steps.domain.outputs.domain }}/api/admin" >> $GITHUB_STEP_SUMMARY
+          echo "- User API: https://${{ steps.domain.outputs.domain }}/api/user" >> $GITHUB_STEP_SUMMARY
+          echo "- WebSocket: wss://${{ steps.domain.outputs.domain }}/socket.io" >> $GITHUB_STEP_SUMMARY

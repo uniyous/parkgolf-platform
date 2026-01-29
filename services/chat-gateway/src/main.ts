@@ -35,6 +35,8 @@ async function bootstrap() {
       /^https:\/\/.*\.run\.app$/,
       'https://parkgolf-user.web.app',
       'https://parkgolf-user-dev.web.app',
+      'https://dev-api.goparkmate.com',  // GKE dev
+      'https://api.goparkmate.com',      // GKE prod
     ],
     credentials: true,
   });

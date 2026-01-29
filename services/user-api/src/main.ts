@@ -33,6 +33,8 @@ async function bootstrap() {
       'https://parkgolf-admin-dev.web.app',
       'https://parkgolf-user.web.app',
       'https://parkgolf-user-dev.web.app',
+      'https://dev-api.goparkmate.com',  // GKE dev
+      'https://api.goparkmate.com',     // GKE prod
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

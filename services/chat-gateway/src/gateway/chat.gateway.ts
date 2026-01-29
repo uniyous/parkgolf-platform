@@ -42,6 +42,8 @@ interface DirectMessageDto {
       /^https:\/\/.*\.run\.app$/,
       'https://parkgolf-user.web.app',
       'https://parkgolf-user-dev.web.app',
+      'https://dev-api.goparkmate.com',
+      'https://api.goparkmate.com',
     ],
     credentials: true,
   },
