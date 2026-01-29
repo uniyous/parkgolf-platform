@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Button, Input } from '../components';
-import { SystemWarmupPanel } from '../components/SystemWarmupPanel';
 
 export const LoginPage: React.FC = () => {
   const { login, isLoggingIn } = useAuth();
@@ -11,8 +10,6 @@ export const LoginPage: React.FC = () => {
     password: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showWarmupPanel, setShowWarmupPanel] = useState(false);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -162,11 +159,6 @@ export const LoginPage: React.FC = () => {
         </div>
       </div>
 
-      {/* System Warmup Panel */}
-      <SystemWarmupPanel
-        isOpen={showWarmupPanel}
-        onToggle={() => setShowWarmupPanel(!showWarmupPanel)}
-      />
     </div>
   );
 };
