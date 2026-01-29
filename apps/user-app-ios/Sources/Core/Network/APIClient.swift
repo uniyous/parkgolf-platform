@@ -5,9 +5,16 @@ import Foundation
 actor APIClient {
     static let shared = APIClient()
 
+    /// Posted when refresh token fails and user must re-authenticate
+    static let sessionExpiredNotification = Notification.Name("APIClient.sessionExpired")
+
     private let baseURL: URL
     private let session: URLSession
     private var accessToken: String?
+    private var refreshToken: String?
+
+    /// In-flight refresh task to prevent concurrent refresh attempts
+    private var refreshTask: Task<LoginResponse, Error>?
 
     // MARK: - Shared Decoders
 
@@ -70,13 +77,24 @@ actor APIClient {
         return accessToken
     }
 
+    func setTokens(accessToken: String, refreshToken: String) {
+        self.accessToken = accessToken
+        self.refreshToken = refreshToken
+    }
+
+    func clearTokens() {
+        self.accessToken = nil
+        self.refreshToken = nil
+        KeychainManager.shared.clearAll()
+    }
+
     // MARK: - Request Methods
 
     func request<T: Decodable & Sendable>(
         _ endpoint: Endpoint,
         responseType: T.Type
     ) async throws -> T {
-        let (data, httpResponse) = try await performRequest(endpoint)
+        let (data, httpResponse) = try await performRequestWithRetry(endpoint)
 
         guard (200...299).contains(httpResponse.statusCode) else {
             throw APIError.httpError(statusCode: httpResponse.statusCode, data: data)
@@ -103,7 +121,7 @@ actor APIClient {
         _ endpoint: Endpoint,
         responseType: T.Type
     ) async throws -> T {
-        let (data, httpResponse) = try await performRequest(endpoint)
+        let (data, httpResponse) = try await performRequestWithRetry(endpoint)
 
         // Check for error response first
         if let errorResponse = try? Self.jsonDecoder.decode(ErrorOnlyResponse.self, from: data),
@@ -130,7 +148,7 @@ actor APIClient {
         _ endpoint: Endpoint,
         responseType: T.Type
     ) async throws -> PaginatedResponse<T> {
-        let (data, httpResponse) = try await performRequest(endpoint)
+        let (data, httpResponse) = try await performRequestWithRetry(endpoint)
 
         guard (200...299).contains(httpResponse.statusCode) else {
             throw APIError.httpError(statusCode: httpResponse.statusCode, data: data)
@@ -144,7 +162,7 @@ actor APIClient {
         _ endpoint: Endpoint,
         responseType: T.Type
     ) async throws -> [T] {
-        let (data, httpResponse) = try await performRequest(endpoint)
+        let (data, httpResponse) = try await performRequestWithRetry(endpoint)
 
         guard (200...299).contains(httpResponse.statusCode) else {
             throw APIError.httpError(statusCode: httpResponse.statusCode, data: data)
@@ -173,6 +191,70 @@ actor APIClient {
     }
 
     // MARK: - Private Helpers
+
+    /// Performs request with automatic 401 retry after token refresh
+    private func performRequestWithRetry(_ endpoint: Endpoint) async throws -> (Data, HTTPURLResponse) {
+        let (data, httpResponse) = try await performRequest(endpoint)
+
+        // Not a 401 → return as-is
+        guard httpResponse.statusCode == 401 else {
+            return (data, httpResponse)
+        }
+
+        // Don't retry refresh endpoint itself to prevent infinite loop
+        if endpoint.path.contains("/refresh") {
+            return (data, httpResponse)
+        }
+
+        // Attempt token refresh
+        do {
+            let refreshResponse = try await attemptTokenRefresh()
+            self.accessToken = refreshResponse.accessToken
+            self.refreshToken = refreshResponse.refreshToken
+            try? KeychainManager.shared.saveTokens(
+                accessToken: refreshResponse.accessToken,
+                refreshToken: refreshResponse.refreshToken
+            )
+        } catch {
+            // Refresh failed → notify UI for forced logout
+            clearTokens()
+            await MainActor.run {
+                NotificationCenter.default.post(name: Self.sessionExpiredNotification, object: nil)
+            }
+            throw APIError.unauthorized
+        }
+
+        // Retry original request with new token
+        return try await performRequest(endpoint)
+    }
+
+    /// Attempts token refresh. Serialized by actor: concurrent 401s share a single refresh.
+    private func attemptTokenRefresh() async throws -> LoginResponse {
+        // If a refresh is already in progress, await its result
+        if let existingTask = refreshTask {
+            return try await existingTask.value
+        }
+
+        guard let currentRefreshToken = refreshToken else {
+            throw APIError.unauthorized
+        }
+
+        let task = Task<LoginResponse, Error> {
+            let endpoint = AuthEndpoints.refreshToken(refreshToken: currentRefreshToken)
+            let (data, httpResponse) = try await performRequest(endpoint)
+
+            guard (200...299).contains(httpResponse.statusCode) else {
+                throw APIError.unauthorized
+            }
+
+            return try Self.jsonDecoder.decode(LoginResponse.self, from: data)
+        }
+
+        refreshTask = task
+        defer { refreshTask = nil }
+
+        return try await task.value
+    }
 
     private func performRequest(_ endpoint: Endpoint) async throws -> (Data, HTTPURLResponse) {
         let request = try buildRequest(for: endpoint)

@@ -26,9 +26,15 @@ final class LoginViewModel: ObservableObject {
                 responseType: LoginResponse.self
             )
 
-            // Save token
-            await apiClient.setAccessToken(response.accessToken)
-            // TODO: Save refresh token to Keychain
+            // Save tokens to memory and Keychain
+            await apiClient.setTokens(
+                accessToken: response.accessToken,
+                refreshToken: response.refreshToken
+            )
+            try? KeychainManager.shared.saveTokens(
+                accessToken: response.accessToken,
+                refreshToken: response.refreshToken
+            )
 
             return response.user
         } catch let error as APIError {
@@ -86,8 +92,15 @@ final class SignUpViewModel: ObservableObject {
                 responseType: LoginResponse.self
             )
 
-            // Save token
-            await apiClient.setAccessToken(response.accessToken)
+            // Save tokens to memory and Keychain
+            await apiClient.setTokens(
+                accessToken: response.accessToken,
+                refreshToken: response.refreshToken
+            )
+            try? KeychainManager.shared.saveTokens(
+                accessToken: response.accessToken,
+                refreshToken: response.refreshToken
+            )
 
             return response.user
         } catch let error as APIError {

@@ -59,11 +59,14 @@ final class ProfileViewModel: ObservableObject {
                 responseType: EmptyResponse.self
             )
 
-            // Clear token
-            await APIClient.shared.setAccessToken(nil)
+            // Clear tokens from memory and Keychain
+            await APIClient.shared.clearTokens()
 
             return true
         } catch {
+            // Clear tokens even if server logout fails
+            await APIClient.shared.clearTokens()
+
             self.error = error
             #if DEBUG
             print("Failed to logout: \(error)")
