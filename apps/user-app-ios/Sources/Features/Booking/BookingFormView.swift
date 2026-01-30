@@ -98,9 +98,14 @@ struct BookingFormView: View {
             } message: {
                 Text(viewModel.errorMessage ?? "")
             }
-            .fullScreenCover(isPresented: $viewModel.showBookingComplete) {
+            .fullScreenCover(isPresented: $viewModel.showBookingComplete, onDismiss: {
+                if appState.bookingCompleteAction != .none {
+                    dismiss()
+                }
+            }) {
                 if let booking = viewModel.createdBooking {
                     BookingCompleteView(booking: booking)
+                        .environmentObject(appState)
                 }
             }
         }

@@ -226,6 +226,12 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     }
 }
 
+// MARK: - Booking Complete Action
+
+enum BookingCompleteAction {
+    case none, newBooking, myBookings
+}
+
 // MARK: - App State
 
 @MainActor
@@ -234,6 +240,10 @@ final class AppState: ObservableObject {
     @Published var currentUser: User?
     @Published var showPasswordChangeReminder: Bool = false
     @Published var passwordExpiryInfo: PasswordExpiryInfo?
+
+    /// 예약 완료 후 네비게이션 액션
+    @Published var bookingCompleteAction: BookingCompleteAction = .none
+    @Published var showMyBookingsSheet: Bool = false
 
     /// 비밀번호 변경 권유를 이미 표시했는지 (세션 내 1회만)
     private var hasShownPasswordReminder = false

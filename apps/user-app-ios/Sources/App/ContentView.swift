@@ -93,6 +93,11 @@ struct MainTabView: View {
                 ChangePasswordView()
             }
         }
+        .sheet(isPresented: $appState.showMyBookingsSheet) {
+            NavigationStack {
+                MyBookingsView()
+            }
+        }
     }
 }
 

@@ -4,6 +4,7 @@ import SwiftUI
 
 struct RoundBookingView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = RoundBookingViewModel()
 
     /// 타이틀 헤더 표시 여부 (탭에서 직접 접근 시 true, NavigationLink로 접근 시 false)
@@ -94,7 +95,12 @@ struct RoundBookingView: View {
         .sheet(isPresented: $viewModel.showFilterSheet) {
             RoundFilterSheet(viewModel: viewModel)
         }
-        .fullScreenCover(isPresented: $viewModel.showBookingForm) {
+        .fullScreenCover(isPresented: $viewModel.showBookingForm, onDismiss: {
+            if appState.bookingCompleteAction == .myBookings {
+                appState.showMyBookingsSheet = true
+            }
+            appState.bookingCompleteAction = .none
+        }) {
             if let round = viewModel.selectedRound,
                let timeSlot = viewModel.selectedTimeSlot {
                 BookingFormView(
@@ -102,6 +108,7 @@ struct RoundBookingView: View {
                     timeSlot: timeSlot,
                     selectedDate: viewModel.selectedDate
                 )
+                .environmentObject(appState)
             }
         }
         .task {

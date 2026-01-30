@@ -44,6 +44,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.parkgolf.app.presentation.feature.auth.LoginScreen
 import com.parkgolf.app.presentation.feature.auth.SignUpScreen
+import com.parkgolf.app.presentation.feature.booking.BookingCompleteScreen
 import com.parkgolf.app.presentation.feature.booking.BookingFormScreen
 import com.parkgolf.app.presentation.feature.booking.MyBookingsScreen
 import com.parkgolf.app.presentation.feature.chat.ChatRoomScreen
@@ -184,6 +185,25 @@ fun ParkGolfNavHost(
                 onNavigateBack = { navController.popBackStack() },
                 onBookingComplete = { bookingId ->
                     navController.navigate("booking/complete/$bookingId") {
+                        popUpTo("main")
+                    }
+                }
+            )
+        }
+
+        // Booking Complete screen
+        composable(
+            route = Screen.BookingComplete.route,
+            arguments = listOf(navArgument("bookingId") { type = NavType.StringType })
+        ) {
+            BookingCompleteScreen(
+                onNewBooking = {
+                    navController.navigate("main") {
+                        popUpTo("main") { inclusive = true }
+                    }
+                },
+                onMyBookings = {
+                    navController.navigate(Screen.MyBookings.route) {
                         popUpTo("main")
                     }
                 }
