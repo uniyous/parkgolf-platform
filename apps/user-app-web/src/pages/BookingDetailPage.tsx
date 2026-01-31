@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/formatting';
 import { showErrorToast } from '@/lib/toast';
 import { translateErrorMessage } from '@/types/common';
 import { Button, Select, Textarea, Checkbox, PriceDisplay } from '../components';
+import { Container, SubPageHeader } from '@/components/layout';
 import { PAYMENT_METHODS, SERVICE_FEE_RATE } from '@/lib/constants';
 
 interface BookingState {
@@ -111,7 +112,9 @@ export const BookingDetailPage: React.FC = () => {
   });
 
   return (
-    <div className="px-4 py-6">
+    <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title="예약하기" />
+      <Container className="py-6">
         {/* Selected Booking Info */}
         <div className="glass-card mb-8">
           <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
@@ -308,6 +311,7 @@ export const BookingDetailPage: React.FC = () => {
             : '필수 항목을 완료해주세요'
           }
         </Button>
+      </Container>
     </div>
   );
 };

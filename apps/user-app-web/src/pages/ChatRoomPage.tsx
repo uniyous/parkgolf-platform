@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw, Loader2 } from 'lucide-react';
+import { Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { AppLayout } from '@/components/layout';
+import { Container, SubPageHeader } from '@/components/layout';
 import { useChatRoomQuery, useMessagesInfiniteQuery, useSendMessageMutation } from '@/hooks/queries/chat';
 import { chatSocket } from '@/lib/socket/chatSocket';
 import { authStorage } from '@/lib/storage';
@@ -202,78 +202,60 @@ export const ChatRoomPage: React.FC = () => {
   // Loading state
   if (isLoadingRoom) {
     return (
-      <AppLayout showMobileHeader={false} showTabBar={false} fullHeight>
-        <div className="flex items-center justify-center h-full">
-          <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-        </div>
-      </AppLayout>
+      <div className="h-screen bg-[var(--color-bg-primary)] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+      </div>
     );
   }
 
   // Not found
   if (!room) {
     return (
-      <AppLayout showMobileHeader={false} showTabBar={false} fullHeight>
-        <div className="flex flex-col items-center justify-center h-full p-4">
-          <h2 className="text-xl font-bold text-white mb-2">채팅방을 찾을 수 없습니다</h2>
-          <button
-            onClick={() => navigate('/chat')}
-            className="mt-4 px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
-          >
-            채팅 목록으로
-          </button>
-        </div>
-      </AppLayout>
+      <div className="h-screen bg-[var(--color-bg-primary)] flex flex-col items-center justify-center p-4">
+        <h2 className="text-xl font-bold text-white mb-2">채팅방을 찾을 수 없습니다</h2>
+        <button
+          onClick={() => navigate('/chat')}
+          className="mt-4 px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
+        >
+          채팅 목록으로
+        </button>
+      </div>
     );
   }
 
   return (
-    <AppLayout showMobileHeader={false} showTabBar={false} fullHeight>
-      <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="sticky top-0 z-30 bg-black/40 backdrop-blur-md px-4 py-3 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/social?tab=chat')}
-              className="p-2 -ml-2 rounded-lg hover:bg-white/10 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 text-white" />
-            </button>
-
-            <div className="flex-1 min-w-0">
-              <h2 className="text-white font-semibold truncate">{room.name}</h2>
-              <div className="flex items-center gap-2 text-xs text-white/50">
-                {isConnected ? (
-                  <>
-                    <Wifi className="w-3 h-3 text-emerald-400" />
-                    <span className="text-emerald-400">연결됨</span>
-                  </>
-                ) : (
-                  <>
-                    <WifiOff className="w-3 h-3 text-yellow-400" />
-                    <span className="text-yellow-400">연결 끊김</span>
-                    <button
-                      onClick={() => {
-                        const token = authStorage.getToken();
-                        if (token) {
-                          chatSocket.forceReconnect(token);
-                        }
-                      }}
-                      className="ml-1 p-1 rounded hover:bg-white/10 transition-colors"
-                      title="재연결"
-                    >
-                      <RefreshCw className="w-3 h-3 text-yellow-400" />
-                    </button>
-                  </>
-                )}
-                {(room.participants?.length ?? 0) > 0 && (
-                  <>
-                    <span>•</span>
-                    <Users className="w-3 h-3" />
-                    <span>{room.participants.length}명</span>
-                  </>
-                )}
-              </div>
+    <div className="h-screen bg-[var(--color-bg-primary)] flex flex-col">
+      <SubPageHeader
+        title={room.name}
+        onBack={() => navigate('/social?tab=chat')}
+        rightContent={
+          <>
+            <div className="flex items-center gap-2 text-xs">
+              {isConnected ? (
+                <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+              ) : (
+                <>
+                  <WifiOff className="w-3.5 h-3.5 text-yellow-400" />
+                  <button
+                    onClick={() => {
+                      const token = authStorage.getToken();
+                      if (token) {
+                        chatSocket.forceReconnect(token);
+                      }
+                    }}
+                    className="p-1 rounded hover:bg-white/10 transition-colors"
+                    title="재연결"
+                  >
+                    <RefreshCw className="w-3 h-3 text-yellow-400" />
+                  </button>
+                </>
+              )}
+              {(room.participants?.length ?? 0) > 0 && (
+                <span className="text-white/50 flex items-center gap-1">
+                  <Users className="w-3 h-3" />
+                  {room.participants.length}
+                </span>
+              )}
             </div>
 
             <div className="relative">
@@ -304,9 +286,11 @@ export const ChatRoomPage: React.FC = () => {
                 </>
               )}
             </div>
-          </div>
-        </div>
+          </>
+        }
+      />
 
+      <Container maxWidth="xl" className="flex-1 flex flex-col overflow-hidden !px-0 md:!px-0">
         {/* Messages */}
         <div
           ref={messagesContainerRef}
@@ -364,7 +348,7 @@ export const ChatRoomPage: React.FC = () => {
         </div>
 
         {/* Input */}
-        <div className="sticky bottom-0 bg-black/40 backdrop-blur-md px-4 py-3 border-t border-white/10">
+        <div className="px-4 py-3 border-t border-white/10">
           <div className="flex items-center gap-2">
             <input
               ref={inputRef}
@@ -394,8 +378,8 @@ export const ChatRoomPage: React.FC = () => {
             </button>
           </div>
         </div>
-      </div>
-    </AppLayout>
+      </Container>
+    </div>
   );
 };
 
