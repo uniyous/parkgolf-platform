@@ -64,7 +64,7 @@ jobs:
             SERVICES="$INPUT"
           fi
           echo "services=$SERVICES" >> $GITHUB_OUTPUT
-          MATRIX=$(echo $SERVICES | tr ',' '\n' | jq -R . | jq -s -c .)
+          MATRIX=$(echo $SERVICES | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' | jq -R . | jq -s -c .)
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
           echo "Services to deploy: $SERVICES"
 
@@ -112,7 +112,7 @@ jobs:
       - name: Build Docker Image
         if: steps.check.outputs.exists == 'true'
         run: |
-          SERVICE=${{ matrix.service }}
+          SERVICE="${{ matrix.service }}"
           IMAGE=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/parkgolf/$SERVICE
           ENV=${{ needs.setup.outputs.environment }}
 
@@ -125,7 +125,7 @@ jobs:
       - name: Push Docker Image
         if: steps.check.outputs.exists == 'true'
         run: |
-          SERVICE=${{ matrix.service }}
+          SERVICE="${{ matrix.service }}"
           IMAGE=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/parkgolf/$SERVICE
           ENV=${{ needs.setup.outputs.environment }}
 
@@ -165,7 +165,7 @@ jobs:
       - name: Set Service Config
         id: config
         run: |
-          SERVICE=${{ matrix.service }}
+          SERVICE="${{ matrix.service }}"
           case $SERVICE in
             iam-service)
               DB_NAME="iam_db"; NEEDS_DB="true"
@@ -205,7 +205,7 @@ jobs:
 
       - name: Deploy Service
         run: |
-          SERVICE=${{ matrix.service }}
+          SERVICE="${{ matrix.service }}"
           NAMESPACE=${{ needs.setup.outputs.namespace }}
           IMAGE=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/parkgolf/$SERVICE:${{ github.sha }}
           DB_NAME=${{ steps.config.outputs.db_name }}
