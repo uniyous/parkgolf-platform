@@ -115,6 +115,18 @@ export class NotificationNatsController {
     private readonly deliveryService: DeliveryService,
   ) {}
 
+  // ===== Ping Handler =====
+
+  @MessagePattern('notification.ping')
+  async ping(@Payload() payload: { ping: boolean; timestamp: string }) {
+    this.logger.debug(`NATS ping received: ${payload.timestamp}`);
+    return {
+      pong: true,
+      service: 'notify-service',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   // ===== Event Handlers (Fire-and-forget) =====
 
   @EventPattern('booking.confirmed')
