@@ -33,6 +33,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/terminus": "^11.0.0",
+    "@nestjs/throttler": "^6.5.0",
     "axios": "^1.13.4",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",

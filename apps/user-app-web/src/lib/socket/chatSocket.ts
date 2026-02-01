@@ -1,5 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import type { ChatMessage } from '@/lib/api/chatApi';
+import { authStorage } from '@/lib/storage';
+import { apiClient } from '@/lib/api/client';
 
 // ============================================
 // 환경 설정
@@ -8,9 +10,9 @@ import type { ChatMessage } from '@/lib/api/chatApi';
 const mode = (import.meta as any).env?.MODE;
 const isDev = mode === 'development' || mode === 'e2e';
 
-// 환경 변수로 소켓 URL 지정 가능, 없으면 GKE 사용
+// 환경 변수로 소켓 URL 지정 가능, 없으면 GKE Ingress 도메인 사용
 const SOCKET_URL = (import.meta as any).env?.VITE_CHAT_SOCKET_URL ||
-  'http://34.160.211.91';
+  'https://dev-api.goparkmate.com';
 
 const NAMESPACE = '/chat';
 
@@ -51,6 +53,7 @@ export type ErrorHandler = (error: string) => void;
 class ChatSocketManager {
   private socket: Socket | null = null;
   private token: string | null = null;
+  private isRefreshingToken = false;
 
   // Event handlers
   private messageHandlers: Set<MessageHandler> = new Set();
@@ -80,7 +83,10 @@ class ChatSocketManager {
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 30000,
-      auth: { token },
+      // 동적 auth: 재연결 시마다 최신 토큰을 authStorage에서 읽음
+      auth: (cb) => {
+        cb({ token: authStorage.getToken() || this.token });
+      },
     });
 
     this.setupEventHandlers();
@@ -112,6 +118,30 @@ class ChatSocketManager {
     return this.socket?.connected ?? false;
   }
 
+  /**
+   * 인증 에러 시 API Client의 토큰 갱신 메커니즘을 활용하여 재연결
+   * - API Client의 mutex를 공유하여 동시 갱신 방지
+   * - 동일한 refresh 엔드포인트 사용
+   */
+  private async handleAuthError(): Promise<void> {
+    if (this.isRefreshingToken) return;
+    this.isRefreshingToken = true;
+
+    try {
+      const refreshed = await apiClient.refreshAccessToken();
+      if (refreshed) {
+        const newToken = authStorage.getToken();
+        if (newToken) {
+          this.forceReconnect(newToken);
+        }
+      }
+    } catch (e) {
+      console.error('Token refresh failed for socket:', e);
+    } finally {
+      this.isRefreshingToken = false;
+    }
+  }
+
   // ============================================
   // Event Handlers Setup
   // ============================================
@@ -131,6 +161,10 @@ class ChatSocketManager {
 
     this.socket.on('connect_error', (error) => {
       console.error('❌ Chat socket connection error:', error.message);
+      // 인증 실패 시 토큰 갱신 후 재연결 시도
+      if (error.message?.includes('Unauthorized') || error.message?.includes('Authentication')) {
+        this.handleAuthError();
+      }
       this.errorHandlers.forEach(handler => handler(error.message));
     });
 
@@ -153,6 +187,17 @@ class ChatSocketManager {
 
     this.socket.on('user_left', (data: UserLeftEvent) => {
       this.userLeftHandlers.forEach(handler => handler(data));
+    });
+
+    // Token expiry handling from server
+    this.socket.on('token_expiring', () => {
+      console.log('[ChatSocket] Token expiring soon, refreshing...');
+      this.handleAuthError();
+    });
+
+    this.socket.on('token_expired', () => {
+      console.log('[ChatSocket] Token expired, refreshing and reconnecting...');
+      this.handleAuthError();
     });
 
     // Socket.IO Manager 레벨 재연결 이벤트

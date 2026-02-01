@@ -4,6 +4,8 @@ import {
   IsNotEmpty,
   IsString,
   MinLength,
+  MaxLength,
+  Matches,
   IsIn,
 } from 'class-validator';
 
@@ -28,11 +30,16 @@ export class SignupDto {
   @ApiProperty({
     description: 'Admin password',
     example: 'password123',
-    minLength: 6,
+    minLength: 8,
   })
   @IsString()
   @IsNotEmpty({ message: 'Password is required' })
-  @MinLength(6, { message: 'Password must be at least 6 characters' })
+  @MinLength(8, { message: 'Password must be at least 8 characters' })
+  @MaxLength(128, { message: 'Password must not exceed 128 characters' })
+  @Matches(
+    /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/,
+    { message: '비밀번호는 영문, 숫자, 특수문자를 모두 포함하여 8자 이상이어야 합니다.' },
+  )
   password: string;
 
   @ApiProperty({

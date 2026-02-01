@@ -8,7 +8,8 @@ import {
   MessageBody,
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
-import { Logger, UseGuards } from '@nestjs/common';
+import { Logger, UseGuards, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { NatsService, ChatMessage, TypingEvent } from '../nats/nats.service';
 import { WsAuthGuard, AuthenticatedSocket, WsUser } from '../auth/ws-auth.guard';
@@ -37,19 +38,20 @@ interface DirectMessageDto {
 
 @WebSocketGateway({
   cors: {
-    origin: [
-      'http://localhost:3002',
-      /^https:\/\/.*\.run\.app$/,
-      'https://parkgolf-user.web.app',
-      'https://parkgolf-user-dev.web.app',
-      'https://dev-api.goparkmate.com',
-      'https://api.goparkmate.com',
-    ],
+    origin: process.env.CORS_ALLOWED_ORIGINS
+      ? process.env.CORS_ALLOWED_ORIGINS.split(',').map(o => o.trim())
+      : [
+          'http://localhost:3002',
+          'https://parkgolf-user.web.app',
+          'https://parkgolf-user-dev.web.app',
+          'https://dev-api.goparkmate.com',
+          'https://api.goparkmate.com',
+        ],
     credentials: true,
   },
   namespace: '/chat',
 })
-export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit, OnModuleDestroy {
   @WebSocketServer()
   server: Server;
 
@@ -64,10 +66,54 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // Track room subscriptions: Map<roomId, Set<socket.id>>
   private roomSubscriptions: Map<string, Set<string>> = new Map();
 
+  // Token expiry check interval
+  private tokenCheckInterval: ReturnType<typeof setInterval> | null = null;
+
   constructor(
     private readonly natsService: NatsService,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
+
+  onModuleInit() {
+    // Check for expired tokens every 60 seconds
+    this.tokenCheckInterval = setInterval(() => {
+      this.checkExpiredTokens();
+    }, 60_000);
+  }
+
+  onModuleDestroy() {
+    if (this.tokenCheckInterval) {
+      clearInterval(this.tokenCheckInterval);
+      this.tokenCheckInterval = null;
+    }
+  }
+
+  private checkExpiredTokens() {
+    const now = Math.floor(Date.now() / 1000);
+    const WARNING_THRESHOLD = 5 * 60; // 5 minutes before expiry
+
+    for (const [socketId, user] of this.onlineUsers) {
+      const socket = this.server?.sockets?.sockets?.get(socketId) as AuthenticatedSocket | undefined;
+      if (!socket) continue;
+
+      const tokenExp = (socket as any).data?.tokenExp;
+      if (!tokenExp) continue;
+
+      const timeLeft = tokenExp - now;
+
+      if (timeLeft <= 0) {
+        this.logger.log(`Token expired for user ${user.id}, disconnecting socket ${socketId}`);
+        socket.emit('token_expired', { message: 'Token expired' });
+        socket.disconnect();
+      } else if (timeLeft <= WARNING_THRESHOLD) {
+        socket.emit('token_expiring', {
+          message: 'Token expiring soon',
+          expiresIn: timeLeft,
+        });
+      }
+    }
+  }
 
   async handleConnection(client: AuthenticatedSocket) {
     try {
@@ -87,6 +133,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         name: payload.name,
       };
       client.user = user;
+
+      // Store token expiry for periodic check
+      if (payload.exp) {
+        (client as any).data = { ...(client as any).data, tokenExp: payload.exp };
+      }
 
       // Track online user
       this.onlineUsers.set(client.id, user);
@@ -375,19 +426,26 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private extractToken(client: AuthenticatedSocket): string | null {
+    // 1. Preferred: auth object (Socket.IO auth)
+    const auth = client.handshake.auth;
+    if (auth?.token) {
+      return auth.token;
+    }
+
+    // 2. Authorization header
     const authHeader = client.handshake.headers.authorization;
     if (authHeader?.startsWith('Bearer ')) {
       return authHeader.substring(7);
     }
 
+    // 3. Deprecated: query param (token exposed in URL/logs)
     const token = client.handshake.query.token;
     if (typeof token === 'string') {
+      this.logger.warn(
+        `[DEPRECATION] Client ${client.id} using query param for token. ` +
+        'Migrate to auth object or Authorization header.',
+      );
       return token;
-    }
-
-    const auth = client.handshake.auth;
-    if (auth?.token) {
-      return auth.token;
     }
 
     return null;

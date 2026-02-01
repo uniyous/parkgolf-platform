@@ -63,6 +63,11 @@ export class AuthService {
     return this.natsClient.send('iam.auth.admin.me', { token });
   }
 
+  async logout(adminId: number): Promise<any> {
+    this.logger.log(`Admin logout: ${adminId}`);
+    return this.natsClient.send('iam.auth.admin.logout', { adminId });
+  }
+
   async createAdmin(adminData: any): Promise<any> {
     this.logger.log(`Creating admin: ${adminData.email}`);
     return this.natsClient.send('iam.admins.create', { adminData });

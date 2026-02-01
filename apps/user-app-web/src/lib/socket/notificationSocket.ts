@@ -1,5 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import type { AppNotification, NotificationType, NotificationData } from '@/lib/api/notificationApi';
+import { authStorage } from '@/lib/storage';
+import { apiClient } from '@/lib/api/client';
 
 // ============================================
 // 환경 설정
@@ -10,7 +12,7 @@ const isDev = mode === 'development' || mode === 'e2e';
 
 // chat-gateway와 동일한 서버 사용 (namespace만 다름)
 const SOCKET_URL = (import.meta as any).env?.VITE_CHAT_SOCKET_URL ||
-  'http://34.160.211.91';
+  'https://dev-api.goparkmate.com';
 
 const NAMESPACE = '/notification';
 
@@ -40,6 +42,7 @@ export type ErrorHandler = (error: string) => void;
 class NotificationSocketManager {
   private socket: Socket | null = null;
   private token: string | null = null;
+  private isRefreshingToken = false;
 
   // Event handlers
   private notificationHandlers: Set<NotificationHandler> = new Set();
@@ -70,7 +73,10 @@ class NotificationSocketManager {
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 30000,
-      auth: { token },
+      // 동적 auth: 재연결 시마다 최신 토큰을 authStorage에서 읽음
+      auth: (cb) => {
+        cb({ token: authStorage.getToken() || this.token });
+      },
     });
 
     this.setupEventHandlers();
@@ -102,6 +108,28 @@ class NotificationSocketManager {
     return this.socket?.connected ?? false;
   }
 
+  /**
+   * 인증 에러 시 API Client의 토큰 갱신 메커니즘을 활용하여 재연결
+   */
+  private async handleAuthError(): Promise<void> {
+    if (this.isRefreshingToken) return;
+    this.isRefreshingToken = true;
+
+    try {
+      const refreshed = await apiClient.refreshAccessToken();
+      if (refreshed) {
+        const newToken = authStorage.getToken();
+        if (newToken) {
+          this.forceReconnect(newToken);
+        }
+      }
+    } catch (e) {
+      console.error('[NotificationSocket] Token refresh failed:', e);
+    } finally {
+      this.isRefreshingToken = false;
+    }
+  }
+
   // ============================================
   // Event Handlers Setup
   // ============================================
@@ -125,6 +153,10 @@ class NotificationSocketManager {
 
     this.socket.on('connect_error', (error) => {
       console.error('[NotificationSocket] Connection error:', error.message);
+      // 인증 실패 시 API Client의 토큰 갱신 메커니즘 활용
+      if (error.message?.includes('Unauthorized') || error.message?.includes('Authentication')) {
+        this.handleAuthError();
+      }
       this.errorHandlers.forEach(handler => handler(error.message));
     });
 
@@ -146,6 +178,17 @@ class NotificationSocketManager {
       if (isDev) {
         console.log('[NotificationSocket] Connection confirmed:', data);
       }
+    });
+
+    // Token expiry handling from server
+    this.socket.on('token_expiring', () => {
+      console.log('[NotificationSocket] Token expiring soon, refreshing...');
+      this.handleAuthError();
+    });
+
+    this.socket.on('token_expired', () => {
+      console.log('[NotificationSocket] Token expired, refreshing and reconnecting...');
+      this.handleAuthError();
     });
 
     // Socket.IO Manager 레벨 재연결 이벤트

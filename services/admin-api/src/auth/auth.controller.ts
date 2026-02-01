@@ -1,5 +1,6 @@
 import { Controller, Post, Body, HttpStatus, HttpException, Logger, Get, Headers } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService, LoginRequest } from './auth.service';
 import { hasAdminRole, isAdminRole } from '../common/constants';
 
@@ -19,6 +20,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @ApiOperation({ summary: 'Admin login' })
   @ApiBody({
     schema: {
@@ -279,7 +281,64 @@ export class AuthController {
     }
   }
 
+  @Post('logout')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Admin logout' })
+  @ApiResponse({ status: 200, description: 'Logout successful' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async logout(@Headers('authorization') authorization: string) {
+    try {
+      if (!authorization || !authorization.startsWith('Bearer ')) {
+        throw new HttpException(
+          {
+            success: false,
+            error: {
+              code: 'MISSING_TOKEN',
+              message: 'Authorization token is required',
+            }
+          },
+          HttpStatus.UNAUTHORIZED
+        );
+      }
+
+      const token = authorization.substring(7);
+      const validateResult = await this.authService.validateToken(token);
+
+      if (!validateResult?.success || !validateResult?.data?.user) {
+        throw new HttpException(
+          {
+            success: false,
+            error: {
+              code: 'INVALID_TOKEN',
+              message: 'Invalid token',
+            }
+          },
+          HttpStatus.UNAUTHORIZED
+        );
+      }
+
+      const adminId = validateResult.data.user.sub || validateResult.data.user.id;
+      const result = await this.authService.logout(adminId);
+      return { success: true, data: result };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        {
+          success: false,
+          error: {
+            code: 'LOGOUT_FAILED',
+            message: 'Logout failed',
+          }
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   @Post('signup')
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @ApiOperation({ summary: 'Admin signup' })
   @ApiBody({
     schema: {

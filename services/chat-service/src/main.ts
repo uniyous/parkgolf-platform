@@ -26,8 +26,17 @@ async function bootstrap() {
       }),
     );
 
+    const corsOrigins = process.env.CORS_ALLOWED_ORIGINS;
     app.enableCors({
-      origin: true,
+      origin: corsOrigins
+        ? corsOrigins.split(',').map(o => o.trim())
+        : [
+            'http://localhost:3002',
+            'https://parkgolf-user.web.app',
+            'https://parkgolf-user-dev.web.app',
+            'https://dev-api.goparkmate.com',
+            'https://api.goparkmate.com',
+          ],
       credentials: true,
     });
 

@@ -92,10 +92,6 @@ export class AuthNatsController {
     return NatsResponse.success(userInfo);
   }
 
-  // ============================================
-  // Admin Authentication
-  // ============================================
-
   @MessagePattern('iam.auth.admin.login')
   async adminLogin(@Payload() loginDto: LoginDto) {
     const startTime = Date.now();
@@ -135,6 +131,24 @@ export class AuthNatsController {
   async refreshAdminToken(@Payload() payload: { refreshToken: string }) {
     this.logger.log('Admin token refresh request');
     const result = await this.authService.adminRefreshToken(payload.refreshToken);
+    return NatsResponse.success(result);
+  }
+
+  @MessagePattern('iam.auth.user.logout')
+  async userLogout(@Payload() payload: { userId: number }) {
+    this.logger.log(`User logout request: userId=${payload.userId}`);
+    const result = await this.authService.logout(payload.userId);
+    return NatsResponse.success(result);
+  }
+
+  // ============================================
+  // Admin Authentication
+  // ============================================
+
+  @MessagePattern('iam.auth.admin.logout')
+  async adminLogout(@Payload() payload: { adminId: number }) {
+    this.logger.log(`Admin logout request: adminId=${payload.adminId}`);
+    const result = await this.authService.adminLogout(payload.adminId);
     return NatsResponse.success(result);
   }
 

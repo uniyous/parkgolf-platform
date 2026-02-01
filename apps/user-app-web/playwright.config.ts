@@ -66,7 +66,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
       },
-      testMatch: /.*token-refresh.*/,
+      testMatch: /.*(token-refresh|security).*/,
     },
   ],
 

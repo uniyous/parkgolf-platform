@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { AuthNatsController } from './auth-nats.controller';
 import { UserModule } from '../user/user.module';
 import { AdminModule } from '../admin/admin.module';
+import { PrismaModule } from '../../prisma/prisma.module';
 import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
@@ -10,10 +11,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     imports: [
         UserModule,
         AdminModule,
+        PrismaModule,
         JwtModule.registerAsync({
             imports: [ConfigModule],
             useFactory: async (configService: ConfigService): Promise<JwtModuleOptions> => ({
-                secret: configService.get<string>('JWT_SECRET'),
+                secret: configService.getOrThrow<string>('JWT_SECRET'),
                 signOptions: {
                     expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '1h',
                 },

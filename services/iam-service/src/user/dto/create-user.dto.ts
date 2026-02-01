@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional, IsIn } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength, Matches, IsOptional, IsIn } from 'class-validator';
 import { User } from '@prisma/client';
+import { PASSWORD_REGEX, PASSWORD_MESSAGE, PASSWORD_MAX_LENGTH } from '../../common/constants/password.constants';
 
 /** User 엔티티 타입 (관계 포함 가능) */
 export type UserWithRelations = User;
@@ -75,6 +76,8 @@ export class CreateUserDto {
     })
     @IsString()
     @MinLength(8, { message: 'Password must be at least 8 characters long.' })
+    @MaxLength(PASSWORD_MAX_LENGTH, { message: `Password must not exceed ${PASSWORD_MAX_LENGTH} characters.` })
+    @Matches(PASSWORD_REGEX, { message: PASSWORD_MESSAGE })
     @IsNotEmpty({ message: 'Password should not be empty.' })
     password: string;
 

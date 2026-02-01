@@ -1,6 +1,7 @@
-import { IsEmail, IsString, IsNotEmpty, MinLength, IsIn, IsOptional, IsNumber } from 'class-validator';
+import { IsEmail, IsString, IsNotEmpty, MinLength, MaxLength, Matches, IsIn, IsOptional, IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Admin } from '@prisma/client';
+import { PASSWORD_REGEX, PASSWORD_MESSAGE, PASSWORD_MAX_LENGTH } from '../../common/constants/password.constants';
 
 /** Admin 엔티티 타입 (관계 포함 가능, roleCode는 AdminCompany에서 계산됨) */
 export type AdminWithRelations = Admin & { roleCode?: string; companies?: any[] };
@@ -76,6 +77,8 @@ export class CreateAdminDto {
   @IsString()
   @IsNotEmpty()
   @MinLength(8)
+  @MaxLength(PASSWORD_MAX_LENGTH, { message: `Password must not exceed ${PASSWORD_MAX_LENGTH} characters.` })
+  @Matches(PASSWORD_REGEX, { message: PASSWORD_MESSAGE })
   password: string;
 
   @IsString()

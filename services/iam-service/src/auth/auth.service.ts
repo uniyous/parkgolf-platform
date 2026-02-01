@@ -1,20 +1,32 @@
 import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { UserService } from '../user/user.service';
 import { AdminService } from '../admin/admin.service';
 import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { User, Admin } from '@prisma/client';
 import { JwtPayload, UserJwtPayload, AdminJwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
     private readonly logger = new Logger(AuthService.name);
+    private readonly refreshSecret: string;
 
     constructor(
         private userService: UserService,
         private adminService: AdminService,
         private jwtService: JwtService,
-    ) {}
+        private prisma: PrismaService,
+        private configService: ConfigService,
+    ) {
+        this.refreshSecret = this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
+    }
+
+    private hashToken(token: string): string {
+        return crypto.createHash('sha256').update(token).digest('hex');
+    }
 
     async validateUser(email: string, pass: string): Promise<Omit<User, 'password'> | null> {
         this.logger.debug(`Validating user: ${email}, password provided: ${!!pass}`);
@@ -41,7 +53,6 @@ export class AuthService {
     }
 
     async login(user: Omit<User, 'password'>) {
-        // User is already validated by LocalAuthGuard/LocalStrategy
         const payload: UserJwtPayload = {
             email: user.email,
             sub: user.id,
@@ -51,7 +62,21 @@ export class AuthService {
         };
 
         const accessToken = this.jwtService.sign(payload);
-        const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+        const refreshToken = this.jwtService.sign(payload, {
+            secret: this.refreshSecret,
+            expiresIn: '7d',
+        });
+
+        // Store hashed refresh token in DB
+        const hashedToken = this.hashToken(refreshToken);
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        await this.prisma.refreshToken.create({
+            data: {
+                token: hashedToken,
+                userId: user.id,
+                expiresAt,
+            },
+        });
 
         return {
             accessToken,
@@ -98,12 +123,34 @@ export class AuthService {
 
     async refreshToken(refreshToken: string) {
         try {
-            const payload = this.jwtService.verify(refreshToken);
+            const payload = this.jwtService.verify(refreshToken, {
+                secret: this.refreshSecret,
+            });
 
             // Check token type and refresh accordingly
             if (payload.type === 'admin') {
                 return this.adminRefreshToken(refreshToken);
             }
+
+            // Verify token exists in DB (reuse detection)
+            const hashedToken = this.hashToken(refreshToken);
+            const storedToken = await this.prisma.refreshToken.findUnique({
+                where: { token: hashedToken },
+            });
+
+            if (!storedToken) {
+                // Token reuse detected - revoke all tokens for this user
+                this.logger.warn(`Refresh token reuse detected for user ${payload.sub}`);
+                await this.prisma.refreshToken.deleteMany({
+                    where: { userId: payload.sub },
+                });
+                throw new UnauthorizedException('Token reuse detected');
+            }
+
+            // Delete the used token (rotation)
+            await this.prisma.refreshToken.delete({
+                where: { id: storedToken.id },
+            });
 
             const user = await this.userService.findOneByEmail(payload.email);
             if (!user) {
@@ -119,7 +166,20 @@ export class AuthService {
             };
 
             const newAccessToken = this.jwtService.sign(newPayload);
-            const newRefreshToken = this.jwtService.sign(newPayload, { expiresIn: '7d' });
+            const newRefreshToken = this.jwtService.sign(newPayload, {
+                secret: this.refreshSecret,
+                expiresIn: '7d',
+            });
+
+            // Store new hashed refresh token
+            const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+            await this.prisma.refreshToken.create({
+                data: {
+                    token: this.hashToken(newRefreshToken),
+                    userId: user.id,
+                    expiresAt,
+                },
+            });
 
             return {
                 accessToken: newAccessToken,
@@ -133,6 +193,9 @@ export class AuthService {
                 }
             };
         } catch (error) {
+            if (error instanceof UnauthorizedException) {
+                throw error;
+            }
             throw new UnauthorizedException('Invalid refresh token');
         }
     }
@@ -174,7 +237,21 @@ export class AuthService {
         };
 
         const accessToken = this.jwtService.sign(payload);
-        const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+        const refreshToken = this.jwtService.sign(payload, {
+            secret: this.refreshSecret,
+            expiresIn: '7d',
+        });
+
+        // Store hashed refresh token in DB
+        const hashedToken = this.hashToken(refreshToken);
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        await this.prisma.adminRefreshToken.create({
+            data: {
+                token: hashedToken,
+                adminId: admin.id,
+                expiresAt,
+            },
+        });
 
         // companies 배열 변환 (프론트엔드 형식에 맞게)
         const companies = (admin.companies || []).map((ac: any) => ({
@@ -220,11 +297,33 @@ export class AuthService {
 
     async adminRefreshToken(refreshToken: string) {
         try {
-            const payload = this.jwtService.verify(refreshToken);
+            const payload = this.jwtService.verify(refreshToken, {
+                secret: this.refreshSecret,
+            });
 
             if (payload.type !== 'admin') {
                 throw new UnauthorizedException('Invalid admin token');
             }
+
+            // Verify token exists in DB (reuse detection)
+            const hashedToken = this.hashToken(refreshToken);
+            const storedToken = await this.prisma.adminRefreshToken.findUnique({
+                where: { token: hashedToken },
+            });
+
+            if (!storedToken) {
+                // Token reuse detected - revoke all tokens for this admin
+                this.logger.warn(`Admin refresh token reuse detected for admin ${payload.sub}`);
+                await this.prisma.adminRefreshToken.deleteMany({
+                    where: { adminId: payload.sub },
+                });
+                throw new UnauthorizedException('Token reuse detected');
+            }
+
+            // Delete the used token (rotation)
+            await this.prisma.adminRefreshToken.delete({
+                where: { id: storedToken.id },
+            });
 
             const admin = await this.adminService.findByEmail(payload.email);
             if (!admin || !admin.isActive) {
@@ -239,7 +338,20 @@ export class AuthService {
             };
 
             const newAccessToken = this.jwtService.sign(newPayload);
-            const newRefreshToken = this.jwtService.sign(newPayload, { expiresIn: '7d' });
+            const newRefreshToken = this.jwtService.sign(newPayload, {
+                secret: this.refreshSecret,
+                expiresIn: '7d',
+            });
+
+            // Store new hashed refresh token
+            const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+            await this.prisma.adminRefreshToken.create({
+                data: {
+                    token: this.hashToken(newRefreshToken),
+                    adminId: admin.id,
+                    expiresAt,
+                },
+            });
 
             return {
                 accessToken: newAccessToken,
@@ -253,8 +365,27 @@ export class AuthService {
                 }
             };
         } catch (error) {
+            if (error instanceof UnauthorizedException) {
+                throw error;
+            }
             throw new UnauthorizedException('Invalid refresh token');
         }
+    }
+
+    async logout(userId: number) {
+        await this.prisma.refreshToken.deleteMany({
+            where: { userId },
+        });
+        this.logger.log(`User ${userId} logged out - all refresh tokens revoked`);
+        return { message: '로그아웃되었습니다.' };
+    }
+
+    async adminLogout(adminId: number) {
+        await this.prisma.adminRefreshToken.deleteMany({
+            where: { adminId },
+        });
+        this.logger.log(`Admin ${adminId} logged out - all refresh tokens revoked`);
+        return { message: '로그아웃되었습니다.' };
     }
 
     async getCurrentUser(user: any) {

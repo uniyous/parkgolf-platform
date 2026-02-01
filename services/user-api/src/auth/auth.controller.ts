@@ -11,6 +11,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto/auth.dto';
@@ -27,6 +28,7 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @ApiOperation({ summary: '회원가입' })
   @ApiResponse({
     status: 201,
@@ -40,6 +42,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @ApiOperation({ summary: '로그인' })
   @ApiResponse({
     status: 200,

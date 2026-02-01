@@ -42,22 +42,26 @@ export class WsAuthGuard implements CanActivate {
   }
 
   private extractToken(client: Socket): string | null {
-    // Try auth header
+    // 1. Preferred: auth object (Socket.IO auth)
+    const auth = client.handshake.auth;
+    if (auth?.token) {
+      return auth.token;
+    }
+
+    // 2. Authorization header
     const authHeader = client.handshake.headers.authorization;
     if (authHeader?.startsWith('Bearer ')) {
       return authHeader.substring(7);
     }
 
-    // Try query param
+    // 3. Deprecated: query param (token exposed in URL/logs)
     const token = client.handshake.query.token;
     if (typeof token === 'string') {
+      this.logger.warn(
+        `[DEPRECATION] Client ${client.id} using query param for token. ` +
+        'Migrate to auth object or Authorization header.',
+      );
       return token;
-    }
-
-    // Try auth object
-    const auth = client.handshake.auth;
-    if (auth?.token) {
-      return auth.token;
     }
 
     return null;
