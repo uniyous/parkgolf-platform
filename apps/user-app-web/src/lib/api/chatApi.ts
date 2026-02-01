@@ -12,6 +12,7 @@ export interface ChatParticipant {
   id: string;
   userId: string;
   userName: string;
+  userEmail: string | null;
   profileImageUrl: string | null;
   joinedAt: string;
 }
@@ -64,6 +65,7 @@ interface ApiRoomMember {
   roomId: string;
   userId: number;
   userName: string;
+  userEmail: string | null;
   joinedAt: string;
   leftAt: string | null;
   isAdmin: boolean;
@@ -92,6 +94,7 @@ function transformRoomResponse(room: ApiRoomResponse): ChatRoom {
     id: m.id,
     userId: String(m.userId),
     userName: m.userName,
+    userEmail: m.userEmail || null,
     profileImageUrl: null,
     joinedAt: m.joinedAt,
   }));

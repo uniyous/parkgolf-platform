@@ -70,6 +70,7 @@ export class ChatController {
     return this.chatService.createChatRoom(
       user.userId,
       user.name || user.email,
+      user.email,
       dto,
     );
   }
@@ -121,14 +122,12 @@ export class ChatController {
   @ApiResponse({ status: 400, description: '잘못된 요청' })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async addMembers(
-    @CurrentUser() user: JwtUser,
     @Param('roomId') roomId: string,
     @Body() dto: AddMembersDto,
   ) {
     return this.chatService.addMembers(
       roomId,
       dto.user_ids.map((id) => parseInt(id, 10)),
-      user.name || user.email,
     );
   }
 

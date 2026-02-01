@@ -24,6 +24,7 @@ export const ChatRoomPage: React.FC = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showParticipants, setShowParticipants] = useState(false);
 
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -256,10 +257,13 @@ export const ChatRoomPage: React.FC = () => {
                 </>
               )}
               {(room.participants?.length ?? 0) > 0 && (
-                <span className="text-white/50 flex items-center gap-1">
+                <button
+                  onClick={() => setShowParticipants(true)}
+                  className="text-white/50 flex items-center gap-1 hover:text-white/80 transition-colors"
+                >
                   <Users className="w-3 h-3" />
                   {room.participants.length}
-                </span>
+                </button>
               )}
             </div>
 
@@ -400,6 +404,15 @@ export const ChatRoomPage: React.FC = () => {
         </div>
       </Container>
 
+      {/* Participants Modal */}
+      {showParticipants && room && (
+        <ParticipantsModal
+          participants={room.participants}
+          currentUserId={currentUserId}
+          onClose={() => setShowParticipants(false)}
+        />
+      )}
+
       {/* Invite Modal */}
       {showInviteModal && room && (
         <InviteFriendsModal
@@ -411,6 +424,114 @@ export const ChatRoomPage: React.FC = () => {
     </div>
   );
 };
+
+// ============================================
+// Participants Modal
+// ============================================
+
+interface ParticipantsModalProps {
+  participants: { userId: string; userName: string; userEmail: string | null }[];
+  currentUserId: string;
+  onClose: () => void;
+}
+
+function ParticipantsModal({ participants, currentUserId, onClose }: ParticipantsModalProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const showSearch = participants.length >= 5;
+
+  const filtered = searchQuery
+    ? participants.filter((p) =>
+        p.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.userEmail ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : participants;
+
+  // 본인을 맨 위로 정렬
+  const sorted = [...filtered].sort((a, b) => {
+    if (a.userId === currentUserId) return -1;
+    if (b.userId === currentUserId) return 1;
+    return a.userName.localeCompare(b.userName);
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-gray-800 rounded-2xl p-6 animate-slide-up">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">
+            참여자 ({participants.length}명)
+          </h3>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 transition-colors">
+            <X className="w-5 h-5 text-white/60" />
+          </button>
+        </div>
+
+        {showSearch && (
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+            <input
+              type="text"
+              placeholder="참여자 검색..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={cn(
+                'w-full pl-10 pr-4 py-2.5 rounded-xl',
+                'bg-white/10 text-white placeholder:text-white/40',
+                'border border-white/10 focus:border-emerald-500/50',
+                'outline-none transition-colors'
+              )}
+              autoFocus
+            />
+          </div>
+        )}
+
+        <div className="max-h-72 overflow-y-auto space-y-2">
+          {sorted.length === 0 && (
+            <div className="p-4 text-center text-white/50">
+              검색 결과가 없습니다.
+            </div>
+          )}
+
+          {sorted.map((p) => {
+            const isMe = p.userId === currentUserId;
+            return (
+              <div
+                key={p.userId}
+                className="flex items-center gap-3 p-3 rounded-xl bg-white/5"
+              >
+                <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm font-semibold text-white">
+                    {p.userName.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-white font-medium truncate">
+                    {p.userName}
+                    {isMe && (
+                      <span className="ml-1.5 text-xs text-emerald-400 font-normal">(나)</span>
+                    )}
+                  </h4>
+                  {p.userEmail && (
+                    <p className="text-white/40 text-xs truncate">{p.userEmail}</p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-4">
+          <button
+            onClick={onClose}
+            className="w-full px-4 py-2.5 rounded-xl bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ============================================
 // Invite Friends Modal
