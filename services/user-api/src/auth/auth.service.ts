@@ -130,8 +130,7 @@ export class AuthService {
     };
   }
 
-  async logout(userId: number): Promise<{ message: string }> {
-    await this.natsClient.send('iam.auth.user.logout', { userId });
-    return { message: '로그아웃되었습니다.' };
+  async logout(userId: number) {
+    return this.natsClient.send('iam.auth.user.logout', { userId });
   }
 }

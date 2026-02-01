@@ -48,6 +48,7 @@ export default defineConfig({
         storageState: 'e2e/.auth/user.json',
       },
       dependencies: ['setup'],
+      testIgnore: /.*(token-refresh|security).*/,
     },
 
     // 모바일 테스트 (Optional)
@@ -58,6 +59,7 @@ export default defineConfig({
         storageState: 'e2e/.auth/user.json',
       },
       dependencies: ['setup'],
+      testIgnore: /.*(token-refresh|security).*/,
     },
 
     // 독립 실행 테스트 (자체 인증 관리, setup 불필요)

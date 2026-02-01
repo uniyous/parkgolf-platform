@@ -312,8 +312,7 @@ export class AuthController {
       }
 
       const adminId = validateResult.data.user.sub || validateResult.data.user.id;
-      const result = await this.authService.logout(adminId);
-      return { success: true, data: result };
+      return this.authService.logout(adminId);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
