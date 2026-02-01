@@ -3,80 +3,16 @@ import { test, expect, request } from '@playwright/test';
 /**
  * 보안 E2E 테스트 (Admin Dashboard)
  *
- * 테스트 항목:
- * - SEC-01: Rate Limiting (429 응답 확인)
+ * 실행 순서 (rate limit 간섭 방지):
  * - SEC-02: 패스워드 정책 (약한 비밀번호 거부)
  * - SEC-03: Refresh Token 회전 (로그아웃 후 이전 토큰 무효화)
+ * - SEC-01: Rate Limiting (429 응답 확인) ← 마지막 실행
  */
 
 const API_BASE_URL = process.env.E2E_BASE_URL || 'https://dev-api.goparkmate.com';
 
 // ============================================
-// SEC-01: Rate Limiting
-// ============================================
-
-test.describe('SEC-01: Rate Limiting', () => {
-  test.use({ storageState: { cookies: [], origins: [] } });
-  test.setTimeout(60000);
-
-  test('관리자 로그인 엔드포인트 연속 요청 시 429 응답', async () => {
-    const apiContext = await request.newContext({ baseURL: API_BASE_URL });
-
-    const results: number[] = [];
-
-    // 6회 연속 로그인 시도 (제한: 5회/60초)
-    for (let i = 0; i < 6; i++) {
-      const response = await apiContext.post('/api/admin/iam/login', {
-        data: {
-          email: `ratelimit-admin-${Date.now()}@example.com`,
-          password: 'WrongPass1!',
-        },
-      });
-      results.push(response.status());
-    }
-
-    await apiContext.dispose();
-
-    // 마지막 요청은 429(Too Many Requests) 이어야 함
-    const has429 = results.includes(429);
-    expect(has429).toBe(true);
-
-    // 처음 몇 요청은 401(인증 실패)이어야 함
-    const non429 = results.filter(s => s !== 429);
-    expect(non429.length).toBeGreaterThan(0);
-    expect(non429.every(s => s === 401)).toBe(true);
-  });
-
-  test('관리자 회원가입 엔드포인트 연속 요청 시 429 응답', async () => {
-    const apiContext = await request.newContext({ baseURL: API_BASE_URL });
-
-    const results: number[] = [];
-    const timestamp = Date.now();
-
-    // 6회 연속 회원가입 시도 (제한: 5회/60초)
-    for (let i = 0; i < 6; i++) {
-      const response = await apiContext.post('/api/admin/iam/signup', {
-        data: {
-          username: `ratelimit${timestamp}${i}`,
-          email: `ratelimit-${timestamp}-${i}@example.com`,
-          password: 'Str0ngP@ss!',
-          name: `RateTest${i}`,
-          role: 'VIEWER',
-        },
-      });
-      results.push(response.status());
-    }
-
-    await apiContext.dispose();
-
-    // 마지막 요청은 429이어야 함
-    const has429 = results.includes(429);
-    expect(has429).toBe(true);
-  });
-});
-
-// ============================================
-// SEC-02: 패스워드 정책
+// SEC-02: 패스워드 정책 (rate limit 소진 전에 실행)
 // ============================================
 
 test.describe('SEC-02: 패스워드 정책 (관리자 회원가입)', () => {
@@ -252,5 +188,69 @@ test.describe('SEC-03: Refresh Token 회전 및 로그아웃 무효화', () => {
     expect(reuseRes.status()).toBe(401);
 
     await apiContext.dispose();
+  });
+});
+
+// ============================================
+// SEC-01: Rate Limiting (마지막 실행 - rate limit 소진)
+// ============================================
+
+test.describe('SEC-01: Rate Limiting', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+  test.setTimeout(60000);
+
+  test('관리자 로그인 엔드포인트 연속 요청 시 429 응답', async () => {
+    const apiContext = await request.newContext({ baseURL: API_BASE_URL });
+
+    const results: number[] = [];
+
+    // 6회 연속 로그인 시도 (제한: 5회/60초)
+    for (let i = 0; i < 6; i++) {
+      const response = await apiContext.post('/api/admin/iam/login', {
+        data: {
+          email: `ratelimit-admin-${Date.now()}@example.com`,
+          password: 'WrongPass1!',
+        },
+      });
+      results.push(response.status());
+    }
+
+    await apiContext.dispose();
+
+    // 마지막 요청은 429(Too Many Requests) 이어야 함
+    const has429 = results.includes(429);
+    expect(has429).toBe(true);
+
+    // 처음 몇 요청은 401(인증 실패)이어야 함
+    const non429 = results.filter(s => s !== 429);
+    expect(non429.length).toBeGreaterThan(0);
+    expect(non429.every(s => s === 401)).toBe(true);
+  });
+
+  test('관리자 회원가입 엔드포인트 연속 요청 시 429 응답', async () => {
+    const apiContext = await request.newContext({ baseURL: API_BASE_URL });
+
+    const results: number[] = [];
+    const timestamp = Date.now();
+
+    // 6회 연속 회원가입 시도 (제한: 5회/60초)
+    for (let i = 0; i < 6; i++) {
+      const response = await apiContext.post('/api/admin/iam/signup', {
+        data: {
+          username: `ratelimit${timestamp}${i}`,
+          email: `ratelimit-${timestamp}-${i}@example.com`,
+          password: 'Str0ngP@ss!',
+          name: `RateTest${i}`,
+          role: 'VIEWER',
+        },
+      });
+      results.push(response.status());
+    }
+
+    await apiContext.dispose();
+
+    // 마지막 요청은 429이어야 함
+    const has429 = results.includes(429);
+    expect(has429).toBe(true);
   });
 });

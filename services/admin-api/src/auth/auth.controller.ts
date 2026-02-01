@@ -1,16 +1,10 @@
 import { Controller, Post, Body, HttpStatus, HttpException, Logger, Get, Headers } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { AuthService, LoginRequest } from './auth.service';
+import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
+import { SignupDto } from './dto/signup.dto';
 import { hasAdminRole, isAdminRole } from '../common/constants';
-
-export interface SignupRequest {
-  username: string;
-  email: string;
-  password: string;
-  name: string;
-  role: string;
-}
 
 @ApiTags('iam')
 @Controller('api/admin/iam')
@@ -34,7 +28,7 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  async login(@Body() loginRequest: LoginRequest) {
+  async login(@Body() loginRequest: LoginDto) {
     const startTime = Date.now();
     try {
       this.logger.log(`[PERF] BFF Login START - email: ${loginRequest.email}`);
@@ -355,7 +349,7 @@ export class AuthController {
   })
   @ApiResponse({ status: 201, description: 'Signup successful' })
   @ApiResponse({ status: 400, description: 'Invalid data or user already exists' })
-  async signup(@Body() signupRequest: SignupRequest) {
+  async signup(@Body() signupRequest: SignupDto) {
     try {
       this.logger.log(`Admin signup attempt for username: ${signupRequest.username}`);
       
