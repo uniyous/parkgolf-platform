@@ -48,10 +48,24 @@ const ADMIN_ACCOUNT_GROUPS: AdminAccountGroup[] = [
         role: 'PLATFORM_ADMIN',
         description: '본사 최고 관리자 (모든 권한)'
       },
+      {
+        email: 'support@parkgolf.com',
+        password: 'admin123!@#',
+        name: '고객지원담당',
+        role: 'PLATFORM_SUPPORT',
+        description: '전체 고객지원/조회'
+      },
+      {
+        email: 'viewer@parkgolf.com',
+        password: 'admin123!@#',
+        name: '플랫폼조회자',
+        role: 'PLATFORM_VIEWER',
+        description: '전체 데이터 조회 전용'
+      },
     ]
   },
   {
-    title: '회사 관리 (가맹점)',
+    title: '회사 관리 (강남 파크골프장)',
     accounts: [
       {
         email: 'admin@gangnam.com',
@@ -59,6 +73,27 @@ const ADMIN_ACCOUNT_GROUPS: AdminAccountGroup[] = [
         name: '강남대표',
         role: 'COMPANY_ADMIN',
         description: '강남 파크골프장 대표 관리자'
+      },
+      {
+        email: 'manager@gangnam.com',
+        password: 'admin123!@#',
+        name: '강남매니저',
+        role: 'COMPANY_MANAGER',
+        description: '운영 매니저'
+      },
+      {
+        email: 'staff@gangnam.com',
+        password: 'admin123!@#',
+        name: '강남직원',
+        role: 'COMPANY_STAFF',
+        description: '현장 직원'
+      },
+      {
+        email: 'viewer@gangnam.com',
+        password: 'admin123!@#',
+        name: '강남조회자',
+        role: 'COMPANY_VIEWER',
+        description: '회사 데이터 조회 전용'
       },
     ]
   },
