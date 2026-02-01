@@ -6,8 +6,8 @@
 const BASE_URL = 'https://dev-api.goparkmate.com';
 
 const HEALTH_ENDPOINTS = [
-  `${BASE_URL}/api/user/iam/health`,
-  `${BASE_URL}/api/admin/iam/health`,
+  `${BASE_URL}/api/user/health`,
+  `${BASE_URL}/api/admin/health`,
 ];
 
 async function checkHealth(url: string): Promise<{ url: string; status: number; time: number }> {

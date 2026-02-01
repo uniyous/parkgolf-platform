@@ -103,8 +103,8 @@ const ADMIN_ACCOUNTS: AdminAccount[] = ADMIN_ACCOUNT_GROUPS.flatMap(group => gro
 
 // Health Check 설정
 const BFF_ENDPOINTS = [
-  { name: 'admin-api', url: `${BASE_URL}/api/admin/iam/health` },
-  { name: 'user-api', url: `${BASE_URL}/api/user/iam/health` },
+  { name: 'admin-api', url: `${BASE_URL}/api/admin/health` },
+  { name: 'user-api', url: `${BASE_URL}/api/user/health` },
 ];
 const WARMUP_HTTP_URL = `${BASE_URL}/api/admin/system/warmup/http`;
 const WARMUP_NATS_URL = `${BASE_URL}/api/admin/system/warmup/nats`;

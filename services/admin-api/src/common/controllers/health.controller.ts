@@ -23,7 +23,7 @@ interface WarmupResponse {
 }
 
 @ApiTags('Health')
-@Controller('health')
+@Controller('api/admin/health')
 export class HealthController {
   private readonly services = [
     { name: 'auth-service', url: process.env.AUTH_SERVICE_URL || 'https://auth-service-dev-iihuzmuufa-du.a.run.app' },

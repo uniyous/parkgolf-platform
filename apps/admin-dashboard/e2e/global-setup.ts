@@ -14,8 +14,8 @@ const BASE_URL = 'https://dev-api.goparkmate.com';
 const AUTH_FILE = path.resolve(__dirname, '.auth/admin.json');
 
 const HEALTH_ENDPOINTS = [
-  `${BASE_URL}/api/admin/iam/health`,
-  `${BASE_URL}/api/user/iam/health`,
+  `${BASE_URL}/api/admin/health`,
+  `${BASE_URL}/api/user/health`,
 ];
 
 const TEST_CREDENTIALS = {
