@@ -61,6 +61,7 @@ test.describe('SEC-01: Rate Limiting', () => {
           email: `ratelimit-${timestamp}-${i}@example.com`,
           password: 'Str0ngP@ss!',
           name: `RateTest${i}`,
+          phoneNumber: '010-1234-5678',
         },
       });
       results.push(response.status());
@@ -90,6 +91,7 @@ test.describe('SEC-02: 패스워드 정책', () => {
         email: `weakpw-${Date.now()}@example.com`,
         password: '12345678',
         name: '약한비밀번호',
+        phoneNumber: '010-1234-5678',
       },
     });
 
@@ -105,6 +107,7 @@ test.describe('SEC-02: 패스워드 정책', () => {
         email: `weakpw-${Date.now()}@example.com`,
         password: 'abcdefgh',
         name: '약한비밀번호',
+        phoneNumber: '010-1234-5678',
       },
     });
 
@@ -120,6 +123,7 @@ test.describe('SEC-02: 패스워드 정책', () => {
         email: `weakpw-${Date.now()}@example.com`,
         password: 'abcd1234',
         name: '약한비밀번호',
+        phoneNumber: '010-1234-5678',
       },
     });
 
@@ -135,6 +139,7 @@ test.describe('SEC-02: 패스워드 정책', () => {
         email: `weakpw-${Date.now()}@example.com`,
         password: 'Ab1!xyz',
         name: '약한비밀번호',
+        phoneNumber: '010-1234-5678',
       },
     });
 
@@ -150,6 +155,7 @@ test.describe('SEC-02: 패스워드 정책', () => {
         email: `strongpw-${Date.now()}@example.com`,
         password: 'Str0ngP@ss!',
         name: '강한비밀번호',
+        phoneNumber: '010-1234-5678',
       },
     });
 

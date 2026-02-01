@@ -30,6 +30,10 @@ async function bootstrap() {
       }),
     );
 
+    // Trust proxy for correct client IP behind GKE Ingress/Load Balancer
+    // Required for ThrottlerGuard to track real client IPs via X-Forwarded-For
+    app.getHttpAdapter().getInstance().set('trust proxy', true);
+
     // CORS configuration for admin frontend
     const corsOrigins = configService.get<string>('CORS_ALLOWED_ORIGINS');
     app.enableCors({

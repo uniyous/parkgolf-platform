@@ -20,10 +20,11 @@ export class RegisterDto {
   })
   @IsString()
   @MinLength(8, { message: '비밀번호는 8자 이상이어야 합니다.' })
-  @MaxLength(20, { message: '비밀번호는 20자 이하여야 합니다.' })
-  @Matches(/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
-    message: '비밀번호는 영문, 숫자, 특수문자를 포함해야 합니다.',
-  })
+  @MaxLength(128, { message: '비밀번호는 128자 이하여야 합니다.' })
+  @Matches(
+    /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/,
+    { message: '비밀번호는 영문, 숫자, 특수문자를 모두 포함하여 8자 이상이어야 합니다.' },
+  )
   password: string;
 
   @ApiProperty({ description: '이름', example: '홍길동' })
