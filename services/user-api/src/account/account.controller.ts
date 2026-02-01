@@ -18,7 +18,6 @@ import {
   PasswordExpiryResponseDto,
 } from './dto/change-password.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { NatsResponse } from '../common/types/nats-response.type';
 import { CurrentUser } from '../common/decorators';
 
 @ApiTags('Account')
@@ -41,8 +40,7 @@ export class AccountController {
     @CurrentUser('userId') userId: number,
     @Body() dto: ChangePasswordDto,
   ) {
-    const result = await this.accountService.changePassword(userId, dto);
-    return NatsResponse.success(result);
+    return this.accountService.changePassword(userId, dto);
   }
 
   @Get('password-expiry')
@@ -54,7 +52,6 @@ export class AccountController {
   })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async checkPasswordExpiry(@CurrentUser('userId') userId: number) {
-    const result = await this.accountService.checkPasswordExpiry(userId);
-    return NatsResponse.success(result);
+    return this.accountService.checkPasswordExpiry(userId);
   }
 }

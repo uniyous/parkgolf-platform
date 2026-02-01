@@ -29,7 +29,7 @@ export class UsersService {
 
   constructor(private readonly natsClient: NatsClientService) {}
 
-  async getProfile(userId: number): Promise<UserProfileDto> {
+  async getProfile(userId: number): Promise<any> {
     this.logger.log(`Get profile: userId=${userId}`);
 
     const response = await this.natsClient.send<any>(
@@ -44,20 +44,10 @@ export class UsersService {
       );
     }
 
-    const userData = response.data;
-
-    return {
-      id: userData.id,
-      email: userData.email,
-      name: userData.name || userData.email,
-      phone: userData.phone || null,
-      profileImageUrl: userData.profileImageUrl || null,
-      createdAt: userData.createdAt,
-      updatedAt: userData.updatedAt,
-    };
+    return response;
   }
 
-  async updateProfile(userId: number, updateData: any): Promise<UserProfileDto> {
+  async updateProfile(userId: number, updateData: any): Promise<any> {
     this.logger.log(`Update profile: userId=${userId}`);
 
     const response = await this.natsClient.send<any>('iam.users.update', {
@@ -71,20 +61,10 @@ export class UsersService {
       );
     }
 
-    const userData = response.data;
-
-    return {
-      id: userData.id,
-      email: userData.email,
-      name: userData.name || userData.email,
-      phone: userData.phone || null,
-      profileImageUrl: userData.profileImageUrl || null,
-      createdAt: userData.createdAt,
-      updatedAt: userData.updatedAt,
-    };
+    return response;
   }
 
-  async getStats(userId: number): Promise<UserStatsDto> {
+  async getStats(userId: number): Promise<any> {
     this.logger.log(`Get user stats: userId=${userId}`);
 
     // 병렬로 친구 수와 예약 수 조회
@@ -94,9 +74,12 @@ export class UsersService {
     ]);
 
     return {
-      friendCount: friendsResponse.success ? friendsResponse.data?.count ?? 0 : 0,
-      totalBookings: bookingsResponse.success ? bookingsResponse.data?.totalBookings ?? 0 : 0,
-      achievementCount: 0, // 추후 구현
+      success: true,
+      data: {
+        friendCount: friendsResponse.success ? friendsResponse.data?.count ?? 0 : 0,
+        totalBookings: bookingsResponse.success ? bookingsResponse.data?.totalBookings ?? 0 : 0,
+        achievementCount: 0, // 추후 구현
+      },
     };
   }
 }

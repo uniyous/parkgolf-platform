@@ -375,21 +375,7 @@ export class AuthController {
       });
 
       this.logger.log(`Admin signup successful for: ${signupRequest.username}`);
-      
-      return {
-        success: true,
-        data: {
-          message: 'Admin account created successfully.',
-          user: {
-            id: result.data?.id,
-            username: signupRequest.username,
-            email: signupRequest.email,
-            name: signupRequest.name,
-            role: signupRequest.role,
-            isActive: true,
-          }
-        }
-      };
+      return result;
       
     } catch (error) {
       this.logger.error(`Admin signup failed for: ${signupRequest.username}`, error);

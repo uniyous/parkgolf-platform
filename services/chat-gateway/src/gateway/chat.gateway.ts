@@ -213,7 +213,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   ) {
     const user = client.user;
     if (!user) {
-      return { success: false, error: 'Not authenticated' };
+      return { success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } };
     }
 
     const { roomId } = data;
@@ -250,7 +250,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       timestamp: new Date().toISOString(),
     });
 
-    return { success: true, roomId };
+    return { success: true, data: { roomId } };
   }
 
   @SubscribeMessage('leave_room')
@@ -260,7 +260,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   ) {
     const user = client.user;
     if (!user) {
-      return { success: false, error: 'Not authenticated' };
+      return { success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } };
     }
 
     const { roomId } = data;
@@ -287,7 +287,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       timestamp: new Date().toISOString(),
     });
 
-    return { success: true, roomId };
+    return { success: true, data: { roomId } };
   }
 
   @SubscribeMessage('send_message')
@@ -297,7 +297,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   ) {
     const user = client.user;
     if (!user) {
-      return { success: false, error: 'Not authenticated' };
+      return { success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } };
     }
 
     const { roomId, content, type = 'text' } = data;
@@ -334,7 +334,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       this.logger.error(`Failed to publish message to JetStream: ${error}`);
     });
 
-    return { success: true, message };
+    return { success: true, data: { message } };
   }
 
   @SubscribeMessage('send_dm')
@@ -344,7 +344,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   ) {
     const user = client.user;
     if (!user) {
-      return { success: false, error: 'Not authenticated' };
+      return { success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } };
     }
 
     const { targetUserId, content, type = 'text' } = data;
@@ -388,7 +388,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       this.logger.error(`Failed to publish DM to JetStream: ${error}`);
     });
 
-    return { success: true, message };
+    return { success: true, data: { message } };
   }
 
   @SubscribeMessage('typing')
@@ -422,7 +422,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       name: u.name,
     }));
 
-    return { success: true, users };
+    return { success: true, data: users };
   }
 
   private extractToken(client: AuthenticatedSocket): string | null {
