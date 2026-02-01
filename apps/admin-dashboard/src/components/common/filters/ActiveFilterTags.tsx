@@ -19,12 +19,12 @@ export interface ActiveFilterTagsProps {
 }
 
 const colorStyles: Record<NonNullable<FilterTag['color']>, string> = {
-  gray: 'bg-zinc-700 text-zinc-200 hover:bg-zinc-600',
-  violet: 'bg-violet-500/20 text-violet-300 hover:bg-violet-500/30',
-  green: 'bg-green-500/20 text-green-300 hover:bg-green-500/30',
-  yellow: 'bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30',
-  red: 'bg-red-500/20 text-red-300 hover:bg-red-500/30',
-  purple: 'bg-purple-500/20 text-purple-300 hover:bg-purple-500/30',
+  gray: 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+  violet: 'bg-blue-100 text-blue-800 hover:bg-blue-200',
+  green: 'bg-green-100 text-green-800 hover:bg-green-200',
+  yellow: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200',
+  red: 'bg-red-100 text-red-800 hover:bg-red-200',
+  purple: 'bg-purple-100 text-purple-800 hover:bg-purple-200',
 };
 
 const ActiveFilterTags: React.FC<ActiveFilterTagsProps> = ({
@@ -41,7 +41,7 @@ const ActiveFilterTags: React.FC<ActiveFilterTagsProps> = ({
 
   return (
     <div className={cn('mt-3 flex items-center gap-2 flex-wrap', className)}>
-      <span className="text-xs text-zinc-400 font-medium">활성 필터:</span>
+      <span className="text-xs text-gray-500 font-medium">활성 필터:</span>
       {filters.map((filter) => (
         <span
           key={filter.id}
@@ -68,7 +68,7 @@ const ActiveFilterTags: React.FC<ActiveFilterTagsProps> = ({
         <button
           type="button"
           onClick={onResetAll}
-          className="text-xs text-zinc-400 hover:text-zinc-200 underline underline-offset-2 transition-colors"
+          className="text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2 transition-colors"
         >
           {resetAllLabel}
         </button>

@@ -11,6 +11,7 @@ import {
   ActiveFilterTags,
 } from '@/components/common/filters';
 import { UserFormModal } from '@/components/features/user/UserFormModal';
+import { PageLayout } from '@/components/layout';
 import type { User, UserStatus, UserMembershipTier } from '@/types';
 
 type SortField = 'name' | 'email' | 'membershipTier' | 'status' | 'createdAt' | 'lastLoginAt';
@@ -177,7 +178,7 @@ export const UserManagementPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <PageLayout>
       {/* 헤더 카드 */}
       <div className="bg-white shadow rounded-lg p-6">
         <div className="flex items-center justify-between">
@@ -524,6 +525,6 @@ export const UserManagementPage: React.FC = () => {
           </>
         )}
       </Modal>
-    </div>
+    </PageLayout>
   );
 };

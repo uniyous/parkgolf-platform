@@ -9,6 +9,7 @@ import { CancellationFilters } from '@/components/features/cancellation/Cancella
 import { CancellationTable, type CancellationRecord } from '@/components/features/cancellation/CancellationTable';
 import { CancellationDetailModal } from '@/components/features/cancellation/CancellationDetailModal';
 import { RefundProcessModal } from '@/components/features/cancellation/RefundProcessModal';
+import { PageLayout } from '@/components/layout';
 
 const formatDate = (date: Date): string => {
   return date.toISOString().split('T')[0];
@@ -224,7 +225,7 @@ export const CancellationManagementPage: React.FC = () => {
     searchKeyword !== '' || clubFilter !== null || cancellationType !== '';
 
   return (
-    <div className="space-y-4">
+    <PageLayout>
       {/* 통계 카드 */}
       <CancellationStatsCards
         stats={stats}
@@ -291,7 +292,7 @@ export const CancellationManagementPage: React.FC = () => {
         onConfirm={handleProcessRefund}
         isProcessing={isProcessing}
       />
-    </div>
+    </PageLayout>
   );
 };
 

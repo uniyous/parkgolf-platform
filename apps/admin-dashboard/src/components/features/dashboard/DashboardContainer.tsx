@@ -64,33 +64,35 @@ export const DashboardContainer: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <>
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">대시보드</h1>
-          <p className="text-sm text-[var(--color-text-tertiary)] mt-1">
-            {new Date().toLocaleDateString('ko-KR', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              weekday: 'long',
-            })}
-          </p>
+      <div className="bg-white shadow rounded-lg p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">대시보드</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              {new Date().toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'long',
+              })}
+            </p>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isLoading}
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+            title="새로고침"
+          >
+            <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
-        <button
-          onClick={handleRefresh}
-          disabled={isLoading}
-          className="p-2 text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors disabled:opacity-50"
-          title="새로고침"
-        >
-          <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
-        </button>
       </div>
 
       {/* Error Message */}
       {error && (
-        <div className="glass-card bg-red-500/20 border-red-500/30 text-red-300 px-4 py-3">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
           {error}
         </div>
       )}
@@ -106,6 +108,6 @@ export const DashboardContainer: React.FC = () => {
 
       {/* Recent Bookings */}
       <RecentBookingsList bookings={recentBookings} isLoading={isLoading} />
-    </div>
+    </>
   );
 };

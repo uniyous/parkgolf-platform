@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { extractPaginatedList, extractSingle, extractList, type PaginatedResult } from './bffParser';
+import { extractPaginatedList, extractSingle, type PaginatedResult } from './bffParser';
 import type {
   Booking,
   CreateBookingDto,
@@ -244,37 +244,4 @@ export const bookingApi = {
     return true;
   },
 
-  // ===== 벌크 작업 =====
-
-  /**
-   * 벌크 상태 변경
-   */
-  async bulkUpdateBookingStatus(bookingIds: number[], status: string): Promise<Booking[]> {
-    const response = await apiClient.patch<unknown>('/admin/bookings/bulk-update', {
-      bookingIds,
-      status
-    });
-    return extractList<Booking>(response.data, 'bookings');
-  },
-
-  /**
-   * 벌크 취소
-   */
-  async bulkCancelBookings(bookingIds: number[], reason?: string): Promise<Booking[]> {
-    const response = await apiClient.patch<unknown>('/admin/bookings/bulk-cancel', {
-      bookingIds,
-      reason
-    });
-    return extractList<Booking>(response.data, 'bookings');
-  },
-
-  // ===== 예약 내역 조회 =====
-
-  /**
-   * 예약 내역 조회
-   */
-  async getBookingHistory(filters: BookingFilters = {}): Promise<Booking[]> {
-    const response = await apiClient.get<unknown>('/admin/bookings/history/list', filters);
-    return extractList<Booking>(response.data, 'bookings');
-  }
 } as const;

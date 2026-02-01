@@ -142,46 +142,46 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       // 플랫폼 역할
-      case 'PLATFORM_ADMIN': return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
-      case 'PLATFORM_SUPPORT': return 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30';
-      case 'PLATFORM_VIEWER': return 'bg-violet-500/20 text-violet-300 border-violet-500/30';
+      case 'PLATFORM_ADMIN': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'PLATFORM_SUPPORT': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+      case 'PLATFORM_VIEWER': return 'bg-blue-100 text-blue-800 border-blue-200';
       // 회사 역할
-      case 'COMPANY_ADMIN': return 'bg-green-500/20 text-green-300 border-green-500/30';
-      case 'COMPANY_MANAGER': return 'bg-teal-500/20 text-teal-300 border-teal-500/30';
-      case 'COMPANY_STAFF': return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30';
-      case 'COMPANY_VIEWER': return 'bg-zinc-700 text-zinc-400 border-zinc-600';
-      default: return 'bg-zinc-700 text-zinc-400 border-zinc-600';
+      case 'COMPANY_ADMIN': return 'bg-green-100 text-green-800 border-green-200';
+      case 'COMPANY_MANAGER': return 'bg-teal-100 text-teal-800 border-teal-200';
+      case 'COMPANY_STAFF': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'COMPANY_VIEWER': return 'bg-gray-100 text-gray-600 border-gray-200';
+      default: return 'bg-gray-100 text-gray-600 border-gray-200';
     }
   };
 
   const getStatusIcon = (status: StatusType) => {
     switch (status) {
-      case 'pending': return <span className="text-zinc-500">○</span>;
-      case 'loading': return <div className="w-3 h-3 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />;
-      case 'success': return <span className="text-green-400">✓</span>;
-      case 'error': return <span className="text-red-400">✗</span>;
+      case 'pending': return <span className="text-gray-400">○</span>;
+      case 'loading': return <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />;
+      case 'success': return <span className="text-green-600">✓</span>;
+      case 'error': return <span className="text-red-600">✗</span>;
     }
   };
 
   const healthyCount = healthStatuses.filter(s => s.status === 'success').length;
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-primary)] py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col lg:flex-row gap-8 items-start">
           {/* 로그인 폼 */}
           <div className="w-full lg:w-1/2">
-            <div className="glass-card p-8">
+            <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-8">
               <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-white mb-2">
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">
                   ParkMate 관리자
                 </h2>
-                <p className="text-zinc-400">
+                <p className="text-gray-500">
                   관리자 계정으로 로그인하세요
                 </p>
                 {selectedAdmin && (
-                  <div className="mt-4 p-3 bg-violet-500/20 border border-violet-500/30 rounded-lg">
-                    <p className="text-sm text-violet-300">
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-700">
                       <strong>{selectedAdmin.name}</strong> ({selectedAdmin.role}) 선택됨
                     </p>
                   </div>
@@ -190,8 +190,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
               <form className="space-y-6" onSubmit={onSubmit}>
                 {!email && !password && (
-                  <div className="text-center p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg">
-                    <p className="text-sm text-zinc-400">
+                  <div className="text-center p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <p className="text-sm text-gray-500">
                       우측에서 관리자를 선택하거나 직접 입력하세요
                     </p>
                   </div>
@@ -219,7 +219,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 </div>
 
                 {error && (
-                  <div className="bg-red-500/20 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg text-sm">
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                     <strong>로그인 실패:</strong> {error}
                   </div>
                 )}
@@ -242,18 +242,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
           {/* 관리자 계정 선택 */}
           <div className="w-full lg:w-1/2">
-            <div className="glass-card p-6">
-              <h3 className="text-lg font-bold text-white mb-2 text-center">
+            <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-2 text-center">
                 테스트 계정 선택
               </h3>
-              <p className="text-xs text-zinc-400 mb-4 text-center">
+              <p className="text-xs text-gray-500 mb-4 text-center">
                 클릭하면 자동으로 로그인 정보가 입력됩니다
               </p>
 
               <div className="space-y-4 max-h-[480px] overflow-y-auto pr-1">
                 {ADMIN_ACCOUNT_GROUPS.map((group, groupIndex) => (
                   <div key={groupIndex}>
-                    <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2 px-1">
+                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">
                       {group.title}
                     </h4>
                     <div className="space-y-2">
@@ -266,24 +266,24 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                             onClick={() => handleAdminSelect(admin)}
                             className={`w-full text-left p-3 border rounded-lg transition-all duration-150 group ${
                               isSelected
-                                ? 'border-violet-500 bg-violet-500/20 ring-1 ring-violet-500'
-                                : 'border-zinc-700 hover:border-violet-400 hover:bg-zinc-800'
+                                ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
+                                : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
                             }`}
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <span className={`font-medium text-sm ${isSelected ? 'text-violet-300' : 'text-zinc-200'}`}>
+                                  <span className={`font-medium text-sm ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}>
                                     {admin.name}
                                   </span>
                                   <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${getRoleBadgeColor(admin.role)}`}>
                                     {admin.role}
                                   </span>
                                 </div>
-                                <p className="text-xs text-zinc-500 mt-0.5 truncate">{admin.description}</p>
+                                <p className="text-xs text-gray-500 mt-0.5 truncate">{admin.description}</p>
                               </div>
                               {isSelected && (
-                                <Check className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                                <Check className="w-4 h-4 text-blue-600 flex-shrink-0" />
                               )}
                             </div>
                           </button>
@@ -294,8 +294,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 ))}
               </div>
 
-              <div className="mt-4 p-3 bg-amber-500/20 border border-amber-500/30 rounded-lg">
-                <p className="text-xs text-amber-400">
+              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs text-amber-700">
                   <strong>개발 환경 전용</strong> - 운영 환경에서는 비활성화됩니다
                 </p>
               </div>
@@ -307,13 +307,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       {/* 서버 헬스 체크 패널 (우측 하단 고정) */}
       <div className="fixed bottom-6 right-6 z-50">
         {showCheckPanel && (
-          <div className="absolute bottom-14 right-0 w-[360px] glass-card overflow-hidden mb-2">
+          <div className="absolute bottom-14 right-0 w-[360px] bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden mb-2">
             {/* 헤더 */}
-            <div className="bg-zinc-800/50 px-4 py-2 border-b border-zinc-700 flex items-center justify-between">
-              <span className="font-medium text-sm text-zinc-200">서버 상태 점검</span>
+            <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+              <span className="font-medium text-sm text-gray-700">서버 상태 점검</span>
               <button
                 onClick={() => setShowCheckPanel(false)}
-                className="text-zinc-400 hover:text-zinc-200"
+                className="text-gray-400 hover:text-gray-600"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -322,12 +322,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             <div className="p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm text-zinc-200">Health Check</span>
+                  <span className="font-medium text-sm text-gray-700">Health Check</span>
                   {healthStatuses.length > 0 && !isChecking && (
                     <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
                       healthyCount === HEALTH_ENDPOINTS.length
-                        ? 'bg-green-500/20 text-green-400'
-                        : 'bg-yellow-500/20 text-yellow-400'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-yellow-100 text-yellow-700'
                     }`}>
                       {healthyCount}/{HEALTH_ENDPOINTS.length}
                     </span>
@@ -338,8 +338,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                   disabled={isChecking}
                   className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
                     isChecking
-                      ? 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
-                      : 'bg-violet-600 text-white hover:bg-violet-500'
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
                   }`}
                 >
                   {isChecking ? '확인중...' : '체크'}
@@ -348,9 +348,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
               {/* 진행 상태 */}
               {checkPhase && (
-                <div className="mb-3 flex items-center gap-2 text-xs text-violet-400">
+                <div className="mb-3 flex items-center gap-2 text-xs text-blue-600">
                   {isChecking && (
-                    <div className="w-3 h-3 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                   )}
                   <span>{checkPhase}</span>
                 </div>
@@ -360,14 +360,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               {healthStatuses.length > 0 && (
                 <div className="space-y-1.5">
                   {healthStatuses.map((svc, idx) => (
-                    <div key={idx} className="flex items-center justify-between py-1 px-2 bg-zinc-800 rounded text-xs">
-                      <span className="text-zinc-300">{svc.service}</span>
+                    <div key={idx} className="flex items-center justify-between py-1 px-2 bg-gray-50 rounded text-xs">
+                      <span className="text-gray-700">{svc.service}</span>
                       <div className="flex items-center gap-2">
                         {svc.time !== undefined && svc.status === 'success' && (
-                          <span className="text-zinc-500">{svc.time}ms</span>
+                          <span className="text-gray-400">{svc.time}ms</span>
                         )}
                         {svc.message && svc.status === 'error' && (
-                          <span className="text-red-400 max-w-[100px] truncate" title={svc.message}>
+                          <span className="text-red-600 max-w-[100px] truncate" title={svc.message}>
                             {svc.message}
                           </span>
                         )}
@@ -379,7 +379,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               )}
 
               {checkTotalTime !== null && (
-                <div className="mt-2 text-right text-[10px] text-zinc-500">
+                <div className="mt-2 text-right text-[10px] text-gray-400">
                   소요시간: {checkTotalTime}ms
                 </div>
               )}
@@ -394,8 +394,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg
             transition-all duration-200 font-medium text-sm
             ${showCheckPanel
-              ? 'bg-zinc-700 text-zinc-200'
-              : 'bg-violet-600 text-white hover:bg-violet-500 hover:shadow-xl active:scale-95'
+              ? 'bg-gray-200 text-gray-700'
+              : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-xl active:scale-95'
             }
           `}
           title="서버 상태 점검"

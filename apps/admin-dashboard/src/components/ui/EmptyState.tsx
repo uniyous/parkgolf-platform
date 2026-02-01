@@ -33,9 +33,9 @@ export function EmptyState({
       <div className="icon-container icon-container-lg mb-4 opacity-50">
         <Icon className="w-8 h-8" />
       </div>
-      <h3 className="text-lg font-medium text-white mb-1">{title}</h3>
+      <h3 className="text-lg font-medium text-gray-900 mb-1">{title}</h3>
       {description && (
-        <p className="text-sm text-[var(--color-text-tertiary)] mb-4 max-w-xs">
+        <p className="text-sm text-gray-500 mb-4 max-w-xs">
           {description}
         </p>
       )}

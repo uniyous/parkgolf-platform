@@ -221,18 +221,3 @@ export const useRolePermissionsQuery = (roleCode: string) => {
   });
 };
 
-export const useUpdateRolePermissionsMutation = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ roleCode, permissions }: { roleCode: string; permissions: string[] }) =>
-      adminApi.updateRolePermissions(roleCode, permissions),
-    onSuccess: (_, { roleCode }) => {
-      queryClient.invalidateQueries({ queryKey: roleKeys.permissions(roleCode) });
-      queryClient.invalidateQueries({ queryKey: roleKeys.withPermissions() });
-      queryClient.invalidateQueries({ queryKey: roleKeys.list() });
-      showSuccessToast('역할 권한이 수정되었습니다.');
-    },
-    meta: { errorMessage: '역할 권한 수정에 실패했습니다.' },
-  });
-};

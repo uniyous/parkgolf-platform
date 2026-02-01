@@ -189,7 +189,7 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
           <Dialog.Title className="sr-only">주간 스케줄 일괄 생성</Dialog.Title>
 
           {/* Header */}
-          <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-5">
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
@@ -199,7 +199,7 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-white">주간 스케줄 생성</h2>
-                  <p className="text-violet-100 text-sm mt-0.5">
+                  <p className="text-blue-100 text-sm mt-0.5">
                     {step === 'days' && '1단계: 요일 선택'}
                     {step === 'time' && '2단계: 운영 시간 설정'}
                     {step === 'preview' && '3단계: 확인 및 생성'}
@@ -223,7 +223,7 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
                       step === s
-                        ? 'bg-white text-violet-600'
+                        ? 'bg-white text-blue-600'
                         : ['days', 'time', 'preview'].indexOf(step) > i
                         ? 'bg-white/30 text-white'
                         : 'bg-white/10 text-white/50'
@@ -260,13 +260,13 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                         onClick={() => handlePresetChange(preset.id)}
                         className={`flex items-center p-3 rounded-lg border-2 transition-all ${
                           selectedPreset === preset.id
-                            ? 'border-violet-500 bg-violet-50'
+                            ? 'border-blue-500 bg-blue-50'
                             : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
                         <span className="text-xl mr-3">{preset.icon}</span>
                         <span className={`text-sm font-medium ${
-                          selectedPreset === preset.id ? 'text-violet-700' : 'text-gray-700'
+                          selectedPreset === preset.id ? 'text-blue-700' : 'text-gray-700'
                         }`}>
                           {preset.label}
                         </span>
@@ -291,12 +291,12 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                             isExisting
                               ? 'bg-gray-100 border-gray-200 cursor-not-allowed'
                               : isSelected
-                              ? 'border-violet-500 bg-violet-50'
+                              ? 'border-blue-500 bg-blue-50'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                         >
                           <span className={`text-sm font-medium ${
-                            isExisting ? 'text-gray-400' : isSelected ? 'text-violet-700' : day.color
+                            isExisting ? 'text-gray-400' : isSelected ? 'text-blue-700' : day.color
                           }`}>
                             {day.short}
                           </span>
@@ -323,7 +323,7 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">선택된 요일</span>
-                    <span className="text-sm font-medium text-violet-600">
+                    <span className="text-sm font-medium text-blue-600">
                       {selectedDays.length}개 선택 ({newDaysCount}개 신규)
                     </span>
                   </div>
@@ -337,7 +337,7 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                           className={`px-2 py-1 rounded text-xs font-medium ${
                             isExisting
                               ? 'bg-gray-200 text-gray-500 line-through'
-                              : 'bg-violet-100 text-violet-700'
+                              : 'bg-blue-100 text-blue-700'
                           }`}
                         >
                           {day?.label}
@@ -362,14 +362,14 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                         onClick={() => handleTimePresetChange(preset.id)}
                         className={`flex items-center p-3 rounded-lg border-2 transition-all ${
                           timePreset === preset.id
-                            ? 'border-violet-500 bg-violet-50'
+                            ? 'border-blue-500 bg-blue-50'
                             : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
                         <span className="text-xl mr-3">{preset.icon}</span>
                         <div className="text-left">
                           <span className={`text-sm font-medium block ${
-                            timePreset === preset.id ? 'text-violet-700' : 'text-gray-700'
+                            timePreset === preset.id ? 'text-blue-700' : 'text-gray-700'
                           }`}>
                             {preset.label}
                           </span>
@@ -397,7 +397,7 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                           setStartTime(e.target.value);
                           setTimePreset('custom');
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
                     <div>
@@ -409,7 +409,7 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                           setEndTime(e.target.value);
                           setTimePreset('custom');
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
                   </div>
@@ -425,12 +425,12 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                         onClick={() => setInterval(opt.value)}
                         className={`flex-1 py-3 rounded-lg border-2 transition-all ${
                           interval === opt.value
-                            ? 'border-violet-500 bg-violet-50'
+                            ? 'border-blue-500 bg-blue-50'
                             : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
                         <span className={`text-sm font-medium block ${
-                          interval === opt.value ? 'text-violet-700' : 'text-gray-700'
+                          interval === opt.value ? 'text-blue-700' : 'text-gray-700'
                         }`}>
                           {opt.label}
                         </span>
@@ -465,11 +465,11 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-medium text-gray-700">스케줄 생성 중...</span>
-                        <span className="text-sm font-bold text-violet-600">{currentProgress}%</span>
+                        <span className="text-sm font-bold text-blue-600">{currentProgress}%</span>
                       </div>
                       <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-violet-500 to-purple-600 rounded-full transition-all duration-300 ease-out"
+                          className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-300 ease-out"
                           style={{ width: `${currentProgress}%` }}
                         />
                       </div>
@@ -497,7 +497,7 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                               status === 'completed'
                                 ? 'bg-green-50 border-green-300'
                                 : status === 'creating'
-                                ? 'bg-violet-50 border-violet-400 ring-2 ring-violet-300 ring-offset-1'
+                                ? 'bg-blue-50 border-blue-400 ring-2 ring-blue-300 ring-offset-1'
                                 : status === 'skipped'
                                 ? 'bg-gray-100 border-gray-300'
                                 : status === 'error'
@@ -508,7 +508,7 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                             <div className={`text-xs font-medium mb-1 ${day.color}`}>{day.short}</div>
                             <div className="h-5 flex items-center justify-center">
                               {status === 'creating' && (
-                                <svg className="animate-spin h-4 w-4 text-violet-600" fill="none" viewBox="0 0 24 24">
+                                <svg className="animate-spin h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24">
                                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                 </svg>
@@ -543,8 +543,8 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                 ) : (
                   <>
                     {/* Summary Card */}
-                    <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl p-5 border border-violet-100">
-                      <h3 className="text-sm font-medium text-violet-900 mb-4">생성 요약</h3>
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-100">
+                      <h3 className="text-sm font-medium text-blue-900 mb-4">생성 요약</h3>
                       <div className="space-y-3">
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-600">선택 요일</span>
@@ -560,10 +560,10 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                           <span className="text-sm text-gray-600">타임슬롯 간격</span>
                           <span className="text-sm font-medium text-gray-900">{interval}분</span>
                         </div>
-                        <div className="pt-3 border-t border-violet-200">
+                        <div className="pt-3 border-t border-blue-200">
                           <div className="flex justify-between">
-                            <span className="text-sm font-medium text-violet-700">생성될 스케줄</span>
-                            <span className="text-lg font-bold text-violet-700">{newDaysCount}개</span>
+                            <span className="text-sm font-medium text-blue-700">생성될 스케줄</span>
+                            <span className="text-lg font-bold text-blue-700">{newDaysCount}개</span>
                           </div>
                         </div>
                       </div>
@@ -583,7 +583,7 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                               key={day.value}
                               className={`p-3 rounded-lg border text-center ${
                                 isNew
-                                  ? 'bg-violet-50 border-violet-200'
+                                  ? 'bg-blue-50 border-blue-200'
                                   : isExisting
                                   ? 'bg-green-50 border-green-200'
                                   : 'bg-gray-50 border-gray-200'
@@ -594,9 +594,9 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                               </div>
                               {isNew && (
                                 <>
-                                  <div className="text-[10px] text-violet-600">{startTime}</div>
+                                  <div className="text-[10px] text-blue-600">{startTime}</div>
                                   <div className="text-[10px] text-gray-400">~</div>
-                                  <div className="text-[10px] text-violet-600">{endTime}</div>
+                                  <div className="text-[10px] text-blue-600">{endTime}</div>
                                 </>
                               )}
                               {isExisting && (
@@ -646,7 +646,7 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                   <button
                     onClick={() => setStep('time')}
                     disabled={!canProceedToTime}
-                    className="px-5 py-2.5 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                    className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
                   >
                     다음
                   </button>
@@ -655,7 +655,7 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                   <button
                     onClick={() => setStep('preview')}
                     disabled={!canProceedToPreview}
-                    className="px-5 py-2.5 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                    className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
                   >
                     다음
                   </button>
@@ -664,7 +664,7 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                   <button
                     onClick={handleCreate}
                     disabled={newDaysCount === 0}
-                    className="px-5 py-2.5 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center"
+                    className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center"
                   >
                     <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

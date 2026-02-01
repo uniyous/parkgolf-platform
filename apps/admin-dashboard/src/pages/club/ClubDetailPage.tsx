@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useClubDetail } from '@/hooks';
 import { DataContainer, DeleteConfirmPopover } from '@/components/common';
+import { PageLayout } from '@/components/layout';
 import type { CourseCombo } from '@/types/club';
 import { CourseManagementTab } from '@/components/features/club/CourseManagementTab';
 import { BasicInfoTab } from '@/components/features/club/BasicInfoTab';
@@ -30,6 +31,11 @@ export const ClubDetailPage: React.FC = () => {
     refetchClub,
     refetchCourses,
   } = useClubDetail(clubId ? Number(clubId) : null);
+
+  const breadcrumbs = useMemo(() => [
+    { label: '골프장', path: '/clubs' },
+    { label: club?.name || '골프장 상세' },
+  ], [club?.name]);
 
   // 탭 변경 시 편집 모드 리셋
   useEffect(() => {
@@ -68,6 +74,7 @@ export const ClubDetailPage: React.FC = () => {
   };
 
   return (
+    <PageLayout breadcrumbs={breadcrumbs}>
     <DataContainer
       isLoading={isLoading}
       isEmpty={!club && !isLoading}
@@ -239,5 +246,6 @@ export const ClubDetailPage: React.FC = () => {
     </div>
       )}
     </DataContainer>
+    </PageLayout>
   );
 };

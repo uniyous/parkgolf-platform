@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CancellationPolicySettings } from '@/components/features/settings/CancellationPolicySettings';
 import { RefundPolicySettings } from '@/components/features/settings/RefundPolicySettings';
 import { NoShowPolicySettings } from '@/components/features/settings/NoShowPolicySettings';
+import { PageLayout } from '@/components/layout';
 
 // 카테고리 정의
 type CategoryId = 'booking-policy' | 'notification' | 'general';
@@ -152,7 +153,7 @@ export const SystemSettingsPage: React.FC = () => {
   const currentCategory = categories.find((c) => c.id === activeCategory);
 
   return (
-    <div className="space-y-6">
+    <PageLayout>
       {/* 헤더 */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <div className="flex items-center justify-between">
@@ -239,7 +240,7 @@ export const SystemSettingsPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 };
 

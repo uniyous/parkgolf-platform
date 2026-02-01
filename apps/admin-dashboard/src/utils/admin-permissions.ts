@@ -23,7 +23,7 @@ export const ADMIN_ROLE_COLORS: Record<AdminRole, string> = {
   // 플랫폼 역할 (보라색 계열)
   PLATFORM_ADMIN: 'bg-purple-100 text-purple-800',
   PLATFORM_SUPPORT: 'bg-indigo-100 text-indigo-800',
-  PLATFORM_VIEWER: 'bg-violet-100 text-violet-800',
+  PLATFORM_VIEWER: 'bg-blue-100 text-blue-800',
   // 회사 역할 (초록/노랑 계열)
   COMPANY_ADMIN: 'bg-green-100 text-green-800',
   COMPANY_MANAGER: 'bg-teal-100 text-teal-800',

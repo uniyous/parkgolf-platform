@@ -14,6 +14,7 @@ import { BookingStatsCards } from '@/components/features/booking/BookingStatsCar
 import { BookingFilters } from '@/components/features/booking/BookingFilters';
 import { BookingTable } from '@/components/features/booking/BookingTable';
 import { BookingDetailModal } from '@/components/features/booking/BookingDetailModal';
+import { PageLayout } from '@/components/layout';
 
 type BookingStatusKey = 'ALL' | 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
 
@@ -191,7 +192,7 @@ export const BookingManagementPage: React.FC = () => {
     cancelMutation.isPending || completeMutation.isPending || noShowMutation.isPending;
 
   return (
-    <div className="space-y-4">
+    <PageLayout>
       {/* 통계 카드 */}
       <BookingStatsCards
         statusCounts={statusCounts}
@@ -252,7 +253,7 @@ export const BookingManagementPage: React.FC = () => {
         onNoShow={handleNoShow}
         isActionPending={isActionPending}
       />
-    </div>
+    </PageLayout>
   );
 };
 

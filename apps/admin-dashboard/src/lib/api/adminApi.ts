@@ -250,16 +250,6 @@ export const adminApi = {
     return extractList<string>(response.data) || [];
   },
 
-  /**
-   * 역할 권한 수정
-   */
-  async updateRolePermissions(roleCode: string, permissions: string[]): Promise<RoleWithPermissions> {
-    const response = await apiClient.patch<unknown>(`/admin/admins/roles/${roleCode}/permissions`, { permissions });
-    const role = extractSingle<RoleWithPermissions>(response.data);
-    if (!role) throw new Error('Failed to update role permissions');
-    return role;
-  },
-
   // ===== 사용자 관리 (BFF API) =====
 
   /**

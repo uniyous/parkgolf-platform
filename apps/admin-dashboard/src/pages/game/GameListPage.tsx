@@ -89,7 +89,7 @@ export const GameListPage: React.FC = () => {
         </PageLayout>
       }
     >
-    <div className="space-y-6">
+    <PageLayout>
       {/* 헤더 카드 */}
       <div className="bg-white shadow rounded-lg p-6">
         <div className="flex items-center justify-between">
@@ -288,7 +288,7 @@ export const GameListPage: React.FC = () => {
           navigate(`/games/${game.id}`);
         }}
       />
-    </div>
+    </PageLayout>
     </CanManageCourses>
   );
 };

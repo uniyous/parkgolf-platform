@@ -168,7 +168,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           onClick={() => toggleGroup(group.label)}
           className={cn(
             'w-full nav-item justify-between',
-            hasActiveItem && 'text-[var(--color-primary-light)]'
+            hasActiveItem && 'text-blue-400'
           )}
         >
           <div className="flex items-center gap-3">
@@ -185,7 +185,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
         {/* Sub Items */}
         {isExpanded && (
-          <div className="ml-4 pl-4 border-l border-[var(--color-border)] space-y-1">
+          <div className="ml-4 pl-4 border-l border-gray-700 space-y-1">
             {group.items.map((item) => {
               const ItemIcon = item.icon;
               return (
@@ -196,8 +196,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   className={cn(
                     'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
                     isActive(item.path)
-                      ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary-light)]'
-                      : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-white'
+                      ? 'bg-blue-600/20 text-blue-400'
+                      : 'text-gray-400 hover:bg-white/10 hover:text-gray-100'
                   )}
                 >
                   {ItemIcon && <ItemIcon className="w-4 h-4" />}
@@ -215,9 +215,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     <div className="min-h-screen flex">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex md:flex-col md:w-64 fixed inset-y-0 left-0 z-30">
-        <div className="flex flex-col h-full bg-[var(--color-nav-bg)] border-r border-[var(--color-border)]">
+        <div className="flex flex-col h-full bg-gray-800 border-r border-gray-700">
           {/* Logo */}
-          <div className="flex items-center h-16 px-6 border-b border-[var(--color-border)]">
+          <div className="flex items-center h-16 px-6 border-b border-gray-700">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
                 <span className="text-white font-bold text-sm">P</span>
@@ -234,11 +234,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           </nav>
 
           {/* User Profile */}
-          <div className="p-4 border-t border-[var(--color-border)]">
+          <div className="p-4 border-t border-gray-700">
             <div className="relative">
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors"
+                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 transition-colors"
               >
                 <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center flex-shrink-0">
                   <span className="text-white font-medium">
@@ -249,13 +249,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   <p className="text-sm font-medium text-white truncate">
                     {currentUser.username}
                   </p>
-                  <p className="text-xs text-[var(--color-text-tertiary)] truncate">
+                  <p className="text-xs text-gray-400 truncate">
                     {currentUser.email}
                   </p>
                 </div>
                 <ChevronDown
                   className={cn(
-                    'w-4 h-4 text-[var(--color-text-tertiary)] transition-transform',
+                    'w-4 h-4 text-gray-400 transition-transform',
                     userMenuOpen && 'rotate-180'
                   )}
                 />
@@ -263,11 +263,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
               {/* User Dropdown */}
               {userMenuOpen && (
-                <div className="absolute bottom-full left-0 right-0 mb-2 glass-card p-2 animate-slide-up">
+                <div className="absolute bottom-full left-0 right-0 mb-2 bg-gray-800 border border-gray-700 rounded-lg shadow-lg p-2 animate-slide-up">
                   <Link
                     to="/profile"
                     onClick={() => setUserMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-white transition-colors"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-white/10 hover:text-gray-100 transition-colors"
                   >
                     <Users className="w-4 h-4" />
                     프로필 설정
@@ -275,18 +275,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   <Link
                     to="/change-password"
                     onClick={() => setUserMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-white transition-colors"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-white/10 hover:text-gray-100 transition-colors"
                   >
                     <Settings className="w-4 h-4" />
                     비밀번호 변경
                   </Link>
-                  <div className="my-2 border-t border-[var(--color-border)]" />
+                  <div className="my-2 border-t border-gray-700" />
                   <button
                     onClick={() => {
                       setUserMenuOpen(false);
                       onLogout();
                     }}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-[var(--color-error)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-white/10 transition-colors"
                   >
                     <LogOut className="w-4 h-4" />
                     로그아웃
@@ -309,13 +309,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* Mobile Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-64 bg-[var(--color-nav-bg)] border-r border-[var(--color-border)] transform transition-transform duration-300 md:hidden',
+          'fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 border-r border-gray-700 transform transition-transform duration-300 md:hidden',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between h-16 px-4 border-b border-[var(--color-border)]">
+          <div className="flex items-center justify-between h-16 px-4 border-b border-gray-700">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
                 <span className="text-white font-bold text-sm">P</span>
@@ -324,7 +324,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="p-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+              className="p-2 rounded-lg text-gray-400 hover:bg-white/10"
             >
               <X className="w-5 h-5" />
             </button>
@@ -338,7 +338,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           </nav>
 
           {/* User Profile */}
-          <div className="p-4 border-t border-[var(--color-border)]">
+          <div className="p-4 border-t border-gray-700">
             <div className="flex items-center gap-3 p-3">
               <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-medium">
@@ -349,14 +349,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                 <p className="text-sm font-medium text-white truncate">
                   {currentUser.username}
                 </p>
-                <p className="text-xs text-[var(--color-text-tertiary)] truncate">
+                <p className="text-xs text-gray-400 truncate">
                   {currentUser.email}
                 </p>
               </div>
             </div>
             <button
               onClick={onLogout}
-              className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm text-[var(--color-error)] hover:bg-[var(--color-surface-hover)] transition-colors"
+              className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm text-red-400 hover:bg-white/10 transition-colors"
             >
               <LogOut className="w-4 h-4" />
               로그아웃
@@ -368,10 +368,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* Main Content */}
       <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
         {/* Mobile Header */}
-        <header className="md:hidden sticky top-0 z-20 h-16 px-4 flex items-center justify-between bg-[var(--color-nav-bg)] border-b border-[var(--color-border)]">
+        <header className="md:hidden sticky top-0 z-20 h-16 px-4 flex items-center justify-between bg-gray-800 border-b border-gray-700">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+            className="p-2 rounded-lg text-gray-400 hover:bg-white/10"
           >
             <Menu className="w-6 h-6" />
           </button>
@@ -385,7 +385,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 md:p-6">
+        <main className="flex-1 p-4 md:p-6 bg-gray-50">
           {children}
         </main>
       </div>

@@ -1,45 +1,24 @@
 import React from 'react';
 import { BreadcrumbContainer } from '@/components/common';
+import { usePageBreadcrumbs } from '@/hooks/usePageBreadcrumbs';
+import { cn } from '@/lib/utils';
+import type { BreadcrumbItem } from '@/stores/breadcrumb.store';
 
 interface PageLayoutProps {
   children: React.ReactNode;
-}
-
-interface PageHeaderProps {
-  children: React.ReactNode;
-}
-
-interface PageContentProps {
-  children: React.ReactNode;
   className?: string;
+  breadcrumbs?: BreadcrumbItem[];
 }
 
-export const PageLayout: React.FC<PageLayoutProps> & {
-  Header: React.FC<PageHeaderProps>;
-  Content: React.FC<PageContentProps>;
-} = ({ children }) => (
-  <div className="min-h-screen bg-gray-50">
-    <div className="w-full">
-      <BreadcrumbContainer />
-    </div>
-    {children}
-  </div>
-);
+export const PageLayout: React.FC<PageLayoutProps> = ({ children, className, breadcrumbs }) => {
+  usePageBreadcrumbs(breadcrumbs);
 
-PageLayout.Header = ({ children }: PageHeaderProps) => (
-  <header className="bg-white shadow">
-    <div className="w-full py-6">
+  return (
+    <div className={cn('space-y-6', className)}>
+      <BreadcrumbContainer />
       {children}
     </div>
-  </header>
-);
-
-PageLayout.Content = ({ children, className = '' }: PageContentProps) => (
-  <main className={`w-full py-4 ${className}`}>
-    {children}
-  </main>
-);
+  );
+};
 
 PageLayout.displayName = 'PageLayout';
-PageLayout.Header.displayName = 'PageLayout.Header';
-PageLayout.Content.displayName = 'PageLayout.Content';

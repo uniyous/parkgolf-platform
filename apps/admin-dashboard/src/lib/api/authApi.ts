@@ -33,20 +33,6 @@ export const iamApi = {
   },
 
   /**
-   * 프로필 조회
-   */
-  async fetchUserProfile(): Promise<User> {
-    const response = await apiClient.get<unknown>('/admin/iam/profile');
-    const user = extractSingle<User>(response.data);
-
-    if (!user) {
-      throw new Error('Invalid profile response');
-    }
-
-    return user;
-  },
-
-  /**
    * 현재 사용자 조회
    */
   async getCurrentUser(): Promise<User> {
@@ -105,4 +91,3 @@ export const iamApi = {
 // Legacy exports for backward compatibility
 export const authApi = iamApi;
 export const login = iamApi.login;
-export const fetchUserProfile = iamApi.fetchUserProfile;

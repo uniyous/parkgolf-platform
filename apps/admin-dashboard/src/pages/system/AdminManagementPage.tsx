@@ -12,6 +12,7 @@ import {
   ActiveFilterTags,
 } from '@/components/common/filters';
 import { AdminFormModal, RoleManagementModal } from '@/components/features/admin';
+import { PageLayout } from '@/components/layout';
 import type { Admin, AdminRole, AdminScope } from '@/types';
 import { ADMIN_ROLE_LABELS, ADMIN_ROLE_COLORS, canManageAdmin, PLATFORM_ROLES, COMPANY_ROLES } from '@/utils';
 
@@ -30,7 +31,7 @@ const ROLE_META: Record<string, { icon: string; color: string }> = {
   // 플랫폼 역할
   PLATFORM_ADMIN: { icon: '👑', color: 'bg-purple-100 text-purple-800 border-purple-200' },
   PLATFORM_SUPPORT: { icon: '🎧', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
-  PLATFORM_VIEWER: { icon: '👁️', color: 'bg-violet-100 text-violet-800 border-violet-200' },
+  PLATFORM_VIEWER: { icon: '👁️', color: 'bg-blue-100 text-blue-800 border-blue-200' },
   // 회사 역할
   COMPANY_ADMIN: { icon: '🏢', color: 'bg-green-100 text-green-800 border-green-200' },
   COMPANY_MANAGER: { icon: '👨‍💼', color: 'bg-teal-100 text-teal-800 border-teal-200' },
@@ -186,7 +187,7 @@ export const AdminManagementPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <PageLayout>
       {/* 헤더 카드 */}
       <div className="bg-white shadow rounded-lg p-6">
         <div className="flex items-center justify-between">
@@ -548,6 +549,6 @@ export const AdminManagementPage: React.FC = () => {
           </>
         )}
       </Modal>
-    </div>
+    </PageLayout>
   );
 };

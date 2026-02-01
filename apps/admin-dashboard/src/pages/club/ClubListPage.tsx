@@ -63,7 +63,7 @@ export const ClubListPage: React.FC = () => {
         </PageLayout>
       }
     >
-    <div className="space-y-6">
+    <PageLayout>
       {/* 헤더 카드 */}
       <div className="bg-white shadow rounded-lg p-6">
         <div className="flex items-center justify-between">
@@ -245,7 +245,7 @@ export const ClubListPage: React.FC = () => {
           )}
         </p>
       </div>
-    </div>
+    </PageLayout>
     </CanManageCourses>
   );
 };

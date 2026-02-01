@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageLayout } from '@/components/layout';
-import { Breadcrumb, DataContainer } from '@/components/common';
+import { DataContainer } from '@/components/common';
 import { useAdminsQuery, usePermissionsQuery, useRolesWithPermissionsQuery } from '@/hooks/queries/admin';
 import type { RoleWithPermissions, PermissionInfo, PermissionDetail } from '@/lib/api/adminApi';
 
@@ -158,14 +158,7 @@ export const RolePermissionPage: React.FC = () => {
 
   return (
     <PageLayout>
-      <Breadcrumb
-        items={[
-          { label: '시스템', icon: '⚙️' },
-          { label: '역할 및 권한', icon: '🔐' }
-        ]}
-      />
-      <PageLayout.Content>
-        <DataContainer
+      <DataContainer
           isLoading={isLoading}
           isEmpty={rolesWithPermissions.length === 0 && !isLoading}
           emptyIcon="🔐"
@@ -446,7 +439,6 @@ export const RolePermissionPage: React.FC = () => {
             </div>
           </div>
         </DataContainer>
-      </PageLayout.Content>
     </PageLayout>
   );
 };
