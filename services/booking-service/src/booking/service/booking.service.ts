@@ -15,6 +15,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, retry, catchError, of } from 'rxjs';
 import { randomUUID } from 'crypto';
 import { NATS_TIMEOUTS } from '../../common/constants';
+import { OutboxProcessorService } from './outbox-processor.service';
 
 // NATS 호출 설정
 const NATS_RETRY_COUNT = 2;     // 2회 재시도
@@ -31,6 +32,7 @@ export class BookingService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly outboxProcessor: OutboxProcessorService,
     @Optional() @Inject('NOTIFICATION_SERVICE') private readonly notificationPublisher?: ClientProxy,
     @Optional() @Inject('COURSE_SERVICE') private readonly courseServiceClient?: ClientProxy,
   ) {}
@@ -376,6 +378,10 @@ export class BookingService {
       });
 
       this.logger.log(`[${requestId}] Step 3: COMPLETED - Booking ${booking.bookingNumber} created with PENDING status`);
+
+      // 트랜잭션 커밋 후 Outbox 즉시 처리 트리거 (폴링 대기 없이 ~2-5ms 내 발행)
+      setImmediate(() => this.outboxProcessor.triggerImmediate());
+
       this.logger.log(`[${requestId}] ========== BOOKING CREATE SUCCESS (bookingId=${booking.id}, bookingNumber=${booking.bookingNumber}, total=${Date.now() - startTime}ms) ==========`);
 
       return BookingResponseDto.fromEntity(booking);

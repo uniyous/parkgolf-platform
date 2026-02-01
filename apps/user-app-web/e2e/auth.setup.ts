@@ -29,8 +29,8 @@ setup('authenticate as test user', async ({ page }) => {
       // 로그인 버튼 클릭
       await page.getByRole('button', { name: '로그인' }).click();
 
-      // 검색 페이지로 리다이렉트 확인 (Cloud Run 콜드 스타트 대비 - 60초)
-      await expect(page).toHaveURL(/.*search/, { timeout: 60000 });
+      // 로그인 후 리다이렉트 확인 (홈 또는 검색 페이지)
+      await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 60000 });
 
       // 인증 상태 저장
       await page.context().storageState({ path: authFile });
