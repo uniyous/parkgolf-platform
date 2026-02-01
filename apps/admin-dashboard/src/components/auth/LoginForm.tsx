@@ -101,10 +101,22 @@ const ADMIN_ACCOUNT_GROUPS: AdminAccountGroup[] = [
 
 const ADMIN_ACCOUNTS: AdminAccount[] = ADMIN_ACCOUNT_GROUPS.flatMap(group => group.accounts);
 
-const HEALTH_ENDPOINTS = [
+// Health Check 설정
+const BFF_ENDPOINTS = [
   { name: 'admin-api', url: `${BASE_URL}/api/admin/iam/health` },
   { name: 'user-api', url: `${BASE_URL}/api/user/iam/health` },
 ];
+const WARMUP_HTTP_URL = `${BASE_URL}/api/admin/system/warmup/http`;
+const WARMUP_NATS_URL = `${BASE_URL}/api/admin/system/warmup/nats`;
+const NATS_ROUNDS = 3;
+const NATS_SERVICES = ['iam-service', 'course-service', 'booking-service', 'chat-service', 'notify-service'];
+const ALL_SERVICES = ['admin-api', 'user-api', 'iam-service', 'course-service', 'booking-service', 'chat-gateway', 'chat-service', 'notify-service'];
+
+interface NatsRoundResult {
+  round: number;
+  services: ServiceStatus[];
+  totalTime: number;
+}
 
 export const LoginForm: React.FC<LoginFormProps> = ({
   email,
@@ -120,7 +132,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   // 서버 헬스 체크 상태
   const [isChecking, setIsChecking] = useState(false);
   const [checkPhase, setCheckPhase] = useState<string>('');
-  const [healthStatuses, setHealthStatuses] = useState<ServiceStatus[]>([]);
+  const [httpStatuses, setHttpStatuses] = useState<ServiceStatus[]>([]);
+  const [natsRounds, setNatsRounds] = useState<NatsRoundResult[]>([]);
   const [checkTotalTime, setCheckTotalTime] = useState<number | null>(null);
 
   const handleAdminSelect = (admin: AdminAccount) => {
@@ -128,47 +141,120 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     onPasswordChange(admin.password);
   };
 
-  // 서버 헬스 체크
+  // 서버 헬스 체크 (Phase 1: HTTP + Phase 2: NATS 3회)
   const handleHealthCheck = async () => {
     setIsChecking(true);
     setShowCheckPanel(true);
-    setCheckPhase('서버 상태 확인중...');
     setCheckTotalTime(null);
-
-    setHealthStatuses(HEALTH_ENDPOINTS.map(ep => ({
-      service: ep.name,
-      status: 'loading' as StatusType,
-    })));
+    setNatsRounds([]);
 
     const startTime = Date.now();
 
-    const results = await Promise.all(
-      HEALTH_ENDPOINTS.map(async (ep) => {
-        const start = Date.now();
+    // === Phase 1: HTTP Health Check ===
+    setCheckPhase('Phase 1: HTTP Health Check...');
+    setHttpStatuses(ALL_SERVICES.map(name => ({ service: name, status: 'loading' as StatusType })));
+
+    // BFF 직접 체크 + warmup/http 병렬 호출
+    const [bffResults, warmupResult] = await Promise.all([
+      Promise.all(
+        BFF_ENDPOINTS.map(async (ep) => {
+          const start = Date.now();
+          try {
+            const res = await fetch(ep.url, { method: 'GET' });
+            return {
+              service: ep.name,
+              status: (res.ok ? 'success' : 'error') as StatusType,
+              time: Date.now() - start,
+              message: res.ok ? undefined : `HTTP ${res.status}`,
+            };
+          } catch (err) {
+            return {
+              service: ep.name,
+              status: 'error' as StatusType,
+              time: Date.now() - start,
+              message: err instanceof Error ? err.message : 'Connection failed',
+            };
+          }
+        })
+      ),
+      (async () => {
         try {
-          const response = await fetch(ep.url, { method: 'GET' });
-          return {
-            service: ep.name,
-            status: (response.status === 200 ? 'success' : 'error') as StatusType,
-            time: Date.now() - start,
-            message: response.status !== 200 ? `HTTP ${response.status}` : undefined,
-          };
-        } catch (err) {
-          return {
-            service: ep.name,
-            status: 'error' as StatusType,
-            time: Date.now() - start,
-            message: err instanceof Error ? err.message : 'Connection failed',
-          };
+          const res = await fetch(WARMUP_HTTP_URL);
+          if (!res.ok) return null;
+          return await res.json();
+        } catch {
+          return null;
         }
-      })
-    );
+      })(),
+    ]);
 
-    setHealthStatuses(results);
-    setCheckTotalTime(Date.now() - startTime);
+    // warmup/http 결과를 ServiceStatus[]로 변환
+    const internalServices = ['iam-service', 'course-service', 'booking-service', 'chat-gateway', 'chat-service', 'notify-service'];
+    const internalResults: ServiceStatus[] = internalServices.map((name) => {
+      const svc = warmupResult?.services?.find((s: { name: string }) => s.name === name);
+      if (!svc) return { service: name, status: 'error' as StatusType, message: 'No response' };
+      return {
+        service: name,
+        status: (svc.httpStatus === 'ok' ? 'success' : 'error') as StatusType,
+        time: svc.httpResponseTime,
+        message: svc.httpStatus !== 'ok' ? (svc.httpMessage || 'Error') : undefined,
+      };
+    });
 
-    const allHealthy = results.every(r => r.status === 'success');
-    setCheckPhase(allHealthy ? '모든 서버 정상' : '일부 서버 오류 발생');
+    const allHttpStatuses = [...bffResults, ...internalResults];
+    setHttpStatuses(allHttpStatuses);
+
+    const httpHealthy = allHttpStatuses.filter(s => s.status === 'success').length;
+    setCheckPhase(`Phase 1 완료: ${httpHealthy}/${ALL_SERVICES.length} 정상 | Phase 2: NATS 통신 체크...`);
+
+    // === Phase 2: NATS 통신 체크 (3회 반복) ===
+    const rounds: NatsRoundResult[] = [];
+    for (let i = 0; i < NATS_ROUNDS; i++) {
+      setCheckPhase(`Phase 2: NATS 통신 체크 (${i + 1}/${NATS_ROUNDS})...`);
+
+      const roundStart = Date.now();
+      let roundServices: ServiceStatus[];
+
+      try {
+        const res = await fetch(WARMUP_NATS_URL);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        roundServices = NATS_SERVICES.map((name) => {
+          const svc = data?.services?.find((s: { name: string }) => s.name === name);
+          if (!svc || svc.natsStatus === 'skipped') {
+            return { service: name, status: 'error' as StatusType, message: 'Skipped' };
+          }
+          return {
+            service: name,
+            status: (svc.natsStatus === 'ok' ? 'success' : 'error') as StatusType,
+            time: svc.natsResponseTime,
+            message: svc.natsStatus !== 'ok' ? (svc.natsMessage || 'Error') : undefined,
+          };
+        });
+      } catch (err) {
+        roundServices = NATS_SERVICES.map((name) => ({
+          service: name,
+          status: 'error' as StatusType,
+          message: err instanceof Error ? err.message : 'Failed',
+        }));
+      }
+
+      const round: NatsRoundResult = {
+        round: i + 1,
+        services: roundServices,
+        totalTime: Date.now() - roundStart,
+      };
+      rounds.push(round);
+      setNatsRounds([...rounds]);
+    }
+
+    const totalTime = Date.now() - startTime;
+    setCheckTotalTime(totalTime);
+
+    const natsAllOk = rounds.every(r => r.services.every(s => s.status === 'success'));
+    const allOk = httpHealthy === ALL_SERVICES.length && natsAllOk;
+    setCheckPhase(allOk ? '모든 서비스 정상' : '일부 서비스 오류 발생');
     setIsChecking(false);
   };
 
@@ -198,7 +284,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     }
   };
 
-  const healthyCount = healthStatuses.filter(s => s.status === 'success').length;
+  const httpHealthyCount = httpStatuses.filter(s => s.status === 'success').length;
+  const natsHealthyCount = natsRounds.length > 0
+    ? natsRounds[natsRounds.length - 1].services.filter(s => s.status === 'success').length
+    : 0;
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -342,32 +431,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       {/* 서버 헬스 체크 패널 (우측 하단 고정) */}
       <div className="fixed bottom-6 right-6 z-50">
         {showCheckPanel && (
-          <div className="absolute bottom-14 right-0 w-[360px] bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden mb-2">
+          <div className="absolute bottom-14 right-0 w-[480px] bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden mb-2 max-h-[80vh] overflow-y-auto">
             {/* 헤더 */}
-            <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+            <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center justify-between sticky top-0 z-10">
               <span className="font-medium text-sm text-gray-700">서버 상태 점검</span>
-              <button
-                onClick={() => setShowCheckPanel(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm text-gray-700">Health Check</span>
-                  {healthStatuses.length > 0 && !isChecking && (
-                    <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
-                      healthyCount === HEALTH_ENDPOINTS.length
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-yellow-100 text-yellow-700'
-                    }`}>
-                      {healthyCount}/{HEALTH_ENDPOINTS.length}
-                    </span>
-                  )}
-                </div>
+              <div className="flex items-center gap-2">
                 <button
                   onClick={handleHealthCheck}
                   disabled={isChecking}
@@ -377,13 +445,21 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                       : 'bg-blue-600 text-white hover:bg-blue-700'
                   }`}
                 >
-                  {isChecking ? '확인중...' : '체크'}
+                  {isChecking ? '확인중...' : '전체 체크'}
+                </button>
+                <button
+                  onClick={() => setShowCheckPanel(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
                 </button>
               </div>
+            </div>
 
+            <div className="p-4 space-y-4">
               {/* 진행 상태 */}
               {checkPhase && (
-                <div className="mb-3 flex items-center gap-2 text-xs text-blue-600">
+                <div className="flex items-center gap-2 text-xs text-blue-600">
                   {isChecking && (
                     <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                   )}
@@ -391,31 +467,86 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 </div>
               )}
 
-              {/* 서비스 목록 */}
-              {healthStatuses.length > 0 && (
-                <div className="space-y-1.5">
-                  {healthStatuses.map((svc, idx) => (
-                    <div key={idx} className="flex items-center justify-between py-1 px-2 bg-gray-50 rounded text-xs">
-                      <span className="text-gray-700">{svc.service}</span>
-                      <div className="flex items-center gap-2">
-                        {svc.time !== undefined && svc.status === 'success' && (
-                          <span className="text-gray-400">{svc.time}ms</span>
-                        )}
-                        {svc.message && svc.status === 'error' && (
-                          <span className="text-red-600 max-w-[100px] truncate" title={svc.message}>
-                            {svc.message}
-                          </span>
-                        )}
-                        {getStatusIcon(svc.status)}
+              {/* Phase 1: HTTP Health Check */}
+              {httpStatuses.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-medium text-xs text-gray-700">HTTP Health Check</span>
+                    {!isChecking && (
+                      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
+                        httpHealthyCount === ALL_SERVICES.length
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {httpHealthyCount}/{ALL_SERVICES.length}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1">
+                    {httpStatuses.map((svc, idx) => (
+                      <div key={idx} className="flex items-center justify-between py-1 px-2 bg-gray-50 rounded text-xs">
+                        <span className="text-gray-700 truncate mr-1">{svc.service}</span>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {svc.time !== undefined && svc.status === 'success' && (
+                            <span className="text-gray-400">{svc.time}ms</span>
+                          )}
+                          {svc.message && svc.status === 'error' && (
+                            <span className="text-red-500 max-w-[60px] truncate" title={svc.message}>!</span>
+                          )}
+                          {getStatusIcon(svc.status)}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Phase 2: NATS 통신 체크 */}
+              {natsRounds.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-medium text-xs text-gray-700">NATS 통신 체크</span>
+                    {!isChecking && (
+                      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
+                        natsHealthyCount === NATS_SERVICES.length
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {natsRounds.filter(r => r.services.every(s => s.status === 'success')).length}/{NATS_ROUNDS} rounds OK
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {natsRounds.map((round) => (
+                      <div key={round.round} className="border border-gray-100 rounded-lg p-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-medium text-gray-500">
+                            Round {round.round}
+                          </span>
+                          <span className="text-[10px] text-gray-400">{round.totalTime}ms</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1">
+                          {round.services.map((svc, idx) => (
+                            <div key={idx} className="flex items-center justify-between py-0.5 px-2 bg-gray-50 rounded text-xs">
+                              <span className="text-gray-700 truncate mr-1">{svc.service.replace('-service', '')}</span>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {svc.time !== undefined && svc.status === 'success' && (
+                                  <span className="text-gray-400">{svc.time}ms</span>
+                                )}
+                                {getStatusIcon(svc.status)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
               {checkTotalTime !== null && (
-                <div className="mt-2 text-right text-[10px] text-gray-400">
-                  소요시간: {checkTotalTime}ms
+                <div className="text-right text-[10px] text-gray-400 border-t border-gray-100 pt-2">
+                  총 소요시간: {(checkTotalTime / 1000).toFixed(1)}s
                 </div>
               )}
             </div>
