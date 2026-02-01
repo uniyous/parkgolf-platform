@@ -7,6 +7,7 @@ import com.parkgolf.app.domain.model.Friend
 import com.parkgolf.app.domain.model.FriendRequest
 import com.parkgolf.app.domain.model.SentFriendRequest
 import com.parkgolf.app.domain.model.UserSearchResult
+import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.ChatRepository
 import com.parkgolf.app.domain.repository.FriendsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -41,6 +42,7 @@ data class SocialUiState(
     // Chat
     val chatRooms: List<ChatRoom> = emptyList(),
     val totalUnreadCount: Int = 0,
+    val currentUserId: String? = null,
 
     // Navigation
     val navigateToChatRoom: String? = null,
@@ -52,7 +54,8 @@ data class SocialUiState(
 @HiltViewModel
 class SocialViewModel @Inject constructor(
     private val friendsRepository: FriendsRepository,
-    private val chatRepository: ChatRepository
+    private val chatRepository: ChatRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SocialUiState())
@@ -61,8 +64,19 @@ class SocialViewModel @Inject constructor(
     private var searchJob: Job? = null
 
     init {
+        loadCurrentUser()
         loadFriendsData()
         loadChatRooms()
+    }
+
+    private fun loadCurrentUser() {
+        viewModelScope.launch {
+            authRepository.currentUser.collect { user ->
+                _uiState.value = _uiState.value.copy(
+                    currentUserId = user?.id?.toString()
+                )
+            }
+        }
     }
 
     fun selectTab(tab: SocialTab) {
@@ -267,6 +281,31 @@ class SocialViewModel @Inject constructor(
             userSearchResults = emptyList(),
             isSearching = false
         )
+    }
+
+    fun createGroupChat(name: String, friends: List<Friend>) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+
+            chatRepository.createChatRoom(
+                name = name,
+                type = com.parkgolf.app.domain.model.ChatRoomType.GROUP,
+                participantIds = friends.map { it.friendId.toString() }
+            )
+                .onSuccess { chatRoom ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        navigateToChatRoom = chatRoom.id
+                    )
+                    loadChatRooms()
+                }
+                .onFailure { e ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = e.message ?: "그룹 채팅방 생성 실패"
+                    )
+                }
+        }
     }
 
     fun createDirectChat(friend: Friend) {

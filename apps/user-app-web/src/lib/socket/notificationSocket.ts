@@ -40,19 +40,12 @@ export type ErrorHandler = (error: string) => void;
 class NotificationSocketManager {
   private socket: Socket | null = null;
   private token: string | null = null;
-  private isConnecting = false;
-
-  // Reconnection state
-  private lastConnectAttempt = 0;
-  private reconnectAttempts = 0;
-  private readonly MIN_RECONNECT_INTERVAL = 3000;
-  private readonly MAX_RECONNECT_DELAY = 30000;
-  private readonly MAX_RECONNECT_ATTEMPTS = 10;
 
   // Event handlers
   private notificationHandlers: Set<NotificationHandler> = new Set();
   private connectHandlers: Set<ConnectionHandler> = new Set();
   private disconnectHandlers: Set<ConnectionHandler> = new Set();
+  private reconnectHandlers: Set<ConnectionHandler> = new Set();
   private errorHandlers: Set<ErrorHandler> = new Set();
 
   // ============================================
@@ -60,76 +53,39 @@ class NotificationSocketManager {
   // ============================================
 
   connect(token: string): void {
-    if (this.socket?.connected || this.isConnecting) {
+    if (this.socket?.connected) {
       return;
     }
 
     this.token = token;
-    this.isConnecting = true;
-    this.lastConnectAttempt = Date.now();
 
     if (isDev) {
       console.log(`[NotificationSocket] Connecting to ${SOCKET_URL}${NAMESPACE}`);
     }
 
     this.socket = io(`${SOCKET_URL}${NAMESPACE}`, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
       reconnection: true,
-      reconnectionAttempts: this.MAX_RECONNECT_ATTEMPTS,
-      reconnectionDelay: this.MIN_RECONNECT_INTERVAL,
-      reconnectionDelayMax: this.MAX_RECONNECT_DELAY,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 30000,
       auth: { token },
     });
 
     this.setupEventHandlers();
   }
 
-  ensureConnected(token: string): boolean {
-    if (this.socket?.connected) {
-      this.reconnectAttempts = 0;
-      return true;
-    }
-
-    if (this.isConnecting) {
-      return false;
-    }
-
-    if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
-      console.warn(`[NotificationSocket] Max reconnection attempts exceeded`);
-      return false;
-    }
-
-    const timeSinceLastAttempt = Date.now() - this.lastConnectAttempt;
-    if (timeSinceLastAttempt < this.MIN_RECONNECT_INTERVAL) {
-      return false;
-    }
-
-    this.reconnectAttempts++;
-    if (isDev) {
-      console.log(`[NotificationSocket] Reconnecting... (attempt ${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})`);
-    }
-
-    if (this.socket) {
-      this.socket.removeAllListeners();
-      this.socket.disconnect();
-      this.socket = null;
-    }
-
-    this.connect(token);
-    return false;
-  }
-
+  /**
+   * 강제 재연결 (수동 재연결 버튼용)
+   */
   forceReconnect(token: string): void {
-    this.reconnectAttempts = 0;
-    this.lastConnectAttempt = 0;
-
     if (this.socket) {
       this.socket.removeAllListeners();
       this.socket.disconnect();
       this.socket = null;
     }
 
-    this.isConnecting = false;
     this.connect(token);
   }
 
@@ -140,16 +96,10 @@ class NotificationSocketManager {
       this.socket = null;
     }
     this.token = null;
-    this.isConnecting = false;
-    this.reconnectAttempts = 0;
   }
 
   get isConnected(): boolean {
     return this.socket?.connected ?? false;
-  }
-
-  get canReconnect(): boolean {
-    return this.reconnectAttempts < this.MAX_RECONNECT_ATTEMPTS;
   }
 
   // ============================================
@@ -160,8 +110,6 @@ class NotificationSocketManager {
     if (!this.socket) return;
 
     this.socket.on('connect', () => {
-      this.isConnecting = false;
-      this.reconnectAttempts = 0;
       if (isDev) {
         console.log('[NotificationSocket] Connected');
       }
@@ -176,7 +124,6 @@ class NotificationSocketManager {
     });
 
     this.socket.on('connect_error', (error) => {
-      this.isConnecting = false;
       console.error('[NotificationSocket] Connection error:', error.message);
       this.errorHandlers.forEach(handler => handler(error.message));
     });
@@ -200,6 +147,14 @@ class NotificationSocketManager {
         console.log('[NotificationSocket] Connection confirmed:', data);
       }
     });
+
+    // Socket.IO Manager 레벨 재연결 이벤트
+    this.socket.io.on('reconnect', () => {
+      if (isDev) {
+        console.log('[NotificationSocket] Reconnected');
+      }
+      this.reconnectHandlers.forEach(handler => handler());
+    });
   }
 
   // ============================================
@@ -219,6 +174,11 @@ class NotificationSocketManager {
   onDisconnect(handler: ConnectionHandler): () => void {
     this.disconnectHandlers.add(handler);
     return () => this.disconnectHandlers.delete(handler);
+  }
+
+  onReconnect(handler: ConnectionHandler): () => void {
+    this.reconnectHandlers.add(handler);
+    return () => this.reconnectHandlers.delete(handler);
   }
 
   onError(handler: ErrorHandler): () => void {

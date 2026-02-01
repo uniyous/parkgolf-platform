@@ -63,3 +63,10 @@ export class GetRoomsQueryDto {
   @IsNumber()
   limit?: number = 20;
 }
+
+export class AddMembersDto {
+  @ApiProperty({ type: [String], description: '초대할 사용자 ID 목록' })
+  @IsArray()
+  @IsString({ each: true })
+  user_ids: string[];
+}

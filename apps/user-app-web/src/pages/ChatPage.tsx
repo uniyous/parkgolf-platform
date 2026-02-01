@@ -1,29 +1,45 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageCircle, PenSquare, Users, User, Search } from 'lucide-react';
+import { MessageCircle, PenSquare, Users, User, Search, X, ArrowLeft, Check } from 'lucide-react';
 import { AppLayout, Container } from '@/components/layout';
 import { GlassCard, Button, EmptyState, LoadingView, BottomSheet } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import { useChatRoomsQuery, useGetOrCreateDirectChatMutation } from '@/hooks/queries/chat';
+import { useChatRoomsQuery, useGetOrCreateDirectChatMutation, useCreateChatRoomMutation, useLeaveChatRoomMutation } from '@/hooks/queries/chat';
 import { useFriendsQuery } from '@/hooks/queries/friend';
 import { useResponsive } from '@/hooks/useResponsive';
 import { showErrorToast } from '@/lib/toast';
-import type { ChatRoom } from '@/lib/api/chatApi';
+import { getChatRoomDisplayName, type ChatRoom } from '@/lib/api/chatApi';
+import { useAuthStore } from '@/stores/authStore';
 import type { Friend } from '@/lib/api/friendApi';
 
 export function ChatPage() {
   const navigate = useNavigate();
   const { isMobile } = useResponsive();
   const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const user = useAuthStore((state) => state.user);
+  const currentUserId = String(user?.id ?? '');
 
   const { data: chatRoomsData, isLoading } = useChatRoomsQuery();
   const chatRooms = chatRoomsData?.data ?? [];
+  const leaveMutation = useLeaveChatRoomMutation();
 
   const handleRoomClick = useCallback(
     (roomId: string) => {
       navigate(`/chat/${roomId}`);
     },
     [navigate]
+  );
+
+  const handleLeaveRoom = useCallback(
+    async (roomId: string) => {
+      if (!confirm('채팅방을 나가시겠습니까?')) return;
+      try {
+        await leaveMutation.mutateAsync(roomId);
+      } catch {
+        showErrorToast('채팅방 나가기에 실패했습니다.');
+      }
+    },
+    [leaveMutation]
   );
 
   const headerRight = (
@@ -59,7 +75,9 @@ export function ChatPage() {
               <ChatRoomCard
                 key={room.id}
                 room={room}
+                currentUserId={currentUserId}
                 onClick={() => handleRoomClick(room.id)}
+                onLeave={() => handleLeaveRoom(room.id)}
               />
             ))}
           </div>
@@ -93,10 +111,12 @@ export function ChatPage() {
 
 interface ChatRoomCardProps {
   room: ChatRoom;
+  currentUserId: string;
   onClick: () => void;
+  onLeave: () => void;
 }
 
-function ChatRoomCard({ room, onClick }: ChatRoomCardProps) {
+function ChatRoomCard({ room, currentUserId, onClick, onLeave }: ChatRoomCardProps) {
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -136,7 +156,14 @@ function ChatRoomCard({ room, onClick }: ChatRoomCardProps) {
   };
 
   return (
-    <button onClick={onClick} className="w-full text-left">
+    <button
+      onClick={onClick}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onLeave();
+      }}
+      className="w-full text-left"
+    >
       <GlassCard hoverable>
         <div className="flex items-center gap-3">
           {/* Avatar */}
@@ -154,10 +181,17 @@ function ChatRoomCard({ room, onClick }: ChatRoomCardProps) {
           {/* Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h4 className="text-white font-medium truncate">{room.name}</h4>
+              <h4 className="text-white font-medium truncate">
+                {getChatRoomDisplayName(room, currentUserId)}
+              </h4>
               {getRoomTypeLabel() && (
                 <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-[var(--color-surface)] text-[var(--color-text-tertiary)]">
                   {getRoomTypeLabel()}
+                </span>
+              )}
+              {room.type !== 'DIRECT' && (room.participants?.length ?? 0) > 0 && (
+                <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-[var(--color-surface)] text-[var(--color-text-muted)]">
+                  {room.participants.length}
                 </span>
               )}
             </div>
@@ -196,8 +230,12 @@ interface NewChatContentProps {
 function NewChatContent({ onClose }: NewChatContentProps) {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFriends, setSelectedFriends] = useState<Friend[]>([]);
+  const [step, setStep] = useState<'select' | 'name'>('select');
+  const [groupName, setGroupName] = useState('');
   const { data: friends = [], isLoading } = useFriendsQuery();
   const createDirectChatMutation = useGetOrCreateDirectChatMutation();
+  const createChatRoomMutation = useCreateChatRoomMutation();
 
   const filteredFriends = searchQuery
     ? friends.filter(
@@ -207,23 +245,106 @@ function NewChatContent({ onClose }: NewChatContentProps) {
       )
     : friends;
 
-  const handleSelectFriend = async (friend: Friend) => {
+  const toggleFriend = (friend: Friend) => {
+    setSelectedFriends((prev) => {
+      const exists = prev.some((f) => f.id === friend.id);
+      if (exists) return prev.filter((f) => f.id !== friend.id);
+      return [...prev, friend];
+    });
+  };
+
+  const isSelected = (friend: Friend) => selectedFriends.some((f) => f.id === friend.id);
+
+  const handleNext = async () => {
+    if (selectedFriends.length === 0) return;
+
+    if (selectedFriends.length === 1) {
+      // DIRECT chat
+      try {
+        const friend = selectedFriends[0];
+        const room = await createDirectChatMutation.mutateAsync({
+          userId: String(friend.friendId),
+          userName: friend.friendName,
+        });
+        onClose();
+        navigate(`/chat/${room.id}`);
+      } catch {
+        showErrorToast('채팅방 생성에 실패했습니다.');
+      }
+    } else {
+      // GROUP chat - go to name step
+      setStep('name');
+    }
+  };
+
+  const handleCreateGroup = async () => {
+    const name = groupName.trim() || selectedFriends.map((f) => f.friendName).join(', ');
     try {
-      const room = await createDirectChatMutation.mutateAsync({
-        userId: String(friend.friendId),
-        userName: friend.friendName,
+      const room = await createChatRoomMutation.mutateAsync({
+        name,
+        type: 'GROUP',
+        participantIds: selectedFriends.map((f) => String(f.friendId)),
       });
       onClose();
       navigate(`/chat/${room.id}`);
     } catch {
-      showErrorToast('채팅방 생성에 실패했습니다.');
+      showErrorToast('그룹 채팅방 생성에 실패했습니다.');
     }
   };
+
+  const isPending = createDirectChatMutation.isPending || createChatRoomMutation.isPending;
+
+  if (step === 'name') {
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={() => setStep('select')}
+          className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          뒤로
+        </button>
+
+        <div className="flex flex-wrap gap-2">
+          {selectedFriends.map((f) => (
+            <span
+              key={f.id}
+              className="px-3 py-1 rounded-full bg-[var(--color-primary)]/20 text-[var(--color-primary)] text-sm"
+            >
+              {f.friendName}
+            </span>
+          ))}
+        </div>
+
+        <div>
+          <label className="block text-sm text-[var(--color-text-secondary)] mb-2">
+            그룹 이름 (선택)
+          </label>
+          <input
+            type="text"
+            placeholder={selectedFriends.map((f) => f.friendName).join(', ')}
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+            className="input-glass w-full"
+            autoFocus
+          />
+        </div>
+
+        <Button
+          className="w-full"
+          onClick={handleCreateGroup}
+          disabled={isPending}
+        >
+          {isPending ? '생성 중...' : '만들기'}
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <>
       {/* Search Input */}
-      <div className="relative mb-4">
+      <div className="relative mb-3">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
         <input
           type="text"
@@ -235,8 +356,24 @@ function NewChatContent({ onClose }: NewChatContentProps) {
         />
       </div>
 
+      {/* Selected Friends Chips */}
+      {selectedFriends.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {selectedFriends.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => toggleFriend(f)}
+              className="flex items-center gap-1 px-3 py-1 rounded-full bg-[var(--color-primary)]/20 text-[var(--color-primary)] text-sm hover:bg-[var(--color-primary)]/30 transition-colors"
+            >
+              {f.friendName}
+              <X className="w-3 h-3" />
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Friends List */}
-      <div className="max-h-80 overflow-y-auto space-y-2">
+      <div className="max-h-64 overflow-y-auto space-y-2">
         {isLoading && <LoadingView size="sm" />}
 
         {!isLoading && filteredFriends.length === 0 && (
@@ -249,10 +386,21 @@ function NewChatContent({ onClose }: NewChatContentProps) {
           filteredFriends.map((friend) => (
             <button
               key={friend.id}
-              onClick={() => handleSelectFriend(friend)}
-              disabled={createDirectChatMutation.isPending}
-              className="w-full flex items-center gap-3 p-3 rounded-xl bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50"
+              onClick={() => toggleFriend(friend)}
+              className="w-full flex items-center gap-3 p-3 rounded-xl bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition-colors"
             >
+              {/* Checkbox */}
+              <div
+                className={cn(
+                  'w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors',
+                  isSelected(friend)
+                    ? 'bg-[var(--color-primary)] border-[var(--color-primary)]'
+                    : 'border-[var(--color-text-muted)]'
+                )}
+              >
+                {isSelected(friend) && <Check className="w-3 h-3 text-white" />}
+              </div>
+
               {/* Avatar */}
               <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/30 flex items-center justify-center flex-shrink-0">
                 <span className="text-sm font-semibold text-white">
@@ -265,11 +413,24 @@ function NewChatContent({ onClose }: NewChatContentProps) {
                 <h4 className="text-white font-medium truncate">{friend.friendName}</h4>
                 <p className="text-[var(--color-text-muted)] text-xs truncate">{friend.friendEmail}</p>
               </div>
-
-              <MessageCircle className="w-5 h-5 text-[var(--color-text-muted)]" />
             </button>
           ))}
       </div>
+
+      {/* Action Button */}
+      <Button
+        className="w-full mt-4"
+        onClick={handleNext}
+        disabled={selectedFriends.length === 0 || isPending}
+      >
+        {isPending
+          ? '생성 중...'
+          : selectedFriends.length === 0
+            ? '대화 상대 선택'
+            : selectedFriends.length === 1
+              ? '채팅 시작'
+              : `다음 (${selectedFriends.length}명)`}
+      </Button>
     </>
   );
 }

@@ -270,6 +270,26 @@ class ChatViewModel @Inject constructor(
         currentRoomId = null
     }
 
+    fun inviteMembers(userIds: List<String>) {
+        val roomId = currentRoomId ?: return
+
+        viewModelScope.launch {
+            chatRepository.inviteMembers(roomId, userIds)
+                .onSuccess {
+                    // Reload room to get updated participants
+                    chatRepository.getChatRoom(roomId)
+                        .onSuccess { room ->
+                            _uiState.value = _uiState.value.copy(room = room)
+                        }
+                }
+                .onFailure { exception ->
+                    _uiState.value = _uiState.value.copy(
+                        error = exception.message ?: "멤버 초대 실패"
+                    )
+                }
+        }
+    }
+
     fun leaveChatRoom() {
         val roomId = currentRoomId ?: return
 

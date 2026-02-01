@@ -129,6 +129,22 @@ export const useSendMessageMutation = () => {
 };
 
 /**
+ * 채팅방 멤버 초대
+ */
+export const useInviteMembersMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ roomId, userIds }: { roomId: string; userIds: string[] }) =>
+      chatApi.inviteMembers(roomId, userIds),
+    onSuccess: (_, { roomId }) => {
+      queryClient.invalidateQueries({ queryKey: chatKeys.room(roomId) });
+      queryClient.invalidateQueries({ queryKey: chatKeys.rooms() });
+    },
+  });
+};
+
+/**
  * 채팅방 나가기
  */
 export const useLeaveChatRoomMutation = () => {

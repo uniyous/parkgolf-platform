@@ -171,6 +171,27 @@ export class ChatService {
   }
 
   /**
+   * 채팅방 멤버 초대
+   */
+  async addMembers(roomId: string, userIds: number[], userName: string): Promise<ApiResponse<void>> {
+    this.logger.log(`Add members: roomId=${roomId}, userIds=${userIds}`);
+    await Promise.all(
+      userIds.map((userId) =>
+        this.natsClient.send(
+          'chat.rooms.addMember',
+          {
+            roomId,
+            userId,
+            userName: `User${userId}`,
+          },
+          NATS_TIMEOUTS.QUICK,
+        ),
+      ),
+    );
+    return { success: true, data: undefined } as ApiResponse<void>;
+  }
+
+  /**
    * 읽지 않은 메시지 수 조회
    */
   async getUnreadCount(roomId: string, userId: number): Promise<ApiResponse<{ count: number }>> {

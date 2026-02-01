@@ -23,7 +23,6 @@ final class ChatRoomViewModel: ObservableObject {
     private let socketManager = ChatSocketManager.shared
     private var cancellables = Set<AnyCancellable>()
     private var cursor: String?
-    private var connectionCheckTimer: Timer?
     private var cachedToken: String?
 
     // MARK: - Init
@@ -57,6 +56,23 @@ final class ChatRoomViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] connected in
                 self?.isConnected = connected
+            }
+            .store(in: &cancellables)
+
+        // Subscribe to reconnection events
+        socketManager.reconnected
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                guard let self = self else { return }
+                // Rejoin room and reload messages on reconnect
+                self.socketManager.joinRoom(roomId: self.roomId) { success in
+                    #if DEBUG
+                    print(success ? "✅ Rejoined room after reconnect" : "❌ Failed to rejoin room after reconnect")
+                    #endif
+                }
+                Task {
+                    await self.loadMessages()
+                }
             }
             .store(in: &cancellables)
     }
@@ -206,51 +222,11 @@ final class ChatRoomViewModel: ObservableObject {
             }
             #endif
         }
-
-        // Start periodic connection check
-        startConnectionCheck()
     }
 
     func disconnectSocket() {
-        stopConnectionCheck()
         socketManager.leaveRoom(roomId: roomId)
         // Don't disconnect the socket manager itself as it may be used by other rooms
-    }
-
-    // MARK: - Connection Check
-
-    private func startConnectionCheck() {
-        stopConnectionCheck()
-
-        // Check connection every 30 seconds
-        connectionCheckTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.checkAndReconnectIfNeeded()
-            }
-        }
-    }
-
-    private func stopConnectionCheck() {
-        connectionCheckTimer?.invalidate()
-        connectionCheckTimer = nil
-    }
-
-    private func checkAndReconnectIfNeeded() {
-        guard let token = cachedToken else { return }
-
-        if !socketManager.isConnected && socketManager.canReconnect {
-            #if DEBUG
-            print("🔄 Periodic check: attempting reconnection...")
-            #endif
-            if socketManager.ensureConnected(token: token) {
-                // Already connected, rejoin room
-                socketManager.joinRoom(roomId: roomId) { success in
-                    #if DEBUG
-                    print(success ? "✅ Rejoined room: \(self.roomId)" : "❌ Failed to rejoin room")
-                    #endif
-                }
-            }
-        }
     }
 
     /// 강제 재연결 (UI에서 호출)
@@ -292,5 +268,36 @@ final class ChatRoomViewModel: ObservableObject {
     func sendTypingIndicator(_ isTyping: Bool) {
         guard socketManager.isConnected else { return }
         socketManager.sendTyping(roomId: roomId, isTyping: isTyping)
+    }
+
+    // MARK: - Room Actions
+
+    func leaveChatRoom() async {
+        do {
+            _ = try await apiClient.request(
+                ChatEndpoints.leaveRoom(roomId: roomId),
+                responseType: SuccessResponse.self
+            )
+            disconnectSocket()
+        } catch {
+            self.error = error
+            #if DEBUG
+            print("Failed to leave chat room: \(error)")
+            #endif
+        }
+    }
+
+    func inviteMembers(userIds: [String]) async {
+        do {
+            _ = try await apiClient.request(
+                ChatEndpoints.inviteMembers(roomId: roomId, userIds: userIds),
+                responseType: SuccessResponse.self
+            )
+        } catch {
+            self.error = error
+            #if DEBUG
+            print("Failed to invite members: \(error)")
+            #endif
+        }
     }
 }

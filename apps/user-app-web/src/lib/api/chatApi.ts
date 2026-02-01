@@ -109,6 +109,30 @@ function transformRoomResponse(room: ApiRoomResponse): ChatRoom {
 }
 
 // ============================================
+// Display Name Utility
+// ============================================
+
+/**
+ * 채팅방 참여자 기반 표시 이름 생성
+ * - DIRECT: 상대방 이름
+ * - GROUP/BOOKING 2~3명: 쉼표로 구분
+ * - GROUP/BOOKING 4명+: "홍길동, 김철수 외 N명"
+ * - 참여자 없음: room.name 폴백
+ */
+export function getChatRoomDisplayName(room: ChatRoom, currentUserId: string): string {
+  const others = (room.participants ?? []).filter((p) => p.userId !== currentUserId);
+
+  if (others.length === 0) return room.name;
+
+  if (others.length <= 3) {
+    return others.map((p) => p.userName).join(', ');
+  }
+
+  const first = others.slice(0, 2).map((p) => p.userName).join(', ');
+  return `${first} 외 ${others.length - 2}명`;
+}
+
+// ============================================
 // Chat API
 // ============================================
 
@@ -196,6 +220,16 @@ export const chatApi = {
       }
     );
     return unwrapResponse(response.data);
+  },
+
+  /**
+   * 채팅방 멤버 초대
+   */
+  inviteMembers: async (roomId: string, userIds: string[]): Promise<void> => {
+    await apiClient.post<BffResponse<void>>(
+      `/api/user/chat/rooms/${roomId}/members`,
+      { user_ids: userIds },
+    );
   },
 
   /**

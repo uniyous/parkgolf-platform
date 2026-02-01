@@ -34,6 +34,8 @@ interface ChatRepository {
 
     suspend fun leaveChatRoom(roomId: String): Result<Unit>
 
+    suspend fun inviteMembers(roomId: String, userIds: List<String>): Result<Unit>
+
     suspend fun markAsRead(roomId: String): Result<Unit>
 
     // Socket operations

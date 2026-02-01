@@ -20,26 +20,13 @@ class ChatSocketManager: ObservableObject {
     let userJoined = PassthroughSubject<UserJoinedEvent, Never>()
     let userLeft = PassthroughSubject<UserLeftEvent, Never>()
     let typingReceived = PassthroughSubject<TypingEvent, Never>()
+    let reconnected = PassthroughSubject<Void, Never>()
 
     // MARK: - Private Properties
 
     private var manager: SocketManager?
     private var socket: SocketIOClient?
     private var currentToken: String?
-    private var isConnecting = false
-
-    // MARK: - Reconnection State
-
-    private var lastConnectAttempt: Date = .distantPast
-    private var reconnectAttempts = 0
-    private let minReconnectInterval: TimeInterval = 3.0  // 최소 3초 간격
-    private let maxReconnectDelay: TimeInterval = 30.0    // 최대 30초 대기
-    private let maxReconnectAttempts = 10
-
-    /// 재연결 가능 여부
-    var canReconnect: Bool {
-        reconnectAttempts < maxReconnectAttempts
-    }
 
     // MARK: - Configuration
 
@@ -79,13 +66,10 @@ class ChatSocketManager: ObservableObject {
     }
 
     private func handleAppWillEnterForeground() {
-        guard let token = currentToken else { return }
-        if !isConnected {
-            #if DEBUG
-            print("🔄 App entered foreground, checking connection...")
-            #endif
-            ensureConnected(token: token)
-        }
+        // Socket.IO handles reconnection automatically via built-in reconnect config
+        #if DEBUG
+        print("📱 App entered foreground, socket state: \(isConnected ? "connected" : "disconnected")")
+        #endif
     }
 
     private func handleAppDidEnterBackground() {
@@ -98,21 +82,19 @@ class ChatSocketManager: ObservableObject {
     // MARK: - Connection
 
     func connect(token: String) {
-        guard !isConnected, !isConnecting else { return }
+        guard !isConnected else { return }
 
         currentToken = token
-        isConnecting = true
-        lastConnectAttempt = Date()
 
-        // Configure Socket.IO
+        // Configure Socket.IO with built-in reconnection
         manager = SocketManager(socketURL: socketURL, config: [
             .log(false),
             .compress,
-            .forceWebsockets(true),
+            .forceWebsockets(false),
             .reconnects(true),
-            .reconnectAttempts(maxReconnectAttempts),
-            .reconnectWait(Int(minReconnectInterval)),
-            .reconnectWaitMax(Int(maxReconnectDelay)),
+            .reconnectAttempts(-1),  // unlimited reconnection
+            .reconnectWait(1),
+            .reconnectWaitMax(30),
             .connectParams(["token": token])
         ])
 
@@ -123,51 +105,8 @@ class ChatSocketManager: ObservableObject {
         socket?.connect()
     }
 
-    /// 연결 상태를 확인하고 필요시 재연결
-    /// - Returns: 이미 연결되어 있으면 true
-    @discardableResult
-    func ensureConnected(token: String) -> Bool {
-        // 이미 연결되어 있으면 OK
-        if isConnected {
-            reconnectAttempts = 0
-            return true
-        }
-
-        // 연결 중이면 대기
-        if isConnecting {
-            return false
-        }
-
-        // 최대 재연결 시도 횟수 초과
-        if reconnectAttempts >= maxReconnectAttempts {
-            #if DEBUG
-            print("⚠️ Max reconnection attempts (\(maxReconnectAttempts)) exceeded")
-            #endif
-            return false
-        }
-
-        // 최소 간격 체크 (스팸 방지)
-        let timeSinceLastAttempt = Date().timeIntervalSince(lastConnectAttempt)
-        if timeSinceLastAttempt < minReconnectInterval {
-            return false
-        }
-
-        // 재연결 시도
-        reconnectAttempts += 1
-        #if DEBUG
-        print("🔄 Reconnecting... (attempt \(reconnectAttempts)/\(maxReconnectAttempts))")
-        #endif
-
-        // 기존 소켓 정리 후 재연결
-        cleanupSocket()
-        connect(token: token)
-        return false
-    }
-
-    /// 강제 재연결 (재연결 카운터 리셋)
+    /// 강제 재연결 (UI에서 호출)
     func forceReconnect(token: String) {
-        reconnectAttempts = 0
-        lastConnectAttempt = .distantPast
         cleanupSocket()
         connect(token: token)
     }
@@ -177,14 +116,12 @@ class ChatSocketManager: ObservableObject {
         socket?.disconnect()
         socket = nil
         manager = nil
-        isConnecting = false
     }
 
     func disconnect() {
         cleanupSocket()
         currentToken = nil
         isConnected = false
-        reconnectAttempts = 0
     }
 
     // MARK: - Event Handlers
@@ -196,8 +133,6 @@ class ChatSocketManager: ObservableObject {
         socket.on(clientEvent: .connect) { [weak self] _, _ in
             Task { @MainActor in
                 self?.isConnected = true
-                self?.isConnecting = false
-                self?.reconnectAttempts = 0  // 성공 시 카운터 리셋
                 self?.connectionError = nil
                 #if DEBUG
                 print("✅ Socket.IO connected")
@@ -208,16 +143,25 @@ class ChatSocketManager: ObservableObject {
         socket.on(clientEvent: .disconnect) { [weak self] _, _ in
             Task { @MainActor in
                 self?.isConnected = false
-                self?.isConnecting = false
                 #if DEBUG
                 print("🔌 Socket.IO disconnected")
                 #endif
             }
         }
 
+        socket.on(clientEvent: .reconnect) { [weak self] _, _ in
+            Task { @MainActor in
+                self?.isConnected = true
+                self?.connectionError = nil
+                self?.reconnected.send()
+                #if DEBUG
+                print("🔄 Socket.IO reconnected")
+                #endif
+            }
+        }
+
         socket.on(clientEvent: .error) { [weak self] data, _ in
             Task { @MainActor in
-                self?.isConnecting = false
                 if let error = data.first as? [String: Any],
                    let message = error["message"] as? String {
                     self?.connectionError = message

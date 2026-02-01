@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw, Loader2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw, Loader2, UserPlus, Search, X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Container, SubPageHeader } from '@/components/layout';
-import { useChatRoomQuery, useMessagesInfiniteQuery, useSendMessageMutation } from '@/hooks/queries/chat';
+import { Button, LoadingView } from '@/components/ui';
+import { useChatRoomQuery, useMessagesInfiniteQuery, useSendMessageMutation, useLeaveChatRoomMutation, useInviteMembersMutation } from '@/hooks/queries/chat';
+import { useFriendsQuery } from '@/hooks/queries/friend';
 import { chatSocket } from '@/lib/socket/chatSocket';
 import { authStorage } from '@/lib/storage';
-import { showErrorToast } from '@/lib/toast';
+import { showErrorToast, showSuccessToast } from '@/lib/toast';
 import { useAuthStore } from '@/stores/authStore';
-import type { ChatMessage } from '@/lib/api/chatApi';
+import { getChatRoomDisplayName, type ChatMessage } from '@/lib/api/chatApi';
 
 export const ChatRoomPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -20,7 +23,9 @@ export const ChatRoomPage: React.FC = () => {
   const [inputText, setInputText] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
+  const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -36,6 +41,7 @@ export const ChatRoomPage: React.FC = () => {
     isFetchingNextPage,
   } = useMessagesInfiniteQuery(roomId ?? '');
   const sendMessageMutation = useSendMessageMutation();
+  const leaveMutation = useLeaveChatRoomMutation();
 
   // Merge DB messages from infinite query with realtime messages
   const messages = useMemo(() => {
@@ -61,7 +67,7 @@ export const ChatRoomPage: React.FC = () => {
     return allMessages;
   }, [messagesData, realtimeMessages]);
 
-  // Socket connection with auto-reconnect
+  // Socket connection (Socket.IO 내장 재연결에 위임)
   useEffect(() => {
     const token = authStorage.getToken();
     if (!token || !roomId) return;
@@ -69,7 +75,7 @@ export const ChatRoomPage: React.FC = () => {
     // Connect socket
     chatSocket.connect(token);
 
-    // Subscribe to events
+    // 초기 연결 및 재연결 시 방 참여
     const unsubConnect = chatSocket.onConnect(() => {
       setIsConnected(true);
       chatSocket.joinRoom(roomId);
@@ -79,10 +85,18 @@ export const ChatRoomPage: React.FC = () => {
       setIsConnected(false);
     });
 
+    // Socket.IO 자동 재연결 완료 시 — 방 재참여 + 메시지 갭 복구
+    const unsubReconnect = chatSocket.onReconnect(() => {
+      setIsConnected(true);
+      chatSocket.joinRoom(roomId);
+      // 끊긴 동안의 메시지를 DB에서 다시 가져옴
+      setRealtimeMessages([]);
+      queryClient.invalidateQueries({ queryKey: ['chat', 'messages', roomId] });
+    });
+
     const unsubMessage = chatSocket.onMessage((message) => {
       if (message.roomId === roomId) {
         setRealtimeMessages((prev) => {
-          // Avoid duplicates
           if (prev.some((m) => m.id === message.id)) return prev;
           return [...prev, message];
         });
@@ -93,36 +107,27 @@ export const ChatRoomPage: React.FC = () => {
       console.error('Socket error:', error);
     });
 
-    // Visibility change handler - 탭이 다시 활성화되면 연결 확인
+    // 탭 백그라운드 → 포그라운드 전환 시 메시지 갭 복구
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && token) {
-        if (!chatSocket.isConnected) {
-          console.log('🔄 Tab became visible, checking connection...');
-          chatSocket.ensureConnected(token);
-        }
+      if (document.visibilityState === 'visible') {
+        setRealtimeMessages([]);
+        queryClient.invalidateQueries({ queryKey: ['chat', 'messages', roomId] });
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Periodic connection check (30초마다, 연결 안됐을 때만)
-    const connectionCheckInterval = setInterval(() => {
-      if (!chatSocket.isConnected && chatSocket.canReconnect && token) {
-        chatSocket.ensureConnected(token);
-      }
-    }, 30000);
-
     return () => {
       unsubConnect();
       unsubDisconnect();
+      unsubReconnect();
       unsubMessage();
       unsubError();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearInterval(connectionCheckInterval);
       if (roomId) {
         chatSocket.leaveRoom(roomId);
       }
     };
-  }, [roomId]);
+  }, [roomId, queryClient]);
 
   // Scroll to bottom
   useEffect(() => {
@@ -226,7 +231,7 @@ export const ChatRoomPage: React.FC = () => {
   return (
     <div className="h-screen bg-[var(--color-bg-primary)] flex flex-col">
       <SubPageHeader
-        title={room.name}
+        title={getChatRoomDisplayName(room, currentUserId)}
         onBack={() => navigate('/social?tab=chat')}
         rightContent={
           <>
@@ -273,14 +278,29 @@ export const ChatRoomPage: React.FC = () => {
                     <button
                       onClick={() => {
                         setShowMenu(false);
-                        if (confirm('채팅방을 나가시겠습니까?')) {
+                        setShowInviteModal(true);
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      친구 초대
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setShowMenu(false);
+                        if (!confirm('채팅방을 나가시겠습니까?')) return;
+                        try {
+                          await leaveMutation.mutateAsync(roomId!);
                           navigate('/social?tab=chat');
+                        } catch {
+                          showErrorToast('채팅방 나가기에 실패했습니다.');
                         }
                       }}
-                      className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-white/10 flex items-center gap-2"
+                      disabled={leaveMutation.isPending}
+                      className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-white/10 flex items-center gap-2 disabled:opacity-50"
                     >
                       <LogOut className="w-4 h-4" />
-                      나가기
+                      {leaveMutation.isPending ? '나가는 중...' : '나가기'}
                     </button>
                   </div>
                 </>
@@ -379,9 +399,179 @@ export const ChatRoomPage: React.FC = () => {
           </div>
         </div>
       </Container>
+
+      {/* Invite Modal */}
+      {showInviteModal && room && (
+        <InviteFriendsModal
+          roomId={room.id}
+          participants={room.participants}
+          onClose={() => setShowInviteModal(false)}
+        />
+      )}
     </div>
   );
 };
+
+// ============================================
+// Invite Friends Modal
+// ============================================
+
+interface InviteFriendsModalProps {
+  roomId: string;
+  participants: { userId: string }[];
+  onClose: () => void;
+}
+
+function InviteFriendsModal({ roomId, participants, onClose }: InviteFriendsModalProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const { data: friends = [], isLoading } = useFriendsQuery();
+  const inviteMutation = useInviteMembersMutation();
+
+  const participantUserIds = new Set(participants.map((p) => p.userId));
+
+  const availableFriends = friends.filter(
+    (f) => !participantUserIds.has(String(f.friendId))
+  );
+
+  const filteredFriends = searchQuery
+    ? availableFriends.filter(
+        (f) =>
+          f.friendName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          f.friendEmail.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : availableFriends;
+
+  const toggleSelect = (friendId: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(friendId)
+        ? prev.filter((id) => id !== friendId)
+        : [...prev, friendId]
+    );
+  };
+
+  const handleInvite = async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      await inviteMutation.mutateAsync({ roomId, userIds: selectedIds });
+      showSuccessToast(`${selectedIds.length}명을 초대했습니다.`);
+      onClose();
+    } catch {
+      showErrorToast('초대에 실패했습니다.');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-gray-800 rounded-2xl p-6 animate-slide-up">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">친구 초대</h3>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 transition-colors">
+            <X className="w-5 h-5 text-white/60" />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+          <input
+            type="text"
+            placeholder="친구 검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={cn(
+              'w-full pl-10 pr-4 py-2.5 rounded-xl',
+              'bg-white/10 text-white placeholder:text-white/40',
+              'border border-white/10 focus:border-emerald-500/50',
+              'outline-none transition-colors'
+            )}
+            autoFocus
+          />
+        </div>
+
+        {/* Friends List */}
+        <div className="max-h-64 overflow-y-auto space-y-2">
+          {isLoading && <LoadingView size="sm" />}
+
+          {!isLoading && availableFriends.length === 0 && (
+            <div className="p-4 text-center text-white/50">
+              초대할 수 있는 친구가 없습니다.
+            </div>
+          )}
+
+          {!isLoading && availableFriends.length > 0 && filteredFriends.length === 0 && (
+            <div className="p-4 text-center text-white/50">
+              검색 결과가 없습니다.
+            </div>
+          )}
+
+          {!isLoading &&
+            filteredFriends.map((friend) => {
+              const friendIdStr = String(friend.friendId);
+              const selected = selectedIds.includes(friendIdStr);
+
+              return (
+                <button
+                  key={friend.id}
+                  onClick={() => toggleSelect(friendIdStr)}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+                >
+                  <div
+                    className={cn(
+                      'w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors',
+                      selected
+                        ? 'bg-emerald-500 border-emerald-500'
+                        : 'border-white/30'
+                    )}
+                  >
+                    {selected && <Check className="w-3 h-3 text-white" />}
+                  </div>
+
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-semibold text-white">
+                      {friend.friendName.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+
+                  <div className="flex-1 min-w-0 text-left">
+                    <h4 className="text-white font-medium truncate">{friend.friendName}</h4>
+                    <p className="text-white/50 text-xs truncate">{friend.friendEmail}</p>
+                  </div>
+                </button>
+              );
+            })}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors"
+          >
+            취소
+          </button>
+          <button
+            onClick={handleInvite}
+            disabled={selectedIds.length === 0 || inviteMutation.isPending}
+            className={cn(
+              'flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors',
+              selectedIds.length > 0
+                ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                : 'bg-white/10 text-white/40 cursor-not-allowed'
+            )}
+          >
+            {inviteMutation.isPending
+              ? '초대 중...'
+              : selectedIds.length > 0
+                ? `초대 (${selectedIds.length}명)`
+                : '초대'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ============================================
 // Message Bubble

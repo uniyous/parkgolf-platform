@@ -14,12 +14,13 @@ data class ChatRoom(
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime
 ) {
-    val displayName: String
-        get() = if (type == ChatRoomType.DIRECT && participants.size == 2) {
-            participants.firstOrNull()?.userName ?: name
-        } else {
-            name
-        }
+    fun displayName(currentUserId: String): String {
+        val others = participants.filter { it.userId != currentUserId }
+        if (others.isEmpty()) return name
+        if (others.size <= 3) return others.joinToString(", ") { it.userName }
+        val first = others.take(2).joinToString(", ") { it.userName }
+        return "$first 외 ${others.size - 2}명"
+    }
 
     val lastMessagePreview: String
         get() = lastMessage?.content ?: "대화를 시작해보세요"

@@ -51,14 +51,6 @@ export type ErrorHandler = (error: string) => void;
 class ChatSocketManager {
   private socket: Socket | null = null;
   private token: string | null = null;
-  private isConnecting = false;
-
-  // Reconnection state
-  private lastConnectAttempt = 0;
-  private reconnectAttempts = 0;
-  private readonly MIN_RECONNECT_INTERVAL = 3000; // 최소 3초 간격
-  private readonly MAX_RECONNECT_DELAY = 30000; // 최대 30초 대기
-  private readonly MAX_RECONNECT_ATTEMPTS = 10;
 
   // Event handlers
   private messageHandlers: Set<MessageHandler> = new Set();
@@ -67,6 +59,7 @@ class ChatSocketManager {
   private userLeftHandlers: Set<UserLeftHandler> = new Set();
   private connectHandlers: Set<ConnectionHandler> = new Set();
   private disconnectHandlers: Set<ConnectionHandler> = new Set();
+  private reconnectHandlers: Set<ConnectionHandler> = new Set();
   private errorHandlers: Set<ErrorHandler> = new Set();
 
   // ============================================
@@ -74,20 +67,19 @@ class ChatSocketManager {
   // ============================================
 
   connect(token: string): void {
-    if (this.socket?.connected || this.isConnecting) {
+    if (this.socket?.connected) {
       return;
     }
 
     this.token = token;
-    this.isConnecting = true;
-    this.lastConnectAttempt = Date.now();
 
     this.socket = io(`${SOCKET_URL}${NAMESPACE}`, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
       reconnection: true,
-      reconnectionAttempts: this.MAX_RECONNECT_ATTEMPTS,
-      reconnectionDelay: this.MIN_RECONNECT_INTERVAL,
-      reconnectionDelayMax: this.MAX_RECONNECT_DELAY,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 30000,
       auth: { token },
     });
 
@@ -95,65 +87,15 @@ class ChatSocketManager {
   }
 
   /**
-   * 연결 상태를 확인하고 필요시 재연결
-   * - 이미 연결됨: 즉시 true 반환
-   * - 연결 중: false 반환 (중복 연결 방지)
-   * - 최근 시도 후 MIN_RECONNECT_INTERVAL 이내: false 반환 (스팸 방지)
-   * - 재연결 시도 횟수 초과: false 반환
-   */
-  ensureConnected(token: string): boolean {
-    // 이미 연결되어 있으면 OK
-    if (this.socket?.connected) {
-      this.reconnectAttempts = 0; // 성공 시 카운터 리셋
-      return true;
-    }
-
-    // 연결 중이면 대기
-    if (this.isConnecting) {
-      return false;
-    }
-
-    // 최대 재연결 시도 횟수 초과
-    if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
-      console.warn(`⚠️ Max reconnection attempts (${this.MAX_RECONNECT_ATTEMPTS}) exceeded`);
-      return false;
-    }
-
-    // 최소 간격 체크 (스팸 방지)
-    const timeSinceLastAttempt = Date.now() - this.lastConnectAttempt;
-    if (timeSinceLastAttempt < this.MIN_RECONNECT_INTERVAL) {
-      return false;
-    }
-
-    // 재연결 시도
-    this.reconnectAttempts++;
-    console.log(`🔄 Reconnecting... (attempt ${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})`);
-
-    // 기존 소켓 정리 후 재연결
-    if (this.socket) {
-      this.socket.removeAllListeners();
-      this.socket.disconnect();
-      this.socket = null;
-    }
-
-    this.connect(token);
-    return false;
-  }
-
-  /**
-   * 강제 재연결 (재연결 카운터 리셋)
+   * 강제 재연결 (수동 재연결 버튼용)
    */
   forceReconnect(token: string): void {
-    this.reconnectAttempts = 0;
-    this.lastConnectAttempt = 0;
-
     if (this.socket) {
       this.socket.removeAllListeners();
       this.socket.disconnect();
       this.socket = null;
     }
 
-    this.isConnecting = false;
     this.connect(token);
   }
 
@@ -164,16 +106,10 @@ class ChatSocketManager {
       this.socket = null;
     }
     this.token = null;
-    this.isConnecting = false;
-    this.reconnectAttempts = 0;
   }
 
   get isConnected(): boolean {
     return this.socket?.connected ?? false;
-  }
-
-  get canReconnect(): boolean {
-    return this.reconnectAttempts < this.MAX_RECONNECT_ATTEMPTS;
   }
 
   // ============================================
@@ -184,8 +120,6 @@ class ChatSocketManager {
     if (!this.socket) return;
 
     this.socket.on('connect', () => {
-      this.isConnecting = false;
-      this.reconnectAttempts = 0; // 성공 시 카운터 리셋
       console.log('✅ Chat socket connected');
       this.connectHandlers.forEach(handler => handler());
     });
@@ -196,7 +130,6 @@ class ChatSocketManager {
     });
 
     this.socket.on('connect_error', (error) => {
-      this.isConnecting = false;
       console.error('❌ Chat socket connection error:', error.message);
       this.errorHandlers.forEach(handler => handler(error.message));
     });
@@ -220,6 +153,12 @@ class ChatSocketManager {
 
     this.socket.on('user_left', (data: UserLeftEvent) => {
       this.userLeftHandlers.forEach(handler => handler(data));
+    });
+
+    // Socket.IO Manager 레벨 재연결 이벤트
+    this.socket.io.on('reconnect', () => {
+      console.log('🔄 Chat socket reconnected');
+      this.reconnectHandlers.forEach(handler => handler());
     });
   }
 
@@ -313,6 +252,11 @@ class ChatSocketManager {
   onDisconnect(handler: ConnectionHandler): () => void {
     this.disconnectHandlers.add(handler);
     return () => this.disconnectHandlers.delete(handler);
+  }
+
+  onReconnect(handler: ConnectionHandler): () => void {
+    this.reconnectHandlers.add(handler);
+    return () => this.reconnectHandlers.delete(handler);
   }
 
   onError(handler: ErrorHandler): () => void {

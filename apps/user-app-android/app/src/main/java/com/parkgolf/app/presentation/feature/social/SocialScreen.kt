@@ -8,11 +8,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -129,6 +132,7 @@ fun SocialScreen(
                     )
                     SocialMainTab.CHAT -> ChatContent(
                         uiState = uiState,
+                        currentUserId = uiState.currentUserId ?: "",
                         onChatRoomClick = { roomId -> onNavigate("chat/$roomId") },
                         onNewChatClick = { showNewChatSheet = true }
                     )
@@ -153,8 +157,12 @@ fun SocialScreen(
         NewChatSheet(
             friends = uiState.friends,
             onDismiss = { showNewChatSheet = false },
-            onFriendSelect = { friend ->
+            onDirectChat = { friend ->
                 viewModel.createDirectChat(friend)
+                showNewChatSheet = false
+            },
+            onGroupChat = { name, friends ->
+                viewModel.createGroupChat(name, friends)
                 showNewChatSheet = false
             }
         )
@@ -838,6 +846,7 @@ private fun SentRequestCard(request: SentFriendRequest) {
 @Composable
 private fun ChatContent(
     uiState: SocialUiState,
+    currentUserId: String,
     onChatRoomClick: (String) -> Unit,
     onNewChatClick: () -> Unit
 ) {
@@ -866,6 +875,7 @@ private fun ChatContent(
             items(uiState.chatRooms, key = { it.id }) { room ->
                 ChatRoomCard(
                     room = room,
+                    currentUserId = currentUserId,
                     onClick = { onChatRoomClick(room.id) }
                 )
             }
@@ -876,8 +886,11 @@ private fun ChatContent(
 @Composable
 private fun ChatRoomCard(
     room: ChatRoom,
+    currentUserId: String = "",
     onClick: () -> Unit
 ) {
+    val roomDisplayName = room.displayName(currentUserId)
+
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick
@@ -902,7 +915,7 @@ private fun ChatRoomCard(
                     when (room.type) {
                         ChatRoomType.DIRECT -> {
                             Text(
-                                text = room.name.take(1),
+                                text = roomDisplayName.take(1),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = ParkPrimary
@@ -927,7 +940,7 @@ private fun ChatRoomCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = room.name,
+                            text = roomDisplayName,
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.SemiBold,
                             color = TextOnGradient,
@@ -1145,9 +1158,14 @@ private fun UserSearchCard(
 private fun NewChatSheet(
     friends: List<Friend>,
     onDismiss: () -> Unit,
-    onFriendSelect: (Friend) -> Unit
+    onDirectChat: (Friend) -> Unit,
+    onGroupChat: (String, List<Friend>) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    val selectedFriends = remember { mutableStateListOf<Friend>() }
+    var step by remember { mutableStateOf("select") }
+    var groupName by remember { mutableStateOf("") }
+
     val filteredFriends = friends.filter {
         it.friendName.contains(searchQuery, ignoreCase = true) ||
         it.friendEmail.contains(searchQuery, ignoreCase = true)
@@ -1166,39 +1184,162 @@ private fun NewChatSheet(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "새 채팅",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = TextOnGradient
-            )
-
-            // Search Bar
-            GlassTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                label = "친구 검색",
-                leadingIcon = Icons.Default.Search
-            )
-
-            // Friends List
-            if (filteredFriends.isEmpty()) {
-                EmptyStateView(
-                    icon = Icons.Default.People,
-                    title = "친구가 없습니다",
-                    description = "먼저 친구를 추가해주세요"
+            if (step == "select") {
+                // Title
+                Text(
+                    text = "새 채팅",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = TextOnGradient
                 )
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.heightIn(max = 400.dp)
-                ) {
-                    items(filteredFriends, key = { it.id }) { friend ->
-                        FriendSelectCard(
-                            friend = friend,
-                            onClick = { onFriendSelect(friend) }
+
+                // Search Bar
+                GlassTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    label = "친구 검색",
+                    leadingIcon = Icons.Default.Search
+                )
+
+                // Selected Friends Chips
+                if (selectedFriends.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        selectedFriends.forEach { friend ->
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = ParkPrimary.copy(alpha = 0.3f)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = friend.friendName,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = TextOnGradient
+                                    )
+                                    IconButton(
+                                        onClick = { selectedFriends.remove(friend) },
+                                        modifier = Modifier.size(16.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "제거",
+                                            tint = TextOnGradientSecondary,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Friends List
+                if (filteredFriends.isEmpty()) {
+                    EmptyStateView(
+                        icon = Icons.Default.People,
+                        title = "친구가 없습니다",
+                        description = "먼저 친구를 추가해주세요"
+                    )
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.heightIn(max = 350.dp)
+                    ) {
+                        items(filteredFriends, key = { it.id }) { friend ->
+                            val isSelected = selectedFriends.any { it.id == friend.id }
+                            FriendSelectCard(
+                                friend = friend,
+                                isSelected = isSelected,
+                                onClick = {
+                                    if (isSelected) {
+                                        selectedFriends.removeAll { it.id == friend.id }
+                                    } else {
+                                        selectedFriends.add(friend)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Bottom Action Button
+                if (selectedFriends.isNotEmpty()) {
+                    Button(
+                        onClick = {
+                            if (selectedFriends.size == 1) {
+                                onDirectChat(selectedFriends.first())
+                            } else {
+                                step = "name"
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = ParkPrimary)
+                    ) {
+                        Text(
+                            text = if (selectedFriends.size == 1) "채팅 시작"
+                                   else "다음 (${selectedFriends.size}명)"
                         )
                     }
+                }
+            } else {
+                // Name Step
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    IconButton(onClick = { step = "select" }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로", tint = TextOnGradient)
+                    }
+                    Text(
+                        text = "그룹 만들기",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = TextOnGradient
+                    )
+                }
+
+                // Selected Members Chips
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    selectedFriends.forEach { friend ->
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = ParkPrimary.copy(alpha = 0.3f)
+                        ) {
+                            Text(
+                                text = friend.friendName,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = TextOnGradient,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Group Name Input
+                GlassTextField(
+                    value = groupName,
+                    onValueChange = { groupName = it },
+                    label = "그룹 이름",
+                    leadingIcon = Icons.Default.Edit
+                )
+
+                // Create Button
+                Button(
+                    onClick = { onGroupChat(groupName, selectedFriends.toList()) },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = groupName.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(containerColor = ParkPrimary)
+                ) {
+                    Text("만들기")
                 }
             }
 
@@ -1210,6 +1351,7 @@ private fun NewChatSheet(
 @Composable
 private fun FriendSelectCard(
     friend: Friend,
+    isSelected: Boolean = false,
     onClick: () -> Unit
 ) {
     GlassCard(
@@ -1252,9 +1394,9 @@ private fun FriendSelectCard(
             }
 
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                 contentDescription = null,
-                tint = TextOnGradientSecondary
+                tint = if (isSelected) ParkPrimary else TextOnGradientSecondary
             )
         }
     }

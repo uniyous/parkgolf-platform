@@ -76,6 +76,14 @@ struct ChatRoom: Identifiable, Codable, Sendable, Hashable {
         self.updatedAt = updatedAt
     }
 
+    func displayName(currentUserId: String) -> String {
+        let others = participants.filter { $0.userId != currentUserId }
+        if others.isEmpty { return name }
+        if others.count <= 3 { return others.map(\.userName).joined(separator: ", ") }
+        let first = others.prefix(2).map(\.userName).joined(separator: ", ")
+        return "\(first) 외 \(others.count - 2)명"
+    }
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
@@ -229,5 +237,15 @@ struct ChatParticipant: Identifiable, Codable, Sendable {
         userName = try container.decode(String.self, forKey: .userName)
         profileImageUrl = try container.decodeIfPresent(String.self, forKey: .profileImageUrl)
         joinedAt = try container.decode(Date.self, forKey: .joinedAt)
+    }
+}
+
+// MARK: - Invite Members Request
+
+struct InviteMembersRequest: Codable, Sendable {
+    let userIds: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case userIds = "user_ids"
     }
 }

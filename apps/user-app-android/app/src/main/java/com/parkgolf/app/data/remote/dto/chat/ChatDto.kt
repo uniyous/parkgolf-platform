@@ -73,6 +73,12 @@ data class SendMessageRequest(
     val messageType: String = "TEXT"
 )
 
+@Serializable
+data class InviteMembersRequest(
+    @SerialName("user_ids")
+    val userIds: List<String>
+)
+
 // API response wrapper for messages endpoint
 @Serializable
 data class MessagesApiResponse(

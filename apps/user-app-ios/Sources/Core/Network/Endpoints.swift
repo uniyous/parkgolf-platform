@@ -163,6 +163,21 @@ enum ChatEndpoints {
             body: SendMessageRequest(content: content, messageType: type.rawValue)
         )
     }
+
+    static func inviteMembers(roomId: String, userIds: [String]) -> Endpoint {
+        Endpoint(
+            path: "/api/user/chat/rooms/\(roomId)/members",
+            method: .post,
+            body: InviteMembersRequest(userIds: userIds)
+        )
+    }
+
+    static func leaveRoom(roomId: String) -> Endpoint {
+        Endpoint(
+            path: "/api/user/chat/rooms/\(roomId)/leave",
+            method: .delete
+        )
+    }
 }
 
 // MARK: - Request DTOs

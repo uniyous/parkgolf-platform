@@ -13,6 +13,8 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,8 +24,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.parkgolf.app.domain.model.ChatMessage
+import com.parkgolf.app.domain.model.Friend
+import com.parkgolf.app.presentation.components.GlassCard
+import com.parkgolf.app.presentation.components.GlassTextField
 import com.parkgolf.app.presentation.theme.*
+import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.format.DateTimeFormatter
+import javax.inject.Inject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +41,8 @@ fun ChatRoomScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
+    var showMenu by remember { mutableStateOf(false) }
+    var showInviteDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(roomId) {
         viewModel.loadRoom(roomId)
@@ -58,7 +67,7 @@ fun ChatRoomScreen(
                 title = {
                     Column {
                         Text(
-                            text = uiState.room?.name ?: "채팅",
+                            text = uiState.room?.displayName(uiState.currentUserId ?: "") ?: "채팅",
                             style = MaterialTheme.typography.titleMedium
                         )
                         Row(
@@ -87,8 +96,36 @@ fun ChatRoomScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* TODO: Show room info */ }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "더보기")
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "더보기")
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("친구 초대") },
+                                onClick = {
+                                    showInviteDialog = true
+                                    showMenu = false
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.PersonAdd, contentDescription = null)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("나가기", color = ParkError) },
+                                onClick = {
+                                    viewModel.leaveChatRoom()
+                                    onNavigateBack()
+                                    showMenu = false
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.ExitToApp, contentDescription = null, tint = ParkError)
+                                }
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -195,6 +232,18 @@ fun ChatRoomScreen(
                 }
             }
         }
+    }
+
+    // Invite Friends Dialog
+    if (showInviteDialog) {
+        InviteFriendsDialog(
+            existingParticipantUserIds = uiState.room?.participants?.map { it.userId } ?: emptyList(),
+            onDismiss = { showInviteDialog = false },
+            onInvite = { userIds ->
+                viewModel.inviteMembers(userIds)
+                showInviteDialog = false
+            }
+        )
     }
 }
 
@@ -394,3 +443,150 @@ private fun ChatInputBar(
         }
     }
 }
+
+/**
+ * 친구 초대 다이얼로그
+ */
+@Composable
+private fun InviteFriendsDialog(
+    existingParticipantUserIds: List<String>,
+    onDismiss: () -> Unit,
+    onInvite: (List<String>) -> Unit
+) {
+    val friendsRepository: com.parkgolf.app.domain.repository.FriendsRepository =
+        hiltViewModel<InviteFriendsViewModel>().friendsRepository
+    var friends by remember { mutableStateOf<List<Friend>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    val selectedIds = remember { mutableStateListOf<String>() }
+    var searchQuery by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        friendsRepository.getFriends()
+            .onSuccess { result -> friends = result }
+        isLoading = false
+    }
+
+    val availableFriends = friends.filter { friend ->
+        !existingParticipantUserIds.contains(friend.friendId.toString())
+    }
+    val filteredFriends = if (searchQuery.isBlank()) availableFriends else {
+        availableFriends.filter {
+            it.friendName.contains(searchQuery, ignoreCase = true) ||
+            it.friendEmail.contains(searchQuery, ignoreCase = true)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = GradientStart,
+        title = {
+            Text("친구 초대", color = ParkOnPrimary, fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.heightIn(max = 400.dp)
+            ) {
+                GlassTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    label = "친구 검색",
+                    leadingIcon = Icons.Default.Search
+                )
+
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = ParkPrimary)
+                    }
+                } else if (filteredFriends.isEmpty()) {
+                    Text(
+                        text = "초대할 수 있는 친구가 없습니다",
+                        color = ParkOnPrimary.copy(alpha = 0.6f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(filteredFriends, key = { it.id }) { friend ->
+                            val friendIdStr = friend.friendId.toString()
+                            val isSelected = selectedIds.contains(friendIdStr)
+                            GlassCard(
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = {
+                                    if (isSelected) selectedIds.remove(friendIdStr)
+                                    else selectedIds.add(friendIdStr)
+                                }
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(ParkPrimary.copy(alpha = 0.2f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = friend.friendName.take(1),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = ParkPrimary
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = friend.friendName,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = ParkOnPrimary
+                                        )
+                                        Text(
+                                            text = friend.friendEmail,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = ParkOnPrimary.copy(alpha = 0.6f)
+                                        )
+                                    }
+                                    Icon(
+                                        imageVector = if (isSelected) Icons.Default.CheckCircle
+                                                      else Icons.Default.RadioButtonUnchecked,
+                                        contentDescription = null,
+                                        tint = if (isSelected) ParkPrimary else ParkOnPrimary.copy(alpha = 0.3f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onInvite(selectedIds.toList()) },
+                enabled = selectedIds.isNotEmpty(),
+                colors = ButtonDefaults.buttonColors(containerColor = ParkPrimary)
+            ) {
+                Text(if (selectedIds.isEmpty()) "초대" else "초대 (${selectedIds.size}명)")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("취소", color = ParkOnPrimary.copy(alpha = 0.7f))
+            }
+        }
+    )
+}
+
+/**
+ * InviteFriendsDialog용 ViewModel (FriendsRepository 주입)
+ */
+@HiltViewModel
+class InviteFriendsViewModel @Inject constructor(
+    val friendsRepository: com.parkgolf.app.domain.repository.FriendsRepository
+) : androidx.lifecycle.ViewModel()

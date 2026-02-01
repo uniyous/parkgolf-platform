@@ -68,7 +68,6 @@ export function useNotificationSocket(options: UseNotificationSocketOptions = {}
 
   return {
     isConnected: notificationSocket.isConnected,
-    canReconnect: notificationSocket.canReconnect,
     reconnect,
   };
 }
