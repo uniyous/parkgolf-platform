@@ -65,7 +65,7 @@ const ADMIN_ACCOUNT_GROUPS: AdminAccountGroup[] = [
     ]
   },
   {
-    title: '회사 관리 (강남 파크골프장)',
+    title: '회사 관리 (가맹점)',
     accounts: [
       {
         email: 'admin@gangnam.com',
