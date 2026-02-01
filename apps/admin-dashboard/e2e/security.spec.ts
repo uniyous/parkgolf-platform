@@ -122,7 +122,7 @@ test.describe('SEC-03: Refresh Token 회전 및 로그아웃 무효화', () => {
       },
     });
 
-    if (loginRes.status() !== 200) {
+    if (!loginRes.ok()) {
       test.skip(true, '관리자 테스트 계정 로그인 실패 - 환경 확인 필요');
       return;
     }
@@ -160,7 +160,7 @@ test.describe('SEC-03: Refresh Token 회전 및 로그아웃 무효화', () => {
       },
     });
 
-    if (loginRes.status() !== 200) {
+    if (!loginRes.ok()) {
       test.skip(true, '관리자 테스트 계정 로그인 실패 - 환경 확인 필요');
       return;
     }

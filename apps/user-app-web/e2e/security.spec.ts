@@ -117,12 +117,12 @@ test.describe('SEC-03: Refresh Token 회전 및 로그아웃 무효화', () => {
     const loginRes = await apiContext.post('/api/user/iam/login', {
       data: {
         email: 'test@parkgolf.com',
-        password: 'test123!@#',
+        password: 'test1234',
       },
     });
 
     // 로그인 실패 시 스킵 (테스트 계정 부재)
-    if (loginRes.status() !== 200) {
+    if (!loginRes.ok()) {
       test.skip(true, '테스트 계정 로그인 실패 - 환경 확인 필요');
       return;
     }
@@ -156,11 +156,11 @@ test.describe('SEC-03: Refresh Token 회전 및 로그아웃 무효화', () => {
     const loginRes = await apiContext.post('/api/user/iam/login', {
       data: {
         email: 'test@parkgolf.com',
-        password: 'test123!@#',
+        password: 'test1234',
       },
     });
 
-    if (loginRes.status() !== 200) {
+    if (!loginRes.ok()) {
       test.skip(true, '테스트 계정 로그인 실패 - 환경 확인 필요');
       return;
     }

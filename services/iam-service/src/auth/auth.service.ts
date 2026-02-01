@@ -65,6 +65,7 @@ export class AuthService {
         const refreshToken = this.jwtService.sign(payload, {
             secret: this.refreshSecret,
             expiresIn: '7d',
+            jwtid: crypto.randomUUID(),
         });
 
         // Store hashed refresh token in DB
@@ -169,6 +170,7 @@ export class AuthService {
             const newRefreshToken = this.jwtService.sign(newPayload, {
                 secret: this.refreshSecret,
                 expiresIn: '7d',
+                jwtid: crypto.randomUUID(),
             });
 
             // Store new hashed refresh token
@@ -240,6 +242,7 @@ export class AuthService {
         const refreshToken = this.jwtService.sign(payload, {
             secret: this.refreshSecret,
             expiresIn: '7d',
+            jwtid: crypto.randomUUID(),
         });
 
         // Store hashed refresh token in DB
@@ -341,6 +344,7 @@ export class AuthService {
             const newRefreshToken = this.jwtService.sign(newPayload, {
                 secret: this.refreshSecret,
                 expiresIn: '7d',
+                jwtid: crypto.randomUUID(),
             });
 
             // Store new hashed refresh token
