@@ -28,10 +28,26 @@ export class RoomService {
   async createRoom(dto: CreateRoomDto) {
     const { name, type, bookingId, memberIds, memberNames, memberEmails } = dto;
 
-    // 1:1 채팅방은 기존 방이 있으면 반환
+    // 1:1 채팅방은 기존 방이 있으면 반환 (나간 멤버 재활성화)
     if (type === 'DIRECT' && memberIds.length === 2) {
       const existingRoom = await this.findDirectRoom(memberIds[0], memberIds[1]);
       if (existingRoom) {
+        // 나갔던 멤버가 있으면 재활성화
+        const leftMembers = existingRoom.members.filter((m) => m.leftAt !== null);
+        if (leftMembers.length > 0) {
+          await this.prisma.chatRoomMember.updateMany({
+            where: {
+              roomId: existingRoom.id,
+              leftAt: { not: null },
+            },
+            data: { leftAt: null, joinedAt: new Date() },
+          });
+          // 갱신된 멤버 목록으로 다시 조회
+          return this.prisma.chatRoom.findUnique({
+            where: { id: existingRoom.id },
+            include: { members: { where: { leftAt: null } } },
+          });
+        }
         return existingRoom;
       }
     }

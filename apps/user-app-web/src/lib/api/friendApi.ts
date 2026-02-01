@@ -80,7 +80,7 @@ export const friendApi = {
   searchUsers: async (query: string): Promise<UserSearchResult[]> => {
     const response = await apiClient.get<BffResponse<UserSearchResult[]>>(
       '/api/user/friends/search',
-      { query }
+      { q: query }
     );
     return unwrapResponse(response.data);
   },
@@ -89,7 +89,7 @@ export const friendApi = {
    * 친구 요청 보내기
    */
   sendFriendRequest: async (toUserId: number, message?: string): Promise<void> => {
-    await apiClient.post<BffResponse<void>>('/api/user/friends/requests', {
+    await apiClient.post<BffResponse<void>>('/api/user/friends/request', {
       toUserId,
       message,
     });
