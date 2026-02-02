@@ -201,6 +201,14 @@ class ApiClient {
   }
 
   /**
+   * 외부에서 토큰 갱신 요청 (소켓 등)
+   * 내부 mutex를 공유하여 동시 갱신을 방지합니다.
+   */
+  async refreshAccessToken(): Promise<boolean> {
+    return this.tryRefreshToken();
+  }
+
+  /**
    * 토큰 갱신 시도
    */
   private async tryRefreshToken(): Promise<boolean> {
