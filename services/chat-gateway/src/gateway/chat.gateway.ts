@@ -312,8 +312,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       createdAt: new Date().toISOString(),
     };
 
-    // 1. 즉시 클라이언트에 브로드캐스트 (실시간 전달 우선)
-    this.server.to(roomId).emit('new_message', message);
+    // 1. 다른 클라이언트에만 브로드캐스트 (발신자 제외 — 발신자는 ACK로 수신)
+    client.to(roomId).emit('new_message', message);
     this.logger.debug(`Message sent to room ${roomId} by ${user.name || user.email}`);
 
     // 2. DB 저장 - 비동기 (응답 대기 없이)
@@ -334,7 +334,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       this.logger.error(`Failed to publish message to JetStream: ${error}`);
     });
 
-    return { success: true, data: { message } };
+    return { success: true, message };
   }
 
   @SubscribeMessage('send_dm')
@@ -361,14 +361,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       createdAt: new Date().toISOString(),
     };
 
-    // 1. 즉시 클라이언트에 전달 (실시간 전달 우선)
+    // 1. 상대방 소켓에만 전달 (발신자는 ACK로 수신)
     const targetSockets = this.userSockets.get(targetUserId);
     if (targetSockets) {
       for (const socketId of targetSockets) {
         this.server.to(socketId).emit('new_dm', message);
       }
     }
-    client.emit('new_dm', message);
 
     // 2. DB 저장 - 비동기 (응답 대기 없이)
     this.natsService.requestChatService('messages.save', {
@@ -388,7 +387,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       this.logger.error(`Failed to publish DM to JetStream: ${error}`);
     });
 
-    return { success: true, data: { message } };
+    return { success: true, message };
   }
 
   @SubscribeMessage('typing')

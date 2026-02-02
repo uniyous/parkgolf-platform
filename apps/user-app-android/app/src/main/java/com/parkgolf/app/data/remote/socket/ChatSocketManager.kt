@@ -4,6 +4,7 @@ import android.util.Log
 import com.parkgolf.app.BuildConfig
 import com.parkgolf.app.domain.model.ChatMessage
 import com.parkgolf.app.domain.model.MessageType
+import io.socket.client.Ack
 import io.socket.client.IO
 import io.socket.client.Socket
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -255,6 +256,20 @@ class ChatSocketManager @Inject constructor() {
                         put("roomId", roomId)
                         put("content", content)
                         put("type", type)
+                    }, Ack { response ->
+                        // ACK 응답으로 발신자 메시지 즉시 표시 (broadcast에서 제외되므로)
+                        try {
+                            val obj = response.firstOrNull() as? JSONObject
+                            if (obj != null && obj.optBoolean("success", false)) {
+                                val msgObj = obj.optJSONObject("message")
+                                if (msgObj != null) {
+                                    val message = parseMessage(msgObj)
+                                    _messageReceived.tryEmit(message)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to parse send_message ACK", e)
+                        }
                     })
                     Log.d(TAG, "Message sent to room: $roomId")
                 } else {

@@ -146,7 +146,11 @@ export const ChatRoomPage: React.FC = () => {
     if (chatSocket.isConnected) {
       const result = await chatSocket.sendMessage(roomId, text);
       if (result) {
-        // Message will be added via socket event
+        // 발신자는 broadcast에서 제외되므로 ACK 응답으로 메시지 추가
+        setRealtimeMessages((prev) => {
+          if (prev.some((m) => m.id === result.id)) return prev;
+          return [...prev, result];
+        });
         return;
       }
     }
