@@ -81,6 +81,10 @@ class SocialViewModel @Inject constructor(
 
     fun selectTab(tab: SocialTab) {
         _uiState.value = _uiState.value.copy(selectedTab = tab)
+        when (tab) {
+            SocialTab.FRIENDS -> loadFriendsData()
+            SocialTab.CHAT -> loadChatRooms()
+        }
     }
 
     // Friends functions

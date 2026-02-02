@@ -24,8 +24,8 @@ export const useFriendsQuery = () => {
   return useQuery({
     queryKey: friendKeys.list(),
     queryFn: () => friendApi.getFriends(),
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    gcTime: 1000 * 60 * 30, // 30 minutes
+    staleTime: 0,
+    gcTime: 1000 * 60 * 5, // 5 minutes
   });
 };
 
@@ -36,8 +36,8 @@ export const useFriendRequestsQuery = () => {
   return useQuery({
     queryKey: friendKeys.requests(),
     queryFn: () => friendApi.getFriendRequests(),
-    staleTime: 1000 * 60 * 2, // 2 minutes
-    gcTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: 0,
+    gcTime: 1000 * 60 * 5, // 5 minutes
   });
 };
 
@@ -48,8 +48,8 @@ export const useSentFriendRequestsQuery = () => {
   return useQuery({
     queryKey: friendKeys.sentRequests(),
     queryFn: () => friendApi.getSentFriendRequests(),
-    staleTime: 1000 * 60 * 2,
-    gcTime: 1000 * 60 * 10,
+    staleTime: 0,
+    gcTime: 1000 * 60 * 5, // 5 minutes
   });
 };
 

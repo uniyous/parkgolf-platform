@@ -16,10 +16,23 @@ data class ChatRoom(
 ) {
     fun displayName(currentUserId: String): String {
         val others = participants.filter { it.userId != currentUserId }
-        if (others.isEmpty()) return name
-        if (others.size <= 3) return others.joinToString(", ") { it.userName }
-        val first = others.take(2).joinToString(", ") { it.userName }
-        return "$first 외 ${others.size - 2}명"
+
+        // DIRECT: 상대방 이름
+        if (type == ChatRoomType.DIRECT) {
+            return others.firstOrNull()?.userName ?: name.ifEmpty { "채팅" }
+        }
+
+        // GROUP/BOOKING: 방 이름이 있으면 우선 사용
+        if (name.isNotEmpty()) {
+            return name
+        }
+
+        // 방 이름이 없을 때 참여자 이름 폴백 (생성자 우선)
+        if (others.isEmpty()) return "채팅방"
+        val sorted = others.sortedByDescending { it.isAdmin }
+        if (sorted.size <= 2) return sorted.joinToString(", ") { it.userName }
+        val first = sorted.take(2).joinToString(", ") { it.userName }
+        return "$first 외 ${sorted.size - 2}명"
     }
 
     val lastMessagePreview: String
@@ -33,7 +46,9 @@ data class ChatParticipant(
     val id: String,
     val userId: String,
     val userName: String,
+    val userEmail: String? = null,
     val profileImageUrl: String? = null,
+    val isAdmin: Boolean = false,
     val joinedAt: LocalDateTime
 ) {
     val initials: String

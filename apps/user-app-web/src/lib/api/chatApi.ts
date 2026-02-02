@@ -14,6 +14,7 @@ export interface ChatParticipant {
   userName: string;
   userEmail: string | null;
   profileImageUrl: string | null;
+  isAdmin: boolean;
   joinedAt: string;
 }
 
@@ -96,6 +97,7 @@ function transformRoomResponse(room: ApiRoomResponse): ChatRoom {
     userName: m.userName,
     userEmail: m.userEmail || null,
     profileImageUrl: null,
+    isAdmin: m.isAdmin,
     joinedAt: m.joinedAt,
   }));
 
@@ -116,23 +118,31 @@ function transformRoomResponse(room: ApiRoomResponse): ChatRoom {
 // ============================================
 
 /**
- * 채팅방 참여자 기반 표시 이름 생성
+ * 채팅방 표시 이름 생성
  * - DIRECT: 상대방 이름
- * - GROUP/BOOKING 2~3명: 쉼표로 구분
- * - GROUP/BOOKING 4명+: "홍길동, 김철수 외 N명"
- * - 참여자 없음: room.name 폴백
+ * - GROUP/BOOKING: 방 이름 우선, 없으면 참여자 이름 폴백
  */
 export function getChatRoomDisplayName(room: ChatRoom, currentUserId: string): string {
   const others = (room.participants ?? []).filter((p) => p.userId !== currentUserId);
 
-  if (others.length === 0) return room.name;
-
-  if (others.length <= 3) {
-    return others.map((p) => p.userName).join(', ');
+  // DIRECT: 상대방 이름
+  if (room.type === 'DIRECT') {
+    return others.length > 0 ? others[0].userName : (room.name || '채팅');
   }
 
-  const first = others.slice(0, 2).map((p) => p.userName).join(', ');
-  return `${first} 외 ${others.length - 2}명`;
+  // GROUP/BOOKING: 방 이름이 있으면 우선 사용
+  if (room.name) {
+    return room.name;
+  }
+
+  // 방 이름이 없을 때 참여자 이름 폴백 (생성자 우선)
+  if (others.length === 0) return '채팅방';
+  const sorted = [...others].sort((a, b) => (a.isAdmin === b.isAdmin ? 0 : a.isAdmin ? -1 : 1));
+  if (sorted.length <= 2) {
+    return sorted.map((p) => p.userName).join(', ');
+  }
+  const first = sorted.slice(0, 2).map((p) => p.userName).join(', ');
+  return `${first} 외 ${sorted.length - 2}명`;
 }
 
 // ============================================
@@ -144,11 +154,15 @@ export const chatApi = {
    * 채팅방 목록 조회
    */
   getChatRooms: async (page = 1, limit = 20): Promise<PaginatedResult<ChatRoom>> => {
-    const response = await apiClient.get<BffResponse<ChatRoom[]>>(
+    const response = await apiClient.get<BffResponse<ApiRoomResponse[]>>(
       '/api/user/chat/rooms',
       { page, limit }
     );
-    return extractPaginatedList<ChatRoom>(response.data);
+    const result = extractPaginatedList<ApiRoomResponse>(response.data);
+    return {
+      data: result.data.map(transformRoomResponse),
+      pagination: result.pagination,
+    };
   },
 
   /**

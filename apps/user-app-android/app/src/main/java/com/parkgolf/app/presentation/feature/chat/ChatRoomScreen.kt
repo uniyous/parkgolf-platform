@@ -43,6 +43,7 @@ fun ChatRoomScreen(
     val listState = rememberLazyListState()
     var showMenu by remember { mutableStateOf(false) }
     var showInviteDialog by remember { mutableStateOf(false) }
+    var showParticipantsDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(roomId) {
         viewModel.loadRoom(roomId)
@@ -104,6 +105,16 @@ fun ChatRoomScreen(
                             expanded = showMenu,
                             onDismissRequest = { showMenu = false }
                         ) {
+                            DropdownMenuItem(
+                                text = { Text("참여자 목록") },
+                                onClick = {
+                                    showParticipantsDialog = true
+                                    showMenu = false
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Group, contentDescription = null)
+                                }
+                            )
                             DropdownMenuItem(
                                 text = { Text("친구 초대") },
                                 onClick = {
@@ -232,6 +243,15 @@ fun ChatRoomScreen(
                 }
             }
         }
+    }
+
+    // Participants Dialog
+    if (showParticipantsDialog) {
+        ParticipantsDialog(
+            participants = uiState.room?.participants ?: emptyList(),
+            currentUserId = uiState.currentUserId ?: "",
+            onDismiss = { showParticipantsDialog = false }
+        )
     }
 
     // Invite Friends Dialog
@@ -442,6 +462,129 @@ private fun ChatInputBar(
             }
         }
     }
+}
+
+/**
+ * 참여자 목록 다이얼로그
+ */
+@Composable
+private fun ParticipantsDialog(
+    participants: List<com.parkgolf.app.domain.model.ChatParticipant>,
+    currentUserId: String,
+    onDismiss: () -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    val showSearch = participants.size >= 5
+
+    val filtered = if (searchQuery.isBlank()) participants else {
+        participants.filter {
+            it.userName.contains(searchQuery, ignoreCase = true) ||
+            (it.userEmail ?: "").contains(searchQuery, ignoreCase = true)
+        }
+    }
+    // 본인을 맨 위로 정렬
+    val sorted = filtered.sortedWith(compareBy<com.parkgolf.app.domain.model.ChatParticipant> {
+        if (it.userId == currentUserId) 0 else 1
+    }.thenBy { it.userName })
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = GradientStart,
+        title = {
+            Text(
+                "참여자 (${participants.size}명)",
+                color = ParkOnPrimary,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.heightIn(max = 400.dp)
+            ) {
+                if (showSearch) {
+                    GlassTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        label = "참여자 검색",
+                        leadingIcon = Icons.Default.Search
+                    )
+                }
+
+                if (sorted.isEmpty()) {
+                    Text(
+                        text = "검색 결과가 없습니다",
+                        color = ParkOnPrimary.copy(alpha = 0.6f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(sorted, key = { it.id }) { participant ->
+                            val isMe = participant.userId == currentUserId
+                            GlassCard(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(ParkPrimary.copy(alpha = 0.2f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = participant.userName.take(1),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = ParkPrimary
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(
+                                                text = participant.userName,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = ParkOnPrimary
+                                            )
+                                            if (isMe) {
+                                                Text(
+                                                    text = "(나)",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = ParkPrimary
+                                                )
+                                            }
+                                        }
+                                        if (!participant.userEmail.isNullOrBlank()) {
+                                            Text(
+                                                text = participant.userEmail,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = ParkOnPrimary.copy(alpha = 0.5f)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("닫기", color = ParkOnPrimary.copy(alpha = 0.7f))
+            }
+        }
+    )
 }
 
 /**
