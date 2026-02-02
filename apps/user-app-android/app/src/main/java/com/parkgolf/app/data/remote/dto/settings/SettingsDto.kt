@@ -21,5 +21,5 @@ data class UpdateNotificationSettingsRequest(
 @Serializable
 data class UpdateProfileRequest(
     val name: String? = null,
-    val phoneNumber: String? = null
+    val phone: String? = null
 )

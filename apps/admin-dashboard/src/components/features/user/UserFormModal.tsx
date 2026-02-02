@@ -14,7 +14,7 @@ interface FormData {
   name: string;
   password: string;
   confirmPassword: string;
-  phoneNumber: string;
+  phone: string;
   membershipTier: UserMembershipTier;
   status: UserStatus;
 }
@@ -24,7 +24,7 @@ const initialFormData: FormData = {
   name: '',
   password: '',
   confirmPassword: '',
-  phoneNumber: '',
+  phone: '',
   membershipTier: 'REGULAR',
   status: 'ACTIVE',
 };
@@ -44,7 +44,7 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
         name: user.name || '',
         password: '',
         confirmPassword: '',
-        phoneNumber: user.phoneNumber || '',
+        phone: user.phone || '',
         membershipTier: user.membershipTier || 'REGULAR',
         status: user.status || 'ACTIVE',
       });
@@ -101,7 +101,7 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
           data: {
             email: formData.email,
             name: formData.name,
-            phoneNumber: formData.phoneNumber || undefined,
+            phone: formData.phone || undefined,
             membershipTier: formData.membershipTier,
             status: formData.status,
             ...(formData.password ? { password: formData.password } : {}),
@@ -112,7 +112,7 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
           email: formData.email,
           name: formData.name,
           password: formData.password,
-          phoneNumber: formData.phoneNumber || undefined,
+          phone: formData.phone || undefined,
           membershipTier: formData.membershipTier,
           status: formData.status,
         });
@@ -214,8 +214,8 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
             <label className="block text-sm font-medium text-gray-700 mb-1">연락처</label>
             <input
               type="tel"
-              value={formData.phoneNumber}
-              onChange={(e) => handleChange('phoneNumber', e.target.value)}
+              value={formData.phone}
+              onChange={(e) => handleChange('phone', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               placeholder="010-1234-5678"
             />

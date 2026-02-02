@@ -13,7 +13,7 @@ data class RegisterRequest(
     val email: String,
     val password: String,
     val name: String,
-    val phoneNumber: String? = null
+    val phone: String? = null
 )
 
 @Serializable
@@ -34,16 +34,11 @@ data class UserDto(
     val id: Int,
     val email: String,
     val name: String,
-    val phoneNumber: String? = null,
-    val phone: String? = null,  // Profile API uses 'phone' field
+    val phone: String? = null,
     val profileImageUrl: String? = null,
     val passwordChangedAt: String? = null,
     val createdAt: String? = null
-) {
-    // Get phone from either field (profile API uses 'phone', login uses 'phoneNumber')
-    val phoneOrPhoneNumber: String?
-        get() = phone ?: phoneNumber
-}
+)
 
 @Serializable
 data class UserStatsDto(

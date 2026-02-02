@@ -99,4 +99,13 @@ export class CreateUserDto {
     @IsOptional()
     @IsIn(['ADMIN', 'MODERATOR', 'USER', 'VIEWER'])
     role?: string;
+
+    @ApiProperty({
+        example: '010-1234-5678',
+        description: 'Phone number',
+        required: false,
+    })
+    @IsOptional()
+    @IsString()
+    phone?: string;
 }

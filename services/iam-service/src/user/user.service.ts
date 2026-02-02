@@ -44,6 +44,7 @@ export class UserService {
                     email: createUserDto.email,
                     password: hashedPassword,
                     name: createUserDto.name,
+                    phone: createUserDto.phone,
                     roleCode: createUserDto.role || 'USER',
                     isActive: true,
                 },

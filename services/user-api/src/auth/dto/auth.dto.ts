@@ -38,7 +38,7 @@ export class RegisterDto {
   @Matches(/^010-\d{4}-\d{4}$/, {
     message: '올바른 전화번호 형식을 입력해주세요. (010-1234-5678)',
   })
-  phoneNumber: string;
+  phone: string;
 
   @ApiProperty({
     description: '생년월일',
@@ -76,7 +76,7 @@ export class AuthResponseDto {
     id: number;
     email: string;
     name: string;
-    phoneNumber: string;
+    phone: string;
     birthDate?: string;
     createdAt: Date;
   };
@@ -96,7 +96,7 @@ export class UserProfileDto {
   name: string;
 
   @ApiProperty({ description: '전화번호' })
-  phoneNumber: string;
+  phone: string;
 
   @ApiProperty({ description: '생년월일' })
   birthDate?: string;

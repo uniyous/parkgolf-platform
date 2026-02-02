@@ -36,9 +36,9 @@ class AuthRepositoryImpl @Inject constructor(
         if (name != null) {
             val email = authPreferences.userEmail.first()
             val id = authPreferences.userId.first()?.toIntOrNull()
-            val phoneNumber = authPreferences.userPhone.first()
+            val phone = authPreferences.userPhone.first()
             if (email != null && id != null) {
-                User(id = id, email = email, name = name, phoneNumber = phoneNumber)
+                User(id = id, email = email, name = name, phone = phone)
             } else null
         } else null
     }
@@ -51,7 +51,7 @@ class AuthRepositoryImpl @Inject constructor(
                 userId = response.user.id.toString(),
                 email = response.user.email,
                 name = response.user.name,
-                phoneNumber = response.user.phoneNumber
+                phoneNumber = response.user.phone
             )
             Result.success(response.user.toDomain())
         } catch (e: Exception) {
@@ -63,7 +63,7 @@ class AuthRepositoryImpl @Inject constructor(
         email: String,
         password: String,
         name: String,
-        phoneNumber: String?
+        phone: String?
     ): Result<User> {
         return try {
             val response = authApi.register(
@@ -71,7 +71,7 @@ class AuthRepositoryImpl @Inject constructor(
                     email = email,
                     password = password,
                     name = name,
-                    phoneNumber = phoneNumber
+                    phone = phone
                 )
             )
             authPreferences.saveTokens(response.accessToken, response.refreshToken)
@@ -79,7 +79,7 @@ class AuthRepositoryImpl @Inject constructor(
                 userId = response.user.id.toString(),
                 email = response.user.email,
                 name = response.user.name,
-                phoneNumber = response.user.phoneNumber
+                phoneNumber = response.user.phone
             )
             Result.success(response.user.toDomain())
         } catch (e: Exception) {
@@ -121,7 +121,7 @@ class AuthRepositoryImpl @Inject constructor(
                 userId = user.id.toString(),
                 email = user.email,
                 name = user.name,
-                phoneNumber = user.phoneNumber
+                phoneNumber = user.phone
             )
             user
         }

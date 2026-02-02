@@ -36,8 +36,8 @@ class SettingsRepositoryImpl @Inject constructor(
         settingsApi.updateNotificationSettings(request).toResult("알림 설정 변경에 실패했습니다")
     }
 
-    override suspend fun updateProfile(name: String?, phoneNumber: String?): Result<User> = safeApiCall {
-        val request = UpdateProfileRequest(name = name, phoneNumber = phoneNumber)
+    override suspend fun updateProfile(name: String?, phone: String?): Result<User> = safeApiCall {
+        val request = UpdateProfileRequest(name = name, phone = phone)
         settingsApi.updateProfile(request).toResult("프로필 수정에 실패했습니다") { it.toDomain() }
     }
 }

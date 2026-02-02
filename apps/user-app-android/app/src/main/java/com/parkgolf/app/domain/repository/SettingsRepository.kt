@@ -11,5 +11,5 @@ interface SettingsRepository {
         friend: Boolean? = null,
         marketing: Boolean? = null
     ): Result<NotificationSettings>
-    suspend fun updateProfile(name: String?, phoneNumber: String?): Result<User>
+    suspend fun updateProfile(name: String?, phone: String?): Result<User>
 }

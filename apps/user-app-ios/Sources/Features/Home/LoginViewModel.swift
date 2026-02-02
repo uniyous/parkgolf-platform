@@ -55,7 +55,7 @@ final class SignUpViewModel: ObservableObject {
     @Published var email = ""
     @Published var password = ""
     @Published var confirmPassword = ""
-    @Published var phoneNumber = ""
+    @Published var phone = ""
     @Published var agreeToTerms = false
     @Published var isLoading = false
     @Published var showError = false
@@ -84,7 +84,7 @@ final class SignUpViewModel: ObservableObject {
                 email: email,
                 password: password,
                 name: name,
-                phoneNumber: phoneNumber.isEmpty ? nil : phoneNumber
+                phone: phone.isEmpty ? nil : phone
             )
 
             let response = try await apiClient.requestDirect(

@@ -85,7 +85,7 @@ export const UserManagementPage: React.FC = () => {
           u.name?.toLowerCase().includes(search) ||
           u.email?.toLowerCase().includes(search) ||
           u.username?.toLowerCase().includes(search) ||
-          u.phoneNumber?.includes(search)
+          u.phone?.includes(search)
       );
     }
 
@@ -415,8 +415,8 @@ export const UserManagementPage: React.FC = () => {
                         <div>
                           <div className="font-medium text-gray-900">{user.name}</div>
                           <div className="text-sm text-gray-500">{user.email}</div>
-                          {user.phoneNumber && (
-                            <div className="text-xs text-gray-400">{user.phoneNumber}</div>
+                          {user.phone && (
+                            <div className="text-xs text-gray-400">{user.phone}</div>
                           )}
                         </div>
                       </div>

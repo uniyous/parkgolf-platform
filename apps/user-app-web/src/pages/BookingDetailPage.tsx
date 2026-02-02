@@ -65,7 +65,7 @@ export const BookingDetailPage: React.FC = () => {
         playerCount,
         specialRequests: specialRequests || undefined,
         userEmail: user.email,
-        userName: user.name,
+        userName: user.name ?? undefined,
         userPhone: user.phone || undefined,
         paymentMethod: selectedPaymentMethod,
       };

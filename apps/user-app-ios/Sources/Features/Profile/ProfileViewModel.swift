@@ -44,7 +44,7 @@ final class ProfileViewModel: ObservableObject {
         }
     }
 
-    func updateProfile(name: String, phoneNumber: String?) async -> Bool {
+    func updateProfile(name: String, phone: String?) async -> Bool {
         isLoading = true
         defer { isLoading = false }
 

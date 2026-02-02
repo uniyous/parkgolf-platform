@@ -34,7 +34,7 @@ fun UserDto.toDomain(): User {
         id = id,
         email = email,
         name = name,
-        phoneNumber = phoneOrPhoneNumber,
+        phone = phone,
         profileImageUrl = profileImageUrl
     )
 }

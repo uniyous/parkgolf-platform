@@ -86,6 +86,7 @@ export class AuthService {
                 id: user.id,
                 email: user.email,
                 name: user.name,
+                phone: (user as any).phone || null,
                 roles: [user.roleCode || 'USER'],
                 type: 'user',
             }
@@ -190,6 +191,7 @@ export class AuthService {
                     id: user.id,
                     email: user.email,
                     name: user.name,
+                    phone: user.phone || null,
                     roles: [user.roleCode || 'USER'],
                     type: 'user',
                 }
