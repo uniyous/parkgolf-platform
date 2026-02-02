@@ -19,7 +19,7 @@ final class ParkGolfTests: XCTestCase {
             "id": 123,
             "email": "test@example.com",
             "name": "홍길동",
-            "phoneNumber": "010-1234-5678",
+            "phone": "010-1234-5678",
             "profileImageUrl": null,
             "createdAt": "2024-01-01T00:00:00Z"
         }
@@ -33,7 +33,7 @@ final class ParkGolfTests: XCTestCase {
         XCTAssertEqual(user.id, 123)
         XCTAssertEqual(user.email, "test@example.com")
         XCTAssertEqual(user.name, "홍길동")
-        XCTAssertEqual(user.phoneNumber, "010-1234-5678")
+        XCTAssertEqual(user.phone, "010-1234-5678")
         XCTAssertNil(user.profileImageUrl)
     }
 

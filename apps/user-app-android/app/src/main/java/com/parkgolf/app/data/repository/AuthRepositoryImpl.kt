@@ -51,7 +51,7 @@ class AuthRepositoryImpl @Inject constructor(
                 userId = response.user.id.toString(),
                 email = response.user.email,
                 name = response.user.name,
-                phoneNumber = response.user.phone
+                phone = response.user.phone
             )
             Result.success(response.user.toDomain())
         } catch (e: Exception) {
@@ -79,7 +79,7 @@ class AuthRepositoryImpl @Inject constructor(
                 userId = response.user.id.toString(),
                 email = response.user.email,
                 name = response.user.name,
-                phoneNumber = response.user.phone
+                phone = response.user.phone
             )
             Result.success(response.user.toDomain())
         } catch (e: Exception) {
@@ -121,7 +121,7 @@ class AuthRepositoryImpl @Inject constructor(
                 userId = user.id.toString(),
                 email = user.email,
                 name = user.name,
-                phoneNumber = user.phone
+                phone = user.phone
             )
             user
         }
