@@ -28,6 +28,8 @@ export interface NotificationPayload {
       /^https:\/\/.*\.run\.app$/,
       'https://parkgolf-user.web.app',
       'https://parkgolf-user-dev.web.app',
+      'https://dev-user.goparkmate.com',
+      'https://user.goparkmate.com',
       'https://dev-api.goparkmate.com',
       'https://api.goparkmate.com',
     ],
