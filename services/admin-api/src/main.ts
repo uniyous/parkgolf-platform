@@ -43,6 +43,8 @@ async function bootstrap() {
             'http://localhost:3001',
             'https://parkgolf-admin.web.app',
             'https://parkgolf-admin-dev.web.app',
+            'https://dev-admin.goparkmate.com',
+            'https://admin.goparkmate.com',
             'https://dev-api.goparkmate.com',
             'https://api.goparkmate.com',
           ],
