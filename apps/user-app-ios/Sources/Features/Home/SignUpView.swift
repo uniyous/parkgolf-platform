@@ -104,7 +104,7 @@ struct SignUpView: View {
                                     text: $viewModel.phone,
                                     icon: "phone"
                                 )
-                                .textContentType(.telephone)
+                                .textContentType(.telephoneNumber)
                                 .keyboardType(.phonePad)
                             }
                         }
