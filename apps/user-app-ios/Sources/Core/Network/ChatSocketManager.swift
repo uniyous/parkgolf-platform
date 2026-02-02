@@ -27,6 +27,7 @@ class ChatSocketManager: ObservableObject {
     private var manager: SocketManager?
     private var socket: SocketIOClient?
     private var currentToken: String?
+    private var isRefreshingToken = false
 
     // MARK: - Configuration
 
@@ -168,7 +169,29 @@ class ChatSocketManager: ObservableObject {
                     #if DEBUG
                     print("❌ Socket.IO error: \(message)")
                     #endif
+                    if message.contains("Unauthorized") || message.contains("Authentication") {
+                        await self?.handleAuthError()
+                    }
                 }
+            }
+        }
+
+        // Token expiry events
+        socket.on("token_expiring") { [weak self] _, _ in
+            Task { @MainActor in
+                #if DEBUG
+                print("⚠️ Token expiring, refreshing...")
+                #endif
+                await self?.handleAuthError()
+            }
+        }
+
+        socket.on("token_expired") { [weak self] _, _ in
+            Task { @MainActor in
+                #if DEBUG
+                print("⚠️ Token expired, refreshing...")
+                #endif
+                await self?.handleAuthError()
             }
         }
 
@@ -268,6 +291,19 @@ class ChatSocketManager: ObservableObject {
 
     func sendTyping(roomId: String, isTyping: Bool) {
         socket?.emit("typing", ["roomId": roomId, "isTyping": isTyping])
+    }
+
+    // MARK: - Auth Error Handling
+
+    private func handleAuthError() async {
+        guard !isRefreshingToken else { return }
+        isRefreshingToken = true
+        defer { isRefreshingToken = false }
+
+        let refreshed = await APIClient.shared.refreshAccessToken()
+        if refreshed, let newToken = await APIClient.shared.getAccessToken() {
+            forceReconnect(token: newToken)
+        }
     }
 
     // MARK: - Parsing Helpers

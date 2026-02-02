@@ -94,6 +94,22 @@ actor APIClient {
         KeychainManager.shared.clearAll()
     }
 
+    /// ChatSocketManager 등 외부에서 토큰 갱신이 필요할 때 호출
+    func refreshAccessToken() async -> Bool {
+        do {
+            let refreshResponse = try await attemptTokenRefresh()
+            self.accessToken = refreshResponse.accessToken
+            self.refreshToken = refreshResponse.refreshToken
+            try? KeychainManager.shared.saveTokens(
+                accessToken: refreshResponse.accessToken,
+                refreshToken: refreshResponse.refreshToken
+            )
+            return true
+        } catch {
+            return false
+        }
+    }
+
     // MARK: - Request Methods
 
     func request<T: Decodable & Sendable>(

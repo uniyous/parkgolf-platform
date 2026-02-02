@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import Combine
 
 @MainActor
@@ -24,6 +25,7 @@ final class ChatRoomViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var cursor: String?
     private var cachedToken: String?
+    private nonisolated(unsafe) var foregroundObserver: (any NSObjectProtocol)?
 
     // MARK: - Init
 
@@ -31,6 +33,13 @@ final class ChatRoomViewModel: ObservableObject {
         self.roomId = roomId
         self.currentUserId = currentUserId
         setupSocketSubscriptions()
+        setupForegroundObserver()
+    }
+
+    deinit {
+        if let observer = foregroundObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     // MARK: - Socket Subscriptions
@@ -75,6 +84,21 @@ final class ChatRoomViewModel: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+    }
+
+    // MARK: - Foreground Observer
+
+    private func setupForegroundObserver() {
+        foregroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.willEnterForegroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self = self else { return }
+                await self.loadMessages()
+            }
+        }
     }
 
     // MARK: - Load Messages
@@ -231,12 +255,8 @@ final class ChatRoomViewModel: ObservableObject {
 
     /// 강제 재연결 (UI에서 호출)
     func forceReconnect() async {
-        let token: String
-        if let cached = cachedToken {
-            token = cached
-        } else if let fetched = await apiClient.getAccessToken() {
-            token = fetched
-        } else {
+        // 항상 신선한 토큰을 가져옴 (캐시된 토큰은 만료되었을 수 있음)
+        guard let token = await apiClient.getAccessToken() else {
             #if DEBUG
             print("No token available for force reconnect")
             #endif

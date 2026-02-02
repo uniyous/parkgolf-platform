@@ -7,6 +7,7 @@ struct ChatRoomView: View {
     @Environment(\.dismiss) private var dismiss
     @FocusState private var isInputFocused: Bool
     @State private var showInviteSheet = false
+    @State private var showParticipantsSheet = false
 
     init(room: ChatRoom, currentUserId: String) {
         self.room = room
@@ -41,6 +42,12 @@ struct ChatRoomView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button {
+                        showParticipantsSheet = true
+                    } label: {
+                        Label("참여자 목록", systemImage: "person.2")
+                    }
+
+                    Button {
                         showInviteSheet = true
                     } label: {
                         Label("친구 초대", systemImage: "person.badge.plus")
@@ -71,6 +78,12 @@ struct ChatRoomView: View {
             }
         }
         .toolbarBackground(.hidden, for: .navigationBar)
+        .sheet(isPresented: $showParticipantsSheet) {
+            ParticipantsSheet(
+                participants: room.participants,
+                currentUserId: viewModel.currentUserId
+            )
+        }
         .sheet(isPresented: $showInviteSheet) {
             InviteFriendsSheet(
                 existingParticipantIds: room.participants.map(\.userId),
@@ -131,10 +144,15 @@ struct ChatRoomView: View {
                         loadMoreButton
                     }
 
-                    ForEach(viewModel.messages) { message in
+                    ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
+                        let isCurrentUser = message.senderId == viewModel.currentUserId
+                        let showSender = !isCurrentUser &&
+                            (index == 0 || viewModel.messages[index - 1].senderId != message.senderId)
+
                         MessageBubble(
                             message: message,
-                            isCurrentUser: message.senderId == viewModel.currentUserId
+                            isCurrentUser: isCurrentUser,
+                            showSender: showSender
                         )
                         .id(message.id)
                         .onAppear {
@@ -242,6 +260,7 @@ struct ChatRoomView: View {
 struct MessageBubble: View {
     let message: ChatMessage
     let isCurrentUser: Bool
+    var showSender: Bool = true
 
     var body: some View {
         HStack(alignment: .bottom, spacing: ParkSpacing.xs) {
@@ -259,7 +278,7 @@ struct MessageBubble: View {
 
     private var messageContent: some View {
         VStack(alignment: isCurrentUser ? .trailing : .leading, spacing: 4) {
-            if !isCurrentUser {
+            if showSender {
                 Text(message.senderName)
                     .font(.parkCaption)
                     .foregroundStyle(.white.opacity(0.6))
@@ -417,6 +436,140 @@ struct InviteFriendsSheet: View {
             }
             isLoading = false
         }
+    }
+}
+
+// MARK: - Participants Sheet
+
+struct ParticipantsSheet: View {
+    let participants: [ChatParticipant]
+    let currentUserId: String
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var searchQuery = ""
+
+    private var showSearch: Bool {
+        participants.count >= 5
+    }
+
+    private var filteredParticipants: [ChatParticipant] {
+        let list = searchQuery.isEmpty ? participants : participants.filter {
+            $0.userName.localizedCaseInsensitiveContains(searchQuery) ||
+            ($0.userEmail ?? "").localizedCaseInsensitiveContains(searchQuery)
+        }
+        // 본인을 맨 위로 정렬
+        return list.sorted { a, b in
+            if a.userId == currentUserId { return true }
+            if b.userId == currentUserId { return false }
+            return a.userName < b.userName
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                LinearGradient.parkBackground
+                    .ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    if showSearch {
+                        HStack(spacing: ParkSpacing.sm) {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundStyle(.white.opacity(0.5))
+
+                            TextField("참여자 검색", text: $searchQuery)
+                                .foregroundStyle(.white)
+                                .font(.parkBodyMedium)
+
+                            if !searchQuery.isEmpty {
+                                Button {
+                                    searchQuery = ""
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.white.opacity(0.5))
+                                }
+                            }
+                        }
+                        .padding(ParkSpacing.md)
+                        .glassCard(padding: 0, cornerRadius: ParkRadius.lg)
+                        .padding(ParkSpacing.md)
+                    }
+
+                    if filteredParticipants.isEmpty {
+                        ParkEmptyStateView(
+                            icon: "person.2",
+                            title: "검색 결과가 없습니다",
+                            description: ""
+                        )
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: ParkSpacing.sm) {
+                                ForEach(filteredParticipants) { participant in
+                                    participantRow(participant)
+                                }
+                            }
+                            .padding(ParkSpacing.md)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("참여자 (\(participants.count)명)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("닫기") {
+                        dismiss()
+                    }
+                    .foregroundStyle(.white)
+                }
+            }
+            .toolbarBackground(.hidden, for: .navigationBar)
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func participantRow(_ participant: ChatParticipant) -> some View {
+        let isMe = participant.userId == currentUserId
+
+        return HStack(spacing: ParkSpacing.md) {
+            // Avatar
+            ZStack {
+                Circle()
+                    .fill(Color.parkPrimary.opacity(0.2))
+                    .frame(width: 40, height: 40)
+
+                Text(String(participant.userName.prefix(1)))
+                    .font(.parkHeadlineSmall)
+                    .foregroundStyle(.white)
+            }
+
+            // Name + Email
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: ParkSpacing.xs) {
+                    Text(participant.userName)
+                        .font(.parkBodyMedium)
+                        .foregroundStyle(.white)
+
+                    if isMe {
+                        Text("(나)")
+                            .font(.parkCaption)
+                            .foregroundStyle(Color.parkPrimary)
+                    }
+                }
+
+                if let email = participant.userEmail, !email.isEmpty {
+                    Text(email)
+                        .font(.parkCaption)
+                        .foregroundStyle(.white.opacity(0.5))
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer()
+        }
+        .padding(ParkSpacing.sm)
+        .glassCard(padding: 0, cornerRadius: ParkRadius.lg)
     }
 }
 
