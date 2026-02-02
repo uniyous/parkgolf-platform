@@ -189,15 +189,16 @@ class ChatSocketManager {
       this.userLeftHandlers.forEach(handler => handler(data));
     });
 
-    // Token expiry handling from server
+    // Token lifecycle events from server
     this.socket.on('token_expiring', () => {
-      console.log('[ChatSocket] Token expiring soon, refreshing...');
-      this.handleAuthError();
+      console.log('[ChatSocket] Token expiring soon, refreshing REST API token...');
+      apiClient.refreshAccessToken().catch(console.error);
     });
 
-    this.socket.on('token_expired', () => {
-      console.log('[ChatSocket] Token expired, refreshing and reconnecting...');
-      this.handleAuthError();
+    this.socket.on('token_refresh_needed', () => {
+      // Server session stays alive — just refresh the REST API token in background
+      console.log('[ChatSocket] Token expired, refreshing REST API token...');
+      apiClient.refreshAccessToken().catch(console.error);
     });
 
     // Socket.IO Manager 레벨 재연결 이벤트

@@ -103,9 +103,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       const timeLeft = tokenExp - now;
 
       if (timeLeft <= 0) {
-        this.logger.log(`Token expired for user ${user.id}, disconnecting socket ${socketId}`);
-        socket.emit('token_expired', { message: 'Token expired' });
-        socket.disconnect();
+        // JWT expired — notify client to refresh REST API token.
+        // WebSocket session stays alive (server session-based).
+        this.logger.debug(`Token expired for user ${user.id}, sending refresh reminder`);
+        socket.emit('token_refresh_needed', { message: 'Please refresh your REST API token' });
       } else if (timeLeft <= WARNING_THRESHOLD) {
         socket.emit('token_expiring', {
           message: 'Token expiring soon',
@@ -218,6 +219,22 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     const { roomId } = data;
 
+    // Verify room membership via chat-service
+    try {
+      const result = await this.natsService.requestChatService<{
+        success: boolean;
+        data: { isMember: boolean };
+      }>('rooms.checkMembership', { roomId, userId: user.id });
+
+      if (!result?.success || !result?.data?.isMember) {
+        this.logger.warn(`User ${user.id} denied access to room ${roomId} — not a member`);
+        return { success: false, error: { code: 'FORBIDDEN', message: 'Not a room member' } };
+      }
+    } catch (error) {
+      this.logger.error(`Membership check failed for room ${roomId}: ${error}`);
+      return { success: false, error: { code: 'MEMBERSHIP_CHECK_ERROR', message: 'Failed to verify room membership' } };
+    }
+
     // Join Socket.io room
     client.join(roomId);
 
@@ -301,6 +318,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     }
 
     const { roomId, content, type = 'text' } = data;
+
+    // Verify sender has joined the room (lightweight Socket.IO room check)
+    if (!client.rooms.has(roomId)) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Not a room member' } };
+    }
 
     const message: ChatMessage = {
       id: uuidv4(),

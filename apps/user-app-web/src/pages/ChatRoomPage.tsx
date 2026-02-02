@@ -108,9 +108,14 @@ export const ChatRoomPage: React.FC = () => {
       console.error('Socket error:', error);
     });
 
-    // 탭 백그라운드 → 포그라운드 전환 시 메시지 갭 복구
+    // 탭 백그라운드 → 포그라운드 전환 시 소켓 재연결 + 메시지 갭 복구
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
+        // Reconnect socket if disconnected during background
+        if (!chatSocket.isConnected) {
+          const token = authStorage.getToken();
+          if (token) chatSocket.forceReconnect(token);
+        }
         setRealtimeMessages([]);
         queryClient.invalidateQueries({ queryKey: ['chat', 'messages', roomId] });
       }

@@ -2,6 +2,18 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { IoAdapter } from '@nestjs/platform-socket.io';
+import { ServerOptions } from 'socket.io';
+
+class ChatIoAdapter extends IoAdapter {
+  createIOServer(port: number, options?: ServerOptions) {
+    return super.createIOServer(port, {
+      ...options,
+      pingInterval: 25000,
+      pingTimeout: 60000,
+      connectTimeout: 45000,
+    });
+  }
+}
 
 async function bootstrap() {
   const logger = new Logger('ChatGateway');
@@ -15,8 +27,8 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log'],
   });
 
-  // WebSocket Adapter
-  app.useWebSocketAdapter(new IoAdapter(app));
+  // WebSocket Adapter (custom ping/timeout for long-lived connections)
+  app.useWebSocketAdapter(new ChatIoAdapter(app));
 
   // Validation
   app.useGlobalPipes(

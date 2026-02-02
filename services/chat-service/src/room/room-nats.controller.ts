@@ -64,6 +64,17 @@ export class RoomNatsController {
     }
   }
 
+  @MessagePattern('chat.rooms.checkMembership')
+  async checkMembership(@Payload() data: { roomId: string; userId: number }) {
+    try {
+      const member = await this.roomService.checkMembership(data.roomId, data.userId);
+      return NatsResponse.success({ isMember: !!member });
+    } catch (error: any) {
+      this.logger.error(`Failed to check membership: ${error.message}`);
+      return { success: false, error: { code: 'CHECK_MEMBERSHIP_ERROR', message: error.message } };
+    }
+  }
+
   @MessagePattern('chat.rooms.booking')
   async getOrCreateBookingRoom(@Payload() data: { bookingId: number; members: { id: number; name: string }[] }) {
     try {

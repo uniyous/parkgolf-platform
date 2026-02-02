@@ -94,6 +94,13 @@ export class RoomService {
     return room;
   }
 
+  // 멤버십 확인
+  async checkMembership(roomId: string, userId: number) {
+    return this.prisma.chatRoomMember.findFirst({
+      where: { roomId, userId, leftAt: null },
+    });
+  }
+
   // 채팅방 조회
   async getRoom(roomId: string) {
     return this.prisma.chatRoom.findUnique({
