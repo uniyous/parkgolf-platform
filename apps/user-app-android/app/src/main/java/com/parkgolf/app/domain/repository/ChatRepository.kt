@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 interface ChatRepository {
     val messageFlow: Flow<ChatMessage>
     val connectionState: Flow<Boolean>
+    val tokenRefreshNeeded: Flow<Unit>
 
     // API returns simple array, not paginated
     suspend fun getChatRooms(page: Int = 1, limit: Int = 50): Result<List<ChatRoom>>

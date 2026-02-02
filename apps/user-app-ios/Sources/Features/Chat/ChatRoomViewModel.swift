@@ -96,6 +96,13 @@ final class ChatRoomViewModel: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor in
                 guard let self = self else { return }
+
+                // Reconnect socket if disconnected during background
+                if !self.socketManager.isConnected {
+                    await self.forceReconnect()
+                }
+
+                // Reload messages to fill any gap
                 await self.loadMessages()
             }
         }

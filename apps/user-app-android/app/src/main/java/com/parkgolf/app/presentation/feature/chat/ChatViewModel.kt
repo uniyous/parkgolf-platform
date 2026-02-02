@@ -46,6 +46,7 @@ class ChatViewModel @Inject constructor(
     init {
         observeConnectionState()
         observeMessages()
+        observeTokenRefresh()
         loadCurrentUser()
     }
 
@@ -63,6 +64,16 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             chatRepository.connectionState.collect { isConnected ->
                 _uiState.value = _uiState.value.copy(isConnected = isConnected)
+            }
+        }
+    }
+
+    private fun observeTokenRefresh() {
+        viewModelScope.launch {
+            chatRepository.tokenRefreshNeeded.collect {
+                // Server session stays alive — just refresh REST API token in background
+                Log.d(TAG, "Token refresh needed, refreshing REST API token...")
+                authRepository.refreshToken()
             }
         }
     }

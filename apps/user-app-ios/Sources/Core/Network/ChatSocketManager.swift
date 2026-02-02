@@ -67,10 +67,21 @@ class ChatSocketManager: ObservableObject {
     }
 
     private func handleAppWillEnterForeground() {
-        // Socket.IO handles reconnection automatically via built-in reconnect config
         #if DEBUG
         print("📱 App entered foreground, socket state: \(isConnected ? "connected" : "disconnected")")
         #endif
+
+        // Reconnect socket if disconnected during background
+        if !isConnected, let token = currentToken {
+            Task {
+                // Try to get a fresh token first
+                if let freshToken = await APIClient.shared.getAccessToken() {
+                    forceReconnect(token: freshToken)
+                } else {
+                    forceReconnect(token: token)
+                }
+            }
+        }
     }
 
     private func handleAppDidEnterBackground() {
@@ -176,22 +187,22 @@ class ChatSocketManager: ObservableObject {
             }
         }
 
-        // Token expiry events
-        socket.on("token_expiring") { [weak self] _, _ in
-            Task { @MainActor in
+        // Token lifecycle events — server session stays alive, just refresh REST API token
+        socket.on("token_expiring") { _, _ in
+            Task {
                 #if DEBUG
-                print("⚠️ Token expiring, refreshing...")
+                print("⚠️ Token expiring soon, refreshing REST API token...")
                 #endif
-                await self?.handleAuthError()
+                _ = await APIClient.shared.refreshAccessToken()
             }
         }
 
-        socket.on("token_expired") { [weak self] _, _ in
-            Task { @MainActor in
+        socket.on("token_refresh_needed") { _, _ in
+            Task {
                 #if DEBUG
-                print("⚠️ Token expired, refreshing...")
+                print("⚠️ Token expired, refreshing REST API token...")
                 #endif
-                await self?.handleAuthError()
+                _ = await APIClient.shared.refreshAccessToken()
             }
         }
 

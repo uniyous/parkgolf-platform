@@ -72,6 +72,10 @@ class ChatSocketManager @Inject constructor() {
     private val _error = MutableSharedFlow<SocketError>(extraBufferCapacity = 10)
     val error: SharedFlow<SocketError> = _error.asSharedFlow()
 
+    // Token refresh signal — server session stays alive, just refresh REST API token
+    private val _tokenRefreshNeeded = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val tokenRefreshNeeded: SharedFlow<Unit> = _tokenRefreshNeeded.asSharedFlow()
+
     /**
      * 소켓 연결
      * @param token JWT 인증 토큰
@@ -348,6 +352,16 @@ class ChatSocketManager @Inject constructor() {
 
         on("user_left") { args ->
             handleUserLeft(args)
+        }
+
+        on("token_expiring") {
+            Log.d(TAG, "Token expiring soon, requesting REST API token refresh")
+            _tokenRefreshNeeded.tryEmit(Unit)
+        }
+
+        on("token_refresh_needed") {
+            Log.d(TAG, "Token expired, requesting REST API token refresh")
+            _tokenRefreshNeeded.tryEmit(Unit)
         }
 
         on("error") { args ->
