@@ -96,7 +96,7 @@ export class ChatService {
     if (otherIds.length > 0) {
       const userInfos = await this.fetchUserInfos(otherIds);
       for (const info of userInfos) {
-        memberNames[info.id] = info.name || info.email;
+        memberNames[info.id] = info.name;
         memberEmails[info.id] = info.email;
       }
     }
@@ -197,7 +197,7 @@ export class ChatService {
           {
             roomId,
             userId,
-            userName: info?.name || info?.email || `User${userId}`,
+            userName: info?.name,
             userEmail: info?.email || null,
           },
           NATS_TIMEOUTS.QUICK,
@@ -235,7 +235,7 @@ export class ChatService {
           if (response.success && response.data) {
             results.push({
               id: Number(response.data.id),
-              name: response.data.name || response.data.email,
+              name: response.data.name,
               email: response.data.email,
             });
           }

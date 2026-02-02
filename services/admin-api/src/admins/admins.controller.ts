@@ -130,7 +130,7 @@ export class AdminsController {
     @BearerToken() token: string,
     @Body() adminData: CreateAdminDto,
   ) {
-    this.logger.log(`Creating admin: ${adminData.name || adminData.email}`);
+    this.logger.log(`Creating admin: ${adminData.name}`);
     return this.adminService.createAdmin(adminData, token);
   }
 

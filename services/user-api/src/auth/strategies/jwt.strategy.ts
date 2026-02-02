@@ -17,6 +17,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       userId: typeof payload.sub === 'string' ? parseInt(payload.sub, 10) : payload.sub,
       email: payload.email,
+      name: payload.name,
       roles: payload.roles,
     };
   }

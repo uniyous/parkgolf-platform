@@ -69,7 +69,7 @@ export class ChatController {
   ) {
     return this.chatService.createChatRoom(
       user.userId,
-      user.name || user.email,
+      user.name,
       user.email,
       dto,
     );
@@ -109,7 +109,7 @@ export class ChatController {
     return this.chatService.sendMessage(
       roomId,
       user.userId,
-      user.name || user.email,
+      user.name,
       dto.content,
       dto.message_type || MessageType.TEXT,
     );

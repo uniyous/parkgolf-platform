@@ -97,7 +97,7 @@ export class AuthService {
       user: {
         id: authData.user.id,
         email: authData.user.email,
-        name: authData.user.name || authData.user.email,
+        name: authData.user.name,
         phoneNumber: '',
         createdAt: new Date(),
       },
@@ -122,7 +122,7 @@ export class AuthService {
       user: {
         id: authData.user.id,
         email: authData.user.email,
-        name: authData.user.name || authData.user.email,
+        name: authData.user.name,
         phoneNumber: '',
         createdAt: new Date(),
       },

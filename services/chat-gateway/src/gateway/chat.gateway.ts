@@ -314,14 +314,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     // 1. 다른 클라이언트에만 브로드캐스트 (발신자 제외 — 발신자는 ACK로 수신)
     client.to(roomId).emit('new_message', message);
-    this.logger.debug(`Message sent to room ${roomId} by ${user.name || user.email}`);
+    this.logger.debug(`Message sent to room ${roomId} by ${user.name}`);
 
     // 2. DB 저장 - 비동기 (응답 대기 없이)
     this.natsService.requestChatService('messages.save', {
       id: message.id,
       roomId: message.roomId,
       senderId: message.senderId,
-      senderName: message.senderName || user.email || 'Unknown',
+      senderName: message.senderName,
       content: message.content,
       type: message.type.toUpperCase(),
       createdAt: message.createdAt,
@@ -374,7 +374,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       id: message.id,
       roomId: message.roomId,
       senderId: message.senderId,
-      senderName: message.senderName || user.email || 'Unknown',
+      senderName: message.senderName,
       content: message.content,
       type: message.type.toUpperCase(),
       createdAt: message.createdAt,
