@@ -41,6 +41,7 @@
 		66C1F0B2BAD02A6FE332E0AA /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9DA0E8A3C1010CEEC70A5F /* ProfileView.swift */; };
 		66E849B481FD6DB9BC4E074E /* MyBookingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2613DCF7C9DE5C6464C01A1 /* MyBookingsView.swift */; };
 		6BE62BA55702D2E9464AD1AB /* Alamofire.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 843D0F5C4E6AAEADB31D1366 /* Alamofire.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		6E1A5E6B1B86F4A60E44BE4A /* NotificationSocketManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FB800B49FBA07162D9DA6D4 /* NotificationSocketManager.swift */; };
 		6E64635F965160EE2189713E /* RoundService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F37E6F00B3B10E3026CD368F /* RoundService.swift */; };
 		70455E2873E7F8101CD91BFB /* ParkGolfApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D1ACDEDC2649EE22183C418 /* ParkGolfApp.swift */; };
 		72F63CCEFE75CBF98EC12A6D /* Round.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7BC2B942DF8F763DD87B0E1 /* Round.swift */; };
@@ -172,6 +173,7 @@
 		40E101B4CF841C3D29D3AB50 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		48E0B560B4793A3955A88125 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		494C590AAABDFF697299705F /* ParkGolfTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ParkGolfTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4FB800B49FBA07162D9DA6D4 /* NotificationSocketManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSocketManager.swift; sourceTree = "<group>"; };
 		52AB2AC3D3A243B207CE8910 /* ParkGolfUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParkGolfUITests.swift; sourceTree = "<group>"; };
 		5428577075E683CB996E64B5 /* ForgotPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgotPasswordView.swift; sourceTree = "<group>"; };
 		547F9274EB6CAD5370C7791E /* NotificationSettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSettingsViewModel.swift; sourceTree = "<group>"; };
@@ -477,6 +479,7 @@
 				FD4B375DEE30695ECC01789A /* Endpoints.swift */,
 				B81F5F98544420CA57DFDC44 /* FriendService.swift */,
 				EECCDCD78EA163F7FA13493C /* NotificationService.swift */,
+				4FB800B49FBA07162D9DA6D4 /* NotificationSocketManager.swift */,
 				F37E6F00B3B10E3026CD368F /* RoundService.swift */,
 				DF0B66433BF22A363996D154 /* SettingsService.swift */,
 				860003A8359916970B174436 /* WebSocketClient.swift */,
@@ -772,6 +775,7 @@
 				E37393C0927DF046ACBD5BF8 /* Endpoints.swift in Sources */,
 				130F364ED92150D278053A71 /* FriendService.swift in Sources */,
 				7EE7CFE52279811A6D158B8D /* NotificationService.swift in Sources */,
+				6E1A5E6B1B86F4A60E44BE4A /* NotificationSocketManager.swift in Sources */,
 				6E64635F965160EE2189713E /* RoundService.swift in Sources */,
 				63B378C32D1764D68E2F6C33 /* SettingsService.swift in Sources */,
 				517DC5CCE0EAAF82B41FEC0A /* WebSocketClient.swift in Sources */,
