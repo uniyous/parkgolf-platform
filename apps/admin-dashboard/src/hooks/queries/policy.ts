@@ -19,10 +19,7 @@ import type {
 export const useCancellationPolicyDefaultQuery = (clubId?: number) => {
   return useQuery({
     queryKey: policyKeys.cancellationDefault(clubId),
-    queryFn: async () => {
-      const response = await cancellationPolicyApi.getDefault(clubId);
-      return response.data?.success ? response.data.data : null;
-    },
+    queryFn: () => cancellationPolicyApi.getDefault(clubId),
     meta: { globalLoading: false },
   });
 };
@@ -30,10 +27,7 @@ export const useCancellationPolicyDefaultQuery = (clubId?: number) => {
 export const useCancellationPolicyQuery = (id: number) => {
   return useQuery({
     queryKey: policyKeys.cancellationDetail(id),
-    queryFn: async () => {
-      const response = await cancellationPolicyApi.getById(id);
-      return response.data?.success ? response.data.data : null;
-    },
+    queryFn: () => cancellationPolicyApi.getById(id),
     enabled: !!id,
     meta: { globalLoading: false },
   });
@@ -47,13 +41,8 @@ export const useCreateCancellationPolicyMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: Omit<CancellationPolicy, 'id' | 'createdAt' | 'updatedAt'>) => {
-      const response = await cancellationPolicyApi.create(data);
-      if (!response.data?.success) {
-        throw new Error('정책 생성에 실패했습니다.');
-      }
-      return response.data.data;
-    },
+    mutationFn: (data: Omit<CancellationPolicy, 'id' | 'createdAt' | 'updatedAt'>) =>
+      cancellationPolicyApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: policyKeys.cancellation() });
       showSuccessToast('취소 정책이 생성되었습니다.');
@@ -66,13 +55,8 @@ export const useUpdateCancellationPolicyMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<CancellationPolicy> }) => {
-      const response = await cancellationPolicyApi.update(id, data);
-      if (!response.data?.success) {
-        throw new Error('정책 업데이트에 실패했습니다.');
-      }
-      return response.data.data;
-    },
+    mutationFn: ({ id, data }: { id: number; data: Partial<CancellationPolicy> }) =>
+      cancellationPolicyApi.update(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: policyKeys.cancellation() });
       queryClient.invalidateQueries({ queryKey: policyKeys.cancellationDetail(id) });
@@ -86,13 +70,7 @@ export const useDeleteCancellationPolicyMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: number) => {
-      const response = await cancellationPolicyApi.delete(id);
-      if (!response.data?.success) {
-        throw new Error('정책 삭제에 실패했습니다.');
-      }
-      return response.data.data;
-    },
+    mutationFn: (id: number) => cancellationPolicyApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: policyKeys.cancellation() });
       showSuccessToast('취소 정책이 삭제되었습니다.');
@@ -108,10 +86,7 @@ export const useDeleteCancellationPolicyMutation = () => {
 export const useRefundPolicyDefaultQuery = (clubId?: number) => {
   return useQuery({
     queryKey: policyKeys.refundDefault(clubId),
-    queryFn: async () => {
-      const response = await refundPolicyApi.getDefault(clubId);
-      return response.data?.success ? response.data.data : null;
-    },
+    queryFn: () => refundPolicyApi.getDefault(clubId),
     meta: { globalLoading: false },
   });
 };
@@ -119,10 +94,7 @@ export const useRefundPolicyDefaultQuery = (clubId?: number) => {
 export const useRefundPolicyQuery = (id: number) => {
   return useQuery({
     queryKey: policyKeys.refundDetail(id),
-    queryFn: async () => {
-      const response = await refundPolicyApi.getById(id);
-      return response.data?.success ? response.data.data : null;
-    },
+    queryFn: () => refundPolicyApi.getById(id),
     enabled: !!id,
     meta: { globalLoading: false },
   });
@@ -136,13 +108,8 @@ export const useCreateRefundPolicyMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: Omit<RefundPolicy, 'id' | 'createdAt' | 'updatedAt'>) => {
-      const response = await refundPolicyApi.create(data as any);
-      if (!response.data?.success) {
-        throw new Error('정책 생성에 실패했습니다.');
-      }
-      return response.data.data;
-    },
+    mutationFn: (data: Omit<RefundPolicy, 'id' | 'createdAt' | 'updatedAt'>) =>
+      refundPolicyApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: policyKeys.refund() });
       showSuccessToast('환불 정책이 생성되었습니다.');
@@ -155,13 +122,8 @@ export const useUpdateRefundPolicyMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<RefundPolicy> }) => {
-      const response = await refundPolicyApi.update(id, data as any);
-      if (!response.data?.success) {
-        throw new Error('정책 업데이트에 실패했습니다.');
-      }
-      return response.data.data;
-    },
+    mutationFn: ({ id, data }: { id: number; data: Partial<RefundPolicy> }) =>
+      refundPolicyApi.update(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: policyKeys.refund() });
       queryClient.invalidateQueries({ queryKey: policyKeys.refundDetail(id) });
@@ -175,13 +137,7 @@ export const useDeleteRefundPolicyMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: number) => {
-      const response = await refundPolicyApi.delete(id);
-      if (!response.data?.success) {
-        throw new Error('정책 삭제에 실패했습니다.');
-      }
-      return response.data.data;
-    },
+    mutationFn: (id: number) => refundPolicyApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: policyKeys.refund() });
       showSuccessToast('환불 정책이 삭제되었습니다.');
@@ -197,10 +153,7 @@ export const useDeleteRefundPolicyMutation = () => {
 export const useNoShowPolicyDefaultQuery = (clubId?: number) => {
   return useQuery({
     queryKey: policyKeys.noShowDefault(clubId),
-    queryFn: async () => {
-      const response = await noShowPolicyApi.getDefault(clubId);
-      return response.data?.success ? response.data.data : null;
-    },
+    queryFn: () => noShowPolicyApi.getDefault(clubId),
     meta: { globalLoading: false },
   });
 };
@@ -208,10 +161,7 @@ export const useNoShowPolicyDefaultQuery = (clubId?: number) => {
 export const useNoShowPolicyQuery = (id: number) => {
   return useQuery({
     queryKey: policyKeys.noShowDetail(id),
-    queryFn: async () => {
-      const response = await noShowPolicyApi.getById(id);
-      return response.data?.success ? response.data.data : null;
-    },
+    queryFn: () => noShowPolicyApi.getById(id),
     enabled: !!id,
     meta: { globalLoading: false },
   });
@@ -225,13 +175,8 @@ export const useCreateNoShowPolicyMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: Omit<NoShowPolicy, 'id' | 'createdAt' | 'updatedAt'>) => {
-      const response = await noShowPolicyApi.create(data as any);
-      if (!response.data?.success) {
-        throw new Error('정책 생성에 실패했습니다.');
-      }
-      return response.data.data;
-    },
+    mutationFn: (data: Omit<NoShowPolicy, 'id' | 'createdAt' | 'updatedAt'>) =>
+      noShowPolicyApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: policyKeys.noShow() });
       showSuccessToast('노쇼 정책이 생성되었습니다.');
@@ -244,13 +189,8 @@ export const useUpdateNoShowPolicyMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<NoShowPolicy> }) => {
-      const response = await noShowPolicyApi.update(id, data as any);
-      if (!response.data?.success) {
-        throw new Error('정책 업데이트에 실패했습니다.');
-      }
-      return response.data.data;
-    },
+    mutationFn: ({ id, data }: { id: number; data: Partial<NoShowPolicy> }) =>
+      noShowPolicyApi.update(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: policyKeys.noShow() });
       queryClient.invalidateQueries({ queryKey: policyKeys.noShowDetail(id) });
@@ -264,13 +204,7 @@ export const useDeleteNoShowPolicyMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: number) => {
-      const response = await noShowPolicyApi.delete(id);
-      if (!response.data?.success) {
-        throw new Error('정책 삭제에 실패했습니다.');
-      }
-      return response.data.data;
-    },
+    mutationFn: (id: number) => noShowPolicyApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: policyKeys.noShow() });
       showSuccessToast('노쇼 정책이 삭제되었습니다.');

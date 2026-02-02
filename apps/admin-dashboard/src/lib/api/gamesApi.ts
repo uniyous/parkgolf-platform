@@ -210,16 +210,20 @@ export const gamesApi = {
    * 게임 생성
    */
   async createGame(data: CreateGameDto): Promise<Game> {
-    const response = await apiClient.post<{ success: boolean; data: Game }>('/admin/games', data);
-    return response.data?.data;
+    const response = await apiClient.post<unknown>('/admin/games', data);
+    const game = extractSingle<Game>(response.data);
+    if (!game) throw new Error('Failed to create game');
+    return normalizeGame(game);
   },
 
   /**
    * 게임 수정
    */
   async updateGame(gameId: number, data: UpdateGameDto): Promise<Game> {
-    const response = await apiClient.patch<{ success: boolean; data: Game }>(`/admin/games/${gameId}`, data);
-    return response.data?.data;
+    const response = await apiClient.patch<unknown>(`/admin/games/${gameId}`, data);
+    const game = extractSingle<Game>(response.data);
+    if (!game) throw new Error('Failed to update game');
+    return normalizeGame(game);
   },
 
   /**
@@ -250,21 +254,25 @@ export const gamesApi = {
    * 주간 스케줄 상세 조회
    */
   async getWeeklyScheduleById(gameId: number, scheduleId: number): Promise<GameWeeklySchedule> {
-    const response = await apiClient.get<{ success: boolean; data: GameWeeklySchedule }>(
+    const response = await apiClient.get<unknown>(
       `/admin/games/${gameId}/weekly-schedules/${scheduleId}`
     );
-    return response.data?.data;
+    const schedule = extractSingle<GameWeeklySchedule>(response.data);
+    if (!schedule) throw new Error('Weekly schedule not found');
+    return schedule;
   },
 
   /**
    * 주간 스케줄 생성
    */
   async createWeeklySchedule(gameId: number, data: CreateGameWeeklyScheduleDto): Promise<GameWeeklySchedule> {
-    const response = await apiClient.post<{ success: boolean; data: GameWeeklySchedule }>(
+    const response = await apiClient.post<unknown>(
       `/admin/games/${gameId}/weekly-schedules`,
       data
     );
-    return response.data?.data;
+    const schedule = extractSingle<GameWeeklySchedule>(response.data);
+    if (!schedule) throw new Error('Failed to create weekly schedule');
+    return schedule;
   },
 
   /**
@@ -275,11 +283,13 @@ export const gamesApi = {
     scheduleId: number,
     data: UpdateGameWeeklyScheduleDto
   ): Promise<GameWeeklySchedule> {
-    const response = await apiClient.patch<{ success: boolean; data: GameWeeklySchedule }>(
+    const response = await apiClient.patch<unknown>(
       `/admin/games/${gameId}/weekly-schedules/${scheduleId}`,
       data
     );
-    return response.data?.data;
+    const schedule = extractSingle<GameWeeklySchedule>(response.data);
+    if (!schedule) throw new Error('Failed to update weekly schedule');
+    return schedule;
   },
 
   /**
@@ -316,54 +326,60 @@ export const gamesApi = {
    * 타임슬롯 상세 조회
    */
   async getTimeSlotById(gameId: number, timeSlotId: number): Promise<GameTimeSlot> {
-    const response = await apiClient.get<{ success: boolean; data: GameTimeSlot }>(
+    const response = await apiClient.get<unknown>(
       `/admin/games/${gameId}/time-slots/${timeSlotId}`
     );
-    return response.data?.data;
+    const slot = extractSingle<GameTimeSlot>(response.data);
+    if (!slot) throw new Error('Time slot not found');
+    return slot;
   },
 
   /**
    * 타임슬롯 생성
    */
   async createTimeSlot(gameId: number, data: CreateGameTimeSlotDto): Promise<GameTimeSlot> {
-    const response = await apiClient.post<{ success: boolean; data: GameTimeSlot }>(
+    const response = await apiClient.post<unknown>(
       `/admin/games/${gameId}/time-slots`,
       data
     );
-    return response.data?.data;
+    const slot = extractSingle<GameTimeSlot>(response.data);
+    if (!slot) throw new Error('Failed to create time slot');
+    return slot;
   },
 
   /**
    * 타임슬롯 일괄 생성
    */
   async bulkCreateTimeSlots(gameId: number, timeSlots: CreateGameTimeSlotDto[]): Promise<GameTimeSlot[]> {
-    const response = await apiClient.post<{ success: boolean; data: GameTimeSlot[] }>(
+    const response = await apiClient.post<unknown>(
       `/admin/games/${gameId}/time-slots/bulk`,
       { timeSlots }
     );
-    return response.data?.data || [];
+    return extractList<GameTimeSlot>(response.data);
   },
 
   /**
    * 주간 스케줄 기반 타임슬롯 자동 생성
    */
   async generateTimeSlots(gameId: number, startDate: string, endDate: string): Promise<GameTimeSlot[]> {
-    const response = await apiClient.post<{ success: boolean; data: GameTimeSlot[] }>(
+    const response = await apiClient.post<unknown>(
       `/admin/games/${gameId}/time-slots/generate`,
       { startDate, endDate }
     );
-    return response.data?.data || [];
+    return extractList<GameTimeSlot>(response.data);
   },
 
   /**
    * 타임슬롯 수정
    */
   async updateTimeSlot(gameId: number, timeSlotId: number, data: UpdateGameTimeSlotDto): Promise<GameTimeSlot> {
-    const response = await apiClient.patch<{ success: boolean; data: GameTimeSlot }>(
+    const response = await apiClient.patch<unknown>(
       `/admin/games/${gameId}/time-slots/${timeSlotId}`,
       data
     );
-    return response.data?.data;
+    const slot = extractSingle<GameTimeSlot>(response.data);
+    if (!slot) throw new Error('Failed to update time slot');
+    return slot;
   },
 
   /**
@@ -386,26 +402,9 @@ export const gamesApi = {
     bookedSlots: number;
     utilizationRate: number;
   }> {
-    const response = await apiClient.get<any>('/admin/games/time-slots/stats', filter || {});
-    const responseData = response.data;
-
-    // 기본값
-    const defaultStats = {
-      totalSlots: 0,
-      availableSlots: 0,
-      bookedSlots: 0,
-      utilizationRate: 0,
-    };
-
-    if (!responseData) return defaultStats;
-
-    // { success: true, data: {...} } 형식
-    if (responseData.data && typeof responseData.data === 'object') {
-      return { ...defaultStats, ...responseData.data };
-    }
-
-    // 직접 stats 객체
-    return { ...defaultStats, ...responseData };
+    const defaultStats = { totalSlots: 0, availableSlots: 0, bookedSlots: 0, utilizationRate: 0 };
+    const response = await apiClient.get<unknown>('/admin/games/time-slots/stats', filter || {});
+    return { ...defaultStats, ...extractSingle<Record<string, number>>(response.data) };
   },
 } as const;
 

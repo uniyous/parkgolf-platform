@@ -81,7 +81,8 @@ export const useCancelBookingMutation = () => {
   return useMutation({
     mutationFn: (id: number) => bookingApi.cancelBooking(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+      queryClient.invalidateQueries({ queryKey: bookingKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: bookingKeys.stats() });
       showSuccessToast('예약이 취소되었습니다.');
     },
     meta: { errorMessage: '예약 취소에 실패했습니다.' },
@@ -94,7 +95,8 @@ export const useConfirmBookingMutation = () => {
   return useMutation({
     mutationFn: (id: number) => bookingApi.confirmBooking(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+      queryClient.invalidateQueries({ queryKey: bookingKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: bookingKeys.stats() });
       showSuccessToast('예약이 확정되었습니다.');
     },
     meta: { errorMessage: '예약 확정에 실패했습니다.' },
@@ -107,7 +109,8 @@ export const useCompleteBookingMutation = () => {
   return useMutation({
     mutationFn: (id: number) => bookingApi.completeBooking(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+      queryClient.invalidateQueries({ queryKey: bookingKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: bookingKeys.stats() });
       showSuccessToast('예약이 완료 처리되었습니다.');
     },
     meta: { errorMessage: '예약 완료 처리에 실패했습니다.' },
@@ -120,7 +123,8 @@ export const useNoShowBookingMutation = () => {
   return useMutation({
     mutationFn: (id: number) => bookingApi.markNoShow(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+      queryClient.invalidateQueries({ queryKey: bookingKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: bookingKeys.stats() });
       showSuccessToast('노쇼 처리되었습니다.');
     },
     meta: { errorMessage: '노쇼 처리에 실패했습니다.' },

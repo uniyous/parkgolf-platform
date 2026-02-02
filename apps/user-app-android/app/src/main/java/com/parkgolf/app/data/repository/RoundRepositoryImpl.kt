@@ -9,6 +9,7 @@ import com.parkgolf.app.domain.repository.RoundRepository
 import com.parkgolf.app.util.PaginatedData
 import com.parkgolf.app.util.safeApiCall
 import com.parkgolf.app.util.toResult
+import com.parkgolf.app.util.toPaginatedResult
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,24 +19,11 @@ class RoundRepositoryImpl @Inject constructor(
 ) : RoundRepository {
 
     override suspend fun getRounds(clubId: Int?, page: Int, limit: Int): Result<PaginatedData<Round>> = safeApiCall {
-        val response = roundApi.getRounds(clubId, page, limit)
-        if (response.success) {
-            Result.success(
-                PaginatedData(
-                    data = response.data.map { it.toDomain() },
-                    total = response.total,
-                    page = response.page,
-                    limit = response.limit,
-                    totalPages = response.totalPages
-                )
-            )
-        } else {
-            Result.failure(Exception("라운드 목록 조회에 실패했습니다"))
-        }
+        roundApi.getRounds(clubId, page, limit).toPaginatedResult("라운드 목록 조회에 실패했습니다") { it.toDomain() }
     }
 
     override suspend fun searchRounds(params: RoundSearchParams): Result<PaginatedData<Round>> = safeApiCall {
-        val response = roundApi.searchRounds(
+        roundApi.searchRounds(
             search = params.search,
             date = params.date,
             minPrice = params.minPrice,
@@ -45,20 +33,7 @@ class RoundRepositoryImpl @Inject constructor(
             sortOrder = params.sortOrder.value,
             page = params.page,
             limit = params.limit
-        )
-        if (response.success) {
-            Result.success(
-                PaginatedData(
-                    data = response.data.map { it.toDomain() },
-                    total = response.total,
-                    page = response.page,
-                    limit = response.limit,
-                    totalPages = response.totalPages
-                )
-            )
-        } else {
-            Result.failure(Exception("라운드 검색에 실패했습니다"))
-        }
+        ).toPaginatedResult("라운드 검색에 실패했습니다") { it.toDomain() }
     }
 
     override suspend fun getRound(roundId: Int): Result<Round> = safeApiCall {

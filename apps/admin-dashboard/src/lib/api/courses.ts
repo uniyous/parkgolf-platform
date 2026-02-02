@@ -169,16 +169,20 @@ export const courseApi = {
    * 골프장 생성
    */
   async createClub(data: CreateClubDto): Promise<Club> {
-    const response = await apiClient.post<Club>('/admin/courses/clubs', data);
-    return response.data;
+    const response = await apiClient.post<unknown>('/admin/courses/clubs', data);
+    const club = extractSingle<Club>(response.data);
+    if (!club) throw new Error('Failed to create club');
+    return club;
   },
 
   /**
    * 골프장 수정
    */
   async updateClub(id: number, data: UpdateClubDto): Promise<Club> {
-    const response = await apiClient.put<Club>(`/admin/courses/clubs/${id}`, data);
-    return response.data;
+    const response = await apiClient.put<unknown>(`/admin/courses/clubs/${id}`, data);
+    const club = extractSingle<Club>(response.data);
+    if (!club) throw new Error('Failed to update club');
+    return club;
   },
 
   /**
@@ -209,8 +213,10 @@ export const courseApi = {
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
 
-    const response = await apiClient.get<CourseStats>('/admin/courses/stats/overview', params);
-    return response.data;
+    const response = await apiClient.get<unknown>('/admin/courses/stats/overview', params);
+    return extractSingle<CourseStats>(response.data) ?? {
+      totalClubs: 0, totalCourses: 0, totalHoles: 0, activeClubs: 0, byStatus: {},
+    };
   },
 
   /**
@@ -274,32 +280,38 @@ export const courseApi = {
    * 코스의 홀 목록 조회
    */
   async getHolesByCourse(courseId: number): Promise<Hole[]> {
-    const response = await apiClient.get<{ success: boolean; data: Hole[] }>(`/admin/courses/${courseId}/holes`);
-    return response.data?.data || [];
+    const response = await apiClient.get<unknown>(`/admin/courses/${courseId}/holes`);
+    return extractList<Hole>(response.data);
   },
 
   /**
    * 홀 상세 조회
    */
   async getHoleById(courseId: number, holeId: number): Promise<Hole> {
-    const response = await apiClient.get<{ success: boolean; data: Hole }>(`/admin/courses/${courseId}/holes/${holeId}`);
-    return response.data?.data;
+    const response = await apiClient.get<unknown>(`/admin/courses/${courseId}/holes/${holeId}`);
+    const hole = extractSingle<Hole>(response.data);
+    if (!hole) throw new Error('Hole not found');
+    return hole;
   },
 
   /**
    * 홀 생성
    */
   async createHole(courseId: number, data: CreateHoleDto): Promise<Hole> {
-    const response = await apiClient.post<{ success: boolean; data: Hole }>(`/admin/courses/${courseId}/holes`, data);
-    return response.data?.data;
+    const response = await apiClient.post<unknown>(`/admin/courses/${courseId}/holes`, data);
+    const hole = extractSingle<Hole>(response.data);
+    if (!hole) throw new Error('Failed to create hole');
+    return hole;
   },
 
   /**
    * 홀 수정
    */
   async updateHole(courseId: number, holeId: number, data: UpdateHoleDto): Promise<Hole> {
-    const response = await apiClient.patch<{ success: boolean; data: Hole }>(`/admin/courses/${courseId}/holes/${holeId}`, data);
-    return response.data?.data;
+    const response = await apiClient.patch<unknown>(`/admin/courses/${courseId}/holes/${holeId}`, data);
+    const hole = extractSingle<Hole>(response.data);
+    if (!hole) throw new Error('Failed to update hole');
+    return hole;
   },
 
   /**
@@ -317,13 +329,8 @@ export const courseApi = {
    * 회사 목록 조회 (기존 호환)
    */
   async getCompanies(): Promise<Company[]> {
-    const response = await apiClient.get<{
-      companies: Company[];
-      totalCount: number;
-      totalPages: number;
-      page: number;
-    }>('/admin/courses/companies');
-    return response.data?.companies || [];
+    const response = await apiClient.get<unknown>('/admin/courses/companies');
+    return extractList<Company>(response.data, 'companies');
   },
 } as const;
 

@@ -1,17 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api';
+import { iamApi } from '@/lib/api/authApi';
 import { useAuthStore, type ApiUserResponse } from '@/stores';
 import { authKeys } from './keys';
 import type { LoginCredentials, AuthResponse } from '@/types';
-
-interface ProfileResponse {
-  success: boolean;
-  data?: any;
-  error?: {
-    code: string;
-    message: string;
-  };
-}
 
 // Login Mutation (로컬 로딩 사용 - LoginForm에서 자체 로딩 처리)
 export const useLoginMutation = () => {
@@ -19,16 +10,7 @@ export const useLoginMutation = () => {
 
   return useMutation({
     meta: { globalLoading: false }, // 로컬 로딩 사용
-    mutationFn: async (credentials: LoginCredentials) => {
-      const response = await apiClient.post<any>('/admin/iam/login', credentials);
-      const result = response.data;
-
-      if (!result.success || !result.data) {
-        throw new Error(result.error?.message || '로그인 응답이 올바르지 않습니다.');
-      }
-
-      return result.data as AuthResponse;
-    },
+    mutationFn: (credentials: LoginCredentials) => iamApi.login(credentials),
     onMutate: () => {
       setLoading(true);
       setError(null);
@@ -54,13 +36,7 @@ export const useLogoutMutation = () => {
 
   return useMutation({
     meta: { globalLoading: false }, // 로컬 로딩 사용
-    mutationFn: async () => {
-      try {
-        await apiClient.post('/admin/iam/logout');
-      } catch (error) {
-        console.error('Logout API call failed:', error);
-      }
-    },
+    mutationFn: () => iamApi.logout(),
     onSuccess: () => {
       logout();
       queryClient.clear();
@@ -76,19 +52,10 @@ export const useGetCurrentUserMutation = () => {
     meta: { globalLoading: false }, // 로컬 로딩 사용
     mutationFn: async () => {
       const token = localStorage.getItem('accessToken');
+      if (!token) throw new Error('No access token found');
 
-      if (!token) {
-        throw new Error('No access token found');
-      }
-
-      const response = await apiClient.get<ProfileResponse>('/admin/iam/me');
-      const result = response.data;
-
-      if (!result.success || !result.data) {
-        throw new Error(result.error?.message || 'Failed to get current user');
-      }
-
-      return { user: result.data, token };
+      const user = await iamApi.getCurrentUser();
+      return { user, token };
     },
     onSuccess: (data) => {
       hydrateFromProfile(data.user, data.token);
@@ -122,22 +89,9 @@ export const useRefreshTokenMutation = () => {
     meta: { globalLoading: false }, // 로컬 로딩 사용
     mutationFn: async () => {
       const refreshToken = localStorage.getItem('refreshToken');
+      if (!refreshToken) throw new Error('No refresh token found');
 
-      if (!refreshToken) {
-        throw new Error('No refresh token found');
-      }
-
-      const response = await apiClient.post<any>('/admin/iam/refresh', {
-        refreshToken,
-      });
-
-      const result = response.data;
-
-      if (!result.success || !result.data) {
-        throw new Error(result.error?.message || 'Token refresh failed');
-      }
-
-      return result.data as AuthResponse;
+      return iamApi.refreshToken(refreshToken);
     },
     onSuccess: (data) => {
       localStorage.setItem('accessToken', data.accessToken);

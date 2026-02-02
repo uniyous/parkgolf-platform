@@ -34,11 +34,8 @@ class ChatRepositoryImpl @Inject constructor(
 
     // API returns simple array response, not paginated
     override suspend fun getChatRooms(page: Int, limit: Int): Result<List<ChatRoom>> = safeApiCall {
-        val response = chatApi.getChatRooms(page, limit)
-        if (response.success && response.data != null) {
-            Result.success(response.data.map { it.toDomain() })
-        } else {
-            Result.failure(Exception("채팅방 목록 조회에 실패했습니다"))
+        chatApi.getChatRooms(page, limit).toResult("채팅방 목록 조회에 실패했습니다") { data ->
+            data.map { it.toDomain() }
         }
     }
 

@@ -43,20 +43,16 @@ class AuthRepositoryImpl @Inject constructor(
         } else null
     }
 
-    override suspend fun login(email: String, password: String): Result<User> {
-        return try {
-            val response = authApi.login(LoginRequest(email, password))
-            authPreferences.saveTokens(response.accessToken, response.refreshToken)
-            authPreferences.saveUserInfo(
-                userId = response.user.id.toString(),
-                email = response.user.email,
-                name = response.user.name,
-                phone = response.user.phone
-            )
-            Result.success(response.user.toDomain())
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    override suspend fun login(email: String, password: String): Result<User> = safeApiCall {
+        val response = authApi.login(LoginRequest(email, password))
+        authPreferences.saveTokens(response.accessToken, response.refreshToken)
+        authPreferences.saveUserInfo(
+            userId = response.user.id.toString(),
+            email = response.user.email,
+            name = response.user.name,
+            phone = response.user.phone
+        )
+        Result.success(response.user.toDomain())
     }
 
     override suspend fun register(
@@ -64,43 +60,35 @@ class AuthRepositoryImpl @Inject constructor(
         password: String,
         name: String,
         phone: String?
-    ): Result<User> {
-        return try {
-            val response = authApi.register(
-                RegisterRequest(
-                    email = email,
-                    password = password,
-                    name = name,
-                    phone = phone
-                )
+    ): Result<User> = safeApiCall {
+        val response = authApi.register(
+            RegisterRequest(
+                email = email,
+                password = password,
+                name = name,
+                phone = phone
             )
-            authPreferences.saveTokens(response.accessToken, response.refreshToken)
-            authPreferences.saveUserInfo(
-                userId = response.user.id.toString(),
-                email = response.user.email,
-                name = response.user.name,
-                phone = response.user.phone
-            )
-            Result.success(response.user.toDomain())
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        )
+        authPreferences.saveTokens(response.accessToken, response.refreshToken)
+        authPreferences.saveUserInfo(
+            userId = response.user.id.toString(),
+            email = response.user.email,
+            name = response.user.name,
+            phone = response.user.phone
+        )
+        Result.success(response.user.toDomain())
     }
 
-    override suspend fun refreshToken(): Result<Unit> {
-        return try {
-            val currentRefreshToken = authPreferences.refreshToken.first()
-                ?: return Result.failure(Exception("No refresh token"))
+    override suspend fun refreshToken(): Result<Unit> = safeApiCall {
+        val currentRefreshToken = authPreferences.refreshToken.first()
+            ?: return@safeApiCall Result.failure(Exception("갱신 토큰이 없습니다"))
 
-            val response = authApi.refreshToken(RefreshTokenRequest(currentRefreshToken))
-            authPreferences.saveTokens(
-                response.accessToken,
-                response.refreshToken
-            )
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        val response = authApi.refreshToken(RefreshTokenRequest(currentRefreshToken))
+        authPreferences.saveTokens(
+            response.accessToken,
+            response.refreshToken
+        )
+        Result.success(Unit)
     }
 
     override suspend fun logout() {
