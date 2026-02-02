@@ -365,6 +365,8 @@ jobs:
               metadata:
                 labels:
                   app: postgres
+                annotations:
+                  cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
               spec:
                 containers:
                 - name: postgres
@@ -487,6 +489,8 @@ jobs:
               metadata:
                 labels:
                   app: nats
+                annotations:
+                  cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
               spec:
                 containers:
                 - name: nats
@@ -536,6 +540,32 @@ jobs:
           # Wait for rollout
           kubectl rollout status deployment/nats -n $NAMESPACE --timeout=120s
           echo "NATS is ready"
+
+      - name: Deploy PodDisruptionBudgets
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: policy/v1
+          kind: PodDisruptionBudget
+          metadata:
+            name: postgres-pdb
+            namespace: ${{ needs.setup.outputs.namespace }}
+          spec:
+            minAvailable: 1
+            selector:
+              matchLabels:
+                app: postgres
+          ---
+          apiVersion: policy/v1
+          kind: PodDisruptionBudget
+          metadata:
+            name: nats-pdb
+            namespace: ${{ needs.setup.outputs.namespace }}
+          spec:
+            minAvailable: 1
+            selector:
+              matchLabels:
+                app: nats
+          EOF
 
       - name: Summary
         run: |
