@@ -1,5 +1,9 @@
 package com.parkgolf.app.presentation.feature.social
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,15 +18,15 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-
-
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.parkgolf.app.domain.model.*
 import com.parkgolf.app.presentation.components.EmptyStateView
@@ -30,6 +34,7 @@ import com.parkgolf.app.presentation.components.GlassCard
 import com.parkgolf.app.presentation.components.GlassTextField
 import com.parkgolf.app.presentation.components.GradientBackground
 import com.parkgolf.app.presentation.theme.*
+import androidx.compose.foundation.BorderStroke
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -1005,6 +1010,22 @@ private fun AddFriendSheet(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val context = LocalContext.current
+    var showContacts by remember { mutableStateOf(false) }
+
+    val contactsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        viewModel.loadContactFriends(isGranted)
+        showContacts = true
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.clearUserSearch()
+            viewModel.clearContactFriends()
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1032,6 +1053,98 @@ private fun AddFriendSheet(
                 label = "이메일 또는 이름으로 검색",
                 leadingIcon = Icons.Default.Search
             )
+
+            // Find from Contacts Button
+            OutlinedButton(
+                onClick = {
+                    val hasPermission = ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.READ_CONTACTS
+                    ) == PackageManager.PERMISSION_GRANTED
+                    if (hasPermission) {
+                        viewModel.loadContactFriends(true)
+                        showContacts = true
+                    } else {
+                        contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = ParkPrimary
+                ),
+                border = BorderStroke(1.dp, ParkPrimary.copy(alpha = 0.5f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Contacts,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("주소록에서 찾기")
+            }
+
+            // Contact Friends Section
+            if (showContacts) {
+                if (uiState.contactsPermissionDenied) {
+                    GlassCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ContactPhone,
+                                contentDescription = null,
+                                tint = TextOnGradientSecondary,
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Text(
+                                text = "연락처 접근 권한이 필요합니다",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextOnGradientSecondary
+                            )
+                            Text(
+                                text = "설정에서 연락처 권한을 허용해 주세요",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextOnGradientTertiary
+                            )
+                        }
+                    }
+                } else if (uiState.isLoadingContacts) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = ParkPrimary)
+                    }
+                } else if (uiState.contactFriends.isNotEmpty()) {
+                    Text(
+                        text = "연락처에 있는 사용자",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextOnGradient
+                    )
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.heightIn(max = 300.dp)
+                    ) {
+                        items(uiState.contactFriends, key = { it.id }) { user ->
+                            UserSearchCard(
+                                user = user,
+                                onAddClick = { viewModel.sendFriendRequest(user.id) }
+                            )
+                        }
+                    }
+                } else {
+                    Text(
+                        text = "연락처에서 가입된 사용자를 찾지 못했습니다",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextOnGradientSecondary,
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                }
+            }
 
             // Loading
             if (uiState.isSearching) {

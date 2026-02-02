@@ -14,6 +14,7 @@ final class ChatRoomViewModel: ObservableObject {
     @Published var error: Error?
     @Published var isConnected = false
     @Published private(set) var hasMoreMessages = true
+    @Published var typingUserName: String?
 
     // MARK: - Properties
 
@@ -26,6 +27,7 @@ final class ChatRoomViewModel: ObservableObject {
     private var cursor: String?
     private var cachedToken: String?
     private nonisolated(unsafe) var foregroundObserver: (any NSObjectProtocol)?
+    private var typingTimer: Timer?
 
     // MARK: - Init
 
@@ -65,6 +67,29 @@ final class ChatRoomViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] connected in
                 self?.isConnected = connected
+            }
+            .store(in: &cancellables)
+
+        // Subscribe to typing events
+        socketManager.typingReceived
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                guard let self = self else { return }
+                guard event.roomId == self.roomId,
+                      event.userId != self.currentUserId else { return }
+                if event.isTyping {
+                    self.typingUserName = event.userName
+                    // Auto-clear after 3 seconds
+                    self.typingTimer?.invalidate()
+                    self.typingTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in
+                        Task { @MainActor in
+                            self?.typingUserName = nil
+                        }
+                    }
+                } else {
+                    self.typingUserName = nil
+                    self.typingTimer?.invalidate()
+                }
             }
             .store(in: &cancellables)
 
@@ -125,6 +150,13 @@ final class ChatRoomViewModel: ObservableObject {
             messages = response.messages.sorted { $0.createdAt < $1.createdAt }
             hasMoreMessages = response.hasMore
             cursor = response.nextCursor
+
+            // Mark messages as read
+            struct MarkReadResponse: Codable { let success: Bool }
+            _ = try? await apiClient.request(
+                ChatEndpoints.markAsRead(roomId: roomId),
+                responseType: MarkReadResponse.self
+            )
         } catch {
             self.error = error
             #if DEBUG

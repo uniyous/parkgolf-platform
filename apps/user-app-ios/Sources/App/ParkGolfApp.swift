@@ -245,6 +245,11 @@ final class AppState: ObservableObject {
     @Published var bookingCompleteAction: BookingCompleteAction = .none
     @Published var showMyBookingsSheet: Bool = false
 
+    /// 딥링크 네비게이션
+    @Published var navigateToTab: MainTabView.Tab?
+    @Published var pendingChatRoomId: String?
+    @Published var pendingBookingId: Int?
+
     /// 비밀번호 변경 권유를 이미 표시했는지 (세션 내 1회만)
     private var hasShownPasswordReminder = false
 

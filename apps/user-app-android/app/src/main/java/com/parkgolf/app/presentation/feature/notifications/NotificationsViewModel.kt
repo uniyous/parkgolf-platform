@@ -8,8 +8,10 @@ import androidx.compose.material.icons.filled.Shield
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.parkgolf.app.data.remote.socket.NotificationSocketManager
 import com.parkgolf.app.domain.model.AppNotification
 import com.parkgolf.app.domain.model.NotificationType
+import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.NotificationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -102,7 +104,9 @@ data class NotificationsUiState(
 
 @HiltViewModel
 class NotificationsViewModel @Inject constructor(
-    private val notificationRepository: NotificationRepository
+    private val notificationRepository: NotificationRepository,
+    private val notificationSocketManager: NotificationSocketManager,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NotificationsUiState())
@@ -110,6 +114,33 @@ class NotificationsViewModel @Inject constructor(
 
     init {
         loadNotifications()
+        observeRealtimeNotifications()
+        connectSocket()
+    }
+
+    private fun observeRealtimeNotifications() {
+        viewModelScope.launch {
+            notificationSocketManager.notificationReceived.collect { notification ->
+                val current = _uiState.value.notifications
+                if (!current.any { it.id == notification.id }) {
+                    _uiState.value = _uiState.value.copy(
+                        notifications = listOf(notification) + current
+                    )
+                }
+            }
+        }
+    }
+
+    private fun connectSocket() {
+        viewModelScope.launch {
+            val token = authRepository.getAccessToken() ?: return@launch
+            notificationSocketManager.connect(token)
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        notificationSocketManager.disconnect()
     }
 
     fun setFilter(filter: NotificationFilter) {

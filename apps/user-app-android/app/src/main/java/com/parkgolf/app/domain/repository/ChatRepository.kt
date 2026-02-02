@@ -1,5 +1,6 @@
 package com.parkgolf.app.domain.repository
 
+import com.parkgolf.app.data.remote.socket.TypingEvent
 import com.parkgolf.app.domain.model.ChatMessage
 import com.parkgolf.app.domain.model.ChatRoom
 import com.parkgolf.app.domain.model.ChatRoomType
@@ -9,6 +10,7 @@ interface ChatRepository {
     val messageFlow: Flow<ChatMessage>
     val connectionState: Flow<Boolean>
     val tokenRefreshNeeded: Flow<Unit>
+    val typingFlow: Flow<TypingEvent>
 
     // API returns simple array, not paginated
     suspend fun getChatRooms(page: Int = 1, limit: Int = 50): Result<List<ChatRoom>>

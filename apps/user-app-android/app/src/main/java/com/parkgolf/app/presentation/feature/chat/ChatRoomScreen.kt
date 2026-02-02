@@ -175,6 +175,7 @@ fun ChatRoomScreen(
                 )
             }
 
+            // Message list
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -224,6 +225,14 @@ fun ChatRoomScreen(
                             )
                         }
                     }
+                }
+
+                // Typing indicator
+                uiState.typingUserName?.let { name ->
+                    TypingIndicator(
+                        userName = name,
+                        modifier = Modifier.align(Alignment.BottomStart)
+                    )
                 }
 
                 // Error Snackbar
@@ -329,6 +338,23 @@ private fun ConnectionStatusBanner(
     }
 }
 
+/**
+ * 타이핑 인디케이터
+ */
+@Composable
+private fun TypingIndicator(
+    userName: String,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = "${userName}님이 입력 중...",
+        style = MaterialTheme.typography.bodySmall,
+        color = ParkOnPrimary.copy(alpha = 0.6f),
+        modifier = modifier
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+    )
+}
+
 @Composable
 private fun ChatMessageBubble(
     message: ChatMessage,
@@ -372,16 +398,27 @@ private fun ChatMessageBubble(
                 }
             }
 
-            Text(
-                text = message.createdAt.format(timeFormatter),
-                style = MaterialTheme.typography.labelSmall,
-                color = ParkOnPrimary.copy(alpha = 0.5f),
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.padding(
                     start = if (isOwnMessage) 0.dp else 8.dp,
                     end = if (isOwnMessage) 8.dp else 0.dp,
                     top = 2.dp
                 )
-            )
+            ) {
+                if (isOwnMessage && !message.readBy.isNullOrEmpty() && message.readBy.size > 1) {
+                    Text(
+                        text = "읽음",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ParkPrimary.copy(alpha = 0.8f)
+                    )
+                }
+                Text(
+                    text = message.createdAt.format(timeFormatter),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = ParkOnPrimary.copy(alpha = 0.5f)
+                )
+            }
         }
 
         if (isOwnMessage) {

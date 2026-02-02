@@ -61,7 +61,11 @@ struct NotificationsView: View {
         }
         .toolbarBackground(.hidden, for: .navigationBar)
         .task {
+            await viewModel.connectSocket()
             await viewModel.loadNotifications()
+        }
+        .onDisappear {
+            viewModel.disconnectSocket()
         }
         .refreshable {
             await viewModel.loadNotifications()
@@ -163,22 +167,42 @@ struct NotificationsView: View {
     // MARK: - Handle Notification Tap
 
     private func handleNotificationTap(_ notification: AppNotification) {
-        // Handle navigation based on notification type
         switch notification.type {
         case .bookingConfirmed, .bookingCancelled:
-            // Navigate to booking detail
-            break
+            if let bookingId = notification.data?.bookingId {
+                dismiss()
+                NotificationCenter.default.post(
+                    name: .navigateToBookingDetail,
+                    object: nil,
+                    userInfo: ["bookingId": Int(bookingId) ?? 0]
+                )
+            }
         case .paymentSuccess, .paymentFailed:
-            // Navigate to payment detail
-            break
+            if let bookingId = notification.data?.bookingId {
+                dismiss()
+                NotificationCenter.default.post(
+                    name: .navigateToBookingDetail,
+                    object: nil,
+                    userInfo: ["bookingId": Int(bookingId) ?? 0]
+                )
+            }
         case .friendRequest, .friendAccepted:
-            // Navigate to friends
-            break
+            dismiss()
+            if notification.type == .friendRequest {
+                NotificationCenter.default.post(name: .navigateToFriendRequests, object: nil)
+            } else {
+                NotificationCenter.default.post(name: .navigateToFriendsList, object: nil)
+            }
         case .chatMessage:
-            // Navigate to chat room
-            break
+            if let chatRoomId = notification.data?.chatRoomId {
+                dismiss()
+                NotificationCenter.default.post(
+                    name: .navigateToChatRoom,
+                    object: nil,
+                    userInfo: ["chatRoomId": chatRoomId]
+                )
+            }
         case .systemAlert:
-            // Show alert or navigate to settings
             break
         }
     }

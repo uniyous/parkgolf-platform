@@ -30,6 +30,8 @@ class ChatRepositoryImpl @Inject constructor(
 
     override val tokenRefreshNeeded: Flow<Unit> = chatSocketManager.tokenRefreshNeeded
 
+    override val typingFlow = chatSocketManager.typingEvent
+
     // API returns simple array response, not paginated
     override suspend fun getChatRooms(page: Int, limit: Int): Result<List<ChatRoom>> = safeApiCall {
         val response = chatApi.getChatRooms(page, limit)

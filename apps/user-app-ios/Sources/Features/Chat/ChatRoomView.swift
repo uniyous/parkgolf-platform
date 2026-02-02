@@ -32,6 +32,11 @@ struct ChatRoomView: View {
                 // Messages
                 messageList
 
+                // Typing indicator
+                if let typingName = viewModel.typingUserName {
+                    typingIndicator(name: typingName)
+                }
+
                 // Input
                 messageInput
             }
@@ -210,6 +215,21 @@ struct ChatRoomView: View {
         }
     }
 
+    // MARK: - Typing Indicator
+
+    private func typingIndicator(name: String) -> some View {
+        HStack(spacing: ParkSpacing.xs) {
+            Text("\(name)님이 입력 중...")
+                .font(.parkCaption)
+                .foregroundStyle(.white.opacity(0.6))
+        }
+        .padding(.horizontal, ParkSpacing.md)
+        .padding(.vertical, ParkSpacing.xxs)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .transition(.opacity)
+        .animation(.easeInOut(duration: 0.2), value: name)
+    }
+
     // MARK: - Message Input
 
     private var messageInput: some View {
@@ -298,9 +318,16 @@ struct MessageBubble: View {
     }
 
     private var messageTime: some View {
-        Text(formatTime(message.createdAt))
-            .font(.system(size: 10))
-            .foregroundStyle(.white.opacity(0.5))
+        VStack(alignment: isCurrentUser ? .trailing : .leading, spacing: 2) {
+            if isCurrentUser, let readBy = message.readBy, readBy.count > 1 {
+                Text("읽음")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Color.parkPrimary.opacity(0.8))
+            }
+            Text(formatTime(message.createdAt))
+                .font(.system(size: 10))
+                .foregroundStyle(.white.opacity(0.5))
+        }
     }
 
     private func formatTime(_ date: Date) -> String {

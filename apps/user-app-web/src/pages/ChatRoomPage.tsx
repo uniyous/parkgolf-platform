@@ -11,7 +11,7 @@ import { chatSocket } from '@/lib/socket/chatSocket';
 import { authStorage } from '@/lib/storage';
 import { showErrorToast, showSuccessToast } from '@/lib/toast';
 import { useAuthStore } from '@/stores/authStore';
-import { getChatRoomDisplayName, type ChatMessage } from '@/lib/api/chatApi';
+import { chatApi, getChatRoomDisplayName, type ChatMessage } from '@/lib/api/chatApi';
 
 export const ChatRoomPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -76,10 +76,11 @@ export const ChatRoomPage: React.FC = () => {
     // Connect socket
     chatSocket.connect(token);
 
-    // 초기 연결 및 재연결 시 방 참여
+    // 초기 연결 및 재연결 시 방 참여 + 읽음 처리
     const unsubConnect = chatSocket.onConnect(() => {
       setIsConnected(true);
       chatSocket.joinRoom(roomId);
+      chatApi.markAsRead(roomId).catch(() => {});
     });
 
     const unsubDisconnect = chatSocket.onDisconnect(() => {

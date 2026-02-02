@@ -1,6 +1,7 @@
 package com.parkgolf.app.data.remote.api
 
 import com.parkgolf.app.data.remote.dto.common.ApiResponse
+import com.parkgolf.app.data.remote.dto.friends.FindFromContactsRequest
 import com.parkgolf.app.data.remote.dto.friends.FriendDto
 import com.parkgolf.app.data.remote.dto.friends.FriendRequestDto
 import com.parkgolf.app.data.remote.dto.friends.SendFriendRequestBody
@@ -41,4 +42,7 @@ interface FriendsApi {
 
     @GET("api/user/friends/check/{friendId}")
     suspend fun checkFriendship(@Path("friendId") friendId: Int): ApiResponse<Boolean>
+
+    @POST("api/user/friends/contacts")
+    suspend fun findFromContacts(@Body request: FindFromContactsRequest): ApiResponse<List<UserSearchResultDto>>
 }

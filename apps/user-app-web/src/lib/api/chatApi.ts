@@ -255,4 +255,11 @@ export const chatApi = {
   leaveChatRoom: async (roomId: string): Promise<void> => {
     await apiClient.delete<BffResponse<void>>(`/api/user/chat/rooms/${roomId}/leave`);
   },
+
+  /**
+   * 채팅방 메시지 읽음 처리
+   */
+  markAsRead: async (roomId: string): Promise<void> => {
+    await apiClient.post<BffResponse<void>>(`/api/user/chat/rooms/${roomId}/read`);
+  },
 };

@@ -178,6 +178,13 @@ enum ChatEndpoints {
             method: .delete
         )
     }
+
+    static func markAsRead(roomId: String) -> Endpoint {
+        Endpoint(
+            path: "/api/user/chat/rooms/\(roomId)/read",
+            method: .post
+        )
+    }
 }
 
 // MARK: - Request DTOs
