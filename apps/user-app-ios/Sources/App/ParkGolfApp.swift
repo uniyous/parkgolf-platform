@@ -292,7 +292,9 @@ final class AppState: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.forceSignOut()
+            Task { @MainActor in
+                self?.forceSignOut()
+            }
         }
     }
 
