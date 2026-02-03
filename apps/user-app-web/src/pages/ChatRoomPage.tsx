@@ -68,6 +68,16 @@ export const ChatRoomPage: React.FC = () => {
     return allMessages;
   }, [messagesData, realtimeMessages]);
 
+  // joinRoom 재시도 래퍼 — 실패 시 최대 3회 백오프 재시도
+  const joinRoomWithRetry = useCallback(async (id: string, retries = 3) => {
+    for (let i = 0; i < retries; i++) {
+      const success = await chatSocket.joinRoom(id);
+      if (success) return true;
+      await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+    }
+    return false;
+  }, []);
+
   // Socket connection (Socket.IO 내장 재연결에 위임)
   useEffect(() => {
     const token = authStorage.getToken();
@@ -76,10 +86,18 @@ export const ChatRoomPage: React.FC = () => {
     // Connect socket
     chatSocket.connect(token);
 
+    // 이미 연결된 상태면 즉시 방 참여 + 읽음 처리
+    // (다른 채팅방에서 돌아온 경우 connect 이벤트가 재발생하지 않음)
+    if (chatSocket.isConnected) {
+      setIsConnected(true);
+      joinRoomWithRetry(roomId);
+      chatApi.markAsRead(roomId).catch(() => {});
+    }
+
     // 초기 연결 및 재연결 시 방 참여 + 읽음 처리
     const unsubConnect = chatSocket.onConnect(() => {
       setIsConnected(true);
-      chatSocket.joinRoom(roomId);
+      joinRoomWithRetry(roomId);
       chatApi.markAsRead(roomId).catch(() => {});
     });
 
@@ -90,7 +108,7 @@ export const ChatRoomPage: React.FC = () => {
     // Socket.IO 자동 재연결 완료 시 — 방 재참여 + 메시지 갭 복구
     const unsubReconnect = chatSocket.onReconnect(() => {
       setIsConnected(true);
-      chatSocket.joinRoom(roomId);
+      joinRoomWithRetry(roomId);
       // 끊긴 동안의 메시지를 DB에서 다시 가져옴
       setRealtimeMessages([]);
       queryClient.invalidateQueries({ queryKey: ['chat', 'messages', roomId] });
@@ -116,6 +134,9 @@ export const ChatRoomPage: React.FC = () => {
         if (!chatSocket.isConnected) {
           const token = authStorage.getToken();
           if (token) chatSocket.forceReconnect(token);
+        } else {
+          // 연결 유지 중이어도 방 재참여 보장
+          joinRoomWithRetry(roomId);
         }
         setRealtimeMessages([]);
         queryClient.invalidateQueries({ queryKey: ['chat', 'messages', roomId] });
@@ -134,7 +155,7 @@ export const ChatRoomPage: React.FC = () => {
         chatSocket.leaveRoom(roomId);
       }
     };
-  }, [roomId, queryClient]);
+  }, [roomId, queryClient, joinRoomWithRetry]);
 
   // Scroll to bottom
   useEffect(() => {
