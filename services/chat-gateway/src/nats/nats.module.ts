@@ -19,6 +19,18 @@ import { NatsService } from './nats.service';
         }),
         inject: [ConfigService],
       },
+      {
+        name: 'NOTIFY_SERVICE',
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.NATS,
+          options: {
+            servers: [configService.get<string>('NATS_URL') || 'nats://localhost:4222'],
+            queue: 'notify-service',
+          },
+        }),
+        inject: [ConfigService],
+      },
     ]),
   ],
   providers: [NatsService],
