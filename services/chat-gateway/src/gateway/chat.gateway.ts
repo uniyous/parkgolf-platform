@@ -30,12 +30,6 @@ interface TypingDto {
   isTyping: boolean;
 }
 
-interface DirectMessageDto {
-  targetUserId: number;
-  content: string;
-  type?: 'text' | 'image';
-}
-
 @WebSocketGateway({
   cors: {
     origin: process.env.CORS_ALLOWED_ORIGINS
@@ -332,54 +326,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     // 4. 오프라인 참여자에게 push 알림
     this.sendChatNotifications(roomId, user, content).catch((error) => {
       this.logger.error(`Failed to send chat notifications: ${error}`);
-    });
-
-    return { success: true, message };
-  }
-
-  @SubscribeMessage('send_dm')
-  async handleSendDirectMessage(
-    @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() data: DirectMessageDto,
-  ) {
-    const user = client.user;
-    if (!user) {
-      return { success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } };
-    }
-
-    const { targetUserId, content, type = 'text' } = data;
-    const userIds = [user.id, targetUserId];
-    const dmRoomId = `dm-${userIds.sort((a, b) => a - b).join('-')}`;
-
-    const message: ChatMessage = {
-      id: uuidv4(),
-      roomId: dmRoomId,
-      senderId: user.id,
-      senderName: user.name,
-      content,
-      type,
-      createdAt: new Date().toISOString(),
-    };
-
-    // 1. Deliver to target user via user room (adapter propagates to all pods)
-    this.server.to(`user:${targetUserId}`).emit('new_dm', message);
-
-    // 2. DB 저장 - 비동기 (응답 대기 없이)
-    this.natsService.requestChatService('messages.save', {
-      id: message.id,
-      roomId: message.roomId,
-      senderId: message.senderId,
-      senderName: message.senderName,
-      content: message.content,
-      type: message.type.toUpperCase(),
-      createdAt: message.createdAt,
-    }).catch((error) => {
-      this.logger.error(`Failed to save DM to DB: ${error}`);
-    });
-
-    // 3. JetStream 발행 - 비동기
-    this.natsService.publishDirectMessage(userIds, message).catch((error) => {
-      this.logger.error(`Failed to publish DM to JetStream: ${error}`);
     });
 
     return { success: true, message };

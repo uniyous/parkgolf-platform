@@ -27,6 +27,8 @@ private const val TAG = "ChatSocketManager"
 private const val MAX_RECONNECT_ATTEMPTS = 10
 private const val MIN_RECONNECT_INTERVAL_MS = 3000L
 private const val CONNECTION_CHECK_INTERVAL_MS = 30000L
+private const val HEARTBEAT_INTERVAL_MS = 30000L
+private const val MAX_MISSED_HEARTBEATS = 2
 
 /**
  * Socket.IO 기반 채팅 소켓 매니저
@@ -53,6 +55,10 @@ class ChatSocketManager @Inject constructor() {
 
     // Periodic connection check
     private var connectionCheckJob: java.util.Timer? = null
+
+    // Heartbeat tracking
+    private var heartbeatTimer: java.util.Timer? = null
+    private var missedHeartbeats = 0
 
     private val _connectionState = MutableStateFlow(false)
     val connectionState: StateFlow<Boolean> = _connectionState.asStateFlow()
@@ -142,6 +148,7 @@ class ChatSocketManager @Inject constructor() {
      */
     fun disconnect() {
         stopConnectionCheck()
+        stopHeartbeat()
         socketLock.withLock {
             currentRoomId = null
             cleanupSocketUnsafe()
@@ -209,6 +216,44 @@ class ChatSocketManager @Inject constructor() {
         connectionCheckJob?.cancel()
         connectionCheckJob = null
         Log.d(TAG, "Connection check stopped")
+    }
+
+    /**
+     * Heartbeat 시작 (30초마다, iOS/Web과 동일)
+     * 서버가 ACK를 반환하지 않으면 missedHeartbeats 증가 → 강제 재연결
+     */
+    private fun startHeartbeat() {
+        stopHeartbeat()
+        missedHeartbeats = 0
+        heartbeatTimer = java.util.Timer().apply {
+            scheduleAtFixedRate(object : java.util.TimerTask() {
+                override fun run() {
+                    socketLock.withLock {
+                        socket?.let { s ->
+                            if (s.connected()) {
+                                missedHeartbeats++
+                                s.emit("heartbeat", null, Ack {
+                                    missedHeartbeats = 0
+                                })
+                                if (missedHeartbeats > MAX_MISSED_HEARTBEATS) {
+                                    Log.w(TAG, "Missed $missedHeartbeats heartbeats, forcing reconnect")
+                                    savedToken?.let { token -> forceReconnect(token) }
+                                }
+                            }
+                        }
+                    }
+                }
+            }, HEARTBEAT_INTERVAL_MS, HEARTBEAT_INTERVAL_MS)
+        }
+        Log.d(TAG, "Heartbeat started (interval: ${HEARTBEAT_INTERVAL_MS}ms)")
+    }
+
+    /**
+     * Heartbeat 중지
+     */
+    private fun stopHeartbeat() {
+        heartbeatTimer?.cancel()
+        heartbeatTimer = null
     }
 
     /**
@@ -320,11 +365,13 @@ class ChatSocketManager @Inject constructor() {
             _connectionState.value = true
             // Reset reconnect counter on successful connection (like iOS)
             reconnectAttempts = 0
+            startHeartbeat()
             Log.d(TAG, "Socket connected successfully, reconnect attempts reset")
         }
 
         on(Socket.EVENT_DISCONNECT) { args ->
             _connectionState.value = false
+            stopHeartbeat()
             val reason = args.firstOrNull()?.toString() ?: "unknown"
             Log.d(TAG, "Socket disconnected: $reason")
         }

@@ -180,24 +180,6 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  // Publish DM (JetStream persistence)
-  async publishDirectMessage(userIds: number[], message: ChatMessage): Promise<void> {
-    if (!this.js) return;
-
-    const sortedIds = userIds.sort((a, b) => a - b).join('-');
-    const subject = `chat.dm.${sortedIds}.message`;
-    const data = this.sc.encode(JSON.stringify(message));
-
-    try {
-      await this.js.publish(subject, data, {
-        msgID: message.id,
-      });
-    } catch (error) {
-      this.logger.error(`Failed to publish DM to ${subject}`, error);
-      throw error;
-    }
-  }
-
   // Publish presence
   async publishPresence(userId: number, event: PresenceEvent): Promise<void> {
     if (!this.js) return;
