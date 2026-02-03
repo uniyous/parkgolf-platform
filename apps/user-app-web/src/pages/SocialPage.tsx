@@ -435,6 +435,15 @@ export function SocialPage() {
 
             {!isLoadingChats && chatRooms.length > 0 && (
               <div className="space-y-3">
+                <button
+                  onClick={() => setShowNewChatModal(true)}
+                  className="w-full flex items-center gap-3 p-4 rounded-xl bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/30 flex items-center justify-center flex-shrink-0">
+                    <PenSquare className="w-5 h-5 text-[var(--color-primary)]" />
+                  </div>
+                  <span className="text-[var(--color-primary)] font-medium text-sm">새 채팅 시작</span>
+                </button>
                 {chatRooms.map((room) => (
                   <ChatRoomCard
                     key={room.id}
