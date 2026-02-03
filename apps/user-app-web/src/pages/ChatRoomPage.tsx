@@ -11,12 +11,14 @@ import { chatSocket } from '@/lib/socket/chatSocket';
 import { authStorage } from '@/lib/storage';
 import { showErrorToast, showSuccessToast } from '@/lib/toast';
 import { useAuthStore } from '@/stores/authStore';
+import { useConfirm } from '@/contexts/ConfirmContext';
 import { chatApi, getChatRoomDisplayName, type ChatMessage } from '@/lib/api/chatApi';
 
 export const ChatRoomPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const { confirm } = useConfirm();
   const currentUserId = String(user?.id ?? '');
 
   const [realtimeMessages, setRealtimeMessages] = useState<ChatMessage[]>([]);
@@ -323,7 +325,13 @@ export const ChatRoomPage: React.FC = () => {
                     <button
                       onClick={async () => {
                         setShowMenu(false);
-                        if (!confirm('채팅방을 나가시겠습니까?')) return;
+                        const confirmed = await confirm({
+                          type: 'warning',
+                          title: '채팅방 나가기',
+                          description: '채팅방을 나가시겠습니까?',
+                          okText: '나가기',
+                        });
+                        if (!confirmed) return;
                         try {
                           await leaveMutation.mutateAsync(roomId!);
                           navigate('/social?tab=chat');

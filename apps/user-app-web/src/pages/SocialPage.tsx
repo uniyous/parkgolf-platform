@@ -29,6 +29,7 @@ import {
 import { useChatRoomsQuery, useGetOrCreateDirectChatMutation, useCreateChatRoomMutation, useLeaveChatRoomMutation } from '@/hooks/queries/chat';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useResponsive } from '@/hooks/useResponsive';
+import { useConfirm } from '@/contexts/ConfirmContext';
 import { showSuccessToast, showErrorToast } from '@/lib/toast';
 import type { Friend, FriendRequest, SentFriendRequest, UserSearchResult } from '@/lib/api/friendApi';
 import { getChatRoomDisplayName, type ChatRoom } from '@/lib/api/chatApi';
@@ -53,6 +54,8 @@ export function SocialPage() {
   // Modal states
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
+
+  const { confirm } = useConfirm();
 
   // Search states
   const [searchQuery, setSearchQuery] = useState('');
@@ -131,7 +134,13 @@ export function SocialPage() {
 
   const handleRemoveFriend = useCallback(
     async (friendId: number) => {
-      if (!confirm('정말 친구를 삭제하시겠습니까?')) return;
+      const confirmed = await confirm({
+        type: 'danger',
+        title: '친구 삭제',
+        description: '정말 친구를 삭제하시겠습니까?',
+        okText: '삭제',
+      });
+      if (!confirmed) return;
       try {
         await removeFriendMutation.mutateAsync(friendId);
         showSuccessToast('친구를 삭제했습니다.');
@@ -139,7 +148,7 @@ export function SocialPage() {
         showErrorToast('친구 삭제에 실패했습니다.');
       }
     },
-    [removeFriendMutation]
+    [removeFriendMutation, confirm]
   );
 
   const handleStartChat = useCallback(
@@ -159,14 +168,20 @@ export function SocialPage() {
 
   const handleLeaveChatRoom = useCallback(
     async (roomId: string) => {
-      if (!confirm('채팅방을 나가시겠습니까?')) return;
+      const confirmed = await confirm({
+        type: 'warning',
+        title: '채팅방 나가기',
+        description: '채팅방을 나가시겠습니까?',
+        okText: '나가기',
+      });
+      if (!confirmed) return;
       try {
         await leaveChatMutation.mutateAsync(roomId);
       } catch {
         showErrorToast('채팅방 나가기에 실패했습니다.');
       }
     },
-    [leaveChatMutation]
+    [leaveChatMutation, confirm]
   );
 
   // Header right button

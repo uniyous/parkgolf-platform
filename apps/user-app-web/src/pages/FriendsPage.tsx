@@ -28,6 +28,7 @@ import { useGetOrCreateDirectChatMutation } from '@/hooks/queries/chat';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useResponsive } from '@/hooks/useResponsive';
 import { Input } from '@/components/ui/Input';
+import { useConfirm } from '@/contexts/ConfirmContext';
 import { showSuccessToast, showErrorToast } from '@/lib/toast';
 import type { Friend, FriendRequest, SentFriendRequest, UserSearchResult } from '@/lib/api/friendApi';
 
@@ -47,6 +48,8 @@ export function FriendsPage() {
   const { data: friendRequests = [], isLoading: isLoadingRequests } = useFriendRequestsQuery();
   const { data: sentRequests = [] } = useSentFriendRequestsQuery();
   const { data: searchResults = [], isLoading: isSearching } = useSearchUsersQuery(debouncedSearch);
+
+  const { confirm } = useConfirm();
 
   // Mutations
   const sendRequestMutation = useSendFriendRequestMutation();
@@ -103,7 +106,13 @@ export function FriendsPage() {
 
   const handleRemoveFriend = useCallback(
     async (friendId: number) => {
-      if (!confirm('정말 친구를 삭제하시겠습니까?')) return;
+      const confirmed = await confirm({
+        type: 'danger',
+        title: '친구 삭제',
+        description: '정말 친구를 삭제하시겠습니까?',
+        okText: '삭제',
+      });
+      if (!confirmed) return;
       try {
         await removeFriendMutation.mutateAsync(friendId);
         showSuccessToast('친구를 삭제했습니다.');
@@ -111,7 +120,7 @@ export function FriendsPage() {
         showErrorToast('친구 삭제에 실패했습니다.');
       }
     },
-    [removeFriendMutation]
+    [removeFriendMutation, confirm]
   );
 
   const handleStartChat = useCallback(

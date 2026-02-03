@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useChatRoomsQuery, useGetOrCreateDirectChatMutation, useCreateChatRoomMutation, useLeaveChatRoomMutation } from '@/hooks/queries/chat';
 import { useFriendsQuery } from '@/hooks/queries/friend';
 import { useResponsive } from '@/hooks/useResponsive';
+import { useConfirm } from '@/contexts/ConfirmContext';
 import { showErrorToast } from '@/lib/toast';
 import { getChatRoomDisplayName, type ChatRoom } from '@/lib/api/chatApi';
 import { useAuthStore } from '@/stores/authStore';
@@ -19,6 +20,7 @@ export function ChatPage() {
   const user = useAuthStore((state) => state.user);
   const currentUserId = String(user?.id ?? '');
 
+  const { confirm } = useConfirm();
   const { data: chatRoomsData, isLoading } = useChatRoomsQuery();
   const chatRooms = chatRoomsData?.data ?? [];
   const leaveMutation = useLeaveChatRoomMutation();
@@ -32,14 +34,20 @@ export function ChatPage() {
 
   const handleLeaveRoom = useCallback(
     async (roomId: string) => {
-      if (!confirm('채팅방을 나가시겠습니까?')) return;
+      const confirmed = await confirm({
+        type: 'warning',
+        title: '채팅방 나가기',
+        description: '채팅방을 나가시겠습니까?',
+        okText: '나가기',
+      });
+      if (!confirmed) return;
       try {
         await leaveMutation.mutateAsync(roomId);
       } catch {
         showErrorToast('채팅방 나가기에 실패했습니다.');
       }
     },
-    [leaveMutation]
+    [leaveMutation, confirm]
   );
 
   const headerRight = (
