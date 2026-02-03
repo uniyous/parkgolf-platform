@@ -184,6 +184,7 @@ struct ChatRoomCard: View {
 
 struct NewChatSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = NewChatViewModel()
 
     var body: some View {
@@ -366,7 +367,7 @@ struct NewChatSheet: View {
                 Image(systemName: "pencil")
                     .foregroundStyle(.white.opacity(0.5))
 
-                TextField("그룹 이름", text: $viewModel.groupName)
+                TextField("그룹 이름 (선택)", text: $viewModel.groupName)
                     .foregroundStyle(.white)
                     .font(.parkBodyMedium)
             }
@@ -385,7 +386,7 @@ struct NewChatSheet: View {
 
             // Create Button
             Button {
-                viewModel.createGroupChat()
+                viewModel.createGroupChat(currentUserName: appState.currentUser?.name)
             } label: {
                 HStack {
                     if viewModel.isCreating {
@@ -400,13 +401,11 @@ struct NewChatSheet: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, ParkSpacing.sm)
                 .background(
-                    viewModel.groupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? Color.parkPrimary.opacity(0.4)
-                        : Color.parkPrimary
+                    Color.parkPrimary
                 )
                 .clipShape(RoundedRectangle(cornerRadius: ParkRadius.lg))
             }
-            .disabled(viewModel.groupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isCreating)
+            .disabled(viewModel.isCreating)
             .padding(ParkSpacing.md)
         }
         .padding(.top, ParkSpacing.md)

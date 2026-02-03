@@ -112,14 +112,13 @@ final class NewChatViewModel: ObservableObject {
         }
     }
 
-    func createGroupChat() {
+    func createGroupChat(currentUserName: String?) {
         guard selectedFriends.count >= 2, !isCreating else { return }
 
-        let name = groupName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else {
-            errorMessage = "그룹 이름을 입력해주세요"
-            return
-        }
+        let trimmed = groupName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = trimmed.isEmpty
+            ? ([currentUserName].compactMap { $0 } + selectedFriends.map { $0.friendName }).joined(separator: ", ")
+            : trimmed
 
         isCreating = true
 

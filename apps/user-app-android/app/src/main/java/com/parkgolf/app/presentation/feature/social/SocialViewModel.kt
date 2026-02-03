@@ -49,6 +49,7 @@ data class SocialUiState(
     val chatRooms: List<ChatRoom> = emptyList(),
     val totalUnreadCount: Int = 0,
     val currentUserId: String? = null,
+    val currentUserName: String? = null,
 
     // Navigation
     val navigateToChatRoom: String? = null,
@@ -80,7 +81,8 @@ class SocialViewModel @Inject constructor(
         viewModelScope.launch {
             authRepository.currentUser.collect { user ->
                 _uiState.value = _uiState.value.copy(
-                    currentUserId = user?.id?.toString()
+                    currentUserId = user?.id?.toString(),
+                    currentUserName = user?.name
                 )
             }
         }
@@ -341,11 +343,17 @@ class SocialViewModel @Inject constructor(
     }
 
     fun createGroupChat(name: String, friends: List<Friend>) {
+        val chatName = name.ifBlank {
+            listOfNotNull(_uiState.value.currentUserName)
+                .plus(friends.map { it.friendName })
+                .joinToString(", ")
+        }
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
             chatRepository.createChatRoom(
-                name = name,
+                name = chatName,
                 type = com.parkgolf.app.domain.model.ChatRoomType.GROUP,
                 participantIds = friends.map { it.friendId.toString() }
             )

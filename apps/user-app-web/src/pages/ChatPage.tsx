@@ -229,6 +229,7 @@ interface NewChatContentProps {
 
 function NewChatContent({ onClose }: NewChatContentProps) {
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFriends, setSelectedFriends] = useState<Friend[]>([]);
   const [step, setStep] = useState<'select' | 'name'>('select');
@@ -278,7 +279,7 @@ function NewChatContent({ onClose }: NewChatContentProps) {
   };
 
   const handleCreateGroup = async () => {
-    const name = groupName.trim() || selectedFriends.map((f) => f.friendName).join(', ');
+    const name = groupName.trim() || [user?.name, ...selectedFriends.map((f) => f.friendName)].filter(Boolean).join(', ');
     try {
       const room = await createChatRoomMutation.mutateAsync({
         name,
@@ -322,7 +323,7 @@ function NewChatContent({ onClose }: NewChatContentProps) {
           </label>
           <input
             type="text"
-            placeholder={selectedFriends.map((f) => f.friendName).join(', ')}
+            placeholder={[user?.name, ...selectedFriends.map((f) => f.friendName)].filter(Boolean).join(', ')}
             value={groupName}
             onChange={(e) => setGroupName(e.target.value)}
             className="input-glass w-full"

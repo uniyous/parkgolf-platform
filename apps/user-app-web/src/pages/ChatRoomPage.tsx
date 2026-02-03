@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw, Loader2, UserPlus, Search, X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Container, SubPageHeader } from '@/components/layout';
+import { SubPageHeader } from '@/components/layout';
 import { Button, LoadingView } from '@/components/ui';
 import { useChatRoomQuery, useMessagesInfiniteQuery, useSendMessageMutation, useLeaveChatRoomMutation, useInviteMembersMutation } from '@/hooks/queries/chat';
 import { useFriendsQuery } from '@/hooks/queries/friend';
@@ -324,13 +324,13 @@ export const ChatRoomPage: React.FC = () => {
         }
       />
 
-      <Container maxWidth="xl" className="flex-1 flex flex-col overflow-hidden !px-0 md:!px-0">
-        {/* Messages */}
-        <div
-          ref={messagesContainerRef}
-          onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-4 py-4"
-        >
+      {/* Messages — full-width scroll area */}
+      <div
+        ref={messagesContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto"
+      >
+        <div className="w-full max-w-screen-xl mx-auto px-4 py-4">
           {/* Load more indicator */}
           {isFetchingNextPage && (
             <div className="flex items-center justify-center py-3 mb-2">
@@ -380,9 +380,11 @@ export const ChatRoomPage: React.FC = () => {
             <div ref={messagesEndRef} />
           </div>
         </div>
+      </div>
 
-        {/* Input */}
-        <div className="px-4 py-3 border-t border-white/10">
+      {/* Input */}
+      <div className="border-t border-white/10">
+        <div className="w-full max-w-screen-xl mx-auto px-4 py-3">
           <div className="flex items-center gap-2">
             <input
               ref={inputRef}
@@ -412,7 +414,7 @@ export const ChatRoomPage: React.FC = () => {
             </button>
           </div>
         </div>
-      </Container>
+      </div>
 
       {/* Participants Modal */}
       {showParticipants && room && (

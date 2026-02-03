@@ -1441,7 +1441,7 @@ private fun NewChatSheet(
                 GlassTextField(
                     value = groupName,
                     onValueChange = { groupName = it },
-                    label = "그룹 이름",
+                    label = "그룹 이름 (선택)",
                     leadingIcon = Icons.Default.Edit
                 )
 
@@ -1449,7 +1449,7 @@ private fun NewChatSheet(
                 Button(
                     onClick = { onGroupChat(groupName, selectedFriends.toList()) },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = groupName.isNotBlank(),
+                    enabled = true,
                     colors = ButtonDefaults.buttonColors(containerColor = ParkPrimary)
                 ) {
                     Text("만들기")
