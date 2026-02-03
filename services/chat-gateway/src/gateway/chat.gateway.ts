@@ -8,11 +8,11 @@ import {
   MessageBody,
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
-import { Logger, UseGuards, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { NatsService, ChatMessage, TypingEvent } from '../nats/nats.service';
-import { WsAuthGuard, AuthenticatedSocket, WsUser } from '../auth/ws-auth.guard';
+import { AuthenticatedSocket, WsUser } from '../auth/ws-auth.guard';
 import { v4 as uuidv4 } from 'uuid';
 
 interface SendMessageDto {
@@ -59,14 +59,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
   private readonly logger = new Logger(ChatGateway.name);
 
-  // Track online users: Map<socket.id, user>
+  // Track online users on THIS pod: Map<socket.id, user>
   private onlineUsers: Map<string, WsUser> = new Map();
-
-  // Track user sockets: Map<userId, Set<socket.id>>
-  private userSockets: Map<number, Set<string>> = new Map();
-
-  // Track room subscriptions: Map<roomId, Set<socket.id>>
-  private roomSubscriptions: Map<string, Set<string>> = new Map();
 
   // Token expiry check interval
   private tokenCheckInterval: ReturnType<typeof setInterval> | null = null;
@@ -99,14 +93,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       const socket = this.server?.sockets?.sockets?.get(socketId) as AuthenticatedSocket | undefined;
       if (!socket) continue;
 
-      const tokenExp = (socket as any).data?.tokenExp;
+      const tokenExp = socket.data?.tokenExp;
       if (!tokenExp) continue;
 
       const timeLeft = tokenExp - now;
 
       if (timeLeft <= 0) {
-        // JWT expired — notify client to refresh REST API token.
-        // WebSocket session stays alive (server session-based).
         this.logger.debug(`Token expired for user ${user.id}, sending refresh reminder`);
         socket.emit('token_refresh_needed', { message: 'Please refresh your REST API token' });
       } else if (timeLeft <= WARNING_THRESHOLD) {
@@ -137,19 +129,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       };
       client.user = user;
 
-      // Store token expiry for periodic check
-      if (payload.exp) {
-        (client as any).data = { ...(client as any).data, tokenExp: payload.exp };
-      }
+      // Store user info in socket.data for cross-pod fetchSockets()
+      client.data = {
+        ...client.data,
+        userId: user.id,
+        userName: user.name,
+        tokenExp: payload.exp,
+      };
 
-      // Track online user
+      // Track online user on this pod
       this.onlineUsers.set(client.id, user);
 
-      // Track user's sockets
-      if (!this.userSockets.has(user.id)) {
-        this.userSockets.set(user.id, new Set());
-      }
-      this.userSockets.get(user.id)!.add(client.id);
+      // Join user-specific room for DM and cross-pod presence
+      client.join(`user:${user.id}`);
 
       // Publish online status
       await this.natsService.publishPresence(user.id, {
@@ -178,17 +170,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     const user = this.onlineUsers.get(client.id);
     if (!user) return;
 
-    // Remove from online users
+    // Remove from local tracking
     this.onlineUsers.delete(client.id);
 
-    // Remove from user sockets
-    const sockets = this.userSockets.get(user.id);
-    if (sockets) {
-      sockets.delete(client.id);
-      if (sockets.size === 0) {
-        this.userSockets.delete(user.id);
-
-        // User is fully offline
+    // Check all pods for remaining sockets of this user via adapter
+    try {
+      const remoteSockets = await this.server.in(`user:${user.id}`).fetchSockets();
+      if (remoteSockets.length === 0) {
+        // User is fully offline across all pods
         await this.natsService.publishPresence(user.id, {
           userId: user.id,
           userName: user.name,
@@ -196,13 +185,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
           timestamp: new Date().toISOString(),
         });
       }
-    }
-
-    // Remove from room subscriptions
-    for (const [roomId, subscribers] of this.roomSubscriptions) {
-      if (subscribers.has(client.id)) {
-        subscribers.delete(client.id);
-        await this.natsService.unsubscribeFromRoom(roomId, client.id);
+    } catch {
+      // Fallback: if fetchSockets fails, check local only
+      const hasLocalSockets = Array.from(this.onlineUsers.values()).some(u => u.id === user.id);
+      if (!hasLocalSockets) {
+        await this.natsService.publishPresence(user.id, {
+          userId: user.id,
+          userName: user.name,
+          status: 'offline',
+          timestamp: new Date().toISOString(),
+        });
       }
     }
 
@@ -237,36 +229,24 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       return { success: false, error: { code: 'MEMBERSHIP_CHECK_ERROR', message: 'Failed to verify room membership' } };
     }
 
-    // Join Socket.io room
+    // Join Socket.IO room — adapter handles cross-pod broadcast
     client.join(roomId);
-
-    // Track subscription
-    if (!this.roomSubscriptions.has(roomId)) {
-      this.roomSubscriptions.set(roomId, new Set());
-    }
-    this.roomSubscriptions.get(roomId)!.add(client.id);
-
-    // Subscribe to NATS for this room
-    await this.natsService.subscribeToRoom(roomId, client.id, (message) => {
-      // Broadcast to all clients in the room except sender
-      client.to(roomId).emit('new_message', message);
-    });
-
-    // Subscribe to typing events
-    await this.natsService.subscribeToTyping(roomId, (event) => {
-      if (event.userId !== user.id) {
-        client.emit('typing', event);
-      }
-    });
 
     this.logger.log(`User ${user.name} joined room ${roomId}`);
 
-    // Notify room members
+    // Notify room members (adapter propagates to all pods)
     this.server.to(roomId).emit('user_joined', {
       roomId,
       userId: user.id,
       userName: user.name,
       timestamp: new Date().toISOString(),
+    });
+
+    // Dismiss chat notifications for this room
+    this.natsService.emitNotificationDismiss({
+      userId: String(user.id),
+      type: 'CHAT_MESSAGE',
+      dataFilter: { chatRoomId: roomId },
     });
 
     return { success: true, data: { roomId } };
@@ -284,21 +264,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     const { roomId } = data;
 
-    // Leave Socket.io room
+    // Leave Socket.IO room
     client.leave(roomId);
-
-    // Remove from tracking
-    const subscribers = this.roomSubscriptions.get(roomId);
-    if (subscribers) {
-      subscribers.delete(client.id);
-    }
-
-    // Unsubscribe from NATS
-    await this.natsService.unsubscribeFromRoom(roomId, client.id);
 
     this.logger.log(`User ${user.name} left room ${roomId}`);
 
-    // Notify room members
+    // Notify room members (adapter propagates to all pods)
     this.server.to(roomId).emit('user_left', {
       roomId,
       userId: user.id,
@@ -336,7 +307,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       createdAt: new Date().toISOString(),
     };
 
-    // 1. 다른 클라이언트에만 브로드캐스트 (발신자 제외 — 발신자는 ACK로 수신)
+    // 1. Broadcast to other clients (adapter propagates to all pods)
     client.to(roomId).emit('new_message', message);
     this.logger.debug(`Message sent to room ${roomId} by ${user.name}`);
 
@@ -353,9 +324,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       this.logger.error(`Failed to save message to DB: ${error}`);
     });
 
-    // 3. JetStream 발행 - 비동기 (다른 인스턴스 전달용)
+    // 3. JetStream 발행 - 비동기 (메시지 영속성)
     this.natsService.publishMessage(roomId, message).catch((error) => {
       this.logger.error(`Failed to publish message to JetStream: ${error}`);
+    });
+
+    // 4. 오프라인 참여자에게 push 알림
+    this.sendChatNotifications(roomId, user, content).catch((error) => {
+      this.logger.error(`Failed to send chat notifications: ${error}`);
     });
 
     return { success: true, message };
@@ -385,13 +361,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       createdAt: new Date().toISOString(),
     };
 
-    // 1. 상대방 소켓에만 전달 (발신자는 ACK로 수신)
-    const targetSockets = this.userSockets.get(targetUserId);
-    if (targetSockets) {
-      for (const socketId of targetSockets) {
-        this.server.to(socketId).emit('new_dm', message);
-      }
-    }
+    // 1. Deliver to target user via user room (adapter propagates to all pods)
+    this.server.to(`user:${targetUserId}`).emit('new_dm', message);
 
     // 2. DB 저장 - 비동기 (응답 대기 없이)
     this.natsService.requestChatService('messages.save', {
@@ -431,11 +402,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       isTyping,
     };
 
-    // Publish to NATS
-    await this.natsService.publishTyping(roomId, event);
-
-    // Also emit directly to room
+    // Broadcast typing to room (adapter propagates to all pods)
     client.to(roomId).emit('typing', event);
+  }
+
+  @SubscribeMessage('heartbeat')
+  handleHeartbeat(@ConnectedSocket() client: AuthenticatedSocket) {
+    return { success: true, timestamp: Date.now() };
   }
 
   @SubscribeMessage('get_online_users')
@@ -446,6 +419,32 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     }));
 
     return { success: true, data: users };
+  }
+
+  private async sendChatNotifications(roomId: string, sender: WsUser, content: string): Promise<void> {
+    const roomResult = await this.natsService.requestChatService<{
+      success: boolean; data: { members: { userId: number }[] };
+    }>('rooms.get', { roomId });
+    if (!roomResult?.success) return;
+
+    const members = roomResult.data.members || [];
+
+    // Fetch sockets across all pods via adapter
+    const sockets = await this.server.in(roomId).fetchSockets();
+    const onlineUserIds = new Set(
+      sockets
+        .map(s => s.data?.userId as number | undefined)
+        .filter((id): id is number => id != null),
+    );
+
+    const preview = content.length > 50 ? content.substring(0, 50) + '...' : content;
+    for (const member of members) {
+      if (member.userId === sender.id || onlineUserIds.has(member.userId)) continue;
+      this.natsService.emitChatMessageNotification({
+        chatRoomId: roomId, senderId: sender.id, senderName: sender.name,
+        recipientId: member.userId, messagePreview: preview, createdAt: new Date().toISOString(),
+      });
+    }
   }
 
   private extractToken(client: AuthenticatedSocket): string | null {

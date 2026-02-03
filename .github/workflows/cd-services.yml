@@ -189,7 +189,7 @@ jobs:
               ;;
             chat-gateway)
               DB_NAME=""; NEEDS_DB="false"
-              CPU_REQ="50m"; CPU_LIM="200m"; MEM_REQ="96Mi"; MEM_LIM="256Mi"
+              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
               ;;
             *)
               DB_NAME=""; NEEDS_DB="false"
@@ -230,6 +230,19 @@ jobs:
             DB_ENV=""
           fi
 
+          # Set replicas and strategy per service
+          REPLICAS=1
+          STRATEGY=""
+          if [ "$SERVICE" = "chat-gateway" ]; then
+            REPLICAS=2
+            STRATEGY="
+            strategy:
+              type: RollingUpdate
+              rollingUpdate:
+                maxSurge: 1
+                maxUnavailable: 0"
+          fi
+
           cat <<EOF | kubectl apply -f -
           apiVersion: v1
           kind: Service
@@ -249,10 +262,11 @@ jobs:
             name: $SERVICE
             namespace: $NAMESPACE
           spec:
-            replicas: 1
+            replicas: $REPLICAS
             selector:
               matchLabels:
                 app: $SERVICE
+          $STRATEGY
             template:
               metadata:
                 labels:
@@ -357,8 +371,26 @@ jobs:
             namespace: ${{ needs.setup.outputs.namespace }}
           spec:
             timeoutSec: 3600
+            sessionAffinity:
+              affinityType: "GENERATED_COOKIE"
+              affinityCookieTtlSec: 3600
             connectionDraining:
               drainingTimeoutSec: 60
+          EOF
+
+      - name: Deploy PDB for chat-gateway
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: policy/v1
+          kind: PodDisruptionBudget
+          metadata:
+            name: chat-gateway-pdb
+            namespace: ${{ needs.setup.outputs.namespace }}
+          spec:
+            maxUnavailable: 1
+            selector:
+              matchLabels:
+                app: chat-gateway
           EOF
 
       - name: Patch chat-gateway for WebSocket
