@@ -82,7 +82,7 @@ export function BookingsPage() {
                 onChange={(e) => updateFilters({ date: e.target.value })}
                 min={getMinDate()}
                 max={getMaxDate()}
-                className="w-full min-w-0 max-w-full h-14 px-4 text-lg bg-white/10 border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/30 overflow-hidden"
+                className="w-full h-14 px-4 text-lg bg-white/10 border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/30 appearance-none"
               />
             </div>
 
