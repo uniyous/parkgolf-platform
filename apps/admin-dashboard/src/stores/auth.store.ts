@@ -27,7 +27,7 @@ export interface ApiAdminCompanyResponse {
 export interface ApiUserResponse {
   id: number;
   email: string;
-  name?: string;
+  name?: string | null;
   username?: string;
   // 회사-역할 연결 (v3 구조)
   companies?: ApiAdminCompanyResponse[];
