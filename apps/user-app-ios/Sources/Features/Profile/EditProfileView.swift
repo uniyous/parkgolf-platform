@@ -6,7 +6,7 @@ struct EditProfileView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
     @State private var name = ""
-    @State private var phoneNumber = ""
+    @State private var phone = ""
     @State private var isSaving = false
 
     var body: some View {
@@ -89,7 +89,7 @@ struct EditProfileView: View {
 
                                 GlassTextField(
                                     placeholder: "010-0000-0000",
-                                    text: $phoneNumber,
+                                    text: $phone,
                                     icon: "phone"
                                 )
                                 .keyboardType(.phonePad)
@@ -130,7 +130,7 @@ struct EditProfileView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .onAppear {
             name = appState.currentUser?.name ?? ""
-            phoneNumber = appState.currentUser?.phoneNumber ?? ""
+            phone = appState.currentUser?.phone ?? ""
         }
     }
 }

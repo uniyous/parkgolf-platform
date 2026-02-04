@@ -188,16 +188,24 @@ class ApiClient {
       if (!endpoint.includes(REFRESH_ENDPOINT) && !endpoint.includes('/auth/refresh')) {
         const refreshed = await this.tryRefreshToken();
         if (refreshed) {
-          // 토큰 갱신 성공 시 원래 요청 재시도하지 않고 에러 throw
-          // (caller가 재시도 처리)
+          // 토큰 갱신 성공 → 에러만 throw, caller(React Query)가 재시도 시 새 토큰 사용
+          throw new ApiError(errorMessage, response.status, errorCode, errorDetails);
         }
       }
 
-      // 토큰 갱신 실패 또는 refresh 엔드포인트 에러
+      // 토큰 갱신 실패 또는 refresh 엔드포인트 에러 → 로그인으로 이동
       this.clearAuthAndRedirect();
     }
 
     throw new ApiError(errorMessage, response.status, errorCode, errorDetails);
+  }
+
+  /**
+   * 외부에서 토큰 갱신 요청 (소켓 등)
+   * 내부 mutex를 공유하여 동시 갱신을 방지합니다.
+   */
+  async refreshAccessToken(): Promise<boolean> {
+    return this.tryRefreshToken();
   }
 
   /**

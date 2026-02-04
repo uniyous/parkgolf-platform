@@ -259,19 +259,13 @@ export class GameTimeSlotService {
         ? Number(game.weekendPrice)
         : Number(game.basePrice);
 
-      const slots = this.generateSlotsForDay(
-        schedule.startTime,
-        schedule.endTime,
-        schedule.interval,
-        game.estimatedDuration
-      );
-
-      for (const slot of slots) {
+      if (game.slotMode === 'SESSION') {
+        // SESSION 모드: 스케줄 1건 = 슬롯 1건 (interval 무시)
         slotsToCreate.push({
           gameId: dto.gameId,
           date: new Date(d),
-          startTime: slot.startTime,
-          endTime: slot.endTime,
+          startTime: schedule.startTime,
+          endTime: schedule.endTime,
           maxPlayers: game.maxPlayers,
           bookedPlayers: 0,
           price,
@@ -279,6 +273,29 @@ export class GameTimeSlotService {
           status: 'AVAILABLE',
           isActive: true,
         });
+      } else {
+        // TEE_TIME 모드: interval 기반 슬롯 생성
+        const slots = this.generateSlotsForDay(
+          schedule.startTime,
+          schedule.endTime,
+          schedule.interval,
+          game.estimatedDuration
+        );
+
+        for (const slot of slots) {
+          slotsToCreate.push({
+            gameId: dto.gameId,
+            date: new Date(d),
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            maxPlayers: game.maxPlayers,
+            bookedPlayers: 0,
+            price,
+            isPremium: isWeekend,
+            status: 'AVAILABLE',
+            isActive: true,
+          });
+        }
       }
     }
 

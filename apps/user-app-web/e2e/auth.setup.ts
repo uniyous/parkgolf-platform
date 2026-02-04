@@ -21,7 +21,7 @@ setup('authenticate as test user', async ({ page }) => {
       await page.goto('/login');
 
       // 페이지 로드 확인
-      await expect(page.getByText('Golf Course')).toBeVisible({ timeout: 30000 });
+      await expect(page.getByText('ParkMate')).toBeVisible({ timeout: 30000 });
 
       // 테스트 계정 버튼 클릭 (테스트사용자)
       await page.getByRole('button', { name: /테스트사용자/ }).click();
@@ -29,8 +29,8 @@ setup('authenticate as test user', async ({ page }) => {
       // 로그인 버튼 클릭
       await page.getByRole('button', { name: '로그인' }).click();
 
-      // 검색 페이지로 리다이렉트 확인 (Cloud Run 콜드 스타트 대비 - 60초)
-      await expect(page).toHaveURL(/.*search/, { timeout: 60000 });
+      // 로그인 후 리다이렉트 확인 (홈 또는 검색 페이지)
+      await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 60000 });
 
       // 인증 상태 저장
       await page.context().storageState({ path: authFile });

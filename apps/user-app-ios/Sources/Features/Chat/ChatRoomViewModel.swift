@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import Combine
 
 @MainActor
@@ -13,6 +14,7 @@ final class ChatRoomViewModel: ObservableObject {
     @Published var error: Error?
     @Published var isConnected = false
     @Published private(set) var hasMoreMessages = true
+    @Published var typingUserName: String?
 
     // MARK: - Properties
 
@@ -23,8 +25,9 @@ final class ChatRoomViewModel: ObservableObject {
     private let socketManager = ChatSocketManager.shared
     private var cancellables = Set<AnyCancellable>()
     private var cursor: String?
-    private var connectionCheckTimer: Timer?
     private var cachedToken: String?
+    private nonisolated(unsafe) var foregroundObserver: (any NSObjectProtocol)?
+    private var typingTimer: Timer?
 
     // MARK: - Init
 
@@ -32,6 +35,13 @@ final class ChatRoomViewModel: ObservableObject {
         self.roomId = roomId
         self.currentUserId = currentUserId
         setupSocketSubscriptions()
+        setupForegroundObserver()
+    }
+
+    deinit {
+        if let observer = foregroundObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     // MARK: - Socket Subscriptions
@@ -59,6 +69,68 @@ final class ChatRoomViewModel: ObservableObject {
                 self?.isConnected = connected
             }
             .store(in: &cancellables)
+
+        // Subscribe to typing events
+        socketManager.typingReceived
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                guard let self = self else { return }
+                guard event.roomId == self.roomId,
+                      event.userId != self.currentUserId else { return }
+                if event.isTyping {
+                    self.typingUserName = event.userName
+                    // Auto-clear after 3 seconds
+                    self.typingTimer?.invalidate()
+                    self.typingTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in
+                        Task { @MainActor in
+                            self?.typingUserName = nil
+                        }
+                    }
+                } else {
+                    self.typingUserName = nil
+                    self.typingTimer?.invalidate()
+                }
+            }
+            .store(in: &cancellables)
+
+        // Subscribe to reconnection events
+        socketManager.reconnected
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                guard let self = self else { return }
+                // Rejoin room and reload messages on reconnect
+                self.socketManager.joinRoom(roomId: self.roomId) { success in
+                    #if DEBUG
+                    print(success ? "✅ Rejoined room after reconnect" : "❌ Failed to rejoin room after reconnect")
+                    #endif
+                }
+                Task {
+                    await self.loadMessages()
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    // MARK: - Foreground Observer
+
+    private func setupForegroundObserver() {
+        foregroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.willEnterForegroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self = self else { return }
+
+                // Reconnect socket if disconnected during background
+                if !self.socketManager.isConnected {
+                    await self.forceReconnect()
+                }
+
+                // Reload messages to fill any gap
+                await self.loadMessages()
+            }
+        }
     }
 
     // MARK: - Load Messages
@@ -78,6 +150,13 @@ final class ChatRoomViewModel: ObservableObject {
             messages = response.messages.sorted { $0.createdAt < $1.createdAt }
             hasMoreMessages = response.hasMore
             cursor = response.nextCursor
+
+            // Mark messages as read
+            struct MarkReadResponse: Codable { let success: Bool }
+            _ = try? await apiClient.request(
+                ChatEndpoints.markAsRead(roomId: roomId),
+                responseType: MarkReadResponse.self
+            )
         } catch {
             self.error = error
             #if DEBUG
@@ -206,61 +285,17 @@ final class ChatRoomViewModel: ObservableObject {
             }
             #endif
         }
-
-        // Start periodic connection check
-        startConnectionCheck()
     }
 
     func disconnectSocket() {
-        stopConnectionCheck()
         socketManager.leaveRoom(roomId: roomId)
         // Don't disconnect the socket manager itself as it may be used by other rooms
     }
 
-    // MARK: - Connection Check
-
-    private func startConnectionCheck() {
-        stopConnectionCheck()
-
-        // Check connection every 30 seconds
-        connectionCheckTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.checkAndReconnectIfNeeded()
-            }
-        }
-    }
-
-    private func stopConnectionCheck() {
-        connectionCheckTimer?.invalidate()
-        connectionCheckTimer = nil
-    }
-
-    private func checkAndReconnectIfNeeded() {
-        guard let token = cachedToken else { return }
-
-        if !socketManager.isConnected && socketManager.canReconnect {
-            #if DEBUG
-            print("🔄 Periodic check: attempting reconnection...")
-            #endif
-            if socketManager.ensureConnected(token: token) {
-                // Already connected, rejoin room
-                socketManager.joinRoom(roomId: roomId) { success in
-                    #if DEBUG
-                    print(success ? "✅ Rejoined room: \(self.roomId)" : "❌ Failed to rejoin room")
-                    #endif
-                }
-            }
-        }
-    }
-
     /// 강제 재연결 (UI에서 호출)
     func forceReconnect() async {
-        let token: String
-        if let cached = cachedToken {
-            token = cached
-        } else if let fetched = await apiClient.getAccessToken() {
-            token = fetched
-        } else {
+        // 항상 신선한 토큰을 가져옴 (캐시된 토큰은 만료되었을 수 있음)
+        guard let token = await apiClient.getAccessToken() else {
             #if DEBUG
             print("No token available for force reconnect")
             #endif
@@ -292,5 +327,36 @@ final class ChatRoomViewModel: ObservableObject {
     func sendTypingIndicator(_ isTyping: Bool) {
         guard socketManager.isConnected else { return }
         socketManager.sendTyping(roomId: roomId, isTyping: isTyping)
+    }
+
+    // MARK: - Room Actions
+
+    func leaveChatRoom() async {
+        do {
+            _ = try await apiClient.request(
+                ChatEndpoints.leaveRoom(roomId: roomId),
+                responseType: SuccessResponse.self
+            )
+            disconnectSocket()
+        } catch {
+            self.error = error
+            #if DEBUG
+            print("Failed to leave chat room: \(error)")
+            #endif
+        }
+    }
+
+    func inviteMembers(userIds: [String]) async {
+        do {
+            _ = try await apiClient.request(
+                ChatEndpoints.inviteMembers(roomId: roomId, userIds: userIds),
+                responseType: SuccessResponse.self
+            )
+        } catch {
+            self.error = error
+            #if DEBUG
+            print("Failed to invite members: \(error)")
+            #endif
+        }
     }
 }

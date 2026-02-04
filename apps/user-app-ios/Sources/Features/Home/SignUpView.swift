@@ -101,7 +101,7 @@ struct SignUpView: View {
 
                                 GlassTextField(
                                     placeholder: "010-0000-0000",
-                                    text: $viewModel.phoneNumber,
+                                    text: $viewModel.phone,
                                     icon: "phone"
                                 )
                                 .textContentType(.telephoneNumber)

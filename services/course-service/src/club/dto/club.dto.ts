@@ -12,7 +12,7 @@ import {
   Max,
   ValidateNested,
 } from 'class-validator';
-import { Club, Course } from '@prisma/client';
+import { Club, Course, ClubType } from '@prisma/client';
 import { CourseResponseDto } from '../../course/dto/course.dto';
 
 export enum ClubStatus {
@@ -85,6 +85,10 @@ export class CreateClubDto {
   status?: ClubStatus;
 
   @IsOptional()
+  @IsEnum(ClubType)
+  clubType?: ClubType;
+
+  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 }
@@ -148,6 +152,10 @@ export class UpdateClubDto {
   status?: ClubStatus;
 
   @IsOptional()
+  @IsEnum(ClubType)
+  clubType?: ClubType;
+
+  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 }
@@ -164,6 +172,10 @@ export class ClubFilterDto {
   @IsOptional()
   @IsEnum(ClubStatus)
   status?: ClubStatus;
+
+  @IsOptional()
+  @IsEnum(ClubType)
+  clubType?: ClubType;
 
   @IsOptional()
   @IsInt()
@@ -219,6 +231,7 @@ export class ClubResponseDto {
   totalHoles: number;
   totalCourses: number;
   status: ClubStatus;
+  clubType: string;
   operatingHours: Record<string, unknown> | null;
   seasonInfo: Record<string, unknown> | null;
   facilities: string[];
@@ -244,6 +257,7 @@ export class ClubResponseDto {
     dto.totalHoles = entity.totalHoles;
     dto.totalCourses = entity.totalCourses;
     dto.status = entity.status as ClubStatus;
+    dto.clubType = entity.clubType;
     dto.operatingHours = entity.operatingHours as Record<string, unknown> | null;
     dto.seasonInfo = entity.seasonInfo as Record<string, unknown> | null;
     dto.facilities = entity.facilities;

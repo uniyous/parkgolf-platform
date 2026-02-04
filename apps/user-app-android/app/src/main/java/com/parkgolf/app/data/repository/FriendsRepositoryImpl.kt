@@ -3,6 +3,7 @@ package com.parkgolf.app.data.repository
 import com.parkgolf.app.data.mapper.toDomain
 import com.parkgolf.app.data.mapper.toFriendRequest
 import com.parkgolf.app.data.remote.api.FriendsApi
+import com.parkgolf.app.data.remote.dto.friends.FindFromContactsRequest
 import com.parkgolf.app.data.remote.dto.friends.SendFriendRequestBody
 import com.parkgolf.app.domain.model.Friend
 import com.parkgolf.app.domain.model.FriendRequest
@@ -64,5 +65,12 @@ class FriendsRepositoryImpl @Inject constructor(
 
     override suspend fun checkFriendship(friendId: Int): Result<Boolean> = safeApiCall {
         friendsApi.checkFriendship(friendId).toResult("친구 관계 확인에 실패했습니다")
+    }
+
+    override suspend fun findFromContacts(phoneNumbers: List<String>): Result<List<UserSearchResult>> = safeApiCall {
+        friendsApi.findFromContacts(FindFromContactsRequest(phoneNumbers))
+            .toResult("연락처 친구 검색에 실패했습니다") { data ->
+                data.map { it.toDomain() }
+            }
     }
 }

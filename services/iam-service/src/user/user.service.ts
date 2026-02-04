@@ -44,6 +44,7 @@ export class UserService {
                     email: createUserDto.email,
                     password: hashedPassword,
                     name: createUserDto.name,
+                    phone: createUserDto.phone,
                     roleCode: createUserDto.role || 'USER',
                     isActive: true,
                 },
@@ -82,6 +83,14 @@ export class UserService {
                 updateUserDto.password,
                 this.SALT_ROUNDS,
             );
+        }
+
+        if (updateUserDto.name !== undefined) {
+            dataToUpdate.name = updateUserDto.name;
+        }
+
+        if (updateUserDto.phone !== undefined) {
+            dataToUpdate.phone = updateUserDto.phone;
         }
 
         if (Object.keys(dataToUpdate).length === 0) {

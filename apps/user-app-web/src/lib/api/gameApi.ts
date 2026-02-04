@@ -1,5 +1,6 @@
 import { apiClient } from './client';
 import { extractList, extractSingle, type BffResponse } from './bffParser';
+import { computeTimeRange } from '@/lib/constants';
 
 /**
  * Game 응답 DTO - course-service의 GameResponseDto와 일치
@@ -27,6 +28,8 @@ export interface Game {
   clubId: number;
   clubName: string;
   clubLocation?: string;
+  // Slot mode
+  slotMode?: 'TEE_TIME' | 'SESSION';
   // Status
   status: string;
   isActive: boolean;
@@ -43,6 +46,7 @@ export interface Game {
 export interface GameSearchParams {
   search?: string;
   date?: string;  // YYYY-MM-DD format - 해당 날짜에 예약 가능한 타임슬롯이 있는 게임만 필터링
+  timeOfDay?: string;  // DAWN | MORNING | AFTERNOON | EVENING
   clubId?: number;
   minPrice?: number;
   maxPrice?: number;
@@ -132,6 +136,23 @@ export const gameApi = {
     const queryParams: Record<string, string | number | undefined> = {};
     if (params.search) queryParams.search = params.search;
     if (params.date) queryParams.date = params.date;
+
+    // 다중 시간대 선택: 쉼표 구분 → startTimeFrom/startTimeTo 변환
+    if (params.timeOfDay) {
+      const periods = params.timeOfDay.split(',').filter(Boolean);
+      if (periods.length === 1) {
+        // 단일 선택: 기존 timeOfDay 파라미터 사용 (백엔드 호환)
+        queryParams.timeOfDay = periods[0];
+      } else if (periods.length > 1) {
+        // 다중 선택: 시간 범위로 변환
+        const range = computeTimeRange(periods);
+        if (range) {
+          queryParams.startTimeFrom = range.startTimeFrom;
+          queryParams.startTimeTo = range.startTimeTo;
+        }
+      }
+    }
+
     if (params.clubId) queryParams.clubId = params.clubId;
     if (params.minPrice !== undefined) queryParams.minPrice = params.minPrice;
     if (params.maxPrice !== undefined) queryParams.maxPrice = params.maxPrice;

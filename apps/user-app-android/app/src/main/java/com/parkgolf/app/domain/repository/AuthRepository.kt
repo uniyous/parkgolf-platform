@@ -17,7 +17,7 @@ interface AuthRepository {
         email: String,
         password: String,
         name: String,
-        phoneNumber: String?
+        phone: String?
     ): Result<User>
     suspend fun refreshToken(): Result<Unit>
     suspend fun logout()

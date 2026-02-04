@@ -37,7 +37,9 @@ struct ChatRoom: Identifiable, Codable, Sendable, Hashable {
                     id: member.id,
                     userId: String(member.userId),
                     userName: member.userName,
+                    userEmail: member.userEmail,
                     profileImageUrl: nil,
+                    isAdmin: member.isAdmin,
                     joinedAt: member.joinedAt
                 )
             }
@@ -76,6 +78,27 @@ struct ChatRoom: Identifiable, Codable, Sendable, Hashable {
         self.updatedAt = updatedAt
     }
 
+    func displayName(currentUserId: String) -> String {
+        let others = participants.filter { $0.userId != currentUserId }
+
+        // DIRECT: 상대방 이름
+        if type == .direct {
+            return others.first?.userName ?? (name.isEmpty ? "채팅" : name)
+        }
+
+        // GROUP/BOOKING: 방 이름이 있으면 우선 사용
+        if !name.isEmpty {
+            return name
+        }
+
+        // 방 이름이 없을 때 참여자 이름 폴백 (생성자 우선)
+        if others.isEmpty { return "채팅방" }
+        let sorted = others.sorted { a, _ in a.isAdmin }
+        if sorted.count <= 2 { return sorted.map(\.userName).joined(separator: ", ") }
+        let first = sorted.prefix(2).map(\.userName).joined(separator: ", ")
+        return "\(first) 외 \(sorted.count - 2)명"
+    }
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
@@ -92,6 +115,7 @@ struct ChatRoomMember: Codable, Sendable {
     let roomId: String
     let userId: Int
     let userName: String
+    let userEmail: String?
     let joinedAt: Date
     let leftAt: Date?
     let isAdmin: Bool
@@ -197,7 +221,9 @@ struct ChatParticipant: Identifiable, Codable, Sendable {
     let id: String
     let userId: String
     let userName: String
+    let userEmail: String?
     let profileImageUrl: String?
+    let isAdmin: Bool
     let joinedAt: Date
 
     // API returns camelCase
@@ -205,15 +231,19 @@ struct ChatParticipant: Identifiable, Codable, Sendable {
         case id
         case userId
         case userName
+        case userEmail
         case profileImageUrl
+        case isAdmin
         case joinedAt
     }
 
-    init(id: String, userId: String, userName: String, profileImageUrl: String?, joinedAt: Date) {
+    init(id: String, userId: String, userName: String, userEmail: String? = nil, profileImageUrl: String?, isAdmin: Bool = false, joinedAt: Date) {
         self.id = id
         self.userId = userId
         self.userName = userName
+        self.userEmail = userEmail
         self.profileImageUrl = profileImageUrl
+        self.isAdmin = isAdmin
         self.joinedAt = joinedAt
     }
 
@@ -227,7 +257,19 @@ struct ChatParticipant: Identifiable, Codable, Sendable {
             userId = try container.decode(String.self, forKey: .userId)
         }
         userName = try container.decode(String.self, forKey: .userName)
+        userEmail = try container.decodeIfPresent(String.self, forKey: .userEmail)
         profileImageUrl = try container.decodeIfPresent(String.self, forKey: .profileImageUrl)
+        isAdmin = try container.decodeIfPresent(Bool.self, forKey: .isAdmin) ?? false
         joinedAt = try container.decode(Date.self, forKey: .joinedAt)
+    }
+}
+
+// MARK: - Invite Members Request
+
+struct InviteMembersRequest: Codable, Sendable {
+    let userIds: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case userIds = "user_ids"
     }
 }

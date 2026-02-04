@@ -1,5 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import type { ChatMessage } from '@/lib/api/chatApi';
+import { authStorage } from '@/lib/storage';
+import { apiClient } from '@/lib/api/client';
 
 // ============================================
 // 환경 설정
@@ -8,9 +10,9 @@ import type { ChatMessage } from '@/lib/api/chatApi';
 const mode = (import.meta as any).env?.MODE;
 const isDev = mode === 'development' || mode === 'e2e';
 
-// 환경 변수로 소켓 URL 지정 가능, 없으면 GKE 사용
+// 환경 변수로 소켓 URL 지정 가능, 없으면 GKE Ingress 도메인 사용
 const SOCKET_URL = (import.meta as any).env?.VITE_CHAT_SOCKET_URL ||
-  'http://34.160.211.91';
+  'https://dev-api.goparkmate.com';
 
 const NAMESPACE = '/chat';
 
@@ -51,14 +53,13 @@ export type ErrorHandler = (error: string) => void;
 class ChatSocketManager {
   private socket: Socket | null = null;
   private token: string | null = null;
-  private isConnecting = false;
+  private isRefreshingToken = false;
 
-  // Reconnection state
-  private lastConnectAttempt = 0;
-  private reconnectAttempts = 0;
-  private readonly MIN_RECONNECT_INTERVAL = 3000; // 최소 3초 간격
-  private readonly MAX_RECONNECT_DELAY = 30000; // 최대 30초 대기
-  private readonly MAX_RECONNECT_ATTEMPTS = 10;
+  // Heartbeat — Cloud Run / proxy idle timeout 방지
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private missedHeartbeats = 0;
+  private static readonly HEARTBEAT_INTERVAL = 30_000;
+  private static readonly MAX_MISSED_HEARTBEATS = 2;
 
   // Event handlers
   private messageHandlers: Set<MessageHandler> = new Set();
@@ -67,6 +68,7 @@ class ChatSocketManager {
   private userLeftHandlers: Set<UserLeftHandler> = new Set();
   private connectHandlers: Set<ConnectionHandler> = new Set();
   private disconnectHandlers: Set<ConnectionHandler> = new Set();
+  private reconnectHandlers: Set<ConnectionHandler> = new Set();
   private errorHandlers: Set<ErrorHandler> = new Set();
 
   // ============================================
@@ -74,106 +76,105 @@ class ChatSocketManager {
   // ============================================
 
   connect(token: string): void {
-    if (this.socket?.connected || this.isConnecting) {
+    if (this.socket?.connected) {
       return;
     }
 
     this.token = token;
-    this.isConnecting = true;
-    this.lastConnectAttempt = Date.now();
 
     this.socket = io(`${SOCKET_URL}${NAMESPACE}`, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
       reconnection: true,
-      reconnectionAttempts: this.MAX_RECONNECT_ATTEMPTS,
-      reconnectionDelay: this.MIN_RECONNECT_INTERVAL,
-      reconnectionDelayMax: this.MAX_RECONNECT_DELAY,
-      auth: { token },
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 30000,
+      // 동적 auth: 재연결 시마다 최신 토큰을 authStorage에서 읽음
+      auth: (cb) => {
+        cb({ token: authStorage.getToken() || this.token });
+      },
     });
 
     this.setupEventHandlers();
   }
 
   /**
-   * 연결 상태를 확인하고 필요시 재연결
-   * - 이미 연결됨: 즉시 true 반환
-   * - 연결 중: false 반환 (중복 연결 방지)
-   * - 최근 시도 후 MIN_RECONNECT_INTERVAL 이내: false 반환 (스팸 방지)
-   * - 재연결 시도 횟수 초과: false 반환
-   */
-  ensureConnected(token: string): boolean {
-    // 이미 연결되어 있으면 OK
-    if (this.socket?.connected) {
-      this.reconnectAttempts = 0; // 성공 시 카운터 리셋
-      return true;
-    }
-
-    // 연결 중이면 대기
-    if (this.isConnecting) {
-      return false;
-    }
-
-    // 최대 재연결 시도 횟수 초과
-    if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
-      console.warn(`⚠️ Max reconnection attempts (${this.MAX_RECONNECT_ATTEMPTS}) exceeded`);
-      return false;
-    }
-
-    // 최소 간격 체크 (스팸 방지)
-    const timeSinceLastAttempt = Date.now() - this.lastConnectAttempt;
-    if (timeSinceLastAttempt < this.MIN_RECONNECT_INTERVAL) {
-      return false;
-    }
-
-    // 재연결 시도
-    this.reconnectAttempts++;
-    console.log(`🔄 Reconnecting... (attempt ${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})`);
-
-    // 기존 소켓 정리 후 재연결
-    if (this.socket) {
-      this.socket.removeAllListeners();
-      this.socket.disconnect();
-      this.socket = null;
-    }
-
-    this.connect(token);
-    return false;
-  }
-
-  /**
-   * 강제 재연결 (재연결 카운터 리셋)
+   * 강제 재연결 (수동 재연결 버튼용)
    */
   forceReconnect(token: string): void {
-    this.reconnectAttempts = 0;
-    this.lastConnectAttempt = 0;
-
     if (this.socket) {
       this.socket.removeAllListeners();
       this.socket.disconnect();
       this.socket = null;
     }
 
-    this.isConnecting = false;
     this.connect(token);
   }
 
   disconnect(): void {
+    this.stopHeartbeat();
     if (this.socket) {
       this.socket.removeAllListeners();
       this.socket.disconnect();
       this.socket = null;
     }
     this.token = null;
-    this.isConnecting = false;
-    this.reconnectAttempts = 0;
   }
 
   get isConnected(): boolean {
     return this.socket?.connected ?? false;
   }
 
-  get canReconnect(): boolean {
-    return this.reconnectAttempts < this.MAX_RECONNECT_ATTEMPTS;
+  /**
+   * 인증 에러 시 API Client의 토큰 갱신 메커니즘을 활용하여 재연결
+   * - API Client의 mutex를 공유하여 동시 갱신 방지
+   * - 동일한 refresh 엔드포인트 사용
+   */
+  private async handleAuthError(): Promise<void> {
+    if (this.isRefreshingToken) return;
+    this.isRefreshingToken = true;
+
+    try {
+      const refreshed = await apiClient.refreshAccessToken();
+      if (refreshed) {
+        const newToken = authStorage.getToken();
+        if (newToken) {
+          this.forceReconnect(newToken);
+        }
+      }
+    } catch (e) {
+      console.error('Token refresh failed for socket:', e);
+    } finally {
+      this.isRefreshingToken = false;
+    }
+  }
+
+  // ============================================
+  // Heartbeat
+  // ============================================
+
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+    this.missedHeartbeats = 0;
+    this.heartbeatTimer = setInterval(() => {
+      if (!this.socket?.connected) return;
+      this.missedHeartbeats++;
+      if (this.missedHeartbeats > ChatSocketManager.MAX_MISSED_HEARTBEATS) {
+        console.warn('[ChatSocket] Heartbeat timeout, forcing reconnect');
+        this.socket?.disconnect();
+        return;
+      }
+      this.socket.emit('heartbeat', {}, () => {
+        this.missedHeartbeats = 0;
+      });
+    }, ChatSocketManager.HEARTBEAT_INTERVAL);
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
   }
 
   // ============================================
@@ -184,20 +185,23 @@ class ChatSocketManager {
     if (!this.socket) return;
 
     this.socket.on('connect', () => {
-      this.isConnecting = false;
-      this.reconnectAttempts = 0; // 성공 시 카운터 리셋
       console.log('✅ Chat socket connected');
+      this.startHeartbeat();
       this.connectHandlers.forEach(handler => handler());
     });
 
     this.socket.on('disconnect', () => {
       console.log('🔌 Chat socket disconnected');
+      this.stopHeartbeat();
       this.disconnectHandlers.forEach(handler => handler());
     });
 
     this.socket.on('connect_error', (error) => {
-      this.isConnecting = false;
       console.error('❌ Chat socket connection error:', error.message);
+      // 인증 실패 시 토큰 갱신 후 재연결 시도
+      if (error.message?.includes('Unauthorized') || error.message?.includes('Authentication')) {
+        this.handleAuthError();
+      }
       this.errorHandlers.forEach(handler => handler(error.message));
     });
 
@@ -220,6 +224,24 @@ class ChatSocketManager {
 
     this.socket.on('user_left', (data: UserLeftEvent) => {
       this.userLeftHandlers.forEach(handler => handler(data));
+    });
+
+    // Token lifecycle events from server
+    this.socket.on('token_expiring', () => {
+      console.log('[ChatSocket] Token expiring soon, refreshing REST API token...');
+      apiClient.refreshAccessToken().catch(console.error);
+    });
+
+    this.socket.on('token_refresh_needed', () => {
+      // Server session stays alive — just refresh the REST API token in background
+      console.log('[ChatSocket] Token expired, refreshing REST API token...');
+      apiClient.refreshAccessToken().catch(console.error);
+    });
+
+    // Socket.IO Manager 레벨 재연결 이벤트
+    this.socket.io.on('reconnect', () => {
+      console.log('🔄 Chat socket reconnected');
+      this.reconnectHandlers.forEach(handler => handler());
     });
   }
 
@@ -313,6 +335,11 @@ class ChatSocketManager {
   onDisconnect(handler: ConnectionHandler): () => void {
     this.disconnectHandlers.add(handler);
     return () => this.disconnectHandlers.delete(handler);
+  }
+
+  onReconnect(handler: ConnectionHandler): () => void {
+    this.reconnectHandlers.add(handler);
+    return () => this.reconnectHandlers.delete(handler);
   }
 
   onError(handler: ErrorHandler): () => void {

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { NotificationType } from '@prisma/client';
 import { DeliveryService } from './delivery.service';
 import { NotificationService } from './notification.service';
 import { DeadLetterService } from './dead-letter.service';
@@ -92,6 +93,38 @@ export class SchedulerService {
       }
     } catch (error) {
       this.logger.error('Failed to cleanup dead letter queue:', error);
+    }
+  }
+
+  /**
+   * 만료 알림 정리 (매일 새벽 2시 실행)
+   * 타입별 TTL에 따라 READ 알림 삭제 + 미읽음 만료 알림 READ 처리
+   */
+  @Cron('0 2 * * *')
+  async cleanupExpiredNotifications() {
+    const now = new Date();
+    const ttlDays: Record<string, number> = {
+      CHAT_MESSAGE: 7,
+      FRIEND_REQUEST: 30,
+      FRIEND_ACCEPTED: 14,
+      BOOKING_CONFIRMED: 7,
+      BOOKING_CANCELLED: 7,
+      PAYMENT_SUCCESS: 30,
+      PAYMENT_FAILED: 30,
+      SYSTEM_ALERT: 30,
+    };
+
+    let totalDeleted = 0;
+    let totalMarkedRead = 0;
+
+    for (const [type, days] of Object.entries(ttlDays)) {
+      const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+      totalDeleted += await this.notificationService.deleteExpired(type as NotificationType, cutoff);
+      totalMarkedRead += await this.notificationService.markExpiredAsRead(type as NotificationType, cutoff);
+    }
+
+    if (totalDeleted > 0 || totalMarkedRead > 0) {
+      this.logger.log(`Expired cleanup: deleted=${totalDeleted}, marked_read=${totalMarkedRead}`);
     }
   }
 

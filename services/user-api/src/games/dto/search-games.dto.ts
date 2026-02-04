@@ -23,6 +23,11 @@ export class SearchGamesDto {
   @IsOptional()
   startTimeTo?: string;
 
+  @ApiPropertyOptional({ description: '시간대 필터 (DAWN/MORNING/AFTERNOON/EVENING)', enum: ['DAWN', 'MORNING', 'AFTERNOON', 'EVENING'] })
+  @IsString()
+  @IsOptional()
+  timeOfDay?: string;
+
   @ApiPropertyOptional({ description: '클럽 ID' })
   @IsNumber()
   @IsOptional()

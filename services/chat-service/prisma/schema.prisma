@@ -38,6 +38,7 @@ model ChatRoomMember {
   roomId    String
   userId    Int
   userName  String   // 캐시용 (비정규화)
+  userEmail String?  // 캐시용 (비정규화)
   joinedAt  DateTime @default(now())
   leftAt    DateTime?
   isAdmin   Boolean  @default(false)

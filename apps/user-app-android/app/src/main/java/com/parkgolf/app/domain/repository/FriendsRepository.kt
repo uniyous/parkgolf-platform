@@ -23,4 +23,6 @@ interface FriendsRepository {
     suspend fun removeFriend(friendId: Int): Result<Unit>
 
     suspend fun checkFriendship(friendId: Int): Result<Boolean>
+
+    suspend fun findFromContacts(phoneNumbers: List<String>): Result<List<UserSearchResult>>
 }

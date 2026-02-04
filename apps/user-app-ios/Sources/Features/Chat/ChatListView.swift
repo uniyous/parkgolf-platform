@@ -95,6 +95,11 @@ struct ChatListView: View {
 
 struct ChatRoomCard: View {
     let room: ChatRoom
+    @EnvironmentObject private var appState: AppState
+
+    private var displayName: String {
+        room.displayName(currentUserId: appState.currentUser?.stringId ?? "")
+    }
 
     var body: some View {
         GlassCard(padding: 0) {
@@ -105,7 +110,7 @@ struct ChatRoomCard: View {
                 // Content
                 VStack(alignment: .leading, spacing: ParkSpacing.xxs) {
                     HStack {
-                        Text(room.name)
+                        Text(displayName)
                             .font(.parkHeadlineSmall)
                             .foregroundStyle(.white)
                             .lineLimit(1)
@@ -167,7 +172,7 @@ struct ChatRoomCard: View {
                     .font(.system(size: 18))
                     .foregroundStyle(.white)
             case .direct:
-                Text(String(room.name.prefix(1)))
+                Text(String(displayName.prefix(1)))
                     .font(.parkHeadlineLarge)
                     .foregroundStyle(.white)
             }
@@ -179,6 +184,7 @@ struct ChatRoomCard: View {
 
 struct NewChatSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = NewChatViewModel()
 
     var body: some View {
@@ -188,65 +194,34 @@ struct NewChatSheet: View {
                     .ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    // Search Bar
-                    HStack(spacing: ParkSpacing.sm) {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundStyle(.white.opacity(0.5))
-
-                        TextField("친구 검색", text: $viewModel.searchQuery)
-                            .foregroundStyle(.white)
-                            .font(.parkBodyMedium)
-
-                        if !viewModel.searchQuery.isEmpty {
-                            Button {
-                                viewModel.searchQuery = ""
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(.white.opacity(0.5))
-                            }
-                        }
-                    }
-                    .padding(ParkSpacing.md)
-                    .glassCard(padding: 0, cornerRadius: ParkRadius.lg)
-                    .padding(ParkSpacing.md)
-
-                    // Friends List
-                    if viewModel.isLoading {
-                        ParkLoadingView(message: "친구 목록 불러오는 중...")
-                    } else if viewModel.filteredFriends.isEmpty {
-                        ParkEmptyStateView(
-                            icon: viewModel.searchQuery.isEmpty ? "person.2" : "magnifyingglass",
-                            title: viewModel.searchQuery.isEmpty ? "친구가 없습니다" : "검색 결과 없음",
-                            description: viewModel.searchQuery.isEmpty ?
-                                "친구를 추가하고 대화를 시작해보세요" :
-                                "다른 검색어로 시도해보세요"
-                        )
-                    } else {
-                        ScrollView {
-                            LazyVStack(spacing: ParkSpacing.md) {
-                                ForEach(viewModel.filteredFriends) { friend in
-                                    Button {
-                                        viewModel.selectedFriend = friend
-                                        viewModel.createDirectChat()
-                                    } label: {
-                                        FriendSelectCard(friend: friend)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                            .padding(ParkSpacing.md)
-                        }
+                    switch viewModel.step {
+                    case .select:
+                        selectStepContent
+                    case .name:
+                        nameStepContent
                     }
                 }
             }
-            .navigationTitle("새 채팅")
+            .navigationTitle(viewModel.step == .select ? "새 채팅" : "그룹 만들기")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("취소") {
-                        dismiss()
+                    if viewModel.step == .name {
+                        Button {
+                            viewModel.goBack()
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.left")
+                                Text("뒤로")
+                            }
+                            .foregroundStyle(.white)
+                        }
+                    } else {
+                        Button("취소") {
+                            dismiss()
+                        }
+                        .foregroundStyle(.white)
                     }
-                    .foregroundStyle(.white)
                 }
             }
             .toolbarBackground(.hidden, for: .navigationBar)
@@ -260,12 +235,188 @@ struct NewChatSheet: View {
             await viewModel.loadFriends()
         }
     }
+
+    // MARK: - Select Step
+
+    private var selectStepContent: some View {
+        VStack(spacing: 0) {
+            // Search Bar
+            HStack(spacing: ParkSpacing.sm) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.white.opacity(0.5))
+
+                TextField("친구 검색", text: $viewModel.searchQuery)
+                    .foregroundStyle(.white)
+                    .font(.parkBodyMedium)
+
+                if !viewModel.searchQuery.isEmpty {
+                    Button {
+                        viewModel.searchQuery = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+                }
+            }
+            .padding(ParkSpacing.md)
+            .glassCard(padding: 0, cornerRadius: ParkRadius.lg)
+            .padding(ParkSpacing.md)
+
+            // Selected Friends Chips
+            if !viewModel.selectedFriends.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: ParkSpacing.xs) {
+                        ForEach(viewModel.selectedFriends) { friend in
+                            HStack(spacing: 4) {
+                                Text(friend.friendName)
+                                    .font(.parkCaption)
+                                    .foregroundStyle(.white)
+
+                                Button {
+                                    viewModel.toggleFriend(friend)
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 14))
+                                        .foregroundStyle(.white.opacity(0.6))
+                                }
+                            }
+                            .padding(.horizontal, ParkSpacing.sm)
+                            .padding(.vertical, ParkSpacing.xxs)
+                            .background(Color.parkPrimary.opacity(0.4))
+                            .clipShape(Capsule())
+                        }
+                    }
+                    .padding(.horizontal, ParkSpacing.md)
+                }
+                .padding(.bottom, ParkSpacing.sm)
+            }
+
+            // Friends List
+            if viewModel.isLoading {
+                ParkLoadingView(message: "친구 목록 불러오는 중...")
+            } else if viewModel.filteredFriends.isEmpty {
+                ParkEmptyStateView(
+                    icon: viewModel.searchQuery.isEmpty ? "person.2" : "magnifyingglass",
+                    title: viewModel.searchQuery.isEmpty ? "친구가 없습니다" : "검색 결과 없음",
+                    description: viewModel.searchQuery.isEmpty ?
+                        "친구를 추가하고 대화를 시작해보세요" :
+                        "다른 검색어로 시도해보세요"
+                )
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: ParkSpacing.md) {
+                        ForEach(viewModel.filteredFriends) { friend in
+                            Button {
+                                viewModel.toggleFriend(friend)
+                            } label: {
+                                FriendSelectCard(
+                                    friend: friend,
+                                    isSelected: viewModel.isFriendSelected(friend)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(ParkSpacing.md)
+                }
+            }
+
+            // Bottom Action Button
+            if !viewModel.selectedFriends.isEmpty {
+                Button {
+                    viewModel.handleNext()
+                } label: {
+                    Text(viewModel.selectedFriends.count == 1
+                         ? "채팅 시작"
+                         : "다음 (\(viewModel.selectedFriends.count)명)")
+                        .font(.parkHeadlineSmall)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, ParkSpacing.sm)
+                        .background(Color.parkPrimary)
+                        .clipShape(RoundedRectangle(cornerRadius: ParkRadius.lg))
+                }
+                .disabled(viewModel.isCreating)
+                .padding(ParkSpacing.md)
+            }
+        }
+    }
+
+    // MARK: - Name Step
+
+    private var nameStepContent: some View {
+        VStack(spacing: ParkSpacing.md) {
+            // Selected Members Chips
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: ParkSpacing.xs) {
+                    ForEach(viewModel.selectedFriends) { friend in
+                        Text(friend.friendName)
+                            .font(.parkCaption)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, ParkSpacing.sm)
+                            .padding(.vertical, ParkSpacing.xxs)
+                            .background(Color.parkPrimary.opacity(0.4))
+                            .clipShape(Capsule())
+                    }
+                }
+            }
+            .padding(.horizontal, ParkSpacing.md)
+
+            // Group Name Input
+            HStack(spacing: ParkSpacing.sm) {
+                Image(systemName: "pencil")
+                    .foregroundStyle(.white.opacity(0.5))
+
+                TextField("그룹 이름 (선택)", text: $viewModel.groupName)
+                    .foregroundStyle(.white)
+                    .font(.parkBodyMedium)
+            }
+            .padding(ParkSpacing.md)
+            .glassCard(padding: 0, cornerRadius: ParkRadius.lg)
+            .padding(.horizontal, ParkSpacing.md)
+
+            if let error = viewModel.errorMessage {
+                Text(error)
+                    .font(.parkCaption)
+                    .foregroundStyle(.red)
+                    .padding(.horizontal, ParkSpacing.md)
+            }
+
+            Spacer()
+
+            // Create Button
+            Button {
+                viewModel.createGroupChat(currentUserName: appState.currentUser?.name)
+            } label: {
+                HStack {
+                    if viewModel.isCreating {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Text("만들기")
+                    }
+                }
+                .font(.parkHeadlineSmall)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, ParkSpacing.sm)
+                .background(
+                    Color.parkPrimary
+                )
+                .clipShape(RoundedRectangle(cornerRadius: ParkRadius.lg))
+            }
+            .disabled(viewModel.isCreating)
+            .padding(ParkSpacing.md)
+        }
+        .padding(.top, ParkSpacing.md)
+    }
 }
 
 // MARK: - Friend Select Card
 
 struct FriendSelectCard: View {
     let friend: Friend
+    var isSelected: Bool = false
 
     var body: some View {
         GlassCard(padding: 0) {
@@ -294,10 +445,10 @@ struct FriendSelectCard: View {
 
                 Spacer()
 
-                // Chevron
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.3))
+                // Checkmark
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundStyle(isSelected ? Color.parkPrimary : .white.opacity(0.3))
             }
             .padding(ParkSpacing.md)
         }

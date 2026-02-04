@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, ChevronRight, Inbox } from 'lucide-react';
-import { GlassCard, LoadingView, EmptyState } from '@/components/ui';
+import { LoadingView, EmptyState } from '@/components/ui';
 import type { Booking, BookingStatusType } from '@/types';
 
 interface RecentBookingsListProps {
@@ -10,13 +10,13 @@ interface RecentBookingsListProps {
 }
 
 const statusConfig: Record<BookingStatusType, { label: string; className: string }> = {
-  PENDING: { label: '대기', className: 'badge-warning' },
-  CONFIRMED: { label: '확정', className: 'badge-success' },
-  COMPLETED: { label: '완료', className: 'badge-info' },
-  CANCELLED: { label: '취소', className: 'badge-error' },
-  NO_SHOW: { label: '노쇼', className: 'badge-pending' },
-  SAGA_PENDING: { label: '처리중', className: 'badge-warning' },
-  SAGA_FAILED: { label: '실패', className: 'badge-error' },
+  PENDING: { label: '대기', className: 'bg-yellow-100 text-yellow-800' },
+  CONFIRMED: { label: '확정', className: 'bg-green-100 text-green-800' },
+  COMPLETED: { label: '완료', className: 'bg-blue-100 text-blue-800' },
+  CANCELLED: { label: '취소', className: 'bg-red-100 text-red-800' },
+  NO_SHOW: { label: '노쇼', className: 'bg-gray-100 text-gray-800' },
+  SAGA_PENDING: { label: '처리중', className: 'bg-yellow-100 text-yellow-800' },
+  SAGA_FAILED: { label: '실패', className: 'bg-red-100 text-red-800' },
 };
 
 const formatDate = (dateStr: string) => {
@@ -32,32 +32,28 @@ export const RecentBookingsList: React.FC<RecentBookingsListProps> = ({
 
   if (isLoading) {
     return (
-      <GlassCard>
+      <div className="bg-white shadow rounded-lg p-6">
         <div className="flex justify-between items-center mb-4">
-          <div className="section-header">
-            <div className="section-header-icon">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <span>최근 예약</span>
-          </div>
+          <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-gray-500" />
+            최근 예약
+          </h3>
         </div>
         <LoadingView message="예약을 불러오는 중..." />
-      </GlassCard>
+      </div>
     );
   }
 
   return (
-    <GlassCard>
+    <div className="bg-white shadow rounded-lg p-6">
       <div className="flex justify-between items-center mb-4">
-        <div className="section-header">
-          <div className="section-header-icon">
-            <Calendar className="w-5 h-5" />
-          </div>
-          <span>최근 예약</span>
-        </div>
+        <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-gray-500" />
+          최근 예약
+        </h3>
         <button
           onClick={() => navigate('/bookings')}
-          className="flex items-center gap-1 text-sm text-[var(--color-primary-light)] hover:text-[var(--color-primary)] transition-colors"
+          className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 transition-colors"
         >
           전체보기
           <ChevronRight className="w-4 h-4" />
@@ -77,27 +73,27 @@ export const RecentBookingsList: React.FC<RecentBookingsListProps> = ({
             return (
               <div
                 key={booking.id}
-                className="flex items-center justify-between py-3 border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-surface-hover)] cursor-pointer px-3 -mx-3 rounded-lg transition-colors"
+                className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 cursor-pointer px-3 -mx-3 rounded-lg transition-colors"
                 onClick={() => navigate('/bookings')}
               >
                 <div className="flex items-center gap-4 text-sm">
-                  <span className="font-mono text-[var(--color-text-tertiary)] w-16">
+                  <span className="font-mono text-gray-400 w-16">
                     {booking.bookingNumber}
                   </span>
-                  <span className="text-white w-20 truncate">
+                  <span className="text-gray-900 w-20 truncate">
                     {booking.userName || booking.guestName || '-'}
                   </span>
-                  <span className="text-[var(--color-text-secondary)] truncate max-w-[200px] hidden md:block">
+                  <span className="text-gray-500 truncate max-w-[200px] hidden md:block">
                     {booking.clubName || booking.gameName || '-'}
                   </span>
-                  <span className="text-[var(--color-text-tertiary)] hidden sm:block">
+                  <span className="text-gray-400 hidden sm:block">
                     {formatDate(booking.bookingDate)} {booking.startTime}
                   </span>
-                  <span className="text-[var(--color-text-tertiary)] hidden sm:block">
+                  <span className="text-gray-400 hidden sm:block">
                     {booking.playerCount}명
                   </span>
                 </div>
-                <span className={`badge ${status.className}`}>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status.className}`}>
                   {status.label}
                 </span>
               </div>
@@ -105,6 +101,6 @@ export const RecentBookingsList: React.FC<RecentBookingsListProps> = ({
           })}
         </div>
       )}
-    </GlassCard>
+    </div>
   );
 };

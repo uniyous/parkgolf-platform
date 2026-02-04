@@ -280,13 +280,10 @@ export function extractError(response: unknown): string | null {
 // ============================================
 
 export const bffParser = {
-  unwrapResponse,
   extractList,
   extractPaginatedList,
   extractPagination,
   extractSingle,
-  isSuccess,
-  extractError,
 };
 
 export default bffParser;

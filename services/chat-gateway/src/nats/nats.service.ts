@@ -8,8 +8,6 @@ import {
   JetStreamClient,
   JetStreamManager,
   StringCodec,
-  AckPolicy,
-  DeliverPolicy,
 } from 'nats';
 
 export interface ChatMessage {
@@ -55,14 +53,10 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
   private jsm: JetStreamManager | null = null;
   private sc = StringCodec();
 
-  // Message handlers
-  private messageHandlers: Map<string, (msg: ChatMessage) => void> = new Map();
-  private presenceHandlers: ((event: PresenceEvent) => void)[] = [];
-  private typingHandlers: Map<string, (event: TypingEvent) => void> = new Map();
-
   constructor(
     private configService: ConfigService,
     @Inject('CHAT_SERVICE') private chatServiceClient: ClientProxy,
+    @Inject('NOTIFY_SERVICE') private notifyClient: ClientProxy,
   ) {}
 
   async onModuleInit() {
@@ -75,6 +69,14 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('Connected to chat-service via ClientProxy');
     } catch (error: any) {
       this.logger.warn(`Failed to connect chat-service ClientProxy: ${error.message}`);
+    }
+
+    // Connect NestJS ClientProxy for notify-service
+    try {
+      await this.notifyClient.connect();
+      this.logger.log('Connected to notify-service via ClientProxy');
+    } catch (error: any) {
+      this.logger.warn(`Failed to connect notify-service ClientProxy: ${error.message}`);
     }
   }
 
@@ -155,28 +157,9 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
         this.logger.error('Failed to create CHAT_PRESENCE stream', error);
       }
     }
-
-    // Typing events (no persistence needed)
-    try {
-      await this.jsm.streams.add({
-        name: 'CHAT_TYPING',
-        subjects: ['chat.room.*.typing'],
-        retention: 'limits' as any,
-        max_msgs: 1000,
-        max_age: 10 * 1000000000, // 10 seconds
-        storage: 'memory' as any,
-      });
-      this.logger.log('Created CHAT_TYPING stream');
-    } catch (error: any) {
-      if (error.message?.includes('already in use')) {
-        this.logger.log('CHAT_TYPING stream already exists');
-      } else {
-        this.logger.error('Failed to create CHAT_TYPING stream', error);
-      }
-    }
   }
 
-  // Publish message to room
+  // Publish message to room (JetStream persistence)
   async publishMessage(roomId: string, message: ChatMessage): Promise<void> {
     if (!this.js) {
       this.logger.warn('JetStream not available');
@@ -197,24 +180,6 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  // Publish DM
-  async publishDirectMessage(userIds: number[], message: ChatMessage): Promise<void> {
-    if (!this.js) return;
-
-    const sortedIds = userIds.sort((a, b) => a - b).join('-');
-    const subject = `chat.dm.${sortedIds}.message`;
-    const data = this.sc.encode(JSON.stringify(message));
-
-    try {
-      await this.js.publish(subject, data, {
-        msgID: message.id,
-      });
-    } catch (error) {
-      this.logger.error(`Failed to publish DM to ${subject}`, error);
-      throw error;
-    }
-  }
-
   // Publish presence
   async publishPresence(userId: number, event: PresenceEvent): Promise<void> {
     if (!this.js) return;
@@ -227,102 +192,6 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.logger.error(`Failed to publish presence for user ${userId}`, error);
     }
-  }
-
-  // Publish typing event
-  async publishTyping(roomId: string, event: TypingEvent): Promise<void> {
-    if (!this.js) return;
-
-    const subject = `chat.room.${roomId}.typing`;
-    const data = this.sc.encode(JSON.stringify(event));
-
-    try {
-      await this.js.publish(subject, data);
-    } catch (error) {
-      this.logger.error(`Failed to publish typing event`, error);
-    }
-  }
-
-  // Subscribe to room messages
-  async subscribeToRoom(
-    roomId: string,
-    consumerId: string,
-    handler: (msg: ChatMessage) => void,
-  ): Promise<void> {
-    if (!this.js) return;
-
-    const subject = `chat.room.${roomId}.message`;
-    const consumerName = `room-${roomId}-${consumerId}`;
-
-    try {
-      // Create ephemeral consumer
-      const consumer = await this.js.consumers.get('CHAT_MESSAGES', consumerName).catch(async () => {
-        return await this.jsm!.consumers.add('CHAT_MESSAGES', {
-          durable_name: consumerName,
-          filter_subject: subject,
-          ack_policy: AckPolicy.Explicit,
-          deliver_policy: DeliverPolicy.New,
-        }).then(() => this.js!.consumers.get('CHAT_MESSAGES', consumerName));
-      });
-
-      const messages = await consumer.consume();
-
-      (async () => {
-        for await (const msg of messages) {
-          try {
-            const chatMessage = JSON.parse(this.sc.decode(msg.data)) as ChatMessage;
-            handler(chatMessage);
-            msg.ack();
-          } catch (error) {
-            this.logger.error('Failed to process message', error);
-            msg.nak();
-          }
-        }
-      })();
-
-      this.messageHandlers.set(consumerName, handler);
-      this.logger.debug(`Subscribed to room ${roomId}`);
-    } catch (error) {
-      this.logger.error(`Failed to subscribe to room ${roomId}`, error);
-    }
-  }
-
-  // Unsubscribe from room
-  async unsubscribeFromRoom(roomId: string, consumerId: string): Promise<void> {
-    const consumerName = `room-${roomId}-${consumerId}`;
-    this.messageHandlers.delete(consumerName);
-
-    if (this.jsm) {
-      try {
-        await this.jsm.consumers.delete('CHAT_MESSAGES', consumerName);
-      } catch (error) {
-        // Consumer may not exist
-      }
-    }
-  }
-
-  // Subscribe to typing events for a room
-  async subscribeToTyping(
-    roomId: string,
-    handler: (event: TypingEvent) => void,
-  ): Promise<void> {
-    if (!this.nc) return;
-
-    const subject = `chat.room.${roomId}.typing`;
-    const sub = this.nc.subscribe(subject);
-
-    (async () => {
-      for await (const msg of sub) {
-        try {
-          const event = JSON.parse(this.sc.decode(msg.data)) as TypingEvent;
-          handler(event);
-        } catch (error) {
-          this.logger.error('Failed to process typing event', error);
-        }
-      }
-    })();
-
-    this.typingHandlers.set(roomId, handler);
   }
 
   // Request to chat-service via NATS using NestJS ClientProxy
@@ -340,6 +209,19 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(`NATS request failed for ${subject}: ${error.message}`);
       throw error;
     }
+  }
+
+  emitChatMessageNotification(data: {
+    chatRoomId: string; senderId: number; senderName: string;
+    recipientId: number; messagePreview: string; createdAt: string;
+  }): void {
+    this.notifyClient.emit('chat.message', data);
+  }
+
+  emitNotificationDismiss(data: {
+    userId: string; type: string; dataFilter?: Record<string, any>;
+  }): void {
+    this.notifyClient.emit('notification.dismiss', data);
   }
 
   isConnected(): boolean {

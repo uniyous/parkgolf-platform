@@ -49,6 +49,16 @@ struct SocialView: View {
                 await friendsViewModel.loadAll()
                 await chatViewModel.loadChatRooms()
             }
+            .onChange(of: selectedSegment) { _, newSegment in
+                Task {
+                    switch newSegment {
+                    case .friends:
+                        await friendsViewModel.loadAll()
+                    case .chat:
+                        await chatViewModel.loadChatRooms()
+                    }
+                }
+            }
             .navigationBarHidden(true)
         }
     }

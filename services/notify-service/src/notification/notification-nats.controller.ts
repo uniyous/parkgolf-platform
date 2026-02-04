@@ -115,6 +115,18 @@ export class NotificationNatsController {
     private readonly deliveryService: DeliveryService,
   ) {}
 
+  // ===== Ping Handler =====
+
+  @MessagePattern('notification.ping')
+  async ping(@Payload() payload: { ping: boolean; timestamp: string }) {
+    this.logger.debug(`NATS ping received: ${payload.timestamp}`);
+    return {
+      pong: true,
+      service: 'notify-service',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   // ===== Event Handlers (Fire-and-forget) =====
 
   @EventPattern('booking.confirmed')
@@ -361,6 +373,19 @@ export class NotificationNatsController {
       await this.deliveryService.deliverNotification(notification);
     } catch (error) {
       this.logger.error(`Failed to handle chat.message event: ${error}`);
+    }
+  }
+
+  @EventPattern('notification.dismiss')
+  async handleDismiss(@Payload() data: { userId: string; type: string; dataFilter?: Record<string, any> }) {
+    this.logger.log(`NATS Event: notification.dismiss - user ${data.userId}, type ${data.type}`);
+    try {
+      const result = await this.notificationService.dismissByType(
+        data.userId, data.type as NotificationType, data.dataFilter,
+      );
+      this.logger.log(`Dismissed ${result.count} notifications for user ${data.userId}`);
+    } catch (error) {
+      this.logger.error(`Failed to dismiss notifications: ${error}`);
     }
   }
 

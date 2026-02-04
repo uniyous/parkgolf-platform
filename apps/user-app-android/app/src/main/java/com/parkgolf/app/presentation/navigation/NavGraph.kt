@@ -44,6 +44,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.parkgolf.app.presentation.feature.auth.LoginScreen
 import com.parkgolf.app.presentation.feature.auth.SignUpScreen
+import com.parkgolf.app.presentation.feature.booking.BookingCompleteScreen
 import com.parkgolf.app.presentation.feature.booking.BookingFormScreen
 import com.parkgolf.app.presentation.feature.booking.MyBookingsScreen
 import com.parkgolf.app.presentation.feature.chat.ChatRoomScreen
@@ -68,6 +69,9 @@ import com.parkgolf.app.presentation.feature.profile.SettingsScreen
 import com.parkgolf.app.presentation.feature.booking.RoundBookingScreen
 import com.parkgolf.app.presentation.feature.social.SocialScreen
 import com.parkgolf.app.presentation.components.PasswordChangeReminderDialog
+import com.parkgolf.app.data.remote.auth.AuthEvent
+import com.parkgolf.app.data.remote.auth.AuthEventBus
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 
@@ -113,10 +117,26 @@ val bottomNavItems = listOf(
 
 @Composable
 fun ParkGolfNavHost(
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    authEventBus: AuthEventBus? = null
 ) {
     // TODO: Check authentication state from ViewModel
     val isLoggedIn = false // Placeholder
+
+    // Handle session expired events from TokenAuthenticator
+    if (authEventBus != null) {
+        LaunchedEffect(authEventBus) {
+            authEventBus.events.collect { event ->
+                when (event) {
+                    is AuthEvent.SessionExpired -> {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     NavHost(
         navController = navController,
@@ -165,6 +185,25 @@ fun ParkGolfNavHost(
                 onNavigateBack = { navController.popBackStack() },
                 onBookingComplete = { bookingId ->
                     navController.navigate("booking/complete/$bookingId") {
+                        popUpTo("main")
+                    }
+                }
+            )
+        }
+
+        // Booking Complete screen
+        composable(
+            route = Screen.BookingComplete.route,
+            arguments = listOf(navArgument("bookingId") { type = NavType.StringType })
+        ) {
+            BookingCompleteScreen(
+                onNewBooking = {
+                    navController.navigate("main") {
+                        popUpTo("main") { inclusive = true }
+                    }
+                },
+                onMyBookings = {
+                    navController.navigate(Screen.MyBookings.route) {
                         popUpTo("main")
                     }
                 }

@@ -37,6 +37,7 @@ export class AuthService {
         email: registerDto.email,
         password: registerDto.password,
         name: registerDto.name,
+        phone: registerDto.phone,
       },
     });
 
@@ -68,7 +69,7 @@ export class AuthService {
         id: userData.id,
         email: userData.email,
         name: userData.name || registerDto.name,
-        phoneNumber: registerDto.phoneNumber || '',
+        phone: registerDto.phone || '',
         createdAt: userData.createdAt || new Date(),
       },
       expiresIn: 3600,
@@ -97,8 +98,8 @@ export class AuthService {
       user: {
         id: authData.user.id,
         email: authData.user.email,
-        name: authData.user.name || authData.user.email,
-        phoneNumber: '',
+        name: authData.user.name,
+        phone: authData.user.phone || '',
         createdAt: new Date(),
       },
       expiresIn: 3600,
@@ -122,15 +123,15 @@ export class AuthService {
       user: {
         id: authData.user.id,
         email: authData.user.email,
-        name: authData.user.name || authData.user.email,
-        phoneNumber: '',
+        name: authData.user.name,
+        phone: authData.user.phone || '',
         createdAt: new Date(),
       },
       expiresIn: 3600,
     };
   }
 
-  async logout(userId: number): Promise<{ message: string }> {
-    return { message: '로그아웃되었습니다.' };
+  async logout(userId: number) {
+    return this.natsClient.send('iam.auth.user.logout', { userId });
   }
 }

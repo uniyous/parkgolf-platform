@@ -12,7 +12,7 @@ export const SignupPage: React.FC = () => {
     password: '',
     confirmPassword: '',
     name: '',
-    phoneNumber: '',
+    phone: '',
     birthDate: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -71,10 +71,10 @@ export const SignupPage: React.FC = () => {
 
     // Phone validation
     const phoneRegex = /^010-\d{4}-\d{4}$/;
-    if (!formData.phoneNumber) {
-      newErrors.phoneNumber = '전화번호를 입력해주세요.';
-    } else if (!phoneRegex.test(formData.phoneNumber)) {
-      newErrors.phoneNumber = '올바른 전화번호 형식을 입력해주세요. (010-1234-5678)';
+    if (!formData.phone) {
+      newErrors.phone = '전화번호를 입력해주세요.';
+    } else if (!phoneRegex.test(formData.phone)) {
+      newErrors.phone = '올바른 전화번호 형식을 입력해주세요. (010-1234-5678)';
     }
 
     setErrors(newErrors);
@@ -95,7 +95,7 @@ export const SignupPage: React.FC = () => {
         email: formData.email,
         password: formData.password,
         name: formData.name,
-        phoneNumber: formData.phoneNumber,
+        phone: formData.phone,
         birthDate: formData.birthDate || undefined,
       });
 
@@ -183,11 +183,11 @@ export const SignupPage: React.FC = () => {
           <Input
             label="전화번호 *"
             type="tel"
-            name="phoneNumber"
-            value={formData.phoneNumber}
+            name="phone"
+            value={formData.phone}
             onChange={handleChange}
             placeholder="010-1234-5678"
-            error={errors.phoneNumber}
+            error={errors.phone}
             glass
             className="mb-5"
           />

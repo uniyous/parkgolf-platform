@@ -1,15 +1,10 @@
 import { Controller, Post, Body, HttpStatus, HttpException, Logger, Get, Headers } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
-import { AuthService, LoginRequest } from './auth.service';
+import { Throttle } from '@nestjs/throttler';
+import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
+import { SignupDto } from './dto/signup.dto';
 import { hasAdminRole, isAdminRole } from '../common/constants';
-
-export interface SignupRequest {
-  username: string;
-  email: string;
-  password: string;
-  name: string;
-  role: string;
-}
 
 @ApiTags('iam')
 @Controller('api/admin/iam')
@@ -19,6 +14,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @ApiOperation({ summary: 'Admin login' })
   @ApiBody({
     schema: {
@@ -32,7 +28,7 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  async login(@Body() loginRequest: LoginRequest) {
+  async login(@Body() loginRequest: LoginDto) {
     const startTime = Date.now();
     try {
       this.logger.log(`[PERF] BFF Login START - email: ${loginRequest.email}`);
@@ -279,7 +275,63 @@ export class AuthController {
     }
   }
 
+  @Post('logout')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Admin logout' })
+  @ApiResponse({ status: 200, description: 'Logout successful' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async logout(@Headers('authorization') authorization: string) {
+    try {
+      if (!authorization || !authorization.startsWith('Bearer ')) {
+        throw new HttpException(
+          {
+            success: false,
+            error: {
+              code: 'MISSING_TOKEN',
+              message: 'Authorization token is required',
+            }
+          },
+          HttpStatus.UNAUTHORIZED
+        );
+      }
+
+      const token = authorization.substring(7);
+      const validateResult = await this.authService.validateToken(token);
+
+      if (!validateResult?.success || !validateResult?.data?.user) {
+        throw new HttpException(
+          {
+            success: false,
+            error: {
+              code: 'INVALID_TOKEN',
+              message: 'Invalid token',
+            }
+          },
+          HttpStatus.UNAUTHORIZED
+        );
+      }
+
+      const adminId = validateResult.data.user.sub || validateResult.data.user.id;
+      return this.authService.logout(adminId);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        {
+          success: false,
+          error: {
+            code: 'LOGOUT_FAILED',
+            message: 'Logout failed',
+          }
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   @Post('signup')
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @ApiOperation({ summary: 'Admin signup' })
   @ApiBody({
     schema: {
@@ -296,7 +348,7 @@ export class AuthController {
   })
   @ApiResponse({ status: 201, description: 'Signup successful' })
   @ApiResponse({ status: 400, description: 'Invalid data or user already exists' })
-  async signup(@Body() signupRequest: SignupRequest) {
+  async signup(@Body() signupRequest: SignupDto) {
     try {
       this.logger.log(`Admin signup attempt for username: ${signupRequest.username}`);
       
@@ -323,21 +375,7 @@ export class AuthController {
       });
 
       this.logger.log(`Admin signup successful for: ${signupRequest.username}`);
-      
-      return {
-        success: true,
-        data: {
-          message: 'Admin account created successfully.',
-          user: {
-            id: result.data?.id,
-            username: signupRequest.username,
-            email: signupRequest.email,
-            name: signupRequest.name,
-            role: signupRequest.role,
-            isActive: true,
-          }
-        }
-      };
+      return result;
       
     } catch (error) {
       this.logger.error(`Admin signup failed for: ${signupRequest.username}`, error);

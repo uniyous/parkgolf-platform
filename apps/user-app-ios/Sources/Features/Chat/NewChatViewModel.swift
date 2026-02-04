@@ -1,5 +1,12 @@
 import Foundation
 
+// MARK: - New Chat Step
+
+enum NewChatStep {
+    case select
+    case name
+}
+
 // MARK: - New Chat View Model
 
 @MainActor
@@ -8,9 +15,11 @@ final class NewChatViewModel: ObservableObject {
     @Published var searchQuery: String = ""
     @Published var isLoading = false
     @Published var isCreating = false
-    @Published var selectedFriend: Friend?
+    @Published var selectedFriends: [Friend] = []
     @Published var createdRoom: ChatRoom?
     @Published var errorMessage: String?
+    @Published var step: NewChatStep = .select
+    @Published var groupName: String = ""
 
     private let friendService = FriendService()
     private let apiClient = APIClient.shared
@@ -35,9 +44,36 @@ final class NewChatViewModel: ObservableObject {
         isLoading = false
     }
 
-    func createDirectChat() {
-        guard let friend = selectedFriend, !isCreating else { return }
+    func toggleFriend(_ friend: Friend) {
+        if let index = selectedFriends.firstIndex(where: { $0.id == friend.id }) {
+            selectedFriends.remove(at: index)
+        } else {
+            selectedFriends.append(friend)
+        }
+    }
 
+    func isFriendSelected(_ friend: Friend) -> Bool {
+        selectedFriends.contains(where: { $0.id == friend.id })
+    }
+
+    func handleNext() {
+        guard !selectedFriends.isEmpty, !isCreating else { return }
+
+        if selectedFriends.count == 1 {
+            // 1명 선택 → DIRECT 채팅 바로 생성
+            createDirectChat(friend: selectedFriends[0])
+        } else {
+            // 2명 이상 → 그룹 이름 입력 단계로
+            step = .name
+        }
+    }
+
+    func goBack() {
+        step = .select
+        groupName = ""
+    }
+
+    private func createDirectChat(friend: Friend) {
         isCreating = true
 
         Task {
@@ -57,8 +93,6 @@ final class NewChatViewModel: ObservableObject {
 
                 createdRoom = room
             } catch {
-                // If API fails, create a temporary room for navigation
-                // The actual room will be created when sending the first message
                 let room = ChatRoom(
                     id: "direct-\(friend.friendId)",
                     name: friend.friendName,
@@ -73,6 +107,41 @@ final class NewChatViewModel: ObservableObject {
                 createdRoom = room
                 #if DEBUG
                 print("Failed to create chat room via API, using temporary room: \(error)")
+                #endif
+            }
+        }
+    }
+
+    func createGroupChat(currentUserName: String?) {
+        guard selectedFriends.count >= 2, !isCreating else { return }
+
+        let trimmed = groupName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = trimmed.isEmpty
+            ? ([currentUserName].compactMap { $0 } + selectedFriends.map { $0.friendName }).joined(separator: ", ")
+            : trimmed
+
+        isCreating = true
+
+        Task {
+            defer { isCreating = false }
+
+            do {
+                let request = CreateChatRoomRequest(
+                    name: name,
+                    type: ChatRoomType.group.rawValue,
+                    participantIds: selectedFriends.map { String($0.friendId) }
+                )
+
+                let room = try await apiClient.request(
+                    ChatEndpoints.createRoom(request: request),
+                    responseType: ChatRoom.self
+                )
+
+                createdRoom = room
+            } catch {
+                errorMessage = "그룹 채팅방 생성에 실패했습니다"
+                #if DEBUG
+                print("Failed to create group chat: \(error)")
                 #endif
             }
         }

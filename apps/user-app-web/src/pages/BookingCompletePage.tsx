@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import type { BookingResponse } from '@/lib/api/bookingApi';
 import type { Game, GameTimeSlot } from '@/lib/api/gameApi';
 import { formatDate } from '@/lib/formatting';
-import { Button } from '../components';
+import { Container, SubPageHeader } from '@/components/layout';
 
 interface PaymentMethod {
   id: string;
@@ -24,7 +24,7 @@ interface BookingCompleteState {
 }
 
 export const BookingCompletePage: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const bookingState = location.state as BookingCompleteState;
@@ -55,33 +55,19 @@ export const BookingCompletePage: React.FC = () => {
         <div className="absolute bottom-10 left-20 w-20 h-20 bg-white/10 rounded-full blur-2xl animate-bounce"></div>
       </div>
 
-      {/* Header */}
-      <header className="glass-card mx-4 mt-4 mb-8 !p-4 relative z-10">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-green-400/30 border-2 border-green-400/50 rounded-2xl flex items-center justify-center text-2xl backdrop-blur-sm animate-pulse">
-              ✅
+      <SubPageHeader
+        title="예약 완료"
+        onBack={false}
+        rightContent={
+          user ? (
+            <div className="px-4 py-2 bg-green-400/20 border border-green-400/30 rounded-full text-sm text-white font-medium backdrop-blur-sm">
+              {user.name}님
             </div>
-            <div>
-              <div className="text-white text-xl font-bold">예약 완료</div>
-              <div className="text-green-200 text-sm font-medium">축하합니다!</div>
-            </div>
-          </div>
+          ) : undefined
+        }
+      />
 
-          {user && (
-            <div className="flex items-center gap-3">
-              <div className="px-4 py-2 bg-green-400/20 border border-green-400/30 rounded-full text-sm text-white font-medium backdrop-blur-sm">
-                {user.name}님
-              </div>
-              <Button variant="glass" size="sm" onClick={logout}>
-                로그아웃
-              </Button>
-            </div>
-          )}
-        </div>
-      </header>
-
-      <div className="max-w-4xl mx-auto px-4 relative z-10">
+      <Container className="relative z-10 py-8">
         {/* Success Message */}
         <div className="glass-card text-center mb-8">
           <div className="w-20 h-20 bg-green-400/30 border-2 border-green-400/50 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 backdrop-blur-sm animate-bounce">
@@ -223,7 +209,7 @@ export const BookingCompletePage: React.FC = () => {
             <li>문의사항이 있으시면 고객센터로 연락주세요.</li>
           </ul>
         </div>
-      </div>
+      </Container>
     </div>
   );
 };

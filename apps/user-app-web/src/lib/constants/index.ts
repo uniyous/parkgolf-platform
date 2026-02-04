@@ -98,10 +98,41 @@ export interface SelectOption<T = string> {
 }
 
 export const TIME_OF_DAY_OPTIONS: SelectOption[] = [
-  { value: 'all', label: '전체' },
-  { value: 'morning', label: '오전 (06:00-11:59)' },
-  { value: 'afternoon', label: '오후 (12:00-18:00)' },
+  { value: '', label: '전체' },
+  { value: 'DAWN', label: '새벽 (05~08시)' },
+  { value: 'MORNING', label: '오전 (08~12시)' },
+  { value: 'AFTERNOON', label: '오후 (12~17시)' },
+  { value: 'EVENING', label: '저녁 (17~22시)' },
 ];
+
+// 시간대 칩 토글 (다중선택)
+export const TIME_PERIOD_CHIPS = [
+  { value: 'DAWN', label: '새벽', desc: '05~08시' },
+  { value: 'MORNING', label: '오전', desc: '08~12시' },
+  { value: 'AFTERNOON', label: '오후', desc: '12~17시' },
+  { value: 'EVENING', label: '저녁', desc: '17~22시' },
+] as const;
+
+// 시간대별 범위 (startTimeFrom, startTimeTo)
+export const TIME_RANGES: Record<string, [string, string]> = {
+  DAWN: ['05:00', '08:00'],
+  MORNING: ['08:00', '12:00'],
+  AFTERNOON: ['12:00', '17:00'],
+  EVENING: ['17:00', '22:00'],
+};
+
+/**
+ * 다중 선택된 시간대를 startTimeFrom/startTimeTo 범위로 변환
+ * 예: ['MORNING', 'AFTERNOON'] → { startTimeFrom: '08:00', startTimeTo: '17:00' }
+ */
+export function computeTimeRange(periods: string[]): { startTimeFrom: string; startTimeTo: string } | null {
+  const ranges = periods.map(p => TIME_RANGES[p]).filter(Boolean);
+  if (ranges.length === 0) return null;
+  return {
+    startTimeFrom: ranges.reduce((min, r) => (r[0] < min ? r[0] : min), ranges[0][0]),
+    startTimeTo: ranges.reduce((max, r) => (r[1] > max ? r[1] : max), ranges[0][1]),
+  };
+}
 
 export const SORT_OPTIONS: SelectOption[] = [
   { value: 'name-asc', label: '이름순 (오름차순)' },

@@ -64,7 +64,7 @@ jobs:
             SERVICES="$INPUT"
           fi
           echo "services=$SERVICES" >> $GITHUB_OUTPUT
-          MATRIX=$(echo $SERVICES | tr ',' '\n' | jq -R . | jq -s -c .)
+          MATRIX=$(echo $SERVICES | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' | jq -R . | jq -s -c .)
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
           echo "Services to deploy: $SERVICES"
 
@@ -112,7 +112,7 @@ jobs:
       - name: Build Docker Image
         if: steps.check.outputs.exists == 'true'
         run: |
-          SERVICE=${{ matrix.service }}
+          SERVICE="${{ matrix.service }}"
           IMAGE=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/parkgolf/$SERVICE
           ENV=${{ needs.setup.outputs.environment }}
 
@@ -125,7 +125,7 @@ jobs:
       - name: Push Docker Image
         if: steps.check.outputs.exists == 'true'
         run: |
-          SERVICE=${{ matrix.service }}
+          SERVICE="${{ matrix.service }}"
           IMAGE=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/parkgolf/$SERVICE
           ENV=${{ needs.setup.outputs.environment }}
 
@@ -165,35 +165,35 @@ jobs:
       - name: Set Service Config
         id: config
         run: |
-          SERVICE=${{ matrix.service }}
+          SERVICE="${{ matrix.service }}"
           case $SERVICE in
             iam-service)
               DB_NAME="iam_db"; NEEDS_DB="true"
-              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="128Mi"; MEM_LIM="256Mi"
+              CPU_REQ="50m"; CPU_LIM="200m"; MEM_REQ="96Mi"; MEM_LIM="256Mi"
               ;;
             course-service)
               DB_NAME="course_db"; NEEDS_DB="true"
-              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="128Mi"; MEM_LIM="256Mi"
+              CPU_REQ="50m"; CPU_LIM="200m"; MEM_REQ="96Mi"; MEM_LIM="256Mi"
               ;;
             booking-service)
               DB_NAME="booking_db"; NEEDS_DB="true"
-              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="128Mi"; MEM_LIM="256Mi"
+              CPU_REQ="50m"; CPU_LIM="200m"; MEM_REQ="96Mi"; MEM_LIM="256Mi"
               ;;
             chat-service)
               DB_NAME="chat_db"; NEEDS_DB="true"
-              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="128Mi"; MEM_LIM="256Mi"
+              CPU_REQ="50m"; CPU_LIM="200m"; MEM_REQ="96Mi"; MEM_LIM="256Mi"
               ;;
             notify-service)
               DB_NAME="notify_db"; NEEDS_DB="true"
-              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="128Mi"; MEM_LIM="256Mi"
+              CPU_REQ="50m"; CPU_LIM="200m"; MEM_REQ="96Mi"; MEM_LIM="256Mi"
               ;;
             chat-gateway)
               DB_NAME=""; NEEDS_DB="false"
-              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="128Mi"; MEM_LIM="256Mi"
+              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
               ;;
             *)
               DB_NAME=""; NEEDS_DB="false"
-              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="128Mi"; MEM_LIM="256Mi"
+              CPU_REQ="50m"; CPU_LIM="200m"; MEM_REQ="96Mi"; MEM_LIM="256Mi"
               ;;
           esac
           echo "db_name=$DB_NAME" >> $GITHUB_OUTPUT
@@ -205,7 +205,7 @@ jobs:
 
       - name: Deploy Service
         run: |
-          SERVICE=${{ matrix.service }}
+          SERVICE="${{ matrix.service }}"
           NAMESPACE=${{ needs.setup.outputs.namespace }}
           IMAGE=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/parkgolf/$SERVICE:${{ github.sha }}
           DB_NAME=${{ steps.config.outputs.db_name }}
@@ -230,6 +230,19 @@ jobs:
             DB_ENV=""
           fi
 
+          # Set replicas and strategy per service
+          REPLICAS=1
+          STRATEGY=""
+          if [ "$SERVICE" = "chat-gateway" ]; then
+            REPLICAS=2
+            STRATEGY="
+            strategy:
+              type: RollingUpdate
+              rollingUpdate:
+                maxSurge: 1
+                maxUnavailable: 0"
+          fi
+
           cat <<EOF | kubectl apply -f -
           apiVersion: v1
           kind: Service
@@ -249,10 +262,11 @@ jobs:
             name: $SERVICE
             namespace: $NAMESPACE
           spec:
-            replicas: 1
+            replicas: $REPLICAS
             selector:
               matchLabels:
                 app: $SERVICE
+          $STRATEGY
             template:
               metadata:
                 labels:
@@ -357,8 +371,26 @@ jobs:
             namespace: ${{ needs.setup.outputs.namespace }}
           spec:
             timeoutSec: 3600
+            sessionAffinity:
+              affinityType: "GENERATED_COOKIE"
+              affinityCookieTtlSec: 3600
             connectionDraining:
               drainingTimeoutSec: 60
+          EOF
+
+      - name: Deploy PDB for chat-gateway
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: policy/v1
+          kind: PodDisruptionBudget
+          metadata:
+            name: chat-gateway-pdb
+            namespace: ${{ needs.setup.outputs.namespace }}
+          spec:
+            maxUnavailable: 1
+            selector:
+              matchLabels:
+                app: chat-gateway
           EOF
 
       - name: Patch chat-gateway for WebSocket
@@ -372,6 +404,30 @@ jobs:
             }
           }' || true
 
+      - name: Set Domain
+        id: domain
+        run: |
+          ENV="${{ needs.setup.outputs.environment }}"
+          if [ "$ENV" == "prod" ]; then
+            echo "domain=api.goparkmate.com" >> $GITHUB_OUTPUT
+          else
+            echo "domain=dev-api.goparkmate.com" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy ManagedCertificate
+        run: |
+          NAMESPACE=${{ needs.setup.outputs.namespace }}
+          cat <<EOF | kubectl apply -f -
+          apiVersion: networking.gke.io/v1
+          kind: ManagedCertificate
+          metadata:
+            name: parkgolf-cert
+            namespace: $NAMESPACE
+          spec:
+            domains:
+            - ${{ steps.domain.outputs.domain }}
+          EOF
+
       - name: Deploy Ingress
         run: |
           NAMESPACE=${{ needs.setup.outputs.namespace }}
@@ -384,9 +440,11 @@ jobs:
             annotations:
               kubernetes.io/ingress.class: "gce"
               kubernetes.io/ingress.global-static-ip-name: "${{ env.IP_NAME }}"
+              networking.gke.io/managed-certificates: "parkgolf-cert"
           spec:
             rules:
-            - http:
+            - host: ${{ steps.domain.outputs.domain }}
+              http:
                 paths:
                 - path: /api/admin
                   pathType: Prefix
@@ -471,6 +529,6 @@ jobs:
           echo "| Static IP | ${{ env.STATIC_IP }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Endpoints" >> $GITHUB_STEP_SUMMARY
-          echo "- Admin API: http://${{ env.STATIC_IP }}/api/admin" >> $GITHUB_STEP_SUMMARY
-          echo "- User API: http://${{ env.STATIC_IP }}/api/user" >> $GITHUB_STEP_SUMMARY
-          echo "- WebSocket: ws://${{ env.STATIC_IP }}/socket.io" >> $GITHUB_STEP_SUMMARY
+          echo "- Admin API: https://${{ steps.domain.outputs.domain }}/api/admin" >> $GITHUB_STEP_SUMMARY
+          echo "- User API: https://${{ steps.domain.outputs.domain }}/api/user" >> $GITHUB_STEP_SUMMARY
+          echo "- WebSocket: wss://${{ steps.domain.outputs.domain }}/socket.io" >> $GITHUB_STEP_SUMMARY

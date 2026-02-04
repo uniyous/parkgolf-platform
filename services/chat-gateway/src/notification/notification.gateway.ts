@@ -28,6 +28,10 @@ export interface NotificationPayload {
       /^https:\/\/.*\.run\.app$/,
       'https://parkgolf-user.web.app',
       'https://parkgolf-user-dev.web.app',
+      'https://dev-user.goparkmate.com',
+      'https://user.goparkmate.com',
+      'https://dev-api.goparkmate.com',
+      'https://api.goparkmate.com',
     ],
     credentials: true,
   },
@@ -123,7 +127,7 @@ export class NotificationGateway
       this.userSockets.get(userId)!.add(client.id);
 
       this.logger.log(
-        `User connected to notifications: ${user.name || user.email} (${userId}) - Socket: ${client.id}`,
+        `User connected to notifications: ${user.name} (${userId}) - Socket: ${client.id}`,
       );
 
       // Send connection success
@@ -158,7 +162,7 @@ export class NotificationGateway
     }
 
     this.logger.log(
-      `User disconnected from notifications: ${user.name || user.email} (${userId}) - Socket: ${client.id}`,
+      `User disconnected from notifications: ${user.name} (${userId}) - Socket: ${client.id}`,
     );
   }
 

@@ -25,33 +25,33 @@ enum Configuration {
         static var baseURL: URL {
             switch Environment.current {
             case .development:
-                return URL(string: "http://34.160.211.91/api/user")!
+                return URL(string: "https://dev-api.goparkmate.com/api/user")!
             case .staging:
-                return URL(string: "https://user-api-stg-335495814488.asia-northeast3.run.app")!
+                return URL(string: "https://dev-api.goparkmate.com/api/user")!
             case .production:
-                return URL(string: "https://user-api-335495814488.asia-northeast3.run.app")!
+                return URL(string: "https://api.goparkmate.com/api/user")!
             }
         }
 
         static var chatSocketURL: URL {
             switch Environment.current {
             case .development:
-                return URL(string: "http://34.160.211.91")!
+                return URL(string: "https://dev-api.goparkmate.com")!
             case .staging:
-                return URL(string: "https://chat-gateway-stg-iihuzmuufa-du.a.run.app")!
+                return URL(string: "https://dev-api.goparkmate.com")!
             case .production:
-                return URL(string: "https://chat-gateway-iihuzmuufa-du.a.run.app")!
+                return URL(string: "https://api.goparkmate.com")!
             }
         }
 
         static var webSocketURL: URL {
             switch Environment.current {
             case .development:
-                return URL(string: "ws://34.160.211.91/socket.io")!
+                return URL(string: "wss://dev-api.goparkmate.com/socket.io")!
             case .staging:
-                return URL(string: "wss://user-api-stg-335495814488.asia-northeast3.run.app/ws/chat")!
+                return URL(string: "wss://dev-api.goparkmate.com/socket.io")!
             case .production:
-                return URL(string: "wss://user-api-335495814488.asia-northeast3.run.app/ws/chat")!
+                return URL(string: "wss://api.goparkmate.com/socket.io")!
             }
         }
     }

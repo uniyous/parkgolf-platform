@@ -17,6 +17,9 @@
 │   ├── integration-test/          # 통합 테스트 (API, NATS)
 │   └── contract-test/             # 계약 테스트 (Pact)
 │
+├── documentation/                 # 문서 관련
+│   └── docs-writing/              # 문서 작성 가이드
+│
 ├── deployment/                    # 배포 관련
 │   └── deploy-guide/              # 배포 가이드
 │
@@ -35,6 +38,7 @@
 | **Testing** | `e2e` | E2E 테스트 (Playwright) | e2e, playwright |
 | **Testing** | `integration-test` | API 통합 테스트 | 통합테스트, integration |
 | **Testing** | `contract-test` | 계약 테스트 (Pact) | 계약테스트, contract, pact |
+| **Documentation** | `docs-writing` | 문서 작성 가이드 | 문서, docs, documentation, 다이어그램 |
 | **Deployment** | `deploy-guide` | 배포 가이드 | 배포, deploy, Cloud Run |
 | **Operations** | `troubleshoot` | 문제 해결 가이드 | 오류, 에러, 문제, 실패 |
 
@@ -98,3 +102,7 @@ description: Skill 설명. 트리거 키워드 포함.
 ## 관련 문서
 
 - [CLAUDE.md](/CLAUDE.md) - 프로젝트 개발 규칙 (항상 적용)
+- [DATA_FLOW.md](/docs/DATA_FLOW.md) - 크로스 서비스 데이터 플로우
+- [UI_STANDARDS.md](/docs/UI_STANDARDS.md) - 4개 플랫폼 UI 디자인 시스템
+- [ARCHITECTURE.md](/docs/ARCHITECTURE.md) - 시스템 아키텍처
+- [BOOKING-WORKFLOW.md](/docs/BOOKING-WORKFLOW.md) - 예약 Saga 워크플로우

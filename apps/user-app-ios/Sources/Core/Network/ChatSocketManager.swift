@@ -20,26 +20,20 @@ class ChatSocketManager: ObservableObject {
     let userJoined = PassthroughSubject<UserJoinedEvent, Never>()
     let userLeft = PassthroughSubject<UserLeftEvent, Never>()
     let typingReceived = PassthroughSubject<TypingEvent, Never>()
+    let reconnected = PassthroughSubject<Void, Never>()
 
     // MARK: - Private Properties
 
     private var manager: SocketManager?
     private var socket: SocketIOClient?
     private var currentToken: String?
-    private var isConnecting = false
+    private var isRefreshingToken = false
 
-    // MARK: - Reconnection State
-
-    private var lastConnectAttempt: Date = .distantPast
-    private var reconnectAttempts = 0
-    private let minReconnectInterval: TimeInterval = 3.0  // 최소 3초 간격
-    private let maxReconnectDelay: TimeInterval = 30.0    // 최대 30초 대기
-    private let maxReconnectAttempts = 10
-
-    /// 재연결 가능 여부
-    var canReconnect: Bool {
-        reconnectAttempts < maxReconnectAttempts
-    }
+    // Heartbeat — Cloud Run / proxy idle timeout 방지
+    private var heartbeatTimer: Timer?
+    private var missedHeartbeats = 0
+    private let heartbeatInterval: TimeInterval = 30
+    private let maxMissedHeartbeats = 2
 
     // MARK: - Configuration
 
@@ -79,12 +73,22 @@ class ChatSocketManager: ObservableObject {
     }
 
     private func handleAppWillEnterForeground() {
-        guard let token = currentToken else { return }
-        if !isConnected {
-            #if DEBUG
-            print("🔄 App entered foreground, checking connection...")
-            #endif
-            ensureConnected(token: token)
+        #if DEBUG
+        print("📱 App entered foreground, socket state: \(isConnected ? "connected" : "disconnected")")
+        #endif
+
+        if !isConnected, let token = currentToken {
+            // Reconnect socket if disconnected during background
+            Task {
+                if let freshToken = await APIClient.shared.getAccessToken() {
+                    forceReconnect(token: freshToken)
+                } else {
+                    forceReconnect(token: token)
+                }
+            }
+        } else if isConnected {
+            // 연결 유지 중이어도 포그라운드 복귀 시 방 재참여 유도
+            reconnected.send()
         }
     }
 
@@ -98,21 +102,19 @@ class ChatSocketManager: ObservableObject {
     // MARK: - Connection
 
     func connect(token: String) {
-        guard !isConnected, !isConnecting else { return }
+        guard !isConnected else { return }
 
         currentToken = token
-        isConnecting = true
-        lastConnectAttempt = Date()
 
-        // Configure Socket.IO
+        // Configure Socket.IO with built-in reconnection
         manager = SocketManager(socketURL: socketURL, config: [
             .log(false),
             .compress,
-            .forceWebsockets(true),
+            .forceWebsockets(false),
             .reconnects(true),
-            .reconnectAttempts(maxReconnectAttempts),
-            .reconnectWait(Int(minReconnectInterval)),
-            .reconnectWaitMax(Int(maxReconnectDelay)),
+            .reconnectAttempts(-1),  // unlimited reconnection
+            .reconnectWait(1),
+            .reconnectWaitMax(30),
             .connectParams(["token": token])
         ])
 
@@ -123,68 +125,58 @@ class ChatSocketManager: ObservableObject {
         socket?.connect()
     }
 
-    /// 연결 상태를 확인하고 필요시 재연결
-    /// - Returns: 이미 연결되어 있으면 true
-    @discardableResult
-    func ensureConnected(token: String) -> Bool {
-        // 이미 연결되어 있으면 OK
-        if isConnected {
-            reconnectAttempts = 0
-            return true
-        }
-
-        // 연결 중이면 대기
-        if isConnecting {
-            return false
-        }
-
-        // 최대 재연결 시도 횟수 초과
-        if reconnectAttempts >= maxReconnectAttempts {
-            #if DEBUG
-            print("⚠️ Max reconnection attempts (\(maxReconnectAttempts)) exceeded")
-            #endif
-            return false
-        }
-
-        // 최소 간격 체크 (스팸 방지)
-        let timeSinceLastAttempt = Date().timeIntervalSince(lastConnectAttempt)
-        if timeSinceLastAttempt < minReconnectInterval {
-            return false
-        }
-
-        // 재연결 시도
-        reconnectAttempts += 1
-        #if DEBUG
-        print("🔄 Reconnecting... (attempt \(reconnectAttempts)/\(maxReconnectAttempts))")
-        #endif
-
-        // 기존 소켓 정리 후 재연결
-        cleanupSocket()
-        connect(token: token)
-        return false
-    }
-
-    /// 강제 재연결 (재연결 카운터 리셋)
+    /// 강제 재연결 (UI에서 호출)
     func forceReconnect(token: String) {
-        reconnectAttempts = 0
-        lastConnectAttempt = .distantPast
         cleanupSocket()
         connect(token: token)
     }
 
     private func cleanupSocket() {
+        stopHeartbeat()
         socket?.removeAllHandlers()
         socket?.disconnect()
         socket = nil
         manager = nil
-        isConnecting = false
     }
 
     func disconnect() {
         cleanupSocket()
         currentToken = nil
         isConnected = false
-        reconnectAttempts = 0
+    }
+
+    // MARK: - Heartbeat
+
+    private func startHeartbeat() {
+        stopHeartbeat()
+        missedHeartbeats = 0
+        heartbeatTimer = Timer.scheduledTimer(withTimeInterval: heartbeatInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.sendHeartbeat()
+            }
+        }
+    }
+
+    private func stopHeartbeat() {
+        heartbeatTimer?.invalidate()
+        heartbeatTimer = nil
+    }
+
+    private func sendHeartbeat() {
+        guard let socket = socket, socket.status == .connected else { return }
+        missedHeartbeats += 1
+        if missedHeartbeats > maxMissedHeartbeats {
+            #if DEBUG
+            print("[ChatSocket] Heartbeat timeout, forcing reconnect")
+            #endif
+            socket.disconnect()
+            return
+        }
+        socket.emitWithAck("heartbeat", [:]).timingOut(after: 10) { [weak self] _ in
+            Task { @MainActor in
+                self?.missedHeartbeats = 0
+            }
+        }
     }
 
     // MARK: - Event Handlers
@@ -196,9 +188,8 @@ class ChatSocketManager: ObservableObject {
         socket.on(clientEvent: .connect) { [weak self] _, _ in
             Task { @MainActor in
                 self?.isConnected = true
-                self?.isConnecting = false
-                self?.reconnectAttempts = 0  // 성공 시 카운터 리셋
                 self?.connectionError = nil
+                self?.startHeartbeat()
                 #if DEBUG
                 print("✅ Socket.IO connected")
                 #endif
@@ -208,23 +199,55 @@ class ChatSocketManager: ObservableObject {
         socket.on(clientEvent: .disconnect) { [weak self] _, _ in
             Task { @MainActor in
                 self?.isConnected = false
-                self?.isConnecting = false
+                self?.stopHeartbeat()
                 #if DEBUG
                 print("🔌 Socket.IO disconnected")
                 #endif
             }
         }
 
+        socket.on(clientEvent: .reconnect) { [weak self] _, _ in
+            Task { @MainActor in
+                self?.isConnected = true
+                self?.connectionError = nil
+                self?.reconnected.send()
+                #if DEBUG
+                print("🔄 Socket.IO reconnected")
+                #endif
+            }
+        }
+
         socket.on(clientEvent: .error) { [weak self] data, _ in
             Task { @MainActor in
-                self?.isConnecting = false
                 if let error = data.first as? [String: Any],
                    let message = error["message"] as? String {
                     self?.connectionError = message
                     #if DEBUG
                     print("❌ Socket.IO error: \(message)")
                     #endif
+                    if message.contains("Unauthorized") || message.contains("Authentication") {
+                        await self?.handleAuthError()
+                    }
                 }
+            }
+        }
+
+        // Token lifecycle events — server session stays alive, just refresh REST API token
+        socket.on("token_expiring") { _, _ in
+            Task {
+                #if DEBUG
+                print("⚠️ Token expiring soon, refreshing REST API token...")
+                #endif
+                _ = await APIClient.shared.refreshAccessToken()
+            }
+        }
+
+        socket.on("token_refresh_needed") { _, _ in
+            Task {
+                #if DEBUG
+                print("⚠️ Token expired, refreshing REST API token...")
+                #endif
+                _ = await APIClient.shared.refreshAccessToken()
             }
         }
 
@@ -324,6 +347,19 @@ class ChatSocketManager: ObservableObject {
 
     func sendTyping(roomId: String, isTyping: Bool) {
         socket?.emit("typing", ["roomId": roomId, "isTyping": isTyping])
+    }
+
+    // MARK: - Auth Error Handling
+
+    private func handleAuthError() async {
+        guard !isRefreshingToken else { return }
+        isRefreshingToken = true
+        defer { isRefreshingToken = false }
+
+        let refreshed = await APIClient.shared.refreshAccessToken()
+        if refreshed, let newToken = await APIClient.shared.getAccessToken() {
+            forceReconnect(token: newToken)
+        }
     }
 
     // MARK: - Parsing Helpers

@@ -71,7 +71,7 @@ fun EditProfileScreen(
     val authState by authViewModel.uiState.collectAsState()
 
     var name by remember { mutableStateOf("") }
-    var phoneNumber by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
 
     // Fetch fresh profile data on screen load
     LaunchedEffect(Unit) {
@@ -82,7 +82,7 @@ fun EditProfileScreen(
     LaunchedEffect(authState.user) {
         authState.user?.let { user ->
             name = user.name
-            phoneNumber = (user.phoneNumber ?: "").formatPhoneNumber()
+            phone = (user.phone ?: "").formatPhoneNumber()
         }
     }
 
@@ -228,12 +228,12 @@ fun EditProfileScreen(
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
                             GlassTextField(
-                                value = phoneNumber,
+                                value = phone,
                                 onValueChange = { newValue ->
                                     // 숫자와 하이픈만 허용, 최대 13자 (010-0000-0000)
                                     val filtered = newValue.filter { it.isDigit() || it == '-' }
                                     if (filtered.length <= 13) {
-                                        phoneNumber = filtered.formatPhoneNumber()
+                                        phone = filtered.formatPhoneNumber()
                                     }
                                 },
                                 label = "010-0000-0000",
@@ -250,7 +250,7 @@ fun EditProfileScreen(
                         onClick = {
                             viewModel.updateProfile(
                                 name = name.takeIf { it != authState.user?.name },
-                                phoneNumber = phoneNumber.takeIf { it != authState.user?.phoneNumber }
+                                phone = phone.takeIf { it != authState.user?.phone }
                             )
                         },
                         enabled = name.isNotBlank() && !uiState.isLoading,

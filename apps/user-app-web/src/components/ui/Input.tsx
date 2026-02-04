@@ -17,7 +17,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus-visible:ring-emerald-500';
 
     return (
-      <div className="space-y-1">
+      <div className="space-y-1 min-w-0">
         {label && (
           <label
             htmlFor={inputId}
@@ -33,10 +33,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           id={inputId}
           type={type}
           className={cn(
-            'flex h-10 w-full rounded-xl border px-4 py-2 text-base ring-offset-white transition-all duration-200',
+            'flex h-10 w-full min-w-0 max-w-full rounded-xl border px-4 py-2 text-base ring-offset-white transition-all duration-200',
             'file:border-0 file:bg-transparent file:text-sm file:font-medium',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
             'disabled:cursor-not-allowed disabled:opacity-50',
+            'appearance-none',
             baseStyles,
             error && 'border-red-400 focus-visible:ring-red-400',
             className

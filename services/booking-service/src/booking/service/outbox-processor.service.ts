@@ -6,7 +6,7 @@ import { firstValueFrom, timeout, catchError, of } from 'rxjs';
 import { NATS_TIMEOUTS } from '../../common/constants';
 
 // Outbox 처리 설정
-const POLL_INTERVAL_MS = 1000;       // 1초마다 폴링
+const POLL_INTERVAL_MS = 3000;       // 3초 안전망 폴링 (GKE 복수 Pod 환경 대비)
 const BATCH_SIZE = 10;               // 한 번에 처리할 이벤트 수
 const MAX_RETRY_COUNT = 5;           // 최대 재시도 횟수
 const PROCESSING_LOCK_MS = 30000;    // 처리 중 락 시간 (30초)
@@ -45,6 +45,18 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
     if (this.intervalHandle) {
       clearInterval(this.intervalHandle);
       this.intervalHandle = null;
+    }
+  }
+
+  /**
+   * 새 OutboxEvent 생성 직후 즉시 처리 트리거
+   * - 트랜잭션 커밋 후 호출하여 폴링 대기 없이 즉시 이벤트 발행
+   * - 이미 처리 중이면 안전망 폴링에서 처리됨
+   */
+  async triggerImmediate(): Promise<void> {
+    if (!this.isProcessing) {
+      this.logger.debug('[Outbox] Immediate trigger activated');
+      await this.processOutboxEvents();
     }
   }
 

@@ -93,6 +93,35 @@ struct MainTabView: View {
                 ChangePasswordView()
             }
         }
+        .sheet(isPresented: $appState.showMyBookingsSheet) {
+            NavigationStack {
+                MyBookingsView()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToBookingDetail)) { notification in
+            if let bookingId = notification.userInfo?["bookingId"] as? Int {
+                appState.pendingBookingId = bookingId
+                selectedTab = .search
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToFriendRequests)) { _ in
+            selectedTab = .social
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToFriendsList)) { _ in
+            selectedTab = .social
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToChatRoom)) { notification in
+            if let chatRoomId = notification.userInfo?["chatRoomId"] as? String {
+                appState.pendingChatRoomId = chatRoomId
+                selectedTab = .social
+            }
+        }
+        .onChange(of: appState.navigateToTab) { _, newTab in
+            if let tab = newTab {
+                selectedTab = tab
+                appState.navigateToTab = nil
+            }
+        }
     }
 }
 

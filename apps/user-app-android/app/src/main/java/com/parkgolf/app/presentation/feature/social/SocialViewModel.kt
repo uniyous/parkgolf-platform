@@ -7,8 +7,10 @@ import com.parkgolf.app.domain.model.Friend
 import com.parkgolf.app.domain.model.FriendRequest
 import com.parkgolf.app.domain.model.SentFriendRequest
 import com.parkgolf.app.domain.model.UserSearchResult
+import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.ChatRepository
 import com.parkgolf.app.domain.repository.FriendsRepository
+import com.parkgolf.app.util.ContactsHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -38,9 +40,16 @@ data class SocialUiState(
     val userSearchResults: List<UserSearchResult> = emptyList(),
     val isSearching: Boolean = false,
 
+    // Contact Friends
+    val contactFriends: List<UserSearchResult> = emptyList(),
+    val isLoadingContacts: Boolean = false,
+    val contactsPermissionDenied: Boolean = false,
+
     // Chat
     val chatRooms: List<ChatRoom> = emptyList(),
     val totalUnreadCount: Int = 0,
+    val currentUserId: String? = null,
+    val currentUserName: String? = null,
 
     // Navigation
     val navigateToChatRoom: String? = null,
@@ -52,7 +61,9 @@ data class SocialUiState(
 @HiltViewModel
 class SocialViewModel @Inject constructor(
     private val friendsRepository: FriendsRepository,
-    private val chatRepository: ChatRepository
+    private val chatRepository: ChatRepository,
+    private val authRepository: AuthRepository,
+    private val contactsHelper: ContactsHelper
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SocialUiState())
@@ -61,12 +72,28 @@ class SocialViewModel @Inject constructor(
     private var searchJob: Job? = null
 
     init {
+        loadCurrentUser()
         loadFriendsData()
         loadChatRooms()
     }
 
+    private fun loadCurrentUser() {
+        viewModelScope.launch {
+            authRepository.currentUser.collect { user ->
+                _uiState.value = _uiState.value.copy(
+                    currentUserId = user?.id?.toString(),
+                    currentUserName = user?.name
+                )
+            }
+        }
+    }
+
     fun selectTab(tab: SocialTab) {
         _uiState.value = _uiState.value.copy(selectedTab = tab)
+        when (tab) {
+            SocialTab.FRIENDS -> loadFriendsData()
+            SocialTab.CHAT -> loadChatRooms()
+        }
     }
 
     // Friends functions
@@ -260,6 +287,52 @@ class SocialViewModel @Inject constructor(
         }
     }
 
+    // Contact friends
+    fun loadContactFriends(hasPermission: Boolean) {
+        if (!hasPermission) {
+            _uiState.value = _uiState.value.copy(contactsPermissionDenied = true, isLoadingContacts = false)
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoadingContacts = true, contactsPermissionDenied = false)
+
+            try {
+                val phoneNumbers = contactsHelper.fetchPhoneNumbers()
+                if (phoneNumbers.isEmpty()) {
+                    _uiState.value = _uiState.value.copy(contactFriends = emptyList(), isLoadingContacts = false)
+                    return@launch
+                }
+
+                friendsRepository.findFromContacts(phoneNumbers)
+                    .onSuccess { results ->
+                        _uiState.value = _uiState.value.copy(
+                            contactFriends = results,
+                            isLoadingContacts = false
+                        )
+                    }
+                    .onFailure { e ->
+                        _uiState.value = _uiState.value.copy(
+                            isLoadingContacts = false,
+                            error = e.message ?: "연락처 친구 검색 실패"
+                        )
+                    }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoadingContacts = false,
+                    error = "연락처를 읽는 중 오류가 발생했습니다"
+                )
+            }
+        }
+    }
+
+    fun clearContactFriends() {
+        _uiState.value = _uiState.value.copy(
+            contactFriends = emptyList(),
+            contactsPermissionDenied = false
+        )
+    }
+
     fun clearUserSearch() {
         searchJob?.cancel()
         _uiState.value = _uiState.value.copy(
@@ -267,6 +340,37 @@ class SocialViewModel @Inject constructor(
             userSearchResults = emptyList(),
             isSearching = false
         )
+    }
+
+    fun createGroupChat(name: String, friends: List<Friend>) {
+        val chatName = name.ifBlank {
+            listOfNotNull(_uiState.value.currentUserName)
+                .plus(friends.map { it.friendName })
+                .joinToString(", ")
+        }
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+
+            chatRepository.createChatRoom(
+                name = chatName,
+                type = com.parkgolf.app.domain.model.ChatRoomType.GROUP,
+                participantIds = friends.map { it.friendId.toString() }
+            )
+                .onSuccess { chatRoom ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        navigateToChatRoom = chatRoom.id
+                    )
+                    loadChatRooms()
+                }
+                .onFailure { e ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = e.message ?: "그룹 채팅방 생성 실패"
+                    )
+                }
+        }
     }
 
     fun createDirectChat(friend: Friend) {

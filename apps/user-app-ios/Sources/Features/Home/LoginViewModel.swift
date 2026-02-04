@@ -26,9 +26,15 @@ final class LoginViewModel: ObservableObject {
                 responseType: LoginResponse.self
             )
 
-            // Save token
-            await apiClient.setAccessToken(response.accessToken)
-            // TODO: Save refresh token to Keychain
+            // Save tokens to memory and Keychain
+            await apiClient.setTokens(
+                accessToken: response.accessToken,
+                refreshToken: response.refreshToken
+            )
+            try? KeychainManager.shared.saveTokens(
+                accessToken: response.accessToken,
+                refreshToken: response.refreshToken
+            )
 
             return response.user
         } catch let error as APIError {
@@ -49,7 +55,7 @@ final class SignUpViewModel: ObservableObject {
     @Published var email = ""
     @Published var password = ""
     @Published var confirmPassword = ""
-    @Published var phoneNumber = ""
+    @Published var phone = ""
     @Published var agreeToTerms = false
     @Published var isLoading = false
     @Published var showError = false
@@ -78,7 +84,7 @@ final class SignUpViewModel: ObservableObject {
                 email: email,
                 password: password,
                 name: name,
-                phoneNumber: phoneNumber.isEmpty ? nil : phoneNumber
+                phone: phone.isEmpty ? nil : phone
             )
 
             let response = try await apiClient.requestDirect(
@@ -86,8 +92,15 @@ final class SignUpViewModel: ObservableObject {
                 responseType: LoginResponse.self
             )
 
-            // Save token
-            await apiClient.setAccessToken(response.accessToken)
+            // Save tokens to memory and Keychain
+            await apiClient.setTokens(
+                accessToken: response.accessToken,
+                refreshToken: response.refreshToken
+            )
+            try? KeychainManager.shared.saveTokens(
+                accessToken: response.accessToken,
+                refreshToken: response.refreshToken
+            )
 
             return response.user
         } catch let error as APIError {

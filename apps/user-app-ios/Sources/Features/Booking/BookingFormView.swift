@@ -98,9 +98,14 @@ struct BookingFormView: View {
             } message: {
                 Text(viewModel.errorMessage ?? "")
             }
-            .fullScreenCover(isPresented: $viewModel.showBookingComplete) {
+            .fullScreenCover(isPresented: $viewModel.showBookingComplete, onDismiss: {
+                if appState.bookingCompleteAction != .none {
+                    dismiss()
+                }
+            }) {
                 if let booking = viewModel.createdBooking {
                     BookingCompleteView(booking: booking)
+                        .environmentObject(appState)
                 }
             }
         }
@@ -481,7 +486,7 @@ class BookingFormViewModel: ObservableObject {
                     specialRequests: specialRequests.isEmpty ? nil : specialRequests,
                     userEmail: user.email,
                     userName: user.name,
-                    userPhone: user.phoneNumber,
+                    userPhone: user.phone,
                     idempotencyKey: UUID().uuidString
                 )
 

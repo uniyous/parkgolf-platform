@@ -183,7 +183,7 @@ export interface User {
   createdAt: string | null;
   updatedAt: string | null;
   // 추가 필드 (확장된 사용자 정보)
-  phoneNumber?: string;
+  phone?: string;
   membershipTier?: UserMembershipTier;
   status?: UserStatus;
   lastLoginAt?: string | null;
@@ -387,7 +387,7 @@ export interface CreateUserDto {
   email: string;
   name: string;
   password: string;
-  phoneNumber?: string;
+  phone?: string;
   membershipTier?: UserMembershipTier;
   status?: UserStatus;
 }
@@ -396,7 +396,7 @@ export interface UpdateUserDto {
   email?: string;
   name?: string;
   password?: string;
-  phoneNumber?: string;
+  phone?: string;
   membershipTier?: UserMembershipTier;
   status?: UserStatus;
 }

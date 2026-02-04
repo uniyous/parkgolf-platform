@@ -108,7 +108,7 @@ export class GamesService {
     return this.natsClient.send('gameTimeSlots.create', { data: { ...timeSlotData, gameId }, token: adminToken });
   }
 
-  async bulkCreateTimeSlots(gameId: number, timeSlots: any[], adminToken: string): Promise<any[]> {
+  async bulkCreateTimeSlots(gameId: number, timeSlots: any[], adminToken: string): Promise<any> {
     this.logger.log(`Creating bulk time slots for game: ${gameId}`);
     const results = [];
     for (const timeSlotData of timeSlots) {
@@ -119,7 +119,7 @@ export class GamesService {
         this.logger.warn(`Failed to create time slot:`, error);
       }
     }
-    return results;
+    return { success: true, data: results };
   }
 
   async updateTimeSlot(timeSlotId: number, updateData: any, adminToken: string): Promise<any> {
@@ -144,17 +144,6 @@ export class GamesService {
     this.logger.log('Fetching time slot statistics');
     const requestParams: any = { ...params };
     if (adminToken) requestParams.token = adminToken;
-
-    try {
-      return await this.natsClient.send('gameTimeSlots.stats', requestParams, NATS_TIMEOUTS.ANALYTICS);
-    } catch {
-      return {
-        totalSlots: 0,
-        activeSlots: 0,
-        fullyBookedSlots: 0,
-        totalRevenue: 0,
-        averageUtilization: 0,
-      };
-    }
+    return this.natsClient.send('gameTimeSlots.stats', requestParams, NATS_TIMEOUTS.ANALYTICS);
   }
 }

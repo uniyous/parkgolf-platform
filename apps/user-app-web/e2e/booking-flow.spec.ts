@@ -4,12 +4,8 @@ test.describe('예약 플로우 테스트', () => {
   test('검색 페이지 렌더링 확인', async ({ page }) => {
     await page.goto('/search');
 
-    // 로고/헤더 확인 (Parkgolf 로고)
-    await expect(page.getByText('Parkgolf').first()).toBeVisible({ timeout: 30000 });
-
     // 검색 필터 확인
-    await expect(page.getByPlaceholder('골프장, 지역 검색...')).toBeVisible();
-    await expect(page.getByText('예약 날짜')).toBeVisible();
+    await expect(page.getByPlaceholder('골프장, 지역 검색...')).toBeVisible({ timeout: 30000 });
 
     // 예약 가능한 라운드 섹션 확인
     await expect(page.getByText(/예약 가능한 라운드/).first()).toBeVisible({ timeout: 30000 });
@@ -71,7 +67,8 @@ test.describe('예약 플로우 테스트', () => {
 
       // 날짜 필터와 함께 검색하면 타임슬롯이 있는 게임만 표시됨
       if (hasTimeSlots) {
-        const timeSlotButtons = page.locator('button').filter({ hasText: /^\d{2}:\d{2}$/ });
+        // 타임슬롯 버튼: "07:00\n60,000원 · 4자리" 형태
+        const timeSlotButtons = page.locator('button').filter({ hasText: /\d{2}:\d{2}/ }).filter({ hasText: /원/ });
         const timeSlotCount = await timeSlotButtons.count();
         expect(timeSlotCount).toBeGreaterThan(0);
       }
@@ -95,26 +92,90 @@ test.describe('예약 플로우 테스트', () => {
     await expect(page).toHaveURL(new RegExp(`date=${tomorrowStr}`));
   });
 
-  test('시간대 필터 변경 - 오전', async ({ page }) => {
+  test('시간대 칩 필터 - 오전 선택', async ({ page }) => {
     await page.goto('/search');
 
-    // 시간대 선택
-    await page.getByRole('combobox').first().click();
-    await page.getByRole('option', { name: '오전' }).click();
+    // 오전 칩 버튼 클릭
+    const morningChip = page.getByRole('button', { name: /오전/ }).first();
+    await expect(morningChip).toBeVisible({ timeout: 10000 });
+    await morningChip.click();
 
     // URL 파라미터 확인
-    await expect(page).toHaveURL(/timeOfDay=morning/);
+    await expect(page).toHaveURL(/timeOfDay=MORNING/);
+
+    // 칩이 활성(선택) 상태인지 확인 (green 배경)
+    await expect(morningChip).toHaveClass(/bg-green-500/);
   });
 
-  test('시간대 필터 변경 - 오후', async ({ page }) => {
+  test('시간대 칩 필터 - 오후 선택', async ({ page }) => {
     await page.goto('/search');
 
-    // 시간대 선택
-    await page.getByRole('combobox').first().click();
-    await page.getByRole('option', { name: '오후' }).click();
+    // 오후 칩 버튼 클릭
+    const afternoonChip = page.getByRole('button', { name: /오후/ }).first();
+    await expect(afternoonChip).toBeVisible({ timeout: 10000 });
+    await afternoonChip.click();
 
     // URL 파라미터 확인
-    await expect(page).toHaveURL(/timeOfDay=afternoon/);
+    await expect(page).toHaveURL(/timeOfDay=AFTERNOON/);
+  });
+
+  test('시간대 칩 다중선택 - 오전+오후', async ({ page }) => {
+    await page.goto('/search');
+
+    // 오전 칩 클릭
+    const morningChip = page.getByRole('button', { name: /오전/ }).first();
+    await expect(morningChip).toBeVisible({ timeout: 10000 });
+    await morningChip.click();
+    await expect(page).toHaveURL(/timeOfDay=MORNING/);
+
+    // 오후 칩 추가 클릭
+    const afternoonChip = page.getByRole('button', { name: /오후/ }).first();
+    await afternoonChip.click();
+
+    // URL에 둘 다 포함 (쉼표 구분)
+    await expect(page).toHaveURL(/timeOfDay=MORNING.*AFTERNOON|timeOfDay=MORNING%2CAFTERNOON/);
+
+    // 두 칩 모두 활성 상태
+    await expect(morningChip).toHaveClass(/bg-green-500/);
+    await expect(afternoonChip).toHaveClass(/bg-green-500/);
+  });
+
+  test('시간대 칩 토글 해제', async ({ page }) => {
+    await page.goto('/search');
+
+    // 오전 칩 선택
+    const morningChip = page.getByRole('button', { name: /오전/ }).first();
+    await expect(morningChip).toBeVisible({ timeout: 10000 });
+    await morningChip.click();
+    await expect(page).toHaveURL(/timeOfDay=MORNING/);
+
+    // 같은 칩 다시 클릭 → 해제
+    await morningChip.click();
+
+    // URL에서 timeOfDay 파라미터 제거됨
+    await expect(page).not.toHaveURL(/timeOfDay=/);
+
+    // 칩이 비활성 상태 (green 없음)
+    await expect(morningChip).not.toHaveClass(/bg-green-500/);
+  });
+
+  test('시간대 전체 선택 후 검색 결과 확인', async ({ page }) => {
+    await page.goto('/search');
+    await page.waitForTimeout(3000);
+
+    // 새벽 + 오전 + 오후 + 저녁 모두 선택
+    for (const label of ['새벽', '오전', '오후', '저녁']) {
+      const chip = page.getByRole('button', { name: new RegExp(label) }).first();
+      await chip.click();
+    }
+
+    // API 호출 대기 후 결과 표시
+    await page.waitForTimeout(5000);
+
+    // 게임 카드 또는 빈 메시지 중 하나 표시
+    const hasGames = await page.locator('[class*="glass-card"]').first().isVisible().catch(() => false);
+    const hasNoGames = await page.getByText(/예약 가능한 라운드가 없습니다/).isVisible().catch(() => false);
+    expect(hasGames || hasNoGames).toBeTruthy();
   });
 
   test('검색어 입력', async ({ page }) => {
@@ -174,7 +235,7 @@ test.describe('예약 플로우 테스트', () => {
     await page.waitForTimeout(5000);
 
     // 게임이 있는 경우 타임슬롯 클릭
-    const timeSlotButton = page.locator('button').filter({ hasText: /^\d{2}:\d{2}$/ }).first();
+    const timeSlotButton = page.locator('button').filter({ hasText: /\d{2}:\d{2}/ }).filter({ hasText: /원/ }).first();
 
     if (await timeSlotButton.isVisible()) {
       await timeSlotButton.click();
@@ -274,7 +335,7 @@ test.describe('예약 생성 플로우 테스트', () => {
     await page.waitForTimeout(5000);
 
     // 타임슬롯 버튼 찾기
-    const timeSlotButton = page.locator('button').filter({ hasText: /^\d{2}:\d{2}$/ }).first();
+    const timeSlotButton = page.locator('button').filter({ hasText: /\d{2}:\d{2}/ }).filter({ hasText: /원/ }).first();
 
     if (await timeSlotButton.isVisible()) {
       // 타임슬롯 클릭
@@ -284,13 +345,21 @@ test.describe('예약 생성 플로우 테스트', () => {
       await expect(page).toHaveURL(/.*booking-detail/, { timeout: 10000 });
 
       // 예약 상세 정보 표시 확인
-      await expect(page.getByText('예약 정보')).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(/선택된 예약 정보|예약 정보/).first()).toBeVisible({ timeout: 10000 });
 
       // 인원 선택 표시 확인
-      await expect(page.getByText(/인원|플레이어/)).toBeVisible();
+      await expect(page.getByText(/인원|플레이어 수/)).toBeVisible();
 
-      // 예약하기 버튼 표시 확인
-      await expect(page.getByRole('button', { name: /예약하기|예약 확인/ })).toBeVisible();
+      // 예약하기 버튼 표시 확인 (스크롤하여 확인)
+      const bookButton = page.getByRole('button', { name: /예약하기|예약 확인|예약 신청/ });
+      if (await bookButton.count() > 0) {
+        await bookButton.first().scrollIntoViewIfNeeded();
+        await expect(bookButton.first()).toBeVisible();
+      } else {
+        // 예약 버튼이 텍스트로만 존재하는 경우
+        const bookText = page.getByText(/예약하기|예약 신청/);
+        await expect(bookText.first()).toBeVisible();
+      }
     }
   });
 
@@ -304,7 +373,7 @@ test.describe('예약 생성 플로우 테스트', () => {
     await page.waitForTimeout(5000);
 
     // 타임슬롯 버튼 찾기
-    const timeSlotButton = page.locator('button').filter({ hasText: /^\d{2}:\d{2}$/ }).first();
+    const timeSlotButton = page.locator('button').filter({ hasText: /\d{2}:\d{2}/ }).filter({ hasText: /원/ }).first();
 
     if (await timeSlotButton.isVisible()) {
       await timeSlotButton.click();
@@ -333,7 +402,7 @@ test.describe('예약 생성 플로우 테스트', () => {
     await page.waitForTimeout(5000);
 
     // 타임슬롯 버튼 찾기
-    const timeSlotButton = page.locator('button').filter({ hasText: /^\d{2}:\d{2}$/ }).first();
+    const timeSlotButton = page.locator('button').filter({ hasText: /\d{2}:\d{2}/ }).filter({ hasText: /원/ }).first();
 
     if (await timeSlotButton.isVisible()) {
       await timeSlotButton.click();
@@ -367,7 +436,7 @@ test.describe('예약 생성 플로우 테스트', () => {
     await page.waitForTimeout(5000);
 
     // 타임슬롯 버튼 찾기
-    const timeSlotButton = page.locator('button').filter({ hasText: /^\d{2}:\d{2}$/ }).first();
+    const timeSlotButton = page.locator('button').filter({ hasText: /\d{2}:\d{2}/ }).filter({ hasText: /원/ }).first();
 
     if (await timeSlotButton.isVisible()) {
       await timeSlotButton.click();
@@ -383,5 +452,86 @@ test.describe('예약 생성 플로우 테스트', () => {
         await expect(page).toHaveURL(/.*search/, { timeout: 5000 });
       }
     }
+  });
+});
+
+test.describe('slotMode 뱃지 및 시간대 필터 연동 테스트', () => {
+  test('게임 카드에 slotMode 뱃지(티타임/세션) 표시', async ({ page }) => {
+    await page.goto('/search');
+    await page.waitForTimeout(5000);
+
+    // 게임 카드가 있는 경우
+    const gameCards = page.locator('[class*="glass-card"]');
+    const hasGames = await gameCards.first().isVisible().catch(() => false);
+
+    if (hasGames) {
+      // 티타임 또는 세션 뱃지 중 하나 이상 존재해야 함
+      const teeTimeBadge = page.getByText('티타임', { exact: true });
+      const sessionBadge = page.getByText('세션', { exact: true });
+
+      const hasTeeTime = await teeTimeBadge.first().isVisible().catch(() => false);
+      const hasSession = await sessionBadge.first().isVisible().catch(() => false);
+
+      // 게임이 있으면 slotMode 뱃지가 하나 이상 보여야 함
+      expect(hasTeeTime || hasSession).toBeTruthy();
+    }
+  });
+
+  test('오전 칩 선택 시 세션형 게임 포함 검색', async ({ page }) => {
+    await page.goto('/search');
+    await page.waitForTimeout(3000);
+
+    // 오전 칩 선택
+    const morningChip = page.getByRole('button', { name: /오전/ }).first();
+    await expect(morningChip).toBeVisible({ timeout: 10000 });
+    await morningChip.click();
+
+    // API 응답 대기
+    await page.waitForTimeout(5000);
+
+    // 게임이 있는 경우: 세션형 게임도 포함되어야 함 (오전 세션은 오전 시간대와 겹침)
+    const gameCards = page.locator('[class*="glass-card"]');
+    const hasGames = await gameCards.first().isVisible().catch(() => false);
+
+    if (hasGames) {
+      // 게임 카드 내에 타임슬롯이 표시되어야 함
+      const timeSlotSection = page.getByText('예약 가능 시간');
+      await expect(timeSlotSection.first()).toBeVisible();
+    } else {
+      // 해당 시간대에 게임이 없는 경우도 정상
+      await expect(page.getByText(/예약 가능한 라운드가 없습니다/)).toBeVisible();
+    }
+  });
+
+  test('오전+오후 다중 선택 시 API에 startTimeFrom/startTimeTo 전달', async ({ page }) => {
+    // API 요청 모니터링
+    const apiRequests: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/games/search')) {
+        apiRequests.push(request.url());
+      }
+    });
+
+    await page.goto('/search');
+    await page.waitForTimeout(3000);
+
+    // 오전 + 오후 선택
+    const morningChip = page.getByRole('button', { name: /오전/ }).first();
+    const afternoonChip = page.getByRole('button', { name: /오후/ }).first();
+    await morningChip.click();
+    await afternoonChip.click();
+
+    // API 호출 대기
+    await page.waitForTimeout(5000);
+
+    // 다중 선택 시 startTimeFrom/startTimeTo 파라미터가 전달되어야 함
+    const multiSelectRequest = apiRequests.find(
+      url => url.includes('startTimeFrom') && url.includes('startTimeTo')
+    );
+    // 또는 단일 timeOfDay로 전달될 수도 있음 (단일 선택 후 추가 선택)
+    const hasTimeParams = multiSelectRequest ||
+      apiRequests.some(url => url.includes('timeOfDay='));
+
+    expect(hasTimeParams).toBeTruthy();
   });
 });

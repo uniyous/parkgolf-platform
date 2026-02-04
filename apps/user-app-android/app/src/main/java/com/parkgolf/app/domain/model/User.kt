@@ -7,7 +7,7 @@ data class User(
     val id: Int,
     val email: String,
     val name: String,
-    val phoneNumber: String? = null,
+    val phone: String? = null,
     val profileImageUrl: String? = null,
     val passwordChangedAt: LocalDateTime? = null,
     val createdAt: LocalDateTime? = null

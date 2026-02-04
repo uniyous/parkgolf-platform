@@ -3,6 +3,7 @@ package com.parkgolf.app.data.repository
 import com.parkgolf.app.data.mapper.toDomain
 import com.parkgolf.app.data.remote.api.ChatApi
 import com.parkgolf.app.data.remote.dto.chat.CreateChatRoomRequest
+import com.parkgolf.app.data.remote.dto.chat.InviteMembersRequest
 import com.parkgolf.app.data.remote.dto.chat.SendMessageRequest
 import com.parkgolf.app.data.remote.socket.ChatSocketManager
 import com.parkgolf.app.domain.model.ChatMessage
@@ -27,13 +28,14 @@ class ChatRepositoryImpl @Inject constructor(
 
     override val connectionState: Flow<Boolean> = chatSocketManager.connectionState
 
+    override val tokenRefreshNeeded: Flow<Unit> = chatSocketManager.tokenRefreshNeeded
+
+    override val typingFlow = chatSocketManager.typingEvent
+
     // API returns simple array response, not paginated
     override suspend fun getChatRooms(page: Int, limit: Int): Result<List<ChatRoom>> = safeApiCall {
-        val response = chatApi.getChatRooms(page, limit)
-        if (response.success && response.data != null) {
-            Result.success(response.data.map { it.toDomain() })
-        } else {
-            Result.failure(Exception("채팅방 목록 조회에 실패했습니다"))
+        chatApi.getChatRooms(page, limit).toResult("채팅방 목록 조회에 실패했습니다") { data ->
+            data.map { it.toDomain() }
         }
     }
 
@@ -84,6 +86,10 @@ class ChatRepositoryImpl @Inject constructor(
 
     override suspend fun leaveChatRoom(roomId: String): Result<Unit> = safeApiCall {
         chatApi.leaveChatRoom(roomId).toUnitResult("채팅방 나가기에 실패했습니다")
+    }
+
+    override suspend fun inviteMembers(roomId: String, userIds: List<String>): Result<Unit> = safeApiCall {
+        chatApi.inviteMembers(roomId, InviteMembersRequest(userIds)).toUnitResult("멤버 초대에 실패했습니다")
     }
 
     override suspend fun markAsRead(roomId: String): Result<Unit> = safeApiCall {

@@ -3,7 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { useCreateGameMutation, useClubsQuery, useCoursesByClubQuery } from '@/hooks/queries';
 import { Button } from '@/components/ui';
-import type { Game, CreateGameDto } from '@/lib/api/gamesApi';
+import type { Game, CreateGameDto, SlotMode } from '@/lib/api/gamesApi';
 
 interface GameFormModalProps {
   open: boolean;
@@ -16,6 +16,7 @@ interface FormData {
   name: string;
   description: string;
   courseIds: number[];
+  slotMode: SlotMode;
   maxPlayers: number;
   duration: number;
   price: number;
@@ -27,11 +28,17 @@ const initialFormData: FormData = {
   name: '',
   description: '',
   courseIds: [],
+  slotMode: 'TEE_TIME',
   maxPlayers: 4,
   duration: 120,
   price: 0,
   status: 'ACTIVE',
 };
+
+const SLOT_MODE_OPTIONS = [
+  { value: 'TEE_TIME', label: 'TEE TIME', desc: '유료 골프장 (간격별 타임 생성)', color: 'bg-blue-100 text-blue-800' },
+  { value: 'SESSION', label: 'SESSION', desc: '무료 골프장 (시간대별 세션)', color: 'bg-emerald-100 text-emerald-800' },
+];
 
 const STATUS_OPTIONS = [
   { value: 'ACTIVE', label: '운영중', icon: '✅', color: 'bg-green-100 text-green-800' },
@@ -73,8 +80,11 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
       newErrors.courseIds = '최소 1개 이상의 코스를 선택해주세요.';
     }
 
-    if (formData.maxPlayers < 1 || formData.maxPlayers > 10) {
-      newErrors.maxPlayers = '최대 인원은 1~10명 사이여야 합니다.';
+    const maxPlayersLimit = formData.slotMode === 'SESSION' ? 500 : 10;
+    if (formData.maxPlayers < 1 || formData.maxPlayers > maxPlayersLimit) {
+      newErrors.maxPlayers = formData.slotMode === 'SESSION'
+        ? '최대 인원은 1~500명 사이여야 합니다.'
+        : '최대 인원은 1~10명 사이여야 합니다.';
     }
 
     if (formData.duration < 30 || formData.duration > 300) {
@@ -99,6 +109,7 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
         courseIds: formData.courseIds,
+        slotMode: formData.slotMode,
         maxPlayers: formData.maxPlayers,
         duration: formData.duration,
         price: formData.price,
@@ -277,6 +288,35 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
                       placeholder="라운드에 대한 설명을 입력하세요"
                     />
                   </div>
+
+                  {/* 슬롯 모드 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">슬롯 모드</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {SLOT_MODE_OPTIONS.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            handleChange('slotMode', option.value);
+                            if (option.value === 'SESSION') {
+                              setFormData(prev => ({ ...prev, slotMode: 'SESSION' as SlotMode, maxPlayers: 100 }));
+                            } else {
+                              setFormData(prev => ({ ...prev, slotMode: 'TEE_TIME' as SlotMode, maxPlayers: 4 }));
+                            }
+                          }}
+                          className={`flex flex-col items-center px-4 py-3 rounded-lg border-2 transition-all ${
+                            formData.slotMode === option.value
+                              ? `${option.color} border-current font-medium shadow-sm`
+                              : 'border-gray-200 hover:border-gray-300 text-gray-600 bg-white'
+                          }`}
+                        >
+                          <span className="text-sm font-medium">{option.label}</span>
+                          <span className="text-xs mt-0.5 opacity-75">{option.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -376,7 +416,7 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
                         value={formData.maxPlayers}
                         onChange={(e) => handleChange('maxPlayers', Number(e.target.value))}
                         min={1}
-                        max={10}
+                        max={formData.slotMode === 'SESSION' ? 500 : 10}
                         className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
                           errors.maxPlayers ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-white'
                         }`}

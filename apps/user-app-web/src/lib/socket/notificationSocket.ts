@@ -1,5 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import type { AppNotification, NotificationType, NotificationData } from '@/lib/api/notificationApi';
+import { authStorage } from '@/lib/storage';
+import { apiClient } from '@/lib/api/client';
 
 // ============================================
 // 환경 설정
@@ -10,7 +12,7 @@ const isDev = mode === 'development' || mode === 'e2e';
 
 // chat-gateway와 동일한 서버 사용 (namespace만 다름)
 const SOCKET_URL = (import.meta as any).env?.VITE_CHAT_SOCKET_URL ||
-  'http://34.160.211.91';
+  'https://dev-api.goparkmate.com';
 
 const NAMESPACE = '/notification';
 
@@ -40,19 +42,13 @@ export type ErrorHandler = (error: string) => void;
 class NotificationSocketManager {
   private socket: Socket | null = null;
   private token: string | null = null;
-  private isConnecting = false;
-
-  // Reconnection state
-  private lastConnectAttempt = 0;
-  private reconnectAttempts = 0;
-  private readonly MIN_RECONNECT_INTERVAL = 3000;
-  private readonly MAX_RECONNECT_DELAY = 30000;
-  private readonly MAX_RECONNECT_ATTEMPTS = 10;
+  private isRefreshingToken = false;
 
   // Event handlers
   private notificationHandlers: Set<NotificationHandler> = new Set();
   private connectHandlers: Set<ConnectionHandler> = new Set();
   private disconnectHandlers: Set<ConnectionHandler> = new Set();
+  private reconnectHandlers: Set<ConnectionHandler> = new Set();
   private errorHandlers: Set<ErrorHandler> = new Set();
 
   // ============================================
@@ -60,76 +56,42 @@ class NotificationSocketManager {
   // ============================================
 
   connect(token: string): void {
-    if (this.socket?.connected || this.isConnecting) {
+    if (this.socket?.connected) {
       return;
     }
 
     this.token = token;
-    this.isConnecting = true;
-    this.lastConnectAttempt = Date.now();
 
     if (isDev) {
       console.log(`[NotificationSocket] Connecting to ${SOCKET_URL}${NAMESPACE}`);
     }
 
     this.socket = io(`${SOCKET_URL}${NAMESPACE}`, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
       reconnection: true,
-      reconnectionAttempts: this.MAX_RECONNECT_ATTEMPTS,
-      reconnectionDelay: this.MIN_RECONNECT_INTERVAL,
-      reconnectionDelayMax: this.MAX_RECONNECT_DELAY,
-      auth: { token },
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 30000,
+      // 동적 auth: 재연결 시마다 최신 토큰을 authStorage에서 읽음
+      auth: (cb) => {
+        cb({ token: authStorage.getToken() || this.token });
+      },
     });
 
     this.setupEventHandlers();
   }
 
-  ensureConnected(token: string): boolean {
-    if (this.socket?.connected) {
-      this.reconnectAttempts = 0;
-      return true;
-    }
-
-    if (this.isConnecting) {
-      return false;
-    }
-
-    if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
-      console.warn(`[NotificationSocket] Max reconnection attempts exceeded`);
-      return false;
-    }
-
-    const timeSinceLastAttempt = Date.now() - this.lastConnectAttempt;
-    if (timeSinceLastAttempt < this.MIN_RECONNECT_INTERVAL) {
-      return false;
-    }
-
-    this.reconnectAttempts++;
-    if (isDev) {
-      console.log(`[NotificationSocket] Reconnecting... (attempt ${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})`);
-    }
-
-    if (this.socket) {
-      this.socket.removeAllListeners();
-      this.socket.disconnect();
-      this.socket = null;
-    }
-
-    this.connect(token);
-    return false;
-  }
-
+  /**
+   * 강제 재연결 (수동 재연결 버튼용)
+   */
   forceReconnect(token: string): void {
-    this.reconnectAttempts = 0;
-    this.lastConnectAttempt = 0;
-
     if (this.socket) {
       this.socket.removeAllListeners();
       this.socket.disconnect();
       this.socket = null;
     }
 
-    this.isConnecting = false;
     this.connect(token);
   }
 
@@ -140,16 +102,32 @@ class NotificationSocketManager {
       this.socket = null;
     }
     this.token = null;
-    this.isConnecting = false;
-    this.reconnectAttempts = 0;
   }
 
   get isConnected(): boolean {
     return this.socket?.connected ?? false;
   }
 
-  get canReconnect(): boolean {
-    return this.reconnectAttempts < this.MAX_RECONNECT_ATTEMPTS;
+  /**
+   * 인증 에러 시 API Client의 토큰 갱신 메커니즘을 활용하여 재연결
+   */
+  private async handleAuthError(): Promise<void> {
+    if (this.isRefreshingToken) return;
+    this.isRefreshingToken = true;
+
+    try {
+      const refreshed = await apiClient.refreshAccessToken();
+      if (refreshed) {
+        const newToken = authStorage.getToken();
+        if (newToken) {
+          this.forceReconnect(newToken);
+        }
+      }
+    } catch (e) {
+      console.error('[NotificationSocket] Token refresh failed:', e);
+    } finally {
+      this.isRefreshingToken = false;
+    }
   }
 
   // ============================================
@@ -160,8 +138,6 @@ class NotificationSocketManager {
     if (!this.socket) return;
 
     this.socket.on('connect', () => {
-      this.isConnecting = false;
-      this.reconnectAttempts = 0;
       if (isDev) {
         console.log('[NotificationSocket] Connected');
       }
@@ -176,8 +152,11 @@ class NotificationSocketManager {
     });
 
     this.socket.on('connect_error', (error) => {
-      this.isConnecting = false;
       console.error('[NotificationSocket] Connection error:', error.message);
+      // 인증 실패 시 API Client의 토큰 갱신 메커니즘 활용
+      if (error.message?.includes('Unauthorized') || error.message?.includes('Authentication')) {
+        this.handleAuthError();
+      }
       this.errorHandlers.forEach(handler => handler(error.message));
     });
 
@@ -200,6 +179,25 @@ class NotificationSocketManager {
         console.log('[NotificationSocket] Connection confirmed:', data);
       }
     });
+
+    // Token expiry handling from server
+    this.socket.on('token_expiring', () => {
+      console.log('[NotificationSocket] Token expiring soon, refreshing...');
+      this.handleAuthError();
+    });
+
+    this.socket.on('token_expired', () => {
+      console.log('[NotificationSocket] Token expired, refreshing and reconnecting...');
+      this.handleAuthError();
+    });
+
+    // Socket.IO Manager 레벨 재연결 이벤트
+    this.socket.io.on('reconnect', () => {
+      if (isDev) {
+        console.log('[NotificationSocket] Reconnected');
+      }
+      this.reconnectHandlers.forEach(handler => handler());
+    });
   }
 
   // ============================================
@@ -219,6 +217,11 @@ class NotificationSocketManager {
   onDisconnect(handler: ConnectionHandler): () => void {
     this.disconnectHandlers.add(handler);
     return () => this.disconnectHandlers.delete(handler);
+  }
+
+  onReconnect(handler: ConnectionHandler): () => void {
+    this.reconnectHandlers.add(handler);
+    return () => this.reconnectHandlers.delete(handler);
   }
 
   onError(handler: ErrorHandler): () => void {

@@ -226,6 +226,12 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     }
 }
 
+// MARK: - Booking Complete Action
+
+enum BookingCompleteAction {
+    case none, newBooking, myBookings
+}
+
 // MARK: - App State
 
 @MainActor
@@ -235,6 +241,15 @@ final class AppState: ObservableObject {
     @Published var showPasswordChangeReminder: Bool = false
     @Published var passwordExpiryInfo: PasswordExpiryInfo?
 
+    /// 예약 완료 후 네비게이션 액션
+    @Published var bookingCompleteAction: BookingCompleteAction = .none
+    @Published var showMyBookingsSheet: Bool = false
+
+    /// 딥링크 네비게이션
+    @Published var navigateToTab: MainTabView.Tab?
+    @Published var pendingChatRoomId: String?
+    @Published var pendingBookingId: Int?
+
     /// 비밀번호 변경 권유를 이미 표시했는지 (세션 내 1회만)
     private var hasShownPasswordReminder = false
 
@@ -243,10 +258,54 @@ final class AppState: ObservableObject {
 
     init() {
         checkAuthenticationStatus()
+        observeSessionExpiry()
     }
 
     private func checkAuthenticationStatus() {
-        // TODO: Check keychain for stored token
+        // Restore tokens from Keychain for automatic re-login
+        if let accessToken = KeychainManager.shared.accessToken,
+           let refreshToken = KeychainManager.shared.refreshToken {
+            Task {
+                await APIClient.shared.setTokens(
+                    accessToken: accessToken,
+                    refreshToken: refreshToken
+                )
+
+                // Verify token by fetching profile
+                do {
+                    let user = try await APIClient.shared.request(
+                        AuthEndpoints.me(),
+                        responseType: User.self
+                    )
+                    self.signIn(user: user)
+                } catch {
+                    // Token invalid or expired refresh → stay on login screen
+                    await APIClient.shared.clearTokens()
+                }
+            }
+        }
+    }
+
+    private func observeSessionExpiry() {
+        NotificationCenter.default.addObserver(
+            forName: APIClient.sessionExpiredNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.forceSignOut()
+            }
+        }
+    }
+
+    func forceSignOut() {
+        Task {
+            await APIClient.shared.clearTokens()
+        }
+        currentUser = nil
+        isAuthenticated = false
+        hasShownPasswordReminder = false
+        passwordExpiryInfo = nil
     }
 
     func signIn(user: User) {

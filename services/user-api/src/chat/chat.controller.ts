@@ -24,6 +24,7 @@ import {
   SendMessageDto,
   GetMessagesQueryDto,
   GetRoomsQueryDto,
+  AddMembersDto,
   MessageType,
 } from './dto/chat.dto';
 
@@ -68,7 +69,8 @@ export class ChatController {
   ) {
     return this.chatService.createChatRoom(
       user.userId,
-      user.name || user.email,
+      user.name,
+      user.email,
       dto,
     );
   }
@@ -107,9 +109,25 @@ export class ChatController {
     return this.chatService.sendMessage(
       roomId,
       user.userId,
-      user.name || user.email,
+      user.name,
       dto.content,
       dto.message_type || MessageType.TEXT,
+    );
+  }
+
+  @Post('rooms/:roomId/members')
+  @ApiOperation({ summary: '채팅방 멤버 초대' })
+  @ApiParam({ name: 'roomId', description: '채팅방 ID' })
+  @ApiResponse({ status: 201, description: '멤버 초대 성공' })
+  @ApiResponse({ status: 400, description: '잘못된 요청' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  async addMembers(
+    @Param('roomId') roomId: string,
+    @Body() dto: AddMembersDto,
+  ) {
+    return this.chatService.addMembers(
+      roomId,
+      dto.user_ids.map((id) => parseInt(id, 10)),
     );
   }
 

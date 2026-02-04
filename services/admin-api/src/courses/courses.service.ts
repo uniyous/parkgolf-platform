@@ -103,12 +103,7 @@ export class CourseService {
   // ============================================
   async getHoles(courseId: string, adminToken: string): Promise<any> {
     this.logger.log(`Fetching holes for course: ${courseId}`);
-    try {
-      const result = await this.natsClient.send('holes.findByCourse', { courseId, token: adminToken }, NATS_TIMEOUTS.QUICK);
-      return { success: true, data: result };
-    } catch {
-      return { success: true, data: [] };
-    }
+    return this.natsClient.send('holes.findByCourse', { courseId, token: adminToken }, NATS_TIMEOUTS.QUICK);
   }
 
   async getHoleById(courseId: string, holeId: string, adminToken: string): Promise<any> {

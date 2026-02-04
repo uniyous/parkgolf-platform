@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Button, Input } from '../components';
-import { SystemWarmupPanel } from '../components/SystemWarmupPanel';
 
 export const LoginPage: React.FC = () => {
   const { login, isLoggingIn } = useAuth();
@@ -11,8 +10,6 @@ export const LoginPage: React.FC = () => {
     password: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showWarmupPanel, setShowWarmupPanel] = useState(false);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -119,10 +116,14 @@ export const LoginPage: React.FC = () => {
           </h4>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { email: 'test@parkgolf.com', password: 'test1234', name: '테스트사용자', role: 'USER' },
-              { email: 'kim@parkgolf.com', password: 'test1234', name: '김철수', role: 'USER' },
-              { email: 'park@parkgolf.com', password: 'test1234', name: '박영희', role: 'USER' },
-              { email: 'lee@parkgolf.com', password: 'test1234', name: '이민수', role: 'USER' },
+              { email: 'test@parkgolf.com', password: 'test1234', name: '테스트사용자' },
+              { email: 'cheolsu@parkgolf.com', password: 'test1234', name: '김철수' },
+              { email: 'younghee@parkgolf.com', password: 'test1234', name: '박영희' },
+              { email: 'minsu@parkgolf.com', password: 'test1234', name: '이민수' },
+              { email: 'minsoo@parkgolf.com', password: 'test1234', name: '김민수' },
+              { email: 'jieun@parkgolf.com', password: 'test1234', name: '이지은' },
+              { email: 'junhyuk@parkgolf.com', password: 'test1234', name: '박준혁' },
+              { email: 'seoyeon@parkgolf.com', password: 'test1234', name: '최서연' },
             ].map((testUser, index) => (
               <Button
                 key={index}
@@ -135,9 +136,6 @@ export const LoginPage: React.FC = () => {
               >
                 <div className="font-medium mb-1 text-xs text-white">
                   {testUser.name}
-                </div>
-                <div className="text-xs text-white/70">
-                  {testUser.role}
                 </div>
                 <div className="text-xs text-white/60 truncate w-full">
                   {testUser.email}
@@ -162,11 +160,6 @@ export const LoginPage: React.FC = () => {
         </div>
       </div>
 
-      {/* System Warmup Panel */}
-      <SystemWarmupPanel
-        isOpen={showWarmupPanel}
-        onToggle={() => setShowWarmupPanel(!showWarmupPanel)}
-      />
     </div>
   );
 };

@@ -8,6 +8,7 @@ export interface ChatParticipant {
   id: string;
   odUserId: number;
   userName: string;
+  userEmail?: string;
   profileImageUrl?: string;
   joinedAt: Date;
 }
@@ -73,6 +74,7 @@ export class ChatService {
   async createChatRoom(
     userId: number,
     userName: string,
+    userEmail: string,
     dto: CreateChatRoomDto,
   ): Promise<ApiResponse<ChatRoom>> {
     this.logger.log(`Create chat room: userId=${userId}, type=${dto.type}`);
@@ -83,21 +85,28 @@ export class ChatService {
       participantIds.push(userId);
     }
 
-    // memberNames 구성 (현재 사용자 이름만 알고 있음)
+    // IAM에서 참여자 정보 조회
     const memberNames: Record<number, string> = {};
+    const memberEmails: Record<number, string> = {};
     memberNames[userId] = userName;
-    // 다른 참여자는 임시로 User{id} 사용 (chat-service에서 처리)
-    participantIds.forEach((id) => {
-      if (!memberNames[id]) {
-        memberNames[id] = `User${id}`;
+    memberEmails[userId] = userEmail;
+
+    // 다른 참여자 정보를 IAM에서 조회
+    const otherIds = participantIds.filter((id) => id !== userId);
+    if (otherIds.length > 0) {
+      const userInfos = await this.fetchUserInfos(otherIds);
+      for (const info of userInfos) {
+        memberNames[info.id] = info.name;
+        memberEmails[info.id] = info.email;
       }
-    });
+    }
 
     const createData = {
       name: dto.name,
       type: dto.type,
       memberIds: participantIds,
       memberNames,
+      memberEmails,
     };
 
     return this.natsClient.send('chat.rooms.create', createData, NATS_TIMEOUTS.QUICK);
@@ -171,6 +180,34 @@ export class ChatService {
   }
 
   /**
+   * 채팅방 멤버 초대
+   */
+  async addMembers(roomId: string, userIds: number[]): Promise<ApiResponse<void>> {
+    this.logger.log(`Add members: roomId=${roomId}, userIds=${userIds}`);
+
+    // IAM에서 사용자 정보 조회
+    const userInfos = await this.fetchUserInfos(userIds);
+    const userMap = new Map(userInfos.map((u) => [u.id, u]));
+
+    await Promise.all(
+      userIds.map((userId) => {
+        const info = userMap.get(userId);
+        return this.natsClient.send(
+          'chat.rooms.addMember',
+          {
+            roomId,
+            userId,
+            userName: info?.name,
+            userEmail: info?.email || null,
+          },
+          NATS_TIMEOUTS.QUICK,
+        );
+      }),
+    );
+    return { success: true, data: undefined } as ApiResponse<void>;
+  }
+
+  /**
    * 읽지 않은 메시지 수 조회
    */
   async getUnreadCount(roomId: string, userId: number): Promise<ApiResponse<{ count: number }>> {
@@ -180,5 +217,33 @@ export class ChatService {
       { roomId, userId },
       NATS_TIMEOUTS.QUICK,
     );
+  }
+
+  /**
+   * IAM에서 사용자 정보 일괄 조회
+   */
+  private async fetchUserInfos(userIds: number[]): Promise<{ id: number; name: string; email: string }[]> {
+    const results: { id: number; name: string; email: string }[] = [];
+    await Promise.all(
+      userIds.map(async (userId) => {
+        try {
+          const response = await this.natsClient.send<any>(
+            'iam.users.getById',
+            { userId: String(userId) },
+            NATS_TIMEOUTS.QUICK,
+          );
+          if (response.success && response.data) {
+            results.push({
+              id: Number(response.data.id),
+              name: response.data.name,
+              email: response.data.email,
+            });
+          }
+        } catch (error) {
+          this.logger.warn(`Failed to fetch user info for userId=${userId}: ${error}`);
+        }
+      }),
+    );
+    return results;
   }
 }

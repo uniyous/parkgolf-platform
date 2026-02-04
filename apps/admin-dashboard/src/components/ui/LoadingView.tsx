@@ -31,13 +31,13 @@ export function LoadingView({
     <div
       className={cn(
         'flex flex-col items-center justify-center gap-3',
-        fullScreen ? 'fixed inset-0 bg-[var(--color-bg-primary)]/80 backdrop-blur-sm z-50' : 'py-12',
+        fullScreen ? 'fixed inset-0 bg-gray-50/80 backdrop-blur-sm z-50' : 'py-12',
         className
       )}
     >
       <Loader2 className={cn('loading-spinner', sizeClasses[size])} />
       {message && (
-        <p className="text-sm text-[var(--color-text-tertiary)]">{message}</p>
+        <p className="text-sm text-gray-500">{message}</p>
       )}
     </div>
   );

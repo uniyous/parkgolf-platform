@@ -3,8 +3,7 @@ package com.parkgolf.app.presentation.feature.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.parkgolf.app.data.local.datastore.AuthPreferences
-import com.parkgolf.app.data.remote.api.AuthApi
-import com.parkgolf.app.data.remote.dto.auth.ChangePasswordRequest
+import com.parkgolf.app.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,7 +39,7 @@ data class ChangePasswordUiState(
 
 @HiltViewModel
 class ChangePasswordViewModel @Inject constructor(
-    private val authApi: AuthApi,
+    private val authRepository: AuthRepository,
     private val authPreferences: AuthPreferences
 ) : ViewModel() {
 
@@ -65,18 +64,14 @@ class ChangePasswordViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            try {
-                authApi.changePassword(
-                    ChangePasswordRequest(
-                        currentPassword = state.currentPassword,
-                        newPassword = state.newPassword,
-                        confirmPassword = state.confirmPassword
-                    )
-                )
-                // 비밀번호 변경 성공 시 스킵 타임스탬프 제거
+            authRepository.changePassword(
+                currentPassword = state.currentPassword,
+                newPassword = state.newPassword,
+                confirmPassword = state.confirmPassword
+            ).onSuccess {
                 authPreferences.clearPasswordChangeSkipped()
                 _uiState.update { it.copy(isLoading = false, isSuccess = true) }
-            } catch (e: Exception) {
+            }.onFailure { e ->
                 _uiState.update {
                     it.copy(
                         isLoading = false,

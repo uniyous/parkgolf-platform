@@ -41,6 +41,17 @@ enum AuthEndpoints {
     static func stats() -> Endpoint {
         Endpoint(path: "/api/user/iam/stats")
     }
+
+    static func updateProfile(name: String?, phone: String?) -> Endpoint {
+        var body: [String: String] = [:]
+        if let name = name { body["name"] = name }
+        if let phone = phone { body["phone"] = phone }
+        return Endpoint(
+            path: "/api/user/iam/profile",
+            method: .patch,
+            body: body
+        )
+    }
 }
 
 // MARK: - Account Endpoints
@@ -161,6 +172,28 @@ enum ChatEndpoints {
             path: "/api/user/chat/rooms/\(roomId)/messages",
             method: .post,
             body: SendMessageRequest(content: content, messageType: type.rawValue)
+        )
+    }
+
+    static func inviteMembers(roomId: String, userIds: [String]) -> Endpoint {
+        Endpoint(
+            path: "/api/user/chat/rooms/\(roomId)/members",
+            method: .post,
+            body: InviteMembersRequest(userIds: userIds)
+        )
+    }
+
+    static func leaveRoom(roomId: String) -> Endpoint {
+        Endpoint(
+            path: "/api/user/chat/rooms/\(roomId)/leave",
+            method: .delete
+        )
+    }
+
+    static func markAsRead(roomId: String) -> Endpoint {
+        Endpoint(
+            path: "/api/user/chat/rooms/\(roomId)/read",
+            method: .post
         )
     }
 }

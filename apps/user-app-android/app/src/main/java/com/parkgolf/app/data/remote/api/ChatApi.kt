@@ -3,6 +3,7 @@ package com.parkgolf.app.data.remote.api
 import com.parkgolf.app.data.remote.dto.chat.ChatMessageDto
 import com.parkgolf.app.data.remote.dto.chat.ChatRoomDto
 import com.parkgolf.app.data.remote.dto.chat.CreateChatRoomRequest
+import com.parkgolf.app.data.remote.dto.chat.InviteMembersRequest
 import com.parkgolf.app.data.remote.dto.chat.MessagesApiResponse
 import com.parkgolf.app.data.remote.dto.chat.SendMessageRequest
 import com.parkgolf.app.data.remote.dto.common.ApiResponse
@@ -43,6 +44,12 @@ interface ChatApi {
 
     @DELETE("api/user/chat/rooms/{roomId}/leave")
     suspend fun leaveChatRoom(@Path("roomId") roomId: String): ApiResponse<Unit>
+
+    @POST("api/user/chat/rooms/{roomId}/members")
+    suspend fun inviteMembers(
+        @Path("roomId") roomId: String,
+        @Body request: InviteMembersRequest
+    ): ApiResponse<Unit>
 
     @POST("api/user/chat/rooms/{roomId}/read")
     suspend fun markAsRead(@Path("roomId") roomId: String): ApiResponse<Unit>

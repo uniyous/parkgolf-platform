@@ -1,26 +1,34 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw, Loader2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw, Loader2, UserPlus, Search, X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { AppLayout } from '@/components/layout';
-import { useChatRoomQuery, useMessagesInfiniteQuery, useSendMessageMutation } from '@/hooks/queries/chat';
+import { SubPageHeader } from '@/components/layout';
+import { Button, LoadingView } from '@/components/ui';
+import { useChatRoomQuery, useMessagesInfiniteQuery, useSendMessageMutation, useLeaveChatRoomMutation, useInviteMembersMutation } from '@/hooks/queries/chat';
+import { useFriendsQuery } from '@/hooks/queries/friend';
 import { chatSocket } from '@/lib/socket/chatSocket';
 import { authStorage } from '@/lib/storage';
-import { showErrorToast } from '@/lib/toast';
+import { showErrorToast, showSuccessToast } from '@/lib/toast';
 import { useAuthStore } from '@/stores/authStore';
-import type { ChatMessage } from '@/lib/api/chatApi';
+import { useConfirm } from '@/contexts/ConfirmContext';
+import { chatApi, getChatRoomDisplayName, type ChatMessage } from '@/lib/api/chatApi';
 
 export const ChatRoomPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const { confirm } = useConfirm();
   const currentUserId = String(user?.id ?? '');
 
   const [realtimeMessages, setRealtimeMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showParticipants, setShowParticipants] = useState(false);
 
+  const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -36,6 +44,7 @@ export const ChatRoomPage: React.FC = () => {
     isFetchingNextPage,
   } = useMessagesInfiniteQuery(roomId ?? '');
   const sendMessageMutation = useSendMessageMutation();
+  const leaveMutation = useLeaveChatRoomMutation();
 
   // Merge DB messages from infinite query with realtime messages
   const messages = useMemo(() => {
@@ -61,7 +70,17 @@ export const ChatRoomPage: React.FC = () => {
     return allMessages;
   }, [messagesData, realtimeMessages]);
 
-  // Socket connection with auto-reconnect
+  // joinRoom 재시도 래퍼 — 실패 시 최대 3회 백오프 재시도
+  const joinRoomWithRetry = useCallback(async (id: string, retries = 3) => {
+    for (let i = 0; i < retries; i++) {
+      const success = await chatSocket.joinRoom(id);
+      if (success) return true;
+      await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+    }
+    return false;
+  }, []);
+
+  // Socket connection (Socket.IO 내장 재연결에 위임)
   useEffect(() => {
     const token = authStorage.getToken();
     if (!token || !roomId) return;
@@ -69,20 +88,37 @@ export const ChatRoomPage: React.FC = () => {
     // Connect socket
     chatSocket.connect(token);
 
-    // Subscribe to events
+    // 이미 연결된 상태면 즉시 방 참여 + 읽음 처리
+    // (다른 채팅방에서 돌아온 경우 connect 이벤트가 재발생하지 않음)
+    if (chatSocket.isConnected) {
+      setIsConnected(true);
+      joinRoomWithRetry(roomId);
+      chatApi.markAsRead(roomId).catch(() => {});
+    }
+
+    // 초기 연결 및 재연결 시 방 참여 + 읽음 처리
     const unsubConnect = chatSocket.onConnect(() => {
       setIsConnected(true);
-      chatSocket.joinRoom(roomId);
+      joinRoomWithRetry(roomId);
+      chatApi.markAsRead(roomId).catch(() => {});
     });
 
     const unsubDisconnect = chatSocket.onDisconnect(() => {
       setIsConnected(false);
     });
 
+    // Socket.IO 자동 재연결 완료 시 — 방 재참여 + 메시지 갭 복구
+    const unsubReconnect = chatSocket.onReconnect(() => {
+      setIsConnected(true);
+      joinRoomWithRetry(roomId);
+      // 끊긴 동안의 메시지를 DB에서 다시 가져옴
+      setRealtimeMessages([]);
+      queryClient.invalidateQueries({ queryKey: ['chat', 'messages', roomId] });
+    });
+
     const unsubMessage = chatSocket.onMessage((message) => {
       if (message.roomId === roomId) {
         setRealtimeMessages((prev) => {
-          // Avoid duplicates
           if (prev.some((m) => m.id === message.id)) return prev;
           return [...prev, message];
         });
@@ -93,36 +129,35 @@ export const ChatRoomPage: React.FC = () => {
       console.error('Socket error:', error);
     });
 
-    // Visibility change handler - 탭이 다시 활성화되면 연결 확인
+    // 탭 백그라운드 → 포그라운드 전환 시 소켓 재연결 + 메시지 갭 복구
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && token) {
+      if (document.visibilityState === 'visible') {
+        // Reconnect socket if disconnected during background
         if (!chatSocket.isConnected) {
-          console.log('🔄 Tab became visible, checking connection...');
-          chatSocket.ensureConnected(token);
+          const token = authStorage.getToken();
+          if (token) chatSocket.forceReconnect(token);
+        } else {
+          // 연결 유지 중이어도 방 재참여 보장
+          joinRoomWithRetry(roomId);
         }
+        setRealtimeMessages([]);
+        queryClient.invalidateQueries({ queryKey: ['chat', 'messages', roomId] });
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Periodic connection check (30초마다, 연결 안됐을 때만)
-    const connectionCheckInterval = setInterval(() => {
-      if (!chatSocket.isConnected && chatSocket.canReconnect && token) {
-        chatSocket.ensureConnected(token);
-      }
-    }, 30000);
-
     return () => {
       unsubConnect();
       unsubDisconnect();
+      unsubReconnect();
       unsubMessage();
       unsubError();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearInterval(connectionCheckInterval);
       if (roomId) {
         chatSocket.leaveRoom(roomId);
       }
     };
-  }, [roomId]);
+  }, [roomId, queryClient, joinRoomWithRetry]);
 
   // Scroll to bottom
   useEffect(() => {
@@ -140,7 +175,11 @@ export const ChatRoomPage: React.FC = () => {
     if (chatSocket.isConnected) {
       const result = await chatSocket.sendMessage(roomId, text);
       if (result) {
-        // Message will be added via socket event
+        // 발신자는 broadcast에서 제외되므로 ACK 응답으로 메시지 추가
+        setRealtimeMessages((prev) => {
+          if (prev.some((m) => m.id === result.id)) return prev;
+          return [...prev, result];
+        });
         return;
       }
     }
@@ -202,78 +241,63 @@ export const ChatRoomPage: React.FC = () => {
   // Loading state
   if (isLoadingRoom) {
     return (
-      <AppLayout showMobileHeader={false} showTabBar={false} fullHeight>
-        <div className="flex items-center justify-center h-full">
-          <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-        </div>
-      </AppLayout>
+      <div className="h-screen bg-[var(--color-bg-primary)] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+      </div>
     );
   }
 
   // Not found
   if (!room) {
     return (
-      <AppLayout showMobileHeader={false} showTabBar={false} fullHeight>
-        <div className="flex flex-col items-center justify-center h-full p-4">
-          <h2 className="text-xl font-bold text-white mb-2">채팅방을 찾을 수 없습니다</h2>
-          <button
-            onClick={() => navigate('/chat')}
-            className="mt-4 px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
-          >
-            채팅 목록으로
-          </button>
-        </div>
-      </AppLayout>
+      <div className="h-screen bg-[var(--color-bg-primary)] flex flex-col items-center justify-center p-4">
+        <h2 className="text-xl font-bold text-white mb-2">채팅방을 찾을 수 없습니다</h2>
+        <button
+          onClick={() => navigate('/chat')}
+          className="mt-4 px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
+        >
+          채팅 목록으로
+        </button>
+      </div>
     );
   }
 
   return (
-    <AppLayout showMobileHeader={false} showTabBar={false} fullHeight>
-      <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="sticky top-0 z-30 bg-black/40 backdrop-blur-md px-4 py-3 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/social?tab=chat')}
-              className="p-2 -ml-2 rounded-lg hover:bg-white/10 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 text-white" />
-            </button>
-
-            <div className="flex-1 min-w-0">
-              <h2 className="text-white font-semibold truncate">{room.name}</h2>
-              <div className="flex items-center gap-2 text-xs text-white/50">
-                {isConnected ? (
-                  <>
-                    <Wifi className="w-3 h-3 text-emerald-400" />
-                    <span className="text-emerald-400">연결됨</span>
-                  </>
-                ) : (
-                  <>
-                    <WifiOff className="w-3 h-3 text-yellow-400" />
-                    <span className="text-yellow-400">연결 끊김</span>
-                    <button
-                      onClick={() => {
-                        const token = authStorage.getToken();
-                        if (token) {
-                          chatSocket.forceReconnect(token);
-                        }
-                      }}
-                      className="ml-1 p-1 rounded hover:bg-white/10 transition-colors"
-                      title="재연결"
-                    >
-                      <RefreshCw className="w-3 h-3 text-yellow-400" />
-                    </button>
-                  </>
-                )}
-                {(room.participants?.length ?? 0) > 0 && (
-                  <>
-                    <span>•</span>
-                    <Users className="w-3 h-3" />
-                    <span>{room.participants.length}명</span>
-                  </>
-                )}
-              </div>
+    <div className="h-screen bg-[var(--color-bg-primary)] flex flex-col">
+      <SubPageHeader
+        title={getChatRoomDisplayName(room, currentUserId)}
+        onBack={() => navigate('/social?tab=chat')}
+        rightContent={
+          <>
+            <div className="flex items-center gap-2 text-xs">
+              {isConnected ? (
+                <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+              ) : (
+                <>
+                  <WifiOff className="w-3.5 h-3.5 text-yellow-400" />
+                  <button
+                    onClick={() => {
+                      const token = authStorage.getToken();
+                      if (token) {
+                        chatSocket.forceReconnect(token);
+                      }
+                    }}
+                    className="p-1 rounded hover:bg-white/10 transition-colors"
+                    title="재연결"
+                  >
+                    <RefreshCw className="w-3 h-3 text-yellow-400" />
+                  </button>
+                </>
+              )}
+              {(room.participants?.length ?? 0) > 0 && (
+                <button
+                  onClick={() => setShowParticipants(true)}
+                  className="text-white/50 flex items-center gap-1 hover:text-white/80 transition-colors"
+                >
+                  <Users className="w-3 h-3" />
+                  {room.participants.length}
+                </button>
+              )}
             </div>
 
             <div className="relative">
@@ -291,28 +315,51 @@ export const ChatRoomPage: React.FC = () => {
                     <button
                       onClick={() => {
                         setShowMenu(false);
-                        if (confirm('채팅방을 나가시겠습니까?')) {
+                        setShowInviteModal(true);
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      친구 초대
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setShowMenu(false);
+                        const confirmed = await confirm({
+                          type: 'warning',
+                          title: '채팅방 나가기',
+                          description: '채팅방을 나가시겠습니까?',
+                          okText: '나가기',
+                        });
+                        if (!confirmed) return;
+                        try {
+                          await leaveMutation.mutateAsync(roomId!);
                           navigate('/social?tab=chat');
+                        } catch {
+                          showErrorToast('채팅방 나가기에 실패했습니다.');
                         }
                       }}
-                      className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-white/10 flex items-center gap-2"
+                      disabled={leaveMutation.isPending}
+                      className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-white/10 flex items-center gap-2 disabled:opacity-50"
                     >
                       <LogOut className="w-4 h-4" />
-                      나가기
+                      {leaveMutation.isPending ? '나가는 중...' : '나가기'}
                     </button>
                   </div>
                 </>
               )}
             </div>
-          </div>
-        </div>
+          </>
+        }
+      />
 
-        {/* Messages */}
-        <div
-          ref={messagesContainerRef}
-          onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-4 py-4"
-        >
+      {/* Messages — full-width scroll area */}
+      <div
+        ref={messagesContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto"
+      >
+        <div className="w-full max-w-screen-xl mx-auto px-4 py-4">
           {/* Load more indicator */}
           {isFetchingNextPage && (
             <div className="flex items-center justify-center py-3 mb-2">
@@ -362,9 +409,11 @@ export const ChatRoomPage: React.FC = () => {
             <div ref={messagesEndRef} />
           </div>
         </div>
+      </div>
 
-        {/* Input */}
-        <div className="sticky bottom-0 bg-black/40 backdrop-blur-md px-4 py-3 border-t border-white/10">
+      {/* Input */}
+      <div className="border-t border-white/10">
+        <div className="w-full max-w-screen-xl mx-auto px-4 py-3">
           <div className="flex items-center gap-2">
             <input
               ref={inputRef}
@@ -395,9 +444,296 @@ export const ChatRoomPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </AppLayout>
+
+      {/* Participants Modal */}
+      {showParticipants && room && (
+        <ParticipantsModal
+          participants={room.participants}
+          currentUserId={currentUserId}
+          onClose={() => setShowParticipants(false)}
+        />
+      )}
+
+      {/* Invite Modal */}
+      {showInviteModal && room && (
+        <InviteFriendsModal
+          roomId={room.id}
+          participants={room.participants}
+          onClose={() => setShowInviteModal(false)}
+        />
+      )}
+    </div>
   );
 };
+
+// ============================================
+// Participants Modal
+// ============================================
+
+interface ParticipantsModalProps {
+  participants: { userId: string; userName: string; userEmail: string | null }[];
+  currentUserId: string;
+  onClose: () => void;
+}
+
+function ParticipantsModal({ participants, currentUserId, onClose }: ParticipantsModalProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const showSearch = participants.length >= 5;
+
+  const filtered = searchQuery
+    ? participants.filter((p) =>
+        p.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.userEmail ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : participants;
+
+  // 본인을 맨 위로 정렬
+  const sorted = [...filtered].sort((a, b) => {
+    if (a.userId === currentUserId) return -1;
+    if (b.userId === currentUserId) return 1;
+    return a.userName.localeCompare(b.userName);
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-gray-800 rounded-2xl p-6 animate-slide-up">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">
+            참여자 ({participants.length}명)
+          </h3>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 transition-colors">
+            <X className="w-5 h-5 text-white/60" />
+          </button>
+        </div>
+
+        {showSearch && (
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+            <input
+              type="text"
+              placeholder="참여자 검색..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={cn(
+                'w-full pl-10 pr-4 py-2.5 rounded-xl',
+                'bg-white/10 text-white placeholder:text-white/40',
+                'border border-white/10 focus:border-emerald-500/50',
+                'outline-none transition-colors'
+              )}
+              autoFocus
+            />
+          </div>
+        )}
+
+        <div className="max-h-72 overflow-y-auto space-y-2">
+          {sorted.length === 0 && (
+            <div className="p-4 text-center text-white/50">
+              검색 결과가 없습니다.
+            </div>
+          )}
+
+          {sorted.map((p) => {
+            const isMe = p.userId === currentUserId;
+            return (
+              <div
+                key={p.userId}
+                className="flex items-center gap-3 p-3 rounded-xl bg-white/5"
+              >
+                <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm font-semibold text-white">
+                    {p.userName.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-white font-medium truncate">
+                    {p.userName}
+                    {isMe && (
+                      <span className="ml-1.5 text-xs text-emerald-400 font-normal">(나)</span>
+                    )}
+                  </h4>
+                  {p.userEmail && (
+                    <p className="text-white/40 text-xs truncate">{p.userEmail}</p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-4">
+          <button
+            onClick={onClose}
+            className="w-full px-4 py-2.5 rounded-xl bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// Invite Friends Modal
+// ============================================
+
+interface InviteFriendsModalProps {
+  roomId: string;
+  participants: { userId: string }[];
+  onClose: () => void;
+}
+
+function InviteFriendsModal({ roomId, participants, onClose }: InviteFriendsModalProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const { data: friends = [], isLoading } = useFriendsQuery();
+  const inviteMutation = useInviteMembersMutation();
+
+  const participantUserIds = new Set(participants.map((p) => p.userId));
+
+  const availableFriends = friends.filter(
+    (f) => !participantUserIds.has(String(f.friendId))
+  );
+
+  const filteredFriends = searchQuery
+    ? availableFriends.filter(
+        (f) =>
+          f.friendName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          f.friendEmail.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : availableFriends;
+
+  const toggleSelect = (friendId: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(friendId)
+        ? prev.filter((id) => id !== friendId)
+        : [...prev, friendId]
+    );
+  };
+
+  const handleInvite = async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      await inviteMutation.mutateAsync({ roomId, userIds: selectedIds });
+      showSuccessToast(`${selectedIds.length}명을 초대했습니다.`);
+      onClose();
+    } catch {
+      showErrorToast('초대에 실패했습니다.');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-gray-800 rounded-2xl p-6 animate-slide-up">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">친구 초대</h3>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 transition-colors">
+            <X className="w-5 h-5 text-white/60" />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+          <input
+            type="text"
+            placeholder="친구 검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={cn(
+              'w-full pl-10 pr-4 py-2.5 rounded-xl',
+              'bg-white/10 text-white placeholder:text-white/40',
+              'border border-white/10 focus:border-emerald-500/50',
+              'outline-none transition-colors'
+            )}
+            autoFocus
+          />
+        </div>
+
+        {/* Friends List */}
+        <div className="max-h-64 overflow-y-auto space-y-2">
+          {isLoading && <LoadingView size="sm" />}
+
+          {!isLoading && availableFriends.length === 0 && (
+            <div className="p-4 text-center text-white/50">
+              초대할 수 있는 친구가 없습니다.
+            </div>
+          )}
+
+          {!isLoading && availableFriends.length > 0 && filteredFriends.length === 0 && (
+            <div className="p-4 text-center text-white/50">
+              검색 결과가 없습니다.
+            </div>
+          )}
+
+          {!isLoading &&
+            filteredFriends.map((friend) => {
+              const friendIdStr = String(friend.friendId);
+              const selected = selectedIds.includes(friendIdStr);
+
+              return (
+                <button
+                  key={friend.id}
+                  onClick={() => toggleSelect(friendIdStr)}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+                >
+                  <div
+                    className={cn(
+                      'w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors',
+                      selected
+                        ? 'bg-emerald-500 border-emerald-500'
+                        : 'border-white/30'
+                    )}
+                  >
+                    {selected && <Check className="w-3 h-3 text-white" />}
+                  </div>
+
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-semibold text-white">
+                      {friend.friendName.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+
+                  <div className="flex-1 min-w-0 text-left">
+                    <h4 className="text-white font-medium truncate">{friend.friendName}</h4>
+                    <p className="text-white/50 text-xs truncate">{friend.friendEmail}</p>
+                  </div>
+                </button>
+              );
+            })}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors"
+          >
+            취소
+          </button>
+          <button
+            onClick={handleInvite}
+            disabled={selectedIds.length === 0 || inviteMutation.isPending}
+            className={cn(
+              'flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors',
+              selectedIds.length > 0
+                ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                : 'bg-white/10 text-white/40 cursor-not-allowed'
+            )}
+          >
+            {inviteMutation.isPending
+              ? '초대 중...'
+              : selectedIds.length > 0
+                ? `초대 (${selectedIds.length}명)`
+                : '초대'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ============================================
 // Message Bubble

@@ -24,6 +24,7 @@ data class ChatRoomMemberDto(
     val roomId: String? = null,
     val userId: Int,
     val userName: String,
+    val userEmail: String? = null,
     val joinedAt: String,
     val leftAt: String? = null,
     val isAdmin: Boolean = false,
@@ -37,6 +38,7 @@ data class ChatParticipantDto(
     @SerialName("userId")
     val oduserId: String? = null,
     val userName: String,
+    val userEmail: String? = null,
     val profileImageUrl: String? = null,
     val joinedAt: String
 )
@@ -71,6 +73,12 @@ data class SendMessageRequest(
     val content: String,
     @SerialName("message_type")
     val messageType: String = "TEXT"
+)
+
+@Serializable
+data class InviteMembersRequest(
+    @SerialName("user_ids")
+    val userIds: List<String>
 )
 
 // API response wrapper for messages endpoint

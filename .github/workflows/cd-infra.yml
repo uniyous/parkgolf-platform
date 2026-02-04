@@ -365,6 +365,8 @@ jobs:
               metadata:
                 labels:
                   app: postgres
+                annotations:
+                  cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
               spec:
                 containers:
                 - name: postgres
@@ -386,11 +388,11 @@ jobs:
                     value: /var/lib/postgresql/data/pgdata
                   resources:
                     requests:
-                      cpu: "250m"
-                      memory: "512Mi"
+                      cpu: "100m"
+                      memory: "256Mi"
                     limits:
-                      cpu: "1000m"
-                      memory: "1Gi"
+                      cpu: "500m"
+                      memory: "512Mi"
                   volumeMounts:
                   - name: postgres-data
                     mountPath: /var/lib/postgresql/data
@@ -487,6 +489,8 @@ jobs:
               metadata:
                 labels:
                   app: nats
+                annotations:
+                  cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
               spec:
                 containers:
                 - name: nats
@@ -499,11 +503,11 @@ jobs:
                     name: monitor
                   resources:
                     requests:
-                      cpu: "100m"
-                      memory: "128Mi"
+                      cpu: "50m"
+                      memory: "64Mi"
                     limits:
-                      cpu: "300m"
-                      memory: "256Mi"
+                      cpu: "200m"
+                      memory: "128Mi"
                   readinessProbe:
                     httpGet:
                       path: /healthz
@@ -536,6 +540,32 @@ jobs:
           # Wait for rollout
           kubectl rollout status deployment/nats -n $NAMESPACE --timeout=120s
           echo "NATS is ready"
+
+      - name: Deploy PodDisruptionBudgets
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: policy/v1
+          kind: PodDisruptionBudget
+          metadata:
+            name: postgres-pdb
+            namespace: ${{ needs.setup.outputs.namespace }}
+          spec:
+            minAvailable: 1
+            selector:
+              matchLabels:
+                app: postgres
+          ---
+          apiVersion: policy/v1
+          kind: PodDisruptionBudget
+          metadata:
+            name: nats-pdb
+            namespace: ${{ needs.setup.outputs.namespace }}
+          spec:
+            minAvailable: 1
+            selector:
+              matchLabels:
+                app: nats
+          EOF
 
       - name: Summary
         run: |

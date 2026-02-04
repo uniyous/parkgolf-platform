@@ -99,13 +99,13 @@ class AuthPreferences @Inject constructor(
         }
     }
 
-    suspend fun saveUserInfo(userId: String, email: String, name: String, phoneNumber: String? = null) {
+    suspend fun saveUserInfo(userId: String, email: String, name: String, phone: String? = null) {
         dataStore.edit { preferences ->
             preferences[USER_ID_KEY] = userId
             preferences[USER_EMAIL_KEY] = email
             preferences[USER_NAME_KEY] = name
-            if (phoneNumber != null) {
-                preferences[USER_PHONE_KEY] = phoneNumber
+            if (phone != null) {
+                preferences[USER_PHONE_KEY] = phone
             } else {
                 preferences.remove(USER_PHONE_KEY)
             }

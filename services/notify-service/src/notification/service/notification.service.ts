@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException, Inject, Optional } from '@nestjs
 import { ClientProxy } from '@nestjs/microservices';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateNotificationDto, UpdateNotificationDto, NotificationQueryDto, SendNotificationDto } from '../dto/notification.dto';
-import { Notification, NotificationStatus } from '@prisma/client';
+import { Notification, NotificationStatus, NotificationType } from '@prisma/client';
 
 @Injectable()
 export class NotificationService {
@@ -193,6 +193,37 @@ export class NotificationService {
         },
       },
     });
+  }
+
+  async dismissByType(userId: string, type: NotificationType, dataFilter?: Record<string, any>): Promise<{ count: number }> {
+    const where: any = { userId, type, readAt: null };
+    if (dataFilter) {
+      const entries = Object.entries(dataFilter);
+      if (entries.length === 1) {
+        const [key, value] = entries[0];
+        where.data = { path: [key], equals: value };
+      }
+    }
+    const result = await this.prisma.notification.updateMany({
+      where,
+      data: { status: NotificationStatus.READ, readAt: new Date() },
+    });
+    return { count: result.count };
+  }
+
+  async deleteExpired(type: NotificationType, before: Date): Promise<number> {
+    const result = await this.prisma.notification.deleteMany({
+      where: { type, status: NotificationStatus.READ, createdAt: { lt: before } },
+    });
+    return result.count;
+  }
+
+  async markExpiredAsRead(type: NotificationType, before: Date): Promise<number> {
+    const result = await this.prisma.notification.updateMany({
+      where: { type, readAt: null, createdAt: { lt: before } },
+      data: { status: NotificationStatus.READ, readAt: new Date() },
+    });
+    return result.count;
   }
 
   async findFailedNotificationsForRetry(): Promise<Notification[]> {

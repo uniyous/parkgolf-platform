@@ -264,8 +264,7 @@ export class GamesController {
     @Body() bulkDto: BulkCreateGameTimeSlotDto,
   ) {
     this.logger.log(`Creating bulk time slots for game: ${gameId}`);
-    const results = await this.gamesService.bulkCreateTimeSlots(gameId, bulkDto.timeSlots, token);
-    return { success: true, data: results };
+    return this.gamesService.bulkCreateTimeSlots(gameId, bulkDto.timeSlots, token);
   }
 
   @Post(':gameId/time-slots/generate')

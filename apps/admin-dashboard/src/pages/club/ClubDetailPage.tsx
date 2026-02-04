@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useClubDetail } from '@/hooks';
 import { DataContainer, DeleteConfirmPopover } from '@/components/common';
+import { PageLayout } from '@/components/layout';
 import type { CourseCombo } from '@/types/club';
 import { CourseManagementTab } from '@/components/features/club/CourseManagementTab';
 import { BasicInfoTab } from '@/components/features/club/BasicInfoTab';
@@ -30,6 +31,11 @@ export const ClubDetailPage: React.FC = () => {
     refetchClub,
     refetchCourses,
   } = useClubDetail(clubId ? Number(clubId) : null);
+
+  const breadcrumbs = useMemo(() => [
+    { label: '골프장', path: '/clubs' },
+    { label: club?.name || '골프장 상세' },
+  ], [club?.name]);
 
   // 탭 변경 시 편집 모드 리셋
   useEffect(() => {
@@ -68,6 +74,7 @@ export const ClubDetailPage: React.FC = () => {
   };
 
   return (
+    <PageLayout breadcrumbs={breadcrumbs}>
     <DataContainer
       isLoading={isLoading}
       isEmpty={!club && !isLoading}
@@ -123,6 +130,13 @@ export const ClubDetailPage: React.FC = () => {
                     : 'bg-red-100 text-red-800'
                 }`}>
                   {club.status === 'ACTIVE' ? '운영중' : club.status === 'MAINTENANCE' ? '정비중' : '휴장'}
+                </span>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  club.clubType === 'FREE'
+                    ? 'bg-sky-100 text-sky-700'
+                    : 'bg-emerald-100 text-emerald-700'
+                }`}>
+                  {club.clubType === 'FREE' ? '무료' : '유료'}
                 </span>
               </div>
             </div>
@@ -239,5 +253,6 @@ export const ClubDetailPage: React.FC = () => {
     </div>
       )}
     </DataContainer>
+    </PageLayout>
   );
 };

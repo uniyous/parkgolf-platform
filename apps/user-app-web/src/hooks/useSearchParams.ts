@@ -7,7 +7,7 @@ const getTodayDateString = () => new Date().toISOString().split('T')[0];
 export interface GameSearchFilters {
   search: string;
   date: string;  // 기본값은 오늘 날짜 (항상 타임슬롯이 있는 게임만 조회)
-  timeOfDay: 'all' | 'morning' | 'afternoon';
+  timeOfDay: string;
   minPrice: number | null;
   maxPrice: number | null;
   minPlayers: number | null;
@@ -22,7 +22,7 @@ export function useGameSearchParams() {
   const filters = useMemo<GameSearchFilters>(() => ({
     search: searchParams.get('search') || '',
     date: searchParams.get('date') || getTodayDateString(),  // 기본값을 오늘 날짜로 설정 - 항상 타임슬롯이 있는 게임만 조회
-    timeOfDay: (searchParams.get('timeOfDay') as GameSearchFilters['timeOfDay']) || 'all',
+    timeOfDay: searchParams.get('timeOfDay') || '',
     minPrice: searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : null,
     maxPrice: searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : null,
     minPlayers: searchParams.get('minPlayers') ? Number(searchParams.get('minPlayers')) : null,
@@ -46,7 +46,7 @@ export function useGameSearchParams() {
       } else if (key === 'sortOrder' && value === 'asc') {
         // Don't include default sortOrder in URL
         newParams.delete(key);
-      } else if (key === 'timeOfDay' && value === 'all') {
+      } else if (key === 'timeOfDay' && value === '') {
         // Don't include default timeOfDay in URL
         newParams.delete(key);
       } else {

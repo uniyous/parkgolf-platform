@@ -30,14 +30,24 @@ async function bootstrap() {
       }),
     );
 
+    // Trust proxy for correct client IP behind GKE Ingress/Load Balancer
+    // Required for ThrottlerGuard to track real client IPs via X-Forwarded-For
+    app.getHttpAdapter().getInstance().set('trust proxy', true);
+
     // CORS configuration for admin frontend
+    const corsOrigins = configService.get<string>('CORS_ALLOWED_ORIGINS');
     app.enableCors({
-      origin: [
-        'http://localhost:3001',  // admin-dashboard
-        /^https:\/\/.*\.run\.app$/,  // Cloud Run
-        'https://parkgolf-admin.web.app',
-        'https://parkgolf-admin-dev.web.app',
-      ],
+      origin: corsOrigins
+        ? corsOrigins.split(',').map(o => o.trim())
+        : [
+            'http://localhost:3001',
+            'https://parkgolf-admin.web.app',
+            'https://parkgolf-admin-dev.web.app',
+            'https://dev-admin.goparkmate.com',
+            'https://admin.goparkmate.com',
+            'https://dev-api.goparkmate.com',
+            'https://api.goparkmate.com',
+          ],
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
       credentials: true,

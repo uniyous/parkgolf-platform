@@ -34,7 +34,7 @@ fun UserDto.toDomain(): User {
         id = id,
         email = email,
         name = name,
-        phoneNumber = phoneOrPhoneNumber,
+        phone = phone,
         profileImageUrl = profileImageUrl
     )
 }
@@ -111,7 +111,9 @@ fun ChatRoomMemberDto.toDomain(): ChatParticipant {
         id = id,
         userId = userId.toString(),
         userName = userName,
+        userEmail = userEmail,
         profileImageUrl = null,
+        isAdmin = isAdmin,
         joinedAt = parseDateTime(joinedAt)
     )
 }
@@ -121,6 +123,7 @@ fun ChatParticipantDto.toDomain(): ChatParticipant {
         id = id,
         userId = oduserId ?: id,
         userName = userName,
+        userEmail = userEmail,
         profileImageUrl = profileImageUrl,
         joinedAt = parseDateTime(joinedAt)
     )

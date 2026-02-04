@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Patch,
   Body,
   Get,
   UseGuards,
@@ -11,11 +12,11 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
-import { RegisterDto, LoginDto, AuthResponseDto } from './dto/auth.dto';
+import { RegisterDto, LoginDto, AuthResponseDto, UpdateProfileDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { NatsResponse } from '../common/types/nats-response.type';
 import { CurrentUser, JwtUser } from '../common/decorators';
 
 @ApiTags('IAM')
@@ -27,6 +28,7 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @ApiOperation({ summary: '회원가입' })
   @ApiResponse({
     status: 201,
@@ -40,6 +42,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @ApiOperation({ summary: '로그인' })
   @ApiResponse({
     status: 200,
@@ -58,8 +61,20 @@ export class AuthController {
   @ApiResponse({ status: 200, description: '프로필 조회 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async getProfile(@CurrentUser('userId') userId: number) {
-    const profile = await this.usersService.getProfile(userId);
-    return NatsResponse.success(profile);
+    return this.usersService.getProfile(userId);
+  }
+
+  @Patch('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '프로필 수정' })
+  @ApiResponse({ status: 200, description: '프로필 수정 성공' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  async updateProfile(
+    @CurrentUser('userId') userId: number,
+    @Body() updateProfileDto: UpdateProfileDto,
+  ) {
+    return this.usersService.updateProfile(userId, updateProfileDto);
   }
 
   @Get('stats')
@@ -69,8 +84,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: '통계 조회 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async getStats(@CurrentUser('userId') userId: number) {
-    const stats = await this.usersService.getStats(userId);
-    return NatsResponse.success(stats);
+    return this.usersService.getStats(userId);
   }
 
   @Post('refresh')

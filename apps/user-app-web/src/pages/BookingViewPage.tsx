@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Calendar, Clock, Users, MapPin, Phone, Mail, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Container, SubPageHeader } from '@/components/layout';
 import { formatDate, formatPrice, formatDateTime } from '@/lib/formatting';
 import { useBookingByNumberQuery } from '@/hooks/queries/booking';
 import { CancelBookingModal } from '@/components/CancelBookingModal';
@@ -54,39 +55,45 @@ export const BookingViewPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="px-4 py-6">
-        <div className="glass-card p-6 animate-pulse">
-          <div className="h-8 bg-white/20 rounded w-1/2 mb-4" />
-          <div className="space-y-3">
-            {Array(5).fill(0).map((_, i) => (
-              <div key={i} className="h-6 bg-white/10 rounded w-full" />
-            ))}
+      <div className="min-h-screen bg-[var(--color-bg-primary)]">
+        <SubPageHeader title="예약 상세" onBack={() => navigate('/my-bookings')} />
+        <Container className="py-6">
+          <div className="glass-card p-6 animate-pulse">
+            <div className="h-8 bg-white/20 rounded w-1/2 mb-4" />
+            <div className="space-y-3">
+              {Array(5).fill(0).map((_, i) => (
+                <div key={i} className="h-6 bg-white/10 rounded w-full" />
+              ))}
+            </div>
           </div>
-        </div>
+        </Container>
       </div>
     );
   }
 
   if (isError || !booking) {
     return (
-      <div className="px-4 py-6">
-        <div className="glass-card p-8 text-center">
-          <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-400" />
-          <h2 className="text-lg font-bold text-white mb-2">예약을 찾을 수 없습니다</h2>
-          <p className="text-white/60 mb-6">
-            예약 번호가 올바른지 확인해 주세요.
-          </p>
-          <button
-            onClick={() => navigate('/my-bookings')}
-            className={cn(
-              'px-6 py-3 text-sm font-medium rounded-lg',
-              'bg-green-500 text-white hover:bg-green-600',
-              'transition-colors'
-            )}
-          >
-            내 예약 목록으로
-          </button>
-        </div>
+      <div className="min-h-screen bg-[var(--color-bg-primary)]">
+        <SubPageHeader title="예약 상세" onBack={() => navigate('/my-bookings')} />
+        <Container className="py-6">
+          <div className="glass-card p-8 text-center">
+            <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-400" />
+            <h2 className="text-lg font-bold text-white mb-2">예약을 찾을 수 없습니다</h2>
+            <p className="text-white/60 mb-6">
+              예약 번호가 올바른지 확인해 주세요.
+            </p>
+            <button
+              onClick={() => navigate('/my-bookings')}
+              className={cn(
+                'px-6 py-3 text-sm font-medium rounded-lg',
+                'bg-green-500 text-white hover:bg-green-600',
+                'transition-colors'
+              )}
+            >
+              내 예약 목록으로
+            </button>
+          </div>
+        </Container>
       </div>
     );
   }
@@ -109,7 +116,9 @@ export const BookingViewPage: React.FC = () => {
   const bookingWithCancel: BookingWithCancel = { ...booking, canCancel };
 
   return (
-    <div className="px-4 py-6 space-y-4">
+    <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title="예약 상세" onBack={() => navigate('/my-bookings')} />
+      <Container className="py-6 space-y-4">
         {/* Status Card */}
         <div className="glass-card p-4">
           <div className="flex items-center justify-between mb-2">
@@ -256,6 +265,7 @@ export const BookingViewPage: React.FC = () => {
           onSuccess={() => refetch()}
         />
       )}
+      </Container>
     </div>
   );
 };

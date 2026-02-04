@@ -98,8 +98,7 @@ export class CoursesController {
     @Query('q') query: string,
   ) {
     this.logger.log(`Searching clubs: ${query}`);
-    const result = await this.courseService.searchClubs(query, token);
-    return { data: result };
+    return this.courseService.searchClubs(query, token);
   }
 
   @Get('clubs/company/:companyId')

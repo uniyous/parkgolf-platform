@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { WarmupService, WarmupResult } from '../services/warmup.service';
 
 @ApiTags('System')
-@Controller('system')
+@Controller('api/admin/system')
 export class WarmupController {
   private readonly logger = new Logger(WarmupController.name);
 

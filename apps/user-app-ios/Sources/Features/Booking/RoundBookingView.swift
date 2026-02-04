@@ -4,6 +4,7 @@ import SwiftUI
 
 struct RoundBookingView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = RoundBookingViewModel()
 
     /// 타이틀 헤더 표시 여부 (탭에서 직접 접근 시 true, NavigationLink로 접근 시 false)
@@ -66,16 +67,27 @@ struct RoundBookingView: View {
                 // Results
                 if viewModel.isLoading && viewModel.rounds.isEmpty {
                     ParkLoadingView(message: "라운드 검색 중...")
-                } else if let error = viewModel.errorMessage, viewModel.rounds.isEmpty {
-                    ParkErrorView(message: error) {
+                } else if viewModel.rounds.isEmpty {
+                    ScrollView {
+                        VStack {
+                            Spacer().frame(height: 40)
+                            if let error = viewModel.errorMessage {
+                                ParkErrorView(message: error) {
+                                    viewModel.search()
+                                }
+                            } else {
+                                ParkEmptyStateView(
+                                    icon: "magnifyingglass",
+                                    title: "검색 결과가 없습니다",
+                                    description: "다른 날짜나 검색어로 시도해보세요"
+                                )
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .refreshable {
                         viewModel.search()
                     }
-                } else if viewModel.rounds.isEmpty {
-                    ParkEmptyStateView(
-                        icon: "magnifyingglass",
-                        title: "검색 결과가 없습니다",
-                        description: "다른 날짜나 검색어로 시도해보세요"
-                    )
                 } else {
                     roundList
                 }
@@ -94,7 +106,12 @@ struct RoundBookingView: View {
         .sheet(isPresented: $viewModel.showFilterSheet) {
             RoundFilterSheet(viewModel: viewModel)
         }
-        .fullScreenCover(isPresented: $viewModel.showBookingForm) {
+        .fullScreenCover(isPresented: $viewModel.showBookingForm, onDismiss: {
+            if appState.bookingCompleteAction == .myBookings {
+                appState.showMyBookingsSheet = true
+            }
+            appState.bookingCompleteAction = .none
+        }) {
             if let round = viewModel.selectedRound,
                let timeSlot = viewModel.selectedTimeSlot {
                 BookingFormView(
@@ -102,6 +119,7 @@ struct RoundBookingView: View {
                     timeSlot: timeSlot,
                     selectedDate: viewModel.selectedDate
                 )
+                .environmentObject(appState)
             }
         }
         .task {
@@ -197,7 +215,7 @@ struct RoundBookingView: View {
         HStack(spacing: ParkSpacing.xs) {
             ForEach(RoundSearchParams.TimeOfDay.allCases, id: \.self) { timeOfDay in
                 FilterChip(
-                    title: timeOfDay.rawValue,
+                    title: timeOfDay.displayName,
                     isSelected: viewModel.selectedTimeOfDay == timeOfDay
                 ) {
                     viewModel.selectTimeOfDay(timeOfDay)

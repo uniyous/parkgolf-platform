@@ -12,6 +12,7 @@ import {
   ActiveFilterTags,
 } from '@/components/common/filters';
 import { CompanyFormModal, CompanyDetailModal } from '@/components/features/company';
+import { PageLayout } from '@/components/layout';
 import type { Company, CompanyStatus } from '@/types/company';
 
 type SortField = 'name' | 'status' | 'coursesCount' | 'createdAt';
@@ -155,7 +156,7 @@ export const CompanyPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <PageLayout>
       {/* 헤더 카드 */}
       <div className="bg-white shadow rounded-lg p-6">
         <div className="flex items-center justify-between">
@@ -505,6 +506,6 @@ export const CompanyPage: React.FC = () => {
           </>
         )}
       </Modal>
-    </div>
+    </PageLayout>
   );
 };

@@ -28,7 +28,8 @@ data class ChatUiState(
     val nextCursor: String? = null,
     val currentUserId: String? = null,
     val error: String? = null,
-    val canReconnect: Boolean = true
+    val canReconnect: Boolean = true,
+    val typingUserName: String? = null
 )
 
 @HiltViewModel
@@ -43,9 +44,13 @@ class ChatViewModel @Inject constructor(
     private var currentRoomId: String? = null
     private var savedToken: String? = null
 
+    private var typingClearJob: kotlinx.coroutines.Job? = null
+
     init {
         observeConnectionState()
         observeMessages()
+        observeTyping()
+        observeTokenRefresh()
         loadCurrentUser()
     }
 
@@ -63,6 +68,37 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             chatRepository.connectionState.collect { isConnected ->
                 _uiState.value = _uiState.value.copy(isConnected = isConnected)
+            }
+        }
+    }
+
+    private fun observeTokenRefresh() {
+        viewModelScope.launch {
+            chatRepository.tokenRefreshNeeded.collect {
+                // Server session stays alive — just refresh REST API token in background
+                Log.d(TAG, "Token refresh needed, refreshing REST API token...")
+                authRepository.refreshToken()
+            }
+        }
+    }
+
+    private fun observeTyping() {
+        viewModelScope.launch {
+            chatRepository.typingFlow.collect { event ->
+                if (event.roomId == currentRoomId && event.userId != _uiState.value.currentUserId) {
+                    if (event.isTyping) {
+                        _uiState.value = _uiState.value.copy(typingUserName = event.userName)
+                        // Auto-clear after 3 seconds
+                        typingClearJob?.cancel()
+                        typingClearJob = viewModelScope.launch {
+                            delay(3000)
+                            _uiState.value = _uiState.value.copy(typingUserName = null)
+                        }
+                    } else {
+                        _uiState.value = _uiState.value.copy(typingUserName = null)
+                        typingClearJob?.cancel()
+                    }
+                }
             }
         }
     }
@@ -268,6 +304,26 @@ class ChatViewModel @Inject constructor(
             chatRepository.leaveRoom(roomId)
         }
         currentRoomId = null
+    }
+
+    fun inviteMembers(userIds: List<String>) {
+        val roomId = currentRoomId ?: return
+
+        viewModelScope.launch {
+            chatRepository.inviteMembers(roomId, userIds)
+                .onSuccess {
+                    // Reload room to get updated participants
+                    chatRepository.getChatRoom(roomId)
+                        .onSuccess { room ->
+                            _uiState.value = _uiState.value.copy(room = room)
+                        }
+                }
+                .onFailure { exception ->
+                    _uiState.value = _uiState.value.copy(
+                        error = exception.message ?: "멤버 초대 실패"
+                    )
+                }
+        }
     }
 
     fun leaveChatRoom() {

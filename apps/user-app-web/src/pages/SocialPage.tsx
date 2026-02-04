@@ -11,6 +11,7 @@ import {
   Send,
   PenSquare,
   User,
+  ArrowLeft,
 } from 'lucide-react';
 import { AppLayout, Container } from '@/components/layout';
 import { GlassCard, Button, EmptyState, LoadingView, BottomSheet } from '@/components/ui';
@@ -25,12 +26,14 @@ import {
   useRejectFriendRequestMutation,
   useRemoveFriendMutation,
 } from '@/hooks/queries';
-import { useChatRoomsQuery, useGetOrCreateDirectChatMutation } from '@/hooks/queries/chat';
+import { useChatRoomsQuery, useGetOrCreateDirectChatMutation, useCreateChatRoomMutation, useLeaveChatRoomMutation } from '@/hooks/queries/chat';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useResponsive } from '@/hooks/useResponsive';
+import { useConfirm } from '@/contexts/ConfirmContext';
 import { showSuccessToast, showErrorToast } from '@/lib/toast';
 import type { Friend, FriendRequest, SentFriendRequest, UserSearchResult } from '@/lib/api/friendApi';
-import type { ChatRoom } from '@/lib/api/chatApi';
+import { getChatRoomDisplayName, type ChatRoom } from '@/lib/api/chatApi';
+import { useAuthStore } from '@/stores/authStore';
 
 type MainTab = 'friends' | 'chat';
 type FriendSubTab = 'friends' | 'requests';
@@ -39,6 +42,8 @@ export function SocialPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { isMobile } = useResponsive();
+  const user = useAuthStore((state) => state.user);
+  const currentUserId = String(user?.id ?? '');
 
   // Tab state from URL
   const mainTab = (searchParams.get('tab') as MainTab) || 'friends';
@@ -49,6 +54,8 @@ export function SocialPage() {
   // Modal states
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
+
+  const { confirm } = useConfirm();
 
   // Search states
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,6 +76,8 @@ export function SocialPage() {
   const rejectRequestMutation = useRejectFriendRequestMutation();
   const removeFriendMutation = useRemoveFriendMutation();
   const createDirectChatMutation = useGetOrCreateDirectChatMutation();
+  const createChatRoomMutation = useCreateChatRoomMutation();
+  const leaveChatMutation = useLeaveChatRoomMutation();
 
   // Filtered friends
   const filteredFriends = friendListSearch
@@ -125,7 +134,13 @@ export function SocialPage() {
 
   const handleRemoveFriend = useCallback(
     async (friendId: number) => {
-      if (!confirm('정말 친구를 삭제하시겠습니까?')) return;
+      const confirmed = await confirm({
+        type: 'danger',
+        title: '친구 삭제',
+        description: '정말 친구를 삭제하시겠습니까?',
+        okText: '삭제',
+      });
+      if (!confirmed) return;
       try {
         await removeFriendMutation.mutateAsync(friendId);
         showSuccessToast('친구를 삭제했습니다.');
@@ -133,7 +148,7 @@ export function SocialPage() {
         showErrorToast('친구 삭제에 실패했습니다.');
       }
     },
-    [removeFriendMutation]
+    [removeFriendMutation, confirm]
   );
 
   const handleStartChat = useCallback(
@@ -151,18 +166,23 @@ export function SocialPage() {
     [createDirectChatMutation, navigate]
   );
 
-  const handleSelectFriendForChat = async (friend: Friend) => {
-    try {
-      const room = await createDirectChatMutation.mutateAsync({
-        userId: String(friend.friendId),
-        userName: friend.friendName,
+  const handleLeaveChatRoom = useCallback(
+    async (roomId: string) => {
+      const confirmed = await confirm({
+        type: 'warning',
+        title: '채팅방 나가기',
+        description: '채팅방을 나가시겠습니까?',
+        okText: '나가기',
       });
-      setShowNewChatModal(false);
-      navigate(`/chat/${room.id}`);
-    } catch {
-      showErrorToast('채팅방 생성에 실패했습니다.');
-    }
-  };
+      if (!confirmed) return;
+      try {
+        await leaveChatMutation.mutateAsync(roomId);
+      } catch {
+        showErrorToast('채팅방 나가기에 실패했습니다.');
+      }
+    },
+    [leaveChatMutation, confirm]
+  );
 
   // Header right button
   const headerRight =
@@ -172,7 +192,7 @@ export function SocialPage() {
         <span className="hidden sm:inline">친구 추가</span>
       </Button>
     ) : (
-      <Button size="sm" onClick={() => setShowNewChatModal(true)}>
+      <Button size="sm" onClick={() => setShowNewChatModal(true)} aria-label="새 채팅">
         <PenSquare className="w-4 h-4" />
         <span className="hidden sm:inline">새 채팅</span>
       </Button>
@@ -415,11 +435,22 @@ export function SocialPage() {
 
             {!isLoadingChats && chatRooms.length > 0 && (
               <div className="space-y-3">
+                <button
+                  onClick={() => setShowNewChatModal(true)}
+                  className="w-full flex items-center gap-3 p-4 rounded-xl bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/30 flex items-center justify-center flex-shrink-0">
+                    <PenSquare className="w-5 h-5 text-[var(--color-primary)]" />
+                  </div>
+                  <span className="text-[var(--color-primary)] font-medium text-sm">새 채팅 시작</span>
+                </button>
                 {chatRooms.map((room) => (
                   <ChatRoomCard
                     key={room.id}
                     room={room}
+                    currentUserId={currentUserId}
                     onClick={() => navigate(`/chat/${room.id}`)}
+                    onLeave={() => handleLeaveChatRoom(room.id)}
                   />
                 ))}
               </div>
@@ -473,22 +504,12 @@ export function SocialPage() {
           onClose={() => setShowNewChatModal(false)}
           title="새 채팅"
         >
-          <NewChatContent
-            friends={friends}
-            isLoading={isLoadingFriends}
-            onSelectFriend={handleSelectFriendForChat}
-            isPending={createDirectChatMutation.isPending}
-          />
+          <NewChatContent onClose={() => setShowNewChatModal(false)} />
         </BottomSheet>
       ) : (
         showNewChatModal && (
           <ModalWrapper title="새 채팅" onClose={() => setShowNewChatModal(false)}>
-            <NewChatContent
-              friends={friends}
-              isLoading={isLoadingFriends}
-              onSelectFriend={handleSelectFriendForChat}
-              isPending={createDirectChatMutation.isPending}
-            />
+            <NewChatContent onClose={() => setShowNewChatModal(false)} />
           </ModalWrapper>
         )
       )}
@@ -644,7 +665,7 @@ function SentRequestCard({ request }: { request: SentFriendRequest }) {
   );
 }
 
-function ChatRoomCard({ room, onClick }: { room: ChatRoom; onClick: () => void }) {
+function ChatRoomCard({ room, currentUserId, onClick, onLeave }: { room: ChatRoom; currentUserId: string; onClick: () => void; onLeave: () => void }) {
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -673,7 +694,14 @@ function ChatRoomCard({ room, onClick }: { room: ChatRoom; onClick: () => void }
   };
 
   return (
-    <button onClick={onClick} className="w-full text-left">
+    <button
+      onClick={onClick}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onLeave();
+      }}
+      className="w-full text-left"
+    >
       <GlassCard hoverable>
         <div className="flex items-center gap-3">
           <div
@@ -687,7 +715,16 @@ function ChatRoomCard({ room, onClick }: { room: ChatRoom; onClick: () => void }
             {getRoomIcon()}
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-white font-medium truncate">{room.name}</h4>
+            <div className="flex items-center gap-2">
+              <h4 className="text-white font-medium truncate">
+                {getChatRoomDisplayName(room, currentUserId)}
+              </h4>
+              {room.type !== 'DIRECT' && (room.participants?.length ?? 0) > 0 && (
+                <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-[var(--color-surface)] text-[var(--color-text-muted)]">
+                  {room.participants.length}
+                </span>
+              )}
+            </div>
             <p className="text-[var(--color-text-tertiary)] text-sm truncate">
               {room.lastMessage?.content ?? '대화를 시작해보세요'}
             </p>
@@ -806,18 +843,16 @@ function AddFriendContent({
   );
 }
 
-function NewChatContent({
-  friends,
-  isLoading,
-  onSelectFriend,
-  isPending,
-}: {
-  friends: Friend[];
-  isLoading: boolean;
-  onSelectFriend: (friend: Friend) => void;
-  isPending: boolean;
-}) {
+function NewChatContent({ onClose }: { onClose: () => void }) {
+  const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFriends, setSelectedFriends] = useState<Friend[]>([]);
+  const [step, setStep] = useState<'select' | 'name'>('select');
+  const [groupName, setGroupName] = useState('');
+  const { data: friends = [], isLoading } = useFriendsQuery();
+  const createDirectChatMutation = useGetOrCreateDirectChatMutation();
+  const createChatRoomMutation = useCreateChatRoomMutation();
 
   const filteredFriends = searchQuery
     ? friends.filter(
@@ -827,9 +862,103 @@ function NewChatContent({
       )
     : friends;
 
+  const toggleFriend = (friend: Friend) => {
+    setSelectedFriends((prev) => {
+      const exists = prev.some((f) => f.id === friend.id);
+      if (exists) return prev.filter((f) => f.id !== friend.id);
+      return [...prev, friend];
+    });
+  };
+
+  const isSelected = (friend: Friend) => selectedFriends.some((f) => f.id === friend.id);
+
+  const handleNext = async () => {
+    if (selectedFriends.length === 0) return;
+
+    if (selectedFriends.length === 1) {
+      try {
+        const friend = selectedFriends[0];
+        const room = await createDirectChatMutation.mutateAsync({
+          userId: String(friend.friendId),
+          userName: friend.friendName,
+        });
+        onClose();
+        navigate(`/chat/${room.id}`);
+      } catch {
+        showErrorToast('채팅방 생성에 실패했습니다.');
+      }
+    } else {
+      setStep('name');
+    }
+  };
+
+  const handleCreateGroup = async () => {
+    const name = groupName.trim() || [user?.name, ...selectedFriends.map((f) => f.friendName)].filter(Boolean).join(', ');
+    try {
+      const room = await createChatRoomMutation.mutateAsync({
+        name,
+        type: 'GROUP',
+        participantIds: selectedFriends.map((f) => String(f.friendId)),
+      });
+      onClose();
+      navigate(`/chat/${room.id}`);
+    } catch {
+      showErrorToast('그룹 채팅방 생성에 실패했습니다.');
+    }
+  };
+
+  const isPending = createDirectChatMutation.isPending || createChatRoomMutation.isPending;
+
+  if (step === 'name') {
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={() => setStep('select')}
+          className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          뒤로
+        </button>
+
+        <div className="flex flex-wrap gap-2">
+          {selectedFriends.map((f) => (
+            <span
+              key={f.id}
+              className="px-3 py-1 rounded-full bg-[var(--color-primary)]/20 text-[var(--color-primary)] text-sm"
+            >
+              {f.friendName}
+            </span>
+          ))}
+        </div>
+
+        <div>
+          <label className="block text-sm text-[var(--color-text-secondary)] mb-2">
+            그룹 이름 (선택)
+          </label>
+          <input
+            type="text"
+            placeholder={[user?.name, ...selectedFriends.map((f) => f.friendName)].filter(Boolean).join(', ')}
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+            className="input-glass w-full"
+            autoFocus
+          />
+        </div>
+
+        <Button
+          className="w-full"
+          onClick={handleCreateGroup}
+          disabled={isPending}
+        >
+          {isPending ? '생성 중...' : '만들기'}
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <>
-      <div className="relative mb-4">
+      <div className="relative mb-3">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
         <input
           type="text"
@@ -841,7 +970,22 @@ function NewChatContent({
         />
       </div>
 
-      <div className="max-h-80 overflow-y-auto space-y-2">
+      {selectedFriends.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {selectedFriends.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => toggleFriend(f)}
+              className="flex items-center gap-1 px-3 py-1 rounded-full bg-[var(--color-primary)]/20 text-[var(--color-primary)] text-sm hover:bg-[var(--color-primary)]/30 transition-colors"
+            >
+              {f.friendName}
+              <X className="w-3 h-3" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="max-h-64 overflow-y-auto space-y-2">
         {isLoading && <LoadingView size="sm" />}
 
         {!isLoading && filteredFriends.length === 0 && (
@@ -854,10 +998,19 @@ function NewChatContent({
           filteredFriends.map((friend) => (
             <button
               key={friend.id}
-              onClick={() => onSelectFriend(friend)}
-              disabled={isPending}
-              className="w-full flex items-center gap-3 p-3 rounded-xl bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50"
+              onClick={() => toggleFriend(friend)}
+              className="w-full flex items-center gap-3 p-3 rounded-xl bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition-colors"
             >
+              <div
+                className={cn(
+                  'w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors',
+                  isSelected(friend)
+                    ? 'bg-[var(--color-primary)] border-[var(--color-primary)]'
+                    : 'border-[var(--color-text-muted)]'
+                )}
+              >
+                {isSelected(friend) && <Check className="w-3 h-3 text-white" />}
+              </div>
               <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/30 flex items-center justify-center flex-shrink-0">
                 <span className="text-sm font-semibold text-white">
                   {friend.friendName.charAt(0).toUpperCase()}
@@ -867,10 +1020,23 @@ function NewChatContent({
                 <h4 className="text-white font-medium truncate">{friend.friendName}</h4>
                 <p className="text-[var(--color-text-muted)] text-xs truncate">{friend.friendEmail}</p>
               </div>
-              <MessageCircle className="w-5 h-5 text-[var(--color-text-muted)]" />
             </button>
           ))}
       </div>
+
+      <Button
+        className="w-full mt-4"
+        onClick={handleNext}
+        disabled={selectedFriends.length === 0 || isPending}
+      >
+        {isPending
+          ? '생성 중...'
+          : selectedFriends.length === 0
+            ? '대화 상대 선택'
+            : selectedFriends.length === 1
+              ? '채팅 시작'
+              : `다음 (${selectedFriends.length}명)`}
+      </Button>
     </>
   );
 }

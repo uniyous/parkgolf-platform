@@ -8,12 +8,14 @@ export interface CreateRoomDto {
   bookingId?: number;
   memberIds: number[];
   memberNames: Record<number, string>;
+  memberEmails?: Record<number, string>;
 }
 
 export interface AddMemberDto {
   roomId: string;
   userId: number;
   userName: string;
+  userEmail?: string;
 }
 
 @Injectable()
@@ -24,12 +26,28 @@ export class RoomService {
 
   // 채팅방 생성
   async createRoom(dto: CreateRoomDto) {
-    const { name, type, bookingId, memberIds, memberNames } = dto;
+    const { name, type, bookingId, memberIds, memberNames, memberEmails } = dto;
 
-    // 1:1 채팅방은 기존 방이 있으면 반환
+    // 1:1 채팅방은 기존 방이 있으면 반환 (나간 멤버 재활성화)
     if (type === 'DIRECT' && memberIds.length === 2) {
       const existingRoom = await this.findDirectRoom(memberIds[0], memberIds[1]);
       if (existingRoom) {
+        // 나갔던 멤버가 있으면 재활성화
+        const leftMembers = existingRoom.members.filter((m) => m.leftAt !== null);
+        if (leftMembers.length > 0) {
+          await this.prisma.chatRoomMember.updateMany({
+            where: {
+              roomId: existingRoom.id,
+              leftAt: { not: null },
+            },
+            data: { leftAt: null, joinedAt: new Date() },
+          });
+          // 갱신된 멤버 목록으로 다시 조회
+          return this.prisma.chatRoom.findUnique({
+            where: { id: existingRoom.id },
+            include: { members: { where: { leftAt: null } } },
+          });
+        }
         return existingRoom;
       }
     }
@@ -44,6 +62,7 @@ export class RoomService {
           create: memberIds.map((userId, index) => ({
             userId,
             userName: memberNames[userId] || `User${userId}`,
+            userEmail: memberEmails?.[userId] || null,
             isAdmin: index === 0, // 첫 번째 멤버가 관리자
           })),
         },
@@ -73,6 +92,13 @@ export class RoomService {
     });
 
     return room;
+  }
+
+  // 멤버십 확인
+  async checkMembership(roomId: string, userId: number) {
+    return this.prisma.chatRoomMember.findFirst({
+      where: { roomId, userId, leftAt: null },
+    });
   }
 
   // 채팅방 조회
@@ -119,7 +145,7 @@ export class RoomService {
 
   // 멤버 추가
   async addMember(dto: AddMemberDto) {
-    const { roomId, userId, userName } = dto;
+    const { roomId, userId, userName, userEmail } = dto;
 
     // 이미 멤버인지 확인
     const existing = await this.prisma.chatRoomMember.findUnique({
@@ -131,14 +157,19 @@ export class RoomService {
       if (existing.leftAt) {
         return this.prisma.chatRoomMember.update({
           where: { id: existing.id },
-          data: { leftAt: null, joinedAt: new Date() },
+          data: {
+            leftAt: null,
+            joinedAt: new Date(),
+            userName,
+            userEmail: userEmail || existing.userEmail,
+          },
         });
       }
       return existing;
     }
 
     return this.prisma.chatRoomMember.create({
-      data: { roomId, userId, userName },
+      data: { roomId, userId, userName, userEmail: userEmail || null },
     });
   }
 

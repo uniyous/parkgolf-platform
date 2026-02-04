@@ -12,7 +12,9 @@ export interface ChatParticipant {
   id: string;
   userId: string;
   userName: string;
+  userEmail: string | null;
   profileImageUrl: string | null;
+  isAdmin: boolean;
   joinedAt: string;
 }
 
@@ -64,6 +66,7 @@ interface ApiRoomMember {
   roomId: string;
   userId: number;
   userName: string;
+  userEmail: string | null;
   joinedAt: string;
   leftAt: string | null;
   isAdmin: boolean;
@@ -92,7 +95,9 @@ function transformRoomResponse(room: ApiRoomResponse): ChatRoom {
     id: m.id,
     userId: String(m.userId),
     userName: m.userName,
+    userEmail: m.userEmail || null,
     profileImageUrl: null,
+    isAdmin: m.isAdmin,
     joinedAt: m.joinedAt,
   }));
 
@@ -109,6 +114,38 @@ function transformRoomResponse(room: ApiRoomResponse): ChatRoom {
 }
 
 // ============================================
+// Display Name Utility
+// ============================================
+
+/**
+ * 채팅방 표시 이름 생성
+ * - DIRECT: 상대방 이름
+ * - GROUP/BOOKING: 방 이름 우선, 없으면 참여자 이름 폴백
+ */
+export function getChatRoomDisplayName(room: ChatRoom, currentUserId: string): string {
+  const others = (room.participants ?? []).filter((p) => p.userId !== currentUserId);
+
+  // DIRECT: 상대방 이름
+  if (room.type === 'DIRECT') {
+    return others.length > 0 ? others[0].userName : (room.name || '채팅');
+  }
+
+  // GROUP/BOOKING: 방 이름이 있으면 우선 사용
+  if (room.name) {
+    return room.name;
+  }
+
+  // 방 이름이 없을 때 참여자 이름 폴백 (생성자 우선)
+  if (others.length === 0) return '채팅방';
+  const sorted = [...others].sort((a, b) => (a.isAdmin === b.isAdmin ? 0 : a.isAdmin ? -1 : 1));
+  if (sorted.length <= 2) {
+    return sorted.map((p) => p.userName).join(', ');
+  }
+  const first = sorted.slice(0, 2).map((p) => p.userName).join(', ');
+  return `${first} 외 ${sorted.length - 2}명`;
+}
+
+// ============================================
 // Chat API
 // ============================================
 
@@ -117,11 +154,15 @@ export const chatApi = {
    * 채팅방 목록 조회
    */
   getChatRooms: async (page = 1, limit = 20): Promise<PaginatedResult<ChatRoom>> => {
-    const response = await apiClient.get<BffResponse<ChatRoom[]>>(
+    const response = await apiClient.get<BffResponse<ApiRoomResponse[]>>(
       '/api/user/chat/rooms',
       { page, limit }
     );
-    return extractPaginatedList<ChatRoom>(response.data);
+    const result = extractPaginatedList<ApiRoomResponse>(response.data);
+    return {
+      data: result.data.map(transformRoomResponse),
+      pagination: result.pagination,
+    };
   },
 
   /**
@@ -199,9 +240,26 @@ export const chatApi = {
   },
 
   /**
+   * 채팅방 멤버 초대
+   */
+  inviteMembers: async (roomId: string, userIds: string[]): Promise<void> => {
+    await apiClient.post<BffResponse<void>>(
+      `/api/user/chat/rooms/${roomId}/members`,
+      { user_ids: userIds },
+    );
+  },
+
+  /**
    * 채팅방 나가기
    */
   leaveChatRoom: async (roomId: string): Promise<void> => {
     await apiClient.delete<BffResponse<void>>(`/api/user/chat/rooms/${roomId}/leave`);
+  },
+
+  /**
+   * 채팅방 메시지 읽음 처리
+   */
+  markAsRead: async (roomId: string): Promise<void> => {
+    await apiClient.post<BffResponse<void>>(`/api/user/chat/rooms/${roomId}/read`);
   },
 };

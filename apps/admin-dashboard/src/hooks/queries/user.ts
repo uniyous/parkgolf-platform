@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi, type UserFilters } from '@/lib/api/adminApi';
+import { bookingApi, type BookingFilters } from '@/lib/api/bookingApi';
+import { notificationApi, type UserPreferences } from '@/lib/api/notificationApi';
 import { userKeys } from './keys';
 import { showSuccessToast } from '@/lib/errors';
 import type { CreateUserDto, UpdateUserDto, ChangePasswordDto } from '@/types';
@@ -138,6 +140,40 @@ export const useBulkDeleteUsersMutation = () => {
       showSuccessToast(`${deletedCount}명의 사용자가 삭제되었습니다.`);
     },
     meta: { errorMessage: '일괄 삭제에 실패했습니다.' },
+  });
+};
+
+export const useUserBookingsQuery = (userId: number, filters?: BookingFilters) => {
+  return useQuery({
+    queryKey: userKeys.bookings(userId, filters),
+    queryFn: () => bookingApi.getBookings({ ...filters, userId }),
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 5,
+    meta: { globalLoading: false },
+  });
+};
+
+export const useUserPreferencesQuery = (userId: number) => {
+  return useQuery({
+    queryKey: userKeys.preferences(userId),
+    queryFn: () => notificationApi.getUserPreferences(userId),
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 5,
+    meta: { globalLoading: false },
+  });
+};
+
+export const useUpdateUserPreferencesMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, preferences }: { userId: number; preferences: Partial<UserPreferences> }) =>
+      notificationApi.updateUserPreferences(userId, preferences),
+    onSuccess: (_, { userId }) => {
+      queryClient.invalidateQueries({ queryKey: userKeys.preferences(userId) });
+      showSuccessToast('알림 설정이 수정되었습니다.');
+    },
+    meta: { errorMessage: '알림 설정 수정에 실패했습니다.' },
   });
 };
 

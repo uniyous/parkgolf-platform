@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 // MARK: - Notification Filter
 
@@ -97,6 +98,51 @@ final class NotificationsViewModel: ObservableObject {
     // MARK: - Dependencies
 
     private let notificationService = NotificationService()
+    private let socketManager = NotificationSocketManager.shared
+    private var cancellables = Set<AnyCancellable>()
+
+    // MARK: - Init
+
+    init() {
+        setupSocketSubscription()
+    }
+
+    private func setupSocketSubscription() {
+        socketManager.notificationReceived
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                guard let self = self else { return }
+                // Convert socket event to AppNotification and prepend
+                let notification = AppNotification(
+                    id: event.id,
+                    userId: event.userId,
+                    type: event.type,
+                    title: event.title,
+                    message: event.message,
+                    data: event.data,
+                    status: event.isRead ? .read : .sent,
+                    readAt: nil,
+                    createdAt: ISO8601DateFormatter().date(from: event.createdAt) ?? Date(),
+                    updatedAt: Date()
+                )
+                // Avoid duplicates
+                if !self.notifications.contains(where: { $0.id == notification.id }) {
+                    self.notifications.insert(notification, at: 0)
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    // MARK: - Socket Connection
+
+    func connectSocket() async {
+        guard let token = await APIClient.shared.getAccessToken() else { return }
+        socketManager.connect(token: token)
+    }
+
+    func disconnectSocket() {
+        socketManager.disconnect()
+    }
 
     // MARK: - Public Methods
 

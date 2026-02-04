@@ -50,7 +50,7 @@ fun SignUpScreen(
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
-    var phoneNumber by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
 
     val isFormValid = email.isNotBlank() &&
@@ -133,8 +133,8 @@ fun SignUpScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     GlassTextField(
-                        value = phoneNumber,
-                        onValueChange = { phoneNumber = it },
+                        value = phone,
+                        onValueChange = { phone = it },
                         label = "전화번호 (선택)",
                         leadingIcon = Icons.Default.Phone,
                         keyboardOptions = KeyboardOptions(

@@ -6,7 +6,7 @@ struct User: Identifiable, Codable, Sendable {
     let id: Int
     let email: String
     let name: String
-    let phoneNumber: String?
+    let phone: String?
     let profileImageUrl: String?
     let passwordChangedAt: Date?
     let createdAt: Date?
@@ -53,7 +53,7 @@ struct SignUpRequest: Codable, Sendable {
     let email: String
     let password: String
     let name: String
-    let phoneNumber: String?
+    let phone: String?
 }
 
 // MARK: - Friend Models

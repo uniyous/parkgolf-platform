@@ -24,7 +24,8 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
       close: club.operatingHours?.close || '18:00'
     },
     facilities: club.facilities || [],
-    status: club.status
+    status: club.status,
+    clubType: club.clubType || 'PAID',
   });
 
   const handleSave = async () => {
@@ -56,7 +57,8 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
         close: club.operatingHours?.close || '18:00'
       },
       facilities: club.facilities || [],
-      status: club.status
+      status: club.status,
+      clubType: club.clubType || 'PAID',
     });
     setIsEditing(false);
   };
@@ -255,6 +257,44 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
                   {club.status === 'ACTIVE' ? '운영중' : 
                    club.status === 'MAINTENANCE' ? '정비중' : 
                    club.status === 'SEASONAL_CLOSED' ? '휴장' : '비활성'}
+                </span>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">골프장 유형</label>
+              {isEditing ? (
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, clubType: 'PAID' }))}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      formData.clubType === 'PAID'
+                        ? 'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    유료
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, clubType: 'FREE' }))}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      formData.clubType === 'FREE'
+                        ? 'bg-sky-100 text-sky-700 ring-2 ring-sky-500'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    무료
+                  </button>
+                </div>
+              ) : (
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  club.clubType === 'FREE'
+                    ? 'bg-sky-100 text-sky-700'
+                    : 'bg-emerald-100 text-emerald-700'
+                }`}>
+                  {club.clubType === 'FREE' ? '무료' : '유료'}
                 </span>
               )}
             </div>

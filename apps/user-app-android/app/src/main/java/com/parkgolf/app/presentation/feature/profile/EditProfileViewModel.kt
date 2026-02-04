@@ -25,15 +25,15 @@ class EditProfileViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(EditProfileUiState())
     val uiState: StateFlow<EditProfileUiState> = _uiState.asStateFlow()
 
-    fun updateProfile(name: String?, phoneNumber: String?) {
-        if (name == null && phoneNumber == null) {
+    fun updateProfile(name: String?, phone: String?) {
+        if (name == null && phone == null) {
             _uiState.update { it.copy(isSuccess = true) }
             return
         }
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            settingsRepository.updateProfile(name, phoneNumber)
+            settingsRepository.updateProfile(name, phone)
                 .onSuccess {
                     _uiState.update { it.copy(isLoading = false, isSuccess = true) }
                 }

@@ -6,6 +6,7 @@ struct BookingCompleteView: View {
     let booking: BookingResponse
 
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
     @State private var showConfetti = false
 
     var body: some View {
@@ -206,13 +207,14 @@ struct BookingCompleteView: View {
                 title: "🔍 새로운 예약하기",
                 style: .secondary
             ) {
+                appState.bookingCompleteAction = .newBooking
                 dismiss()
             }
 
             GradientButton(
                 title: "📋 내 예약 보기"
             ) {
-                // Navigate to my bookings
+                appState.bookingCompleteAction = .myBookings
                 dismiss()
             }
         }

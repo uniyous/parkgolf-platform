@@ -26,8 +26,8 @@ export const useChatRoomsQuery = (page = 1, limit = 20) => {
   return useQuery({
     queryKey: chatKeys.roomList(page, limit),
     queryFn: () => chatApi.getChatRooms(page, limit),
-    staleTime: 1000 * 60 * 1, // 1 minute
-    gcTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: 0,
+    gcTime: 1000 * 60 * 5, // 5 minutes
     placeholderData: keepPreviousData,
   });
 };
@@ -40,7 +40,7 @@ export const useChatRoomQuery = (roomId: string) => {
     queryKey: chatKeys.room(roomId),
     queryFn: () => chatApi.getChatRoom(roomId),
     enabled: !!roomId,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 0,
   });
 };
 
@@ -54,8 +54,8 @@ export const useMessagesInfiniteQuery = (roomId: string, limit = 50) => {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     enabled: !!roomId,
-    staleTime: 1000 * 30, // 30 seconds
-    gcTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: 0,
+    gcTime: 1000 * 60 * 5, // 5 minutes
   });
 };
 
@@ -67,8 +67,8 @@ export const useMessagesQuery = (roomId: string, limit = 50) => {
     queryKey: [...chatKeys.messages(roomId), 'initial'],
     queryFn: () => chatApi.getMessages(roomId, undefined, limit),
     enabled: !!roomId,
-    staleTime: 1000 * 30, // 30 seconds
-    gcTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: 0,
+    gcTime: 1000 * 60 * 5, // 5 minutes
   });
 };
 
@@ -123,6 +123,22 @@ export const useSendMessageMutation = () => {
     }) => chatApi.sendMessage(roomId, content, messageType),
     onSuccess: (_, { roomId }) => {
       queryClient.invalidateQueries({ queryKey: chatKeys.messages(roomId) });
+      queryClient.invalidateQueries({ queryKey: chatKeys.rooms() });
+    },
+  });
+};
+
+/**
+ * 채팅방 멤버 초대
+ */
+export const useInviteMembersMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ roomId, userIds }: { roomId: string; userIds: string[] }) =>
+      chatApi.inviteMembers(roomId, userIds),
+    onSuccess: (_, { roomId }) => {
+      queryClient.invalidateQueries({ queryKey: chatKeys.room(roomId) });
       queryClient.invalidateQueries({ queryKey: chatKeys.rooms() });
     },
   });

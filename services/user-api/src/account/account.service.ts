@@ -47,10 +47,7 @@ export class AccountService {
       throw new BadRequestException(errorMessage);
     }
 
-    return {
-      message: response.data.message,
-      passwordChangedAt: new Date(response.data.passwordChangedAt),
-    };
+    return response;
   }
 
   /**
@@ -71,12 +68,6 @@ export class AccountService {
       );
     }
 
-    return {
-      needsChange: response.data.needsChange,
-      daysSinceChange: response.data.daysSinceChange,
-      passwordChangedAt: response.data.passwordChangedAt
-        ? new Date(response.data.passwordChangedAt)
-        : null,
-    };
+    return response;
   }
 }

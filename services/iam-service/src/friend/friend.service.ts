@@ -34,7 +34,7 @@ export class FriendService {
     return friendships.map((f) => ({
       id: f.id,
       friendId: f.friend.id,
-      friendName: f.friend.name || f.friend.email,
+      friendName: f.friend.name,
       friendEmail: f.friend.email,
       friendProfileImageUrl: f.friend.profileImageUrl,
       createdAt: f.createdAt,
@@ -75,7 +75,7 @@ export class FriendService {
     return requests.map((r) => ({
       id: r.id,
       fromUserId: r.fromUser.id,
-      fromUserName: r.fromUser.name || r.fromUser.email,
+      fromUserName: r.fromUser.name,
       fromUserEmail: r.fromUser.email,
       fromUserProfileImageUrl: r.fromUser.profileImageUrl,
       status: r.status,
@@ -109,7 +109,7 @@ export class FriendService {
     return requests.map((r) => ({
       id: r.id,
       toUserId: r.toUser.id,
-      toUserName: r.toUser.name || r.toUser.email,
+      toUserName: r.toUser.name,
       toUserEmail: r.toUser.email,
       toUserProfileImageUrl: r.toUser.profileImageUrl,
       status: r.status,
@@ -170,7 +170,7 @@ export class FriendService {
     return users.map((u) => ({
       id: u.id,
       email: u.email,
-      name: u.name || u.email,
+      name: u.name,
       profileImageUrl: u.profileImageUrl,
       isFriend: friendIds.has(u.id),
       hasPendingRequest: pendingIds.has(u.id),
@@ -249,7 +249,7 @@ export class FriendService {
       requestId: request.id,
       fromUserId,
       toUserId,
-      fromUserName: fromUser?.name || fromUser?.email || 'Unknown',
+      fromUserName: fromUser?.name,
       message,
       createdAt: new Date().toISOString(),
     });
@@ -316,9 +316,16 @@ export class FriendService {
       requestId,
       fromUserId: request.fromUserId,
       toUserId: request.toUserId,
-      fromUserName: fromUser?.name || fromUser?.email || 'Unknown',
-      toUserName: toUser?.name || toUser?.email || 'Unknown',
+      fromUserName: fromUser?.name,
+      toUserName: toUser?.name,
       acceptedAt: new Date().toISOString(),
+    });
+
+    // 수신자의 FRIEND_REQUEST 알림 자동 해제
+    this.notificationClient.emit('notification.dismiss', {
+      userId: String(request.toUserId),
+      type: 'FRIEND_REQUEST',
+      dataFilter: { requestId },
     });
 
     this.logger.log(`Friend request accepted: ${request.fromUserId} <-> ${request.toUserId}`);
@@ -344,6 +351,13 @@ export class FriendService {
     await this.prisma.friendRequest.update({
       where: { id: requestId },
       data: { status: FriendRequestStatus.REJECTED },
+    });
+
+    // 수신자의 FRIEND_REQUEST 알림 자동 해제
+    this.notificationClient.emit('notification.dismiss', {
+      userId: String(request.toUserId),
+      type: 'FRIEND_REQUEST',
+      dataFilter: { requestId },
     });
 
     this.logger.log(`Friend request rejected: ${requestId}`);
@@ -435,7 +449,7 @@ export class FriendService {
     return users.map((u) => ({
       id: u.id,
       email: u.email,
-      name: u.name || u.email,
+      name: u.name,
       profileImageUrl: u.profileImageUrl,
       isFriend: friendIds.has(u.id),
       hasPendingRequest: pendingIds.has(u.id),
