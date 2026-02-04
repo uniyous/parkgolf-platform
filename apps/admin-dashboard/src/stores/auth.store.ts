@@ -39,8 +39,8 @@ export interface ApiUserResponse {
   avatarUrl?: string;
   isActive?: boolean;
   lastLoginAt?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
   // Legacy fields (하위 호환성)
   roleCode?: string;
   role?: string;
