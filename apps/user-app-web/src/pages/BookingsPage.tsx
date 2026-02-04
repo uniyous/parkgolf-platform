@@ -74,7 +74,7 @@ export function BookingsPage() {
 
           <div className="space-y-5">
             {/* 날짜 선택 */}
-            <div>
+            <div className="overflow-hidden">
               <label className="block text-base font-semibold text-white/90 mb-2">예약 날짜</label>
               <input
                 type="date"
@@ -82,7 +82,7 @@ export function BookingsPage() {
                 onChange={(e) => updateFilters({ date: e.target.value })}
                 min={getMinDate()}
                 max={getMaxDate()}
-                className="w-full h-14 px-4 text-lg bg-white/10 border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/30"
+                className="w-full min-w-0 h-14 px-4 text-lg bg-white/10 border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/30"
               />
             </div>
 
