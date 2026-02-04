@@ -126,13 +126,12 @@ export function BookingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Search Input */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
                 <input
                   type="text"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="골프장, 지역 검색..."
-                  className="input-glass pl-10"
+                  className="input-glass pr-10"
                 />
                 {searchInput && (
                   <button

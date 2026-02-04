@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, SlidersHorizontal, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { SlidersHorizontal, X, ChevronUp, ChevronDown } from 'lucide-react';
 import { AppLayout, Container } from '@/components/layout';
 import { useSearchGamesQuery } from '../hooks/queries';
 import { useGameSearchParams } from '../hooks/useSearchParams';
@@ -108,16 +108,15 @@ export const SearchPage: React.FC = () => {
           {/* Basic Filters */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
             {/* 검색어 */}
-            <div className="relative">
+            <div className="relative min-w-0">
               <label className="block text-sm font-semibold text-white/90 mb-1">검색</label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" />
                 <input
                   type="text"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="골프장, 지역 검색..."
-                  className="w-full h-10 pl-10 pr-4 py-2 bg-white/10 border border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  className="input-glass pr-10"
                 />
                 {searchInput && (
                   <button
@@ -145,7 +144,7 @@ export const SearchPage: React.FC = () => {
             />
 
             {/* 시간대 (다중선택 칩) */}
-            <div>
+            <div className="min-w-0">
               <label className="block text-sm font-semibold text-white/90 mb-1">시간대</label>
               <div className="flex flex-wrap gap-2">
                 {TIME_PERIOD_CHIPS.map((chip) => (
