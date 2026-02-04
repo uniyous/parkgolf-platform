@@ -151,6 +151,23 @@ export const PLAYER_OPTIONS: SelectOption[] = [
 ];
 
 // =====================
+// 시니어 UI용 시간대 (3개: 전체/오전/오후)
+// =====================
+export const SIMPLE_TIME_PERIODS = [
+  { value: '', label: '전체' },
+  { value: 'DAWN,MORNING', label: '오전' },
+  { value: 'AFTERNOON,EVENING', label: '오후' },
+] as const;
+
+// =====================
+// 시니어 UI용 결제수단 (2개)
+// =====================
+export const SIMPLE_PAYMENT_METHODS: PaymentMethod[] = [
+  { id: 'onsite', name: '현장결제', icon: '🏪', description: '골프장에서 직접 결제' },
+  { id: 'card', name: '카드결제', icon: '💳', description: '신용/체크카드 결제' },
+];
+
+// =====================
 // 페이지네이션 기본값
 // =====================
 export const DEFAULT_PAGE_SIZE = 20;

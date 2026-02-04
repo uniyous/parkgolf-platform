@@ -6,9 +6,9 @@ import type { Game, GameTimeSlot } from '@/lib/api/gameApi';
 import { formatDate } from '@/lib/formatting';
 import { showErrorToast } from '@/lib/toast';
 import { translateErrorMessage } from '@/types/common';
-import { Button, Select, Textarea, Checkbox, PriceDisplay } from '../components';
+import { Button, Checkbox, PriceDisplay } from '../components';
 import { Container, SubPageHeader } from '@/components/layout';
-import { PAYMENT_METHODS, SERVICE_FEE_RATE } from '@/lib/constants';
+import { SIMPLE_PAYMENT_METHODS, SERVICE_FEE_RATE } from '@/lib/constants';
 
 interface BookingState {
   game: Game;
@@ -25,12 +25,10 @@ export const BookingDetailPage: React.FC = () => {
 
   const [playerCount, setPlayerCount] = useState(2);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
-  const [specialRequests, setSpecialRequests] = useState('');
   const [agreeToTerms, setAgreeToTerms] = useState(false);
-  const [agreeToPrivacy, setAgreeToPrivacy] = useState(false);
 
   if (!bookingState) {
-    navigate('/search');
+    navigate('/bookings');
     return null;
   }
 
@@ -48,11 +46,11 @@ export const BookingDetailPage: React.FC = () => {
     }
   }, [availablePlayers, playerCount]);
 
-  const totalPrice = (timeSlot.price || game.basePrice || game.pricePerPerson || 0) * playerCount;
+  const pricePerPerson = timeSlot.price || game.basePrice || game.pricePerPerson || 0;
+  const totalPrice = pricePerPerson * playerCount;
   const serviceFee = Math.floor(totalPrice * SERVICE_FEE_RATE);
-  const finalPrice = totalPrice + serviceFee;
 
-  const canProceed = selectedPaymentMethod && agreeToTerms && agreeToPrivacy;
+  const canProceed = selectedPaymentMethod && agreeToTerms;
 
   const handlePayment = async () => {
     if (!canProceed || !user) return;
@@ -63,7 +61,6 @@ export const BookingDetailPage: React.FC = () => {
         gameTimeSlotId: timeSlot.id,
         bookingDate: date,
         playerCount,
-        specialRequests: specialRequests || undefined,
         userEmail: user.email,
         userName: user.name ?? undefined,
         userPhone: user.phone || undefined,
@@ -80,12 +77,10 @@ export const BookingDetailPage: React.FC = () => {
             timeSlot,
             date,
             playerCount,
-            paymentMethod: PAYMENT_METHODS.find(p => p.id === selectedPaymentMethod),
-            specialRequests
+            paymentMethod: SIMPLE_PAYMENT_METHODS.find(p => p.id === selectedPaymentMethod),
           }
         });
       } else {
-        // 실제 오류 메시지 추출 및 한국어 변환
         const rawMessage = result.error instanceof Error
           ? result.error.message
           : '알 수 없는 오류가 발생했습니다.';
@@ -102,215 +97,120 @@ export const BookingDetailPage: React.FC = () => {
     }
   };
 
-  // 가용 인원에 맞게 인원 선택 옵션 생성
-  const playerCountOptions = Array.from({ length: availablePlayers }, (_, i) => {
-    const count = i + 1;
-    let label = `${count}명`;
-    if (count === 1) label = '1명 (개인 레슨)';
-    else if (count === maxPlayers) label = `${count}명 (풀 플라이트)`;
-    return { value: count, label };
-  });
-
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)]">
-      <SubPageHeader title="예약하기" />
+      <SubPageHeader title="예약 확인" />
       <Container className="py-6">
-        {/* Selected Booking Info */}
-        <div className="glass-card mb-8">
-          <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
-            선택된 예약 정보
-          </h2>
-
-          <div className="flex flex-col lg:flex-row gap-6 mb-6">
-            <div className="w-full lg:w-32 h-24 bg-gradient-to-br from-emerald-400/30 to-emerald-600/30 rounded-xl flex-shrink-0 flex items-center justify-center text-4xl">
-              🏌️
-            </div>
-
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-white mb-1">
-                {game.name}
-              </h3>
-              <p className="text-white/70 text-sm mb-3">
-                📍 {game.clubName}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <span className="bg-white/20 text-white/90 px-3 py-1 rounded-full text-xs font-medium">
-                  ⏱️ {game.duration}분
-                </span>
-                <span className="bg-emerald-400/20 text-emerald-300 px-3 py-1 rounded-full text-xs font-medium">
-                  👥 {availablePlayers}자리 남음
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/10 border border-white/20 rounded-xl p-4 backdrop-blur-sm grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <div className="text-xs text-white/60 mb-1">예약 날짜</div>
-              <div className="text-sm font-semibold text-white">
-                {formatDate(date)}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-white/60 mb-1">예약 시간</div>
-              <div className="text-sm font-semibold text-white">
-                {timeSlot.startTime} {timeSlot.isPremium && '💎'}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-white/60 mb-1">기본 요금</div>
-              <PriceDisplay
-                price={timeSlot.price || game.pricePerPerson || 0}
-                size="md"
-                showUnit={false}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Booking Details Form */}
-        <div className="glass-card mb-8">
-          <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
-            예약 세부 정보
-          </h2>
-
-          {/* Player Count */}
+        <div className="glass-card">
+          {/* 예약 정보 */}
           <div className="mb-6">
-            <label className="block mb-3 text-sm font-semibold text-white/90">
-              플레이어 수
-            </label>
-            <Select
-              value={playerCount}
-              onValueChange={(value) => setPlayerCount(Number(value))}
-              options={playerCountOptions}
-              glass
-            />
+            <h3 className="text-xl font-bold text-white mb-2">
+              {game.clubName || game.name}
+            </h3>
+            {game.clubLocation && (
+              <p className="text-base text-white/70 mb-1">📍 {game.clubLocation}</p>
+            )}
+            <p className="text-lg text-white/90 mb-1">📅 {formatDate(date)}</p>
+            <p className="text-lg text-white/90">🕐 {timeSlot.startTime}</p>
           </div>
 
-          {/* Special Requests */}
+          {/* 구분선 */}
+          <div className="border-t border-white/20 my-6" />
+
+          {/* 인원 선택 */}
           <div className="mb-6">
-            <Textarea
-              label="특별 요청사항 (선택사항)"
-              value={specialRequests}
-              onChange={(e) => setSpecialRequests(e.target.value)}
-              placeholder="카트 요청, 캐디 서비스, 기타 요청사항을 입력해주세요."
-              rows={4}
-              glass
-            />
-          </div>
-        </div>
-
-        {/* Payment Method Selection */}
-        <div className="glass-card mb-8">
-          <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
-            결제 방법 선택
-          </h2>
-
-          <div className="grid gap-3">
-            {PAYMENT_METHODS.map((method) => (
-              <label
-                key={method.id}
-                className={`flex items-center p-4 rounded-xl cursor-pointer transition-all duration-200 backdrop-blur-sm border ${
-                  selectedPaymentMethod === method.id
-                    ? 'bg-white/20 border-white/50 shadow-lg'
-                    : 'bg-white/10 border-white/30 hover:bg-white/15'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value={method.id}
-                  checked={selectedPaymentMethod === method.id}
-                  onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                  className="mr-3 scale-125"
-                />
-                <div className="text-2xl mr-3">
-                  {method.icon}
-                </div>
-                <div>
-                  <div className="text-base font-semibold text-white">
-                    {method.name}
-                  </div>
-                  <div className="text-sm text-white/70">
-                    {method.description}
-                  </div>
-                </div>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {/* Price Summary */}
-        <div className="glass-card mb-8">
-          <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
-            결제 금액
-          </h2>
-
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-white/80">기본 요금 x {playerCount}명</span>
-              <PriceDisplay price={totalPrice} size="sm" showUnit={false} />
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-white/80">서비스 수수료</span>
-              <PriceDisplay price={serviceFee} size="sm" showUnit={false} />
-            </div>
-            <div className="border-t border-white/20 pt-4 flex justify-between items-center">
-              <span className="text-lg font-semibold text-white">총 결제 금액</span>
-              <PriceDisplay price={finalPrice} size="lg" showUnit={false} />
+            <label className="block text-base font-semibold text-white/90 mb-3">인원 선택</label>
+            <div className="grid grid-cols-4 gap-3">
+              {Array.from({ length: availablePlayers }, (_, i) => i + 1).map((count) => (
+                <button
+                  key={count}
+                  type="button"
+                  onClick={() => setPlayerCount(count)}
+                  className={`py-3 text-lg font-medium rounded-xl transition-all border ${
+                    playerCount === count
+                      ? 'bg-green-500/30 text-green-300 border-green-500/50'
+                      : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
+                  }`}
+                >
+                  {count}명
+                </button>
+              ))}
             </div>
           </div>
-        </div>
 
-        {/* Terms and Conditions */}
-        <div className="glass-card mb-8">
-          <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
-            약관 동의
-          </h2>
+          {/* 구분선 */}
+          <div className="border-t border-white/20 my-6" />
 
-          <div className="space-y-4">
-            <label className="flex items-center cursor-pointer gap-3">
+          {/* 결제 방법 */}
+          <div className="mb-6">
+            <label className="block text-base font-semibold text-white/90 mb-3">결제 방법</label>
+            <div className="grid grid-cols-2 gap-3">
+              {SIMPLE_PAYMENT_METHODS.map((method) => (
+                <button
+                  key={method.id}
+                  type="button"
+                  onClick={() => setSelectedPaymentMethod(method.id)}
+                  className={`py-4 px-4 rounded-xl transition-all border text-center ${
+                    selectedPaymentMethod === method.id
+                      ? 'bg-green-500/30 text-green-300 border-green-500/50'
+                      : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
+                  }`}
+                >
+                  <div className="text-2xl mb-1">{method.icon}</div>
+                  <div className="text-lg font-medium">{method.name}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 구분선 */}
+          <div className="border-t border-white/20 my-6" />
+
+          {/* 결제 금액 */}
+          <div className="mb-6 text-center">
+            <label className="block text-base font-semibold text-white/90 mb-3">총 결제 금액</label>
+            <PriceDisplay price={totalPrice} size="xl" showUnit={false} className="justify-center" />
+            <p className="text-base text-white/60 mt-2">
+              ({playerCount}명 × {pricePerPerson.toLocaleString()}원)
+            </p>
+          </div>
+
+          {/* 구분선 */}
+          <div className="border-t border-white/20 my-6" />
+
+          {/* 약관 동의 */}
+          <div className="mb-8">
+            <label className="flex items-start cursor-pointer gap-3">
               <Checkbox
                 checked={agreeToTerms}
                 onCheckedChange={(checked) => setAgreeToTerms(checked === true)}
                 glass
               />
-              <span className="text-sm text-white/90">
-                이용약관에 동의합니다 (필수)
-              </span>
-            </label>
-
-            <label className="flex items-center cursor-pointer gap-3">
-              <Checkbox
-                checked={agreeToPrivacy}
-                onCheckedChange={(checked) => setAgreeToPrivacy(checked === true)}
-                glass
-              />
-              <span className="text-sm text-white/90">
-                개인정보처리방침에 동의합니다 (필수)
+              <span className="text-base text-white/90 leading-relaxed">
+                이용약관 및 개인정보처리방침에 동의합니다
               </span>
             </label>
           </div>
-        </div>
 
-        {/* Payment Button */}
-        <Button
-          onClick={handlePayment}
-          disabled={!canProceed || isCreating}
-          loading={isCreating}
-          variant="glass"
-          size="lg"
-          className={`w-full ${
-            canProceed && !isCreating
-              ? '!bg-white/90 hover:!bg-white !text-slate-800'
-              : '!bg-white/20 !text-white/50 cursor-not-allowed'
-          }`}
-        >
-          {isCreating ? '결제 처리 중...' : canProceed
-            ? `${new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(finalPrice)} 결제하기`
-            : '필수 항목을 완료해주세요'
-          }
-        </Button>
+          {/* 결제 버튼 */}
+          <Button
+            onClick={handlePayment}
+            disabled={!canProceed || isCreating}
+            loading={isCreating}
+            variant="glass"
+            size="lg"
+            className={`w-full h-16 text-xl rounded-2xl ${
+              canProceed && !isCreating
+                ? '!bg-white/90 hover:!bg-white !text-slate-800'
+                : '!bg-white/20 !text-white/50 cursor-not-allowed'
+            }`}
+          >
+            {isCreating ? '결제 처리 중...' : canProceed
+              ? `${new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(totalPrice)} 예약하기`
+              : '필수 항목을 완료해주세요'
+            }
+          </Button>
+        </div>
       </Container>
     </div>
   );

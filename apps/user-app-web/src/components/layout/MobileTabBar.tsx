@@ -11,7 +11,7 @@ interface TabItem {
 
 const tabs: TabItem[] = [
   { icon: Home, label: '홈', path: '/' },
-  { icon: Calendar, label: '예약', path: '/bookings', matchPaths: ['/bookings', '/my-bookings', '/booking', '/search'] },
+  { icon: Calendar, label: '예약', path: '/bookings', matchPaths: ['/bookings', '/my-bookings', '/booking'] },
   { icon: Users, label: '소셜', path: '/social', matchPaths: ['/social', '/friends', '/chat'] },
   { icon: User, label: '마이', path: '/profile' },
 ];

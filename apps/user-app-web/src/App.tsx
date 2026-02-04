@@ -6,7 +6,6 @@ import {
   LoginPage,
   SignupPage,
   HomePage,
-  SearchPage,
   BookingsPage,
   BookingDetailPage,
   BookingViewPage,
@@ -42,7 +41,6 @@ function App() {
           <Route element={<PrivateRoute />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/bookings" element={<BookingsPage />} />
-            <Route path="/search" element={<SearchPage />} />
             <Route path="/my-bookings" element={<MyBookingsPage />} />
             <Route path="/booking/:bookingNumber" element={<BookingViewPage />} />
             <Route path="/booking-detail" element={<BookingDetailPage />} />

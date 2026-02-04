@@ -50,7 +50,7 @@ export function HomePage() {
 
   // Search CTA Component (재사용을 위해 분리)
   const SearchCTA = ({ className = '' }: { className?: string }) => (
-    <button onClick={() => navigate('/search')} className={cn('text-left', className)}>
+    <button onClick={() => navigate('/bookings')} className={cn('text-left', className)}>
       <GlassCard
         hoverable
         className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] h-full"
@@ -211,7 +211,7 @@ export function HomePage() {
                 title="예정된 라운드가 없습니다"
                 description="새로운 라운드를 예약해보세요"
                 actionLabel="예약하기"
-                onAction={() => navigate('/search')}
+                onAction={() => navigate('/bookings')}
               />
             </GlassCard>
           )}

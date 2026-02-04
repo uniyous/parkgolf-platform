@@ -30,14 +30,14 @@ export const BookingCompletePage: React.FC = () => {
   const bookingState = location.state as BookingCompleteState;
 
   if (!bookingState) {
-    navigate('/search');
+    navigate('/bookings');
     return null;
   }
 
   const { booking, game, timeSlot, date, playerCount, paymentMethod } = bookingState;
 
   const handleNewBooking = () => {
-    navigate('/search');
+    navigate('/bookings');
   };
 
   const handleMyBookings = () => {

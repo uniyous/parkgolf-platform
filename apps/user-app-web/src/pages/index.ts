@@ -1,7 +1,6 @@
 export { LoginPage } from './LoginPage';
 export { SignupPage } from './SignupPage';
 export { HomePage } from './HomePage';
-export { SearchPage } from './SearchPage';
 export { BookingsPage } from './BookingsPage';
 export { BookingDetailPage } from './BookingDetailPage';
 export { BookingViewPage } from './BookingViewPage';
