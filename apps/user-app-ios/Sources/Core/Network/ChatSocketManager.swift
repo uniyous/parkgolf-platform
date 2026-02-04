@@ -29,6 +29,12 @@ class ChatSocketManager: ObservableObject {
     private var currentToken: String?
     private var isRefreshingToken = false
 
+    // Heartbeat — Cloud Run / proxy idle timeout 방지
+    private var heartbeatTimer: Timer?
+    private var missedHeartbeats = 0
+    private let heartbeatInterval: TimeInterval = 30
+    private let maxMissedHeartbeats = 2
+
     // MARK: - Configuration
 
     private var socketURL: URL { Configuration.API.chatSocketURL }
@@ -71,16 +77,18 @@ class ChatSocketManager: ObservableObject {
         print("📱 App entered foreground, socket state: \(isConnected ? "connected" : "disconnected")")
         #endif
 
-        // Reconnect socket if disconnected during background
         if !isConnected, let token = currentToken {
+            // Reconnect socket if disconnected during background
             Task {
-                // Try to get a fresh token first
                 if let freshToken = await APIClient.shared.getAccessToken() {
                     forceReconnect(token: freshToken)
                 } else {
                     forceReconnect(token: token)
                 }
             }
+        } else if isConnected {
+            // 연결 유지 중이어도 포그라운드 복귀 시 방 재참여 유도
+            reconnected.send()
         }
     }
 
@@ -124,6 +132,7 @@ class ChatSocketManager: ObservableObject {
     }
 
     private func cleanupSocket() {
+        stopHeartbeat()
         socket?.removeAllHandlers()
         socket?.disconnect()
         socket = nil
@@ -136,6 +145,40 @@ class ChatSocketManager: ObservableObject {
         isConnected = false
     }
 
+    // MARK: - Heartbeat
+
+    private func startHeartbeat() {
+        stopHeartbeat()
+        missedHeartbeats = 0
+        heartbeatTimer = Timer.scheduledTimer(withTimeInterval: heartbeatInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.sendHeartbeat()
+            }
+        }
+    }
+
+    private func stopHeartbeat() {
+        heartbeatTimer?.invalidate()
+        heartbeatTimer = nil
+    }
+
+    private func sendHeartbeat() {
+        guard let socket = socket, socket.status == .connected else { return }
+        missedHeartbeats += 1
+        if missedHeartbeats > maxMissedHeartbeats {
+            #if DEBUG
+            print("[ChatSocket] Heartbeat timeout, forcing reconnect")
+            #endif
+            socket.disconnect()
+            return
+        }
+        socket.emitWithAck("heartbeat", [:]).timingOut(after: 10) { [weak self] _ in
+            Task { @MainActor in
+                self?.missedHeartbeats = 0
+            }
+        }
+    }
+
     // MARK: - Event Handlers
 
     private func setupEventHandlers() {
@@ -146,6 +189,7 @@ class ChatSocketManager: ObservableObject {
             Task { @MainActor in
                 self?.isConnected = true
                 self?.connectionError = nil
+                self?.startHeartbeat()
                 #if DEBUG
                 print("✅ Socket.IO connected")
                 #endif
@@ -155,6 +199,7 @@ class ChatSocketManager: ObservableObject {
         socket.on(clientEvent: .disconnect) { [weak self] _, _ in
             Task { @MainActor in
                 self?.isConnected = false
+                self?.stopHeartbeat()
                 #if DEBUG
                 print("🔌 Socket.IO disconnected")
                 #endif

@@ -23,6 +23,8 @@ import type {
 // Types
 // ============================================
 
+export type ClubType = 'PAID' | 'FREE';
+
 export interface Club {
   id: number;
   companyId: number;
@@ -38,6 +40,7 @@ export interface Club {
   };
   facilities?: string[];
   status: 'ACTIVE' | 'MAINTENANCE' | 'SEASONAL_CLOSED' | 'INACTIVE';
+  clubType: ClubType;
   seasonInfo?: {
     type: 'peak' | 'regular' | 'off';
     startDate: string;
@@ -70,6 +73,7 @@ export interface CreateClubDto {
   };
   facilities?: string[];
   status: 'ACTIVE' | 'MAINTENANCE' | 'SEASONAL_CLOSED' | 'INACTIVE';
+  clubType?: ClubType;
 }
 
 export interface UpdateClubDto {
@@ -85,6 +89,7 @@ export interface UpdateClubDto {
   };
   facilities?: string[];
   status?: 'ACTIVE' | 'MAINTENANCE' | 'SEASONAL_CLOSED' | 'INACTIVE';
+  clubType?: ClubType;
   seasonInfo?: {
     type: 'peak' | 'regular' | 'off';
     startDate: string;

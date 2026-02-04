@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Patch,
   Body,
   Get,
   UseGuards,
@@ -14,7 +15,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
-import { RegisterDto, LoginDto, AuthResponseDto } from './dto/auth.dto';
+import { RegisterDto, LoginDto, AuthResponseDto, UpdateProfileDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser, JwtUser } from '../common/decorators';
 
@@ -61,6 +62,19 @@ export class AuthController {
   @ApiResponse({ status: 401, description: '인증 필요' })
   async getProfile(@CurrentUser('userId') userId: number) {
     return this.usersService.getProfile(userId);
+  }
+
+  @Patch('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '프로필 수정' })
+  @ApiResponse({ status: 200, description: '프로필 수정 성공' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  async updateProfile(
+    @CurrentUser('userId') userId: number,
+    @Body() updateProfileDto: UpdateProfileDto,
+  ) {
+    return this.usersService.updateProfile(userId, updateProfileDto);
   }
 
   @Get('stats')

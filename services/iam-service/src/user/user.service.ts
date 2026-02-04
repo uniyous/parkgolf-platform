@@ -85,6 +85,14 @@ export class UserService {
             );
         }
 
+        if (updateUserDto.name !== undefined) {
+            dataToUpdate.name = updateUserDto.name;
+        }
+
+        if (updateUserDto.phone !== undefined) {
+            dataToUpdate.phone = updateUserDto.phone;
+        }
+
         if (Object.keys(dataToUpdate).length === 0) {
             // If nothing to update, you might return the user as is or throw an error
             // For simplicity, let's just return the user without changes

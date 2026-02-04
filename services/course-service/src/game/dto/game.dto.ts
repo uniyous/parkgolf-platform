@@ -4,12 +4,13 @@ import {
   IsNumber,
   IsBoolean,
   IsEnum,
+  IsIn,
   Min,
   Max,
   IsNotEmpty,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { Game, Club, Course } from '@prisma/client';
+import { Game, Club, Course, SlotMode } from '@prisma/client';
 import { ClubResponseDto, ClubWithRelations } from '../../club/dto/club.dto';
 import { CourseResponseDto, CourseWithRelations } from '../../course/dto/course.dto';
 
@@ -18,6 +19,8 @@ export enum GameStatus {
   INACTIVE = 'INACTIVE',
   MAINTENANCE = 'MAINTENANCE',
 }
+
+export { SlotMode };
 
 export class CreateGameDto {
   @IsString()
@@ -88,6 +91,10 @@ export class CreateGameDto {
   @IsNumber()
   @Type(() => Number)
   clubId: number;
+
+  @IsOptional()
+  @IsEnum(SlotMode)
+  slotMode?: SlotMode;
 
   @IsEnum(GameStatus)
   @IsOptional()
@@ -172,6 +179,10 @@ export class UpdateGameDto {
   @Type(() => Number)
   clubId?: number;
 
+  @IsOptional()
+  @IsEnum(SlotMode)
+  slotMode?: SlotMode;
+
   @IsEnum(GameStatus)
   @IsOptional()
   status?: GameStatus;
@@ -230,6 +241,10 @@ export class SearchGamesQueryDto {
   @IsString()
   @IsOptional()
   startTimeTo?: string;  // 종료 시간 필터 (HH:mm format, e.g., "11:59")
+
+  @IsOptional()
+  @IsIn(['DAWN', 'MORNING', 'AFTERNOON', 'EVENING'])
+  timeOfDay?: string;  // 시간대 필터 (DAWN/MORNING/AFTERNOON/EVENING)
 
   @IsNumber()
   @IsOptional()
@@ -313,6 +328,7 @@ export class GameResponseDto {
   holidayPrice: number | null;
   clubId: number;
   club: ClubResponseDto | null;
+  slotMode: string;
   status: GameStatus;
   isActive: boolean;
   createdAt: string | null;
@@ -340,6 +356,7 @@ export class GameResponseDto {
     dto.holidayPrice = toNumber(entity.holidayPrice);
     dto.clubId = entity.clubId;
     dto.club = entity.club ? ClubResponseDto.fromEntity(entity.club) : null;
+    dto.slotMode = entity.slotMode;
     dto.status = entity.status as GameStatus;
     dto.isActive = entity.isActive;
     dto.createdAt = entity.createdAt?.toISOString() ?? null;

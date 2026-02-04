@@ -26,6 +26,7 @@ model Club {
   operatingHours Json?      @map("operating_hours")
   seasonInfo     Json?      @map("season_info")
   facilities     String[]   @default([])
+  clubType       ClubType   @default(PAID) @map("club_type")
   isActive       Boolean    @default(true) @map("is_active")
   createdAt      DateTime   @default(now()) @map("created_at")
   updatedAt      DateTime   @updatedAt @map("updated_at")
@@ -123,6 +124,9 @@ model Game {
   backNineCourseId     Int          @map("back_nine_course_id")
   frontNineCourse      Course       @relation("FrontNine", fields: [frontNineCourseId], references: [id])
   backNineCourse       Course       @relation("BackNine", fields: [backNineCourseId], references: [id])
+
+  // 슬롯 모드
+  slotMode             SlotMode     @default(TEE_TIME) @map("slot_mode")
 
   // 게임 설정
   totalHoles           Int          @default(18) @map("total_holes")
@@ -271,4 +275,14 @@ enum TeeBoxLevel {
   INTERMEDIATE
   ADVANCED
   PROFESSIONAL
+}
+
+enum SlotMode {
+  TEE_TIME
+  SESSION
+}
+
+enum ClubType {
+  PAID
+  FREE
 }

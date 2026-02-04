@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
   IsString,
@@ -106,4 +106,21 @@ export class UserProfileDto {
 
   @ApiProperty({ description: '수정일' })
   updatedAt: Date;
+}
+
+export class UpdateProfileDto {
+  @ApiPropertyOptional({ description: '이름', example: '홍길동' })
+  @IsOptional()
+  @IsString()
+  @MinLength(2, { message: '이름은 2자 이상이어야 합니다.' })
+  @MaxLength(10, { message: '이름은 10자 이하여야 합니다.' })
+  name?: string;
+
+  @ApiPropertyOptional({ description: '전화번호', example: '010-1234-5678' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^010-\d{4}-\d{4}$/, {
+    message: '올바른 전화번호 형식을 입력해주세요. (010-1234-5678)',
+  })
+  phone?: string;
 }

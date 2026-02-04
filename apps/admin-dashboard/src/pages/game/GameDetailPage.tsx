@@ -96,6 +96,15 @@ export const GameDetailPage: React.FC = () => {
                     <p className="text-gray-600 font-medium text-blue-600">
                       ₩{(game.price ?? 0).toLocaleString()}
                     </p>
+                    {game.slotMode && (
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        game.slotMode === 'TEE_TIME'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-purple-100 text-purple-700'
+                      }`}>
+                        {game.slotMode === 'TEE_TIME' ? '티타임' : '세션'}
+                      </span>
+                    )}
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       statusLabels[game.status]?.color || 'bg-gray-100 text-gray-800'
                     }`}>

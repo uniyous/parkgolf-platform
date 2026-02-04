@@ -13,7 +13,7 @@ import { Input, Select, Pagination, GameCard, GameCardSkeleton } from '@/compone
 import { useSearchGamesQuery } from '@/hooks/queries';
 import { useGameSearchParams } from '@/hooks/useSearchParams';
 import { useDebounce } from '@/hooks/useDebounce';
-import { SORT_OPTIONS, PLAYER_OPTIONS, DATE_FILTER_MAX_MONTHS, TIME_OF_DAY_OPTIONS } from '@/lib/constants';
+import { SORT_OPTIONS, PLAYER_OPTIONS, DATE_FILTER_MAX_MONTHS, TIME_PERIOD_CHIPS } from '@/lib/constants';
 import type { Game, GameTimeSlot, GameSearchParams } from '@/lib/api/gameApi';
 
 export function BookingsPage() {
@@ -36,6 +36,7 @@ export function BookingsPage() {
     () => ({
       search: filters.search || undefined,
       date: filters.date || undefined,
+      timeOfDay: filters.timeOfDay || undefined,
       minPrice: filters.minPrice ?? undefined,
       maxPrice: filters.maxPrice ?? undefined,
       minPlayers: filters.minPlayers ?? undefined,
@@ -86,6 +87,16 @@ export function BookingsPage() {
   };
 
   const currentSortValue = `${filters.sortBy}-${filters.sortOrder}`;
+
+  const selectedPeriods = filters.timeOfDay ? filters.timeOfDay.split(',').filter(Boolean) : [];
+
+  const toggleTimePeriod = (period: string) => {
+    const newPeriods = selectedPeriods.includes(period)
+      ? selectedPeriods.filter(p => p !== period)
+      : [...selectedPeriods, period];
+    updateFilters({ timeOfDay: newPeriods.join(',') || '' });
+  };
+
   const hasActiveFilters = filters.search || filters.minPrice || filters.maxPrice || filters.minPlayers;
 
   return (
@@ -146,15 +157,27 @@ export function BookingsPage() {
                 glass
               />
 
-              {/* Time of Day */}
-              <Select
-                value={filters.timeOfDay}
-                onValueChange={(value) =>
-                  updateFilters({ timeOfDay: value as 'all' | 'morning' | 'afternoon' })
-                }
-                options={TIME_OF_DAY_OPTIONS}
-                glass
-              />
+              {/* 시간대 (다중선택 칩) */}
+              <div>
+                <label className="block text-xs text-[var(--color-text-muted)] mb-1">시간대</label>
+                <div className="flex flex-wrap gap-2">
+                  {TIME_PERIOD_CHIPS.map((chip) => (
+                    <button
+                      key={chip.value}
+                      type="button"
+                      onClick={() => toggleTimePeriod(chip.value)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                        selectedPeriods.includes(chip.value)
+                          ? 'bg-green-500/30 text-green-300 border-green-500/50'
+                          : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
+                      }`}
+                    >
+                      {chip.label}
+                      <span className="ml-1 text-xs opacity-70">{chip.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Advanced Filters */}
@@ -283,7 +306,6 @@ export function BookingsPage() {
                       key={game.id}
                       game={game}
                       date={filters.date}
-                      timeOfDay={filters.timeOfDay}
                       onTimeSlotSelect={handleTimeSlotSelect}
                     />
                   ))}

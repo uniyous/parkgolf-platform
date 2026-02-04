@@ -321,6 +321,13 @@ export class FriendService {
       acceptedAt: new Date().toISOString(),
     });
 
+    // 수신자의 FRIEND_REQUEST 알림 자동 해제
+    this.notificationClient.emit('notification.dismiss', {
+      userId: String(request.toUserId),
+      type: 'FRIEND_REQUEST',
+      dataFilter: { requestId },
+    });
+
     this.logger.log(`Friend request accepted: ${request.fromUserId} <-> ${request.toUserId}`);
     return { success: true };
   }
@@ -344,6 +351,13 @@ export class FriendService {
     await this.prisma.friendRequest.update({
       where: { id: requestId },
       data: { status: FriendRequestStatus.REJECTED },
+    });
+
+    // 수신자의 FRIEND_REQUEST 알림 자동 해제
+    this.notificationClient.emit('notification.dismiss', {
+      userId: String(request.toUserId),
+      type: 'FRIEND_REQUEST',
+      dataFilter: { requestId },
     });
 
     this.logger.log(`Friend request rejected: ${requestId}`);

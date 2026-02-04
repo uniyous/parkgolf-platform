@@ -14,6 +14,8 @@ import { extractPaginatedList, extractList, extractSingle, type PaginatedResult 
 // Types
 // ============================================
 
+export type SlotMode = 'TEE_TIME' | 'SESSION';
+
 export interface Game {
   id: number;
   clubId: number;
@@ -28,6 +30,8 @@ export interface Game {
   backNineCourseId?: number;
   backNineCourseName?: string;
   totalHoles?: number;
+  // Slot mode
+  slotMode?: SlotMode;
   // Time & Players
   maxPlayers: number;
   duration: number; // 분 (estimatedDuration에서 매핑)
@@ -50,6 +54,7 @@ export interface CreateGameDto {
   name: string;
   description?: string;
   courseIds: number[];
+  slotMode?: SlotMode;
   maxPlayers: number;
   duration: number;
   price: number;
@@ -60,6 +65,7 @@ export interface UpdateGameDto {
   name?: string;
   description?: string;
   courseIds?: number[];
+  slotMode?: SlotMode;
   maxPlayers?: number;
   duration?: number;
   price?: number;

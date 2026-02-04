@@ -35,6 +35,8 @@ export const userKeys = {
   list: (filters?: Record<string, any>) => [...userKeys.lists(), filters] as const,
   details: () => [...userKeys.all, 'detail'] as const,
   detail: (id: number) => [...userKeys.details(), id] as const,
+  bookings: (id: number, filters?: Record<string, any>) => [...userKeys.all, 'bookings', id, filters] as const,
+  preferences: (id: number) => [...userKeys.all, 'preferences', id] as const,
 };
 
 // Company Keys

@@ -54,6 +54,7 @@ export class GameService {
           weekendPrice: createDto.weekendPrice,
           holidayPrice: createDto.holidayPrice,
           clubId: createDto.clubId,
+          slotMode: createDto.slotMode ?? 'TEE_TIME',
           status: createDto.status ?? 'ACTIVE',
           isActive: createDto.isActive ?? true,
         },
@@ -182,6 +183,7 @@ export class GameService {
           weekendPrice: updateDto.weekendPrice,
           holidayPrice: updateDto.holidayPrice,
           clubId: updateDto.clubId,
+          slotMode: updateDto.slotMode,
           status: updateDto.status,
           isActive: updateDto.isActive,
         },
@@ -226,8 +228,9 @@ export class GameService {
     const {
       search,
       date,
-      startTimeFrom,
-      startTimeTo,
+      startTimeFrom: explicitStartTimeFrom,
+      startTimeTo: explicitStartTimeTo,
+      timeOfDay,
       clubId,
       minPrice,
       maxPrice,
@@ -238,10 +241,25 @@ export class GameService {
       limit = 20,
     } = query;
 
+    // timeOfDay → startTimeFrom/startTimeTo 변환 (명시적 값이 없을 때만)
+    const TIME_RANGES: Record<string, [string, string]> = {
+      DAWN:      ['05:00', '08:00'],
+      MORNING:   ['08:00', '12:00'],
+      AFTERNOON: ['12:00', '17:00'],
+      EVENING:   ['17:00', '22:00'],
+    };
+
+    let startTimeFrom = explicitStartTimeFrom;
+    let startTimeTo = explicitStartTimeTo;
+
+    if (timeOfDay && TIME_RANGES[timeOfDay] && !startTimeFrom && !startTimeTo) {
+      [startTimeFrom, startTimeTo] = TIME_RANGES[timeOfDay];
+    }
+
     // 날짜가 없으면 오늘 날짜를 기본값으로 사용 (항상 타임슬롯이 있는 게임만 조회)
     const searchDate = date || new Date().toISOString().split('T')[0];
 
-    this.logger.log(`Searching games - search: ${search || 'none'}, date: ${searchDate}, timeRange: ${startTimeFrom || 'any'}-${startTimeTo || 'any'}, clubId: ${clubId || 'all'}, price: ${minPrice}-${maxPrice}, minPlayers: ${minPlayers}`);
+    this.logger.log(`Searching games - search: ${search || 'none'}, date: ${searchDate}, timeOfDay: ${timeOfDay || 'all'}, timeRange: ${startTimeFrom || 'any'}-${startTimeTo || 'any'}, clubId: ${clubId || 'all'}, price: ${minPrice}-${maxPrice}, minPlayers: ${minPlayers}`);
 
     const targetDate = new Date(searchDate);
 
@@ -250,12 +268,14 @@ export class GameService {
     const searchPattern = search ? `%${search}%` : null;
 
     // 검색 조건과 타임슬롯을 한 번에 조회
+    // 시간 필터: TEE_TIME은 start_time 범위, SESSION은 시간 overlap 방식
     const gamesWithData = await this.prisma.$queryRaw<Array<{
       // Game fields
       game_id: number;
       game_name: string;
       game_code: string;
       game_description: string | null;
+      slot_mode: string;
       total_holes: number;
       estimated_duration: number;
       break_duration: number;
@@ -300,13 +320,30 @@ export class GameService {
             ) ORDER BY gts.start_time
           ) AS slots
         FROM game_time_slots gts
+        INNER JOIN games g2 ON gts.game_id = g2.id
         WHERE gts.date = ${targetDate}
           AND gts.status = 'AVAILABLE'
           AND gts.is_active = true
           AND gts.booked_players < gts.max_players
           AND (${minPlayers ?? null}::int IS NULL OR (gts.max_players - gts.booked_players) >= ${minPlayers ?? null})
-          AND (${startTimeFrom ?? null}::text IS NULL OR gts.start_time >= ${startTimeFrom ?? null})
-          AND (${startTimeTo ?? null}::text IS NULL OR gts.start_time <= ${startTimeTo ?? null})
+          AND (
+            ${startTimeFrom ?? null}::text IS NULL
+            OR (
+              CASE WHEN g2.slot_mode = 'SESSION'
+                THEN gts.start_time < ${startTimeTo ?? null} AND gts.end_time > ${startTimeFrom ?? null}
+                ELSE gts.start_time >= ${startTimeFrom ?? null}
+              END
+            )
+          )
+          AND (
+            ${startTimeTo ?? null}::text IS NULL
+            OR (
+              CASE WHEN g2.slot_mode = 'SESSION'
+                THEN gts.start_time < ${startTimeTo ?? null} AND gts.end_time > ${startTimeFrom ?? null}
+                ELSE gts.start_time < ${startTimeTo ?? null}
+              END
+            )
+          )
         GROUP BY gts.game_id
       )
       SELECT
@@ -314,6 +351,7 @@ export class GameService {
         g.name AS game_name,
         g.code AS game_code,
         g.description AS game_description,
+        g.slot_mode,
         g.total_holes,
         g.estimated_duration,
         g.break_duration,
@@ -369,8 +407,24 @@ export class GameService {
         AND gts.is_active = true
         AND gts.booked_players < gts.max_players
         AND (${minPlayers ?? null}::int IS NULL OR (gts.max_players - gts.booked_players) >= ${minPlayers ?? null})
-        AND (${startTimeFrom ?? null}::text IS NULL OR gts.start_time >= ${startTimeFrom ?? null})
-        AND (${startTimeTo ?? null}::text IS NULL OR gts.start_time <= ${startTimeTo ?? null})
+        AND (
+          ${startTimeFrom ?? null}::text IS NULL
+          OR (
+            CASE WHEN g.slot_mode = 'SESSION'
+              THEN gts.start_time < ${startTimeTo ?? null} AND gts.end_time > ${startTimeFrom ?? null}
+              ELSE gts.start_time >= ${startTimeFrom ?? null}
+            END
+          )
+        )
+        AND (
+          ${startTimeTo ?? null}::text IS NULL
+          OR (
+            CASE WHEN g.slot_mode = 'SESSION'
+              THEN gts.start_time < ${startTimeTo ?? null} AND gts.end_time > ${startTimeFrom ?? null}
+              ELSE gts.start_time < ${startTimeTo ?? null}
+            END
+          )
+        )
       INNER JOIN clubs c ON g.club_id = c.id
       WHERE g.is_active = true
         AND (${searchPattern}::text IS NULL OR (
@@ -391,6 +445,7 @@ export class GameService {
       name: row.game_name,
       code: row.game_code,
       description: row.game_description,
+      slotMode: row.slot_mode,
       totalHoles: row.total_holes,
       estimatedDuration: row.estimated_duration,
       duration: row.estimated_duration, // alias for frontend compatibility

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, RefreshCw, Pencil, Trash2, AlertTriangle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, RefreshCw, Trash2, AlertTriangle } from 'lucide-react';
 import { useUsersQuery, useDeleteUserMutation, useUpdateUserStatusMutation } from '@/hooks/queries';
 import { Modal } from '@/components/ui';
 import { DataContainer } from '@/components/common';
@@ -52,6 +53,8 @@ const TIER_META: Record<UserMembershipTier, { icon: string; color: string }> = {
 };
 
 export const UserManagementPage: React.FC = () => {
+  const navigate = useNavigate();
+
   // Queries & Mutations
   const { data: usersResponse, refetch, isLoading } = useUsersQuery();
   const deleteUser = useDeleteUserMutation();
@@ -398,8 +401,12 @@ export const UserManagementPage: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-4">
+                  <tr
+                    key={user.id}
+                    onClick={() => navigate(`/user-management/${user.id}`)}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
+                    <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.includes(user.id)}
@@ -429,7 +436,7 @@ export const UserManagementPage: React.FC = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                       <select
                         value={user.status || 'ACTIVE'}
                         onChange={(e) => handleStatusChange(user, e.target.value as UserStatus)}
@@ -450,23 +457,14 @@ export const UserManagementPage: React.FC = () => {
                           })
                         : <span className="text-gray-400">-</span>}
                     </td>
-                    <td className="px-4 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => setFormModal({ open: true, user })}
-                          className="inline-flex items-center px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        >
-                          <Pencil className="w-4 h-4 mr-1" />
-                          수정
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm({ open: true, user })}
-                          className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          삭제
-                        </button>
-                      </div>
+                    <td className="px-4 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => setDeleteConfirm({ open: true, user })}
+                        className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        삭제
+                      </button>
                     </td>
                   </tr>
                 ))}

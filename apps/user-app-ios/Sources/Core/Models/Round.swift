@@ -164,15 +164,19 @@ struct RoundSearchParams: Sendable {
     }
 
     enum TimeOfDay: String, CaseIterable, Sendable {
-        case all = "전체"
-        case morning = "오전"
-        case afternoon = "오후"
+        case all = ""
+        case dawn = "DAWN"
+        case morning = "MORNING"
+        case afternoon = "AFTERNOON"
+        case evening = "EVENING"
 
-        var timeRange: (start: String, end: String)? {
+        var displayName: String {
             switch self {
-            case .all: return nil
-            case .morning: return ("06:00", "11:59")
-            case .afternoon: return ("12:00", "18:00")
+            case .all: return "전체"
+            case .dawn: return "새벽"
+            case .morning: return "오전"
+            case .afternoon: return "오후"
+            case .evening: return "저녁"
             }
         }
     }

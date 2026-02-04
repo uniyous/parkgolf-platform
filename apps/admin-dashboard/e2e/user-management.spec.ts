@@ -7,13 +7,16 @@ test.setTimeout(60000);
  * 사용자 관리 E2E 테스트 (iam-service 연동)
  *
  * API: admin-api -> NATS -> iam-service
- * - iam.users.list, iam.users.getById, iam.users.create, etc.
  *
  * 테스트 범위:
- * 1. API 연결 테스트
- * 2. 목록 페이지 (UserList)
- * 3. 사용자 검색/필터링
- * 4. 사용자 상세 정보
+ * 0. API 연결 테스트
+ * 1. 목록 페이지 (UserManagementPage)
+ *    - 페이지 로드, 통계 카드, 테이블 헤더, 검색, 필터, 새로고침
+ * 2. 사용자 상세 페이지 (UserDetailPage)
+ *    - Row 클릭 → 상세 페이지 이동, 헤더, 뒤로가기
+ * 3. 상세 페이지 탭 (기본 정보 / 예약 이력 / 알림 설정)
+ * 4. 통합 시나리오
+ *    - 목록 → 검색 → 상세 → 탭 전환 → 목록 복귀
  */
 
 // 페이지 로드 대기 헬퍼
@@ -24,8 +27,22 @@ async function waitForPageLoad(page: import('@playwright/test').Page, timeout = 
     // 로딩 다이얼로그가 없을 수도 있음
   }
   await page.waitForLoadState('domcontentloaded');
-  // 페이지 렌더링 안정화 대기
   await page.waitForTimeout(1000);
+}
+
+// 테이블 데이터 로드 대기 - 데이터 없으면 skip
+async function waitForTableData(page: import('@playwright/test').Page, t: typeof test): Promise<boolean> {
+  try {
+    await page.waitForSelector('table tbody tr', { timeout: 10000 });
+    return true;
+  } catch {
+    const isEmpty = await page.getByText(/등록된 회원이 없습니다|검색 결과가 없습니다/).isVisible().catch(() => false);
+    if (isEmpty) {
+      console.log('회원 데이터 없음 - 테스트 스킵');
+      t.skip();
+    }
+    return false;
+  }
 }
 
 // ========================================
@@ -35,10 +52,8 @@ test.describe('사용자 API 연결 테스트', () => {
   test.use({ storageState: 'e2e/.auth/admin.json' });
 
   test('0.1 사용자 목록 API 호출 확인', async ({ page, request }) => {
-    // 페이지로 이동하여 localStorage 접근
     await page.goto('/user-management');
 
-    // localStorage에서 토큰 가져오기
     const token = await page.evaluate(() => localStorage.getItem('auth-storage'))
       .then(storage => {
         if (!storage) return null;
@@ -53,65 +68,29 @@ test.describe('사용자 API 연결 테스트', () => {
     console.log('Token exists:', !!token);
 
     if (token) {
-      // API 직접 호출
       const apiResponse = await request.get('/api/admin/users', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       console.log('API Response Status:', apiResponse.status());
-
-      const body = await apiResponse.text();
-      console.log('API Response Body (first 500 chars):', body.slice(0, 500));
-
       expect(apiResponse.status()).toBe(200);
     }
   });
 
   test('0.2 사용자 목록 페이지 API 응답 모니터링', async ({ page }) => {
-    const apiRequests: string[] = [];
-    const apiResponses: { url: string; status: number; body: string }[] = [];
     let hasApiError = false;
 
-    // 네트워크 모니터링
-    page.on('request', (request) => {
-      if (request.url().includes('/api/')) {
-        apiRequests.push(`${request.method()} ${request.url()}`);
-        console.log('Request:', request.method(), request.url());
-      }
-    });
-
     page.on('response', async (response) => {
-      if (response.url().includes('/api/')) {
+      if (response.url().includes('/api/') && response.status() >= 400) {
+        hasApiError = true;
         const body = await response.text().catch(() => '');
-        apiResponses.push({ url: response.url(), status: response.status(), body });
-        console.log('Response:', response.status(), response.url(), body.slice(0, 200));
-
-        if (response.status() >= 400) {
-          hasApiError = true;
-          console.log('API Error:', response.status(), body);
-        }
+        console.log('API Error:', response.status(), body);
       }
     });
 
     await page.goto('/user-management');
-
-    // 네트워크 안정화 대기
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
-
-    console.log('Total API Requests:', apiRequests.length);
-    console.log('Total API Responses:', apiResponses.length);
-    apiRequests.forEach((r) => console.log(' -', r));
-    apiResponses.forEach((r) => console.log(' -', r.status, r.url));
-
-    // 로딩 상태 확인
-    const isLoading = await page.locator('[aria-label="로딩"]').isVisible().catch(() => false);
-    console.log('Is still loading:', isLoading);
-
-    // API 오류 확인
-    if (hasApiError) {
-      console.error('API error detected - backend may need redeployment');
-    }
 
     expect(hasApiError).toBe(false);
   });
@@ -127,233 +106,485 @@ test.describe('사용자 목록 페이지', () => {
     await page.goto('/user-management');
     await waitForPageLoad(page);
 
-    // 페이지 제목 확인 (Breadcrumb 또는 헤더)
-    const pageHeader = page.locator('h1, h2').first();
-    await expect(pageHeader).toBeVisible({ timeout: 10000 });
+    // 페이지 헤더 확인
+    await expect(page.getByText('회원 관리').first()).toBeVisible({ timeout: 10000 });
 
-    // Breadcrumb 확인
-    const breadcrumb = page.getByText('사용자 관리');
-    await expect(breadcrumb.first()).toBeVisible();
+    // 회원 추가 버튼 확인
+    const addButton = page.getByRole('button', { name: /회원 추가/ });
+    await expect(addButton).toBeVisible();
+    console.log('✓ 페이지 헤더, 회원 추가 버튼 확인');
   });
 
-  test('1.2 사용자 목록 테이블 헤더 확인', async ({ page }) => {
+  test('1.2 통계 카드 확인', async ({ page }) => {
     await page.goto('/user-management');
     await waitForPageLoad(page);
 
-    // 테이블이 있으면 헤더 확인
+    // 통계 카드들 확인
+    const statLabels = ['전체 회원', '활성 회원', '비활성 회원', '등급 종류'];
+    for (const label of statLabels) {
+      const card = page.getByText(label).first();
+      const visible = await card.isVisible().catch(() => false);
+      console.log(`${visible ? '✓' : '✗'} 통계 카드: ${label}`);
+    }
+  });
+
+  test('1.3 테이블 헤더 확인', async ({ page }) => {
+    await page.goto('/user-management');
+    await waitForPageLoad(page);
+
     const table = page.locator('table');
     const tableExists = await table.isVisible().catch(() => false);
 
     if (tableExists) {
-      // 일반적인 테이블 헤더 확인
-      const headers = ['이름', '이메일', '상태'];
+      const headers = ['회원 정보', '등급', '상태', '마지막 로그인', '액션'];
       for (const header of headers) {
         const headerCell = page.locator('th', { hasText: header }).first();
         const exists = await headerCell.isVisible().catch(() => false);
-        if (exists) {
-          console.log(`✓ 헤더 "${header}" 존재`);
-        }
+        console.log(`${exists ? '✓' : '✗'} 헤더: ${header}`);
       }
-    } else {
-      // 목록이 비어있거나 다른 레이아웃 사용
-      console.log('테이블이 없거나 다른 레이아웃 사용');
     }
-
-    // 페이지가 정상 로드되었는지 확인
-    expect(true).toBe(true);
   });
 
-  test('1.3 검색 기능 확인', async ({ page }) => {
+  test('1.4 검색 기능 확인', async ({ page }) => {
     await page.goto('/user-management');
     await waitForPageLoad(page);
 
-    // 검색 입력창 찾기
-    const searchInput = page.locator('input[placeholder*="검색"], input[type="search"]').first();
+    const searchInput = page.locator('input[placeholder*="이름"], input[placeholder*="검색"]').first();
     const searchExists = await searchInput.isVisible().catch(() => false);
 
     if (searchExists) {
       await searchInput.fill('테스트');
-      await page.waitForTimeout(500); // 디바운스 대기
+      await page.waitForTimeout(500);
+      expect(await searchInput.inputValue()).toBe('테스트');
 
-      const inputValue = await searchInput.inputValue();
-      console.log('검색창 입력값:', inputValue);
-      expect(inputValue).toBe('테스트');
-    } else {
-      console.log('검색 입력창을 찾을 수 없습니다');
+      // 검색 초기화
+      await searchInput.clear();
+      await page.waitForTimeout(500);
+      console.log('✓ 검색 입력/초기화 확인');
     }
   });
 
-  test('1.4 상태 필터 확인', async ({ page }) => {
+  test('1.5 등급/상태 필터 확인', async ({ page }) => {
     await page.goto('/user-management');
     await waitForPageLoad(page);
 
-    // 상태 필터 드롭다운 또는 버튼 찾기
-    const statusFilter = page.locator('select, [role="combobox"]').first();
-    const filterExists = await statusFilter.isVisible().catch(() => false);
+    // 필터 영역의 select 요소들 확인
+    const selects = page.locator('select');
+    const selectCount = await selects.count();
+    console.log(`필터 select 개수: ${selectCount}`);
 
-    if (filterExists) {
-      console.log('상태 필터 존재');
-    } else {
-      // 버튼 형태의 필터 확인
-      const filterButtons = page.locator('button', { hasText: /활성|비활성|전체/ });
-      const buttonExists = await filterButtons.first().isVisible().catch(() => false);
-      if (buttonExists) {
-        console.log('버튼 형태의 필터 존재');
-      }
-    }
+    // 등급 필터 확인 (전체 등급 placeholder)
+    const tierFilter = page.locator('select').filter({ hasText: /전체 등급|VIP|골드/ }).first();
+    const tierExists = await tierFilter.isVisible().catch(() => false);
+    console.log(`${tierExists ? '✓' : '✗'} 등급 필터`);
 
-    expect(true).toBe(true);
+    // 상태 필터 확인
+    const statusFilter = page.locator('select').filter({ hasText: /전체 상태|활성|비활성/ }).first();
+    const statusExists = await statusFilter.isVisible().catch(() => false);
+    console.log(`${statusExists ? '✓' : '✗'} 상태 필터`);
   });
 
-  test('1.5 새로고침 버튼 동작', async ({ page }) => {
+  test('1.6 새로고침 버튼 동작', async ({ page }) => {
     await page.goto('/user-management');
     await waitForPageLoad(page);
 
-    // 새로고침 버튼 찾기
-    const refreshButton = page.locator('button[aria-label*="새로고침"], button:has(svg)').filter({
-      hasText: /새로고침|갱신|refresh/i
-    }).first();
-
+    const refreshButton = page.getByRole('button', { name: /새로고침/ });
     const refreshExists = await refreshButton.isVisible().catch(() => false);
 
     if (refreshExists) {
       await refreshButton.click();
       await page.waitForTimeout(1000);
-      console.log('새로고침 버튼 클릭 완료');
-    } else {
-      console.log('새로고침 버튼을 찾을 수 없습니다');
+      console.log('✓ 새로고침 버튼 클릭 완료');
     }
+  });
 
-    expect(true).toBe(true);
+  test('1.7 Row 클릭 시 cursor-pointer 확인', async ({ page }) => {
+    await page.goto('/user-management');
+    await waitForPageLoad(page);
+
+    const hasData = await waitForTableData(page, test);
+    if (!hasData) return;
+
+    const firstRow = page.locator('table tbody tr').first();
+    const cursor = await firstRow.evaluate((el) => window.getComputedStyle(el).cursor);
+    expect(cursor).toBe('pointer');
+    console.log('✓ Row cursor: pointer 확인');
   });
 });
 
 // ========================================
-// 2. 사용자 상세 정보 테스트
+// 2. 사용자 상세 페이지 진입 테스트
 // ========================================
-test.describe('사용자 상세 정보', () => {
+test.describe('사용자 상세 페이지 진입', () => {
   test.use({ storageState: 'e2e/.auth/admin.json' });
 
-  test('2.1 사용자 행 클릭하여 상세 정보 확인', async ({ page }) => {
+  test('2.1 Row 클릭 → 상세 페이지 이동 확인', async ({ page }) => {
     await page.goto('/user-management');
     await waitForPageLoad(page);
 
-    // 테이블 데이터 로드 대기
-    try {
-      await page.waitForSelector('table tbody tr', { timeout: 10000 });
-    } catch {
-      // 빈 상태 확인
-      const isEmpty = await page.getByText(/등록된 사용자가 없습니다|사용자가 없습니다/).isVisible().catch(() => false);
-      if (isEmpty) {
-        console.log('등록된 사용자가 없습니다. 테스트 스킵.');
-        test.skip();
-        return;
-      }
-    }
+    const hasData = await waitForTableData(page, test);
+    if (!hasData) return;
 
-    // 첫 번째 사용자 행 클릭
+    // 첫 번째 Row 클릭
     const firstRow = page.locator('table tbody tr').first();
-    const rowExists = await firstRow.isVisible().catch(() => false);
+    await firstRow.click();
 
-    if (rowExists) {
-      await firstRow.click();
+    // URL이 /user-management/:id 로 변경되었는지 확인
+    await page.waitForURL(/\/user-management\/\d+/, { timeout: 10000 });
+    console.log('✓ 상세 페이지 URL:', page.url());
 
-      // 상세 모달 또는 패널이 열렸는지 확인
-      const modal = page.locator('[role="dialog"]');
-      const modalVisible = await modal.isVisible().catch(() => false);
+    // 상세 페이지 로드 확인
+    await waitForPageLoad(page);
 
-      if (modalVisible) {
-        console.log('사용자 상세 모달 열림');
-        await page.keyboard.press('Escape');
-      } else {
-        console.log('클릭 후 모달이 열리지 않음 (다른 방식일 수 있음)');
-      }
-    }
-
-    expect(true).toBe(true);
+    // 뒤로가기 버튼 존재 확인
+    const backButton = page.locator('button svg path[d*="M15 19l-7-7"]').first();
+    const backExists = await backButton.isVisible().catch(() => false);
+    console.log(`${backExists ? '✓' : '✗'} 뒤로가기 버튼`);
   });
 
-  test('2.2 사용자 상태 변경 UI 확인', async ({ page }) => {
+  test('2.2 상세 페이지 헤더 정보 확인', async ({ page }) => {
     await page.goto('/user-management');
     await waitForPageLoad(page);
 
-    // 테이블 데이터 로드 대기
-    try {
-      await page.waitForSelector('table tbody tr', { timeout: 10000 });
-    } catch {
-      console.log('사용자 테이블 로드 실패');
-      test.skip();
-      return;
-    }
+    const hasData = await waitForTableData(page, test);
+    if (!hasData) return;
 
-    // 상태 변경 드롭다운 또는 버튼 찾기
-    const statusDropdown = page.locator('table tbody tr').first().locator('select, [role="combobox"]');
-    const dropdownExists = await statusDropdown.first().isVisible().catch(() => false);
+    // 상세 페이지로 이동
+    const firstRow = page.locator('table tbody tr').first();
+    await firstRow.click();
+    await page.waitForURL(/\/user-management\/\d+/, { timeout: 10000 });
+    await waitForPageLoad(page);
 
-    if (dropdownExists) {
-      console.log('상태 변경 드롭다운 존재');
+    // 사용자 이름 표시 확인 (h1)
+    const userName = page.locator('h1').first();
+    await expect(userName).toBeVisible({ timeout: 10000 });
+    console.log('✓ 사용자 이름:', await userName.textContent());
+
+    // 수정 버튼 확인
+    const editButton = page.getByRole('button', { name: /수정/ });
+    await expect(editButton).toBeVisible();
+    console.log('✓ 수정 버튼 확인');
+  });
+
+  test('2.3 뒤로가기 → 목록 복귀 확인', async ({ page }) => {
+    await page.goto('/user-management');
+    await waitForPageLoad(page);
+
+    const hasData = await waitForTableData(page, test);
+    if (!hasData) return;
+
+    // 상세 페이지로 이동
+    const firstRow = page.locator('table tbody tr').first();
+    await firstRow.click();
+    await page.waitForURL(/\/user-management\/\d+/, { timeout: 10000 });
+    await waitForPageLoad(page);
+
+    // 뒤로가기 버튼 클릭 (chevron left SVG가 있는 button)
+    const backButton = page.locator('button').filter({
+      has: page.locator('svg path[d*="M15 19l-7-7"]'),
+    }).first();
+
+    const backExists = await backButton.isVisible().catch(() => false);
+    if (backExists) {
+      await backButton.click();
     } else {
-      console.log('상태 변경 드롭다운이 테이블에 없음');
+      // breadcrumb의 '회원 관리' 링크로 복귀
+      const breadcrumbLink = page.getByText('회원 관리').first();
+      await breadcrumbLink.click();
     }
 
-    expect(true).toBe(true);
+    await page.waitForURL(/\/user-management$/, { timeout: 10000 });
+    console.log('✓ 목록 페이지 복귀 확인');
+  });
+
+  test('2.4 직접 URL 접근 (존재하지 않는 사용자)', async ({ page }) => {
+    await page.goto('/user-management/999999');
+    await waitForPageLoad(page);
+
+    // 빈 상태 또는 에러 메시지 확인
+    const emptyMessage = page.getByText(/사용자 정보를 찾을 수 없습니다|목록으로 돌아가기/);
+    const visible = await emptyMessage.first().isVisible().catch(() => false);
+
+    // 에러/빈 상태이거나, 또는 데이터가 없어 로딩만 보일 수 있음
+    console.log(`존재하지 않는 사용자: ${visible ? '빈 상태 메시지 표시' : 'API 에러 상태'}`);
   });
 });
 
 // ========================================
-// 3. 사용자 관리 통합 시나리오
+// 3. 상세 페이지 탭 테스트
+// ========================================
+test.describe('상세 페이지 탭', () => {
+  test.use({ storageState: 'e2e/.auth/admin.json' });
+
+  // 상세 페이지 진입 헬퍼
+  async function navigateToUserDetail(page: import('@playwright/test').Page, t: typeof test): Promise<boolean> {
+    await page.goto('/user-management');
+    await waitForPageLoad(page);
+
+    const hasData = await waitForTableData(page, t);
+    if (!hasData) return false;
+
+    const firstRow = page.locator('table tbody tr').first();
+    await firstRow.click();
+    await page.waitForURL(/\/user-management\/\d+/, { timeout: 10000 });
+    await waitForPageLoad(page);
+    return true;
+  }
+
+  test('3.1 기본 정보 탭 - 기본 탭으로 표시됨', async ({ page }) => {
+    const ok = await navigateToUserDetail(page, test);
+    if (!ok) return;
+
+    // '기본 정보' 탭이 기본 선택 상태
+    const basicTab = page.getByRole('button', { name: /기본 정보/ });
+    await expect(basicTab).toBeVisible();
+
+    // 프로필 정보 섹션 확인
+    const profileSection = page.getByText('프로필 정보').first();
+    await expect(profileSection).toBeVisible({ timeout: 10000 });
+    console.log('✓ 프로필 정보 섹션');
+
+    // 멤버십 정보 섹션 확인
+    const membershipSection = page.getByText('멤버십 정보').first();
+    const membershipVisible = await membershipSection.isVisible().catch(() => false);
+    console.log(`${membershipVisible ? '✓' : '✗'} 멤버십 정보 섹션`);
+
+    // 비밀번호 관리 섹션 확인
+    const passwordSection = page.getByText('비밀번호 관리').first();
+    const passwordVisible = await passwordSection.isVisible().catch(() => false);
+    console.log(`${passwordVisible ? '✓' : '✗'} 비밀번호 관리 섹션`);
+  });
+
+  test('3.2 기본 정보 탭 - 필드 표시 확인', async ({ page }) => {
+    const ok = await navigateToUserDetail(page, test);
+    if (!ok) return;
+
+    const fields = ['이름', '이메일', '전화번호', '가입일', '최근 로그인'];
+    for (const field of fields) {
+      const label = page.getByText(field, { exact: false }).first();
+      const visible = await label.isVisible().catch(() => false);
+      console.log(`${visible ? '✓' : '✗'} 필드: ${field}`);
+    }
+  });
+
+  test('3.3 기본 정보 탭 - 비밀번호 초기화 버튼', async ({ page }) => {
+    const ok = await navigateToUserDetail(page, test);
+    if (!ok) return;
+
+    const resetButton = page.getByRole('button', { name: /비밀번호 초기화/ });
+    const exists = await resetButton.isVisible().catch(() => false);
+    console.log(`${exists ? '✓' : '✗'} 비밀번호 초기화 버튼`);
+
+    if (exists) {
+      // 버튼이 존재하는지만 확인 (실제 초기화 실행 X)
+      await expect(resetButton).toBeEnabled();
+    }
+  });
+
+  test('3.4 예약 이력 탭 전환', async ({ page }) => {
+    const ok = await navigateToUserDetail(page, test);
+    if (!ok) return;
+
+    // 예약 이력 탭 클릭
+    const bookingsTab = page.getByRole('button', { name: /예약 이력/ });
+    await expect(bookingsTab).toBeVisible();
+    await bookingsTab.click();
+    await page.waitForTimeout(1000);
+
+    // 예약 이력 컨텐츠 확인
+    const heading = page.getByText('예약 이력').nth(1); // 탭 버튼 이후의 heading
+    const headingVisible = await heading.isVisible().catch(() => false);
+
+    // 테이블 또는 빈 상태 확인
+    const table = page.locator('table');
+    const tableVisible = await table.isVisible().catch(() => false);
+    const emptyMessage = page.getByText(/예약 이력이 없습니다/);
+    const emptyVisible = await emptyMessage.isVisible().catch(() => false);
+
+    console.log(`✓ 예약 이력 탭 전환 (테이블: ${tableVisible}, 빈 상태: ${emptyVisible})`);
+    expect(headingVisible || tableVisible || emptyVisible).toBe(true);
+  });
+
+  test('3.5 예약 이력 탭 - 상태 필터 확인', async ({ page }) => {
+    const ok = await navigateToUserDetail(page, test);
+    if (!ok) return;
+
+    // 예약 이력 탭 클릭
+    const bookingsTab = page.getByRole('button', { name: /예약 이력/ });
+    await bookingsTab.click();
+    await page.waitForTimeout(1000);
+
+    // 상태 필터 버튼들 확인
+    const filterLabels = ['전체', '확정', '완료', '취소', '노쇼', '대기'];
+    for (const label of filterLabels) {
+      const button = page.getByRole('button', { name: label, exact: true });
+      const visible = await button.isVisible().catch(() => false);
+      console.log(`${visible ? '✓' : '✗'} 필터 버튼: ${label}`);
+    }
+  });
+
+  test('3.6 알림 설정 탭 전환', async ({ page }) => {
+    const ok = await navigateToUserDetail(page, test);
+    if (!ok) return;
+
+    // 알림 설정 탭 클릭
+    const notificationsTab = page.getByRole('button', { name: /알림 설정/ });
+    await expect(notificationsTab).toBeVisible();
+    await notificationsTab.click();
+    await page.waitForTimeout(1000);
+
+    // 알림 설정 컨텐츠 확인 - 토글 항목 또는 빈 상태
+    const toggleLabels = ['이메일 알림', 'SMS 알림', '푸시 알림', '인앱 알림', '예약 리마인더'];
+    let foundToggles = 0;
+    for (const label of toggleLabels) {
+      const item = page.getByText(label).first();
+      const visible = await item.isVisible().catch(() => false);
+      if (visible) foundToggles++;
+      console.log(`${visible ? '✓' : '✗'} 알림 설정: ${label}`);
+    }
+
+    // 토글이 있거나 빈/에러 상태 메시지가 있어야 함
+    const emptyMessage = page.getByText(/알림 설정을 찾을 수 없습니다|알림 설정을 불러올 수 없습니다/);
+    const emptyVisible = await emptyMessage.isVisible().catch(() => false);
+
+    // 로딩 중일 수도 있음 (API 응답 지연)
+    const loadingMessage = page.getByText(/알림 설정을 불러오는 중/);
+    const loadingVisible = await loadingMessage.isVisible().catch(() => false);
+
+    console.log(`✓ 알림 설정 탭 전환 (토글 ${foundToggles}개, 빈/에러: ${emptyVisible}, 로딩: ${loadingVisible})`);
+    expect(foundToggles > 0 || emptyVisible || loadingVisible).toBe(true);
+  });
+
+  test('3.7 탭 간 전환 안정성', async ({ page }) => {
+    const ok = await navigateToUserDetail(page, test);
+    if (!ok) return;
+
+    const tabs = [
+      { name: /기본 정보/, marker: '프로필 정보' },
+      { name: /예약 이력/, marker: '예약 이력' },
+      { name: /알림 설정/, marker: '알림 설정' },
+      { name: /기본 정보/, marker: '프로필 정보' }, // 다시 기본으로 복귀
+    ];
+
+    for (const tab of tabs) {
+      const tabButton = page.getByRole('button', { name: tab.name });
+      await tabButton.click();
+      await page.waitForTimeout(500);
+
+      const marker = page.getByText(tab.marker);
+      const count = await marker.count();
+      console.log(`✓ 탭 전환: ${tab.marker} (요소 ${count}개)`);
+      expect(count).toBeGreaterThan(0);
+    }
+  });
+});
+
+// ========================================
+// 4. 수정 모달 테스트
+// ========================================
+test.describe('사용자 수정 모달', () => {
+  test.use({ storageState: 'e2e/.auth/admin.json' });
+
+  test('4.1 상세 페이지에서 수정 버튼 → 모달 열림', async ({ page }) => {
+    await page.goto('/user-management');
+    await waitForPageLoad(page);
+
+    const hasData = await waitForTableData(page, test);
+    if (!hasData) return;
+
+    // 상세 페이지로 이동
+    const firstRow = page.locator('table tbody tr').first();
+    await firstRow.click();
+    await page.waitForURL(/\/user-management\/\d+/, { timeout: 10000 });
+    await waitForPageLoad(page);
+
+    // 수정 버튼 클릭
+    const editButton = page.getByRole('button', { name: /수정/ });
+    await editButton.click();
+    await page.waitForTimeout(500);
+
+    // 모달 열림 확인
+    const modal = page.locator('[role="dialog"]');
+    const modalVisible = await modal.isVisible().catch(() => false);
+
+    if (modalVisible) {
+      console.log('✓ 수정 모달 열림');
+
+      // 모달 닫기
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(300);
+      console.log('✓ 모달 닫기 완료');
+    } else {
+      console.log('수정 모달이 열리지 않음 (다른 UI 패턴일 수 있음)');
+    }
+  });
+});
+
+// ========================================
+// 5. 통합 시나리오
 // ========================================
 test.describe('사용자 관리 통합 시나리오', () => {
   test.use({ storageState: 'e2e/.auth/admin.json' });
 
-  test('3.1 전체 워크플로우: 목록 조회 -> 검색 -> 상세 -> 목록 복귀', async ({ page }) => {
+  test('5.1 전체 워크플로우: 목록 → 검색 → 상세 → 탭 전환 → 목록 복귀', async ({ page }) => {
     // 1. 목록 페이지 로드
     await page.goto('/user-management');
     await waitForPageLoad(page);
+    await expect(page.getByText('회원 관리').first()).toBeVisible();
     console.log('✓ 1. 목록 페이지 로드');
 
-    // 2. 검색 기능 확인
-    const searchInput = page.locator('input[placeholder*="검색"], input[type="search"]').first();
-    const searchExists = await searchInput.isVisible().catch(() => false);
-    if (searchExists) {
+    // 2. 검색 기능 사용
+    const searchInput = page.locator('input[placeholder*="이름"], input[placeholder*="검색"]').first();
+    if (await searchInput.isVisible().catch(() => false)) {
       await searchInput.fill('test');
       await page.waitForTimeout(500);
       await searchInput.clear();
+      await page.waitForTimeout(500);
       console.log('✓ 2. 검색 기능 확인');
     } else {
       console.log('✓ 2. 검색 기능 (검색창 없음)');
     }
 
-    // 3. 테이블 확인
-    const table = page.locator('table');
-    const tableExists = await table.isVisible().catch(() => false);
-    if (tableExists) {
-      console.log('✓ 3. 테이블 확인');
-    } else {
-      console.log('✓ 3. 테이블 없음 (다른 레이아웃)');
-    }
+    // 3. 사용자 Row 클릭 → 상세 이동
+    const hasData = await waitForTableData(page, test);
+    if (!hasData) return;
 
-    // 4. 사용자 클릭 (있을 경우)
     const firstRow = page.locator('table tbody tr').first();
-    const rowExists = await firstRow.isVisible().catch(() => false);
-    if (rowExists) {
-      await firstRow.click();
-      await page.waitForTimeout(500);
+    await firstRow.click();
+    await page.waitForURL(/\/user-management\/\d+/, { timeout: 10000 });
+    await waitForPageLoad(page);
+    console.log('✓ 3. 상세 페이지 이동');
 
-      // 모달 닫기
-      const modal = page.locator('[role="dialog"]');
-      if (await modal.isVisible().catch(() => false)) {
-        await page.keyboard.press('Escape');
-      }
-      console.log('✓ 4. 사용자 상세 확인');
+    // 4. 기본 정보 탭 확인
+    await expect(page.getByText('프로필 정보').first()).toBeVisible({ timeout: 10000 });
+    console.log('✓ 4. 기본 정보 탭 확인');
+
+    // 5. 예약 이력 탭 전환
+    const bookingsTab = page.getByRole('button', { name: /예약 이력/ });
+    await bookingsTab.click();
+    await page.waitForTimeout(1000);
+    console.log('✓ 5. 예약 이력 탭 전환');
+
+    // 6. 알림 설정 탭 전환
+    const notificationsTab = page.getByRole('button', { name: /알림 설정/ });
+    await notificationsTab.click();
+    await page.waitForTimeout(1000);
+    console.log('✓ 6. 알림 설정 탭 전환');
+
+    // 7. 뒤로가기로 목록 복귀
+    const backButton = page.locator('button').filter({
+      has: page.locator('svg path[d*="M15 19l-7-7"]'),
+    }).first();
+
+    if (await backButton.isVisible().catch(() => false)) {
+      await backButton.click();
     } else {
-      console.log('✓ 4. 사용자 상세 (데이터 없음)');
+      await page.goto('/user-management');
     }
 
-    // 5. 목록으로 복귀 확인
-    const pageHeader = page.getByText('사용자 관리');
-    await expect(pageHeader.first()).toBeVisible();
-    console.log('✓ 5. 목록 복귀 확인');
+    await page.waitForURL(/\/user-management$/, { timeout: 10000 });
+    await expect(page.getByText('회원 관리').first()).toBeVisible();
+    console.log('✓ 7. 목록 복귀 확인');
 
     console.log('\n=== 사용자 관리 통합 시나리오 완료 ===');
   });

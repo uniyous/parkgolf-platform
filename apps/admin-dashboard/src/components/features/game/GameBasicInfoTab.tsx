@@ -231,6 +231,25 @@ export const GameBasicInfoTab: React.FC<GameBasicInfoTabProps> = ({ game, onUpda
           )}
         </div>
 
+        {/* 슬롯 모드 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            슬롯 모드
+          </label>
+          <div>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+              game.slotMode === 'TEE_TIME'
+                ? 'bg-blue-100 text-blue-700'
+                : game.slotMode === 'SESSION'
+                ? 'bg-purple-100 text-purple-700'
+                : 'bg-gray-100 text-gray-800'
+            }`}>
+              {game.slotMode === 'TEE_TIME' ? '티타임' : game.slotMode === 'SESSION' ? '세션' : '-'}
+            </span>
+            <p className="text-xs text-gray-500 mt-1">슬롯 모드는 생성 시 설정되며 변경할 수 없습니다</p>
+          </div>
+        </div>
+
         {/* 코스 정보 */}
         <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">

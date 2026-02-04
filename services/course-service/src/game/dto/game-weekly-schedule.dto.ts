@@ -35,9 +35,9 @@ export class CreateGameWeeklyScheduleDto {
   @IsNumber()
   @IsOptional()
   @Type(() => Number)
-  @Min(5)
+  @Min(0)
   @Max(60)
-  interval?: number; // 타임 간격 (분)
+  interval?: number; // 타임 간격 (분), SESSION 모드는 0
 
   @IsBoolean()
   @IsOptional()
@@ -62,7 +62,7 @@ export class UpdateGameWeeklyScheduleDto {
   @IsNumber()
   @IsOptional()
   @Type(() => Number)
-  @Min(5)
+  @Min(0)
   @Max(60)
   interval?: number;
 
@@ -110,7 +110,7 @@ export class BulkCreateGameWeeklyScheduleDto {
   @IsNumber()
   @IsOptional()
   @Type(() => Number)
-  @Min(5)
+  @Min(0)
   @Max(60)
   interval?: number;
 

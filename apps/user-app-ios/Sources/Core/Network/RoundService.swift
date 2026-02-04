@@ -27,10 +27,8 @@ actor RoundService {
             queryParameters["date"] = DateHelper.toISODateString(date)
         }
 
-        if let timeOfDay = params.timeOfDay, timeOfDay != .all,
-           let timeRange = timeOfDay.timeRange {
-            queryParameters["startTimeFrom"] = timeRange.start
-            queryParameters["startTimeTo"] = timeRange.end
+        if let timeOfDay = params.timeOfDay, timeOfDay != .all {
+            queryParameters["timeOfDay"] = timeOfDay.rawValue
         }
 
         if let minPrice = params.minPrice {

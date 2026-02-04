@@ -376,6 +376,19 @@ export class NotificationNatsController {
     }
   }
 
+  @EventPattern('notification.dismiss')
+  async handleDismiss(@Payload() data: { userId: string; type: string; dataFilter?: Record<string, any> }) {
+    this.logger.log(`NATS Event: notification.dismiss - user ${data.userId}, type ${data.type}`);
+    try {
+      const result = await this.notificationService.dismissByType(
+        data.userId, data.type as NotificationType, data.dataFilter,
+      );
+      this.logger.log(`Dismissed ${result.count} notifications for user ${data.userId}`);
+    } catch (error) {
+      this.logger.error(`Failed to dismiss notifications: ${error}`);
+    }
+  }
+
   // ===== MessagePattern Handlers (Request-Response) =====
 
   @MessagePattern('notification.send')

@@ -55,6 +55,12 @@ class ChatSocketManager {
   private token: string | null = null;
   private isRefreshingToken = false;
 
+  // Heartbeat — Cloud Run / proxy idle timeout 방지
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private missedHeartbeats = 0;
+  private static readonly HEARTBEAT_INTERVAL = 30_000;
+  private static readonly MAX_MISSED_HEARTBEATS = 2;
+
   // Event handlers
   private messageHandlers: Set<MessageHandler> = new Set();
   private typingHandlers: Set<TypingHandler> = new Set();
@@ -106,6 +112,7 @@ class ChatSocketManager {
   }
 
   disconnect(): void {
+    this.stopHeartbeat();
     if (this.socket) {
       this.socket.removeAllListeners();
       this.socket.disconnect();
@@ -143,6 +150,34 @@ class ChatSocketManager {
   }
 
   // ============================================
+  // Heartbeat
+  // ============================================
+
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+    this.missedHeartbeats = 0;
+    this.heartbeatTimer = setInterval(() => {
+      if (!this.socket?.connected) return;
+      this.missedHeartbeats++;
+      if (this.missedHeartbeats > ChatSocketManager.MAX_MISSED_HEARTBEATS) {
+        console.warn('[ChatSocket] Heartbeat timeout, forcing reconnect');
+        this.socket?.disconnect();
+        return;
+      }
+      this.socket.emit('heartbeat', {}, () => {
+        this.missedHeartbeats = 0;
+      });
+    }, ChatSocketManager.HEARTBEAT_INTERVAL);
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+  }
+
+  // ============================================
   // Event Handlers Setup
   // ============================================
 
@@ -151,11 +186,13 @@ class ChatSocketManager {
 
     this.socket.on('connect', () => {
       console.log('✅ Chat socket connected');
+      this.startHeartbeat();
       this.connectHandlers.forEach(handler => handler());
     });
 
     this.socket.on('disconnect', () => {
       console.log('🔌 Chat socket disconnected');
+      this.stopHeartbeat();
       this.disconnectHandlers.forEach(handler => handler());
     });
 

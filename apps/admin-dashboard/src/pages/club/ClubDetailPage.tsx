@@ -131,6 +131,13 @@ export const ClubDetailPage: React.FC = () => {
                 }`}>
                   {club.status === 'ACTIVE' ? '운영중' : club.status === 'MAINTENANCE' ? '정비중' : '휴장'}
                 </span>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  club.clubType === 'FREE'
+                    ? 'bg-sky-100 text-sky-700'
+                    : 'bg-emerald-100 text-emerald-700'
+                }`}>
+                  {club.clubType === 'FREE' ? '무료' : '유료'}
+                </span>
               </div>
             </div>
           </div>

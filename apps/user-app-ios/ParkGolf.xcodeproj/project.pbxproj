@@ -29,7 +29,7 @@
 		4768750EBF28F4DC14744D14 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40E101B4CF841C3D29D3AB50 /* HomeView.swift */; };
 		47D795CB0451D744C05EB12C /* ChatSocketManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34BB65C89537E9A443A526DE /* ChatSocketManager.swift */; };
 		504CA8834704C0B94E17D725 /* FriendsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5622CA22113E881C0532A8 /* FriendsViewModel.swift */; };
-		517DC5CCE0EAAF82B41FEC0A /* WebSocketClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 860003A8359916970B174436 /* WebSocketClient.swift */; };
+
 		51D3930AD6C579767C2ED188 /* BookingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A5C3F9E2AB4ADD370434FAD /* BookingView.swift */; };
 		54152A3EBE9657B82E834E32 /* NewChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED554D599CB387E4FF93237 /* NewChatViewModel.swift */; };
 		56B1835CE1858F6A6A8FEEB2 /* LoadableState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8335830EDEA6638DE0F4C67 /* LoadableState.swift */; };
@@ -194,7 +194,7 @@
 		753181B21AFA032180271E5A /* PriceDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceDisplay.swift; sourceTree = "<group>"; };
 		786E94AAD9E21DB7A5CFC889 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
 		843D0F5C4E6AAEADB31D1366 /* Alamofire.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Alamofire.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		860003A8359916970B174436 /* WebSocketClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketClient.swift; sourceTree = "<group>"; };
+
 		880051E9F996505E9E6C7E0D /* Booking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Booking.swift; sourceTree = "<group>"; };
 		89425BF9DF38E68E383B64D5 /* Chat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chat.swift; sourceTree = "<group>"; };
 		89C46EC481DED9C6513BB24F /* AddFriendSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFriendSheet.swift; sourceTree = "<group>"; };
@@ -482,7 +482,7 @@
 				4FB800B49FBA07162D9DA6D4 /* NotificationSocketManager.swift */,
 				F37E6F00B3B10E3026CD368F /* RoundService.swift */,
 				DF0B66433BF22A363996D154 /* SettingsService.swift */,
-				860003A8359916970B174436 /* WebSocketClient.swift */,
+
 			);
 			path = Network;
 			sourceTree = "<group>";
@@ -778,7 +778,7 @@
 				6E1A5E6B1B86F4A60E44BE4A /* NotificationSocketManager.swift in Sources */,
 				6E64635F965160EE2189713E /* RoundService.swift in Sources */,
 				63B378C32D1764D68E2F6C33 /* SettingsService.swift in Sources */,
-				517DC5CCE0EAAF82B41FEC0A /* WebSocketClient.swift in Sources */,
+
 				006FCEFDADBB73A070B721C8 /* Configuration.swift in Sources */,
 				00F5F2FB46BB93210AA385E6 /* ContactsManager.swift in Sources */,
 				57FCFD8A5FBACB2DF3C7CBDF /* DateHelper.swift in Sources */,

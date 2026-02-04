@@ -19,6 +19,7 @@ export const gameKeys = {
     'search',
     params.search || '',
     params.date || '',
+    params.timeOfDay || '',
     params.minPrice ?? null,
     params.maxPrice ?? null,
     params.minPlayers ?? null,

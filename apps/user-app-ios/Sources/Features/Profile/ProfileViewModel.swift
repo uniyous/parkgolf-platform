@@ -48,8 +48,19 @@ final class ProfileViewModel: ObservableObject {
         isLoading = true
         defer { isLoading = false }
 
-        // TODO: Implement profile update endpoint
-        return false
+        do {
+            _ = try await apiClient.request(
+                AuthEndpoints.updateProfile(name: name, phone: phone),
+                responseType: User.self
+            )
+            return true
+        } catch {
+            self.error = error
+            #if DEBUG
+            print("Failed to update profile: \(error)")
+            #endif
+            return false
+        }
     }
 
     func logout() async -> Bool {

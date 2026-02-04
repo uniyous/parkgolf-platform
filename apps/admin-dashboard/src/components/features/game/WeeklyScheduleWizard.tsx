@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useCreateWeeklyScheduleMutation } from '@/hooks/queries';
-import type { CreateGameWeeklyScheduleDto, GameWeeklySchedule } from '@/lib/api/gamesApi';
+import type { CreateGameWeeklyScheduleDto, GameWeeklySchedule, SlotMode } from '@/lib/api/gamesApi';
 
 interface WeeklyScheduleWizardProps {
   gameId: number;
+  slotMode?: SlotMode;
   existingSchedules: GameWeeklySchedule[];
   open: boolean;
   onClose: () => void;
@@ -31,11 +32,19 @@ const presetOptions = [
   { id: 'custom', label: '직접 선택', days: [], icon: '✏️' },
 ];
 
-const timePresets = [
+const teeTimePresets = [
   { id: 'early', label: '새벽/오전', startTime: '05:00', endTime: '12:00', icon: '🌅' },
   { id: 'morning', label: '오전/오후', startTime: '06:00', endTime: '18:00', icon: '☀️' },
   { id: 'afternoon', label: '오후/저녁', startTime: '12:00', endTime: '20:00', icon: '🌇' },
   { id: 'fullday', label: '종일', startTime: '05:00', endTime: '20:00', icon: '🕐' },
+  { id: 'custom', label: '직접 설정', startTime: '', endTime: '', icon: '✏️' },
+];
+
+const sessionPresets = [
+  { id: 'dawn', label: '새벽', startTime: '05:00', endTime: '08:00', icon: '🌅' },
+  { id: 'morning', label: '오전', startTime: '06:00', endTime: '12:00', icon: '☀️' },
+  { id: 'afternoon', label: '오후', startTime: '12:00', endTime: '18:00', icon: '🌇' },
+  { id: 'fullday', label: '전일', startTime: '06:00', endTime: '18:00', icon: '🕐' },
   { id: 'custom', label: '직접 설정', startTime: '', endTime: '', icon: '✏️' },
 ];
 
@@ -49,11 +58,14 @@ const intervalOptions = [
 
 export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
   gameId,
+  slotMode = 'TEE_TIME',
   existingSchedules,
   open,
   onClose,
   onSuccess,
 }) => {
+  const isSession = slotMode === 'SESSION';
+  const timePresets = isSession ? sessionPresets : teeTimePresets;
   const [step, setStep] = useState<WizardStep>('days');
   const [selectedPreset, setSelectedPreset] = useState<string>('all');
   const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
@@ -128,7 +140,7 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
           dayOfWeek: day,
           startTime,
           endTime,
-          interval,
+          interval: isSession ? 0 : interval,
           isActive: true,
         };
 
@@ -415,30 +427,42 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                   </div>
                 </div>
 
-                {/* Interval */}
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">타임슬롯 간격</h3>
-                  <div className="flex gap-2">
-                    {intervalOptions.map(opt => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setInterval(opt.value)}
-                        className={`flex-1 py-3 rounded-lg border-2 transition-all ${
-                          interval === opt.value
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <span className={`text-sm font-medium block ${
-                          interval === opt.value ? 'text-blue-700' : 'text-gray-700'
-                        }`}>
-                          {opt.label}
-                        </span>
-                        <span className="text-xs text-gray-500">{opt.desc}</span>
-                      </button>
-                    ))}
+                {/* Interval - TEE_TIME 모드에서만 표시 */}
+                {!isSession && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">타임슬롯 간격</h3>
+                    <div className="flex gap-2">
+                      {intervalOptions.map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setInterval(opt.value)}
+                          className={`flex-1 py-3 rounded-lg border-2 transition-all ${
+                            interval === opt.value
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <span className={`text-sm font-medium block ${
+                            interval === opt.value ? 'text-blue-700' : 'text-gray-700'
+                          }`}>
+                            {opt.label}
+                          </span>
+                          <span className="text-xs text-gray-500">{opt.desc}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
+                {isSession && (
+                  <div className="bg-emerald-50 rounded-lg p-4 flex items-start">
+                    <svg className="w-5 h-5 text-emerald-600 mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-sm text-emerald-800">
+                      SESSION 모드: 스케줄 1건당 슬롯 1개가 생성됩니다. 타임슬롯 간격은 사용되지 않습니다.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -556,10 +580,18 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                           <span className="text-sm text-gray-600">운영 시간</span>
                           <span className="text-sm font-medium text-gray-900">{startTime} ~ {endTime}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">타임슬롯 간격</span>
-                          <span className="text-sm font-medium text-gray-900">{interval}분</span>
-                        </div>
+                        {!isSession && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">타임슬롯 간격</span>
+                            <span className="text-sm font-medium text-gray-900">{interval}분</span>
+                          </div>
+                        )}
+                        {isSession && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">슬롯 모드</span>
+                            <span className="text-sm font-medium text-emerald-700">SESSION (시간대별 1슬롯)</span>
+                          </div>
+                        )}
                         <div className="pt-3 border-t border-blue-200">
                           <div className="flex justify-between">
                             <span className="text-sm font-medium text-blue-700">생성될 스케줄</span>

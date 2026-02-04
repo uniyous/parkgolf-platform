@@ -41,6 +41,17 @@ enum AuthEndpoints {
     static func stats() -> Endpoint {
         Endpoint(path: "/api/user/iam/stats")
     }
+
+    static func updateProfile(name: String?, phone: String?) -> Endpoint {
+        var body: [String: String] = [:]
+        if let name = name { body["name"] = name }
+        if let phone = phone { body["phone"] = phone }
+        return Endpoint(
+            path: "/api/user/iam/profile",
+            method: .patch,
+            body: body
+        )
+    }
 }
 
 // MARK: - Account Endpoints

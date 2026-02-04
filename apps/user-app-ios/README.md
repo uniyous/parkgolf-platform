@@ -195,14 +195,11 @@ let response = try await APIClient.shared.request(
 ### WebSocket (채팅)
 
 ```swift
-// WebSocket 연결
-let wsClient = WebSocketClient()
-try await wsClient.connect(token: accessToken)
+// Socket.IO 기반 채팅 연결
+let socketManager = ChatSocketManager.shared
+socketManager.connect(token: accessToken)
 
-// 메시지 수신 핸들러
-await wsClient.setMessageHandler { message in
-    // 새 메시지 처리
-}
+// 메시지 수신은 ChatSocketManager 내부에서 처리
 ```
 
 ## 테스트

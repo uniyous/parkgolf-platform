@@ -212,15 +212,24 @@ export const ClubListPage: React.FC = () => {
                   {/* 상태 */}
                   <div className="pt-2 border-t border-gray-100">
                     <div className="flex items-center justify-between">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        club.status === 'ACTIVE'
-                          ? 'bg-green-100 text-green-800'
-                          : club.status === 'MAINTENANCE'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {club.status === 'ACTIVE' ? '운영' : club.status === 'MAINTENANCE' ? '정비' : '휴장'}
-                      </span>
+                      <div className="flex items-center space-x-1">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          club.status === 'ACTIVE'
+                            ? 'bg-green-100 text-green-800'
+                            : club.status === 'MAINTENANCE'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {club.status === 'ACTIVE' ? '운영' : club.status === 'MAINTENANCE' ? '정비' : '휴장'}
+                        </span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          club.clubType === 'FREE'
+                            ? 'bg-sky-100 text-sky-700'
+                            : 'bg-emerald-100 text-emerald-700'
+                        }`}>
+                          {club.clubType === 'FREE' ? '무료' : '유료'}
+                        </span>
+                      </div>
                       <span className="text-xs text-gray-400">
                         {club.operatingHours?.open?.slice(0, 5)}
                       </span>

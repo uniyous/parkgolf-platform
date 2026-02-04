@@ -7,6 +7,7 @@ import { SignupPage } from './pages/SignupPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { AdminManagementPage } from './pages/system/AdminManagementPage';
 import { UserManagementPage } from './pages/system/UserManagementPage';
+import { UserDetailPage } from './pages/system/UserDetailPage';
 import { RolePermissionPage } from './pages/system/RolePermissionPage';
 import { SystemSettingsPage } from './pages/system/SystemSettingsPage';
 import { CompanyPage } from './pages/company/CompanyPage';
@@ -43,6 +44,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/admin-management" element={<AdminManagementPage />} />
           <Route path="/user-management" element={<UserManagementPage />} />
+          <Route path="/user-management/:userId" element={<UserDetailPage />} />
           <Route path="/roles" element={<RolePermissionPage />} />
           <Route path="/system-settings" element={<SystemSettingsPage />} />
           <Route path="/companies" element={<CompanyPage />} />

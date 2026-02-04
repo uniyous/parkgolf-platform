@@ -22,37 +22,28 @@ const getAvailabilityText = (remaining: number) => {
 export interface GameCardProps {
   game: Game;
   date: string;
-  timeOfDay: 'all' | 'morning' | 'afternoon';
   onTimeSlotSelect: (game: Game, timeSlot: GameTimeSlot) => void;
 }
 
 const SLOTS_PER_TWO_ROWS = 12;
 
-export const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTimeSlotSelect }) => {
+export const GameCard: React.FC<GameCardProps> = ({ game, date, onTimeSlotSelect }) => {
   const [showAllSlots, setShowAllSlots] = useState(false);
 
   const timeSlots = game.timeSlots || [];
 
+  // 시간대 필터링은 서버에서 처리하므로 클라이언트에서는 가용성만 필터
   const filteredSlots = useMemo(() => {
     return timeSlots.filter((slot) => {
+      if (slot.status && slot.status !== 'AVAILABLE') return false;
+
       const maxCapacity = slot.maxPlayers ?? slot.maxCapacity ?? 4;
       const currentBookings = slot.bookedPlayers ?? slot.currentBookings ?? 0;
       const remaining = slot.availablePlayers ?? (maxCapacity - currentBookings);
-
-      if (slot.status && slot.status !== 'AVAILABLE') return false;
-
       const isAvailable = slot.isAvailable ?? slot.available ?? (remaining > 0);
-      if (!isAvailable) return false;
-
-      const hour = parseInt(slot.startTime.split(':')[0]);
-      if (timeOfDay === 'morning') {
-        return hour < 12;
-      } else if (timeOfDay === 'afternoon') {
-        return hour >= 12;
-      }
-      return true;
+      return isAvailable;
     });
-  }, [timeSlots, timeOfDay]);
+  }, [timeSlots]);
 
   const hasDiscount = game.weekendPrice && game.basePrice && game.weekendPrice < game.basePrice;
 
@@ -64,6 +55,15 @@ export const GameCard: React.FC<GameCardProps> = ({ game, date, timeOfDay, onTim
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-2">
               <h3 className="text-xl font-bold text-white">{game.name}</h3>
+              {game.slotMode && (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                  game.slotMode === 'TEE_TIME'
+                    ? 'bg-blue-400/20 text-blue-300'
+                    : 'bg-purple-400/20 text-purple-300'
+                }`}>
+                  {game.slotMode === 'TEE_TIME' ? '티타임' : '세션'}
+                </span>
+              )}
               {game.isActive && (
                 <span className="bg-green-400/20 text-green-300 px-2 py-0.5 rounded-full text-xs font-medium">
                   운영중

@@ -264,6 +264,7 @@ export class GameNatsController {
       name: game.name,
       code: game.code,
       description: game.description,
+      slotMode: game.slotMode,
       frontNineCourseId: game.frontNineCourseId,
       frontNineCourseName: game.frontNineCourse?.name,
       backNineCourseId: game.backNineCourseId,
