@@ -1,6 +1,7 @@
 package com.parkgolf.app.presentation.feature.booking
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -201,7 +202,7 @@ private fun DateSelector(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        itemsIndexed(dateOptions) { index, date ->
+        items(dateOptions) { date ->
             DateChip(
                 weekday = formatWeekday(date),
                 shortDate = formatShortDate(date),
@@ -209,14 +210,44 @@ private fun DateSelector(
                 isWeekend = isWeekend(date),
                 onClick = { onDateSelect(date) }
             )
-
-            // 마지막 날짜에 도달하면 7일 추가 로드
-            if (index == dateOptions.size - 1) {
-                LaunchedEffect(dateOptions.size) {
-                    onLoadMore()
-                }
-            }
         }
+
+        // +7일 더보기 버튼
+        item {
+            LoadMoreDateButton(onClick = onLoadMore)
+        }
+    }
+}
+
+// +7일 더보기 버튼
+@Composable
+private fun LoadMoreDateButton(onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .width(56.dp)
+            .height(60.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .border(
+                width = 1.dp,
+                color = TextOnGradientSecondary.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .clickable { onClick() },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "+",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Medium,
+            color = TextOnGradientSecondary
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = "7일",
+            fontSize = 12.sp,
+            color = TextOnGradientSecondary
+        )
     }
 }
 
