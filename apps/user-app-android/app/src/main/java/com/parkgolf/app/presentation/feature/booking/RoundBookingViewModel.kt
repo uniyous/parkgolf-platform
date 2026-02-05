@@ -68,6 +68,7 @@ class RoundBookingViewModel @Inject constructor(
     private val _dateOptions = MutableStateFlow<List<LocalDate>>(emptyList())
     val dateOptions: StateFlow<List<LocalDate>> = _dateOptions.asStateFlow()
     private var loadedDays = 30
+    private var isLoadingDates = false
 
     init {
         // 초기 30일 로드
@@ -77,10 +78,20 @@ class RoundBookingViewModel @Inject constructor(
 
     // 스크롤 끝에 도달하면 7일 추가 로드
     fun loadMoreDates() {
+        // 이미 로딩 중이면 무시 (무한 루프 방지)
+        if (isLoadingDates) return
+        isLoadingDates = true
+
         val newDays = loadedDays + 7
         val newDates = ((loadedDays + 1)..newDays).map { LocalDate.now().plusDays(it.toLong()) }
         _dateOptions.value = _dateOptions.value + newDates
         loadedDays = newDays
+
+        // 약간의 딜레이 후 다시 로딩 가능하도록
+        viewModelScope.launch {
+            delay(500)
+            isLoadingDates = false
+        }
     }
 
     fun search() {

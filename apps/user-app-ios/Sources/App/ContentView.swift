@@ -29,24 +29,6 @@ struct MainTabView: View {
         case profile
     }
 
-    init() {
-        // TabBar 스타일 설정
-        let appearance = UITabBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor(Color.gradientStart)
-
-        // 선택된 아이템 스타일
-        appearance.stackedLayoutAppearance.selected.iconColor = UIColor(Color.parkPrimary)
-        appearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor(Color.parkPrimary)]
-
-        // 선택되지 않은 아이템 스타일
-        appearance.stackedLayoutAppearance.normal.iconColor = UIColor.white.withAlphaComponent(0.6)
-        appearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.white.withAlphaComponent(0.6)]
-
-        UITabBar.appearance().standardAppearance = appearance
-        UITabBar.appearance().scrollEdgeAppearance = appearance
-    }
-
     var body: some View {
         TabView(selection: $selectedTab) {
             HomeView()
@@ -122,6 +104,26 @@ struct MainTabView: View {
                 appState.navigateToTab = nil
             }
         }
+        .onAppear {
+            configureTabBarAppearance()
+        }
+    }
+
+    private func configureTabBarAppearance() {
+        let appearance = UITabBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor(Color.gradientStart)
+
+        // 선택된 아이템 스타일
+        appearance.stackedLayoutAppearance.selected.iconColor = UIColor(Color.parkPrimary)
+        appearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor(Color.parkPrimary)]
+
+        // 선택되지 않은 아이템 스타일
+        appearance.stackedLayoutAppearance.normal.iconColor = UIColor.white.withAlphaComponent(0.6)
+        appearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.white.withAlphaComponent(0.6)]
+
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
     }
 }
 
