@@ -11,6 +11,7 @@ import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.BookingRepository
 import com.parkgolf.app.domain.repository.ChatRepository
 import com.parkgolf.app.domain.repository.FriendsRepository
+import com.parkgolf.app.domain.repository.NotificationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,6 +39,7 @@ data class HomeUiState(
     val friendRequests: List<FriendRequest> = emptyList(),
     val unreadChatRooms: List<ChatRoom> = emptyList(),
     val popularClubs: List<PopularClub> = emptyList(),
+    val unreadNotificationCount: Int = 0,
     val error: String? = null
 ) {
     // 알림 관련 계산 속성
@@ -50,8 +52,10 @@ data class HomeUiState(
     val hasNotifications: Boolean
         get() = pendingFriendRequestsCount > 0 || totalUnreadMessagesCount > 0
 
+    // 전체 알림 배지 수 (헤더 벨 아이콘용)
+    // 알림 서비스에 친구요청/채팅 알림이 이미 포함되어 있으므로 중복 카운트 방지
     val notificationCount: Int
-        get() = pendingFriendRequestsCount + unreadChatRooms.size
+        get() = unreadNotificationCount
 }
 
 @HiltViewModel
@@ -59,7 +63,8 @@ class HomeViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val bookingRepository: BookingRepository,
     private val friendsRepository: FriendsRepository,
-    private val chatRepository: ChatRepository
+    private val chatRepository: ChatRepository,
+    private val notificationRepository: NotificationRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -77,10 +82,11 @@ class HomeViewModel @Inject constructor(
             val user = authRepository.currentUser.first()
             _uiState.value = _uiState.value.copy(user = user)
 
-            // 4가지 데이터를 동시에 로드
+            // 5가지 데이터를 동시에 로드
             val bookingsDeferred = async { loadBookings() }
             val friendRequestsDeferred = async { loadFriendRequests() }
             val chatRoomsDeferred = async { loadChatRooms() }
+            val notificationCountDeferred = async { loadUnreadNotificationCount() }
 
             // Mock 인기 클럽 로드
             val popularClubs = getMockPopularClubs()
@@ -89,6 +95,7 @@ class HomeViewModel @Inject constructor(
             bookingsDeferred.await()
             friendRequestsDeferred.await()
             chatRoomsDeferred.await()
+            notificationCountDeferred.await()
 
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
@@ -138,6 +145,16 @@ class HomeViewModel @Inject constructor(
             }
             .onFailure { exception ->
                 android.util.Log.e("HomeViewModel", "Failed to load chat rooms: ${exception.message}")
+            }
+    }
+
+    private suspend fun loadUnreadNotificationCount() {
+        notificationRepository.getUnreadCount()
+            .onSuccess { count ->
+                _uiState.value = _uiState.value.copy(unreadNotificationCount = count)
+            }
+            .onFailure { exception ->
+                android.util.Log.e("HomeViewModel", "Failed to load notification count: ${exception.message}")
             }
     }
 
