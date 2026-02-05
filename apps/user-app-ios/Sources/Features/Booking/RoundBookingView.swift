@@ -254,22 +254,24 @@ struct DateChip: View {
     }
 
     var body: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: 4) {
             Text(weekday)
-                .font(.parkLabelSmall)
+                .font(.parkBodyMedium)
+                .fontWeight(.medium)
                 .foregroundStyle(weekdayColor)
 
             Text(shortDate)
-                .font(.parkLabelMedium)
-                .foregroundStyle(isSelected ? .white : .white.opacity(0.8))
+                .font(.parkBodyLarge)
+                .fontWeight(.semibold)
+                .foregroundStyle(isSelected ? .white : .white.opacity(0.9))
         }
-        .frame(width: 44, height: 48)
+        .frame(width: 56, height: 60)
         .background(
-            RoundedRectangle(cornerRadius: ParkRadius.sm)
+            RoundedRectangle(cornerRadius: ParkRadius.md)
                 .fill(isSelected ? Color.parkPrimary : Color.white.opacity(0.1))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: ParkRadius.sm)
+            RoundedRectangle(cornerRadius: ParkRadius.md)
                 .stroke(isSelected ? Color.parkPrimary : Color.white.opacity(0.2), lineWidth: 1)
         )
         .contentShape(Rectangle())
