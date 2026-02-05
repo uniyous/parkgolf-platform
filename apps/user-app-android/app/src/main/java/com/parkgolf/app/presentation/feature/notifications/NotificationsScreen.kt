@@ -236,12 +236,13 @@ private fun FilterChip(
 ) {
     Row(
         modifier = Modifier
+            .height(36.dp)
             .clip(RoundedCornerShape(50))
             .background(
                 if (isSelected) ParkPrimary else Color.White.copy(alpha = 0.1f)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
