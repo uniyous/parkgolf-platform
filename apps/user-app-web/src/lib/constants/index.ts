@@ -5,11 +5,6 @@
 import type { BookingStatus } from '@/lib/api/bookingApi';
 
 // =====================
-// 서비스 수수료
-// =====================
-export const SERVICE_FEE_RATE = 0.03; // 3%
-
-// =====================
 // 날짜 필터 설정
 // =====================
 export const DATE_FILTER_MAX_MONTHS = 2; // 최대 2개월 후까지 선택 가능
@@ -23,39 +18,6 @@ export interface PaymentMethod {
   icon: string;
   description: string;
 }
-
-export const PAYMENT_METHODS: PaymentMethod[] = [
-  {
-    id: 'card',
-    name: '신용카드',
-    icon: '💳',
-    description: '신용카드 또는 체크카드로 결제',
-  },
-  {
-    id: 'kakaopay',
-    name: '카카오페이',
-    icon: '💛',
-    description: '카카오페이로 간편결제',
-  },
-  {
-    id: 'naverpay',
-    name: '네이버페이',
-    icon: '💚',
-    description: '네이버페이로 간편결제',
-  },
-  {
-    id: 'tosspay',
-    name: '토스페이',
-    icon: '💙',
-    description: '토스페이로 간편결제',
-  },
-  {
-    id: 'bank',
-    name: '계좌이체',
-    icon: '🏦',
-    description: '실시간 계좌이체',
-  },
-];
 
 // =====================
 // 예약 상태 스타일
@@ -97,22 +59,6 @@ export interface SelectOption<T = string> {
   label: string;
 }
 
-export const TIME_OF_DAY_OPTIONS: SelectOption[] = [
-  { value: '', label: '전체' },
-  { value: 'DAWN', label: '새벽 (05~08시)' },
-  { value: 'MORNING', label: '오전 (08~12시)' },
-  { value: 'AFTERNOON', label: '오후 (12~17시)' },
-  { value: 'EVENING', label: '저녁 (17~22시)' },
-];
-
-// 시간대 칩 토글 (다중선택)
-export const TIME_PERIOD_CHIPS = [
-  { value: 'DAWN', label: '새벽', desc: '05~08시' },
-  { value: 'MORNING', label: '오전', desc: '08~12시' },
-  { value: 'AFTERNOON', label: '오후', desc: '12~17시' },
-  { value: 'EVENING', label: '저녁', desc: '17~22시' },
-] as const;
-
 // 시간대별 범위 (startTimeFrom, startTimeTo)
 export const TIME_RANGES: Record<string, [string, string]> = {
   DAWN: ['05:00', '08:00'],
@@ -133,22 +79,6 @@ export function computeTimeRange(periods: string[]): { startTimeFrom: string; st
     startTimeTo: ranges.reduce((max, r) => (r[1] > max ? r[1] : max), ranges[0][1]),
   };
 }
-
-export const SORT_OPTIONS: SelectOption[] = [
-  { value: 'name-asc', label: '이름순 (오름차순)' },
-  { value: 'name-desc', label: '이름순 (내림차순)' },
-  { value: 'price-asc', label: '가격 낮은순' },
-  { value: 'price-desc', label: '가격 높은순' },
-  { value: 'createdAt-desc', label: '최신순' },
-];
-
-export const PLAYER_OPTIONS: SelectOption[] = [
-  { value: 'all', label: '인원 제한 없음' },
-  { value: '1', label: '1명 이상' },
-  { value: '2', label: '2명 이상' },
-  { value: '3', label: '3명 이상' },
-  { value: '4', label: '4명 이상' },
-];
 
 // =====================
 // 시니어 UI용 시간대 (3개: 전체/오전/오후)

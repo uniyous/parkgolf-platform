@@ -8,7 +8,7 @@ import { showErrorToast } from '@/lib/toast';
 import { translateErrorMessage } from '@/types/common';
 import { Button, Checkbox, PriceDisplay } from '../components';
 import { Container, SubPageHeader } from '@/components/layout';
-import { SIMPLE_PAYMENT_METHODS, SERVICE_FEE_RATE } from '@/lib/constants';
+import { SIMPLE_PAYMENT_METHODS } from '@/lib/constants';
 
 interface BookingState {
   game: Game;
@@ -48,7 +48,6 @@ export const BookingDetailPage: React.FC = () => {
 
   const pricePerPerson = timeSlot.price || game.basePrice || game.pricePerPerson || 0;
   const totalPrice = pricePerPerson * playerCount;
-  const serviceFee = Math.floor(totalPrice * SERVICE_FEE_RATE);
 
   const canProceed = selectedPaymentMethod && agreeToTerms;
 

@@ -183,7 +183,6 @@ export function BookingsPage() {
                     <GameCard
                       key={game.id}
                       game={game}
-                      date={filters.date}
                       onTimeSlotSelect={handleTimeSlotSelect}
                     />
                   ))}

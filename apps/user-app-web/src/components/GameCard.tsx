@@ -11,13 +11,12 @@ const getAvailabilityText = (remaining: number) => {
 
 export interface GameCardProps {
   game: Game;
-  date: string;
   onTimeSlotSelect: (game: Game, timeSlot: GameTimeSlot) => void;
 }
 
 const SLOTS_VISIBLE = 5;
 
-export const GameCard: React.FC<GameCardProps> = ({ game, date, onTimeSlotSelect }) => {
+export const GameCard: React.FC<GameCardProps> = ({ game, onTimeSlotSelect }) => {
   const [showAllSlots, setShowAllSlots] = useState(false);
 
   const timeSlots = game.timeSlots || [];
