@@ -458,14 +458,15 @@ private fun NotificationRow(
                     // Type badge
                     Box(
                         modifier = Modifier
-                            .clip(MaterialTheme.shapes.small)
-                            .background(iconColor.copy(alpha = 0.2f))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(iconColor.copy(alpha = 0.85f))
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
                     ) {
                         Text(
                             text = notification.type.displayName,
                             style = MaterialTheme.typography.labelSmall,
-                            color = iconColor
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White
                         )
                     }
 
