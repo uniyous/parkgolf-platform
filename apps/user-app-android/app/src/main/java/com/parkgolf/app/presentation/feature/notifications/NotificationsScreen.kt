@@ -412,7 +412,7 @@ private fun NotificationRow(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(18.dp),
                     tint = iconColor
                 )
             }
