@@ -225,7 +225,7 @@ struct RoundBookingView: View {
         ScrollView {
             LazyVStack(spacing: ParkSpacing.md) {
                 ForEach(viewModel.rounds) { round in
-                    RoundCardView(round: round, selectedDate: viewModel.selectedDate) { timeSlot in
+                    RoundCardView(round: round) { timeSlot in
                         viewModel.selectTimeSlot(round: round, timeSlot: timeSlot)
                     }
                     .accessibilityIdentifier("roundCard_\(round.id)")
@@ -343,7 +343,6 @@ struct FilterChip: View {
 
 struct RoundCardView: View {
     let round: Round
-    let selectedDate: Date
     let onSelectTimeSlot: (TimeSlot) -> Void
 
     @State private var showAllSlots = false
@@ -473,8 +472,6 @@ struct SeniorTimeSlotRow: View {
         .accessibilityIdentifier("timeSlot_\(slot.id)")
     }
 }
-
-
 
 // MARK: - Preview
 

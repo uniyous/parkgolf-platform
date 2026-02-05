@@ -11,16 +11,10 @@ class RoundBookingViewModel: ObservableObject {
     @Published var searchQuery: String = ""
     @Published var selectedDate: Date = DateHelper.tomorrow()
     @Published var selectedTimeOfDay: RoundSearchParams.TimeOfDay = .all
-    @Published var minPrice: String = ""
-    @Published var maxPrice: String = ""
-    @Published var selectedPlayerCount: Int? = nil
-    @Published var sortBy: RoundSearchParams.SortOption = .price
-    @Published var sortOrder: RoundSearchParams.SortOrder = .asc
 
     @Published var isLoading = false
     @Published var isLoadingMore = false
     @Published var errorMessage: String?
-    @Published var showFilterSheet = false
 
     @Published var currentPage = 1
     @Published var totalPages = 1
@@ -44,13 +38,6 @@ class RoundBookingViewModel: ObservableObject {
 
     var hasMorePages: Bool {
         currentPage < totalPages
-    }
-
-    var activeFiltersCount: Int {
-        var count = 0
-        if !minPrice.isEmpty || !maxPrice.isEmpty { count += 1 }
-        if selectedPlayerCount != nil { count += 1 }
-        return count
     }
 
     // MARK: - Search
@@ -101,11 +88,6 @@ class RoundBookingViewModel: ObservableObject {
             query: searchQuery.isEmpty ? nil : searchQuery,
             date: selectedDate,
             timeOfDay: selectedTimeOfDay,
-            minPrice: Int(minPrice),
-            maxPrice: Int(maxPrice),
-            minPlayers: selectedPlayerCount,
-            sortBy: sortBy,
-            sortOrder: sortOrder,
             page: currentPage,
             limit: 20
         )
@@ -142,10 +124,6 @@ class RoundBookingViewModel: ObservableObject {
         search()
     }
 
-    func formatDate(_ date: Date) -> String {
-        DateHelper.toRelativeDate(date)
-    }
-
     // MARK: - Time of Day Selection
 
     func selectTimeOfDay(_ timeOfDay: RoundSearchParams.TimeOfDay) {
@@ -154,22 +132,6 @@ class RoundBookingViewModel: ObservableObject {
         #endif
         selectedTimeOfDay = timeOfDay
         search()
-    }
-
-    // MARK: - Filters
-
-    func applyFilters() {
-        showFilterSheet = false
-        search()
-    }
-
-    func resetFilters() {
-        selectedTimeOfDay = .all
-        minPrice = ""
-        maxPrice = ""
-        selectedPlayerCount = nil
-        sortBy = .price
-        sortOrder = .asc
     }
 
     // MARK: - Booking
