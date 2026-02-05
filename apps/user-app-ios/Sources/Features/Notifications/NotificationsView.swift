@@ -21,6 +21,8 @@ struct NotificationsView: View {
                 // Content
                 if viewModel.isLoading && viewModel.notifications.isEmpty {
                     loadingView
+                } else if let error = viewModel.error {
+                    errorView(error)
                 } else if viewModel.filteredNotifications.isEmpty {
                     emptyView
                 } else {
@@ -105,6 +107,41 @@ struct NotificationsView: View {
                 .font(.parkBodyMedium)
                 .foregroundStyle(.white.opacity(0.7))
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Error View
+
+    private func errorView(_ error: String) -> some View {
+        VStack(spacing: ParkSpacing.md) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 48))
+                .foregroundStyle(Color.orange)
+
+            Text("알림을 불러올 수 없습니다")
+                .font(.parkHeadlineMedium)
+                .foregroundStyle(.white)
+
+            Text(error)
+                .font(.parkBodySmall)
+                .foregroundStyle(.white.opacity(0.6))
+                .multilineTextAlignment(.center)
+
+            Button {
+                Task {
+                    await viewModel.loadNotifications()
+                }
+            } label: {
+                Text("다시 시도")
+                    .font(.parkLabelMedium)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, ParkSpacing.lg)
+                    .padding(.vertical, ParkSpacing.sm)
+                    .background(Color.parkPrimary)
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(ParkSpacing.xl)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
