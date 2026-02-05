@@ -153,32 +153,33 @@ struct RoundBookingView: View {
             viewModel.searchDebounced()
         }
         .padding(.horizontal, ParkSpacing.md)
-        .padding(.top, ParkSpacing.sm)
     }
 
     // MARK: - Date Selector
 
     private var dateSelector: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(spacing: ParkSpacing.xxs) {
-                ForEach(Array(viewModel.dateOptions.enumerated()), id: \.element) { index, date in
+            HStack(spacing: ParkSpacing.xxs) {
+                ForEach(viewModel.dateOptions, id: \.self) { date in
                     DateChip(
                         date: date,
                         isSelected: Calendar.current.isDate(date, inSameDayAs: viewModel.selectedDate)
                     ) {
                         viewModel.selectDate(date)
                     }
-                    .onAppear {
-                        // 마지막 5개 이내에 도달하면 7일 추가 로드
-                        if index >= viewModel.dateOptions.count - 5 {
-                            viewModel.loadMoreDates()
-                        }
-                    }
                 }
+
+                // 마지막에 로딩 트리거 뷰
+                Color.clear
+                    .frame(width: 1, height: 1)
+                    .onAppear {
+                        viewModel.loadMoreDates()
+                    }
             }
             .padding(.horizontal, ParkSpacing.md)
         }
-        .padding(.vertical, ParkSpacing.sm)
+        .padding(.top, ParkSpacing.sm)
+        .padding(.bottom, ParkSpacing.xs)
     }
 
     // MARK: - Time of Day Filter
