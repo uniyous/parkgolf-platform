@@ -77,7 +77,7 @@ struct ChatRoomView: View {
                         Label("채팅방 나가기", systemImage: "rectangle.portrait.and.arrow.right")
                     }
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    Image(systemName: "ellipsis.vertical")
                         .foregroundStyle(.white)
                 }
             }
@@ -173,6 +173,7 @@ struct ChatRoomView: View {
                 .padding(.horizontal, ParkSpacing.md)
                 .padding(.vertical, ParkSpacing.md)
             }
+            .scrollDismissesKeyboard(.interactively)
             .refreshable {
                 // 당겨서 새로고침 - 이전 메시지 로드
                 await viewModel.loadMoreMessages()
@@ -251,8 +252,13 @@ struct ChatRoomView: View {
                 .foregroundStyle(.white)
                 .focused($isInputFocused)
                 .lineLimit(1...5)
-                .onChange(of: viewModel.inputText) { _, newValue in
-                    viewModel.sendTypingIndicator(!newValue.isEmpty)
+                .onSubmit {
+                    // 키보드 엔터키로 전송하지 않음 (멀티라인)
+                }
+                .task(id: viewModel.inputText) {
+                    // Debounce typing indicator (300ms)
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    viewModel.sendTypingIndicator(!viewModel.inputText.isEmpty)
                 }
 
             Button {
@@ -268,10 +274,7 @@ struct ChatRoomView: View {
         }
         .padding(.horizontal, ParkSpacing.md)
         .padding(.vertical, ParkSpacing.sm)
-        .background(
-            Color.black.opacity(0.3)
-                .background(.ultraThinMaterial)
-        )
+        .background(Color.black.opacity(0.6))
     }
 }
 
