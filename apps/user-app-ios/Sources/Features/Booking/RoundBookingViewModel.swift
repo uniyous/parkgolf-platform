@@ -31,6 +31,10 @@ class RoundBookingViewModel: ObservableObject {
     @Published var selectedTimeSlot: TimeSlot?
     @Published var showBookingForm = false
 
+    // 날짜 옵션 (동적 로딩)
+    @Published var dateOptions: [Date] = []
+    private var loadedDays: Int = 30
+
     // MARK: - Private Properties
 
     private let roundService = RoundService()
@@ -42,8 +46,11 @@ class RoundBookingViewModel: ObservableObject {
         currentPage < totalPages
     }
 
-    var dateOptions: [Date] {
-        DateHelper.dateRange(days: 30)
+    // MARK: - Initialization
+
+    init() {
+        // 초기 30일 로드
+        dateOptions = DateHelper.dateRange(days: loadedDays)
     }
 
     var activeFiltersCount: Int {
@@ -178,5 +185,17 @@ class RoundBookingViewModel: ObservableObject {
         selectedRound = round
         selectedTimeSlot = timeSlot
         showBookingForm = true
+    }
+
+    // MARK: - Date Loading
+
+    /// 스크롤 끝에 도달하면 7일 추가 로드
+    func loadMoreDates() {
+        let newDays = loadedDays + 7
+        let newDates = ((loadedDays + 1)...newDays).compactMap {
+            Calendar.current.date(byAdding: .day, value: $0, to: Date())
+        }
+        dateOptions.append(contentsOf: newDates)
+        loadedDays = newDays
     }
 }

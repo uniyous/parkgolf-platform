@@ -161,12 +161,18 @@ struct RoundBookingView: View {
     private var dateSelector: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: ParkSpacing.xxs) {
-                ForEach(viewModel.dateOptions, id: \.self) { date in
+                ForEach(Array(viewModel.dateOptions.enumerated()), id: \.element) { index, date in
                     DateChip(
                         date: date,
                         isSelected: Calendar.current.isDate(date, inSameDayAs: viewModel.selectedDate)
                     ) {
                         viewModel.selectDate(date)
+                    }
+                    .onAppear {
+                        // 마지막 날짜에 도달하면 7일 추가 로드
+                        if index == viewModel.dateOptions.count - 1 {
+                            viewModel.loadMoreDates()
+                        }
                     }
                 }
             }

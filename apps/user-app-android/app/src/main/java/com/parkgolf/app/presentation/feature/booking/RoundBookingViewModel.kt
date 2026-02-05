@@ -64,11 +64,23 @@ class RoundBookingViewModel @Inject constructor(
 
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
-    // 내일부터 30일
-    val dateOptions: List<LocalDate> = (1..30).map { LocalDate.now().plusDays(it.toLong()) }
+    // 날짜 옵션 (동적 로딩)
+    private val _dateOptions = MutableStateFlow<List<LocalDate>>(emptyList())
+    val dateOptions: StateFlow<List<LocalDate>> = _dateOptions.asStateFlow()
+    private var loadedDays = 30
 
     init {
+        // 초기 30일 로드
+        _dateOptions.value = (1..loadedDays).map { LocalDate.now().plusDays(it.toLong()) }
         search()
+    }
+
+    // 스크롤 끝에 도달하면 7일 추가 로드
+    fun loadMoreDates() {
+        val newDays = loadedDays + 7
+        val newDates = ((loadedDays + 1)..newDays).map { LocalDate.now().plusDays(it.toLong()) }
+        _dateOptions.value = _dateOptions.value + newDates
+        loadedDays = newDays
     }
 
     fun search() {

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
@@ -27,6 +28,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,6 +66,7 @@ fun RoundBookingScreen(
     viewModel: RoundBookingViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val dateOptions by viewModel.dateOptions.collectAsState()
 
     GradientBackground {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -78,12 +81,13 @@ fun RoundBookingScreen(
 
             // Date Selector
             DateSelector(
-                dateOptions = viewModel.dateOptions,
+                dateOptions = dateOptions,
                 selectedDate = uiState.selectedDate,
                 onDateSelect = { viewModel.selectDate(it) },
                 formatWeekday = { viewModel.formatWeekday(it) },
                 formatShortDate = { viewModel.formatShortDate(it) },
-                isWeekend = { viewModel.isWeekend(it) }
+                isWeekend = { viewModel.isWeekend(it) },
+                onLoadMore = { viewModel.loadMoreDates() }
             )
 
             // Time of Day Filter (시니어 UI: 3개로 단순화)
@@ -189,14 +193,15 @@ private fun DateSelector(
     onDateSelect: (LocalDate) -> Unit,
     formatWeekday: (LocalDate) -> String,
     formatShortDate: (LocalDate) -> String,
-    isWeekend: (LocalDate) -> Boolean
+    isWeekend: (LocalDate) -> Boolean,
+    onLoadMore: () -> Unit
 ) {
     LazyRow(
         modifier = Modifier.padding(vertical = 12.dp),
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        items(dateOptions) { date ->
+        itemsIndexed(dateOptions) { index, date ->
             DateChip(
                 weekday = formatWeekday(date),
                 shortDate = formatShortDate(date),
@@ -204,6 +209,13 @@ private fun DateSelector(
                 isWeekend = isWeekend(date),
                 onClick = { onDateSelect(date) }
             )
+
+            // 마지막 날짜에 도달하면 7일 추가 로드
+            if (index == dateOptions.size - 1) {
+                LaunchedEffect(dateOptions.size) {
+                    onLoadMore()
+                }
+            }
         }
     }
 }
