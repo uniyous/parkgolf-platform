@@ -121,13 +121,19 @@ struct UnreadCountResponse: Codable, Sendable {
 }
 
 // MARK: - Notifications Response
+// 백엔드 응답: { success, data: [...], total, page, limit, totalPages }
 
 struct NotificationsResponse: Codable, Sendable {
     let success: Bool
-    let data: NotificationsData
+    let data: [AppNotification]
+    let total: Int
+    let page: Int
+    let limit: Int
+    let totalPages: Int
 }
 
-struct NotificationsData: Codable, Sendable {
+// Legacy wrapper for backward compatibility
+struct NotificationsData: Sendable {
     let notifications: [AppNotification]
     let total: Int
     let page: Int

@@ -27,7 +27,13 @@ actor NotificationService {
             endpoint,
             responseType: NotificationsResponse.self
         )
-        return response.data
+        // 백엔드 응답을 NotificationsData로 변환
+        return NotificationsData(
+            notifications: response.data,
+            total: response.total,
+            page: response.page,
+            totalPages: response.totalPages
+        )
     }
 
     // MARK: - Get Unread Count
