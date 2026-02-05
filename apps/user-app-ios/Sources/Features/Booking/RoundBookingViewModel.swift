@@ -32,7 +32,7 @@ class RoundBookingViewModel: ObservableObject {
     @Published var showBookingForm = false
 
     // 날짜 옵션 (동적 로딩)
-    @Published var dateOptions: [Date] = []
+    @Published var dateOptions: [Date] = DateHelper.dateRange(days: 30)
     private var loadedDays: Int = 30
 
     // MARK: - Private Properties
@@ -44,13 +44,6 @@ class RoundBookingViewModel: ObservableObject {
 
     var hasMorePages: Bool {
         currentPage < totalPages
-    }
-
-    // MARK: - Initialization
-
-    init() {
-        // 초기 30일 로드
-        dateOptions = DateHelper.dateRange(days: loadedDays)
     }
 
     var activeFiltersCount: Int {
