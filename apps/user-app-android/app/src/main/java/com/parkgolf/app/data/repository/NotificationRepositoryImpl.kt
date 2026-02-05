@@ -27,14 +27,14 @@ class NotificationRepositoryImpl @Inject constructor(
         )
 
         if (response.success) {
-            val notifications = response.data.notifications.map { it.toDomain() }
+            val notifications = response.data.map { it.toDomain() }
             Result.success(
                 PaginatedData(
                     data = notifications,
-                    total = response.data.total,
-                    page = response.data.page,
-                    limit = response.data.limit,
-                    totalPages = response.data.totalPages
+                    total = response.total,
+                    page = response.page,
+                    limit = response.limit,
+                    totalPages = response.totalPages
                 )
             )
         } else {
