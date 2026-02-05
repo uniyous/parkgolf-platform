@@ -224,9 +224,9 @@ private fun DateChip(
 
     Column(
         modifier = Modifier
-            .width(44.dp)
-            .height(48.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .width(56.dp)
+            .height(60.dp)
+            .clip(RoundedCornerShape(12.dp))
             .background(
                 if (isSelected) ParkPrimary else GlassBackground
             )
@@ -236,14 +236,14 @@ private fun DateChip(
     ) {
         Text(
             text = weekday,
-            fontSize = 12.sp,
+            fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = weekdayColor
         )
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = shortDate,
-            fontSize = 13.sp,
+            fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
             color = if (isSelected) Color.White else TextOnGradient
         )
