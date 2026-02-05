@@ -25,8 +25,9 @@ class HomeViewModel: ObservableObject {
     }
 
     // 전체 알림 배지 수 (헤더 벨 아이콘용)
+    // 알림 서비스에 친구요청/채팅 알림이 이미 포함되어 있으므로 중복 카운트 방지
     var totalNotificationBadgeCount: Int {
-        unreadNotificationCount + pendingFriendRequestsCount + totalUnreadMessagesCount
+        unreadNotificationCount
     }
 
     private let bookingService = BookingService()

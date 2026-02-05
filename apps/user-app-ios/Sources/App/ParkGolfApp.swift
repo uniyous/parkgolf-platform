@@ -249,6 +249,13 @@ final class AppState: ObservableObject {
     @Published var navigateToTab: MainTabView.Tab?
     @Published var pendingChatRoomId: String?
     @Published var pendingBookingId: Int?
+    @Published var pendingSocialSegment: SocialSegment?
+
+    /// 소셜 탭 세그먼트
+    enum SocialSegment {
+        case friends
+        case chat
+    }
 
     /// 비밀번호 변경 권유를 이미 표시했는지 (세션 내 1회만)
     private var hasShownPasswordReminder = false

@@ -83,18 +83,22 @@ struct MainTabView: View {
         .onReceive(NotificationCenter.default.publisher(for: .navigateToBookingDetail)) { notification in
             if let bookingId = notification.userInfo?["bookingId"] as? Int {
                 appState.pendingBookingId = bookingId
-                selectedTab = .search
+                // 내 예약 시트 열기 (예약 상세로 이동)
+                appState.showMyBookingsSheet = true
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToFriendRequests)) { _ in
+            appState.pendingSocialSegment = .friends
             selectedTab = .social
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToFriendsList)) { _ in
+            appState.pendingSocialSegment = .friends
             selectedTab = .social
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToChatRoom)) { notification in
             if let chatRoomId = notification.userInfo?["chatRoomId"] as? String {
                 appState.pendingChatRoomId = chatRoomId
+                appState.pendingSocialSegment = .chat
                 selectedTab = .social
             }
         }

@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - My Bookings View
 
 struct MyBookingsView: View {
+    @EnvironmentObject private var appState: AppState
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = MyBookingsViewModel()
 
@@ -42,7 +43,15 @@ struct MyBookingsView: View {
             BookingDetailSheet(booking: booking)
         }
         .task {
-            viewModel.loadBookings()
+            await viewModel.loadBookingsAsync()
+
+            // 알림에서 특정 예약 상세로 이동 요청 처리
+            if let bookingId = appState.pendingBookingId {
+                if let booking = viewModel.bookings.first(where: { $0.id == bookingId }) {
+                    viewModel.selectedBooking = booking
+                }
+                appState.pendingBookingId = nil
+            }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar {
@@ -267,33 +276,37 @@ class MyBookingsViewModel: ObservableObject {
     }
 
     func loadBookings() {
+        Task {
+            await loadBookingsAsync()
+        }
+    }
+
+    func loadBookingsAsync() async {
         isLoading = true
         errorMessage = nil
 
-        Task {
-            do {
-                let allBookings = try await bookingService.getMyBookings(status: nil, page: 1)
+        do {
+            let allBookings = try await bookingService.getMyBookings(status: nil, page: 1)
 
-                // 클라이언트에서 탭에 따라 필터링
-                let now = Date()
-                if selectedTab == .upcoming {
-                    bookings = allBookings.filter { booking in
-                        guard let date = DateHelper.fromISODateString(booking.bookingDate) else { return false }
-                        return date >= Calendar.current.startOfDay(for: now) &&
-                               (booking.status == "PENDING" || booking.status == "SLOT_RESERVED" || booking.status == "CONFIRMED")
-                    }
-                } else {
-                    bookings = allBookings.filter { booking in
-                        guard let date = DateHelper.fromISODateString(booking.bookingDate) else { return true }
-                        return date < Calendar.current.startOfDay(for: now) ||
-                               booking.status == "COMPLETED" || booking.status == "CANCELLED" || booking.status == "NO_SHOW"
-                    }
+            // 클라이언트에서 탭에 따라 필터링
+            let now = Date()
+            if selectedTab == .upcoming {
+                bookings = allBookings.filter { booking in
+                    guard let date = DateHelper.fromISODateString(booking.bookingDate) else { return false }
+                    return date >= Calendar.current.startOfDay(for: now) &&
+                           (booking.status == "PENDING" || booking.status == "SLOT_RESERVED" || booking.status == "CONFIRMED")
                 }
-            } catch {
-                errorMessage = error.localizedDescription
+            } else {
+                bookings = allBookings.filter { booking in
+                    guard let date = DateHelper.fromISODateString(booking.bookingDate) else { return true }
+                    return date < Calendar.current.startOfDay(for: now) ||
+                           booking.status == "COMPLETED" || booking.status == "CANCELLED" || booking.status == "NO_SHOW"
+                }
             }
-            isLoading = false
+        } catch {
+            errorMessage = error.localizedDescription
         }
+        isLoading = false
     }
 
     func loadMore() {
