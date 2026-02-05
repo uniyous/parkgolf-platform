@@ -21,7 +21,7 @@ export function SubPageHeader({ title, onBack, rightContent }: SubPageHeaderProp
   };
 
   return (
-    <div className="sticky top-0 z-30 glass-card !rounded-none md:!rounded-b-2xl px-4 py-3">
+    <div className="sticky top-0 z-30 glass-card !rounded-none md:!rounded-b-2xl px-4 py-3 !overflow-visible">
       <div className="flex items-center gap-3">
         {onBack !== false && (
           <button
