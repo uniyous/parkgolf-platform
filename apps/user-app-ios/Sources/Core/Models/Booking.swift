@@ -149,6 +149,7 @@ struct EmptyDataResponse: Codable, Sendable {
 // MARK: - Payment Method
 
 enum PaymentMethod: String, CaseIterable, Sendable {
+    case onsite = "onsite"
     case card = "card"
     case kakaopay = "kakaopay"
     case naverpay = "naverpay"
@@ -157,7 +158,8 @@ enum PaymentMethod: String, CaseIterable, Sendable {
 
     var displayName: String {
         switch self {
-        case .card: return "신용카드"
+        case .onsite: return "현장결제"
+        case .card: return "카드결제"
         case .kakaopay: return "카카오페이"
         case .naverpay: return "네이버페이"
         case .tosspay: return "토스페이"
@@ -167,6 +169,7 @@ enum PaymentMethod: String, CaseIterable, Sendable {
 
     var icon: String {
         switch self {
+        case .onsite: return "🏪"
         case .card: return "💳"
         case .kakaopay: return "💛"
         case .naverpay: return "💚"
