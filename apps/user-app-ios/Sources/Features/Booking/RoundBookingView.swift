@@ -160,7 +160,7 @@ struct RoundBookingView: View {
 
     private var dateSelector: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: ParkSpacing.xxs) {
+            LazyHStack(spacing: ParkSpacing.xxs) {
                 ForEach(Array(viewModel.dateOptions.enumerated()), id: \.element) { index, date in
                     DateChip(
                         date: date,
@@ -169,8 +169,8 @@ struct RoundBookingView: View {
                         viewModel.selectDate(date)
                     }
                     .onAppear {
-                        // 마지막 날짜에 도달하면 7일 추가 로드
-                        if index == viewModel.dateOptions.count - 1 {
+                        // 마지막 5개 이내에 도달하면 7일 추가 로드
+                        if index >= viewModel.dateOptions.count - 5 {
                             viewModel.loadMoreDates()
                         }
                     }
