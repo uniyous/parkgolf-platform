@@ -21,7 +21,8 @@ struct NotificationsView: View {
                 // Content
                 if viewModel.isLoading && viewModel.notifications.isEmpty {
                     loadingView
-                } else if let error = viewModel.error {
+                } else if viewModel.notifications.isEmpty, let error = viewModel.error {
+                    // 데이터가 없고 에러가 있을 때만 에러 화면 표시
                     errorView(error)
                 } else if viewModel.filteredNotifications.isEmpty {
                     emptyView
@@ -68,9 +69,6 @@ struct NotificationsView: View {
         }
         .onDisappear {
             viewModel.disconnectSocket()
-        }
-        .refreshable {
-            await viewModel.loadNotifications()
         }
     }
 
@@ -171,33 +169,48 @@ struct NotificationsView: View {
     // MARK: - Notifications List
 
     private var notificationsList: some View {
-        ScrollView {
-            LazyVStack(spacing: ParkSpacing.sm) {
-                ForEach(viewModel.filteredNotifications) { notification in
-                    NotificationRow(
-                        notification: notification,
-                        onTap: {
-                            Task {
-                                await viewModel.markAsRead(notification)
-                                handleNotificationTap(notification)
-                            }
-                        },
-                        onDelete: {
-                            Task {
-                                await viewModel.deleteNotification(notification)
-                            }
+        List {
+            ForEach(viewModel.filteredNotifications) { notification in
+                NotificationRow(
+                    notification: notification,
+                    onTap: {
+                        Task {
+                            await viewModel.markAsRead(notification)
+                            handleNotificationTap(notification)
                         }
-                    )
-                }
+                    },
+                    onDelete: {
+                        Task {
+                            await viewModel.deleteNotification(notification)
+                        }
+                    }
+                )
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(
+                    top: ParkSpacing.xs,
+                    leading: ParkSpacing.md,
+                    bottom: ParkSpacing.xs,
+                    trailing: ParkSpacing.md
+                ))
+            }
 
-                // Load more indicator
-                if viewModel.isLoadingMore {
+            // Load more indicator
+            if viewModel.isLoadingMore {
+                HStack {
+                    Spacer()
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .padding()
+                    Spacer()
                 }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
-            .padding(ParkSpacing.md)
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .refreshable {
+            await viewModel.loadNotifications()
         }
     }
 

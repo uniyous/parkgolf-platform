@@ -49,7 +49,12 @@ final class NotificationsViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var isLoadingMore = false
     @Published var error: String?
-    @Published var selectedFilter: NotificationFilter = .all
+    @Published var selectedFilter: NotificationFilter = .all {
+        didSet {
+            // 탭 전환 시 에러 상태 초기화
+            error = nil
+        }
+    }
 
     // MARK: - Computed Properties
 
