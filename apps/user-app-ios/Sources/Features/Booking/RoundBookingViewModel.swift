@@ -34,7 +34,6 @@ class RoundBookingViewModel: ObservableObject {
     // 날짜 옵션 (동적 로딩)
     @Published var dateOptions: [Date] = DateHelper.dateRange(days: 30)
     private var loadedDays: Int = 30
-    private var isLoadingDates: Bool = false
 
     // MARK: - Private Properties
 
@@ -183,23 +182,13 @@ class RoundBookingViewModel: ObservableObject {
 
     // MARK: - Date Loading
 
-    /// 스크롤 끝에 도달하면 7일 추가 로드
+    /// 7일 추가 로드
     func loadMoreDates() {
-        // 이미 로딩 중이면 무시 (무한 루프 방지)
-        guard !isLoadingDates else { return }
-        isLoadingDates = true
-
         let newDays = loadedDays + 7
         let newDates = ((loadedDays + 1)...newDays).compactMap {
             Calendar.current.date(byAdding: .day, value: $0, to: Date())
         }
         dateOptions.append(contentsOf: newDates)
         loadedDays = newDays
-
-        // 약간의 딜레이 후 다시 로딩 가능하도록
-        Task {
-            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5초
-            isLoadingDates = false
-        }
     }
 }

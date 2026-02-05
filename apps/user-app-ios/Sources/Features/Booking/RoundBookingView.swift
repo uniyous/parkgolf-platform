@@ -169,12 +169,23 @@ struct RoundBookingView: View {
                     }
                 }
 
-                // 마지막에 로딩 트리거 뷰
-                Color.clear
-                    .frame(width: 1, height: 1)
-                    .onAppear {
-                        viewModel.loadMoreDates()
+                // 더보기 버튼
+                Button {
+                    viewModel.loadMoreDates()
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 18, weight: .medium))
+                        Text("7일")
+                            .font(.parkCaption)
                     }
+                    .foregroundStyle(.white.opacity(0.7))
+                    .frame(width: 56, height: 60)
+                    .background(
+                        RoundedRectangle(cornerRadius: ParkRadius.md)
+                            .stroke(Color.white.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [4]))
+                    )
+                }
             }
             .padding(.horizontal, ParkSpacing.md)
         }
