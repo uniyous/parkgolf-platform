@@ -169,21 +169,23 @@ struct NotificationsView: View {
     private func handleNotificationTap(_ notification: AppNotification) {
         switch notification.type {
         case .bookingConfirmed, .bookingCancelled:
-            if let bookingId = notification.data?.bookingId {
+            if let bookingIdStr = notification.data?.bookingId,
+               let bookingId = Int(bookingIdStr) {
                 dismiss()
                 NotificationCenter.default.post(
                     name: .navigateToBookingDetail,
                     object: nil,
-                    userInfo: ["bookingId": Int(bookingId) ?? 0]
+                    userInfo: ["bookingId": bookingId]
                 )
             }
         case .paymentSuccess, .paymentFailed:
-            if let bookingId = notification.data?.bookingId {
+            if let bookingIdStr = notification.data?.bookingId,
+               let bookingId = Int(bookingIdStr) {
                 dismiss()
                 NotificationCenter.default.post(
                     name: .navigateToBookingDetail,
                     object: nil,
-                    userInfo: ["bookingId": Int(bookingId) ?? 0]
+                    userInfo: ["bookingId": bookingId]
                 )
             }
         case .friendRequest, .friendAccepted:

@@ -319,6 +319,18 @@ fun ParkGolfNavHost(
             )
         }
 
+        // Booking Detail screen (from notifications)
+        composable(
+            route = Screen.BookingDetail.route,
+            arguments = listOf(navArgument("bookingId") { type = NavType.StringType })
+        ) {
+            // Navigate to MyBookingsScreen - detail shown in bottom sheet
+            MyBookingsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onBookingClick = { /* Detail shown in bottom sheet */ }
+            )
+        }
+
         // Friend Requests screen (from Home notification card)
         composable(Screen.FriendRequests.route) {
             FriendRequestsScreen(
