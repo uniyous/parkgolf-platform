@@ -263,11 +263,12 @@ private fun FilterChip(
         if (unreadCount > 0) {
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(50))
+                    .height(18.dp)
+                    .clip(RoundedCornerShape(9.dp))
                     .background(
                         if (isSelected) Color.White else ParkError
                     )
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                    .padding(horizontal = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
