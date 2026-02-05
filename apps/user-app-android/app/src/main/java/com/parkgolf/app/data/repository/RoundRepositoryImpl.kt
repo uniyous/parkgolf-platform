@@ -26,6 +26,7 @@ class RoundRepositoryImpl @Inject constructor(
         roundApi.searchRounds(
             search = params.search,
             date = params.date,
+            timeOfDay = params.timeOfDay?.apiValue?.takeIf { it.isNotEmpty() },
             minPrice = params.minPrice,
             maxPrice = params.maxPrice,
             minPlayers = params.minPlayers,

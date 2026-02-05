@@ -103,9 +103,6 @@ struct RoundBookingView: View {
                     .tint(.white)
             }
         }
-        .sheet(isPresented: $viewModel.showFilterSheet) {
-            RoundFilterSheet(viewModel: viewModel)
-        }
         .fullScreenCover(isPresented: $viewModel.showBookingForm, onDismiss: {
             if appState.bookingCompleteAction == .myBookings {
                 appState.showMyBookingsSheet = true
@@ -142,49 +139,18 @@ struct RoundBookingView: View {
         .padding(.bottom, ParkSpacing.xs)
     }
 
-    // MARK: - Search Header
+    // MARK: - Search Header (시니어 UI: 필터 버튼 제거)
 
     private var searchHeader: some View {
-        HStack(spacing: ParkSpacing.sm) {
-            GlassSearchField(
-                placeholder: "골프장, 코스 검색...",
-                text: $viewModel.searchQuery
-            ) {
-                viewModel.search()
-            }
-            .accessibilityIdentifier("roundSearchField")
-            .onChange(of: viewModel.searchQuery) { _, _ in
-                viewModel.searchDebounced()
-            }
-
-            // Filter Button
-            Button {
-                viewModel.showFilterSheet = true
-            } label: {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundStyle(.white)
-                        .frame(width: 48, height: 48)
-                        .background(Color.white.opacity(0.15))
-                        .clipShape(RoundedRectangle(cornerRadius: ParkRadius.md))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: ParkRadius.md)
-                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                        )
-
-                    if viewModel.activeFiltersCount > 0 {
-                        Text("\(viewModel.activeFiltersCount)")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 18, height: 18)
-                            .background(Color.parkAccent)
-                            .clipShape(Circle())
-                            .offset(x: 4, y: -4)
-                    }
-                }
-            }
-            .accessibilityIdentifier("filterButton")
+        GlassSearchField(
+            placeholder: "골프장, 코스 검색...",
+            text: $viewModel.searchQuery
+        ) {
+            viewModel.search()
+        }
+        .accessibilityIdentifier("roundSearchField")
+        .onChange(of: viewModel.searchQuery) { _, _ in
+            viewModel.searchDebounced()
         }
         .padding(.horizontal, ParkSpacing.md)
         .padding(.top, ParkSpacing.sm)
@@ -323,7 +289,7 @@ struct DateChip: View {
     }
 }
 
-// MARK: - Filter Chip
+// MARK: - Filter Chip (시니어 UI: 큰 터치 영역)
 
 struct FilterChip: View {
     let title: String
@@ -332,29 +298,28 @@ struct FilterChip: View {
 
     var body: some View {
         Text(title)
-            .font(.parkLabelSmall)
-            .foregroundStyle(isSelected ? .white : .white.opacity(0.6))
-            .padding(.horizontal, ParkSpacing.sm)
-            .padding(.vertical, ParkSpacing.xxs)
+            .font(.parkBodyLarge)
+            .fontWeight(isSelected ? .semibold : .regular)
+            .foregroundStyle(isSelected ? .white : .white.opacity(0.7))
+            .padding(.horizontal, ParkSpacing.md)
+            .padding(.vertical, ParkSpacing.sm)
+            .frame(minHeight: 44)
             .background(
-                Capsule()
-                    .fill(isSelected ? Color.parkPrimary.opacity(0.8) : Color.clear)
+                RoundedRectangle(cornerRadius: ParkRadius.md)
+                    .fill(isSelected ? Color.parkPrimary.opacity(0.3) : Color.white.opacity(0.1))
             )
             .overlay(
-                Capsule()
-                    .stroke(isSelected ? Color.clear : Color.white.opacity(0.3), lineWidth: 1)
+                RoundedRectangle(cornerRadius: ParkRadius.md)
+                    .stroke(isSelected ? Color.parkPrimary.opacity(0.5) : Color.white.opacity(0.2), lineWidth: 1)
             )
-            .contentShape(Capsule())
+            .contentShape(Rectangle())
             .onTapGesture {
-                #if DEBUG
-                print("⏰ [FilterChip] tapped: \(title)")
-                #endif
                 action()
             }
     }
 }
 
-// MARK: - Round Card View
+// MARK: - Round Card View (시니어 UI: 단순화, 세로 리스트)
 
 struct RoundCardView: View {
     let round: Round
@@ -365,61 +330,53 @@ struct RoundCardView: View {
 
     private var displayedSlots: [TimeSlot] {
         guard let slots = round.timeSlots else { return [] }
-        return showAllSlots ? slots : Array(slots.prefix(6))
+        return showAllSlots ? slots : Array(slots.prefix(5))  // 5개로 축소
     }
 
     private var hasMoreSlots: Bool {
-        (round.timeSlots?.count ?? 0) > 6
+        (round.timeSlots?.count ?? 0) > 5
+    }
+
+    private var pricePerPerson: Int {
+        round.pricePerPerson ?? round.basePrice
     }
 
     var body: some View {
         GlassCard(padding: 0) {
             VStack(alignment: .leading, spacing: 0) {
-                // Round Info
+                // Round Info (시니어 UI: 단순화)
                 VStack(alignment: .leading, spacing: ParkSpacing.xs) {
-                    HStack {
-                        Text(round.name)
-                            .font(.parkHeadlineMedium)
-                            .foregroundStyle(.white)
+                    Text(round.clubName)
+                        .font(.parkHeadlineLarge)
+                        .foregroundStyle(.white)
 
-                        Spacer()
+                    Text("📍 \(round.club?.location ?? "") · \(round.name)")
+                        .font(.parkBodyLarge)
+                        .foregroundStyle(.white.opacity(0.7))
 
-                        if let range = round.priceRange {
-                            PriceRangeDisplay(minPrice: range.min, maxPrice: range.max, size: .small)
-                        }
-                    }
-
-                    HStack(spacing: ParkSpacing.md) {
-                        Label(round.clubName, systemImage: "building.2")
-                        Label(round.courseNames, systemImage: "flag")
-                    }
-                    .font(.parkBodySmall)
-                    .foregroundStyle(.white.opacity(0.7))
-
-                    HStack(spacing: ParkSpacing.md) {
-                        Label(round.durationText, systemImage: "clock")
-                        Label("최대 \(round.maxPlayers)명", systemImage: "person.2")
-                    }
-                    .font(.parkCaption)
-                    .foregroundStyle(.white.opacity(0.6))
+                    Text("\(pricePerPerson.formatted())원 /인 · \(round.durationText) · \(round.maxPlayers)명")
+                        .font(.parkBodyLarge)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white.opacity(0.9))
                 }
                 .padding(ParkSpacing.md)
 
-                // Time Slots
+                // Time Slots (시니어 UI: 세로 리스트)
                 if !displayedSlots.isEmpty {
                     Divider()
-                        .background(Color.white.opacity(0.1))
+                        .background(Color.white.opacity(0.2))
 
-                    VStack(spacing: ParkSpacing.sm) {
-                        LazyVGrid(columns: [
-                            GridItem(.flexible(), spacing: ParkSpacing.xs),
-                            GridItem(.flexible(), spacing: ParkSpacing.xs),
-                            GridItem(.flexible(), spacing: ParkSpacing.xs)
-                        ], spacing: ParkSpacing.xs) {
-                            ForEach(displayedSlots, id: \.id) { slot in
-                                TimeSlotChip(slot: slot) {
-                                    onSelectTimeSlot(slot)
-                                }
+                    VStack(spacing: ParkSpacing.xs) {
+                        Text("예약 가능 시간")
+                            .font(.parkBodyLarge)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.bottom, ParkSpacing.xs)
+
+                        ForEach(displayedSlots, id: \.id) { slot in
+                            SeniorTimeSlotRow(slot: slot) {
+                                onSelectTimeSlot(slot)
                             }
                         }
 
@@ -429,229 +386,75 @@ struct RoundCardView: View {
                                     showAllSlots = true
                                 }
                             } label: {
-                                Text("+ \((round.timeSlots?.count ?? 0) - 6)개 더보기")
-                                    .font(.parkLabelSmall)
-                                    .foregroundStyle(.white)
+                                Text("전체 \(round.timeSlots?.count ?? 0)개 시간 보기 ▼")
+                                    .font(.parkBodyMedium)
+                                    .foregroundStyle(.white.opacity(0.7))
+                                    .padding(.top, ParkSpacing.xs)
                             }
                         }
                     }
                     .padding(ParkSpacing.md)
+                    .background(Color.black.opacity(0.1))
                 }
             }
         }
     }
 }
 
-// MARK: - Time Slot Chip
+// MARK: - Senior Time Slot Row (시니어 UI: 큰 터치 영역, 세로 리스트)
 
-struct TimeSlotChip: View {
+struct SeniorTimeSlotRow: View {
     let slot: TimeSlot
     let action: () -> Void
 
-    private var priceText: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        return "\(formatter.string(from: NSNumber(value: slot.price)) ?? "\(slot.price)")원"
+    private var availabilityText: String {
+        if slot.availableSlots == 0 {
+            return "매진"
+        } else if slot.availableSlots <= 2 {
+            return "마감임박"
+        }
+        return "\(slot.availableSlots)자리 남음"
+    }
+
+    private var availabilityColor: Color {
+        if slot.availableSlots <= 2 {
+            return .parkError
+        }
+        return .parkSuccess
     }
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 0) {
-                HStack(spacing: 2) {
-                    Text(slot.startTime)
-                        .font(.parkLabelMedium)
-                    if slot.isPremium {
-                        Text("💎")
-                            .font(.system(size: 8))
-                    }
-                }
+            HStack {
+                Text(slot.startTime)
+                    .font(.parkBodyLarge)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.white)
 
-                Text(priceText)
-                    .font(.system(size: 9))
-                    .foregroundStyle(.white.opacity(0.7))
+                Spacer()
 
-                Spacer().frame(height: 2)
-
-                HStack(spacing: 2) {
-                    Circle()
-                        .fill(availabilityColor)
-                        .frame(width: 5, height: 5)
-                    Text("\(slot.availableSlots)명")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.white)
-                }
+                Text(availabilityText)
+                    .font(.parkBodyLarge)
+                    .foregroundStyle(availabilityColor)
             }
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .frame(height: 48)
-            .background(Color.white.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: ParkRadius.sm))
+            .padding(.horizontal, ParkSpacing.md)
+            .frame(height: 56)
+            .background(
+                RoundedRectangle(cornerRadius: ParkRadius.md)
+                    .fill(slot.isPremium ? Color.parkAccent.opacity(0.2) : Color.white.opacity(0.1))
+            )
             .overlay(
-                RoundedRectangle(cornerRadius: ParkRadius.sm)
-                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                RoundedRectangle(cornerRadius: ParkRadius.md)
+                    .stroke(slot.isPremium ? Color.parkAccent.opacity(0.5) : Color.white.opacity(0.3), lineWidth: 1)
             )
         }
         .disabled(slot.availableSlots == 0)
         .opacity(slot.availableSlots == 0 ? 0.4 : 1)
         .accessibilityIdentifier("timeSlot_\(slot.id)")
     }
-
-    private var availabilityColor: Color {
-        switch slot.availabilityStatus {
-        case .available: return .parkSuccess
-        case .limited: return .parkWarning
-        case .almostFull: return .parkError
-        case .soldOut: return .gray
-        }
-    }
 }
 
-// MARK: - Round Filter Sheet
 
-struct RoundFilterSheet: View {
-    @ObservedObject var viewModel: RoundBookingViewModel
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                LinearGradient.parkBackground
-                    .ignoresSafeArea()
-
-                ScrollView {
-                    VStack(spacing: ParkSpacing.lg) {
-                        // Price Range
-                        VStack(alignment: .leading, spacing: ParkSpacing.sm) {
-                            Text("💰 가격대")
-                                .font(.parkHeadlineSmall)
-                                .foregroundStyle(.white)
-
-                            HStack(spacing: ParkSpacing.sm) {
-                                GlassTextField(
-                                    placeholder: "최소",
-                                    text: $viewModel.minPrice,
-                                    keyboardType: .numberPad
-                                )
-
-                                Text("~")
-                                    .foregroundStyle(.white.opacity(0.5))
-
-                                GlassTextField(
-                                    placeholder: "최대",
-                                    text: $viewModel.maxPrice,
-                                    keyboardType: .numberPad
-                                )
-                            }
-                        }
-                        .padding()
-                        .glassCard()
-
-                        // Player Count
-                        VStack(alignment: .leading, spacing: ParkSpacing.sm) {
-                            Text("👥 인원")
-                                .font(.parkHeadlineSmall)
-                                .foregroundStyle(.white)
-
-                            HStack(spacing: ParkSpacing.xs) {
-                                ForEach([1, 2, 3, 4], id: \.self) { count in
-                                    FilterChip(
-                                        title: "\(count)명\(count == 4 ? "+" : "")",
-                                        isSelected: viewModel.selectedPlayerCount == count
-                                    ) {
-                                        viewModel.selectedPlayerCount = viewModel.selectedPlayerCount == count ? nil : count
-                                    }
-                                }
-                            }
-                        }
-                        .padding()
-                        .glassCard()
-
-                        // Sort
-                        VStack(alignment: .leading, spacing: ParkSpacing.sm) {
-                            Text("📊 정렬")
-                                .font(.parkHeadlineSmall)
-                                .foregroundStyle(.white)
-
-                            VStack(spacing: ParkSpacing.xs) {
-                                ForEach(RoundSearchParams.SortOption.allCases, id: \.self) { option in
-                                    HStack {
-                                        Image(systemName: viewModel.sortBy == option ? "checkmark.circle.fill" : "circle")
-                                            .foregroundStyle(viewModel.sortBy == option ? Color.parkPrimary : .white.opacity(0.4))
-
-                                        Text(option.rawValue)
-                                            .foregroundStyle(.white)
-
-                                        Spacer()
-                                    }
-                                    .padding(.vertical, ParkSpacing.xs)
-                                    .contentShape(Rectangle())
-                                    .onTapGesture {
-                                        viewModel.sortBy = option
-                                    }
-                                }
-                            }
-
-                            HStack(spacing: ParkSpacing.sm) {
-                                ForEach(RoundSearchParams.SortOrder.allCases, id: \.self) { order in
-                                    FilterChip(
-                                        title: order.rawValue,
-                                        isSelected: viewModel.sortOrder == order
-                                    ) {
-                                        viewModel.sortOrder = order
-                                    }
-                                }
-                            }
-                        }
-                        .padding()
-                        .glassCard()
-                    }
-                    .padding()
-                }
-
-                // Bottom Buttons
-                VStack {
-                    Spacer()
-
-                    HStack(spacing: ParkSpacing.sm) {
-                        GradientButton(
-                            title: "초기화",
-                            style: .ghost
-                        ) {
-                            viewModel.resetFilters()
-                        }
-
-                        GradientButton(
-                            title: "적용하기"
-                        ) {
-                            viewModel.applyFilters()
-                        }
-                    }
-                    .padding()
-                    .background(
-                        LinearGradient(
-                            colors: [Color.clear, Color.black.opacity(0.5)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                }
-            }
-            .navigationTitle("상세 필터")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("닫기") {
-                        dismiss()
-                    }
-                    .foregroundStyle(.white)
-                }
-            }
-            .toolbarBackground(.hidden, for: .navigationBar)
-        }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
-    }
-}
 
 // MARK: - Preview
 

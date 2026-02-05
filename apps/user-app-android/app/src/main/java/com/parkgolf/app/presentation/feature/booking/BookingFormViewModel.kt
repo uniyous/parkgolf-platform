@@ -31,17 +31,21 @@ data class BookingFormUiState(
     val timeSlots: List<TimeSlot> = emptyList(),
     val selectedDate: String = "",
     val selectedTimeSlot: TimeSlot? = null,
-    val playerCount: Int = 1,
+    val playerCount: Int = 2,  // 시니어 UI: 기본 2명
     val specialRequests: String = "",
     val userName: String = "",
     val userEmail: String = "",
     val userPhone: String = "",
-    val paymentMethod: String = "CARD",
+    val paymentMethod: String = "onsite",  // 시니어 UI: 기본 현장결제
+    val agreedToTerms: Boolean = false,
     val totalPrice: Int = 0,
     val bookingSuccess: Boolean = false,
     val createdBooking: Booking? = null,
     val error: String? = null
-)
+) {
+    val canProceed: Boolean
+        get() = agreedToTerms && paymentMethod.isNotBlank() && playerCount > 0
+}
 
 @HiltViewModel
 class BookingFormViewModel @Inject constructor(
@@ -140,6 +144,10 @@ class BookingFormViewModel @Inject constructor(
 
     fun updatePaymentMethod(method: String) {
         _uiState.update { it.copy(paymentMethod = method) }
+    }
+
+    fun updateAgreedToTerms(agreed: Boolean) {
+        _uiState.update { it.copy(agreedToTerms = agreed) }
     }
 
     private fun calculateTotalPrice() {

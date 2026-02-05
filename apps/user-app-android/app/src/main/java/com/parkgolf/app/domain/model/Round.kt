@@ -117,11 +117,11 @@ data class RoundSearchParams(
     val limit: Int = 20
 )
 
-enum class TimeOfDay(val label: String, val startTime: String?, val endTime: String?) {
-    ALL("전체", null, null),
-    MORNING("오전", "06:00", "12:00"),
-    AFTERNOON("오후", "12:00", "18:00"),
-    EVENING("저녁", "18:00", "22:00")
+// 시니어 UI: 3개 옵션으로 단순화
+enum class TimeOfDay(val label: String, val apiValue: String) {
+    ALL("전체", ""),
+    MORNING("오전", "DAWN,MORNING"),      // 새벽+오전 = 05~12시
+    AFTERNOON("오후", "AFTERNOON,EVENING") // 오후+저녁 = 12~22시
 }
 
 enum class SortOption(val label: String, val value: String) {

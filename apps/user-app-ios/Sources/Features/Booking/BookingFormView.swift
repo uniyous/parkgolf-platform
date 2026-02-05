@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Booking Form View
+// MARK: - Booking Form View (시니어 UI)
 
 struct BookingFormView: View {
     let round: Round
@@ -29,30 +29,38 @@ struct BookingFormView: View {
                     .ignoresSafeArea()
 
                 ScrollView {
-                    VStack(spacing: ParkSpacing.md) {
-                        // Booking Info Card
-                        bookingInfoCard
+                    // 시니어 UI: 단일 카드 레이아웃
+                    GlassCard {
+                        VStack(spacing: 0) {
+                            // 예약 정보
+                            bookingInfoSection
 
-                        // Player Count
-                        playerCountCard
+                            sectionDivider
 
-                        // Special Requests
-                        specialRequestsCard
+                            // 인원 선택
+                            playerCountSection
 
-                        // Payment Method
-                        paymentMethodCard
+                            sectionDivider
 
-                        // Price Summary
-                        priceSummaryCard
+                            // 결제 방법
+                            paymentMethodSection
 
-                        // Terms
-                        termsCard
+                            sectionDivider
 
-                        // Spacer for bottom button
-                        Spacer()
-                            .frame(height: 100)
+                            // 결제 금액
+                            priceSection
+
+                            sectionDivider
+
+                            // 약관 동의
+                            termsSection
+                        }
                     }
                     .padding(ParkSpacing.md)
+
+                    // Spacer for bottom button
+                    Spacer()
+                        .frame(height: 100)
                 }
 
                 // Bottom Button
@@ -60,12 +68,13 @@ struct BookingFormView: View {
                     Spacer()
 
                     GradientButton(
-                        title: "💳 결제하기",
+                        title: viewModel.isLoading ? "처리 중..." : "₩\(viewModel.formatPrice(viewModel.totalPrice)) 예약하기",
                         isLoading: viewModel.isLoading,
                         isDisabled: !viewModel.canProceed
                     ) {
                         viewModel.createBooking(user: appState.currentUser)
                     }
+                    .frame(height: 64)
                     .padding(.horizontal, ParkSpacing.md)
                     .padding(.bottom, ParkSpacing.md)
                     .background(
@@ -78,7 +87,7 @@ struct BookingFormView: View {
                     )
                 }
             }
-            .navigationTitle("예약하기")
+            .navigationTitle("예약 확인")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -111,281 +120,152 @@ struct BookingFormView: View {
         }
     }
 
-    // MARK: - Booking Info Card
+    // MARK: - Section Divider
 
-    private var bookingInfoCard: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: ParkSpacing.sm) {
-                HStack {
-                    Text("📋 예약 정보")
-                        .font(.parkHeadlineSmall)
-                        .foregroundStyle(.white)
+    private var sectionDivider: some View {
+        Divider()
+            .background(Color.white.opacity(0.2))
+            .padding(.vertical, ParkSpacing.md)
+    }
 
-                    Spacer()
+    // MARK: - Booking Info Section (시니어 UI: 단순화)
 
-                    if timeSlot.isPremium {
-                        HStack(spacing: 4) {
-                            Text("💎")
-                            Text("프리미엄")
-                                .font(.parkLabelSmall)
-                        }
-                        .foregroundStyle(Color.parkAccent)
-                        .padding(.horizontal, ParkSpacing.xs)
-                        .padding(.vertical, 2)
-                        .background(Color.parkAccent.opacity(0.2))
-                        .clipShape(Capsule())
-                    }
-                }
+    private var bookingInfoSection: some View {
+        VStack(alignment: .leading, spacing: ParkSpacing.sm) {
+            Text(round.clubName)
+                .font(.parkHeadlineLarge)
+                .foregroundStyle(.white)
 
-                Divider()
-                    .background(Color.white.opacity(0.1))
-
-                VStack(alignment: .leading, spacing: ParkSpacing.xs) {
-                    HStack {
-                        Image(systemName: "building.2")
-                            .frame(width: 20)
-                        Text(round.clubName)
-                    }
-
-                    HStack {
-                        Image(systemName: "flag")
-                            .frame(width: 20)
-                        Text(round.name)
-                    }
-
-                    HStack {
-                        Image(systemName: "calendar")
-                            .frame(width: 20)
-                        Text(viewModel.formattedDate)
-                    }
-
-                    HStack {
-                        Image(systemName: "clock")
-                            .frame(width: 20)
-                        Text("\(timeSlot.startTime) - \(timeSlot.endTime)")
-                    }
-
-                    HStack {
-                        Image(systemName: "person.2")
-                            .frame(width: 20)
-                        Text("잔여 \(timeSlot.availableSlots)석")
-                            .foregroundStyle(availabilityColor)
-                    }
-                }
-                .font(.parkBodyMedium)
-                .foregroundStyle(.white.opacity(0.8))
+            if let location = round.club?.location {
+                Text("📍 \(location)")
+                    .font(.parkBodyLarge)
+                    .foregroundStyle(.white.opacity(0.7))
             }
+
+            Text("📅 \(viewModel.formattedDate)")
+                .font(.parkBodyLarge)
+                .foregroundStyle(.white.opacity(0.9))
+
+            Text("🕐 \(timeSlot.startTime)")
+                .font(.parkBodyLarge)
+                .foregroundStyle(.white.opacity(0.9))
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var availabilityColor: Color {
-        if timeSlot.availableSlots <= 2 {
-            return .parkError
-        } else if timeSlot.availableSlots <= 4 {
-            return .parkWarning
-        }
-        return .parkSuccess
-    }
+    // MARK: - Player Count Section (시니어 UI: 버튼 토글)
 
-    // MARK: - Player Count Card
+    private var playerCountSection: some View {
+        VStack(alignment: .leading, spacing: ParkSpacing.sm) {
+            Text("인원 선택")
+                .font(.parkBodyLarge)
+                .fontWeight(.semibold)
+                .foregroundStyle(.white.opacity(0.9))
 
-    private var playerCountCard: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: ParkSpacing.sm) {
-                Text("👥 인원 선택")
-                    .font(.parkHeadlineSmall)
-                    .foregroundStyle(.white)
-
-                HStack {
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible()),
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: ParkSpacing.sm) {
+                ForEach(1...min(timeSlot.availableSlots, 4), id: \.self) { count in
                     Button {
-                        viewModel.decrementPlayerCount()
+                        viewModel.playerCount = count
                     } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .font(.system(size: 32))
-                            .foregroundStyle(viewModel.playerCount > 1 ? .white : .white.opacity(0.3))
-                    }
-                    .disabled(viewModel.playerCount <= 1)
-
-                    Spacer()
-
-                    VStack {
-                        Text("\(viewModel.playerCount)")
-                            .font(.parkDisplayMedium)
-                            .foregroundStyle(.white)
-
-                        Text(playerCountLabel)
-                            .font(.parkCaption)
-                            .foregroundStyle(.white.opacity(0.6))
-                    }
-
-                    Spacer()
-
-                    Button {
-                        viewModel.incrementPlayerCount()
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 32))
-                            .foregroundStyle(viewModel.playerCount < timeSlot.availableSlots ? Color.parkPrimary : .white.opacity(0.3))
-                    }
-                    .disabled(viewModel.playerCount >= timeSlot.availableSlots)
-                }
-                .padding(.vertical, ParkSpacing.sm)
-            }
-        }
-    }
-
-    private var playerCountLabel: String {
-        if viewModel.playerCount == 1 {
-            return "개인 라운드"
-        } else if viewModel.playerCount == round.maxPlayers {
-            return "풀 플라이트"
-        }
-        return "명"
-    }
-
-    // MARK: - Special Requests Card
-
-    private var specialRequestsCard: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: ParkSpacing.sm) {
-                Text("📝 요청사항 (선택)")
-                    .font(.parkHeadlineSmall)
-                    .foregroundStyle(.white)
-
-                GlassTextEditor(
-                    placeholder: "카트 요청, 캐디 서비스 등 요청사항을 입력해주세요...",
-                    text: $viewModel.specialRequests,
-                    minHeight: 80
-                )
-            }
-        }
-    }
-
-    // MARK: - Payment Method Card
-
-    private var paymentMethodCard: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: ParkSpacing.sm) {
-                Text("💳 결제 수단")
-                    .font(.parkHeadlineSmall)
-                    .foregroundStyle(.white)
-
-                VStack(spacing: ParkSpacing.xs) {
-                    ForEach(PaymentMethod.allCases, id: \.self) { method in
-                        PaymentMethodRow(
-                            method: method,
-                            isSelected: viewModel.selectedPaymentMethod == method
-                        ) {
-                            viewModel.selectedPaymentMethod = method
-                        }
+                        Text("\(count)명")
+                            .font(.parkBodyLarge)
+                            .fontWeight(.medium)
+                            .foregroundStyle(viewModel.playerCount == count ? Color.parkSuccess : .white.opacity(0.7))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 48)
+                            .background(
+                                RoundedRectangle(cornerRadius: ParkRadius.md)
+                                    .fill(viewModel.playerCount == count ? Color.parkSuccess.opacity(0.3) : Color.white.opacity(0.1))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: ParkRadius.md)
+                                    .stroke(viewModel.playerCount == count ? Color.parkSuccess.opacity(0.5) : Color.white.opacity(0.2), lineWidth: 1)
+                            )
                     }
                 }
             }
         }
     }
 
-    // MARK: - Price Summary Card
+    // MARK: - Payment Method Section (시니어 UI: 2개만)
 
-    private var priceSummaryCard: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: ParkSpacing.sm) {
-                Text("💰 결제 금액")
-                    .font(.parkHeadlineSmall)
-                    .foregroundStyle(.white)
+    private var paymentMethodSection: some View {
+        VStack(alignment: .leading, spacing: ParkSpacing.sm) {
+            Text("결제 방법")
+                .font(.parkBodyLarge)
+                .fontWeight(.semibold)
+                .foregroundStyle(.white.opacity(0.9))
 
-                VStack(spacing: ParkSpacing.xs) {
-                    PriceSummaryRow(
-                        label: "기본 요금 (₩\(viewModel.formatPrice(timeSlot.price)) × \(viewModel.playerCount)명)",
-                        amount: viewModel.basePrice
-                    )
-
-                    PriceSummaryRow(
-                        label: "서비스 수수료 (3%)",
-                        amount: viewModel.serviceFee
-                    )
-
-                    Divider()
-                        .background(Color.white.opacity(0.2))
-
-                    PriceSummaryRow(
-                        label: "총 결제 금액",
-                        amount: viewModel.totalPrice,
-                        isTotal: true
-                    )
-                }
-            }
-        }
-    }
-
-    // MARK: - Terms Card
-
-    private var termsCard: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: ParkSpacing.sm) {
-                TermsCheckbox(
-                    isChecked: $viewModel.agreedToTerms,
-                    title: "이용약관에 동의합니다",
-                    isRequired: true
-                )
-
-                TermsCheckbox(
-                    isChecked: $viewModel.agreedToPrivacy,
-                    title: "개인정보 처리방침에 동의합니다",
-                    isRequired: true
-                )
-            }
-        }
-    }
-}
-
-// MARK: - Payment Method Row
-
-struct PaymentMethodRow: View {
-    let method: PaymentMethod
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isSelected ? Color.parkPrimary : .white.opacity(0.4))
-
-                Text(method.icon)
-                Text(method.displayName)
-                    .foregroundStyle(.white)
-
-                Spacer()
-            }
-            .padding(.vertical, ParkSpacing.xs)
-        }
-    }
-}
-
-// MARK: - Terms Checkbox
-
-struct TermsCheckbox: View {
-    @Binding var isChecked: Bool
-    let title: String
-    var isRequired: Bool = false
-
-    var body: some View {
-        Button {
-            isChecked.toggle()
-        } label: {
             HStack(spacing: ParkSpacing.sm) {
-                Image(systemName: isChecked ? "checkmark.square.fill" : "square")
-                    .foregroundStyle(isChecked ? Color.parkPrimary : .white.opacity(0.4))
-
-                Text(title)
-                    .font(.parkBodySmall)
-                    .foregroundStyle(.white.opacity(0.8))
-
-                if isRequired {
-                    Text("(필수)")
-                        .font(.parkCaption)
-                        .foregroundStyle(Color.parkError)
+                ForEach([PaymentMethod.onsite, PaymentMethod.card], id: \.self) { method in
+                    Button {
+                        viewModel.selectedPaymentMethod = method
+                    } label: {
+                        VStack(spacing: ParkSpacing.xs) {
+                            Text(method.icon)
+                                .font(.system(size: 28))
+                            Text(method.displayName)
+                                .font(.parkBodyLarge)
+                                .fontWeight(.medium)
+                        }
+                        .foregroundStyle(viewModel.selectedPaymentMethod == method ? Color.parkSuccess : .white.opacity(0.7))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 80)
+                        .background(
+                            RoundedRectangle(cornerRadius: ParkRadius.lg)
+                                .fill(viewModel.selectedPaymentMethod == method ? Color.parkSuccess.opacity(0.3) : Color.white.opacity(0.1))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: ParkRadius.lg)
+                                .stroke(viewModel.selectedPaymentMethod == method ? Color.parkSuccess.opacity(0.5) : Color.white.opacity(0.2), lineWidth: 1)
+                        )
+                    }
                 }
+            }
+        }
+    }
+
+    // MARK: - Price Section (시니어 UI: 큰 금액 표시)
+
+    private var priceSection: some View {
+        VStack(spacing: ParkSpacing.sm) {
+            Text("총 결제 금액")
+                .font(.parkBodyLarge)
+                .fontWeight(.semibold)
+                .foregroundStyle(.white.opacity(0.9))
+
+            Text("₩\(viewModel.formatPrice(viewModel.totalPrice))")
+                .font(.parkDisplayMedium)
+                .foregroundStyle(.white)
+
+            Text("(\(viewModel.playerCount)명 × ₩\(viewModel.formatPrice(timeSlot.price)))")
+                .font(.parkBodyLarge)
+                .foregroundStyle(.white.opacity(0.6))
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Terms Section (시니어 UI: 1개로 통합)
+
+    private var termsSection: some View {
+        Button {
+            viewModel.agreedToTerms.toggle()
+            viewModel.agreedToPrivacy = viewModel.agreedToTerms
+        } label: {
+            HStack(alignment: .top, spacing: ParkSpacing.sm) {
+                Image(systemName: viewModel.agreedToTerms ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 24))
+                    .foregroundStyle(viewModel.agreedToTerms ? Color.parkPrimary : .white.opacity(0.4))
+
+                Text("이용약관 및 개인정보처리방침에 동의합니다")
+                    .font(.parkBodyLarge)
+                    .foregroundStyle(.white.opacity(0.9))
+                    .multilineTextAlignment(.leading)
 
                 Spacer()
             }
@@ -403,9 +283,8 @@ class BookingFormViewModel: ObservableObject {
     let timeSlot: TimeSlot
     let selectedDate: Date
 
-    @Published var playerCount: Int = 1
-    @Published var specialRequests: String = ""
-    @Published var selectedPaymentMethod: PaymentMethod = .card
+    @Published var playerCount: Int = 2
+    @Published var selectedPaymentMethod: PaymentMethod = .onsite
     @Published var agreedToTerms: Bool = false
     @Published var agreedToPrivacy: Bool = false
 
@@ -415,7 +294,6 @@ class BookingFormViewModel: ObservableObject {
     @Published var createdBooking: BookingResponse?
 
     private let bookingService = BookingService()
-    private let serviceFeeRate: Double = 0.03
 
     // MARK: - Init
 
@@ -423,6 +301,8 @@ class BookingFormViewModel: ObservableObject {
         self.round = round
         self.timeSlot = timeSlot
         self.selectedDate = selectedDate
+        // 기본 인원 조정
+        self.playerCount = min(2, timeSlot.availableSlots)
     }
 
     // MARK: - Computed Properties
@@ -431,16 +311,8 @@ class BookingFormViewModel: ObservableObject {
         DateHelper.toKoreanFullDate(selectedDate)
     }
 
-    var basePrice: Int {
-        timeSlot.price * playerCount
-    }
-
-    var serviceFee: Int {
-        Int(Double(basePrice) * serviceFeeRate)
-    }
-
     var totalPrice: Int {
-        basePrice + serviceFee
+        timeSlot.price * playerCount
     }
 
     var canProceed: Bool {
@@ -448,16 +320,6 @@ class BookingFormViewModel: ObservableObject {
     }
 
     // MARK: - Actions
-
-    func incrementPlayerCount() {
-        guard playerCount < timeSlot.availableSlots else { return }
-        playerCount += 1
-    }
-
-    func decrementPlayerCount() {
-        guard playerCount > 1 else { return }
-        playerCount -= 1
-    }
 
     func formatPrice(_ price: Int) -> String {
         let formatter = NumberFormatter()
@@ -483,7 +345,7 @@ class BookingFormViewModel: ObservableObject {
                     bookingDate: DateHelper.toISODateString(selectedDate),
                     playerCount: playerCount,
                     paymentMethod: selectedPaymentMethod.rawValue,
-                    specialRequests: specialRequests.isEmpty ? nil : specialRequests,
+                    specialRequests: nil,
                     userEmail: user.email,
                     userName: user.name,
                     userPhone: user.phone,
@@ -504,7 +366,6 @@ class BookingFormViewModel: ObservableObject {
     private func translateErrorMessage(_ error: Error) -> String {
         let message = error.localizedDescription
 
-        // 에러 메시지 한글 변환
         if message.contains("Not enough capacity") {
             return "잔여 인원이 부족합니다."
         } else if message.contains("Selected time slot is not available") {
@@ -534,7 +395,7 @@ class BookingFormViewModel: ObservableObject {
             description: nil,
             clubId: 1,
             clubName: "서울파크골프장",
-            club: RoundClub(id: 1, name: "서울파크골프장", location: nil, address: "서울시 강남구", phone: nil),
+            club: RoundClub(id: 1, name: "서울파크골프장", location: "서울", address: "서울시 강남구", phone: nil),
             frontNineCourseId: 1,
             backNineCourseId: nil,
             frontNineCourse: RoundCourse(id: 1, name: "A코스", code: nil, holeCount: 9),
@@ -543,10 +404,10 @@ class BookingFormViewModel: ObservableObject {
             estimatedDuration: 120,
             breakDuration: nil,
             maxPlayers: 4,
-            basePrice: 25000,
-            pricePerPerson: 25000,
-            weekendPrice: 30000,
-            holidayPrice: 35000,
+            basePrice: 45000,
+            pricePerPerson: 45000,
+            weekendPrice: 50000,
+            holidayPrice: 55000,
             status: "ACTIVE",
             isActive: true,
             timeSlots: nil
@@ -555,13 +416,13 @@ class BookingFormViewModel: ObservableObject {
             id: 1,
             gameId: 1,
             date: nil,
-            startTime: "09:00",
-            endTime: "11:00",
-            maxPlayers: 8,
-            bookedPlayers: 2,
-            availablePlayers: 6,
-            price: 25000,
-            isPremium: true,
+            startTime: "06:00",
+            endTime: "08:00",
+            maxPlayers: 4,
+            bookedPlayers: 1,
+            availablePlayers: 3,
+            price: 45000,
+            isPremium: false,
             status: nil
         ),
         selectedDate: Date()
