@@ -111,6 +111,61 @@ struct NotificationData: Codable, Sendable {
         case friendName
         case chatRoomId
     }
+
+    // Memberwise 이니셜라이저 (직접 생성 시 사용)
+    init(
+        bookingId: String? = nil,
+        courseId: String? = nil,
+        courseName: String? = nil,
+        bookingDate: String? = nil,
+        bookingTime: String? = nil,
+        paymentId: String? = nil,
+        amount: Int? = nil,
+        failureReason: String? = nil,
+        friendId: String? = nil,
+        friendName: String? = nil,
+        chatRoomId: String? = nil
+    ) {
+        self.bookingId = bookingId
+        self.courseId = courseId
+        self.courseName = courseName
+        self.bookingDate = bookingDate
+        self.bookingTime = bookingTime
+        self.paymentId = paymentId
+        self.amount = amount
+        self.failureReason = failureReason
+        self.friendId = friendId
+        self.friendName = friendName
+        self.chatRoomId = chatRoomId
+    }
+
+    // 백엔드에서 ID 필드가 Int 또는 String으로 올 수 있어 유연하게 처리
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        // String 또는 Int를 String?으로 변환하는 헬퍼
+        func decodeFlexibleString(forKey key: CodingKeys) -> String? {
+            if let stringValue = try? container.decodeIfPresent(String.self, forKey: key) {
+                return stringValue
+            }
+            if let intValue = try? container.decodeIfPresent(Int.self, forKey: key) {
+                return String(intValue)
+            }
+            return nil
+        }
+
+        bookingId = decodeFlexibleString(forKey: .bookingId)
+        courseId = decodeFlexibleString(forKey: .courseId)
+        courseName = try container.decodeIfPresent(String.self, forKey: .courseName)
+        bookingDate = try container.decodeIfPresent(String.self, forKey: .bookingDate)
+        bookingTime = try container.decodeIfPresent(String.self, forKey: .bookingTime)
+        paymentId = decodeFlexibleString(forKey: .paymentId)
+        amount = try container.decodeIfPresent(Int.self, forKey: .amount)
+        failureReason = try container.decodeIfPresent(String.self, forKey: .failureReason)
+        friendId = decodeFlexibleString(forKey: .friendId)
+        friendName = try container.decodeIfPresent(String.self, forKey: .friendName)
+        chatRoomId = decodeFlexibleString(forKey: .chatRoomId)
+    }
 }
 
 // MARK: - Unread Count Response
