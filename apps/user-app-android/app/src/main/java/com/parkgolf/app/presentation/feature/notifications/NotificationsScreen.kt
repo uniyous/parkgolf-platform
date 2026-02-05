@@ -351,21 +351,26 @@ private fun SwipeableNotificationRow(
         }
     )
 
+    // 스와이프 중일 때만 배경 표시
+    val isSwipeInProgress = dismissState.targetValue != SwipeToDismissBoxValue.Settled
+
     SwipeToDismissBox(
         state = dismissState,
         backgroundContent = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(ParkError, MaterialTheme.shapes.medium)
-                    .padding(end = 16.dp),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "삭제",
-                    tint = Color.White
-                )
+            if (isSwipeInProgress) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(ParkError, MaterialTheme.shapes.medium)
+                        .padding(end = 16.dp),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "삭제",
+                        tint = Color.White
+                    )
+                }
             }
         },
         enableDismissFromStartToEnd = false
