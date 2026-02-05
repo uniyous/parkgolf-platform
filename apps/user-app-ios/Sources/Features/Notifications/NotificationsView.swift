@@ -353,10 +353,11 @@ struct NotificationRow: View {
                         HStack {
                             Text(notification.type.displayName)
                                 .font(.parkCaption)
-                                .foregroundStyle(iconColor.opacity(0.8))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(iconColor.opacity(0.2))
+                                .fontWeight(.medium)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(iconColor.opacity(0.85))
                                 .clipShape(Capsule())
 
                             Spacer()
