@@ -275,7 +275,13 @@ private fun FilterChip(
                     text = if (unreadCount > 99) "99+" else unreadCount.toString(),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isSelected) ParkPrimary else Color.White
+                    color = if (isSelected) ParkPrimary else Color.White,
+                    lineHeight = 18.sp,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        platformStyle = androidx.compose.ui.text.PlatformTextStyle(
+                            includeFontPadding = false
+                        )
+                    )
                 )
             }
         }
