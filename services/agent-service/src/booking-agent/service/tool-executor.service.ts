@@ -26,6 +26,7 @@ export class ToolExecutorService {
     @Inject('COURSE_SERVICE') private readonly courseClient: ClientProxy,
     @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
     @Inject('WEATHER_SERVICE') private readonly weatherClient: ClientProxy,
+    @Inject('LOCATION_SERVICE') private readonly locationClient: ClientProxy,
   ) {}
 
   /**
@@ -78,6 +79,12 @@ export class ToolExecutorService {
 
       case 'create_booking':
         return this.createBooking(toolCall.args);
+
+      case 'search_address':
+        return this.searchAddress(toolCall.args);
+
+      case 'get_nearby_clubs':
+        return this.getNearbyClubs(toolCall.args);
 
       default:
         throw new Error(`Unknown tool: ${toolCall.name}`);
@@ -340,5 +347,82 @@ export class ToolExecutorService {
       success: false,
       message: response?.error?.message || '예약에 실패했습니다',
     };
+  }
+
+  /**
+   * 주소 검색 (위경도 추출)
+   */
+  private async searchAddress(args: Record<string, unknown>): Promise<unknown> {
+    const { address } = args as { address: string };
+
+    const response = await firstValueFrom(
+      this.locationClient.send('location.search.address', { query: address }).pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError((err: any) => {
+          throw new Error(`Failed to search address: ${err.message}`);
+        }),
+      ),
+    );
+
+    if (response?.success && response?.data?.addresses?.length > 0) {
+      const addresses = response.data.addresses;
+      return {
+        found: addresses.length,
+        addresses: addresses.slice(0, 3).map((addr: any) => ({
+          addressName: addr.addressName,
+          roadAddressName: addr.roadAddressName,
+          region: `${addr.region1} ${addr.region2} ${addr.region3}`,
+          postalCode: addr.postalCode,
+          latitude: addr.coordinates.latitude,
+          longitude: addr.coordinates.longitude,
+        })),
+      };
+    }
+
+    return { found: 0, addresses: [], message: '주소를 찾을 수 없습니다' };
+  }
+
+  /**
+   * 근처 골프장 검색 (현재 위치 기반)
+   */
+  private async getNearbyClubs(args: Record<string, unknown>): Promise<unknown> {
+    const { latitude, longitude, radius } = args as {
+      latitude: number;
+      longitude: number;
+      radius?: number;
+    };
+
+    // 카카오 API로 근처 파크골프장 검색
+    const locationResponse = await firstValueFrom(
+      this.locationClient
+        .send('location.nearbyGolf', {
+          x: longitude,
+          y: latitude,
+          radius: radius || 10000,
+        })
+        .pipe(
+          timeout(this.REQUEST_TIMEOUT),
+          catchError((err: any) => {
+            throw new Error(`Failed to search nearby clubs: ${err.message}`);
+          }),
+        ),
+    );
+
+    if (locationResponse?.success && locationResponse?.data?.places?.length > 0) {
+      const places = locationResponse.data.places;
+      return {
+        found: places.length,
+        nearbyClubs: places.slice(0, 5).map((place: any) => ({
+          name: place.placeName,
+          address: place.addressName,
+          phone: place.phone,
+          distance: place.distance ? `${(place.distance / 1000).toFixed(1)}km` : undefined,
+          latitude: place.coordinates.latitude,
+          longitude: place.coordinates.longitude,
+        })),
+      };
+    }
+
+    return { found: 0, nearbyClubs: [], message: '근처에 파크골프장을 찾을 수 없습니다' };
   }
 }

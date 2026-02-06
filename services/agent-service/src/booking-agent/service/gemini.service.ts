@@ -160,6 +160,42 @@ export class GeminiService implements OnModuleInit {
         required: ['clubId', 'slotId', 'playerCount', 'userId'],
       },
     },
+    {
+      name: 'search_address',
+      description: '주소를 검색하여 위경도 좌표를 얻습니다. 사용자가 "우리 집 근처", "OO동" 등 주소를 말할 때 사용합니다.',
+      parameters: {
+        type: SchemaType.OBJECT,
+        properties: {
+          address: {
+            type: SchemaType.STRING,
+            description: '검색할 주소 (예: 서울시 강남구 역삼동, 천안시 서북구)',
+          },
+        },
+        required: ['address'],
+      },
+    },
+    {
+      name: 'get_nearby_clubs',
+      description: '현재 위치 또는 지정한 좌표 근처의 파크골프장을 검색합니다. "내 근처", "가까운 곳" 요청 시 사용합니다.',
+      parameters: {
+        type: SchemaType.OBJECT,
+        properties: {
+          latitude: {
+            type: SchemaType.NUMBER,
+            description: '위도 (예: 37.5665)',
+          },
+          longitude: {
+            type: SchemaType.NUMBER,
+            description: '경도 (예: 126.9780)',
+          },
+          radius: {
+            type: SchemaType.NUMBER,
+            description: '검색 반경 (미터, 기본값 10000)',
+          },
+        },
+        required: ['latitude', 'longitude'],
+      },
+    },
   ];
 
   constructor(private readonly configService: ConfigService) {}
