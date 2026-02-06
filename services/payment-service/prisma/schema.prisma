@@ -1,0 +1,264 @@
+// Payment Service Prisma Schema
+// 토스페이먼츠 연동을 위한 결제 데이터 모델
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =====================================================
+// 결제 (Payment)
+// =====================================================
+
+model Payment {
+  id                Int           @id @default(autoincrement())
+
+  // 토스페이먼츠 연동 정보
+  paymentKey        String?       @unique @map("payment_key")    // 토스 발급 결제 키
+  orderId           String        @unique @map("order_id")       // 우리 측 주문 ID (PG-XXXXX)
+  orderName         String        @map("order_name")             // 주문명
+
+  // 결제 금액
+  amount            Int                                          // 결제 금액 (원)
+  currency          String        @default("KRW")
+
+  // 결제 수단
+  method            PaymentMethod?                               // CARD, TRANSFER, VIRTUAL_ACCOUNT, EASY_PAY
+  easyPayProvider   String?       @map("easy_pay_provider")      // TOSSPAY, KAKAOPAY, NAVERPAY 등
+
+  // 카드 정보 (카드 결제 시)
+  cardCompany       String?       @map("card_company")           // 카드사 코드
+  cardCompanyName   String?       @map("card_company_name")      // 카드사명
+  cardNumber        String?       @map("card_number")            // 마스킹된 카드번호
+  cardType          String?       @map("card_type")              // 신용, 체크, 기프트
+  ownerType         String?       @map("owner_type")             // 개인, 법인
+  installmentMonths Int?          @map("installment_months")     // 할부 개월 (0: 일시불)
+  isInterestFree    Boolean?      @map("is_interest_free")       // 무이자 여부
+
+  // 가상계좌 정보 (가상계좌 결제 시)
+  virtualAccountNumber  String?   @map("virtual_account_number")
+  virtualBankCode       String?   @map("virtual_bank_code")
+  virtualBankName       String?   @map("virtual_bank_name")
+  virtualDueDate        DateTime? @map("virtual_due_date")
+  virtualAccountHolder  String?   @map("virtual_account_holder")
+
+  // 계좌이체 정보
+  transferBankCode  String?       @map("transfer_bank_code")
+  transferBankName  String?       @map("transfer_bank_name")
+
+  // 결제 상태
+  status            PaymentStatus @default(READY)
+
+  // 연관 정보
+  userId            Int           @map("user_id")
+  bookingId         Int?          @unique @map("booking_id")     // 예약 연결
+
+  // 승인 정보
+  approvedAt        DateTime?     @map("approved_at")
+  requestedAt       DateTime?     @map("requested_at")
+
+  // 취소 정보
+  cancelledAt       DateTime?     @map("cancelled_at")
+  cancelReason      String?       @map("cancel_reason")
+  cancelAmount      Int?          @map("cancel_amount")
+
+  // 영수증/정산
+  receiptUrl        String?       @map("receipt_url")
+  checkoutUrl       String?       @map("checkout_url")
+
+  // 메타데이터
+  metadata          Json?
+
+  // 고객 정보
+  customerName      String?       @map("customer_name")
+  customerEmail     String?       @map("customer_email")
+  customerPhone     String?       @map("customer_phone")
+
+  // 타임스탬프
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  refunds           Refund[]
+  webhookLogs       WebhookLog[]
+
+  @@index([userId])
+  @@index([bookingId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([method])
+  @@map("payments")
+}
+
+// =====================================================
+// 환불 (Refund)
+// =====================================================
+
+model Refund {
+  id              Int           @id @default(autoincrement())
+  paymentId       Int           @map("payment_id")
+  payment         Payment       @relation(fields: [paymentId], references: [id])
+
+  // 토스 거래 정보
+  transactionKey  String?       @unique @map("transaction_key")  // 토스 거래 키
+
+  // 환불 정보
+  cancelReason    String        @map("cancel_reason")
+  cancelAmount    Int           @map("cancel_amount")            // 환불 금액
+  taxFreeAmount   Int?          @map("tax_free_amount")          // 면세 금액
+
+  // 환불 상태
+  refundStatus    RefundStatus  @default(PENDING) @map("refund_status")
+
+  // 환불 계좌 (가상계좌 결제 환불 시)
+  refundBankCode  String?       @map("refund_bank_code")
+  refundBankName  String?       @map("refund_bank_name")
+  refundAccount   String?       @map("refund_account")
+  refundHolder    String?       @map("refund_holder")
+
+  // 처리 정보
+  refundedAt      DateTime?     @map("refunded_at")
+  requestedBy     Int?          @map("requested_by")             // 요청자 (userId 또는 adminId)
+  requestedByType String?       @map("requested_by_type")        // USER, ADMIN, SYSTEM
+
+  // 타임스탬프
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  @@index([paymentId])
+  @@index([refundStatus])
+  @@map("refunds")
+}
+
+// =====================================================
+// 빌링키 (자동결제용)
+// =====================================================
+
+model BillingKey {
+  id              Int           @id @default(autoincrement())
+  userId          Int           @map("user_id")
+
+  // 토스 빌링 정보
+  billingKey      String        @unique @map("billing_key")      // 토스 빌링키
+  customerKey     String        @map("customer_key")             // 고객 식별자
+  authenticatedAt DateTime      @map("authenticated_at")         // 인증 시간
+
+  // 카드 정보
+  cardCompany     String        @map("card_company")
+  cardCompanyName String?       @map("card_company_name")
+  cardNumber      String        @map("card_number")              // 마스킹
+  cardType        String?       @map("card_type")                // 신용/체크
+
+  // 상태
+  isActive        Boolean       @default(true) @map("is_active")
+
+  // 타임스탬프
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([isActive])
+  @@map("billing_keys")
+}
+
+// =====================================================
+// 웹훅 로그 (Webhook Log)
+// =====================================================
+
+model WebhookLog {
+  id              Int           @id @default(autoincrement())
+  paymentId       Int?          @map("payment_id")
+  payment         Payment?      @relation(fields: [paymentId], references: [id])
+
+  // 웹훅 정보
+  eventType       String        @map("event_type")               // PAYMENT_STATUS_CHANGED 등
+  payload         Json                                           // 원본 페이로드
+
+  // 처리 정보
+  status          WebhookStatus @default(RECEIVED)
+  processedAt     DateTime?     @map("processed_at")
+  errorMessage    String?       @map("error_message")
+
+  // 타임스탬프
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  @@index([paymentId])
+  @@index([eventType])
+  @@index([status])
+  @@index([createdAt])
+  @@map("webhook_logs")
+}
+
+// =====================================================
+// Outbox 이벤트 (Saga 패턴)
+// =====================================================
+
+model PaymentOutboxEvent {
+  id            Int           @id @default(autoincrement())
+
+  aggregateType String        @map("aggregate_type")  // Payment
+  aggregateId   String        @map("aggregate_id")    // payment.id
+  eventType     String        @map("event_type")      // payment.approved, payment.cancelled
+  payload       Json
+
+  status        OutboxStatus  @default(PENDING)
+  retryCount    Int           @default(0) @map("retry_count")
+  lastError     String?       @map("last_error")
+
+  createdAt     DateTime      @default(now()) @map("created_at")
+  processedAt   DateTime?     @map("processed_at")
+
+  @@index([status, createdAt])
+  @@index([aggregateType, aggregateId])
+  @@map("payment_outbox_events")
+}
+
+// =====================================================
+// Enums
+// =====================================================
+
+enum PaymentMethod {
+  CARD              // 카드
+  TRANSFER          // 계좌이체
+  VIRTUAL_ACCOUNT   // 가상계좌
+  EASY_PAY          // 간편결제
+  MOBILE            // 휴대폰 결제
+  GIFT_CERTIFICATE  // 상품권
+  CULTURE_GIFT      // 문화상품권
+}
+
+enum PaymentStatus {
+  READY             // 결제 준비
+  IN_PROGRESS       // 결제 진행 중
+  WAITING_FOR_DEPOSIT // 가상계좌 입금 대기
+  DONE              // 결제 완료
+  CANCELED          // 전체 취소
+  PARTIAL_CANCELED  // 부분 취소
+  ABORTED           // 결제 중단
+  EXPIRED           // 결제 만료 (가상계좌)
+}
+
+enum RefundStatus {
+  PENDING           // 환불 대기
+  PROCESSING        // 환불 처리 중
+  COMPLETED         // 환불 완료
+  FAILED            // 환불 실패
+}
+
+enum WebhookStatus {
+  RECEIVED          // 수신됨
+  PROCESSING        // 처리 중
+  PROCESSED         // 처리 완료
+  FAILED            // 처리 실패
+}
+
+enum OutboxStatus {
+  PENDING           // 발행 대기
+  PROCESSING        // 발행 중
+  SENT              // 발행 완료
+  FAILED            // 발행 실패
+}
