@@ -259,7 +259,7 @@ async getData(params: any) {
 |------|------|
 | `ci.yml` | Lint, Test, Build, Security Scan |
 | `cd-apps.yml` | Frontend 배포 (Firebase) |
-| `cd-services.yml` | Backend 배포 (Cloud Run) |
+| `cd-services.yml` | Backend 배포 (GKE Autopilot) |
 
 ### 배포 전략
 
