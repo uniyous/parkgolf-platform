@@ -312,6 +312,7 @@ jobs:
             --from-literal=JWT_SECRET='${{ secrets.JWT_SECRET }}' \
             --from-literal=JWT_REFRESH_SECRET='${{ secrets.JWT_REFRESH_SECRET }}' \
             --from-literal=KMA_API_KEY='${{ secrets.KMA_API_KEY }}' \
+            --from-literal=KAKAO_REST_API_KEY='${{ secrets.KAKAO_REST_API_KEY }}' \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Create ConfigMap
@@ -663,6 +664,7 @@ jobs:
             --from-literal=JWT_SECRET='${{ secrets.JWT_SECRET }}' \
             --from-literal=JWT_REFRESH_SECRET='${{ secrets.JWT_REFRESH_SECRET }}' \
             --from-literal=KMA_API_KEY='${{ secrets.KMA_API_KEY }}' \
+            --from-literal=KAKAO_REST_API_KEY='${{ secrets.KAKAO_REST_API_KEY }}' \
             --dry-run=client -o yaml | kubectl apply -f -
           echo "Secrets updated"
 

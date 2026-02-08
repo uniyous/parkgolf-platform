@@ -59,7 +59,7 @@ jobs:
         run: |
           INPUT="${{ github.event.inputs.services }}"
           if [ "$INPUT" = "all" ] || [ -z "$INPUT" ]; then
-            SERVICES="iam-service,course-service,booking-service,chat-service,notify-service,admin-api,user-api,chat-gateway,weather-service"
+            SERVICES="iam-service,course-service,booking-service,chat-service,notify-service,admin-api,user-api,chat-gateway,weather-service,location-service"
           else
             SERVICES="$INPUT"
           fi
@@ -230,7 +230,7 @@ jobs:
             DB_ENV=""
           fi
 
-          # Set service-specific env vars (KMA for weather-service)
+          # Set service-specific env vars
           EXTRA_ENV=""
           if [ "$SERVICE" = "weather-service" ]; then
             EXTRA_ENV="
@@ -244,6 +244,13 @@ jobs:
                       configMapKeyRef:
                         name: parkgolf-config
                         key: KMA_API_URL"
+          elif [ "$SERVICE" = "location-service" ]; then
+            EXTRA_ENV="
+                  - name: KAKAO_REST_API_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: parkgolf-secrets
+                        key: KAKAO_REST_API_KEY"
           fi
 
           # Set replicas and strategy per service
