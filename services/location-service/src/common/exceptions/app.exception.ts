@@ -1,18 +1,51 @@
-import { HttpStatus } from '@nestjs/common';
+import { HttpException } from '@nestjs/common';
 
-export interface ErrorInfo {
-  code: string;
-  message: string;
-  httpStatus: HttpStatus;
+export interface ErrorDef {
+  readonly code: string;
+  readonly message: string;
+  readonly httpStatus: number;
 }
 
-export class AppException extends Error {
-  public readonly code: string;
-  public readonly httpStatus: HttpStatus;
+// 하위 호환을 위한 alias
+export type ErrorInfo = ErrorDef;
 
-  constructor(errorInfo: ErrorInfo, customMessage?: string) {
-    super(customMessage || errorInfo.message);
-    this.code = errorInfo.code;
-    this.httpStatus = errorInfo.httpStatus;
+export interface StandardErrorResponse {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+  };
+  timestamp: string;
+}
+
+export class AppException extends HttpException {
+  public readonly code: string;
+  public readonly timestamp: string;
+
+  constructor(errorDef: ErrorDef, customMessage?: string) {
+    const response: StandardErrorResponse = {
+      success: false,
+      error: {
+        code: errorDef.code,
+        message: customMessage || errorDef.message,
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    super(response, errorDef.httpStatus);
+    this.code = errorDef.code;
+    this.timestamp = response.timestamp;
+  }
+
+  toRpcError(): StandardErrorResponse {
+    return this.getResponse() as StandardErrorResponse;
+  }
+
+  getCode(): string {
+    return this.code;
+  }
+
+  getErrorMessage(): string {
+    return (this.getResponse() as StandardErrorResponse).error.message;
   }
 }

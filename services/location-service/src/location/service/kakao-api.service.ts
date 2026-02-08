@@ -111,7 +111,7 @@ export class KakaoApiService implements OnModuleInit {
    */
   private validateApiKey(): void {
     if (!this.apiKey) {
-      throw new AppException(Errors.Location.API_KEY_NOT_CONFIGURED);
+      throw new AppException(Errors.Kakao.API_KEY_NOT_CONFIGURED);
     }
   }
 
@@ -174,7 +174,7 @@ export class KakaoApiService implements OnModuleInit {
     } catch (error: any) {
       this.logger.error('Address search failed', error);
       if (error instanceof AppException) throw error;
-      throw new AppException(Errors.Location.KAKAO_API_ERROR, error.message);
+      throw new AppException(Errors.Kakao.API_ERROR, error.message);
     }
   }
 
@@ -238,7 +238,7 @@ export class KakaoApiService implements OnModuleInit {
     } catch (error: any) {
       this.logger.error('Keyword search failed', error);
       if (error instanceof AppException) throw error;
-      throw new AppException(Errors.Location.KAKAO_API_ERROR, error.message);
+      throw new AppException(Errors.Kakao.API_ERROR, error.message);
     }
   }
 
@@ -298,7 +298,7 @@ export class KakaoApiService implements OnModuleInit {
     } catch (error: any) {
       this.logger.error('Category search failed', error);
       if (error instanceof AppException) throw error;
-      throw new AppException(Errors.Location.KAKAO_API_ERROR, error.message);
+      throw new AppException(Errors.Kakao.API_ERROR, error.message);
     }
   }
 
@@ -347,7 +347,7 @@ export class KakaoApiService implements OnModuleInit {
     } catch (error: any) {
       this.logger.error('Coord to address failed', error);
       if (error instanceof AppException) throw error;
-      throw new AppException(Errors.Location.KAKAO_API_ERROR, error.message);
+      throw new AppException(Errors.Kakao.API_ERROR, error.message);
     }
   }
 
@@ -387,7 +387,7 @@ export class KakaoApiService implements OnModuleInit {
     } catch (error: any) {
       this.logger.error('Coord to region failed', error);
       if (error instanceof AppException) throw error;
-      throw new AppException(Errors.Location.KAKAO_API_ERROR, error.message);
+      throw new AppException(Errors.Kakao.API_ERROR, error.message);
     }
   }
 }

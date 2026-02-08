@@ -13,7 +13,7 @@ export class LocationCacheService {
 
   constructor(private readonly configService: ConfigService) {
     // 주소 검색 캐시 (기본 1시간)
-    const addressTTL = this.configService.get<number>('CACHE_TTL_ADDRESS') || 3600;
+    const addressTTL = Number(this.configService.get('CACHE_TTL_ADDRESS')) || 3600;
     this.addressCache = new NodeCache({
       stdTTL: addressTTL,
       checkperiod: 120,
@@ -21,7 +21,7 @@ export class LocationCacheService {
     });
 
     // 좌표 변환 캐시 (기본 24시간 - 좌표는 잘 안 바뀜)
-    const coordTTL = this.configService.get<number>('CACHE_TTL_COORD') || 86400;
+    const coordTTL = Number(this.configService.get('CACHE_TTL_COORD')) || 86400;
     this.coordCache = new NodeCache({
       stdTTL: coordTTL,
       checkperiod: 600,
@@ -42,6 +42,20 @@ export class LocationCacheService {
    * 주소 검색 결과 캐시 저장
    */
   setAddressSearch<T>(key: string, value: T): void {
+    this.addressCache.set(key, value);
+  }
+
+  /**
+   * 키워드 검색 결과 캐시 조회
+   */
+  getKeywordSearch<T>(key: string): T | undefined {
+    return this.addressCache.get<T>(key);
+  }
+
+  /**
+   * 키워드 검색 결과 캐시 저장
+   */
+  setKeywordSearch<T>(key: string, value: T): void {
     this.addressCache.set(key, value);
   }
 

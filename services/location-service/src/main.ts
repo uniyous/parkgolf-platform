@@ -2,11 +2,14 @@ import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { UnifiedExceptionFilter } from './common/exceptions';
 
 async function bootstrap() {
   const logger = new Logger('LocationService');
 
   const app = await NestFactory.create(AppModule);
+
+  app.useGlobalFilters(new UnifiedExceptionFilter());
 
   app.useGlobalPipes(
     new ValidationPipe({

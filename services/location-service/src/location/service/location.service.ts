@@ -48,7 +48,7 @@ export class LocationService {
    */
   async searchKeyword(dto: KeywordSearchDto): Promise<PlaceSearchResult> {
     const cacheKey = this.cache.makeKeywordKey(dto.query, dto.x, dto.y, dto.radius);
-    const cached = this.cache.getAddressSearch<PlaceSearchResult>(cacheKey);
+    const cached = this.cache.getKeywordSearch<PlaceSearchResult>(cacheKey);
 
     if (cached) {
       this.logger.debug(`Cache hit: ${cacheKey}`);
@@ -56,7 +56,7 @@ export class LocationService {
     }
 
     const result = await this.kakaoApi.searchKeyword(dto);
-    this.cache.setAddressSearch(cacheKey, result);
+    this.cache.setKeywordSearch(cacheKey, result);
 
     return result;
   }
