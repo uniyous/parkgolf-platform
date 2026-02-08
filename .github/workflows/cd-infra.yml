@@ -332,13 +332,17 @@ jobs:
 
       - name: Deploy PostgreSQL
         run: |
+          ENV="${{ needs.setup.outputs.environment }}"
+
           # 환경별 스토리지 클래스 설정 (dev: standard-rwo, prod: premium-rwo SSD)
-          if [ "${{ needs.setup.outputs.environment }}" == "prod" ]; then
+          if [ "$ENV" == "prod" ]; then
             STORAGE_CLASS="premium-rwo"
+            SAFE_TO_EVICT="false"
           else
             STORAGE_CLASS="standard-rwo"
+            SAFE_TO_EVICT="true"
           fi
-          echo "Using storage class: $STORAGE_CLASS"
+          echo "Using storage class: $STORAGE_CLASS, safe-to-evict: $SAFE_TO_EVICT"
 
           cat <<EOF | kubectl apply -f -
           apiVersion: v1
@@ -370,7 +374,7 @@ jobs:
                 labels:
                   app: postgres
                 annotations:
-                  cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+                  cluster-autoscaler.kubernetes.io/safe-to-evict: "$SAFE_TO_EVICT"
               spec:
                 containers:
                 - name: postgres
@@ -462,6 +466,13 @@ jobs:
 
       - name: Deploy NATS
         run: |
+          ENV="${{ needs.setup.outputs.environment }}"
+          if [ "$ENV" == "prod" ]; then
+            SAFE_TO_EVICT="false"
+          else
+            SAFE_TO_EVICT="true"
+          fi
+
           cat <<EOF | kubectl apply -f -
           apiVersion: v1
           kind: Service
@@ -494,7 +505,7 @@ jobs:
                 labels:
                   app: nats
                 annotations:
-                  cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+                  cluster-autoscaler.kubernetes.io/safe-to-evict: "$SAFE_TO_EVICT"
               spec:
                 containers:
                 - name: nats
@@ -547,7 +558,11 @@ jobs:
 
       - name: Deploy PodDisruptionBudgets
         run: |
-          cat <<EOF | kubectl apply -f -
+          ENV="${{ needs.setup.outputs.environment }}"
+
+          if [ "$ENV" == "prod" ]; then
+            # prod: replica 2개 운영 시 최소 1개 유지
+            cat <<EOF | kubectl apply -f -
           apiVersion: policy/v1
           kind: PodDisruptionBudget
           metadata:
@@ -570,6 +585,32 @@ jobs:
               matchLabels:
                 app: nats
           EOF
+          else
+            # dev: replica 1개이므로 maxUnavailable=1 (유지보수 허용)
+            cat <<EOF | kubectl apply -f -
+          apiVersion: policy/v1
+          kind: PodDisruptionBudget
+          metadata:
+            name: postgres-pdb
+            namespace: ${{ needs.setup.outputs.namespace }}
+          spec:
+            maxUnavailable: 1
+            selector:
+              matchLabels:
+                app: postgres
+          ---
+          apiVersion: policy/v1
+          kind: PodDisruptionBudget
+          metadata:
+            name: nats-pdb
+            namespace: ${{ needs.setup.outputs.namespace }}
+          spec:
+            maxUnavailable: 1
+            selector:
+              matchLabels:
+                app: nats
+          EOF
+          fi
 
       - name: Summary
         run: |
