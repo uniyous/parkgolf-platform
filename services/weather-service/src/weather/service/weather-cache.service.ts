@@ -36,8 +36,8 @@ export class WeatherCacheService implements OnModuleInit {
   };
 
   constructor(private readonly configService: ConfigService) {
-    this.ttlCurrent = this.configService.get<number>('CACHE_TTL_CURRENT') || 1800; // 30분
-    this.ttlForecast = this.configService.get<number>('CACHE_TTL_FORECAST') || 3600; // 1시간
+    this.ttlCurrent = Number(this.configService.get('CACHE_TTL_CURRENT')) || 1800; // 30분
+    this.ttlForecast = Number(this.configService.get('CACHE_TTL_FORECAST')) || 3600; // 1시간
 
     this.cache = new NodeCache({
       stdTTL: this.ttlCurrent,

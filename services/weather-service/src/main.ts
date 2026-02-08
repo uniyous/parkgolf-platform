@@ -2,12 +2,16 @@ import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { UnifiedExceptionFilter } from './common/exceptions';
 
 async function bootstrap() {
   const logger = new Logger('WeatherService');
 
   // HTTP 서버 (Health Check용)
   const app = await NestFactory.create(AppModule);
+
+  // Global unified exception filter (handles both HTTP and RPC)
+  app.useGlobalFilters(new UnifiedExceptionFilter());
 
   app.useGlobalPipes(
     new ValidationPipe({

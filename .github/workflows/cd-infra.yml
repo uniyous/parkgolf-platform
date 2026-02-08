@@ -158,6 +158,7 @@ jobs:
     needs: setup
     if: github.event.inputs.action == 'network-apply'
     runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
     defaults:
       run:
         working-directory: ${{ needs.setup.outputs.tf_dir }}
@@ -218,6 +219,7 @@ jobs:
     needs: setup
     if: github.event.inputs.action == 'gke-setup'
     runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
     steps:
       - name: Google Auth
         uses: google-github-actions/auth@v2
@@ -309,6 +311,7 @@ jobs:
             --from-literal=POSTGRES_PASSWORD='${{ secrets.DB_PASSWORD }}' \
             --from-literal=JWT_SECRET='${{ secrets.JWT_SECRET }}' \
             --from-literal=JWT_REFRESH_SECRET='${{ secrets.JWT_REFRESH_SECRET }}' \
+            --from-literal=KMA_API_KEY='${{ secrets.KMA_API_KEY }}' \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Create ConfigMap
@@ -324,6 +327,7 @@ jobs:
             NATS_URL: "nats://nats:4222"
             DB_HOST: "postgres"
             DB_PORT: "5432"
+            KMA_API_URL: "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0"
           EOF
 
       - name: Deploy PostgreSQL
@@ -592,6 +596,7 @@ jobs:
     needs: setup
     if: github.event.inputs.action == 'gke-update'
     runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
     steps:
       - name: Google Auth
         uses: google-github-actions/auth@v2
@@ -616,6 +621,7 @@ jobs:
             --from-literal=POSTGRES_PASSWORD='${{ secrets.DB_PASSWORD }}' \
             --from-literal=JWT_SECRET='${{ secrets.JWT_SECRET }}' \
             --from-literal=JWT_REFRESH_SECRET='${{ secrets.JWT_REFRESH_SECRET }}' \
+            --from-literal=KMA_API_KEY='${{ secrets.KMA_API_KEY }}' \
             --dry-run=client -o yaml | kubectl apply -f -
           echo "Secrets updated"
 
@@ -632,6 +638,7 @@ jobs:
             NATS_URL: "nats://nats:4222"
             DB_HOST: "postgres"
             DB_PORT: "5432"
+            KMA_API_URL: "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0"
           EOF
           echo "ConfigMap updated"
 
@@ -734,6 +741,7 @@ jobs:
     needs: setup
     if: github.event.inputs.action == 'network-destroy'
     runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
     defaults:
       run:
         working-directory: ${{ needs.setup.outputs.tf_dir }}

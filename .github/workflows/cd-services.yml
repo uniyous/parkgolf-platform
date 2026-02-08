@@ -59,7 +59,7 @@ jobs:
         run: |
           INPUT="${{ github.event.inputs.services }}"
           if [ "$INPUT" = "all" ] || [ -z "$INPUT" ]; then
-            SERVICES="iam-service,course-service,booking-service,chat-service,notify-service,admin-api,user-api,chat-gateway"
+            SERVICES="iam-service,course-service,booking-service,chat-service,notify-service,admin-api,user-api,chat-gateway,weather-service"
           else
             SERVICES="$INPUT"
           fi
@@ -230,6 +230,22 @@ jobs:
             DB_ENV=""
           fi
 
+          # Set service-specific env vars (KMA for weather-service)
+          EXTRA_ENV=""
+          if [ "$SERVICE" = "weather-service" ]; then
+            EXTRA_ENV="
+                  - name: KMA_API_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: parkgolf-secrets
+                        key: KMA_API_KEY
+                  - name: KMA_API_URL
+                    valueFrom:
+                      configMapKeyRef:
+                        name: parkgolf-config
+                        key: KMA_API_URL"
+          fi
+
           # Set replicas and strategy per service
           REPLICAS=1
           STRATEGY=""
@@ -301,6 +317,7 @@ jobs:
                         name: parkgolf-secrets
                         key: JWT_REFRESH_SECRET
           $DB_ENV
+          $EXTRA_ENV
                   resources:
                     requests:
                       cpu: "${{ steps.config.outputs.cpu_req }}"

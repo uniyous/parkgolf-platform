@@ -249,7 +249,7 @@ export class WeatherService {
       this.applyForecastValue(forecast, item);
     });
 
-    // 단기예보 데이터 (3일) - 초단기 이후 시간대 보충
+    // 단기예보 데이터 (3일) - 초단기예보에 없는 필드만 보충
     vilagItems.forEach((item) => {
       if (!item.fcstDate || !item.fcstTime) return;
       const key = `${item.fcstDate}-${item.fcstTime}`;
@@ -263,10 +263,8 @@ export class WeatherService {
       }
 
       const forecast = forecastMap.get(key)!;
-      // 초단기예보 데이터가 없는 경우만 적용
-      if (forecast.temperature === undefined) {
-        this.applyForecastValue(forecast, item);
-      }
+      // 필드별로 초단기예보 데이터가 없는 경우만 적용
+      this.applyForecastValueIfAbsent(forecast, item);
     });
 
     // 정렬 및 24시간 제한
@@ -346,7 +344,7 @@ export class WeatherService {
   }
 
   /**
-   * 예보값 적용
+   * 예보값 적용 (덮어쓰기)
    */
   private applyForecastValue(forecast: Partial<HourlyForecastDto>, item: KmaWeatherItem): void {
     const value = item.fcstValue ? parseFloat(item.fcstValue) : 0;
@@ -375,6 +373,35 @@ export class WeatherService {
   }
 
   /**
+   * 예보값 적용 (해당 필드가 없는 경우만)
+   */
+  private applyForecastValueIfAbsent(forecast: Partial<HourlyForecastDto>, item: KmaWeatherItem): void {
+    const value = item.fcstValue ? parseFloat(item.fcstValue) : 0;
+
+    switch (item.category) {
+      case WEATHER_CATEGORY.TMP:
+      case WEATHER_CATEGORY.T1H:
+        if (forecast.temperature === undefined) forecast.temperature = value;
+        break;
+      case WEATHER_CATEGORY.SKY:
+        if (forecast.sky === undefined) forecast.sky = this.parseSkyStatus(value);
+        break;
+      case WEATHER_CATEGORY.POP:
+        if (forecast.precipitationProbability === undefined) forecast.precipitationProbability = value;
+        break;
+      case WEATHER_CATEGORY.PTY:
+        if (forecast.precipitationType === undefined) forecast.precipitationType = this.parsePrecipitationType(item.fcstValue || '0');
+        break;
+      case WEATHER_CATEGORY.REH:
+        if (forecast.humidity === undefined) forecast.humidity = value;
+        break;
+      case WEATHER_CATEGORY.WSD:
+        if (forecast.windSpeed === undefined) forecast.windSpeed = value;
+        break;
+    }
+  }
+
+  /**
    * 하늘 상태 파싱 (1:맑음, 3:구름많음, 4:흐림)
    */
   private parseSkyStatus(code?: number): SkyStatus {
@@ -382,7 +409,7 @@ export class WeatherService {
       case 1: return 'CLEAR';
       case 3: return 'PARTLY_CLOUDY';
       case 4: return 'OVERCAST';
-      default: return 'CLOUDY';
+      default: return 'CLEAR';
     }
   }
 
