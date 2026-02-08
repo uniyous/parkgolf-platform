@@ -131,24 +131,86 @@ Frontend → BFF (REST) → NATS → Microservice (Prisma)
 모든 Microservice는 아래 구조를 따른다.
 
 ```
-src/
-├── main.ts                              # 앱 부트스트랩
-├── app.module.ts                        # 루트 모듈
-├── common/
-│   ├── exceptions/
-│   │   ├── app.exception.ts             # 커스텀 예외 클래스
-│   │   ├── unified-exception.filter.ts  # 통합 예외 필터
-│   │   ├── catalog/error-catalog.ts     # 에러 코드 정의
-│   │   └── index.ts
-│   ├── types/response.types.ts          # NatsResponse 헬퍼
-│   ├── controllers/health.controller.ts # Health Check
-│   └── nats/                            # NATS 클라이언트 설정
-└── {domain}/
-    ├── {domain}.module.ts
-    ├── controller/{domain}-nats.controller.ts
-    ├── service/{domain}.service.ts
-    └── dto/{domain}.dto.ts
+{service-name}/
+├── src/
+│   ├── main.ts                              # 앱 부트스트랩
+│   ├── app.module.ts                        # 루트 모듈
+│   ├── common/
+│   │   ├── exceptions/
+│   │   │   ├── app.exception.ts             # 커스텀 예외 클래스
+│   │   │   ├── unified-exception.filter.ts  # 통합 예외 필터
+│   │   │   ├── catalog/error-catalog.ts     # 에러 코드 정의
+│   │   │   └── index.ts
+│   │   ├── types/response.types.ts          # NatsResponse 헬퍼
+│   │   ├── controllers/health.controller.ts # Health Check
+│   │   └── nats/                            # NATS 클라이언트 설정
+│   └── {domain}/
+│       ├── {domain}.module.ts
+│       ├── controller/{domain}-nats.controller.ts
+│       ├── service/{domain}.service.ts
+│       └── dto/{domain}.dto.ts
+├── test/                                    # 테스트
+│   ├── jest-e2e.json
+│   └── integration/
+├── Dockerfile                               # 멀티스테이지 빌드
+├── .dockerignore                            # Docker 빌드 제외 파일
+├── package.json
+├── tsconfig.json
+├── tsconfig.build.json                      # 빌드 전용 (test/ 제외)
+├── nest-cli.json
+├── .env.example                             # 환경변수 템플릿
+└── .env                                     # 로컬 개발용 (git 미포함)
 ```
+
+#### 필수 설정 파일
+
+**tsconfig.build.json** (없으면 test/ 포함 빌드되어 dist 경로 변경됨):
+```json
+{
+  "extends": "./tsconfig.json",
+  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
+}
+```
+
+**.dockerignore** (Docker 빌드 시 불필요 파일 제외):
+```
+node_modules
+dist
+test
+coverage
+.env
+.env.*
+*.md
+.git
+```
+
+**Dockerfile** (멀티스테이지 빌드):
+```dockerfile
+# Build stage
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Production stage
+FROM node:20-alpine AS production
+WORKDIR /app
+RUN apk add --no-cache dumb-init
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+COPY --from=builder /app/dist ./dist
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 && \
+    chown -R nodejs:nodejs /app
+USER nodejs
+EXPOSE 8080
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "dist/main.js"]
+```
+
+> **주의:** `EXPOSE`와 Dockerfile HEALTHCHECK 포트는 로컬 기본 포트로 설정하되, K8s 배포 시 `PORT=8080` 환경변수로 오버라이드됨
 
 ### 3.3 부트스트랩 (main.ts 필수 설정)
 
