@@ -8,7 +8,6 @@ import {
   MessageCircle,
   Clock,
   MapPin,
-  Star,
   Users,
   CloudSun,
   Navigation,
@@ -33,7 +32,8 @@ export function HomePage() {
   const { data: chatRoomsData } = useChatRoomsQuery();
 
   // Location & Weather
-  const { latitude, longitude } = useCurrentLocation();
+  const { latitude, longitude, loading: locationLoading, error: locationError } = useCurrentLocation();
+  const hasLocation = latitude !== null && longitude !== null;
   const { data: regionData } = useReverseGeoQuery(latitude, longitude);
   const { data: weather } = useCurrentWeatherQuery(latitude, longitude);
   const { data: nearbyClubs } = useNearbyClubsQuery(latitude, longitude, 30, 10);
@@ -84,21 +84,30 @@ export function HomePage() {
             {getGreetingMessage(user?.name || '회원')}
           </h1>
           <div className="flex items-center gap-3 text-[var(--color-text-secondary)]">
-            {regionName && (
-              <span className="flex items-center gap-1">
-                <Navigation className="w-3.5 h-3.5" />
-                {regionName}
+            {!locationLoading && !hasLocation ? (
+              <span className="flex items-center gap-1 text-[var(--color-text-muted)]">
+                <MapPin className="w-3.5 h-3.5" />
+                위도,경도 정보 없음
               </span>
-            )}
-            {weather && (
-              <span className="flex items-center gap-1">
-                <CloudSun className="w-3.5 h-3.5" />
-                {weather.temperature}°C
-                {weather.precipitationType !== 'NONE' && ` · ${getWeatherLabel(weather.precipitationType)}`}
-              </span>
-            )}
-            {!regionName && !weather && (
-              <span>오늘도 파크골프하기 좋은 날이에요</span>
+            ) : (
+              <>
+                {regionName && (
+                  <span className="flex items-center gap-1">
+                    <Navigation className="w-3.5 h-3.5" />
+                    {regionName}
+                  </span>
+                )}
+                {weather && (
+                  <span className="flex items-center gap-1">
+                    <CloudSun className="w-3.5 h-3.5" />
+                    {weather.temperature}°C
+                    {weather.precipitationType !== 'NONE' && ` · ${getWeatherLabel(weather.precipitationType)}`}
+                  </span>
+                )}
+                {!regionName && !weather && !locationLoading && (
+                  <span>오늘도 파크골프하기 좋은 날이에요</span>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -241,43 +250,40 @@ export function HomePage() {
         {/* Nearby / Popular Clubs Section */}
         <div>
           <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-3">
-            {nearbyClubs && nearbyClubs.length > 0 ? (
-              <>
-                <MapPin className="w-5 h-5" />
-                주변 골프장
-              </>
-            ) : (
-              <>
-                <span>🏆</span>
-                이번 주 인기 골프장
-              </>
-            )}
+            <MapPin className="w-5 h-5" />
+            주변 골프장
           </h2>
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-            {nearbyClubs && nearbyClubs.length > 0 ? (
-              nearbyClubs.map((club) => (
+          {!hasLocation && !locationLoading ? (
+            <GlassCard>
+              <EmptyState
+                icon={MapPin}
+                title="위도,경도 정보 없음"
+                description={locationError || '브라우저에서 위치 권한을 허용해주세요'}
+                actionLabel="위치 재요청"
+                onAction={() => window.location.reload()}
+              />
+            </GlassCard>
+          ) : nearbyClubs && nearbyClubs.length > 0 ? (
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+              {nearbyClubs.map((club) => (
                 <NearbyClubCard
                   key={club.id}
                   club={club}
                   onClick={() => navigate(`/club/${club.id}`)}
                 />
-              ))
-            ) : (
-              // Fallback to static list when location unavailable
-              [
-                { id: 1, name: '서울 파크골프장', location: '서울특별시 송파구', rating: 4.8 },
-                { id: 2, name: '부산 해운대 파크골프', location: '부산광역시 해운대구', rating: 4.6 },
-                { id: 3, name: '제주 서귀포 파크골프', location: '제주특별자치도 서귀포시', rating: 4.9 },
-                { id: 4, name: '대전 유성 파크골프', location: '대전광역시 유성구', rating: 4.5 },
-              ].map((club) => (
-                <PopularClubCard
-                  key={club.id}
-                  club={club}
-                  onClick={() => navigate(`/club/${club.id}`)}
-                />
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <GlassCard>
+              <EmptyState
+                icon={MapPin}
+                title="주변에 골프장이 없습니다"
+                description="반경 30km 내 등록된 골프장이 없습니다"
+                actionLabel="라운드 검색"
+                onAction={() => navigate('/bookings')}
+              />
+            </GlassCard>
+          )}
         </div>
       </Container>
     </AppLayout>
@@ -435,37 +441,3 @@ function NearbyClubCard({ club, onClick }: NearbyClubCardProps) {
   );
 }
 
-// Popular club card component
-interface PopularClubCardProps {
-  club: {
-    id: number;
-    name: string;
-    location: string;
-    rating: number;
-  };
-  onClick: () => void;
-}
-
-function PopularClubCard({ club, onClick }: PopularClubCardProps) {
-  return (
-    <button onClick={onClick} className="flex-shrink-0 w-44 text-left">
-      <GlassCard hoverable className="p-0 overflow-hidden">
-        {/* Image placeholder */}
-        <div className="h-24 bg-gradient-to-br from-[var(--color-primary)]/30 to-[var(--color-secondary)]/30 flex items-center justify-center">
-          <span className="text-4xl opacity-50">⛳</span>
-        </div>
-        <div className="p-3">
-          <h4 className="text-sm font-semibold text-white truncate">{club.name}</h4>
-          <p className="text-xs text-[var(--color-text-muted)] truncate flex items-center gap-1 mt-1">
-            <MapPin className="w-3 h-3" />
-            {club.location}
-          </p>
-          <div className="flex items-center gap-1 mt-1">
-            <Star className="w-3 h-3 text-[var(--color-warning)] fill-current" />
-            <span className="text-xs text-white font-medium">{club.rating.toFixed(1)}</span>
-          </div>
-        </div>
-      </GlassCard>
-    </button>
-  );
-}
