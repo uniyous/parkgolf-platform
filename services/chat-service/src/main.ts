@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { INestApplication, ValidationPipe, Logger } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { setNatsReady } from './common/readiness';
 
@@ -50,29 +50,9 @@ async function bootstrap() {
     logger.log(`🚀 Chat Service is running on port ${port}`);
     logger.log(`🩺 Health check: http://0.0.0.0:${port}/health`);
 
-    // Connect NATS microservice (blocking - Pod must be ready before receiving traffic)
+    // NATS 마이크로서비스 연결 (백그라운드 재시도)
     if (process.env.NATS_URL) {
-      try {
-        app.connectMicroservice<MicroserviceOptions>(
-          {
-            transport: Transport.NATS,
-            options: {
-              servers: [process.env.NATS_URL!],
-              queue: 'chat-service',
-              reconnect: true,
-              maxReconnectAttempts: -1,
-              reconnectTimeWait: 2000,
-            },
-          },
-          { inheritAppConfig: true },
-        );
-
-        await app.startAllMicroservices();
-        setNatsReady(true);
-        logger.log(`🔗 NATS connected to: ${process.env.NATS_URL}`);
-      } catch (natsError: any) {
-        logger.warn('Failed to connect NATS, continuing with HTTP only...', natsError.message);
-      }
+      connectNatsWithRetry(app, process.env.NATS_URL, 'chat-service', logger).catch(() => {});
     }
 
     logger.log(`📢 Queue: chat-service`);
@@ -83,6 +63,42 @@ async function bootstrap() {
   } catch (error) {
     logger.error('Failed to start Chat Service', error);
     process.exit(1);
+  }
+}
+
+async function connectNatsWithRetry(
+  app: INestApplication, natsUrl: string, queue: string, logger: Logger,
+) {
+  const MAX_ATTEMPTS = 50;
+  app.connectMicroservice<MicroserviceOptions>(
+    {
+      transport: Transport.NATS,
+      options: {
+        servers: [natsUrl],
+        queue,
+        reconnect: true,
+        reconnectTimeWait: 2000,
+        maxReconnectAttempts: -1,
+      },
+    },
+    { inheritAppConfig: true },
+  );
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      await app.startAllMicroservices();
+      setNatsReady(true);
+      logger.log(`NATS connected to ${natsUrl} (attempt ${attempt})`);
+      return;
+    } catch (error: any) {
+      if (attempt === MAX_ATTEMPTS) {
+        logger.error(`NATS failed after ${MAX_ATTEMPTS} attempts`);
+        return;
+      }
+      const delay = Math.min(2000 * 2 ** Math.min(attempt - 1, 3), 15000);
+      logger.warn(`NATS attempt ${attempt}/${MAX_ATTEMPTS}: ${error.message}. Retry in ${delay / 1000}s`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
   }
 }
 

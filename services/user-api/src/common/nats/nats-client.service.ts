@@ -18,14 +18,27 @@ export class NatsClientService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    try {
-      this.logger.log('Connecting to NATS...');
-      await this.natsClient.connect();
-      this.isConnected = true;
-      this.logger.log('NATS connected successfully');
-    } catch (error) {
-      this.isConnected = false;
-      this.logger.error('Failed to connect to NATS', error instanceof Error ? error.message : error);
+    this.connectWithRetry().catch(() => {});
+  }
+
+  private async connectWithRetry() {
+    const MAX_ATTEMPTS = 50;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        await this.natsClient.connect();
+        this.isConnected = true;
+        this.logger.log(`NATS connected (attempt ${attempt})`);
+        return;
+      } catch (error: any) {
+        this.isConnected = false;
+        if (attempt === MAX_ATTEMPTS) {
+          this.logger.error(`NATS failed after ${MAX_ATTEMPTS} attempts`);
+          return;
+        }
+        const delay = Math.min(2000 * 2 ** Math.min(attempt - 1, 3), 15000);
+        this.logger.warn(`NATS attempt ${attempt}/${MAX_ATTEMPTS}: ${error.message}. Retry in ${delay / 1000}s`);
+        await new Promise((r) => setTimeout(r, delay));
+      }
     }
   }
 
