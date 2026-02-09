@@ -8,6 +8,8 @@ import {
   JetStreamClient,
   JetStreamManager,
   StringCodec,
+  RetentionPolicy,
+  StorageType,
 } from 'nats';
 
 export interface ChatMessage {
@@ -131,10 +133,10 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
       await this.jsm.streams.add({
         name: 'CHAT_MESSAGES',
         subjects: ['chat.room.*.message', 'chat.dm.*.message'],
-        retention: 'limits' as any,
+        retention: RetentionPolicy.Limits,
         max_msgs: 100000,
         max_age: 30 * 24 * 60 * 60 * 1000000000, // 30 days in nanoseconds
-        storage: 'file' as any,
+        storage: StorageType.File,
         duplicate_window: 60 * 1000000000, // 1 minute
       });
       this.logger.log('Created CHAT_MESSAGES stream');
@@ -151,10 +153,10 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
       await this.jsm.streams.add({
         name: 'CHAT_PRESENCE',
         subjects: ['chat.user.*.presence'],
-        retention: 'limits' as any,
+        retention: RetentionPolicy.Limits,
         max_msgs: 10000,
         max_age: 5 * 60 * 1000000000, // 5 minutes
-        storage: 'memory' as any,
+        storage: StorageType.Memory,
       });
       this.logger.log('Created CHAT_PRESENCE stream');
     } catch (error: any) {
