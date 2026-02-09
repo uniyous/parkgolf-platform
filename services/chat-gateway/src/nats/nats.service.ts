@@ -111,7 +111,14 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
 
   private async disconnect() {
     if (this.nc) {
-      await this.nc.drain();
+      try {
+        await this.nc.drain();
+      } catch (error: any) {
+        // CONNECTION_DRAINING is expected during SIGTERM graceful shutdown
+        if (error?.code !== 'CONNECTION_DRAINING') {
+          this.logger.warn(`NATS drain error: ${error.message}`);
+        }
+      }
       this.nc = null;
     }
   }
