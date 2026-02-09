@@ -30,7 +30,6 @@ export class WeatherCacheService implements OnModuleInit {
   // 캐시 키 프리픽스
   private readonly PREFIX = {
     CURRENT: 'weather:current',
-    ULTRA: 'weather:ultra',
     FORECAST: 'weather:forecast',
     HOURLY: 'weather:hourly',
   };
@@ -126,38 +125,11 @@ export class WeatherCacheService implements OnModuleInit {
   }
 
   /**
-   * 특정 키 삭제
-   */
-  delete(key: string): void {
-    this.cache.del(key);
-  }
-
-  /**
    * 전체 캐시 삭제
    */
   flush(): void {
     this.cache.flushAll();
     this.logger.log('Cache flushed');
-  }
-
-  /**
-   * 만료된 캐시 정리 (5분마다)
-   */
-  @Cron(CronExpression.EVERY_5_MINUTES)
-  cleanupExpired(): void {
-    const keys = this.cache.keys();
-    const before = keys.length;
-
-    // node-cache는 자동으로 만료 항목을 정리하지만
-    // 명시적으로 체크하여 메모리 관리
-    keys.forEach((key) => {
-      this.cache.get(key); // 만료 체크 트리거
-    });
-
-    const after = this.cache.keys().length;
-    if (before !== after) {
-      this.logger.debug(`Cache cleanup: ${before} -> ${after} keys`);
-    }
   }
 
   /**

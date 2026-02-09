@@ -9,14 +9,6 @@ export interface GridCoordinate {
 }
 
 /**
- * 위경도 좌표
- */
-export interface LatLonCoordinate {
-  lat: number;
-  lon: number;
-}
-
-/**
  * 좌표 변환 서비스
  * Lambert Conformal Conic (LCC) 투영법을 사용하여
  * 위경도 좌표를 기상청 격자 좌표로 변환
@@ -79,40 +71,6 @@ export class CoordinateConverter {
     const ny = Math.floor(this.ro - raCalc * Math.cos(theta) + this.YO + 0.5);
 
     return { nx, ny };
-  }
-
-  /**
-   * 기상청 격자 좌표를 위경도로 변환
-   * @param nx X 격자
-   * @param ny Y 격자
-   * @returns 위경도 { lat, lon }
-   */
-  toLatLon(nx: number, ny: number): LatLonCoordinate {
-    const xn = nx - this.XO;
-    const yn = this.ro - ny + this.YO;
-
-    const ra = Math.sqrt(xn * xn + yn * yn);
-    let alat = Math.pow((this.RE / this.GRID) * this.sf / ra, 1.0 / this.sn);
-    alat = 2.0 * Math.atan(alat) - Math.PI * 0.5;
-
-    let theta = 0.0;
-    if (Math.abs(xn) <= 0.0) {
-      theta = 0.0;
-    } else {
-      if (Math.abs(yn) <= 0.0) {
-        theta = Math.PI * 0.5;
-        if (xn < 0.0) theta = -theta;
-      } else {
-        theta = Math.atan2(xn, yn);
-      }
-    }
-
-    const alon = theta / this.sn + this.OLON * this.DEGRAD;
-
-    const lat = alat / this.DEGRAD;
-    const lon = alon / this.DEGRAD;
-
-    return { lat: Math.round(lat * 10000) / 10000, lon: Math.round(lon * 10000) / 10000 };
   }
 
   /**

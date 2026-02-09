@@ -47,8 +47,6 @@ export const WEATHER_CATEGORY = {
   // 초단기실황
   T1H: 'T1H',   // 기온 (℃)
   RN1: 'RN1',   // 1시간 강수량 (mm)
-  UUU: 'UUU',   // 동서바람성분 (m/s)
-  VVV: 'VVV',   // 남북바람성분 (m/s)
   REH: 'REH',   // 습도 (%)
   PTY: 'PTY',   // 강수형태 (0:없음, 1:비, 2:비/눈, 3:눈, 5:빗방울, 6:빗방울눈날림, 7:눈날림)
   VEC: 'VEC',   // 풍향 (deg)
@@ -60,9 +58,6 @@ export const WEATHER_CATEGORY = {
   TMP: 'TMP',   // 1시간 기온 (℃)
   TMN: 'TMN',   // 일 최저기온 (℃)
   TMX: 'TMX',   // 일 최고기온 (℃)
-  PCP: 'PCP',   // 1시간 강수량 (범주: 1mm 미만 등)
-  SNO: 'SNO',   // 1시간 신적설 (범주)
-  WAV: 'WAV',   // 파고 (M)
 } as const;
 
 /**
@@ -287,7 +282,7 @@ export class KmaApiService {
   /**
    * 날짜 포맷 (YYYYMMDD)
    */
-  private formatDate(date: Date): string {
+  formatDate(date: Date): string {
     const year = date.getFullYear();
     const month = this.padZero(date.getMonth() + 1);
     const day = this.padZero(date.getDate());

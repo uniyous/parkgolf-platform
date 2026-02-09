@@ -1,6 +1,16 @@
 import { IsString, IsNumber, IsOptional, Min, Max } from 'class-validator';
 
 /**
+ * 하늘 상태
+ */
+export type SkyStatus = 'CLEAR' | 'PARTLY_CLOUDY' | 'CLOUDY' | 'OVERCAST';
+
+/**
+ * 강수 형태
+ */
+export type PrecipitationType = 'NONE' | 'RAIN' | 'SLEET' | 'SNOW' | 'DRIZZLE' | 'SNOW_FLURRY';
+
+/**
  * 날씨 조회 요청 DTO
  */
 export class WeatherRequestDto {
@@ -20,9 +30,6 @@ export class WeatherRequestDto {
   @Max(132)
   lon?: number;
 
-  @IsOptional()
-  @IsString()
-  date?: string; // YYYY-MM-DD
 }
 
 /**
@@ -45,7 +52,7 @@ export class CurrentWeatherDto {
   precipitation: number;
 
   /** 강수 형태 */
-  precipitationType: 'NONE' | 'RAIN' | 'SLEET' | 'SNOW' | 'DRIZZLE' | 'SNOW_FLURRY';
+  precipitationType: PrecipitationType;
 
   /** 업데이트 시간 */
   updatedAt: string;
@@ -74,13 +81,13 @@ export class HourlyForecastDto {
   windSpeed?: number;
 
   /** 하늘 상태 */
-  sky?: 'CLEAR' | 'PARTLY_CLOUDY' | 'CLOUDY' | 'OVERCAST';
+  sky?: SkyStatus;
 
   /** 강수 확률 (%) */
   precipitationProbability?: number;
 
   /** 강수 형태 */
-  precipitationType?: 'NONE' | 'RAIN' | 'SLEET' | 'SNOW' | 'DRIZZLE' | 'SNOW_FLURRY';
+  precipitationType?: PrecipitationType;
 }
 
 /**
@@ -100,21 +107,12 @@ export class DailyForecastDto {
   maxTemperature: number;
 
   /** 하늘 상태 */
-  sky: 'CLEAR' | 'PARTLY_CLOUDY' | 'CLOUDY' | 'OVERCAST';
+  sky: SkyStatus;
 
   /** 강수 확률 (%) */
   precipitationProbability: number;
 
   /** 강수 형태 */
-  precipitationType: 'NONE' | 'RAIN' | 'SLEET' | 'SNOW' | 'DRIZZLE' | 'SNOW_FLURRY';
+  precipitationType: PrecipitationType;
 }
 
-/**
- * 캐시 통계 DTO
- */
-export class CacheStatsDto {
-  hits: number;
-  misses: number;
-  keys: number;
-  hitRate: string;
-}

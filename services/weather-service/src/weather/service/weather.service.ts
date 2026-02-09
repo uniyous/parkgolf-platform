@@ -10,17 +10,9 @@ import {
   HourlyForecastDto,
   DailyForecastDto,
   WeatherRequestDto,
+  SkyStatus,
+  PrecipitationType,
 } from '../dto/weather.dto';
-
-/**
- * 하늘 상태
- */
-export type SkyStatus = 'CLEAR' | 'PARTLY_CLOUDY' | 'CLOUDY' | 'OVERCAST';
-
-/**
- * 강수 형태
- */
-export type PrecipitationType = 'NONE' | 'RAIN' | 'SLEET' | 'SNOW' | 'DRIZZLE' | 'SNOW_FLURRY';
 
 /**
  * 날씨 서비스
@@ -75,7 +67,7 @@ export class WeatherService {
    */
   async getHourlyForecast(request: WeatherRequestDto): Promise<HourlyForecastDto[]> {
     const { nx, ny } = await this.resolveCoordinates(request);
-    const today = this.formatDate(new Date());
+    const today = this.kmaApi.formatDate(new Date());
 
     // 캐시 확인
     const cached = this.cacheService.getHourlyForecast<HourlyForecastDto[]>(nx, ny, today);
@@ -109,7 +101,7 @@ export class WeatherService {
    */
   async getDailyForecast(request: WeatherRequestDto): Promise<DailyForecastDto[]> {
     const { nx, ny } = await this.resolveCoordinates(request);
-    const today = this.formatDate(new Date());
+    const today = this.kmaApi.formatDate(new Date());
 
     // 캐시 확인
     const cached = this.cacheService.getForecast<DailyForecastDto[]>(nx, ny, today);
@@ -434,16 +426,6 @@ export class WeatherService {
    */
   private formatDateStr(dateStr: string): string {
     return `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`;
-  }
-
-  /**
-   * 날짜 포맷
-   */
-  private formatDate(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}${month}${day}`;
   }
 
   /**
