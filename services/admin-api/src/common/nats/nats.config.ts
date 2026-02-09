@@ -14,7 +14,7 @@ export const NATS_CLIENT_OPTIONS: ClientsModuleAsyncOptions = [
       options: {
         servers: [configService.get<string>('NATS_URL') || 'nats://localhost:4222'],
         reconnect: true,
-        maxReconnectAttempts: 10,
+        maxReconnectAttempts: -1,
         reconnectTimeWait: 1000,
         timeout: 30000,
         pingInterval: 10000,

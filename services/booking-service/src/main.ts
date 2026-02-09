@@ -68,7 +68,7 @@ async function bootstrap() {
                 servers: [process.env.NATS_URL],
                 queue: 'booking-service',
                 reconnect: true,
-                maxReconnectAttempts: 3,
+                maxReconnectAttempts: -1,
                 reconnectTimeWait: 2000,
               },
             },
