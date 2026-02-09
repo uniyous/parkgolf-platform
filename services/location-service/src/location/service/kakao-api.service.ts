@@ -76,6 +76,20 @@ interface KakaoRegionDocument {
   y: number;
 }
 
+interface KakaoCoord2AddressDocument {
+  address?: {
+    address_name: string;
+    region_1depth_name: string;
+    region_2depth_name: string;
+    region_3depth_name: string;
+    zip_code?: string;
+  };
+  road_address?: {
+    address_name: string;
+    zone_no: string;
+  };
+}
+
 interface KakaoMeta {
   total_count: number;
   pageable_count: number;
@@ -121,6 +135,28 @@ export class KakaoApiService implements OnModuleInit {
   private getHeaders() {
     return {
       Authorization: `KakaoAK ${this.apiKey}`,
+    };
+  }
+
+  /**
+   * KakaoPlaceDocument → PlaceInfo 변환
+   */
+  private toPlaceInfo(doc: KakaoPlaceDocument): PlaceInfo {
+    return {
+      id: doc.id,
+      placeName: doc.place_name,
+      categoryName: doc.category_name,
+      categoryGroupCode: doc.category_group_code,
+      categoryGroupName: doc.category_group_name,
+      phone: doc.phone || undefined,
+      addressName: doc.address_name,
+      roadAddressName: doc.road_address_name || undefined,
+      coordinates: {
+        latitude: parseFloat(doc.y),
+        longitude: parseFloat(doc.x),
+      },
+      placeUrl: doc.place_url,
+      distance: doc.distance ? parseInt(doc.distance, 10) : undefined,
     };
   }
 
@@ -208,25 +244,8 @@ export class KakaoApiService implements OnModuleInit {
 
       const { documents, meta } = response.data;
 
-      const places: PlaceInfo[] = documents.map((doc) => ({
-        id: doc.id,
-        placeName: doc.place_name,
-        categoryName: doc.category_name,
-        categoryGroupCode: doc.category_group_code,
-        categoryGroupName: doc.category_group_name,
-        phone: doc.phone || undefined,
-        addressName: doc.address_name,
-        roadAddressName: doc.road_address_name || undefined,
-        coordinates: {
-          latitude: parseFloat(doc.y),
-          longitude: parseFloat(doc.x),
-        },
-        placeUrl: doc.place_url,
-        distance: doc.distance ? parseInt(doc.distance, 10) : undefined,
-      }));
-
       return {
-        places,
+        places: documents.map((doc) => this.toPlaceInfo(doc)),
         meta: {
           totalCount: meta.total_count,
           pageableCount: meta.pageable_count,
@@ -268,25 +287,8 @@ export class KakaoApiService implements OnModuleInit {
 
       const { documents, meta } = response.data;
 
-      const places: PlaceInfo[] = documents.map((doc) => ({
-        id: doc.id,
-        placeName: doc.place_name,
-        categoryName: doc.category_name,
-        categoryGroupCode: doc.category_group_code,
-        categoryGroupName: doc.category_group_name,
-        phone: doc.phone || undefined,
-        addressName: doc.address_name,
-        roadAddressName: doc.road_address_name || undefined,
-        coordinates: {
-          latitude: parseFloat(doc.y),
-          longitude: parseFloat(doc.x),
-        },
-        placeUrl: doc.place_url,
-        distance: doc.distance ? parseInt(doc.distance, 10) : undefined,
-      }));
-
       return {
-        places,
+        places: documents.map((doc) => this.toPlaceInfo(doc)),
         meta: {
           totalCount: meta.total_count,
           pageableCount: meta.pageable_count,
@@ -310,7 +312,7 @@ export class KakaoApiService implements OnModuleInit {
 
     try {
       const response = await firstValueFrom(
-        this.httpService.get<{ documents: any[]; meta: { total_count: number } }>(
+        this.httpService.get<{ documents: KakaoCoord2AddressDocument[]; meta: { total_count: number } }>(
           `${this.BASE_URL}/geo/coord2address.json`,
           {
             headers: this.getHeaders(),

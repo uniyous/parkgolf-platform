@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, IsLatitude, IsLongitude, Min, Max } from 'class-validator';
+import { IsString, IsOptional, IsNumber, Min, Max } from 'class-validator';
 
 /**
  * 주소 검색 요청

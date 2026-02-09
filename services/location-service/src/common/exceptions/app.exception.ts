@@ -6,9 +6,6 @@ export interface ErrorDef {
   readonly httpStatus: number;
 }
 
-// 하위 호환을 위한 alias
-export type ErrorInfo = ErrorDef;
-
 export interface StandardErrorResponse {
   success: false;
   error: {
