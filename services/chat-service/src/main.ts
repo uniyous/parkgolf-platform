@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { setNatsReady } from './common/readiness';
 
 async function bootstrap() {
   const logger = new Logger('ChatService');
@@ -46,30 +47,29 @@ async function bootstrap() {
     logger.log(`🚀 Chat Service is running on port ${port}`);
     logger.log(`🩺 Health check: http://0.0.0.0:${port}/health`);
 
-    // Connect NATS microservice
+    // Connect NATS microservice (blocking - Pod must be ready before receiving traffic)
     if (process.env.NATS_URL) {
-      setImmediate(async () => {
-        try {
-          app.connectMicroservice<MicroserviceOptions>(
-            {
-              transport: Transport.NATS,
-              options: {
-                servers: [process.env.NATS_URL!],
-                queue: 'chat-service',
-                reconnect: true,
-                maxReconnectAttempts: -1,
-                reconnectTimeWait: 2000,
-              },
+      try {
+        app.connectMicroservice<MicroserviceOptions>(
+          {
+            transport: Transport.NATS,
+            options: {
+              servers: [process.env.NATS_URL!],
+              queue: 'chat-service',
+              reconnect: true,
+              maxReconnectAttempts: -1,
+              reconnectTimeWait: 2000,
             },
-            { inheritAppConfig: true },
-          );
+          },
+          { inheritAppConfig: true },
+        );
 
-          await app.startAllMicroservices();
-          logger.log(`🔗 NATS connected to: ${process.env.NATS_URL}`);
-        } catch (natsError: any) {
-          logger.warn('Failed to connect NATS, continuing with HTTP only...', natsError.message);
-        }
-      });
+        await app.startAllMicroservices();
+        setNatsReady(true);
+        logger.log(`🔗 NATS connected to: ${process.env.NATS_URL}`);
+      } catch (natsError: any) {
+        logger.warn('Failed to connect NATS, continuing with HTTP only...', natsError.message);
+      }
     }
 
     logger.log(`📢 Queue: chat-service`);

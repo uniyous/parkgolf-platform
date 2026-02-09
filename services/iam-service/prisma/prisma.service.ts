@@ -6,21 +6,27 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
   private readonly logger = new Logger(PrismaService.name);
 
   async onModuleInit() {
-    // Don't block startup if database is not available
-    try {
-      // Set a timeout for database connection
-      const connectPromise = this.$connect();
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Database connection timeout')), 5000)
-      );
+    await this.connectWithRetry(3, 2000);
+  }
 
-      await Promise.race([connectPromise, timeoutPromise]);
-      this.logger.log('🗄️  Database connected for parkgolf-iam-service');
-    } catch (error) {
-      this.logger.warn('⚠️  Database connection failed, service will run in limited mode');
-      this.logger.warn(`Error: ${error.message}`);
-      // Don't throw - let the service start without database
+  private async connectWithRetry(maxRetries: number, delayMs: number) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const connectPromise = this.$connect();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Database connection timeout (15s)')), 15000),
+        );
+        await Promise.race([connectPromise, timeoutPromise]);
+        this.logger.log('Database connected');
+        return;
+      } catch (error) {
+        this.logger.warn(`DB connection attempt ${attempt}/${maxRetries} failed: ${error.message}`);
+        if (attempt < maxRetries) {
+          await new Promise((r) => setTimeout(r, delayMs));
+        }
+      }
     }
+    this.logger.warn('DB connection failed after retries, continuing in limited mode');
   }
 
   async onModuleDestroy() {

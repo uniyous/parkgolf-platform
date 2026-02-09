@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Inject, Logger, HttpException, HttpStatus, OnModuleInit } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, TimeoutError } from 'rxjs';
 import { Errors } from '../exceptions';
@@ -9,12 +9,29 @@ import { NATS_TIMEOUTS } from '../constants';
  * NATS 통신을 위한 공통 래퍼 - 타임아웃, 에러 핸들링, 로깅 통합
  */
 @Injectable()
-export class NatsClientService {
+export class NatsClientService implements OnModuleInit {
   private readonly logger = new Logger(NatsClientService.name);
+  private isConnected = false;
 
   constructor(
     @Inject('NATS_CLIENT') private readonly natsClient: ClientProxy,
   ) {}
+
+  async onModuleInit() {
+    try {
+      this.logger.log('Connecting to NATS...');
+      await this.natsClient.connect();
+      this.isConnected = true;
+      this.logger.log('NATS connected successfully');
+    } catch (error) {
+      this.isConnected = false;
+      this.logger.error('Failed to connect to NATS', error instanceof Error ? error.message : error);
+    }
+  }
+
+  getConnectionStatus(): boolean {
+    return this.isConnected;
+  }
 
   /**
    * NATS 메시지 전송 (공통 래퍼)

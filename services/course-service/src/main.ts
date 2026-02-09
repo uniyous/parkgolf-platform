@@ -4,6 +4,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { UnifiedExceptionFilter } from './common/exceptions';
 import { ResponseTransformInterceptor } from './common/interceptor/response-transform.interceptor';
+import { setNatsReady } from './common/readiness';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -53,34 +54,32 @@ async function bootstrap() {
     // Register global interceptor BEFORE connecting microservice
     app.useGlobalInterceptors(new ResponseTransformInterceptor());
 
-    // Connect NATS microservice asynchronously (optional for Cloud Run)
+    // Connect NATS microservice (blocking - Pod must be ready before receiving traffic)
     if (process.env.NATS_URL) {
       logger.log(`📡 NATS_URL found: ${process.env.NATS_URL}`);
-      setImmediate(async () => {
-        try {
-          logger.log('🔗 Attempting NATS connection...');
-          // inheritAppConfig: true - inherit global pipes, interceptors, guards, filters
-          app.connectMicroservice<MicroserviceOptions>(
-            {
-              transport: Transport.NATS,
-              options: {
-                servers: [process.env.NATS_URL],
-                queue: 'course-service',
-                reconnect: true,
-                maxReconnectAttempts: -1,
-                reconnectTimeWait: 2000,
-              },
+      try {
+        logger.log('🔗 Attempting NATS connection...');
+        app.connectMicroservice<MicroserviceOptions>(
+          {
+            transport: Transport.NATS,
+            options: {
+              servers: [process.env.NATS_URL],
+              queue: 'course-service',
+              reconnect: true,
+              maxReconnectAttempts: -1,
+              reconnectTimeWait: 2000,
             },
-            { inheritAppConfig: true },
-          );
+          },
+          { inheritAppConfig: true },
+        );
 
-          await app.startAllMicroservices();
-          logger.log(`✅ NATS connected successfully to: ${process.env.NATS_URL}`);
-          logger.log(`📢 Queue: course-service`);
-        } catch (natsError) {
-          logger.warn(`⚠️ Failed to connect NATS microservice: ${natsError.message}. Continuing with HTTP only...`);
-        }
-      });
+        await app.startAllMicroservices();
+        setNatsReady(true);
+        logger.log(`✅ NATS connected successfully to: ${process.env.NATS_URL}`);
+        logger.log(`📢 Queue: course-service`);
+      } catch (natsError) {
+        logger.warn(`⚠️ Failed to connect NATS microservice: ${natsError.message}. Continuing with HTTP only...`);
+      }
     } else {
       logger.warn('📵 NATS_URL not provided, running in HTTP-only mode');
     }

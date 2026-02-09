@@ -1,6 +1,8 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import { Response } from 'express';
+import { NatsClientService } from '../nats/nats-client.service';
 
 interface ServiceHealth {
   name: string;
@@ -32,7 +34,10 @@ export class HealthController {
     { name: 'booking-service', url: process.env.BOOKING_SERVICE_URL || 'https://booking-service-dev-iihuzmuufa-du.a.run.app' },
   ];
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly natsClient: NatsClientService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Health check' })
@@ -47,12 +52,14 @@ export class HealthController {
   }
 
   @Get('ready')
-  @ApiOperation({ summary: 'Readiness check' })
-  getReady() {
-    return {
-      status: 'ready',
+  @ApiOperation({ summary: 'Readiness check - NATS' })
+  getReady(@Res() res: Response) {
+    const nats = this.natsClient.getConnectionStatus();
+    res.status(nats ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE).json({
+      status: nats ? 'ready' : 'not_ready',
+      nats,
       timestamp: new Date().toISOString(),
-    };
+    });
   }
 
   @Get('live')

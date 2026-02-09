@@ -4,6 +4,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { UnifiedExceptionFilter } from './common/exceptions';
 import { ResponseTransformInterceptor } from './common/interceptor/response-transform.interceptor';
+import { setNatsReady } from './common/readiness';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -59,33 +60,32 @@ async function bootstrap() {
     // Register global interceptor
     app.useGlobalInterceptors(new ResponseTransformInterceptor());
 
-    // Connect NATS microservice
+    // Connect NATS microservice (blocking - Pod must be ready before receiving traffic)
     if (process.env.NATS_URL) {
-      setImmediate(async () => {
-        try {
-          app.connectMicroservice<MicroserviceOptions>(
-            {
-              transport: Transport.NATS,
-              options: {
-                servers: [process.env.NATS_URL],
-                queue: 'payment-service',
-                reconnect: true,
-                maxReconnectAttempts: -1,
-                reconnectTimeWait: 2000,
-              },
+      try {
+        app.connectMicroservice<MicroserviceOptions>(
+          {
+            transport: Transport.NATS,
+            options: {
+              servers: [process.env.NATS_URL],
+              queue: 'payment-service',
+              reconnect: true,
+              maxReconnectAttempts: -1,
+              reconnectTimeWait: 2000,
             },
-            { inheritAppConfig: true },
-          );
+          },
+          { inheritAppConfig: true },
+        );
 
-          await app.startAllMicroservices();
-          logger.log(`🔗 NATS connected to: ${process.env.NATS_URL}`);
-        } catch (natsError) {
-          logger.warn(
-            'Failed to connect NATS microservice, continuing with HTTP only...',
-            natsError.message,
-          );
-        }
-      });
+        await app.startAllMicroservices();
+        setNatsReady(true);
+        logger.log(`🔗 NATS connected to: ${process.env.NATS_URL}`);
+      } catch (natsError) {
+        logger.warn(
+          'Failed to connect NATS microservice, continuing with HTTP only...',
+          natsError.message,
+        );
+      }
     } else {
       logger.warn('NATS_URL not provided, running in HTTP-only mode');
     }
