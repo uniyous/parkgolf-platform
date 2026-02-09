@@ -47,7 +47,7 @@ export const DeleteConfirmPopover: React.FC<DeleteConfirmPopoverProps> = ({
 
       <Popover.Portal>
         <Popover.Content
-          className="z-50 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-lg animate-in fade-in-0 zoom-in-95"
+          className="z-50 w-72 rounded-lg border border-white/15 bg-emerald-900/95 backdrop-blur-xl p-4 shadow-lg animate-in fade-in-0 zoom-in-95"
           align={align}
           side={side}
           sideOffset={8}
@@ -55,14 +55,14 @@ export const DeleteConfirmPopover: React.FC<DeleteConfirmPopoverProps> = ({
           {/* 경고 아이콘 */}
           <div className="flex items-start space-x-3">
             <div className="flex-shrink-0">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
+              <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-400" />
               </div>
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-medium text-gray-900">삭제 확인</h3>
-              <p className="mt-1 text-sm text-gray-500">{displayMessage}</p>
-              <p className="mt-1 text-xs text-red-500">이 작업은 되돌릴 수 없습니다.</p>
+              <h3 className="text-sm font-medium text-white">삭제 확인</h3>
+              <p className="mt-1 text-sm text-white/50">{displayMessage}</p>
+              <p className="mt-1 text-xs text-red-400">이 작업은 되돌릴 수 없습니다.</p>
             </div>
           </div>
 
@@ -72,7 +72,7 @@ export const DeleteConfirmPopover: React.FC<DeleteConfirmPopoverProps> = ({
               <button
                 type="button"
                 disabled={isDeleting}
-                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
+                className="px-3 py-1.5 text-sm font-medium text-white/70 bg-white/10 border border-white/15 rounded-lg hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white/20 disabled:opacity-50"
               >
                 취소
               </button>
@@ -95,7 +95,7 @@ export const DeleteConfirmPopover: React.FC<DeleteConfirmPopoverProps> = ({
           </div>
 
           {/* 화살표 */}
-          <Popover.Arrow className="fill-white" />
+          <Popover.Arrow className="fill-emerald-900/95" />
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>

@@ -18,7 +18,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-black/50 backdrop-blur-sm',
+      'fixed inset-0 z-50 bg-black/60 backdrop-blur-sm',
       'data-[state=open]:animate-in data-[state=closed]:animate-out',
       'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className
@@ -48,7 +48,7 @@ const DialogContent = React.forwardRef<
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          'fixed left-[50%] top-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 border border-gray-200 bg-white p-6 shadow-lg duration-200',
+          'fixed left-[50%] top-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 border border-white/15 bg-emerald-900/95 backdrop-blur-xl p-6 shadow-lg duration-200',
           'data-[state=open]:animate-in data-[state=closed]:animate-out',
           'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
           'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
@@ -86,7 +86,7 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn('text-lg font-semibold leading-none tracking-tight text-gray-900', className)}
+    className={cn('text-lg font-semibold leading-none tracking-tight text-white', className)}
     {...props}
   />
 ));
@@ -98,7 +98,7 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn('text-sm text-gray-500', className)}
+    className={cn('text-sm text-white/50', className)}
     {...props}
   />
 ));
@@ -122,10 +122,10 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidt
             <DialogTitle>{title}</DialogTitle>
             <DialogClose asChild>
               <button
-                className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:pointer-events-none"
+                className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-transparent transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:pointer-events-none"
                 aria-label="Close"
               >
-                <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                <X className="h-5 w-5 text-white/40 hover:text-white/70" />
               </button>
             </DialogClose>
           </DialogHeader>
@@ -136,10 +136,10 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidt
             </VisuallyHiddenPrimitive.Root>
             <DialogClose asChild>
               <button
-                className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:pointer-events-none"
+                className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-transparent transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:pointer-events-none"
                 aria-label="Close"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5 text-white/40 hover:text-white/70" />
               </button>
             </DialogClose>
           </>

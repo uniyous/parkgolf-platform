@@ -10,13 +10,13 @@ interface RecentBookingsListProps {
 }
 
 const statusConfig: Record<BookingStatusType, { label: string; className: string }> = {
-  PENDING: { label: '대기', className: 'bg-yellow-100 text-yellow-800' },
-  CONFIRMED: { label: '확정', className: 'bg-green-100 text-green-800' },
-  COMPLETED: { label: '완료', className: 'bg-blue-100 text-blue-800' },
-  CANCELLED: { label: '취소', className: 'bg-red-100 text-red-800' },
-  NO_SHOW: { label: '노쇼', className: 'bg-gray-100 text-gray-800' },
-  SAGA_PENDING: { label: '처리중', className: 'bg-yellow-100 text-yellow-800' },
-  SAGA_FAILED: { label: '실패', className: 'bg-red-100 text-red-800' },
+  PENDING: { label: '대기', className: 'bg-yellow-500/20 text-yellow-400' },
+  CONFIRMED: { label: '확정', className: 'bg-green-500/20 text-green-400' },
+  COMPLETED: { label: '완료', className: 'bg-emerald-500/20 text-emerald-400' },
+  CANCELLED: { label: '취소', className: 'bg-red-500/20 text-red-400' },
+  NO_SHOW: { label: '노쇼', className: 'bg-white/10 text-white/60' },
+  SAGA_PENDING: { label: '처리중', className: 'bg-yellow-500/20 text-yellow-400' },
+  SAGA_FAILED: { label: '실패', className: 'bg-red-500/20 text-red-400' },
 };
 
 const formatDate = (dateStr: string) => {
@@ -32,10 +32,10 @@ export const RecentBookingsList: React.FC<RecentBookingsListProps> = ({
 
   if (isLoading) {
     return (
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="bg-white/10 backdrop-blur-xl shadow rounded-lg border border-white/15 p-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-gray-500" />
+          <h3 className="text-lg font-medium text-white flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-white/50" />
             최근 예약
           </h3>
         </div>
@@ -45,15 +45,15 @@ export const RecentBookingsList: React.FC<RecentBookingsListProps> = ({
   }
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
+    <div className="bg-white/10 backdrop-blur-xl shadow rounded-lg border border-white/15 p-6">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-gray-500" />
+        <h3 className="text-lg font-medium text-white flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-white/50" />
           최근 예약
         </h3>
         <button
           onClick={() => navigate('/bookings')}
-          className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 transition-colors"
+          className="flex items-center gap-1 text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
         >
           전체보기
           <ChevronRight className="w-4 h-4" />
@@ -73,23 +73,23 @@ export const RecentBookingsList: React.FC<RecentBookingsListProps> = ({
             return (
               <div
                 key={booking.id}
-                className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 cursor-pointer px-3 -mx-3 rounded-lg transition-colors"
+                className="flex items-center justify-between py-3 border-b border-white/10 last:border-0 hover:bg-white/5 cursor-pointer px-3 -mx-3 rounded-lg transition-colors"
                 onClick={() => navigate('/bookings')}
               >
                 <div className="flex items-center gap-4 text-sm">
-                  <span className="font-mono text-gray-400 w-16">
+                  <span className="font-mono text-white/40 w-16">
                     {booking.bookingNumber}
                   </span>
-                  <span className="text-gray-900 w-20 truncate">
+                  <span className="text-white w-20 truncate">
                     {booking.userName || booking.guestName || '-'}
                   </span>
-                  <span className="text-gray-500 truncate max-w-[200px] hidden md:block">
+                  <span className="text-white/50 truncate max-w-[200px] hidden md:block">
                     {booking.clubName || booking.gameName || '-'}
                   </span>
-                  <span className="text-gray-400 hidden sm:block">
+                  <span className="text-white/40 hidden sm:block">
                     {formatDate(booking.bookingDate)} {booking.startTime}
                   </span>
-                  <span className="text-gray-400 hidden sm:block">
+                  <span className="text-white/40 hidden sm:block">
                     {booking.playerCount}명
                   </span>
                 </div>

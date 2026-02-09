@@ -66,11 +66,11 @@ export const DashboardContainer: React.FC = () => {
   return (
     <>
       {/* Header */}
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="bg-white/10 backdrop-blur-xl shadow rounded-lg border border-white/15 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">대시보드</h2>
-            <p className="mt-1 text-sm text-gray-500">
+            <h2 className="text-xl font-semibold text-white">대시보드</h2>
+            <p className="mt-1 text-sm text-white/50">
               {new Date().toLocaleDateString('ko-KR', {
                 year: 'numeric',
                 month: 'long',
@@ -82,7 +82,7 @@ export const DashboardContainer: React.FC = () => {
           <button
             onClick={handleRefresh}
             disabled={isLoading}
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+            className="p-2 text-white/50 hover:text-white/70 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
             title="새로고침"
           >
             <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
@@ -92,7 +92,7 @@ export const DashboardContainer: React.FC = () => {
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg">
           {error}
         </div>
       )}

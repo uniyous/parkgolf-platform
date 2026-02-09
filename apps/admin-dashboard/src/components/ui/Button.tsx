@@ -4,17 +4,17 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed',
+  'inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium ring-offset-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed',
   {
     variants: {
       variant: {
-        default: 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm',
+        default: 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-sm',
         destructive: 'bg-red-600 text-white hover:bg-red-700 shadow-sm',
         outline:
-          'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50',
-        secondary: 'bg-gray-100 text-gray-700 hover:bg-gray-200',
-        ghost: 'text-gray-500 hover:bg-gray-100 hover:text-gray-900',
-        link: 'text-blue-600 underline-offset-4 hover:underline',
+          'border border-white/15 bg-white/10 text-white hover:bg-white/15',
+        secondary: 'bg-white/10 text-white/80 hover:bg-white/15 hover:text-white',
+        ghost: 'text-white/50 hover:bg-white/10 hover:text-white',
+        link: 'text-emerald-400 underline-offset-4 hover:underline',
       },
       size: {
         default: 'h-10 px-4 py-2',

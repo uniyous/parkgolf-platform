@@ -79,7 +79,7 @@ export const ClubDetailPage: React.FC = () => {
       isLoading={isLoading}
       isEmpty={!club && !isLoading}
       emptyIcon={
-        <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="h-12 w-12 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16.5c-.77.833.192 3 1.732 3z" />
         </svg>
       }
@@ -88,7 +88,7 @@ export const ClubDetailPage: React.FC = () => {
       emptyAction={
         <button
           onClick={() => navigate('/clubs')}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors"
         >
           목록으로 돌아가기
         </button>
@@ -99,35 +99,35 @@ export const ClubDetailPage: React.FC = () => {
       {club && (
     <div className="space-y-6">
       {/* 헤더 */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
             <button
               onClick={() => navigate('/clubs')}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
             >
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{club.name}</h1>
+              <h1 className="text-3xl font-bold text-white">{club.name}</h1>
               <div className="flex items-center space-x-4 mt-2">
-                <p className="text-gray-600 flex items-center">
+                <p className="text-white/60 flex items-center">
                   <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                   {club.location}
                 </p>
-                <p className="text-gray-600">⛳ {stats.totalHoles || club.totalHoles || 0}홀</p>
-                <p className="text-gray-600">🎯 {stats.totalCourses || club.totalCourses || 0}코스</p>
+                <p className="text-white/60">⛳ {stats.totalHoles || club.totalHoles || 0}홀</p>
+                <p className="text-white/60">🎯 {stats.totalCourses || club.totalCourses || 0}코스</p>
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                   club.status === 'ACTIVE'
-                    ? 'bg-green-100 text-green-800'
+                    ? 'bg-green-500/20 text-green-400'
                     : club.status === 'MAINTENANCE'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-red-100 text-red-800'
+                    ? 'bg-yellow-500/20 text-yellow-400'
+                    : 'bg-red-500/20 text-red-400'
                 }`}>
                   {club.status === 'ACTIVE' ? '운영중' : club.status === 'MAINTENANCE' ? '정비중' : '휴장'}
                 </span>
@@ -154,7 +154,7 @@ export const ClubDetailPage: React.FC = () => {
             </button>
             <button
               onClick={handleEditClub}
-              className="p-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="p-2 border border-white/15 text-white/70 rounded-lg hover:bg-white/5 transition-colors"
               title="골프장 수정"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -170,7 +170,7 @@ export const ClubDetailPage: React.FC = () => {
               align="end"
             >
               <button
-                className="p-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
+                className="p-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-500/10 transition-colors"
                 title="골프장 삭제"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -182,13 +182,13 @@ export const ClubDetailPage: React.FC = () => {
         </div>
 
         {/* 탭 네비게이션 */}
-        <div className="flex space-x-1 border-b border-gray-200">
+        <div className="flex space-x-1 border-b border-white/15">
           <button
             onClick={() => setActiveTab('basic')}
             className={`px-6 py-3 text-sm font-medium rounded-t-md transition-colors ${
               activeTab === 'basic'
-                ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-500'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-emerald-500/10 text-emerald-300 border-b-2 border-emerald-500'
+                : 'text-white/60 hover:text-white'
             }`}
           >
             <div className="flex items-center space-x-2">
@@ -202,8 +202,8 @@ export const ClubDetailPage: React.FC = () => {
             onClick={() => setActiveTab('courses')}
             className={`px-6 py-3 text-sm font-medium rounded-t-md transition-colors ${
               activeTab === 'courses'
-                ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-500'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-emerald-500/10 text-emerald-300 border-b-2 border-emerald-500'
+                : 'text-white/60 hover:text-white'
             }`}
           >
             <div className="flex items-center space-x-2">
@@ -217,8 +217,8 @@ export const ClubDetailPage: React.FC = () => {
             onClick={() => setActiveTab('operation')}
             className={`px-6 py-3 text-sm font-medium rounded-t-md transition-colors ${
               activeTab === 'operation'
-                ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-500'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-emerald-500/10 text-emerald-300 border-b-2 border-emerald-500'
+                : 'text-white/60 hover:text-white'
             }`}
           >
             <div className="flex items-center space-x-2">
@@ -232,7 +232,7 @@ export const ClubDetailPage: React.FC = () => {
       </div>
 
       {/* 탭 컨텐츠 */}
-      <div className="bg-white rounded-lg border border-gray-200">
+      <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15">
         {activeTab === 'basic' && (
           <BasicInfoTab club={club} onUpdate={refetchClub} initialEditMode={editMode} />
         )}

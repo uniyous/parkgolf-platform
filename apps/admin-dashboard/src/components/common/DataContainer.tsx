@@ -62,9 +62,9 @@ export const DataContainer: React.FC<DataContainerProps> = ({
             )}
           </div>
         )}
-        <h3 className="text-lg font-medium text-gray-900 mb-2">{emptyMessage}</h3>
+        <h3 className="text-lg font-medium text-white mb-2">{emptyMessage}</h3>
         {emptyDescription && (
-          <p className="text-sm text-gray-500 mb-4">{emptyDescription}</p>
+          <p className="text-sm text-white/50 mb-4">{emptyDescription}</p>
         )}
         {emptyAction && <div className="mt-4">{emptyAction}</div>}
       </div>

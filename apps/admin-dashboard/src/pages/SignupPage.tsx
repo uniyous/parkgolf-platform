@@ -109,22 +109,22 @@ export const SignupPage: React.FC = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen flex items-center justify-center bg-white/5 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
-            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
-              <Check className="h-6 w-6 text-green-600" />
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-500/20">
+              <Check className="h-6 w-6 text-green-400" />
             </div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
               회원가입 완료!
             </h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
+            <p className="mt-2 text-center text-sm text-white/60">
               관리자 승인 후 로그인하실 수 있습니다.
             </p>
             <div className="mt-6">
               <Link
                 to="/login"
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-emerald-600 hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 ring-offset-transparent"
               >
                 로그인 페이지로 이동
               </Link>
@@ -136,13 +136,13 @@ export const SignupPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-white/5 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
             ParkMate 관리자
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-center text-sm text-white/60">
             새 관리자 계정을 생성하세요
           </p>
         </div>
@@ -200,14 +200,14 @@ export const SignupPage: React.FC = () => {
             />
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-white/70 mb-1">
                 권한 레벨
               </label>
               <select
                 name="role"
                 value={formData.role}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-white/15 rounded-lg bg-white/10 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ring-offset-transparent"
                 required
               >
                 <optgroup label="회사 역할">
@@ -226,7 +226,7 @@ export const SignupPage: React.FC = () => {
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded">
               {error}
             </div>
           )}
@@ -242,10 +242,10 @@ export const SignupPage: React.FC = () => {
           </div>
 
           <div className="text-center">
-            <span className="text-sm text-gray-600">이미 계정이 있으신가요? </span>
+            <span className="text-sm text-white/60">이미 계정이 있으신가요? </span>
             <Link
               to="/login"
-              className="font-medium text-indigo-600 hover:text-indigo-500"
+              className="font-medium text-emerald-400 hover:text-emerald-300"
             >
               로그인하기
             </Link>

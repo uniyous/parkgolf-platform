@@ -14,10 +14,10 @@ interface GameTimeSlotTabProps {
 }
 
 const statusLabels: Record<string, { label: string; color: string; bgColor: string }> = {
-  AVAILABLE: { label: '예약가능', color: 'text-green-700', bgColor: 'bg-green-100' },
-  FULLY_BOOKED: { label: '예약마감', color: 'text-red-700', bgColor: 'bg-red-100' },
-  CLOSED: { label: '종료', color: 'text-gray-700', bgColor: 'bg-gray-100' },
-  MAINTENANCE: { label: '정비중', color: 'text-yellow-700', bgColor: 'bg-yellow-100' },
+  AVAILABLE: { label: '예약가능', color: 'text-green-400', bgColor: 'bg-green-500/20' },
+  FULLY_BOOKED: { label: '예약마감', color: 'text-red-400', bgColor: 'bg-red-500/20' },
+  CLOSED: { label: '종료', color: 'text-white/70', bgColor: 'bg-white/10' },
+  MAINTENANCE: { label: '정비중', color: 'text-yellow-400', bgColor: 'bg-yellow-500/20' },
 };
 
 // 날짜 유틸리티 함수
@@ -165,14 +165,14 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">타임슬롯 관리</h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <h2 className="text-lg font-semibold text-white">타임슬롯 관리</h2>
+          <p className="text-sm text-white/50 mt-1">
             주간 스케줄 기반 타임슬롯 관리
           </p>
         </div>
         <button
           onClick={() => setShowWizard(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+          className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors flex items-center space-x-2"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -182,33 +182,33 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
       </div>
 
       {/* 주간 네비게이션 */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
+      <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-xl p-4 mb-6">
         <div className="flex items-center justify-between">
           {/* 이전/다음 주 버튼 */}
           <div className="flex items-center space-x-2">
             <button
               onClick={goToPrevWeek}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/5 rounded-lg transition-colors"
               title="이전 주"
             >
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
 
             <div className="text-center min-w-[200px]">
-              <div className="text-lg font-semibold text-gray-900">{weekLabel}</div>
-              <div className="text-xs text-gray-500">
+              <div className="text-lg font-semibold text-white">{weekLabel}</div>
+              <div className="text-xs text-white/50">
                 {weekRange.start} ~ {weekRange.end}
               </div>
             </div>
 
             <button
               onClick={goToNextWeek}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/5 rounded-lg transition-colors"
               title="다음 주"
             >
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
@@ -219,7 +219,7 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
             {!isThisWeek && (
               <button
                 onClick={goToThisWeek}
-                className="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                className="px-3 py-1.5 text-sm bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-colors"
               >
                 이번 주
               </button>
@@ -227,7 +227,7 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
             <button
               onClick={() => refetch()}
               disabled={isFetching}
-              className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center space-x-1"
+              className="px-3 py-1.5 text-sm bg-white/10 text-white/70 rounded-lg hover:bg-white/10 transition-colors flex items-center space-x-1"
             >
               {isFetching ? (
                 <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -253,21 +253,21 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
       >
         {/* 통계 */}
         {stats.total > 0 && (
-          <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
+          <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-xl p-4 mb-6">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-1.5">
                 <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                <span className="text-sm text-gray-600">예약가능 {stats.available}개</span>
+                <span className="text-sm text-white/60">예약가능 {stats.available}개</span>
               </div>
               <div className="flex items-center space-x-1.5">
                 <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                <span className="text-sm text-gray-600">예약마감 {stats.booked}개</span>
+                <span className="text-sm text-white/60">예약마감 {stats.booked}개</span>
               </div>
               <div className="flex items-center space-x-1.5">
-                <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                <span className="text-sm text-gray-600">종료 {stats.closed}개</span>
+                <span className="w-2 h-2 bg-white/40 rounded-full"></span>
+                <span className="text-sm text-white/60">종료 {stats.closed}개</span>
               </div>
-              <div className="ml-auto text-sm text-gray-500">
+              <div className="ml-auto text-sm text-white/50">
                 총 {stats.total}개 슬롯 / {groupedSlots.length}일
               </div>
             </div>
@@ -276,20 +276,20 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
 
         {/* 타임슬롯 목록 */}
         {groupedSlots.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-xl">
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="text-center py-12 bg-white/5 rounded-xl">
+          <svg className="mx-auto h-12 w-12 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <h3 className="mt-2 text-lg font-medium text-gray-900">
+          <h3 className="mt-2 text-lg font-medium text-white">
             {weekLabel} 타임슬롯이 없습니다
           </h3>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-white/50">
             주간 스케줄을 설정한 후 타임슬롯을 생성해주세요
           </p>
           <div className="mt-6">
             <button
               onClick={() => setShowWizard(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors"
             >
               타임슬롯 생성하기
             </button>
@@ -312,36 +312,36 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
               <div
                 key={date}
                 className={`border rounded-xl overflow-hidden transition-all ${
-                  isToday ? 'border-blue-300 ring-2 ring-blue-100' : 'border-gray-200'
+                  isToday ? 'border-emerald-500/50 ring-2 ring-emerald-500/20' : 'border-white/15'
                 }`}
               >
                 {/* 날짜 헤더 */}
                 <button
                   onClick={() => toggleDay(date)}
                   className={`w-full px-4 py-3 flex items-center justify-between transition-colors ${
-                    isToday ? 'bg-blue-50' : 'bg-gray-50 hover:bg-gray-100'
+                    isToday ? 'bg-emerald-500/10' : 'bg-white/5 hover:bg-white/10'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
                     <div className={`text-2xl font-bold ${
-                      isSunday ? 'text-red-600' : isSaturday ? 'text-blue-600' : 'text-gray-900'
+                      isSunday ? 'text-red-400' : isSaturday ? 'text-emerald-400' : 'text-white'
                     }`}>
                       {dateObj.getDate()}
                     </div>
                     <div>
                       <div className="flex items-center space-x-2">
                         <span className={`text-sm font-medium ${
-                          isSunday ? 'text-red-600' : isSaturday ? 'text-blue-600' : 'text-gray-700'
+                          isSunday ? 'text-red-400' : isSaturday ? 'text-emerald-400' : 'text-white/70'
                         }`}>
                           {dateObj.toLocaleDateString('ko-KR', { weekday: 'long' })}
                         </span>
                         {isToday && (
-                          <span className="px-2 py-0.5 text-xs font-medium bg-blue-600 text-white rounded-full">
+                          <span className="px-2 py-0.5 text-xs font-medium bg-emerald-600 text-white rounded-full">
                             오늘
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-white/50">
                         {dateObj.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long' })}
                       </div>
                     </div>
@@ -349,12 +349,12 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
 
                   <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-3 text-sm">
-                      <span className="text-green-600">{availableCount}개 가능</span>
-                      {bookedCount > 0 && <span className="text-red-600">{bookedCount}개 마감</span>}
-                      <span className="text-gray-500">총 {slots.length}개</span>
+                      <span className="text-green-400">{availableCount}개 가능</span>
+                      {bookedCount > 0 && <span className="text-red-400">{bookedCount}개 마감</span>}
+                      <span className="text-white/50">총 {slots.length}개</span>
                     </div>
                     <svg
-                      className={`w-5 h-5 text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
+                      className={`w-5 h-5 text-white/40 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -366,28 +366,28 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
 
                 {/* 슬롯 그리드 */}
                 {!isCollapsed && (
-                  <div className="p-4 bg-white">
+                  <div className="p-4 bg-white/10 backdrop-blur-xl">
                     <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
                       {slots
                         .sort((a, b) => a.startTime.localeCompare(b.startTime))
                         .map((slot) => {
-                          const statusInfo = statusLabels[slot.status] || { label: slot.status, color: 'text-gray-600', bgColor: 'bg-gray-100' };
+                          const statusInfo = statusLabels[slot.status] || { label: slot.status, color: 'text-white/60', bgColor: 'bg-white/10' };
 
                           return (
                             <div
                               key={slot.id}
                               className={`relative group p-2 rounded-lg border text-center transition-all hover:shadow-md ${
                                 slot.status === 'AVAILABLE'
-                                  ? 'bg-white border-green-200 hover:border-green-400'
+                                  ? 'bg-white/10 border-green-500/20 hover:border-green-500/40'
                                   : slot.status === 'FULLY_BOOKED'
-                                  ? 'bg-red-50 border-red-200'
-                                  : 'bg-gray-50 border-gray-200'
+                                  ? 'bg-red-500/10 border-red-500/20'
+                                  : 'bg-white/5 border-white/15'
                               }`}
                             >
-                              <div className="text-sm font-semibold text-gray-900">
+                              <div className="text-sm font-semibold text-white">
                                 {slot.startTime.slice(0, 5)}
                               </div>
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-white/50">
                                 {slot.currentBookings ?? 0}/{slot.maxBookings ?? 0}
                               </div>
                               <div className={`mt-1 px-1 py-0.5 rounded text-[10px] font-medium ${statusInfo.bgColor} ${statusInfo.color}`}>
@@ -399,7 +399,7 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
                                 {slot.status === 'AVAILABLE' && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); handleStatusChange(slot.id, 'CLOSED'); }}
-                                    className="px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
+                                    className="px-2 py-1 text-xs bg-white/60 text-white rounded hover:bg-white/70"
                                   >
                                     종료
                                   </button>

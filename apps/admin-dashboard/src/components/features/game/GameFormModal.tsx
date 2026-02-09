@@ -36,14 +36,14 @@ const initialFormData: FormData = {
 };
 
 const SLOT_MODE_OPTIONS = [
-  { value: 'TEE_TIME', label: 'TEE TIME', desc: '유료 골프장 (간격별 타임 생성)', color: 'bg-blue-100 text-blue-800' },
-  { value: 'SESSION', label: 'SESSION', desc: '무료 골프장 (시간대별 세션)', color: 'bg-emerald-100 text-emerald-800' },
+  { value: 'TEE_TIME', label: 'TEE TIME', desc: '유료 골프장 (간격별 타임 생성)', color: 'bg-emerald-500/20 text-emerald-400' },
+  { value: 'SESSION', label: 'SESSION', desc: '무료 골프장 (시간대별 세션)', color: 'bg-emerald-500/20 text-emerald-400' },
 ];
 
 const STATUS_OPTIONS = [
-  { value: 'ACTIVE', label: '운영중', icon: '✅', color: 'bg-green-100 text-green-800' },
-  { value: 'MAINTENANCE', label: '정비중', icon: '🔧', color: 'bg-yellow-100 text-yellow-800' },
-  { value: 'INACTIVE', label: '비활성', icon: '⏸️', color: 'bg-red-100 text-red-800' },
+  { value: 'ACTIVE', label: '운영중', icon: '✅', color: 'bg-green-500/20 text-green-400' },
+  { value: 'MAINTENANCE', label: '정비중', icon: '🔧', color: 'bg-yellow-500/20 text-yellow-400' },
+  { value: 'INACTIVE', label: '비활성', icon: '⏸️', color: 'bg-red-500/20 text-red-400' },
 ];
 
 export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onSuccess }) => {
@@ -167,7 +167,7 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <Dialog.Content
-          className="fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-xl max-h-[90vh] overflow-hidden focus:outline-none"
+          className="fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 bg-white/10 backdrop-blur-xl rounded-2xl shadow-xl max-h-[90vh] overflow-hidden focus:outline-none"
           aria-describedby={undefined}
         >
           <VisuallyHidden.Root asChild>
@@ -208,33 +208,33 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
           <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(90vh-180px)]">
             <div className="p-6 space-y-6">
               {/* 기본 정보 섹션 */}
-              <div className="bg-gray-50 rounded-xl p-5">
+              <div className="bg-white/5 rounded-xl p-5">
                 <div className="flex items-center space-x-2 mb-4">
-                  <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <h3 className="text-base font-medium text-gray-900">기본 정보</h3>
+                  <h3 className="text-base font-medium text-white">기본 정보</h3>
                 </div>
 
                 <div className="space-y-4">
                   {/* 골프장 선택 */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label className="block text-sm font-medium text-white/70 mb-1.5">
                       골프장 <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                         </svg>
                       </div>
                       <select
                         value={formData.clubId ?? ''}
                         onChange={(e) => handleChange('clubId', e.target.value ? Number(e.target.value) : null)}
-                        className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors appearance-none bg-white ${
-                          errors.clubId ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                        className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors appearance-none bg-white/10 text-white ${
+                          errors.clubId ? 'border-red-500 bg-red-500/10' : 'border-white/15'
                         }`}
                       >
                         <option value="">골프장을 선택하세요</option>
@@ -245,7 +245,7 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
                         ))}
                       </select>
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                       </div>
@@ -255,12 +255,12 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
 
                   {/* 라운드 이름 */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label className="block text-sm font-medium text-white/70 mb-1.5">
                       라운드 이름 <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                         </svg>
                       </div>
@@ -268,8 +268,8 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
                         type="text"
                         value={formData.name}
                         onChange={(e) => handleChange('name', e.target.value)}
-                        className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
-                          errors.name ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-white'
+                        className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors text-white ${
+                          errors.name ? 'border-red-500 bg-red-500/10' : 'border-white/15 bg-white/10'
                         }`}
                         placeholder="예: A+B 코스 18홀"
                       />
@@ -279,19 +279,19 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
 
                   {/* 설명 */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">설명</label>
+                    <label className="block text-sm font-medium text-white/70 mb-1.5">설명</label>
                     <textarea
                       value={formData.description}
                       onChange={(e) => handleChange('description', e.target.value)}
                       rows={2}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white transition-colors resize-none"
+                      className="w-full px-4 py-2.5 border border-white/15 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white/10 text-white transition-colors resize-none"
                       placeholder="라운드에 대한 설명을 입력하세요"
                     />
                   </div>
 
                   {/* 슬롯 모드 */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">슬롯 모드</label>
+                    <label className="block text-sm font-medium text-white/70 mb-2">슬롯 모드</label>
                     <div className="grid grid-cols-2 gap-2">
                       {SLOT_MODE_OPTIONS.map((option) => (
                         <button
@@ -308,7 +308,7 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
                           className={`flex flex-col items-center px-4 py-3 rounded-lg border-2 transition-all ${
                             formData.slotMode === option.value
                               ? `${option.color} border-current font-medium shadow-sm`
-                              : 'border-gray-200 hover:border-gray-300 text-gray-600 bg-white'
+                              : 'border-white/15 hover:border-white/15 text-white/60 bg-white/10'
                           }`}
                         >
                           <span className="text-sm font-medium">{option.label}</span>
@@ -321,25 +321,25 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
               </div>
 
               {/* 코스 선택 섹션 */}
-              <div className="bg-gray-50 rounded-xl p-5">
+              <div className="bg-white/5 rounded-xl p-5">
                 <div className="flex items-center space-x-2 mb-4">
-                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                     </svg>
                   </div>
-                  <h3 className="text-base font-medium text-gray-900">코스 선택 <span className="text-red-500">*</span></h3>
+                  <h3 className="text-base font-medium text-white">코스 선택 <span className="text-red-500">*</span></h3>
                 </div>
 
                 {!formData.clubId ? (
-                  <div className="flex items-center justify-center py-8 text-gray-500">
+                  <div className="flex items-center justify-center py-8 text-white/50">
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     먼저 골프장을 선택해주세요
                   </div>
                 ) : !courses || courses.length === 0 ? (
-                  <div className="flex items-center justify-center py-8 text-gray-500">
+                  <div className="flex items-center justify-center py-8 text-white/50">
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                     </svg>
@@ -352,14 +352,14 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
                         key={course.id}
                         className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
                           formData.courseIds.includes(course.id)
-                            ? 'border-emerald-500 bg-emerald-50 shadow-sm'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                            ? 'border-emerald-500 bg-emerald-500/10 shadow-sm'
+                            : 'border-white/15 hover:border-white/15 hover:bg-white/5'
                         }`}
                       >
                         <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors ${
                           formData.courseIds.includes(course.id)
                             ? 'bg-emerald-500 border-emerald-500'
-                            : 'border-gray-300'
+                            : 'border-white/15'
                         }`}>
                           {formData.courseIds.includes(course.id) && (
                             <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -374,9 +374,9 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
                           className="sr-only"
                         />
                         <div className="ml-3">
-                          <span className="text-sm font-medium text-gray-900">{course.name}</span>
+                          <span className="text-sm font-medium text-white">{course.name}</span>
                           {course.code && (
-                            <span className="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                            <span className="ml-2 text-xs text-white/50 bg-white/10 px-2 py-0.5 rounded">
                               {course.code}
                             </span>
                           )}
@@ -389,25 +389,25 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
               </div>
 
               {/* 운영 정보 섹션 */}
-              <div className="bg-gray-50 rounded-xl p-5">
+              <div className="bg-white/5 rounded-xl p-5">
                 <div className="flex items-center space-x-2 mb-4">
-                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <h3 className="text-base font-medium text-gray-900">운영 정보</h3>
+                  <h3 className="text-base font-medium text-white">운영 정보</h3>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* 최대 인원 */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label className="block text-sm font-medium text-white/70 mb-1.5">
                       최대 인원 <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
                       </div>
@@ -417,12 +417,12 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
                         onChange={(e) => handleChange('maxPlayers', Number(e.target.value))}
                         min={1}
                         max={formData.slotMode === 'SESSION' ? 500 : 10}
-                        className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
-                          errors.maxPlayers ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-white'
+                        className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors text-white ${
+                          errors.maxPlayers ? 'border-red-500 bg-red-500/10' : 'border-white/15 bg-white/10'
                         }`}
                       />
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <span className="text-sm text-gray-500">명</span>
+                        <span className="text-sm text-white/50">명</span>
                       </div>
                     </div>
                     <ErrorMessage message={errors.maxPlayers} />
@@ -430,12 +430,12 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
 
                   {/* 소요 시간 */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label className="block text-sm font-medium text-white/70 mb-1.5">
                       소요 시간 <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
@@ -446,12 +446,12 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
                         min={30}
                         max={300}
                         step={10}
-                        className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
-                          errors.duration ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-white'
+                        className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors text-white ${
+                          errors.duration ? 'border-red-500 bg-red-500/10' : 'border-white/15 bg-white/10'
                         }`}
                       />
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <span className="text-sm text-gray-500">분</span>
+                        <span className="text-sm text-white/50">분</span>
                       </div>
                     </div>
                     <ErrorMessage message={errors.duration} />
@@ -459,12 +459,12 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
 
                   {/* 가격 */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label className="block text-sm font-medium text-white/70 mb-1.5">
                       가격 <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span className="text-gray-400 font-medium">₩</span>
+                        <span className="text-white/40 font-medium">₩</span>
                       </div>
                       <input
                         type="number"
@@ -472,12 +472,12 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
                         onChange={(e) => handleChange('price', Number(e.target.value))}
                         min={0}
                         step={1000}
-                        className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
-                          errors.price ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-white'
+                        className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors text-white ${
+                          errors.price ? 'border-red-500 bg-red-500/10' : 'border-white/15 bg-white/10'
                         }`}
                       />
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <span className="text-sm text-gray-500">원</span>
+                        <span className="text-sm text-white/50">원</span>
                       </div>
                     </div>
                     <ErrorMessage message={errors.price} />
@@ -486,7 +486,7 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
 
                 {/* 운영 상태 */}
                 <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">운영 상태</label>
+                  <label className="block text-sm font-medium text-white/70 mb-2">운영 상태</label>
                   <div className="grid grid-cols-3 gap-2">
                     {STATUS_OPTIONS.map((option) => (
                       <button
@@ -496,7 +496,7 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
                         className={`flex items-center justify-center px-4 py-2.5 rounded-lg border-2 transition-all ${
                           formData.status === option.value
                             ? `${option.color} border-current font-medium shadow-sm`
-                            : 'border-gray-200 hover:border-gray-300 text-gray-600 bg-white'
+                            : 'border-white/15 hover:border-white/15 text-white/60 bg-white/10'
                         }`}
                       >
                         <span className="mr-1.5">{option.icon}</span>
@@ -509,7 +509,7 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 bg-gray-50 border-t flex items-center justify-end gap-3">
+            <div className="px-6 py-4 bg-white/5 border-t border-white/15 flex items-center justify-end gap-3">
               <Button type="button" variant="outline" onClick={onClose}>
                 취소
               </Button>

@@ -29,14 +29,14 @@ interface FilterState {
 // 역할별 스타일 정보
 const ROLE_META: Record<string, { icon: string; color: string }> = {
   // 플랫폼 역할
-  PLATFORM_ADMIN: { icon: '👑', color: 'bg-purple-100 text-purple-800 border-purple-200' },
-  PLATFORM_SUPPORT: { icon: '🎧', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
-  PLATFORM_VIEWER: { icon: '👁️', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+  PLATFORM_ADMIN: { icon: '👑', color: 'bg-purple-500/20 text-purple-400 border-purple-200' },
+  PLATFORM_SUPPORT: { icon: '🎧', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-200' },
+  PLATFORM_VIEWER: { icon: '👁️', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
   // 회사 역할
-  COMPANY_ADMIN: { icon: '🏢', color: 'bg-green-100 text-green-800 border-green-200' },
-  COMPANY_MANAGER: { icon: '👨‍💼', color: 'bg-teal-100 text-teal-800 border-teal-200' },
-  COMPANY_STAFF: { icon: '👤', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-  COMPANY_VIEWER: { icon: '📖', color: 'bg-gray-100 text-gray-800 border-gray-200' },
+  COMPANY_ADMIN: { icon: '🏢', color: 'bg-green-500/20 text-green-400 border-green-200' },
+  COMPANY_MANAGER: { icon: '👨‍💼', color: 'bg-teal-500/20 text-teal-400 border-teal-200' },
+  COMPANY_STAFF: { icon: '👤', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-200' },
+  COMPANY_VIEWER: { icon: '📖', color: 'bg-white/10 text-white border-white/15' },
 };
 
 export const AdminManagementPage: React.FC = () => {
@@ -175,8 +175,8 @@ export const AdminManagementPage: React.FC = () => {
   };
 
   const getRoleBadgeStyle = (role: AdminRole | undefined) => {
-    if (!role) return 'bg-gray-100 text-gray-800';
-    return ADMIN_ROLE_COLORS[role] || 'bg-gray-100 text-gray-800';
+    if (!role) return 'bg-white/10 text-white';
+    return ADMIN_ROLE_COLORS[role] || 'bg-white/10 text-white';
   };
 
   const canManage = (admin: Admin) => {
@@ -189,17 +189,17 @@ export const AdminManagementPage: React.FC = () => {
   return (
     <PageLayout>
       {/* 헤더 카드 */}
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">관리자 관리</h2>
-            <p className="mt-1 text-sm text-gray-500">
+            <h2 className="text-xl font-semibold text-white">관리자 관리</h2>
+            <p className="mt-1 text-sm text-white/50">
               시스템 관리자 계정을 관리하고 권한을 설정합니다
             </p>
           </div>
           <button
             onClick={() => setFormModal({ open: true })}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+            className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors shadow-sm"
           >
             <Plus className="w-5 h-5 mr-2" />
             관리자 추가
@@ -208,16 +208,16 @@ export const AdminManagementPage: React.FC = () => {
 
         {/* 통계 */}
         <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
+          <div className="bg-emerald-500/10 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
-                <div className="text-sm text-blue-600">전체 관리자</div>
+                <div className="text-2xl font-bold text-emerald-400">{stats.total}</div>
+                <div className="text-sm text-emerald-400">전체 관리자</div>
               </div>
               <div className="text-3xl">👥</div>
             </div>
           </div>
-          <div className="bg-green-50 p-4 rounded-lg">
+          <div className="bg-green-500/10 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-green-600">{stats.active}</div>
@@ -226,7 +226,7 @@ export const AdminManagementPage: React.FC = () => {
               <div className="text-3xl">✅</div>
             </div>
           </div>
-          <div className="bg-red-50 p-4 rounded-lg">
+          <div className="bg-red-500/10 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-red-600">{stats.inactive}</div>
@@ -235,7 +235,7 @@ export const AdminManagementPage: React.FC = () => {
               <div className="text-3xl">⏸️</div>
             </div>
           </div>
-          <div className="bg-purple-50 p-4 rounded-lg">
+          <div className="bg-purple-500/10 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-purple-600">{stats.roleCount}</div>
@@ -279,7 +279,7 @@ export const AdminManagementPage: React.FC = () => {
         <div className="flex items-end gap-2">
           <button
             onClick={() => refetch()}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="inline-flex items-center px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             새로고침
@@ -308,16 +308,16 @@ export const AdminManagementPage: React.FC = () => {
       />
 
       {/* 관리자 목록 테이블 */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h3 className="text-lg font-medium text-gray-900">
+      <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/15 flex items-center justify-between">
+          <h3 className="text-lg font-medium text-white">
             관리자 목록
-            <span className="ml-2 text-sm font-normal text-gray-500">
+            <span className="ml-2 text-sm font-normal text-white/50">
               ({filteredAdmins.length}명)
             </span>
           </h3>
           {selectedIds.length > 0 && (
-            <span className="text-sm text-blue-600">{selectedIds.length}명 선택됨</span>
+            <span className="text-sm text-emerald-400">{selectedIds.length}명 선택됨</span>
           )}
         </div>
         <DataContainer
@@ -330,7 +330,7 @@ export const AdminManagementPage: React.FC = () => {
             admins.length === 0 ? (
               <button
                 onClick={() => setFormModal({ open: true })}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors"
               >
                 <Plus className="w-5 h-5 mr-2" />
                 관리자 추가
@@ -340,67 +340,67 @@ export const AdminManagementPage: React.FC = () => {
           loadingMessage="관리자 목록을 불러오는 중..."
         >
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-white/15">
+              <thead className="bg-white/5">
                 <tr>
                   <th className="px-4 py-3 w-12">
                     <input
                       type="checkbox"
                       checked={selectedIds.length === filteredAdmins.length && filteredAdmins.length > 0}
                       onChange={handleSelectAll}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-white/15 text-emerald-400 focus:ring-emerald-500"
                     />
                   </th>
                   <th
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase cursor-pointer hover:bg-white/10 transition-colors"
                     onClick={() => handleSort('name')}
                   >
                     <div className="flex items-center space-x-1">
                       <span>관리자 정보</span>
                       {sortField === 'name' && (
-                        <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        <span className="text-emerald-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </div>
                   </th>
                   <th
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase cursor-pointer hover:bg-white/10 transition-colors"
                     onClick={() => handleSort('role')}
                   >
                     <div className="flex items-center space-x-1">
                       <span>역할</span>
                       {sortField === 'role' && (
-                        <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        <span className="text-emerald-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </div>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase">
                     상태
                   </th>
                   <th
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase cursor-pointer hover:bg-white/10 transition-colors"
                     onClick={() => handleSort('lastLoginAt')}
                   >
                     <div className="flex items-center space-x-1">
                       <span>마지막 로그인</span>
                       {sortField === 'lastLoginAt' && (
-                        <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        <span className="text-emerald-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </div>
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-right text-xs font-medium text-white/50 uppercase">
                     액션
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-white/15">
                 {filteredAdmins.map((admin) => (
-                  <tr key={admin.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={admin.id} className="hover:bg-white/5 transition-colors">
                     <td className="px-4 py-4">
                       <input
                         type="checkbox"
                         checked={selectedIds.includes(admin.id)}
                         onChange={() => handleSelect(admin.id)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-white/15 text-emerald-400 focus:ring-emerald-500"
                       />
                     </td>
                     <td className="px-4 py-4">
@@ -409,9 +409,9 @@ export const AdminManagementPage: React.FC = () => {
                           {admin.name?.charAt(0) || 'A'}
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900">{admin.name}</div>
-                          <div className="text-sm text-gray-500">{admin.email}</div>
-                          <div className="text-xs text-gray-400">@{admin.username}</div>
+                          <div className="font-medium text-white">{admin.name}</div>
+                          <div className="text-sm text-white/50">{admin.email}</div>
+                          <div className="text-xs text-white/40">@{admin.username}</div>
                         </div>
                       </div>
                     </td>
@@ -423,12 +423,12 @@ export const AdminManagementPage: React.FC = () => {
                           <div className="flex flex-col space-y-1">
                             <div className="flex items-center space-x-2">
                               <span className="text-lg">{role ? ROLE_META[role]?.icon || '👤' : '👤'}</span>
-                              <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${role ? ROLE_META[role]?.color || getRoleBadgeStyle(role) : 'bg-gray-100 text-gray-800'}`}>
+                              <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${role ? ROLE_META[role]?.color || getRoleBadgeStyle(role) : 'bg-white/10 text-white'}`}>
                                 {role ? ADMIN_ROLE_LABELS[role] || role : '역할 없음'}
                               </span>
                             </div>
                             {companyName && (
-                              <span className="text-xs text-gray-500 pl-7">@ {companyName}</span>
+                              <span className="text-xs text-white/50 pl-7">@ {companyName}</span>
                             )}
                           </div>
                         );
@@ -440,29 +440,29 @@ export const AdminManagementPage: React.FC = () => {
                         disabled={!canManage(admin)}
                         className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
                           admin.isActive
-                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                            : 'bg-red-100 text-red-800 hover:bg-red-200'
+                            ? 'bg-green-500/20 text-green-400 hover:bg-green-200'
+                            : 'bg-red-500/20 text-red-400 hover:bg-red-200'
                         } ${canManage(admin) ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}
                       >
                         <span className={`w-2 h-2 rounded-full mr-2 ${admin.isActive ? 'bg-green-500' : 'bg-red-500'}`}></span>
                         {admin.isActive ? '활성' : '비활성'}
                       </button>
                     </td>
-                    <td className="px-4 py-4 text-sm text-gray-500">
+                    <td className="px-4 py-4 text-sm text-white/50">
                       {admin.lastLoginAt
                         ? new Date(admin.lastLoginAt).toLocaleDateString('ko-KR', {
                             year: 'numeric',
                             month: 'short',
                             day: 'numeric',
                           })
-                        : <span className="text-gray-400">-</span>}
+                        : <span className="text-white/40">-</span>}
                     </td>
                     <td className="px-4 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => setFormModal({ open: true, admin })}
                           disabled={!canManage(admin)}
-                          className="inline-flex items-center px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="inline-flex items-center px-3 py-1.5 text-sm text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Pencil className="w-4 h-4 mr-1" />
                           수정
@@ -470,7 +470,7 @@ export const AdminManagementPage: React.FC = () => {
                         <button
                           onClick={() => setRoleModal({ open: true, admin })}
                           disabled={!canManage(admin)}
-                          className="inline-flex items-center px-3 py-1.5 text-sm text-purple-600 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="inline-flex items-center px-3 py-1.5 text-sm text-purple-600 hover:bg-purple-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Shield className="w-4 h-4 mr-1" />
                           권한
@@ -478,7 +478,7 @@ export const AdminManagementPage: React.FC = () => {
                         <button
                           onClick={() => setDeleteConfirm({ open: true, admin })}
                           disabled={!canManage(admin)}
-                          className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Trash2 className="w-4 h-4 mr-1" />
                           삭제
@@ -516,16 +516,16 @@ export const AdminManagementPage: React.FC = () => {
       >
         {deleteConfirm.admin && (
           <>
-            <div className="flex items-center space-x-4 p-4 bg-red-50 rounded-lg mb-6">
-              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+            <div className="flex items-center space-x-4 p-4 bg-red-500/10 rounded-lg mb-6">
+              <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
                 <AlertTriangle className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <div className="font-medium text-gray-900">{deleteConfirm.admin.name}</div>
-                <div className="text-sm text-gray-500">{deleteConfirm.admin.email}</div>
+                <div className="font-medium text-white">{deleteConfirm.admin.name}</div>
+                <div className="text-sm text-white/50">{deleteConfirm.admin.email}</div>
               </div>
             </div>
-            <p className="text-gray-600 mb-2">
+            <p className="text-white/60 mb-2">
               이 관리자를 삭제하시겠습니까?
             </p>
             <p className="text-sm text-red-600 mb-6">
@@ -534,7 +534,7 @@ export const AdminManagementPage: React.FC = () => {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeleteConfirm({ open: false })}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
               >
                 취소
               </button>

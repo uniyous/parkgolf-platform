@@ -168,7 +168,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           onClick={() => toggleGroup(group.label)}
           className={cn(
             'w-full nav-item justify-between',
-            hasActiveItem && 'text-blue-400'
+            hasActiveItem && 'text-emerald-400'
           )}
         >
           <div className="flex items-center gap-3">
@@ -185,7 +185,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
         {/* Sub Items */}
         {isExpanded && (
-          <div className="ml-4 pl-4 border-l border-gray-700 space-y-1">
+          <div className="ml-4 pl-4 border-l border-white/15 space-y-1">
             {group.items.map((item) => {
               const ItemIcon = item.icon;
               return (
@@ -196,8 +196,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   className={cn(
                     'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
                     isActive(item.path)
-                      ? 'bg-blue-600/20 text-blue-400'
-                      : 'text-gray-400 hover:bg-white/10 hover:text-gray-100'
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : 'text-white/40 hover:bg-white/10 hover:text-white/80'
                   )}
                 >
                   {ItemIcon && <ItemIcon className="w-4 h-4" />}
@@ -215,9 +215,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     <div className="min-h-screen flex">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex md:flex-col md:w-64 fixed inset-y-0 left-0 z-30">
-        <div className="flex flex-col h-full bg-gray-800 border-r border-gray-700">
+        <div className="flex flex-col h-full bg-[#053929] border-r border-white/10">
           {/* Logo */}
-          <div className="flex items-center h-16 px-6 border-b border-gray-700">
+          <div className="flex items-center h-16 px-6 border-b border-white/10">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
                 <span className="text-white font-bold text-sm">P</span>
@@ -234,7 +234,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           </nav>
 
           {/* User Profile */}
-          <div className="p-4 border-t border-gray-700">
+          <div className="p-4 border-t border-white/10">
             <div className="relative">
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -249,13 +249,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   <p className="text-sm font-medium text-white truncate">
                     {currentUser.username}
                   </p>
-                  <p className="text-xs text-gray-400 truncate">
+                  <p className="text-xs text-white/40 truncate">
                     {currentUser.email}
                   </p>
                 </div>
                 <ChevronDown
                   className={cn(
-                    'w-4 h-4 text-gray-400 transition-transform',
+                    'w-4 h-4 text-white/40 transition-transform',
                     userMenuOpen && 'rotate-180'
                   )}
                 />
@@ -263,11 +263,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
               {/* User Dropdown */}
               {userMenuOpen && (
-                <div className="absolute bottom-full left-0 right-0 mb-2 bg-gray-800 border border-gray-700 rounded-lg shadow-lg p-2 animate-slide-up">
+                <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#053929] border border-white/15 rounded-lg shadow-lg p-2 animate-slide-up">
                   <Link
                     to="/profile"
                     onClick={() => setUserMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-white/10 hover:text-gray-100 transition-colors"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/50 hover:bg-white/10 hover:text-white/80 transition-colors"
                   >
                     <Users className="w-4 h-4" />
                     프로필 설정
@@ -275,12 +275,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   <Link
                     to="/change-password"
                     onClick={() => setUserMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-white/10 hover:text-gray-100 transition-colors"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/50 hover:bg-white/10 hover:text-white/80 transition-colors"
                   >
                     <Settings className="w-4 h-4" />
                     비밀번호 변경
                   </Link>
-                  <div className="my-2 border-t border-gray-700" />
+                  <div className="my-2 border-t border-white/15" />
                   <button
                     onClick={() => {
                       setUserMenuOpen(false);
@@ -309,13 +309,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* Mobile Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 border-r border-gray-700 transform transition-transform duration-300 md:hidden',
+          'fixed inset-y-0 left-0 z-50 w-64 bg-[#053929] border-r border-white/10 transform transition-transform duration-300 md:hidden',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between h-16 px-4 border-b border-gray-700">
+          <div className="flex items-center justify-between h-16 px-4 border-b border-white/10">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
                 <span className="text-white font-bold text-sm">P</span>
@@ -324,7 +324,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="p-2 rounded-lg text-gray-400 hover:bg-white/10"
+              className="p-2 rounded-lg text-white/40 hover:bg-white/10"
             >
               <X className="w-5 h-5" />
             </button>
@@ -338,7 +338,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           </nav>
 
           {/* User Profile */}
-          <div className="p-4 border-t border-gray-700">
+          <div className="p-4 border-t border-white/10">
             <div className="flex items-center gap-3 p-3">
               <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-medium">
@@ -349,7 +349,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                 <p className="text-sm font-medium text-white truncate">
                   {currentUser.username}
                 </p>
-                <p className="text-xs text-gray-400 truncate">
+                <p className="text-xs text-white/40 truncate">
                   {currentUser.email}
                 </p>
               </div>
@@ -368,10 +368,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* Main Content */}
       <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
         {/* Mobile Header */}
-        <header className="md:hidden sticky top-0 z-20 h-16 px-4 flex items-center justify-between bg-gray-800 border-b border-gray-700">
+        <header className="md:hidden sticky top-0 z-20 h-16 px-4 flex items-center justify-between bg-[#053929] border-b border-white/10">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-lg text-gray-400 hover:bg-white/10"
+            className="p-2 rounded-lg text-white/40 hover:bg-white/10"
           >
             <Menu className="w-6 h-6" />
           </button>
@@ -385,7 +385,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 md:p-6 bg-gray-50">
+        <main className="flex-1 p-4 md:p-6">
           {children}
         </main>
       </div>

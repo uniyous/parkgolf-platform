@@ -113,14 +113,14 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">주간 스케줄</h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <h2 className="text-lg font-semibold text-white">주간 스케줄</h2>
+          <p className="text-sm text-white/50 mt-1">
             요일별 운영 시간과 타임슬롯 간격을 설정합니다
           </p>
         </div>
         <button
           onClick={() => setIsWizardOpen(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+          className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors flex items-center"
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -136,7 +136,7 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
           <div
             key={index}
             className={`text-center py-2 font-medium text-sm ${
-              index === 0 ? 'text-red-600' : index === 6 ? 'text-blue-600' : 'text-gray-700'
+              index === 0 ? 'text-red-400' : index === 6 ? 'text-emerald-400' : 'text-white/70'
             }`}
           >
             {day}
@@ -152,8 +152,8 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
             <div
               key={dayOfWeek}
               className={`border rounded-lg p-3 min-h-[120px] ${
-                schedule?.isActive ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-100'
-              } ${isEditing ? 'ring-2 ring-blue-500' : ''}`}
+                schedule?.isActive ? 'bg-white/10 backdrop-blur-xl border-white/15' : 'bg-white/5 border-white/10'
+              } ${isEditing ? 'ring-2 ring-emerald-500' : ''}`}
             >
               {isEditing && formData ? (
                 // 편집 모드
@@ -165,7 +165,7 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
                       onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
                       className="flex-1 min-w-0 px-1 py-1 text-xs border rounded [&::-webkit-calendar-picker-indicator]:hidden"
                     />
-                    <span className="text-gray-400 text-xs">~</span>
+                    <span className="text-white/40 text-xs">~</span>
                     <input
                       type="time"
                       value={formData.endTime}
@@ -193,19 +193,19 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
                       onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                       className="mr-1"
                     />
-                    <span className="text-xs text-gray-600">활성화</span>
+                    <span className="text-xs text-white/60">활성화</span>
                   </div>
                   <div className="flex space-x-1 pt-2">
                     <button
                       onClick={handleSave}
                       disabled={createMutation.isPending || updateMutation.isPending}
-                      className="flex-1 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
+                      className="flex-1 px-2 py-1 bg-emerald-600 text-white text-xs rounded hover:bg-emerald-500 disabled:opacity-50"
                     >
                       저장
                     </button>
                     <button
                       onClick={handleCancel}
-                      className="flex-1 px-2 py-1 border text-gray-600 text-xs rounded hover:bg-gray-50"
+                      className="flex-1 px-2 py-1 border text-white/60 text-xs rounded hover:bg-white/5"
                     >
                       취소
                     </button>
@@ -214,21 +214,21 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
               ) : schedule ? (
                 // 스케줄 있음
                 <div className="space-y-1">
-                  <div className="text-xs font-medium text-gray-900">
+                  <div className="text-xs font-medium text-white">
                     {schedule.startTime} ~ {schedule.endTime}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-white/50">
                     {schedule.interval ?? 30}분 간격
                   </div>
                   {!schedule.isActive && (
-                    <span className="inline-block px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">
+                    <span className="inline-block px-1.5 py-0.5 bg-white/10 text-white/60 text-xs rounded">
                       비활성
                     </span>
                   )}
                   <div className="flex space-x-1 pt-2">
                     <button
                       onClick={() => handleEdit(dayOfWeek)}
-                      className="flex-1 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded hover:bg-gray-200"
+                      className="flex-1 px-2 py-1 bg-white/10 text-white/70 text-xs rounded hover:bg-white/10"
                     >
                       수정
                     </button>
@@ -240,7 +240,7 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
                       align="center"
                     >
                       <button
-                        className="px-2 py-1 text-red-600 text-xs rounded hover:bg-red-50"
+                        className="px-2 py-1 text-red-400 text-xs rounded hover:bg-red-500/10"
                       >
                         삭제
                       </button>
@@ -250,10 +250,10 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
               ) : (
                 // 스케줄 없음
                 <div className="flex flex-col items-center justify-center h-full text-center">
-                  <p className="text-xs text-gray-400 mb-2">미설정</p>
+                  <p className="text-xs text-white/40 mb-2">미설정</p>
                   <button
                     onClick={() => handleEdit(dayOfWeek)}
-                    className="px-3 py-1 bg-blue-100 text-blue-700 text-xs rounded hover:bg-blue-200"
+                    className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded hover:bg-emerald-500/20"
                   >
                     + 추가
                   </button>
@@ -265,9 +265,9 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
       </div>
 
       {/* 안내 */}
-      <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-        <h3 className="text-sm font-medium text-blue-900 mb-2">주간 스케줄 안내</h3>
-        <ul className="text-sm text-blue-700 space-y-1">
+      <div className="mt-6 p-4 bg-emerald-500/10 rounded-lg">
+        <h3 className="text-sm font-medium text-emerald-300 mb-2">주간 스케줄 안내</h3>
+        <ul className="text-sm text-emerald-400 space-y-1">
           <li>• 주간 스케줄은 타임슬롯 자동 생성의 템플릿으로 사용됩니다</li>
           <li>• 타임슬롯 탭에서 날짜 범위를 지정하면 이 템플릿을 기반으로 슬롯이 생성됩니다</li>
           <li>• 비활성 요일은 타임슬롯 생성 시 제외됩니다</li>

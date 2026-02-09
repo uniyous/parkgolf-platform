@@ -120,17 +120,17 @@ export const RefundPolicySettings: React.FC = () => {
   };
 
   const getRefundRateColor = (rate: number): string => {
-    if (rate >= 80) return 'bg-green-100 text-green-700';
-    if (rate >= 50) return 'bg-yellow-100 text-yellow-700';
-    if (rate > 0) return 'bg-orange-100 text-orange-700';
-    return 'bg-red-100 text-red-700';
+    if (rate >= 80) return 'bg-green-500/20 text-green-700';
+    if (rate >= 50) return 'bg-yellow-500/20 text-yellow-700';
+    if (rate > 0) return 'bg-orange-500/20 text-orange-700';
+    return 'bg-red-500/20 text-red-700';
   };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-        <span className="ml-3 text-gray-600">정책을 불러오는 중...</span>
+        <span className="ml-3 text-white/60">정책을 불러오는 중...</span>
       </div>
     );
   }
@@ -140,12 +140,12 @@ export const RefundPolicySettings: React.FC = () => {
       {/* 정책 개요 */}
       <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-100">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center text-xl">
+          <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center text-xl">
             💰
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-gray-900">환불 정책 안내</h3>
-            <p className="text-sm text-gray-600 mt-1">
+            <h3 className="font-semibold text-white">환불 정책 안내</h3>
+            <p className="text-sm text-white/60 mt-1">
               예약 취소 시점에 따른 환불율을 설정합니다.
               취소 시점이 예약일에 가까울수록 환불율이 낮아집니다.
             </p>
@@ -154,26 +154,26 @@ export const RefundPolicySettings: React.FC = () => {
       </div>
 
       {/* 환불율 구간 설정 */}
-      <div className="bg-white border border-gray-200 rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+      <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-lg">
+        <div className="px-6 py-4 border-b border-white/15 flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-gray-900">환불율 구간 설정</h3>
-            <p className="text-sm text-gray-500">예약일 기준 취소 시점별 환불율</p>
+            <h3 className="font-semibold text-white">환불율 구간 설정</h3>
+            <p className="text-sm text-white/50">예약일 기준 취소 시점별 환불율</p>
           </div>
           <div className="flex items-center gap-2">
             {policy.isActive ? (
-              <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded">
+              <span className="px-2 py-1 text-xs font-medium bg-green-500/20 text-green-700 rounded">
                 활성
               </span>
             ) : (
-              <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
+              <span className="px-2 py-1 text-xs font-medium bg-white/10 text-white/60 rounded">
                 비활성
               </span>
             )}
             {!isEditing && (
               <button
                 onClick={() => setIsEditing(true)}
-                className="px-3 py-1.5 text-sm font-medium text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-green-600 hover:bg-green-500/10 rounded-lg transition-colors"
               >
                 수정
               </button>
@@ -186,26 +186,26 @@ export const RefundPolicySettings: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50">
-                  <th className="px-4 py-3 text-left font-medium text-gray-700">취소 시점</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-700">설명</th>
-                  <th className="px-4 py-3 text-center font-medium text-gray-700">환불율</th>
+                <tr className="bg-white/5">
+                  <th className="px-4 py-3 text-left font-medium text-white/70">취소 시점</th>
+                  <th className="px-4 py-3 text-left font-medium text-white/70">설명</th>
+                  <th className="px-4 py-3 text-center font-medium text-white/70">환불율</th>
                   {isEditing && (
-                    <th className="px-4 py-3 text-center font-medium text-gray-700">수정</th>
+                    <th className="px-4 py-3 text-center font-medium text-white/70">수정</th>
                   )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-white/10">
                 {policy.tiers.map((tier, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
+                  <tr key={index} className="hover:bg-white/5">
                     <td className="px-4 py-3">
-                      <span className="font-medium text-gray-900">
+                      <span className="font-medium text-white">
                         {tier.maxHoursBeforeBooking === null
                           ? `${hoursToDisplay(tier.minHoursBeforeBooking)} 이상`
                           : `${hoursToDisplay(tier.minHoursBeforeBooking)} ~ ${hoursToDisplay(tier.maxHoursBeforeBooking)}`}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{tier.description}</td>
+                    <td className="px-4 py-3 text-white/60">{tier.description}</td>
                     <td className="px-4 py-3 text-center">
                       {isEditing ? (
                         <div className="flex items-center justify-center gap-1">
@@ -217,9 +217,9 @@ export const RefundPolicySettings: React.FC = () => {
                             onChange={(e) =>
                               updateTier(index, 'refundRate', Number(e.target.value))
                             }
-                            className="w-16 px-2 py-1 text-center border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            className="w-16 px-2 py-1 text-center border border-white/15 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
                           />
-                          <span className="text-gray-600">%</span>
+                          <span className="text-white/60">%</span>
                         </div>
                       ) : (
                         <span
@@ -235,7 +235,7 @@ export const RefundPolicySettings: React.FC = () => {
                           type="text"
                           value={tier.description}
                           onChange={(e) => updateTier(index, 'description', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          className="w-full px-2 py-1 text-sm border border-white/15 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
                         />
                       </td>
                     )}
@@ -246,8 +246,8 @@ export const RefundPolicySettings: React.FC = () => {
           </div>
 
           {/* 환불율 시각화 */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">환불율 미리보기</h4>
+          <div className="mt-6 p-4 bg-white/5 rounded-lg">
+            <h4 className="text-sm font-medium text-white/70 mb-3">환불율 미리보기</h4>
             <div className="flex items-end gap-2 h-32">
               {policy.tiers
                 .slice()
@@ -269,9 +269,9 @@ export const RefundPolicySettings: React.FC = () => {
                       }`}
                       style={{ height: `${tier.refundRate}%` }}
                     />
-                    <div className="text-xs text-gray-600 mt-2 text-center">
+                    <div className="text-xs text-white/60 mt-2 text-center">
                       <div className="font-medium">{tier.refundRate}%</div>
-                      <div className="text-gray-400">
+                      <div className="text-white/40">
                         {tier.maxHoursBeforeBooking === null
                           ? `${hoursToDisplay(tier.minHoursBeforeBooking)}+`
                           : hoursToDisplay(tier.minHoursBeforeBooking)}
@@ -285,17 +285,17 @@ export const RefundPolicySettings: React.FC = () => {
       </div>
 
       {/* 추가 설정 */}
-      <div className="bg-white border border-gray-200 rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="font-semibold text-gray-900">추가 설정</h3>
+      <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-lg">
+        <div className="px-6 py-4 border-b border-white/15">
+          <h3 className="font-semibold text-white">추가 설정</h3>
         </div>
 
         <div className="p-6 space-y-6">
           {/* 관리자 취소 시 환불율 */}
           <div className="flex items-center justify-between">
             <div>
-              <label className="font-medium text-gray-900">관리자/시스템 취소 시 환불율</label>
-              <p className="text-sm text-gray-500">관리자 또는 시스템에 의한 취소 시 환불율</p>
+              <label className="font-medium text-white">관리자/시스템 취소 시 환불율</label>
+              <p className="text-sm text-white/50">관리자 또는 시스템에 의한 취소 시 환불율</p>
             </div>
             {isEditing ? (
               <div className="flex items-center gap-2">
@@ -307,12 +307,12 @@ export const RefundPolicySettings: React.FC = () => {
                   onChange={(e) =>
                     setPolicy({ ...policy, adminCancelRefundRate: Number(e.target.value) })
                   }
-                  className="w-20 px-3 py-2 text-center border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-20 px-3 py-2 text-center border border-white/15 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 />
-                <span className="text-gray-600">%</span>
+                <span className="text-white/60">%</span>
               </div>
             ) : (
-              <span className="px-4 py-2 bg-green-100 text-green-700 font-medium rounded-lg">
+              <span className="px-4 py-2 bg-green-500/20 text-green-700 font-medium rounded-lg">
                 {policy.adminCancelRefundRate}%
               </span>
             )}
@@ -321,8 +321,8 @@ export const RefundPolicySettings: React.FC = () => {
           {/* 최소 환불 금액 */}
           <div className="flex items-center justify-between">
             <div>
-              <label className="font-medium text-gray-900">최소 환불 금액</label>
-              <p className="text-sm text-gray-500">환불 금액이 이 금액 미만이면 환불하지 않음</p>
+              <label className="font-medium text-white">최소 환불 금액</label>
+              <p className="text-sm text-white/50">환불 금액이 이 금액 미만이면 환불하지 않음</p>
             </div>
             {isEditing ? (
               <div className="flex items-center gap-2">
@@ -333,12 +333,12 @@ export const RefundPolicySettings: React.FC = () => {
                   onChange={(e) =>
                     setPolicy({ ...policy, minRefundAmount: Number(e.target.value) })
                   }
-                  className="w-28 px-3 py-2 text-right border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-28 px-3 py-2 text-right border border-white/15 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 />
-                <span className="text-gray-600">원</span>
+                <span className="text-white/60">원</span>
               </div>
             ) : (
-              <span className="px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg">
+              <span className="px-4 py-2 bg-white/10 text-white/70 font-medium rounded-lg">
                 {policy.minRefundAmount.toLocaleString()}원
               </span>
             )}
@@ -347,8 +347,8 @@ export const RefundPolicySettings: React.FC = () => {
           {/* 환불 수수료 */}
           <div className="flex items-center justify-between">
             <div>
-              <label className="font-medium text-gray-900">환불 수수료 (고정)</label>
-              <p className="text-sm text-gray-500">환불 처리 시 공제되는 고정 수수료</p>
+              <label className="font-medium text-white">환불 수수료 (고정)</label>
+              <p className="text-sm text-white/50">환불 처리 시 공제되는 고정 수수료</p>
             </div>
             {isEditing ? (
               <div className="flex items-center gap-2">
@@ -357,22 +357,22 @@ export const RefundPolicySettings: React.FC = () => {
                   min={0}
                   value={policy.refundFee}
                   onChange={(e) => setPolicy({ ...policy, refundFee: Number(e.target.value) })}
-                  className="w-28 px-3 py-2 text-right border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-28 px-3 py-2 text-right border border-white/15 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 />
-                <span className="text-gray-600">원</span>
+                <span className="text-white/60">원</span>
               </div>
             ) : (
-              <span className="px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg">
+              <span className="px-4 py-2 bg-white/10 text-white/70 font-medium rounded-lg">
                 {policy.refundFee.toLocaleString()}원
               </span>
             )}
           </div>
 
           {/* 활성화 상태 */}
-          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+          <div className="flex items-center justify-between pt-4 border-t border-white/10">
             <div>
-              <label className="font-medium text-gray-900">정책 활성화</label>
-              <p className="text-sm text-gray-500">비활성화 시 기본 정책이 적용됩니다</p>
+              <label className="font-medium text-white">정책 활성화</label>
+              <p className="text-sm text-white/50">비활성화 시 기본 정책이 적용됩니다</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -390,7 +390,7 @@ export const RefundPolicySettings: React.FC = () => {
                 peer-checked:after:translate-x-full
                 after:content-[''] after:absolute after:top-0.5 after:left-[2px]
                 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
-                ${policy.isActive ? 'bg-green-500' : 'bg-gray-300'}
+                ${policy.isActive ? 'bg-green-500' : 'bg-white/30'}
                 ${!isEditing ? 'opacity-60 cursor-not-allowed' : ''}
               `} />
             </label>
@@ -399,10 +399,10 @@ export const RefundPolicySettings: React.FC = () => {
 
         {/* 저장/취소 버튼 */}
         {isEditing && (
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-3">
+          <div className="px-6 py-4 bg-white/5 border-t border-white/15 flex items-center justify-end gap-3">
             <button
               onClick={handleCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-white/70 bg-white/10 backdrop-blur-xl border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
             >
               취소
             </button>
@@ -418,10 +418,10 @@ export const RefundPolicySettings: React.FC = () => {
       </div>
 
       {/* 환불 계산 예시 */}
-      <div className="bg-white border border-gray-200 rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="font-semibold text-gray-900">환불 금액 계산 예시</h3>
-          <p className="text-sm text-gray-500">결제 금액 50,000원 기준</p>
+      <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-lg">
+        <div className="px-6 py-4 border-b border-white/15">
+          <h3 className="font-semibold text-white">환불 금액 계산 예시</h3>
+          <p className="text-sm text-white/50">결제 금액 50,000원 기준</p>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -431,15 +431,15 @@ export const RefundPolicySettings: React.FC = () => {
               const finalRefund = Math.max(refundAmount, 0);
 
               return (
-                <div key={index} className="p-4 bg-gray-50 rounded-lg">
-                  <div className="text-sm text-gray-500">{tier.description}</div>
+                <div key={index} className="p-4 bg-white/5 rounded-lg">
+                  <div className="text-sm text-white/50">{tier.description}</div>
                   <div className="mt-2">
                     <span className={`text-lg font-bold ${tier.refundRate > 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {finalRefund.toLocaleString()}원
                     </span>
-                    <span className="text-sm text-gray-400 ml-1">환불</span>
+                    <span className="text-sm text-white/40 ml-1">환불</span>
                   </div>
-                  <div className="text-xs text-gray-400 mt-1">
+                  <div className="text-xs text-white/40 mt-1">
                     ({tier.refundRate}% 적용)
                   </div>
                 </div>

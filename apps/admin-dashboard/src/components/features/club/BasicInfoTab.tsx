@@ -84,11 +84,11 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
     <div className="p-6 space-y-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900">기본 정보</h2>
+        <h2 className="text-xl font-semibold text-white">기본 정보</h2>
         {!isEditing ? (
           <button
             onClick={() => setIsEditing(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors flex items-center space-x-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -100,14 +100,14 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
             <button
               onClick={handleCancel}
               disabled={loading.update}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="px-4 py-2 border border-white/15 text-white/70 rounded-lg hover:bg-white/5 transition-colors disabled:opacity-50"
             >
               취소
             </button>
             <button
               onClick={handleSave}
               disabled={loading.update}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors disabled:opacity-50 flex items-center space-x-2"
             >
               {loading.update && (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -121,8 +121,8 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 기본 정보 */}
         <div className="space-y-4">
-          <h3 className="text-lg font-medium text-gray-900 flex items-center">
-            <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <h3 className="text-lg font-medium text-white flex items-center">
+            <svg className="w-5 h-5 mr-2 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             기본 정보
@@ -130,88 +130,88 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">골프장명</label>
+              <label className="block text-sm font-medium text-white/70 mb-1">골프장명</label>
               {isEditing ? (
                 <input
                   type="text"
                   value={formData.name || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               ) : (
-                <p className="text-gray-900">{club.name}</p>
+                <p className="text-white">{club.name}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">지역</label>
+              <label className="block text-sm font-medium text-white/70 mb-1">지역</label>
               {isEditing ? (
                 <input
                   type="text"
                   value={formData.location || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               ) : (
-                <p className="text-gray-900">{club.location}</p>
+                <p className="text-white">{club.location}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">주소</label>
+              <label className="block text-sm font-medium text-white/70 mb-1">주소</label>
               {isEditing ? (
                 <textarea
                   value={formData.address || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               ) : (
-                <p className="text-gray-900">{club.address}</p>
+                <p className="text-white">{club.address}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">연락처</label>
+              <label className="block text-sm font-medium text-white/70 mb-1">연락처</label>
               {isEditing ? (
                 <input
                   type="tel"
                   value={formData.phone || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               ) : (
-                <p className="text-gray-900">{club.phone}</p>
+                <p className="text-white">{club.phone}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">이메일</label>
+              <label className="block text-sm font-medium text-white/70 mb-1">이메일</label>
               {isEditing ? (
                 <input
                   type="email"
                   value={formData.email || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               ) : (
-                <p className="text-gray-900">{club.email || '없음'}</p>
+                <p className="text-white">{club.email || '없음'}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">웹사이트</label>
+              <label className="block text-sm font-medium text-white/70 mb-1">웹사이트</label>
               {isEditing ? (
                 <input
                   type="url"
                   value={formData.website || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               ) : (
-                <p className="text-gray-900">
+                <p className="text-white">
                   {club.website ? (
-                    <a href={club.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                    <a href={club.website} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">
                       {club.website}
                     </a>
                   ) : (
@@ -225,7 +225,7 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
 
         {/* 운영 정보 */}
         <div className="space-y-4">
-          <h3 className="text-lg font-medium text-gray-900 flex items-center">
+          <h3 className="text-lg font-medium text-white flex items-center">
             <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -234,12 +234,12 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">운영 상태</label>
+              <label className="block text-sm font-medium text-white/70 mb-1">운영 상태</label>
               {isEditing ? (
                 <select
                   value={formData.status || 'ACTIVE'}
                   onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="ACTIVE">운영중</option>
                   <option value="MAINTENANCE">정비중</option>
@@ -249,10 +249,10 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
               ) : (
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                   club.status === 'ACTIVE'
-                    ? 'bg-green-100 text-green-800'
+                    ? 'bg-green-500/20 text-green-800'
                     : club.status === 'MAINTENANCE'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-red-100 text-red-800'
+                    ? 'bg-yellow-500/20 text-yellow-800'
+                    : 'bg-red-500/20 text-red-800'
                 }`}>
                   {club.status === 'ACTIVE' ? '운영중' : 
                    club.status === 'MAINTENANCE' ? '정비중' : 
@@ -262,7 +262,7 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">골프장 유형</label>
+              <label className="block text-sm font-medium text-white/70 mb-1">골프장 유형</label>
               {isEditing ? (
                 <div className="flex space-x-2">
                   <button
@@ -271,7 +271,7 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
                     className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       formData.clubType === 'PAID'
                         ? 'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        : 'bg-white/10 text-white/60 hover:bg-white/15'
                     }`}
                   >
                     유료
@@ -282,7 +282,7 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
                     className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       formData.clubType === 'FREE'
                         ? 'bg-sky-100 text-sky-700 ring-2 ring-sky-500'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        : 'bg-white/10 text-white/60 hover:bg-white/15'
                     }`}
                   >
                     무료
@@ -301,7 +301,7 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">운영 시작</label>
+                <label className="block text-sm font-medium text-white/70 mb-1">운영 시작</label>
                 {isEditing ? (
                   <input
                     type="time"
@@ -313,15 +313,15 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
                         open: e.target.value
                       }
                     }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 ) : (
-                  <p className="text-gray-900">{club.operatingHours?.open || '06:00'}</p>
+                  <p className="text-white">{club.operatingHours?.open || '06:00'}</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">운영 종료</label>
+                <label className="block text-sm font-medium text-white/70 mb-1">운영 종료</label>
                 {isEditing ? (
                   <input
                     type="time"
@@ -333,10 +333,10 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
                         close: e.target.value
                       }
                     }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 ) : (
-                  <p className="text-gray-900">{club.operatingHours?.close || '18:00'}</p>
+                  <p className="text-white">{club.operatingHours?.close || '18:00'}</p>
                 )}
               </div>
             </div>
@@ -347,7 +347,7 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
 
       {/* 좌표 정보 */}
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+        <h3 className="text-lg font-medium text-white mb-4 flex items-center">
           <svg className="w-5 h-5 mr-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -357,16 +357,16 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
         {club.latitude && club.longitude ? (
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">위도</label>
-              <p className="text-gray-900">{club.latitude.toFixed(6)}</p>
+              <label className="block text-sm font-medium text-white/70 mb-1">위도</label>
+              <p className="text-white">{club.latitude.toFixed(6)}</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">경도</label>
-              <p className="text-gray-900">{club.longitude.toFixed(6)}</p>
+              <label className="block text-sm font-medium text-white/70 mb-1">경도</label>
+              <p className="text-white">{club.longitude.toFixed(6)}</p>
             </div>
           </div>
         ) : (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-white/50">
             좌표가 아직 설정되지 않았습니다. 주소를 저장하면 자동으로 계산됩니다.
           </p>
         )}
@@ -374,7 +374,7 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
 
       {/* 부대시설 */}
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+        <h3 className="text-lg font-medium text-white mb-4 flex items-center">
           <svg className="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
@@ -389,9 +389,9 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
                   type="checkbox"
                   checked={(formData.facilities || []).includes(facility)}
                   onChange={() => handleFacilityToggle(facility)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-white/15 text-emerald-400 focus:ring-emerald-500"
                 />
-                <span className="text-sm text-gray-700">{facility}</span>
+                <span className="text-sm text-white/70">{facility}</span>
               </label>
             ))}
           </div>
@@ -401,29 +401,29 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
               club.facilities.map((facility, index) => (
                 <span
                   key={index}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+                  className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-emerald-500/20 text-emerald-300"
                 >
                   {facility}
                 </span>
               ))
             ) : (
-              <span className="text-gray-500">등록된 부대시설이 없습니다.</span>
+              <span className="text-white/50">등록된 부대시설이 없습니다.</span>
             )}
           </div>
         )}
       </div>
 
       {/* 등록 정보 */}
-      <div className="border-t border-gray-200 pt-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">등록 정보</h3>
+      <div className="border-t border-white/15 pt-6">
+        <h3 className="text-lg font-medium text-white mb-4">등록 정보</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
-            <span className="text-gray-500">등록일:</span>
-            <span className="ml-2 text-gray-900">{new Date(club.createdAt).toLocaleDateString()}</span>
+            <span className="text-white/50">등록일:</span>
+            <span className="ml-2 text-white">{new Date(club.createdAt).toLocaleDateString()}</span>
           </div>
           <div>
-            <span className="text-gray-500">최종 수정:</span>
-            <span className="ml-2 text-gray-900">{new Date(club.updatedAt).toLocaleDateString()}</span>
+            <span className="text-white/50">최종 수정:</span>
+            <span className="ml-2 text-white">{new Date(club.updatedAt).toLocaleDateString()}</span>
           </div>
         </div>
       </div>

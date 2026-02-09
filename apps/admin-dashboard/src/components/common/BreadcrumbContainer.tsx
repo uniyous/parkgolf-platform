@@ -16,18 +16,18 @@ export const BreadcrumbContainer: React.FC = () => {
         {items.map((item, index) => (
           <li key={index} className="inline-flex items-center">
             {index > 0 && (
-              <ChevronRight className="w-6 h-6 text-gray-400 mx-1" />
+              <ChevronRight className="w-6 h-6 text-white/40 mx-1" />
             )}
             {item.path && index < items.length - 1 ? (
               <Link
                 to={item.path}
-                className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600"
+                className="inline-flex items-center text-sm font-medium text-white/70 hover:text-emerald-400"
               >
                 {item.icon && <span className="mr-2">{item.icon}</span>}
                 {item.label}
               </Link>
             ) : (
-              <span className="inline-flex items-center text-sm font-medium text-gray-500">
+              <span className="inline-flex items-center text-sm font-medium text-white/50">
                 {item.icon && <span className="mr-2">{item.icon}</span>}
                 {item.label}
               </span>

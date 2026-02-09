@@ -38,12 +38,12 @@ const initialFormData: FormData = {
 
 // 역할 메타데이터
 const roleMeta: Record<string, { label: string; description: string; icon: string; color: string; bgColor: string }> = {
-  PLATFORM_ADMIN: { label: '플랫폼 관리자', description: '전체 시스템 최고 권한', icon: '👑', color: 'text-red-800', bgColor: 'bg-red-50 border-red-200' },
-  PLATFORM_SUPPORT: { label: '플랫폼 고객지원', description: '데이터 조회 및 지원', icon: '🎧', color: 'text-purple-800', bgColor: 'bg-purple-50 border-purple-200' },
-  PLATFORM_VIEWER: { label: '플랫폼 조회', description: '읽기 전용', icon: '👁️', color: 'text-gray-800', bgColor: 'bg-gray-50 border-gray-200' },
-  COMPANY_ADMIN: { label: '회사 대표', description: '회사 전체 권한', icon: '🏢', color: 'text-blue-800', bgColor: 'bg-blue-50 border-blue-200' },
+  PLATFORM_ADMIN: { label: '플랫폼 관리자', description: '전체 시스템 최고 권한', icon: '👑', color: 'text-red-800', bgColor: 'bg-red-500/10 border-red-200' },
+  PLATFORM_SUPPORT: { label: '플랫폼 고객지원', description: '데이터 조회 및 지원', icon: '🎧', color: 'text-purple-800', bgColor: 'bg-purple-500/10 border-purple-200' },
+  PLATFORM_VIEWER: { label: '플랫폼 조회', description: '읽기 전용', icon: '👁️', color: 'text-white', bgColor: 'bg-white/5 border-white/15' },
+  COMPANY_ADMIN: { label: '회사 대표', description: '회사 전체 권한', icon: '🏢', color: 'text-emerald-300', bgColor: 'bg-emerald-500/10 border-emerald-500/30' },
   COMPANY_MANAGER: { label: '회사 매니저', description: '운영 관리', icon: '👨‍💼', color: 'text-cyan-800', bgColor: 'bg-cyan-50 border-cyan-200' },
-  COMPANY_STAFF: { label: '회사 직원', description: '현장 업무', icon: '👤', color: 'text-green-800', bgColor: 'bg-green-50 border-green-200' },
+  COMPANY_STAFF: { label: '회사 직원', description: '현장 업무', icon: '👤', color: 'text-green-800', bgColor: 'bg-green-500/10 border-green-200' },
   COMPANY_VIEWER: { label: '회사 조회', description: '읽기 전용', icon: '📖', color: 'text-slate-800', bgColor: 'bg-slate-50 border-slate-200' },
 };
 
@@ -217,7 +217,7 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
   };
 
   const getRoleMeta = (roleCode: string) =>
-    roleMeta[roleCode] || { label: roleCode, description: '', icon: '🔐', color: 'text-gray-800', bgColor: 'bg-gray-50 border-gray-200' };
+    roleMeta[roleCode] || { label: roleCode, description: '', icon: '🔐', color: 'text-white', bgColor: 'bg-white/5 border-white/15' };
 
   const getPermissionName = (code: string) => permissionMeta[code]?.name || code;
   const getPermissionIcon = (code: string) => permissionMeta[code]?.icon || '📌';
@@ -235,8 +235,8 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
       <label
         className={`relative flex items-start p-3 rounded-lg border-2 cursor-pointer transition-all ${
           isSelected
-            ? 'border-blue-500 bg-blue-50 shadow-sm'
-            : `border-gray-200 hover:border-gray-300 ${meta.bgColor}`
+            ? 'border-emerald-500 bg-emerald-500/10 shadow-sm'
+            : `border-white/15 hover:border-white/15 ${meta.bgColor}`
         }`}
       >
         <input
@@ -250,27 +250,27 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
         <span className="text-xl mr-2">{meta.icon}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
-            <span className={`font-medium text-sm ${isSelected ? 'text-blue-900' : meta.color}`}>
+            <span className={`font-medium text-sm ${isSelected ? 'text-emerald-400' : meta.color}`}>
               {meta.label}
             </span>
             {isSelected && (
-              <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-5 h-5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
             )}
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">{meta.description}</p>
+          <p className="text-xs text-white/50 mt-0.5">{meta.description}</p>
           {/* 권한 미리보기 */}
           <div className="mt-2 flex flex-wrap gap-1">
             {hasAllPermission ? (
-              <span className="inline-flex items-center px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded">
+              <span className="inline-flex items-center px-1.5 py-0.5 text-xs bg-green-500/20 text-green-700 rounded">
                 ✨ 전체
               </span>
             ) : (
               permissions.slice(0, 4).map((code) => (
                 <span
                   key={code}
-                  className="inline-flex items-center px-1.5 py-0.5 text-xs bg-white/70 text-gray-600 rounded"
+                  className="inline-flex items-center px-1.5 py-0.5 text-xs bg-white/70 text-white/60 rounded"
                   title={getPermissionName(code)}
                 >
                   {getPermissionIcon(code)}
@@ -278,7 +278,7 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
               ))
             )}
             {!hasAllPermission && permissions.length > 4 && (
-              <span className="inline-flex items-center px-1.5 py-0.5 text-xs text-gray-500">
+              <span className="inline-flex items-center px-1.5 py-0.5 text-xs text-white/50">
                 +{permissions.length - 4}
               </span>
             )}
@@ -300,15 +300,15 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
         <div className="grid grid-cols-2 gap-4">
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-white/70 mb-1">
               이메일 <span className="text-red-500">*</span>
             </label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => handleChange('email', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                errors.email ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 ${
+                errors.email ? 'border-red-500' : 'border-white/15'
               }`}
               placeholder="admin@example.com"
             />
@@ -317,15 +317,15 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
 
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-white/70 mb-1">
               이름 <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => handleChange('name', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                errors.name ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 ${
+                errors.name ? 'border-red-500' : 'border-white/15'
               }`}
               placeholder="홍길동"
             />
@@ -337,16 +337,16 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
         <div className="grid grid-cols-2 gap-4">
           {/* Password */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-white/70 mb-1">
               비밀번호 {!isEditing && <span className="text-red-500">*</span>}
-              {isEditing && <span className="text-gray-400 font-normal text-xs">(변경시만)</span>}
+              {isEditing && <span className="text-white/40 font-normal text-xs">(변경시만)</span>}
             </label>
             <input
               type="password"
               value={formData.password}
               onChange={(e) => handleChange('password', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                errors.password ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 ${
+                errors.password ? 'border-red-500' : 'border-white/15'
               }`}
               placeholder="********"
             />
@@ -355,15 +355,15 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
 
           {/* Confirm Password */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-white/70 mb-1">
               비밀번호 확인 {!isEditing && <span className="text-red-500">*</span>}
             </label>
             <input
               type="password"
               value={formData.confirmPassword}
               onChange={(e) => handleChange('confirmPassword', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 ${
+                errors.confirmPassword ? 'border-red-500' : 'border-white/15'
               }`}
               placeholder="********"
             />
@@ -373,7 +373,7 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
 
         {/* 역할 선택 */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-white/70 mb-2">
             역할 선택 <span className="text-red-500">*</span>
           </label>
           <div className="space-y-3">
@@ -382,8 +382,8 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
               <div>
                 <div className="flex items-center space-x-2 mb-2">
                   <span className="text-sm">🌐</span>
-                  <span className="text-xs font-medium text-gray-500">플랫폼 역할</span>
-                  <span className="px-1.5 py-0.5 text-xs bg-purple-100 text-purple-700 rounded">본사</span>
+                  <span className="text-xs font-medium text-white/50">플랫폼 역할</span>
+                  <span className="px-1.5 py-0.5 text-xs bg-purple-500/20 text-purple-700 rounded">본사</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {groupedRoles.platform.map((role) => (
@@ -398,8 +398,8 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
               <div>
                 <div className="flex items-center space-x-2 mb-2">
                   <span className="text-sm">🏢</span>
-                  <span className="text-xs font-medium text-gray-500">회사 역할</span>
-                  <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">가맹점</span>
+                  <span className="text-xs font-medium text-white/50">회사 역할</span>
+                  <span className="px-1.5 py-0.5 text-xs bg-emerald-500/20 text-emerald-300 rounded">가맹점</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {groupedRoles.company.map((role) => (
@@ -416,24 +416,24 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
         <div className="grid grid-cols-2 gap-4">
           {/* Phone */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">연락처</label>
+            <label className="block text-sm font-medium text-white/70 mb-1">연락처</label>
             <input
               type="tel"
               value={formData.phone}
               onChange={(e) => handleChange('phone', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-white/15 rounded-lg focus:ring-2 focus:ring-emerald-500"
               placeholder="010-1234-5678"
             />
           </div>
 
           {/* Department */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">부서</label>
+            <label className="block text-sm font-medium text-white/70 mb-1">부서</label>
             <input
               type="text"
               value={formData.department}
               onChange={(e) => handleChange('department', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-white/15 rounded-lg focus:ring-2 focus:ring-emerald-500"
               placeholder="운영팀"
             />
           </div>
@@ -446,9 +446,9 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
             id="isActive"
             checked={formData.isActive}
             onChange={(e) => handleChange('isActive', e.target.checked)}
-            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="rounded border-white/15 text-emerald-400 focus:ring-emerald-500"
           />
-          <label htmlFor="isActive" className="text-sm text-gray-700">
+          <label htmlFor="isActive" className="text-sm text-white/70">
             활성 상태
           </label>
         </div>

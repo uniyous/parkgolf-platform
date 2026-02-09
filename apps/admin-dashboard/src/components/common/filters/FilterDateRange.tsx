@@ -29,10 +29,10 @@ const FilterDateRange: React.FC<FilterDateRangeProps> = ({
 }) => {
   const inputClassName = cn(
     'w-full px-3 py-2 pl-9',
-    'border border-gray-300 rounded-lg',
-    'text-sm text-gray-900 bg-white',
-    'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-    'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-gray-100',
+    'border border-white/15 rounded-lg',
+    'text-sm text-white bg-white/10',
+    'focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent',
+    'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-white/5',
     'transition-colors'
   );
 
@@ -40,11 +40,11 @@ const FilterDateRange: React.FC<FilterDateRangeProps> = ({
     return (
       <div className={cn('space-y-3', className)}>
         <div className="min-w-0">
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">
+          <label className="block text-xs font-medium text-white/50 mb-1.5">
             {startLabel}
           </label>
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40 pointer-events-none" />
             <input
               type="date"
               value={startDate}
@@ -54,11 +54,11 @@ const FilterDateRange: React.FC<FilterDateRangeProps> = ({
           </div>
         </div>
         <div className="min-w-0">
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">
+          <label className="block text-xs font-medium text-white/50 mb-1.5">
             {endLabel}
           </label>
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40 pointer-events-none" />
             <input
               type="date"
               value={endDate}
@@ -75,13 +75,13 @@ const FilterDateRange: React.FC<FilterDateRangeProps> = ({
   return (
     <div className={cn('min-w-0', className)}>
       {showLabel && (
-        <label className="block text-xs font-medium text-gray-600 mb-1.5">
+        <label className="block text-xs font-medium text-white/50 mb-1.5">
           {label}
         </label>
       )}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40 pointer-events-none" />
           <input
             type="date"
             value={startDate}
@@ -89,9 +89,9 @@ const FilterDateRange: React.FC<FilterDateRangeProps> = ({
             className={inputClassName}
           />
         </div>
-        <span className="text-gray-400 text-sm flex-shrink-0">~</span>
+        <span className="text-white/40 text-sm flex-shrink-0">~</span>
         <div className="relative flex-1">
-          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40 pointer-events-none" />
           <input
             type="date"
             value={endDate}
@@ -131,12 +131,12 @@ const FilterDate = React.forwardRef<HTMLInputElement, FilterDateProps>(
     return (
       <div className={cn('min-w-0', containerClassName)}>
         {showLabel && label && (
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">
+          <label className="block text-xs font-medium text-white/50 mb-1.5">
             {label}
           </label>
         )}
         <div className="relative">
-          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40 pointer-events-none" />
           <input
             ref={ref}
             type="date"
@@ -144,10 +144,10 @@ const FilterDate = React.forwardRef<HTMLInputElement, FilterDateProps>(
             onChange={(e) => onChange(e.target.value)}
             className={cn(
               'w-full px-3 py-2 pl-9',
-              'border border-gray-300 rounded-lg',
-              'text-sm text-gray-900 bg-white',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-              'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-gray-100',
+              'border border-white/15 rounded-lg',
+              'text-sm text-white bg-white/10',
+              'focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent',
+              'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-white/5',
               'transition-colors',
               className
             )}

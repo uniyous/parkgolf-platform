@@ -64,7 +64,7 @@ export const SystemSettingsPage: React.FC = () => {
         return (
           <div className="space-y-4">
             {/* 서브 탭 */}
-            <div className="flex gap-2 border-b border-gray-200 pb-4">
+            <div className="flex gap-2 border-b border-white/15 pb-4">
               {bookingPolicyTabs.map((tab) => (
                 <button
                   key={tab.id}
@@ -74,7 +74,7 @@ export const SystemSettingsPage: React.FC = () => {
                     ${
                       activeBookingTab === tab.id
                         ? 'bg-green-600 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        : 'bg-white/10 text-white/60 hover:bg-white/15'
                     }
                   `}
                 >
@@ -96,20 +96,20 @@ export const SystemSettingsPage: React.FC = () => {
       case 'notification':
         return (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mb-4">
               <span className="text-4xl">🔔</span>
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">알림 설정</h3>
-            <p className="text-gray-500 mb-4 max-w-md">
+            <h3 className="text-xl font-semibold text-white mb-2">알림 설정</h3>
+            <p className="text-white/50 mb-4 max-w-md">
               예약 확인, 리마인더, 취소/환불 알림 등<br />
               다양한 알림 채널과 템플릿을 설정할 수 있습니다.
             </p>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-500/20 text-emerald-300">
               준비 중
             </span>
-            <div className="mt-8 text-left bg-gray-50 rounded-lg p-4 max-w-sm">
-              <p className="text-sm font-medium text-gray-700 mb-2">예정 기능:</p>
-              <ul className="text-sm text-gray-500 space-y-1">
+            <div className="mt-8 text-left bg-white/5 rounded-lg p-4 max-w-sm">
+              <p className="text-sm font-medium text-white/70 mb-2">예정 기능:</p>
+              <ul className="text-sm text-white/50 space-y-1">
                 <li>• 예약 알림 (확인/리마인더)</li>
                 <li>• 취소/환불 알림</li>
                 <li>• 마케팅 알림</li>
@@ -122,20 +122,20 @@ export const SystemSettingsPage: React.FC = () => {
       case 'general':
         return (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mb-4">
               <span className="text-4xl">⚙️</span>
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">일반 설정</h3>
-            <p className="text-gray-500 mb-4 max-w-md">
+            <h3 className="text-xl font-semibold text-white mb-2">일반 설정</h3>
+            <p className="text-white/50 mb-4 max-w-md">
               운영 시간, 휴일 관리 등<br />
               시스템 전반의 설정을 관리합니다.
             </p>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-500/20 text-emerald-300">
               준비 중
             </span>
-            <div className="mt-8 text-left bg-gray-50 rounded-lg p-4 max-w-sm">
-              <p className="text-sm font-medium text-gray-700 mb-2">예정 기능:</p>
-              <ul className="text-sm text-gray-500 space-y-1">
+            <div className="mt-8 text-left bg-white/5 rounded-lg p-4 max-w-sm">
+              <p className="text-sm font-medium text-white/70 mb-2">예정 기능:</p>
+              <ul className="text-sm text-white/50 space-y-1">
                 <li>• 운영 시간 설정</li>
                 <li>• 휴일/공휴일 관리</li>
                 <li>• 시스템 점검 설정</li>
@@ -155,13 +155,13 @@ export const SystemSettingsPage: React.FC = () => {
   return (
     <PageLayout>
       {/* 헤더 */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
               <span>⚙️</span> 시스템 설정
             </h1>
-            <p className="text-gray-500 mt-1">
+            <p className="text-white/50 mt-1">
               예약 정책, 알림, 시스템 설정을 관리합니다
             </p>
           </div>
@@ -172,8 +172,8 @@ export const SystemSettingsPage: React.FC = () => {
       <div className="flex gap-6">
         {/* 좌측 카테고리 사이드바 */}
         <div className="w-64 flex-shrink-0">
-          <div className="bg-white rounded-lg border border-gray-200 p-4 sticky top-6">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 px-2">
+          <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-4 sticky top-6">
+            <h2 className="text-sm font-semibold text-white/40 uppercase tracking-wider mb-3 px-2">
               카테고리
             </h2>
             <nav className="space-y-1">
@@ -186,9 +186,9 @@ export const SystemSettingsPage: React.FC = () => {
                     w-full flex items-start gap-3 px-3 py-3 rounded-lg text-left transition-all
                     ${
                       activeCategory === category.id
-                        ? 'bg-green-50 border-2 border-green-500'
+                        ? 'bg-green-500/10 border-2 border-green-500'
                         : category.isReady
-                        ? 'hover:bg-gray-50 border-2 border-transparent'
+                        ? 'hover:bg-white/5 border-2 border-transparent'
                         : 'opacity-60 cursor-not-allowed border-2 border-transparent'
                     }
                   `}
@@ -198,18 +198,18 @@ export const SystemSettingsPage: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <span
                         className={`font-medium ${
-                          activeCategory === category.id ? 'text-green-700' : 'text-gray-900'
+                          activeCategory === category.id ? 'text-green-700' : 'text-white'
                         }`}
                       >
                         {category.label}
                       </span>
                       {!category.isReady && (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-200 text-gray-500">
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-white/15 text-white/50">
                           준비중
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 mt-0.5 truncate">
+                    <p className="text-xs text-white/50 mt-0.5 truncate">
                       {category.description}
                     </p>
                   </div>
@@ -221,16 +221,16 @@ export const SystemSettingsPage: React.FC = () => {
 
         {/* 우측 컨텐츠 영역 */}
         <div className="flex-1 min-w-0">
-          <div className="bg-white rounded-lg border border-gray-200">
+          <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15">
             {/* 컨텐츠 헤더 */}
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+            <div className="px-6 py-4 border-b border-white/15 bg-white/5 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">{currentCategory?.icon}</span>
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-lg font-semibold text-white">
                     {currentCategory?.label}
                   </h2>
-                  <p className="text-sm text-gray-500">{currentCategory?.description}</p>
+                  <p className="text-sm text-white/50">{currentCategory?.description}</p>
                 </div>
               </div>
             </div>

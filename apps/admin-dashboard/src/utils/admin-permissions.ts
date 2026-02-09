@@ -21,14 +21,14 @@ export const ADMIN_ROLE_LABELS: Record<AdminRole, string> = {
 // Role Colors (Tailwind CSS classes)
 export const ADMIN_ROLE_COLORS: Record<AdminRole, string> = {
   // 플랫폼 역할 (보라색 계열)
-  PLATFORM_ADMIN: 'bg-purple-100 text-purple-800',
-  PLATFORM_SUPPORT: 'bg-indigo-100 text-indigo-800',
-  PLATFORM_VIEWER: 'bg-blue-100 text-blue-800',
+  PLATFORM_ADMIN: 'bg-purple-500/20 text-purple-400',
+  PLATFORM_SUPPORT: 'bg-indigo-500/20 text-indigo-400',
+  PLATFORM_VIEWER: 'bg-emerald-500/20 text-emerald-400',
   // 회사 역할 (초록/노랑 계열)
-  COMPANY_ADMIN: 'bg-green-100 text-green-800',
-  COMPANY_MANAGER: 'bg-teal-100 text-teal-800',
-  COMPANY_STAFF: 'bg-yellow-100 text-yellow-800',
-  COMPANY_VIEWER: 'bg-gray-100 text-gray-600',
+  COMPANY_ADMIN: 'bg-green-500/20 text-green-400',
+  COMPANY_MANAGER: 'bg-teal-500/20 text-teal-400',
+  COMPANY_STAFF: 'bg-yellow-500/20 text-yellow-400',
+  COMPANY_VIEWER: 'bg-white/10 text-white/60',
 };
 
 // Admin Permission Labels (10개)

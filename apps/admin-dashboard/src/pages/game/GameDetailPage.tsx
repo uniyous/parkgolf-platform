@@ -11,9 +11,9 @@ import { GameTimeSlotTab } from '@/components/features/game/GameTimeSlotTab';
 type TabType = 'basic' | 'weeklySchedule' | 'timeSlots';
 
 const statusLabels: Record<string, { label: string; color: string }> = {
-  ACTIVE: { label: '운영중', color: 'bg-green-100 text-green-800' },
-  INACTIVE: { label: '비활성', color: 'bg-gray-100 text-gray-800' },
-  MAINTENANCE: { label: '정비중', color: 'bg-yellow-100 text-yellow-800' },
+  ACTIVE: { label: '운영중', color: 'bg-green-500/20 text-green-400' },
+  INACTIVE: { label: '비활성', color: 'bg-white/10 text-white' },
+  MAINTENANCE: { label: '정비중', color: 'bg-yellow-500/20 text-yellow-400' },
 };
 
 export const GameDetailPage: React.FC = () => {
@@ -59,14 +59,14 @@ export const GameDetailPage: React.FC = () => {
       emptyMessage="라운드 정보를 찾을 수 없습니다"
       emptyDescription={error?.message || '라운드 정보를 불러오는 중 문제가 발생했습니다.'}
       emptyIcon={
-        <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="h-12 w-12 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16.5c-.77.833.192 3 1.732 3z" />
         </svg>
       }
       emptyAction={
         <button
           onClick={() => navigate('/games')}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors"
         >
           목록으로 돌아가기
         </button>
@@ -75,38 +75,38 @@ export const GameDetailPage: React.FC = () => {
       {game && (
         <div className="space-y-6">
           {/* 헤더 */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-4">
                 <button
                   onClick={() => navigate('/games')}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
                 >
-                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900">{game.name || '라운드'}</h1>
+                  <h1 className="text-3xl font-bold text-white">{game.name || '라운드'}</h1>
                   <div className="flex items-center space-x-4 mt-2">
-                    <p className="text-gray-600 flex items-center">
+                    <p className="text-white/60 flex items-center">
                       👥 최대 {game.maxPlayers ?? '-'}명
                     </p>
-                    <p className="text-gray-600">⏱️ {game.duration ?? '-'}분</p>
-                    <p className="text-gray-600 font-medium text-blue-600">
+                    <p className="text-white/60">⏱️ {game.duration ?? '-'}분</p>
+                    <p className="text-white/60 font-medium text-emerald-400">
                       ₩{(game.price ?? 0).toLocaleString()}
                     </p>
                     {game.slotMode && (
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         game.slotMode === 'TEE_TIME'
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-purple-100 text-purple-700'
+                          ? 'bg-emerald-500/20 text-emerald-300'
+                          : 'bg-purple-500/20 text-purple-700'
                       }`}>
                         {game.slotMode === 'TEE_TIME' ? '티타임' : '세션'}
                       </span>
                     )}
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      statusLabels[game.status]?.color || 'bg-gray-100 text-gray-800'
+                      statusLabels[game.status]?.color || 'bg-white/10 text-white'
                     }`}>
                       {statusLabels[game.status]?.label || game.status}
                     </span>
@@ -123,7 +123,7 @@ export const GameDetailPage: React.FC = () => {
                   align="end"
                 >
                   <button
-                    className="p-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
+                    className="p-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-500/10 transition-colors"
                     title="라운드 삭제"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -135,13 +135,13 @@ export const GameDetailPage: React.FC = () => {
             </div>
 
             {/* 탭 네비게이션 */}
-            <div className="flex space-x-1 border-b border-gray-200">
+            <div className="flex space-x-1 border-b border-white/15">
               <button
                 onClick={() => setActiveTab('basic')}
                 className={`px-6 py-3 text-sm font-medium rounded-t-md transition-colors ${
                   activeTab === 'basic'
-                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-500'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-emerald-500/10 text-emerald-300 border-b-2 border-emerald-500'
+                    : 'text-white/60 hover:text-white'
                 }`}
               >
                 <div className="flex items-center space-x-2">
@@ -155,8 +155,8 @@ export const GameDetailPage: React.FC = () => {
                 onClick={() => setActiveTab('weeklySchedule')}
                 className={`px-6 py-3 text-sm font-medium rounded-t-md transition-colors ${
                   activeTab === 'weeklySchedule'
-                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-500'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-emerald-500/10 text-emerald-300 border-b-2 border-emerald-500'
+                    : 'text-white/60 hover:text-white'
                 }`}
               >
                 <div className="flex items-center space-x-2">
@@ -170,8 +170,8 @@ export const GameDetailPage: React.FC = () => {
                 onClick={() => setActiveTab('timeSlots')}
                 className={`px-6 py-3 text-sm font-medium rounded-t-md transition-colors ${
                   activeTab === 'timeSlots'
-                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-500'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-emerald-500/10 text-emerald-300 border-b-2 border-emerald-500'
+                    : 'text-white/60 hover:text-white'
                 }`}
               >
                 <div className="flex items-center space-x-2">
@@ -185,7 +185,7 @@ export const GameDetailPage: React.FC = () => {
           </div>
 
           {/* 탭 컨텐츠 */}
-          <div className="bg-white rounded-lg border border-gray-200">
+          <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15">
             {activeTab === 'basic' && (
               <GameBasicInfoTab game={game} onUpdate={refetch} />
             )}

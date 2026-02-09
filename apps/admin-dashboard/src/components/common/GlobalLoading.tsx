@@ -67,7 +67,7 @@ export const GlobalLoading: React.FC<GlobalLoadingProps> = ({
         {/* 그라데이션 배경 - 콘텐츠가 보이도록 */}
         <Dialog.Overlay
           className="fixed inset-0 z-50
-                     bg-gradient-to-br from-blue-500/10 via-transparent to-indigo-500/10
+                     bg-gradient-to-br from-emerald-500/10 via-transparent to-emerald-700/10
                      backdrop-blur-[1px]
                      data-[state=open]:animate-in data-[state=closed]:animate-out
                      data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0
@@ -88,12 +88,12 @@ export const GlobalLoading: React.FC<GlobalLoadingProps> = ({
           {/* 스피너 */}
           <div className="flex flex-col items-center justify-center">
             <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 blur-lg opacity-40 scale-150" />
-              <Spinner size="xl" className="relative text-blue-600 drop-shadow-lg" />
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 blur-lg opacity-40 scale-150" />
+              <Spinner size="xl" className="relative text-emerald-400 drop-shadow-lg" />
             </div>
 
             {message && (
-              <p className="mt-4 text-sm font-medium text-gray-700 tracking-wide drop-shadow-sm">
+              <p className="mt-4 text-sm font-medium text-white/70 tracking-wide drop-shadow-sm">
                 {message}
               </p>
             )}
@@ -112,10 +112,10 @@ export const InlineLoading: React.FC<{ message?: string; className?: string }> =
   return (
     <div className={cn('flex flex-col items-center justify-center p-8', className)}>
       <div className="relative">
-        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 blur-md opacity-20" />
-        <Spinner size="lg" className="relative text-blue-600" />
+        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 blur-md opacity-20" />
+        <Spinner size="lg" className="relative text-emerald-400" />
       </div>
-      {message && <p className="mt-4 text-sm font-medium text-gray-500">{message}</p>}
+      {message && <p className="mt-4 text-sm font-medium text-white/50">{message}</p>}
     </div>
   );
 };

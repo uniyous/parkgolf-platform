@@ -33,11 +33,11 @@ const STATUS_LABELS: Record<CompanyStatus, string> = {
 
 // 상태별 스타일 정보
 const STATUS_META: Record<CompanyStatus, { icon: string; color: string }> = {
-  ACTIVE: { icon: '✅', color: 'bg-green-100 text-green-800 border-green-200' },
-  INACTIVE: { icon: '⏸️', color: 'bg-red-100 text-red-800 border-red-200' },
-  MAINTENANCE: { icon: '🔧', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-  SUSPENDED: { icon: '🚫', color: 'bg-gray-100 text-gray-800 border-gray-200' },
-  PENDING: { icon: '⏳', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+  ACTIVE: { icon: '✅', color: 'bg-green-500/20 text-green-400 border-green-200' },
+  INACTIVE: { icon: '⏸️', color: 'bg-red-500/20 text-red-400 border-red-200' },
+  MAINTENANCE: { icon: '🔧', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-200' },
+  SUSPENDED: { icon: '🚫', color: 'bg-white/10 text-white border-white/15' },
+  PENDING: { icon: '⏳', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
 };
 
 export const CompanyPage: React.FC = () => {
@@ -158,18 +158,18 @@ export const CompanyPage: React.FC = () => {
   return (
     <PageLayout>
       {/* 헤더 카드 */}
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">회사 관리</h2>
-            <p className="mt-1 text-sm text-gray-500">
+            <h2 className="text-xl font-semibold text-white">회사 관리</h2>
+            <p className="mt-1 text-sm text-white/50">
               골프장 운영 회사를 관리하고 상태를 설정합니다
             </p>
           </div>
           {hasManageCompanies && (
             <button
               onClick={() => setFormModal({ open: true })}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+              className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors shadow-sm"
             >
               <Plus className="w-5 h-5 mr-2" />
               회사 추가
@@ -179,16 +179,16 @@ export const CompanyPage: React.FC = () => {
 
         {/* 통계 */}
         <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
+          <div className="bg-emerald-500/10 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
-                <div className="text-sm text-blue-600">전체 회사</div>
+                <div className="text-2xl font-bold text-emerald-400">{stats.total}</div>
+                <div className="text-sm text-emerald-400">전체 회사</div>
               </div>
               <div className="text-3xl">🏢</div>
             </div>
           </div>
-          <div className="bg-green-50 p-4 rounded-lg">
+          <div className="bg-green-500/10 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-green-600">{stats.active}</div>
@@ -197,7 +197,7 @@ export const CompanyPage: React.FC = () => {
               <div className="text-3xl">✅</div>
             </div>
           </div>
-          <div className="bg-yellow-50 p-4 rounded-lg">
+          <div className="bg-yellow-500/10 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-yellow-600">{stats.maintenance}</div>
@@ -206,7 +206,7 @@ export const CompanyPage: React.FC = () => {
               <div className="text-3xl">🔧</div>
             </div>
           </div>
-          <div className="bg-red-50 p-4 rounded-lg">
+          <div className="bg-red-500/10 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-red-600">{stats.inactive}</div>
@@ -241,7 +241,7 @@ export const CompanyPage: React.FC = () => {
         <div className="flex items-end gap-2">
           <button
             onClick={() => refetch()}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="inline-flex items-center px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             새로고침
@@ -268,16 +268,16 @@ export const CompanyPage: React.FC = () => {
       />
 
       {/* 회사 목록 테이블 */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h3 className="text-lg font-medium text-gray-900">
+      <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/15 flex items-center justify-between">
+          <h3 className="text-lg font-medium text-white">
             회사 목록
-            <span className="ml-2 text-sm font-normal text-gray-500">
+            <span className="ml-2 text-sm font-normal text-white/50">
               ({filteredCompanies.length}개)
             </span>
           </h3>
           {selectedIds.length > 0 && (
-            <span className="text-sm text-blue-600">{selectedIds.length}개 선택됨</span>
+            <span className="text-sm text-emerald-400">{selectedIds.length}개 선택됨</span>
           )}
         </div>
         <DataContainer
@@ -290,7 +290,7 @@ export const CompanyPage: React.FC = () => {
             companies.length === 0 && hasManageCompanies ? (
               <button
                 onClick={() => setFormModal({ open: true })}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors"
               >
                 <Plus className="w-5 h-5 mr-2" />
                 회사 추가
@@ -300,63 +300,63 @@ export const CompanyPage: React.FC = () => {
           loadingMessage="회사 목록을 불러오는 중..."
         >
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-white/15">
+              <thead className="bg-white/5">
                 <tr>
                   <th className="px-4 py-3 w-12">
                     <input
                       type="checkbox"
                       checked={selectedIds.length === filteredCompanies.length && filteredCompanies.length > 0}
                       onChange={handleSelectAll}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-white/15 text-emerald-400 focus:ring-emerald-500"
                     />
                   </th>
                   <th
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase cursor-pointer hover:bg-white/10 transition-colors"
                     onClick={() => handleSort('name')}
                   >
                     <div className="flex items-center space-x-1">
                       <span>회사 정보</span>
                       {sortField === 'name' && (
-                        <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        <span className="text-emerald-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </div>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase">
                     연락처
                   </th>
                   <th
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase cursor-pointer hover:bg-white/10 transition-colors"
                     onClick={() => handleSort('coursesCount')}
                   >
                     <div className="flex items-center space-x-1">
                       <span>코스</span>
                       {sortField === 'coursesCount' && (
-                        <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        <span className="text-emerald-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </div>
                   </th>
                   <th
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase cursor-pointer hover:bg-white/10 transition-colors"
                     onClick={() => handleSort('status')}
                   >
                     <div className="flex items-center space-x-1">
                       <span>상태</span>
                       {sortField === 'status' && (
-                        <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        <span className="text-emerald-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </div>
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-right text-xs font-medium text-white/50 uppercase">
                     액션
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-white/15">
                 {filteredCompanies.map((company) => (
                   <tr
                     key={company.id}
-                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    className="hover:bg-white/5 transition-colors cursor-pointer"
                     onClick={() => setDetailModal({ open: true, company })}
                   >
                     <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
@@ -364,7 +364,7 @@ export const CompanyPage: React.FC = () => {
                         type="checkbox"
                         checked={selectedIds.includes(company.id)}
                         onChange={() => handleSelect(company.id)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-white/15 text-emerald-400 focus:ring-emerald-500"
                       />
                     </td>
                     <td className="px-4 py-4">
@@ -381,18 +381,18 @@ export const CompanyPage: React.FC = () => {
                           )}
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900">{company.name}</div>
-                          <div className="text-sm text-gray-500 max-w-xs truncate">{company.address || '-'}</div>
+                          <div className="font-medium text-white">{company.name}</div>
+                          <div className="text-sm text-white/50 max-w-xs truncate">{company.address || '-'}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <div className="text-sm text-gray-900">{company.phoneNumber || '-'}</div>
-                      <div className="text-sm text-gray-500">{company.email || '-'}</div>
+                      <div className="text-sm text-white">{company.phoneNumber || '-'}</div>
+                      <div className="text-sm text-white/50">{company.email || '-'}</div>
                     </td>
                     <td className="px-4 py-4">
-                      <span className="inline-flex items-center px-2.5 py-1 text-sm font-medium text-gray-900 bg-gray-100 rounded-lg">
-                        <Map className="w-4 h-4 mr-1 text-gray-500" />
+                      <span className="inline-flex items-center px-2.5 py-1 text-sm font-medium text-white bg-white/10 rounded-lg">
+                        <Map className="w-4 h-4 mr-1 text-white/50" />
                         {company.coursesCount || 0}개
                       </span>
                     </td>
@@ -420,7 +420,7 @@ export const CompanyPage: React.FC = () => {
                           <>
                             <button
                               onClick={() => setFormModal({ open: true, company })}
-                              className="inline-flex items-center px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              className="inline-flex items-center px-3 py-1.5 text-sm text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
                             >
                               <Pencil className="w-4 h-4 mr-1" />
                               수정
@@ -428,7 +428,7 @@ export const CompanyPage: React.FC = () => {
                             {currentAdmin?.primaryScope === 'PLATFORM' && (
                               <button
                                 onClick={() => setDeleteConfirm({ open: true, company })}
-                                className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10 rounded-lg transition-colors"
                               >
                                 <Trash2 className="w-4 h-4 mr-1" />
                                 삭제
@@ -473,16 +473,16 @@ export const CompanyPage: React.FC = () => {
       >
         {deleteConfirm.company && (
           <>
-            <div className="flex items-center space-x-4 p-4 bg-red-50 rounded-lg mb-6">
-              <div className="w-12 h-12 rounded-lg bg-red-100 flex items-center justify-center">
+            <div className="flex items-center space-x-4 p-4 bg-red-500/10 rounded-lg mb-6">
+              <div className="w-12 h-12 rounded-lg bg-red-500/20 flex items-center justify-center">
                 <AlertTriangle className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <div className="font-medium text-gray-900">{deleteConfirm.company.name}</div>
-                <div className="text-sm text-gray-500">{deleteConfirm.company.address || '-'}</div>
+                <div className="font-medium text-white">{deleteConfirm.company.name}</div>
+                <div className="text-sm text-white/50">{deleteConfirm.company.address || '-'}</div>
               </div>
             </div>
-            <p className="text-gray-600 mb-2">
+            <p className="text-white/60 mb-2">
               이 회사를 삭제하시겠습니까?
             </p>
             <p className="text-sm text-red-600 mb-6">
@@ -491,7 +491,7 @@ export const CompanyPage: React.FC = () => {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeleteConfirm({ open: false })}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
               >
                 취소
               </button>

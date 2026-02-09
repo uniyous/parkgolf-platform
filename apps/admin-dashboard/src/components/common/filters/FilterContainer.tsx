@@ -3,12 +3,12 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/utils';
 
 const filterContainerVariants = cva(
-  'bg-white rounded-lg',
+  'bg-white/10 backdrop-blur-xl rounded-lg',
   {
     variants: {
       variant: {
-        default: 'border border-gray-200',
-        elevated: 'shadow-sm',
+        default: 'border border-white/15',
+        elevated: 'shadow-sm border border-white/10',
         flat: '',
       },
       padding: {

@@ -18,13 +18,13 @@ import {
 import type { Booking } from '@/types';
 
 const BOOKING_STATUSES: Record<string, { label: string; color: string }> = {
-  PENDING: { label: '대기', color: 'bg-yellow-100 text-yellow-800' },
-  CONFIRMED: { label: '확정', color: 'bg-blue-100 text-blue-800' },
-  COMPLETED: { label: '완료', color: 'bg-green-100 text-green-800' },
-  CANCELLED: { label: '취소', color: 'bg-red-100 text-red-800' },
-  NO_SHOW: { label: '노쇼', color: 'bg-gray-100 text-gray-800' },
-  SAGA_PENDING: { label: '처리중', color: 'bg-purple-100 text-purple-800' },
-  SAGA_FAILED: { label: '실패', color: 'bg-red-100 text-red-800' },
+  PENDING: { label: '대기', color: 'bg-yellow-500/20 text-yellow-400' },
+  CONFIRMED: { label: '확정', color: 'bg-emerald-500/20 text-emerald-400' },
+  COMPLETED: { label: '완료', color: 'bg-green-500/20 text-green-400' },
+  CANCELLED: { label: '취소', color: 'bg-red-500/20 text-red-400' },
+  NO_SHOW: { label: '노쇼', color: 'bg-white/20 text-white/70' },
+  SAGA_PENDING: { label: '처리중', color: 'bg-purple-500/20 text-purple-400' },
+  SAGA_FAILED: { label: '실패', color: 'bg-red-500/20 text-red-400' },
 };
 
 const PAYMENT_METHODS: Record<string, string> = {
@@ -103,7 +103,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
 
   const statusConfig = BOOKING_STATUSES[booking.status] || {
     label: booking.status,
-    color: 'bg-gray-100 text-gray-800',
+    color: 'bg-white/20 text-white/70',
   };
 
   const InfoItem: React.FC<{
@@ -113,10 +113,10 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
     className?: string;
   }> = ({ icon, label, value, className }) => (
     <div className={`flex items-start gap-3 ${className || ''}`}>
-      <div className="text-gray-400 mt-0.5">{icon}</div>
+      <div className="text-white/40 mt-0.5">{icon}</div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-gray-500">{label}</p>
-        <p className="text-sm font-medium text-gray-900">{value}</p>
+        <p className="text-xs text-white/50">{label}</p>
+        <p className="text-sm font-medium text-white">{value}</p>
       </div>
     </div>
   );
@@ -125,10 +125,10 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title="예약 상세 정보" maxWidth="lg">
       <div className="space-y-6">
         {/* 헤더 - 예약번호 & 상태 */}
-        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+        <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
           <div>
-            <p className="text-xs text-gray-500">예약번호</p>
-            <p className="text-lg font-bold text-gray-900">
+            <p className="text-xs text-white/50">예약번호</p>
+            <p className="text-lg font-bold text-white">
               {booking.bookingNumber || `B${String(booking.id).padStart(4, '0')}`}
             </p>
           </div>
@@ -143,7 +143,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* 좌측 - 골프장/일정 정보 */}
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-gray-700 border-b pb-2">
+            <h4 className="text-sm font-semibold text-white/70 border-b border-white/15 pb-2">
               골프장/코스 정보
             </h4>
             <InfoItem
@@ -174,7 +174,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
 
           {/* 우측 - 예약자 정보 */}
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-gray-700 border-b pb-2">
+            <h4 className="text-sm font-semibold text-white/70 border-b border-white/15 pb-2">
               예약자 정보
             </h4>
             <InfoItem
@@ -202,30 +202,30 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
 
         {/* 결제 정보 */}
         <div className="space-y-4">
-          <h4 className="text-sm font-semibold text-gray-700 border-b pb-2">결제 정보</h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 rounded-lg p-4">
+          <h4 className="text-sm font-semibold text-white/70 border-b border-white/15 pb-2">결제 정보</h4>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-white/5 rounded-lg p-4">
             <div>
-              <p className="text-xs text-gray-500">인원당 금액</p>
-              <p className="text-sm font-medium text-gray-900">
+              <p className="text-xs text-white/50">인원당 금액</p>
+              <p className="text-sm font-medium text-white">
                 ₩{(booking.pricePerPerson || 0).toLocaleString()}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">수수료</p>
-              <p className="text-sm font-medium text-gray-900">
+              <p className="text-xs text-white/50">수수료</p>
+              <p className="text-sm font-medium text-white">
                 ₩{(booking.serviceFee || 0).toLocaleString()}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">총 금액</p>
-              <p className="text-lg font-bold text-blue-600">
+              <p className="text-xs text-white/50">총 금액</p>
+              <p className="text-lg font-bold text-emerald-400">
                 ₩{(booking.totalPrice || booking.totalAmount || 0).toLocaleString()}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">결제 수단</p>
-              <p className="text-sm font-medium text-gray-900 flex items-center gap-1">
-                <CreditCard className="h-4 w-4 text-gray-400" />
+              <p className="text-xs text-white/50">결제 수단</p>
+              <p className="text-sm font-medium text-white flex items-center gap-1">
+                <CreditCard className="h-4 w-4 text-white/40" />
                 {booking.paymentMethod
                   ? PAYMENT_METHODS[booking.paymentMethod] || booking.paymentMethod
                   : '-'}
@@ -237,9 +237,9 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
         {/* 특별 요청사항 */}
         {booking.specialRequests && (
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-gray-700 border-b pb-2">특별 요청사항</h4>
-            <div className="bg-yellow-50 rounded-lg p-4">
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">
+            <h4 className="text-sm font-semibold text-white/70 border-b border-white/15 pb-2">특별 요청사항</h4>
+            <div className="bg-yellow-500/10 rounded-lg p-4">
+              <p className="text-sm text-white/70 whitespace-pre-wrap">
                 {booking.specialRequests}
               </p>
             </div>
@@ -249,9 +249,9 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
         {/* 관리자 메모 */}
         {booking.notes && (
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-gray-700 border-b pb-2">관리자 메모</h4>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{booking.notes}</p>
+            <h4 className="text-sm font-semibold text-white/70 border-b border-white/15 pb-2">관리자 메모</h4>
+            <div className="bg-white/5 rounded-lg p-4">
+              <p className="text-sm text-white/70 whitespace-pre-wrap">{booking.notes}</p>
             </div>
           </div>
         )}
@@ -259,9 +259,9 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
         {/* SAGA 실패 사유 */}
         {booking.sagaFailReason && (
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-red-600 border-b pb-2">실패 사유</h4>
-            <div className="bg-red-50 rounded-lg p-4">
-              <p className="text-sm text-red-700 whitespace-pre-wrap">
+            <h4 className="text-sm font-semibold text-red-400 border-b border-white/15 pb-2">실패 사유</h4>
+            <div className="bg-red-500/10 rounded-lg p-4">
+              <p className="text-sm text-red-400 whitespace-pre-wrap">
                 {booking.sagaFailReason}
               </p>
             </div>
@@ -269,14 +269,14 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
         )}
 
         {/* 예약 생성 정보 */}
-        <div className="text-xs text-gray-400 space-y-1 pt-2 border-t">
+        <div className="text-xs text-white/40 space-y-1 pt-2 border-t border-white/15">
           <p>생성일시: {formatDateTime(booking.createdAt)}</p>
           <p>수정일시: {formatDateTime(booking.updatedAt)}</p>
           {booking.idempotencyKey && <p>거래 키: {booking.idempotencyKey}</p>}
         </div>
 
         {/* 액션 버튼 */}
-        <div className="flex justify-end gap-2 pt-4 border-t">
+        <div className="flex justify-end gap-2 pt-4 border-t border-white/15">
           {/* CONFIRMED 상태일 때만 완료/노쇼/취소 가능 */}
           {booking.status === 'CONFIRMED' && (
             <>
@@ -301,7 +301,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
                 side="top"
                 align="center"
               >
-                <Button variant="secondary" className="bg-gray-600 text-white hover:bg-gray-700">
+                <Button variant="secondary" className="bg-white/10 text-white hover:bg-white/20">
                   <UserX className="h-4 w-4 mr-1" />
                   노쇼 처리
                 </Button>

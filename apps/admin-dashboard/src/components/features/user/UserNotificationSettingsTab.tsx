@@ -38,8 +38,8 @@ export const UserNotificationSettingsTab: React.FC<UserNotificationSettingsTabPr
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium text-gray-900 flex items-center">
-          <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <h3 className="text-lg font-medium text-white flex items-center">
+          <svg className="w-5 h-5 mr-2 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
           </svg>
           알림 설정
@@ -55,18 +55,18 @@ export const UserNotificationSettingsTab: React.FC<UserNotificationSettingsTabPr
         loadingMessage="알림 설정을 불러오는 중..."
       >
         {preferences && (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-white/15">
             {NOTIFICATION_TOGGLES.map((item) => (
               <div key={item.key} className="flex items-center justify-between py-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{item.label}</p>
-                  <p className="text-sm text-gray-500">{item.description}</p>
+                  <p className="text-sm font-medium text-white">{item.label}</p>
+                  <p className="text-sm text-white/50">{item.description}</p>
                 </div>
                 <button
                   onClick={() => handleToggle(item.key)}
                   disabled={updatePreferences.isPending}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 ${
-                    preferences[item.key] ? 'bg-blue-600' : 'bg-gray-200'
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 ${
+                    preferences[item.key] ? 'bg-emerald-600' : 'bg-white/15'
                   }`}
                   role="switch"
                   aria-checked={!!preferences[item.key]}

@@ -22,10 +22,10 @@ const defaultPolicy: NoShowPolicy = {
 };
 
 const penaltyTypeLabels: Record<NoShowPenaltyType, { label: string; color: string; icon: string }> = {
-  WARNING: { label: '경고', color: 'bg-yellow-100 text-yellow-700', icon: '⚠️' },
-  RESTRICTION: { label: '예약 제한', color: 'bg-orange-100 text-orange-700', icon: '🚫' },
-  BLACKLIST: { label: '블랙리스트', color: 'bg-red-100 text-red-700', icon: '🔒' },
-  FEE: { label: '위약금', color: 'bg-purple-100 text-purple-700', icon: '💸' },
+  WARNING: { label: '경고', color: 'bg-yellow-500/20 text-yellow-700', icon: '⚠️' },
+  RESTRICTION: { label: '예약 제한', color: 'bg-orange-500/20 text-orange-700', icon: '🚫' },
+  BLACKLIST: { label: '블랙리스트', color: 'bg-red-500/20 text-red-700', icon: '🔒' },
+  FEE: { label: '위약금', color: 'bg-purple-500/20 text-purple-700', icon: '💸' },
 };
 
 // API 응답을 UI 형식으로 변환하는 함수
@@ -151,7 +151,7 @@ export const NoShowPolicySettings: React.FC = () => {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-        <span className="ml-3 text-gray-600">정책을 불러오는 중...</span>
+        <span className="ml-3 text-white/60">정책을 불러오는 중...</span>
       </div>
     );
   }
@@ -165,8 +165,8 @@ export const NoShowPolicySettings: React.FC = () => {
             ⚠️
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-gray-900">노쇼 정책 안내</h3>
-            <p className="text-sm text-gray-600 mt-1">
+            <h3 className="font-semibold text-white">노쇼 정책 안내</h3>
+            <p className="text-sm text-white/60 mt-1">
               예약 시간에 방문하지 않은 고객(노쇼)에 대한 페널티 정책을 설정합니다.
               노쇼 횟수에 따라 경고, 예약 제한, 블랙리스트 등의 제재를 적용할 수 있습니다.
             </p>
@@ -175,26 +175,26 @@ export const NoShowPolicySettings: React.FC = () => {
       </div>
 
       {/* 기본 설정 */}
-      <div className="bg-white border border-gray-200 rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+      <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-lg">
+        <div className="px-6 py-4 border-b border-white/15 flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-gray-900">노쇼 기본 설정</h3>
-            <p className="text-sm text-gray-500">노쇼 판정 기준 및 기본 규칙</p>
+            <h3 className="font-semibold text-white">노쇼 기본 설정</h3>
+            <p className="text-sm text-white/50">노쇼 판정 기준 및 기본 규칙</p>
           </div>
           <div className="flex items-center gap-2">
             {policy.isActive ? (
-              <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded">
+              <span className="px-2 py-1 text-xs font-medium bg-green-500/20 text-green-700 rounded">
                 활성
               </span>
             ) : (
-              <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
+              <span className="px-2 py-1 text-xs font-medium bg-white/10 text-white/60 rounded">
                 비활성
               </span>
             )}
             {!isEditing && (
               <button
                 onClick={() => setIsEditing(true)}
-                className="px-3 py-1.5 text-sm font-medium text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-green-600 hover:bg-green-500/10 rounded-lg transition-colors"
               >
                 수정
               </button>
@@ -206,8 +206,8 @@ export const NoShowPolicySettings: React.FC = () => {
           {/* 노쇼 판정 시간 */}
           <div className="flex items-center justify-between">
             <div>
-              <label className="font-medium text-gray-900">노쇼 판정 유예 시간</label>
-              <p className="text-sm text-gray-500">예약 시간 경과 후 몇 분까지 도착 대기</p>
+              <label className="font-medium text-white">노쇼 판정 유예 시간</label>
+              <p className="text-sm text-white/50">예약 시간 경과 후 몇 분까지 도착 대기</p>
             </div>
             {isEditing ? (
               <div className="flex items-center gap-2">
@@ -216,7 +216,7 @@ export const NoShowPolicySettings: React.FC = () => {
                   onChange={(e) =>
                     setPolicy({ ...policy, noShowGraceMinutes: Number(e.target.value) })
                   }
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="px-3 py-2 border border-white/15 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 >
                   <option value={10}>10분</option>
                   <option value={15}>15분</option>
@@ -227,7 +227,7 @@ export const NoShowPolicySettings: React.FC = () => {
                 </select>
               </div>
             ) : (
-              <span className="px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg">
+              <span className="px-4 py-2 bg-white/10 text-white/70 font-medium rounded-lg">
                 {policy.noShowGraceMinutes}분
               </span>
             )}
@@ -236,8 +236,8 @@ export const NoShowPolicySettings: React.FC = () => {
           {/* 노쇼 시 환불 */}
           <div className="flex items-center justify-between">
             <div>
-              <label className="font-medium text-gray-900">노쇼 시 환불 허용</label>
-              <p className="text-sm text-gray-500">노쇼 처리된 예약에 대해 환불을 허용합니다</p>
+              <label className="font-medium text-white">노쇼 시 환불 허용</label>
+              <p className="text-sm text-white/50">노쇼 처리된 예약에 대해 환불을 허용합니다</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -255,7 +255,7 @@ export const NoShowPolicySettings: React.FC = () => {
                 peer-checked:after:translate-x-full
                 after:content-[''] after:absolute after:top-0.5 after:left-[2px]
                 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
-                ${policy.allowRefundOnNoShow ? 'bg-green-500' : 'bg-gray-300'}
+                ${policy.allowRefundOnNoShow ? 'bg-green-500' : 'bg-white/30'}
                 ${!isEditing ? 'opacity-60 cursor-not-allowed' : ''}
               `} />
             </label>
@@ -264,8 +264,8 @@ export const NoShowPolicySettings: React.FC = () => {
           {/* 노쇼 카운트 리셋 기간 */}
           <div className="flex items-center justify-between">
             <div>
-              <label className="font-medium text-gray-900">노쇼 카운트 리셋 기간</label>
-              <p className="text-sm text-gray-500">이 기간이 지나면 노쇼 횟수가 초기화됩니다</p>
+              <label className="font-medium text-white">노쇼 카운트 리셋 기간</label>
+              <p className="text-sm text-white/50">이 기간이 지나면 노쇼 횟수가 초기화됩니다</p>
             </div>
             {isEditing ? (
               <div className="flex items-center gap-2">
@@ -274,7 +274,7 @@ export const NoShowPolicySettings: React.FC = () => {
                   onChange={(e) =>
                     setPolicy({ ...policy, countResetDays: Number(e.target.value) })
                   }
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="px-3 py-2 border border-white/15 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 >
                   <option value={30}>30일</option>
                   <option value={60}>60일</option>
@@ -284,7 +284,7 @@ export const NoShowPolicySettings: React.FC = () => {
                 </select>
               </div>
             ) : (
-              <span className="px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg">
+              <span className="px-4 py-2 bg-white/10 text-white/70 font-medium rounded-lg">
                 {policy.countResetDays}일
               </span>
             )}
@@ -293,16 +293,16 @@ export const NoShowPolicySettings: React.FC = () => {
       </div>
 
       {/* 페널티 설정 */}
-      <div className="bg-white border border-gray-200 rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+      <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-lg">
+        <div className="px-6 py-4 border-b border-white/15 flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-gray-900">페널티 단계 설정</h3>
-            <p className="text-sm text-gray-500">노쇼 횟수에 따른 제재 단계</p>
+            <h3 className="font-semibold text-white">페널티 단계 설정</h3>
+            <p className="text-sm text-white/50">노쇼 횟수에 따른 제재 단계</p>
           </div>
           {isEditing && (
             <button
               onClick={addPenalty}
-              className="px-3 py-1.5 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+              className="px-3 py-1.5 text-sm font-medium text-green-600 bg-green-500/10 hover:bg-green-500/20 rounded-lg transition-colors"
             >
               + 페널티 추가
             </button>
@@ -317,8 +317,8 @@ export const NoShowPolicySettings: React.FC = () => {
                 className={`
                   p-4 rounded-lg border transition-all
                   ${penalty.isActive
-                    ? 'bg-white border-gray-200 shadow-sm'
-                    : 'bg-gray-50 border-gray-100 opacity-60'
+                    ? 'bg-white/10 border-white/15 shadow-sm'
+                    : 'bg-white/5 border-white/10 opacity-60'
                   }
                 `}
               >
@@ -341,7 +341,7 @@ export const NoShowPolicySettings: React.FC = () => {
                             onChange={(e) =>
                               updatePenalty(index, 'type', e.target.value as NoShowPenaltyType)
                             }
-                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            className="px-3 py-1.5 text-sm border border-white/15 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                           >
                             <option value="WARNING">경고</option>
                             <option value="RESTRICTION">예약 제한</option>
@@ -358,9 +358,9 @@ export const NoShowPolicySettings: React.FC = () => {
                               onChange={(e) =>
                                 updatePenalty(index, 'withinDays', Number(e.target.value))
                               }
-                              className="w-16 px-2 py-1 text-center border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                              className="w-16 px-2 py-1 text-center border border-white/15 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
                             />
-                            <span className="text-gray-600">일 내</span>
+                            <span className="text-white/60">일 내</span>
                             <input
                               type="number"
                               min={1}
@@ -368,9 +368,9 @@ export const NoShowPolicySettings: React.FC = () => {
                               onChange={(e) =>
                                 updatePenalty(index, 'triggerCount', Number(e.target.value))
                               }
-                              className="w-12 px-2 py-1 text-center border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                              className="w-12 px-2 py-1 text-center border border-white/15 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
                             />
-                            <span className="text-gray-600">회 노쇼 시</span>
+                            <span className="text-white/60">회 노쇼 시</span>
                           </div>
 
                           {/* 페널티 기간/금액 */}
@@ -383,9 +383,9 @@ export const NoShowPolicySettings: React.FC = () => {
                                 onChange={(e) =>
                                   updatePenalty(index, 'penaltyDays', Number(e.target.value))
                                 }
-                                className="w-16 px-2 py-1 text-center border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                className="w-16 px-2 py-1 text-center border border-white/15 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
                               />
-                              <span className="text-gray-600">일간 예약 제한</span>
+                              <span className="text-white/60">일간 예약 제한</span>
                             </div>
                           )}
                           {penalty.type === 'FEE' && (
@@ -398,9 +398,9 @@ export const NoShowPolicySettings: React.FC = () => {
                                 onChange={(e) =>
                                   updatePenalty(index, 'penaltyAmount', Number(e.target.value))
                                 }
-                                className="w-24 px-2 py-1 text-right border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                className="w-24 px-2 py-1 text-right border border-white/15 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
                               />
-                              <span className="text-gray-600">원 위약금</span>
+                              <span className="text-white/60">원 위약금</span>
                             </div>
                           )}
 
@@ -410,7 +410,7 @@ export const NoShowPolicySettings: React.FC = () => {
                             value={penalty.description}
                             onChange={(e) => updatePenalty(index, 'description', e.target.value)}
                             placeholder="페널티 설명"
-                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            className="w-full px-3 py-1.5 text-sm border border-white/15 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                           />
                         </div>
                       ) : (
@@ -422,18 +422,18 @@ export const NoShowPolicySettings: React.FC = () => {
                             `}>
                               {penaltyTypeLabels[penalty.type].label}
                             </span>
-                            <span className="text-sm text-gray-500">
+                            <span className="text-sm text-white/50">
                               {penalty.withinDays}일 내 {penalty.triggerCount}회 노쇼 시
                             </span>
                           </div>
-                          <p className="text-sm text-gray-700 mt-1">{penalty.description}</p>
+                          <p className="text-sm text-white/70 mt-1">{penalty.description}</p>
                           {penalty.type === 'RESTRICTION' && penalty.penaltyDays && (
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-white/50 mt-1">
                               → {penalty.penaltyDays}일간 예약 제한
                             </p>
                           )}
                           {penalty.type === 'FEE' && penalty.penaltyAmount && (
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-white/50 mt-1">
                               → {penalty.penaltyAmount.toLocaleString()}원 위약금
                             </p>
                           )}
@@ -458,14 +458,14 @@ export const NoShowPolicySettings: React.FC = () => {
                         peer-checked:after:translate-x-full
                         after:content-[''] after:absolute after:top-0.5 after:left-[2px]
                         after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all
-                        ${penalty.isActive ? 'bg-green-500' : 'bg-gray-300'}
+                        ${penalty.isActive ? 'bg-green-500' : 'bg-white/30'}
                         ${!isEditing ? 'opacity-60 cursor-not-allowed' : ''}
                       `} />
                     </label>
                     {isEditing && (
                       <button
                         onClick={() => removePenalty(index)}
-                        className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                        className="p-1.5 text-red-500 hover:bg-red-500/10 rounded transition-colors"
                         title="삭제"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -482,10 +482,10 @@ export const NoShowPolicySettings: React.FC = () => {
 
         {/* 저장/취소 버튼 */}
         {isEditing && (
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-3">
+          <div className="px-6 py-4 bg-white/5 border-t border-white/15 flex items-center justify-end gap-3">
             <button
               onClick={handleCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-white/70 bg-white/10 backdrop-blur-xl border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
             >
               취소
             </button>
@@ -501,9 +501,9 @@ export const NoShowPolicySettings: React.FC = () => {
       </div>
 
       {/* 노쇼 처리 플로우 */}
-      <div className="bg-white border border-gray-200 rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="font-semibold text-gray-900">노쇼 처리 흐름</h3>
+      <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-lg">
+        <div className="px-6 py-4 border-b border-white/15">
+          <h3 className="font-semibold text-white">노쇼 처리 흐름</h3>
         </div>
         <div className="p-6">
           <div className="flex items-center justify-between max-w-3xl mx-auto">
@@ -518,8 +518,8 @@ export const NoShowPolicySettings: React.FC = () => {
                   <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center text-xl">
                     {item.icon}
                   </div>
-                  <div className="mt-2 text-sm font-medium text-gray-900">{item.label}</div>
-                  <div className="text-xs text-gray-500">{item.desc}</div>
+                  <div className="mt-2 text-sm font-medium text-white">{item.label}</div>
+                  <div className="text-xs text-white/50">{item.desc}</div>
                 </div>
                 {index < 3 && (
                   <div className="flex-1 h-0.5 bg-amber-200 mx-2" />
