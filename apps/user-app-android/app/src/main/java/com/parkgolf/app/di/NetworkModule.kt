@@ -7,10 +7,12 @@ import com.parkgolf.app.data.remote.api.AuthApi
 import com.parkgolf.app.data.remote.api.BookingApi
 import com.parkgolf.app.data.remote.api.ChatApi
 import com.parkgolf.app.data.remote.api.FriendsApi
+import com.parkgolf.app.data.remote.api.LocationApi
 import com.parkgolf.app.data.remote.api.NotificationApi
 import com.parkgolf.app.data.remote.api.RoundApi
 import com.parkgolf.app.data.remote.api.SettingsApi
 import com.parkgolf.app.data.remote.api.UserApi
+import com.parkgolf.app.data.remote.api.WeatherApi
 import com.parkgolf.app.data.remote.interceptor.AuthInterceptor
 import com.parkgolf.app.data.remote.interceptor.TokenAuthenticator
 import dagger.Module
@@ -124,4 +126,14 @@ object NetworkModule {
     @Singleton
     fun provideNotificationApi(retrofit: Retrofit): NotificationApi =
         retrofit.create(NotificationApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideLocationApi(retrofit: Retrofit): LocationApi =
+        retrofit.create(LocationApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideWeatherApi(retrofit: Retrofit): WeatherApi =
+        retrofit.create(WeatherApi::class.java)
 }

@@ -5,15 +5,18 @@ import com.parkgolf.app.data.remote.api.AuthApi
 import com.parkgolf.app.data.remote.api.BookingApi
 import com.parkgolf.app.data.remote.api.ChatApi
 import com.parkgolf.app.data.remote.api.FriendsApi
+import com.parkgolf.app.data.remote.api.LocationApi
 import com.parkgolf.app.data.remote.api.NotificationApi
 import com.parkgolf.app.data.remote.api.RoundApi
 import com.parkgolf.app.data.remote.api.SettingsApi
 import com.parkgolf.app.data.remote.api.UserApi
+import com.parkgolf.app.data.remote.api.WeatherApi
 import com.parkgolf.app.data.remote.socket.ChatSocketManager
 import com.parkgolf.app.data.repository.AuthRepositoryImpl
 import com.parkgolf.app.data.repository.BookingRepositoryImpl
 import com.parkgolf.app.data.repository.ChatRepositoryImpl
 import com.parkgolf.app.data.repository.FriendsRepositoryImpl
+import com.parkgolf.app.data.repository.LocationWeatherRepositoryImpl
 import com.parkgolf.app.data.repository.NotificationRepositoryImpl
 import com.parkgolf.app.data.repository.RoundRepositoryImpl
 import com.parkgolf.app.data.repository.SettingsRepositoryImpl
@@ -23,6 +26,7 @@ import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.BookingRepository
 import com.parkgolf.app.domain.repository.ChatRepository
 import com.parkgolf.app.domain.repository.FriendsRepository
+import com.parkgolf.app.domain.repository.LocationWeatherRepository
 import com.parkgolf.app.domain.repository.NotificationRepository
 import com.parkgolf.app.domain.repository.RoundRepository
 import com.parkgolf.app.domain.repository.UserRepository
@@ -89,4 +93,11 @@ object RepositoryModule {
     fun provideNotificationRepository(
         notificationApi: NotificationApi
     ): NotificationRepository = NotificationRepositoryImpl(notificationApi)
+
+    @Provides
+    @Singleton
+    fun provideLocationWeatherRepository(
+        locationApi: LocationApi,
+        weatherApi: WeatherApi
+    ): LocationWeatherRepository = LocationWeatherRepositoryImpl(locationApi, weatherApi)
 }
