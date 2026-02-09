@@ -5,6 +5,7 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = HomeViewModel()
+    @StateObject private var locationManager = LocationManager.shared
 
     var body: some View {
         NavigationStack {
@@ -45,6 +46,7 @@ struct HomeView: View {
                 }
             }
             .task {
+                locationManager.requestPermission()
                 await viewModel.loadData()
             }
             .navigationBarHidden(true)
@@ -99,9 +101,17 @@ struct HomeView: View {
                 .font(.parkDisplaySmall)
                 .foregroundStyle(.white)
 
-            Text(weatherMessage)
-                .font(.parkBodyMedium)
-                .foregroundStyle(.white.opacity(0.7))
+            HStack(spacing: ParkSpacing.xs) {
+                if let weather = viewModel.currentWeather {
+                    Image(systemName: weather.weatherIcon)
+                        .font(.parkCaption)
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+
+                Text(weatherMessageText)
+                    .font(.parkBodyMedium)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, ParkSpacing.md)
@@ -120,8 +130,8 @@ struct HomeView: View {
         }
     }
 
-    private var weatherMessage: String {
-        "오늘도 파크골프하기 좋은 날이에요"
+    private var weatherMessageText: String {
+        viewModel.weatherMessage
     }
 
     // MARK: - Notifications Section
@@ -242,22 +252,34 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Popular Clubs Section
+    // MARK: - Popular / Nearby Clubs Section
 
     private var popularClubsSection: some View {
         VStack(alignment: .leading, spacing: ParkSpacing.sm) {
             HStack {
-                Text("🏆 이번 주 인기 골프장")
-                    .font(.parkHeadlineSmall)
-                    .foregroundStyle(.white)
+                if !viewModel.nearbyClubs.isEmpty {
+                    Label("주변 골프장", systemImage: "mappin.circle.fill")
+                        .font(.parkHeadlineSmall)
+                        .foregroundStyle(.white)
+                } else {
+                    Text("🏆 이번 주 인기 골프장")
+                        .font(.parkHeadlineSmall)
+                        .foregroundStyle(.white)
+                }
 
                 Spacer()
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: ParkSpacing.sm) {
-                    ForEach(viewModel.popularClubs) { club in
-                        HomePopularClubCard(club: club)
+                    if !viewModel.nearbyClubs.isEmpty {
+                        ForEach(viewModel.nearbyClubs) { club in
+                            HomeNearbyClubCard(club: club)
+                        }
+                    } else {
+                        ForEach(viewModel.popularClubs) { club in
+                            HomePopularClubCard(club: club)
+                        }
                     }
                 }
             }
@@ -337,6 +359,57 @@ struct HomeUpcomingBookingCard: View {
             return ""
         } else {
             return "D-\(days)"
+        }
+    }
+}
+
+// MARK: - Nearby Club Card
+
+struct HomeNearbyClubCard: View {
+    let club: NearbyClub
+
+    var body: some View {
+        GlassCard(padding: 0, cornerRadius: ParkRadius.lg) {
+            VStack(alignment: .leading, spacing: 0) {
+                // Image placeholder
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.parkPrimary.opacity(0.3), Color.parkSecondary.opacity(0.3)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(height: 100)
+                    .overlay(
+                        Image(systemName: "figure.golf")
+                            .font(.system(size: 32))
+                            .foregroundStyle(.white.opacity(0.5))
+                    )
+
+                VStack(alignment: .leading, spacing: ParkSpacing.xxs) {
+                    Text(club.name)
+                        .font(.parkLabelLarge)
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+
+                    Text(club.location)
+                        .font(.parkCaption)
+                        .foregroundStyle(.white.opacity(0.6))
+                        .lineLimit(1)
+
+                    HStack(spacing: ParkSpacing.xxs) {
+                        Image(systemName: "location.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(Color.parkPrimary)
+                        Text(String(format: "%.1fkm", club.distance))
+                            .font(.parkCaption)
+                            .foregroundStyle(.white)
+                    }
+                }
+                .padding(ParkSpacing.sm)
+            }
+            .frame(width: 160)
         }
     }
 }

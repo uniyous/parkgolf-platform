@@ -1,11 +1,16 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom, timeout } from 'rxjs';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Prisma, Club } from '@prisma/client';
 import {
   CreateClubDto,
   UpdateClubDto,
   ClubFilterDto,
+  FindNearbyDto,
   ClubWithRelations,
+  ClubResponseDto,
+  NearbyClubResponseDto,
 } from '../dto/club.dto';
 
 /** Club 목록 응답 타입 (페이지네이션) */
@@ -21,16 +26,36 @@ export interface ClubListResult {
 export class ClubService {
   private readonly logger = new Logger(ClubService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject('LOCATION_SERVICE') private readonly locationClient: ClientProxy,
+  ) {}
+
+  /**
+   * 주소 → 좌표 변환 (location-service 연동)
+   * 실패 시 null 반환 (좌표 없이도 클럽 생성/수정 가능)
+   */
+  private async geocodeAddress(address: string): Promise<{ latitude: number; longitude: number } | null> {
+    try {
+      const result = await firstValueFrom(
+        this.locationClient.send('location.getCoordinates', { address }).pipe(timeout(10000)),
+      );
+      if (result?.success && result.data?.latitude && result.data?.longitude) {
+        this.logger.log(`Geocoded "${address}" → (${result.data.latitude}, ${result.data.longitude})`);
+        return { latitude: result.data.latitude, longitude: result.data.longitude };
+      }
+      return null;
+    } catch (error) {
+      this.logger.warn(`Geocoding failed for "${address}": ${error.message}`);
+      return null;
+    }
+  }
 
   /**
    * 골프클럽 생성
    */
   async create(createClubDto: CreateClubDto): Promise<ClubWithRelations> {
     try {
-      // Note: Company validation should be done via NATS 'iam.companies.getById' if needed
-      // companyId is a cross-database reference to iam_db.companies
-
       // 같은 회사 내에서 클럽명 중복 확인
       const existingClub = await this.prisma.club.findFirst({
         where: {
@@ -43,15 +68,26 @@ export class ClubService {
         throw new BadRequestException('Club with this name already exists in the company');
       }
 
+      // 자동 지오코딩: address가 있고 좌표가 없으면 location-service 호출
+      let { latitude, longitude } = createClubDto;
+      if (!latitude && !longitude && createClubDto.address) {
+        const coords = await this.geocodeAddress(createClubDto.address);
+        if (coords) {
+          latitude = coords.latitude;
+          longitude = coords.longitude;
+        }
+      }
+
       const club = await this.prisma.club.create({
         data: {
           ...createClubDto,
+          latitude,
+          longitude,
           operatingHours: createClubDto.operatingHours ? JSON.parse(JSON.stringify(createClubDto.operatingHours)) : undefined,
           seasonInfo: createClubDto.seasonInfo ? JSON.parse(JSON.stringify(createClubDto.seasonInfo)) : undefined,
           facilities: createClubDto.facilities || [],
         },
         include: {
-          // company relation removed - use NATS 'iam.companies.getById' for Company data
           courses: {
             include: {
               holes: true,
@@ -183,7 +219,6 @@ export class ClubService {
    */
   async update(id: number, updateClubDto: UpdateClubDto): Promise<ClubWithRelations> {
     try {
-      // 클럽 존재 여부 확인
       const existingClub = await this.prisma.club.findUnique({
         where: { id, isActive: true },
       });
@@ -191,9 +226,6 @@ export class ClubService {
       if (!existingClub) {
         throw new NotFoundException(`Club with ID ${id} not found`);
       }
-
-      // Note: Company validation should be done via NATS 'iam.companies.getById' if needed
-      // companyId is a cross-database reference to iam_db.companies
 
       // 이름 변경 시 중복 확인
       if (updateClubDto.name && updateClubDto.name !== existingClub.name) {
@@ -211,15 +243,27 @@ export class ClubService {
         }
       }
 
+      // 자동 지오코딩: 주소가 변경되었고 좌표가 직접 입력되지 않았으면
+      let { latitude, longitude } = updateClubDto;
+      const addressChanged = updateClubDto.address && updateClubDto.address !== existingClub.address;
+      if (addressChanged && latitude === undefined && longitude === undefined) {
+        const coords = await this.geocodeAddress(updateClubDto.address!);
+        if (coords) {
+          latitude = coords.latitude;
+          longitude = coords.longitude;
+        }
+      }
+
       const club = await this.prisma.club.update({
         where: { id },
         data: {
           ...updateClubDto,
+          latitude,
+          longitude,
           operatingHours: updateClubDto.operatingHours ? JSON.parse(JSON.stringify(updateClubDto.operatingHours)) : undefined,
           seasonInfo: updateClubDto.seasonInfo ? JSON.parse(JSON.stringify(updateClubDto.seasonInfo)) : undefined,
         },
         include: {
-          // company relation removed - use NATS 'iam.companies.getById' for Company data
           courses: {
             include: {
               holes: true,
@@ -281,6 +325,46 @@ export class ClubService {
       return clubs;
     } catch (error) {
       this.logger.error(`Failed to fetch clubs for company ${companyId}: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * 주변 골프클럽 검색 (Haversine 공식)
+   */
+  async findNearby(dto: FindNearbyDto): Promise<NearbyClubResponseDto[]> {
+    const { latitude, longitude, radiusKm = 30, limit = 20 } = dto;
+
+    try {
+      const clubs = await this.prisma.$queryRaw<(Club & { distance: number })[]>`
+        SELECT *,
+          (6371 * acos(
+            cos(radians(${latitude})) * cos(radians(latitude)) *
+            cos(radians(longitude) - radians(${longitude})) +
+            sin(radians(${latitude})) * sin(radians(latitude))
+          )) AS distance
+        FROM clubs
+        WHERE is_active = true
+          AND latitude IS NOT NULL
+          AND longitude IS NOT NULL
+          AND (6371 * acos(
+            cos(radians(${latitude})) * cos(radians(latitude)) *
+            cos(radians(longitude) - radians(${longitude})) +
+            sin(radians(${latitude})) * sin(radians(latitude))
+          )) <= ${radiusKm}
+        ORDER BY distance ASC
+        LIMIT ${limit}
+      `;
+
+      return clubs.map((club) => {
+        const dto = ClubResponseDto.fromEntity(club);
+        return {
+          ...dto,
+          distance: Math.round(club.distance * 100) / 100,
+        };
+      });
+    } catch (error) {
+      this.logger.error(`Failed to find nearby clubs: ${error.message}`, error.stack);
       throw error;
     }
   }

@@ -49,6 +49,8 @@ export interface Club {
     endDate: string;
   };
   facilities?: string[];
+  latitude?: number;
+  longitude?: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

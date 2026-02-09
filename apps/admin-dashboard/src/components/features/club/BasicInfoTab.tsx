@@ -345,6 +345,33 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
         </div>
       </div>
 
+      {/* 좌표 정보 */}
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+          <svg className="w-5 h-5 mr-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          좌표 정보
+        </h3>
+        {club.latitude && club.longitude ? (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">위도</label>
+              <p className="text-gray-900">{club.latitude.toFixed(6)}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">경도</label>
+              <p className="text-gray-900">{club.longitude.toFixed(6)}</p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">
+            좌표가 아직 설정되지 않았습니다. 주소를 저장하면 자동으로 계산됩니다.
+          </p>
+        )}
+      </div>
+
       {/* 부대시설 */}
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">

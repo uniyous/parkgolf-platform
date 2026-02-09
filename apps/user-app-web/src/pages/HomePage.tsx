@@ -10,22 +10,20 @@ import {
   MapPin,
   Star,
   Users,
+  CloudSun,
+  Navigation,
 } from 'lucide-react';
 import { AppLayout, Container } from '@/components/layout';
 import { GlassCard, EmptyState, LoadingView } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyBookingsQuery, useFriendRequestsQuery } from '@/hooks/queries';
+import { useReverseGeoQuery, useNearbyClubsQuery, useCurrentWeatherQuery } from '@/hooks/queries';
 import { useChatRoomsQuery } from '@/hooks/queries/chat';
+import { useCurrentLocation } from '@/hooks/useCurrentLocation';
 import { cn } from '@/lib/utils';
 import type { BookingResponse } from '@/lib/api/bookingApi';
-
-// Mock popular clubs data (실제로는 API에서 가져와야 함)
-const popularClubs = [
-  { id: 1, name: '서울 파크골프장', location: '서울특별시 송파구', rating: 4.8 },
-  { id: 2, name: '부산 해운대 파크골프', location: '부산광역시 해운대구', rating: 4.6 },
-  { id: 3, name: '제주 서귀포 파크골프', location: '제주특별자치도 서귀포시', rating: 4.9 },
-  { id: 4, name: '대전 유성 파크골프', location: '대전광역시 유성구', rating: 4.5 },
-];
+import type { NearbyClub } from '@/lib/api/locationApi';
+import type { CurrentWeather, PrecipitationType } from '@/lib/api/weatherApi';
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -33,6 +31,14 @@ export function HomePage() {
   const { data: bookings, isLoading: isLoadingBookings } = useMyBookingsQuery();
   const { data: friendRequests = [] } = useFriendRequestsQuery();
   const { data: chatRoomsData } = useChatRoomsQuery();
+
+  // Location & Weather
+  const { latitude, longitude } = useCurrentLocation();
+  const { data: regionData } = useReverseGeoQuery(latitude, longitude);
+  const { data: weather } = useCurrentWeatherQuery(latitude, longitude);
+  const { data: nearbyClubs } = useNearbyClubsQuery(latitude, longitude, 30, 10);
+
+  const regionName = regionData?.region3 || regionData?.region2 || null;
 
   const chatRooms = chatRoomsData?.data ?? [];
   const unreadChatRooms = chatRooms.filter((room) => room.unreadCount > 0);
@@ -72,14 +78,29 @@ export function HomePage() {
   return (
     <AppLayout showLogo>
       <Container className="py-4 md:py-6 space-y-6">
-        {/* Welcome Header (iOS 스타일) */}
+        {/* Welcome Header with Location & Weather */}
         <div className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-bold text-white">
             {getGreetingMessage(user?.name || '회원')}
           </h1>
-          <p className="text-[var(--color-text-secondary)]">
-            오늘도 파크골프하기 좋은 날이에요
-          </p>
+          <div className="flex items-center gap-3 text-[var(--color-text-secondary)]">
+            {regionName && (
+              <span className="flex items-center gap-1">
+                <Navigation className="w-3.5 h-3.5" />
+                {regionName}
+              </span>
+            )}
+            {weather && (
+              <span className="flex items-center gap-1">
+                <CloudSun className="w-3.5 h-3.5" />
+                {weather.temperature}°C
+                {weather.precipitationType !== 'NONE' && ` · ${getWeatherLabel(weather.precipitationType)}`}
+              </span>
+            )}
+            {!regionName && !weather && (
+              <span>오늘도 파크골프하기 좋은 날이에요</span>
+            )}
+          </div>
         </div>
 
         {/*
@@ -217,25 +238,62 @@ export function HomePage() {
           )}
         </div>
 
-        {/* Popular Clubs Section (iOS 스타일) */}
+        {/* Nearby / Popular Clubs Section */}
         <div>
           <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-3">
-            <span>🏆</span>
-            이번 주 인기 골프장
+            {nearbyClubs && nearbyClubs.length > 0 ? (
+              <>
+                <MapPin className="w-5 h-5" />
+                주변 골프장
+              </>
+            ) : (
+              <>
+                <span>🏆</span>
+                이번 주 인기 골프장
+              </>
+            )}
           </h2>
           <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-            {popularClubs.map((club) => (
-              <PopularClubCard
-                key={club.id}
-                club={club}
-                onClick={() => navigate(`/club/${club.id}`)}
-              />
-            ))}
+            {nearbyClubs && nearbyClubs.length > 0 ? (
+              nearbyClubs.map((club) => (
+                <NearbyClubCard
+                  key={club.id}
+                  club={club}
+                  onClick={() => navigate(`/club/${club.id}`)}
+                />
+              ))
+            ) : (
+              // Fallback to static list when location unavailable
+              [
+                { id: 1, name: '서울 파크골프장', location: '서울특별시 송파구', rating: 4.8 },
+                { id: 2, name: '부산 해운대 파크골프', location: '부산광역시 해운대구', rating: 4.6 },
+                { id: 3, name: '제주 서귀포 파크골프', location: '제주특별자치도 서귀포시', rating: 4.9 },
+                { id: 4, name: '대전 유성 파크골프', location: '대전광역시 유성구', rating: 4.5 },
+              ].map((club) => (
+                <PopularClubCard
+                  key={club.id}
+                  club={club}
+                  onClick={() => navigate(`/club/${club.id}`)}
+                />
+              ))
+            )}
           </div>
         </div>
       </Container>
     </AppLayout>
   );
+}
+
+// Helper function for weather label
+function getWeatherLabel(type: PrecipitationType): string {
+  switch (type) {
+    case 'RAIN': return '비';
+    case 'SNOW': return '눈';
+    case 'SLEET': return '진눈깨비';
+    case 'DRIZZLE': return '이슬비';
+    case 'SNOW_FLURRY': return '날림눈';
+    default: return '';
+  }
 }
 
 // Helper function for greeting message
@@ -341,6 +399,35 @@ function NotificationCard({ icon, badgeColor, count, title, subtitle, onClick }:
           <div>
             <h3 className="text-sm font-semibold text-white">{title}</h3>
             <p className="text-xs text-[var(--color-text-muted)] truncate">{subtitle}</p>
+          </div>
+        </div>
+      </GlassCard>
+    </button>
+  );
+}
+
+// Nearby club card component (real data)
+interface NearbyClubCardProps {
+  club: NearbyClub;
+  onClick: () => void;
+}
+
+function NearbyClubCard({ club, onClick }: NearbyClubCardProps) {
+  return (
+    <button onClick={onClick} className="flex-shrink-0 w-44 text-left">
+      <GlassCard hoverable className="p-0 overflow-hidden">
+        <div className="h-24 bg-gradient-to-br from-[var(--color-primary)]/30 to-[var(--color-secondary)]/30 flex items-center justify-center">
+          <span className="text-4xl opacity-50">⛳</span>
+        </div>
+        <div className="p-3">
+          <h4 className="text-sm font-semibold text-white truncate">{club.name}</h4>
+          <p className="text-xs text-[var(--color-text-muted)] truncate flex items-center gap-1 mt-1">
+            <MapPin className="w-3 h-3" />
+            {club.location}
+          </p>
+          <div className="flex items-center gap-1 mt-1">
+            <Navigation className="w-3 h-3 text-[var(--color-primary)]" />
+            <span className="text-xs text-white font-medium">{club.distance.toFixed(1)}km</span>
           </div>
         </div>
       </GlassCard>

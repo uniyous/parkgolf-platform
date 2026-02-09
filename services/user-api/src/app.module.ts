@@ -13,6 +13,8 @@ import { FriendsModule } from './friends/friends.module';
 import { ChatModule } from './chat/chat.module';
 import { SettingsModule } from './settings/settings.module';
 import { DevicesModule } from './devices/devices.module';
+import { LocationModule } from './location/location.module';
+import { WeatherModule } from './weather/weather.module';
 import { NatsModule } from './common/nats';
 
 @Module({
@@ -36,6 +38,8 @@ import { NatsModule } from './common/nats';
     ChatModule,
     SettingsModule,
     DevicesModule,
+    LocationModule,
+    WeatherModule,
   ],
   controllers: [],
   providers: [

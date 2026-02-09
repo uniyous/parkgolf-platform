@@ -12,6 +12,11 @@ class HomeViewModel: ObservableObject {
     @Published var unreadChatRooms: [ChatRoom] = []
     @Published var unreadNotificationCount: Int = 0
 
+    // 위치/날씨 데이터
+    @Published var regionName: String?
+    @Published var currentWeather: CurrentWeather?
+    @Published var nearbyClubs: [NearbyClub] = []
+
     var pendingFriendRequestsCount: Int {
         friendRequests.count
     }
@@ -30,9 +35,18 @@ class HomeViewModel: ObservableObject {
         unreadNotificationCount
     }
 
+    var weatherMessage: String {
+        if let weather = currentWeather {
+            let regionText = regionName.map { "\($0) " } ?? ""
+            return "\(regionText)\(Int(weather.temperature))°C · \(weather.weatherDescription)"
+        }
+        return "오늘도 파크골프하기 좋은 날이에요"
+    }
+
     private let bookingService = BookingService()
     private let friendService = FriendService()
     private let notificationService = NotificationService()
+    private let locationWeatherService = LocationWeatherService()
     private let apiClient = APIClient.shared
 
     func loadData() async {
@@ -53,14 +67,63 @@ class HomeViewModel: ObservableObject {
         unreadChatRooms = rooms
         unreadNotificationCount = notifCount
 
-        // Mock popular clubs for now
-        popularClubs = [
-            Club(id: "1", name: "서울파크골프장", address: "서울시 강남구", phoneNumber: nil, imageUrl: nil, latitude: nil, longitude: nil, courses: nil),
-            Club(id: "2", name: "부산파크골프장", address: "부산시 해운대구", phoneNumber: nil, imageUrl: nil, latitude: nil, longitude: nil, courses: nil),
-            Club(id: "3", name: "제주파크골프장", address: "제주시 애월읍", phoneNumber: nil, imageUrl: nil, latitude: nil, longitude: nil, courses: nil),
-        ]
+        // Load location-dependent data
+        await loadLocationData()
 
         isLoading = false
+    }
+
+    private func loadLocationData() async {
+        let locationManager = LocationManager.shared
+
+        // 위치 권한이 없으면 폴백
+        guard locationManager.hasLocation,
+              let lat = locationManager.latitude,
+              let lon = locationManager.longitude else {
+            // Fallback mock data
+            popularClubs = [
+                Club(id: "1", name: "서울파크골프장", address: "서울시 강남구", phoneNumber: nil, imageUrl: nil, latitude: nil, longitude: nil, courses: nil),
+                Club(id: "2", name: "부산파크골프장", address: "부산시 해운대구", phoneNumber: nil, imageUrl: nil, latitude: nil, longitude: nil, courses: nil),
+                Club(id: "3", name: "제주파크골프장", address: "제주시 애월읍", phoneNumber: nil, imageUrl: nil, latitude: nil, longitude: nil, courses: nil),
+            ]
+            return
+        }
+
+        // Load region, weather, and nearby clubs concurrently
+        async let regionTask = loadRegion(lat: lat, lon: lon)
+        async let weatherTask = loadWeather(lat: lat, lon: lon)
+        async let nearbyTask = loadNearbyClubs(lat: lat, lon: lon)
+
+        let (region, weather, nearby) = await (regionTask, weatherTask, nearbyTask)
+
+        regionName = region
+        currentWeather = weather
+        nearbyClubs = nearby
+    }
+
+    private func loadRegion(lat: Double, lon: Double) async -> String? {
+        do {
+            let region = try await locationWeatherService.reverseGeo(lat: lat, lon: lon)
+            return region.displayName.isEmpty ? nil : region.displayName
+        } catch {
+            return nil
+        }
+    }
+
+    private func loadWeather(lat: Double, lon: Double) async -> CurrentWeather? {
+        do {
+            return try await locationWeatherService.getCurrentWeather(lat: lat, lon: lon)
+        } catch {
+            return nil
+        }
+    }
+
+    private func loadNearbyClubs(lat: Double, lon: Double) async -> [NearbyClub] {
+        do {
+            return try await locationWeatherService.nearbyClubs(lat: lat, lon: lon)
+        } catch {
+            return []
+        }
     }
 
     private func loadBookings() async -> [BookingResponse] {

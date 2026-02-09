@@ -27,6 +27,8 @@ model Club {
   seasonInfo     Json?      @map("season_info")
   facilities     String[]   @default([])
   clubType       ClubType   @default(PAID) @map("club_type")
+  latitude       Float?
+  longitude      Float?
   isActive       Boolean    @default(true) @map("is_active")
   createdAt      DateTime   @default(now()) @map("created_at")
   updatedAt      DateTime   @updatedAt @map("updated_at")
@@ -37,6 +39,7 @@ model Club {
   @@index([companyId])
   @@index([status])
   @@index([isActive])
+  @@index([latitude, longitude])
   @@map("clubs")
 }
 
