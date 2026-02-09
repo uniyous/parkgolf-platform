@@ -41,6 +41,9 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api-docs', app, document);
 
+    // Graceful shutdown
+    app.enableShutdownHooks();
+
     // Start HTTP server first for Cloud Run health check
     const port = parseInt(process.env.PORT || '8080');
     logger.log(`🌐 Starting HTTP server on port ${port}...`);

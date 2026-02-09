@@ -49,6 +49,9 @@ async function bootstrap() {
       credentials: true,
     });
 
+    // Graceful shutdown
+    app.enableShutdownHooks();
+
     // Start HTTP server
     const port = parseInt(process.env.PORT || '8086');
     await app.listen(port, '0.0.0.0');

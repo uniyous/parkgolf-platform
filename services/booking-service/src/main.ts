@@ -47,6 +47,9 @@ async function bootstrap() {
       credentials: true,
     });
 
+    // Graceful shutdown
+    app.enableShutdownHooks();
+
     // Start HTTP server first for Cloud Run health check
     const port = parseInt(process.env.PORT || '8080');
     await app.listen(port, '0.0.0.0');
