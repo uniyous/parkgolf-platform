@@ -9,7 +9,7 @@ export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const { isAuthenticated, error: storeError } = useAuthStore();
+  const { isAuthenticated, error: storeError, errorType: storeErrorType } = useAuthStore();
   const loginMutation = useLoginMutation();
 
   // 이미 로그인된 경우 대시보드로 리다이렉트
@@ -40,6 +40,7 @@ export const LoginPage: React.FC = () => {
       onSubmit={handleSubmit}
       isLoading={loginMutation.isPending}
       error={storeError || (loginMutation.error?.message ?? null)}
+      errorType={storeErrorType}
     />
   );
 };

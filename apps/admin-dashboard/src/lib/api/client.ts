@@ -141,7 +141,7 @@ class ApiClient {
         throw error;
       }
       console.error(`API call failed: ${endpoint}`, error);
-      throw new ApiError('Network error occurred', 0);
+      throw new ApiError('네트워크에 연결할 수 없습니다. 인터넷 연결을 확인해주세요.', 0, 'SYS_002');
     }
   }
 
@@ -158,6 +158,14 @@ class ApiClient {
     try {
       errorData = await response.json();
     } catch {
+      // HTML 응답 (502/503 게이트웨이 에러 등)이 올 경우 JSON 파싱 실패
+      if (response.status >= 500) {
+        throw new ApiError(
+          '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.',
+          response.status,
+          'SYS_002'
+        );
+      }
       errorData = {
         message: response.statusText || 'An error occurred',
       };

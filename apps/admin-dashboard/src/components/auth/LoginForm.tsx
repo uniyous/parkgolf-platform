@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Check, X, Zap } from 'lucide-react';
+import { Check, X, Zap, AlertTriangle } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
+import type { AuthErrorType } from '@/stores/auth.store';
 
 // 서버 헬스 체크 설정
 const BASE_URL = import.meta.env.VITE_API_URL || 'https://dev-api.goparkmate.com';
@@ -30,6 +31,7 @@ interface LoginFormProps {
   onSubmit: (e: React.FormEvent) => void;
   isLoading: boolean;
   error: string | null;
+  errorType?: AuthErrorType;
 }
 
 interface AdminAccountGroup {
@@ -126,6 +128,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   onSubmit,
   isLoading,
   error,
+  errorType,
 }) => {
   const [showCheckPanel, setShowCheckPanel] = useState(false);
 
@@ -342,7 +345,16 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                   />
                 </div>
 
-                {error && (
+                {error && errorType === 'server' && (
+                  <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <strong>서버 연결 오류</strong>
+                      <p className="mt-1 text-xs text-amber-600">{error}</p>
+                    </div>
+                  </div>
+                )}
+                {error && errorType !== 'server' && (
                   <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                     <strong>로그인 실패:</strong> {error}
                   </div>

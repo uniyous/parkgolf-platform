@@ -7,7 +7,7 @@ export {
   useAuthError,
   initializeAuthFromStorage,
 } from './auth.store';
-export type { ApiUserResponse } from './auth.store';
+export type { ApiUserResponse, AuthErrorType } from './auth.store';
 
 // Breadcrumb store
 export { useBreadcrumbStore, useBreadcrumbs, useBreadcrumb, useSetBreadcrumb } from './breadcrumb.store';

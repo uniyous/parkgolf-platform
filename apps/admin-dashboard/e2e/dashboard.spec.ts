@@ -13,24 +13,16 @@ test.describe('대시보드 테스트', () => {
     // 대시보드 헤딩 확인
     await expect(page.getByRole('heading', { name: '대시보드' })).toBeVisible({ timeout: 30000 });
 
-    // 부제목 확인
-    await expect(page.getByText('파크골프 플랫폼의 실시간 현황과 통계를 확인하세요')).toBeVisible({ timeout: 10000 });
+    // 부제목 (현재 날짜) 확인 - 예: "2026년 2월 9일 월요일"
+    await expect(page.getByText(/\d{4}년.*\d{1,2}월.*\d{1,2}일/)).toBeVisible({ timeout: 10000 });
   });
 
-  test('시간 범위 선택기 동작', async ({ page }) => {
+  test('통계 카드 표시', async ({ page }) => {
     // 대시보드 렌더링 대기
     await expect(page.getByRole('heading', { name: '대시보드' })).toBeVisible({ timeout: 30000 });
 
-    // 시간 범위 버튼들 확인
-    await expect(page.getByRole('button', { name: '오늘' })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('button', { name: '이번 주' })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('button', { name: '이번 달' })).toBeVisible({ timeout: 10000 });
-
-    // 오늘 버튼 클릭
-    await page.getByRole('button', { name: '오늘' }).click();
-
-    // 이번 달 버튼 클릭
-    await page.getByRole('button', { name: '이번 달' }).click();
+    // 오늘의 예약 통계 카드 확인
+    await expect(page.getByText('전체 예약')).toBeVisible({ timeout: 10000 });
   });
 
   test('새로고침 버튼 동작', async ({ page }) => {

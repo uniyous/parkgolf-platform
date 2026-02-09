@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { iamApi } from '@/lib/api/authApi';
-import { useAuthStore, type ApiUserResponse } from '@/stores';
+import { useAuthStore, type ApiUserResponse, type AuthErrorType } from '@/stores';
 import { authKeys } from './keys';
 import type { LoginCredentials, AuthResponse } from '@/types';
+import { isApiError } from '@/lib/errors';
 
 // Login Mutation (로컬 로딩 사용 - LoginForm에서 자체 로딩 처리)
 export const useLoginMutation = () => {
@@ -24,7 +25,15 @@ export const useLoginMutation = () => {
     },
     onError: (error: Error) => {
       setLoading(false);
-      setError(error.message || '로그인에 실패했습니다.');
+      let errorType: AuthErrorType = 'general';
+      if (isApiError(error)) {
+        if (error.isServerError() || error.isNetworkError()) {
+          errorType = 'server';
+        } else if (error.isAuthError()) {
+          errorType = 'auth';
+        }
+      }
+      setError(error.message || '로그인에 실패했습니다.', errorType);
     },
   });
 };
