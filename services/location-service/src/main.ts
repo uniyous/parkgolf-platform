@@ -3,6 +3,7 @@ import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { UnifiedExceptionFilter } from './common/exceptions';
+import { setNatsReady } from './common/readiness';
 
 async function bootstrap() {
   const logger = new Logger('LocationService');
@@ -36,6 +37,7 @@ async function bootstrap() {
   );
 
   await app.startAllMicroservices();
+  setNatsReady(true);
   logger.log(`NATS Microservice connected to ${natsUrl}`);
 
   const port = process.env.PORT || 8089;

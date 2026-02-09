@@ -1,18 +1,33 @@
-import { Controller, Get } from '@nestjs/common';
-import { HealthCheck, HealthCheckService, MemoryHealthIndicator } from '@nestjs/terminus';
+import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
+import { Response } from 'express';
+import { isNatsReady } from '../readiness';
 
 @Controller('health')
 export class HealthController {
-  constructor(
-    private health: HealthCheckService,
-    private memory: MemoryHealthIndicator,
-  ) {}
-
   @Get()
-  @HealthCheck()
   check() {
-    return this.health.check([
-      () => this.memory.checkHeap('memory_heap', 200 * 1024 * 1024),
-    ]);
+    return {
+      status: 'ok',
+      service: 'location-service',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get('ready')
+  getReady(@Res() res: Response) {
+    const nats = isNatsReady();
+    res.status(nats ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE).json({
+      status: nats ? 'ready' : 'not_ready',
+      nats,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  @Get('live')
+  getLive() {
+    return {
+      status: 'alive',
+      timestamp: new Date().toISOString(),
+    };
   }
 }
