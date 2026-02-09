@@ -305,25 +305,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     client.to(roomId).emit('new_message', message);
     this.logger.debug(`Message sent to room ${roomId} by ${user.name}`);
 
-    // 2. DB 저장 - 비동기 (응답 대기 없이)
-    this.natsService.requestChatService('messages.save', {
-      id: message.id,
-      roomId: message.roomId,
-      senderId: message.senderId,
-      senderName: message.senderName,
-      content: message.content,
-      type: message.type.toUpperCase(),
-      createdAt: message.createdAt,
-    }).catch((error) => {
-      this.logger.error(`Failed to save message to DB: ${error}`);
-    });
-
-    // 3. JetStream 발행 - 비동기 (메시지 영속성)
+    // 2. JetStream 발행 - 비동기 (메시지 영속성, chat-service consumer가 DB 저장)
     this.natsService.publishMessage(roomId, message).catch((error) => {
       this.logger.error(`Failed to publish message to JetStream: ${error}`);
     });
 
-    // 4. 오프라인 참여자에게 push 알림
+    // 3. 오프라인 참여자에게 push 알림
     this.sendChatNotifications(roomId, user, content).catch((error) => {
       this.logger.error(`Failed to send chat notifications: ${error}`);
     });

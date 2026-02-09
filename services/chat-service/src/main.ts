@@ -75,7 +75,8 @@ async function bootstrap() {
     logger.log(`📢 Queue: chat-service`);
     logger.log(`💬 Available message patterns:`);
     logger.log(`   [Rooms] chat.rooms.create, chat.rooms.get, chat.rooms.list, chat.rooms.addMember, chat.rooms.removeMember`);
-    logger.log(`   [Messages] chat.messages.save, chat.messages.list, chat.messages.markRead`);
+    logger.log(`   [Messages] chat.messages.list, chat.messages.markRead, chat.messages.unreadCount, chat.messages.delete`);
+    logger.log(`   [JetStream] CHAT_MESSAGES consumer: chat-service-messages`);
   } catch (error) {
     logger.error('Failed to start Chat Service', error);
     process.exit(1);

@@ -167,6 +167,7 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Publish message to room (JetStream persistence)
+  // type is uppercased to match Prisma MessageType enum for DB storage
   async publishMessage(roomId: string, message: ChatMessage): Promise<void> {
     if (!this.js) {
       this.logger.warn('JetStream not available');
@@ -174,7 +175,8 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
     }
 
     const subject = `chat.room.${roomId}.message`;
-    const data = this.sc.encode(JSON.stringify(message));
+    const payload = { ...message, type: message.type.toUpperCase() };
+    const data = this.sc.encode(JSON.stringify(payload));
 
     try {
       await this.js.publish(subject, data, {
