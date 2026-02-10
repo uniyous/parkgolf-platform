@@ -49,7 +49,6 @@ export const CheckoutPage: React.FC = () => {
   const [isReady, setIsReady] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
-  const initialized = useRef(false);
 
   const checkoutState = location.state as CheckoutState | null;
 
@@ -67,16 +66,16 @@ export const CheckoutPage: React.FC = () => {
 
   useEffect(() => {
     if (!state || !TOSS_CLIENT_KEY) return;
-    if (initialized.current) return;
-    initialized.current = true;
 
     let mounted = true;
 
     const initToss = async () => {
       try {
         const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY);
-        tossRef.current = tossPayments;
-        if (mounted) setIsReady(true);
+        if (mounted) {
+          tossRef.current = tossPayments;
+          setIsReady(true);
+        }
       } catch (error) {
         console.error('Toss SDK initialization failed:', error);
         if (mounted) {
@@ -87,7 +86,8 @@ export const CheckoutPage: React.FC = () => {
 
     initToss();
     return () => { mounted = false; };
-  }, [state]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!state) {
     return <Navigate to="/bookings" replace />;
@@ -124,7 +124,6 @@ export const CheckoutPage: React.FC = () => {
 
   const handleRetryInit = () => {
     setInitError(null);
-    initialized.current = false;
     window.location.reload();
   };
 

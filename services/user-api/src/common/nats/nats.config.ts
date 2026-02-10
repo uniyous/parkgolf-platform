@@ -16,7 +16,7 @@ export const NATS_CLIENT_OPTIONS: ClientsModuleAsyncOptions = [
         reconnect: true,
         maxReconnectAttempts: -1,
         reconnectTimeWait: 1000,
-        timeout: 30000,
+        timeout: 60000,
         pingInterval: 10000,
         maxPingOut: 3,
       },
