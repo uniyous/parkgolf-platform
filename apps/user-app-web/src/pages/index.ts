@@ -12,6 +12,3 @@ export { FriendsPage } from './FriendsPage';
 export { ChatPage } from './ChatPage';
 export { ChatRoomPage } from './ChatRoomPage';
 export { ChangePasswordPage } from './ChangePasswordPage';
-export { CheckoutPage } from './CheckoutPage';
-export { PaymentSuccessPage } from './PaymentSuccessPage';
-export { PaymentFailPage } from './PaymentFailPage';

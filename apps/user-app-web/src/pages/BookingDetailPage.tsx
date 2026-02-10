@@ -1,15 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useBooking } from '../hooks/useBooking';
 import { useAuth } from '../hooks/useAuth';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { loadTossPayments } from '@tosspayments/payment-sdk';
 import type { Game, GameTimeSlot } from '@/lib/api/gameApi';
 import { formatDate } from '@/lib/formatting';
 import { showErrorToast } from '@/lib/toast';
 import { translateErrorMessage } from '@/types/common';
 import { Button, Checkbox, PriceDisplay } from '../components';
 import { Container, SubPageHeader } from '@/components/layout';
-import { SIMPLE_PAYMENT_METHODS } from '@/lib/constants';
+import { SIMPLE_PAYMENT_METHODS, PAYMENT_CONTEXT_STORAGE_KEY } from '@/lib/constants';
+import type { PaymentSessionContext } from '@/lib/constants';
 import { usePreparePaymentMutation } from '@/hooks/queries/payment';
+
+const TOSS_CLIENT_KEY = import.meta.env.VITE_TOSS_CLIENT_KEY;
 
 interface BookingState {
   game: Game;
@@ -28,6 +32,30 @@ export const BookingDetailPage: React.FC = () => {
   const [playerCount, setPlayerCount] = useState(2);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+
+  const tossRef = useRef<Awaited<ReturnType<typeof loadTossPayments>> | null>(null);
+  const [tossReady, setTossReady] = useState(false);
+
+  // Toss SDK 초기화
+  useEffect(() => {
+    if (!TOSS_CLIENT_KEY) return;
+    let mounted = true;
+
+    const initToss = async () => {
+      try {
+        const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY);
+        if (mounted) {
+          tossRef.current = tossPayments;
+          setTossReady(true);
+        }
+      } catch (error) {
+        console.error('Toss SDK initialization failed:', error);
+      }
+    };
+
+    initToss();
+    return () => { mounted = false; };
+  }, []);
 
   if (!bookingState) {
     return <Navigate to="/bookings" replace />;
@@ -50,7 +78,8 @@ export const BookingDetailPage: React.FC = () => {
   const pricePerPerson = timeSlot.price || game.basePrice || game.pricePerPerson || 0;
   const totalPrice = pricePerPerson * playerCount;
 
-  const canProceed = selectedPaymentMethod && agreeToTerms;
+  const canProceed = selectedPaymentMethod && agreeToTerms &&
+    (selectedPaymentMethod !== 'card' || tossReady);
 
   const isProcessing = isCreating || preparePaymentMutation.isPending;
 
@@ -93,6 +122,7 @@ export const BookingDetailPage: React.FC = () => {
           }
         });
       } else {
+        // 카드결제: preparePayment → sessionStorage → Toss requestPayment
         const orderName = `${game.clubName || game.name} - ${playerCount}명`;
         const prepareResult = await preparePaymentMutation.mutateAsync({
           amount: totalPrice,
@@ -100,24 +130,37 @@ export const BookingDetailPage: React.FC = () => {
           bookingId: booking.id,
         });
 
-        navigate('/checkout', {
-          state: {
-            orderId: prepareResult.orderId,
-            amount: prepareResult.amount,
-            orderName: prepareResult.orderName,
-            booking,
-            game,
-            timeSlot,
-            date,
-            playerCount,
-          },
+        // sessionStorage에 결제 컨텍스트 저장 (리다이렉트 복귀 시 사용)
+        const paymentContext: PaymentSessionContext = {
+          orderId: prepareResult.orderId,
+          amount: prepareResult.amount,
+          orderName: prepareResult.orderName,
+          booking,
+          game,
+          timeSlot,
+          date,
+          playerCount,
+        };
+        sessionStorage.setItem(PAYMENT_CONTEXT_STORAGE_KEY, JSON.stringify(paymentContext));
+
+        // Toss SDK 결제 요청 (리다이렉트 방식)
+        await tossRef.current!.requestPayment('카드', {
+          amount: prepareResult.amount,
+          orderId: prepareResult.orderId,
+          orderName: prepareResult.orderName,
+          successUrl: `${window.location.origin}/booking-complete`,
+          failUrl: `${window.location.origin}/booking-complete`,
         });
       }
     } catch (error) {
       console.error('Booking/Payment failed:', error);
-      const rawMessage = error instanceof Error
-        ? error.message
-        : '알 수 없는 오류가 발생했습니다.';
+      const message = error instanceof Error ? error.message : '';
+      // 토스 SDK 사용자 취소는 무시
+      if (message && message.includes('CANCEL')) {
+        sessionStorage.removeItem(PAYMENT_CONTEXT_STORAGE_KEY);
+        return;
+      }
+      const rawMessage = message || '알 수 없는 오류가 발생했습니다.';
       showErrorToast('처리에 실패했습니다', translateErrorMessage(rawMessage));
     }
   };
@@ -133,10 +176,10 @@ export const BookingDetailPage: React.FC = () => {
               {game.clubName || game.name}
             </h3>
             {game.clubLocation && (
-              <p className="text-base text-white/70 mb-1">📍 {game.clubLocation}</p>
+              <p className="text-base text-white/70 mb-1">{game.clubLocation}</p>
             )}
-            <p className="text-lg text-white/90 mb-1">📅 {formatDate(date)}</p>
-            <p className="text-lg text-white/90">🕐 {timeSlot.startTime}</p>
+            <p className="text-lg text-white/90 mb-1">{formatDate(date)}</p>
+            <p className="text-lg text-white/90">{timeSlot.startTime}</p>
           </div>
 
           {/* 구분선 */}

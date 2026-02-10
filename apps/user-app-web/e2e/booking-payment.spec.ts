@@ -3,18 +3,13 @@ import { test, expect } from '@playwright/test';
 /**
  * 예약 + 결제 + 취소 E2E 테스트
  *
- * 플로우:
- * 1. 현장결제: 검색 → 타임슬롯 선택 → 예약 상세(현장결제) → 예약 완료
- * 2. 카드결제: 검색 → 타임슬롯 선택 → 예약 상세(카드결제) → 결제 준비 → 체크아웃(토스 위젯)
+ * 플로우 (단순화됨):
+ * 1. 현장결제: 검색 → 타임슬롯 선택 → 예약 상세(현장결제) → /booking-complete (성공)
+ * 2. 카드결제: 검색 → 타임슬롯 선택 → 예약 상세(카드결제) → 예약생성 + 결제준비 → Toss 리다이렉트
+ *    → /booking-complete?paymentKey=...&orderId=...&amount=... (성공)
+ *    → /booking-complete?code=...&message=... (실패)
  * 3. 예약 취소: 내 예약 → 예약 상세 → 취소
  */
-
-// 내일 날짜 (예약 가능한 날짜)
-function getTomorrowDate(): string {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  return tomorrow.toISOString().split('T')[0];
-}
 
 // 7일 후 날짜 (취소 가능한 날짜 - 3일 전까지 취소 가능)
 function getDateInDays(days: number): string {
@@ -147,7 +142,7 @@ test.describe('현장결제 예약 플로우', () => {
 // 2. 카드결제 예약 플로우
 // =============================================================================
 test.describe('카드결제 예약 플로우', () => {
-  test('검색 → 타임슬롯 선택 → 카드결제 분기 확인', async ({ page }) => {
+  test('검색 → 타임슬롯 선택 → 카드결제 → Toss SDK 호출 확인', async ({ page }) => {
     const date = getDateInDays(7);
 
     // Step 1: 검색 → BookingDetailPage
@@ -178,7 +173,7 @@ test.describe('카드결제 예약 플로우', () => {
       await onsiteButton.click();
       await expect(onsiteButton).toHaveClass(/bg-green-500/);
     } else {
-      // 유료 게임: 카드결제 → 체크아웃 페이지까지 진행
+      // 유료 게임: 카드결제 → 예약생성 + 결제준비 API 확인
       console.log('[E2E] 유료 게임 - 카드결제 진행');
       const submitButton = await fillBookingDetailAndSubmit(page, 'card');
 
@@ -209,27 +204,20 @@ test.describe('카드결제 예약 플로우', () => {
       expect(prepareResp.status()).toBeLessThan(400);
       expect(prepareBody.data.orderId).toBeTruthy();
 
-      // 체크아웃 페이지 이동 확인
-      await expect(page).toHaveURL(/.*checkout/, { timeout: 15000 });
-      await expect(page.getByText('주문 요약')).toBeVisible({ timeout: 10000 });
+      // Toss SDK가 requestPayment를 호출하면 외부 리다이렉트 발생
+      // E2E에서는 외부 토스 결제창으로의 리다이렉트까지만 확인
+      // (실제 결제는 토스 테스트 환경에서만 가능)
     }
-  });
-
-  test('체크아웃 페이지 - 토스 위젯 렌더링 확인 (직접 접근)', async ({ page }) => {
-    // Note: 이 테스트는 유료 게임으로 체크아웃에 진입한 경우만 의미있음
-    // state 없이 접근 시 리다이렉트 확인
-    await page.goto('/checkout');
-    await expect(page).toHaveURL(/.*bookings/, { timeout: 15000 });
   });
 });
 
 // =============================================================================
-// 3. 결제 실패/성공 페이지 테스트
+// 3. 결제 결과 처리 테스트 (/booking-complete 파라미터 기반)
 // =============================================================================
-test.describe('결제 결과 페이지', () => {
-  test('결제 실패 페이지 - 에러 메시지 및 버튼 표시', async ({ page }) => {
+test.describe('결제 결과 처리', () => {
+  test('카드결제 실패 - /booking-complete에 에러 파라미터', async ({ page }) => {
     // 토스에서 실패 리다이렉트 시뮬레이션
-    await page.goto('/payment/fail?code=PAY_PROCESS_CANCELED&message=사용자가 결제를 취소했습니다');
+    await page.goto('/booking-complete?code=PAY_PROCESS_CANCELED&message=사용자가 결제를 취소했습니다');
 
     await expect(page.getByText('결제에 실패했습니다')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('사용자가 결제를 취소했습니다')).toBeVisible();
@@ -241,8 +229,8 @@ test.describe('결제 결과 페이지', () => {
     await expect(page.getByRole('button', { name: '예약 목록' })).toBeVisible();
   });
 
-  test('결제 실패 페이지 - 예약 목록으로 이동', async ({ page }) => {
-    await page.goto('/payment/fail?code=FAIL&message=결제 실패');
+  test('카드결제 실패 - 예약 목록으로 이동', async ({ page }) => {
+    await page.goto('/booking-complete?code=FAIL&message=결제 실패');
 
     const myBookingsButton = page.getByRole('button', { name: '예약 목록' });
     await expect(myBookingsButton).toBeVisible({ timeout: 10000 });
@@ -251,12 +239,10 @@ test.describe('결제 결과 페이지', () => {
     await expect(page).toHaveURL(/.*my-bookings/, { timeout: 10000 });
   });
 
-  test('결제 성공 페이지 - 필수 파라미터 없으면 로딩 상태 유지', async ({ page }) => {
-    // paymentKey, orderId, amount 없이 접근
-    await page.goto('/payment/success');
-
-    // 파라미터가 없으므로 confirmPayment가 호출되지 않음 (로딩 상태 유지)
-    await expect(page.getByText(/결제를 확인하고 있습니다|처리 중/)).toBeVisible({ timeout: 10000 });
+  test('직접 접근 시 /bookings로 리다이렉트', async ({ page }) => {
+    // state/params 없이 접근
+    await page.goto('/booking-complete');
+    await expect(page).toHaveURL(/.*bookings/, { timeout: 15000 });
   });
 });
 

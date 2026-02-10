@@ -98,6 +98,22 @@ export const SIMPLE_PAYMENT_METHODS: PaymentMethod[] = [
 ];
 
 // =====================
+// 결제 세션 컨텍스트
+// =====================
+export const PAYMENT_CONTEXT_STORAGE_KEY = 'parkgolf_payment_context';
+
+export interface PaymentSessionContext {
+  orderId: string;
+  amount: number;
+  orderName: string;
+  booking: { id: number; bookingNumber: string; totalPrice: number; [key: string]: unknown };
+  game: { id: number; name: string; clubName?: string; [key: string]: unknown };
+  timeSlot: { id: number; startTime: string; price?: number; isPremium?: boolean; [key: string]: unknown };
+  date: string;
+  playerCount: number;
+}
+
+// =====================
 // 페이지네이션 기본값
 // =====================
 export const DEFAULT_PAGE_SIZE = 20;
