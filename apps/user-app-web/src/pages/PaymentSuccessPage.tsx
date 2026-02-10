@@ -1,12 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useConfirmPaymentMutation } from '@/hooks/queries/payment';
 import { showErrorToast } from '@/lib/toast';
 import { translateErrorMessage } from '@/types/common';
+import { CHECKOUT_STORAGE_KEY } from './CheckoutPage';
 import { Container, SubPageHeader } from '@/components/layout';
 import { Button } from '../components';
-
-const CHECKOUT_STORAGE_KEY = 'parkgolf_checkout_context';
 
 export const PaymentSuccessPage: React.FC = () => {
   const navigate = useNavigate();
@@ -18,40 +17,46 @@ export const PaymentSuccessPage: React.FC = () => {
   const orderId = searchParams.get('orderId') ?? '';
   const amount = Number(searchParams.get('amount') ?? '0');
 
-  useEffect(() => {
-    if (!paymentKey || !orderId || !amount) return;
-    if (confirmedRef.current) return;
-    confirmedRef.current = true;
+  const navigateToComplete = useCallback(() => {
+    const stored = sessionStorage.getItem(CHECKOUT_STORAGE_KEY);
+    const ctx = stored ? JSON.parse(stored) : null;
+    sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
 
+    navigate('/booking-complete', {
+      state: ctx
+        ? {
+            booking: ctx.booking,
+            game: ctx.game,
+            timeSlot: ctx.timeSlot,
+            date: ctx.date,
+            playerCount: ctx.playerCount,
+            paymentMethod: { id: 'card', name: '카드결제', icon: '💳', description: '신용/체크카드 결제' },
+          }
+        : undefined,
+      replace: true,
+    });
+  }, [navigate]);
+
+  const handleConfirm = useCallback(() => {
     confirmMutation.mutate(
       { paymentKey, orderId, amount },
       {
-        onSuccess: () => {
-          const stored = sessionStorage.getItem(CHECKOUT_STORAGE_KEY);
-          const checkoutContext = stored ? JSON.parse(stored) : null;
-          sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
-
-          navigate('/booking-complete', {
-            state: checkoutContext
-              ? {
-                  booking: checkoutContext.booking,
-                  game: checkoutContext.game,
-                  timeSlot: checkoutContext.timeSlot,
-                  date: checkoutContext.date,
-                  playerCount: checkoutContext.playerCount,
-                  paymentMethod: { id: 'card', name: '카드결제', icon: '💳', description: '신용/체크카드 결제' },
-                }
-              : undefined,
-            replace: true,
-          });
-        },
+        onSuccess: navigateToComplete,
         onError: (error) => {
           const rawMessage = error instanceof Error ? error.message : '결제 승인에 실패했습니다.';
           showErrorToast('결제 승인 실패', translateErrorMessage(rawMessage));
         },
       },
     );
-  }, [paymentKey, orderId, amount]);
+  }, [paymentKey, orderId, amount, confirmMutation, navigateToComplete]);
+
+  useEffect(() => {
+    if (!paymentKey || !orderId || !amount) return;
+    if (confirmedRef.current) return;
+    confirmedRef.current = true;
+
+    handleConfirm();
+  }, [paymentKey, orderId, amount, handleConfirm]);
 
   if (confirmMutation.isError) {
     return (
@@ -72,33 +77,7 @@ export const PaymentSuccessPage: React.FC = () => {
               <Button
                 onClick={() => {
                   confirmedRef.current = false;
-                  confirmMutation.mutate(
-                    { paymentKey, orderId, amount },
-                    {
-                      onSuccess: () => {
-                        const stored = sessionStorage.getItem(CHECKOUT_STORAGE_KEY);
-                        const checkoutContext = stored ? JSON.parse(stored) : null;
-                        sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
-                        navigate('/booking-complete', {
-                          state: checkoutContext
-                            ? {
-                                booking: checkoutContext.booking,
-                                game: checkoutContext.game,
-                                timeSlot: checkoutContext.timeSlot,
-                                date: checkoutContext.date,
-                                playerCount: checkoutContext.playerCount,
-                                paymentMethod: { id: 'card', name: '카드결제', icon: '💳', description: '신용/체크카드 결제' },
-                              }
-                            : undefined,
-                          replace: true,
-                        });
-                      },
-                      onError: (error) => {
-                        const rawMessage = error instanceof Error ? error.message : '결제 승인에 실패했습니다.';
-                        showErrorToast('결제 승인 실패', translateErrorMessage(rawMessage));
-                      },
-                    },
-                  );
+                  handleConfirm();
                 }}
                 loading={confirmMutation.isPending}
                 variant="glass"

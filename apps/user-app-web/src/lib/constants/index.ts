@@ -29,7 +29,7 @@ export interface BookingStatusStyle {
 
 export const BOOKING_STATUS_STYLES: Record<BookingStatus, BookingStatusStyle> = {
   PENDING: { label: '대기중', className: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' },
-  SLOT_RESERVED: { label: '슬롯예약완료', className: 'bg-orange-500/20 text-orange-300 border-orange-500/30' },
+  SLOT_RESERVED: { label: '결제 대기중', className: 'bg-orange-500/20 text-orange-300 border-orange-500/30' },
   CONFIRMED: { label: '확정', className: 'bg-green-500/20 text-green-300 border-green-500/30' },
   CANCELLED: { label: '취소됨', className: 'bg-red-500/20 text-red-300 border-red-500/30' },
   COMPLETED: { label: '완료', className: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },

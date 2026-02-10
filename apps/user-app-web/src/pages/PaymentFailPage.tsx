@@ -1,9 +1,8 @@
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { CHECKOUT_STORAGE_KEY } from './CheckoutPage';
 import { Container, SubPageHeader } from '@/components/layout';
 import { Button } from '../components';
-
-const CHECKOUT_STORAGE_KEY = 'parkgolf_checkout_context';
 
 export const PaymentFailPage: React.FC = () => {
   const navigate = useNavigate();
@@ -41,8 +40,10 @@ export const PaymentFailPage: React.FC = () => {
           <p className="text-white/70 text-base mb-4">{decodeURIComponent(message)}</p>
 
           {code && (
-            <p className="text-white/50 text-sm mb-8">오류 코드: {code}</p>
+            <p className="text-white/50 text-sm">오류 코드: {code}</p>
           )}
+
+          <div className="mb-8" />
 
           <div className="flex gap-4 justify-center">
             <Button
