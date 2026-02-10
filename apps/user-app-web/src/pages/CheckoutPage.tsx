@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { loadTossPayments, type TossPaymentsWidgets } from '@tosspayments/tosspayments-sdk';
+import { loadTossPayments, ANONYMOUS, type TossPaymentsWidgets } from '@tosspayments/tosspayments-sdk';
 import { formatDate } from '@/lib/formatting';
 import { Button } from '../components';
 import { Container, SubPageHeader } from '@/components/layout';
@@ -72,7 +72,7 @@ export const CheckoutPage: React.FC = () => {
 
     const initWidgets = async () => {
       const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY);
-      const widgets = tossPayments.widgets({ customerKey: 'ANONYMOUS' });
+      const widgets = tossPayments.widgets({ customerKey: ANONYMOUS });
       widgetsRef.current = widgets;
 
       await widgets.setAmount({ currency: 'KRW', value: state.amount });
