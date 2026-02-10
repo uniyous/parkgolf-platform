@@ -262,6 +262,11 @@ jobs:
                       secretKeyRef:
                         name: parkgolf-secrets
                         key: TOSS_SECRET_KEY
+                  - name: TOSS_SECURITY_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: parkgolf-secrets
+                        key: TOSS_SECURITY_KEY
                   - name: TOSS_API_URL
                     valueFrom:
                       configMapKeyRef:
