@@ -84,6 +84,7 @@ jobs:
     name: Build ${{ matrix.app }}
     needs: setup
     runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
     strategy:
       fail-fast: false
       matrix:
@@ -119,7 +120,9 @@ jobs:
         working-directory: apps/${{ matrix.app }}
         env:
           VITE_API_URL: ${{ steps.env-vars.outputs.api_url }}
+          VITE_CHAT_SOCKET_URL: ${{ steps.env-vars.outputs.api_url }}
           VITE_ENV: ${{ needs.setup.outputs.environment }}
+          VITE_TOSS_CLIENT_KEY: ${{ secrets.TOSS_CLIENT_KEY }}
         run: npm run build
 
       - name: Upload build artifact
