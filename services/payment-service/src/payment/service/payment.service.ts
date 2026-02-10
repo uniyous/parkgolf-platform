@@ -1,6 +1,6 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { PaymentStatus, PaymentMethod, OutboxStatus } from '@prisma/client';
+import { Prisma, PaymentStatus, PaymentMethod, RefundStatus, OutboxStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { TossApiService, TossPaymentResponse } from './toss-api.service';
 import { AppException, Errors } from '../../common/exceptions';
@@ -39,7 +39,7 @@ export class PaymentService {
         userId: dto.userId,
         bookingId: dto.bookingId,
         status: PaymentStatus.READY,
-        metadata: (dto.metadata || {}) as object,
+        metadata: (dto.metadata as Prisma.InputJsonValue) ?? Prisma.JsonNull,
       },
     });
 
@@ -172,7 +172,7 @@ export class PaymentService {
           transactionKey: latestCancel.transactionKey,
           cancelAmount: latestCancel.cancelAmount,
           cancelReason: latestCancel.cancelReason,
-          refundStatus: 'COMPLETED',
+          refundStatus: RefundStatus.COMPLETED,
           refundedAt: new Date(latestCancel.canceledAt),
         },
       });
@@ -329,14 +329,15 @@ export class PaymentService {
   async getPayments(filter: GetPaymentsFilterDto) {
     const { userId, bookingId, status, startDate, endDate, page = 1, limit = 20 } = filter;
 
-    const where: Record<string, unknown> = {};
+    const where: Prisma.PaymentWhereInput = {};
     if (userId) where.userId = userId;
     if (bookingId) where.bookingId = bookingId;
     if (status) where.status = status;
     if (startDate || endDate) {
-      where.createdAt = {};
-      if (startDate) (where.createdAt as Record<string, Date>).gte = new Date(startDate);
-      if (endDate) (where.createdAt as Record<string, Date>).lte = new Date(endDate);
+      where.createdAt = {
+        ...(startDate && { gte: new Date(startDate) }),
+        ...(endDate && { lte: new Date(endDate) }),
+      };
     }
 
     const [payments, total] = await Promise.all([
@@ -470,14 +471,16 @@ export class PaymentService {
   /**
    * Outbox 이벤트 생성
    */
-  private async createOutboxEvent(eventType: string, payload: Record<string, unknown>) {
-    const paymentId = payload.paymentId as number;
+  private async createOutboxEvent(
+    eventType: string,
+    payload: Record<string, unknown> & { paymentId: number },
+  ) {
     await this.prisma.paymentOutboxEvent.create({
       data: {
         aggregateType: 'Payment',
-        aggregateId: String(paymentId),
+        aggregateId: String(payload.paymentId),
         eventType,
-        payload: payload as object,
+        payload: payload as Prisma.InputJsonValue,
         status: OutboxStatus.PENDING,
       },
     });

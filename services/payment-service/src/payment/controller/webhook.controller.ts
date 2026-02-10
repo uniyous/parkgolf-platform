@@ -1,7 +1,7 @@
 import { Controller, Post, Body, Headers, Logger, HttpCode, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { PaymentService } from '../service/payment.service';
-import { PaymentStatus, WebhookStatus } from '@prisma/client';
+import { PaymentStatus, RefundStatus, WebhookStatus, OutboxStatus } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 
@@ -63,7 +63,7 @@ export class WebhookController {
     // 1. 웹훅 로그 저장
     const webhookLog = await this.prisma.webhookLog.create({
       data: {
-        eventType: this.mapEventType(payload.eventType),
+        eventType: payload.eventType,
         payload: payload as object,
         status: WebhookStatus.RECEIVED,
       },
@@ -161,9 +161,13 @@ export class WebhookController {
       return;
     }
 
-    // 입금 확인 시크릿 검증
-    if (data.secret) {
-      // 필요 시 시크릿 검증 로직 추가
+    // 입금 확인 시크릿 검증 (가상계좌 결제 시 토스가 발급한 secret과 비교)
+    if (payment.metadata && typeof payment.metadata === 'object' && 'depositSecret' in payment.metadata) {
+      const expectedSecret = (payment.metadata as Record<string, unknown>).depositSecret;
+      if (data.secret !== expectedSecret) {
+        this.logger.warn(`Deposit secret mismatch for orderId: ${data.orderId}`);
+        return;
+      }
     }
 
     await this.prisma.payment.update({
@@ -187,7 +191,7 @@ export class WebhookController {
           bookingId: payment.bookingId,
           userId: payment.userId,
         } as object,
-        status: 'PENDING',
+        status: OutboxStatus.PENDING,
       },
     });
 
@@ -222,7 +226,7 @@ export class WebhookController {
             transactionKey: latestCancel.transactionKey,
             cancelAmount: latestCancel.cancelAmount,
             cancelReason: latestCancel.cancelReason,
-            refundStatus: 'COMPLETED',
+            refundStatus: RefundStatus.COMPLETED,
             refundedAt: new Date(latestCancel.canceledAt),
           },
         });
@@ -266,13 +270,6 @@ export class WebhookController {
         processedAt: status === WebhookStatus.PROCESSED ? new Date() : undefined,
       },
     });
-  }
-
-  /**
-   * 이벤트 타입 매핑 (문자열 그대로 반환)
-   */
-  private mapEventType(eventType: string): string {
-    return eventType;
   }
 
   /**
