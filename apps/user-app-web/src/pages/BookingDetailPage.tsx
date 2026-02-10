@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useBooking } from '../hooks/useBooking';
 import { useAuth } from '../hooks/useAuth';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import type { Game, GameTimeSlot } from '@/lib/api/gameApi';
 import { formatDate } from '@/lib/formatting';
 import { showErrorToast } from '@/lib/toast';
@@ -30,8 +30,7 @@ export const BookingDetailPage: React.FC = () => {
   const [agreeToTerms, setAgreeToTerms] = useState(false);
 
   if (!bookingState) {
-    navigate('/bookings');
-    return null;
+    return <Navigate to="/bookings" replace />;
   }
 
   const { game, timeSlot, date } = bookingState;
@@ -171,21 +170,30 @@ export const BookingDetailPage: React.FC = () => {
           <div className="mb-6">
             <label className="block text-base font-semibold text-white/90 mb-3">결제 방법</label>
             <div className="grid grid-cols-2 gap-3">
-              {SIMPLE_PAYMENT_METHODS.map((method) => (
-                <button
-                  key={method.id}
-                  type="button"
-                  onClick={() => setSelectedPaymentMethod(method.id)}
-                  className={`py-4 px-4 rounded-xl transition-all border text-center ${
-                    selectedPaymentMethod === method.id
-                      ? 'bg-green-500/30 text-green-300 border-green-500/50'
-                      : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
-                  }`}
-                >
-                  <div className="text-2xl mb-1">{method.icon}</div>
-                  <div className="text-lg font-medium">{method.name}</div>
-                </button>
-              ))}
+              {SIMPLE_PAYMENT_METHODS.map((method) => {
+                const isCardDisabled = method.id === 'card' && totalPrice <= 0;
+                return (
+                  <button
+                    key={method.id}
+                    type="button"
+                    onClick={() => !isCardDisabled && setSelectedPaymentMethod(method.id)}
+                    disabled={isCardDisabled}
+                    className={`py-4 px-4 rounded-xl transition-all border text-center ${
+                      isCardDisabled
+                        ? 'bg-white/5 text-white/30 border-white/10 cursor-not-allowed'
+                        : selectedPaymentMethod === method.id
+                          ? 'bg-green-500/30 text-green-300 border-green-500/50'
+                          : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
+                    }`}
+                  >
+                    <div className="text-2xl mb-1">{method.icon}</div>
+                    <div className="text-lg font-medium">{method.name}</div>
+                    {isCardDisabled && (
+                      <div className="text-xs text-white/40 mt-1">무료 게임은 현장결제만 가능</div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { loadTossPayments, ANONYMOUS, type TossPaymentsWidgets } from '@tosspayments/tosspayments-sdk';
 import { formatDate } from '@/lib/formatting';
 import { showErrorToast } from '@/lib/toast';
@@ -105,8 +105,7 @@ export const CheckoutPage: React.FC = () => {
   }, [state]);
 
   if (!state) {
-    navigate('/bookings');
-    return null;
+    return <Navigate to="/bookings" replace />;
   }
 
   if (!TOSS_CLIENT_KEY) {
