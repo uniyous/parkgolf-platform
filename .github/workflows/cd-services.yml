@@ -59,7 +59,7 @@ jobs:
         run: |
           INPUT="${{ github.event.inputs.services }}"
           if [ "$INPUT" = "all" ] || [ -z "$INPUT" ]; then
-            SERVICES="iam-service,course-service,booking-service,chat-service,notify-service,admin-api,user-api,chat-gateway,weather-service,location-service"
+            SERVICES="iam-service,course-service,booking-service,payment-service,chat-service,notify-service,admin-api,user-api,chat-gateway,weather-service,location-service"
           else
             SERVICES="$INPUT"
           fi
@@ -255,6 +255,23 @@ jobs:
                       secretKeyRef:
                         name: parkgolf-secrets
                         key: KAKAO_REST_API_KEY"
+          elif [ "$SERVICE" = "payment-service" ]; then
+            EXTRA_ENV="
+                  - name: TOSS_SECRET_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: parkgolf-secrets
+                        key: TOSS_SECRET_KEY
+                  - name: TOSS_WEBHOOK_SECRET
+                    valueFrom:
+                      secretKeyRef:
+                        name: parkgolf-secrets
+                        key: TOSS_WEBHOOK_SECRET
+                  - name: TOSS_API_URL
+                    valueFrom:
+                      configMapKeyRef:
+                        name: parkgolf-config
+                        key: TOSS_API_URL"
           fi
 
           # Set replicas and strategy per service
@@ -552,6 +569,20 @@ jobs:
                       name: chat-gateway
                       port:
                         number: 8080
+                - path: /webhook
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: payment-service
+                      port:
+                        number: 8080
+                - path: /webhook/*
+                  pathType: ImplementationSpecific
+                  backend:
+                    service:
+                      name: payment-service
+                      port:
+                        number: 8080
           EOF
 
       - name: Summary
@@ -568,3 +599,4 @@ jobs:
           echo "- Admin API: https://${{ steps.domain.outputs.domain }}/api/admin" >> $GITHUB_STEP_SUMMARY
           echo "- User API: https://${{ steps.domain.outputs.domain }}/api/user" >> $GITHUB_STEP_SUMMARY
           echo "- WebSocket: wss://${{ steps.domain.outputs.domain }}/socket.io" >> $GITHUB_STEP_SUMMARY
+          echo "- Webhook: https://${{ steps.domain.outputs.domain }}/webhook" >> $GITHUB_STEP_SUMMARY
