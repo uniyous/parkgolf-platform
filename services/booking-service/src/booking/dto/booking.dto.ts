@@ -486,6 +486,16 @@ export interface SlotReserveFailedEvent {
   failedAt: string;
 }
 
+// payment-service → booking-service: 결제 완료
+export interface PaymentConfirmedEvent {
+  paymentId: number;
+  paymentKey: string;
+  orderId: string;
+  amount: number;
+  bookingId: number;
+  userId: number;
+}
+
 // booking-service → course-service: 슬롯 해제 요청
 export interface SlotReleaseRequest {
   bookingId: number;

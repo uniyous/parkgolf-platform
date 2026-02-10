@@ -1,7 +1,7 @@
 # 예약 워크플로우 및 Saga 아키텍처
 
-> 버전: 2.0
-> 최종 수정: 2026-01-21
+> 버전: 3.0
+> 최종 수정: 2026-02-10
 > 이전 문서: BOOKING_SAGA_ARCHITECTURE.md, booking-workflow-design.md (통합됨)
 
 ## 목차
@@ -26,21 +26,23 @@
 
 | 서비스 | 역할 | 데이터베이스 |
 |--------|------|-------------|
-| **booking-service** | 예약 생성, Saga 오케스트레이션, Outbox 처리 | parkgolf-booking |
-| **course-service** | 타임슬롯 관리, 슬롯 예약/해제 | parkgolf-course |
+| **booking-service** | 예약 생성, Saga 오케스트레이션, Outbox 처리 | booking_db |
+| **course-service** | 타임슬롯 관리, 슬롯 예약/해제 | course_db |
+| **payment-service** | 결제 준비/승인/취소 (토스페이먼츠) | payment_db |
 | **user-api** | BFF, 클라이언트 요청 처리 | - |
-| **notify-service** | 알림 발송 | parkgolf-notify |
+| **notify-service** | 알림 발송 | notify_db |
 
 ### 1.2 사용 기술
 
 - **메시징**: NATS (Request-Reply + Event 패턴)
 - **패턴**: Transactional Outbox, Saga, Optimistic Locking
+- **결제**: 토스페이먼츠 SDK (위젯 결제)
 - **ORM**: Prisma
-- **인프라**: GCP Cloud Run, Cloud SQL
+- **인프라**: GKE Autopilot, PostgreSQL (in-cluster)
 
 ### 1.3 주요 액터
 
-- **고객(User)**: 예약 생성, 취소 요청
+- **고객(User)**: 예약 생성, 결제, 취소 요청
 - **관리자(Admin)**: 예약 확정, 취소 처리, 노쇼 처리
 - **시스템(System)**: Saga 오케스트레이션, 자동 상태 전이
 
@@ -53,7 +55,7 @@
 ```mermaid
 flowchart TB
     subgraph "Frontend"
-        A[User WebApp / iOS App]
+        A[User WebApp / iOS / Android]
     end
 
     subgraph "API Gateway"
@@ -63,6 +65,7 @@ flowchart TB
     subgraph "Microservices"
         C[booking-service]
         D[course-service]
+        P[payment-service]
         E[notify-service]
     end
 
@@ -71,20 +74,30 @@ flowchart TB
     end
 
     subgraph "Databases"
-        F[(parkgolf-booking)]
-        G[(parkgolf-course)]
+        F[(booking_db)]
+        G[(course_db)]
+        H[(payment_db)]
+    end
+
+    subgraph "External"
+        TOSS[토스페이먼츠 API]
     end
 
     A -->|REST API| B
     B -->|NATS Request| C
+    B -->|NATS Request| P
     C -->|slot.reserve| NATS
     NATS -->|slot.reserve| D
     D -->|slot.reserved / slot.reserve.failed| NATS
     NATS -->|Events| C
+    P -->|booking.paymentConfirmed| NATS
+    NATS -->|booking.paymentConfirmed| C
     C -->|booking.confirmed| NATS
     NATS --> E
+    P -->|결제 승인| TOSS
     C --- F
     D --- G
+    P --- H
 ```
 
 ### 2.2 Saga 컴포넌트 구조
@@ -107,6 +120,13 @@ flowchart LR
         J[(GameTimeSlot)]
     end
 
+    subgraph "payment-service"
+        K[PaymentService]
+        L[TossApiService]
+        M[OutboxProcessor]
+        N[(Payment)]
+    end
+
     A -->|1. Create| E
     A -->|2. Create| F
     B -->|3. Poll & Send| E
@@ -115,8 +135,11 @@ flowchart LR
     G -->|6. Reserve| H
     H -->|7. Update| J
     H -->|8. slot.reserved| C
-    C -->|9. Update Status| A
-    D -->|10. Cleanup| A
+    C -->|9. SLOT_RESERVED| A
+    K -->|10. payment.confirmed| M
+    M -->|11. booking.paymentConfirmed| C
+    C -->|12. CONFIRMED| A
+    D -->|13. Cleanup| A
 ```
 
 ---
@@ -126,30 +149,36 @@ flowchart LR
 ### 3.1 BookingStatus (예약 상태)
 
 ```
-┌──────────────┬──────────────────────────────────────────────────────────┐
-│ PENDING      │ 예약 생성됨, Saga 진행 중 (슬롯 예약 대기)                 │
-│ CONFIRMED    │ 예약 확정 (슬롯 예약 완료)                                 │
-│ COMPLETED    │ 이용 완료                                                  │
-│ CANCELLED    │ 취소됨                                                     │
-│ NO_SHOW      │ 노쇼 (미방문)                                              │
-│ FAILED       │ Saga 실패 (슬롯 예약 실패, 타임아웃 등)                    │
-└──────────────┴──────────────────────────────────────────────────────────┘
+┌───────────────┬──────────────────────────────────────────────────────────┐
+│ PENDING       │ 예약 생성됨, Saga 진행 중 (슬롯 예약 대기)                 │
+│ SLOT_RESERVED │ 슬롯 예약 완료, 결제 대기 (카드결제 시)                    │
+│ CONFIRMED     │ 예약 확정 (현장결제: 슬롯 완료 즉시 / 카드결제: 결제 완료) │
+│ COMPLETED     │ 이용 완료                                                  │
+│ CANCELLED     │ 취소됨                                                     │
+│ NO_SHOW       │ 노쇼 (미방문)                                              │
+│ FAILED        │ Saga 실패 (슬롯 예약 실패, 결제 실패, 타임아웃 등)        │
+└───────────────┴──────────────────────────────────────────────────────────┘
 ```
 
-> **참고**: 현재 결제 프로세스가 없으므로 `SLOT_RESERVED` 상태는 건너뛰고 `PENDING → CONFIRMED`로 직접 전이됩니다.
-
 ### 3.2 상태 전이 다이어그램
+
+결제 방법에 따라 Saga 경로가 분기됩니다.
 
 ```mermaid
 stateDiagram-v2
     [*] --> PENDING: 예약 생성
 
-    PENDING --> CONFIRMED: slot.reserved 수신
+    PENDING --> SLOT_RESERVED: slot.reserved (카드결제)
+    PENDING --> CONFIRMED: slot.reserved (현장결제)
     PENDING --> FAILED: slot.reserve.failed 수신
     PENDING --> FAILED: Saga Timeout (60초)
     PENDING --> CANCELLED: 사용자/관리자 취소
 
-    CONFIRMED --> CANCELLED: 취소 (슬롯 해제)
+    SLOT_RESERVED --> CONFIRMED: booking.paymentConfirmed 수신
+    SLOT_RESERVED --> FAILED: 결제 타임아웃 (10분)
+    SLOT_RESERVED --> CANCELLED: 사용자 취소 (슬롯 해제)
+
+    CONFIRMED --> CANCELLED: 취소 (슬롯 해제 + 환불)
     CONFIRMED --> COMPLETED: 이용 완료 처리
     CONFIRMED --> NO_SHOW: 노쇼 처리
 
@@ -159,7 +188,14 @@ stateDiagram-v2
     NO_SHOW --> [*]
 ```
 
-### 3.3 OutboxEvent 상태
+### 3.3 결제 방법별 Saga 경로
+
+| 결제 방법 | Saga 경로 | 설명 |
+|----------|-----------|------|
+| **현장결제 (onsite)** | `PENDING → CONFIRMED` | 슬롯 예약 완료 시 즉시 확정 (v2.0 동일) |
+| **카드결제 (card)** | `PENDING → SLOT_RESERVED → CONFIRMED` | 슬롯 예약 후 결제 완료 시 확정 |
+
+### 3.4 OutboxEvent 상태
 
 ```mermaid
 stateDiagram-v2
@@ -175,7 +211,23 @@ stateDiagram-v2
     FAILED --> [*]
 ```
 
-### 3.4 TimeSlotStatus (타임슬롯 상태)
+### 3.5 PaymentStatus (결제 상태)
+
+```mermaid
+stateDiagram-v2
+    [*] --> READY: payment.prepare
+
+    READY --> IN_PROGRESS: payment.confirm 시작
+    READY --> ABORTED: 사용자 취소 / 타임아웃
+
+    IN_PROGRESS --> DONE: 토스 API 승인 성공
+    IN_PROGRESS --> ABORTED: 토스 API 승인 실패
+
+    DONE --> CANCELED: 전체 환불
+    DONE --> PARTIAL_CANCELED: 부분 환불
+```
+
+### 3.6 TimeSlotStatus (타임슬롯 상태)
 
 ```mermaid
 stateDiagram-v2
@@ -196,7 +248,7 @@ stateDiagram-v2
 
 ## 4. Saga 트랜잭션 흐름
 
-### 4.1 예약 생성 시퀀스
+### 4.1 현장결제 시퀀스 (기존 동일)
 
 ```mermaid
 sequenceDiagram
@@ -209,64 +261,95 @@ sequenceDiagram
     participant CS as course-service
     participant DB2 as course-db
 
-    Client->>API: POST /bookings (idempotencyKey)
+    Client->>API: POST /bookings (paymentMethod=onsite)
     API->>BS: booking.create (NATS)
 
-    Note over BS: Step 1: Idempotency Check
-    BS->>DB1: SELECT FROM idempotency_keys
-    alt 이미 처리된 요청
-        DB1-->>BS: 기존 키 반환
-        BS-->>API: 기존 예약 반환
-    else 새로운 요청
-        Note over BS: Step 2: Slot Validation (Cache)
-        BS->>DB1: SELECT FROM game_time_slot_cache
+    Note over BS: Step 1~3: 멱등성 검증 + PENDING 예약 생성
+    BS->>DB1: INSERT booking (PENDING, paymentMethod=onsite)
+    BS->>DB1: INSERT outbox_event (slot.reserve)
+    BS-->>API: 예약 생성 완료 (PENDING)
+    API-->>Client: booking (PENDING)
+    Client->>Client: /booking-complete 이동
 
-        Note over BS: Step 3: Create PENDING Booking (Transaction)
-        BS->>DB1: BEGIN TRANSACTION
-        BS->>DB1: INSERT booking (PENDING)
-        BS->>DB1: INSERT outbox_event (slot.reserve)
-        BS->>DB1: INSERT idempotency_key
-        BS->>DB1: INSERT booking_history
-        BS->>DB1: COMMIT
-        BS-->>API: 예약 생성 완료 (PENDING)
-    end
+    Note over BS: Step 4~6: Outbox → 슬롯 예약 (Background)
+    BS->>NATS: slot.reserve
+    NATS->>CS: slot.reserve
+    CS->>DB2: UPDATE bookedPlayers++, version++
+    CS-->>NATS: emit slot.reserved
+    NATS-->>BS: slot.reserved
 
-    API-->>Client: 202 Accepted
-
-    Note over BS: Step 4: Outbox Processing (Background, 1초 폴링)
-    loop Every 1 second
-        BS->>DB1: SELECT FROM outbox_events WHERE status=PENDING (SKIP LOCKED)
-        BS->>NATS: slot.reserve
-        NATS->>CS: slot.reserve
-
-        Note over CS: Step 5: Idempotency Check (DB)
-        CS->>DB2: SELECT FROM processed_slot_reservations
-        alt 중복 요청
-            CS-->>NATS: emit slot.reserved (cached)
-        else 새로운 요청
-            Note over CS: Step 6: Optimistic Lock Reserve
-            CS->>DB2: BEGIN TRANSACTION (30s timeout)
-            CS->>DB2: SELECT FROM game_time_slot
-            CS->>DB2: UPDATE SET bookedPlayers++, version++ WHERE version=X
-            alt Version Match
-                CS->>DB2: INSERT processed_slot_reservation (60s TTL)
-                CS->>DB2: COMMIT
-                CS-->>NATS: emit slot.reserved
-            else Version Mismatch
-                CS->>CS: Retry (max 3회, 50-150ms backoff)
-            end
-        end
-
-        NATS-->>BS: slot.reserved event
-
-        Note over BS: Step 7: State Transition
-        BS->>DB1: UPDATE booking SET status=CONFIRMED
-        BS->>DB1: UPDATE outbox_event SET status=SENT
-        BS->>NATS: emit booking.confirmed
-    end
+    Note over BS: Step 7: paymentMethod=onsite → 바로 CONFIRMED
+    BS->>DB1: UPDATE booking SET status=CONFIRMED
+    BS->>NATS: emit booking.confirmed
 ```
 
-### 4.2 단계별 상세 코드
+### 4.2 카드결제 시퀀스 (신규)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client as Frontend
+    participant API as user-api
+    participant BS as booking-service
+    participant DB1 as booking-db
+    participant NATS as NATS
+    participant CS as course-service
+    participant PS as payment-service
+    participant DB3 as payment-db
+    participant TOSS as 토스페이먼츠
+
+    Client->>API: POST /bookings (paymentMethod=card)
+    API->>BS: booking.create (NATS)
+
+    Note over BS: Step 1~3: 멱등성 검증 + PENDING 예약 생성
+    BS->>DB1: INSERT booking (PENDING, paymentMethod=card)
+    BS->>DB1: INSERT outbox_event (slot.reserve)
+    BS-->>API: 예약 생성 완료 (PENDING)
+    API-->>Client: booking (PENDING)
+
+    Note over BS: Step 4~6: Outbox → 슬롯 예약 (Background)
+    BS->>NATS: slot.reserve
+    NATS->>CS: slot.reserve
+    CS-->>NATS: emit slot.reserved
+    NATS-->>BS: slot.reserved
+
+    Note over BS: Step 7: paymentMethod=card → SLOT_RESERVED (결제 대기)
+    BS->>DB1: UPDATE booking SET status=SLOT_RESERVED
+
+    Note over Client: Step 8: 결제 준비
+    Client->>API: POST /payments/prepare (bookingId, amount)
+    API->>PS: payment.prepare (NATS)
+    PS->>DB3: INSERT payment (READY, orderId 발급)
+    PS-->>API: { orderId, amount, orderName }
+    API-->>Client: orderId
+
+    Note over Client: Step 9: 토스 위젯 결제
+    Client->>Client: /checkout (토스 위젯 렌더링)
+    Client->>TOSS: requestPayment (orderId)
+    TOSS-->>Client: redirect /payment/success?paymentKey&orderId&amount
+
+    Note over Client: Step 10: 결제 승인
+    Client->>API: POST /payments/confirm (paymentKey, orderId, amount)
+    API->>PS: payment.confirm (NATS)
+    PS->>TOSS: POST /payments/confirm (서버 승인)
+    TOSS-->>PS: 승인 완료
+    PS->>DB3: UPDATE payment SET status=DONE
+    PS->>DB3: INSERT outbox_event (payment.confirmed)
+    PS-->>API: 결제 완료
+    API-->>Client: 결제 완료
+
+    Note over PS: Step 11: payment-service Outbox (Background)
+    PS->>NATS: booking.paymentConfirmed
+    NATS-->>BS: booking.paymentConfirmed
+
+    Note over BS: Step 12: SLOT_RESERVED → CONFIRMED
+    BS->>DB1: UPDATE booking SET status=CONFIRMED
+    BS->>NATS: emit booking.confirmed
+
+    Client->>Client: /booking-complete 이동
+```
+
+### 4.3 단계별 상세 코드
 
 #### Step 1: 멱등성 키 확인 (booking-service)
 
@@ -291,6 +374,7 @@ const booking = await this.prisma.$transaction(async (tx) => {
   const newBooking = await tx.booking.create({
     data: {
       status: BookingStatus.PENDING,
+      paymentMethod: dto.paymentMethod, // 'onsite' | 'card'
       // ... other fields
     },
   });
@@ -363,6 +447,48 @@ if (updatedSlot.count === 0) {
 }
 ```
 
+#### Step 7: Saga 분기 (booking-service)
+
+```typescript
+// saga-handler.service.ts - handleSlotReserved()
+const booking = await this.prisma.booking.findUnique({
+  where: { id: data.bookingId },
+});
+
+if (booking.paymentMethod === 'card') {
+  // 카드결제: PENDING → SLOT_RESERVED (결제 대기)
+  await this.prisma.booking.update({
+    where: { id: booking.id },
+    data: { status: BookingStatus.SLOT_RESERVED },
+  });
+} else {
+  // 현장결제: PENDING → CONFIRMED (즉시 확정)
+  await this.prisma.booking.update({
+    where: { id: booking.id },
+    data: { status: BookingStatus.CONFIRMED },
+  });
+  // emit booking.confirmed
+}
+```
+
+#### Step 12: 결제 확인 후 확정 (booking-service)
+
+```typescript
+// saga-handler.service.ts - handlePaymentConfirmed()
+// booking.paymentConfirmed 이벤트 수신 시
+const booking = await this.prisma.booking.findUnique({
+  where: { id: data.bookingId },
+});
+
+if (booking.status === BookingStatus.SLOT_RESERVED) {
+  await this.prisma.booking.update({
+    where: { id: booking.id },
+    data: { status: BookingStatus.CONFIRMED },
+  });
+  // emit booking.confirmed → notify-service
+}
+```
+
 ---
 
 ## 5. 멱등성 처리
@@ -395,9 +521,16 @@ flowchart TB
         G --> H
     end
 
+    subgraph "Layer 5: Payment Level"
+        I[orderId unique]
+        J[bookingId unique]
+        I --> J
+    end
+
     B -.->|중복 예약 요청 방지| C
     D -.->|중복 이벤트 발행 방지| E
     F -.->|중복 슬롯 예약 방지| G
+    J -.->|중복 결제 방지| I
 ```
 
 ### 5.2 각 계층별 역할
@@ -408,6 +541,7 @@ flowchart TB
 | **Outbox Level** | booking-service | PostgreSQL (outbox_events) | - | 이벤트 중복 발행 방지 |
 | **Saga Level** | course-service | PostgreSQL (processed_slot_reservations) | 60초 | 슬롯 중복 예약 방지 |
 | **DB Level** | course-service | PostgreSQL (game_time_slots.version) | - | 동시성 제어 (Optimistic Lock) |
+| **Payment Level** | payment-service | PostgreSQL (payments.orderId, payments.bookingId) | - | 중복 결제 방지 |
 
 ### 5.3 Saga 레벨 멱등성 (course-service)
 
@@ -501,7 +635,8 @@ flowchart LR
         A[Outbox Poll: 1초]
         B[NATS Timeout: 30초]
         C[Max Retry: 5회]
-        D[Saga Timeout: 60초]
+        D[Saga Timeout: 60초 PENDING]
+        D2[Payment Timeout: 10분 SLOT_RESERVED]
         E[Idempotency TTL: 24시간]
     end
 
@@ -512,8 +647,14 @@ flowchart LR
         I[Idempotency TTL: 60초]
     end
 
+    subgraph "payment-service"
+        J[Outbox Poll: 5초]
+        K[Max Retry: 5회]
+    end
+
     A --> F
     B --> F
+    D2 --> J
 ```
 
 ### 7.2 설정 상세
@@ -525,17 +666,20 @@ flowchart LR
 | `MAX_RETRY_COUNT` | 5 | booking | Outbox 최대 재시도 |
 | `NATS_TIMEOUT` | 30,000ms | booking | NATS 요청 타임아웃 |
 | `SAGA_TIMEOUT_MS` | 60,000ms | booking | PENDING 상태 타임아웃 |
+| `PAYMENT_TIMEOUT_MS` | 600,000ms (10분) | booking | SLOT_RESERVED 결제 대기 타임아웃 |
 | `IDEMPOTENCY_KEY_TTL` | 24시간 | booking | 멱등성 키 보관 기간 |
 | `TX_TIMEOUT` | 30,000ms | course | Prisma 트랜잭션 타임아웃 |
 | `TX_MAX_WAIT` | 10,000ms | course | 트랜잭션 대기 최대 시간 |
 | `LOCK_RETRY_COUNT` | 3 | course | Optimistic Lock 재시도 |
 | `SLOT_IDEMPOTENCY_TTL` | 60,000ms | course | 슬롯 예약 멱등성 TTL |
+| `PAYMENT_OUTBOX_POLL` | 5,000ms | payment | 결제 Outbox 폴링 주기 |
 
 ### 7.3 정리 작업 스케줄
 
 | 작업 | 주기 | 대상 | 서비스 |
 |------|------|------|--------|
-| PENDING 예약 타임아웃 | 1분마다 | 60초 이상 PENDING 예약 | booking |
+| PENDING 예약 타임아웃 | 1분마다 | 60초 이상 PENDING 예약 → FAILED | booking |
+| SLOT_RESERVED 결제 타임아웃 | 1분마다 | 10분 이상 SLOT_RESERVED 예약 → FAILED + 슬롯 해제 | booking |
 | 오래된 Outbox 이벤트 삭제 | 매일 자정 | 7일 이상 된 SENT 이벤트 | booking |
 | 만료된 슬롯 예약 레코드 삭제 | 5분마다 | TTL 만료된 레코드 | course |
 
@@ -550,9 +694,10 @@ flowchart LR
 | **고객 취소** | 고객 | 정책에 따름 | 정책에 따름 | O |
 | **관리자 취소** | 관리자 | 제한 없음 | 전액 | O |
 | **시스템 취소** | 시스템 | 자동 | 전액 | O |
+| **결제 타임아웃** | 시스템 | SLOT_RESERVED 10분 초과 | - (미결제) | O |
 | **Saga 실패** | 시스템 | PENDING 상태 | - | X (미예약) |
 
-### 8.2 취소 프로세스
+### 8.2 취소 프로세스 (현장결제)
 
 ```mermaid
 sequenceDiagram
@@ -587,7 +732,86 @@ sequenceDiagram
     end
 ```
 
-### 8.3 슬롯 해제 (Compensation)
+### 8.3 취소 프로세스 (카드결제 — 환불 포함)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as 고객/관리자
+    participant API as API
+    participant BS as booking-service
+    participant CS as course-service
+    participant PS as payment-service
+    participant TOSS as 토스페이먼츠
+    participant NS as notify-service
+
+    User->>API: 취소 요청 (bookingId, reason)
+    API->>BS: cancelBooking()
+
+    BS->>BS: 상태 검증 (SLOT_RESERVED/CONFIRMED)
+    BS->>BS: 취소 정책 검증 + 환불 금액 계산
+
+    alt 취소 가능
+        BS->>BS: status → CANCELLED
+        BS->>BS: OutboxEvent 생성 (slot.release)
+        BS->>BS: OutboxEvent 생성 (payment.requestCancel)
+
+        Note over BS: Outbox Processing
+        BS->>CS: slot.release (NATS)
+        CS-->>BS: slot.released
+
+        BS->>PS: payment.cancel (NATS)
+        PS->>TOSS: POST /payments/{paymentKey}/cancel
+        TOSS-->>PS: 환불 완료
+        PS-->>BS: 환불 결과
+
+        BS->>NS: booking.cancelled (NATS)
+        NS-->>User: 취소/환불 알림
+
+        BS-->>API: 취소 완료
+    end
+```
+
+### 8.4 결제 타임아웃 Compensation (SLOT_RESERVED → FAILED)
+
+```typescript
+// saga-scheduler.service.ts
+const PAYMENT_TIMEOUT_MS = 10 * 60 * 1000; // 10분
+
+// 결제 대기 타임아웃 처리
+const timedOutBookings = await this.prisma.booking.findMany({
+  where: {
+    status: BookingStatus.SLOT_RESERVED,
+    updatedAt: { lt: new Date(Date.now() - PAYMENT_TIMEOUT_MS) },
+  },
+});
+
+for (const booking of timedOutBookings) {
+  // 1. SLOT_RESERVED → FAILED
+  await this.prisma.booking.update({
+    where: { id: booking.id },
+    data: {
+      status: BookingStatus.FAILED,
+      sagaFailReason: 'Payment timeout',
+    },
+  });
+
+  // 2. OutboxEvent 생성 → 슬롯 해제
+  await this.prisma.outboxEvent.create({
+    data: {
+      eventType: 'slot.release',
+      payload: {
+        bookingId: booking.id,
+        gameTimeSlotId: booking.gameTimeSlotId,
+        playerCount: booking.playerCount,
+      },
+      status: OutboxStatus.PENDING,
+    },
+  });
+}
+```
+
+### 8.5 슬롯 해제 (Compensation)
 
 ```typescript
 // course-service: releaseSlotForSaga
@@ -617,7 +841,7 @@ async releaseSlotForSaga(timeSlotId: number, playerCount: number) {
 }
 ```
 
-### 8.4 환불 정책 (기본)
+### 8.6 환불 정책
 
 ```
 ┌──────────────────────┬──────────────────────────────────────────────────┐
@@ -627,10 +851,9 @@ async releaseSlotForSaga(timeSlotId: number, playerCount: number) {
 │ 예약일 24시간 이내   │ 환불 불가 (또는 30%)                             │
 │ 노쇼                 │ 환불 불가                                        │
 │ 관리자/시스템 취소   │ 100% 환불                                        │
+│ 결제 타임아웃        │ 미결제 상태이므로 환불 불필요                      │
 └──────────────────────┴──────────────────────────────────────────────────┘
 ```
-
-> **참고**: 현재 결제 시스템 미구현으로 환불 프로세스는 향후 구현 예정
 
 ---
 
@@ -644,33 +867,34 @@ async releaseSlotForSaga(timeSlotId: number, playerCount: number) {
 | `[Outbox]` | booking-service | Outbox 이벤트 처리 |
 | `[SagaHandler]` | booking-service | Saga 상태 전이 |
 | `[Saga]` | course-service | 슬롯 예약 처리 |
+| `[Payment]` | payment-service | 결제 처리 |
 
 ### 9.2 로그 예시
 
 ```
-# 정상 흐름
+# 현장결제 정상 흐름
 [REQ-123] ========== BOOKING CREATE START ==========
 [REQ-123] Step 1: Idempotency key check passed
 [REQ-123] Step 2: Slot validation passed
-[REQ-123] Step 3: COMPLETED - Booking BK-ABC123 created with PENDING status
+[REQ-123] Step 3: COMPLETED - Booking BK-ABC123 created with PENDING status (onsite)
 [Outbox] Processing event 42 (slot.reserve) for bookingId=15
-[Saga] ========== SLOT_RESERVE REQUEST RECEIVED ==========
-[Saga] Idempotency check completed in 2ms
-[Saga] Slot query completed in 5ms
-[Saga] Current slot state: status=AVAILABLE, bookedPlayers=2, maxPlayers=4, version=5
-[Saga] Slot update completed in 8ms
 [Saga] SLOT_RESERVE SUCCESS in 18ms - bookingId=15, emitting slot.reserved
-[SagaHandler] Booking 15 CONFIRMED successfully
+[SagaHandler] Booking 15: paymentMethod=onsite → CONFIRMED
 
-# 중복 요청 감지
-[Saga] DUPLICATE REQUEST DETECTED: bookingId=15, slotId=848 - returning cached success
+# 카드결제 정상 흐름
+[REQ-456] ========== BOOKING CREATE START ==========
+[REQ-456] Step 3: COMPLETED - Booking BK-DEF456 created with PENDING status (card)
+[Outbox] Processing event 43 (slot.reserve) for bookingId=16
+[Saga] SLOT_RESERVE SUCCESS in 15ms - bookingId=16, emitting slot.reserved
+[SagaHandler] Booking 16: paymentMethod=card → SLOT_RESERVED (awaiting payment)
+[Payment] Prepare: orderId=ORD-1707123456789-a1b2c3d4, amount=50000
+[Payment] Confirm: orderId=ORD-1707123456789-a1b2c3d4, paymentKey=tgen_xxx
+[Payment] Outbox: emit booking.paymentConfirmed for bookingId=16
+[SagaHandler] Booking 16: SLOT_RESERVED → CONFIRMED (payment confirmed)
 
-# 동시성 충돌
-[Saga] Attempt 1/3 for slot 123
-[Saga] ConflictException: Concurrent modification detected
-[Saga] Retrying after 50ms...
-[Saga] Attempt 2/3 for slot 123
-[Saga] Slot update completed successfully
+# 결제 타임아웃
+[SagaScheduler] Booking 17: SLOT_RESERVED for 10m+ → FAILED (payment timeout)
+[SagaScheduler] Creating slot.release outbox for booking 17
 ```
 
 ### 9.3 GCP Cloud Logging 쿼리
@@ -685,6 +909,11 @@ textPayload:("[Saga]")
 resource.type="cloud_run_revision"
 textPayload:("bookingId=15")
 
+# 결제 관련 로그 조회
+resource.type="cloud_run_revision"
+resource.labels.service_name="payment-service-dev"
+textPayload:("[Payment]")
+
 # Outbox 이벤트 처리 추적
 resource.type="cloud_run_revision"
 resource.labels.service_name="booking-service-dev"
@@ -698,7 +927,11 @@ textPayload:("[Outbox]")
 | Idempotency Check | 1-5ms |
 | Slot Query | 3-10ms |
 | Slot Update (with lock) | 5-15ms |
-| Total Saga (booking → confirmed) | 50-200ms |
+| Total Saga - 현장결제 (booking → confirmed) | 50-200ms |
+| Total Saga - 카드결제 (booking → slot_reserved) | 50-200ms |
+| Payment Prepare | 10-50ms |
+| Payment Confirm (토스 API) | 200-500ms |
+| Total Saga - 카드결제 (slot_reserved → confirmed) | 300-600ms |
 
 ---
 
@@ -706,6 +939,7 @@ textPayload:("[Outbox]")
 
 | 버전 | 날짜 | 변경 내용 |
 |------|------|----------|
+| 3.0 | 2026-02-10 | 토스페이먼츠 결제 연동, SLOT_RESERVED 상태 활성화, 결제 타임아웃 Compensation 추가 |
 | 2.0 | 2026-01-21 | BOOKING_SAGA_ARCHITECTURE.md, booking-workflow-design.md 통합 및 소스 코드 반영 |
 | 1.0 | 2026-01-12 | booking-workflow-design.md 초안 작성 |
 | 1.0 | 2026-01-06 | BOOKING_SAGA_ARCHITECTURE.md 작성 |
@@ -717,3 +951,4 @@ textPayload:("[Outbox]")
 - [Microservices Patterns - Saga Pattern](https://microservices.io/patterns/data/saga.html)
 - [Transactional Outbox Pattern](https://microservices.io/patterns/data/transactional-outbox.html)
 - [Optimistic Locking - Prisma](https://www.prisma.io/docs/concepts/components/prisma-client/transactions#optimistic-concurrency-control)
+- [토스페이먼츠 결제 위젯 연동](https://docs.tosspayments.com/guides/v2/widget/integration)

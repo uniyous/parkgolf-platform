@@ -37,6 +37,24 @@ export class SagaSchedulerService {
   }
 
   /**
+   * 매 분마다 결제 타임아웃된 SLOT_RESERVED 예약 정리
+   * 10분 이상 결제되지 않은 예약을 FAILED 처리하고 슬롯 해제
+   */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async cleanupPaymentTimedOutBookings() {
+    this.logger.debug('Running payment-timed-out bookings cleanup...');
+
+    try {
+      const cleanedCount = await this.sagaHandler.cleanupPaymentTimedOutBookings();
+      if (cleanedCount > 0) {
+        this.logger.log(`Cleaned up ${cleanedCount} payment-timed-out bookings`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to cleanup payment-timed-out bookings: ${error.message}`);
+    }
+  }
+
+  /**
    * 매일 자정에 오래된 SENT 이벤트 정리 (7일 이상 된 것)
    */
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)

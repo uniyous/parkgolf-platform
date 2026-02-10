@@ -1,14 +1,15 @@
 import { Controller, Logger } from '@nestjs/common';
-import { EventPattern, Payload } from '@nestjs/microservices';
+import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
 import { SagaHandlerService } from '../service/saga-handler.service';
-import { SlotReservedEvent, SlotReserveFailedEvent } from '../dto/booking.dto';
+import { SlotReservedEvent, SlotReserveFailedEvent, PaymentConfirmedEvent } from '../dto/booking.dto';
 
 /**
  * Saga 이벤트 핸들러 컨트롤러
  *
- * course-service로부터 수신하는 Saga 이벤트 처리:
- * - slot.reserved: 슬롯 예약 성공 → PENDING → CONFIRMED
+ * course-service / payment-service로부터 수신하는 Saga 이벤트 처리:
+ * - slot.reserved: 슬롯 예약 성공 → PENDING → CONFIRMED(현장) / SLOT_RESERVED(카드)
  * - slot.reserve.failed: 슬롯 예약 실패 → PENDING → FAILED
+ * - booking.paymentConfirmed: 결제 완료 → SLOT_RESERVED → CONFIRMED
  */
 @Controller()
 export class BookingSagaController {
@@ -49,6 +50,26 @@ export class BookingSagaController {
       this.logger.log(`NATS: Successfully processed slot.reserve.failed for booking ${data.bookingId}`);
     } catch (error) {
       this.logger.error(`NATS: Error processing slot.reserve.failed: ${error.message}`, error.stack);
+    }
+  }
+
+  /**
+   * 결제 완료 이벤트 핸들러 (Request-Reply)
+   * payment-service에서 결제가 완료되면 이 메시지를 전송함
+   * SLOT_RESERVED → CONFIRMED
+   */
+  @MessagePattern('booking.paymentConfirmed')
+  async handlePaymentConfirmed(@Payload() data: PaymentConfirmedEvent) {
+    this.logger.log(`NATS: Received booking.paymentConfirmed for booking ${data.bookingId}`);
+    this.logger.debug(`NATS: booking.paymentConfirmed payload: ${JSON.stringify(data)}`);
+
+    try {
+      const result = await this.sagaHandler.handlePaymentConfirmed(data);
+      this.logger.log(`NATS: Successfully processed booking.paymentConfirmed for booking ${data.bookingId}`);
+      return result;
+    } catch (error) {
+      this.logger.error(`NATS: Error processing booking.paymentConfirmed: ${error.message}`, error.stack);
+      return { success: false, error: error.message };
     }
   }
 
