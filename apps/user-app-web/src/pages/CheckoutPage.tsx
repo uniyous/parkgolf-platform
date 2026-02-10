@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
-import { loadTossPayments, ANONYMOUS, type TossPaymentsWidgets } from '@tosspayments/tosspayments-sdk';
+import { loadTossPayments } from '@tosspayments/payment-sdk';
 import { formatDate } from '@/lib/formatting';
 import { showErrorToast } from '@/lib/toast';
 import { Button } from '../components';
@@ -45,11 +45,11 @@ export const CHECKOUT_STORAGE_KEY = 'parkgolf_checkout_context';
 export const CheckoutPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const widgetsRef = useRef<TossPaymentsWidgets | null>(null);
+  const tossRef = useRef<Awaited<ReturnType<typeof loadTossPayments>> | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
-  const paymentMethodsRendered = useRef(false);
+  const initialized = useRef(false);
 
   const checkoutState = location.state as CheckoutState | null;
 
@@ -67,40 +67,25 @@ export const CheckoutPage: React.FC = () => {
 
   useEffect(() => {
     if (!state || !TOSS_CLIENT_KEY) return;
-    if (paymentMethodsRendered.current) return;
-    paymentMethodsRendered.current = true;
+    if (initialized.current) return;
+    initialized.current = true;
 
     let mounted = true;
 
-    const initWidgets = async () => {
+    const initToss = async () => {
       try {
         const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY);
-        const widgets = tossPayments.widgets({ customerKey: ANONYMOUS });
-        widgetsRef.current = widgets;
-
-        await widgets.setAmount({ currency: 'KRW', value: state.amount });
-
-        await Promise.all([
-          widgets.renderPaymentMethods({
-            selector: '#payment-methods',
-            variantKey: 'DEFAULT',
-          }),
-          widgets.renderAgreement({
-            selector: '#payment-agreement',
-            variantKey: 'AGREEMENT',
-          }),
-        ]);
-
+        tossRef.current = tossPayments;
         if (mounted) setIsReady(true);
       } catch (error) {
-        console.error('Toss widget initialization failed:', error);
+        console.error('Toss SDK initialization failed:', error);
         if (mounted) {
-          setInitError('결제 위젯을 불러오지 못했습니다. 다시 시도해 주세요.');
+          setInitError('결제 모듈을 불러오지 못했습니다. 다시 시도해 주세요.');
         }
       }
     };
 
-    initWidgets();
+    initToss();
     return () => { mounted = false; };
   }, [state]);
 
@@ -117,18 +102,18 @@ export const CheckoutPage: React.FC = () => {
   }
 
   const handlePayment = async () => {
-    if (!widgetsRef.current || isRequesting) return;
+    if (!tossRef.current || isRequesting) return;
     setIsRequesting(true);
 
     try {
-      await widgetsRef.current.requestPayment({
+      await tossRef.current.requestPayment('카드', {
+        amount: state.amount,
         orderId: state.orderId,
         orderName: state.orderName,
         successUrl: `${window.location.origin}/payment/success`,
         failUrl: `${window.location.origin}/payment/fail`,
       });
     } catch (error) {
-      // 사용자가 결제를 취소한 경우 (PAY_PROCESS_CANCELED) 등
       const message = error instanceof Error ? error.message : '';
       if (message && !message.includes('CANCEL')) {
         showErrorToast('결제 요청 실패', '결제 요청 중 오류가 발생했습니다.');
@@ -139,7 +124,7 @@ export const CheckoutPage: React.FC = () => {
 
   const handleRetryInit = () => {
     setInitError(null);
-    paymentMethodsRendered.current = false;
+    initialized.current = false;
     window.location.reload();
   };
 
@@ -178,7 +163,7 @@ export const CheckoutPage: React.FC = () => {
           </div>
         </div>
 
-        {/* 위젯 초기화 에러 */}
+        {/* 초기화 에러 */}
         {initError ? (
           <div className="glass-card mb-6 text-center">
             <div className="text-4xl mb-4">⚠️</div>
@@ -188,31 +173,23 @@ export const CheckoutPage: React.FC = () => {
             </Button>
           </div>
         ) : (
-          <>
-            {/* 토스 결제 위젯 */}
-            <div className="glass-card mb-6">
-              <div id="payment-methods" className="mb-4" />
-              <div id="payment-agreement" />
-            </div>
-
-            {/* 결제 버튼 */}
-            <Button
-              onClick={handlePayment}
-              disabled={!isReady || isRequesting}
-              loading={isRequesting}
-              variant="glass"
-              size="lg"
-              className={`w-full h-16 text-xl rounded-2xl ${
-                isReady && !isRequesting
-                  ? '!bg-white/90 hover:!bg-white !text-slate-800'
-                  : '!bg-white/20 !text-white/50 cursor-not-allowed'
-              }`}
-            >
-              {isRequesting
-                ? '결제 요청 중...'
-                : `${new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(amount)} 결제하기`}
-            </Button>
-          </>
+          /* 결제 버튼 */
+          <Button
+            onClick={handlePayment}
+            disabled={!isReady || isRequesting}
+            loading={isRequesting}
+            variant="glass"
+            size="lg"
+            className={`w-full h-16 text-xl rounded-2xl ${
+              isReady && !isRequesting
+                ? '!bg-white/90 hover:!bg-white !text-slate-800'
+                : '!bg-white/20 !text-white/50 cursor-not-allowed'
+            }`}
+          >
+            {isRequesting
+              ? '결제 요청 중...'
+              : `${new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(amount)} 결제하기`}
+          </Button>
         )}
       </Container>
     </div>

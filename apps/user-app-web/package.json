@@ -29,7 +29,7 @@
     "@radix-ui/react-switch": "^1.2.6",
     "@tanstack/react-query": "^5.90.20",
     "@tanstack/react-query-devtools": "^5.91.2",
-    "@tosspayments/tosspayments-sdk": "^2.5.0",
+    "@tosspayments/payment-sdk": "^1.9.2",
     "clsx": "^2.1.1",
     "lucide-react": "^0.563.0",
     "react": "^19.2.3",
