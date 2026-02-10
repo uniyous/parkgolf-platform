@@ -256,7 +256,7 @@ test.describe('결제 결과 페이지', () => {
     await page.goto('/payment/success');
 
     // 파라미터가 없으므로 confirmPayment가 호출되지 않음 (로딩 상태 유지)
-    await expect(page.getByText('결제를 확인하고 있습니다...')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/결제를 확인하고 있습니다|처리 중/)).toBeVisible({ timeout: 10000 });
   });
 });
 

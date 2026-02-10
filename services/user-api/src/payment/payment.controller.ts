@@ -1,7 +1,9 @@
 import {
   Controller,
   Post,
+  Get,
   Body,
+  Param,
   HttpCode,
   HttpStatus,
   UseGuards,
@@ -52,5 +54,17 @@ export class PaymentController {
   ) {
     this.logger.log(`Confirming payment orderId: ${dto.orderId}`);
     return this.paymentService.confirmPayment(dto);
+  }
+
+  @Get('order/:orderId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'orderId로 결제 상태 조회' })
+  @ApiResponse({ status: 200, description: '결제 정보 조회 완료' })
+  @ApiResponse({ status: 401, description: '인증이 필요합니다.' })
+  @ApiResponse({ status: 404, description: '결제 정보를 찾을 수 없습니다.' })
+  async getPaymentByOrderId(@Param('orderId') orderId: string) {
+    this.logger.log(`Getting payment by orderId: ${orderId}`);
+    return this.paymentService.getPaymentByOrderId(orderId);
   }
 }

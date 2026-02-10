@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import type { BookingResponse } from '@/lib/api/bookingApi';
 import type { Game, GameTimeSlot } from '@/lib/api/gameApi';
 import { formatDate } from '@/lib/formatting';
@@ -30,8 +30,7 @@ export const BookingCompletePage: React.FC = () => {
   const bookingState = location.state as BookingCompleteState;
 
   if (!bookingState) {
-    navigate('/bookings');
-    return null;
+    return <Navigate to="/bookings" replace />;
   }
 
   const { booking, game, timeSlot, date, playerCount, paymentMethod } = bookingState;

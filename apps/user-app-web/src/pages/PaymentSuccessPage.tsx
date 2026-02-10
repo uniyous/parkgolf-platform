@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useConfirmPaymentMutation } from '@/hooks/queries/payment';
+import { paymentApi } from '@/lib/api/paymentApi';
 import { showErrorToast } from '@/lib/toast';
 import { translateErrorMessage } from '@/types/common';
 import { CHECKOUT_STORAGE_KEY } from './CheckoutPage';
@@ -12,6 +13,7 @@ export const PaymentSuccessPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const confirmMutation = useConfirmPaymentMutation();
   const confirmedRef = useRef(false);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
 
   const paymentKey = searchParams.get('paymentKey') ?? '';
   const orderId = searchParams.get('orderId') ?? '';
@@ -37,18 +39,44 @@ export const PaymentSuccessPage: React.FC = () => {
     });
   }, [navigate]);
 
+  const checkPaymentStatus = useCallback(async () => {
+    if (!orderId) return;
+    setIsCheckingStatus(true);
+    try {
+      const payment = await paymentApi.getPaymentByOrderId(orderId);
+      if (payment.status === 'DONE') {
+        navigateToComplete();
+        return;
+      }
+      if (payment.status === 'IN_PROGRESS') {
+        // 아직 처리 중 — 잠시 후 다시 확인
+        await new Promise((r) => setTimeout(r, 2000));
+        const retry = await paymentApi.getPaymentByOrderId(orderId);
+        if (retry.status === 'DONE') {
+          navigateToComplete();
+          return;
+        }
+      }
+      // READY 또는 ABORTED — 진짜 실패
+    } catch {
+      // 조회 실패 — 에러 상태 유지
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  }, [orderId, navigateToComplete]);
+
   const handleConfirm = useCallback(() => {
     confirmMutation.mutate(
       { paymentKey, orderId, amount },
       {
         onSuccess: navigateToComplete,
-        onError: (error) => {
-          const rawMessage = error instanceof Error ? error.message : '결제 승인에 실패했습니다.';
-          showErrorToast('결제 승인 실패', translateErrorMessage(rawMessage));
+        onError: () => {
+          // confirm 실패 시 결제 상태 조회로 fallback
+          checkPaymentStatus();
         },
       },
     );
-  }, [paymentKey, orderId, amount, confirmMutation, navigateToComplete]);
+  }, [paymentKey, orderId, amount, confirmMutation, navigateToComplete, checkPaymentStatus]);
 
   useEffect(() => {
     if (!paymentKey || !orderId || !amount) return;
@@ -58,7 +86,9 @@ export const PaymentSuccessPage: React.FC = () => {
     handleConfirm();
   }, [paymentKey, orderId, amount, handleConfirm]);
 
-  if (confirmMutation.isError) {
+  const isLoading = confirmMutation.isPending || isCheckingStatus;
+
+  if (confirmMutation.isError && !isCheckingStatus) {
     return (
       <div className="min-h-screen bg-[var(--color-bg-primary)]">
         <SubPageHeader title="결제 승인" onBack={false} />
@@ -103,7 +133,9 @@ export const PaymentSuccessPage: React.FC = () => {
     <div className="min-h-screen bg-[var(--color-bg-primary)] flex items-center justify-center">
       <div className="text-center">
         <div className="w-16 h-16 border-4 border-green-400/40 border-t-green-400 rounded-full animate-spin mx-auto mb-6" />
-        <p className="text-white/80 text-lg">결제를 확인하고 있습니다...</p>
+        <p className="text-white/80 text-lg">
+          {isLoading ? '결제를 확인하고 있습니다...' : '처리 중...'}
+        </p>
       </div>
     </div>
   );

@@ -27,6 +27,15 @@ export interface ConfirmPaymentResponse {
   status: string;
 }
 
+export interface PaymentStatusResponse {
+  id: number;
+  orderId: string;
+  paymentKey: string | null;
+  amount: number;
+  status: string;
+  bookingId: number | null;
+}
+
 export const paymentApi = {
   preparePayment: async (data: PreparePaymentRequest): Promise<PreparePaymentResponse> => {
     const response = await apiClient.post<BffResponse<PreparePaymentResponse>>(
@@ -40,6 +49,13 @@ export const paymentApi = {
     const response = await apiClient.post<BffResponse<ConfirmPaymentResponse>>(
       '/api/user/payments/confirm',
       data,
+    );
+    return unwrapResponse(response.data);
+  },
+
+  getPaymentByOrderId: async (orderId: string): Promise<PaymentStatusResponse> => {
+    const response = await apiClient.get<BffResponse<PaymentStatusResponse>>(
+      `/api/user/payments/order/${orderId}`,
     );
     return unwrapResponse(response.data);
   },
