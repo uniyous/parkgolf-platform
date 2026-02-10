@@ -74,7 +74,24 @@ export const MyBookingsPage: React.FC = () => {
 
   return (
     <AppLayout title="예약 내역" headerRight={headerRight}>
-      <Container className="py-4 md:py-6">
+      <Container className="py-4 md:py-6 space-y-4">
+        {/* Title Card */}
+        <GlassCard>
+          <div className="flex items-center gap-3">
+            <Calendar className="w-6 h-6 text-[var(--color-primary)]" />
+            <div>
+              <h3 className="font-semibold text-white">
+                {timeFilter === 'upcoming' ? '예정된 예약' : '지난 예약'}
+              </h3>
+              <p className="text-sm text-[var(--color-text-muted)]">
+                {timeFilter === 'upcoming'
+                  ? '다가오는 라운드 일정을 확인하세요'
+                  : '지난 라운드 기록을 확인하세요'}
+              </p>
+            </div>
+          </div>
+        </GlassCard>
+
         {/* Loading */}
         {isLoading && (
           <div className="space-y-4">
