@@ -203,6 +203,49 @@ export class PaymentService {
   }
 
   /**
+   * bookingId 기반 결제 취소 (예약 취소 시 자동 환불)
+   * 멱등성 보장: payment 없음/이미 취소됨/상태 불일치 시 skip 반환
+   */
+  async cancelPaymentByBookingId(data: { bookingId: number; cancelReason: string }) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { bookingId: data.bookingId },
+    });
+
+    // 멱등성: payment 없음 → skip
+    if (!payment) {
+      this.logger.warn(`No payment found for bookingId=${data.bookingId}, skipping refund`);
+      return { skipped: true, reason: 'Payment not found' };
+    }
+
+    // 멱등성: 이미 취소됨 → skip
+    if (payment.status === PaymentStatus.CANCELED || payment.status === PaymentStatus.PARTIAL_CANCELED) {
+      this.logger.warn(`Payment for bookingId=${data.bookingId} already canceled (status=${payment.status}), skipping`);
+      return { skipped: true, reason: 'Already canceled' };
+    }
+
+    // 멱등성: DONE이 아님 → skip
+    if (payment.status !== PaymentStatus.DONE) {
+      this.logger.warn(`Payment for bookingId=${data.bookingId} not in DONE status (status=${payment.status}), skipping refund`);
+      return { skipped: true, reason: `Invalid status: ${payment.status}` };
+    }
+
+    // paymentKey 필수 확인
+    if (!payment.paymentKey) {
+      this.logger.error(`Payment for bookingId=${data.bookingId} has no paymentKey, cannot cancel`);
+      return { skipped: true, reason: 'No paymentKey' };
+    }
+
+    // 기존 cancelPayment 재사용
+    const result = await this.cancelPayment({
+      paymentKey: payment.paymentKey,
+      cancelReason: data.cancelReason,
+    });
+
+    this.logger.log(`Payment canceled for bookingId=${data.bookingId}, paymentKey=${payment.paymentKey}`);
+    return result;
+  }
+
+  /**
    * 빌링키 발급
    */
   async issueBillingKey(dto: IssueBillingKeyDto) {

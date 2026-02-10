@@ -461,6 +461,68 @@ export class SagaHandlerService {
   }
 
   /**
+   * 결제 취소(환불) 완료 처리
+   * payment-service에서 booking.paymentCanceled 이벤트 수신 시 호출
+   * BookingHistory에 REFUND_COMPLETED 기록 + 환불 알림 발행
+   */
+  async handlePaymentCanceled(data: {
+    paymentId: number;
+    paymentKey: string;
+    cancelAmount: number;
+    bookingId: number;
+    userId: number;
+  }): Promise<void> {
+    this.logger.log(`[SagaHandler] ========== PAYMENT_CANCELED EVENT RECEIVED ==========`);
+    this.logger.log(`[SagaHandler] bookingId=${data.bookingId}, paymentId=${data.paymentId}, cancelAmount=${data.cancelAmount}`);
+
+    try {
+      const booking = await this.prisma.booking.findUnique({
+        where: { id: data.bookingId },
+      });
+
+      if (!booking) {
+        this.logger.error(`[SagaHandler] Booking ${data.bookingId} NOT FOUND for payment.canceled event`);
+        return;
+      }
+
+      // BookingHistory에 환불 완료 기록
+      await this.prisma.bookingHistory.create({
+        data: {
+          bookingId: data.bookingId,
+          action: 'REFUND_COMPLETED',
+          userId: booking.userId,
+          details: {
+            paymentId: data.paymentId,
+            paymentKey: data.paymentKey,
+            cancelAmount: data.cancelAmount,
+            refundedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      // 환불 완료 알림 발행
+      if (this.notificationPublisher) {
+        this.notificationPublisher.emit('booking.refundCompleted', {
+          bookingId: booking.id,
+          bookingNumber: booking.bookingNumber,
+          userId: booking.userId,
+          cancelAmount: data.cancelAmount,
+          refundedAt: new Date().toISOString(),
+          userEmail: booking.userEmail,
+          userName: booking.userName,
+        });
+        this.logger.log(`[SagaHandler] 'booking.refundCompleted' event emitted for booking ${booking.bookingNumber}`);
+      }
+
+      this.logger.log(`[SagaHandler] Booking ${data.bookingId} REFUND_COMPLETED recorded`);
+      this.logger.log(`[SagaHandler] ========== PAYMENT_CANCELED EVENT COMPLETED ==========`);
+    } catch (error) {
+      this.logger.error(`[SagaHandler] FAILED to handle payment.canceled for booking ${data.bookingId}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
    * 예약 취소 시 슬롯 해제 처리
    */
   async handleBookingCancelled(data: {

@@ -1,7 +1,7 @@
 import { Controller, Logger } from '@nestjs/common';
 import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
 import { SagaHandlerService } from '../service/saga-handler.service';
-import { SlotReservedEvent, SlotReserveFailedEvent, PaymentConfirmedEvent } from '../dto/booking.dto';
+import { SlotReservedEvent, SlotReserveFailedEvent, PaymentConfirmedEvent, PaymentCanceledEvent } from '../dto/booking.dto';
 
 /**
  * Saga 이벤트 핸들러 컨트롤러
@@ -70,6 +70,24 @@ export class BookingSagaController {
     } catch (error) {
       this.logger.error(`NATS: Error processing booking.paymentConfirmed: ${error.message}`, error.stack);
       return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 결제 취소(환불) 완료 이벤트 핸들러
+   * payment-service에서 환불이 완료되면 이 이벤트를 발행함
+   * BookingHistory에 REFUND_COMPLETED 기록 + 환불 알림 발행
+   */
+  @EventPattern('booking.paymentCanceled')
+  async handlePaymentCanceled(@Payload() data: PaymentCanceledEvent) {
+    this.logger.log(`NATS: Received booking.paymentCanceled for booking ${data.bookingId}`);
+    this.logger.debug(`NATS: booking.paymentCanceled payload: ${JSON.stringify(data)}`);
+
+    try {
+      await this.sagaHandler.handlePaymentCanceled(data);
+      this.logger.log(`NATS: Successfully processed booking.paymentCanceled for booking ${data.bookingId}`);
+    } catch (error) {
+      this.logger.error(`NATS: Error processing booking.paymentCanceled: ${error.message}`, error.stack);
     }
   }
 

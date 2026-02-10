@@ -630,6 +630,22 @@ export class BookingService {
         }
       });
 
+      // 카드결제인 경우 환불 OutboxEvent 생성
+      if (existingBooking.paymentMethod === 'card') {
+        await prisma.outboxEvent.create({
+          data: {
+            aggregateType: 'Booking',
+            aggregateId: String(existingBooking.id),
+            eventType: 'payment.cancelByBookingId',
+            payload: {
+              bookingId: existingBooking.id,
+              cancelReason: reason || 'User requested cancellation',
+            } as any,
+            status: OutboxStatus.PENDING,
+          },
+        });
+      }
+
       return cancelledBooking;
     });
 
@@ -657,6 +673,11 @@ export class BookingService {
         userName: booking.userName,
       });
       this.logger.log(`'booking.cancelled' event emitted for booking ${booking.bookingNumber}`);
+    }
+
+    // 카드결제 환불 Outbox 즉시 처리 트리거
+    if (booking.paymentMethod === 'card') {
+      setImmediate(() => this.outboxProcessor.triggerImmediate());
     }
 
     return BookingResponseDto.fromEntity(booking);
@@ -717,8 +738,29 @@ export class BookingService {
         }
       });
 
+      // 카드결제인 경우 환불 OutboxEvent 생성
+      if (existingBooking.paymentMethod === 'card') {
+        await prisma.outboxEvent.create({
+          data: {
+            aggregateType: 'Booking',
+            aggregateId: String(existingBooking.id),
+            eventType: 'payment.cancelByBookingId',
+            payload: {
+              bookingId: existingBooking.id,
+              cancelReason: reason || 'Admin cancelled',
+            } as any,
+            status: OutboxStatus.PENDING,
+          },
+        });
+      }
+
       return cancelledBooking;
     });
+
+    // 카드결제 환불 Outbox 즉시 처리 트리거
+    if (booking.paymentMethod === 'card') {
+      setImmediate(() => this.outboxProcessor.triggerImmediate());
+    }
 
     return BookingResponseDto.fromEntity(booking);
   }

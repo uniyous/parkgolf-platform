@@ -496,6 +496,15 @@ export interface PaymentConfirmedEvent {
   userId: number;
 }
 
+// payment-service → booking-service: 결제 취소(환불) 완료
+export interface PaymentCanceledEvent {
+  paymentId: number;
+  paymentKey: string;
+  cancelAmount: number;
+  bookingId: number;
+  userId: number;
+}
+
 // booking-service → course-service: 슬롯 해제 요청
 export interface SlotReleaseRequest {
   bookingId: number;

@@ -54,6 +54,16 @@ export class PaymentNatsController {
   }
 
   /**
+   * bookingId 기반 결제 취소 (예약 취소 시 자동 환불)
+   */
+  @MessagePattern('payment.cancelByBookingId')
+  async cancelPaymentByBookingId(@Payload() data: { bookingId: number; cancelReason: string }) {
+    this.logger.log(`Canceling payment for bookingId: ${data.bookingId}`);
+    const result = await this.paymentService.cancelPaymentByBookingId(data);
+    return NatsResponse.success(result);
+  }
+
+  /**
    * 결제 조회 (paymentKey)
    */
   @MessagePattern('payment.get')
