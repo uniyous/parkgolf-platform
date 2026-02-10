@@ -314,7 +314,6 @@ jobs:
             --from-literal=KMA_API_KEY='${{ secrets.KMA_API_KEY }}' \
             --from-literal=KAKAO_REST_API_KEY='${{ secrets.KAKAO_REST_API_KEY }}' \
             --from-literal=TOSS_SECRET_KEY='${{ secrets.TOSS_SECRET_KEY }}' \
-            --from-literal=TOSS_WEBHOOK_SECRET='${{ secrets.TOSS_WEBHOOK_SECRET }}' \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Create ConfigMap
@@ -670,7 +669,6 @@ jobs:
             --from-literal=KMA_API_KEY='${{ secrets.KMA_API_KEY }}' \
             --from-literal=KAKAO_REST_API_KEY='${{ secrets.KAKAO_REST_API_KEY }}' \
             --from-literal=TOSS_SECRET_KEY='${{ secrets.TOSS_SECRET_KEY }}' \
-            --from-literal=TOSS_WEBHOOK_SECRET='${{ secrets.TOSS_WEBHOOK_SECRET }}' \
             --dry-run=client -o yaml | kubectl apply -f -
           echo "Secrets updated"
 

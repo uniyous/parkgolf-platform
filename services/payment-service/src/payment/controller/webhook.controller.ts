@@ -1,9 +1,7 @@
-import { Controller, Post, Body, Headers, Logger, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, Logger, HttpCode, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { PaymentService } from '../service/payment.service';
 import { PaymentStatus, RefundStatus, WebhookStatus, OutboxStatus } from '@prisma/client';
-import { ConfigService } from '@nestjs/config';
-import * as crypto from 'crypto';
 
 /**
  * 토스페이먼츠 웹훅 이벤트 타입
@@ -38,15 +36,11 @@ interface TossWebhookPayload {
 @Controller('webhook')
 export class WebhookController {
   private readonly logger = new Logger(WebhookController.name);
-  private readonly webhookSecret: string;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly paymentService: PaymentService,
-    private readonly configService: ConfigService,
-  ) {
-    this.webhookSecret = this.configService.get<string>('TOSS_WEBHOOK_SECRET') || '';
-  }
+  ) {}
 
   /**
    * 토스페이먼츠 웹훅 수신
@@ -56,7 +50,6 @@ export class WebhookController {
   @HttpCode(HttpStatus.OK)
   async handleTossWebhook(
     @Body() payload: TossWebhookPayload,
-    @Headers('toss-signature') signature: string,
   ) {
     this.logger.log(`Received webhook: ${payload.eventType} for ${payload.data.orderId}`);
 
@@ -70,20 +63,10 @@ export class WebhookController {
     });
 
     try {
-      // 2. 서명 검증 (프로덕션 환경에서만)
-      if (this.webhookSecret && signature) {
-        const isValid = this.verifySignature(payload, signature);
-        if (!isValid) {
-          await this.updateWebhookLog(webhookLog.id, WebhookStatus.FAILED, '서명 검증 실패');
-          this.logger.warn(`Invalid webhook signature for ${payload.data.orderId}`);
-          return { success: false, message: 'Invalid signature' };
-        }
-      }
-
-      // 3. 이벤트 타입별 처리
+      // 2. 이벤트 타입별 처리
       await this.processWebhookEvent(payload);
 
-      // 4. 웹훅 처리 성공
+      // 3. 웹훅 처리 성공
       await this.updateWebhookLog(webhookLog.id, WebhookStatus.PROCESSED);
 
       return { success: true };
@@ -234,24 +217,6 @@ export class WebhookController {
     }
 
     this.logger.log(`Cancel status updated: ${data.orderId}`);
-  }
-
-  /**
-   * 서명 검증
-   */
-  private verifySignature(payload: TossWebhookPayload, signature: string): boolean {
-    try {
-      const payloadString = JSON.stringify(payload);
-      const expectedSignature = crypto
-        .createHmac('sha256', this.webhookSecret)
-        .update(payloadString)
-        .digest('base64');
-
-      return signature === expectedSignature;
-    } catch (error) {
-      this.logger.error('Signature verification error', error);
-      return false;
-    }
   }
 
   /**
