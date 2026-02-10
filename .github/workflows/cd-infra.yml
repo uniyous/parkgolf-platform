@@ -313,6 +313,8 @@ jobs:
             --from-literal=JWT_REFRESH_SECRET='${{ secrets.JWT_REFRESH_SECRET }}' \
             --from-literal=KMA_API_KEY='${{ secrets.KMA_API_KEY }}' \
             --from-literal=KAKAO_REST_API_KEY='${{ secrets.KAKAO_REST_API_KEY }}' \
+            --from-literal=TOSS_SECRET_KEY='${{ secrets.TOSS_SECRET_KEY }}' \
+            --from-literal=TOSS_WEBHOOK_SECRET='${{ secrets.TOSS_WEBHOOK_SECRET }}' \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Create ConfigMap
@@ -329,6 +331,7 @@ jobs:
             DB_HOST: "postgres"
             DB_PORT: "5432"
             KMA_API_URL: "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0"
+            TOSS_API_URL: "https://api.tosspayments.com/v1"
           EOF
 
       - name: Deploy PostgreSQL
@@ -462,6 +465,7 @@ jobs:
               psql -h postgres -c 'CREATE DATABASE booking_db;' 2>/dev/null || echo 'booking_db exists'
               psql -h postgres -c 'CREATE DATABASE chat_db;' 2>/dev/null || echo 'chat_db exists'
               psql -h postgres -c 'CREATE DATABASE notify_db;' 2>/dev/null || echo 'notify_db exists'
+              psql -h postgres -c 'CREATE DATABASE payment_db;' 2>/dev/null || echo 'payment_db exists'
               echo 'Databases initialized'
             "
 
@@ -665,6 +669,8 @@ jobs:
             --from-literal=JWT_REFRESH_SECRET='${{ secrets.JWT_REFRESH_SECRET }}' \
             --from-literal=KMA_API_KEY='${{ secrets.KMA_API_KEY }}' \
             --from-literal=KAKAO_REST_API_KEY='${{ secrets.KAKAO_REST_API_KEY }}' \
+            --from-literal=TOSS_SECRET_KEY='${{ secrets.TOSS_SECRET_KEY }}' \
+            --from-literal=TOSS_WEBHOOK_SECRET='${{ secrets.TOSS_WEBHOOK_SECRET }}' \
             --dry-run=client -o yaml | kubectl apply -f -
           echo "Secrets updated"
 
@@ -682,6 +688,7 @@ jobs:
             DB_HOST: "postgres"
             DB_PORT: "5432"
             KMA_API_URL: "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0"
+            TOSS_API_URL: "https://api.tosspayments.com/v1"
           EOF
           echo "ConfigMap updated"
 
