@@ -15,6 +15,9 @@ import {
   SocialPage,
   ChatRoomPage,
   ChangePasswordPage,
+  CheckoutPage,
+  PaymentSuccessPage,
+  PaymentFailPage,
 } from './pages';
 import { NotificationsPage } from './pages/NotificationsPage';
 
@@ -45,6 +48,9 @@ function App() {
             <Route path="/booking/:bookingNumber" element={<BookingViewPage />} />
             <Route path="/booking-detail" element={<BookingDetailPage />} />
             <Route path="/booking-complete" element={<BookingCompletePage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/payment/success" element={<PaymentSuccessPage />} />
+            <Route path="/payment/fail" element={<PaymentFailPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/social" element={<SocialPage />} />
             <Route path="/friends" element={<Navigate to="/social" replace />} />

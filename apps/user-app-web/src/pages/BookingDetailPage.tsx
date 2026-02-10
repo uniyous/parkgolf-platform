@@ -9,6 +9,7 @@ import { translateErrorMessage } from '@/types/common';
 import { Button, Checkbox, PriceDisplay } from '../components';
 import { Container, SubPageHeader } from '@/components/layout';
 import { SIMPLE_PAYMENT_METHODS } from '@/lib/constants';
+import { usePreparePaymentMutation } from '@/hooks/queries/payment';
 
 interface BookingState {
   game: Game;
@@ -19,6 +20,7 @@ interface BookingState {
 export const BookingDetailPage: React.FC = () => {
   const { user } = useAuth();
   const { createBooking, isCreating } = useBooking();
+  const preparePaymentMutation = usePreparePaymentMutation();
   const location = useLocation();
   const navigate = useNavigate();
   const bookingState = location.state as BookingState;
@@ -51,6 +53,8 @@ export const BookingDetailPage: React.FC = () => {
 
   const canProceed = selectedPaymentMethod && agreeToTerms;
 
+  const isProcessing = isCreating || preparePaymentMutation.isPending;
+
   const handlePayment = async () => {
     if (!canProceed || !user) return;
 
@@ -68,10 +72,20 @@ export const BookingDetailPage: React.FC = () => {
 
       const result = await createBooking(bookingData);
 
-      if (result.success) {
+      if (!result.success || !result.data) {
+        const rawMessage = result.error instanceof Error
+          ? result.error.message
+          : '알 수 없는 오류가 발생했습니다.';
+        showErrorToast('예약 생성에 실패했습니다', translateErrorMessage(rawMessage));
+        return;
+      }
+
+      const booking = result.data;
+
+      if (selectedPaymentMethod === 'onsite') {
         navigate('/booking-complete', {
           state: {
-            booking: result.data,
+            booking,
             game,
             timeSlot,
             date,
@@ -80,19 +94,32 @@ export const BookingDetailPage: React.FC = () => {
           }
         });
       } else {
-        const rawMessage = result.error instanceof Error
-          ? result.error.message
-          : '알 수 없는 오류가 발생했습니다.';
-        const errorMessage = translateErrorMessage(rawMessage);
-        showErrorToast('예약 생성에 실패했습니다', errorMessage);
+        const orderName = `${game.clubName || game.name} - ${playerCount}명`;
+        const prepareResult = await preparePaymentMutation.mutateAsync({
+          amount: totalPrice,
+          orderName,
+          bookingId: booking.id,
+        });
+
+        navigate('/checkout', {
+          state: {
+            orderId: prepareResult.orderId,
+            amount: prepareResult.amount,
+            orderName: prepareResult.orderName,
+            booking,
+            game,
+            timeSlot,
+            date,
+            playerCount,
+          },
+        });
       }
     } catch (error) {
-      console.error('Booking failed:', error);
+      console.error('Booking/Payment failed:', error);
       const rawMessage = error instanceof Error
         ? error.message
         : '알 수 없는 오류가 발생했습니다.';
-      const errorMessage = translateErrorMessage(rawMessage);
-      showErrorToast('예약 생성에 실패했습니다', errorMessage);
+      showErrorToast('처리에 실패했습니다', translateErrorMessage(rawMessage));
     }
   };
 
@@ -194,17 +221,17 @@ export const BookingDetailPage: React.FC = () => {
           {/* 결제 버튼 */}
           <Button
             onClick={handlePayment}
-            disabled={!canProceed || isCreating}
-            loading={isCreating}
+            disabled={!canProceed || isProcessing}
+            loading={isProcessing}
             variant="glass"
             size="lg"
             className={`w-full h-16 text-xl rounded-2xl ${
-              canProceed && !isCreating
+              canProceed && !isProcessing
                 ? '!bg-white/90 hover:!bg-white !text-slate-800'
                 : '!bg-white/20 !text-white/50 cursor-not-allowed'
             }`}
           >
-            {isCreating ? '결제 처리 중...' : canProceed
+            {isProcessing ? '처리 중...' : canProceed
               ? `${new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(totalPrice)} 예약하기`
               : '필수 항목을 완료해주세요'
             }

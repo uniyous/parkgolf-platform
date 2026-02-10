@@ -241,6 +241,22 @@ export class NatsClientService implements OnModuleInit {
         if (code === 'SYS_004') return HttpStatus.TOO_MANY_REQUESTS;
         return HttpStatus.INTERNAL_SERVER_ERROR;
 
+      case 'PAY':
+        // PAY_001: NOT_FOUND(404), PAY_002~011: BAD_REQUEST(400)
+        if (code === 'PAY_001') return HttpStatus.NOT_FOUND;
+        return HttpStatus.BAD_REQUEST;
+
+      case 'REFUND':
+        // REFUND_001: NOT_FOUND(404)
+        if (code === 'REFUND_001') return HttpStatus.NOT_FOUND;
+        return HttpStatus.BAD_REQUEST;
+
+      case 'BILLING':
+        // BILLING_001: NOT_FOUND(404), BILLING_003: CONFLICT(409)
+        if (code === 'BILLING_001') return HttpStatus.NOT_FOUND;
+        if (code === 'BILLING_003') return HttpStatus.CONFLICT;
+        return HttpStatus.BAD_REQUEST;
+
       default:
         break;
     }
