@@ -331,7 +331,7 @@ jobs:
             DB_HOST: "postgres"
             DB_PORT: "5432"
             KMA_API_URL: "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0"
-            TOSS_API_URL: "https://api.tosspayments.com/v2"
+            TOSS_API_URL: "https://api.tosspayments.com/v1"
           EOF
 
       - name: Deploy PostgreSQL
@@ -688,7 +688,7 @@ jobs:
             DB_HOST: "postgres"
             DB_PORT: "5432"
             KMA_API_URL: "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0"
-            TOSS_API_URL: "https://api.tosspayments.com/v2"
+            TOSS_API_URL: "https://api.tosspayments.com/v1"
           EOF
           echo "ConfigMap updated"
 

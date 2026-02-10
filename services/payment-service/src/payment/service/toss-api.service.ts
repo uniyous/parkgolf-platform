@@ -100,7 +100,7 @@ export class TossApiService {
     private readonly configService: ConfigService,
     private readonly httpService: HttpService,
   ) {
-    this.baseUrl = this.configService.get<string>('TOSS_API_URL') || 'https://api.tosspayments.com/v2';
+    this.baseUrl = this.configService.get<string>('TOSS_API_URL') || 'https://api.tosspayments.com/v1';
     this.secretKey = this.configService.get<string>('TOSS_SECRET_KEY') || '';
   }
 
