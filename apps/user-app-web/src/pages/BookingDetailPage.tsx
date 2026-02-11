@@ -87,6 +87,29 @@ export const BookingDetailPage: React.FC = () => {
     if (!canProceed || !user) return;
 
     try {
+      // 카드결제 재시도: 이전 결제 시도에서 돌아온 경우 기존 예약으로 재시도
+      if (selectedPaymentMethod === 'card') {
+        const existingRaw = sessionStorage.getItem(PAYMENT_CONTEXT_STORAGE_KEY);
+        if (existingRaw) {
+          try {
+            const ctx: PaymentSessionContext = JSON.parse(existingRaw);
+            if (ctx.booking && ctx.orderId &&
+                ctx.game?.id === game.id && ctx.timeSlot?.id === timeSlot.id) {
+              await tossRef.current!.requestPayment('카드', {
+                amount: ctx.amount,
+                orderId: ctx.orderId,
+                orderName: ctx.orderName,
+                successUrl: `${window.location.origin}/booking-complete`,
+                failUrl: `${window.location.origin}/booking-complete`,
+              });
+              return;
+            }
+          } catch {
+            sessionStorage.removeItem(PAYMENT_CONTEXT_STORAGE_KEY);
+          }
+        }
+      }
+
       const bookingData = {
         gameId: game.id,
         gameTimeSlotId: timeSlot.id,

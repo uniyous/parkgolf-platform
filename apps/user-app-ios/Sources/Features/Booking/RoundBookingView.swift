@@ -339,31 +339,37 @@ struct FilterChip: View {
     }
 }
 
-// MARK: - Round Card View (시니어 UI: 단순화, 세로 리스트)
+// MARK: - Round Card View
 
 struct RoundCardView: View {
     let round: Round
     let onSelectTimeSlot: (TimeSlot) -> Void
 
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var showAllSlots = false
 
     private var displayedSlots: [TimeSlot] {
         guard let slots = round.timeSlots else { return [] }
-        return showAllSlots ? slots : Array(slots.prefix(5))  // 5개로 축소
+        return showAllSlots ? slots : Array(slots.prefix(6))
     }
 
     private var hasMoreSlots: Bool {
-        (round.timeSlots?.count ?? 0) > 5
+        (round.timeSlots?.count ?? 0) > 6
     }
 
     private var pricePerPerson: Int {
         round.pricePerPerson ?? round.basePrice
     }
 
+    private var gridColumns: [GridItem] {
+        let count = sizeClass == .regular ? 4 : 2
+        return Array(repeating: GridItem(.flexible(), spacing: ParkSpacing.xs), count: count)
+    }
+
     var body: some View {
         GlassCard(padding: 0) {
             VStack(alignment: .leading, spacing: 0) {
-                // Round Info (시니어 UI: 단순화)
+                // Round Info
                 VStack(alignment: .leading, spacing: ParkSpacing.xs) {
                     Text(round.clubName)
                         .font(.parkHeadlineLarge)
@@ -380,22 +386,23 @@ struct RoundCardView: View {
                 }
                 .padding(ParkSpacing.md)
 
-                // Time Slots (시니어 UI: 세로 리스트)
+                // Time Slots Grid
                 if !displayedSlots.isEmpty {
                     Divider()
                         .background(Color.white.opacity(0.2))
 
-                    VStack(spacing: ParkSpacing.xs) {
+                    VStack(spacing: ParkSpacing.sm) {
                         Text("예약 가능 시간")
                             .font(.parkBodyLarge)
                             .fontWeight(.semibold)
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.bottom, ParkSpacing.xs)
 
-                        ForEach(displayedSlots, id: \.id) { slot in
-                            SeniorTimeSlotRow(slot: slot) {
-                                onSelectTimeSlot(slot)
+                        LazyVGrid(columns: gridColumns, spacing: ParkSpacing.xs) {
+                            ForEach(displayedSlots, id: \.id) { slot in
+                                TimeSlotGridCell(slot: slot) {
+                                    onSelectTimeSlot(slot)
+                                }
                             }
                         }
 
@@ -408,7 +415,7 @@ struct RoundCardView: View {
                                 Text("전체 \(round.timeSlots?.count ?? 0)개 시간 보기 ▼")
                                     .font(.parkBodyMedium)
                                     .foregroundStyle(.white.opacity(0.7))
-                                    .padding(.top, ParkSpacing.xs)
+                                    .padding(.top, ParkSpacing.xxs)
                             }
                         }
                     }
@@ -420,9 +427,9 @@ struct RoundCardView: View {
     }
 }
 
-// MARK: - Senior Time Slot Row (시니어 UI: 큰 터치 영역, 세로 리스트)
+// MARK: - Time Slot Grid Cell (2열 모바일 / 4열 데스크탑)
 
-struct SeniorTimeSlotRow: View {
+struct TimeSlotGridCell: View {
     let slot: TimeSlot
     let action: () -> Void
 
@@ -432,39 +439,46 @@ struct SeniorTimeSlotRow: View {
         } else if slot.availableSlots <= 2 {
             return "마감임박"
         }
-        return "\(slot.availableSlots)자리 남음"
+        return "\(slot.availableSlots)자리"
     }
 
     private var availabilityColor: Color {
-        if slot.availableSlots <= 2 {
+        if slot.availableSlots == 0 {
+            return .white.opacity(0.4)
+        } else if slot.availableSlots <= 2 {
             return .parkError
         }
-        return .parkSuccess
+        return Color(red: 0.4, green: 0.85, blue: 1.0) // 밝은 스카이블루
     }
 
     var body: some View {
         Button(action: action) {
-            HStack {
+            VStack(spacing: ParkSpacing.xxs) {
+                // Time
                 Text(slot.startTime)
-                    .font(.parkBodyLarge)
-                    .fontWeight(.semibold)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                Spacer()
+                // Price
+                Text("\(slot.price.formatted())원")
+                    .font(.parkLabelLarge)
+                    .foregroundStyle(.white.opacity(0.7))
 
+                // Availability
                 Text(availabilityText)
-                    .font(.parkBodyLarge)
+                    .font(.parkLabelMedium)
+                    .fontWeight(.semibold)
                     .foregroundStyle(availabilityColor)
             }
-            .padding(.horizontal, ParkSpacing.md)
-            .frame(height: 56)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, ParkSpacing.sm)
             .background(
                 RoundedRectangle(cornerRadius: ParkRadius.md)
-                    .fill(slot.isPremium ? Color.parkAccent.opacity(0.2) : Color.white.opacity(0.1))
+                    .fill(slot.isPremium ? Color.parkAccent.opacity(0.15) : Color.white.opacity(0.08))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: ParkRadius.md)
-                    .stroke(slot.isPremium ? Color.parkAccent.opacity(0.5) : Color.white.opacity(0.3), lineWidth: 1)
+                    .stroke(slot.isPremium ? Color.parkAccent.opacity(0.4) : Color.white.opacity(0.2), lineWidth: 1)
             )
         }
         .disabled(slot.availableSlots == 0)

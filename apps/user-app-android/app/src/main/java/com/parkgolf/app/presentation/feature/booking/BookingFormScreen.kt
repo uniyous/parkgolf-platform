@@ -49,6 +49,7 @@ fun BookingFormScreen(
     gameId: Int,
     timeSlotId: Int = 0,
     date: String = "",
+    startTime: String = "",
     onNavigateBack: () -> Unit,
     onBookingComplete: (String) -> Unit,
     viewModel: BookingFormViewModel = hiltViewModel()
@@ -80,7 +81,7 @@ fun BookingFormScreen(
     }
 
     LaunchedEffect(gameId) {
-        viewModel.loadRoundForBooking(gameId, timeSlotId, date)
+        viewModel.loadRoundForBooking(gameId, timeSlotId, date, startTime)
     }
 
     LaunchedEffect(uiState.showPaymentActivity) {
@@ -176,6 +177,7 @@ fun BookingFormScreen(
                                 // 결제 방법
                                 PaymentMethodSection(
                                     selectedMethod = uiState.paymentMethod,
+                                    totalPrice = uiState.totalPrice,
                                     onMethodChange = { viewModel.updatePaymentMethod(it) }
                                 )
 
@@ -185,7 +187,7 @@ fun BookingFormScreen(
                                 PriceSection(
                                     totalPrice = uiState.totalPrice,
                                     playerCount = uiState.playerCount,
-                                    pricePerPerson = uiState.selectedTimeSlot?.price ?: uiState.round?.pricePerPerson ?: 0
+                                    pricePerPerson = uiState.selectedTimeSlot?.price ?: uiState.round?.pricePerPerson ?: uiState.round?.basePrice ?: 0
                                 )
 
                                 SectionDivider()
@@ -276,9 +278,10 @@ private fun BookingInfoSection(uiState: BookingFormUiState) {
             )
         }
 
-        uiState.selectedTimeSlot?.let { slot ->
+        val displayTime = uiState.selectedTimeSlot?.startTime ?: uiState.selectedStartTime
+        if (displayTime.isNotBlank()) {
             Text(
-                text = "🕐 ${slot.startTime}",
+                text = "🕐 $displayTime",
                 fontSize = 16.sp,
                 color = TextOnGradient.copy(alpha = 0.9f)
             )
@@ -352,6 +355,7 @@ private fun PlayerCountButton(
 @Composable
 private fun PaymentMethodSection(
     selectedMethod: String,
+    totalPrice: Int,
     onMethodChange: (String) -> Unit
 ) {
     Column(
@@ -370,9 +374,11 @@ private fun PaymentMethodSection(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             SIMPLE_PAYMENT_METHODS.forEach { method ->
+                val isCardDisabled = method.id == "card" && totalPrice <= 0
                 PaymentMethodButton(
                     method = method,
                     isSelected = selectedMethod == method.id,
+                    isDisabled = isCardDisabled,
                     onClick = { onMethodChange(method.id) },
                     modifier = Modifier.weight(1f)
                 )
@@ -385,6 +391,7 @@ private fun PaymentMethodSection(
 private fun PaymentMethodButton(
     method: PaymentMethodOption,
     isSelected: Boolean,
+    isDisabled: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -393,9 +400,13 @@ private fun PaymentMethodButton(
             .height(80.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(
-                if (isSelected) ParkSuccess.copy(alpha = 0.3f) else GlassBackground
+                when {
+                    isDisabled -> Color.White.copy(alpha = 0.05f)
+                    isSelected -> ParkSuccess.copy(alpha = 0.3f)
+                    else -> GlassBackground
+                }
             )
-            .clickable { onClick() },
+            .clickable(enabled = !isDisabled) { onClick() },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -408,8 +419,19 @@ private fun PaymentMethodButton(
             text = method.name,
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,
-            color = if (isSelected) ParkSuccess else TextOnGradientSecondary
+            color = when {
+                isDisabled -> Color.White.copy(alpha = 0.3f)
+                isSelected -> ParkSuccess
+                else -> TextOnGradientSecondary
+            }
         )
+        if (isDisabled) {
+            Text(
+                text = "무료 게임은 현장결제만 가능",
+                fontSize = 10.sp,
+                color = Color.White.copy(alpha = 0.4f)
+            )
+        }
     }
 }
 

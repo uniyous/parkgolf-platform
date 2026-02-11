@@ -53,6 +53,7 @@ let project = Project(
                 .external(name: "Alamofire"),
                 .external(name: "KeychainAccess"),
                 .external(name: "SocketIO"),
+                .external(name: "TossPayments"),
             ],
             settings: .settings(
                 base: [

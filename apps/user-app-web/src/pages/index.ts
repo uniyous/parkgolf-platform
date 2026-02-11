@@ -12,4 +12,5 @@ export { FriendsPage } from './FriendsPage';
 export { ChatPage } from './ChatPage';
 export { ChatRoomPage } from './ChatRoomPage';
 export { ChangePasswordPage } from './ChangePasswordPage';
+export { EditProfilePage } from './EditProfilePage';
 export { NotificationSettingsPage } from './NotificationSettingsPage';

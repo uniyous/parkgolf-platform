@@ -25,7 +25,12 @@
 
         <activity
             android:name=".presentation.feature.payment.PaymentActivity"
-            android:theme="@style/Theme.ParkGolf" />
+            android:theme="@style/Theme.ParkGolf.AppCompat" />
+
+        <activity
+            android:name="com.tosspayments.paymentsdk.activity.TossPaymentActivity"
+            android:theme="@style/Theme.ParkGolf.AppCompat"
+            tools:replace="android:theme" />
 
         <activity
             android:name=".MainActivity"

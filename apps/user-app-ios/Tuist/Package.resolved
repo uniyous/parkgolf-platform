@@ -1,5 +1,5 @@
 {
-  "originHash" : "00ad2c2a5948fff8c87f7997024b6859417ddac7dd325ec8b00786542a488229",
+  "originHash" : "126b16f3c6c39f317507f069a9f95cfbcb1446a034d4bf3d6b02c4e263a4b15d",
   "pins" : [
     {
       "identity" : "alamofire",
@@ -17,6 +17,15 @@
       "state" : {
         "revision" : "84e546727d66f1adc5439debad16270d0fdd04e7",
         "version" : "4.2.2"
+      }
+    },
+    {
+      "identity" : "payment-sdk-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tosspayments/payment-sdk-ios",
+      "state" : {
+        "revision" : "27015a1d25c252134f3423b9665541d3903c1896",
+        "version" : "0.1.35"
       }
     },
     {

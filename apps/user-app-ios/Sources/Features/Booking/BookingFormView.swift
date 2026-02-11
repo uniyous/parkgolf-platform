@@ -68,9 +68,9 @@ struct BookingFormView: View {
                     Spacer()
 
                     GradientButton(
-                        title: viewModel.isLoading ? "처리 중..." : "₩\(viewModel.formatPrice(viewModel.totalPrice)) 예약하기",
-                        isLoading: viewModel.isLoading,
-                        isDisabled: !viewModel.canProceed
+                        title: (viewModel.isLoading || viewModel.isPaymentProcessing) ? "처리 중..." : "₩\(viewModel.formatPrice(viewModel.totalPrice)) 예약하기",
+                        isLoading: viewModel.isLoading || viewModel.isPaymentProcessing,
+                        isDisabled: !viewModel.canProceed || viewModel.isPaymentProcessing
                     ) {
                         viewModel.createBooking(user: appState.currentUser)
                     }
@@ -106,6 +106,21 @@ struct BookingFormView: View {
                 }
             } message: {
                 Text(viewModel.errorMessage ?? "")
+            }
+            .sheet(isPresented: $viewModel.showPaymentSheet) {
+                if let prepareData = viewModel.paymentPrepareData {
+                    TossPaymentView(
+                        clientKey: Configuration.Payment.tossClientKey,
+                        orderId: prepareData.orderId,
+                        orderName: prepareData.orderName,
+                        amount: prepareData.amount,
+                        onResult: { outcome in
+                            viewModel.showPaymentSheet = false
+                            viewModel.handlePaymentResult(outcome, user: appState.currentUser)
+                        },
+                        isPresented: $viewModel.showPaymentSheet
+                    )
+                }
             }
             .fullScreenCover(isPresented: $viewModel.showBookingComplete, onDismiss: {
                 if appState.bookingCompleteAction != .none {
@@ -203,8 +218,11 @@ struct BookingFormView: View {
 
             HStack(spacing: ParkSpacing.sm) {
                 ForEach([PaymentMethod.onsite, PaymentMethod.card], id: \.self) { method in
+                    let isCardDisabled = method == .card && viewModel.totalPrice <= 0
                     Button {
-                        viewModel.selectedPaymentMethod = method
+                        if !isCardDisabled {
+                            viewModel.selectedPaymentMethod = method
+                        }
                     } label: {
                         VStack(spacing: ParkSpacing.xs) {
                             Text(method.icon)
@@ -212,19 +230,34 @@ struct BookingFormView: View {
                             Text(method.displayName)
                                 .font(.parkBodyLarge)
                                 .fontWeight(.medium)
+                            if isCardDisabled {
+                                Text("무료 게임은 현장결제만 가능")
+                                    .font(.parkLabelSmall)
+                                    .foregroundStyle(.white.opacity(0.4))
+                            }
                         }
-                        .foregroundStyle(viewModel.selectedPaymentMethod == method ? Color.parkSuccess : .white.opacity(0.7))
+                        .foregroundStyle(
+                            isCardDisabled ? .white.opacity(0.3) :
+                            viewModel.selectedPaymentMethod == method ? Color.parkSuccess : .white.opacity(0.7)
+                        )
                         .frame(maxWidth: .infinity)
                         .frame(height: 80)
                         .background(
                             RoundedRectangle(cornerRadius: ParkRadius.lg)
-                                .fill(viewModel.selectedPaymentMethod == method ? Color.parkSuccess.opacity(0.3) : Color.white.opacity(0.1))
+                                .fill(
+                                    isCardDisabled ? Color.white.opacity(0.05) :
+                                    viewModel.selectedPaymentMethod == method ? Color.parkSuccess.opacity(0.3) : Color.white.opacity(0.1)
+                                )
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: ParkRadius.lg)
-                                .stroke(viewModel.selectedPaymentMethod == method ? Color.parkSuccess.opacity(0.5) : Color.white.opacity(0.2), lineWidth: 1)
+                                .stroke(
+                                    isCardDisabled ? Color.white.opacity(0.1) :
+                                    viewModel.selectedPaymentMethod == method ? Color.parkSuccess.opacity(0.5) : Color.white.opacity(0.2), lineWidth: 1
+                                )
                         )
                     }
+                    .disabled(isCardDisabled)
                 }
             }
         }
@@ -293,7 +326,13 @@ class BookingFormViewModel: ObservableObject {
     @Published var showBookingComplete = false
     @Published var createdBooking: BookingResponse?
 
+    // Payment
+    @Published var showPaymentSheet = false
+    @Published var paymentPrepareData: PreparePaymentResponse?
+    @Published var isPaymentProcessing = false
+
     private let bookingService = BookingService()
+    private let paymentService = PaymentService()
 
     // MARK: - Init
 
@@ -334,6 +373,13 @@ class BookingFormViewModel: ObservableObject {
             return
         }
 
+        // 카드결제 재시도: 이전 결제 시도에서 돌아온 경우 기존 예약으로 재시도
+        if selectedPaymentMethod == .card && createdBooking != nil && paymentPrepareData != nil {
+            errorMessage = nil
+            showPaymentSheet = true
+            return
+        }
+
         isLoading = true
         errorMessage = nil
 
@@ -354,12 +400,67 @@ class BookingFormViewModel: ObservableObject {
 
                 let booking = try await bookingService.createBooking(request: request)
                 createdBooking = booking
-                showBookingComplete = true
+
+                if selectedPaymentMethod == .card {
+                    // Card payment: prepare payment and show Toss SDK
+                    let prepareRequest = PreparePaymentRequest(
+                        amount: totalPrice,
+                        orderName: "\(round.clubName) - \(timeSlot.startTime)",
+                        bookingId: booking.id
+                    )
+                    let prepareResponse = try await paymentService.preparePayment(request: prepareRequest)
+                    paymentPrepareData = prepareResponse
+                    isLoading = false
+                    showPaymentSheet = true
+                } else {
+                    // Onsite payment: go directly to completion
+                    showBookingComplete = true
+                    isLoading = false
+                }
             } catch {
                 errorMessage = translateErrorMessage(error)
+                isLoading = false
+            }
+        }
+    }
+
+    func handlePaymentResult(_ outcome: TossPaymentOutcome, user: User?) {
+        switch outcome {
+        case .success(let paymentKey, let orderId, let amount):
+            isPaymentProcessing = true
+            Task {
+                do {
+                    let confirmRequest = ConfirmPaymentRequest(
+                        paymentKey: paymentKey,
+                        orderId: orderId,
+                        amount: amount
+                    )
+                    _ = try await paymentService.confirmPayment(request: confirmRequest)
+                    isPaymentProcessing = false
+                    showBookingComplete = true
+                } catch {
+                    // Fallback: check payment status by orderId
+                    do {
+                        let status = try await paymentService.getPaymentByOrderId(orderId: orderId)
+                        if status.status == "DONE" || status.status == "APPROVED" {
+                            isPaymentProcessing = false
+                            showBookingComplete = true
+                        } else {
+                            isPaymentProcessing = false
+                            errorMessage = "결제 승인 실패: \(error.localizedDescription) (status: \(status.status))"
+                        }
+                    } catch let fallbackError {
+                        isPaymentProcessing = false
+                        errorMessage = "결제 승인 실패: \(error.localizedDescription.isEmpty ? fallbackError.localizedDescription : error.localizedDescription)"
+                    }
+                }
             }
 
-            isLoading = false
+        case .failure(_, let errorMessage):
+            self.errorMessage = errorMessage
+
+        case .cancelled:
+            break
         }
     }
 

@@ -32,6 +32,9 @@ data class BookingFormUiState(
     val round: Round? = null,
     val timeSlots: List<TimeSlot> = emptyList(),
     val selectedDate: String = "",
+    val selectedDateIso: String = "",
+    val selectedStartTime: String = "",
+    val selectedTimeSlotId: Int = 0,
     val selectedTimeSlot: TimeSlot? = null,
     val playerCount: Int = 2,  // 시니어 UI: 기본 2명
     val specialRequests: String = "",
@@ -83,9 +86,9 @@ class BookingFormViewModel @Inject constructor(
         }
     }
 
-    fun loadRoundForBooking(roundId: Int, preSelectedTimeSlotId: Int = 0, date: String = "") {
+    fun loadRoundForBooking(roundId: Int, preSelectedTimeSlotId: Int = 0, date: String = "", startTime: String = "") {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, selectedDate = formatDateKorean(date)) }
+            _uiState.update { it.copy(isLoading = true, selectedDate = formatDateKorean(date), selectedDateIso = date, selectedStartTime = startTime, selectedTimeSlotId = preSelectedTimeSlotId) }
 
             roundRepository.getRound(roundId)
                 .onSuccess { round ->
@@ -102,9 +105,7 @@ class BookingFormViewModel @Inject constructor(
                             selectedTimeSlot = preSelected
                         )
                     }
-                    if (preSelected != null) {
-                        calculateTotalPrice()
-                    }
+                    calculateTotalPrice()
                 }
                 .onFailure { exception ->
                     _uiState.update {
@@ -185,7 +186,7 @@ class BookingFormViewModel @Inject constructor(
         val round = _uiState.value.round
         val playerCount = _uiState.value.playerCount
 
-        val pricePerPerson = slot?.price ?: round?.pricePerPerson ?: 0
+        val pricePerPerson = slot?.price ?: round?.pricePerPerson ?: round?.basePrice ?: 0
         val total = pricePerPerson * playerCount
 
         _uiState.update { it.copy(totalPrice = total) }
@@ -194,7 +195,19 @@ class BookingFormViewModel @Inject constructor(
     fun createBooking() {
         val state = _uiState.value
         val round = state.round ?: return
-        val timeSlot = state.selectedTimeSlot ?: return
+
+        // 카드결제: 이전 결제 시도에서 돌아온 경우 기존 예약으로 재시도
+        if (state.paymentMethod == "card" && state.createdBooking != null && state.paymentPrepareData != null) {
+            _uiState.update { it.copy(showPaymentActivity = true, error = null) }
+            return
+        }
+
+        val timeSlotId = state.selectedTimeSlot?.id ?: state.selectedTimeSlotId
+
+        if (timeSlotId <= 0) {
+            _uiState.update { it.copy(error = "타임슬롯을 선택해주세요") }
+            return
+        }
 
         if (state.selectedDate.isBlank()) {
             _uiState.update { it.copy(error = "날짜를 선택해주세요") }
@@ -211,8 +224,8 @@ class BookingFormViewModel @Inject constructor(
 
             val params = CreateBookingParams(
                 gameId = round.id,
-                gameTimeSlotId = timeSlot.id,
-                bookingDate = state.selectedDate,
+                gameTimeSlotId = timeSlotId,
+                bookingDate = state.selectedDateIso,
                 playerCount = state.playerCount,
                 paymentMethod = state.paymentMethod,
                 specialRequests = state.specialRequests.takeIf { it.isNotBlank() },
@@ -225,7 +238,8 @@ class BookingFormViewModel @Inject constructor(
                 .onSuccess { booking ->
                     if (state.paymentMethod == "card") {
                         // Card payment: prepare and show Toss SDK
-                        val orderName = "${round.clubName} - ${timeSlot.startTime}"
+                        val startTime = state.selectedTimeSlot?.startTime ?: state.selectedStartTime
+                        val orderName = "${round.clubName} - $startTime"
                         paymentRepository.preparePayment(
                             amount = state.totalPrice,
                             orderName = orderName,
@@ -287,7 +301,7 @@ class BookingFormViewModel @Inject constructor(
                         )
                     }
                 }
-                .onFailure {
+                .onFailure { confirmError ->
                     // Fallback: check payment status
                     paymentRepository.getPaymentByOrderId(orderId)
                         .onSuccess { status ->
@@ -302,16 +316,16 @@ class BookingFormViewModel @Inject constructor(
                                 _uiState.update {
                                     it.copy(
                                         isPaymentProcessing = false,
-                                        error = "결제 승인에 실패했습니다. 다시 시도해 주세요."
+                                        error = "결제 승인 실패: ${confirmError.message ?: "알 수 없는 오류"} (status: ${status.status})"
                                     )
                                 }
                             }
                         }
-                        .onFailure {
+                        .onFailure { fallbackError ->
                             _uiState.update {
                                 it.copy(
                                     isPaymentProcessing = false,
-                                    error = "결제 승인에 실패했습니다. 다시 시도해 주세요."
+                                    error = "결제 승인 실패: ${confirmError.message ?: fallbackError.message ?: "알 수 없는 오류"}"
                                 )
                             }
                         }

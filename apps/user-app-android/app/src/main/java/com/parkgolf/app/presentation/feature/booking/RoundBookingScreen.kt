@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.style.TextAlign
+import java.text.NumberFormat
+import java.util.Locale
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -217,7 +222,8 @@ fun RoundBookingScreen(
         LaunchedEffect(uiState.showBookingForm) {
             if (uiState.showBookingForm && uiState.selectedRound != null && uiState.selectedTimeSlot != null) {
                 val date = uiState.selectedDate.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-                val route = "booking/${uiState.selectedRound!!.id}/${uiState.selectedTimeSlot!!.id}?date=$date"
+                val startTime = uiState.selectedTimeSlot!!.startTime
+                val route = "booking/${uiState.selectedRound!!.id}/${uiState.selectedTimeSlot!!.id}?date=$date&startTime=$startTime"
                 viewModel.dismissBookingForm()
                 onNavigate(route)
             }
@@ -485,8 +491,8 @@ private fun SeniorRoundCardView(
 ) {
     var showAllSlots by remember { mutableStateOf(false) }
     val slots = round.timeSlots ?: emptyList()
-    val displayedSlots = if (showAllSlots) slots else slots.take(5)
-    val hasMoreSlots = slots.size > 5
+    val displayedSlots = if (showAllSlots) slots else slots.take(6)
+    val hasMoreSlots = slots.size > 6
     val pricePerPerson = round.pricePerPerson ?: round.basePrice
 
     GlassCard(
@@ -520,7 +526,7 @@ private fun SeniorRoundCardView(
                 )
             }
 
-            // Time Slots (시니어 UI: 세로 리스트)
+            // Time Slots (그리드: 모바일 2열, 태블릿 4열)
             if (displayedSlots.isNotEmpty()) {
                 HorizontalDivider(color = GlassBorder)
 
@@ -535,12 +541,10 @@ private fun SeniorRoundCardView(
                         color = TextOnGradient
                     )
 
-                    displayedSlots.forEach { slot ->
-                        SeniorTimeSlotRow(
-                            slot = slot,
-                            onClick = { onSelectTimeSlot(slot) }
-                        )
-                    }
+                    TimeSlotGrid(
+                        slots = displayedSlots,
+                        onSelectTimeSlot = onSelectTimeSlot
+                    )
 
                     // Show more button
                     if (hasMoreSlots && !showAllSlots) {
@@ -559,52 +563,103 @@ private fun SeniorRoundCardView(
     }
 }
 
-// MARK: - Senior Time Slot Row (시니어 UI: 큰 터치 영역, 세로 리스트)
+// MARK: - Time Slot Grid (모바일 2열, 태블릿 4열 - iOS 동일)
 
 @Composable
-private fun SeniorTimeSlotRow(
+private fun TimeSlotGrid(
+    slots: List<TimeSlot>,
+    onSelectTimeSlot: (TimeSlot) -> Unit
+) {
+    val configuration = LocalConfiguration.current
+    val columnCount = if (configuration.smallestScreenWidthDp >= 600) 4 else 2
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        slots.chunked(columnCount).forEach { rowSlots ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                rowSlots.forEach { slot ->
+                    TimeSlotGridCell(
+                        slot = slot,
+                        onClick = { onSelectTimeSlot(slot) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                // 빈 셀로 마지막 행 채우기
+                repeat(columnCount - rowSlots.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+private val SkyBlue = Color(0xFF66D9FF)
+
+@Composable
+private fun TimeSlotGridCell(
     slot: TimeSlot,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val availabilityText = when {
         slot.availablePlayers == 0 -> "매진"
         slot.availablePlayers <= 2 -> "마감임박"
-        else -> "${slot.availablePlayers}자리 남음"
+        else -> "${slot.availablePlayers}자리"
     }
 
-    val availabilityColor = when (slot.availabilityStatus) {
-        AvailabilityStatus.AVAILABLE, AvailabilityStatus.LIMITED -> ParkSuccess
-        AvailabilityStatus.ALMOST_FULL -> ParkError
-        AvailabilityStatus.SOLD_OUT -> Color.Gray
+    val availabilityColor = when {
+        slot.availablePlayers == 0 -> Color.White.copy(alpha = 0.4f)
+        slot.availablePlayers <= 2 -> ParkError
+        else -> SkyBlue
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp)
+    val formatter = NumberFormat.getNumberInstance(Locale.KOREA)
+
+    Column(
+        modifier = modifier
             .clip(RoundedCornerShape(12.dp))
             .background(
-                if (slot.isPremium) ParkAccent.copy(alpha = 0.2f) else GlassBackground
+                if (slot.isPremium) ParkAccent.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.08f)
+            )
+            .border(
+                width = 1.dp,
+                color = if (slot.isPremium) ParkAccent.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.2f),
+                shape = RoundedCornerShape(12.dp)
             )
             .clickable(enabled = slot.availablePlayers > 0) { onClick() }
             .then(
                 if (slot.availablePlayers == 0) Modifier.alpha(0.4f) else Modifier
             )
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
+        // 시간
         Text(
             text = slot.startTime,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextOnGradient
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            textAlign = TextAlign.Center
         )
 
+        // 가격
+        Text(
+            text = "${formatter.format(slot.price)}원",
+            fontSize = 14.sp,
+            color = Color.White.copy(alpha = 0.7f),
+            textAlign = TextAlign.Center
+        )
+
+        // 잔여 자리
         Text(
             text = availabilityText,
-            fontSize = 16.sp,
-            color = availabilityColor
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = availabilityColor,
+            textAlign = TextAlign.Center
         )
     }
 }

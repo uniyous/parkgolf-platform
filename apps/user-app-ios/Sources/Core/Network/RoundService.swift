@@ -28,7 +28,9 @@ actor RoundService {
         }
 
         if let timeOfDay = params.timeOfDay, timeOfDay != .all {
-            queryParameters["timeOfDay"] = timeOfDay.rawValue
+            let range = timeOfDay.timeRange
+            queryParameters["startTimeFrom"] = range.start
+            queryParameters["startTimeTo"] = range.end
         }
 
         if let minPrice = params.minPrice {

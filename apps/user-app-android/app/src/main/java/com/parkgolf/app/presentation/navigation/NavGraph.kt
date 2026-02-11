@@ -180,16 +180,19 @@ fun ParkGolfNavHost(
             arguments = listOf(
                 navArgument("gameId") { type = NavType.IntType },
                 navArgument("timeSlotId") { type = NavType.IntType },
-                navArgument("date") { type = NavType.StringType; defaultValue = "" }
+                navArgument("date") { type = NavType.StringType; defaultValue = "" },
+                navArgument("startTime") { type = NavType.StringType; defaultValue = "" }
             )
         ) { backStackEntry ->
             val gameId = backStackEntry.arguments?.getInt("gameId") ?: 0
             val timeSlotId = backStackEntry.arguments?.getInt("timeSlotId") ?: 0
             val date = backStackEntry.arguments?.getString("date") ?: ""
+            val startTime = backStackEntry.arguments?.getString("startTime") ?: ""
             BookingFormScreen(
                 gameId = gameId,
                 timeSlotId = timeSlotId,
                 date = date,
+                startTime = startTime,
                 onNavigateBack = { navController.popBackStack() },
                 onBookingComplete = { bookingId ->
                     navController.navigate("booking/complete/$bookingId") {
