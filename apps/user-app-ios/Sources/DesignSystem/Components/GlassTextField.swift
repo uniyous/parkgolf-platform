@@ -55,8 +55,8 @@ struct GlassTextField: View {
                     RoundedRectangle(cornerRadius: ParkRadius.md)
                         .stroke(isFocused ? Color.parkPrimary : Color.white.opacity(0.2), lineWidth: 1)
                 )
+                .animation(.easeInOut(duration: 0.2), value: isFocused)
         )
-        .animation(.easeInOut(duration: 0.2), value: isFocused)
     }
 }
 
@@ -139,8 +139,8 @@ struct GlassSearchField: View {
                     RoundedRectangle(cornerRadius: ParkRadius.xl)
                         .stroke(isFocused ? Color.parkPrimary : Color.white.opacity(0.2), lineWidth: 1)
                 )
+                .animation(.easeInOut(duration: 0.2), value: isFocused)
         )
-        .animation(.easeInOut(duration: 0.2), value: isFocused)
     }
 }
 

@@ -55,7 +55,31 @@ final class AppDelegate: NSObject, UIApplicationDelegate, @unchecked Sendable {
         // Request push notification permission
         requestPushNotificationPermission(application: application)
 
+        // Pre-warm keyboard to avoid first-launch delay
+        preWarmKeyboard()
+
         return true
+    }
+
+    // MARK: - Keyboard Pre-warm
+
+    private func preWarmKeyboard() {
+        let window = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first?.windows.first
+
+        let field = UITextField()
+        field.inputAccessoryView = UIView()
+        field.alpha = 0
+        window?.addSubview(field)
+
+        DispatchQueue.main.async {
+            field.becomeFirstResponder()
+            DispatchQueue.main.async {
+                field.resignFirstResponder()
+                field.removeFromSuperview()
+            }
+        }
     }
 
     // MARK: - Push Notification Permission
