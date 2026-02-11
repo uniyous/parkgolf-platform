@@ -2,7 +2,8 @@
  * user-app-web 공통 상수 정의
  */
 
-import type { BookingStatus } from '@/lib/api/bookingApi';
+import type { BookingStatus, BookingResponse } from '@/lib/api/bookingApi';
+import type { Game, GameTimeSlot } from '@/lib/api/gameApi';
 
 // =====================
 // 날짜 필터 설정
@@ -106,9 +107,9 @@ export interface PaymentSessionContext {
   orderId: string;
   amount: number;
   orderName: string;
-  booking: Record<string, unknown> & { id: number; bookingNumber: string; totalPrice: number };
-  game: Record<string, unknown> & { id: number; name: string; clubName?: string };
-  timeSlot: Record<string, unknown> & { id: number; startTime: string; price?: number; isPremium?: boolean };
+  booking: BookingResponse;
+  game: Game;
+  timeSlot: GameTimeSlot;
   date: string;
   playerCount: number;
 }
