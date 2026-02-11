@@ -159,14 +159,20 @@ final class NotificationsViewModel: ObservableObject {
         currentPage = 1
 
         do {
+            #if DEBUG
             print("[NotificationsVM] Loading notifications...")
+            #endif
             let data = try await notificationService.getNotifications(page: 1, limit: 50)
+            #if DEBUG
             print("[NotificationsVM] Loaded \(data.notifications.count) notifications, total: \(data.total)")
+            #endif
             notifications = data.notifications
             totalPages = data.totalPages
             currentPage = 1
         } catch {
+            #if DEBUG
             print("[NotificationsVM] Error loading notifications: \(error)")
+            #endif
             self.error = error.localizedDescription
         }
 

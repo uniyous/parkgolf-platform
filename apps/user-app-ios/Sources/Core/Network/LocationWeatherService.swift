@@ -39,25 +39,6 @@ enum WeatherEndpoints {
         )
     }
 
-    static func hourly(lat: Double, lon: Double) -> Endpoint {
-        Endpoint(
-            path: "/api/user/weather/hourly",
-            queryParameters: [
-                "lat": String(lat),
-                "lon": String(lon)
-            ]
-        )
-    }
-
-    static func forecast(lat: Double, lon: Double) -> Endpoint {
-        Endpoint(
-            path: "/api/user/weather/forecast",
-            queryParameters: [
-                "lat": String(lat),
-                "lon": String(lon)
-            ]
-        )
-    }
 }
 
 // MARK: - Response Models

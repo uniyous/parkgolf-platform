@@ -209,31 +209,29 @@ struct BookingListCard: View {
                     .padding(ParkSpacing.md)
 
                     // Footer
-                    if onCancel != nil || true {
-                        Divider()
-                            .background(Color.white.opacity(0.1))
+                    Divider()
+                        .background(Color.white.opacity(0.1))
 
-                        HStack {
-                            PriceDisplay(amount: booking.totalPrice, size: .medium, color: .parkPrimary)
+                    HStack {
+                        PriceDisplay(amount: booking.totalPrice, size: .medium, color: .parkPrimary)
 
-                            Spacer()
+                        Spacer()
 
-                            if let onCancel = onCancel {
-                                SmallButton(
-                                    title: "취소",
-                                    icon: "xmark",
-                                    color: .parkError.opacity(0.8)
-                                ) {
-                                    onCancel()
-                                }
+                        if let onCancel = onCancel {
+                            SmallButton(
+                                title: "취소",
+                                icon: "xmark",
+                                color: .parkError.opacity(0.8)
+                            ) {
+                                onCancel()
                             }
-
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.4))
                         }
-                        .padding(ParkSpacing.md)
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.4))
                     }
+                    .padding(ParkSpacing.md)
                 }
             }
         }

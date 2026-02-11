@@ -621,14 +621,7 @@ struct HomeFriendRequestRow: View {
         GlassCard {
             HStack(spacing: ParkSpacing.md) {
                 // Profile Image
-                Circle()
-                    .fill(Color.parkPrimary.opacity(0.3))
-                    .frame(width: 50, height: 50)
-                    .overlay(
-                        Text(String(request.fromUserName.prefix(1)))
-                            .font(.parkHeadlineMedium)
-                            .foregroundStyle(.white)
-                    )
+                AvatarCircle(name: request.fromUserName)
 
                 // Info
                 VStack(alignment: .leading, spacing: ParkSpacing.xxs) {

@@ -70,33 +70,6 @@ enum AccountEndpoints {
     }
 }
 
-// MARK: - Club Endpoints
-
-enum ClubEndpoints {
-    static func list(page: Int = 1, limit: Int = 20, search: String? = nil) -> Endpoint {
-        var params: [String: String] = [
-            "page": String(page),
-            "limit": String(limit)
-        ]
-        if let search = search {
-            params["search"] = search
-        }
-
-        return Endpoint(
-            path: "/api/user/clubs",
-            queryParameters: params
-        )
-    }
-
-    static func detail(id: String) -> Endpoint {
-        Endpoint(path: "/api/user/clubs/\(id)")
-    }
-
-    static func courses(clubId: String) -> Endpoint {
-        Endpoint(path: "/api/user/clubs/\(clubId)/courses")
-    }
-}
-
 // MARK: - Booking Endpoints
 
 enum BookingEndpoints {
@@ -199,25 +172,6 @@ enum ChatEndpoints {
 }
 
 // MARK: - Request DTOs
-
-// Legacy booking request - deprecated, use CreateBookingRequest from BookingService
-struct LegacyCreateBookingRequest: Codable, Sendable {
-    let clubId: String
-    let courseId: String
-    let bookingDate: String
-    let startTime: String
-    let playerCount: Int
-    let invitedUserIds: [String]?
-
-    enum CodingKeys: String, CodingKey {
-        case clubId = "club_id"
-        case courseId = "course_id"
-        case bookingDate = "booking_date"
-        case startTime = "start_time"
-        case playerCount = "player_count"
-        case invitedUserIds = "invited_user_ids"
-    }
-}
 
 struct CreateChatRoomRequest: Codable, Sendable {
     let name: String

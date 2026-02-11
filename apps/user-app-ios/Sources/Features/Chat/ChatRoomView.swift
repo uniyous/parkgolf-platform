@@ -564,15 +564,7 @@ struct ParticipantsSheet: View {
 
         return HStack(spacing: ParkSpacing.md) {
             // Avatar
-            ZStack {
-                Circle()
-                    .fill(Color.parkPrimary.opacity(0.2))
-                    .frame(width: 40, height: 40)
-
-                Text(String(participant.userName.prefix(1)))
-                    .font(.parkHeadlineSmall)
-                    .foregroundStyle(.white)
-            }
+            AvatarCircle(name: participant.userName, size: 40, opacity: 0.2)
 
             // Name + Email
             VStack(alignment: .leading, spacing: 2) {
