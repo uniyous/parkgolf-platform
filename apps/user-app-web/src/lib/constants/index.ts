@@ -106,9 +106,9 @@ export interface PaymentSessionContext {
   orderId: string;
   amount: number;
   orderName: string;
-  booking: { id: number; bookingNumber: string; totalPrice: number; [key: string]: unknown };
-  game: { id: number; name: string; clubName?: string; [key: string]: unknown };
-  timeSlot: { id: number; startTime: string; price?: number; isPremium?: boolean; [key: string]: unknown };
+  booking: Record<string, unknown> & { id: number; bookingNumber: string; totalPrice: number };
+  game: Record<string, unknown> & { id: number; name: string; clubName?: string };
+  timeSlot: Record<string, unknown> & { id: number; startTime: string; price?: number; isPremium?: boolean };
   date: string;
   playerCount: number;
 }
