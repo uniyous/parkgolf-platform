@@ -18,12 +18,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -61,6 +64,7 @@ import com.parkgolf.app.presentation.theme.TextOnGradient
 import com.parkgolf.app.presentation.theme.TextOnGradientSecondary
 import java.time.LocalDate
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun RoundBookingScreen(
     onNavigate: (String) -> Unit,
@@ -68,6 +72,22 @@ fun RoundBookingScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val dateOptions by viewModel.dateOptions.collectAsState()
+
+    var isRefreshing by remember { mutableStateOf(false) }
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = {
+            isRefreshing = true
+            viewModel.search()
+        }
+    )
+
+    // isLoading이 false로 바뀌면 pull-to-refresh 종료
+    LaunchedEffect(uiState.isLoading) {
+        if (!uiState.isLoading) {
+            isRefreshing = false
+        }
+    }
 
     GradientBackground {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -98,55 +118,109 @@ fun RoundBookingScreen(
                 totalCount = uiState.totalCount
             )
 
-            // Content
-            when {
-                uiState.isLoading && uiState.rounds.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = ParkPrimary)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "라운드 검색 중...",
-                                color = TextOnGradientSecondary,
-                                fontSize = 16.sp
-                            )
+            // Content with pull-to-refresh
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pullRefresh(pullRefreshState)
+            ) {
+                when {
+                    uiState.isLoading && uiState.rounds.isEmpty() && !isRefreshing -> {
+                        // 초기 로딩: 전체 화면 스피너
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                CircularProgressIndicator(color = ParkPrimary)
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "라운드 검색 중...",
+                                    color = TextOnGradientSecondary,
+                                    fontSize = 16.sp
+                                )
+                            }
+                        }
+                    }
+                    uiState.error != null && uiState.rounds.isEmpty() -> {
+                        // 에러 상태 (pull-to-refresh 가능하도록 LazyColumn)
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            item {
+                                EmptyStateView(
+                                    icon = Icons.Default.Close,
+                                    title = "오류가 발생했습니다",
+                                    description = uiState.error ?: "다시 시도해 주세요"
+                                )
+                            }
+                        }
+                    }
+                    uiState.rounds.isEmpty() -> {
+                        // 빈 결과 (pull-to-refresh 가능하도록 LazyColumn)
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            item {
+                                EmptyStateView(
+                                    icon = Icons.Default.Search,
+                                    title = "검색 결과가 없습니다",
+                                    description = "다른 날짜나 검색어로 시도해보세요"
+                                )
+                            }
+                        }
+                    }
+                    else -> {
+                        // 라운드 리스트
+                        RoundList(
+                            rounds = uiState.rounds,
+                            isLoadingMore = uiState.isLoadingMore,
+                            onLoadMore = { viewModel.loadMore() },
+                            onSelectTimeSlot = { round, timeSlot ->
+                                viewModel.selectTimeSlot(round, timeSlot)
+                            }
+                        )
+
+                        // 재검색 시 오버레이 로딩 (iOS 동일)
+                        if (uiState.isLoading && !isRefreshing) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.3f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                            }
                         }
                     }
                 }
-                uiState.error != null && uiState.rounds.isEmpty() -> {
-                    EmptyStateView(
-                        icon = Icons.Default.Close,
-                        title = "오류가 발생했습니다",
-                        description = uiState.error ?: "다시 시도해 주세요"
-                    )
-                }
-                uiState.rounds.isEmpty() -> {
-                    EmptyStateView(
-                        icon = Icons.Default.Search,
-                        title = "검색 결과가 없습니다",
-                        description = "다른 날짜나 검색어로 시도해보세요"
-                    )
-                }
-                else -> {
-                    RoundList(
-                        rounds = uiState.rounds,
-                        isLoadingMore = uiState.isLoadingMore,
-                        onLoadMore = { viewModel.loadMore() },
-                        onSelectTimeSlot = { round, timeSlot ->
-                            viewModel.selectTimeSlot(round, timeSlot)
-                        }
-                    )
-                }
+
+                // Pull-to-refresh 인디케이터 (제스처 시에만 표시)
+                PullRefreshIndicator(
+                    refreshing = isRefreshing,
+                    state = pullRefreshState,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    backgroundColor = Color.White,
+                    contentColor = ParkPrimary
+                )
             }
         }
 
-        // Booking Form Navigation
-        if (uiState.showBookingForm && uiState.selectedRound != null && uiState.selectedTimeSlot != null) {
-            viewModel.dismissBookingForm()
-            onNavigate("booking/${uiState.selectedRound!!.id}/${uiState.selectedTimeSlot!!.id}")
+        // Booking Form Navigation (LaunchedEffect로 side effect 처리)
+        LaunchedEffect(uiState.showBookingForm) {
+            if (uiState.showBookingForm && uiState.selectedRound != null && uiState.selectedTimeSlot != null) {
+                val date = uiState.selectedDate.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                val route = "booking/${uiState.selectedRound!!.id}/${uiState.selectedTimeSlot!!.id}?date=$date"
+                viewModel.dismissBookingForm()
+                onNavigate(route)
+            }
         }
     }
 }
@@ -332,7 +406,7 @@ private fun TimeOfDayFilter(
     }
 }
 
-// 시니어 UI: 큰 터치 영역의 필터 칩
+// 시니어 UI: 큰 터치 영역의 필터 칩 (DateChip과 동일 패턴)
 @Composable
 private fun SeniorFilterChip(
     title: String,
@@ -342,12 +416,12 @@ private fun SeniorFilterChip(
     Text(
         text = title,
         fontSize = 16.sp,
-        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+        fontWeight = FontWeight.SemiBold,
         color = if (isSelected) Color.White else TextOnGradientSecondary,
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
             .background(
-                if (isSelected) ParkPrimary.copy(alpha = 0.3f) else GlassBackground
+                if (isSelected) ParkPrimary else GlassBackground
             )
             .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 12.dp)
@@ -433,7 +507,7 @@ private fun SeniorRoundCardView(
                 )
 
                 Text(
-                    text = "📍 ${round.club?.address ?: ""} · ${round.name}",
+                    text = "\uD83D\uDCCD ${round.club?.address ?: ""} · ${round.name}",
                     fontSize = 16.sp,
                     color = TextOnGradientSecondary
                 )

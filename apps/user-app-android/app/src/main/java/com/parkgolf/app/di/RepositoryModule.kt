@@ -7,6 +7,7 @@ import com.parkgolf.app.data.remote.api.ChatApi
 import com.parkgolf.app.data.remote.api.FriendsApi
 import com.parkgolf.app.data.remote.api.LocationApi
 import com.parkgolf.app.data.remote.api.NotificationApi
+import com.parkgolf.app.data.remote.api.PaymentApi
 import com.parkgolf.app.data.remote.api.RoundApi
 import com.parkgolf.app.data.remote.api.SettingsApi
 import com.parkgolf.app.data.remote.api.UserApi
@@ -18,6 +19,7 @@ import com.parkgolf.app.data.repository.ChatRepositoryImpl
 import com.parkgolf.app.data.repository.FriendsRepositoryImpl
 import com.parkgolf.app.data.repository.LocationWeatherRepositoryImpl
 import com.parkgolf.app.data.repository.NotificationRepositoryImpl
+import com.parkgolf.app.data.repository.PaymentRepositoryImpl
 import com.parkgolf.app.data.repository.RoundRepositoryImpl
 import com.parkgolf.app.data.repository.SettingsRepositoryImpl
 import com.parkgolf.app.domain.repository.SettingsRepository
@@ -28,6 +30,7 @@ import com.parkgolf.app.domain.repository.ChatRepository
 import com.parkgolf.app.domain.repository.FriendsRepository
 import com.parkgolf.app.domain.repository.LocationWeatherRepository
 import com.parkgolf.app.domain.repository.NotificationRepository
+import com.parkgolf.app.domain.repository.PaymentRepository
 import com.parkgolf.app.domain.repository.RoundRepository
 import com.parkgolf.app.domain.repository.UserRepository
 import dagger.Module
@@ -93,6 +96,12 @@ object RepositoryModule {
     fun provideNotificationRepository(
         notificationApi: NotificationApi
     ): NotificationRepository = NotificationRepositoryImpl(notificationApi)
+
+    @Provides
+    @Singleton
+    fun providePaymentRepository(
+        paymentApi: PaymentApi
+    ): PaymentRepository = PaymentRepositoryImpl(paymentApi)
 
     @Provides
     @Singleton

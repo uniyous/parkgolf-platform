@@ -176,12 +176,20 @@ fun ParkGolfNavHost(
 
         // Booking screens
         composable(
-            route = "booking/{gameId}",
-            arguments = listOf(navArgument("gameId") { type = NavType.IntType })
+            route = Screen.BookingForm.route,
+            arguments = listOf(
+                navArgument("gameId") { type = NavType.IntType },
+                navArgument("timeSlotId") { type = NavType.IntType },
+                navArgument("date") { type = NavType.StringType; defaultValue = "" }
+            )
         ) { backStackEntry ->
             val gameId = backStackEntry.arguments?.getInt("gameId") ?: 0
+            val timeSlotId = backStackEntry.arguments?.getInt("timeSlotId") ?: 0
+            val date = backStackEntry.arguments?.getString("date") ?: ""
             BookingFormScreen(
                 gameId = gameId,
+                timeSlotId = timeSlotId,
+                date = date,
                 onNavigateBack = { navController.popBackStack() },
                 onBookingComplete = { bookingId ->
                     navController.navigate("booking/complete/$bookingId") {

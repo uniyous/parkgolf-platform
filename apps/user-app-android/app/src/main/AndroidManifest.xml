@@ -24,6 +24,10 @@
         tools:targetApi="34">
 
         <activity
+            android:name=".presentation.feature.payment.PaymentActivity"
+            android:theme="@style/Theme.ParkGolf" />
+
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"

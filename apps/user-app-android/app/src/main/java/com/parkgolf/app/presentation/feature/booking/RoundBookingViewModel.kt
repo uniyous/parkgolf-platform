@@ -90,6 +90,11 @@ class RoundBookingViewModel @Inject constructor(
         }
     }
 
+    // Pull-to-refresh용 suspend 함수
+    suspend fun refresh() {
+        performSearch(resetPage = true)
+    }
+
     fun searchDebounced() {
         searchJob?.cancel()
         searchJob = viewModelScope.launch {

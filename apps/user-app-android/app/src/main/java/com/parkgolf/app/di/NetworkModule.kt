@@ -12,6 +12,7 @@ import com.parkgolf.app.data.remote.api.NotificationApi
 import com.parkgolf.app.data.remote.api.RoundApi
 import com.parkgolf.app.data.remote.api.SettingsApi
 import com.parkgolf.app.data.remote.api.UserApi
+import com.parkgolf.app.data.remote.api.PaymentApi
 import com.parkgolf.app.data.remote.api.WeatherApi
 import com.parkgolf.app.data.remote.interceptor.AuthInterceptor
 import com.parkgolf.app.data.remote.interceptor.TokenAuthenticator
@@ -131,6 +132,11 @@ object NetworkModule {
     @Singleton
     fun provideLocationApi(retrofit: Retrofit): LocationApi =
         retrofit.create(LocationApi::class.java)
+
+    @Provides
+    @Singleton
+    fun providePaymentApi(retrofit: Retrofit): PaymentApi =
+        retrofit.create(PaymentApi::class.java)
 
     @Provides
     @Singleton

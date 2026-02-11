@@ -1,5 +1,8 @@
 package com.parkgolf.app.presentation.feature.booking
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -22,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.parkgolf.app.presentation.components.GlassCard
 import com.parkgolf.app.presentation.components.GradientButton
+import com.parkgolf.app.presentation.feature.payment.PaymentActivity
 import com.parkgolf.app.presentation.theme.*
 import java.text.NumberFormat
 import java.util.Locale
@@ -41,15 +46,55 @@ private val SIMPLE_PAYMENT_METHODS = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookingFormScreen(
-    gameId: Int,  // API 호환성을 위해 파라미터명 유지
+    gameId: Int,
+    timeSlotId: Int = 0,
+    date: String = "",
     onNavigateBack: () -> Unit,
     onBookingComplete: (String) -> Unit,
     viewModel: BookingFormViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    val paymentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        when (result.resultCode) {
+            Activity.RESULT_OK -> {
+                val data = result.data
+                val paymentKey = data?.getStringExtra(PaymentActivity.EXTRA_PAYMENT_KEY) ?: ""
+                val orderId = data?.getStringExtra(PaymentActivity.EXTRA_ORDER_ID) ?: ""
+                val amount = data?.getIntExtra(PaymentActivity.EXTRA_AMOUNT, 0) ?: 0
+                viewModel.handlePaymentSuccess(paymentKey, orderId, amount)
+            }
+            Activity.RESULT_CANCELED -> {
+                viewModel.handlePaymentCancelled()
+            }
+            PaymentActivity.RESULT_PAYMENT_FAILED -> {
+                val data = result.data
+                val errorCode = data?.getStringExtra(PaymentActivity.EXTRA_ERROR_CODE)
+                val errorMessage = data?.getStringExtra(PaymentActivity.EXTRA_ERROR_MESSAGE)
+                viewModel.handlePaymentFailure(errorCode, errorMessage)
+            }
+        }
+    }
 
     LaunchedEffect(gameId) {
-        viewModel.loadRoundForBooking(gameId)
+        viewModel.loadRoundForBooking(gameId, timeSlotId, date)
+    }
+
+    LaunchedEffect(uiState.showPaymentActivity) {
+        if (uiState.showPaymentActivity) {
+            val prepareData = uiState.paymentPrepareData ?: return@LaunchedEffect
+            val intent = PaymentActivity.createIntent(
+                context = context,
+                orderId = prepareData.orderId,
+                orderName = prepareData.orderName,
+                amount = prepareData.amount
+            )
+            paymentLauncher.launch(intent)
+            viewModel.onPaymentActivityLaunched()
+        }
     }
 
     LaunchedEffect(uiState.bookingSuccess) {
@@ -176,9 +221,9 @@ fun BookingFormScreen(
                             .padding(16.dp)
                     ) {
                         GradientButton(
-                            text = if (uiState.isLoading) "처리 중..." else "₩${formatPrice(uiState.totalPrice)} 예약하기",
+                            text = if (uiState.isLoading || uiState.isPaymentProcessing) "처리 중..." else "₩${formatPrice(uiState.totalPrice)} 예약하기",
                             onClick = { viewModel.createBooking() },
-                            enabled = !uiState.isLoading && uiState.canProceed,
+                            enabled = !uiState.isLoading && !uiState.isPaymentProcessing && uiState.canProceed,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(64.dp)

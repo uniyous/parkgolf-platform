@@ -7,7 +7,9 @@ import com.parkgolf.app.domain.model.CreateBookingParams
 import com.parkgolf.app.domain.model.Round
 import com.parkgolf.app.domain.model.TimeSlot
 import com.parkgolf.app.domain.repository.AuthRepository
+import com.parkgolf.app.data.remote.dto.payment.PreparePaymentResponse
 import com.parkgolf.app.domain.repository.BookingRepository
+import com.parkgolf.app.domain.repository.PaymentRepository
 import com.parkgolf.app.domain.repository.RoundRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +43,11 @@ data class BookingFormUiState(
     val totalPrice: Int = 0,
     val bookingSuccess: Boolean = false,
     val createdBooking: Booking? = null,
-    val error: String? = null
+    val error: String? = null,
+    // Payment
+    val paymentPrepareData: PreparePaymentResponse? = null,
+    val showPaymentActivity: Boolean = false,
+    val isPaymentProcessing: Boolean = false
 ) {
     val canProceed: Boolean
         get() = agreedToTerms && paymentMethod.isNotBlank() && playerCount > 0
@@ -51,7 +57,8 @@ data class BookingFormUiState(
 class BookingFormViewModel @Inject constructor(
     private val bookingRepository: BookingRepository,
     private val roundRepository: RoundRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val paymentRepository: PaymentRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BookingFormUiState())
@@ -76,18 +83,27 @@ class BookingFormViewModel @Inject constructor(
         }
     }
 
-    fun loadRoundForBooking(roundId: Int) {
+    fun loadRoundForBooking(roundId: Int, preSelectedTimeSlotId: Int = 0, date: String = "") {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, selectedDate = formatDateKorean(date)) }
 
             roundRepository.getRound(roundId)
                 .onSuccess { round ->
+                    val slots = round.timeSlots ?: emptyList()
+                    val preSelected = if (preSelectedTimeSlotId > 0) {
+                        slots.find { it.id == preSelectedTimeSlotId }
+                    } else null
+
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             round = round,
-                            timeSlots = round.timeSlots ?: emptyList()
+                            timeSlots = slots,
+                            selectedTimeSlot = preSelected
                         )
+                    }
+                    if (preSelected != null) {
+                        calculateTotalPrice()
                     }
                 }
                 .onFailure { exception ->
@@ -98,6 +114,20 @@ class BookingFormViewModel @Inject constructor(
                         )
                     }
                 }
+        }
+    }
+
+    private fun formatDateKorean(dateStr: String): String {
+        if (dateStr.isBlank()) return ""
+        return try {
+            val date = java.time.LocalDate.parse(dateStr)
+            val dayOfWeek = when (date.dayOfWeek.value) {
+                1 -> "월"; 2 -> "화"; 3 -> "수"; 4 -> "목"
+                5 -> "금"; 6 -> "토"; 7 -> "일"; else -> ""
+            }
+            "${date.year}년 ${date.monthValue}월 ${date.dayOfMonth}일 (${dayOfWeek})"
+        } catch (e: Exception) {
+            dateStr
         }
     }
 
@@ -180,7 +210,7 @@ class BookingFormViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
 
             val params = CreateBookingParams(
-                gameId = round.id,  // API 호환성을 위해 gameId 유지
+                gameId = round.id,
                 gameTimeSlotId = timeSlot.id,
                 bookingDate = state.selectedDate,
                 playerCount = state.playerCount,
@@ -193,12 +223,40 @@ class BookingFormViewModel @Inject constructor(
 
             bookingRepository.createBooking(params)
                 .onSuccess { booking ->
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            bookingSuccess = true,
-                            createdBooking = booking
-                        )
+                    if (state.paymentMethod == "card") {
+                        // Card payment: prepare and show Toss SDK
+                        val orderName = "${round.clubName} - ${timeSlot.startTime}"
+                        paymentRepository.preparePayment(
+                            amount = state.totalPrice,
+                            orderName = orderName,
+                            bookingId = booking.id.toIntOrNull()
+                        ).onSuccess { prepareData ->
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    createdBooking = booking,
+                                    paymentPrepareData = prepareData,
+                                    showPaymentActivity = true
+                                )
+                            }
+                        }.onFailure { exception ->
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    createdBooking = booking,
+                                    error = exception.message ?: "결제 준비에 실패했습니다"
+                                )
+                            }
+                        }
+                    } else {
+                        // Onsite payment: go directly to completion
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                bookingSuccess = true,
+                                createdBooking = booking
+                            )
+                        }
                     }
                 }
                 .onFailure { exception ->
@@ -210,6 +268,65 @@ class BookingFormViewModel @Inject constructor(
                     }
                 }
         }
+    }
+
+    fun onPaymentActivityLaunched() {
+        _uiState.update { it.copy(showPaymentActivity = false) }
+    }
+
+    fun handlePaymentSuccess(paymentKey: String, orderId: String, amount: Int) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isPaymentProcessing = true, error = null) }
+
+            paymentRepository.confirmPayment(paymentKey, orderId, amount)
+                .onSuccess {
+                    _uiState.update {
+                        it.copy(
+                            isPaymentProcessing = false,
+                            bookingSuccess = true
+                        )
+                    }
+                }
+                .onFailure {
+                    // Fallback: check payment status
+                    paymentRepository.getPaymentByOrderId(orderId)
+                        .onSuccess { status ->
+                            if (status.status == "DONE" || status.status == "APPROVED") {
+                                _uiState.update {
+                                    it.copy(
+                                        isPaymentProcessing = false,
+                                        bookingSuccess = true
+                                    )
+                                }
+                            } else {
+                                _uiState.update {
+                                    it.copy(
+                                        isPaymentProcessing = false,
+                                        error = "결제 승인에 실패했습니다. 다시 시도해 주세요."
+                                    )
+                                }
+                            }
+                        }
+                        .onFailure {
+                            _uiState.update {
+                                it.copy(
+                                    isPaymentProcessing = false,
+                                    error = "결제 승인에 실패했습니다. 다시 시도해 주세요."
+                                )
+                            }
+                        }
+                }
+        }
+    }
+
+    fun handlePaymentFailure(errorCode: String?, errorMessage: String?) {
+        _uiState.update {
+            it.copy(error = errorMessage ?: "결제에 실패했습니다 ($errorCode)")
+        }
+    }
+
+    fun handlePaymentCancelled() {
+        // Do nothing - user stays on the form
     }
 
     fun resetForm() {

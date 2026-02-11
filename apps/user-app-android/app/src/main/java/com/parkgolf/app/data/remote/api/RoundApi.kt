@@ -21,7 +21,8 @@ interface RoundApi {
     suspend fun searchRounds(
         @Query("search") search: String? = null,
         @Query("date") date: String? = null,
-        @Query("timeOfDay") timeOfDay: String? = null,
+        @Query("startTimeFrom") startTimeFrom: String? = null,
+        @Query("startTimeTo") startTimeTo: String? = null,
         @Query("minPrice") minPrice: Int? = null,
         @Query("maxPrice") maxPrice: Int? = null,
         @Query("minPlayers") minPlayers: Int? = null,
