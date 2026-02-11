@@ -64,11 +64,11 @@ export function SocialPage() {
   const debouncedSearch = useDebounce(searchQuery, DEBOUNCE_DELAY_MS);
 
   // Queries
-  const { data: friends = [], isLoading: isLoadingFriends } = useFriendsQuery();
-  const { data: friendRequests = [], isLoading: isLoadingRequests } = useFriendRequestsQuery();
+  const { data: friends = [], isLoading: isLoadingFriends, refetch: refetchFriends } = useFriendsQuery();
+  const { data: friendRequests = [], isLoading: isLoadingRequests, refetch: refetchRequests } = useFriendRequestsQuery();
   const { data: sentRequests = [] } = useSentFriendRequestsQuery();
   const { data: searchResults = [], isLoading: isSearching } = useSearchUsersQuery(debouncedSearch);
-  const { data: chatRoomsData, isLoading: isLoadingChats } = useChatRoomsQuery();
+  const { data: chatRoomsData, isLoading: isLoadingChats, refetch: refetchChatRooms } = useChatRoomsQuery();
   const chatRooms = chatRoomsData?.data ?? [];
 
   // Mutations
@@ -94,6 +94,14 @@ export function SocialPage() {
     const newParams = new URLSearchParams();
     if (tab !== 'friends') newParams.set('tab', tab);
     setSearchParams(newParams, { replace: true });
+
+    // 탭 전환 시 데이터 새로고침
+    if (tab === 'chat') {
+      refetchChatRooms();
+    } else {
+      refetchFriends();
+      refetchRequests();
+    }
   };
 
   // Friend handlers
