@@ -19,6 +19,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+private const val DEFAULT_PLAYER_COUNT = 2
+private const val DEFAULT_PAYMENT_METHOD = "onsite"
+
 /**
  * 예약 폼 화면 전용 ViewModel
  *
@@ -36,12 +39,12 @@ data class BookingFormUiState(
     val selectedStartTime: String = "",
     val selectedTimeSlotId: Int = 0,
     val selectedTimeSlot: TimeSlot? = null,
-    val playerCount: Int = 2,  // 시니어 UI: 기본 2명
+    val playerCount: Int = DEFAULT_PLAYER_COUNT,
     val specialRequests: String = "",
     val userName: String = "",
     val userEmail: String = "",
     val userPhone: String = "",
-    val paymentMethod: String = "onsite",  // 시니어 UI: 기본 현장결제
+    val paymentMethod: String = DEFAULT_PAYMENT_METHOD,
     val agreedToTerms: Boolean = false,
     val totalPrice: Int = 0,
     val bookingSuccess: Boolean = false,

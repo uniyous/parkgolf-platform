@@ -19,6 +19,7 @@
 		14097D34585ADCD3E4FC7909 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 10A39E55B286FF830175386E /* Assets.xcassets */; };
 		174160DA33594118F9BF712A /* Chat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89425BF9DF38E68E383B64D5 /* Chat.swift */; };
 		196B7A527035A2B87D8B3A1B /* ProfilePlaceholderViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DEA1FDFCDA9868E91E2CB8D /* ProfilePlaceholderViews.swift */; };
+		1FFE7625A32A3B766AAE82AD /* AvatarCircle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9644994821B6F2167521C1C /* AvatarCircle.swift */; };
 		256B07D37E11F0610F42A985 /* LocationWeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5645CA23FDC4221B5BF30228 /* LocationWeatherService.swift */; };
 		2E0251B7203D23A84EC52931 /* SocketIO.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1945F2879C86D793A82BE000 /* SocketIO.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		2EC743CA0E4E00B11D22D8E4 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA486415ADDCA27B3F74AE8A /* KeychainManager.swift */; };
@@ -220,6 +221,7 @@
 		9D9607B8A5692C23A78941A3 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		A23E0AC86E247F4A4D855300 /* FriendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsView.swift; sourceTree = "<group>"; };
 		A2F9AE35D890EBD4A30E760D /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		A9644994821B6F2167521C1C /* AvatarCircle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarCircle.swift; sourceTree = "<group>"; };
 		B456827BE183917EAA25A611 /* TimeSlotButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeSlotButton.swift; sourceTree = "<group>"; };
 		B792B32C33EA798BBF9892C3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B81F5F98544420CA57DFDC44 /* FriendService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendService.swift; sourceTree = "<group>"; };
@@ -343,6 +345,7 @@
 		3604CDDD142EDD999118B352 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				A9644994821B6F2167521C1C /* AvatarCircle.swift */,
 				5DEC85CEA7A921BF94B8252F /* EmptyStateView.swift */,
 				2ED45DEF85021870A3EAC449 /* GlassCard.swift */,
 				D44CA76E3797AFBA09C2B624 /* GlassSecureField.swift */,
@@ -801,6 +804,7 @@
 				2EC743CA0E4E00B11D22D8E4 /* KeychainManager.swift in Sources */,
 				56B1835CE1858F6A6A8FEEB2 /* LoadableState.swift in Sources */,
 				7FA8B036099056CE9D42EFE6 /* LocationManager.swift in Sources */,
+				1FFE7625A32A3B766AAE82AD /* AvatarCircle.swift in Sources */,
 				D70E249483ED6D4925D47200 /* EmptyStateView.swift in Sources */,
 				98E5873757F807A1E0CDF001 /* GlassCard.swift in Sources */,
 				002F7B82AC18C4CA12579AA3 /* GlassSecureField.swift in Sources */,

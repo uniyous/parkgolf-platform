@@ -4,8 +4,6 @@ sealed class Screen(val route: String) {
     // Auth
     data object Login : Screen("login")
     data object SignUp : Screen("signup")
-    data object ForgotPassword : Screen("forgot_password")
-
     // Main Tabs
     data object Home : Screen("home")
     data object Search : Screen("search")
@@ -29,10 +27,7 @@ sealed class Screen(val route: String) {
     data object ChatRoom : Screen("chat/{roomId}") {
         fun createRoute(roomId: String) = "chat/$roomId"
     }
-    data object NewChat : Screen("chat/new")
-
     // Friends
-    data object AddFriend : Screen("friends/add")
     data object FriendRequests : Screen("friends/requests")
     data object UnreadChats : Screen("chats/unread")
 

@@ -120,8 +120,7 @@ fun ParkGolfNavHost(
     navController: NavHostController = rememberNavController(),
     authEventBus: AuthEventBus? = null
 ) {
-    // TODO: Check authentication state from ViewModel
-    val isLoggedIn = false // Placeholder
+    val isLoggedIn = false
 
     // Handle session expired events from TokenAuthenticator
     if (authEventBus != null) {

@@ -16,6 +16,10 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 private const val TAG = "ChatViewModel"
+private const val TYPING_CLEAR_DELAY_MS = 3000L
+private const val SOCKET_CONNECT_RETRIES = 50
+private const val SOCKET_RETRY_DELAY_MS = 100L
+private const val MESSAGES_PAGE_LIMIT = 30
 
 data class ChatUiState(
     val isLoading: Boolean = false,
@@ -91,7 +95,7 @@ class ChatViewModel @Inject constructor(
                         // Auto-clear after 3 seconds
                         typingClearJob?.cancel()
                         typingClearJob = viewModelScope.launch {
-                            delay(3000)
+                            delay(TYPING_CLEAR_DELAY_MS)
                             _uiState.value = _uiState.value.copy(typingUserName = null)
                         }
                     } else {
@@ -150,7 +154,7 @@ class ChatViewModel @Inject constructor(
             chatRepository.forceReconnect(token)
 
             // Wait for connection (max 5 seconds, like iOS)
-            repeat(50) {
+            repeat(SOCKET_CONNECT_RETRIES) {
                 if (chatRepository.isConnected) {
                     Log.d(TAG, "Reconnected successfully")
                     // Rejoin room after reconnection
@@ -160,7 +164,7 @@ class ChatViewModel @Inject constructor(
                     }
                     return@launch
                 }
-                delay(100)
+                delay(SOCKET_RETRY_DELAY_MS)
             }
             Log.w(TAG, "Force reconnect timeout")
             _uiState.value = _uiState.value.copy(canReconnect = chatRepository.canReconnect)
@@ -180,12 +184,12 @@ class ChatViewModel @Inject constructor(
                 chatRepository.connect(token)
 
                 // Wait for connection (max 5 seconds, like iOS)
-                repeat(50) {
+                repeat(SOCKET_CONNECT_RETRIES) {
                     if (chatRepository.isConnected) {
                         Log.d(TAG, "Socket connected")
                         return@repeat
                     }
-                    delay(100)
+                    delay(SOCKET_RETRY_DELAY_MS)
                 }
 
                 if (!chatRepository.isConnected) {
@@ -220,7 +224,7 @@ class ChatViewModel @Inject constructor(
 
     private fun loadMessages(roomId: String, cursor: String? = null) {
         viewModelScope.launch {
-            chatRepository.getMessages(roomId, cursor, limit = 30)
+            chatRepository.getMessages(roomId, cursor, limit = MESSAGES_PAGE_LIMIT)
                 .onSuccess { result ->
                     // Sort messages by createdAt ascending (oldest first, like iOS)
                     val sortedMessages = result.messages.sortedBy { it.createdAt }
