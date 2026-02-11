@@ -645,14 +645,6 @@ private fun TimeSlotGridCell(
             textAlign = TextAlign.Center
         )
 
-        // 가격
-        Text(
-            text = "${formatter.format(slot.price)}원",
-            fontSize = 14.sp,
-            color = Color.White.copy(alpha = 0.7f),
-            textAlign = TextAlign.Center
-        )
-
         // 잔여 자리
         Text(
             text = availabilityText,

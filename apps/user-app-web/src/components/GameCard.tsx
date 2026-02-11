@@ -6,7 +6,7 @@ import type { Game, GameTimeSlot } from '@/lib/api/gameApi';
 const getAvailabilityText = (remaining: number) => {
   if (remaining === 0) return '매진';
   if (remaining <= 2) return '마감임박';
-  return `${remaining}자리 남음`;
+  return `${remaining}자리`;
 };
 
 export interface GameCardProps {
@@ -14,7 +14,7 @@ export interface GameCardProps {
   onTimeSlotSelect: (game: Game, timeSlot: GameTimeSlot) => void;
 }
 
-const SLOTS_VISIBLE = 5;
+const SLOTS_VISIBLE = 4;
 
 export const GameCard: React.FC<GameCardProps> = ({ game, onTimeSlotSelect }) => {
   const [showAllSlots, setShowAllSlots] = useState(false);
@@ -61,7 +61,7 @@ export const GameCard: React.FC<GameCardProps> = ({ game, onTimeSlotSelect }) =>
           </div>
         ) : (
           <>
-            <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {(showAllSlots ? filteredSlots : filteredSlots.slice(0, SLOTS_VISIBLE)).map((slot) => {
                 const maxCapacity = slot.maxPlayers ?? slot.maxCapacity ?? 4;
                 const currentBookings = slot.bookedPlayers ?? slot.currentBookings ?? 0;

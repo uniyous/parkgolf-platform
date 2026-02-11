@@ -459,11 +459,6 @@ struct TimeSlotGridCell: View {
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                // Price
-                Text("\(slot.price.formatted())원")
-                    .font(.parkLabelLarge)
-                    .foregroundStyle(.white.opacity(0.7))
-
                 // Availability
                 Text(availabilityText)
                     .font(.parkLabelMedium)
