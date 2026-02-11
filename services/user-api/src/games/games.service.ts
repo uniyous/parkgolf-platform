@@ -79,12 +79,12 @@ export class GamesService {
 
   async getGameById(gameId: number): Promise<ApiResponse<GameResponseDto>> {
     this.logger.log(`Fetching game: ${gameId}`);
-    return this.natsClient.send('games.findById', { gameId }, NATS_TIMEOUTS.QUICK);
+    return this.natsClient.send('games.get', { gameId }, NATS_TIMEOUTS.QUICK);
   }
 
   async getGamesByClub(clubId: number): Promise<ApiResponse<GameResponseDto[]>> {
     this.logger.log(`Fetching games for club: ${clubId}`);
-    return this.natsClient.send('games.findByClub', { clubId }, NATS_TIMEOUTS.LIST_QUERY);
+    return this.natsClient.send('games.getByClub', { clubId }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
   async getTimeSlotsByGame(gameId: number, date?: string): Promise<ApiResponse<GameTimeSlotResponseDto[]>> {
