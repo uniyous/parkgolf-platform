@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Calendar, Search, History } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AppLayout, Container } from '@/components/layout';
 import { GlassCard, Button } from '@/components/ui';
@@ -59,36 +59,36 @@ export const MyBookingsPage: React.FC = () => {
 
   const totalPages = data ? Math.ceil(data.total / data.limit) : 0;
 
-  const headerRight = (
-    <Button
-      variant="secondary"
-      size="sm"
-      onClick={() => handleTabChange(timeFilter === 'upcoming' ? 'past' : 'upcoming')}
-    >
-      <History className="w-4 h-4" />
-      <span className="hidden sm:inline">
-        {timeFilter === 'upcoming' ? '지난 예약' : '예정된 예약'}
-      </span>
-    </Button>
-  );
-
   return (
-    <AppLayout title="예약 내역" headerRight={headerRight}>
+    <AppLayout title="예약 내역">
       <Container className="py-4 md:py-6 space-y-4">
-        {/* Title Card */}
-        <GlassCard>
-          <div className="flex items-center gap-3">
-            <Calendar className="w-6 h-6 text-[var(--color-primary)]" />
-            <div>
-              <h3 className="font-semibold text-white">
-                {timeFilter === 'upcoming' ? '예정된 예약' : '지난 예약'}
-              </h3>
-              <p className="text-sm text-[var(--color-text-muted)]">
-                {timeFilter === 'upcoming'
-                  ? '다가오는 라운드 일정을 확인하세요'
-                  : '지난 라운드 기록을 확인하세요'}
-              </p>
-            </div>
+        {/* Tab Selector */}
+        <GlassCard className="!p-0">
+          <div className="grid grid-cols-2">
+            <button
+              type="button"
+              className={cn(
+                'py-3 text-center text-sm font-medium border-b-2 transition-colors',
+                timeFilter === 'upcoming'
+                  ? 'border-[var(--color-primary)] text-white'
+                  : 'border-transparent text-white/50 hover:text-white/70',
+              )}
+              onClick={() => handleTabChange('upcoming')}
+            >
+              예정된 예약
+            </button>
+            <button
+              type="button"
+              className={cn(
+                'py-3 text-center text-sm font-medium border-b-2 transition-colors',
+                timeFilter === 'past'
+                  ? 'border-[var(--color-primary)] text-white'
+                  : 'border-transparent text-white/50 hover:text-white/70',
+              )}
+              onClick={() => handleTabChange('past')}
+            >
+              지난 예약
+            </button>
           </div>
         </GlassCard>
 

@@ -1,7 +1,10 @@
 package com.parkgolf.app.util
 
 import com.parkgolf.app.data.remote.dto.common.ApiResponse
+import com.parkgolf.app.data.remote.dto.common.ApiError
 import com.parkgolf.app.data.remote.dto.common.PaginatedResponse
+import kotlinx.serialization.json.Json
+import retrofit2.HttpException
 
 /**
  * API Response 처리를 위한 Extension 함수들
@@ -120,7 +123,29 @@ inline fun <T, R> PaginatedResponse<T>.toPaginatedResult(
 suspend inline fun <T> safeApiCall(crossinline block: suspend () -> Result<T>): Result<T> {
     return try {
         block()
+    } catch (e: HttpException) {
+        val message = parseHttpErrorMessage(e)
+        Result.failure(Exception(message))
     } catch (e: Exception) {
         Result.failure(e)
+    }
+}
+
+/**
+ * HTTP 에러 응답에서 서버 에러 메시지를 추출합니다.
+ * 서버 응답 형식: { success: false, error: { code, message } }
+ */
+fun parseHttpErrorMessage(e: HttpException): String {
+    return try {
+        val errorBody = e.response()?.errorBody()?.string()
+        if (errorBody != null) {
+            val json = Json { ignoreUnknownKeys = true }
+            val errorResponse = json.decodeFromString<ApiResponse<Unit?>>(errorBody)
+            errorResponse.error?.message ?: "요청에 실패했습니다 (${e.code()})"
+        } else {
+            "요청에 실패했습니다 (${e.code()})"
+        }
+    } catch (_: Exception) {
+        "요청에 실패했습니다 (${e.code()})"
     }
 }

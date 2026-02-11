@@ -58,7 +58,7 @@ enum class BookingStatus(
 
     companion object {
         fun fromValue(value: String): BookingStatus =
-            entries.find { it.value == value } ?: PENDING
+            entries.find { it.value.equals(value, ignoreCase = true) || it.name.equals(value, ignoreCase = true) } ?: PENDING
     }
 }
 
