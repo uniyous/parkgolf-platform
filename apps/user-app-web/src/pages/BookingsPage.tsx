@@ -7,7 +7,7 @@ import { Pagination, GameCard, GameCardSkeleton } from '@/components';
 import { useSearchGamesQuery } from '@/hooks/queries';
 import { useGameSearchParams } from '@/hooks/useSearchParams';
 import { useDebounce } from '@/hooks/useDebounce';
-import { DATE_FILTER_MAX_MONTHS, SIMPLE_TIME_PERIODS } from '@/lib/constants';
+import { DATE_FILTER_MAX_MONTHS, SIMPLE_TIME_PERIODS, DEFAULT_PAGE_SIZE, DEBOUNCE_DELAY_MS } from '@/lib/constants';
 import type { Game, GameTimeSlot, GameSearchParams } from '@/lib/api/gameApi';
 
 export function BookingsPage() {
@@ -16,7 +16,7 @@ export function BookingsPage() {
 
   const [searchInput, setSearchInput] = useState(filters.search);
 
-  const debouncedSearch = useDebounce(searchInput, 300);
+  const debouncedSearch = useDebounce(searchInput, DEBOUNCE_DELAY_MS);
 
   React.useEffect(() => {
     if (debouncedSearch !== filters.search) {
@@ -31,7 +31,7 @@ export function BookingsPage() {
       date: filters.date || undefined,
       timeOfDay: filters.timeOfDay || undefined,
       page: filters.page,
-      limit: 20,
+      limit: DEFAULT_PAGE_SIZE,
     }),
     [filters.search, filters.date, filters.timeOfDay, filters.page]
   );
@@ -47,7 +47,7 @@ export function BookingsPage() {
     ? {
         total: searchResult.total || games.length,
         page: searchResult.page || filters.page,
-        limit: searchResult.limit || 20,
+        limit: searchResult.limit || DEFAULT_PAGE_SIZE,
         totalPages: searchResult.totalPages || 1,
       }
     : undefined;

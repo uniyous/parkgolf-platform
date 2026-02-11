@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useBooking } from '../hooks/useBooking';
-import { useAuth } from '../hooks/useAuth';
+import { useBooking } from '@/hooks/useBooking';
+import { useAuth } from '@/hooks/useAuth';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { loadTossPayments } from '@tosspayments/payment-sdk';
 import type { Game, GameTimeSlot } from '@/lib/api/gameApi';
 import { formatDate } from '@/lib/formatting';
 import { showErrorToast } from '@/lib/toast';
 import { translateErrorMessage } from '@/types/common';
-import { Button, Checkbox, PriceDisplay } from '../components';
+import { Button, Checkbox, PriceDisplay } from '@/components';
 import { Container, SubPageHeader } from '@/components/layout';
 import { SIMPLE_PAYMENT_METHODS, PAYMENT_CONTEXT_STORAGE_KEY } from '@/lib/constants';
 import type { PaymentSessionContext } from '@/lib/constants';

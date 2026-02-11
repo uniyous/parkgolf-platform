@@ -119,3 +119,6 @@ export interface PaymentSessionContext {
 // =====================
 export const DEFAULT_PAGE_SIZE = 20;
 export const DEFAULT_PAGE = 1;
+export const DEBOUNCE_DELAY_MS = 300;
+export const NOTIFICATION_PAGE_SIZE = 50;
+export const MY_BOOKINGS_PAGE_SIZE = 10;

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { Button, Input } from '../components';
+import { Button, Input } from '@/components';
 
 export const SignupPage: React.FC = () => {
   const { register } = useAuth();

@@ -28,6 +28,7 @@ import {
 } from '@/hooks/queries';
 import { useChatRoomsQuery, useGetOrCreateDirectChatMutation, useCreateChatRoomMutation, useLeaveChatRoomMutation } from '@/hooks/queries/chat';
 import { useDebounce } from '@/hooks/useDebounce';
+import { DEBOUNCE_DELAY_MS } from '@/lib/constants';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useConfirm } from '@/contexts/ConfirmContext';
 import { showSuccessToast, showErrorToast } from '@/lib/toast';
@@ -60,7 +61,7 @@ export function SocialPage() {
   // Search states
   const [searchQuery, setSearchQuery] = useState('');
   const [friendListSearch, setFriendListSearch] = useState('');
-  const debouncedSearch = useDebounce(searchQuery, 300);
+  const debouncedSearch = useDebounce(searchQuery, DEBOUNCE_DELAY_MS);
 
   // Queries
   const { data: friends = [], isLoading: isLoadingFriends } = useFriendsQuery();

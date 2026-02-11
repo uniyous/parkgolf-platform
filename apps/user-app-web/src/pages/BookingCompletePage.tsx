@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { loadTossPayments } from '@tosspayments/payment-sdk';
 import type { BookingResponse } from '@/lib/api/bookingApi';
@@ -9,7 +9,7 @@ import { useConfirmPaymentMutation } from '@/hooks/queries/payment';
 import { formatDate } from '@/lib/formatting';
 import { translateErrorMessage } from '@/types/common';
 import { Container, SubPageHeader } from '@/components/layout';
-import { Button } from '../components';
+import { Button } from '@/components';
 import { PAYMENT_CONTEXT_STORAGE_KEY } from '@/lib/constants';
 import type { PaymentSessionContext } from '@/lib/constants';
 

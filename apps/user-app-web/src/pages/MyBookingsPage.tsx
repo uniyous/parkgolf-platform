@@ -9,6 +9,7 @@ import { BookingCard, BookingCardSkeleton } from '@/components/BookingCard';
 import { CancelBookingModal } from '@/components/CancelBookingModal';
 import { Pagination } from '@/components';
 import { type BookingWithCancel } from '@/lib/api/bookingApi';
+import { MY_BOOKINGS_PAGE_SIZE } from '@/lib/constants';
 
 type TimeFilter = 'upcoming' | 'past';
 
@@ -25,7 +26,7 @@ export const MyBookingsPage: React.FC = () => {
     sortBy: 'bookingDate',
     sortOrder: timeFilter === 'past' ? 'desc' : 'asc',
     page,
-    limit: 10,
+    limit: MY_BOOKINGS_PAGE_SIZE,
   });
 
   const handleTabChange = useCallback((tab: TimeFilter) => {
