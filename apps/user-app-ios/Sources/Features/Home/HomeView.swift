@@ -252,35 +252,64 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Popular / Nearby Clubs Section
+    // MARK: - Nearby Clubs Section
 
     private var popularClubsSection: some View {
         VStack(alignment: .leading, spacing: ParkSpacing.sm) {
             HStack {
-                if !viewModel.nearbyClubs.isEmpty {
-                    Label("주변 골프장", systemImage: "mappin.circle.fill")
-                        .font(.parkHeadlineSmall)
-                        .foregroundStyle(.white)
-                } else {
-                    Text("🏆 이번 주 인기 골프장")
-                        .font(.parkHeadlineSmall)
-                        .foregroundStyle(.white)
-                }
+                Label("주변 골프장", systemImage: "mappin.circle.fill")
+                    .font(.parkHeadlineSmall)
+                    .foregroundStyle(.white)
 
                 Spacer()
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: ParkSpacing.sm) {
-                    if !viewModel.nearbyClubs.isEmpty {
+            if !viewModel.nearbyClubs.isEmpty {
+                // 주변 골프장 목록
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: ParkSpacing.sm) {
                         ForEach(viewModel.nearbyClubs) { club in
                             HomeNearbyClubCard(club: club)
                         }
-                    } else {
-                        ForEach(viewModel.popularClubs) { club in
-                            HomePopularClubCard(club: club)
-                        }
                     }
+                }
+            } else if !viewModel.hasLocation && viewModel.locationDataLoaded {
+                // 위치 권한 없음
+                GlassCard {
+                    VStack(spacing: ParkSpacing.sm) {
+                        Image(systemName: "location.slash.fill")
+                            .font(.system(size: 32))
+                            .foregroundStyle(.white.opacity(0.5))
+
+                        Text("위치 정보를 사용할 수 없습니다")
+                            .font(.parkBodyMedium)
+                            .foregroundStyle(.white.opacity(0.7))
+
+                        Text("설정에서 위치 권한을 허용해주세요")
+                            .font(.parkCaption)
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, ParkSpacing.md)
+                }
+            } else if viewModel.hasLocation && viewModel.locationDataLoaded {
+                // 위치는 있지만 주변 골프장 없음
+                GlassCard {
+                    VStack(spacing: ParkSpacing.sm) {
+                        Image(systemName: "mappin.slash")
+                            .font(.system(size: 32))
+                            .foregroundStyle(.white.opacity(0.5))
+
+                        Text("주변에 골프장이 없습니다")
+                            .font(.parkBodyMedium)
+                            .foregroundStyle(.white.opacity(0.7))
+
+                        Text("반경 30km 내 등록된 골프장이 없습니다")
+                            .font(.parkCaption)
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, ParkSpacing.md)
                 }
             }
         }
@@ -406,48 +435,6 @@ struct HomeNearbyClubCard: View {
                             .font(.parkCaption)
                             .foregroundStyle(.white)
                     }
-                }
-                .padding(ParkSpacing.sm)
-            }
-            .frame(width: 160)
-        }
-    }
-}
-
-// MARK: - Popular Club Card
-
-struct HomePopularClubCard: View {
-    let club: Club
-
-    var body: some View {
-        GlassCard(padding: 0, cornerRadius: ParkRadius.lg) {
-            VStack(alignment: .leading, spacing: 0) {
-                // Image placeholder
-                Rectangle()
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.parkPrimary.opacity(0.3), Color.parkSecondary.opacity(0.3)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(height: 100)
-                    .overlay(
-                        Image(systemName: "figure.golf")
-                            .font(.system(size: 32))
-                            .foregroundStyle(.white.opacity(0.5))
-                    )
-
-                VStack(alignment: .leading, spacing: ParkSpacing.xxs) {
-                    Text(club.name)
-                        .font(.parkLabelLarge)
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-
-                    Text(club.address)
-                        .font(.parkCaption)
-                        .foregroundStyle(.white.opacity(0.6))
-                        .lineLimit(1)
                 }
                 .padding(ParkSpacing.sm)
             }

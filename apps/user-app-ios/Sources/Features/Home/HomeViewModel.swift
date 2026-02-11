@@ -3,7 +3,6 @@ import Foundation
 @MainActor
 class HomeViewModel: ObservableObject {
     @Published var upcomingBookings: [BookingResponse] = []
-    @Published var popularClubs: [Club] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
 
@@ -16,6 +15,8 @@ class HomeViewModel: ObservableObject {
     @Published var regionName: String?
     @Published var currentWeather: CurrentWeather?
     @Published var nearbyClubs: [NearbyClub] = []
+    @Published var hasLocation = false
+    @Published var locationDataLoaded = false
 
     var pendingFriendRequestsCount: Int {
         friendRequests.count
@@ -76,18 +77,16 @@ class HomeViewModel: ObservableObject {
     private func loadLocationData() async {
         let locationManager = LocationManager.shared
 
-        // 위치 권한이 없으면 폴백
+        // 위치 권한이 없으면 빈 상태
         guard locationManager.hasLocation,
               let lat = locationManager.latitude,
               let lon = locationManager.longitude else {
-            // Fallback mock data
-            popularClubs = [
-                Club(id: "1", name: "서울파크골프장", address: "서울시 강남구", phoneNumber: nil, imageUrl: nil, latitude: nil, longitude: nil, courses: nil),
-                Club(id: "2", name: "부산파크골프장", address: "부산시 해운대구", phoneNumber: nil, imageUrl: nil, latitude: nil, longitude: nil, courses: nil),
-                Club(id: "3", name: "제주파크골프장", address: "제주시 애월읍", phoneNumber: nil, imageUrl: nil, latitude: nil, longitude: nil, courses: nil),
-            ]
+            hasLocation = false
+            locationDataLoaded = true
             return
         }
+
+        hasLocation = true
 
         // Load region, weather, and nearby clubs concurrently
         async let regionTask = loadRegion(lat: lat, lon: lon)
@@ -99,6 +98,7 @@ class HomeViewModel: ObservableObject {
         regionName = region
         currentWeather = weather
         nearbyClubs = nearby
+        locationDataLoaded = true
     }
 
     private func loadRegion(lat: Double, lon: Double) async -> String? {

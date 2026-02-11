@@ -36,6 +36,8 @@ data class HomeUiState(
     val regionName: String? = null,
     val currentWeather: CurrentWeather? = null,
     val nearbyClubs: List<NearbyClub> = emptyList(),
+    val hasLocation: Boolean = false,
+    val locationDataLoaded: Boolean = false,
     val error: String? = null
 ) {
     // 알림 관련 계산 속성
@@ -75,6 +77,12 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    private var isLocationLoading = false
+
+    companion object {
+        private const val TAG = "HomeViewModel"
+    }
+
     init {
         loadData()
     }
@@ -107,11 +115,37 @@ class HomeViewModel @Inject constructor(
     }
 
     private suspend fun loadLocationData() {
-        if (!locationManager.hasLocationPermission) return
+        if (isLocationLoading) return
+        // 이미 로드 완료된 경우 재로드 방지 (refresh 시에는 locationDataLoaded가 false로 리셋됨)
+        if (_uiState.value.locationDataLoaded && _uiState.value.currentWeather != null) return
 
-        val location = locationManager.getCurrentLocation() ?: return
+        isLocationLoading = true
+        try {
+            loadLocationDataInternal()
+        } finally {
+            isLocationLoading = false
+        }
+    }
+
+    private suspend fun loadLocationDataInternal() {
+        if (!locationManager.hasLocationPermission) {
+            android.util.Log.d(TAG, "Location permission not granted")
+            _uiState.value = _uiState.value.copy(hasLocation = false, locationDataLoaded = true)
+            return
+        }
+
+        val location = locationManager.getCurrentLocation()
+        if (location == null) {
+            android.util.Log.w(TAG, "Failed to get current location")
+            _uiState.value = _uiState.value.copy(hasLocation = false, locationDataLoaded = true)
+            return
+        }
+
         val lat = location.latitude
         val lon = location.longitude
+        android.util.Log.d(TAG, "Location acquired: lat=$lat, lon=$lon")
+
+        _uiState.value = _uiState.value.copy(hasLocation = true)
 
         // 행정동, 날씨, 주변 골프장 동시 로드
         val regionDeferred = viewModelScope.async { loadRegion(lat, lon) }
@@ -122,10 +156,13 @@ class HomeViewModel @Inject constructor(
         val weather = weatherDeferred.await()
         val nearby = nearbyDeferred.await()
 
+        android.util.Log.d(TAG, "Location data loaded: region=$region, weather=${weather != null}, nearby=${nearby.size}")
+
         _uiState.value = _uiState.value.copy(
             regionName = region,
             currentWeather = weather,
-            nearbyClubs = nearby
+            nearbyClubs = nearby,
+            locationDataLoaded = true
         )
     }
 
@@ -235,6 +272,7 @@ class HomeViewModel @Inject constructor(
     }
 
     fun refresh() {
+        _uiState.value = _uiState.value.copy(locationDataLoaded = false)
         loadData()
     }
 

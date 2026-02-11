@@ -96,7 +96,10 @@ fun HomeScreen(
     }
 
     LaunchedEffect(Unit) {
-        if (!locationPermissionState.status.isGranted) {
+        if (locationPermissionState.status.isGranted) {
+            // 이미 권한이 있는 경우 위치 데이터 로드 보장
+            viewModel.onLocationPermissionGranted()
+        } else {
             locationPermissionState.launchPermissionRequest()
         }
     }
@@ -183,17 +186,13 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Nearby Clubs Section (위치 데이터가 있을 때) or Popular Clubs
-                if (uiState.nearbyClubs.isNotEmpty()) {
-                    SectionHeader(title = "주변 파크골프장")
-                } else {
-                    SectionHeader(title = "이번 주 인기 골프장")
-                }
+                // Nearby Clubs Section
+                SectionHeader(title = "주변 파크골프장")
 
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            // Nearby Clubs or Popular Clubs Horizontal Scroll
+            // Nearby Clubs Horizontal Scroll or Empty States
             if (uiState.nearbyClubs.isNotEmpty()) {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
@@ -206,10 +205,10 @@ fun HomeScreen(
                         )
                     }
                 }
-            } else if (uiState.isLoading) {
+            } else if (uiState.isLoading || !uiState.locationDataLoaded) {
                 PopularClubsLoading()
-            } else {
-                // Fallback: 위치 없을 때 안내 메시지
+            } else if (!uiState.hasLocation) {
+                // 위치 권한 없음
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -231,6 +230,41 @@ fun HomeScreen(
                                 text = "위치 권한을 허용하면\n주변 골프장을 볼 수 있어요",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = TextOnGradientSecondary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            } else {
+                // 위치는 있지만 주변 골프장 없음
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    GlassCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                modifier = Modifier.size(36.dp),
+                                tint = TextOnGradientTertiary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "주변에 골프장이 없습니다",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextOnGradientSecondary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "반경 30km 내 등록된 골프장이 없습니다",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextOnGradientTertiary,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }

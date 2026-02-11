@@ -337,7 +337,18 @@ export class ClubService {
 
     try {
       const clubs = await this.prisma.$queryRaw<(Club & { distance: number })[]>`
-        SELECT *,
+        SELECT
+          id, name, location, address, phone, email, website,
+          status, latitude, longitude, facilities,
+          company_id AS "companyId",
+          total_holes AS "totalHoles",
+          total_courses AS "totalCourses",
+          club_type AS "clubType",
+          operating_hours AS "operatingHours",
+          season_info AS "seasonInfo",
+          is_active AS "isActive",
+          created_at AS "createdAt",
+          updated_at AS "updatedAt",
           (6371 * acos(
             cos(radians(${latitude})) * cos(radians(latitude)) *
             cos(radians(longitude) - radians(${longitude})) +

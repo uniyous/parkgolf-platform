@@ -9,10 +9,8 @@ import android.location.LocationManager as AndroidLocationManager
 import android.os.Bundle
 import android.os.Looper
 import androidx.core.content.ContextCompat
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
 data class UserLocation(
@@ -39,8 +37,14 @@ class LocationManager(private val context: Context) {
         val lastKnown = getLastKnownLocation(manager)
         if (lastKnown != null) return lastKnown
 
-        // Request a fresh location update
-        return requestSingleUpdate(manager)
+        // Request a fresh location update with timeout (10 seconds)
+        return withTimeoutOrNull(LOCATION_TIMEOUT_MS) {
+            requestSingleUpdate(manager)
+        }
+    }
+
+    companion object {
+        private const val LOCATION_TIMEOUT_MS = 10_000L
     }
 
     @Suppress("MissingPermission")
@@ -48,8 +52,8 @@ class LocationManager(private val context: Context) {
         if (!hasLocationPermission) return null
 
         val providers = listOf(
-            AndroidLocationManager.GPS_PROVIDER,
-            AndroidLocationManager.NETWORK_PROVIDER
+            AndroidLocationManager.NETWORK_PROVIDER,
+            AndroidLocationManager.GPS_PROVIDER
         )
 
         for (provider in providers) {
@@ -74,7 +78,10 @@ class LocationManager(private val context: Context) {
                 AndroidLocationManager.NETWORK_PROVIDER
             manager.isProviderEnabled(AndroidLocationManager.GPS_PROVIDER) ->
                 AndroidLocationManager.GPS_PROVIDER
-            else -> return null
+            else -> {
+                android.util.Log.w("LocationManager", "No location provider available")
+                return null
+            }
         }
 
         return suspendCancellableCoroutine { continuation ->
