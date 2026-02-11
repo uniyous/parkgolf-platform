@@ -36,9 +36,12 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -46,6 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -68,6 +72,7 @@ import com.parkgolf.app.presentation.theme.ParkError
 import com.parkgolf.app.presentation.theme.TextOnGradient
 import com.parkgolf.app.presentation.theme.TextOnGradientSecondary
 import com.parkgolf.app.presentation.theme.TextOnGradientTertiary
+import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -78,13 +83,23 @@ import java.time.temporal.ChronoUnit
  * 에메랄드 그라데이션 배경 + 글래스 모피즘 스타일
  */
 
-@OptIn(ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onNavigate: (String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Pull-to-Refresh
+    val pullRefreshState = rememberPullToRefreshState()
+    if (pullRefreshState.isRefreshing) {
+        LaunchedEffect(true) {
+            viewModel.refresh()
+            delay(1500)
+            pullRefreshState.endRefresh()
+        }
+    }
 
     // 위치 권한 요청
     val locationPermissionState = rememberPermissionState(
@@ -105,6 +120,11 @@ fun HomeScreen(
     }
 
     GradientBackground {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(pullRefreshState.nestedScrollConnection)
+        ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -118,8 +138,7 @@ fun HomeScreen(
 
             // Welcome Section (항상 표시)
             WelcomeSection(
-                userName = uiState.user?.name ?: "회원",
-                weatherMessage = uiState.weatherMessage
+                userName = uiState.user?.name ?: "회원"
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -273,6 +292,12 @@ fun HomeScreen(
             }
 
             Spacer(modifier = Modifier.height(32.dp))
+        }
+
+        PullToRefreshContainer(
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
         }
     }
 }
@@ -576,8 +601,7 @@ private fun BrandHeader(
 // ============================================
 @Composable
 private fun WelcomeSection(
-    userName: String,
-    weatherMessage: String
+    userName: String
 ) {
     Column(
         modifier = Modifier
@@ -590,21 +614,15 @@ private fun WelcomeSection(
             fontWeight = FontWeight.Bold,
             color = TextOnGradient
         )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = weatherMessage,
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextOnGradientSecondary
-        )
     }
 }
 
 private fun getGreetingMessage(name: String): String {
     val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
     return when {
-        hour < 12 -> "좋은 아침이에요, ${name}님!"
-        hour < 18 -> "좋은 오후에요, ${name}님!"
-        else -> "좋은 저녁이에요, ${name}님!"
+        hour < 12 -> "좋은 아침이에요, ${name}님! ☀️"
+        hour < 18 -> "안녕하세요, ${name}님! 👋"
+        else -> "좋은 저녁이에요, ${name}님! 🌙"
     }
 }
 

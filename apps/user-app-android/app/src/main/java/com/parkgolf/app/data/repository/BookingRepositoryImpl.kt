@@ -49,8 +49,8 @@ class BookingRepositoryImpl @Inject constructor(
             // 백엔드에서 전체 목록 반환 -> 클라이언트에서 필터링 (iOS와 동일)
             val allBookings = response.data.map { it.toDomain() }
 
-            // timeFilter에 따라 필터링
-            val filteredBookings = when (timeFilter) {
+            // timeFilter에 따라 필터링 (대소문자 무시)
+            val filteredBookings = when (timeFilter?.uppercase()) {
                 "UPCOMING" -> allBookings.filter { booking ->
                     val today = LocalDate.now()
                     booking.bookingDate >= today &&
@@ -80,7 +80,7 @@ class BookingRepositoryImpl @Inject constructor(
             }
 
             // 날짜순 정렬 (예정된 예약: 오름차순, 지난 예약: 내림차순)
-            val sortedBookings = when (timeFilter) {
+            val sortedBookings = when (timeFilter?.uppercase()) {
                 "UPCOMING" -> statusFilteredBookings.sortedBy { it.bookingDate }
                 "PAST" -> statusFilteredBookings.sortedByDescending { it.bookingDate }
                 else -> statusFilteredBookings.sortedByDescending { it.bookingDate }

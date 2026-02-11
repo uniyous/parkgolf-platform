@@ -23,6 +23,11 @@ struct HomeView: View {
                             // Welcome Header
                             welcomeHeader
 
+                            // Weather Card
+                            if let weather = viewModel.currentWeather {
+                                weatherCard(weather: weather)
+                            }
+
                             // Notifications Section
                             if viewModel.hasNotifications {
                                 notificationsSection
@@ -41,7 +46,7 @@ struct HomeView: View {
                         .padding(.bottom, ParkSpacing.xxl)
                     }
                     .refreshable {
-                        await viewModel.loadData()
+                        await viewModel.refresh()
                     }
                 }
             }
@@ -100,18 +105,6 @@ struct HomeView: View {
             Text(greetingMessage)
                 .font(.parkDisplaySmall)
                 .foregroundStyle(.white)
-
-            HStack(spacing: ParkSpacing.xs) {
-                if let weather = viewModel.currentWeather {
-                    Image(systemName: weather.weatherIcon)
-                        .font(.parkCaption)
-                        .foregroundStyle(.white.opacity(0.7))
-                }
-
-                Text(weatherMessageText)
-                    .font(.parkBodyMedium)
-                    .foregroundStyle(.white.opacity(0.7))
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, ParkSpacing.md)
@@ -130,8 +123,51 @@ struct HomeView: View {
         }
     }
 
-    private var weatherMessageText: String {
-        viewModel.weatherMessage
+    // MARK: - Weather Card
+
+    private func weatherCard(weather: CurrentWeather) -> some View {
+        GlassCard {
+            HStack {
+                HStack(spacing: ParkSpacing.md) {
+                    // Weather icon
+                    ZStack {
+                        Circle()
+                            .fill(Color.parkAccent.opacity(0.2))
+                            .frame(width: 48, height: 48)
+
+                        Image(systemName: weather.weatherIcon)
+                            .font(.system(size: 22))
+                            .foregroundStyle(Color.parkAccent)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        if let region = viewModel.regionName {
+                            Text(region)
+                                .font(.parkCaption)
+                                .foregroundStyle(.white.opacity(0.7))
+                        }
+                        Text("\(Int(weather.temperature))°C")
+                            .font(.parkDisplaySmall)
+                            .foregroundStyle(.white)
+                    }
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(weather.weatherDescription)
+                        .font(.parkHeadlineSmall)
+                        .foregroundStyle(.white)
+
+                    HStack(spacing: ParkSpacing.sm) {
+                        Label("\(Int(weather.humidity))%", systemImage: "humidity.fill")
+                        Label(String(format: "%.1fm/s", weather.windSpeed), systemImage: "wind")
+                    }
+                    .font(.parkCaption)
+                    .foregroundStyle(.white.opacity(0.7))
+                }
+            }
+        }
     }
 
     // MARK: - Notifications Section

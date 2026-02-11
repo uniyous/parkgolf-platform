@@ -55,12 +55,6 @@ data class HomeUiState(
     val notificationCount: Int
         get() = unreadNotificationCount
 
-    val weatherMessage: String
-        get() {
-            val weather = currentWeather ?: return "오늘도 파크골프하기 좋은 날이에요"
-            val regionText = regionName?.let { "$it " } ?: ""
-            return "${regionText}${weather.temperature.toInt()}°C · ${weather.weatherDescription}"
-        }
 }
 
 @HiltViewModel

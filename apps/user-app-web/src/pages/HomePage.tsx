@@ -9,11 +9,15 @@ import {
   Clock,
   MapPin,
   Users,
-  CloudSun,
+  Cloud,
+  Sun,
   Navigation,
+  Droplets,
+  Wind,
 } from 'lucide-react';
 import { AppLayout, Container } from '@/components/layout';
 import { GlassCard, EmptyState, LoadingView } from '@/components/ui';
+import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/Carousel';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyBookingsQuery, useFriendRequestsQuery } from '@/hooks/queries';
 import { useReverseGeoQuery, useNearbyClubsQuery, useCurrentWeatherQuery } from '@/hooks/queries';
@@ -78,39 +82,17 @@ export function HomePage() {
   return (
     <AppLayout showLogo>
       <Container className="py-4 md:py-6 space-y-6">
-        {/* Welcome Header with Location & Weather */}
-        <div className="space-y-1">
+        {/* Welcome Header */}
+        <div>
           <h1 className="text-2xl md:text-3xl font-bold text-white">
             {getGreetingMessage(user?.name || '회원')}
           </h1>
-          <div className="flex items-center gap-3 text-[var(--color-text-secondary)]">
-            {!locationLoading && !hasLocation ? (
-              <span className="flex items-center gap-1 text-[var(--color-text-muted)]">
-                <MapPin className="w-3.5 h-3.5" />
-                위도,경도 정보 없음
-              </span>
-            ) : (
-              <>
-                {regionName && (
-                  <span className="flex items-center gap-1">
-                    <Navigation className="w-3.5 h-3.5" />
-                    {regionName}
-                  </span>
-                )}
-                {weather && (
-                  <span className="flex items-center gap-1">
-                    <CloudSun className="w-3.5 h-3.5" />
-                    {weather.temperature}°C
-                    {weather.precipitationType !== 'NONE' && ` · ${getWeatherLabel(weather.precipitationType)}`}
-                  </span>
-                )}
-                {!regionName && !weather && !locationLoading && (
-                  <span>오늘도 파크골프하기 좋은 날이에요</span>
-                )}
-              </>
-            )}
-          </div>
         </div>
+
+        {/* Weather Card */}
+        {weather && (
+          <WeatherCard weather={weather} regionName={regionName} />
+        )}
 
         {/*
           Desktop Layout:
@@ -264,15 +246,20 @@ export function HomePage() {
               />
             </GlassCard>
           ) : nearbyClubs && nearbyClubs.length > 0 ? (
-            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-              {nearbyClubs.map((club) => (
-                <NearbyClubCard
-                  key={club.id}
-                  club={club}
-                  onClick={() => navigate(`/club/${club.id}`)}
-                />
-              ))}
-            </div>
+            <Carousel opts={{ align: 'start', dragFree: true }} className="w-full">
+              <CarouselContent className="-ml-3">
+                {nearbyClubs.map((club) => (
+                  <CarouselItem key={club.id} className="basis-44 pl-3">
+                    <NearbyClubCard
+                      club={club}
+                      onClick={() => navigate(`/club/${club.id}`)}
+                    />
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious />
+              <CarouselNext />
+            </Carousel>
           ) : (
             <GlassCard>
               <EmptyState
@@ -290,17 +277,54 @@ export function HomePage() {
   );
 }
 
-// Helper function for weather label
-function getWeatherLabel(type: PrecipitationType): string {
+// Weather Card component
+function WeatherCard({ weather, regionName }: { weather: CurrentWeather; regionName: string | null }) {
+  const WeatherIcon = weather.precipitationType !== 'NONE' ? Cloud : Sun;
+
+  return (
+    <GlassCard>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-[var(--color-warning)]/20 flex items-center justify-center flex-shrink-0">
+            <WeatherIcon className="w-6 h-6 text-[var(--color-warning)]" />
+          </div>
+          <div>
+            {regionName && (
+              <p className="text-sm text-[var(--color-text-secondary)]">{regionName}</p>
+            )}
+            <p className="text-2xl font-bold text-white">{Math.round(weather.temperature)}°C</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-base font-medium text-white">{getWeatherDescription(weather.precipitationType)}</p>
+          <p className="text-sm text-[var(--color-text-secondary)] flex items-center justify-end gap-2 mt-1">
+            <span className="flex items-center gap-1">
+              <Droplets className="w-3.5 h-3.5" />
+              {Math.round(weather.humidity)}%
+            </span>
+            <span className="flex items-center gap-1">
+              <Wind className="w-3.5 h-3.5" />
+              {weather.windSpeed.toFixed(1)}m/s
+            </span>
+          </p>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
+// Helper function for weather description
+function getWeatherDescription(type: PrecipitationType): string {
   switch (type) {
     case 'RAIN': return '비';
     case 'SNOW': return '눈';
     case 'SLEET': return '진눈깨비';
     case 'DRIZZLE': return '이슬비';
     case 'SNOW_FLURRY': return '날림눈';
-    default: return '';
+    default: return '맑음';
   }
 }
+
 
 // Helper function for greeting message
 function getGreetingMessage(name: string): string {
@@ -420,7 +444,7 @@ interface NearbyClubCardProps {
 
 function NearbyClubCard({ club, onClick }: NearbyClubCardProps) {
   return (
-    <button onClick={onClick} className="flex-shrink-0 w-44 text-left">
+    <button onClick={onClick} className="w-full text-left">
       <GlassCard hoverable className="p-0 overflow-hidden">
         <div className="h-24 bg-gradient-to-br from-[var(--color-primary)]/30 to-[var(--color-secondary)]/30 flex items-center justify-center">
           <span className="text-4xl opacity-50">⛳</span>
