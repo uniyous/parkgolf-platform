@@ -27,7 +27,7 @@ final class ChatRoomViewModel: ObservableObject {
     private var cursor: String?
     private var cachedToken: String?
     private nonisolated(unsafe) var foregroundObserver: (any NSObjectProtocol)?
-    private var typingTimer: Timer?
+    private nonisolated(unsafe) var typingTimer: Timer?
 
     // MARK: - Init
 
