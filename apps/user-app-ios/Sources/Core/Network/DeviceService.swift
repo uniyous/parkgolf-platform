@@ -114,28 +114,38 @@ actor PushNotificationManager {
     func setDeviceToken(_ token: Data) {
         let tokenString = token.map { String(format: "%02.2hhx", $0) }.joined()
         self.deviceToken = tokenString
+        #if DEBUG
         print("[PushNotificationManager] Token set: \(tokenString.prefix(20))...")
+        #endif
     }
 
     /// 디바이스 토큰 서버 등록 (로그인 후 호출)
     func registerDeviceIfNeeded() async {
         guard let token = deviceToken else {
+            #if DEBUG
             print("[PushNotificationManager] No token available for registration")
+            #endif
             return
         }
 
         // 이미 등록된 경우 스킵
         guard !isRegistered else {
+            #if DEBUG
             print("[PushNotificationManager] Device already registered")
+            #endif
             return
         }
 
         do {
             let response = try await deviceService.registerDevice(deviceToken: token)
             isRegistered = true
+            #if DEBUG
             print("[PushNotificationManager] Device registered: ID=\(response.id)")
+            #endif
         } catch {
+            #if DEBUG
             print("[PushNotificationManager] Registration failed: \(error)")
+            #endif
         }
     }
 
@@ -152,9 +162,13 @@ actor PushNotificationManager {
         do {
             try await deviceService.removeDevice(deviceToken: token)
             isRegistered = false
+            #if DEBUG
             print("[PushNotificationManager] Device unregistered successfully")
+            #endif
         } catch {
+            #if DEBUG
             print("[PushNotificationManager] Unregister failed: \(error)")
+            #endif
         }
     }
 

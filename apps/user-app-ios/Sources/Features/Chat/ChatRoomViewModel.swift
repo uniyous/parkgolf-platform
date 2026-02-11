@@ -39,6 +39,8 @@ final class ChatRoomViewModel: ObservableObject {
     }
 
     deinit {
+        typingTimer?.invalidate()
+        typingTimer = nil
         if let observer = foregroundObserver {
             NotificationCenter.default.removeObserver(observer)
         }

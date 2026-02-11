@@ -50,7 +50,9 @@ class HomeViewModel: ObservableObject {
         }
         errorMessage = nil
 
+        #if DEBUG
         print("[Home] loadData started (isRefresh: \(isRefresh))")
+        #endif
 
         // 4가지 데이터를 동시에 로드 (실패 시 기존 데이터 유지)
         async let b: Void = refreshBookings()
@@ -64,7 +66,10 @@ class HomeViewModel: ObservableObject {
         await refreshLocationData()
 
         isLoading = false
+
+        #if DEBUG
         print("[Home] loadData completed")
+        #endif
     }
 
     func refresh() async {
@@ -89,18 +94,26 @@ class HomeViewModel: ObservableObject {
                 return date >= Calendar.current.startOfDay(for: now) &&
                        (booking.status == "PENDING" || booking.status == "SLOT_RESERVED" || booking.status == "CONFIRMED")
             }.prefix(5).map { $0 }
+            #if DEBUG
             print("[Home] bookings refreshed: \(upcomingBookings.count)건")
+            #endif
         } catch {
+            #if DEBUG
             print("[Home] bookings refresh failed: \(error.localizedDescription)")
+            #endif
         }
     }
 
     private func refreshFriendRequests() async {
         do {
             friendRequests = try await friendService.getFriendRequests()
+            #if DEBUG
             print("[Home] friendRequests refreshed: \(friendRequests.count)건")
+            #endif
         } catch {
+            #if DEBUG
             print("[Home] friendRequests refresh failed: \(error.localizedDescription)")
+            #endif
         }
     }
 
@@ -111,18 +124,26 @@ class HomeViewModel: ObservableObject {
                 responseType: ChatRoom.self
             )
             unreadChatRooms = rooms.filter { $0.unreadCount > 0 }
+            #if DEBUG
             print("[Home] chatRooms refreshed: unread \(unreadChatRooms.count)건")
+            #endif
         } catch {
+            #if DEBUG
             print("[Home] chatRooms refresh failed: \(error.localizedDescription)")
+            #endif
         }
     }
 
     private func refreshNotificationCount() async {
         do {
             unreadNotificationCount = try await notificationService.getUnreadCount()
+            #if DEBUG
             print("[Home] notificationCount refreshed: \(unreadNotificationCount)")
+            #endif
         } catch {
+            #if DEBUG
             print("[Home] notificationCount refresh failed: \(error.localizedDescription)")
+            #endif
         }
     }
 
@@ -157,27 +178,39 @@ class HomeViewModel: ObservableObject {
         do {
             let region = try await locationWeatherService.reverseGeo(lat: lat, lon: lon)
             regionName = region.displayName.isEmpty ? nil : region.displayName
+            #if DEBUG
             print("[Home] region refreshed: \(regionName ?? "nil")")
+            #endif
         } catch {
+            #if DEBUG
             print("[Home] region refresh failed: \(error.localizedDescription)")
+            #endif
         }
     }
 
     private func refreshWeather(lat: Double, lon: Double) async {
         do {
             currentWeather = try await locationWeatherService.getCurrentWeather(lat: lat, lon: lon)
+            #if DEBUG
             print("[Home] weather refreshed: \(currentWeather?.temperature ?? 0)°C")
+            #endif
         } catch {
+            #if DEBUG
             print("[Home] weather refresh failed: \(error.localizedDescription)")
+            #endif
         }
     }
 
     private func refreshNearbyClubs(lat: Double, lon: Double) async {
         do {
             nearbyClubs = try await locationWeatherService.nearbyClubs(lat: lat, lon: lon)
+            #if DEBUG
             print("[Home] nearbyClubs refreshed: \(nearbyClubs.count)개")
+            #endif
         } catch {
+            #if DEBUG
             print("[Home] nearbyClubs refresh failed: \(error.localizedDescription)")
+            #endif
         }
     }
 }
