@@ -59,13 +59,6 @@ export class ClubNatsController {
     return NatsResponse.success(clubs.map(ClubResponseDto.fromEntity));
   }
 
-  @MessagePattern('club.updateStats')
-  async updateGolfClubStats(@Payload() data: { clubId: number }) {
-    this.logger.log(`Updating stats for club ID: ${data.clubId}`);
-    await this.clubService.updateStats(data.clubId);
-    return NatsResponse.success({ updated: true });
-  }
-
   @MessagePattern('club.findNearby')
   async findNearbyGolfClubs(@Payload() data: FindNearbyDto) {
     this.logger.log(`Finding nearby clubs: lat=${data.latitude}, lon=${data.longitude}, radius=${data.radiusKm || 30}km`);
@@ -88,47 +81,4 @@ export class ClubNatsController {
     return NatsResponse.success(result.data.map(ClubResponseDto.fromEntity));
   }
 
-  @MessagePattern('club.findPopular')
-  async findPopularGolfClubs(@Payload() data: { limit?: number }) {
-    this.logger.log(`Finding popular clubs (limit: ${data.limit || 10})`);
-
-    const filters: ClubFilterDto = {
-      sortBy: 'totalCourses',
-      sortOrder: 'desc',
-      limit: data.limit || 10,
-      page: 1,
-    };
-
-    const result = await this.clubService.findAll(filters);
-    return NatsResponse.success(result.data.map(ClubResponseDto.fromEntity));
-  }
-
-  @MessagePattern('club.getStatusCounts')
-  async getGolfClubStatusCounts() {
-    this.logger.log('Getting club status counts');
-    const allGolfClubs = await this.clubService.findAll({ limit: 1000, page: 1 });
-
-    const statusCounts = allGolfClubs.data.reduce((acc, club) => {
-      acc[club.status] = (acc[club.status] || 0) + 1;
-      return acc;
-    }, {} as { [key: string]: number });
-
-    return NatsResponse.success(statusCounts);
-  }
-
-  @MessagePattern('club.getAverageStats')
-  async getGolfClubAverageStats() {
-    this.logger.log('Getting club average statistics');
-    const allGolfClubs = await this.clubService.findAll({ limit: 1000, page: 1 });
-
-    const totalGolfClubs = allGolfClubs.total;
-    const totalHoles = allGolfClubs.data.reduce((sum, gc) => sum + gc.totalHoles, 0);
-    const totalCourses = allGolfClubs.data.reduce((sum, gc) => sum + gc.totalCourses, 0);
-
-    return NatsResponse.success({
-      averageHoles: totalGolfClubs > 0 ? Math.round(totalHoles / totalGolfClubs) : 0,
-      averageCourses: totalGolfClubs > 0 ? Math.round(totalCourses / totalGolfClubs) : 0,
-      totalGolfClubs,
-    });
-  }
 }

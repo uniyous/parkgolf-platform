@@ -354,39 +354,6 @@ export class GameTimeSlotService {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
   }
 
-  async bookSlot(id: number, playerCount: number): Promise<GameTimeSlot> {
-    return this.prisma.$transaction(async (tx) => {
-      const slot = await tx.gameTimeSlot.findUnique({
-        where: { id },
-      });
-
-      if (!slot) {
-        throw new NotFoundException(`GameTimeSlot with ID ${id} not found`);
-      }
-
-      if (slot.status !== 'AVAILABLE') {
-        throw new ConflictException(`Time slot is not available (status: ${slot.status})`);
-      }
-
-      const newBookedPlayers = slot.bookedPlayers + playerCount;
-      if (newBookedPlayers > slot.maxPlayers) {
-        throw new ConflictException(
-          `Not enough capacity. Available: ${slot.maxPlayers - slot.bookedPlayers}, Requested: ${playerCount}`
-        );
-      }
-
-      const newStatus = newBookedPlayers >= slot.maxPlayers ? 'FULLY_BOOKED' : 'AVAILABLE';
-
-      return tx.gameTimeSlot.update({
-        where: { id },
-        data: {
-          bookedPlayers: newBookedPlayers,
-          status: newStatus,
-        },
-      });
-    });
-  }
-
   async releaseSlot(id: number, playerCount: number): Promise<GameTimeSlot> {
     return this.prisma.$transaction(async (tx) => {
       const slot = await tx.gameTimeSlot.findUnique({

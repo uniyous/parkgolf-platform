@@ -97,4 +97,11 @@ export class CourseNatsController {
     this.logger.log(`NATS: Deleted course ${data.courseId}`);
     return NatsResponse.deleted();
   }
+
+  @MessagePattern('courses.stats')
+  async getCourseStats(@Payload() data: { dateRange?: { startDate: string; endDate: string } }) {
+    this.logger.log('NATS: Getting course statistics');
+    const stats = await this.courseService.getStats(data.dateRange);
+    return NatsResponse.success(stats);
+  }
 }

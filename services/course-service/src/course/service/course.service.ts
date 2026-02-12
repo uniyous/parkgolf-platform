@@ -36,15 +36,8 @@ export class CourseService {
         },
       });
     } catch (error: unknown) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        // Unique constraint violation (companyId, name)
-        if (error.code === 'P2002') {
-          throw new ConflictException(`A course with name "${createDto.name}" already exists for company ID ${createDto.companyId}.`);
-        }
-      } else if (error instanceof Error) {
-        this.logger.error(`Failed to create course: ${error.message}`, error.stack);
-      } else {
-        this.logger.error(`Failed to create course: ${JSON.stringify(error)}`);
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException(`A course with name "${createDto.name}" already exists for company ID ${createDto.companyId}.`);
       }
       throw error;
     }
@@ -143,20 +136,51 @@ export class CourseService {
         },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        // Unique constraint violation (companyId, name) - 업데이트 시 발생 가능 (다른 코스가 이미 해당 이름을 사용)
-        if (error.code === 'P2002' && error.meta?.target === 'Course_companyId_name_key') {
-          // updateDto에 name과 companyId가 모두 있어야 이 에러를 정확히 판단 가능
-          // 여기서는 name만 변경 시 기존 companyId와 조합하여 판단
-          throw new ConflictException(`A course with name "${updateDto.name}" might already exist for the company.`);
-        }
-      } else if (error instanceof Error) {
-        this.logger.error(`Failed to update course ID ${id}: ${error.message}`, error.stack);
-      } else {
-        this.logger.error(`Failed to update course ID ${id}: ${JSON.stringify(error)}`);
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002' &&
+        error.meta?.target === 'Course_companyId_name_key'
+      ) {
+        throw new ConflictException(`A course with name "${updateDto.name}" might already exist for the company.`);
       }
       throw error;
     }
+  }
+
+  async getStats(dateRange?: { startDate: string; endDate: string }): Promise<{
+    totalCourses: number;
+    activeCourses: number;
+    coursesByStatus: Record<string, number>;
+  }> {
+    const where: Prisma.CourseWhereInput = {};
+    if (dateRange) {
+      where.createdAt = {
+        gte: new Date(dateRange.startDate),
+        lte: new Date(dateRange.endDate),
+      };
+    }
+
+    const [total, active] = await this.prisma.$transaction([
+      this.prisma.course.count({ where }),
+      this.prisma.course.count({ where: { ...where, isActive: true } }),
+    ]);
+
+    // groupBy를 별도 호출 (Prisma $transaction 타입 추론 이슈 회피)
+    const statusGroups = await this.prisma.course.groupBy({
+      by: ['status'],
+      where,
+      _count: { id: true },
+    });
+
+    const coursesByStatus = statusGroups.reduce(
+      (acc, item) => {
+        acc[item.status] = item._count.id;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+    return { totalCourses: total, activeCourses: active, coursesByStatus };
   }
 
   async remove(id: number): Promise<Course> {
@@ -180,10 +204,6 @@ export class CourseService {
             `Cannot delete course with ID ${id} as it has related records (e.g., holes, games). Please delete them first.`,
           );
         }
-      } else if (error instanceof Error) {
-        this.logger.error(`Failed to delete course ID ${id}: ${error.message}`, error.stack);
-      } else {
-        this.logger.error(`Failed to delete course ID ${id}: ${JSON.stringify(error)}`);
       }
       throw error;
     }

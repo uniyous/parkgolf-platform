@@ -105,7 +105,7 @@ model TeeBox {
   holeId     Int         @map("hole_id")
   createdAt  DateTime    @default(now()) @map("created_at")
   updatedAt  DateTime    @updatedAt @map("updated_at")
-  hole       Hole        @relation(fields: [holeId], references: [id])
+  hole       Hole        @relation(fields: [holeId], references: [id], onDelete: Cascade)
 
   @@index([holeId])
   @@map("tee_boxes")
@@ -212,7 +212,7 @@ model GameWeeklySchedule {
   id            Int      @id @default(autoincrement())
 
   gameId        Int      @map("game_id")
-  game          Game     @relation(fields: [gameId], references: [id])
+  game          Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
 
   dayOfWeek     Int      @map("day_of_week") // 0=일, 1=월, ...
   startTime     String   @map("start_time")  // 첫 타임 시작
@@ -224,6 +224,7 @@ model GameWeeklySchedule {
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@unique([gameId, dayOfWeek])
+  @@index([gameId])
   @@map("game_weekly_schedules")
 }
 
