@@ -8,9 +8,6 @@ import {
   Param,
   Query,
   Headers,
-  HttpStatus,
-  HttpException,
-  Logger,
   ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiQuery } from '@nestjs/swagger';
@@ -27,8 +24,6 @@ import {
 @ApiTags('policies')
 @Controller('api/admin/policies')
 export class PoliciesController {
-  private readonly logger = new Logger(PoliciesController.name);
-
   constructor(private readonly policiesService: PoliciesService) {}
 
   // =====================================================
@@ -44,13 +39,8 @@ export class PoliciesController {
     @Query('clubId') clubId?: string,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      const filter = clubId ? { clubId: parseInt(clubId) } : undefined;
-      return await this.policiesService.getCancellationPolicies(filter);
-    } catch (error) {
-      this.logger.error('Failed to fetch cancellation policies', error);
-      throw this.handleError(error);
-    }
+    const filter = clubId ? { clubId: parseInt(clubId) } : undefined;
+    return this.policiesService.getCancellationPolicies(filter);
   }
 
   @Get('cancellation/default')
@@ -62,14 +52,9 @@ export class PoliciesController {
     @Query('clubId') clubId?: string,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      return await this.policiesService.getDefaultCancellationPolicy(
-        clubId ? parseInt(clubId) : undefined,
-      );
-    } catch (error) {
-      this.logger.error('Failed to fetch default cancellation policy', error);
-      throw this.handleError(error);
-    }
+    return this.policiesService.getDefaultCancellationPolicy(
+      clubId ? parseInt(clubId) : undefined,
+    );
   }
 
   @Get('cancellation/:id')
@@ -80,12 +65,7 @@ export class PoliciesController {
     @Param('id', ParseIntPipe) id: number,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      return await this.policiesService.getCancellationPolicyById(id);
-    } catch (error) {
-      this.logger.error(`Failed to fetch cancellation policy: ${id}`, error);
-      throw this.handleError(error);
-    }
+    return this.policiesService.getCancellationPolicyById(id);
   }
 
   @Post('cancellation')
@@ -96,12 +76,7 @@ export class PoliciesController {
     @Body() dto: CreateCancellationPolicyDto,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      return await this.policiesService.createCancellationPolicy(dto);
-    } catch (error) {
-      this.logger.error('Failed to create cancellation policy', error);
-      throw this.handleError(error);
-    }
+    return this.policiesService.createCancellationPolicy(dto);
   }
 
   @Put('cancellation/:id')
@@ -113,12 +88,7 @@ export class PoliciesController {
     @Body() dto: UpdateCancellationPolicyDto,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      return await this.policiesService.updateCancellationPolicy(id, dto);
-    } catch (error) {
-      this.logger.error(`Failed to update cancellation policy: ${id}`, error);
-      throw this.handleError(error);
-    }
+    return this.policiesService.updateCancellationPolicy(id, dto);
   }
 
   @Delete('cancellation/:id')
@@ -129,12 +99,7 @@ export class PoliciesController {
     @Param('id', ParseIntPipe) id: number,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      return await this.policiesService.deleteCancellationPolicy(id);
-    } catch (error) {
-      this.logger.error(`Failed to delete cancellation policy: ${id}`, error);
-      throw this.handleError(error);
-    }
+    return this.policiesService.deleteCancellationPolicy(id);
   }
 
   // =====================================================
@@ -150,13 +115,8 @@ export class PoliciesController {
     @Query('clubId') clubId?: string,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      const filter = clubId ? { clubId: parseInt(clubId) } : undefined;
-      return await this.policiesService.getRefundPolicies(filter);
-    } catch (error) {
-      this.logger.error('Failed to fetch refund policies', error);
-      throw this.handleError(error);
-    }
+    const filter = clubId ? { clubId: parseInt(clubId) } : undefined;
+    return this.policiesService.getRefundPolicies(filter);
   }
 
   @Get('refund/default')
@@ -168,14 +128,9 @@ export class PoliciesController {
     @Query('clubId') clubId?: string,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      return await this.policiesService.getDefaultRefundPolicy(
-        clubId ? parseInt(clubId) : undefined,
-      );
-    } catch (error) {
-      this.logger.error('Failed to fetch default refund policy', error);
-      throw this.handleError(error);
-    }
+    return this.policiesService.getDefaultRefundPolicy(
+      clubId ? parseInt(clubId) : undefined,
+    );
   }
 
   @Get('refund/:id')
@@ -186,12 +141,7 @@ export class PoliciesController {
     @Param('id', ParseIntPipe) id: number,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      return await this.policiesService.getRefundPolicyById(id);
-    } catch (error) {
-      this.logger.error(`Failed to fetch refund policy: ${id}`, error);
-      throw this.handleError(error);
-    }
+    return this.policiesService.getRefundPolicyById(id);
   }
 
   @Post('refund')
@@ -202,12 +152,7 @@ export class PoliciesController {
     @Body() dto: CreateRefundPolicyDto,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      return await this.policiesService.createRefundPolicy(dto);
-    } catch (error) {
-      this.logger.error('Failed to create refund policy', error);
-      throw this.handleError(error);
-    }
+    return this.policiesService.createRefundPolicy(dto);
   }
 
   @Put('refund/:id')
@@ -219,12 +164,7 @@ export class PoliciesController {
     @Body() dto: UpdateRefundPolicyDto,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      return await this.policiesService.updateRefundPolicy(id, dto);
-    } catch (error) {
-      this.logger.error(`Failed to update refund policy: ${id}`, error);
-      throw this.handleError(error);
-    }
+    return this.policiesService.updateRefundPolicy(id, dto);
   }
 
   @Delete('refund/:id')
@@ -235,12 +175,7 @@ export class PoliciesController {
     @Param('id', ParseIntPipe) id: number,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      return await this.policiesService.deleteRefundPolicy(id);
-    } catch (error) {
-      this.logger.error(`Failed to delete refund policy: ${id}`, error);
-      throw this.handleError(error);
-    }
+    return this.policiesService.deleteRefundPolicy(id);
   }
 
   @Post('refund/calculate')
@@ -251,16 +186,11 @@ export class PoliciesController {
     @Body() body: { policyId: number; originalAmount: number; hoursBeforeBooking: number },
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      return await this.policiesService.calculateRefund(
-        body.policyId,
-        body.originalAmount,
-        body.hoursBeforeBooking,
-      );
-    } catch (error) {
-      this.logger.error('Failed to calculate refund', error);
-      throw this.handleError(error);
-    }
+    return this.policiesService.calculateRefund(
+      body.policyId,
+      body.originalAmount,
+      body.hoursBeforeBooking,
+    );
   }
 
   // =====================================================
@@ -276,13 +206,8 @@ export class PoliciesController {
     @Query('clubId') clubId?: string,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      const filter = clubId ? { clubId: parseInt(clubId) } : undefined;
-      return await this.policiesService.getNoShowPolicies(filter);
-    } catch (error) {
-      this.logger.error('Failed to fetch no-show policies', error);
-      throw this.handleError(error);
-    }
+    const filter = clubId ? { clubId: parseInt(clubId) } : undefined;
+    return this.policiesService.getNoShowPolicies(filter);
   }
 
   @Get('noshow/default')
@@ -294,14 +219,9 @@ export class PoliciesController {
     @Query('clubId') clubId?: string,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      return await this.policiesService.getDefaultNoShowPolicy(
-        clubId ? parseInt(clubId) : undefined,
-      );
-    } catch (error) {
-      this.logger.error('Failed to fetch default no-show policy', error);
-      throw this.handleError(error);
-    }
+    return this.policiesService.getDefaultNoShowPolicy(
+      clubId ? parseInt(clubId) : undefined,
+    );
   }
 
   @Get('noshow/:id')
@@ -312,12 +232,7 @@ export class PoliciesController {
     @Param('id', ParseIntPipe) id: number,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      return await this.policiesService.getNoShowPolicyById(id);
-    } catch (error) {
-      this.logger.error(`Failed to fetch no-show policy: ${id}`, error);
-      throw this.handleError(error);
-    }
+    return this.policiesService.getNoShowPolicyById(id);
   }
 
   @Post('noshow')
@@ -328,12 +243,7 @@ export class PoliciesController {
     @Body() dto: CreateNoShowPolicyDto,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      return await this.policiesService.createNoShowPolicy(dto);
-    } catch (error) {
-      this.logger.error('Failed to create no-show policy', error);
-      throw this.handleError(error);
-    }
+    return this.policiesService.createNoShowPolicy(dto);
   }
 
   @Put('noshow/:id')
@@ -345,12 +255,7 @@ export class PoliciesController {
     @Body() dto: UpdateNoShowPolicyDto,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      return await this.policiesService.updateNoShowPolicy(id, dto);
-    } catch (error) {
-      this.logger.error(`Failed to update no-show policy: ${id}`, error);
-      throw this.handleError(error);
-    }
+    return this.policiesService.updateNoShowPolicy(id, dto);
   }
 
   @Delete('noshow/:id')
@@ -361,12 +266,7 @@ export class PoliciesController {
     @Param('id', ParseIntPipe) id: number,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      return await this.policiesService.deleteNoShowPolicy(id);
-    } catch (error) {
-      this.logger.error(`Failed to delete no-show policy: ${id}`, error);
-      throw this.handleError(error);
-    }
+    return this.policiesService.deleteNoShowPolicy(id);
   }
 
   @Get('noshow/user/:userId/count')
@@ -379,15 +279,10 @@ export class PoliciesController {
     @Query('clubId') clubId?: string,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      return await this.policiesService.getUserNoShowCount(
-        userId,
-        clubId ? parseInt(clubId) : undefined,
-      );
-    } catch (error) {
-      this.logger.error(`Failed to fetch user no-show count: ${userId}`, error);
-      throw this.handleError(error);
-    }
+    return this.policiesService.getUserNoShowCount(
+      userId,
+      clubId ? parseInt(clubId) : undefined,
+    );
   }
 
   @Get('noshow/user/:userId/penalty')
@@ -400,44 +295,9 @@ export class PoliciesController {
     @Query('clubId') clubId?: string,
     @Headers('authorization') _authorization?: string,
   ) {
-    try {
-      return await this.policiesService.getApplicablePenalty(
-        userId,
-        clubId ? parseInt(clubId) : undefined,
-      );
-    } catch (error) {
-      this.logger.error(`Failed to fetch applicable penalty: ${userId}`, error);
-      throw this.handleError(error);
-    }
-  }
-
-  private handleError(error: any): HttpException {
-    if (error instanceof HttpException) {
-      return error;
-    }
-
-    if (error.message?.includes('timeout') || error.code === 'ECONNREFUSED') {
-      return new HttpException(
-        {
-          success: false,
-          error: {
-            code: 'SERVICE_UNAVAILABLE',
-            message: 'Policy service temporarily unavailable',
-          },
-        },
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
-    }
-
-    return new HttpException(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error.message || 'Internal server error',
-        },
-      },
-      HttpStatus.INTERNAL_SERVER_ERROR,
+    return this.policiesService.getApplicablePenalty(
+      userId,
+      clubId ? parseInt(clubId) : undefined,
     );
   }
 }
