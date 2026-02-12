@@ -447,7 +447,7 @@ export class AuthService {
                 // 레거시 호환성
                 roleCode,
                 roles: [roleCode],
-                scope: this.getAdminScope(roleCode),
+                scope: await this.getRoleScope(roleCode),
                 permissions: permissionCodes,
                 type: 'admin'
             };
@@ -463,27 +463,18 @@ export class AuthService {
             return {
                 ...userResult,
                 roles: [userResult.roleCode],
-                scope: 'USER',
+                scope: await this.getRoleScope(userResult.roleCode),
                 permissions: [],
                 type: 'user'
             };
         }
     }
 
-    private getAdminScope(roleCode: string): string {
-        // Map role codes to admin scopes (v3 - CompanyType 기반)
-        const roleToScope: Record<string, string> = {
-            // 플랫폼 역할
-            'PLATFORM_ADMIN': 'PLATFORM',
-            'PLATFORM_SUPPORT': 'PLATFORM',
-            'PLATFORM_VIEWER': 'PLATFORM',
-            // 회사 역할
-            'COMPANY_ADMIN': 'COMPANY',
-            'COMPANY_MANAGER': 'COMPANY',
-            'COMPANY_STAFF': 'COMPANY',
-            'COMPANY_VIEWER': 'COMPANY',
-        };
-
-        return roleToScope[roleCode] || 'COMPANY';
+    private async getRoleScope(roleCode: string): Promise<string> {
+        const role = await this.prisma.roleMaster.findUnique({
+            where: { code: roleCode },
+            select: { scope: true },
+        });
+        return role?.scope || 'COMPANY';
     }
 }
