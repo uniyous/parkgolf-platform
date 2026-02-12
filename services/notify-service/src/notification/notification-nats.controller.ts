@@ -35,6 +35,16 @@ interface BookingCancelledEvent {
   userName?: string;
 }
 
+interface BookingRefundCompletedEvent {
+  bookingId: number;
+  bookingNumber: string;
+  userId: number;
+  cancelAmount: number;
+  refundedAt: string;
+  userEmail?: string;
+  userName?: string;
+}
+
 interface PaymentEvent {
   paymentId: string;
   bookingId: string;
@@ -205,6 +215,31 @@ export class NotificationNatsController {
       await this.deliveryService.deliverNotification(notification);
     } catch (error) {
       this.logger.error(`Failed to handle booking.cancelled event: ${error}`);
+    }
+  }
+
+  @EventPattern('booking.refundCompleted')
+  async handleRefundCompleted(@Payload() data: BookingRefundCompletedEvent) {
+    this.logger.log(`NATS Event: booking.refundCompleted - ${data.bookingNumber}`);
+
+    try {
+      const notification = await this.notificationService.create({
+        userId: String(data.userId),
+        type: NotificationType.REFUND_COMPLETED,
+        title: '환불이 완료되었습니다',
+        message: `예약번호 ${data.bookingNumber}의 환불(${data.cancelAmount.toLocaleString()}원)이 완료되었습니다.`,
+        data: {
+          bookingId: data.bookingId,
+          bookingNumber: data.bookingNumber,
+          cancelAmount: data.cancelAmount,
+          refundedAt: data.refundedAt,
+        },
+        deliveryChannel: 'PUSH',
+      });
+
+      await this.deliveryService.deliverNotification(notification);
+    } catch (error) {
+      this.logger.error(`Failed to handle booking.refundCompleted event: ${error}`);
     }
   }
 

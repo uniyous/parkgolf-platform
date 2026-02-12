@@ -81,13 +81,16 @@ model Booking {
   @@index([bookingDate])
   @@index([bookingNumber])
   @@index([status])
+  @@index([status, createdAt])
+  @@index([userId, bookingDate])
+  @@index([bookingDate, status])
   @@map("bookings")
 }
 
 model Payment {
   id            Int           @id @default(autoincrement())
   bookingId     Int           @map("booking_id")
-  booking       Booking       @relation(fields: [bookingId], references: [id])
+  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   amount        Decimal       @db.Decimal(10, 2)
   paymentMethod String        @map("payment_method")
   paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
@@ -96,13 +99,14 @@ model Payment {
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
+  @@index([paymentStatus])
   @@map("payments")
 }
 
 model BookingHistory {
   id        Int      @id @default(autoincrement())
   bookingId Int      @map("booking_id")
-  booking   Booking  @relation(fields: [bookingId], references: [id])
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   action    String   // CREATED, UPDATED, CANCELLED, etc.
   details   Json?
   userId    Int      @map("user_id") // 작업 수행한 사용자
@@ -183,7 +187,7 @@ model GameTimeSlotCache {
   isPremium            Boolean  @default(false) @map("is_premium")
 
   // 상태
-  status               String   @default("AVAILABLE") // AVAILABLE, FULLY_BOOKED, CLOSED, MAINTENANCE
+  status               TimeSlotCacheStatus @default(AVAILABLE)
 
   // 메타데이터
   lastSyncAt           DateTime @default(now()) @map("last_sync_at")
@@ -207,6 +211,13 @@ enum BookingStatus {
   COMPLETED         // 완료됨
   NO_SHOW           // 노쇼
   FAILED            // Saga 실패 (슬롯 예약 실패 등)
+}
+
+enum TimeSlotCacheStatus {
+  AVAILABLE
+  FULLY_BOOKED
+  CLOSED
+  MAINTENANCE
 }
 
 enum PaymentStatus {
@@ -475,6 +486,7 @@ model Refund {
   @@index([paymentId])
   @@index([status])
   @@index([cancellationType])
+  @@index([status, cancellationType])
   @@map("refunds")
 }
 

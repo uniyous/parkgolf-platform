@@ -1,4 +1,4 @@
-import { Controller, Logger, NotFoundException } from '@nestjs/common';
+import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { BookingService } from '../service/booking.service';
 import {
@@ -7,6 +7,8 @@ import {
   SearchBookingDto,
 } from '../dto/booking.dto';
 import { NatsResponse } from '../../common/types/response.types';
+import { AppException } from '../../common/exceptions/app.exception';
+import { Errors } from '../../common/exceptions/catalog/error-catalog';
 
 @Controller()
 export class BookingNatsController {
@@ -47,7 +49,7 @@ export class BookingNatsController {
     this.logger.log(`NATS: Received booking.findById request for ID: ${data.id}`);
     const booking = await this.bookingService.getBookingById(data.id);
     if (!booking) {
-      throw new NotFoundException('Booking not found');
+      throw new AppException(Errors.Booking.NOT_FOUND);
     }
     return NatsResponse.success(booking);
   }
@@ -57,7 +59,7 @@ export class BookingNatsController {
     this.logger.log(`NATS: Received bookings.findById request for ID: ${data.bookingId}`);
     const booking = await this.bookingService.getBookingById(parseInt(data.bookingId));
     if (!booking) {
-      throw new NotFoundException('Booking not found');
+      throw new AppException(Errors.Booking.NOT_FOUND);
     }
     return NatsResponse.success(booking);
   }
@@ -67,7 +69,7 @@ export class BookingNatsController {
     this.logger.log(`NATS: Received booking.findByNumber request for: ${data.bookingNumber}`);
     const booking = await this.bookingService.getBookingByNumber(data.bookingNumber);
     if (!booking) {
-      throw new NotFoundException('Booking not found');
+      throw new AppException(Errors.Booking.NOT_FOUND);
     }
     return NatsResponse.success(booking);
   }

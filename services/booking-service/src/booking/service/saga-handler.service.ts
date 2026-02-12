@@ -1,7 +1,7 @@
 import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { BookingStatus, OutboxStatus } from '@prisma/client';
+import { BookingStatus, OutboxStatus, TimeSlotCacheStatus } from '@prisma/client';
 
 // Saga 타임아웃 설정
 const SAGA_TIMEOUT_MS = 60000; // 1분
@@ -540,7 +540,7 @@ export class SagaHandlerService {
           bookedPlayers: { decrement: data.playerCount },
           availablePlayers: { increment: data.playerCount },
           isAvailable: true,
-          status: 'AVAILABLE',
+          status: TimeSlotCacheStatus.AVAILABLE,
           lastSyncAt: new Date(),
         },
       });
