@@ -2,6 +2,8 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FriendRequestStatus } from '@prisma/client';
+import { AppException } from '../common/exceptions/app.exception';
+import { Errors } from '../common/exceptions/catalog/error-catalog';
 
 @Injectable()
 export class FriendService {
@@ -183,7 +185,7 @@ export class FriendService {
   async sendFriendRequest(fromUserId: number, toUserId: number, message?: string) {
     // 자기 자신에게 요청 방지
     if (fromUserId === toUserId) {
-      throw new Error('자기 자신에게 친구 요청을 보낼 수 없습니다.');
+      throw new AppException(Errors.Friend.SELF_REQUEST);
     }
 
     // 이미 친구인지 확인
@@ -194,7 +196,7 @@ export class FriendService {
     });
 
     if (existingFriendship) {
-      throw new Error('이미 친구입니다.');
+      throw new AppException(Errors.Friend.ALREADY_FRIEND);
     }
 
     // 기존 요청 확인
@@ -206,7 +208,7 @@ export class FriendService {
 
     if (existingRequest) {
       if (existingRequest.status === FriendRequestStatus.PENDING) {
-        throw new Error('이미 친구 요청을 보냈습니다.');
+        throw new AppException(Errors.Friend.ALREADY_REQUESTED);
       }
       // REJECTED인 경우 다시 요청 가능 - 기존 요청 업데이트
       return this.prisma.friendRequest.update({
@@ -267,15 +269,15 @@ export class FriendService {
     });
 
     if (!request) {
-      throw new Error('친구 요청을 찾을 수 없습니다.');
+      throw new AppException(Errors.Friend.REQUEST_NOT_FOUND);
     }
 
     if (request.toUserId !== userId) {
-      throw new Error('이 요청을 수락할 권한이 없습니다.');
+      throw new AppException(Errors.Friend.NO_PERMISSION, '이 요청을 수락할 권한이 없습니다');
     }
 
     if (request.status !== FriendRequestStatus.PENDING) {
-      throw new Error('이미 처리된 요청입니다.');
+      throw new AppException(Errors.Friend.ALREADY_PROCESSED);
     }
 
     // 트랜잭션으로 친구 관계 생성 및 요청 상태 업데이트
@@ -341,11 +343,11 @@ export class FriendService {
     });
 
     if (!request) {
-      throw new Error('친구 요청을 찾을 수 없습니다.');
+      throw new AppException(Errors.Friend.REQUEST_NOT_FOUND);
     }
 
     if (request.toUserId !== userId) {
-      throw new Error('이 요청을 거절할 권한이 없습니다.');
+      throw new AppException(Errors.Friend.NO_PERMISSION, '이 요청을 거절할 권한이 없습니다');
     }
 
     await this.prisma.friendRequest.update({

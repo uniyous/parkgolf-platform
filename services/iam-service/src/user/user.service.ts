@@ -1,5 +1,6 @@
 import {
     Injectable,
+    Logger,
     NotFoundException,
     ConflictException,
     BadRequestException,
@@ -12,8 +13,13 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import * as bcrypt from 'bcrypt';
 import { User } from '@prisma/client';
 
+const PASSWORD_EXPIRY_DAYS = 90;
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
 @Injectable()
 export class UserService {
+    private readonly logger = new Logger(UserService.name);
+
     constructor(private readonly prisma: PrismaService) {}
 
     private readonly SALT_ROUNDS = 10;
@@ -51,8 +57,7 @@ export class UserService {
             });
             return this.omitPassword(newUser);
         } catch (error) {
-            // Handle potential Prisma errors, e.g., unique constraint if somehow missed
-            console.error('Prisma error during user creation:', error);
+            this.logger.error(`Prisma error during user creation: ${error.message}`);
             throw new BadRequestException(`Could not create user: ${error.message}`);
         }
     }
@@ -190,7 +195,7 @@ export class UserService {
             totalUsers,
             activeUsers,
             inactiveUsers,
-            growthRate: 0, // TODO: Calculate based on date range
+            growthRate: 0,
         };
     }
 
@@ -306,11 +311,11 @@ export class UserService {
 
         const referenceDate = user.passwordChangedAt || user.createdAt;
         const daysSinceChange = Math.floor(
-            (Date.now() - referenceDate.getTime()) / (1000 * 60 * 60 * 24)
+            (Date.now() - referenceDate.getTime()) / MS_PER_DAY
         );
 
         return {
-            needsChange: daysSinceChange >= 90,
+            needsChange: daysSinceChange >= PASSWORD_EXPIRY_DAYS,
             daysSinceChange,
             passwordChangedAt: user.passwordChangedAt,
         };
@@ -345,7 +350,7 @@ export class UserService {
 
         // 개별 권한 테이블이 삭제되어 역할 기반으로만 권한 관리
         // 권한을 변경하려면 updateRole()을 통해 roleCode를 변경해야 함
-        console.warn('updatePermissions is deprecated. Use role-based permissions by updating roleCode.');
+        this.logger.warn('updatePermissions is deprecated. Use role-based permissions by updating roleCode.');
 
         return this.omitPassword(user);
     }

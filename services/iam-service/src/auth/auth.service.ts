@@ -9,6 +9,9 @@ import * as crypto from 'crypto';
 import { User, Admin } from '@prisma/client';
 import { JwtPayload, UserJwtPayload, AdminJwtPayload } from './interfaces/jwt-payload.interface';
 
+const REFRESH_TOKEN_EXPIRES_IN = '7d';
+const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
 @Injectable()
 export class AuthService {
     private readonly logger = new Logger(AuthService.name);
@@ -64,13 +67,13 @@ export class AuthService {
         const accessToken = this.jwtService.sign(payload);
         const refreshToken = this.jwtService.sign(payload, {
             secret: this.refreshSecret,
-            expiresIn: '7d',
+            expiresIn: REFRESH_TOKEN_EXPIRES_IN,
             jwtid: crypto.randomUUID(),
         });
 
         // Store hashed refresh token in DB
         const hashedToken = this.hashToken(refreshToken);
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
         await this.prisma.refreshToken.create({
             data: {
                 token: hashedToken,
@@ -170,12 +173,12 @@ export class AuthService {
             const newAccessToken = this.jwtService.sign(newPayload);
             const newRefreshToken = this.jwtService.sign(newPayload, {
                 secret: this.refreshSecret,
-                expiresIn: '7d',
+                expiresIn: REFRESH_TOKEN_EXPIRES_IN,
                 jwtid: crypto.randomUUID(),
             });
 
             // Store new hashed refresh token
-            const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+            const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
             await this.prisma.refreshToken.create({
                 data: {
                     token: this.hashToken(newRefreshToken),
@@ -243,13 +246,13 @@ export class AuthService {
         const accessToken = this.jwtService.sign(payload);
         const refreshToken = this.jwtService.sign(payload, {
             secret: this.refreshSecret,
-            expiresIn: '7d',
+            expiresIn: REFRESH_TOKEN_EXPIRES_IN,
             jwtid: crypto.randomUUID(),
         });
 
         // Store hashed refresh token in DB
         const hashedToken = this.hashToken(refreshToken);
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
         await this.prisma.adminRefreshToken.create({
             data: {
                 token: hashedToken,
@@ -345,12 +348,12 @@ export class AuthService {
             const newAccessToken = this.jwtService.sign(newPayload);
             const newRefreshToken = this.jwtService.sign(newPayload, {
                 secret: this.refreshSecret,
-                expiresIn: '7d',
+                expiresIn: REFRESH_TOKEN_EXPIRES_IN,
                 jwtid: crypto.randomUUID(),
             });
 
             // Store new hashed refresh token
-            const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+            const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
             await this.prisma.adminRefreshToken.create({
                 data: {
                     token: this.hashToken(newRefreshToken),
