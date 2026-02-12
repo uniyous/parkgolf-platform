@@ -227,6 +227,7 @@ model PermissionMaster {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   rolePermissions RolePermission[]
+  menuPermissions MenuPermission[]
 
   @@index([category])
   @@index([isActive])
@@ -376,4 +377,63 @@ enum DevicePlatform {
   IOS
   ANDROID
   WEB
+}
+
+// ==============================================
+// Menu System (DB 기반 동적 메뉴)
+// ==============================================
+model MenuMaster {
+  id              Int       @id @default(autoincrement())
+  code            String    @unique               // 'DASHBOARD', 'CLUB_MGMT'
+  name            String                          // '대시보드', '골프장 관리'
+  path            String?                         // '/dashboard' (Level 1 그룹은 null)
+  icon            String?                         // 'LayoutDashboard' (lucide-react 아이콘명)
+
+  parentId        Int?      @map("parent_id")     // null = Level 1 그룹
+  sortOrder       Int       @default(0) @map("sort_order")
+
+  platformOnly    Boolean   @default(false) @map("platform_only")
+  writePermission String?   @map("write_permission")  // 'COURSES', 'BOOKINGS' 등
+  isActive        Boolean   @default(true) @map("is_active")
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Self-relation (부모-자식)
+  parent          MenuMaster?   @relation("MenuHierarchy", fields: [parentId], references: [id])
+  children        MenuMaster[]  @relation("MenuHierarchy")
+
+  // 접근 권한 매핑 (OR 조건)
+  menuPermissions   MenuPermission[]
+  // 회사 유형 매핑
+  menuCompanyTypes  MenuCompanyType[]
+
+  @@index([parentId])
+  @@index([sortOrder])
+  @@index([isActive])
+  @@map("menu_masters")
+}
+
+model MenuPermission {
+  menuId          Int     @map("menu_id")
+  permissionCode  String  @map("permission_code")
+
+  menu            MenuMaster       @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  permission      PermissionMaster @relation(fields: [permissionCode], references: [code], onDelete: Cascade)
+
+  @@id([menuId, permissionCode])
+  @@index([menuId])
+  @@index([permissionCode])
+  @@map("menu_permissions")
+}
+
+model MenuCompanyType {
+  menuId      Int         @map("menu_id")
+  companyType CompanyType @map("company_type")
+
+  menu        MenuMaster  @relation(fields: [menuId], references: [id], onDelete: Cascade)
+
+  @@id([menuId, companyType])
+  @@index([menuId])
+  @@map("menu_company_types")
 }

@@ -211,6 +211,11 @@ export class FindNearbyDto {
 
 export class ClubFilterDto {
   @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  companyId?: number;
+
+  @IsOptional()
   @IsString()
   search?: string;
 

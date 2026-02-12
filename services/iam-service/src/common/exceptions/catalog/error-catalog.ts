@@ -3,6 +3,7 @@
  * - AUTH_xxx: 인증/인가 관련
  * - USER_xxx: 사용자 관련
  * - ADMIN_xxx: 관리자 관련
+ * - MENU_xxx: 메뉴 관련
  * - FRIEND_xxx: 친구 관련
  * - VAL_xxx: 유효성 검증
  * - EXT_xxx: 외부 API 에러
@@ -66,6 +67,14 @@ export const FriendErrors = defineErrors({
 });
 
 // ============================================
+// 메뉴 에러 (MENU_xxx)
+// ============================================
+export const MenuErrors = defineErrors({
+  NOT_FOUND: { code: 'MENU_001', message: '메뉴를 찾을 수 없습니다', httpStatus: 404 },
+  INVALID_PARAMS: { code: 'MENU_002', message: '메뉴 조회 파라미터가 올바르지 않습니다', httpStatus: 400 },
+});
+
+// ============================================
 // 유효성 검증 에러 (VAL_xxx)
 // ============================================
 export const ValidationErrors = defineErrors({
@@ -115,6 +124,7 @@ export const Errors = {
   Auth: AuthErrors,
   User: UserErrors,
   Admin: AdminErrors,
+  Menu: MenuErrors,
   Friend: FriendErrors,
   Validation: ValidationErrors,
   External: ExternalErrors,

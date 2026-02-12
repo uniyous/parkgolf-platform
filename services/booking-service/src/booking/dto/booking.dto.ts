@@ -107,6 +107,11 @@ export class SearchBookingDto {
   @IsOptional()
   clubId?: number;
 
+  @ApiProperty({ description: 'Company ID (가맹점 필터)', example: 1, required: false })
+  @IsNumber()
+  @IsOptional()
+  companyId?: number;
+
   @ApiProperty({ description: '사용자 ID', example: 1, required: false })
   @IsNumber()
   @IsOptional()

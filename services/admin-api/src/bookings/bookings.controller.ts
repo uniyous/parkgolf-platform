@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { BookingService } from './bookings.service';
-import { BearerToken } from '../common';
+import { BearerToken, AdminContext, AdminContextData } from '../common';
 import { CreateBookingDto, UpdateBookingDto } from './dto/booking.dto';
 
 @ApiTags('bookings')
@@ -34,6 +34,7 @@ export class BookingsController {
   @ApiResponse({ status: 200, description: 'Bookings list retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getBookings(
+    @AdminContext() ctx: AdminContextData | null,
     @BearerToken() token: string,
     @Query('page') page = 1,
     @Query('limit') limit = 20,
@@ -43,12 +44,14 @@ export class BookingsController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    const filters: Record<string, string | undefined> = {};
+    const filters: Record<string, string | number | undefined> = {};
     if (status) filters.status = status;
     if (gameId) filters.gameId = gameId;
     if (userId) filters.userId = userId;
     if (startDate) filters.startDate = startDate;
     if (endDate) filters.endDate = endDate;
+    // AdminContext에서 companyId 주입
+    if (ctx?.companyId) filters.companyId = ctx.companyId;
 
     this.logger.log(`Fetching bookings - page: ${page}, limit: ${limit}, filters: ${JSON.stringify(filters)}`);
     return this.bookingService.getBookings(filters, page, limit, token);

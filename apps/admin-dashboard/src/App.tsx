@@ -17,6 +17,7 @@ import { ClubListPage } from './pages/club/ClubListPage';
 import { ClubDetailPage } from './pages/club/ClubDetailPage';
 import { GameListPage } from './pages/game/GameListPage';
 import { GameDetailPage } from './pages/game/GameDetailPage';
+import { SelectCompanyPage } from './pages/SelectCompanyPage';
 import { useAuthInitialize } from './hooks/useAuth';
 
 function App() {
@@ -41,6 +42,8 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route element={<PrivateRoute />}>
+          {/* 본사/협회 지원 모드: 가맹점 선택 */}
+          <Route path="/select-company" element={<SelectCompanyPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/admin-management" element={<AdminManagementPage />} />
           <Route path="/user-management" element={<UserManagementPage />} />

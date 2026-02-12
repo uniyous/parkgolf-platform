@@ -104,6 +104,7 @@ export class ClubService {
    */
   async findAll(filters: ClubFilterDto): Promise<ClubListResult> {
     const {
+      companyId,
       search,
       location,
       status,
@@ -123,6 +124,7 @@ export class ClubService {
     // 검색 조건 구성
     const where: Prisma.ClubWhereInput = {
       isActive: true,
+      ...(companyId && { companyId }),
       ...(search && {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },

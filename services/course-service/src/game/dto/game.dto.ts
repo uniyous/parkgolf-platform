@@ -196,6 +196,11 @@ export class FindGamesQueryDto {
   @IsNumber()
   @IsOptional()
   @Type(() => Number)
+  companyId?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
   clubId?: number;
 
   @IsString()

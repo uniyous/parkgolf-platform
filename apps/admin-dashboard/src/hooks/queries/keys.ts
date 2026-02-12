@@ -97,6 +97,12 @@ export const gameKeys = {
   timeSlotStats: (filter?: Record<string, unknown>) => [...gameKeys.all, 'time-slot-stats', filter] as const,
 };
 
+// Menu Keys
+export const menuKeys = {
+  all: ['menus'] as const,
+  tree: (companyType: string, scope: string) => [...menuKeys.all, 'tree', companyType, scope] as const,
+};
+
 // Policy Keys
 export const policyKeys = {
   all: ['policies'] as const,

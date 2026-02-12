@@ -236,11 +236,18 @@ export class AuthService {
         // 주 소속 역할 코드 (레거시 호환성)
         const roleCode = admin.roleCode || 'COMPANY_VIEWER';
 
+        // 주 소속 회사 ID 및 scope 결정
+        const primaryCompany = (admin.companies || []).find((ac: any) => ac.isPrimary && ac.isActive);
+        const primaryCompanyId = primaryCompany?.companyId || null;
+        const scope = await this.getRoleScope(roleCode);
+
         const payload: AdminJwtPayload = {
             email: admin.email,
             sub: admin.id,
             roles: [roleCode],
             type: 'admin',
+            ...(primaryCompanyId && { companyId: primaryCompanyId }),
+            ...(scope && { scope }),
         };
 
         const accessToken = this.jwtService.sign(payload);
@@ -338,11 +345,19 @@ export class AuthService {
                 throw new UnauthorizedException('Admin not found or inactive');
             }
 
+            // 주 소속 회사 ID 및 scope
+            const adminFull = await this.adminService.findOne(admin.id);
+            const primaryCompany = (adminFull?.companies || []).find((ac: any) => ac.isPrimary && ac.isActive);
+            const primaryCompanyId = primaryCompany?.companyId || null;
+            const scope = await this.getRoleScope(admin.roleCode);
+
             const newPayload: AdminJwtPayload = {
                 email: admin.email,
                 sub: admin.id,
                 roles: [admin.roleCode],
                 type: 'admin',
+                ...(primaryCompanyId && { companyId: primaryCompanyId }),
+                ...(scope && { scope }),
             };
 
             const newAccessToken = this.jwtService.sign(newPayload);

@@ -1,38 +1,23 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  Calendar,
-  MapPin,
-  Users,
-  Settings,
   Menu,
   X,
   LogOut,
   ChevronDown,
   ChevronRight,
-  Gamepad2,
-  CreditCard,
+  Users,
+  Settings,
+  LayoutDashboard,
   Building2,
-  UserCog,
-  Shield,
-  Wrench,
+  AlertCircle,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface MenuItem {
-  path: string;
-  label: string;
-  icon?: LucideIcon;
-}
-
-interface MenuGroup {
-  label: string;
-  icon: LucideIcon;
-  basePath: string;
-  items: MenuItem[];
-}
+import { useMenuTreeQuery } from '@/hooks/queries/menu';
+import { getIcon } from '@/utils/icon-map';
+import { SupportBanner } from '@/components/layout/SupportBanner';
+import { useAuthStore } from '@/stores/auth.store';
+import type { MenuTreeItem } from '@/lib/api/menuApi';
 
 interface AdminLayoutProps {
   currentUser: {
@@ -44,63 +29,6 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-// 대분류 + 서브메뉴 구조 (도메인 관계 기반)
-// 회사 → 골프장 소유, 관리자 소속, 역할/권한 관리
-const menuGroups: MenuGroup[] = [
-  {
-    label: '대시보드',
-    icon: LayoutDashboard,
-    basePath: '/dashboard',
-    items: [
-      { path: '/dashboard', label: '홈 대시보드' },
-    ],
-  },
-  {
-    label: '회사',
-    icon: Building2,
-    basePath: '/companies',
-    items: [
-      { path: '/companies', label: '회사 관리', icon: Building2 },
-      { path: '/admin-management', label: '관리자 관리', icon: UserCog },
-      { path: '/roles', label: '역할 및 권한', icon: Shield },
-    ],
-  },
-  {
-    label: '골프장',
-    icon: MapPin,
-    basePath: '/clubs',
-    items: [
-      { path: '/clubs', label: '골프장 관리', icon: MapPin },
-      { path: '/games', label: '라운드 관리', icon: Gamepad2 },
-    ],
-  },
-  {
-    label: '예약',
-    icon: Calendar,
-    basePath: '/bookings',
-    items: [
-      { path: '/bookings', label: '예약 현황', icon: Calendar },
-      { path: '/bookings/cancellations', label: '환불 관리', icon: CreditCard },
-    ],
-  },
-  {
-    label: '회원',
-    icon: Users,
-    basePath: '/user',
-    items: [
-      { path: '/user-management', label: '사용자 관리', icon: Users },
-    ],
-  },
-  {
-    label: '설정',
-    icon: Settings,
-    basePath: '/settings',
-    items: [
-      { path: '/system-settings', label: '시스템 설정', icon: Wrench },
-    ],
-  },
-];
-
 export const AdminLayout: React.FC<AdminLayoutProps> = ({
   currentUser,
   onLogout,
@@ -109,46 +37,45 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const { data: menuTree, isLoading: menuLoading } = useMenuTreeQuery();
+  const primaryScope = useAuthStore((state) => state.currentAdmin?.primaryScope);
+
   const [expandedGroups, setExpandedGroups] = useState<string[]>(() => {
-    // 현재 경로에 해당하는 그룹을 기본 확장
-    const currentGroup = menuGroups.find(group =>
-      group.items.some(item => location.pathname === item.path || location.pathname.startsWith(item.path + '/'))
-    );
-    return currentGroup ? [currentGroup.label] : ['대시보드'];
+    return ['A_DASHBOARD', 'P_DASHBOARD'];
   });
 
-  const isActive = (path: string) => {
+  const isActive = (path: string | null) => {
+    if (!path) return false;
     if (path === '/dashboard') {
       return location.pathname === '/dashboard';
     }
-    // 정확한 매칭 또는 하위 경로 매칭
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  const isGroupActive = (group: MenuGroup) => {
-    return group.items.some(item => isActive(item.path));
+  const isGroupActive = (group: MenuTreeItem) => {
+    return group.children.some(item => isActive(item.path));
   };
 
-  const toggleGroup = (label: string) => {
+  const toggleGroup = (code: string) => {
     setExpandedGroups(prev =>
-      prev.includes(label)
-        ? prev.filter(g => g !== label)
-        : [...prev, label]
+      prev.includes(code)
+        ? prev.filter(g => g !== code)
+        : [...prev, code]
     );
   };
 
-  const NavGroup = ({ group }: { group: MenuGroup }) => {
-    const Icon = group.icon;
-    const isExpanded = expandedGroups.includes(group.label);
+  const NavGroup = ({ group }: { group: MenuTreeItem }) => {
+    const Icon = getIcon(group.icon);
+    const isExpanded = expandedGroups.includes(group.code);
     const hasActiveItem = isGroupActive(group);
-    const isSingleItem = group.items.length === 1;
+    const isSingleItem = group.children.length === 1;
 
     // 단일 아이템인 경우 바로 링크
     if (isSingleItem) {
-      const item = group.items[0];
+      const item = group.children[0];
       return (
         <Link
-          to={item.path}
+          to={item.path || '/dashboard'}
           onClick={() => setSidebarOpen(false)}
           className={cn(
             'nav-item',
@@ -156,16 +83,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           )}
         >
           <Icon className="nav-item-icon" />
-          <span className="font-medium">{group.label}</span>
+          <span className="font-medium">{group.name}</span>
         </Link>
       );
     }
 
     return (
       <div className="space-y-1">
-        {/* Group Header */}
         <button
-          onClick={() => toggleGroup(group.label)}
+          onClick={() => toggleGroup(group.code)}
           className={cn(
             'w-full nav-item justify-between',
             hasActiveItem && 'text-emerald-400'
@@ -173,7 +99,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         >
           <div className="flex items-center gap-3">
             <Icon className="nav-item-icon" />
-            <span className="font-medium">{group.label}</span>
+            <span className="font-medium">{group.name}</span>
           </div>
           <ChevronRight
             className={cn(
@@ -183,15 +109,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           />
         </button>
 
-        {/* Sub Items */}
         {isExpanded && (
           <div className="ml-4 pl-4 border-l border-white/15 space-y-1">
-            {group.items.map((item) => {
-              const ItemIcon = item.icon;
+            {group.children.map((item) => {
+              const ItemIcon = getIcon(item.icon);
               return (
                 <Link
-                  key={item.path}
-                  to={item.path}
+                  key={item.code}
+                  to={item.path || '#'}
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
                     'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
@@ -200,14 +125,48 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                       : 'text-white/40 hover:bg-white/10 hover:text-white/80'
                   )}
                 >
-                  {ItemIcon && <ItemIcon className="w-4 h-4" />}
-                  <span>{item.label}</span>
+                  <ItemIcon className="w-4 h-4" />
+                  <span>{item.name}</span>
                 </Link>
               );
             })}
           </div>
         )}
       </div>
+    );
+  };
+
+  // 메뉴 로딩 중 스켈레톤
+  const MenuSkeleton = () => (
+    <div className="space-y-4 px-4 py-6">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="space-y-2">
+          <div className="h-9 bg-white/5 rounded-lg animate-pulse" />
+          <div className="ml-8 space-y-1">
+            <div className="h-7 bg-white/5 rounded-lg animate-pulse" />
+            <div className="h-7 bg-white/5 rounded-lg animate-pulse" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const SidebarNav = () => {
+    if (menuLoading) return <MenuSkeleton />;
+    if (!menuTree || menuTree.length === 0) {
+      return (
+        <div className="px-4 py-6 text-center text-white/40 text-sm">
+          <AlertCircle className="w-5 h-5 mx-auto mb-2" />
+          메뉴를 불러올 수 없습니다
+        </div>
+      );
+    }
+    return (
+      <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+        {menuTree.map((group) => (
+          <NavGroup key={group.code} group={group} />
+        ))}
+      </nav>
     );
   };
 
@@ -227,11 +186,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-            {menuGroups.map((group) => (
-              <NavGroup key={group.label} group={group} />
-            ))}
-          </nav>
+          <SidebarNav />
 
           {/* User Profile */}
           <div className="p-4 border-t border-white/10">
@@ -314,7 +269,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         )}
       >
         <div className="flex flex-col h-full">
-          {/* Header */}
           <div className="flex items-center justify-between h-16 px-4 border-b border-white/10">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
@@ -330,14 +284,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             </button>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-            {menuGroups.map((group) => (
-              <NavGroup key={group.label} group={group} />
-            ))}
-          </nav>
+          <SidebarNav />
 
-          {/* User Profile */}
           <div className="p-4 border-t border-white/10">
             <div className="flex items-center gap-3 p-3">
               <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center flex-shrink-0">
@@ -381,8 +329,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             </div>
             <span className="font-semibold text-white">ParkMate</span>
           </div>
-          <div className="w-10" /> {/* Spacer for centering */}
+          <div className="w-10" />
         </header>
+
+        {/* Support Banner (본사/협회가 가맹점 지원 모드일 때) */}
+        {primaryScope === 'PLATFORM' && <SupportBanner />}
 
         {/* Page Content */}
         <main className="flex-1 p-4 md:p-6">

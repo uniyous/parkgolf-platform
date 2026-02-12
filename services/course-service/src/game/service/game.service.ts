@@ -81,9 +81,10 @@ export class GameService {
   }
 
   async findAll(query: FindGamesQueryDto): Promise<{ data: Game[]; total: number; page: number; limit: number }> {
-    const { clubId, name, status, isActive, page = 1, limit = 10 } = query;
+    const { companyId, clubId, name, status, isActive, page = 1, limit = 10 } = query;
 
     const where: Prisma.GameWhereInput = {};
+    if (companyId) where.club = { companyId };
     if (clubId) where.clubId = clubId;
     if (name) where.name = { contains: name, mode: 'insensitive' };
     if (status) where.status = status;

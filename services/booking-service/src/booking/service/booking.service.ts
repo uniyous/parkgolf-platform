@@ -437,6 +437,7 @@ export class BookingService {
       status,
       gameId,
       clubId,
+      companyId,
       userId,
       startDate,
       endDate,
@@ -455,6 +456,23 @@ export class BookingService {
     }
     if (clubId) {
       where.clubId = clubId;
+    }
+    // companyId 필터: course-service에서 해당 회사의 clubId 목록을 조회하여 필터링
+    if (companyId && !clubId && this.courseServiceClient) {
+      try {
+        const clubsResult = await firstValueFrom(
+          this.courseServiceClient.send('club.findByCompany', { companyId }).pipe(timeout(5000)),
+        );
+        const clubIds = (clubsResult?.data || []).map((c: any) => c.id);
+        if (clubIds.length > 0) {
+          where.clubId = { in: clubIds };
+        } else {
+          // 해당 회사에 클럽이 없으면 빈 결과 반환
+          return { bookings: [], total: 0, page, limit };
+        }
+      } catch (error) {
+        this.logger.warn(`Failed to resolve clubIds for companyId=${companyId}: ${error.message}`);
+      }
     }
     if (userId) {
       where.userId = userId;
