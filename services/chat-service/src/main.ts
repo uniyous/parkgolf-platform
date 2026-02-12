@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { INestApplication, ValidationPipe, Logger } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { UnifiedExceptionFilter } from './common/exceptions';
+import { ResponseTransformInterceptor } from './common/interceptor/response-transform.interceptor';
 import { setNatsReady } from './common/readiness';
 
 async function bootstrap() {
@@ -18,6 +20,9 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
       logger: ['error', 'warn', 'log'],
     });
+
+    app.useGlobalFilters(new UnifiedExceptionFilter());
+    app.useGlobalInterceptors(new ResponseTransformInterceptor());
 
     app.useGlobalPipes(
       new ValidationPipe({

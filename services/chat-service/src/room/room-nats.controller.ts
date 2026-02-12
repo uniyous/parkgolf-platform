@@ -12,76 +12,43 @@ export class RoomNatsController {
   @MessagePattern('chat.rooms.create')
   async createRoom(@Payload() data: CreateRoomDto) {
     this.logger.debug(`Creating room: ${JSON.stringify(data)}`);
-    try {
-      const room = await this.roomService.createRoom(data);
-      return NatsResponse.success(room);
-    } catch (error: any) {
-      this.logger.error(`Failed to create room: ${error.message}`);
-      return { success: false, error: { code: 'CREATE_ROOM_ERROR', message: error.message } };
-    }
+    const room = await this.roomService.createRoom(data);
+    return NatsResponse.success(room);
   }
 
   @MessagePattern('chat.rooms.get')
   async getRoom(@Payload() data: { roomId: string }) {
-    try {
-      const room = await this.roomService.getRoom(data.roomId);
-      if (!room) {
-        return { success: false, error: { code: 'ROOM_NOT_FOUND', message: 'Room not found' } };
-      }
-      return NatsResponse.success(room);
-    } catch (error: any) {
-      return { success: false, error: { code: 'GET_ROOM_ERROR', message: error.message } };
-    }
+    const room = await this.roomService.getRoom(data.roomId);
+    return NatsResponse.success(room);
   }
 
   @MessagePattern('chat.rooms.list')
   async getUserRooms(@Payload() data: { userId: number }) {
-    try {
-      const rooms = await this.roomService.getUserRooms(data.userId);
-      return NatsResponse.success(rooms);
-    } catch (error: any) {
-      return { success: false, error: { code: 'LIST_ROOMS_ERROR', message: error.message } };
-    }
+    const rooms = await this.roomService.getUserRooms(data.userId);
+    return NatsResponse.success(rooms);
   }
 
   @MessagePattern('chat.rooms.addMember')
   async addMember(@Payload() data: AddMemberDto) {
-    try {
-      const member = await this.roomService.addMember(data);
-      return NatsResponse.success(member);
-    } catch (error: any) {
-      return { success: false, error: { code: 'ADD_MEMBER_ERROR', message: error.message } };
-    }
+    const member = await this.roomService.addMember(data);
+    return NatsResponse.success(member);
   }
 
   @MessagePattern('chat.rooms.removeMember')
   async removeMember(@Payload() data: { roomId: string; userId: number }) {
-    try {
-      await this.roomService.removeMember(data.roomId, data.userId);
-      return NatsResponse.success(null);
-    } catch (error: any) {
-      return { success: false, error: { code: 'REMOVE_MEMBER_ERROR', message: error.message } };
-    }
+    await this.roomService.removeMember(data.roomId, data.userId);
+    return NatsResponse.success(null);
   }
 
   @MessagePattern('chat.rooms.checkMembership')
   async checkMembership(@Payload() data: { roomId: string; userId: number }) {
-    try {
-      const member = await this.roomService.checkMembership(data.roomId, data.userId);
-      return NatsResponse.success({ isMember: !!member });
-    } catch (error: any) {
-      this.logger.error(`Failed to check membership: ${error.message}`);
-      return { success: false, error: { code: 'CHECK_MEMBERSHIP_ERROR', message: error.message } };
-    }
+    const member = await this.roomService.checkMembership(data.roomId, data.userId);
+    return NatsResponse.success({ isMember: !!member });
   }
 
   @MessagePattern('chat.rooms.booking')
   async getOrCreateBookingRoom(@Payload() data: { bookingId: number; members: { id: number; name: string }[] }) {
-    try {
-      const room = await this.roomService.getOrCreateBookingRoom(data.bookingId, data.members);
-      return NatsResponse.success(room);
-    } catch (error: any) {
-      return { success: false, error: { code: 'BOOKING_ROOM_ERROR', message: error.message } };
-    }
+    const room = await this.roomService.getOrCreateBookingRoom(data.bookingId, data.members);
+    return NatsResponse.success(room);
   }
 }

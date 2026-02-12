@@ -4,6 +4,7 @@ import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { UnifiedExceptionFilter } from './common/exceptions';
+import { ResponseTransformInterceptor } from './common/interceptor/response-transform.interceptor';
 import { setNatsReady } from './common/readiness';
 
 async function bootstrap() {
@@ -14,6 +15,7 @@ async function bootstrap() {
 
   // Global unified exception filter (handles both HTTP and RPC)
   app.useGlobalFilters(new UnifiedExceptionFilter());
+  app.useGlobalInterceptors(new ResponseTransformInterceptor());
 
   app.useGlobalPipes(
     new ValidationPipe({

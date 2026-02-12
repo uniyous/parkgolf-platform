@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { MessageType } from '@prisma/client';
+import { AppException, Errors } from '../common/exceptions';
 
 export interface SaveMessageDto {
   id: string;
@@ -146,18 +147,16 @@ export class ChatService {
     });
 
     if (!message) {
-      return { success: false, error: 'Message not found' };
+      throw new AppException(Errors.Chat.MESSAGE_NOT_FOUND);
     }
 
     if (message.senderId !== userId) {
-      return { success: false, error: 'Not authorized' };
+      throw new AppException(Errors.Chat.NOT_AUTHORIZED);
     }
 
     await this.prisma.chatMessage.update({
       where: { id: messageId },
       data: { deletedAt: new Date() },
     });
-
-    return { success: true };
   }
 }

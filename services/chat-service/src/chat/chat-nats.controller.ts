@@ -21,43 +21,25 @@ export class ChatNatsController {
 
   @MessagePattern('chat.messages.list')
   async getMessages(@Payload() data: GetMessagesDto) {
-    try {
-      const result = await this.chatService.getMessages(data);
-      return NatsResponse.success(result);
-    } catch (error: any) {
-      return { success: false, error: { code: 'LIST_MESSAGES_ERROR', message: error.message } };
-    }
+    const result = await this.chatService.getMessages(data);
+    return NatsResponse.success(result);
   }
 
   @MessagePattern('chat.messages.markRead')
   async markRead(@Payload() data: MarkReadDto) {
-    try {
-      await this.chatService.markRead(data);
-      return NatsResponse.success(null);
-    } catch (error: any) {
-      return { success: false, error: { code: 'MARK_READ_ERROR', message: error.message } };
-    }
+    await this.chatService.markRead(data);
+    return NatsResponse.success(null);
   }
 
   @MessagePattern('chat.messages.unreadCount')
   async getUnreadCount(@Payload() data: { roomId: string; userId: number }) {
-    try {
-      const count = await this.chatService.getUnreadCount(data.roomId, data.userId);
-      return NatsResponse.success({ count });
-    } catch (error: any) {
-      return { success: false, error: { code: 'UNREAD_COUNT_ERROR', message: error.message } };
-    }
+    const count = await this.chatService.getUnreadCount(data.roomId, data.userId);
+    return NatsResponse.success({ count });
   }
 
   @MessagePattern('chat.messages.delete')
   async deleteMessage(@Payload() data: { messageId: string; userId: number }) {
-    try {
-      const result = await this.chatService.deleteMessage(data.messageId, data.userId);
-      return result.success
-        ? NatsResponse.deleted()
-        : { success: false, error: { code: 'DELETE_MESSAGE_ERROR', message: result.error } };
-    } catch (error: any) {
-      return { success: false, error: { code: 'DELETE_MESSAGE_ERROR', message: error.message } };
-    }
+    await this.chatService.deleteMessage(data.messageId, data.userId);
+    return NatsResponse.deleted();
   }
 }
