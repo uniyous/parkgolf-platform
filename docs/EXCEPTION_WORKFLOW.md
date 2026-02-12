@@ -337,9 +337,10 @@ fun parseHttpErrorMessage(e: HttpException): String {
 | 에러 유형 | 코드 접두사 | UX 동작 |
 |-----------|-------------|---------|
 | **Auth** (인증) | `AUTH_` / HTTP 401 | 로그인 화면 이동, Toast 생략 |
-| **Business** (비즈니스) | `BOOK_`, `COURSE_`, `VAL_`, `PAY_`, `REFUND_` | 에러 메시지 표시 (Snackbar/Alert) |
+| **Business** (비즈니스) | `BOOK_`, `COURSE_`, `PAY_`, `REFUND_`, `BILLING_`, `FRIEND_`, `CHAT_`, `NOTI_`, `VAL_` | 에러 메시지 표시 (Snackbar/Alert) |
 | **Network** (네트워크) | 연결 실패 | "네트워크 연결을 확인해 주세요" |
-| **System** (시스템) | `SYS_`, `DB_`, `EXT_` | 일반 에러 메시지 표시 |
+| **External** (외부 서비스) | `WEATHER_`, `KMA_`, `LOCATION_`, `KAKAO_`, `EXT_` | 일반 에러 메시지 표시 |
+| **System** (시스템) | `SYS_`, `DB_` | 일반 에러 메시지 표시 |
 
 ---
 
@@ -599,6 +600,9 @@ fun parseHttpErrorMessage(e: HttpException): String {
 | 순서 | 파일 | 작업 |
 |------|------|------|
 | 1 | `services/{service}/src/common/exceptions/catalog/error-catalog.ts` | `ErrorDef` 추가 |
-| 2 | `services/user-api/src/common/nats/nats-client.service.ts` | 접두사 매핑 확인 (기존 접두사면 불필요) |
-| 3 | `apps/user-app-web/src/types/common.ts` | `BffErrorCode` 타입 + `ERROR_MESSAGES` 추가 |
-| 4 | `apps/user-app-ios` / `apps/user-app-android` | 에러 메시지 매핑 추가 (구현 시) |
+| 2 | `services/user-api/src/common/nats/nats-client.service.ts` | 접두사 매핑 확인 (새 접두사면 `getStatusFromErrorCode`에 case 추가) |
+| 3 | `services/admin-api/src/common/nats/nats-client.service.ts` | 접두사 매핑 확인 (user-api와 동일하게 적용) |
+| 4 | `apps/user-app-web/src/types/common.ts` | `BffErrorCode` 타입 + `ERROR_MESSAGES` 추가 |
+| 5 | `apps/admin-dashboard/src/types/common.ts` | `BffErrorCode` 타입 + `ERROR_MESSAGES` 추가 (user-app-web과 동일) |
+| 6 | `docs/EXCEPTION_WORKFLOW.md` | 섹션 6 카탈로그 + 섹션 4.2 매핑 테이블 업데이트 |
+| 7 | `apps/user-app-ios` / `apps/user-app-android` | 에러 메시지 매핑 추가 (구현 시) |
