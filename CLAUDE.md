@@ -295,8 +295,35 @@ export class GameNatsController {
   totalPages: number
 }
 
+// 삭제 응답
+{ success: true, message: string }
+
 // 에러 응답
 { success: false, error: { code: string, message: string }, timestamp: string }
+```
+
+#### NatsResponse 헬퍼
+
+모든 Microservice NATS 핸들러는 반드시 `NatsResponse` 헬퍼를 사용하여 응답을 생성한다.
+
+```typescript
+// 단일 데이터
+NatsResponse.success(data)              // → { success: true, data }
+
+// 페이지네이션
+NatsResponse.paginated(data, total, page, limit)
+// → { success: true, data, total, page, limit, totalPages }
+
+// 삭제
+NatsResponse.deleted('예약이 취소되었습니다')  // → { success: true, message }
+```
+
+#### 타입 가드 (UnifiedExceptionFilter 내부용)
+
+```typescript
+NatsResponse.isWrapped(obj)     // success 필드 존재 여부
+NatsResponse.isPaginated(obj)   // total, page, limit 필드 존재 여부
+NatsResponse.hasData(obj)       // data 필드 존재 여부
 ```
 
 ### 3.8 예외 처리
@@ -313,6 +340,19 @@ UnifiedExceptionFilter.catch() (자동)
 BFF가 { success: false, error: { code, message }, timestamp } 수신
 ```
 
+#### AppException 클래스
+
+```typescript
+// 생성자: ErrorDef + 선택적 커스텀 메시지
+throw new AppException(Errors.Booking.NOT_FOUND);
+throw new AppException(Errors.Booking.SLOT_TAKEN, '14:00 슬롯은 이미 예약됨');
+
+// 주요 메서드
+exception.getCode();         // → 'BOOK_001'
+exception.getErrorMessage(); // → 커스텀 메시지 || ErrorDef.message
+exception.toRpcError();      // → { success, error: { code, message }, timestamp }
+```
+
 #### 예외 처리 규칙
 
 ```typescript
@@ -327,6 +367,20 @@ throw new AppException(Errors.Booking.SLOT_TAKEN, '커스텀 메시지');
 // - ValidationPipe    → 메시지 배열 join
 // - Prisma 에러       → P2002/P2025/P2003 매핑 (DB 사용 서비스만)
 // - 기타 Error        → SYS_001 (Internal)
+```
+
+#### RPC 에러 전파 (Microservice → BFF)
+
+```
+Microservice에서 예외 발생
+    ↓
+UnifiedExceptionFilter: throw new RpcException(JSON.stringify(errorResponse))
+    ↓
+NATS를 통해 BFF에 전달
+    ↓
+BFF의 NatsClientService.handleError: JSON.parse → HttpException throw
+    ↓
+클라이언트에 { success: false, error: { code, message }, timestamp } 응답
 ```
 
 ### 3.9 에러 카탈로그
@@ -352,6 +406,24 @@ export const Errors = {
 } as const;
 ```
 
+#### 에러 코드 접두사
+
+| 접두사 | 도메인 | 서비스 |
+|--------|--------|--------|
+| `AUTH_` | 인증/토큰 | iam-service |
+| `USER_` | 사용자 관리 | iam-service |
+| `ADMIN_` | 관리자 관리 | iam-service |
+| `FRIEND_` | 친구 관리 | iam-service |
+| `COURSE_` | 골프장/코스 | course-service |
+| `BOOK_` | 예약 | booking-service |
+| `PAY_` | 결제 | payment-service |
+| `CHAT_` | 채팅 | chat-service |
+| `NOTI_` | 알림 | notify-service |
+| `VAL_` | 입력 검증 (공통) | 전 서비스 |
+| `DB_` | 데이터베이스 (공통) | DB 사용 서비스 |
+| `EXT_` | 외부 API (공통) | 전 서비스 |
+| `SYS_` | 시스템 (공통) | 전 서비스 |
+
 ### 3.10 DTO / Validation
 
 ```typescript
@@ -373,16 +445,42 @@ interface CreateBookingDto { clubId: string; }
 
 ### 3.11 Health Check
 
-모든 서비스에 필수 적용.
+모든 서비스에 필수 적용. K8s 프로브 대응을 위해 3개 엔드포인트를 제공한다.
 
 ```typescript
 @Controller()
 export class HealthController {
+  // 기본 헬스체크 (항상 OK)
   @Get('health')
   check() {
     return { status: 'ok', service: '{service-name}', timestamp: new Date().toISOString() };
   }
+
+  // K8s Readiness Probe (NATS + DB 연결 상태 확인)
+  @Get('health/ready')
+  async readiness() {
+    const nats = isNatsReady();                  // common/readiness.ts
+    const db = await this.checkDatabase();       // DB 사용 서비스만
+    const ready = nats && db;
+    return { status: ready ? 'ready' : 'not_ready', checks: { nats, database: db } };
+  }
+
+  // K8s Liveness Probe (프로세스 생존 확인)
+  @Get('health/live')
+  liveness() {
+    return { status: 'alive', uptime: process.uptime() };
+  }
 }
+```
+
+#### NATS 연결 상태 추적 (common/readiness.ts)
+
+```typescript
+// main.ts의 connectNatsWithRetry에서 연결 성공 시 호출
+setNatsReady(true);
+
+// HealthController에서 readiness 확인 시 사용
+isNatsReady();  // → boolean
 ```
 
 ### 3.12 금지 패턴
@@ -400,8 +498,9 @@ async get(@Payload() data) {
   try { ... } catch (e) { return NatsResponse.error(...); }  // 금지 - UnifiedExceptionFilter 사용
 }
 
-// ❌ ResponseTransformInterceptor 사용
-// BFF는 Microservice 응답을 그대로 전달
+// ❌ ResponseTransformInterceptor 사용 (모든 서비스에서 금지)
+// Microservice: 모든 핸들러가 NatsResponse 헬퍼로 명시적 응답 → 인터셉터 불필요
+// BFF: Microservice 응답을 그대로 전달 → 인터셉터가 이중 래핑 유발
 
 // ❌ any 타입 DTO
 @MessagePattern('domain.create')
@@ -410,7 +509,7 @@ async create(@Payload() data: any) { }  // 금지 - DTO 클래스 사용
 
 **규칙 요약:**
 - BFF(admin-api, user-api)는 Microservice 응답을 그대로 전달 (변환/언래핑 금지)
-- Microservice에서 `NatsResponse.success()`, `NatsResponse.paginated()` 사용
+- Microservice에서 `NatsResponse.success()`, `NatsResponse.paginated()`, `NatsResponse.deleted()` 사용
 - 에러 처리는 `UnifiedExceptionFilter`에 위임 (Controller에 try-catch 넣지 않음)
 - 요청 DTO는 반드시 class-validator 데코레이터 적용
 
