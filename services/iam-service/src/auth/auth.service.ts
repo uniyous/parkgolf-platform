@@ -482,12 +482,6 @@ export class AuthService {
             'COMPANY_MANAGER': 'COMPANY',
             'COMPANY_STAFF': 'COMPANY',
             'COMPANY_VIEWER': 'COMPANY',
-            // 레거시 호환성
-            'ADMIN': 'PLATFORM',
-            'SUPPORT': 'PLATFORM',
-            'MANAGER': 'COMPANY',
-            'STAFF': 'COMPANY',
-            'VIEWER': 'COMPANY'
         };
 
         return roleToScope[roleCode] || 'COMPANY';
