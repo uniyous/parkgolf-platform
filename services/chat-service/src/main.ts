@@ -3,7 +3,6 @@ import { AppModule } from './app.module';
 import { INestApplication, ValidationPipe, Logger } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { UnifiedExceptionFilter } from './common/exceptions';
-import { ResponseTransformInterceptor } from './common/interceptor/response-transform.interceptor';
 import { setNatsReady } from './common/readiness';
 
 async function bootstrap() {
@@ -22,7 +21,6 @@ async function bootstrap() {
     });
 
     app.useGlobalFilters(new UnifiedExceptionFilter());
-    app.useGlobalInterceptors(new ResponseTransformInterceptor());
 
     app.useGlobalPipes(
       new ValidationPipe({
@@ -50,7 +48,8 @@ async function bootstrap() {
     app.enableShutdownHooks();
 
     // Start HTTP server for health checks
-    const port = parseInt(process.env.PORT || '3096');
+    const DEFAULT_PORT = 3096;
+    const port = parseInt(process.env.PORT || String(DEFAULT_PORT));
     await app.listen(port, '0.0.0.0');
     logger.log(`🚀 Chat Service is running on port ${port}`);
     logger.log(`🩺 Health check: http://0.0.0.0:${port}/health`);
@@ -71,10 +70,14 @@ async function bootstrap() {
   }
 }
 
+const NATS_MAX_ATTEMPTS = 50;
+const NATS_BASE_DELAY_MS = 2000;
+const NATS_MAX_DELAY_MS = 15000;
+const NATS_MAX_BACKOFF_EXPONENT = 3;
+
 async function connectNatsWithRetry(
   app: INestApplication, natsUrl: string, queue: string, logger: Logger,
 ) {
-  const MAX_ATTEMPTS = 50;
   app.connectMicroservice<MicroserviceOptions>(
     {
       transport: Transport.NATS,
@@ -82,26 +85,30 @@ async function connectNatsWithRetry(
         servers: [natsUrl],
         queue,
         reconnect: true,
-        reconnectTimeWait: 2000,
+        reconnectTimeWait: NATS_BASE_DELAY_MS,
         maxReconnectAttempts: -1,
       },
     },
     { inheritAppConfig: true },
   );
 
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+  for (let attempt = 1; attempt <= NATS_MAX_ATTEMPTS; attempt++) {
     try {
       await app.startAllMicroservices();
       setNatsReady(true);
       logger.log(`NATS connected to ${natsUrl} (attempt ${attempt})`);
       return;
-    } catch (error: any) {
-      if (attempt === MAX_ATTEMPTS) {
-        logger.error(`NATS failed after ${MAX_ATTEMPTS} attempts`);
+    } catch (error: unknown) {
+      if (attempt === NATS_MAX_ATTEMPTS) {
+        logger.error(`NATS failed after ${NATS_MAX_ATTEMPTS} attempts`);
         return;
       }
-      const delay = Math.min(2000 * 2 ** Math.min(attempt - 1, 3), 15000);
-      logger.warn(`NATS attempt ${attempt}/${MAX_ATTEMPTS}: ${error.message}. Retry in ${delay / 1000}s`);
+      const delay = Math.min(
+        NATS_BASE_DELAY_MS * 2 ** Math.min(attempt - 1, NATS_MAX_BACKOFF_EXPONENT),
+        NATS_MAX_DELAY_MS,
+      );
+      const message = error instanceof Error ? error.message : String(error);
+      logger.warn(`NATS attempt ${attempt}/${NATS_MAX_ATTEMPTS}: ${message}. Retry in ${delay / 1000}s`);
       await new Promise((r) => setTimeout(r, delay));
     }
   }

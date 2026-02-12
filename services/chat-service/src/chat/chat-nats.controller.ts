@@ -1,6 +1,6 @@
 import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { ChatService, GetMessagesDto, MarkReadDto } from './chat.service';
+import { ChatService, SaveMessageDto, GetMessagesDto, MarkReadDto } from './chat.service';
 import { NatsResponse } from '../common/types/response.types';
 
 @Controller()
@@ -17,6 +17,12 @@ export class ChatNatsController {
       service: 'chat-service',
       timestamp: new Date().toISOString(),
     };
+  }
+
+  @MessagePattern('chat.messages.save')
+  async saveMessage(@Payload() data: SaveMessageDto) {
+    const message = await this.chatService.saveMessage(data);
+    return NatsResponse.success(message);
   }
 
   @MessagePattern('chat.messages.list')

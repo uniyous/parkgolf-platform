@@ -25,6 +25,8 @@ export interface MarkReadDto {
   messageId: string;
 }
 
+const DEFAULT_PAGE_SIZE = 50;
+
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
@@ -68,7 +70,7 @@ export class ChatService {
 
   // 메시지 목록 조회 (cursor pagination)
   async getMessages(dto: GetMessagesDto) {
-    const { roomId, cursor, limit = 50 } = dto;
+    const { roomId, cursor, limit = DEFAULT_PAGE_SIZE } = dto;
 
     const messages = await this.prisma.chatMessage.findMany({
       where: {

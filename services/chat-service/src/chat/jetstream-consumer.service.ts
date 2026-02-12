@@ -64,9 +64,11 @@ export class JetStreamConsumerService implements OnModuleInit, OnModuleDestroy {
     if (this.nc) {
       try {
         await this.nc.drain();
-      } catch (error: any) {
-        if (error?.code !== 'CONNECTION_DRAINING') {
-          this.logger.warn(`NATS drain error: ${error.message}`);
+      } catch (error: unknown) {
+        const isConnectionDraining = error instanceof Error && 'code' in error && (error as { code: string }).code === 'CONNECTION_DRAINING';
+        if (!isConnectionDraining) {
+          const message = error instanceof Error ? error.message : String(error);
+          this.logger.warn(`NATS drain error: ${message}`);
         }
       }
       this.nc = null;
@@ -120,8 +122,9 @@ export class JetStreamConsumerService implements OnModuleInit, OnModuleDestroy {
         msg.ack();
 
         this.logger.debug(`Processed and saved message: ${data.id}`);
-      } catch (error: any) {
-        this.logger.error(`Failed to process JetStream message: ${error.message}`);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.error(`Failed to process JetStream message: ${message}`);
         msg.nak();
       }
     }

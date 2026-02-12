@@ -3,7 +3,6 @@ import { AppModule } from './app.module';
 import { INestApplication, ValidationPipe, Logger } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { UnifiedExceptionFilter } from './common/exceptions';
-import { ResponseTransformInterceptor } from './common/interceptor/response-transform.interceptor';
 import { setNatsReady } from './common/readiness';
 
 async function bootstrap() {
@@ -53,9 +52,6 @@ async function bootstrap() {
 
     logger.log(`🚀 Course Service is running on port ${port}`);
     logger.log(`🩺 Health check: http://localhost:${port}/health`);
-
-    // Register global interceptor BEFORE connecting microservice
-    app.useGlobalInterceptors(new ResponseTransformInterceptor());
 
     // NATS 마이크로서비스 연결 (백그라운드 재시도)
     if (process.env.NATS_URL) {

@@ -18,6 +18,8 @@ export interface AddMemberDto {
   userEmail?: string;
 }
 
+const BOOKING_ROOM_NAME_PREFIX = '예약';
+
 @Injectable()
 export class RoomService {
   private readonly logger = new Logger(RoomService.name);
@@ -197,7 +199,7 @@ export class RoomService {
       });
 
       room = await this.createRoom({
-        name: `예약 #${bookingId}`,
+        name: `${BOOKING_ROOM_NAME_PREFIX} #${bookingId}`,
         type: 'BOOKING',
         bookingId,
         memberIds: members.map((m) => m.id),

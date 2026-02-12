@@ -26,12 +26,12 @@ export class AuthNatsController {
   @MessagePattern('iam.auth.ping')
   async ping(@Payload() payload: { ping: boolean; timestamp: string }) {
     this.logger.debug(`NATS ping received: ${payload.timestamp}`);
-    return {
+    return NatsResponse.success({
       pong: true,
       service: 'iam-service',
       timestamp: new Date().toISOString(),
       receivedAt: payload.timestamp,
-    };
+    });
   }
 
   // ============================================

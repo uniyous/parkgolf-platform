@@ -2,7 +2,6 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { INestApplication, ValidationPipe, Logger } from '@nestjs/common';
 import { UnifiedExceptionFilter } from './common/exceptions';
-import { ResponseTransformInterceptor } from './common/interceptor/response-transform.interceptor';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { setNatsReady } from './common/readiness';
 
@@ -56,9 +55,6 @@ async function bootstrap() {
 
     logger.log(`🚀 IAM Service is running on port ${port}`);
     logger.log(`🩺 Health check available at: http://0.0.0.0:${port}/health`);
-
-    // Register global interceptor BEFORE connecting microservice
-    app.useGlobalInterceptors(new ResponseTransformInterceptor());
 
     // NATS 마이크로서비스 연결 (백그라운드 재시도)
     if (process.env.NATS_URL) {
