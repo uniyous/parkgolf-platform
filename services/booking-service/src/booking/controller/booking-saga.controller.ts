@@ -74,6 +74,25 @@ export class BookingSagaController {
   }
 
   /**
+   * 가상계좌 입금 완료 이벤트 핸들러 (Request-Reply)
+   * payment-service에서 가상계좌 입금이 확인되면 이 메시지를 전송함
+   * SLOT_RESERVED → CONFIRMED (결제 확정과 동일 흐름)
+   */
+  @MessagePattern('booking.paymentDeposited')
+  async handlePaymentDeposited(@Payload() data: PaymentConfirmedEvent) {
+    this.logger.log(`NATS: Received booking.paymentDeposited for booking ${data.bookingId}`);
+
+    try {
+      const result = await this.sagaHandler.handlePaymentConfirmed(data);
+      this.logger.log(`NATS: Successfully processed booking.paymentDeposited for booking ${data.bookingId}`);
+      return result;
+    } catch (error) {
+      this.logger.error(`NATS: Error processing booking.paymentDeposited: ${error.message}`, error.stack);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * 결제 취소(환불) 완료 이벤트 핸들러
    * payment-service에서 환불이 완료되면 이 이벤트를 발행함
    * BookingHistory에 REFUND_COMPLETED 기록 + 환불 알림 발행

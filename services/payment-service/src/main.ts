@@ -52,7 +52,8 @@ async function bootstrap() {
     app.enableShutdownHooks();
 
     // Start HTTP server
-    const port = parseInt(process.env.PORT || '8086');
+    const DEFAULT_PORT = 8086;
+    const port = parseInt(process.env.PORT || String(DEFAULT_PORT));
     await app.listen(port, '0.0.0.0');
 
     logger.log(`🚀 Payment Service is running on port ${port}`);

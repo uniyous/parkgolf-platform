@@ -14,6 +14,7 @@ export class OutboxProcessorService implements OnModuleInit {
   private readonly logger = new Logger(OutboxProcessorService.name);
   private readonly maxRetries = 5;
   private readonly batchSize = 10;
+  private readonly sendTimeoutMs = 10_000;
   private isProcessing = false;
 
   constructor(
@@ -121,7 +122,7 @@ export class OutboxProcessorService implements OnModuleInit {
     const client = this.getClient(eventType);
 
     await firstValueFrom(
-      client.send(pattern, payload).pipe(timeout(10000)),
+      client.send(pattern, payload).pipe(timeout(this.sendTimeoutMs)),
     );
   }
 
@@ -133,7 +134,6 @@ export class OutboxProcessorService implements OnModuleInit {
       'payment.confirmed': 'booking.paymentConfirmed',
       'payment.canceled': 'booking.paymentCanceled',
       'payment.deposited': 'booking.paymentDeposited',
-      'payment.failed': 'booking.paymentFailed',
     };
     return patternMap[eventType] || eventType;
   }

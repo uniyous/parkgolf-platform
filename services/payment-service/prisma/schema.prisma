@@ -91,6 +91,7 @@ model Payment {
   @@index([status])
   @@index([createdAt])
   @@index([method])
+  @@index([userId, status, createdAt])
   @@map("payments")
 }
 
@@ -101,7 +102,7 @@ model Payment {
 model Refund {
   id              Int           @id @default(autoincrement())
   paymentId       Int           @map("payment_id")
-  payment         Payment       @relation(fields: [paymentId], references: [id])
+  payment         Payment       @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 
   // 토스 거래 정보
   transactionKey  String?       @unique @map("transaction_key")  // 토스 거래 키
@@ -123,7 +124,7 @@ model Refund {
   // 처리 정보
   refundedAt      DateTime?     @map("refunded_at")
   requestedBy     Int?          @map("requested_by")             // 요청자 (userId 또는 adminId)
-  requestedByType String?       @map("requested_by_type")        // USER, ADMIN, SYSTEM
+  requestedByType RefundRequestorType? @map("requested_by_type")
 
   // 타임스탬프
   createdAt       DateTime      @default(now()) @map("created_at")
@@ -160,8 +161,8 @@ model BillingKey {
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
-  @@index([userId])
-  @@index([isActive])
+  @@index([userId, isActive, createdAt])
+  @@index([customerKey, isActive])
   @@map("billing_keys")
 }
 
@@ -172,7 +173,7 @@ model BillingKey {
 model WebhookLog {
   id              Int           @id @default(autoincrement())
   paymentId       Int?          @map("payment_id")
-  payment         Payment?      @relation(fields: [paymentId], references: [id])
+  payment         Payment?      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 
   // 웹훅 정보
   eventType       String        @map("event_type")               // PAYMENT_STATUS_CHANGED 등
@@ -212,7 +213,7 @@ model PaymentOutboxEvent {
   createdAt     DateTime      @default(now()) @map("created_at")
   processedAt   DateTime?     @map("processed_at")
 
-  @@index([status, createdAt])
+  @@index([status, retryCount, createdAt])
   @@index([aggregateType, aggregateId])
   @@map("payment_outbox_events")
 }
@@ -240,6 +241,12 @@ enum PaymentStatus {
   PARTIAL_CANCELED  // 부분 취소
   ABORTED           // 결제 중단
   EXPIRED           // 결제 만료 (가상계좌)
+}
+
+enum RefundRequestorType {
+  USER
+  ADMIN
+  SYSTEM
 }
 
 enum RefundStatus {
