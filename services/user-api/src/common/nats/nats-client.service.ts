@@ -182,7 +182,9 @@ export class NatsClientService implements OnModuleInit {
 
   /**
    * 에러 코드에서 HTTP 상태 코드 추출
-   * 에러 카탈로그 코드 패턴: AUTH_xxx, USER_xxx, ADMIN_xxx, BOOK_xxx, COURSE_xxx, VAL_xxx, EXT_xxx, DB_xxx, SYS_xxx
+   * 에러 카탈로그 코드 패턴: AUTH_xxx, USER_xxx, ADMIN_xxx, FRIEND_xxx, BOOK_xxx, COURSE_xxx,
+   * CHAT_xxx, NOTI_xxx, PAY_xxx, REFUND_xxx, BILLING_xxx, WEATHER_xxx, KMA_xxx,
+   * LOCATION_xxx, KAKAO_xxx, VAL_xxx, EXT_xxx, DB_xxx, SYS_xxx
    */
   private getStatusFromErrorCode(code: string): HttpStatus {
     if (!code) return HttpStatus.INTERNAL_SERVER_ERROR;
@@ -256,6 +258,52 @@ export class NatsClientService implements OnModuleInit {
         if (code === 'BILLING_001') return HttpStatus.NOT_FOUND;
         if (code === 'BILLING_003') return HttpStatus.CONFLICT;
         return HttpStatus.BAD_REQUEST;
+
+      case 'FRIEND':
+        // NOT_FOUND: 404, ALREADY_FRIEND/ALREADY_REQUESTED: 409, NO_PERMISSION: 403
+        if (code === 'FRIEND_001') return HttpStatus.NOT_FOUND;
+        if (code === 'FRIEND_003' || code === 'FRIEND_004') return HttpStatus.CONFLICT;
+        if (code === 'FRIEND_006') return HttpStatus.FORBIDDEN;
+        return HttpStatus.BAD_REQUEST;
+
+      case 'CHAT':
+        // ROOM_NOT_FOUND/MESSAGE_NOT_FOUND: 404, NOT_AUTHORIZED: 403
+        if (code === 'CHAT_001' || code === 'CHAT_002') return HttpStatus.NOT_FOUND;
+        if (code === 'CHAT_003') return HttpStatus.FORBIDDEN;
+        return HttpStatus.BAD_REQUEST;
+
+      case 'NOTI':
+        // NOT_FOUND/TEMPLATE_NOT_FOUND: 404, INVALID_TYPE: 400, SEND/DELIVERY_FAILED: 500
+        if (code === 'NOTI_001' || code === 'NOTI_003') return HttpStatus.NOT_FOUND;
+        if (code === 'NOTI_004') return HttpStatus.BAD_REQUEST;
+        return HttpStatus.INTERNAL_SERVER_ERROR;
+
+      case 'WEATHER':
+        // INVALID_COORDINATES: 400, LOCATION_NOT_FOUND: 404, FORECAST_NOT_AVAILABLE: 503
+        if (code === 'WEATHER_001') return HttpStatus.BAD_REQUEST;
+        if (code === 'WEATHER_002') return HttpStatus.NOT_FOUND;
+        return HttpStatus.SERVICE_UNAVAILABLE;
+
+      case 'KMA':
+        // API_ERROR: 502, TIMEOUT: 504, UNAVAILABLE: 503, INVALID_KEY: 401, NO_DATA: 404
+        if (code === 'KMA_001') return HttpStatus.BAD_GATEWAY;
+        if (code === 'KMA_002') return HttpStatus.GATEWAY_TIMEOUT;
+        if (code === 'KMA_003') return HttpStatus.SERVICE_UNAVAILABLE;
+        if (code === 'KMA_004') return HttpStatus.UNAUTHORIZED;
+        if (code === 'KMA_005') return HttpStatus.NOT_FOUND;
+        return HttpStatus.BAD_GATEWAY;
+
+      case 'LOCATION':
+        // ADDRESS_NOT_FOUND: 404, INVALID_COORDINATES: 400, SEARCH_FAILED: 503
+        if (code === 'LOCATION_001') return HttpStatus.NOT_FOUND;
+        if (code === 'LOCATION_002') return HttpStatus.BAD_REQUEST;
+        return HttpStatus.SERVICE_UNAVAILABLE;
+
+      case 'KAKAO':
+        // API_ERROR: 502, TIMEOUT: 504, KEY_NOT_CONFIGURED: 500
+        if (code === 'KAKAO_001') return HttpStatus.BAD_GATEWAY;
+        if (code === 'KAKAO_002') return HttpStatus.GATEWAY_TIMEOUT;
+        return HttpStatus.INTERNAL_SERVER_ERROR;
 
       default:
         break;
