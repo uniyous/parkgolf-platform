@@ -139,6 +139,16 @@ export class KakaoApiService implements OnModuleInit {
   }
 
   /**
+   * 카카오 API 에러 핸들링 (공통)
+   */
+  private handleApiError(context: string, error: unknown): never {
+    this.logger.error(`${context} failed`, error);
+    if (error instanceof AppException) throw error;
+    const message = error instanceof Error ? error.message : String(error);
+    throw new AppException(Errors.Kakao.API_ERROR, message);
+  }
+
+  /**
    * KakaoPlaceDocument → PlaceInfo 변환
    */
   private toPlaceInfo(doc: KakaoPlaceDocument): PlaceInfo {
@@ -207,10 +217,8 @@ export class KakaoApiService implements OnModuleInit {
           size: dto.size || 10,
         },
       };
-    } catch (error: any) {
-      this.logger.error('Address search failed', error);
-      if (error instanceof AppException) throw error;
-      throw new AppException(Errors.Kakao.API_ERROR, error.message);
+    } catch (error: unknown) {
+      this.handleApiError('Address search', error);
     }
   }
 
@@ -221,7 +229,7 @@ export class KakaoApiService implements OnModuleInit {
     this.validateApiKey();
 
     try {
-      const params: Record<string, any> = {
+      const params: Record<string, string | number> = {
         query: dto.query,
         page: dto.page || 1,
         size: dto.size || 15,
@@ -254,10 +262,8 @@ export class KakaoApiService implements OnModuleInit {
           size: dto.size || 15,
         },
       };
-    } catch (error: any) {
-      this.logger.error('Keyword search failed', error);
-      if (error instanceof AppException) throw error;
-      throw new AppException(Errors.Kakao.API_ERROR, error.message);
+    } catch (error: unknown) {
+      this.handleApiError('Keyword search', error);
     }
   }
 
@@ -297,10 +303,8 @@ export class KakaoApiService implements OnModuleInit {
           size: dto.size || 15,
         },
       };
-    } catch (error: any) {
-      this.logger.error('Category search failed', error);
-      if (error instanceof AppException) throw error;
-      throw new AppException(Errors.Kakao.API_ERROR, error.message);
+    } catch (error: unknown) {
+      this.handleApiError('Category search', error);
     }
   }
 
@@ -346,10 +350,8 @@ export class KakaoApiService implements OnModuleInit {
           longitude: dto.x,
         },
       };
-    } catch (error: any) {
-      this.logger.error('Coord to address failed', error);
-      if (error instanceof AppException) throw error;
-      throw new AppException(Errors.Kakao.API_ERROR, error.message);
+    } catch (error: unknown) {
+      this.handleApiError('Coord to address', error);
     }
   }
 
@@ -386,10 +388,8 @@ export class KakaoApiService implements OnModuleInit {
         region2: region.region_2depth_name,
         region3: region.region_3depth_name,
       };
-    } catch (error: any) {
-      this.logger.error('Coord to region failed', error);
-      if (error instanceof AppException) throw error;
-      throw new AppException(Errors.Kakao.API_ERROR, error.message);
+    } catch (error: unknown) {
+      this.handleApiError('Coord to region', error);
     }
   }
 }

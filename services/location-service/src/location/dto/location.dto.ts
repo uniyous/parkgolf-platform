@@ -1,9 +1,10 @@
-import { IsString, IsOptional, IsNumber, Min, Max } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber, Min, Max } from 'class-validator';
 
 /**
  * 주소 검색 요청
  */
 export class AddressSearchDto {
+  @IsNotEmpty()
   @IsString()
   query: string;
 
@@ -23,6 +24,7 @@ export class AddressSearchDto {
  * 키워드 장소 검색 요청
  */
 export class KeywordSearchDto {
+  @IsNotEmpty()
   @IsString()
   query: string;
 
@@ -71,6 +73,7 @@ export class CoordToAddressDto {
  * 카테고리 장소 검색 요청
  */
 export class CategorySearchDto {
+  @IsNotEmpty()
   @IsString()
   categoryGroupCode: string;
 

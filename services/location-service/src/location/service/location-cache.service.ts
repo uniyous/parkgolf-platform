@@ -9,12 +9,20 @@ import NodeCache from 'node-cache';
 export class LocationCacheService {
   private readonly logger = new Logger(LocationCacheService.name);
   private readonly addressCache: NodeCache;
+  private readonly keywordCache: NodeCache;
   private readonly coordCache: NodeCache;
 
   constructor(private readonly configService: ConfigService) {
     // 주소 검색 캐시 (기본 1시간)
     const addressTTL = Number(this.configService.get('CACHE_TTL_ADDRESS')) || 3600;
     this.addressCache = new NodeCache({
+      stdTTL: addressTTL,
+      checkperiod: 120,
+      useClones: true,
+    });
+
+    // 키워드 검색 캐시 (주소 캐시와 동일 TTL)
+    this.keywordCache = new NodeCache({
       stdTTL: addressTTL,
       checkperiod: 120,
       useClones: true,
@@ -49,14 +57,14 @@ export class LocationCacheService {
    * 키워드 검색 결과 캐시 조회
    */
   getKeywordSearch<T>(key: string): T | undefined {
-    return this.addressCache.get<T>(key);
+    return this.keywordCache.get<T>(key);
   }
 
   /**
    * 키워드 검색 결과 캐시 저장
    */
   setKeywordSearch<T>(key: string, value: T): void {
-    this.addressCache.set(key, value);
+    this.keywordCache.set(key, value);
   }
 
   /**
@@ -104,6 +112,11 @@ export class LocationCacheService {
         keys: this.addressCache.keys().length,
         hits: this.addressCache.getStats().hits,
         misses: this.addressCache.getStats().misses,
+      },
+      keyword: {
+        keys: this.keywordCache.keys().length,
+        hits: this.keywordCache.getStats().hits,
+        misses: this.keywordCache.getStats().misses,
       },
       coord: {
         keys: this.coordCache.keys().length,

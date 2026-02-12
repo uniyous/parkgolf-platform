@@ -20,6 +20,7 @@ import {
 @Injectable()
 export class WeatherService {
   private readonly logger = new Logger(WeatherService.name);
+  private readonly DAYS_OF_WEEK = ['일', '월', '화', '수', '목', '금', '토'] as const;
 
   constructor(
     private readonly coordinateConverter: CoordinateConverter,
@@ -451,12 +452,11 @@ export class WeatherService {
    * 요일 반환
    */
   private getDayOfWeek(dateStr: string): string {
-    const days = ['일', '월', '화', '수', '목', '금', '토'];
     const date = new Date(
       parseInt(dateStr.slice(0, 4), 10),
       parseInt(dateStr.slice(4, 6), 10) - 1,
       parseInt(dateStr.slice(6, 8), 10),
     );
-    return days[date.getDay()];
+    return this.DAYS_OF_WEEK[date.getDay()];
   }
 }

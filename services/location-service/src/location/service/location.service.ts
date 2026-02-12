@@ -16,6 +16,9 @@ import {
 /**
  * 위치 서비스 (캐싱 + API 통합)
  */
+const DEFAULT_NEARBY_RADIUS = 10000;
+const DEFAULT_KEYWORD_SIZE = 15;
+
 @Injectable()
 export class LocationService {
   private readonly logger = new Logger(LocationService.name);
@@ -118,7 +121,7 @@ export class LocationService {
   async searchNearbyGolfCourses(
     x: number,
     y: number,
-    radius: number = 10000,
+    radius: number = DEFAULT_NEARBY_RADIUS,
   ): Promise<PlaceInfo[]> {
     // "파크골프" 키워드로 검색
     const result = await this.kakaoApi.searchKeyword({
@@ -126,7 +129,7 @@ export class LocationService {
       x,
       y,
       radius,
-      size: 15,
+      size: DEFAULT_KEYWORD_SIZE,
     });
 
     return result.places;

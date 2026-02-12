@@ -64,13 +64,14 @@ async function connectNatsWithRetry(
       setNatsReady(true);
       logger.log(`NATS connected to ${natsUrl} (attempt ${attempt})`);
       return;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (attempt === MAX_ATTEMPTS) {
         logger.error(`NATS failed after ${MAX_ATTEMPTS} attempts`);
         return;
       }
       const delay = Math.min(2000 * 2 ** Math.min(attempt - 1, 3), 15000);
-      logger.warn(`NATS attempt ${attempt}/${MAX_ATTEMPTS}: ${error.message}. Retry in ${delay / 1000}s`);
+      const message = error instanceof Error ? error.message : String(error);
+      logger.warn(`NATS attempt ${attempt}/${MAX_ATTEMPTS}: ${message}. Retry in ${delay / 1000}s`);
       await new Promise((r) => setTimeout(r, delay));
     }
   }
