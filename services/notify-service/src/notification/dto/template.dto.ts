@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsEnum, IsOptional, IsBoolean } from 'class-validator';
-import { NotificationType } from '@prisma/client';
+import { NotificationType, Prisma } from '@prisma/client';
 
 export class CreateTemplateDto {
   @ApiProperty({ description: '알림 유형', enum: NotificationType })
@@ -17,7 +17,7 @@ export class CreateTemplateDto {
 
   @ApiProperty({ description: '템플릿 변수 정의', required: false })
   @IsOptional()
-  variables?: any;
+  variables?: Prisma.InputJsonValue;
 
   @ApiProperty({ description: '활성화 상태', required: false, default: true })
   @IsOptional()
@@ -38,7 +38,7 @@ export class UpdateTemplateDto {
 
   @ApiProperty({ description: '템플릿 변수 정의', required: false })
   @IsOptional()
-  variables?: any;
+  variables?: Prisma.InputJsonValue;
 
   @ApiProperty({ description: '활성화 상태', required: false })
   @IsOptional()

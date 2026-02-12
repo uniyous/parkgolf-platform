@@ -100,7 +100,7 @@ export class SchedulerService {
    * 만료 알림 정리 (매일 새벽 2시 실행)
    * 타입별 TTL에 따라 READ 알림 삭제 + 미읽음 만료 알림 READ 처리
    */
-  @Cron('0 2 * * *')
+  @Cron(CronExpression.EVERY_DAY_AT_2AM)
   async cleanupExpiredNotifications() {
     const now = new Date();
     const ttlDays: Record<string, number> = {
@@ -109,8 +109,7 @@ export class SchedulerService {
       FRIEND_ACCEPTED: 14,
       BOOKING_CONFIRMED: 7,
       BOOKING_CANCELLED: 7,
-      PAYMENT_SUCCESS: 30,
-      PAYMENT_FAILED: 30,
+      REFUND_COMPLETED: 30,
       SYSTEM_ALERT: 30,
     };
 

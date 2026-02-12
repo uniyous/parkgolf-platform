@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Notification } from '@prisma/client';
+import { DeliveryChannelType, Notification } from '@prisma/client';
 import { NotificationService } from './notification.service';
 import { PreferencesService } from './preferences.service';
 import { PushService } from './push.service';
@@ -15,16 +15,16 @@ export class DeliveryService {
   ) {}
 
   async deliverNotification(notification: Notification): Promise<boolean> {
-    const channelName = notification.deliveryChannel || 'PUSH';
+    const channel = notification.deliveryChannel ?? DeliveryChannelType.PUSH;
 
     // Check user preferences
     const hasPermission = await this.preferencesService.checkUserPreference(
       notification.userId,
-      channelName.toLowerCase() as 'email' | 'sms' | 'push',
+      channel.toLowerCase() as 'email' | 'sms' | 'push',
     );
 
     if (!hasPermission) {
-      this.logger.log(`User ${notification.userId} has disabled ${channelName} notifications`);
+      this.logger.log(`User ${notification.userId} has disabled ${channel} notifications`);
       await this.notificationService.markAsSent(notification.id);
       return true;
     }
@@ -32,19 +32,15 @@ export class DeliveryService {
     try {
       let success = false;
 
-      switch (channelName.toUpperCase()) {
-        case 'PUSH':
+      switch (channel) {
+        case DeliveryChannelType.PUSH:
           success = await this.sendPush(notification);
           break;
-        case 'EMAIL':
+        case DeliveryChannelType.EMAIL:
           success = await this.sendEmail(notification);
           break;
-        case 'SMS':
+        case DeliveryChannelType.SMS:
           success = await this.sendSms(notification);
-          break;
-        default:
-          // Default to push notification
-          success = await this.sendPush(notification);
           break;
       }
 

@@ -34,7 +34,9 @@ export class HealthController {
     try {
       await this.prisma.$queryRaw`SELECT 1`;
       db = true;
-    } catch {}
+    } catch {
+      // DB connection check failed — reported as db: false in response
+    }
 
     const ready = nats && db;
     res.status(ready ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE).json({

@@ -5,7 +5,6 @@ import {
   Delete,
   Param,
   Query,
-  Body,
   UseGuards,
   ParseIntPipe,
 } from '@nestjs/common';
@@ -86,32 +85,4 @@ export class NotifyController {
     return this.notifyService.deleteNotification(id, userId);
   }
 
-  // Legacy endpoints
-  @Post('email')
-  @ApiOperation({ summary: '이메일 발송' })
-  @ApiResponse({ status: 200, description: '이메일 발송 성공' })
-  @ApiResponse({ status: 401, description: '인증 필요' })
-  async sendEmail(
-    @Body() data: {
-      to: string;
-      subject: string;
-      template: string;
-      context: Record<string, unknown>;
-    },
-  ) {
-    return this.notifyService.sendEmail(data);
-  }
-
-  @Post('sms')
-  @ApiOperation({ summary: 'SMS 발송' })
-  @ApiResponse({ status: 200, description: 'SMS 발송 성공' })
-  @ApiResponse({ status: 401, description: '인증 필요' })
-  async sendSMS(
-    @Body() data: {
-      to: string;
-      message: string;
-    },
-  ) {
-    return this.notifyService.sendSMS(data);
-  }
 }

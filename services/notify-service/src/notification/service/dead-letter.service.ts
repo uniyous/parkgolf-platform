@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { Notification, NotificationType } from '@prisma/client';
+import { DeliveryChannelType, Notification, NotificationType } from '@prisma/client';
+import { AppException } from '../../common/exceptions/app.exception';
+import { Errors } from '../../common/exceptions/catalog/error-catalog';
+
+const DEFAULT_MAX_RETRIES = 3;
 
 interface DeadLetterNotification {
   id: number;
@@ -10,7 +14,7 @@ interface DeadLetterNotification {
   title: string;
   message: string;
   data: unknown;
-  deliveryChannel: string | null;
+  deliveryChannel: DeliveryChannelType | null;
   failureReason: string;
   retryCount: number;
   movedAt: Date;
@@ -165,7 +169,7 @@ export class DeadLetterService {
     });
 
     if (!deadLetter) {
-      throw new Error(`Dead letter notification ${deadLetterId} not found`);
+      throw new AppException(Errors.Notification.NOT_FOUND, `Dead letter notification ${deadLetterId} not found`);
     }
 
     // 새 알림 생성 후 Dead Letter에서 삭제
@@ -179,7 +183,7 @@ export class DeadLetterService {
           data: deadLetter.data,
           deliveryChannel: deadLetter.deliveryChannel,
           retryCount: 0,
-          maxRetries: 3,
+          maxRetries: DEFAULT_MAX_RETRIES,
         },
       }),
       this.prisma.deadLetterNotification.delete({
