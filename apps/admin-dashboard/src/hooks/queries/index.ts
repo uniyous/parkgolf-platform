@@ -24,3 +24,6 @@ export * from './game';
 
 // Policy Queries & Mutations
 export * from './policy';
+
+// Dashboard Queries
+export * from './dashboard';

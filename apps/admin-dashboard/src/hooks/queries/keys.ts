@@ -97,6 +97,14 @@ export const gameKeys = {
   timeSlotStats: (companyId?: number | null, filter?: Record<string, unknown>) => [...gameKeys.all(companyId), 'time-slot-stats', filter] as const,
 };
 
+// Dashboard Keys
+export const dashboardKeys = {
+  all: ['dashboard'] as const,
+  overview: (startDate?: string, endDate?: string) => [...dashboardKeys.all, 'overview', startDate, endDate] as const,
+  realTime: () => [...dashboardKeys.all, 'realTime'] as const,
+  trends: (period: string) => [...dashboardKeys.all, 'trends', period] as const,
+};
+
 // Menu Keys
 export const menuKeys = {
   all: ['menus'] as const,
