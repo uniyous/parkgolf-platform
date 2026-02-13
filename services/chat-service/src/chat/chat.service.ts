@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { MessageType } from '@prisma/client';
 import { AppException, Errors } from '../common/exceptions';
 

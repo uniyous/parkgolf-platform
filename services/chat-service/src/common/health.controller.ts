@@ -1,6 +1,6 @@
 import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
 import { Response } from 'express';
-import { PrismaService } from './prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { isNatsReady } from './readiness';
 
 @Controller('health')
