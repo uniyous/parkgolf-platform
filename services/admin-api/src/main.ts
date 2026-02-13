@@ -49,7 +49,7 @@ async function bootstrap() {
             'https://api.goparkmate.com',
           ],
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Company-Id'],
       credentials: true,
     });
 
