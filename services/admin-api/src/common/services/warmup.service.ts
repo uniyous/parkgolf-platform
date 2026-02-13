@@ -280,7 +280,7 @@ export class WarmupService {
           );
           const responseTime = Date.now() - start;
 
-          // ResponseTransformInterceptor가 { success: true, data: {...} }로 래핑함
+          // NatsResponse.success()로 래핑된 응답 또는 raw 응답 모두 처리
           const pong = response?.data?.pong ?? response?.pong;
           if (pong) {
             this.logger.debug(`[NATS] ${service.name}: PONG (${responseTime}ms)`);
