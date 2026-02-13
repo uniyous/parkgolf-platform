@@ -25,13 +25,13 @@ export class MenusController {
   @ApiResponse({ status: 200, description: 'Menu tree retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getMenus(
-    @BearerToken() token: string,
+    @BearerToken() _token: string,
     @Query('permissions') permissions: string,
     @Query('companyType') companyType: string,
     @Query('scope') scope?: string,
   ) {
     const permissionList = permissions ? permissions.split(',').map((p) => p.trim()) : [];
     this.logger.log(`Fetching menus - companyType: ${companyType}, scope: ${scope}`);
-    return this.menusService.getMenusByAdmin(permissionList, companyType, scope || '', token);
+    return this.menusService.getMenusByAdmin(permissionList, companyType, scope || '');
   }
 }

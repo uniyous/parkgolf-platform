@@ -1,4 +1,4 @@
-import { IsArray, IsString, IsNotEmpty } from 'class-validator';
+import { IsArray, IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class GetMenuByAdminDto {
   @IsArray()
@@ -9,6 +9,7 @@ export class GetMenuByAdminDto {
   @IsString()
   companyType: string;
 
+  @IsOptional()
   @IsString()
   scope?: string;
 }

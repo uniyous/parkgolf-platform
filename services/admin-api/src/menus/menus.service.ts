@@ -17,12 +17,11 @@ export class MenusService {
     permissions: string[],
     companyType: string,
     scope: string,
-    adminToken: string,
   ): Promise<any> {
     this.logger.log(`Fetching menus for companyType=${companyType}, scope=${scope}`);
     return this.natsClient.send(
       'iam.menu.getByAdmin',
-      { permissions, companyType, scope, token: adminToken },
+      { permissions, companyType, scope },
       NATS_TIMEOUTS.QUICK,
     );
   }
