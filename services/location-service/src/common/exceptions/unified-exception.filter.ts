@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { Response } from 'express';
+import { throwError, Observable } from 'rxjs';
 import { AppException, StandardErrorResponse } from './app.exception';
 import { Errors } from './catalog/error-catalog';
 
@@ -41,12 +42,12 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
     response.status(status).json(errorResponse);
   }
 
-  private handleRpcException(exception: unknown) {
+  private handleRpcException(exception: unknown): Observable<never> {
     const errorResponse = this.createErrorResponse(exception);
 
     this.logError(exception, 'RPC', 'MESSAGE');
 
-    throw new RpcException(JSON.stringify(errorResponse));
+    return throwError(() => new RpcException(JSON.stringify(errorResponse)));
   }
 
   private createErrorResponse(exception: unknown): StandardErrorResponse {

@@ -74,6 +74,7 @@ async function bootstrap() {
     logger.log(`   [Permissions] iam.permissions.list`);
     logger.log(`   [Roles] iam.roles.list, iam.roles.permissions, iam.roles.withPermissions`);
     logger.log(`   [Companies] iam.companies.list, iam.companies.getById, iam.companies.create, iam.companies.update, iam.companies.delete`);
+    logger.log(`   [Menu] iam.menu.getByAdmin`);
   } catch (error) {
     logger.error('Failed to start IAM Service', error);
     process.exit(1);
