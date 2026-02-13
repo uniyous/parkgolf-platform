@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsEmail, IsEnum, IsBoolean } from 'class-validator';
-import { Company, CompanyStatus } from '@prisma/client';
+import { Company, CompanyStatus, CompanyType } from '@prisma/client';
 
 export class CreateCompanyDto {
   @IsString()
@@ -52,6 +52,7 @@ export class CompanyResponseDto {
   id: number;
   name: string;
   code: string;
+  companyType: CompanyType;
   description: string | null;
   businessNumber: string | null;
   address: string | null;
@@ -70,6 +71,7 @@ export class CompanyResponseDto {
       id: entity.id,
       name: entity.name,
       code: entity.code,
+      companyType: entity.companyType,
       description: entity.description,
       businessNumber: entity.businessNumber,
       address: entity.address,
