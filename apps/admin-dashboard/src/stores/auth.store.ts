@@ -218,6 +218,7 @@ export const useAuthStore = create<AuthState>()(
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('currentUser');
+        localStorage.removeItem('support-storage');
         set({
           currentAdmin: null,
           token: null,

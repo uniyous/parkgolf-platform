@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Search, ArrowLeft } from 'lucide-react';
+import { Building2, Search, MapPin } from 'lucide-react';
 import { useCompaniesQuery } from '@/hooks/queries/company';
 import { useSupportStore } from '@/stores/support.store';
 import type { Company } from '@/types/company';
@@ -25,11 +25,6 @@ export const SelectCompanyPage: React.FC = () => {
   const handleSelect = (company: Company) => {
     setSelectedCompany(company);
     navigate('/dashboard');
-  };
-
-  const handleBackToPlatform = () => {
-    const platformUrl = import.meta.env.VITE_PLATFORM_DASHBOARD_URL || '/';
-    window.location.href = platformUrl;
   };
 
   return (
@@ -84,12 +79,26 @@ export const SelectCompanyPage: React.FC = () => {
                         <Building2 className="w-5 h-5 text-emerald-600" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">
-                          {company.name}
-                        </p>
-                        <p className="text-sm text-gray-500 truncate mt-0.5">
-                          {company.address || company.code}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-gray-900 truncate">
+                            {company.name}
+                          </p>
+                          {company.coursesCount != null && (
+                            <span className="flex-shrink-0 text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">
+                              코스 {company.coursesCount}
+                            </span>
+                          )}
+                        </div>
+                        {company.address ? (
+                          <p className="text-sm text-gray-500 truncate mt-0.5 flex items-center gap-1">
+                            <MapPin className="w-3 h-3 flex-shrink-0" />
+                            {company.address}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-gray-500 truncate mt-0.5">
+                            {company.code}
+                          </p>
+                        )}
                       </div>
                     </button>
                   ))}
@@ -97,16 +106,6 @@ export const SelectCompanyPage: React.FC = () => {
             )}
           </div>
 
-          {/* Footer */}
-          <div className="px-6 py-4 border-t bg-gray-50">
-            <button
-              onClick={handleBackToPlatform}
-              className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              platform-dashboard로 돌아가기
-            </button>
-          </div>
         </div>
       </div>
     </div>

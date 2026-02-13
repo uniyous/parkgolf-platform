@@ -19,11 +19,19 @@ import { SupportBanner } from '@/components/layout/SupportBanner';
 import { useAuthStore } from '@/stores/auth.store';
 import type { MenuTreeItem } from '@/lib/api/menuApi';
 
+const COMPANY_TYPE_LABELS: Record<string, string> = {
+  PLATFORM: '본사',
+  ASSOCIATION: '협회',
+  FRANCHISE: '가맹점',
+};
+
 interface AdminLayoutProps {
   currentUser: {
     username: string;
     email: string;
     role?: string;
+    company?: string;
+    companyType?: string;
   };
   onLogout: () => void;
   children: React.ReactNode;
@@ -204,9 +212,20 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   <p className="text-sm font-medium text-white truncate">
                     {currentUser.username}
                   </p>
-                  <p className="text-xs text-white/40 truncate">
-                    {currentUser.email}
-                  </p>
+                  {currentUser.company ? (
+                    <p className="text-xs text-white/40 truncate">
+                      {currentUser.company}
+                      {currentUser.companyType && (
+                        <span className="ml-1 text-white/25">
+                          ({COMPANY_TYPE_LABELS[currentUser.companyType] || currentUser.companyType})
+                        </span>
+                      )}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-white/40 truncate">
+                      {currentUser.email}
+                    </p>
+                  )}
                 </div>
                 <ChevronDown
                   className={cn(
@@ -218,7 +237,24 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
               {/* User Dropdown */}
               {userMenuOpen && (
-                <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#053929] border border-white/15 rounded-lg shadow-lg p-2 animate-slide-up">
+                <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#053929] border border-white/15 rounded-lg shadow-lg animate-slide-up">
+                  {/* 사용자 정보 */}
+                  <div className="px-3 py-2.5 border-b border-white/10">
+                    <p className="text-sm font-medium text-white truncate">{currentUser.username}</p>
+                    <p className="text-xs text-white/40 truncate">{currentUser.email}</p>
+                    {currentUser.company && (
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <Building2 className="w-3 h-3 text-white/30 flex-shrink-0" />
+                        <span className="text-xs text-white/50 truncate">{currentUser.company}</span>
+                        {currentUser.companyType && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/40 flex-shrink-0">
+                            {COMPANY_TYPE_LABELS[currentUser.companyType] || currentUser.companyType}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-2">
                   <Link
                     to="/profile"
                     onClick={() => setUserMenuOpen(false)}
@@ -246,6 +282,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     <LogOut className="w-4 h-4" />
                     로그아웃
                   </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -297,9 +334,20 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                 <p className="text-sm font-medium text-white truncate">
                   {currentUser.username}
                 </p>
-                <p className="text-xs text-white/40 truncate">
-                  {currentUser.email}
-                </p>
+                {currentUser.company ? (
+                  <p className="text-xs text-white/40 truncate">
+                    {currentUser.company}
+                    {currentUser.companyType && (
+                      <span className="ml-1 text-white/25">
+                        ({COMPANY_TYPE_LABELS[currentUser.companyType] || currentUser.companyType})
+                      </span>
+                    )}
+                  </p>
+                ) : (
+                  <p className="text-xs text-white/40 truncate">
+                    {currentUser.email}
+                  </p>
+                )}
               </div>
             </div>
             <button
