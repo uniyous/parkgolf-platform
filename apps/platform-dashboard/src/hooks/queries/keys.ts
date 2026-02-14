@@ -77,6 +77,20 @@ export const menuKeys = {
   tree: (companyType: string, scope: string) => [...menuKeys.all, 'tree', companyType, scope] as const,
 };
 
+// Policy Keys (company-scoped)
+export const policyKeys = {
+  all: (companyId?: number | null) => ['policies', companyId] as const,
+  cancellation: (companyId?: number | null) => [...policyKeys.all(companyId), 'cancellation'] as const,
+  cancellationDefault: (companyId?: number | null, clubId?: number) => [...policyKeys.cancellation(companyId), 'default', clubId] as const,
+  cancellationDetail: (companyId?: number | null, id?: number) => [...policyKeys.cancellation(companyId), 'detail', id] as const,
+  refund: (companyId?: number | null) => [...policyKeys.all(companyId), 'refund'] as const,
+  refundDefault: (companyId?: number | null, clubId?: number) => [...policyKeys.refund(companyId), 'default', clubId] as const,
+  refundDetail: (companyId?: number | null, id?: number) => [...policyKeys.refund(companyId), 'detail', id] as const,
+  noShow: (companyId?: number | null) => [...policyKeys.all(companyId), 'noShow'] as const,
+  noShowDefault: (companyId?: number | null, clubId?: number) => [...policyKeys.noShow(companyId), 'default', clubId] as const,
+  noShowDetail: (companyId?: number | null, id?: number) => [...policyKeys.noShow(companyId), 'detail', id] as const,
+};
+
 // Analytics Keys
 export const analyticsKeys = {
   all: ['analytics'] as const,
