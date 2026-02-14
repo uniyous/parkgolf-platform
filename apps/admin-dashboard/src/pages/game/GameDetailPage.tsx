@@ -190,7 +190,7 @@ export const GameDetailPage: React.FC = () => {
               <GameBasicInfoTab game={game} onUpdate={refetch} />
             )}
             {activeTab === 'weeklySchedule' && (
-              <GameWeeklyScheduleTab gameId={game.id} />
+              <GameWeeklyScheduleTab gameId={game.id} slotMode={game.slotMode} />
             )}
             {activeTab === 'timeSlots' && (
               <GameTimeSlotTab gameId={game.id} />

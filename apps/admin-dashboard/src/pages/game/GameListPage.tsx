@@ -72,10 +72,11 @@ export const GameListPage: React.FC = () => {
     navigate(`/games/${game.id}`);
   };
 
-  // 클럽 이름 조회
-  const getClubName = (clubId: number) => {
-    const club = clubs.find((c) => c.id === clubId);
-    return club?.name || `Club ${clubId}`;
+  // 클럽 이름 조회 (game.clubName 우선, 없으면 clubs 목록에서 조회)
+  const getClubName = (game: Game) => {
+    if (game.clubName) return game.clubName;
+    const club = clubs.find((c) => c.id === game.clubId);
+    return club?.name || `Club ${game.clubId}`;
   };
 
   return (
@@ -228,7 +229,7 @@ export const GameListPage: React.FC = () => {
                       {game.name}
                     </h3>
                     <p className="text-xs text-white/50 truncate">
-                      🏌️ {getClubName(game.clubId)}
+                      🏌️ {getClubName(game)}
                     </p>
                   </div>
 
@@ -287,7 +288,7 @@ export const GameListPage: React.FC = () => {
         <p className="text-sm text-white/60 text-center">
           총 {filteredGames.length}개의 라운드가 있습니다.
           {searchKeyword && ` '${searchKeyword}' 검색 결과입니다.`}
-          {selectedClubId && ` (${getClubName(selectedClubId)} 필터 적용)`}
+          {selectedClubId && ` (${clubs.find(c => c.id === selectedClubId)?.name || `Club ${selectedClubId}`} 필터 적용)`}
         </p>
       </div>
 
