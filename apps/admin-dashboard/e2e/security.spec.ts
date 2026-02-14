@@ -6,6 +6,7 @@ import { test, expect, request } from '@playwright/test';
  * 실행 순서 (rate limit 간섭 방지):
  * - SEC-02: 패스워드 정책 (약한 비밀번호 거부)
  * - SEC-03: Refresh Token 회전 (로그아웃 후 이전 토큰 무효화)
+ * - SEC-04: 401 토큰 자동 갱신 (page.route 모킹)
  * - SEC-01: Rate Limiting (429 응답 확인) ← 마지막 실행
  */
 
@@ -188,6 +189,239 @@ test.describe('SEC-03: Refresh Token 회전 및 로그아웃 무효화', () => {
     expect(reuseRes.status()).toBe(401);
 
     await apiContext.dispose();
+  });
+});
+
+// ============================================
+// SEC-04: 401 토큰 자동 갱신 (page.route 모킹)
+// ============================================
+
+const OLD_ACCESS_TOKEN = 'expired_access_token_for_test';
+const OLD_REFRESH_TOKEN = 'valid_refresh_token_for_test';
+const NEW_ACCESS_TOKEN = 'new_access_token_after_refresh';
+const NEW_REFRESH_TOKEN = 'new_refresh_token_after_refresh';
+
+/** localStorage에 인증 상태를 설정하는 헬퍼 */
+async function setupAuth(
+  page: any,
+  options: { accessToken: string; refreshToken?: string }
+) {
+  await page.evaluate(
+    ({ accessToken, refreshToken }: { accessToken: string; refreshToken?: string }) => {
+      localStorage.setItem('accessToken', accessToken);
+      if (refreshToken) {
+        localStorage.setItem('refreshToken', refreshToken);
+      }
+      localStorage.setItem(
+        'currentUser',
+        JSON.stringify({
+          id: '1',
+          email: 'admin@parkgolf.com',
+          name: '플랫폼관리자',
+          roleCode: 'PLATFORM_ADMIN',
+          roles: ['PLATFORM_ADMIN'],
+        })
+      );
+      localStorage.setItem(
+        'auth-storage',
+        JSON.stringify({ state: { token: accessToken }, version: 0 })
+      );
+    },
+    options
+  );
+}
+
+test.describe('SEC-04: 401 토큰 자동 갱신', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+  test.setTimeout(30000);
+
+  test('access token 만료 시 refresh 성공하면 새 토큰이 저장된다', async ({ page }) => {
+    let refreshCalled = false;
+
+    await page.goto('/login');
+    await setupAuth(page, {
+      accessToken: OLD_ACCESS_TOKEN,
+      refreshToken: OLD_REFRESH_TOKEN,
+    });
+
+    await page.route('**/api/admin/**', async (route, req) => {
+      const url = req.url();
+
+      if (url.includes('/iam/refresh')) {
+        refreshCalled = true;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            success: true,
+            data: {
+              accessToken: NEW_ACCESS_TOKEN,
+              refreshToken: NEW_REFRESH_TOKEN,
+            },
+          }),
+        });
+        return;
+      }
+
+      const authHeader = req.headers()['authorization'] || '';
+      if (authHeader.includes(OLD_ACCESS_TOKEN)) {
+        await route.fulfill({
+          status: 401,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            success: false,
+            error: { code: 'UNAUTHORIZED', message: 'Token expired' },
+          }),
+        });
+      } else {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true, data: [] }),
+        });
+      }
+    });
+
+    await page.goto('/dashboard');
+    await page.waitForTimeout(3000);
+
+    expect(refreshCalled).toBe(true);
+
+    const savedAccessToken = await page.evaluate(() =>
+      localStorage.getItem('accessToken')
+    );
+    expect(savedAccessToken).toBe(NEW_ACCESS_TOKEN);
+
+    const savedRefreshToken = await page.evaluate(() =>
+      localStorage.getItem('refreshToken')
+    );
+    expect(savedRefreshToken).toBe(NEW_REFRESH_TOKEN);
+
+    expect(page.url()).not.toContain('/login');
+  });
+
+  test('refresh token 만료 시 로그인 페이지로 이동한다', async ({ page }) => {
+    let refreshCalled = false;
+
+    await page.goto('/login');
+    await setupAuth(page, {
+      accessToken: OLD_ACCESS_TOKEN,
+      refreshToken: 'expired_refresh_token',
+    });
+
+    await page.route('**/api/admin/**', async (route, req) => {
+      const url = req.url();
+
+      if (url.includes('/iam/refresh')) {
+        refreshCalled = true;
+        await route.fulfill({
+          status: 401,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            success: false,
+            error: { code: 'UNAUTHORIZED', message: 'Refresh token expired' },
+          }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: false,
+          error: { code: 'UNAUTHORIZED', message: 'Token expired' },
+        }),
+      });
+    });
+
+    await page.goto('/dashboard');
+    await page.waitForURL('**/login', { timeout: 10000 });
+
+    expect(refreshCalled).toBe(true);
+
+    const accessToken = await page.evaluate(() =>
+      localStorage.getItem('accessToken')
+    );
+    expect(accessToken).toBeNull();
+  });
+
+  test('refresh token 없을 때 로그인 페이지로 이동한다', async ({ page }) => {
+    let refreshCalled = false;
+
+    await page.goto('/login');
+    await setupAuth(page, {
+      accessToken: OLD_ACCESS_TOKEN,
+    });
+
+    await page.route('**/api/admin/**', async (route, req) => {
+      const url = req.url();
+
+      if (url.includes('/iam/refresh')) {
+        refreshCalled = true;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true, data: {} }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: false,
+          error: { code: 'UNAUTHORIZED', message: 'Token expired' },
+        }),
+      });
+    });
+
+    await page.goto('/dashboard');
+    await page.waitForURL('**/login', { timeout: 10000 });
+
+    expect(refreshCalled).toBe(false);
+  });
+
+  test('refresh 실패 시 무한루프 없이 로그인으로 이동한다', async ({ page }) => {
+    let refreshCallCount = 0;
+
+    await page.goto('/login');
+    await setupAuth(page, {
+      accessToken: OLD_ACCESS_TOKEN,
+      refreshToken: 'some_refresh_token',
+    });
+
+    await page.route('**/api/admin/**', async (route, req) => {
+      const url = req.url();
+
+      if (url.includes('/iam/refresh')) {
+        refreshCallCount++;
+        await route.fulfill({
+          status: 401,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            success: false,
+            error: { code: 'UNAUTHORIZED', message: 'Refresh token invalid' },
+          }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: false,
+          error: { code: 'UNAUTHORIZED', message: 'Token expired' },
+        }),
+      });
+    });
+
+    await page.goto('/dashboard');
+    await page.waitForURL('**/login', { timeout: 10000 });
+
+    expect(refreshCallCount).toBe(1);
   });
 });
 
