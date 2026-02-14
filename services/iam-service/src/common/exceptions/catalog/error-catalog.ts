@@ -5,6 +5,7 @@
  * - ADMIN_xxx: 관리자 관련
  * - MENU_xxx: 메뉴 관련
  * - FRIEND_xxx: 친구 관련
+ * - MEMBER_xxx: 가맹점 회원 관련
  * - VAL_xxx: 유효성 검증
  * - EXT_xxx: 외부 API 에러
  * - DB_xxx: 데이터베이스 에러
@@ -75,6 +76,14 @@ export const MenuErrors = defineErrors({
 });
 
 // ============================================
+// 가맹점 회원 에러 (MEMBER_xxx)
+// ============================================
+export const CompanyMemberErrors = defineErrors({
+  NOT_FOUND: { code: 'MEMBER_001', message: '가맹점 회원을 찾을 수 없습니다', httpStatus: 404 },
+  ALREADY_EXISTS: { code: 'MEMBER_002', message: '이미 등록된 회원입니다', httpStatus: 409 },
+});
+
+// ============================================
 // 유효성 검증 에러 (VAL_xxx)
 // ============================================
 export const ValidationErrors = defineErrors({
@@ -126,6 +135,7 @@ export const Errors = {
   Admin: AdminErrors,
   Menu: MenuErrors,
   Friend: FriendErrors,
+  CompanyMember: CompanyMemberErrors,
   Validation: ValidationErrors,
   External: ExternalErrors,
   Database: DatabaseErrors,

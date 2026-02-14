@@ -8,6 +8,7 @@ import { FriendModule } from './friend/friend.module';
 import { SettingsModule } from './settings/settings.module';
 import { DeviceModule } from './device/device.module';
 import { MenuModule } from './menu/menu.module';
+import { CompanyMemberModule } from './company-member/company-member.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { CommonModule } from './common/common.module';
 import { NatsModule } from './common/nats/nats.module';
@@ -29,6 +30,7 @@ import { NatsModule } from './common/nats/nats.module';
     SettingsModule,
     DeviceModule,
     MenuModule,
+    CompanyMemberModule,
   ],
 })
 export class AppModule {}

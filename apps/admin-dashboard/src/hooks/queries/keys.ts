@@ -97,6 +97,13 @@ export const gameKeys = {
   timeSlotStats: (companyId?: number | null, filter?: Record<string, unknown>) => [...gameKeys.all(companyId), 'time-slot-stats', filter] as const,
 };
 
+// CompanyMember Keys (company-scoped)
+export const companyMemberKeys = {
+  all: (companyId?: number | null) => ['companyMembers', companyId] as const,
+  lists: (companyId?: number | null) => [...companyMemberKeys.all(companyId), 'list'] as const,
+  list: (companyId?: number | null, filters?: Record<string, unknown>) => [...companyMemberKeys.lists(companyId), filters] as const,
+};
+
 // Dashboard Keys
 export const dashboardKeys = {
   all: ['dashboard'] as const,

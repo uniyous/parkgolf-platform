@@ -170,6 +170,44 @@ export interface UpdateTeeBoxDto {
   difficulty?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PROFESSIONAL';
 }
 
+// --- CompanyMember Types ---
+export type CompanyMemberSource = 'BOOKING' | 'MANUAL' | 'WALK_IN';
+
+export interface CompanyMember {
+  id: number;
+  companyId: number;
+  userId: number;
+  source: CompanyMemberSource;
+  memo: string | null;
+  isActive: boolean;
+  joinedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: number;
+    email: string;
+    name: string | null;
+    phone: string | null;
+    isActive: boolean;
+  };
+}
+
+export interface CompanyMemberFilters {
+  search?: string;
+  isActive?: boolean;
+}
+
+export interface CreateCompanyMemberDto {
+  userId: number;
+  source?: CompanyMemberSource;
+  memo?: string;
+}
+
+export interface UpdateCompanyMemberDto {
+  memo?: string;
+  isActive?: boolean;
+}
+
 // --- Auth & User Types ---
 export type UserMembershipTier = 'PREMIUM' | 'REGULAR' | 'GUEST' | 'SILVER' | 'VIP' | 'GOLD' | 'PLATINUM';
 export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING';

@@ -9,7 +9,11 @@ import type {
   UpdateUserDto,
   ChangePasswordDto,
   User,
-  Permission
+  Permission,
+  CompanyMember,
+  CompanyMemberFilters,
+  CreateCompanyMemberDto,
+  UpdateCompanyMemberDto,
 } from '@/types';
 
 // BFF API를 통한 사용자 관리
@@ -345,5 +349,43 @@ export const adminApi = {
   async toggleAdminStatus(id: number): Promise<Admin> {
     const currentAdmin = await this.getAdmin(id);
     return await this.updateAdminStatus(id, !currentAdmin.isActive);
+  },
+
+  // ===== 가맹점 회원 관리 (CompanyMember) =====
+
+  async getCompanyMembers(
+    filters: CompanyMemberFilters = {},
+    page = 1,
+    limit = 20,
+  ): Promise<{ members: CompanyMember[]; total: number; page: number; limit: number }> {
+    const params: Record<string, unknown> = { page, limit };
+    if (filters.search) params.search = filters.search;
+    if (filters.isActive !== undefined) params.isActive = filters.isActive;
+    const response = await apiClient.get<unknown>('/admin/company-members', params);
+    const responseData = response.data as any;
+    return {
+      members: responseData?.data || [],
+      total: responseData?.total || 0,
+      page: responseData?.page || page,
+      limit: responseData?.limit || limit,
+    };
+  },
+
+  async createCompanyMember(data: CreateCompanyMemberDto): Promise<CompanyMember> {
+    const response = await apiClient.post<unknown>('/admin/company-members', data);
+    const member = extractSingle<CompanyMember>(response.data);
+    if (!member) throw new Error('Failed to create company member');
+    return member;
+  },
+
+  async updateCompanyMember(id: number, data: UpdateCompanyMemberDto): Promise<CompanyMember> {
+    const response = await apiClient.patch<unknown>(`/admin/company-members/${id}`, data);
+    const member = extractSingle<CompanyMember>(response.data);
+    if (!member) throw new Error('Failed to update company member');
+    return member;
+  },
+
+  async deleteCompanyMember(id: number): Promise<void> {
+    await apiClient.delete(`/admin/company-members/${id}`);
   },
 };
