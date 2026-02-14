@@ -557,14 +557,58 @@ async function main() {
   });
   console.log(`  → ${companyAdmin.email} @ ${franchiseCompany.code} (COMPANY_ADMIN)`);
 
+  // 5-3. 가맹점 매니저
+  const companyManager = await prisma.admin.create({
+    data: {
+      email: 'manager@gangnam.com',
+      password: hashedPassword,
+      name: '강남매니저',
+      department: '강남 파크골프장',
+      isActive: true,
+    },
+  });
+  await prisma.adminCompany.create({
+    data: {
+      adminId: companyManager.id,
+      companyId: franchiseCompany.id,
+      companyRoleCode: 'COMPANY_MANAGER',
+      isPrimary: true,
+    },
+  });
+  console.log(`  → ${companyManager.email} @ ${franchiseCompany.code} (COMPANY_MANAGER)`);
+
+  // 5-4. 가맹점 직원
+  const companyStaff = await prisma.admin.create({
+    data: {
+      email: 'staff@gangnam.com',
+      password: hashedPassword,
+      name: '강남직원',
+      department: '강남 파크골프장',
+      isActive: true,
+    },
+  });
+  await prisma.adminCompany.create({
+    data: {
+      adminId: companyStaff.id,
+      companyId: franchiseCompany.id,
+      companyRoleCode: 'COMPANY_STAFF',
+      isPrimary: true,
+    },
+  });
+  console.log(`  → ${companyStaff.email} @ ${franchiseCompany.code} (COMPANY_STAFF)`);
+
   // 6. 테스트 사용자 (E2E 테스트용)
   console.log('[6/7] Creating test users...');
   const e2ePassword = await bcrypt.hash('test1234', 10);
   const e2eUsers = [
-    { email: 'test@parkgolf.com', name: '테스트사용자', phone: '01011112222', roleCode: 'USER' },
-    { email: 'kim@parkgolf.com', name: '김철수', phone: '01033334444', roleCode: 'USER' },
-    { email: 'park@parkgolf.com', name: '박영희', phone: '01055556666', roleCode: 'USER' },
-    { email: 'lee@parkgolf.com', name: '이민수', phone: '01077778888', roleCode: 'USER' },
+    { email: 'test@parkgolf.com', name: '테스트', phone: '01011112222', roleCode: 'USER' },
+    { email: 'cheolsu@parkgolf.com', name: '김철수', phone: '01033334444', roleCode: 'USER' },
+    { email: 'younghee@parkgolf.com', name: '박영희', phone: '01055556666', roleCode: 'USER' },
+    { email: 'minsu@parkgolf.com', name: '이민수', phone: '01077778888', roleCode: 'USER' },
+    { email: 'minsoo@parkgolf.com', name: '김민수', phone: '01099990001', roleCode: 'USER' },
+    { email: 'jieun@parkgolf.com', name: '이지은', phone: '01099990002', roleCode: 'USER' },
+    { email: 'junhyuk@parkgolf.com', name: '박준혁', phone: '01099990003', roleCode: 'USER' },
+    { email: 'seoyeon@parkgolf.com', name: '최서연', phone: '01099990004', roleCode: 'USER' },
   ];
   for (const e2eUser of e2eUsers) {
     const created = await prisma.user.create({
@@ -594,13 +638,19 @@ async function main() {
   console.log('\n테스트 계정:');
   console.log('  [본사 관리자]');
   console.log(`  - ${platformAdmin.email} / admin123!@# (PLATFORM_ADMIN)`);
-  console.log('  [가맹점 관리자]');
+  console.log('  [가맹점]');
   console.log(`  - ${companyAdmin.email} / admin123!@# (COMPANY_ADMIN)`);
+  console.log(`  - ${companyManager.email} / admin123!@# (COMPANY_MANAGER)`);
+  console.log(`  - ${companyStaff.email} / admin123!@# (COMPANY_STAFF)`);
   console.log('  [일반 사용자 - E2E 테스트용]');
   console.log('  - test@parkgolf.com / test1234 / 01011112222');
-  console.log('  - kim@parkgolf.com / test1234 / 01033334444');
-  console.log('  - park@parkgolf.com / test1234 / 01055556666');
-  console.log('  - lee@parkgolf.com / test1234 / 01077778888');
+  console.log('  - cheolsu@parkgolf.com / test1234 / 01033334444');
+  console.log('  - younghee@parkgolf.com / test1234 / 01055556666');
+  console.log('  - minsu@parkgolf.com / test1234 / 01077778888');
+  console.log('  - minsoo@parkgolf.com / test1234 / 01099990001');
+  console.log('  - jieun@parkgolf.com / test1234 / 01099990002');
+  console.log('  - junhyuk@parkgolf.com / test1234 / 01099990003');
+  console.log('  - seoyeon@parkgolf.com / test1234 / 01099990004');
 }
 
 main()

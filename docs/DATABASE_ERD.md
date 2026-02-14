@@ -2,14 +2,15 @@
 
 ## 개요
 
-Park Golf 플랫폼은 5개의 독립 마이크로서비스 데이터베이스로 구성됩니다.
+Park Golf 플랫폼은 6개의 독립 마이크로서비스 데이터베이스로 구성됩니다.
 서비스 간 데이터 참조는 NATS 메시징을 통해 이루어지며, 직접적인 FK 관계는 없습니다.
 
 | 서비스 | 데이터베이스 | 설명 |
 |--------|------------|------|
-| iam-service | iam_db | 인증, 사용자, 관리자, 역할/권한, 친구 |
+| iam-service | iam_db | 인증, 사용자, 관리자, 역할/권한, 친구, 메뉴 |
 | course-service | course_db | 골프장, 코스, 홀, 게임, 타임슬롯 |
-| booking-service | booking_db | 예약, 결제, 정책, Saga 패턴 |
+| booking-service | booking_db | 예약, 결제, 정책, 환불/노쇼, Saga 패턴 |
+| payment-service | payment_db | 결제(토스페이먼츠), 환불, 빌링키, 웹훅 |
 | chat-service | chat_db | 채팅방, 멤버, 메시지 |
 | notify-service | notify_db | 알림, 템플릿, 설정 |
 
@@ -23,6 +24,7 @@ flowchart LR
         Company
         User
         Admin
+        Menu["MenuMaster"]
     end
 
     subgraph course["Course Service"]
@@ -34,8 +36,14 @@ flowchart LR
 
     subgraph booking["Booking Service"]
         Booking
+        BookingPayment["Payment (Booking)"]
         GameCache
         SlotCache["GameTimeSlotCache"]
+    end
+
+    subgraph payment["Payment Service"]
+        Payment
+        BillingKey
     end
 
     subgraph chat["Chat Service"]
@@ -54,6 +62,8 @@ flowchart LR
     Booking -.->|gameId| Game
     GameCache -.->|gameId| Game
     SlotCache -.->|gameTimeSlotId| GameTimeSlot
+    Payment -.->|userId| User
+    Payment -.->|bookingId| Booking
     ChatRoom -.->|bookingId| Booking
     ChatRoomMember -.->|userId| User
     Notification -.->|userId| User
@@ -95,6 +105,14 @@ flowchart TB
         R_Role --- R_RolePermission --- R_Permission
     end
 
+    subgraph menu["메뉴 시스템"]
+        M_Menu["MenuMaster"]
+        M_MenuPerm["MenuPermission"]
+        M_MenuCompType["MenuCompanyType"]
+        M_Menu --- M_MenuPerm
+        M_Menu --- M_MenuCompType
+    end
+
     subgraph friend["친구"]
         F_Request["FriendRequest"]
         F_Ship["Friendship"]
@@ -104,9 +122,10 @@ flowchart TB
     U_User -->|roleCode| R_Role
     U_User -->|fromUserId, toUserId| F_Request
     U_User -->|userId, friendId| F_Ship
+    M_MenuPerm -->|permissionCode| R_Permission
 ```
 
-> **그룹 간 참조**: AdminCompany.companyRoleCode → RoleMaster.code | User.roleCode → RoleMaster.code
+> **그룹 간 참조**: AdminCompany.companyRoleCode → RoleMaster.code | User.roleCode → RoleMaster.code | MenuPermission.permissionCode → PermissionMaster.code
 
 ---
 
@@ -283,7 +302,46 @@ erDiagram
 
 ---
 
-### 1-4. 친구
+### 1-4. 메뉴 시스템
+
+```mermaid
+erDiagram
+    MenuMaster ||--o{ MenuMaster : "parent-child"
+    MenuMaster ||--o{ MenuPermission : "requires"
+    MenuMaster ||--o{ MenuCompanyType : "visible to"
+    PermissionMaster ||--o{ MenuPermission : "grants access"
+
+    MenuMaster {
+        int id PK
+        string code UK
+        string name
+        string path
+        string icon
+        int parentId FK
+        int sortOrder
+        boolean platformOnly
+        string writePermission
+        boolean isActive
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    MenuPermission {
+        int menuId PK
+        string permissionCode PK
+    }
+
+    MenuCompanyType {
+        int menuId PK
+        string companyType PK "PLATFORM/ASSOCIATION/FRANCHISE"
+    }
+```
+
+> **설명**: MenuMaster는 self-relation으로 부모-자식 트리 구조를 형성합니다. MenuPermission은 메뉴 접근에 필요한 권한을 OR 조건으로 매핑하고, MenuCompanyType은 회사 유형별 메뉴 가시성을 제어합니다.
+
+---
+
+### 1-5. 친구
 
 ```mermaid
 erDiagram
@@ -364,6 +422,10 @@ erDiagram
         string status "ACTIVE/INACTIVE/MAINTENANCE/SEASONAL_CLOSED"
         json operatingHours
         json seasonInfo
+        string_array facilities
+        string clubType "PAID/FREE"
+        float latitude
+        float longitude
         boolean isActive
         datetime createdAt
         datetime updatedAt
@@ -433,6 +495,7 @@ erDiagram
         string description
         int frontNineCourseId FK
         int backNineCourseId FK
+        string slotMode "TEE_TIME/SESSION"
         int totalHoles
         int estimatedDuration
         int breakDuration
@@ -818,7 +881,162 @@ erDiagram
 
 ---
 
-## 4. Chat Service (chat_db)
+## 4. Payment Service (payment_db)
+
+### 전체 구조
+
+```mermaid
+flowchart TB
+    subgraph core["결제 (토스페이먼츠)"]
+        P_Payment["Payment"]
+        P_Refund["Refund"]
+        P_Payment --- P_Refund
+    end
+
+    subgraph billing["자동결제"]
+        P_BillingKey["BillingKey"]
+    end
+
+    subgraph webhook["웹훅"]
+        P_WebhookLog["WebhookLog"]
+    end
+
+    subgraph saga["Saga 패턴"]
+        P_Outbox["PaymentOutboxEvent"]
+    end
+
+    P_WebhookLog -->|paymentId| P_Payment
+    P_Outbox -.->|aggregateId| P_Payment
+```
+
+> **서비스 간 참조**: Payment.userId → iam_db.User.id | Payment.bookingId → booking_db.Booking.id
+
+---
+
+### 4-1. 결제 (토스페이먼츠)
+
+```mermaid
+erDiagram
+    Payment ||--o{ Refund : "has"
+    Payment ||--o{ WebhookLog : "logs"
+
+    Payment {
+        int id PK
+        string paymentKey UK "토스 결제 키"
+        string orderId UK "주문 ID (PG-XXXXX)"
+        string orderName
+        int amount
+        string currency "KRW"
+        string method "CARD/TRANSFER/VIRTUAL_ACCOUNT/EASY_PAY/MOBILE"
+        string easyPayProvider "TOSSPAY/KAKAOPAY/NAVERPAY"
+        string cardCompany
+        string cardCompanyName
+        string cardNumber "마스킹"
+        string cardType "신용/체크/기프트"
+        string ownerType "개인/법인"
+        int installmentMonths
+        boolean isInterestFree
+        string virtualAccountNumber
+        string virtualBankCode
+        string virtualBankName
+        datetime virtualDueDate
+        string virtualAccountHolder
+        string transferBankCode
+        string transferBankName
+        string status "READY/IN_PROGRESS/WAITING_FOR_DEPOSIT/DONE/CANCELED/PARTIAL_CANCELED/ABORTED/EXPIRED"
+        int userId "cross-ref: iam_db"
+        int bookingId UK "cross-ref: booking_db"
+        datetime approvedAt
+        datetime requestedAt
+        datetime cancelledAt
+        string cancelReason
+        int cancelAmount
+        string receiptUrl
+        string checkoutUrl
+        json metadata
+        string customerName
+        string customerEmail
+        string customerPhone
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Refund {
+        int id PK
+        int paymentId FK
+        string transactionKey UK "토스 거래 키"
+        string cancelReason
+        int cancelAmount
+        int taxFreeAmount
+        string refundStatus "PENDING/PROCESSING/COMPLETED/FAILED"
+        string refundBankCode
+        string refundBankName
+        string refundAccount
+        string refundHolder
+        datetime refundedAt
+        int requestedBy
+        string requestedByType "USER/ADMIN/SYSTEM"
+        datetime createdAt
+        datetime updatedAt
+    }
+```
+
+---
+
+### 4-2. 빌링키 (자동결제)
+
+```mermaid
+erDiagram
+    BillingKey {
+        int id PK
+        int userId "cross-ref: iam_db"
+        string billingKey UK "토스 빌링키"
+        string customerKey
+        datetime authenticatedAt
+        string cardCompany
+        string cardCompanyName
+        string cardNumber "마스킹"
+        string cardType "신용/체크"
+        boolean isActive
+        datetime createdAt
+        datetime updatedAt
+    }
+```
+
+---
+
+### 4-3. 웹훅/Outbox
+
+```mermaid
+erDiagram
+    WebhookLog {
+        int id PK
+        int paymentId FK
+        string eventType
+        json payload
+        string status "RECEIVED/PROCESSING/PROCESSED/FAILED"
+        datetime processedAt
+        string errorMessage
+        datetime createdAt
+    }
+
+    PaymentOutboxEvent {
+        int id PK
+        string aggregateType
+        string aggregateId
+        string eventType
+        json payload
+        string status "PENDING/PROCESSING/SENT/FAILED"
+        int retryCount
+        string lastError
+        datetime createdAt
+        datetime processedAt
+    }
+```
+
+---
+
+## 5. Chat Service (chat_db)
 
 ### 전체 구조
 
@@ -879,7 +1097,7 @@ erDiagram
 
 ---
 
-## 5. Notification Service (notify_db)
+## 6. Notification Service (notify_db)
 
 ### 전체 구조
 
@@ -897,12 +1115,12 @@ erDiagram
     Notification {
         int id PK
         string userId "cross-ref: iam_db"
-        string type "BOOKING_CONFIRMED/CANCELLED/PAYMENT_SUCCESS/FAILED/etc"
+        string type "BOOKING_CONFIRMED/CANCELLED/REFUND_COMPLETED/PAYMENT_SUCCESS/FAILED/etc"
         string title
         string message
         json data
         string status "PENDING/SENT/FAILED/READ"
-        string deliveryChannel "EMAIL/SMS/PUSH"
+        string deliveryChannel "PUSH/EMAIL/SMS"
         int retryCount
         int maxRetries
         datetime scheduledAt
@@ -967,8 +1185,10 @@ erDiagram
 | Enum | 값 | 설명 |
 |------|----|------|
 | ClubStatus | `ACTIVE`, `INACTIVE`, `MAINTENANCE`, `SEASONAL_CLOSED` | 골프장 상태 |
+| ClubType | `PAID`, `FREE` | 골프장 유형 (유료/무료) |
 | CourseStatus | `ACTIVE`, `INACTIVE`, `MAINTENANCE` | 코스 상태 |
 | GameStatus | `ACTIVE`, `INACTIVE`, `MAINTENANCE` | 게임 상태 |
+| SlotMode | `TEE_TIME`, `SESSION` | 슬롯 모드 |
 | TimeSlotStatus | `AVAILABLE`, `FULLY_BOOKED`, `CLOSED`, `MAINTENANCE` | 타임슬롯 상태 |
 | TeeBoxLevel | `BEGINNER`, `INTERMEDIATE`, `ADVANCED`, `PROFESSIONAL` | 티박스 난이도 |
 
@@ -978,10 +1198,22 @@ erDiagram
 |------|----|------|
 | BookingStatus | `PENDING`, `SLOT_RESERVED`, `CONFIRMED`, `CANCELLED`, `COMPLETED`, `NO_SHOW`, `FAILED` | 예약 상태 (Saga) |
 | PaymentStatus | `PENDING`, `PAID`, `FAILED`, `REFUNDED` | 결제 상태 |
+| TimeSlotCacheStatus | `AVAILABLE`, `FULLY_BOOKED`, `CLOSED`, `MAINTENANCE` | 슬롯 캐시 상태 |
 | OutboxStatus | `PENDING`, `PROCESSING`, `SENT`, `FAILED` | Outbox 이벤트 상태 |
 | RefundStatus | `REQUESTED`, `PENDING`, `APPROVED`, `PROCESSING`, `COMPLETED`, `REJECTED` | 환불 상태 |
 | CancellationType | `USER_NORMAL`, `USER_LATE`, `USER_LASTMINUTE`, `ADMIN`, `SYSTEM` | 취소 유형 |
 | NoShowPenaltyType | `WARNING`, `RESTRICTION`, `FEE`, `BLACKLIST` | 노쇼 페널티 |
+
+### Payment Service
+
+| Enum | 값 | 설명 |
+|------|----|------|
+| PaymentMethod | `CARD`, `TRANSFER`, `VIRTUAL_ACCOUNT`, `EASY_PAY`, `MOBILE`, `GIFT_CERTIFICATE`, `CULTURE_GIFT` | 결제 수단 |
+| PaymentStatus | `READY`, `IN_PROGRESS`, `WAITING_FOR_DEPOSIT`, `DONE`, `CANCELED`, `PARTIAL_CANCELED`, `ABORTED`, `EXPIRED` | 결제 상태 (토스) |
+| RefundStatus | `PENDING`, `PROCESSING`, `COMPLETED`, `FAILED` | 환불 상태 |
+| RefundRequestorType | `USER`, `ADMIN`, `SYSTEM` | 환불 요청자 유형 |
+| WebhookStatus | `RECEIVED`, `PROCESSING`, `PROCESSED`, `FAILED` | 웹훅 상태 |
+| OutboxStatus | `PENDING`, `PROCESSING`, `SENT`, `FAILED` | Outbox 이벤트 상태 |
 
 ### Chat Service
 
@@ -994,5 +1226,20 @@ erDiagram
 
 | Enum | 값 | 설명 |
 |------|----|------|
-| NotificationType | `BOOKING_CONFIRMED`, `BOOKING_CANCELLED`, `PAYMENT_SUCCESS`, `PAYMENT_FAILED`, `FRIEND_REQUEST`, `FRIEND_ACCEPTED`, `CHAT_MESSAGE`, `SYSTEM_ALERT` | 알림 유형 |
+| NotificationType | `BOOKING_CONFIRMED`, `BOOKING_CANCELLED`, `REFUND_COMPLETED`, `PAYMENT_SUCCESS`, `PAYMENT_FAILED`, `FRIEND_REQUEST`, `FRIEND_ACCEPTED`, `CHAT_MESSAGE`, `SYSTEM_ALERT` | 알림 유형 |
 | NotificationStatus | `PENDING`, `SENT`, `FAILED`, `READ` | 알림 상태 |
+| DeliveryChannelType | `PUSH`, `EMAIL`, `SMS` | 알림 전달 채널 |
+
+---
+
+## 테이블 통계 요약
+
+| 데이터베이스 | 모델 수 | 주요 모델 |
+|------------|---------|----------|
+| iam_db | 13 | Company, Admin, User, RoleMaster, MenuMaster |
+| course_db | 8 | Club, Course, Hole, TeeBox, Game, GameTimeSlot |
+| booking_db | 12 | Booking, Payment, Refund, CancellationPolicy, OutboxEvent |
+| payment_db | 5 | Payment, Refund, BillingKey, WebhookLog, PaymentOutboxEvent |
+| chat_db | 4 | ChatRoom, ChatRoomMember, ChatMessage, MessageRead |
+| notify_db | 4 | Notification, NotificationTemplate, NotificationSettings, DeadLetterNotification |
+| **합계** | **46** | |
