@@ -223,7 +223,7 @@ model GameWeeklySchedule {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  @@unique([gameId, dayOfWeek])
+  @@unique([gameId, dayOfWeek, startTime])
   @@index([gameId])
   @@map("game_weekly_schedules")
 }

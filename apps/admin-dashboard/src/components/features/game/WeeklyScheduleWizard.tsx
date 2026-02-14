@@ -80,8 +80,11 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
 
   const createMutation = useCreateWeeklyScheduleMutation();
 
-  // 이미 존재하는 요일 확인
-  const existingDays = new Set(existingSchedules.map(s => s.dayOfWeek));
+  // 요일별 기존 스케줄 수
+  const existingDayCounts = new Map<number, number>();
+  existingSchedules.forEach(s => {
+    existingDayCounts.set(s.dayOfWeek, (existingDayCounts.get(s.dayOfWeek) ?? 0) + 1);
+  });
 
   const handlePresetChange = (presetId: string) => {
     setSelectedPreset(presetId);
@@ -112,19 +115,14 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
     let created = 0;
     let skipped = 0;
 
-    // 처리할 요일 목록 (이미 존재하는 요일 제외)
-    const daysToProcess = selectedDays.filter(d => !existingDays.has(d));
+    // 처리할 요일 목록 (모든 선택 요일 - 복수 세션 허용)
+    const daysToProcess = [...selectedDays];
     const totalDays = daysToProcess.length;
 
     // 초기 상태 설정
     const initialStatuses: Record<number, DayStatus> = {};
     selectedDays.forEach(day => {
-      if (existingDays.has(day)) {
-        initialStatuses[day] = 'skipped';
-        skipped++;
-      } else {
-        initialStatuses[day] = 'pending';
-      }
+      initialStatuses[day] = 'pending';
     });
     setDayStatuses(initialStatuses);
     setCurrentProgress(0);
@@ -188,7 +186,7 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
 
   const canProceedToTime = selectedDays.length > 0;
   const canProceedToPreview = startTime && endTime && startTime < endTime;
-  const newDaysCount = selectedDays.filter(d => !existingDays.has(d)).length;
+  const newDaysCount = selectedDays.length;
 
   return (
     <Dialog.Root open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
@@ -292,41 +290,36 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                   <h3 className="text-sm font-medium text-white/70 mb-3">요일 선택</h3>
                   <div className="flex gap-2">
                     {dayOptions.map(day => {
-                      const isExisting = existingDays.has(day.value);
+                      const existingCount = existingDayCounts.get(day.value) ?? 0;
                       const isSelected = selectedDays.includes(day.value);
                       return (
                         <button
                           key={day.value}
                           onClick={() => handleDayToggle(day.value)}
-                          disabled={isExisting}
                           className={`flex-1 py-3 rounded-lg border-2 transition-all relative ${
-                            isExisting
-                              ? 'bg-white/10 border-white/15 cursor-not-allowed'
-                              : isSelected
+                            isSelected
                               ? 'border-emerald-500 bg-emerald-500/10'
                               : 'border-white/15 hover:border-white/25'
                           }`}
                         >
                           <span className={`text-sm font-medium ${
-                            isExisting ? 'text-white/40' : isSelected ? 'text-emerald-300' : day.color
+                            isSelected ? 'text-emerald-300' : day.color
                           }`}>
                             {day.short}
                           </span>
-                          {isExisting && (
-                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                              <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                              </svg>
+                          {existingCount > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-blue-500 rounded-full flex items-center justify-center px-1">
+                              <span className="text-[10px] font-bold text-white">{existingCount}</span>
                             </span>
                           )}
                         </button>
                       );
                     })}
                   </div>
-                  {existingDays.size > 0 && (
+                  {existingDayCounts.size > 0 && (
                     <p className="text-xs text-white/50 mt-2 flex items-center">
-                      <span className="w-3 h-3 bg-green-500 rounded-full mr-1.5"></span>
-                      이미 설정된 요일 ({existingDays.size}개)
+                      <span className="w-3 h-3 bg-blue-500 rounded-full mr-1.5"></span>
+                      숫자는 기존 스케줄 수 (추가 등록 가능)
                     </p>
                   )}
                 </div>
@@ -336,23 +329,19 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-white/60">선택된 요일</span>
                     <span className="text-sm font-medium text-emerald-400">
-                      {selectedDays.length}개 선택 ({newDaysCount}개 신규)
+                      {selectedDays.length}개 선택
                     </span>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1">
                     {selectedDays.map(d => {
                       const day = dayOptions.find(opt => opt.value === d);
-                      const isExisting = existingDays.has(d);
+                      const existingCount = existingDayCounts.get(d) ?? 0;
                       return (
                         <span
                           key={d}
-                          className={`px-2 py-1 rounded text-xs font-medium ${
-                            isExisting
-                              ? 'bg-white/15 text-white/50 line-through'
-                              : 'bg-emerald-500/20 text-emerald-400'
-                          }`}
+                          className="px-2 py-1 rounded text-xs font-medium bg-emerald-500/20 text-emerald-400"
                         >
-                          {day?.label}
+                          {day?.label}{existingCount > 0 && ` (+${existingCount})`}
                         </span>
                       );
                     })}
@@ -607,34 +596,30 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                       <div className="grid grid-cols-7 gap-2">
                         {dayOptions.map(day => {
                           const isSelected = selectedDays.includes(day.value);
-                          const isExisting = existingDays.has(day.value);
-                          const isNew = isSelected && !isExisting;
+                          const existingCount = existingDayCounts.get(day.value) ?? 0;
 
                           return (
                             <div
                               key={day.value}
                               className={`p-3 rounded-lg border text-center ${
-                                isNew
+                                isSelected
                                   ? 'bg-emerald-500/10 border-emerald-500/20'
-                                  : isExisting
-                                  ? 'bg-green-500/10 border-green-500/20'
                                   : 'bg-white/5 border-white/15'
                               }`}
                             >
                               <div className={`text-xs font-medium mb-1 ${day.color}`}>
                                 {day.short}
                               </div>
-                              {isNew && (
+                              {isSelected ? (
                                 <>
                                   <div className="text-[10px] text-emerald-400">{startTime}</div>
                                   <div className="text-[10px] text-white/40">~</div>
                                   <div className="text-[10px] text-emerald-400">{endTime}</div>
+                                  {existingCount > 0 && (
+                                    <div className="text-[10px] text-blue-400 mt-0.5">+{existingCount}개 기존</div>
+                                  )}
                                 </>
-                              )}
-                              {isExisting && (
-                                <div className="text-[10px] text-green-400">설정됨</div>
-                              )}
-                              {!isSelected && !isExisting && (
+                              ) : (
                                 <div className="text-[10px] text-white/40">-</div>
                               )}
                             </div>
@@ -649,7 +634,7 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16.5c-.77.833.192 3 1.732 3z" />
                         </svg>
                         <p className="text-sm text-yellow-400">
-                          선택한 모든 요일에 이미 스케줄이 설정되어 있습니다. 새로 생성할 스케줄이 없습니다.
+                          요일이 선택되지 않았습니다. 생성할 스케줄이 없습니다.
                         </p>
                       </div>
                     )}

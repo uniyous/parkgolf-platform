@@ -42,7 +42,7 @@ export class GameWeeklyScheduleService {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
           throw new ConflictException(
-            `Weekly schedule for game ${createDto.gameId} on day ${createDto.dayOfWeek} already exists`
+            `Weekly schedule for game ${createDto.gameId} on day ${createDto.dayOfWeek} at ${createDto.startTime} already exists`
           );
         }
       }
@@ -60,7 +60,7 @@ export class GameWeeklyScheduleService {
 
     return this.prisma.gameWeeklySchedule.findMany({
       where,
-      orderBy: [{ gameId: 'asc' }, { dayOfWeek: 'asc' }],
+      orderBy: [{ gameId: 'asc' }, { dayOfWeek: 'asc' }, { startTime: 'asc' }],
       include: {
         game: true,
       },
@@ -85,7 +85,7 @@ export class GameWeeklyScheduleService {
   async findByGame(gameId: number): Promise<GameWeeklySchedule[]> {
     return this.prisma.gameWeeklySchedule.findMany({
       where: { gameId, isActive: true },
-      orderBy: { dayOfWeek: 'asc' },
+      orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
     });
   }
 
