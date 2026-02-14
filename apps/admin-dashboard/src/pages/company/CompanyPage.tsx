@@ -219,38 +219,42 @@ export const CompanyPage: React.FC = () => {
       </div>
 
       {/* 필터 */}
-      <FilterContainer columns={4}>
-        <FilterSearch
-          label="검색"
-          showLabel
-          value={filters.search}
-          onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
-          placeholder="회사명, 사업자번호, 주소, 연락처..."
-        />
-        <FilterSelect
-          label="상태"
-          value={filters.status === 'ALL' ? '' : filters.status}
-          onChange={(value) => setFilters((f) => ({ ...f, status: (value || 'ALL') as CompanyStatus | 'ALL' }))}
-          options={[
-            { value: 'ACTIVE', label: '운영 중' },
-            { value: 'MAINTENANCE', label: '점검 중' },
-            { value: 'INACTIVE', label: '비활성' },
-          ]}
-          placeholder="전체 상태"
-        />
-        <div className="flex items-end gap-2">
-          <button
-            onClick={() => refetch()}
-            className="inline-flex items-center px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            새로고침
-          </button>
-          <FilterResetButton
-            hasActiveFilters={!!(filters.search || filters.status !== 'ALL')}
-            onClick={() => setFilters({ search: '', status: 'ALL' })}
-            variant="text"
-          />
+      <FilterContainer columns="flex">
+        <div className="flex items-end justify-between w-full">
+          <div className="flex items-end gap-4">
+            <FilterSearch
+              label="검색"
+              showLabel
+              value={filters.search}
+              onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
+              placeholder="회사명, 사업자번호, 주소, 연락처..."
+            />
+            <FilterSelect
+              label="상태"
+              value={filters.status === 'ALL' ? '' : filters.status}
+              onChange={(value) => setFilters((f) => ({ ...f, status: (value || 'ALL') as CompanyStatus | 'ALL' }))}
+              options={[
+                { value: 'ACTIVE', label: '운영 중' },
+                { value: 'MAINTENANCE', label: '점검 중' },
+                { value: 'INACTIVE', label: '비활성' },
+              ]}
+              placeholder="전체 상태"
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <button
+              onClick={() => refetch()}
+              className="inline-flex items-center px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              새로고침
+            </button>
+            <FilterResetButton
+              hasActiveFilters={!!(filters.search || filters.status !== 'ALL')}
+              onClick={() => setFilters({ search: '', status: 'ALL' })}
+              variant="text"
+            />
+          </div>
         </div>
       </FilterContainer>
 

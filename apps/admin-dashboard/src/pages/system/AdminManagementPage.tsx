@@ -248,47 +248,51 @@ export const AdminManagementPage: React.FC = () => {
       </div>
 
       {/* 필터 */}
-      <FilterContainer columns={5}>
-        <FilterSearch
-          label="검색"
-          showLabel
-          value={filters.search}
-          onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
-          placeholder="이름, 이메일, 아이디..."
-        />
-        <FilterSelect
-          label="역할"
-          value={filters.role === 'ALL' ? '' : filters.role}
-          onChange={(value) => setFilters((f) => ({ ...f, role: (value || 'ALL') as AdminRole | 'ALL' }))}
-          groups={[
-            { label: '플랫폼 역할', options: PLATFORM_ROLES.map((role) => ({ value: role, label: ADMIN_ROLE_LABELS[role] })) },
-            { label: '회사 역할', options: COMPANY_ROLES.map((role) => ({ value: role, label: ADMIN_ROLE_LABELS[role] })) },
-          ]}
-          placeholder="전체 역할"
-        />
-        <FilterSelect
-          label="상태"
-          value={filters.status === 'ALL' ? '' : filters.status}
-          onChange={(value) => setFilters((f) => ({ ...f, status: (value || 'ALL') as 'ALL' | 'ACTIVE' | 'INACTIVE' }))}
-          options={[
-            { value: 'ACTIVE', label: '활성' },
-            { value: 'INACTIVE', label: '비활성' },
-          ]}
-          placeholder="전체 상태"
-        />
-        <div className="flex items-end gap-2">
-          <button
-            onClick={() => refetch()}
-            className="inline-flex items-center px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            새로고침
-          </button>
-          <FilterResetButton
-            hasActiveFilters={!!(filters.search || filters.role !== 'ALL' || filters.status !== 'ALL')}
-            onClick={() => setFilters({ search: '', role: 'ALL', scope: 'ALL', status: 'ALL' })}
-            variant="text"
-          />
+      <FilterContainer columns="flex">
+        <div className="flex items-end justify-between w-full">
+          <div className="flex items-end gap-4">
+            <FilterSearch
+              label="검색"
+              showLabel
+              value={filters.search}
+              onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
+              placeholder="이름, 이메일, 아이디..."
+            />
+            <FilterSelect
+              label="역할"
+              value={filters.role === 'ALL' ? '' : filters.role}
+              onChange={(value) => setFilters((f) => ({ ...f, role: (value || 'ALL') as AdminRole | 'ALL' }))}
+              groups={[
+                { label: '플랫폼 역할', options: PLATFORM_ROLES.map((role) => ({ value: role, label: ADMIN_ROLE_LABELS[role] })) },
+                { label: '회사 역할', options: COMPANY_ROLES.map((role) => ({ value: role, label: ADMIN_ROLE_LABELS[role] })) },
+              ]}
+              placeholder="전체 역할"
+            />
+            <FilterSelect
+              label="상태"
+              value={filters.status === 'ALL' ? '' : filters.status}
+              onChange={(value) => setFilters((f) => ({ ...f, status: (value || 'ALL') as 'ALL' | 'ACTIVE' | 'INACTIVE' }))}
+              options={[
+                { value: 'ACTIVE', label: '활성' },
+                { value: 'INACTIVE', label: '비활성' },
+              ]}
+              placeholder="전체 상태"
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <button
+              onClick={() => refetch()}
+              className="inline-flex items-center px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              새로고침
+            </button>
+            <FilterResetButton
+              hasActiveFilters={!!(filters.search || filters.role !== 'ALL' || filters.status !== 'ALL')}
+              onClick={() => setFilters({ search: '', role: 'ALL', scope: 'ALL', status: 'ALL' })}
+              variant="text"
+            />
+          </div>
         </div>
       </FilterContainer>
 

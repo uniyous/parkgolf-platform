@@ -209,7 +209,6 @@ export interface UpdateCompanyMemberDto {
 }
 
 // --- Auth & User Types ---
-export type UserMembershipTier = 'PREMIUM' | 'REGULAR' | 'GUEST' | 'SILVER' | 'VIP' | 'GOLD' | 'PLATINUM';
 export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING';
 
 export interface User {
@@ -222,7 +221,6 @@ export interface User {
   updatedAt: string | null;
   // 추가 필드 (확장된 사용자 정보)
   phone?: string;
-  membershipTier?: UserMembershipTier;
   status?: UserStatus;
   lastLoginAt?: string | null;
   // 멤버십 관련 필드
@@ -235,7 +233,7 @@ export interface User {
   /** @deprecated Use email.split('@')[0] for display purposes */
   username?: string;
   /** @deprecated Use roleCode instead */
-  role?: AdminRole | UserMembershipTier;
+  role?: AdminRole;
   // Admin 관련 필드 (관리자 사용자인 경우)
   scope?: AdminScope;
   permissions?: Permission[];
@@ -247,14 +245,10 @@ export interface User {
 
 export interface UserFilters {
   search: string;
-  membershipTier?: UserMembershipTier;
   status?: UserStatus;
   sortBy: string;
   sortOrder: 'asc' | 'desc';
 }
-
-// 이전 role 타입은 admin 전용으로 유지 (하위 호환성)
-export type UserRole = UserMembershipTier;
 
 export interface LoginCredentials {
   email: string;
@@ -426,7 +420,6 @@ export interface CreateUserDto {
   name: string;
   password: string;
   phone?: string;
-  membershipTier?: UserMembershipTier;
   status?: UserStatus;
 }
 
@@ -435,7 +428,6 @@ export interface UpdateUserDto {
   name?: string;
   password?: string;
   phone?: string;
-  membershipTier?: UserMembershipTier;
   status?: UserStatus;
 }
 

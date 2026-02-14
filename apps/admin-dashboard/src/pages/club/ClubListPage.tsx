@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, RefreshCw, Flag } from 'lucide-react';
+import { Plus, Flag } from 'lucide-react';
 import { useClubsQuery, useSearchClubsQuery } from '@/hooks/queries';
 import { DataContainer } from '@/components/common';
 import {
@@ -16,21 +16,14 @@ export const ClubListPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [activeSearch, setActiveSearch] = useState('');
 
   // React Query hooks
-  const { data: clubsData, isLoading: isLoadingClubs, refetch: refetchClubs } = useClubsQuery();
-  const { data: searchData, isLoading: isSearching } = useSearchClubsQuery(activeSearch);
+  const { data: clubsData, isLoading: isLoadingClubs } = useClubsQuery();
+  const { data: searchData, isLoading: isSearching } = useSearchClubsQuery(searchKeyword);
 
   // 검색어가 있으면 검색 결과, 없으면 전체 목록 사용
-  const clubs = activeSearch ? (searchData ?? []) : (clubsData?.data ?? []);
-  const pagination = clubsData?.pagination ?? { page: 1, limit: 20, total: 0, totalPages: 1 };
+  const clubs = searchKeyword ? (searchData ?? []) : (clubsData?.data ?? []);
   const isLoading = isLoadingClubs || isSearching;
-
-  // 검색 처리
-  const handleSearch = () => {
-    setActiveSearch(searchKeyword.trim());
-  };
 
   // 골프장 선택
   const handleClubSelect = (club: Club) => {
@@ -40,8 +33,6 @@ export const ClubListPage: React.FC = () => {
   // 전체 보기 (검색 초기화)
   const handleReset = () => {
     setSearchKeyword('');
-    setActiveSearch('');
-    refetchClubs();
   };
 
   // Stats
@@ -124,33 +115,24 @@ export const ClubListPage: React.FC = () => {
       </div>
 
       {/* 필터 */}
-      <FilterContainer columns={4}>
-        <FilterSearch
-          label="검색"
-          showLabel
-          value={searchKeyword}
-          onChange={setSearchKeyword}
-          placeholder="골프장 이름이나 지역으로 검색..."
-          onKeyDown={(e: React.KeyboardEvent) => e.key === 'Enter' && handleSearch()}
-        />
-        <div className="flex items-end gap-2">
-          <button
-            onClick={handleSearch}
-            disabled={isSearching}
-            className="inline-flex items-center px-4 py-2 bg-white/10 text-white/70 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
-          >
-            {isSearching ? (
-              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <RefreshCw className="w-4 h-4 mr-2" />
-            )}
-            {isSearching ? '검색 중...' : '검색'}
-          </button>
-          <FilterResetButton
-            hasActiveFilters={!!searchKeyword || !!activeSearch}
-            onClick={handleReset}
-            label="전체 보기"
-          />
+      <FilterContainer columns="flex">
+        <div className="flex items-end justify-between w-full">
+          <div className="flex items-end gap-4">
+            <FilterSearch
+              label="검색"
+              showLabel
+              value={searchKeyword}
+              onChange={setSearchKeyword}
+              placeholder="골프장 이름이나 지역으로 검색..."
+            />
+          </div>
+          <div className="flex items-end">
+            <FilterResetButton
+              hasActiveFilters={!!searchKeyword}
+              onClick={handleReset}
+              label="필터 초기화"
+            />
+          </div>
         </div>
       </FilterContainer>
 
@@ -161,9 +143,9 @@ export const ClubListPage: React.FC = () => {
           isEmpty={clubs.length === 0}
           emptyIcon={<Flag className="h-12 w-12 text-white/40" />}
           emptyMessage="골프장이 없습니다"
-          emptyDescription={activeSearch ? '검색 조건에 맞는 골프장이 없습니다.' : '등록된 골프장이 없습니다.'}
+          emptyDescription={searchKeyword ? '검색 조건에 맞는 골프장이 없습니다.' : '등록된 골프장이 없습니다.'}
           emptyAction={
-            !activeSearch ? (
+            !searchKeyword ? (
               <button
                 onClick={() => navigate('/clubs/new')}
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors"
@@ -245,13 +227,8 @@ export const ClubListPage: React.FC = () => {
       {/* 하단 정보 */}
       <div className="bg-white/5 rounded-lg p-4">
         <p className="text-sm text-white/60 text-center">
-          총 {pagination.total}개의 골프장이 등록되어 있습니다.
-          {activeSearch && ` '${activeSearch}' 검색 결과입니다.`}
-          {pagination.totalPages > 1 && (
-            <span className="ml-2">
-              (페이지 {pagination.page}/{pagination.totalPages})
-            </span>
-          )}
+          총 {clubs.length}개의 골프장이 등록되어 있습니다.
+          {searchKeyword && ` '${searchKeyword}' 검색 결과입니다.`}
         </p>
       </div>
     </PageLayout>

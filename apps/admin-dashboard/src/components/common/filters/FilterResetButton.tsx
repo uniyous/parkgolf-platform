@@ -14,7 +14,7 @@ const FilterResetButton = React.forwardRef<HTMLButtonElement, FilterResetButtonP
   (
     {
       hasActiveFilters = true,
-      label = '초기화',
+      label = '필터 초기화',
       showIcon = true,
       variant = 'default',
       className,

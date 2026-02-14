@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Lightbulb } from 'lucide-react';
 import { useGamesQuery, useClubsQuery } from '@/hooks/queries';
 import { DataContainer } from '@/components/common';
-import { FilterContainer, FilterSelect, FilterSearch, FilterResetButton } from '@/components/common/filters';
+import { FilterContainer, FilterSearch, FilterResetButton } from '@/components/common/filters';
 import { CanManageCourses } from '@/components/auth';
 import { PageLayout } from '@/components/layout';
 import { GameFormModal } from '@/components/features/game';
@@ -17,20 +17,15 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 
 export const GameListPage: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
 
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [selectedClubId, setSelectedClubId] = useState<number | null>(
-    searchParams.get('clubId') ? Number(searchParams.get('clubId')) : null
-  );
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Queries
   const filters: GameFilter = useMemo(() => ({
-    clubId: selectedClubId || undefined,
     page: 1,
     limit: 50,
-  }), [selectedClubId]);
+  }), []);
 
   const { data: gamesData, error, isLoading } = useGamesQuery(filters);
   const { data: clubsData } = useClubsQuery();
@@ -56,16 +51,6 @@ export const GameListPage: React.FC = () => {
     maintenance: games.filter((g) => g.status === 'MAINTENANCE').length,
     inactive: games.filter((g) => g.status === 'INACTIVE').length,
   }), [games]);
-
-  // 클럽 필터 변경
-  const handleClubFilterChange = (clubId: number | null) => {
-    setSelectedClubId(clubId);
-    if (clubId) {
-      setSearchParams({ clubId: String(clubId) });
-    } else {
-      setSearchParams({});
-    }
-  };
 
   // 게임 선택
   const handleGameSelect = (game: Game) => {
@@ -151,31 +136,23 @@ export const GameListPage: React.FC = () => {
       </div>
 
       {/* 필터 */}
-      <FilterContainer columns={4}>
-        <FilterSelect
-          label="골프장"
-          value={selectedClubId}
-          onChange={(value) => handleClubFilterChange(value ? Number(value) : null)}
-          options={clubs.map((club) => ({ value: club.id, label: club.name }))}
-          placeholder="전체"
-        />
-        <FilterSearch
-          label="검색"
-          showLabel
-          value={searchKeyword}
-          onChange={setSearchKeyword}
-          placeholder="라운드 이름으로 검색..."
-        />
-        <div className="flex items-end">
-          <FilterResetButton
-            hasActiveFilters={!!(searchKeyword || selectedClubId)}
-            onClick={() => {
-              setSearchKeyword('');
-              handleClubFilterChange(null);
-            }}
-            label="필터 초기화"
-            className="w-full"
-          />
+      <FilterContainer columns="flex">
+        <div className="flex items-end justify-between w-full">
+          <div className="flex items-end gap-4">
+            <FilterSearch
+              label="검색"
+              showLabel
+              value={searchKeyword}
+              onChange={setSearchKeyword}
+              placeholder="라운드 이름으로 검색..."
+            />
+          </div>
+          <div className="flex items-end">
+            <FilterResetButton
+              hasActiveFilters={!!searchKeyword}
+              onClick={() => setSearchKeyword('')}
+            />
+          </div>
         </div>
       </FilterContainer>
 
@@ -194,12 +171,12 @@ export const GameListPage: React.FC = () => {
           emptyIcon={<Lightbulb className="h-12 w-12 text-white/40" />}
           emptyMessage="라운드가 없습니다"
           emptyDescription={
-            searchKeyword || selectedClubId
+            searchKeyword
               ? '검색 조건에 맞는 라운드가 없습니다.'
               : '등록된 라운드가 없습니다.'
           }
           emptyAction={
-            !searchKeyword && !selectedClubId ? (
+            !searchKeyword ? (
               <button
                 onClick={() => setIsCreateModalOpen(true)}
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors"
@@ -288,7 +265,6 @@ export const GameListPage: React.FC = () => {
         <p className="text-sm text-white/60 text-center">
           총 {filteredGames.length}개의 라운드가 있습니다.
           {searchKeyword && ` '${searchKeyword}' 검색 결과입니다.`}
-          {selectedClubId && ` (${clubs.find(c => c.id === selectedClubId)?.name || `Club ${selectedClubId}`} 필터 적용)`}
         </p>
       </div>
 

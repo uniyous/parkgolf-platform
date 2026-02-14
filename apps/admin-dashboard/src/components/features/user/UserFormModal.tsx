@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCreateUserMutation, useUpdateUserMutation } from '@/hooks/queries';
 import { Modal, Button } from '@/components/ui';
-import type { User, UserStatus, UserMembershipTier } from '@/types';
+import type { User, UserStatus } from '@/types';
 
 interface UserFormModalProps {
   open: boolean;
@@ -15,7 +15,6 @@ interface FormData {
   password: string;
   confirmPassword: string;
   phone: string;
-  membershipTier: UserMembershipTier;
   status: UserStatus;
 }
 
@@ -25,7 +24,6 @@ const initialFormData: FormData = {
   password: '',
   confirmPassword: '',
   phone: '',
-  membershipTier: 'REGULAR',
   status: 'ACTIVE',
 };
 
@@ -45,7 +43,6 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
         password: '',
         confirmPassword: '',
         phone: user.phone || '',
-        membershipTier: user.membershipTier || 'REGULAR',
         status: user.status || 'ACTIVE',
       });
     } else {
@@ -102,7 +99,6 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
             email: formData.email,
             name: formData.name,
             phone: formData.phone || undefined,
-            membershipTier: formData.membershipTier,
             status: formData.status,
             ...(formData.password ? { password: formData.password } : {}),
           },
@@ -113,7 +109,6 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
           name: formData.name,
           password: formData.password,
           phone: formData.phone || undefined,
-          membershipTier: formData.membershipTier,
           status: formData.status,
         });
       }
@@ -219,22 +214,6 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
               className="w-full px-3 py-2 bg-white/10 text-white placeholder:text-white/40 border border-white/15 rounded-lg focus:ring-2 focus:ring-emerald-500"
               placeholder="010-1234-5678"
             />
-          </div>
-
-          {/* Membership Tier */}
-          <div>
-            <label className="block text-sm font-medium text-white/70 mb-1">회원 등급</label>
-            <select
-              value={formData.membershipTier}
-              onChange={(e) => handleChange('membershipTier', e.target.value)}
-              className="w-full px-3 py-2 bg-white/10 text-white placeholder:text-white/40 border border-white/15 rounded-lg focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="REGULAR">일반</option>
-              <option value="SILVER">실버</option>
-              <option value="GOLD">골드</option>
-              <option value="PLATINUM">플래티넘</option>
-              <option value="VIP">VIP</option>
-            </select>
           </div>
 
           {/* Status */}

@@ -45,43 +45,45 @@ export const BookingFilters: React.FC<BookingFiltersProps> = ({
   }));
 
   return (
-    <FilterContainer columns={5}>
-      {/* 날짜 범위 */}
-      <FilterDateRange
-        startDate={dateFrom}
-        endDate={dateTo}
-        onStartDateChange={onDateFromChange}
-        onEndDateChange={onDateToChange}
-        label="기간"
-        className="lg:col-span-2"
-      />
+    <FilterContainer columns="flex">
+      <div className="flex items-end justify-between w-full">
+        <div className="flex items-end gap-4">
+          {/* 날짜 범위 */}
+          <FilterDateRange
+            startDate={dateFrom}
+            endDate={dateTo}
+            onStartDateChange={onDateFromChange}
+            onEndDateChange={onDateToChange}
+            label="기간"
+          />
 
-      {/* 골프장 필터 */}
-      <FilterSelect
-        label="골프장"
-        value={clubFilter}
-        onChange={(value) => onClubFilterChange(value ? Number(value) : null)}
-        options={clubOptions}
-        placeholder="전체"
-      />
+          {/* 골프장 필터 */}
+          <FilterSelect
+            label="골프장"
+            value={clubFilter}
+            onChange={(value) => onClubFilterChange(value ? Number(value) : null)}
+            options={clubOptions}
+            placeholder="전체"
+          />
 
-      {/* 검색 */}
-      <FilterSearch
-        value={searchKeyword}
-        onChange={onSearchKeywordChange}
-        placeholder="예약자명, 연락처, 예약번호 검색..."
-        label="검색"
-        showLabel
-      />
+          {/* 검색 */}
+          <FilterSearch
+            value={searchKeyword}
+            onChange={onSearchKeywordChange}
+            placeholder="예약자명, 연락처, 예약번호 검색..."
+            label="검색"
+            showLabel
+          />
+        </div>
 
-      {/* 필터 초기화 */}
-      <div className="flex items-end">
-        <FilterResetButton
-          hasActiveFilters={hasActiveFilters}
-          onClick={onReset}
-          label="필터 초기화"
-          className="w-full"
-        />
+        {/* 필터 초기화 */}
+        <div className="flex items-end">
+          <FilterResetButton
+            hasActiveFilters={hasActiveFilters}
+            onClick={onReset}
+            label="필터 초기화"
+          />
+        </div>
       </div>
     </FilterContainer>
   );

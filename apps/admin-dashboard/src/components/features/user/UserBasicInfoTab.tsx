@@ -1,22 +1,12 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { useChangeUserPasswordMutation } from '@/hooks/queries';
-import type { User, UserMembershipTier, UserStatus } from '@/types';
+import type { User, UserStatus } from '@/types';
 
 interface UserBasicInfoTabProps {
   user: User;
   onUpdate: () => void;
 }
-
-const MEMBERSHIP_LABELS: Record<UserMembershipTier, string> = {
-  REGULAR: '일반',
-  SILVER: '실버',
-  GOLD: '골드',
-  PLATINUM: '플래티넘',
-  VIP: 'VIP',
-  PREMIUM: '프리미엄',
-  GUEST: '게스트',
-};
 
 const STATUS_LABELS: Record<UserStatus, string> = {
   ACTIVE: '활성',
@@ -30,16 +20,6 @@ const STATUS_STYLES: Record<UserStatus, string> = {
   INACTIVE: 'bg-white/10 text-white',
   SUSPENDED: 'bg-red-500/20 text-red-800',
   PENDING: 'bg-yellow-500/20 text-yellow-800',
-};
-
-const TIER_STYLES: Record<UserMembershipTier, string> = {
-  VIP: 'bg-purple-500/20 text-purple-800',
-  PLATINUM: 'bg-slate-100 text-slate-800',
-  GOLD: 'bg-yellow-500/20 text-yellow-800',
-  SILVER: 'bg-white/10 text-white',
-  REGULAR: 'bg-emerald-500/20 text-emerald-300',
-  PREMIUM: 'bg-amber-100 text-amber-800',
-  GUEST: 'bg-green-500/20 text-green-800',
 };
 
 const formatDate = (dateStr: string | null | undefined): string => {
@@ -127,16 +107,6 @@ export const UserBasicInfoTab: React.FC<UserBasicInfoTabProps> = ({ user, onUpda
           멤버십 정보
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-white/50 mb-1">등급</label>
-            {user.membershipTier ? (
-              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${TIER_STYLES[user.membershipTier]}`}>
-                {MEMBERSHIP_LABELS[user.membershipTier]}
-              </span>
-            ) : (
-              <span className="text-white">-</span>
-            )}
-          </div>
           <div>
             <label className="block text-sm font-medium text-white/50 mb-1">상태</label>
             {user.status ? (

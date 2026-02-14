@@ -22,26 +22,15 @@ import {
 import { UserFormModal } from '@/components/features/user/UserFormModal';
 import { PageLayout } from '@/components/layout';
 import { useAuthStore } from '@/stores/auth.store';
-import type { User, UserStatus, UserMembershipTier, CompanyMember, CompanyMemberSource } from '@/types';
+import type { User, UserStatus, CompanyMember, CompanyMemberSource } from '@/types';
 
-type SortField = 'name' | 'email' | 'membershipTier' | 'status' | 'createdAt' | 'lastLoginAt' | 'joinedAt' | 'source';
+type SortField = 'name' | 'email' | 'status' | 'createdAt' | 'lastLoginAt' | 'joinedAt' | 'source';
 type SortDirection = 'asc' | 'desc';
 
 interface FilterState {
   search: string;
-  membershipTier: UserMembershipTier | 'ALL';
   status: UserStatus | 'ALL';
 }
-
-const MEMBERSHIP_LABELS: Record<UserMembershipTier, string> = {
-  REGULAR: '일반',
-  SILVER: '실버',
-  GOLD: '골드',
-  PLATINUM: '플래티넘',
-  VIP: 'VIP',
-  PREMIUM: '프리미엄',
-  GUEST: '게스트',
-};
 
 const STATUS_LABELS: Record<UserStatus, string> = {
   ACTIVE: '활성',
@@ -54,17 +43,6 @@ const SOURCE_LABELS: Record<CompanyMemberSource, string> = {
   MANUAL: '수동 등록',
   BOOKING: '예약 등록',
   WALK_IN: '현장 등록',
-};
-
-// 등급별 스타일 정보
-const TIER_META: Record<UserMembershipTier, { icon: string; color: string }> = {
-  VIP: { icon: '👑', color: 'bg-purple-500/20 text-purple-400 border-purple-200' },
-  PLATINUM: { icon: '💎', color: 'bg-slate-100 text-slate-800 border-slate-200' },
-  GOLD: { icon: '🥇', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-200' },
-  SILVER: { icon: '🥈', color: 'bg-white/10 text-white border-white/15' },
-  REGULAR: { icon: '👤', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
-  PREMIUM: { icon: '⭐', color: 'bg-amber-100 text-amber-800 border-amber-200' },
-  GUEST: { icon: '👋', color: 'bg-green-500/20 text-green-400 border-green-200' },
 };
 
 // ============================================
@@ -215,27 +193,31 @@ const CompanyMemberView: React.FC = () => {
       </div>
 
       {/* 필터 */}
-      <FilterContainer columns={3}>
-        <FilterSearch
-          label="검색"
-          showLabel
-          value={filters.search}
-          onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
-          placeholder="이름, 이메일, 전화번호..."
-        />
-        <div className="flex items-end gap-2">
-          <button
-            onClick={() => refetch()}
-            className="inline-flex items-center px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            새로고침
-          </button>
-          <FilterResetButton
-            hasActiveFilters={!!filters.search}
-            onClick={() => setFilters({ search: '' })}
-            variant="text"
-          />
+      <FilterContainer columns="flex">
+        <div className="flex items-end justify-between w-full">
+          <div className="flex items-end gap-4">
+            <FilterSearch
+              label="검색"
+              showLabel
+              value={filters.search}
+              onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
+              placeholder="이름, 이메일, 전화번호..."
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <button
+              onClick={() => refetch()}
+              className="inline-flex items-center px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              새로고침
+            </button>
+            <FilterResetButton
+              hasActiveFilters={!!filters.search}
+              onClick={() => setFilters({ search: '' })}
+              variant="text"
+            />
+          </div>
         </div>
       </FilterContainer>
 
@@ -588,7 +570,6 @@ const PlatformUserView: React.FC = () => {
   // Local UI State
   const [filters, setFilters] = useState<FilterState>({
     search: '',
-    membershipTier: 'ALL',
     status: 'ALL',
   });
   const [sortField, setSortField] = useState<SortField>('name');
@@ -613,11 +594,6 @@ const PlatformUserView: React.FC = () => {
           u.username?.toLowerCase().includes(search) ||
           u.phone?.includes(search)
       );
-    }
-
-    // Membership tier filter
-    if (filters.membershipTier !== 'ALL') {
-      result = result.filter((u) => u.membershipTier === filters.membershipTier);
     }
 
     // Status filter
@@ -648,7 +624,6 @@ const PlatformUserView: React.FC = () => {
     total: users.length,
     active: users.filter((u) => u.status === 'ACTIVE').length,
     inactive: users.filter((u) => u.status !== 'ACTIVE').length,
-    tierCount: new Set(users.map(u => u.membershipTier)).size,
   }), [users]);
 
   // Handlers
@@ -711,7 +686,7 @@ const PlatformUserView: React.FC = () => {
           <div>
             <h2 className="text-xl font-semibold text-white">회원 관리</h2>
             <p className="mt-1 text-sm text-white/50">
-              서비스 이용 회원을 관리하고 등급을 설정합니다
+              서비스 이용 회원을 관리합니다
             </p>
           </div>
           <button
@@ -724,7 +699,7 @@ const PlatformUserView: React.FC = () => {
         </div>
 
         {/* 통계 */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-4">
           <div className="bg-emerald-500/10 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
@@ -752,65 +727,47 @@ const PlatformUserView: React.FC = () => {
               <div className="text-3xl">⏸️</div>
             </div>
           </div>
-          <div className="bg-purple-500/10 p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-purple-600">{stats.tierCount}</div>
-                <div className="text-sm text-purple-600">등급 종류</div>
-              </div>
-              <div className="text-3xl">🏷️</div>
-            </div>
-          </div>
         </div>
       </div>
 
       {/* 필터 */}
-      <FilterContainer columns={5}>
-        <FilterSearch
-          label="검색"
-          showLabel
-          value={filters.search}
-          onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
-          placeholder="이름, 이메일, 전화번호..."
-        />
-        <FilterSelect
-          label="등급"
-          value={filters.membershipTier === 'ALL' ? '' : filters.membershipTier}
-          onChange={(value) => setFilters((f) => ({ ...f, membershipTier: (value || 'ALL') as UserMembershipTier | 'ALL' }))}
-          options={[
-            { value: 'VIP', label: 'VIP' },
-            { value: 'PLATINUM', label: '플래티넘' },
-            { value: 'GOLD', label: '골드' },
-            { value: 'SILVER', label: '실버' },
-            { value: 'REGULAR', label: '일반' },
-          ]}
-          placeholder="전체 등급"
-        />
-        <FilterSelect
-          label="상태"
-          value={filters.status === 'ALL' ? '' : filters.status}
-          onChange={(value) => setFilters((f) => ({ ...f, status: (value || 'ALL') as UserStatus | 'ALL' }))}
-          options={[
-            { value: 'ACTIVE', label: '활성' },
-            { value: 'INACTIVE', label: '비활성' },
-            { value: 'SUSPENDED', label: '정지' },
-            { value: 'PENDING', label: '대기' },
-          ]}
-          placeholder="전체 상태"
-        />
-        <div className="flex items-end gap-2">
-          <button
-            onClick={() => refetch()}
-            className="inline-flex items-center px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            새로고침
-          </button>
-          <FilterResetButton
-            hasActiveFilters={!!(filters.search || filters.membershipTier !== 'ALL' || filters.status !== 'ALL')}
-            onClick={() => setFilters({ search: '', membershipTier: 'ALL', status: 'ALL' })}
-            variant="text"
-          />
+      <FilterContainer columns="flex">
+        <div className="flex items-end justify-between w-full">
+          <div className="flex items-end gap-4">
+            <FilterSearch
+              label="검색"
+              showLabel
+              value={filters.search}
+              onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
+              placeholder="이름, 이메일, 전화번호..."
+            />
+            <FilterSelect
+              label="상태"
+              value={filters.status === 'ALL' ? '' : filters.status}
+              onChange={(value) => setFilters((f) => ({ ...f, status: (value || 'ALL') as UserStatus | 'ALL' }))}
+              options={[
+                { value: 'ACTIVE', label: '활성' },
+                { value: 'INACTIVE', label: '비활성' },
+                { value: 'SUSPENDED', label: '정지' },
+                { value: 'PENDING', label: '대기' },
+              ]}
+              placeholder="전체 상태"
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <button
+              onClick={() => refetch()}
+              className="inline-flex items-center px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              새로고침
+            </button>
+            <FilterResetButton
+              hasActiveFilters={!!(filters.search || filters.status !== 'ALL')}
+              onClick={() => setFilters({ search: '', status: 'ALL' })}
+              variant="text"
+            />
+          </div>
         </div>
       </FilterContainer>
 
@@ -818,15 +775,13 @@ const PlatformUserView: React.FC = () => {
       <ActiveFilterTags
         filters={[
           ...(filters.search ? [{ id: 'search', label: '검색', value: filters.search }] : []),
-          ...(filters.membershipTier !== 'ALL' ? [{ id: 'tier', label: '등급', value: MEMBERSHIP_LABELS[filters.membershipTier], color: 'purple' as const }] : []),
           ...(filters.status !== 'ALL' ? [{ id: 'status', label: '상태', value: STATUS_LABELS[filters.status], color: 'green' as const }] : []),
         ]}
         onRemove={(id) => {
           if (id === 'search') setFilters(f => ({ ...f, search: '' }));
-          if (id === 'tier') setFilters(f => ({ ...f, membershipTier: 'ALL' }));
           if (id === 'status') setFilters(f => ({ ...f, status: 'ALL' }));
         }}
-        onResetAll={() => setFilters({ search: '', membershipTier: 'ALL', status: 'ALL' })}
+        onResetAll={() => setFilters({ search: '', status: 'ALL' })}
       />
 
       {/* 회원 목록 테이블 */}
@@ -886,17 +841,6 @@ const PlatformUserView: React.FC = () => {
                   </th>
                   <th
                     className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase cursor-pointer hover:bg-white/10 transition-colors"
-                    onClick={() => handleSort('membershipTier')}
-                  >
-                    <div className="flex items-center space-x-1">
-                      <span>등급</span>
-                      {sortField === 'membershipTier' && (
-                        <span className="text-emerald-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase cursor-pointer hover:bg-white/10 transition-colors"
                     onClick={() => handleSort('status')}
                   >
                     <div className="flex items-center space-x-1">
@@ -949,14 +893,6 @@ const PlatformUserView: React.FC = () => {
                             <div className="text-xs text-white/40">{user.phone}</div>
                           )}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg">{user.membershipTier ? TIER_META[user.membershipTier]?.icon : '👤'}</span>
-                        <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${user.membershipTier ? TIER_META[user.membershipTier]?.color : 'bg-white/10 text-white'}`}>
-                          {user.membershipTier ? (MEMBERSHIP_LABELS[user.membershipTier] || user.membershipTier) : '-'}
-                        </span>
                       </div>
                     </td>
                     <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
