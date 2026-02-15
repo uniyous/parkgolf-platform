@@ -118,14 +118,20 @@ flowchart TB
         F_Ship["Friendship"]
     end
 
+    subgraph member["가맹점 회원"]
+        CM_Member["CompanyMember"]
+    end
+
     A_AdminCompany -->|companyRoleCode| R_Role
     U_User -->|roleCode| R_Role
     U_User -->|fromUserId, toUserId| F_Request
     U_User -->|userId, friendId| F_Ship
     M_MenuPerm -->|permissionCode| R_Permission
+    CM_Member -->|companyId| A_Company
+    CM_Member -->|userId| U_User
 ```
 
-> **그룹 간 참조**: AdminCompany.companyRoleCode → RoleMaster.code | User.roleCode → RoleMaster.code | MenuPermission.permissionCode → PermissionMaster.code
+> **그룹 간 참조**: AdminCompany.companyRoleCode → RoleMaster.code | User.roleCode → RoleMaster.code | MenuPermission.permissionCode → PermissionMaster.code | CompanyMember.companyId → Company.id, userId → User.id
 
 ---
 
@@ -367,6 +373,30 @@ erDiagram
 
 ---
 
+### 1-6. 가맹점 회원
+
+```mermaid
+erDiagram
+    Company ||--o{ CompanyMember : "has"
+    User ||--o{ CompanyMember : "member of"
+
+    CompanyMember {
+        int id PK
+        int companyId FK
+        int userId FK
+        string source "BOOKING/MANUAL/WALK_IN"
+        string memo
+        boolean isActive
+        datetime joinedAt
+        datetime createdAt
+        datetime updatedAt
+    }
+```
+
+> **설명**: CompanyMember는 가맹점별 회원을 관리합니다. source로 등록 경로를 추적하며, 예약 시 자동 등록(BOOKING), 관리자 수동 등록(MANUAL), 현장 등록(WALK_IN)을 구분합니다. `@@unique([companyId, userId])`로 중복 등록을 방지합니다.
+
+---
+
 ## 2. Course Service (course_db)
 
 ### 전체 구조
@@ -574,12 +604,13 @@ flowchart TB
         R_NoShow["UserNoShowRecord"]
     end
 
-    subgraph policy["정책"]
+    subgraph policy["정책 (PolicyScope: PLATFORM > COMPANY > CLUB)"]
         P_Cancel["CancellationPolicy"]
         P_Refund["RefundPolicy"]
         P_RefundTier["RefundTier"]
         P_NoShow["NoShowPolicy"]
         P_NoShowPenalty["NoShowPenalty"]
+        P_Operating["OperatingPolicy"]
         P_Refund --- P_RefundTier
         P_NoShow --- P_NoShowPenalty
     end
@@ -776,23 +807,28 @@ erDiagram
 
     CancellationPolicy {
         int id PK
+        string scopeLevel "PLATFORM/COMPANY/CLUB"
+        int companyId "nullable"
+        int clubId "nullable"
         string name
-        string code UK
+        string code
         string description
         boolean allowUserCancel
         int userCancelDeadlineHours
         boolean allowSameDayCancel
         boolean isDefault
         boolean isActive
-        int clubId
         datetime createdAt
         datetime updatedAt
     }
 
     RefundPolicy {
         int id PK
+        string scopeLevel "PLATFORM/COMPANY/CLUB"
+        int companyId "nullable"
+        int clubId "nullable"
         string name
-        string code UK
+        string code
         string description
         int adminCancelRefundRate
         int systemCancelRefundRate
@@ -801,7 +837,6 @@ erDiagram
         int refundFeeRate
         boolean isDefault
         boolean isActive
-        int clubId
         datetime createdAt
         datetime updatedAt
     }
@@ -819,15 +854,17 @@ erDiagram
 
     NoShowPolicy {
         int id PK
+        string scopeLevel "PLATFORM/COMPANY/CLUB"
+        int companyId "nullable"
+        int clubId "nullable"
         string name
-        string code UK
+        string code
         string description
         boolean allowRefundOnNoShow
         int noShowGraceMinutes
         int countResetDays
         boolean isDefault
         boolean isActive
-        int clubId
         datetime createdAt
         datetime updatedAt
     }
@@ -846,7 +883,30 @@ erDiagram
         datetime createdAt
         datetime updatedAt
     }
+
+    OperatingPolicy {
+        int id PK
+        string scopeLevel "PLATFORM/COMPANY/CLUB"
+        int companyId "nullable"
+        int clubId "nullable"
+        string openTime "06:00"
+        string closeTime "18:00"
+        string lastTeeTime
+        int defaultMaxPlayers
+        int defaultDuration
+        int defaultBreakDuration
+        int defaultSlotInterval
+        string peakSeasonStart "MM-DD"
+        string peakSeasonEnd "MM-DD"
+        int peakPriceRate "percent"
+        int weekendPriceRate "percent"
+        boolean isActive
+        datetime createdAt
+        datetime updatedAt
+    }
 ```
+
+> **정책 스코프**: 모든 정책 모델은 `@@unique([scopeLevel, companyId, clubId])`로 스코프 당 하나의 정책만 허용합니다. resolve 시 Club → Company → Platform 순으로 폴백합니다.
 
 ---
 
@@ -1177,6 +1237,7 @@ erDiagram
 |------|----|------|
 | CompanyType | `PLATFORM`, `ASSOCIATION`, `FRANCHISE` | 회사 유형 |
 | CompanyStatus | `ACTIVE`, `INACTIVE`, `SUSPENDED`, `PENDING` | 회사 상태 |
+| CompanyMemberSource | `BOOKING`, `MANUAL`, `WALK_IN` | 회원 등록 경로 |
 | FriendRequestStatus | `PENDING`, `ACCEPTED`, `REJECTED` | 친구 요청 상태 |
 | DevicePlatform | `IOS`, `ANDROID`, `WEB` | 디바이스 플랫폼 |
 
@@ -1197,6 +1258,7 @@ erDiagram
 | Enum | 값 | 설명 |
 |------|----|------|
 | BookingStatus | `PENDING`, `SLOT_RESERVED`, `CONFIRMED`, `CANCELLED`, `COMPLETED`, `NO_SHOW`, `FAILED` | 예약 상태 (Saga) |
+| PolicyScope | `PLATFORM`, `COMPANY`, `CLUB` | 정책 스코프 (계층형 상속) |
 | PaymentStatus | `PENDING`, `PAID`, `FAILED`, `REFUNDED` | 결제 상태 |
 | TimeSlotCacheStatus | `AVAILABLE`, `FULLY_BOOKED`, `CLOSED`, `MAINTENANCE` | 슬롯 캐시 상태 |
 | OutboxStatus | `PENDING`, `PROCESSING`, `SENT`, `FAILED` | Outbox 이벤트 상태 |
@@ -1236,10 +1298,10 @@ erDiagram
 
 | 데이터베이스 | 모델 수 | 주요 모델 |
 |------------|---------|----------|
-| iam_db | 13 | Company, Admin, User, RoleMaster, MenuMaster |
+| iam_db | 18 | Company, Admin, User, RoleMaster, MenuMaster, CompanyMember |
 | course_db | 8 | Club, Course, Hole, TeeBox, Game, GameTimeSlot |
-| booking_db | 12 | Booking, Payment, Refund, CancellationPolicy, OutboxEvent |
+| booking_db | 15 | Booking, Refund, CancellationPolicy, OperatingPolicy, OutboxEvent |
 | payment_db | 5 | Payment, Refund, BillingKey, WebhookLog, PaymentOutboxEvent |
 | chat_db | 4 | ChatRoom, ChatRoomMember, ChatMessage, MessageRead |
 | notify_db | 4 | Notification, NotificationTemplate, NotificationSettings, DeadLetterNotification |
-| **합계** | **46** | |
+| **합계** | **54** | |
