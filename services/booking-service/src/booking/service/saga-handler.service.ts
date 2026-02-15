@@ -1,5 +1,6 @@
 import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom } from 'rxjs';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { BookingStatus, OutboxStatus, TimeSlotCacheStatus } from '@prisma/client';
 
@@ -22,6 +23,8 @@ export class SagaHandlerService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() @Inject('NOTIFICATION_SERVICE') private readonly notificationPublisher?: ClientProxy,
+    @Optional() @Inject('COURSE_SERVICE') private readonly courseService?: ClientProxy,
+    @Optional() @Inject('IAM_SERVICE') private readonly iamService?: ClientProxy,
   ) {}
 
   /**
@@ -118,6 +121,9 @@ export class SagaHandlerService {
           });
           this.logger.log(`[SagaHandler] 'booking.confirmed' event emitted for booking ${booking.bookingNumber}`);
         }
+
+        // CompanyMember 자동 등록
+        await this.registerCompanyMember(booking.clubId, booking.userId);
 
         const elapsed = Date.now() - startTime;
         this.logger.log(`[SagaHandler] Booking ${data.bookingId} CONFIRMED (onsite) in ${elapsed}ms`);
@@ -368,6 +374,9 @@ export class SagaHandlerService {
         this.logger.log(`[SagaHandler] 'booking.confirmed' event emitted for booking ${booking.bookingNumber}`);
       }
 
+      // CompanyMember 자동 등록
+      await this.registerCompanyMember(booking.clubId, booking.userId);
+
       const elapsed = Date.now() - startTime;
       this.logger.log(`[SagaHandler] Booking ${data.bookingId} CONFIRMED (payment completed) in ${elapsed}ms`);
       this.logger.log(`[SagaHandler] ========== PAYMENT_CONFIRMED EVENT COMPLETED ==========`);
@@ -519,6 +528,29 @@ export class SagaHandlerService {
     } catch (error) {
       this.logger.error(`[SagaHandler] FAILED to handle payment.canceled for booking ${data.bookingId}: ${error.message}`);
       throw error;
+    }
+  }
+
+  /**
+   * 예약 확정 시 CompanyMember 자동 등록
+   * clubId → companyId 조회 → iam.companyMembers.addByBooking 호출
+   */
+  private async registerCompanyMember(clubId: number | null, userId: number | null): Promise<void> {
+    if (!clubId || !userId || !this.courseService || !this.iamService) return;
+
+    try {
+      const clubResponse = await firstValueFrom(
+        this.courseService.send('club.findOne', { id: clubId }),
+      );
+      const companyId = clubResponse?.data?.companyId;
+      if (!companyId) return;
+
+      await firstValueFrom(
+        this.iamService.send('iam.companyMembers.addByBooking', { companyId, userId }),
+      );
+      this.logger.log(`CompanyMember registered: companyId=${companyId}, userId=${userId}`);
+    } catch (error) {
+      this.logger.warn(`Failed to register CompanyMember: clubId=${clubId}, userId=${userId}`, error?.message);
     }
   }
 

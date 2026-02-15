@@ -35,6 +35,7 @@ export class BookingService {
     private readonly outboxProcessor: OutboxProcessorService,
     @Optional() @Inject('NOTIFICATION_SERVICE') private readonly notificationPublisher?: ClientProxy,
     @Optional() @Inject('COURSE_SERVICE') private readonly courseServiceClient?: ClientProxy,
+    @Optional() @Inject('IAM_SERVICE') private readonly iamService?: ClientProxy,
   ) {}
 
   // 예약번호 생성 함수 - UUID 기반으로 예측 불가능하고 충돌 없는 번호 생성
@@ -750,6 +751,9 @@ export class BookingService {
       return confirmedBooking;
     });
 
+    // CompanyMember 자동 등록 (트랜잭션 밖에서 비동기 호출)
+    await this.registerCompanyMember(booking.clubId, booking.userId);
+
     return BookingResponseDto.fromEntity(booking);
   }
 
@@ -986,6 +990,29 @@ export class BookingService {
       }
     });
     this.logger.log(`GameTimeSlot cache synced for gameTimeSlotId: ${data.gameTimeSlotId}`);
+  }
+
+  /**
+   * 예약 확정 시 CompanyMember 자동 등록
+   * clubId → companyId 조회 → iam.companyMembers.addByBooking 호출
+   */
+  private async registerCompanyMember(clubId: number | null, userId: number | null): Promise<void> {
+    if (!clubId || !userId || !this.courseServiceClient || !this.iamService) return;
+
+    try {
+      const clubResponse = await firstValueFrom(
+        this.courseServiceClient.send('club.findOne', { id: clubId }),
+      );
+      const companyId = clubResponse?.data?.companyId;
+      if (!companyId) return;
+
+      await firstValueFrom(
+        this.iamService.send('iam.companyMembers.addByBooking', { companyId, userId }),
+      );
+      this.logger.log(`CompanyMember registered: companyId=${companyId}, userId=${userId}`);
+    } catch (error) {
+      this.logger.warn(`Failed to register CompanyMember: clubId=${clubId}, userId=${userId}`, error?.message);
+    }
   }
 
   // 사용자 예약 통계 조회
