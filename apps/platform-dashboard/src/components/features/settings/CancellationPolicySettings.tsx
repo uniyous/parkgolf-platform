@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
-  useCancellationPolicyDefaultQuery,
+  useCancellationPolicyResolveQuery,
   useCreateCancellationPolicyMutation,
   useUpdateCancellationPolicyMutation,
 } from '@/hooks/queries';
@@ -24,14 +24,12 @@ export const CancellationPolicySettings: React.FC = () => {
   const [originalPolicy, setOriginalPolicy] = useState<CancellationPolicy>(defaultPolicy);
   const [isEditing, setIsEditing] = useState(false);
 
-  // React Query 훅 사용
-  const { data: apiPolicy, isLoading } = useCancellationPolicyDefaultQuery();
+  const { data: apiPolicy, isLoading } = useCancellationPolicyResolveQuery();
   const createMutation = useCreateCancellationPolicyMutation();
   const updateMutation = useUpdateCancellationPolicyMutation();
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
-  // API 응답으로 상태 설정
   useEffect(() => {
     if (apiPolicy) {
       setPolicy(apiPolicy);
@@ -42,7 +40,6 @@ export const CancellationPolicySettings: React.FC = () => {
   const handleSave = async () => {
     try {
       if (policy.id) {
-        // 기존 정책 업데이트
         await updateMutation.mutateAsync({
           id: policy.id,
           data: {
@@ -55,9 +52,9 @@ export const CancellationPolicySettings: React.FC = () => {
           },
         });
       } else {
-        // 새 정책 생성
         await createMutation.mutateAsync({
           ...policy,
+          scopeLevel: 'PLATFORM',
           isDefault: true,
         });
       }

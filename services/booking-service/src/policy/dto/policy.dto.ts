@@ -1,12 +1,59 @@
-// Policy DTOs for cancellation, refund, and no-show policies
+// Policy DTOs for cancellation, refund, no-show, and operating policies
 import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsNumber, IsInt, IsArray, ValidateNested, IsEnum, Min, Max } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
+import { PolicyScope } from '@prisma/client';
+
+// =====================================================
+// Common: PolicyScope
+// =====================================================
+
+export class PolicyScopeDto {
+  @IsEnum(PolicyScope)
+  @IsOptional()
+  scopeLevel?: PolicyScope;
+
+  @IsInt()
+  @IsOptional()
+  companyId?: number;
+
+  @IsInt()
+  @IsOptional()
+  clubId?: number;
+}
+
+// =====================================================
+// Policy Resolve DTO (3단계 폴백 조회용)
+// =====================================================
+
+export class PolicyResolveDto {
+  @IsInt()
+  @IsOptional()
+  @Transform(({ value }) => value ? Number(value) : undefined)
+  companyId?: number;
+
+  @IsInt()
+  @IsOptional()
+  @Transform(({ value }) => value ? Number(value) : undefined)
+  clubId?: number;
+}
 
 // =====================================================
 // Cancellation Policy DTOs
 // =====================================================
 
 export class CreateCancellationPolicyDto {
+  @IsEnum(PolicyScope)
+  @IsOptional()
+  scopeLevel?: PolicyScope;
+
+  @IsInt()
+  @IsOptional()
+  companyId?: number;
+
+  @IsInt()
+  @IsOptional()
+  clubId?: number;
+
   @IsString()
   @IsNotEmpty()
   name: string;
@@ -35,10 +82,6 @@ export class CreateCancellationPolicyDto {
   @IsBoolean()
   @IsOptional()
   isDefault?: boolean;
-
-  @IsInt()
-  @IsOptional()
-  clubId?: number;
 }
 
 export class UpdateCancellationPolicyDto {
@@ -96,6 +139,18 @@ export class RefundTierDto {
 }
 
 export class CreateRefundPolicyDto {
+  @IsEnum(PolicyScope)
+  @IsOptional()
+  scopeLevel?: PolicyScope;
+
+  @IsInt()
+  @IsOptional()
+  companyId?: number;
+
+  @IsInt()
+  @IsOptional()
+  clubId?: number;
+
   @IsString()
   @IsNotEmpty()
   name: string;
@@ -139,10 +194,6 @@ export class CreateRefundPolicyDto {
   @IsBoolean()
   @IsOptional()
   isDefault?: boolean;
-
-  @IsInt()
-  @IsOptional()
-  clubId?: number;
 
   @IsArray()
   @IsOptional()
@@ -248,6 +299,18 @@ export class NoShowPenaltyDto {
 }
 
 export class CreateNoShowPolicyDto {
+  @IsEnum(PolicyScope)
+  @IsOptional()
+  scopeLevel?: PolicyScope;
+
+  @IsInt()
+  @IsOptional()
+  companyId?: number;
+
+  @IsInt()
+  @IsOptional()
+  clubId?: number;
+
   @IsString()
   @IsNotEmpty()
   name: string;
@@ -277,10 +340,6 @@ export class CreateNoShowPolicyDto {
   @IsBoolean()
   @IsOptional()
   isDefault?: boolean;
-
-  @IsInt()
-  @IsOptional()
-  clubId?: number;
 
   @IsArray()
   @IsOptional()
@@ -328,12 +387,158 @@ export class UpdateNoShowPolicyDto {
 }
 
 // =====================================================
+// Operating Policy DTOs
+// =====================================================
+
+export class CreateOperatingPolicyDto {
+  @IsEnum(PolicyScope)
+  @IsOptional()
+  scopeLevel?: PolicyScope;
+
+  @IsInt()
+  @IsOptional()
+  companyId?: number;
+
+  @IsInt()
+  @IsOptional()
+  clubId?: number;
+
+  @IsString()
+  @IsOptional()
+  openTime?: string;
+
+  @IsString()
+  @IsOptional()
+  closeTime?: string;
+
+  @IsString()
+  @IsOptional()
+  lastTeeTime?: string;
+
+  @IsInt()
+  @IsOptional()
+  @Min(1)
+  @Max(8)
+  defaultMaxPlayers?: number;
+
+  @IsInt()
+  @IsOptional()
+  @Min(60)
+  @Max(360)
+  defaultDuration?: number;
+
+  @IsInt()
+  @IsOptional()
+  @Min(0)
+  @Max(30)
+  defaultBreakDuration?: number;
+
+  @IsInt()
+  @IsOptional()
+  @Min(5)
+  @Max(30)
+  defaultSlotInterval?: number;
+
+  @IsString()
+  @IsOptional()
+  peakSeasonStart?: string;
+
+  @IsString()
+  @IsOptional()
+  peakSeasonEnd?: string;
+
+  @IsInt()
+  @IsOptional()
+  @Min(100)
+  @Max(300)
+  peakPriceRate?: number;
+
+  @IsInt()
+  @IsOptional()
+  @Min(100)
+  @Max(300)
+  weekendPriceRate?: number;
+}
+
+export class UpdateOperatingPolicyDto {
+  @IsString()
+  @IsOptional()
+  openTime?: string;
+
+  @IsString()
+  @IsOptional()
+  closeTime?: string;
+
+  @IsString()
+  @IsOptional()
+  lastTeeTime?: string;
+
+  @IsInt()
+  @IsOptional()
+  @Min(1)
+  @Max(8)
+  defaultMaxPlayers?: number;
+
+  @IsInt()
+  @IsOptional()
+  @Min(60)
+  @Max(360)
+  defaultDuration?: number;
+
+  @IsInt()
+  @IsOptional()
+  @Min(0)
+  @Max(30)
+  defaultBreakDuration?: number;
+
+  @IsInt()
+  @IsOptional()
+  @Min(5)
+  @Max(30)
+  defaultSlotInterval?: number;
+
+  @IsString()
+  @IsOptional()
+  peakSeasonStart?: string;
+
+  @IsString()
+  @IsOptional()
+  peakSeasonEnd?: string;
+
+  @IsInt()
+  @IsOptional()
+  @Min(100)
+  @Max(300)
+  peakPriceRate?: number;
+
+  @IsInt()
+  @IsOptional()
+  @Min(100)
+  @Max(300)
+  weekendPriceRate?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
+}
+
+// =====================================================
 // Filter DTOs
 // =====================================================
 
 export class PolicyFilterDto {
+  @IsEnum(PolicyScope)
+  @IsOptional()
+  scopeLevel?: PolicyScope;
+
   @IsInt()
   @IsOptional()
+  @Transform(({ value }) => value ? Number(value) : undefined)
+  companyId?: number;
+
+  @IsInt()
+  @IsOptional()
+  @Transform(({ value }) => value ? Number(value) : undefined)
   clubId?: number;
 
   @IsBoolean()

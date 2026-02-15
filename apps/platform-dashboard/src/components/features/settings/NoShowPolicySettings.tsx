@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
-  useNoShowPolicyDefaultQuery,
+  useNoShowPolicyResolveQuery,
   useCreateNoShowPolicyMutation,
   useUpdateNoShowPolicyMutation,
 } from '@/hooks/queries';
@@ -28,83 +28,45 @@ const penaltyTypeLabels: Record<NoShowPenaltyType, { label: string; color: strin
   FEE: { label: '위약금', color: 'bg-purple-500/20 text-purple-700', icon: '💸' },
 };
 
-// API 응답을 UI 형식으로 변환하는 함수
-const convertApiPolicyToUI = (apiPolicy: any): NoShowPolicy => {
-  return {
-    ...apiPolicy,
-    penalties: apiPolicy.penalties?.map((penalty: any) => ({
-      id: penalty.id,
-      type: penalty.penaltyType,
-      triggerCount: penalty.minCount,
-      withinDays: 30, // 기본값
-      penaltyDays: penalty.restrictionDays,
-      penaltyAmount: penalty.feeAmount,
-      description: penalty.label || penalty.message || '',
-      isActive: true,
-    })) || DEFAULT_NOSHOW_PENALTIES,
-  };
-};
-
-// UI 형식을 API 형식으로 변환하는 함수
-const convertUIPolicyToApi = (policy: NoShowPolicy) => {
-  const apiPenalties = policy.penalties.filter(p => p.isActive).map((penalty) => ({
-    minCount: penalty.triggerCount,
-    maxCount: null,
-    penaltyType: penalty.type,
-    restrictionDays: penalty.penaltyDays,
-    feeAmount: penalty.penaltyAmount,
-    feeRate: null,
-    label: penalty.description,
-    message: penalty.description,
-  }));
-
-  return {
-    name: policy.name,
-    code: policy.code,
-    description: policy.description,
-    allowRefundOnNoShow: policy.allowRefundOnNoShow,
-    noShowGraceMinutes: policy.noShowGraceMinutes,
-    countResetDays: policy.countResetDays,
-    isDefault: policy.isDefault ?? true,
-    isActive: policy.isActive,
-    penalties: apiPenalties,
-  };
-};
-
 export const NoShowPolicySettings: React.FC = () => {
   const [policy, setPolicy] = useState<NoShowPolicy>(defaultPolicy);
   const [originalPolicy, setOriginalPolicy] = useState<NoShowPolicy>(defaultPolicy);
   const [isEditing, setIsEditing] = useState(false);
 
-  // React Query 훅 사용
-  const { data: apiPolicy, isLoading } = useNoShowPolicyDefaultQuery();
+  const { data: apiPolicy, isLoading } = useNoShowPolicyResolveQuery();
   const createMutation = useCreateNoShowPolicyMutation();
   const updateMutation = useUpdateNoShowPolicyMutation();
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
-  // API 응답을 UI 형식으로 변환하여 상태 설정
   useEffect(() => {
     if (apiPolicy) {
-      const convertedPolicy = convertApiPolicyToUI(apiPolicy);
-      setPolicy(convertedPolicy);
-      setOriginalPolicy(convertedPolicy);
+      setPolicy(apiPolicy);
+      setOriginalPolicy(apiPolicy);
     }
   }, [apiPolicy]);
 
   const handleSave = async () => {
     try {
-      const apiData = convertUIPolicyToApi(policy);
-
       if (policy.id) {
-        // 기존 정책 업데이트
         await updateMutation.mutateAsync({
           id: policy.id,
-          data: apiData as any,
+          data: {
+            name: policy.name,
+            description: policy.description,
+            allowRefundOnNoShow: policy.allowRefundOnNoShow,
+            noShowGraceMinutes: policy.noShowGraceMinutes,
+            penalties: policy.penalties,
+            countResetDays: policy.countResetDays,
+            isActive: policy.isActive,
+          },
         });
       } else {
-        // 새 정책 생성
-        await createMutation.mutateAsync(apiData as any);
+        await createMutation.mutateAsync({
+          ...policy,
+          scopeLevel: 'PLATFORM',
+          isDefault: true,
+        });
       }
       setIsEditing(false);
     } catch (error) {
@@ -124,20 +86,12 @@ export const NoShowPolicySettings: React.FC = () => {
     setPolicy({ ...policy, penalties: newPenalties });
   };
 
-  const togglePenaltyActive = (index: number) => {
-    if (!isEditing) return;
-    const newPenalties = [...policy.penalties];
-    newPenalties[index] = { ...newPenalties[index], isActive: !newPenalties[index].isActive };
-    setPolicy({ ...policy, penalties: newPenalties });
-  };
-
   const addPenalty = () => {
     const newPenalty: NoShowPenalty = {
-      type: 'WARNING',
-      triggerCount: 1,
-      withinDays: 30,
-      description: '새 페널티',
-      isActive: false,
+      minCount: 1,
+      penaltyType: 'WARNING',
+      label: '새 페널티',
+      message: '',
     };
     setPolicy({ ...policy, penalties: [...policy.penalties, newPenalty] });
   };
@@ -314,22 +268,16 @@ export const NoShowPolicySettings: React.FC = () => {
             {policy.penalties.map((penalty, index) => (
               <div
                 key={index}
-                className={`
-                  p-4 rounded-lg border transition-all
-                  ${penalty.isActive
-                    ? 'bg-white/10 border-white/15 shadow-sm'
-                    : 'bg-white/5 border-white/10 opacity-60'
-                  }
-                `}
+                className="p-4 rounded-lg border transition-all bg-white/10 border-white/15 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3 flex-1">
                     {/* 페널티 아이콘 및 유형 */}
                     <div className={`
                       w-10 h-10 rounded-lg flex items-center justify-center text-lg
-                      ${penaltyTypeLabels[penalty.type].color}
+                      ${penaltyTypeLabels[penalty.penaltyType].color}
                     `}>
-                      {penaltyTypeLabels[penalty.type].icon}
+                      {penaltyTypeLabels[penalty.penaltyType].icon}
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -337,9 +285,9 @@ export const NoShowPolicySettings: React.FC = () => {
                         <div className="space-y-3">
                           {/* 페널티 유형 선택 */}
                           <select
-                            value={penalty.type}
+                            value={penalty.penaltyType}
                             onChange={(e) =>
-                              updatePenalty(index, 'type', e.target.value as NoShowPenaltyType)
+                              updatePenalty(index, 'penaltyType', e.target.value as NoShowPenaltyType)
                             }
                             className="px-3 py-1.5 text-sm border border-white/15 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                           >
@@ -351,52 +299,54 @@ export const NoShowPolicySettings: React.FC = () => {
 
                           {/* 발동 조건 */}
                           <div className="flex items-center gap-2 text-sm">
+                            <span className="text-white/60">노쇼</span>
                             <input
                               type="number"
                               min={1}
-                              value={penalty.withinDays}
+                              value={penalty.minCount}
                               onChange={(e) =>
-                                updatePenalty(index, 'withinDays', Number(e.target.value))
-                              }
-                              className="w-16 px-2 py-1 text-center border border-white/15 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                            />
-                            <span className="text-white/60">일 내</span>
-                            <input
-                              type="number"
-                              min={1}
-                              value={penalty.triggerCount}
-                              onChange={(e) =>
-                                updatePenalty(index, 'triggerCount', Number(e.target.value))
+                                updatePenalty(index, 'minCount', Number(e.target.value))
                               }
                               className="w-12 px-2 py-1 text-center border border-white/15 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
                             />
-                            <span className="text-white/60">회 노쇼 시</span>
+                            <span className="text-white/60">~</span>
+                            <input
+                              type="number"
+                              min={1}
+                              value={penalty.maxCount ?? ''}
+                              onChange={(e) =>
+                                updatePenalty(index, 'maxCount', e.target.value ? Number(e.target.value) : null)
+                              }
+                              placeholder="무제한"
+                              className="w-16 px-2 py-1 text-center border border-white/15 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            />
+                            <span className="text-white/60">회</span>
                           </div>
 
                           {/* 페널티 기간/금액 */}
-                          {penalty.type === 'RESTRICTION' && (
+                          {penalty.penaltyType === 'RESTRICTION' && (
                             <div className="flex items-center gap-2 text-sm">
                               <input
                                 type="number"
                                 min={1}
-                                value={penalty.penaltyDays || 7}
+                                value={penalty.restrictionDays || 7}
                                 onChange={(e) =>
-                                  updatePenalty(index, 'penaltyDays', Number(e.target.value))
+                                  updatePenalty(index, 'restrictionDays', Number(e.target.value))
                                 }
                                 className="w-16 px-2 py-1 text-center border border-white/15 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
                               />
                               <span className="text-white/60">일간 예약 제한</span>
                             </div>
                           )}
-                          {penalty.type === 'FEE' && (
+                          {penalty.penaltyType === 'FEE' && (
                             <div className="flex items-center gap-2 text-sm">
                               <input
                                 type="number"
                                 min={0}
                                 step={1000}
-                                value={penalty.penaltyAmount || 10000}
+                                value={penalty.feeAmount || 10000}
                                 onChange={(e) =>
-                                  updatePenalty(index, 'penaltyAmount', Number(e.target.value))
+                                  updatePenalty(index, 'feeAmount', Number(e.target.value))
                                 }
                                 className="w-24 px-2 py-1 text-right border border-white/15 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
                               />
@@ -404,12 +354,19 @@ export const NoShowPolicySettings: React.FC = () => {
                             </div>
                           )}
 
-                          {/* 설명 */}
+                          {/* 라벨 / 메시지 */}
                           <input
                             type="text"
-                            value={penalty.description}
-                            onChange={(e) => updatePenalty(index, 'description', e.target.value)}
-                            placeholder="페널티 설명"
+                            value={penalty.label || ''}
+                            onChange={(e) => updatePenalty(index, 'label', e.target.value)}
+                            placeholder="라벨"
+                            className="w-full px-3 py-1.5 text-sm border border-white/15 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          />
+                          <input
+                            type="text"
+                            value={penalty.message || ''}
+                            onChange={(e) => updatePenalty(index, 'message', e.target.value)}
+                            placeholder="안내 메시지"
                             className="w-full px-3 py-1.5 text-sm border border-white/15 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                           />
                         </div>
@@ -418,23 +375,28 @@ export const NoShowPolicySettings: React.FC = () => {
                           <div className="flex items-center gap-2">
                             <span className={`
                               px-2 py-0.5 text-xs font-medium rounded
-                              ${penaltyTypeLabels[penalty.type].color}
+                              ${penaltyTypeLabels[penalty.penaltyType].color}
                             `}>
-                              {penaltyTypeLabels[penalty.type].label}
+                              {penaltyTypeLabels[penalty.penaltyType].label}
                             </span>
                             <span className="text-sm text-white/50">
-                              {penalty.withinDays}일 내 {penalty.triggerCount}회 노쇼 시
+                              {penalty.maxCount
+                                ? `${penalty.minCount}~${penalty.maxCount}회 노쇼 시`
+                                : `${penalty.minCount}회 이상 노쇼 시`}
                             </span>
                           </div>
-                          <p className="text-sm text-white/70 mt-1">{penalty.description}</p>
-                          {penalty.type === 'RESTRICTION' && penalty.penaltyDays && (
+                          <p className="text-sm text-white/70 mt-1">{penalty.label}</p>
+                          {penalty.message && (
+                            <p className="text-xs text-white/50 mt-0.5">{penalty.message}</p>
+                          )}
+                          {penalty.penaltyType === 'RESTRICTION' && penalty.restrictionDays && (
                             <p className="text-xs text-white/50 mt-1">
-                              → {penalty.penaltyDays}일간 예약 제한
+                              → {penalty.restrictionDays}일간 예약 제한
                             </p>
                           )}
-                          {penalty.type === 'FEE' && penalty.penaltyAmount && (
+                          {penalty.penaltyType === 'FEE' && penalty.feeAmount && (
                             <p className="text-xs text-white/50 mt-1">
-                              → {penalty.penaltyAmount.toLocaleString()}원 위약금
+                              → {penalty.feeAmount.toLocaleString()}원 위약금
                             </p>
                           )}
                         </>
@@ -442,38 +404,18 @@ export const NoShowPolicySettings: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* 활성화 토글 및 삭제 */}
-                  <div className="flex items-center gap-2">
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={penalty.isActive}
-                        onChange={() => togglePenaltyActive(index)}
-                        disabled={!isEditing}
-                        className="sr-only peer"
-                      />
-                      <div className={`
-                        w-9 h-5 rounded-full peer
-                        peer-focus:ring-4 peer-focus:ring-green-100
-                        peer-checked:after:translate-x-full
-                        after:content-[''] after:absolute after:top-0.5 after:left-[2px]
-                        after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all
-                        ${penalty.isActive ? 'bg-green-500' : 'bg-white/30'}
-                        ${!isEditing ? 'opacity-60 cursor-not-allowed' : ''}
-                      `} />
-                    </label>
-                    {isEditing && (
-                      <button
-                        onClick={() => removePenalty(index)}
-                        className="p-1.5 text-red-500 hover:bg-red-500/10 rounded transition-colors"
-                        title="삭제"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
+                  {/* 삭제 */}
+                  {isEditing && (
+                    <button
+                      onClick={() => removePenalty(index)}
+                      className="p-1.5 text-red-500 hover:bg-red-500/10 rounded transition-colors"
+                      title="삭제"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

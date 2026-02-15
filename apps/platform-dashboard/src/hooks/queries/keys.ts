@@ -77,18 +77,21 @@ export const menuKeys = {
   tree: (companyType: string, scope: string) => [...menuKeys.all, 'tree', companyType, scope] as const,
 };
 
-// Policy Keys (company-scoped)
+// Policy Keys (platform-scoped)
 export const policyKeys = {
-  all: (companyId?: number | null) => ['policies', companyId] as const,
-  cancellation: (companyId?: number | null) => [...policyKeys.all(companyId), 'cancellation'] as const,
-  cancellationDefault: (companyId?: number | null, clubId?: number) => [...policyKeys.cancellation(companyId), 'default', clubId] as const,
-  cancellationDetail: (companyId?: number | null, id?: number) => [...policyKeys.cancellation(companyId), 'detail', id] as const,
-  refund: (companyId?: number | null) => [...policyKeys.all(companyId), 'refund'] as const,
-  refundDefault: (companyId?: number | null, clubId?: number) => [...policyKeys.refund(companyId), 'default', clubId] as const,
-  refundDetail: (companyId?: number | null, id?: number) => [...policyKeys.refund(companyId), 'detail', id] as const,
-  noShow: (companyId?: number | null) => [...policyKeys.all(companyId), 'noShow'] as const,
-  noShowDefault: (companyId?: number | null, clubId?: number) => [...policyKeys.noShow(companyId), 'default', clubId] as const,
-  noShowDetail: (companyId?: number | null, id?: number) => [...policyKeys.noShow(companyId), 'detail', id] as const,
+  all: () => ['policies', 'PLATFORM'] as const,
+  cancellation: () => [...policyKeys.all(), 'cancellation'] as const,
+  cancellationResolve: () => [...policyKeys.cancellation(), 'resolve'] as const,
+  cancellationDetail: (id?: number) => [...policyKeys.cancellation(), 'detail', id] as const,
+  refund: () => [...policyKeys.all(), 'refund'] as const,
+  refundResolve: () => [...policyKeys.refund(), 'resolve'] as const,
+  refundDetail: (id?: number) => [...policyKeys.refund(), 'detail', id] as const,
+  noShow: () => [...policyKeys.all(), 'noShow'] as const,
+  noShowResolve: () => [...policyKeys.noShow(), 'resolve'] as const,
+  noShowDetail: (id?: number) => [...policyKeys.noShow(), 'detail', id] as const,
+  operating: () => [...policyKeys.all(), 'operating'] as const,
+  operatingResolve: () => [...policyKeys.operating(), 'resolve'] as const,
+  operatingDetail: (id?: number) => [...policyKeys.operating(), 'detail', id] as const,
 };
 
 // Analytics Keys

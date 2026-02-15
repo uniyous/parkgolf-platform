@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
-  useRefundPolicyDefaultQuery,
+  useRefundPolicyResolveQuery,
   useCreateRefundPolicyMutation,
   useUpdateRefundPolicyMutation,
 } from '@/hooks/queries';
@@ -21,76 +21,45 @@ const defaultPolicy: RefundPolicy = {
   isActive: true,
 };
 
-// API 응답을 UI 형식으로 변환하는 함수
-const convertApiPolicyToUI = (apiPolicy: any): RefundPolicy => {
-  return {
-    ...apiPolicy,
-    tiers: apiPolicy.tiers?.map((tier: any) => ({
-      id: tier.id,
-      minHoursBeforeBooking: tier.minHoursBefore,
-      maxHoursBeforeBooking: tier.maxHoursBefore,
-      refundRate: tier.refundRate,
-      description: tier.label || '',
-    })) || DEFAULT_REFUND_TIERS,
-  };
-};
-
-// UI 형식을 API 형식으로 변환하는 함수
-const convertUIPolicyToApi = (policy: RefundPolicy) => {
-  const apiTiers = policy.tiers.map((tier) => ({
-    minHoursBefore: tier.minHoursBeforeBooking,
-    maxHoursBefore: tier.maxHoursBeforeBooking,
-    refundRate: tier.refundRate,
-    label: tier.description,
-  }));
-
-  return {
-    name: policy.name,
-    code: policy.code,
-    description: policy.description,
-    adminCancelRefundRate: policy.adminCancelRefundRate,
-    minRefundAmount: policy.minRefundAmount,
-    refundFee: policy.refundFee,
-    isDefault: policy.isDefault ?? true,
-    isActive: policy.isActive,
-    tiers: apiTiers,
-  };
-};
-
 export const RefundPolicySettings: React.FC = () => {
   const [policy, setPolicy] = useState<RefundPolicy>(defaultPolicy);
   const [originalPolicy, setOriginalPolicy] = useState<RefundPolicy>(defaultPolicy);
   const [isEditing, setIsEditing] = useState(false);
 
-  // React Query 훅 사용
-  const { data: apiPolicy, isLoading } = useRefundPolicyDefaultQuery();
+  const { data: apiPolicy, isLoading } = useRefundPolicyResolveQuery();
   const createMutation = useCreateRefundPolicyMutation();
   const updateMutation = useUpdateRefundPolicyMutation();
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
-  // API 응답을 UI 형식으로 변환하여 상태 설정
   useEffect(() => {
     if (apiPolicy) {
-      const convertedPolicy = convertApiPolicyToUI(apiPolicy);
-      setPolicy(convertedPolicy);
-      setOriginalPolicy(convertedPolicy);
+      setPolicy(apiPolicy);
+      setOriginalPolicy(apiPolicy);
     }
   }, [apiPolicy]);
 
   const handleSave = async () => {
     try {
-      const apiData = convertUIPolicyToApi(policy);
-
       if (policy.id) {
-        // 기존 정책 업데이트
         await updateMutation.mutateAsync({
           id: policy.id,
-          data: apiData as any,
+          data: {
+            name: policy.name,
+            description: policy.description,
+            tiers: policy.tiers,
+            adminCancelRefundRate: policy.adminCancelRefundRate,
+            minRefundAmount: policy.minRefundAmount,
+            refundFee: policy.refundFee,
+            isActive: policy.isActive,
+          },
         });
       } else {
-        // 새 정책 생성
-        await createMutation.mutateAsync(apiData as any);
+        await createMutation.mutateAsync({
+          ...policy,
+          scopeLevel: 'PLATFORM',
+          isDefault: true,
+        });
       }
       setIsEditing(false);
     } catch (error) {
@@ -110,8 +79,8 @@ export const RefundPolicySettings: React.FC = () => {
     setPolicy({ ...policy, tiers: newTiers });
   };
 
-  const hoursToDisplay = (hours: number | null): string => {
-    if (hours === null) return '무제한';
+  const hoursToDisplay = (hours: number | null | undefined): string => {
+    if (hours === null || hours === undefined) return '무제한';
     if (hours >= 24) {
       const days = Math.floor(hours / 24);
       return `${days}일`;
@@ -200,12 +169,12 @@ export const RefundPolicySettings: React.FC = () => {
                   <tr key={index} className="hover:bg-white/5">
                     <td className="px-4 py-3">
                       <span className="font-medium text-white">
-                        {tier.maxHoursBeforeBooking === null
-                          ? `${hoursToDisplay(tier.minHoursBeforeBooking)} 이상`
-                          : `${hoursToDisplay(tier.minHoursBeforeBooking)} ~ ${hoursToDisplay(tier.maxHoursBeforeBooking)}`}
+                        {tier.maxHoursBefore === null || tier.maxHoursBefore === undefined
+                          ? `${hoursToDisplay(tier.minHoursBefore)} 이상`
+                          : `${hoursToDisplay(tier.minHoursBefore)} ~ ${hoursToDisplay(tier.maxHoursBefore)}`}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-white/60">{tier.description}</td>
+                    <td className="px-4 py-3 text-white/60">{tier.label}</td>
                     <td className="px-4 py-3 text-center">
                       {isEditing ? (
                         <div className="flex items-center justify-center gap-1">
@@ -233,8 +202,8 @@ export const RefundPolicySettings: React.FC = () => {
                       <td className="px-4 py-3 text-center">
                         <input
                           type="text"
-                          value={tier.description}
-                          onChange={(e) => updateTier(index, 'description', e.target.value)}
+                          value={tier.label || ''}
+                          onChange={(e) => updateTier(index, 'label', e.target.value)}
                           className="w-full px-2 py-1 text-sm border border-white/15 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500"
                         />
                       </td>
@@ -272,9 +241,9 @@ export const RefundPolicySettings: React.FC = () => {
                     <div className="text-xs text-white/60 mt-2 text-center">
                       <div className="font-medium">{tier.refundRate}%</div>
                       <div className="text-white/40">
-                        {tier.maxHoursBeforeBooking === null
-                          ? `${hoursToDisplay(tier.minHoursBeforeBooking)}+`
-                          : hoursToDisplay(tier.minHoursBeforeBooking)}
+                        {tier.maxHoursBefore === null || tier.maxHoursBefore === undefined
+                          ? `${hoursToDisplay(tier.minHoursBefore)}+`
+                          : hoursToDisplay(tier.minHoursBefore)}
                       </div>
                     </div>
                   </div>
@@ -432,7 +401,7 @@ export const RefundPolicySettings: React.FC = () => {
 
               return (
                 <div key={index} className="p-4 bg-white/5 rounded-lg">
-                  <div className="text-sm text-white/50">{tier.description}</div>
+                  <div className="text-sm text-white/50">{tier.label}</div>
                   <div className="mt-2">
                     <span className={`text-lg font-bold ${tier.refundRate > 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {finalRefund.toLocaleString()}원

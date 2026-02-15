@@ -3,10 +3,35 @@ import { IsString, IsBoolean, IsOptional, IsNumber, IsArray, ValidateNested, IsE
 import { Type } from 'class-transformer';
 
 // =====================================================
+// Policy Scope
+// =====================================================
+
+export enum PolicyScope {
+  PLATFORM = 'PLATFORM',
+  COMPANY = 'COMPANY',
+  CLUB = 'CLUB',
+}
+
+// =====================================================
 // Cancellation Policy DTOs
 // =====================================================
 
 export class CreateCancellationPolicyDto {
+  @ApiPropertyOptional({ description: '정책 범위', enum: PolicyScope })
+  @IsOptional()
+  @IsEnum(PolicyScope)
+  scopeLevel?: PolicyScope;
+
+  @ApiPropertyOptional({ description: '가맹점 ID' })
+  @IsOptional()
+  @IsNumber()
+  companyId?: number;
+
+  @ApiPropertyOptional({ description: '골프장 ID' })
+  @IsOptional()
+  @IsNumber()
+  clubId?: number;
+
   @ApiProperty({ description: '정책명', example: '기본 취소 정책' })
   @IsString()
   name: string;
@@ -39,11 +64,6 @@ export class CreateCancellationPolicyDto {
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
-
-  @ApiPropertyOptional({ description: '특정 골프장 ID (null이면 전체 적용)' })
-  @IsOptional()
-  @IsNumber()
-  clubId?: number;
 }
 
 export class UpdateCancellationPolicyDto {
@@ -108,6 +128,21 @@ export class RefundTierDto {
 }
 
 export class CreateRefundPolicyDto {
+  @ApiPropertyOptional({ description: '정책 범위', enum: PolicyScope })
+  @IsOptional()
+  @IsEnum(PolicyScope)
+  scopeLevel?: PolicyScope;
+
+  @ApiPropertyOptional({ description: '가맹점 ID' })
+  @IsOptional()
+  @IsNumber()
+  companyId?: number;
+
+  @ApiPropertyOptional({ description: '골프장 ID' })
+  @IsOptional()
+  @IsNumber()
+  clubId?: number;
+
   @ApiProperty({ description: '정책명', example: '기본 환불 정책' })
   @IsString()
   name: string;
@@ -150,11 +185,6 @@ export class CreateRefundPolicyDto {
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
-
-  @ApiPropertyOptional({ description: '특정 골프장 ID' })
-  @IsOptional()
-  @IsNumber()
-  clubId?: number;
 
   @ApiPropertyOptional({ description: '환불율 티어 목록', type: [RefundTierDto] })
   @IsOptional()
@@ -270,6 +300,21 @@ export class NoShowPenaltyDto {
 }
 
 export class CreateNoShowPolicyDto {
+  @ApiPropertyOptional({ description: '정책 범위', enum: PolicyScope })
+  @IsOptional()
+  @IsEnum(PolicyScope)
+  scopeLevel?: PolicyScope;
+
+  @ApiPropertyOptional({ description: '가맹점 ID' })
+  @IsOptional()
+  @IsNumber()
+  companyId?: number;
+
+  @ApiPropertyOptional({ description: '골프장 ID' })
+  @IsOptional()
+  @IsNumber()
+  clubId?: number;
+
   @ApiProperty({ description: '정책명', example: '기본 노쇼 정책' })
   @IsString()
   name: string;
@@ -302,11 +347,6 @@ export class CreateNoShowPolicyDto {
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
-
-  @ApiPropertyOptional({ description: '특정 골프장 ID' })
-  @IsOptional()
-  @IsNumber()
-  clubId?: number;
 
   @ApiPropertyOptional({ description: '페널티 단계 목록', type: [NoShowPenaltyDto] })
   @IsOptional()
@@ -361,13 +401,163 @@ export class UpdateNoShowPolicyDto {
 }
 
 // =====================================================
+// Operating Policy DTOs
+// =====================================================
+
+export class CreateOperatingPolicyDto {
+  @ApiPropertyOptional({ description: '정책 범위', enum: PolicyScope })
+  @IsOptional()
+  @IsEnum(PolicyScope)
+  scopeLevel?: PolicyScope;
+
+  @ApiPropertyOptional({ description: '가맹점 ID' })
+  @IsOptional()
+  @IsNumber()
+  companyId?: number;
+
+  @ApiPropertyOptional({ description: '골프장 ID' })
+  @IsOptional()
+  @IsNumber()
+  clubId?: number;
+
+  @ApiPropertyOptional({ description: '오픈 시간', example: '06:00' })
+  @IsOptional()
+  @IsString()
+  openTime?: string;
+
+  @ApiPropertyOptional({ description: '마감 시간', example: '18:00' })
+  @IsOptional()
+  @IsString()
+  closeTime?: string;
+
+  @ApiPropertyOptional({ description: '마지막 티타임', example: '16:00' })
+  @IsOptional()
+  @IsString()
+  lastTeeTime?: string;
+
+  @ApiPropertyOptional({ description: '기본 최대 플레이어', default: 4 })
+  @IsOptional()
+  @IsNumber()
+  defaultMaxPlayers?: number;
+
+  @ApiPropertyOptional({ description: '기본 라운드 시간 (분)', default: 180 })
+  @IsOptional()
+  @IsNumber()
+  defaultDuration?: number;
+
+  @ApiPropertyOptional({ description: '기본 휴식 시간 (분)', default: 10 })
+  @IsOptional()
+  @IsNumber()
+  defaultBreakDuration?: number;
+
+  @ApiPropertyOptional({ description: '기본 슬롯 간격 (분)', default: 10 })
+  @IsOptional()
+  @IsNumber()
+  defaultSlotInterval?: number;
+
+  @ApiPropertyOptional({ description: '성수기 시작 (MM-DD)', example: '04-01' })
+  @IsOptional()
+  @IsString()
+  peakSeasonStart?: string;
+
+  @ApiPropertyOptional({ description: '성수기 종료 (MM-DD)', example: '10-31' })
+  @IsOptional()
+  @IsString()
+  peakSeasonEnd?: string;
+
+  @ApiPropertyOptional({ description: '성수기 가격 배율 (%)', default: 100 })
+  @IsOptional()
+  @IsNumber()
+  peakPriceRate?: number;
+
+  @ApiPropertyOptional({ description: '주말 가격 배율 (%)', default: 100 })
+  @IsOptional()
+  @IsNumber()
+  weekendPriceRate?: number;
+}
+
+export class UpdateOperatingPolicyDto {
+  @ApiPropertyOptional({ description: '오픈 시간' })
+  @IsOptional()
+  @IsString()
+  openTime?: string;
+
+  @ApiPropertyOptional({ description: '마감 시간' })
+  @IsOptional()
+  @IsString()
+  closeTime?: string;
+
+  @ApiPropertyOptional({ description: '마지막 티타임' })
+  @IsOptional()
+  @IsString()
+  lastTeeTime?: string;
+
+  @ApiPropertyOptional({ description: '기본 최대 플레이어' })
+  @IsOptional()
+  @IsNumber()
+  defaultMaxPlayers?: number;
+
+  @ApiPropertyOptional({ description: '기본 라운드 시간 (분)' })
+  @IsOptional()
+  @IsNumber()
+  defaultDuration?: number;
+
+  @ApiPropertyOptional({ description: '기본 휴식 시간 (분)' })
+  @IsOptional()
+  @IsNumber()
+  defaultBreakDuration?: number;
+
+  @ApiPropertyOptional({ description: '기본 슬롯 간격 (분)' })
+  @IsOptional()
+  @IsNumber()
+  defaultSlotInterval?: number;
+
+  @ApiPropertyOptional({ description: '성수기 시작 (MM-DD)' })
+  @IsOptional()
+  @IsString()
+  peakSeasonStart?: string;
+
+  @ApiPropertyOptional({ description: '성수기 종료 (MM-DD)' })
+  @IsOptional()
+  @IsString()
+  peakSeasonEnd?: string;
+
+  @ApiPropertyOptional({ description: '성수기 가격 배율 (%)' })
+  @IsOptional()
+  @IsNumber()
+  peakPriceRate?: number;
+
+  @ApiPropertyOptional({ description: '주말 가격 배율 (%)' })
+  @IsOptional()
+  @IsNumber()
+  weekendPriceRate?: number;
+
+  @ApiPropertyOptional({ description: '활성화 여부' })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+// =====================================================
 // Filter DTOs
 // =====================================================
 
 export class PolicyFilterDto {
+  @ApiPropertyOptional({ description: '정책 범위', enum: PolicyScope })
+  @IsOptional()
+  @IsEnum(PolicyScope)
+  scopeLevel?: PolicyScope;
+
+  @ApiPropertyOptional({ description: '가맹점 ID' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  companyId?: number;
+
   @ApiPropertyOptional({ description: '골프장 ID' })
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   clubId?: number;
 
   @ApiPropertyOptional({ description: '활성화 여부' })
@@ -379,4 +569,18 @@ export class PolicyFilterDto {
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
+}
+
+export class PolicyResolveQueryDto {
+  @ApiPropertyOptional({ description: '가맹점 ID' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  companyId?: number;
+
+  @ApiPropertyOptional({ description: '골프장 ID' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  clubId?: number;
 }

@@ -284,35 +284,50 @@ model IdempotencyKey {
 }
 
 // =====================================================
-// 정책 관리 모델 (취소/환불/노쇼)
+// 정책 계층 스코프 (Platform > Company > Club)
+// =====================================================
+
+enum PolicyScope {
+  PLATFORM  // 플랫폼 전역 기본값
+  COMPANY   // 가맹점 기본값
+  CLUB      // 골프장별 커스텀
+}
+
+// =====================================================
+// 정책 관리 모델 (취소/환불/노쇼/운영)
 // =====================================================
 
 // 취소 정책
 model CancellationPolicy {
-  id                      Int      @id @default(autoincrement())
+  id                      Int         @id @default(autoincrement())
 
-  name                    String   // 정책명 (예: "기본 취소 정책")
-  code                    String   @unique // 정책 코드 (예: "DEFAULT_CANCEL")
-  description             String?  // 정책 설명
+  // 계층 스코프
+  scopeLevel              PolicyScope @default(PLATFORM) @map("scope_level")
+  companyId               Int?        @map("company_id")
+  clubId                  Int?        @map("club_id")
+
+  // 정책 내용
+  name                    String      // 정책명 (예: "기본 취소 정책")
+  code                    String      // 정책 코드 (예: "DEFAULT_CANCEL")
+  description             String?     // 정책 설명
 
   // 취소 허용 설정
-  allowUserCancel         Boolean  @default(true) @map("allow_user_cancel") // 고객 취소 허용
-  userCancelDeadlineHours Int      @default(72) @map("user_cancel_deadline_hours") // 취소 마감 시간 (예약 시간 기준)
-  allowSameDayCancel      Boolean  @default(false) @map("allow_same_day_cancel") // 당일 취소 허용
+  allowUserCancel         Boolean     @default(true) @map("allow_user_cancel")
+  userCancelDeadlineHours Int         @default(72) @map("user_cancel_deadline_hours")
+  allowSameDayCancel      Boolean     @default(false) @map("allow_same_day_cancel")
 
   // 상태
-  isDefault               Boolean  @default(false) @map("is_default") // 기본 정책 여부
-  isActive                Boolean  @default(true) @map("is_active")
+  isDefault               Boolean     @default(false) @map("is_default")
+  isActive                Boolean     @default(true) @map("is_active")
 
-  // 적용 범위 (null이면 전체 적용)
-  clubId                  Int?     @map("club_id") // 특정 골프장에만 적용
+  createdAt               DateTime    @default(now()) @map("created_at")
+  updatedAt               DateTime    @updatedAt @map("updated_at")
 
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
-
-  @@index([isDefault])
-  @@index([isActive])
+  @@unique([scopeLevel, companyId, clubId])
+  @@index([scopeLevel])
+  @@index([companyId])
   @@index([clubId])
+  @@index([isActive])
   @@map("cancellation_policies")
 }
 
@@ -320,25 +335,28 @@ model CancellationPolicy {
 model RefundPolicy {
   id                     Int           @id @default(autoincrement())
 
+  // 계층 스코프
+  scopeLevel             PolicyScope   @default(PLATFORM) @map("scope_level")
+  companyId              Int?          @map("company_id")
+  clubId                 Int?          @map("club_id")
+
+  // 정책 내용
   name                   String        // 정책명 (예: "기본 환불 정책")
-  code                   String        @unique // 정책 코드
+  code                   String        // 정책 코드
   description            String?       // 정책 설명
 
   // 관리자/시스템 취소 시 환불율
-  adminCancelRefundRate  Int           @default(100) @map("admin_cancel_refund_rate") // 관리자 취소 환불율 (%)
-  systemCancelRefundRate Int           @default(100) @map("system_cancel_refund_rate") // 시스템 취소 환불율 (%)
+  adminCancelRefundRate  Int           @default(100) @map("admin_cancel_refund_rate")
+  systemCancelRefundRate Int           @default(100) @map("system_cancel_refund_rate")
 
   // 최소 환불 금액 및 수수료
-  minRefundAmount        Int           @default(0) @map("min_refund_amount") // 최소 환불 금액
-  refundFee              Int           @default(0) @map("refund_fee") // 환불 수수료 (고정)
-  refundFeeRate          Int           @default(0) @map("refund_fee_rate") // 환불 수수료율 (%)
+  minRefundAmount        Int           @default(0) @map("min_refund_amount")
+  refundFee              Int           @default(0) @map("refund_fee")
+  refundFeeRate          Int           @default(0) @map("refund_fee_rate")
 
   // 상태
   isDefault              Boolean       @default(false) @map("is_default")
   isActive               Boolean       @default(true) @map("is_active")
-
-  // 적용 범위
-  clubId                 Int?          @map("club_id")
 
   createdAt              DateTime      @default(now()) @map("created_at")
   updatedAt              DateTime      @updatedAt @map("updated_at")
@@ -346,9 +364,11 @@ model RefundPolicy {
   // Relations
   tiers                  RefundTier[]
 
-  @@index([isDefault])
-  @@index([isActive])
+  @@unique([scopeLevel, companyId, clubId])
+  @@index([scopeLevel])
+  @@index([companyId])
   @@index([clubId])
+  @@index([isActive])
   @@map("refund_policies")
 }
 
@@ -380,23 +400,26 @@ model RefundTier {
 model NoShowPolicy {
   id                    Int              @id @default(autoincrement())
 
+  // 계층 스코프
+  scopeLevel            PolicyScope      @default(PLATFORM) @map("scope_level")
+  companyId             Int?             @map("company_id")
+  clubId                Int?             @map("club_id")
+
+  // 정책 내용
   name                  String           // 정책명
-  code                  String           @unique // 정책 코드
+  code                  String           // 정책 코드
   description           String?          // 정책 설명
 
   // 노쇼 처리 설정
-  allowRefundOnNoShow   Boolean          @default(false) @map("allow_refund_on_noshow") // 노쇼 시 환불 허용
-  noShowGraceMinutes    Int              @default(30) @map("noshow_grace_minutes") // 노쇼 판정 유예 시간 (분)
+  allowRefundOnNoShow   Boolean          @default(false) @map("allow_refund_on_noshow")
+  noShowGraceMinutes    Int              @default(30) @map("noshow_grace_minutes")
 
   // 페널티 카운트 리셋
-  countResetDays        Int              @default(365) @map("count_reset_days") // 노쇼 카운트 리셋 기간 (일)
+  countResetDays        Int              @default(365) @map("count_reset_days")
 
   // 상태
   isDefault             Boolean          @default(false) @map("is_default")
   isActive              Boolean          @default(true) @map("is_active")
-
-  // 적용 범위
-  clubId                Int?             @map("club_id")
 
   createdAt             DateTime         @default(now()) @map("created_at")
   updatedAt             DateTime         @updatedAt @map("updated_at")
@@ -404,9 +427,11 @@ model NoShowPolicy {
   // Relations
   penalties             NoShowPenalty[]
 
-  @@index([isDefault])
-  @@index([isActive])
+  @@unique([scopeLevel, companyId, clubId])
+  @@index([scopeLevel])
+  @@index([companyId])
   @@index([clubId])
+  @@index([isActive])
   @@map("noshow_policies")
 }
 
@@ -531,4 +556,45 @@ model UserNoShowRecord {
   @@index([bookingId])
   @@index([noShowAt])
   @@map("user_noshow_records")
+}
+
+// =====================================================
+// 운영 정책 (운영시간/게임 기본값/시즌 설정)
+// =====================================================
+
+model OperatingPolicy {
+  id                   Int         @id @default(autoincrement())
+
+  // 계층 스코프
+  scopeLevel           PolicyScope @default(COMPANY) @map("scope_level")
+  companyId            Int?        @map("company_id")
+  clubId               Int?        @map("club_id")
+
+  // 운영시간
+  openTime             String      @default("06:00") @map("open_time")
+  closeTime            String      @default("18:00") @map("close_time")
+  lastTeeTime          String?     @map("last_tee_time")
+
+  // 게임 기본값
+  defaultMaxPlayers    Int         @default(4) @map("default_max_players")
+  defaultDuration      Int         @default(180) @map("default_duration")
+  defaultBreakDuration Int         @default(10) @map("default_break_duration")
+  defaultSlotInterval  Int         @default(10) @map("default_slot_interval")
+
+  // 시즌 설정
+  peakSeasonStart      String?     @map("peak_season_start")
+  peakSeasonEnd        String?     @map("peak_season_end")
+  peakPriceRate        Int         @default(100) @map("peak_price_rate")
+  weekendPriceRate     Int         @default(100) @map("weekend_price_rate")
+
+  // 상태
+  isActive             Boolean     @default(true) @map("is_active")
+  createdAt            DateTime    @default(now()) @map("created_at")
+  updatedAt            DateTime    @updatedAt @map("updated_at")
+
+  @@unique([scopeLevel, companyId, clubId])
+  @@index([scopeLevel])
+  @@index([companyId])
+  @@index([clubId])
+  @@map("operating_policies")
 }

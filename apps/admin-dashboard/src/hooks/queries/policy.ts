@@ -3,6 +3,7 @@ import {
   cancellationPolicyApi,
   refundPolicyApi,
   noShowPolicyApi,
+  operatingPolicyApi,
 } from '@/lib/api/policyApi';
 import { policyKeys } from './keys';
 import { showSuccessToast } from '@/lib/errors';
@@ -11,17 +12,27 @@ import type {
   CancellationPolicy,
   RefundPolicy,
   NoShowPolicy,
+  OperatingPolicy,
 } from '@/types/settings';
 
 // ============================================
 // Cancellation Policy Queries
 // ============================================
 
+export const useCancellationPolicyResolveQuery = (clubId?: number) => {
+  const companyId = useActiveCompanyId();
+  return useQuery({
+    queryKey: policyKeys.cancellationResolve(companyId, clubId),
+    queryFn: () => cancellationPolicyApi.resolve({ companyId: companyId ?? undefined, clubId }),
+    meta: { globalLoading: false },
+  });
+};
+
 export const useCancellationPolicyDefaultQuery = (clubId?: number) => {
   const companyId = useActiveCompanyId();
   return useQuery({
     queryKey: policyKeys.cancellationDefault(companyId, clubId),
-    queryFn: () => cancellationPolicyApi.getDefault(clubId),
+    queryFn: () => cancellationPolicyApi.resolve({ companyId: companyId ?? undefined, clubId }),
     meta: { globalLoading: false },
   });
 };
@@ -45,7 +56,7 @@ export const useCreateCancellationPolicyMutation = () => {
   const companyId = useActiveCompanyId();
 
   return useMutation({
-    mutationFn: (data: Omit<CancellationPolicy, 'id' | 'createdAt' | 'updatedAt'>) =>
+    mutationFn: (data: Partial<CancellationPolicy>) =>
       cancellationPolicyApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: policyKeys.cancellation(companyId) });
@@ -89,11 +100,20 @@ export const useDeleteCancellationPolicyMutation = () => {
 // Refund Policy Queries
 // ============================================
 
+export const useRefundPolicyResolveQuery = (clubId?: number) => {
+  const companyId = useActiveCompanyId();
+  return useQuery({
+    queryKey: policyKeys.refundResolve(companyId, clubId),
+    queryFn: () => refundPolicyApi.resolve({ companyId: companyId ?? undefined, clubId }),
+    meta: { globalLoading: false },
+  });
+};
+
 export const useRefundPolicyDefaultQuery = (clubId?: number) => {
   const companyId = useActiveCompanyId();
   return useQuery({
     queryKey: policyKeys.refundDefault(companyId, clubId),
-    queryFn: () => refundPolicyApi.getDefault(clubId),
+    queryFn: () => refundPolicyApi.resolve({ companyId: companyId ?? undefined, clubId }),
     meta: { globalLoading: false },
   });
 };
@@ -117,7 +137,7 @@ export const useCreateRefundPolicyMutation = () => {
   const companyId = useActiveCompanyId();
 
   return useMutation({
-    mutationFn: (data: Omit<RefundPolicy, 'id' | 'createdAt' | 'updatedAt'>) =>
+    mutationFn: (data: Partial<RefundPolicy>) =>
       refundPolicyApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: policyKeys.refund(companyId) });
@@ -161,11 +181,20 @@ export const useDeleteRefundPolicyMutation = () => {
 // NoShow Policy Queries
 // ============================================
 
+export const useNoShowPolicyResolveQuery = (clubId?: number) => {
+  const companyId = useActiveCompanyId();
+  return useQuery({
+    queryKey: policyKeys.noShowResolve(companyId, clubId),
+    queryFn: () => noShowPolicyApi.resolve({ companyId: companyId ?? undefined, clubId }),
+    meta: { globalLoading: false },
+  });
+};
+
 export const useNoShowPolicyDefaultQuery = (clubId?: number) => {
   const companyId = useActiveCompanyId();
   return useQuery({
     queryKey: policyKeys.noShowDefault(companyId, clubId),
-    queryFn: () => noShowPolicyApi.getDefault(clubId),
+    queryFn: () => noShowPolicyApi.resolve({ companyId: companyId ?? undefined, clubId }),
     meta: { globalLoading: false },
   });
 };
@@ -189,7 +218,7 @@ export const useCreateNoShowPolicyMutation = () => {
   const companyId = useActiveCompanyId();
 
   return useMutation({
-    mutationFn: (data: Omit<NoShowPolicy, 'id' | 'createdAt' | 'updatedAt'>) =>
+    mutationFn: (data: Partial<NoShowPolicy>) =>
       noShowPolicyApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: policyKeys.noShow(companyId) });
@@ -226,5 +255,77 @@ export const useDeleteNoShowPolicyMutation = () => {
       showSuccessToast('노쇼 정책이 삭제되었습니다.');
     },
     meta: { errorMessage: '노쇼 정책 삭제에 실패했습니다.' },
+  });
+};
+
+// ============================================
+// Operating Policy Queries
+// ============================================
+
+export const useOperatingPolicyResolveQuery = (clubId?: number) => {
+  const companyId = useActiveCompanyId();
+  return useQuery({
+    queryKey: policyKeys.operatingResolve(companyId, clubId),
+    queryFn: () => operatingPolicyApi.resolve({ companyId: companyId ?? undefined, clubId }),
+    meta: { globalLoading: false },
+  });
+};
+
+export const useOperatingPolicyQuery = (id: number) => {
+  const companyId = useActiveCompanyId();
+  return useQuery({
+    queryKey: policyKeys.operatingDetail(companyId, id),
+    queryFn: () => operatingPolicyApi.getById(id),
+    enabled: !!id,
+    meta: { globalLoading: false },
+  });
+};
+
+// ============================================
+// Operating Policy Mutations
+// ============================================
+
+export const useCreateOperatingPolicyMutation = () => {
+  const queryClient = useQueryClient();
+  const companyId = useActiveCompanyId();
+
+  return useMutation({
+    mutationFn: (data: Partial<OperatingPolicy>) =>
+      operatingPolicyApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: policyKeys.operating(companyId) });
+      showSuccessToast('운영 정책이 생성되었습니다.');
+    },
+    meta: { errorMessage: '운영 정책 생성에 실패했습니다.' },
+  });
+};
+
+export const useUpdateOperatingPolicyMutation = () => {
+  const queryClient = useQueryClient();
+  const companyId = useActiveCompanyId();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<OperatingPolicy> }) =>
+      operatingPolicyApi.update(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: policyKeys.operating(companyId) });
+      queryClient.invalidateQueries({ queryKey: policyKeys.operatingDetail(companyId, id) });
+      showSuccessToast('운영 정책이 저장되었습니다.');
+    },
+    meta: { errorMessage: '운영 정책 저장에 실패했습니다.' },
+  });
+};
+
+export const useDeleteOperatingPolicyMutation = () => {
+  const queryClient = useQueryClient();
+  const companyId = useActiveCompanyId();
+
+  return useMutation({
+    mutationFn: (id: number) => operatingPolicyApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: policyKeys.operating(companyId) });
+      showSuccessToast('운영 정책이 삭제되었습니다.');
+    },
+    meta: { errorMessage: '운영 정책 삭제에 실패했습니다.' },
   });
 };

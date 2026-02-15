@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { CancellationPolicySettings } from '@/components/features/settings/CancellationPolicySettings';
 import { RefundPolicySettings } from '@/components/features/settings/RefundPolicySettings';
 import { NoShowPolicySettings } from '@/components/features/settings/NoShowPolicySettings';
+import { OperatingPolicySettings } from '@/components/features/settings/OperatingPolicySettings';
 import { PageLayout } from '@/components/layout';
 
-// 카테고리 정의
-type CategoryId = 'booking-policy' | 'notification' | 'general';
+type CategoryId = 'booking-policy' | 'operating' | 'notification';
 
 interface Category {
   id: CategoryId;
@@ -24,22 +24,21 @@ const categories: Category[] = [
     isReady: true,
   },
   {
+    id: 'operating',
+    label: '운영 정책',
+    icon: '⚙️',
+    description: '운영 시간/라운드/가격 설정',
+    isReady: true,
+  },
+  {
     id: 'notification',
     label: '알림 설정',
     icon: '🔔',
     description: '알림 채널 및 템플릿',
     isReady: false,
   },
-  {
-    id: 'general',
-    label: '일반 설정',
-    icon: '⚙️',
-    description: '운영/휴일/기타 설정',
-    isReady: false,
-  },
 ];
 
-// 예약 정책 서브탭
 type BookingPolicyTab = 'cancellation' | 'refund' | 'noshow';
 
 interface SubTab {
@@ -63,7 +62,6 @@ export const SystemSettingsPage: React.FC = () => {
       case 'booking-policy':
         return (
           <div className="space-y-4">
-            {/* 서브 탭 */}
             <div className="flex gap-2 border-b border-white/15 pb-4">
               {bookingPolicyTabs.map((tab) => (
                 <button
@@ -84,7 +82,6 @@ export const SystemSettingsPage: React.FC = () => {
               ))}
             </div>
 
-            {/* 서브 탭 컨텐츠 */}
             <div>
               {activeBookingTab === 'cancellation' && <CancellationPolicySettings />}
               {activeBookingTab === 'refund' && <RefundPolicySettings />}
@@ -92,6 +89,9 @@ export const SystemSettingsPage: React.FC = () => {
             </div>
           </div>
         );
+
+      case 'operating':
+        return <OperatingPolicySettings />;
 
       case 'notification':
         return (
@@ -107,41 +107,6 @@ export const SystemSettingsPage: React.FC = () => {
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-500/20 text-emerald-300">
               준비 중
             </span>
-            <div className="mt-8 text-left bg-white/5 rounded-lg p-4 max-w-sm">
-              <p className="text-sm font-medium text-white/70 mb-2">예정 기능:</p>
-              <ul className="text-sm text-white/50 space-y-1">
-                <li>• 예약 알림 (확인/리마인더)</li>
-                <li>• 취소/환불 알림</li>
-                <li>• 마케팅 알림</li>
-                <li>• 채널 설정 (이메일/SMS/푸시/카카오)</li>
-              </ul>
-            </div>
-          </div>
-        );
-
-      case 'general':
-        return (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mb-4">
-              <span className="text-4xl">⚙️</span>
-            </div>
-            <h3 className="text-xl font-semibold text-white mb-2">일반 설정</h3>
-            <p className="text-white/50 mb-4 max-w-md">
-              운영 시간, 휴일 관리 등<br />
-              시스템 전반의 설정을 관리합니다.
-            </p>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-500/20 text-emerald-300">
-              준비 중
-            </span>
-            <div className="mt-8 text-left bg-white/5 rounded-lg p-4 max-w-sm">
-              <p className="text-sm font-medium text-white/70 mb-2">예정 기능:</p>
-              <ul className="text-sm text-white/50 space-y-1">
-                <li>• 운영 시간 설정</li>
-                <li>• 휴일/공휴일 관리</li>
-                <li>• 시스템 점검 설정</li>
-                <li>• 기타 환경 설정</li>
-              </ul>
-            </div>
           </div>
         );
 
@@ -162,13 +127,13 @@ export const SystemSettingsPage: React.FC = () => {
               <span>⚙️</span> 시스템 설정
             </h1>
             <p className="text-white/50 mt-1">
-              예약 정책, 알림, 시스템 설정을 관리합니다
+              예약 정책, 운영 설정, 알림을 관리합니다
             </p>
           </div>
         </div>
       </div>
 
-      {/* 메인 컨텐츠 - 좌측 카테고리 + 우측 컨텐츠 */}
+      {/* 메인 컨텐츠 */}
       <div className="flex gap-6">
         {/* 좌측 카테고리 사이드바 */}
         <div className="w-64 flex-shrink-0">
@@ -222,7 +187,6 @@ export const SystemSettingsPage: React.FC = () => {
         {/* 우측 컨텐츠 영역 */}
         <div className="flex-1 min-w-0">
           <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15">
-            {/* 컨텐츠 헤더 */}
             <div className="px-6 py-4 border-b border-white/15 bg-white/5 rounded-t-lg">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">{currentCategory?.icon}</span>
@@ -235,7 +199,6 @@ export const SystemSettingsPage: React.FC = () => {
               </div>
             </div>
 
-            {/* 컨텐츠 본문 */}
             <div className="p-6">{renderCategoryContent()}</div>
           </div>
         </div>

@@ -695,18 +695,25 @@ export type {
 
 // Settings types re-export
 export type {
+  PolicyScope,
+  PolicyInheritanceInfo,
   CancellationType,
-  CancellationDeadline,
   CancellationPolicy,
+  ResolvedCancellationPolicy,
   RefundRateTier,
   RefundPolicy,
+  ResolvedRefundPolicy,
   NoShowPenaltyType,
   NoShowPenalty,
   NoShowPolicy,
+  ResolvedNoShowPolicy,
+  OperatingPolicy,
+  ResolvedOperatingPolicy,
   SystemSettings,
   UpdateCancellationPolicyDto,
   UpdateRefundPolicyDto,
   UpdateNoShowPolicyDto,
+  UpdateOperatingPolicyDto,
   PolicyApiResponse,
   PolicyListResponse,
 } from './settings';

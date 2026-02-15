@@ -4,4 +4,4 @@ export * from './bffParser';
 export { iamApi, authApi } from './authApi';
 export { companyApi } from './companyApi';
 export { adminApi } from './adminApi';
-export { cancellationPolicyApi, refundPolicyApi, noShowPolicyApi, policyApi } from './policyApi';
+export { cancellationPolicyApi, refundPolicyApi, noShowPolicyApi, operatingPolicyApi, policyApi } from './policyApi';
