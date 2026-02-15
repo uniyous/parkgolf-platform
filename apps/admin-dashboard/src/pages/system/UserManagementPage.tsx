@@ -987,14 +987,8 @@ const PlatformUserView: React.FC = () => {
 };
 
 // ============================================
-// Main Component: 스코프에 따라 분기
+// Main Component: admin-dashboard는 가맹점 회원 관리 뷰 통일
 // ============================================
 export const UserManagementPage: React.FC = () => {
-  const primaryScope = useAuthStore((s) => s.currentAdmin?.primaryScope);
-
-  if (primaryScope === 'COMPANY') {
-    return <CompanyMemberView />;
-  }
-
-  return <PlatformUserView />;
+  return <CompanyMemberView />;
 };

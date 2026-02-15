@@ -2,19 +2,32 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api/adminApi';
 import { companyMemberKeys } from './keys';
 import { useAuthStore } from '@/stores/auth.store';
+import { useSupportStore } from '@/stores/support.store';
 import { showSuccessToast } from '@/lib/errors';
 import type { CompanyMemberFilters, CreateCompanyMemberDto, UpdateCompanyMemberDto } from '@/types';
+
+/**
+ * 유효 companyId 반환
+ * - 지원 모드: supportStore의 selectedCompany.id (X-Company-Id 헤더로 전송됨)
+ * - 일반 모드: authStore의 companyId (JWT에서 추출)
+ */
+function useEffectiveCompanyId(): number | undefined {
+  const supportCompanyId = useSupportStore((s) => s.isSupportMode ? s.selectedCompany?.id : undefined);
+  const authCompanyId = useAuthStore((s) => s.currentAdmin?.companyId);
+  return supportCompanyId ?? authCompanyId ?? undefined;
+}
 
 // ============================================
 // Queries
 // ============================================
 
 export const useCompanyMembersQuery = (filters?: CompanyMemberFilters, page = 1, limit = 20) => {
-  const companyId = useAuthStore((s) => s.currentAdmin?.companyId);
+  const companyId = useEffectiveCompanyId();
 
   return useQuery({
     queryKey: companyMemberKeys.list(companyId, { ...filters, page, limit }),
     queryFn: () => adminApi.getCompanyMembers(filters, page, limit),
+    enabled: !!companyId,
     staleTime: 1000 * 60 * 5,
     meta: { globalLoading: false },
   });
@@ -26,7 +39,7 @@ export const useCompanyMembersQuery = (filters?: CompanyMemberFilters, page = 1,
 
 export const useCreateCompanyMemberMutation = () => {
   const queryClient = useQueryClient();
-  const companyId = useAuthStore((s) => s.currentAdmin?.companyId);
+  const companyId = useEffectiveCompanyId();
 
   return useMutation({
     mutationFn: (data: CreateCompanyMemberDto) => adminApi.createCompanyMember(data),
@@ -40,7 +53,7 @@ export const useCreateCompanyMemberMutation = () => {
 
 export const useUpdateCompanyMemberMutation = () => {
   const queryClient = useQueryClient();
-  const companyId = useAuthStore((s) => s.currentAdmin?.companyId);
+  const companyId = useEffectiveCompanyId();
 
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateCompanyMemberDto }) =>
@@ -55,7 +68,7 @@ export const useUpdateCompanyMemberMutation = () => {
 
 export const useDeleteCompanyMemberMutation = () => {
   const queryClient = useQueryClient();
-  const companyId = useAuthStore((s) => s.currentAdmin?.companyId);
+  const companyId = useEffectiveCompanyId();
 
   return useMutation({
     mutationFn: (id: number) => adminApi.deleteCompanyMember(id),
