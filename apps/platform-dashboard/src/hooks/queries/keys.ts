@@ -50,6 +50,7 @@ export const clubKeys = {
   list: (filters?: Record<string, unknown>) => [...clubKeys.lists(), filters] as const,
   details: () => [...clubKeys.all, 'detail'] as const,
   detail: (id: number) => [...clubKeys.details(), id] as const,
+  byCompany: (companyId: number) => [...clubKeys.all, 'byCompany', companyId] as const,
 };
 
 // Booking Keys
@@ -69,6 +70,7 @@ export const gameKeys = {
   list: (filters?: Record<string, unknown>) => [...gameKeys.lists(), filters] as const,
   details: () => [...gameKeys.all, 'detail'] as const,
   detail: (id: number) => [...gameKeys.details(), id] as const,
+  byCompany: (companyId: number) => [...gameKeys.all, 'byCompany', companyId] as const,
 };
 
 // Menu Keys

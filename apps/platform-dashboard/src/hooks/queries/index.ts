@@ -12,3 +12,6 @@ export * from './admin';
 
 // Policy Queries & Mutations
 export * from './policy';
+
+// Course Queries
+export * from './course';
