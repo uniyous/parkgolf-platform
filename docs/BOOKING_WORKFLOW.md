@@ -1,7 +1,7 @@
 # 예약 워크플로우 및 Saga 아키텍처
 
-> 버전: 3.0
-> 최종 수정: 2026-02-10
+> 버전: 3.1
+> 최종 수정: 2026-02-15
 > 이전 문서: BOOKING_SAGA_ARCHITECTURE.md, booking-workflow-design.md (통합됨)
 
 ## 목차
@@ -29,6 +29,7 @@
 | **booking-service** | 예약 생성, Saga 오케스트레이션, Outbox 처리 | booking_db |
 | **course-service** | 타임슬롯 관리, 슬롯 예약/해제 | course_db |
 | **payment-service** | 결제 준비/승인/취소 (토스페이먼츠) | payment_db |
+| **iam-service** | 인증/사용자/CompanyMember 관리 | iam_db |
 | **user-api** | BFF, 클라이언트 요청 처리 | - |
 | **notify-service** | 알림 발송 | notify_db |
 
@@ -66,6 +67,7 @@ flowchart TB
         C[booking-service]
         D[course-service]
         P[payment-service]
+        IAM[iam-service]
         E[notify-service]
     end
 
@@ -77,6 +79,7 @@ flowchart TB
         F[(booking_db)]
         G[(course_db)]
         H[(payment_db)]
+        I[(iam_db)]
     end
 
     subgraph "External"
@@ -93,11 +96,14 @@ flowchart TB
     P -->|booking.paymentConfirmed| NATS
     NATS -->|booking.paymentConfirmed| C
     C -->|booking.confirmed| NATS
+    C -->|iam.companyMembers.addByBooking| NATS
     NATS --> E
+    NATS -->|addByBooking| IAM
     P -->|결제 승인| TOSS
     C --- F
     D --- G
     P --- H
+    IAM --- I
 ```
 
 ### 2.2 Saga 컴포넌트 구조
@@ -260,6 +266,7 @@ sequenceDiagram
     participant NATS as NATS
     participant CS as course-service
     participant DB2 as course-db
+    participant IAM as iam-service
 
     Client->>API: POST /bookings (paymentMethod=onsite)
     API->>BS: booking.create (NATS)
@@ -281,6 +288,10 @@ sequenceDiagram
     Note over BS: Step 7: paymentMethod=onsite → 바로 CONFIRMED
     BS->>DB1: UPDATE booking SET status=CONFIRMED
     BS->>NATS: emit booking.confirmed
+
+    Note over BS: Step 8: CompanyMember 자동 등록 (fail-safe)
+    BS->>CS: club.findOne → companyId 조회
+    BS->>IAM: iam.companyMembers.addByBooking (upsert)
 ```
 
 ### 4.2 카드결제 시퀀스 (신규)
@@ -297,6 +308,7 @@ sequenceDiagram
     participant PS as payment-service
     participant DB3 as payment-db
     participant TOSS as 토스페이먼츠
+    participant IAM as iam-service
 
     Client->>API: POST /bookings (paymentMethod=card)
     API->>BS: booking.create (NATS)
@@ -345,6 +357,10 @@ sequenceDiagram
     Note over BS: Step 12: SLOT_RESERVED → CONFIRMED
     BS->>DB1: UPDATE booking SET status=CONFIRMED
     BS->>NATS: emit booking.confirmed
+
+    Note over BS: Step 13: CompanyMember 자동 등록 (fail-safe)
+    BS->>CS: club.findOne → companyId 조회
+    BS->>IAM: iam.companyMembers.addByBooking (upsert)
 
     Client->>Client: /booking-complete 이동
 ```
@@ -468,6 +484,9 @@ if (booking.paymentMethod === 'card') {
     data: { status: BookingStatus.CONFIRMED },
   });
   // emit booking.confirmed
+
+  // CompanyMember 자동 등록 (fail-safe)
+  await this.registerCompanyMember(booking.clubId, booking.userId);
 }
 ```
 
@@ -486,8 +505,62 @@ if (booking.status === BookingStatus.SLOT_RESERVED) {
     data: { status: BookingStatus.CONFIRMED },
   });
   // emit booking.confirmed → notify-service
+
+  // CompanyMember 자동 등록 (fail-safe)
+  await this.registerCompanyMember(booking.clubId, booking.userId);
 }
 ```
+
+### 4.4 CompanyMember 자동 등록
+
+예약이 **CONFIRMED** 상태로 전이될 때, 해당 골프장의 가맹점(Company)에 예약자를 회원으로 자동 등록합니다.
+
+#### 호출 지점 (3곳)
+
+| 위치 | 시나리오 | 상태 전이 |
+|------|---------|----------|
+| `SagaHandlerService.handleSlotReserved()` | 현장결제 예약 | PENDING → CONFIRMED |
+| `SagaHandlerService.handlePaymentConfirmed()` | 카드결제 예약 | SLOT_RESERVED → CONFIRMED |
+| `BookingService.confirmBooking()` | 관리자 수동 확정 | PENDING → CONFIRMED |
+
+#### 처리 흐름
+
+```
+예약 CONFIRMED → club.findOne(clubId) → companyId 조회
+              → iam.companyMembers.addByBooking({ companyId, userId }) → upsert
+```
+
+#### 코드
+
+```typescript
+// booking-service: SagaHandlerService / BookingService 공통 헬퍼
+private async registerCompanyMember(clubId: number | null, userId: number | null): Promise<void> {
+  if (!clubId || !userId || !this.courseService || !this.iamService) return;
+
+  try {
+    // 1. club.findOne으로 companyId 조회 (COURSE_SERVICE)
+    const clubResponse = await firstValueFrom(
+      this.courseService.send('club.findOne', { id: clubId }),
+    );
+    const companyId = clubResponse?.data?.companyId;
+    if (!companyId) return;
+
+    // 2. iam.companyMembers.addByBooking 호출 (IAM_SERVICE, upsert)
+    await firstValueFrom(
+      this.iamService.send('iam.companyMembers.addByBooking', { companyId, userId }),
+    );
+  } catch (error) {
+    // 실패해도 예약 확정 흐름에 영향 없음 (fail-safe)
+    this.logger.warn(`Failed to register CompanyMember`, error?.message);
+  }
+}
+```
+
+#### 설계 원칙
+
+- **실패 무해(fail-safe)**: try-catch로 감싸서 등록 실패가 예약 확정을 막지 않음
+- **비회원 예약 무시**: `userId`가 null이면 호출하지 않음 (guest 예약)
+- **멱등성**: iam-service의 `addByBooking`이 upsert이므로 중복 호출 안전
 
 ---
 
@@ -880,6 +953,7 @@ async releaseSlotForSaga(timeSlotId: number, playerCount: number) {
 [Outbox] Processing event 42 (slot.reserve) for bookingId=15
 [Saga] SLOT_RESERVE SUCCESS in 18ms - bookingId=15, emitting slot.reserved
 [SagaHandler] Booking 15: paymentMethod=onsite → CONFIRMED
+CompanyMember registered: companyId=3, userId=42
 
 # 카드결제 정상 흐름
 [REQ-456] ========== BOOKING CREATE START ==========
@@ -891,6 +965,7 @@ async releaseSlotForSaga(timeSlotId: number, playerCount: number) {
 [Payment] Confirm: orderId=ORD-1707123456789-a1b2c3d4, paymentKey=tgen_xxx
 [Payment] Outbox: emit booking.paymentConfirmed for bookingId=16
 [SagaHandler] Booking 16: SLOT_RESERVED → CONFIRMED (payment confirmed)
+CompanyMember registered: companyId=3, userId=42
 
 # 결제 타임아웃
 [SagaScheduler] Booking 17: SLOT_RESERVED for 10m+ → FAILED (payment timeout)
@@ -939,6 +1014,7 @@ textPayload:("[Outbox]")
 
 | 버전 | 날짜 | 변경 내용 |
 |------|------|----------|
+| 3.1 | 2026-02-15 | 예약 확정 시 CompanyMember 자동 등록 (iam-service 연동) 추가 |
 | 3.0 | 2026-02-10 | 토스페이먼츠 결제 연동, SLOT_RESERVED 상태 활성화, 결제 타임아웃 Compensation 추가 |
 | 2.0 | 2026-01-21 | BOOKING_SAGA_ARCHITECTURE.md, booking-workflow-design.md 통합 및 소스 코드 반영 |
 | 1.0 | 2026-01-12 | booking-workflow-design.md 초안 작성 |
