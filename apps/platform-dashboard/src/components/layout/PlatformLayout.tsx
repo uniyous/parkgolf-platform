@@ -12,10 +12,12 @@ import {
   Shield,
   UserCog,
   BarChart3,
-  Activity,
+  CalendarCheck,
+  MapPin,
   DollarSign,
   Settings,
-  Wrench,
+  ClipboardList,
+  Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
@@ -68,21 +70,59 @@ const PLATFORM_MENU: NavEntry[] = [
     path: '/dashboard',
     icon: LayoutDashboard,
   },
-  // 가맹점 (requires COMPANIES permission)
+  // 가맹점 관리 (requires COMPANIES permission)
   {
-    label: '가맹점',
+    label: '가맹점 관리',
     path: '/companies',
     icon: Building2,
     requiredPermissions: ['COMPANIES'],
   },
-  // 관리 group
+  // 현황 분석 group
   {
-    label: '관리',
-    icon: UserCog,
+    label: '현황 분석',
+    icon: BarChart3,
     items: [
       {
+        label: '예약 현황',
+        path: '/analytics/bookings',
+        icon: CalendarCheck,
+        requiredPermissions: ['ANALYTICS', 'VIEW'],
+      },
+      {
+        label: '골프장 현황',
+        path: '/analytics/clubs',
+        icon: MapPin,
+        requiredPermissions: ['ANALYTICS', 'VIEW'],
+      },
+      {
+        label: '매출 현황',
+        path: '/analytics/revenue',
+        icon: DollarSign,
+        requiredPermissions: ['ANALYTICS'],
+      },
+    ],
+  },
+  // 운영 관리 group
+  {
+    label: '운영 관리',
+    icon: Settings,
+    items: [
+      {
+        label: '정책 관리',
+        path: '/policies',
+        icon: ClipboardList,
+        requiredPermissions: ['ALL'],
+        allowedRoles: ['PLATFORM_ADMIN'],
+      },
+      {
+        label: '회원 관리',
+        path: '/members',
+        icon: Users,
+        requiredPermissions: ['USERS'],
+      },
+      {
         label: '관리자 관리',
-        path: '/admin-management',
+        path: '/admins',
         icon: UserCog,
         requiredPermissions: ['ADMINS'],
       },
@@ -94,57 +134,13 @@ const PLATFORM_MENU: NavEntry[] = [
         allowedRoles: ['PLATFORM_ADMIN'],
       },
       {
-        label: '회원 관리',
-        path: '/user-management',
-        icon: Users,
-        requiredPermissions: ['USERS'],
-      },
-    ],
-  },
-  // 현황 조회 group
-  {
-    label: '현황 조회',
-    icon: BarChart3,
-    items: [
-      {
-        label: '예약 현황',
-        path: '/analytics/bookings',
-        icon: BarChart3,
-        requiredPermissions: ['ANALYTICS', 'VIEW'],
-      },
-      {
-        label: '골프장 현황',
-        path: '/analytics/clubs',
-        icon: Activity,
-        requiredPermissions: ['ANALYTICS', 'VIEW'],
-      },
-      {
-        label: '매출 현황',
-        path: '/analytics/revenue',
-        icon: DollarSign,
-        requiredPermissions: ['ANALYTICS'],
-      },
-    ],
-  },
-  // 시스템 group
-  {
-    label: '시스템',
-    icon: Settings,
-    items: [
-      {
-        label: '시스템 설정',
-        path: '/system-settings',
-        icon: Settings,
+        label: '알림 설정',
+        path: '/notifications',
+        icon: Bell,
         requiredPermissions: ['ALL'],
         allowedRoles: ['PLATFORM_ADMIN'],
       },
     ],
-  },
-  // 가맹점 지원 (visible to all platform users)
-  {
-    label: '가맹점 지원',
-    path: '/support',
-    icon: Wrench,
   },
 ];
 
