@@ -42,10 +42,10 @@ graph LR
         APPS[cd-apps.yml]
     end
 
-    subgraph "GCP"
+    subgraph "GCP (parkgolf-uniyous)"
         subgraph "GKE Autopilot"
-            ING[Ingress<br/>34.160.211.91]
-            PODS[Service Pods]
+            ING[Ingress]
+            PODS[12 Service Pods]
             NATS[NATS]
             PG[PostgreSQL]
         end
@@ -117,31 +117,45 @@ GKE Autopilot 클러스터와 관련 인프라를 관리합니다.
 | 옵션 | 설명 | 값 |
 |------|------|-----|
 | environment | 대상 환경 | `dev`, `prod` |
-| action | 실행할 작업 | `network-apply`, `gke-setup`, `gke-destroy` |
+| action | 실행할 작업 | `status`, `network-apply`, `gke-setup`, `gke-update`, `gke-destroy`, `network-destroy` |
 
 **Action 설명:**
 
 | Action | 설명 | 생성/삭제 리소스 |
 |--------|------|-----------------|
-| `network-apply` | 네트워크 리소스 설정 | Static IP |
-| `gke-setup` | GKE 클러스터 생성 및 구성 | Cluster, NATS, PostgreSQL, Secrets |
-| `gke-destroy` | GKE 클러스터 및 리소스 삭제 | 전체 클러스터 + PVC 디스크 |
+| `status` | 인프라 상태 확인 | VPC, GKE, Pods, Services, Ingress 확인 |
+| `network-apply` | VPC 네트워크 설정 (Terraform) | VPC, Subnets, Firewall |
+| `gke-setup` | GKE 클러스터 생성 및 전체 구성 | Cluster, Namespace, Secrets, ConfigMap, PostgreSQL, NATS, PDB |
+| `gke-update` | Secret/ConfigMap 업데이트 | Secrets, ConfigMap 재적용 + 전체 Pod 재시작 |
+| `gke-destroy` | GKE 클러스터 삭제 | 전체 클러스터 + 고아 PVC 디스크 (**prod 차단**) |
+| `network-destroy` | VPC 삭제 (Terraform) | VPC 및 관련 리소스 (**prod 차단**) |
 
 **gke-setup 실행 단계:**
-1. GKE Autopilot 클러스터 생성
-2. 클러스터 인증 정보 획득
-3. Kubernetes Secrets 생성 (DB, JWT)
-4. NATS Deployment 생성
-5. PostgreSQL StatefulSet 생성 (PVC 포함)
-6. 데이터베이스 초기화 (5개 DB 생성)
+1. GCP API 활성화 (container, artifactregistry, compute)
+2. Artifact Registry 생성 (parkgolf)
+3. GKE Autopilot 클러스터 생성 (VPC 네트워크 연결)
+4. Namespace 생성 (parkgolf-{env})
+5. Kubernetes Secrets + ConfigMap 생성
+6. PostgreSQL StatefulSet 배포 (PVC 포함)
+7. 데이터베이스 초기화 (6개 DB: iam, course, booking, payment, chat, notify)
+8. NATS Deployment 배포 (JetStream 활성화)
+9. PodDisruptionBudget 설정 (postgres, nats)
 
 **gke-destroy 실행 단계:**
 1. GKE 클러스터 삭제
-2. 고아(orphaned) PVC 디스크 정리
+2. Static IP 삭제
+3. 고아(orphaned) PVC 디스크 정리
+
+> **주의:** `gke-destroy`와 `network-destroy`는 프로덕션 환경에서 실행이 차단됩니다.
 
 **사용 예:**
 ```
-# 네트워크 설정
+# 인프라 상태 확인
+GitHub Actions → CD Infrastructure
+- environment: dev
+- action: status
+
+# 네트워크 설정 (Terraform)
 GitHub Actions → CD Infrastructure
 - environment: dev
 - action: network-apply
@@ -150,6 +164,11 @@ GitHub Actions → CD Infrastructure
 GitHub Actions → CD Infrastructure
 - environment: dev
 - action: gke-setup
+
+# Secret/ConfigMap 업데이트 후 재배포
+GitHub Actions → CD Infrastructure
+- environment: dev
+- action: gke-update
 
 # GKE 클러스터 삭제
 GitHub Actions → CD Infrastructure
@@ -169,30 +188,44 @@ GitHub Actions → CD Infrastructure
 | environment | 대상 환경 | `dev`, `prod` |
 | services | 배포할 서비스 | `all` 또는 서비스명 (콤마 구분) |
 
-**대상 서비스:**
-- `iam-service` - 인증/인가
-- `course-service` - 골프장/코스 관리
-- `booking-service` - 예약 관리
-- `notify-service` - 알림 (이메일, 푸시)
-- `chat-service` - 채팅 백엔드
-- `admin-api` - 관리자 BFF
-- `user-api` - 사용자 BFF
-- `chat-gateway` - WebSocket 게이트웨이
+**대상 서비스 (12개):**
+
+| Service | Category | Purpose |
+|---------|----------|---------|
+| `admin-api` | BFF | 관리자/플랫폼 API Gateway |
+| `user-api` | BFF | 사용자 API Gateway |
+| `chat-gateway` | BFF | WebSocket Gateway (2 replicas) |
+| `iam-service` | Core | 인증/인가/회원관리 |
+| `course-service` | Core | 골프장/게임 관리 |
+| `booking-service` | Core | 예약/정책 관리 |
+| `payment-service` | Core | 결제 (Toss Payments) |
+| `chat-service` | Core | 채팅 백엔드 |
+| `notify-service` | Core | 알림 |
+| `agent-service` | AI/Ext | AI 예약 어시스턴트 |
+| `weather-service` | AI/Ext | 날씨 (기상청 API) |
+| `location-service` | AI/Ext | 위치 (카카오 로컬 API) |
 
 **실행 단계:**
-1. Docker 이미지 빌드
-2. Artifact Registry에 푸시
-3. GKE 클러스터 인증
-4. Kubernetes Deployment 생성/업데이트
-5. Kubernetes Service 생성/업데이트
-6. Ingress 업데이트 (BFF 서비스만)
+1. Docker 이미지 빌드 (multi-stage, `node:20-alpine`)
+2. Artifact Registry에 푸시 (태그: `{sha}`, `{env}-latest`)
+3. GKE 클러스터 인증 + Namespace 설정
+4. Kubernetes Deployment 생성/업데이트 (inline YAML)
+5. Kubernetes Service 생성/업데이트 (ClusterIP)
+6. Ingress 설정 (BFF + payment webhook)
 7. 롤아웃 상태 확인
 
 **리소스 스펙:**
 | 환경 | CPU Request | CPU Limit | Memory Request | Memory Limit |
 |------|-------------|-----------|----------------|--------------|
-| dev | 100m | 300m | 128Mi | 256Mi |
+| dev | 50m | 250m | 128Mi | 384Mi |
 | prod | 200m | 500m | 256Mi | 512Mi |
+
+**Health Check 설정:**
+| Probe | Path | Period |
+|-------|------|--------|
+| startupProbe | `/health` | 10s (failureThreshold: 30) |
+| readinessProbe | `/health/ready` | 10s |
+| livenessProbe | `/health/live` | 30s |
 
 **사용 예:**
 ```
@@ -221,19 +254,29 @@ GitHub Actions → CD Services
 
 **대상 앱:**
 - `admin-dashboard` - 관리자 대시보드
+- `platform-dashboard` - 플랫폼 관리자 대시보드
 - `user-app-web` - 사용자 웹앱
 
 **실행 단계:**
 1. npm ci → 의존성 설치
-2. 환경변수 설정 (API URL)
+2. 환경변수 설정 (API URL, TOSS_CLIENT_KEY 등)
 3. npm run build → 빌드
-4. Firebase Hosting에 배포
+4. Firebase Hosting에 배포 (Firebase CLI)
 
-**환경별 API URL:**
-| 환경 | API URL |
-|------|---------|
-| dev | `http://34.160.211.91` |
-| prod | `https://api.parkgolf.app` |
+**환경별 설정:**
+| 환경 | API URL | Firebase Site Suffix |
+|------|---------|---------------------|
+| dev | `https://dev-api.goparkmate.com` | `-dev` (e.g. `parkgolf-admin-dev`) |
+| prod | `https://api.goparkmate.com` | (없음, e.g. `parkgolf-admin`) |
+
+**Firebase Hosting 사이트:**
+| App | Dev Site | Prod Site |
+|-----|----------|-----------|
+| admin-dashboard | `parkgolf-admin-dev` | `parkgolf-admin` |
+| platform-dashboard | `parkgolf-platform-dev` | `parkgolf-platform` |
+| user-app-web | `parkgolf-user-dev` | `parkgolf-user` |
+
+> Firebase 프로젝트: `parkgolf-uniyous`
 
 **사용 예:**
 ```
@@ -246,6 +289,11 @@ GitHub Actions → CD Apps
 GitHub Actions → CD Apps
 - environment: dev
 - apps: admin-dashboard
+
+# 플랫폼 대시보드만 배포
+GitHub Actions → CD Apps
+- environment: dev
+- apps: platform-dashboard
 ```
 
 ---
@@ -274,12 +322,18 @@ GitHub 저장소 → Settings → Secrets and variables → Actions
 
 ### 필수 Secrets
 
-| Secret | 설명 | 예시 |
+| Secret | 설명 | 용도 |
 |--------|------|------|
-| `GCP_SA_KEY` | GCP 서비스 계정 JSON 키 | `{ "type": "service_account", ... }` |
-| `DB_PASSWORD` | PostgreSQL 비밀번호 | `MySecureP@ssw0rd!2024` |
-| `JWT_SECRET` | JWT 서명 키 (32자 이상) | `your-super-secret-jwt-key-min-32-chars` |
-| `JWT_REFRESH_SECRET` | JWT 리프레시 키 | `your-refresh-secret-key-min-32-chars` |
+| `GCP_SA_KEY` | GCP 서비스 계정 JSON 키 | GKE/Artifact Registry 접근 |
+| `DB_PASSWORD` | PostgreSQL 비밀번호 | 데이터베이스 연결 |
+| `JWT_SECRET` | JWT 서명 키 (32자 이상) | Access Token 서명 |
+| `JWT_REFRESH_SECRET` | JWT 리프레시 키 (32자 이상) | Refresh Token 서명 |
+| `TOSS_CLIENT_KEY` | Toss Payments 클라이언트 키 | 프론트엔드 결제위젯 |
+| `TOSS_SECRET_KEY` | Toss Payments 시크릿 키 | 결제 API 인증 |
+| `TOSS_SECURITY_KEY` | Toss Payments 보안 키 | 웹훅 검증 |
+| `KMA_API_KEY` | 기상청 API 인증 키 | weather-service |
+| `KAKAO_REST_API_KEY` | 카카오 로컬 API 키 | location-service |
+| `FIREBASE_TOKEN` | Firebase CLI 배포 토큰 | Firebase Hosting 배포 |
 
 ### Secret 생성 방법
 
@@ -386,7 +440,7 @@ gcloud projects add-iam-policy-binding PROJECT_ID \
 
 ```bash
 gcloud artifacts docker images list \
-  asia-northeast3-docker.pkg.dev/uniyous-319808/parkgolf
+  asia-northeast3-docker.pkg.dev/parkgolf-uniyous/parkgolf
 ```
 
 ### 3. "Pod failed to start" 오류
@@ -400,14 +454,14 @@ gcloud artifacts docker images list \
 **로그 확인:**
 ```bash
 # 클러스터 인증
-gcloud container clusters get-credentials parkgolf-cluster-dev \
-  --region asia-northeast3
+gcloud container clusters get-credentials parkgolf-dev-cluster \
+  --region asia-northeast3 --project parkgolf-uniyous
 
 # Pod 로그 확인
-kubectl logs -l app=<service-name> --tail=50
+kubectl logs -l app=<service-name> -n parkgolf-dev --tail=50
 
 # Pod 상세 정보
-kubectl describe pod -l app=<service-name>
+kubectl describe pod -l app=<service-name> -n parkgolf-dev
 ```
 
 ### 4. Ingress 접근 불가
@@ -417,16 +471,16 @@ kubectl describe pod -l app=<service-name>
 **해결:**
 ```bash
 # Ingress 상태 확인
-kubectl get ingress parkgolf-ingress
-kubectl describe ingress parkgolf-ingress
+kubectl get ingress parkgolf-ingress -n parkgolf-dev
+kubectl describe ingress parkgolf-ingress -n parkgolf-dev
 
 # Backend 서비스 확인
-kubectl get pods -l app=admin-api
-kubectl get pods -l app=user-api
+kubectl get pods -l app=admin-api -n parkgolf-dev
+kubectl get pods -l app=user-api -n parkgolf-dev
 
 # 서비스 엔드포인트 확인
-kubectl get endpoints admin-api
-kubectl get endpoints user-api
+kubectl get endpoints admin-api -n parkgolf-dev
+kubectl get endpoints user-api -n parkgolf-dev
 ```
 
 ### 5. Database 연결 실패
@@ -436,14 +490,14 @@ kubectl get endpoints user-api
 **해결:**
 ```bash
 # PostgreSQL Pod 상태 확인
-kubectl get pods -l app=postgresql
-kubectl logs postgresql-0
+kubectl get pods -l app=postgres -n parkgolf-dev
+kubectl logs postgres-0 -n parkgolf-dev
 
 # Secret 확인
-kubectl get secrets db-credentials -o yaml
+kubectl get secrets parkgolf-secrets -n parkgolf-dev -o yaml
 
 # 연결 테스트
-kubectl exec -it <app-pod> -- nc -zv postgresql 5432
+kubectl exec -it <app-pod> -n parkgolf-dev -- nc -zv postgres 5432
 ```
 
 ### 6. NATS 연결 실패
@@ -453,14 +507,14 @@ kubectl exec -it <app-pod> -- nc -zv postgresql 5432
 **해결:**
 ```bash
 # NATS Pod 상태 확인
-kubectl get pods -l app=nats
-kubectl logs -l app=nats
+kubectl get pods -l app=nats -n parkgolf-dev
+kubectl logs -l app=nats -n parkgolf-dev
 
 # NATS 서비스 확인
-kubectl get svc nats
+kubectl get svc nats -n parkgolf-dev
 
 # 연결 테스트
-kubectl exec -it <app-pod> -- nc -zv nats 4222
+kubectl exec -it <app-pod> -n parkgolf-dev -- nc -zv nats 4222
 ```
 
 ### 7. PVC 디스크 삭제 실패 (gke-destroy)
@@ -484,33 +538,36 @@ gcloud compute disks delete <disk-name> --zone=<zone> --quiet
 
 ```bash
 # 클러스터 인증
-gcloud container clusters get-credentials parkgolf-cluster-dev \
-  --region asia-northeast3
+gcloud container clusters get-credentials parkgolf-dev-cluster \
+  --region asia-northeast3 --project parkgolf-uniyous
+
+# 네임스페이스 설정
+kubectl config set-context --current --namespace=parkgolf-dev
 
 # 모든 리소스 확인
-kubectl get all
+kubectl get all -n parkgolf-dev
 
 # Pod 상태
-kubectl get pods
+kubectl get pods -n parkgolf-dev
 
 # 서비스 상태
-kubectl get svc
+kubectl get svc -n parkgolf-dev
 
 # Ingress 상태
-kubectl get ingress
+kubectl get ingress -n parkgolf-dev
 ```
 
 ### Pod 로그
 
 ```bash
 # 최근 로그
-kubectl logs -l app=<service-name> --tail=100
+kubectl logs -l app=<service-name> -n parkgolf-dev --tail=100
 
 # 실시간 로그
-kubectl logs -l app=<service-name> -f
+kubectl logs -l app=<service-name> -n parkgolf-dev -f
 
 # 이전 Pod 로그 (재시작된 경우)
-kubectl logs -l app=<service-name> --previous
+kubectl logs -l app=<service-name> -n parkgolf-dev --previous
 ```
 
 ### 디버깅
@@ -535,6 +592,6 @@ kubectl describe pod <pod-name>
 
 ---
 
-**Document Version**: 2.0.0
-**Last Updated**: 2026-01-28
-**Architecture**: GKE Autopilot (migrated from Cloud Run)
+**Document Version**: 3.0.0
+**Last Updated**: 2026-02-14
+**Architecture**: GKE Autopilot
