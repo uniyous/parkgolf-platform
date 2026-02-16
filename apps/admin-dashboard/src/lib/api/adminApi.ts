@@ -358,7 +358,7 @@ export const adminApi = {
     page = 1,
     limit = 20,
   ): Promise<{ members: CompanyMember[]; total: number; page: number; limit: number }> {
-    const params: Record<string, unknown> = { page, limit };
+    const params: Record<string, string | number | boolean | undefined> = { page, limit };
     if (filters.search) params.search = filters.search;
     if (filters.isActive !== undefined) params.isActive = filters.isActive;
     const response = await apiClient.get<unknown>('/admin/company-members', params);

@@ -210,6 +210,7 @@ export interface UpdateCompanyMemberDto {
 
 // --- Auth & User Types ---
 export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING';
+export type UserMembershipTier = 'REGULAR' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'VIP' | 'PREMIUM' | 'GUEST';
 
 export interface User {
   id: number;
@@ -224,6 +225,7 @@ export interface User {
   status?: UserStatus;
   lastLoginAt?: string | null;
   // 멤버십 관련 필드
+  membershipTier?: UserMembershipTier;
   membershipStartDate?: string | null;
   membershipEndDate?: string | null;
   totalBookings?: number;

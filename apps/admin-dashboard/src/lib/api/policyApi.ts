@@ -39,7 +39,7 @@ interface PolicyResolveQuery {
 
 export const cancellationPolicyApi = {
   async getAll(filter?: PolicyFilter): Promise<CancellationPolicy[]> {
-    const params: Record<string, unknown> = {};
+    const params: Record<string, string | number | boolean | undefined> = {};
     if (filter?.scopeLevel) params.scopeLevel = filter.scopeLevel;
     if (filter?.companyId) params.companyId = filter.companyId;
     if (filter?.clubId) params.clubId = filter.clubId;
@@ -54,7 +54,7 @@ export const cancellationPolicyApi = {
   },
 
   async resolve(query?: PolicyResolveQuery): Promise<ResolvedCancellationPolicy | null> {
-    const params: Record<string, unknown> = {};
+    const params: Record<string, string | number | boolean | undefined> = {};
     if (query?.companyId) params.companyId = query.companyId;
     if (query?.clubId) params.clubId = query.clubId;
     const response = await apiClient.get<unknown>('/admin/policies/cancellation/resolve', params);
@@ -86,7 +86,7 @@ export const cancellationPolicyApi = {
 
 export const refundPolicyApi = {
   async getAll(filter?: PolicyFilter): Promise<RefundPolicy[]> {
-    const params: Record<string, unknown> = {};
+    const params: Record<string, string | number | boolean | undefined> = {};
     if (filter?.scopeLevel) params.scopeLevel = filter.scopeLevel;
     if (filter?.companyId) params.companyId = filter.companyId;
     if (filter?.clubId) params.clubId = filter.clubId;
@@ -101,7 +101,7 @@ export const refundPolicyApi = {
   },
 
   async resolve(query?: PolicyResolveQuery): Promise<ResolvedRefundPolicy | null> {
-    const params: Record<string, unknown> = {};
+    const params: Record<string, string | number | boolean | undefined> = {};
     if (query?.companyId) params.companyId = query.companyId;
     if (query?.clubId) params.clubId = query.clubId;
     const response = await apiClient.get<unknown>('/admin/policies/refund/resolve', params);
@@ -148,7 +148,7 @@ export const refundPolicyApi = {
 
 export const noShowPolicyApi = {
   async getAll(filter?: PolicyFilter): Promise<NoShowPolicy[]> {
-    const params: Record<string, unknown> = {};
+    const params: Record<string, string | number | boolean | undefined> = {};
     if (filter?.scopeLevel) params.scopeLevel = filter.scopeLevel;
     if (filter?.companyId) params.companyId = filter.companyId;
     if (filter?.clubId) params.clubId = filter.clubId;
@@ -163,7 +163,7 @@ export const noShowPolicyApi = {
   },
 
   async resolve(query?: PolicyResolveQuery): Promise<ResolvedNoShowPolicy | null> {
-    const params: Record<string, unknown> = {};
+    const params: Record<string, string | number | boolean | undefined> = {};
     if (query?.companyId) params.companyId = query.companyId;
     if (query?.clubId) params.clubId = query.clubId;
     const response = await apiClient.get<unknown>('/admin/policies/noshow/resolve', params);
@@ -189,7 +189,7 @@ export const noShowPolicyApi = {
   },
 
   async getUserNoShowCount(userId: number, clubId?: number): Promise<{ userId: number; noShowCount: number }> {
-    const params: Record<string, unknown> = {};
+    const params: Record<string, string | number | boolean | undefined> = {};
     if (clubId !== undefined) params.clubId = clubId;
     const response = await apiClient.get<unknown>(`/admin/policies/noshow/user/${userId}/count`, params);
     const result = extractSingle<{ userId: number; noShowCount: number }>(response.data);
@@ -198,7 +198,7 @@ export const noShowPolicyApi = {
   },
 
   async getApplicablePenalty(userId: number, clubId?: number): Promise<unknown> {
-    const params: Record<string, unknown> = {};
+    const params: Record<string, string | number | boolean | undefined> = {};
     if (clubId !== undefined) params.clubId = clubId;
     const response = await apiClient.get<unknown>(`/admin/policies/noshow/user/${userId}/penalty`, params);
     return extractSingle<unknown>(response.data);
@@ -211,7 +211,7 @@ export const noShowPolicyApi = {
 
 export const operatingPolicyApi = {
   async getAll(filter?: PolicyFilter): Promise<OperatingPolicy[]> {
-    const params: Record<string, unknown> = {};
+    const params: Record<string, string | number | boolean | undefined> = {};
     if (filter?.scopeLevel) params.scopeLevel = filter.scopeLevel;
     if (filter?.companyId) params.companyId = filter.companyId;
     if (filter?.clubId) params.clubId = filter.clubId;
@@ -226,7 +226,7 @@ export const operatingPolicyApi = {
   },
 
   async resolve(query?: PolicyResolveQuery): Promise<ResolvedOperatingPolicy | null> {
-    const params: Record<string, unknown> = {};
+    const params: Record<string, string | number | boolean | undefined> = {};
     if (query?.companyId) params.companyId = query.companyId;
     if (query?.clubId) params.clubId = query.clubId;
     const response = await apiClient.get<unknown>('/admin/policies/operating/resolve', params);

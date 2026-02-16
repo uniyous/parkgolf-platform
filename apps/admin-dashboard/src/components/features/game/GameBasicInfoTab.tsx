@@ -77,7 +77,7 @@ export const GameBasicInfoTab: React.FC<GameBasicInfoTabProps> = ({ game, onUpda
   };
 
   const statusInfo = statusOptions.find((o) => o.value === game.status) || statusOptions[1];
-  const slotModeInfo = slotModeMap[game.slotMode] || { label: '-', className: 'bg-white/10 text-white/70' };
+  const slotModeInfo = (game.slotMode && slotModeMap[game.slotMode]) || { label: '-', className: 'bg-white/10 text-white/70' };
 
   return (
     <div className="p-6 space-y-6">

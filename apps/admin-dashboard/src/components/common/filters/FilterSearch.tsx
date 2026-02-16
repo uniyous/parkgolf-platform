@@ -31,7 +31,7 @@ const FilterSearch = React.forwardRef<HTMLInputElement, FilterSearchProps>(
     ref
   ) => {
     const [localValue, setLocalValue] = useState(value);
-    const timerRef = useRef<ReturnType<typeof setTimeout>>();
+    const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
     // 외부 value가 변경되면 로컬 값 동기화 (초기화 등)
     useEffect(() => {
