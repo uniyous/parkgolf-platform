@@ -17,6 +17,7 @@ import {
   ChangePasswordPage,
   EditProfilePage,
   NotificationSettingsPage,
+  DeleteAccountPage,
 } from './pages';
 import { NotificationsPage } from './pages/NotificationsPage';
 
@@ -54,6 +55,7 @@ function App() {
             <Route path="/chat" element={<Navigate to="/social?tab=chat" replace />} />
             <Route path="/chat/:roomId" element={<ChatRoomPage />} />
             <Route path="/change-password" element={<ChangePasswordPage />} />
+            <Route path="/delete-account" element={<DeleteAccountPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
           </Route>

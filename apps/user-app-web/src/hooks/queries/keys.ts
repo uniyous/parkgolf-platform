@@ -7,6 +7,7 @@ export const authKeys = {
   all: ['auth'] as const,
   profile: () => [...authKeys.all, 'profile'] as const,
   passwordExpiry: () => [...authKeys.all, 'passwordExpiry'] as const,
+  deletionStatus: () => [...authKeys.all, 'deletionStatus'] as const,
 };
 
 // Game Keys
