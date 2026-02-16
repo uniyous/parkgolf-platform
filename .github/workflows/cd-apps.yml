@@ -123,6 +123,7 @@ jobs:
           VITE_CHAT_SOCKET_URL: ${{ steps.env-vars.outputs.api_url }}
           VITE_ENV: ${{ needs.setup.outputs.environment }}
           VITE_TOSS_CLIENT_KEY: ${{ secrets.TOSS_CLIENT_KEY }}
+          VITE_KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
         run: npm run build
 
       - name: Upload build artifact

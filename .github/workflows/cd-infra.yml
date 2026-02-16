@@ -312,7 +312,7 @@ jobs:
             --from-literal=JWT_SECRET='${{ secrets.JWT_SECRET }}' \
             --from-literal=JWT_REFRESH_SECRET='${{ secrets.JWT_REFRESH_SECRET }}' \
             --from-literal=KMA_API_KEY='${{ secrets.KMA_API_KEY }}' \
-            --from-literal=KAKAO_REST_API_KEY='${{ secrets.KAKAO_REST_API_KEY }}' \
+            --from-literal=KAKAO_API_KEY='${{ secrets.KAKAO_API_KEY }}' \
             --from-literal=TOSS_SECRET_KEY='${{ secrets.TOSS_SECRET_KEY }}' \
             --from-literal=TOSS_SECURITY_KEY='${{ secrets.TOSS_SECURITY_KEY }}' \
             --dry-run=client -o yaml | kubectl apply -f -
@@ -668,7 +668,7 @@ jobs:
             --from-literal=JWT_SECRET='${{ secrets.JWT_SECRET }}' \
             --from-literal=JWT_REFRESH_SECRET='${{ secrets.JWT_REFRESH_SECRET }}' \
             --from-literal=KMA_API_KEY='${{ secrets.KMA_API_KEY }}' \
-            --from-literal=KAKAO_REST_API_KEY='${{ secrets.KAKAO_REST_API_KEY }}' \
+            --from-literal=KAKAO_API_KEY='${{ secrets.KAKAO_API_KEY }}' \
             --from-literal=TOSS_SECRET_KEY='${{ secrets.TOSS_SECRET_KEY }}' \
             --from-literal=TOSS_SECURITY_KEY='${{ secrets.TOSS_SECURITY_KEY }}' \
             --dry-run=client -o yaml | kubectl apply -f -

@@ -723,7 +723,7 @@ stringData:
   TOSS_SECRET_KEY: "${TOSS_SECRET_KEY}"
   TOSS_SECURITY_KEY: "${TOSS_SECURITY_KEY}"
   KMA_API_KEY: "${KMA_API_KEY}"
-  KAKAO_REST_API_KEY: "${KAKAO_REST_API_KEY}"
+  KAKAO_API_KEY: "${KAKAO_API_KEY}"
 ```
 
 ### Kubernetes ConfigMap
@@ -770,7 +770,7 @@ env:
 | `TOSS_SECRET_KEY` | Toss Payments 시크릿 키 |
 | `TOSS_SECURITY_KEY` | Toss Payments 보안 키 |
 | `KMA_API_KEY` | 기상청 API 인증 키 |
-| `KAKAO_REST_API_KEY` | 카카오 로컬 API 키 |
+| `KAKAO_API_KEY` | 카카오 로컬 API 키 |
 | `FIREBASE_TOKEN` | Firebase CLI 배포 토큰 |
 
 ---

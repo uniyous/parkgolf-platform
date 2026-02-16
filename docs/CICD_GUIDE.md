@@ -332,7 +332,7 @@ GitHub 저장소 → Settings → Secrets and variables → Actions
 | `TOSS_SECRET_KEY` | Toss Payments 시크릿 키 | 결제 API 인증 |
 | `TOSS_SECURITY_KEY` | Toss Payments 보안 키 | 웹훅 검증 |
 | `KMA_API_KEY` | 기상청 API 인증 키 | weather-service |
-| `KAKAO_REST_API_KEY` | 카카오 로컬 API 키 | location-service |
+| `KAKAO_API_KEY` | 카카오 로컬 API 키 | location-service |
 | `FIREBASE_TOKEN` | Firebase CLI 배포 토큰 | Firebase Hosting 배포 |
 
 ### Secret 생성 방법

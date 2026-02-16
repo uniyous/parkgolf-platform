@@ -250,11 +250,11 @@ jobs:
                         key: KMA_API_URL"
           elif [ "$SERVICE" = "location-service" ]; then
             EXTRA_ENV="
-                  - name: KAKAO_REST_API_KEY
+                  - name: KAKAO_API_KEY
                     valueFrom:
                       secretKeyRef:
                         name: parkgolf-secrets
-                        key: KAKAO_REST_API_KEY"
+                        key: KAKAO_API_KEY"
           elif [ "$SERVICE" = "payment-service" ]; then
             EXTRA_ENV="
                   - name: TOSS_SECRET_KEY

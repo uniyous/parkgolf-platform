@@ -111,10 +111,10 @@ export class KakaoApiService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    this.apiKey = this.configService.get<string>('KAKAO_REST_API_KEY') || '';
+    this.apiKey = this.configService.get<string>('KAKAO_API_KEY') || '';
 
     if (!this.apiKey) {
-      this.logger.warn('KAKAO_REST_API_KEY is not configured');
+      this.logger.warn('KAKAO_API_KEY is not configured');
     } else {
       this.logger.log('Kakao API service initialized');
     }
