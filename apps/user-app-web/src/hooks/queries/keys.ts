@@ -58,6 +58,13 @@ export const paymentKeys = {
   confirm: () => [...paymentKeys.all, 'confirm'] as const,
 };
 
+// Club Keys
+export const clubKeys = {
+  all: ['clubs'] as const,
+  details: () => [...clubKeys.all, 'detail'] as const,
+  detail: (id: number) => [...clubKeys.details(), id] as const,
+};
+
 // Notification Keys
 export const notificationKeys = {
   all: ['notifications'] as const,

@@ -26,4 +26,9 @@ export class CoursesService {
     this.logger.log(`Getting course by id: ${id}`);
     return this.natsClient.send('courses.findById', { courseId: id }, NATS_TIMEOUTS.QUICK);
   }
+
+  async getClubById(id: number) {
+    this.logger.log(`Getting club by id: ${id}`);
+    return this.natsClient.send('club.findOne', { id }, NATS_TIMEOUTS.QUICK);
+  }
 }

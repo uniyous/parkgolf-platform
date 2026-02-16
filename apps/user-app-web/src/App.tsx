@@ -18,6 +18,7 @@ import {
   EditProfilePage,
   NotificationSettingsPage,
   DeleteAccountPage,
+  ClubDetailPage,
 } from './pages';
 import { NotificationsPage } from './pages/NotificationsPage';
 
@@ -56,6 +57,7 @@ function App() {
             <Route path="/chat/:roomId" element={<ChatRoomPage />} />
             <Route path="/change-password" element={<ChangePasswordPage />} />
             <Route path="/delete-account" element={<DeleteAccountPage />} />
+            <Route path="/club/:id" element={<ClubDetailPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
           </Route>
