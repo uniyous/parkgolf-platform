@@ -48,6 +48,8 @@ async function bootstrap() {
             'https://parkgolf-platform-dev.web.app',
             'https://dev-admin.parkgolfmate.com',
             'https://admin.parkgolfmate.com',
+            'https://dev-platform.parkgolfmate.com',
+            'https://platform.parkgolfmate.com',
             'https://dev-api.parkgolfmate.com',
             'https://api.parkgolfmate.com',
           ],
