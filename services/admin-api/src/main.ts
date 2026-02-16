@@ -41,8 +41,11 @@ async function bootstrap() {
         ? corsOrigins.split(',').map(o => o.trim())
         : [
             'http://localhost:3001',
+            'http://localhost:3002',
             'https://parkgolf-admin.web.app',
             'https://parkgolf-admin-dev.web.app',
+            'https://parkgolf-platform.web.app',
+            'https://parkgolf-platform-dev.web.app',
             'https://dev-admin.parkgolfmate.com',
             'https://admin.parkgolfmate.com',
             'https://dev-api.parkgolfmate.com',

@@ -58,7 +58,7 @@ jobs:
       - name: Determine apps to deploy
         id: apps
         run: |
-          ALL_APPS='["admin-dashboard","user-app-web"]'
+          ALL_APPS='["admin-dashboard","platform-dashboard","user-app-web"]'
 
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             if [ "${{ github.event.inputs.apps }}" == "all" ]; then
@@ -169,6 +169,8 @@ jobs:
           # Map app to Firebase hosting site
           if [ "$APP" == "admin-dashboard" ]; then
             SITE="parkgolf-admin"
+          elif [ "$APP" == "platform-dashboard" ]; then
+            SITE="parkgolf-platform"
           else
             SITE="parkgolf-user"
           fi

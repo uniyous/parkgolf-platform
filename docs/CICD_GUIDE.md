@@ -252,7 +252,7 @@ GitHub Actions → CD Services
 | environment | 대상 환경 | `dev`, `prod` |
 | apps | 배포할 앱 | `all` 또는 앱명 (콤마 구분) |
 
-**대상 앱:**
+**대상 앱 (3개):**
 - `admin-dashboard` - 관리자 대시보드
 - `platform-dashboard` - 플랫폼 관리자 대시보드
 - `user-app-web` - 사용자 웹앱
