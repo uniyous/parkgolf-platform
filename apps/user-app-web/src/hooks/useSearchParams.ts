@@ -1,12 +1,16 @@
 import { useSearchParams as useRouterSearchParams } from 'react-router-dom';
 import { useCallback, useMemo } from 'react';
 
-// 오늘 날짜를 YYYY-MM-DD 형식으로 반환
-const getTodayDateString = () => new Date().toISOString().split('T')[0];
+// 내일 날짜를 YYYY-MM-DD 형식으로 반환 (당일 예약 불가)
+const getTomorrowDateString = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().split('T')[0];
+};
 
 export interface GameSearchFilters {
   search: string;
-  date: string;  // 기본값은 오늘 날짜 (항상 타임슬롯이 있는 게임만 조회)
+  date: string;  // 기본값은 내일 날짜 (당일 예약 불가)
   timeOfDay: string;
   page: number;
 }
@@ -16,7 +20,7 @@ export function useGameSearchParams() {
 
   const filters = useMemo<GameSearchFilters>(() => ({
     search: searchParams.get('search') || '',
-    date: searchParams.get('date') || getTodayDateString(),  // 기본값을 오늘 날짜로 설정 - 항상 타임슬롯이 있는 게임만 조회
+    date: searchParams.get('date') || getTomorrowDateString(),  // 기본값을 내일 날짜로 설정 - 당일 예약 불가
     timeOfDay: searchParams.get('timeOfDay') || '',
     page: Number(searchParams.get('page')) || 1,
   }), [searchParams]);
