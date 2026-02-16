@@ -196,7 +196,7 @@ flowchart LR
 | **Namespace** | parkgolf-dev | parkgolf-prod |
 | **Cluster Type** | Autopilot | Autopilot |
 | **Region** | asia-northeast3 | asia-northeast3 |
-| **Domain** | dev-api.goparkmate.com | api.goparkmate.com |
+| **Domain** | dev-api.parkgolfmate.com | api.parkgolfmate.com |
 | **Service CPU** | 50m request, 250m limit | 200m request, 500m limit |
 | **Service Memory** | 128Mi request, 384Mi limit | 256Mi request, 512Mi limit |
 | **PostgreSQL Storage** | standard-rwo (Balanced PD) | premium-rwo (SSD) |

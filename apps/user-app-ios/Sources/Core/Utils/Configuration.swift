@@ -25,33 +25,33 @@ enum Configuration {
         static var baseURL: URL {
             switch Environment.current {
             case .development:
-                return URL(string: "https://dev-api.goparkmate.com/api/user")!
+                return URL(string: "https://dev-api.parkgolfmate.com/api/user")!
             case .staging:
-                return URL(string: "https://dev-api.goparkmate.com/api/user")!
+                return URL(string: "https://dev-api.parkgolfmate.com/api/user")!
             case .production:
-                return URL(string: "https://api.goparkmate.com/api/user")!
+                return URL(string: "https://api.parkgolfmate.com/api/user")!
             }
         }
 
         static var chatSocketURL: URL {
             switch Environment.current {
             case .development:
-                return URL(string: "https://dev-api.goparkmate.com")!
+                return URL(string: "https://dev-api.parkgolfmate.com")!
             case .staging:
-                return URL(string: "https://dev-api.goparkmate.com")!
+                return URL(string: "https://dev-api.parkgolfmate.com")!
             case .production:
-                return URL(string: "https://api.goparkmate.com")!
+                return URL(string: "https://api.parkgolfmate.com")!
             }
         }
 
         static var webSocketURL: URL {
             switch Environment.current {
             case .development:
-                return URL(string: "wss://dev-api.goparkmate.com/socket.io")!
+                return URL(string: "wss://dev-api.parkgolfmate.com/socket.io")!
             case .staging:
-                return URL(string: "wss://dev-api.goparkmate.com/socket.io")!
+                return URL(string: "wss://dev-api.parkgolfmate.com/socket.io")!
             case .production:
-                return URL(string: "wss://api.goparkmate.com/socket.io")!
+                return URL(string: "wss://api.parkgolfmate.com/socket.io")!
             }
         }
     }

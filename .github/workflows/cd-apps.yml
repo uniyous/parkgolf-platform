@@ -111,9 +111,9 @@ jobs:
 
           # GKE Ingress URL (환경별)
           if [ "$ENV" == "prod" ]; then
-            echo "api_url=https://api.goparkmate.com" >> $GITHUB_OUTPUT
+            echo "api_url=https://api.parkgolfmate.com" >> $GITHUB_OUTPUT
           else
-            echo "api_url=https://dev-api.goparkmate.com" >> $GITHUB_OUTPUT
+            echo "api_url=https://dev-api.parkgolfmate.com" >> $GITHUB_OUTPUT
           fi
 
       - name: Build

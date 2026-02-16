@@ -3,7 +3,7 @@
  * E2E 테스트 시작 전 서비스 health check
  */
 
-const BASE_URL = 'https://dev-api.goparkmate.com';
+const BASE_URL = 'https://dev-api.parkgolfmate.com';
 
 const HEALTH_ENDPOINTS = [
   `${BASE_URL}/api/user/health`,

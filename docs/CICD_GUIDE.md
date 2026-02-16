@@ -266,8 +266,8 @@ GitHub Actions → CD Services
 **환경별 설정:**
 | 환경 | API URL | Firebase Site Suffix |
 |------|---------|---------------------|
-| dev | `https://dev-api.goparkmate.com` | `-dev` (e.g. `parkgolf-admin-dev`) |
-| prod | `https://api.goparkmate.com` | (없음, e.g. `parkgolf-admin`) |
+| dev | `https://dev-api.parkgolfmate.com` | `-dev` (e.g. `parkgolf-admin-dev`) |
+| prod | `https://api.parkgolfmate.com` | (없음, e.g. `parkgolf-admin`) |
 
 **Firebase Hosting 사이트:**
 | App | Dev Site | Prod Site |

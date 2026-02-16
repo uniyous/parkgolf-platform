@@ -38,8 +38,8 @@ async function bootstrap() {
             'http://localhost:3002',
             'https://parkgolf-user.web.app',
             'https://parkgolf-user-dev.web.app',
-            'https://dev-api.goparkmate.com',
-            'https://api.goparkmate.com',
+            'https://dev-api.parkgolfmate.com',
+            'https://api.parkgolfmate.com',
           ],
       credentials: true,
     });

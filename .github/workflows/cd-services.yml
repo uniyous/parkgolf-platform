@@ -462,9 +462,9 @@ jobs:
         run: |
           ENV="${{ needs.setup.outputs.environment }}"
           if [ "$ENV" == "prod" ]; then
-            echo "domain=api.goparkmate.com" >> $GITHUB_OUTPUT
+            echo "domain=api.parkgolfmate.com" >> $GITHUB_OUTPUT
           else
-            echo "domain=dev-api.goparkmate.com" >> $GITHUB_OUTPUT
+            echo "domain=dev-api.parkgolfmate.com" >> $GITHUB_OUTPUT
           fi
 
       - name: Deploy ManagedCertificate

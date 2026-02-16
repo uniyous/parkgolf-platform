@@ -4,7 +4,7 @@ import { Button, Input } from '@/components/ui';
 import type { AuthErrorType } from '@/stores/auth.store';
 
 // 서버 헬스 체크 설정
-const BASE_URL = import.meta.env.VITE_API_URL || 'https://dev-api.goparkmate.com';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://dev-api.parkgolfmate.com';
 
 type StatusType = 'pending' | 'loading' | 'success' | 'error';
 

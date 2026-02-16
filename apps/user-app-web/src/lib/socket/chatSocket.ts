@@ -12,7 +12,7 @@ const isDev = mode === 'development' || mode === 'e2e';
 
 // 환경 변수로 소켓 URL 지정 가능, 없으면 GKE Ingress 도메인 사용
 const SOCKET_URL = (import.meta as any).env?.VITE_CHAT_SOCKET_URL ||
-  'https://dev-api.goparkmate.com';
+  'https://dev-api.parkgolfmate.com';
 
 const NAMESPACE = '/chat';
 

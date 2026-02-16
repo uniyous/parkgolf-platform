@@ -27,9 +27,9 @@ android {
     buildTypes {
         debug {
             isMinifyEnabled = false
-            buildConfigField("String", "API_BASE_URL", "\"https://dev-api.goparkmate.com/\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://dev-api.parkgolfmate.com/\"")
             // GKE dev domain for chat socket
-            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://dev-api.goparkmate.com\"")
+            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://dev-api.parkgolfmate.com\"")
             buildConfigField("String", "TOSS_CLIENT_KEY", "\"test_ck_yL0qZ4G1VOapeeLL1gNO8oWb2MQY\"")
         }
         release {
@@ -38,9 +38,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "API_BASE_URL", "\"https://api.goparkmate.com/\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://api.parkgolfmate.com/\"")
             // GKE prod domain for chat socket
-            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://api.goparkmate.com\"")
+            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://api.parkgolfmate.com\"")
             buildConfigField("String", "TOSS_CLIENT_KEY", "\"live_ck_REPLACE_WITH_PRODUCTION_KEY\"")
         }
     }
