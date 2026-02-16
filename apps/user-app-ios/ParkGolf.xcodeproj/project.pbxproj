@@ -69,6 +69,7 @@
 		95875B41115E528559A0EC87 /* Booking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 880051E9F996505E9E6C7E0D /* Booking.swift */; };
 		975427803D3BDA2873D3F611 /* BookingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 651647EF9DAB12B4A9B21DF3 /* BookingViewModel.swift */; };
 		98E5873757F807A1E0CDF001 /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED45DEF85021870A3EAC449 /* GlassCard.swift */; };
+		993AD598651A08F4899E6D38 /* ClubDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DE08BEB4A767BE056A855EB /* ClubDetailViewModel.swift */; };
 		9AD4ACE8B6E9DF383CC63E4B /* TokenRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 012A15BA988B21642657D188 /* TokenRefreshTests.swift */; };
 		9B065DAA37ECBD218B179C7D /* TuistStrings+ParkGolf.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63517C1B9E6BCA373EDBE994 /* TuistStrings+ParkGolf.swift */; };
 		9B4D3654635BDD44E16192D7 /* ChatListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC45188362F320C28183A541 /* ChatListView.swift */; };
@@ -85,6 +86,7 @@
 		B8F5871459EF0BB00DAFA6B5 /* Spacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC8A2C0B92A34FE85FCB8279 /* Spacing.swift */; };
 		BFFBE3DA2BB4B6E7A60D3193 /* AccountService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA0F2D8E4E83A374880BE68 /* AccountService.swift */; };
 		C3FBF9E3371C29BCD37F8E37 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D9607B8A5692C23A78941A3 /* LoginView.swift */; };
+		C55EE84D77A6604E0B3DBD39 /* ClubDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7AB3C5D9E4ACA536CA84375 /* ClubDetailView.swift */; };
 		C65349DDDCAB835051701150 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AA1A8748BA3DC8EFCF1D4BB /* Typography.swift */; };
 		C9E9D851FC90396E46C49A47 /* SocialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62FB99EA7F4B9930F8CE064A /* SocialView.swift */; };
 		CCE4CD4C89A5D3849135B94A /* SignUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB7C0FDCBF5B3EAE9D76202C /* SignUpView.swift */; };
@@ -200,6 +202,7 @@
 		63517C1B9E6BCA373EDBE994 /* TuistStrings+ParkGolf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TuistStrings+ParkGolf.swift"; sourceTree = "<group>"; };
 		651647EF9DAB12B4A9B21DF3 /* BookingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingViewModel.swift; sourceTree = "<group>"; };
 		6D1ACDEDC2649EE22183C418 /* ParkGolfApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParkGolfApp.swift; sourceTree = "<group>"; };
+		6DE08BEB4A767BE056A855EB /* ClubDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClubDetailViewModel.swift; sourceTree = "<group>"; };
 		72E294FD9707FB33FE3D9B82 /* RoundBookingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundBookingViewModel.swift; sourceTree = "<group>"; };
 		73EB891F3F7C1F77ABB922F1 /* DeviceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceService.swift; sourceTree = "<group>"; };
 		744DA345BA073DA351BB702A /* GlassTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassTextField.swift; sourceTree = "<group>"; };
@@ -229,6 +232,7 @@
 		BA486415ADDCA27B3F74AE8A /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		BDFB6F21611EF2011E2D1971 /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
 		BE190D9AE9D3581875BFE238 /* DateHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateHelper.swift; sourceTree = "<group>"; };
+		C7AB3C5D9E4ACA536CA84375 /* ClubDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClubDetailView.swift; sourceTree = "<group>"; };
 		C993CA8A06E4DA8F5E8CCC48 /* TuistAssets+ParkGolf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TuistAssets+ParkGolf.swift"; sourceTree = "<group>"; };
 		CBDF00FDA7FC2E17D83C61F4 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		CDD2464708846F51E17C42C8 /* ParkGolfTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParkGolfTests.swift; sourceTree = "<group>"; };
@@ -569,6 +573,15 @@
 			path = Derived;
 			sourceTree = "<group>";
 		};
+		E5C57E6DB2F9EA47A42491F1 /* Club */ = {
+			isa = PBXGroup;
+			children = (
+				C7AB3C5D9E4ACA536CA84375 /* ClubDetailView.swift */,
+				6DE08BEB4A767BE056A855EB /* ClubDetailViewModel.swift */,
+			);
+			path = Club;
+			sourceTree = "<group>";
+		};
 		F21CE5781672F6327463E382 /* Theme */ = {
 			isa = PBXGroup;
 			children = (
@@ -612,6 +625,7 @@
 			children = (
 				401734EA071CF180C513923D /* Booking */,
 				D2E987F0D84BD7F3ED7F78DE /* Chat */,
+				E5C57E6DB2F9EA47A42491F1 /* Club */,
 				3C6B3608B68673D99CF63633 /* Friends */,
 				6C136A9F6538ABF1267ADEDD /* Home */,
 				C46EB4982674FE796B8F189B /* Notifications */,
@@ -693,6 +707,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 2620;
 				ORGANIZATIONNAME = com.parkgolf;
 				TargetAttributes = {
 					35259FA8110FAE5DD8128D53 = {
@@ -829,6 +844,8 @@
 				D4DA98E1BDF82A3E960102CF /* ChatRoomView.swift in Sources */,
 				0B69CC4639637FDB980350BD /* ChatRoomViewModel.swift in Sources */,
 				54152A3EBE9657B82E834E32 /* NewChatViewModel.swift in Sources */,
+				C55EE84D77A6604E0B3DBD39 /* ClubDetailView.swift in Sources */,
+				993AD598651A08F4899E6D38 /* ClubDetailViewModel.swift in Sources */,
 				DE9713165B7F235DB81AFBD1 /* AddFriendSheet.swift in Sources */,
 				3492E62BE9744083FE44CD06 /* FriendComponents.swift in Sources */,
 				D348F918A34B2403F1484182 /* FriendsView.swift in Sources */,
@@ -1027,6 +1044,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -1045,6 +1063,7 @@
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
@@ -1140,6 +1159,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -1151,6 +1171,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_VERSION = 6.0;
 				VALIDATE_PRODUCT = YES;
 			};

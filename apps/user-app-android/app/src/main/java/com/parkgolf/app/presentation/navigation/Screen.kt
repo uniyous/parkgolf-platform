@@ -10,6 +10,11 @@ sealed class Screen(val route: String) {
     data object Social : Screen("social")
     data object Profile : Screen("profile")
 
+    // Club Detail
+    data object ClubDetail : Screen("club/{clubId}") {
+        fun createRoute(clubId: Int) = "club/$clubId"
+    }
+
     // Booking Flow
     data object BookingForm : Screen("booking/{gameId}/{timeSlotId}?date={date}&startTime={startTime}") {
         fun createRoute(gameId: Int, timeSlotId: Int, date: String, startTime: String) =

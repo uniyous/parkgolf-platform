@@ -40,3 +40,38 @@ data class NearbyClubDto(
     val facilities: List<String> = emptyList(),
     val distance: Double
 )
+
+@Serializable
+data class ClubDetailDto(
+    val id: Int,
+    val name: String,
+    val companyId: Int,
+    val location: String,
+    val address: String,
+    val phone: String,
+    val email: String? = null,
+    val website: String? = null,
+    val totalHoles: Int,
+    val totalCourses: Int,
+    val status: String,
+    val clubType: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val operatingHours: OperatingHoursDto? = null,
+    val seasonInfo: SeasonInfoDto? = null,
+    val facilities: List<String> = emptyList(),
+    val isActive: Boolean = true
+)
+
+@Serializable
+data class OperatingHoursDto(
+    val open: String,
+    val close: String
+)
+
+@Serializable
+data class SeasonInfoDto(
+    val type: String,
+    val startDate: String,
+    val endDate: String
+)

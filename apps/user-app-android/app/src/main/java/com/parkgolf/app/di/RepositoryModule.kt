@@ -4,6 +4,9 @@ import com.parkgolf.app.data.local.datastore.AuthPreferences
 import com.parkgolf.app.data.remote.api.AuthApi
 import com.parkgolf.app.data.remote.api.BookingApi
 import com.parkgolf.app.data.remote.api.ChatApi
+import com.parkgolf.app.data.remote.api.ClubApi
+import com.parkgolf.app.data.repository.ClubRepositoryImpl
+import com.parkgolf.app.domain.repository.ClubRepository
 import com.parkgolf.app.data.remote.api.FriendsApi
 import com.parkgolf.app.data.remote.api.LocationApi
 import com.parkgolf.app.data.remote.api.NotificationApi
@@ -102,6 +105,12 @@ object RepositoryModule {
     fun providePaymentRepository(
         paymentApi: PaymentApi
     ): PaymentRepository = PaymentRepositoryImpl(paymentApi)
+
+    @Provides
+    @Singleton
+    fun provideClubRepository(
+        clubApi: ClubApi
+    ): ClubRepository = ClubRepositoryImpl(clubApi)
 
     @Provides
     @Singleton

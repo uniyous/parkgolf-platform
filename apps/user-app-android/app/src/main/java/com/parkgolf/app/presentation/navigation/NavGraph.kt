@@ -45,6 +45,7 @@ import androidx.navigation.navArgument
 import com.parkgolf.app.presentation.feature.auth.LoginScreen
 import com.parkgolf.app.presentation.feature.auth.SignUpScreen
 import com.parkgolf.app.presentation.feature.booking.BookingCompleteScreen
+import com.parkgolf.app.presentation.feature.club.ClubDetailScreen
 import com.parkgolf.app.presentation.feature.booking.BookingFormScreen
 import com.parkgolf.app.presentation.feature.booking.MyBookingsScreen
 import com.parkgolf.app.presentation.feature.chat.ChatRoomScreen
@@ -171,6 +172,21 @@ fun ParkGolfNavHost(
         // Main screen with bottom navigation
         composable("main") {
             MainScreen(navController = navController)
+        }
+
+        // Club Detail screen
+        composable(
+            route = Screen.ClubDetail.route,
+            arguments = listOf(navArgument("clubId") { type = NavType.IntType })
+        ) {
+            ClubDetailScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToSearch = {
+                    navController.navigate("main") {
+                        popUpTo("main") { inclusive = true }
+                    }
+                }
+            )
         }
 
         // Booking screens
