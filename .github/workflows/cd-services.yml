@@ -59,7 +59,7 @@ jobs:
         run: |
           INPUT="${{ github.event.inputs.services }}"
           if [ "$INPUT" = "all" ] || [ -z "$INPUT" ]; then
-            SERVICES="iam-service,course-service,booking-service,payment-service,chat-service,notify-service,admin-api,user-api,chat-gateway,weather-service,location-service"
+            SERVICES="iam-service,course-service,booking-service,payment-service,chat-service,notify-service,admin-api,user-api,chat-gateway,weather-service,location-service,job-service"
           else
             SERVICES="$INPUT"
           fi
@@ -194,6 +194,10 @@ jobs:
             chat-gateway)
               DB_NAME=""; NEEDS_DB="false"
               CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
+              ;;
+            job-service)
+              DB_NAME=""; NEEDS_DB="false"
+              CPU_REQ="50m"; CPU_LIM="200m"; MEM_REQ="64Mi"; MEM_LIM="256Mi"
               ;;
             *)
               DB_NAME=""; NEEDS_DB="false"
