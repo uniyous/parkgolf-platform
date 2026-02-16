@@ -1,0 +1,13 @@
+{
+  "projects": {
+    "default": "parkgolf-uniyous"
+  },
+  "targets": {
+    "parkgolf-uniyous": {
+      "hosting": {
+        "parkgolf-platform": ["parkgolf-platform"],
+        "parkgolf-platform-dev": ["parkgolf-platform-dev"]
+      }
+    }
+  }
+}
