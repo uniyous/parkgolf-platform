@@ -25,7 +25,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Notifications
@@ -415,7 +415,7 @@ private fun AppSettingsSection(onNavigate: (String) -> Unit) {
 private fun SupportSection(onNavigate: (String) -> Unit) {
     GlassCard(modifier = Modifier.fillMaxWidth()) {
         SectionHeader(
-            icon = Icons.Default.HelpOutline,
+            icon = Icons.AutoMirrored.Filled.HelpOutline,
             title = "지원"
         )
 
@@ -429,7 +429,7 @@ private fun SupportSection(onNavigate: (String) -> Unit) {
         )
 
         ProfileMenuItem(
-            icon = Icons.Default.HelpOutline,
+            icon = Icons.AutoMirrored.Filled.HelpOutline,
             iconColor = ParkPrimary,
             title = "자주 묻는 질문",
             onClick = { onNavigate("settings/faq") }

@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.dp
 import com.parkgolf.app.presentation.theme.ButtonShape
 import com.parkgolf.app.presentation.theme.ParkButtonGradient
 import com.parkgolf.app.presentation.theme.ParkError
+import com.parkgolf.app.presentation.theme.ParkPrimary
+import com.parkgolf.app.presentation.theme.ParkPrimaryDark
 
 enum class GradientButtonStyle {
     Primary,
@@ -36,18 +38,24 @@ fun GradientButton(
     isLoading: Boolean = false,
     style: GradientButtonStyle = GradientButtonStyle.Primary
 ) {
+    val isActive = enabled && !isLoading
     val buttonGradient = when (style) {
-        GradientButtonStyle.Primary -> ParkButtonGradient
+        GradientButtonStyle.Primary -> if (isActive) ParkButtonGradient else Brush.horizontalGradient(
+            colors = listOf(
+                ParkPrimary.copy(alpha = 0.5f),
+                ParkPrimaryDark.copy(alpha = 0.5f)
+            )
+        )
         GradientButtonStyle.Destructive -> Brush.linearGradient(
             colors = listOf(
-                ParkError,
-                ParkError.copy(alpha = 0.8f)
+                ParkError.copy(alpha = if (isActive) 1f else 0.5f),
+                ParkError.copy(alpha = if (isActive) 0.8f else 0.4f)
             )
         )
         GradientButtonStyle.Ghost -> Brush.linearGradient(
             colors = listOf(
-                Color.White.copy(alpha = 0.15f),
-                Color.White.copy(alpha = 0.10f)
+                Color.White.copy(alpha = if (isActive) 0.15f else 0.08f),
+                Color.White.copy(alpha = if (isActive) 0.10f else 0.05f)
             )
         )
     }
@@ -57,7 +65,7 @@ fun GradientButton(
         modifier = modifier
             .fillMaxWidth()
             .height(56.dp),
-        enabled = enabled && !isLoading,
+        enabled = isActive,
         shape = ButtonShape,
         colors = ButtonDefaults.buttonColors(
             containerColor = Color.Transparent,
@@ -70,8 +78,7 @@ fun GradientButton(
                 .fillMaxWidth()
                 .height(56.dp)
                 .background(
-                    brush = if (enabled && !isLoading) buttonGradient
-                    else buttonGradient.copy(alpha = 0.5f),
+                    brush = buttonGradient,
                     shape = ButtonShape
                 ),
             contentAlignment = Alignment.Center

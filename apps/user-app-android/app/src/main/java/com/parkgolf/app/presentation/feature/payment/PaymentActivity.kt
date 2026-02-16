@@ -2,6 +2,7 @@ package com.parkgolf.app.presentation.feature.payment
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
@@ -30,9 +31,15 @@ class PaymentActivity : ComponentActivity() {
     ) { result ->
         when (result.resultCode) {
             TossPayments.RESULT_PAYMENT_SUCCESS -> {
-                val success = result.data?.getParcelableExtra<TossPaymentResult.Success>(
-                    TossPayments.EXTRA_PAYMENT_RESULT_SUCCESS
-                )
+                val success = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    result.data?.getParcelableExtra(
+                        TossPayments.EXTRA_PAYMENT_RESULT_SUCCESS,
+                        TossPaymentResult.Success::class.java
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    result.data?.getParcelableExtra(TossPayments.EXTRA_PAYMENT_RESULT_SUCCESS)
+                }
                 if (success != null) {
                     handlePaymentSuccess(success)
                 } else {
@@ -41,9 +48,15 @@ class PaymentActivity : ComponentActivity() {
                 }
             }
             TossPayments.RESULT_PAYMENT_FAILED -> {
-                val fail = result.data?.getParcelableExtra<TossPaymentResult.Fail>(
-                    TossPayments.EXTRA_PAYMENT_RESULT_FAILED
-                )
+                val fail = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    result.data?.getParcelableExtra(
+                        TossPayments.EXTRA_PAYMENT_RESULT_FAILED,
+                        TossPaymentResult.Fail::class.java
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    result.data?.getParcelableExtra(TossPayments.EXTRA_PAYMENT_RESULT_FAILED)
+                }
                 if (fail != null) {
                     handlePaymentFailed(fail)
                 } else {

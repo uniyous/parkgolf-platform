@@ -28,7 +28,7 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Message
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.WbSunny
@@ -659,7 +659,7 @@ private fun NotificationsSection(
         if (totalUnreadMessagesCount > 0) {
             NotificationSummaryCard(
                 modifier = Modifier.weight(1f),
-                icon = Icons.Default.Message,
+                icon = Icons.AutoMirrored.Filled.Message,
                 iconColor = ParkPrimary,
                 title = "새 메시지",
                 count = totalUnreadMessagesCount,

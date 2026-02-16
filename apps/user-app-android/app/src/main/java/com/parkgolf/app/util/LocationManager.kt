@@ -6,7 +6,10 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager as AndroidLocationManager
+import android.location.LocationRequest as AndroidLocationRequest
+import android.os.Build
 import android.os.Bundle
+import android.os.CancellationSignal
 import android.os.Looper
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -104,15 +107,35 @@ class LocationManager(private val context: Context) {
             }
 
             try {
-                manager.requestSingleUpdate(provider, listener, Looper.getMainLooper())
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    val cancellationSignal = CancellationSignal()
+                    manager.getCurrentLocation(
+                        provider,
+                        cancellationSignal,
+                        context.mainExecutor
+                    ) { location ->
+                        if (continuation.isActive) {
+                            if (location != null) {
+                                continuation.resume(UserLocation(location.latitude, location.longitude))
+                            } else {
+                                continuation.resume(null)
+                            }
+                        }
+                    }
+                    continuation.invokeOnCancellation {
+                        cancellationSignal.cancel()
+                    }
+                } else {
+                    @Suppress("DEPRECATION")
+                    manager.requestSingleUpdate(provider, listener, Looper.getMainLooper())
+                    continuation.invokeOnCancellation {
+                        manager.removeUpdates(listener)
+                    }
+                }
             } catch (_: Exception) {
                 if (continuation.isActive) {
                     continuation.resume(null)
                 }
-            }
-
-            continuation.invokeOnCancellation {
-                manager.removeUpdates(listener)
             }
         }
     }

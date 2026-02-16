@@ -148,17 +148,17 @@ class NotificationSocketManager @Inject constructor() {
             val dataObj = data.optJSONObject("data")
             if (dataObj != null) {
                 notificationData = NotificationData(
-                    bookingId = dataObj.optString("bookingId", null),
-                    courseId = dataObj.optString("courseId", null),
-                    courseName = dataObj.optString("courseName", null),
-                    bookingDate = dataObj.optString("bookingDate", null),
-                    bookingTime = dataObj.optString("bookingTime", null),
-                    paymentId = dataObj.optString("paymentId", null),
+                    bookingId = dataObj.optString("bookingId").takeIf { it.isNotEmpty() },
+                    courseId = dataObj.optString("courseId").takeIf { it.isNotEmpty() },
+                    courseName = dataObj.optString("courseName").takeIf { it.isNotEmpty() },
+                    bookingDate = dataObj.optString("bookingDate").takeIf { it.isNotEmpty() },
+                    bookingTime = dataObj.optString("bookingTime").takeIf { it.isNotEmpty() },
+                    paymentId = dataObj.optString("paymentId").takeIf { it.isNotEmpty() },
                     amount = if (dataObj.has("amount")) dataObj.optInt("amount") else null,
-                    failureReason = dataObj.optString("failureReason", null),
-                    friendId = dataObj.optString("friendId", null),
-                    friendName = dataObj.optString("friendName", null),
-                    chatRoomId = dataObj.optString("chatRoomId", null)
+                    failureReason = dataObj.optString("failureReason").takeIf { it.isNotEmpty() },
+                    friendId = dataObj.optString("friendId").takeIf { it.isNotEmpty() },
+                    friendName = dataObj.optString("friendName").takeIf { it.isNotEmpty() },
+                    chatRoomId = dataObj.optString("chatRoomId").takeIf { it.isNotEmpty() }
                 )
             }
 
