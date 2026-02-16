@@ -1,5 +1,5 @@
 import { Controller, Logger } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
 import { PaymentService } from '../service/payment.service';
 import { NatsResponse } from '../../common/types/response.types';
 import {
@@ -131,5 +131,34 @@ export class PaymentNatsController {
     this.logger.log(`Deleting billing key: ${data.billingKey}`);
     const result = await this.paymentService.deleteBillingKey(data.billingKey, data.userId);
     return NatsResponse.success(result);
+  }
+
+  // ============================================
+  // Account Deletion
+  // ============================================
+
+  /**
+   * 미결제/환불 진행중 확인 (계정 삭제 제한 조건)
+   */
+  @MessagePattern('payment.userActiveCheck')
+  async checkUserActivePayments(@Payload() data: { userId: number }) {
+    this.logger.log(`Checking active payments for user ${data.userId}`);
+    const result = await this.paymentService.checkUserActivePayments(data.userId);
+    return NatsResponse.success(result);
+  }
+
+  /**
+   * 사용자 삭제 이벤트 - 빌링키 삭제
+   */
+  @EventPattern('user.deleted')
+  async handleUserDeleted(@Payload() data: { userId: number; email: string; deletedAt: string }) {
+    this.logger.log(`NATS Event: user.deleted - userId=${data.userId}`);
+
+    try {
+      const count = await this.paymentService.deleteUserBillingKeys(data.userId);
+      this.logger.log(`Deleted ${count} billing keys for user ${data.userId}`);
+    } catch (error) {
+      this.logger.error(`Failed to handle user.deleted event: ${error}`);
+    }
   }
 }

@@ -528,4 +528,40 @@ export class PaymentService {
       },
     });
   }
+
+  /**
+   * 미결제/환불 진행중 확인 (계정 삭제 제한 조건)
+   */
+  async checkUserActivePayments(userId: number) {
+    const [pendingPayments, pendingRefunds] = await Promise.all([
+      this.prisma.payment.count({
+        where: {
+          userId,
+          status: { in: ['READY', 'IN_PROGRESS', 'WAITING_FOR_DEPOSIT'] },
+        },
+      }),
+      this.prisma.refund.count({
+        where: {
+          payment: { userId },
+          refundStatus: { in: ['PENDING', 'PROCESSING'] },
+        },
+      }),
+    ]);
+
+    return {
+      hasPendingPayment: pendingPayments > 0,
+      hasPendingRefund: pendingRefunds > 0,
+    };
+  }
+
+  /**
+   * 사용자 탈퇴 시 빌링키 삭제
+   */
+  async deleteUserBillingKeys(userId: number): Promise<number> {
+    const result = await this.prisma.billingKey.updateMany({
+      where: { userId, isActive: true },
+      data: { isActive: false },
+    });
+    return result.count;
+  }
 }

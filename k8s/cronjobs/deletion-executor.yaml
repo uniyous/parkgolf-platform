@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: account-deletion-executor
+  namespace: parkgolf
+  labels:
+    app: account-deletion-executor
+    component: cronjob
+spec:
+  # 매일 03:00 KST (UTC 18:00)
+  schedule: "0 18 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 120
+      template:
+        metadata:
+          labels:
+            app: account-deletion-executor
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: deletion-executor
+              image: node:20-alpine
+              command: ["node", "/scripts/deletion-executor.js"]
+              env:
+                - name: NATS_URL
+                  valueFrom:
+                    configMapKeyRef:
+                      name: parkgolf-config
+                      key: NATS_URL
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
+          volumes:
+            - name: scripts
+              configMap:
+                name: cronjob-scripts

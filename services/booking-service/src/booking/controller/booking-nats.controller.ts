@@ -242,4 +242,15 @@ export class BookingNatsController {
     const stats = await this.bookingService.getUserStats(data.userId);
     return NatsResponse.success(stats);
   }
+
+  // ============================================
+  // Account Deletion Check
+  // ============================================
+
+  @MessagePattern('booking.userActiveCheck')
+  async checkUserActiveBookings(@Payload() data: { userId: number }) {
+    this.logger.log(`NATS: Received booking.userActiveCheck for user: ${data.userId}`);
+    const hasActiveBooking = await this.bookingService.hasActiveBookings(data.userId);
+    return NatsResponse.success({ hasActiveBooking });
+  }
 }

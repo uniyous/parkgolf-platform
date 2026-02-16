@@ -1,5 +1,5 @@
 import { Controller, Logger } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
 import { ChatService, SaveMessageDto, GetMessagesDto, MarkReadDto } from './chat.service';
 import { NatsResponse } from '../common/types/response.types';
 
@@ -47,5 +47,21 @@ export class ChatNatsController {
   async deleteMessage(@Payload() data: { messageId: string; userId: number }) {
     await this.chatService.deleteMessage(data.messageId, data.userId);
     return NatsResponse.deleted();
+  }
+
+  // ============================================
+  // Account Deletion
+  // ============================================
+
+  @EventPattern('user.deleted')
+  async handleUserDeleted(@Payload() data: { userId: number; email: string; deletedAt: string }) {
+    this.logger.log(`NATS Event: user.deleted - userId=${data.userId}`);
+
+    try {
+      const count = await this.chatService.anonymizeUserData(data.userId);
+      this.logger.log(`Anonymized chat data for user ${data.userId}: ${count} records`);
+    } catch (error) {
+      this.logger.error(`Failed to anonymize chat data for user ${data.userId}: ${error}`);
+    }
   }
 }

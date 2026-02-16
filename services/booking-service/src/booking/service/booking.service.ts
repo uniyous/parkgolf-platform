@@ -1023,4 +1023,32 @@ export class BookingService {
 
     return { totalBookings };
   }
+
+  /**
+   * 진행 중인 예약 존재 여부 확인 (계정 삭제 제한 조건)
+   */
+  async hasActiveBookings(userId: number): Promise<boolean> {
+    const count = await this.prisma.booking.count({
+      where: {
+        userId,
+        status: { in: ['PENDING', 'SLOT_RESERVED', 'CONFIRMED'] },
+      },
+    });
+    return count > 0;
+  }
+
+  /**
+   * 사용자 탈퇴 시 예약 데이터 익명화
+   */
+  async anonymizeUserBookings(userId: number): Promise<number> {
+    const result = await this.prisma.booking.updateMany({
+      where: { userId },
+      data: {
+        userName: '[삭제된 사용자]',
+        userEmail: null,
+        userPhone: null,
+      },
+    });
+    return result.count;
+  }
 }

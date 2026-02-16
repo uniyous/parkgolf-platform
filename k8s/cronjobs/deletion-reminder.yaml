@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: account-deletion-reminder
+  namespace: parkgolf
+  labels:
+    app: account-deletion-reminder
+    component: cronjob
+spec:
+  # 매일 09:00 KST (UTC 00:00)
+  schedule: "0 0 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 120
+      template:
+        metadata:
+          labels:
+            app: account-deletion-reminder
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: deletion-reminder
+              image: node:20-alpine
+              command: ["node", "/scripts/deletion-reminder.js"]
+              env:
+                - name: NATS_URL
+                  valueFrom:
+                    configMapKeyRef:
+                      name: parkgolf-config
+                      key: NATS_URL
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
+          volumes:
+            - name: scripts
+              configMap:
+                name: cronjob-scripts

@@ -1,6 +1,7 @@
 import { Controller, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { UserService } from './user.service';
+import { AccountDeletionService } from './account-deletion.service';
 import { UserResponseDto } from './dto/create-user.dto';
 import { NatsResponse } from '../common/types/response.types';
 
@@ -16,7 +17,10 @@ import { NatsResponse } from '../common/types/response.types';
 export class UserNatsController {
   private readonly logger = new Logger(UserNatsController.name);
 
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly accountDeletionService: AccountDeletionService,
+  ) {}
 
   @MessagePattern('iam.users.list')
   async getUserList(@Payload() data: { filters?: any; token?: string }) {
@@ -132,6 +136,51 @@ export class UserNatsController {
   async checkPasswordExpiry(@Payload() data: { userId: number }) {
     this.logger.log(`Check password expiry for user: ${data.userId}`);
     const result = await this.userService.checkPasswordExpiry(data.userId);
+    return NatsResponse.success(result);
+  }
+
+  // ============================================
+  // Account Deletion
+  // ============================================
+
+  @MessagePattern('iam.account.requestDeletion')
+  async requestDeletion(
+    @Payload() data: { userId: number; password: string; reason?: string },
+  ) {
+    this.logger.log(`Account deletion request: userId=${data.userId}`);
+    const result = await this.accountDeletionService.requestDeletion(
+      data.userId,
+      data.password,
+      data.reason,
+    );
+    return NatsResponse.success(result);
+  }
+
+  @MessagePattern('iam.account.cancelDeletion')
+  async cancelDeletion(@Payload() data: { userId: number }) {
+    this.logger.log(`Account deletion cancel: userId=${data.userId}`);
+    const result = await this.accountDeletionService.cancelDeletion(data.userId);
+    return NatsResponse.success(result);
+  }
+
+  @MessagePattern('iam.account.deletionStatus')
+  async getDeletionStatus(@Payload() data: { userId: number }) {
+    this.logger.log(`Account deletion status: userId=${data.userId}`);
+    const result = await this.accountDeletionService.getDeletionStatus(data.userId);
+    return NatsResponse.success(result);
+  }
+
+  @MessagePattern('iam.deletion.execute')
+  async executeDeletions() {
+    this.logger.log('Execute account deletions (CronJob)');
+    const result = await this.accountDeletionService.executeDeletions();
+    return NatsResponse.success(result);
+  }
+
+  @MessagePattern('iam.deletion.processReminders')
+  async processReminders() {
+    this.logger.log('Process deletion reminders (CronJob)');
+    const result = await this.accountDeletionService.processReminders();
     return NatsResponse.success(result);
   }
 }

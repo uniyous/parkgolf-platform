@@ -43,6 +43,12 @@ export const UserErrors = defineErrors({
   EMAIL_EXISTS: { code: 'USER_002', message: '이미 등록된 이메일입니다', httpStatus: 409 },
   PHONE_EXISTS: { code: 'USER_003', message: '이미 등록된 전화번호입니다', httpStatus: 409 },
   INACTIVE: { code: 'USER_004', message: '비활성화된 사용자입니다', httpStatus: 403 },
+  DELETION_ACTIVE_BOOKING: { code: 'USER_005', message: '진행 중인 예약이 있어 계정을 삭제할 수 없습니다', httpStatus: 409 },
+  DELETION_PENDING_PAYMENT: { code: 'USER_006', message: '미결제 건이 있어 계정을 삭제할 수 없습니다', httpStatus: 409 },
+  DELETION_PENDING_REFUND: { code: 'USER_007', message: '환불 진행 중인 건이 있어 계정을 삭제할 수 없습니다', httpStatus: 409 },
+  DELETION_ALREADY_REQUESTED: { code: 'USER_008', message: '이미 계정 삭제가 요청된 상태입니다', httpStatus: 409 },
+  DELETION_NOT_REQUESTED: { code: 'USER_009', message: '계정 삭제 요청이 없습니다', httpStatus: 400 },
+  INVALID_PASSWORD: { code: 'USER_010', message: '비밀번호가 올바르지 않습니다', httpStatus: 401 },
 });
 
 // ============================================

@@ -157,6 +157,10 @@ model User {
   createdAt     DateTime         @default(now()) @map("created_at")
   updatedAt     DateTime         @updatedAt @map("updated_at")
 
+  // 계정 삭제
+  deletionRequestedAt  DateTime?  @map("deletion_requested_at")
+  deletionScheduledAt  DateTime?  @map("deletion_scheduled_at")
+
   // 관계
   role          RoleMaster       @relation(fields: [roleCode], references: [code])
   refreshTokens RefreshToken[]
@@ -469,4 +473,22 @@ enum CompanyMemberSource {
   BOOKING   // 예약 시 자동 등록
   MANUAL    // 관리자 수동 등록
   WALK_IN   // 현장 등록
+}
+
+// ==============================================
+// User History (삭제된 사용자 이력)
+// ==============================================
+model UserHistory {
+  id              Int       @id @default(autoincrement())
+  originalUserId  Int       @unique @map("original_user_id")
+  email           String
+  name            String?
+  phone           String?
+  deletionReason  String?   @map("deletion_reason")
+  deletedAt       DateTime  @default(now()) @map("deleted_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@index([originalUserId])
+  @@index([email])
+  @@map("user_histories")
 }

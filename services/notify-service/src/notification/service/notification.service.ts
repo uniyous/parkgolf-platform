@@ -284,4 +284,15 @@ export class NotificationService {
       },
     });
   }
+
+  /**
+   * 사용자 탈퇴 시 알림 및 설정 삭제
+   */
+  async deleteAllByUser(userId: string): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.notification.deleteMany({ where: { userId } }),
+      this.prisma.notificationSettings.deleteMany({ where: { userId } }),
+    ]);
+    this.logger.log(`Deleted all notifications and settings for user ${userId}`);
+  }
 }

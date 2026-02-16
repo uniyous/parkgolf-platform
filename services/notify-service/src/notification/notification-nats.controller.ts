@@ -432,4 +432,106 @@ export class NotificationNatsController {
 
     return NatsResponse.deleted();
   }
+
+  // ===== Account Deletion Event Handlers =====
+
+  @EventPattern('user.deleted')
+  async handleUserDeleted(@Payload() data: { userId: number; email: string; deletedAt: string }) {
+    this.logger.log(`NATS Event: user.deleted - userId=${data.userId}`);
+
+    try {
+      await this.notificationService.deleteAllByUser(String(data.userId));
+      this.logger.log(`Deleted all notifications for user ${data.userId}`);
+    } catch (error) {
+      this.logger.error(`Failed to handle user.deleted event: ${error}`);
+    }
+  }
+
+  @EventPattern('user.deletion.requested')
+  async handleDeletionRequested(@Payload() data: {
+    userId: number;
+    email: string;
+    name: string;
+    reason?: string;
+    requestedAt: string;
+    scheduledAt: string;
+  }) {
+    this.logger.log(`NATS Event: user.deletion.requested - userId=${data.userId}`);
+
+    try {
+      const notification = await this.notificationService.create({
+        userId: String(data.userId),
+        type: NotificationType.SYSTEM_ALERT,
+        title: '계정 삭제가 요청되었습니다',
+        message: `계정 삭제가 요청되었습니다. ${data.scheduledAt.split('T')[0]}까지 로그인하시면 삭제가 취소됩니다.`,
+        data: {
+          type: 'ACCOUNT_DELETION_REQUESTED',
+          scheduledAt: data.scheduledAt,
+        },
+        deliveryChannel: DeliveryChannelType.PUSH,
+      });
+
+      await this.deliveryService.deliverNotification(notification);
+    } catch (error) {
+      this.logger.error(`Failed to handle user.deletion.requested event: ${error}`);
+    }
+  }
+
+  @EventPattern('user.deletion.cancelled')
+  async handleDeletionCancelled(@Payload() data: {
+    userId: number;
+    email: string;
+    name: string;
+    cancelledAt: string;
+  }) {
+    this.logger.log(`NATS Event: user.deletion.cancelled - userId=${data.userId}`);
+
+    try {
+      const notification = await this.notificationService.create({
+        userId: String(data.userId),
+        type: NotificationType.SYSTEM_ALERT,
+        title: '계정 삭제가 취소되었습니다',
+        message: '계정 삭제 요청이 취소되었습니다. 정상적으로 서비스를 이용하실 수 있습니다.',
+        data: {
+          type: 'ACCOUNT_DELETION_CANCELLED',
+          cancelledAt: data.cancelledAt,
+        },
+        deliveryChannel: DeliveryChannelType.PUSH,
+      });
+
+      await this.deliveryService.deliverNotification(notification);
+    } catch (error) {
+      this.logger.error(`Failed to handle user.deletion.cancelled event: ${error}`);
+    }
+  }
+
+  @EventPattern('user.deletion.reminder')
+  async handleDeletionReminder(@Payload() data: {
+    userId: number;
+    email: string;
+    name: string;
+    daysRemaining: number;
+    scheduledAt: string;
+  }) {
+    this.logger.log(`NATS Event: user.deletion.reminder - userId=${data.userId}, D-${data.daysRemaining}`);
+
+    try {
+      const notification = await this.notificationService.create({
+        userId: String(data.userId),
+        type: NotificationType.SYSTEM_ALERT,
+        title: `계정 삭제 ${data.daysRemaining}일 전`,
+        message: `계정이 ${data.daysRemaining}일 후 삭제됩니다. 유지하시려면 로그인해 주세요.`,
+        data: {
+          type: 'ACCOUNT_DELETION_REMINDER',
+          daysRemaining: data.daysRemaining,
+          scheduledAt: data.scheduledAt,
+        },
+        deliveryChannel: DeliveryChannelType.PUSH,
+      });
+
+      await this.deliveryService.deliverNotification(notification);
+    } catch (error) {
+      this.logger.error(`Failed to handle user.deletion.reminder event: ${error}`);
+    }
+  }
 }

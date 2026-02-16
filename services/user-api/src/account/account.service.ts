@@ -10,6 +10,7 @@ import {
   ChangePasswordResponseDto,
   PasswordExpiryResponseDto,
 } from './dto/change-password.dto';
+import { RequestDeletionDto } from './dto/account-deletion.dto';
 
 @Injectable()
 export class AccountService {
@@ -69,5 +70,44 @@ export class AccountService {
     }
 
     return response;
+  }
+
+  /**
+   * 계정 삭제 요청
+   */
+  async requestDeletion(userId: number, dto: RequestDeletionDto) {
+    this.logger.log(`Request account deletion: userId=${userId}`);
+
+    return this.natsClient.send(
+      'iam.account.requestDeletion',
+      { userId, password: dto.password, reason: dto.reason },
+      NATS_TIMEOUTS.DEFAULT,
+    );
+  }
+
+  /**
+   * 계정 삭제 취소
+   */
+  async cancelDeletion(userId: number) {
+    this.logger.log(`Cancel account deletion: userId=${userId}`);
+
+    return this.natsClient.send(
+      'iam.account.cancelDeletion',
+      { userId },
+      NATS_TIMEOUTS.DEFAULT,
+    );
+  }
+
+  /**
+   * 계정 삭제 상태 조회
+   */
+  async getDeletionStatus(userId: number) {
+    this.logger.log(`Get deletion status: userId=${userId}`);
+
+    return this.natsClient.send(
+      'iam.account.deletionStatus',
+      { userId },
+      NATS_TIMEOUTS.QUICK,
+    );
   }
 }

@@ -161,4 +161,29 @@ export class ChatService {
       data: { deletedAt: new Date() },
     });
   }
+
+  /**
+   * 사용자 탈퇴 시 채팅 데이터 익명화
+   */
+  async anonymizeUserData(userId: number): Promise<number> {
+    const DELETED_LABEL = '[탈퇴한 회원]';
+
+    const [memberResult, messageResult] = await this.prisma.$transaction([
+      this.prisma.chatRoomMember.updateMany({
+        where: { userId },
+        data: {
+          userName: DELETED_LABEL,
+          userEmail: null,
+        },
+      }),
+      this.prisma.chatMessage.updateMany({
+        where: { senderId: userId },
+        data: {
+          senderName: DELETED_LABEL,
+        },
+      }),
+    ]);
+
+    return memberResult.count + messageResult.count;
+  }
 }

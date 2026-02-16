@@ -1,6 +1,7 @@
 import { Controller, Logger } from '@nestjs/common';
 import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
 import { SagaHandlerService } from '../service/saga-handler.service';
+import { BookingService } from '../service/booking.service';
 import { SlotReservedEvent, SlotReserveFailedEvent, PaymentConfirmedEvent, PaymentCanceledEvent } from '../dto/booking.dto';
 
 /**
@@ -15,7 +16,10 @@ import { SlotReservedEvent, SlotReserveFailedEvent, PaymentConfirmedEvent, Payme
 export class BookingSagaController {
   private readonly logger = new Logger(BookingSagaController.name);
 
-  constructor(private readonly sagaHandler: SagaHandlerService) {}
+  constructor(
+    private readonly sagaHandler: SagaHandlerService,
+    private readonly bookingService: BookingService,
+  ) {}
 
   /**
    * 슬롯 예약 성공 이벤트 핸들러
@@ -132,6 +136,22 @@ export class BookingSagaController {
       this.logger.log(`NATS: Successfully processed slot.released for booking ${data.bookingId}`);
     } catch (error) {
       this.logger.error(`NATS: Error processing slot.released: ${error.message}`, error.stack);
+    }
+  }
+
+  /**
+   * 사용자 삭제 이벤트 핸들러
+   * iam-service에서 계정 삭제 시 예약 데이터 익명화
+   */
+  @EventPattern('user.deleted')
+  async handleUserDeleted(@Payload() data: { userId: number; email: string; deletedAt: string }) {
+    this.logger.log(`NATS: Received user.deleted event for user ${data.userId}`);
+
+    try {
+      const count = await this.bookingService.anonymizeUserBookings(data.userId);
+      this.logger.log(`NATS: Anonymized ${count} bookings for user ${data.userId}`);
+    } catch (error) {
+      this.logger.error(`NATS: Error processing user.deleted: ${error.message}`, error.stack);
     }
   }
 }

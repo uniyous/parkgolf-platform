@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../user/user.service';
+import { AccountDeletionService } from '../user/account-deletion.service';
 import { AdminService } from '../admin/admin.service';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -19,6 +20,7 @@ export class AuthService {
 
     constructor(
         private userService: UserService,
+        private accountDeletionService: AccountDeletionService,
         private adminService: AdminService,
         private jwtService: JwtService,
         private prisma: PrismaService,
@@ -36,7 +38,9 @@ export class AuthService {
         const user = await this.userService.findOneByEmail(email);
         this.logger.debug(`User found: ${user ? `${user.email} (active: ${user.isActive}, hasPassword: ${!!user?.password})` : 'null'}`);
 
-        if (user && user.isActive) {
+        // 유예 기간 중인 사용자도 로그인 허용 (로그인 시 삭제 취소)
+        const canLogin = user && (user.isActive || user.deletionRequestedAt !== null);
+        if (canLogin) {
             if (!pass || !user.password) {
                 this.logger.debug(`Missing password data: pass=${!!pass}, user.password=${!!user?.password}`);
                 return null;
@@ -56,6 +60,12 @@ export class AuthService {
     }
 
     async login(user: Omit<User, 'password'>) {
+        // 유예 기간 중 로그인 시 삭제 요청 자동 취소
+        if ((user as any).deletionRequestedAt) {
+            await this.accountDeletionService.handleLoginDuringGracePeriod(user.id);
+            this.logger.log(`Account deletion auto-cancelled on login: userId=${user.id}`);
+        }
+
         const payload: UserJwtPayload = {
             email: user.email,
             sub: user.id,
