@@ -15,9 +15,9 @@ const statusConfig: Record<BookingStatus, { label: string; className: string; de
     description: '예약이 처리 중입니다.',
   },
   SLOT_RESERVED: {
-    label: '슬롯예약완료',
+    label: '결제 대기중',
     className: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
-    description: '슬롯이 예약되었습니다. 확정 대기 중입니다.',
+    description: '슬롯이 예약되었습니다. 결제를 완료해 주세요.',
   },
   CONFIRMED: {
     label: '확정',
@@ -211,7 +211,9 @@ export const BookingViewPage: React.FC = () => {
             {booking.paymentMethod && (
               <div className="flex justify-between text-sm pt-2">
                 <span className="text-white/60">결제 방법</span>
-                <span className="text-white/80">{booking.paymentMethod}</span>
+                <span className="text-white/80">
+                  {booking.paymentMethod === 'onsite' ? '🏪 현장결제' : booking.paymentMethod === 'card' ? '💳 카드결제' : booking.paymentMethod}
+                </span>
               </div>
             )}
           </div>
@@ -235,7 +237,7 @@ export const BookingViewPage: React.FC = () => {
         </div>
 
         {/* Actions */}
-        {booking.status === 'CONFIRMED' && (
+        {(booking.status === 'CONFIRMED' || booking.status === 'SLOT_RESERVED') && (
           <div className="space-y-3">
             {canCancel ? (
               <button

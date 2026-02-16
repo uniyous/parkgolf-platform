@@ -13,6 +13,8 @@ export const NATS_TIMEOUTS = {
   LIST_QUERY: 30000,
   /** Analytics and statistics - 30초 */
   ANALYTICS: 30000,
+  /** Payment operations (Toss API confirm can take up to 30s) - 60초 */
+  PAYMENT: 60000,
   /** Bulk operations (time slot generation, batch processing) - 120초 */
   BULK_OPERATION: 120000,
 } as const;

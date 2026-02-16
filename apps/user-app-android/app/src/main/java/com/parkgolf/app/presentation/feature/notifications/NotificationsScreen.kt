@@ -236,12 +236,13 @@ private fun FilterChip(
 ) {
     Row(
         modifier = Modifier
+            .height(36.dp)
             .clip(RoundedCornerShape(50))
             .background(
                 if (isSelected) ParkPrimary else Color.White.copy(alpha = 0.1f)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
@@ -262,18 +263,25 @@ private fun FilterChip(
         if (unreadCount > 0) {
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(50))
+                    .height(18.dp)
+                    .clip(RoundedCornerShape(9.dp))
                     .background(
                         if (isSelected) Color.White else ParkError
                     )
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                    .padding(horizontal = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = if (unreadCount > 99) "99+" else unreadCount.toString(),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isSelected) ParkPrimary else Color.White
+                    color = if (isSelected) ParkPrimary else Color.White,
+                    lineHeight = 18.sp,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        platformStyle = androidx.compose.ui.text.PlatformTextStyle(
+                            includeFontPadding = false
+                        )
+                    )
                 )
             }
         }
@@ -351,21 +359,26 @@ private fun SwipeableNotificationRow(
         }
     )
 
+    // 스와이프 중일 때만 배경 표시
+    val isSwipeInProgress = dismissState.targetValue != SwipeToDismissBoxValue.Settled
+
     SwipeToDismissBox(
         state = dismissState,
         backgroundContent = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(ParkError, MaterialTheme.shapes.medium)
-                    .padding(end = 16.dp),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "삭제",
-                    tint = Color.White
-                )
+            if (isSwipeInProgress) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(ParkError, MaterialTheme.shapes.medium)
+                        .padding(end = 16.dp),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "삭제",
+                        tint = Color.White
+                    )
+                }
             }
         },
         enableDismissFromStartToEnd = false
@@ -407,7 +420,7 @@ private fun NotificationRow(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(18.dp),
                     tint = iconColor
                 )
             }
@@ -458,14 +471,15 @@ private fun NotificationRow(
                     // Type badge
                     Box(
                         modifier = Modifier
-                            .clip(MaterialTheme.shapes.small)
-                            .background(iconColor.copy(alpha = 0.2f))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(iconColor.copy(alpha = 0.85f))
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
                     ) {
                         Text(
                             text = notification.type.displayName,
                             style = MaterialTheme.typography.labelSmall,
-                            color = iconColor
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White
                         )
                     }
 

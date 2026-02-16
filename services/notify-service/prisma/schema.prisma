@@ -18,7 +18,7 @@ model Notification {
   message         String
   data            Json?
   status          NotificationStatus @default(PENDING)
-  deliveryChannel String?            @map("delivery_channel") // EMAIL, SMS, PUSH
+  deliveryChannel DeliveryChannelType? @map("delivery_channel")
   retryCount      Int                @default(0) @map("retry_count")
   maxRetries      Int                @default(3) @map("max_retries")
   scheduledAt     DateTime?          @map("scheduled_at") // For scheduled notifications
@@ -30,7 +30,6 @@ model Notification {
   @@index([userId, status])
   @@index([userId, readAt])          // getUnreadCount, markAllAsRead, findAll(unreadOnly)
   @@index([userId, createdAt(sort: Desc)]) // findAll with pagination (orderBy createdAt desc)
-  @@index([type, status])
   @@index([status, scheduledAt])     // findScheduledNotifications
   @@index([status, retryCount])      // findFailedNotificationsForRetry
   @@map("notifications")
@@ -66,6 +65,7 @@ model NotificationSettings {
 enum NotificationType {
   BOOKING_CONFIRMED
   BOOKING_CANCELLED
+  REFUND_COMPLETED
   PAYMENT_SUCCESS
   PAYMENT_FAILED
   FRIEND_REQUEST
@@ -81,6 +81,12 @@ enum NotificationStatus {
   READ
 }
 
+enum DeliveryChannelType {
+  PUSH
+  EMAIL
+  SMS
+}
+
 model DeadLetterNotification {
   id              Int              @id @default(autoincrement())
   originalId      Int              @map("original_id")
@@ -89,12 +95,13 @@ model DeadLetterNotification {
   title           String
   message         String
   data            Json?
-  deliveryChannel String?          @map("delivery_channel")
+  deliveryChannel DeliveryChannelType? @map("delivery_channel")
   failureReason   String           @map("failure_reason")
   retryCount      Int              @map("retry_count")
   movedAt         DateTime         @default(now()) @map("moved_at")
 
   @@index([userId])
   @@index([movedAt])
+  @@index([failureReason])
   @@map("dead_letter_notifications")
 }

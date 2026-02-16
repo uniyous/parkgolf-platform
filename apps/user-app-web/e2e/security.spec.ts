@@ -10,7 +10,7 @@ import { test, expect, request } from '@playwright/test';
  * - SEC-01: Rate Limiting (429 응답 확인) ← 마지막 실행
  */
 
-const API_BASE_URL = process.env.E2E_BASE_URL || 'https://dev-api.goparkmate.com';
+const API_BASE_URL = process.env.E2E_BASE_URL || 'https://dev-api.parkgolfmate.com';
 
 // ============================================
 // SEC-02: 패스워드 정책 (rate limit 소진 전에 실행)

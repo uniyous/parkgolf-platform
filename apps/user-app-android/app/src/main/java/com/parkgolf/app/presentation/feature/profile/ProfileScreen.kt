@@ -129,7 +129,7 @@ fun ProfileScreen(
                 StatsCard(
                     totalRounds = profileState.stats?.totalBookings ?: 0,
                     friendsCount = profileState.stats?.friendsCount ?: 0,
-                    achievementCount = 0 // TODO: Add achievements
+                    achievementCount = 0
                 )
 
                 // 계정 섹션

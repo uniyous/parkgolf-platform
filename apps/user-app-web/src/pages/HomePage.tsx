@@ -8,24 +8,25 @@ import {
   MessageCircle,
   Clock,
   MapPin,
-  Star,
   Users,
+  Cloud,
+  Sun,
+  Navigation,
+  Droplets,
+  Wind,
 } from 'lucide-react';
 import { AppLayout, Container } from '@/components/layout';
 import { GlassCard, EmptyState, LoadingView } from '@/components/ui';
+import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/Carousel';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyBookingsQuery, useFriendRequestsQuery } from '@/hooks/queries';
+import { useReverseGeoQuery, useNearbyClubsQuery, useCurrentWeatherQuery } from '@/hooks/queries';
 import { useChatRoomsQuery } from '@/hooks/queries/chat';
+import { useCurrentLocation } from '@/hooks/useCurrentLocation';
 import { cn } from '@/lib/utils';
 import type { BookingResponse } from '@/lib/api/bookingApi';
-
-// Mock popular clubs data (실제로는 API에서 가져와야 함)
-const popularClubs = [
-  { id: 1, name: '서울 파크골프장', location: '서울특별시 송파구', rating: 4.8 },
-  { id: 2, name: '부산 해운대 파크골프', location: '부산광역시 해운대구', rating: 4.6 },
-  { id: 3, name: '제주 서귀포 파크골프', location: '제주특별자치도 서귀포시', rating: 4.9 },
-  { id: 4, name: '대전 유성 파크골프', location: '대전광역시 유성구', rating: 4.5 },
-];
+import type { NearbyClub } from '@/lib/api/locationApi';
+import type { CurrentWeather, PrecipitationType } from '@/lib/api/weatherApi';
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -33,6 +34,15 @@ export function HomePage() {
   const { data: bookings, isLoading: isLoadingBookings } = useMyBookingsQuery();
   const { data: friendRequests = [] } = useFriendRequestsQuery();
   const { data: chatRoomsData } = useChatRoomsQuery();
+
+  // Location & Weather
+  const { latitude, longitude, loading: locationLoading, error: locationError } = useCurrentLocation();
+  const hasLocation = latitude !== null && longitude !== null;
+  const { data: regionData } = useReverseGeoQuery(latitude, longitude);
+  const { data: weather } = useCurrentWeatherQuery(latitude, longitude);
+  const { data: nearbyClubs } = useNearbyClubsQuery(latitude, longitude, 30, 10);
+
+  const regionName = regionData?.region3 || regionData?.region2 || null;
 
   const chatRooms = chatRoomsData?.data ?? [];
   const unreadChatRooms = chatRooms.filter((room) => room.unreadCount > 0);
@@ -50,7 +60,7 @@ export function HomePage() {
 
   // Search CTA Component (재사용을 위해 분리)
   const SearchCTA = ({ className = '' }: { className?: string }) => (
-    <button onClick={() => navigate('/search')} className={cn('text-left', className)}>
+    <button onClick={() => navigate('/bookings')} className={cn('text-left', className)}>
       <GlassCard
         hoverable
         className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] h-full"
@@ -72,15 +82,17 @@ export function HomePage() {
   return (
     <AppLayout showLogo>
       <Container className="py-4 md:py-6 space-y-6">
-        {/* Welcome Header (iOS 스타일) */}
-        <div className="space-y-1">
+        {/* Welcome Header */}
+        <div>
           <h1 className="text-2xl md:text-3xl font-bold text-white">
             {getGreetingMessage(user?.name || '회원')}
           </h1>
-          <p className="text-[var(--color-text-secondary)]">
-            오늘도 파크골프하기 좋은 날이에요
-          </p>
         </div>
+
+        {/* Weather Card */}
+        {weather && (
+          <WeatherCard weather={weather} regionName={regionName} />
+        )}
 
         {/*
           Desktop Layout:
@@ -211,32 +223,108 @@ export function HomePage() {
                 title="예정된 라운드가 없습니다"
                 description="새로운 라운드를 예약해보세요"
                 actionLabel="예약하기"
-                onAction={() => navigate('/search')}
+                onAction={() => navigate('/bookings')}
               />
             </GlassCard>
           )}
         </div>
 
-        {/* Popular Clubs Section (iOS 스타일) */}
+        {/* Nearby / Popular Clubs Section */}
         <div>
           <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-3">
-            <span>🏆</span>
-            이번 주 인기 골프장
+            <MapPin className="w-5 h-5" />
+            주변 골프장
           </h2>
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-            {popularClubs.map((club) => (
-              <PopularClubCard
-                key={club.id}
-                club={club}
-                onClick={() => navigate(`/club/${club.id}`)}
+          {!hasLocation && !locationLoading ? (
+            <GlassCard>
+              <EmptyState
+                icon={MapPin}
+                title="위도,경도 정보 없음"
+                description={locationError || '브라우저에서 위치 권한을 허용해주세요'}
+                actionLabel="위치 재요청"
+                onAction={() => window.location.reload()}
               />
-            ))}
-          </div>
+            </GlassCard>
+          ) : nearbyClubs && nearbyClubs.length > 0 ? (
+            <Carousel opts={{ align: 'start', dragFree: true }} className="w-full">
+              <CarouselContent className="-ml-3">
+                {nearbyClubs.map((club) => (
+                  <CarouselItem key={club.id} className="basis-44 pl-3">
+                    <NearbyClubCard
+                      club={club}
+                      onClick={() => navigate(`/club/${club.id}`)}
+                    />
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious />
+              <CarouselNext />
+            </Carousel>
+          ) : (
+            <GlassCard>
+              <EmptyState
+                icon={MapPin}
+                title="주변에 골프장이 없습니다"
+                description="반경 30km 내 등록된 골프장이 없습니다"
+                actionLabel="라운드 검색"
+                onAction={() => navigate('/bookings')}
+              />
+            </GlassCard>
+          )}
         </div>
       </Container>
     </AppLayout>
   );
 }
+
+// Weather Card component
+function WeatherCard({ weather, regionName }: { weather: CurrentWeather; regionName: string | null }) {
+  const WeatherIcon = weather.precipitationType !== 'NONE' ? Cloud : Sun;
+
+  return (
+    <GlassCard>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-[var(--color-warning)]/20 flex items-center justify-center flex-shrink-0">
+            <WeatherIcon className="w-6 h-6 text-[var(--color-warning)]" />
+          </div>
+          <div>
+            {regionName && (
+              <p className="text-sm text-[var(--color-text-secondary)]">{regionName}</p>
+            )}
+            <p className="text-2xl font-bold text-white">{Math.round(weather.temperature)}°C</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-base font-medium text-white">{getWeatherDescription(weather.precipitationType)}</p>
+          <p className="text-sm text-[var(--color-text-secondary)] flex items-center justify-end gap-2 mt-1">
+            <span className="flex items-center gap-1">
+              <Droplets className="w-3.5 h-3.5" />
+              {Math.round(weather.humidity)}%
+            </span>
+            <span className="flex items-center gap-1">
+              <Wind className="w-3.5 h-3.5" />
+              {weather.windSpeed.toFixed(1)}m/s
+            </span>
+          </p>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
+// Helper function for weather description
+function getWeatherDescription(type: PrecipitationType): string {
+  switch (type) {
+    case 'RAIN': return '비';
+    case 'SNOW': return '눈';
+    case 'SLEET': return '진눈깨비';
+    case 'DRIZZLE': return '이슬비';
+    case 'SNOW_FLURRY': return '날림눈';
+    default: return '맑음';
+  }
+}
+
 
 // Helper function for greeting message
 function getGreetingMessage(name: string): string {
@@ -348,22 +436,16 @@ function NotificationCard({ icon, badgeColor, count, title, subtitle, onClick }:
   );
 }
 
-// Popular club card component
-interface PopularClubCardProps {
-  club: {
-    id: number;
-    name: string;
-    location: string;
-    rating: number;
-  };
+// Nearby club card component (real data)
+interface NearbyClubCardProps {
+  club: NearbyClub;
   onClick: () => void;
 }
 
-function PopularClubCard({ club, onClick }: PopularClubCardProps) {
+function NearbyClubCard({ club, onClick }: NearbyClubCardProps) {
   return (
-    <button onClick={onClick} className="flex-shrink-0 w-44 text-left">
+    <button onClick={onClick} className="w-full text-left">
       <GlassCard hoverable className="p-0 overflow-hidden">
-        {/* Image placeholder */}
         <div className="h-24 bg-gradient-to-br from-[var(--color-primary)]/30 to-[var(--color-secondary)]/30 flex items-center justify-center">
           <span className="text-4xl opacity-50">⛳</span>
         </div>
@@ -374,11 +456,12 @@ function PopularClubCard({ club, onClick }: PopularClubCardProps) {
             {club.location}
           </p>
           <div className="flex items-center gap-1 mt-1">
-            <Star className="w-3 h-3 text-[var(--color-warning)] fill-current" />
-            <span className="text-xs text-white font-medium">{club.rating.toFixed(1)}</span>
+            <Navigation className="w-3 h-3 text-[var(--color-primary)]" />
+            <span className="text-xs text-white font-medium">{club.distance.toFixed(1)}km</span>
           </div>
         </div>
       </GlassCard>
     </button>
   );
 }
+

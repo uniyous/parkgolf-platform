@@ -28,14 +28,8 @@ export class HoleService {
         },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new ConflictException(`Hole number ${createDto.holeNumber} already exists for course ID ${courseId}.`);
-        }
-      } else if (error instanceof Error) {
-        this.logger.error(`Failed to create hole: ${error.message}`, error.stack);
-      } else {
-        this.logger.error(`Failed to create hole: ${JSON.stringify(error)}`);
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException(`Hole number ${createDto.holeNumber} already exists for course ID ${courseId}.`);
       }
       throw error;
     }
@@ -105,24 +99,18 @@ export class HoleService {
       }
     }
 
-    try {
-      return await this.prisma.hole.update({
-        where: { id: holeId }, // courseId 조건은 위에서 이미 확인됨
-        data: {
-          // courseId는 변경하지 않음
-          holeNumber: updateDto.holeNumber,
-          par: updateDto.par,
-          distance: updateDto.distance,
-        },
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        this.logger.error(`Failed to update hole ID ${holeId}: ${error.message}`, error.stack);
-      } else {
-        this.logger.error(`Failed to update hole ID ${holeId}: ${JSON.stringify(error)}`);
-      }
-      throw error;
-    }
+    return this.prisma.hole.update({
+      where: { id: holeId },
+      data: {
+        holeNumber: updateDto.holeNumber,
+        par: updateDto.par,
+        distance: updateDto.distance,
+        handicap: updateDto.handicap,
+        description: updateDto.description,
+        tips: updateDto.tips,
+        imageUrl: updateDto.imageUrl,
+      },
+    });
   }
 
   async remove(courseId: number, holeId: number): Promise<Hole> {
@@ -136,15 +124,8 @@ export class HoleService {
         where: { id: holeId },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          // Record to delete not found (이미 findOne에서 처리됨)
-          throw new NotFoundException(`Hole with ID ${holeId} not found.`);
-        }
-      } else if (error instanceof Error) {
-        this.logger.error(`Failed to delete hole ID ${holeId}: ${error.message}`, error.stack);
-      } else {
-        this.logger.error(`Failed to delete hole ID ${holeId}: ${JSON.stringify(error)}`);
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new NotFoundException(`Hole with ID ${holeId} not found.`);
       }
       throw error;
     }

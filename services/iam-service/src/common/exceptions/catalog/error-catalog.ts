@@ -3,8 +3,9 @@
  * - AUTH_xxx: 인증/인가 관련
  * - USER_xxx: 사용자 관련
  * - ADMIN_xxx: 관리자 관련
- * - BOOK_xxx: 예약 관련
- * - COURSE_xxx: 코스 관련
+ * - MENU_xxx: 메뉴 관련
+ * - FRIEND_xxx: 친구 관련
+ * - MEMBER_xxx: 가맹점 회원 관련
  * - VAL_xxx: 유효성 검증
  * - EXT_xxx: 외부 API 에러
  * - DB_xxx: 데이터베이스 에러
@@ -42,6 +43,12 @@ export const UserErrors = defineErrors({
   EMAIL_EXISTS: { code: 'USER_002', message: '이미 등록된 이메일입니다', httpStatus: 409 },
   PHONE_EXISTS: { code: 'USER_003', message: '이미 등록된 전화번호입니다', httpStatus: 409 },
   INACTIVE: { code: 'USER_004', message: '비활성화된 사용자입니다', httpStatus: 403 },
+  DELETION_ACTIVE_BOOKING: { code: 'USER_005', message: '진행 중인 예약이 있어 계정을 삭제할 수 없습니다', httpStatus: 409 },
+  DELETION_PENDING_PAYMENT: { code: 'USER_006', message: '미결제 건이 있어 계정을 삭제할 수 없습니다', httpStatus: 409 },
+  DELETION_PENDING_REFUND: { code: 'USER_007', message: '환불 진행 중인 건이 있어 계정을 삭제할 수 없습니다', httpStatus: 409 },
+  DELETION_ALREADY_REQUESTED: { code: 'USER_008', message: '이미 계정 삭제가 요청된 상태입니다', httpStatus: 409 },
+  DELETION_NOT_REQUESTED: { code: 'USER_009', message: '계정 삭제 요청이 없습니다', httpStatus: 400 },
+  INVALID_PASSWORD: { code: 'USER_010', message: '비밀번호가 올바르지 않습니다', httpStatus: 401 },
 });
 
 // ============================================
@@ -55,29 +62,31 @@ export const AdminErrors = defineErrors({
 });
 
 // ============================================
-// 예약 에러 (BOOK_xxx)
+// 친구 에러 (FRIEND_xxx)
 // ============================================
-export const BookingErrors = defineErrors({
-  NOT_FOUND: { code: 'BOOK_001', message: '예약을 찾을 수 없습니다', httpStatus: 404 },
-  SLOT_UNAVAILABLE: { code: 'BOOK_002', message: '해당 시간대는 예약할 수 없습니다', httpStatus: 409 },
-  ALREADY_CANCELLED: { code: 'BOOK_003', message: '이미 취소된 예약입니다', httpStatus: 400 },
-  CANCEL_DEADLINE_PASSED: { code: 'BOOK_004', message: '취소 가능 시간이 지났습니다', httpStatus: 400 },
-  MAX_EXCEEDED: { code: 'BOOK_005', message: '최대 예약 가능 횟수를 초과했습니다', httpStatus: 400 },
-  INVALID_DATE: { code: 'BOOK_006', message: '유효하지 않은 예약 날짜입니다', httpStatus: 400 },
-  PAST_DATE: { code: 'BOOK_007', message: '과거 날짜는 예약할 수 없습니다', httpStatus: 400 },
+export const FriendErrors = defineErrors({
+  REQUEST_NOT_FOUND: { code: 'FRIEND_001', message: '친구 요청을 찾을 수 없습니다', httpStatus: 404 },
+  SELF_REQUEST: { code: 'FRIEND_002', message: '자기 자신에게 친구 요청을 보낼 수 없습니다', httpStatus: 400 },
+  ALREADY_FRIEND: { code: 'FRIEND_003', message: '이미 친구입니다', httpStatus: 409 },
+  ALREADY_REQUESTED: { code: 'FRIEND_004', message: '이미 친구 요청을 보냈습니다', httpStatus: 409 },
+  ALREADY_PROCESSED: { code: 'FRIEND_005', message: '이미 처리된 요청입니다', httpStatus: 400 },
+  NO_PERMISSION: { code: 'FRIEND_006', message: '이 요청을 처리할 권한이 없습니다', httpStatus: 403 },
 });
 
 // ============================================
-// 코스 에러 (COURSE_xxx)
+// 메뉴 에러 (MENU_xxx)
 // ============================================
-export const CourseErrors = defineErrors({
-  NOT_FOUND: { code: 'COURSE_001', message: '코스를 찾을 수 없습니다', httpStatus: 404 },
-  CLUB_NOT_FOUND: { code: 'COURSE_002', message: '클럽을 찾을 수 없습니다', httpStatus: 404 },
-  HOLE_NOT_FOUND: { code: 'COURSE_003', message: '홀을 찾을 수 없습니다', httpStatus: 404 },
-  GAME_NOT_FOUND: { code: 'COURSE_004', message: '게임을 찾을 수 없습니다', httpStatus: 404 },
-  SCHEDULE_NOT_FOUND: { code: 'COURSE_005', message: '스케줄을 찾을 수 없습니다', httpStatus: 404 },
-  TIMESLOT_NOT_FOUND: { code: 'COURSE_006', message: '타임슬롯을 찾을 수 없습니다', httpStatus: 404 },
-  INACTIVE: { code: 'COURSE_007', message: '비활성화된 코스입니다', httpStatus: 400 },
+export const MenuErrors = defineErrors({
+  NOT_FOUND: { code: 'MENU_001', message: '메뉴를 찾을 수 없습니다', httpStatus: 404 },
+  INVALID_PARAMS: { code: 'MENU_002', message: '메뉴 조회 파라미터가 올바르지 않습니다', httpStatus: 400 },
+});
+
+// ============================================
+// 가맹점 회원 에러 (MEMBER_xxx)
+// ============================================
+export const CompanyMemberErrors = defineErrors({
+  NOT_FOUND: { code: 'MEMBER_001', message: '가맹점 회원을 찾을 수 없습니다', httpStatus: 404 },
+  ALREADY_EXISTS: { code: 'MEMBER_002', message: '이미 등록된 회원입니다', httpStatus: 409 },
 });
 
 // ============================================
@@ -130,8 +139,9 @@ export const Errors = {
   Auth: AuthErrors,
   User: UserErrors,
   Admin: AdminErrors,
-  Booking: BookingErrors,
-  Course: CourseErrors,
+  Menu: MenuErrors,
+  Friend: FriendErrors,
+  CompanyMember: CompanyMemberErrors,
   Validation: ValidationErrors,
   External: ExternalErrors,
   Database: DatabaseErrors,

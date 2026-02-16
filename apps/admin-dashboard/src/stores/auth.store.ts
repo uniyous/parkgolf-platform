@@ -27,7 +27,7 @@ export interface ApiAdminCompanyResponse {
 export interface ApiUserResponse {
   id: number;
   email: string;
-  name?: string;
+  name?: string | null;
   username?: string;
   // 회사-역할 연결 (v3 구조)
   companies?: ApiAdminCompanyResponse[];
@@ -39,8 +39,8 @@ export interface ApiUserResponse {
   avatarUrl?: string;
   isActive?: boolean;
   lastLoginAt?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
   // Legacy fields (하위 호환성)
   roleCode?: string;
   role?: string;
@@ -50,17 +50,20 @@ export interface ApiUserResponse {
   company?: Company;
 }
 
+export type AuthErrorType = 'server' | 'auth' | 'general' | null;
+
 interface AuthState {
   currentAdmin: Admin | null;
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  errorType: AuthErrorType;
 
   setCurrentAdmin: (admin: Admin | null) => void;
   setToken: (token: string | null) => void;
   setLoading: (isLoading: boolean) => void;
-  setError: (error: string | null) => void;
+  setError: (error: string | null, errorType?: AuthErrorType) => void;
   logout: () => void;
   clearError: () => void;
   hydrateFromLogin: (user: ApiUserResponse, token: string) => void;
@@ -203,26 +206,29 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      errorType: null,
 
       setCurrentAdmin: (admin) =>
         set({ currentAdmin: admin, isAuthenticated: !!admin }),
       setToken: (token) => set({ token }),
       setLoading: (isLoading) => set({ isLoading }),
-      setError: (error) => set({ error }),
+      setError: (error, errorType = null) => set({ error, errorType }),
 
       logout: () => {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('currentUser');
+        localStorage.removeItem('support-storage');
         set({
           currentAdmin: null,
           token: null,
           isAuthenticated: false,
           error: null,
+          errorType: null,
         });
       },
 
-      clearError: () => set({ error: null }),
+      clearError: () => set({ error: null, errorType: null }),
 
       hydrateFromLogin: (user, token) => {
         const admin = convertUserToAdmin(user);
@@ -247,6 +253,7 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: true,
           isLoading: false,
           error: null,
+          errorType: null,
         });
       },
 
@@ -272,6 +279,7 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: true,
           isLoading: false,
           error: null,
+          errorType: null,
         });
       },
 

@@ -49,7 +49,12 @@ final class NotificationsViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var isLoadingMore = false
     @Published var error: String?
-    @Published var selectedFilter: NotificationFilter = .all
+    @Published var selectedFilter: NotificationFilter = .all {
+        didSet {
+            // 탭 전환 시 에러 상태 초기화
+            error = nil
+        }
+    }
 
     // MARK: - Computed Properties
 
@@ -154,11 +159,20 @@ final class NotificationsViewModel: ObservableObject {
         currentPage = 1
 
         do {
+            #if DEBUG
+            print("[NotificationsVM] Loading notifications...")
+            #endif
             let data = try await notificationService.getNotifications(page: 1, limit: 50)
+            #if DEBUG
+            print("[NotificationsVM] Loaded \(data.notifications.count) notifications, total: \(data.total)")
+            #endif
             notifications = data.notifications
             totalPages = data.totalPages
             currentPage = 1
         } catch {
+            #if DEBUG
+            print("[NotificationsVM] Error loading notifications: \(error)")
+            #endif
             self.error = error.localizedDescription
         }
 

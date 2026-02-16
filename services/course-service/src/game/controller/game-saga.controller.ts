@@ -1,5 +1,5 @@
 import { Controller, Logger, Inject } from '@nestjs/common';
-import { MessagePattern, Payload, Ctx, NatsContext } from '@nestjs/microservices';
+import { MessagePattern, Payload } from '@nestjs/microservices';
 import { ClientProxy } from '@nestjs/microservices';
 import { GameTimeSlotService } from '../service/game-time-slot.service';
 

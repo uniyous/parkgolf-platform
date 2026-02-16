@@ -27,6 +27,8 @@ model Club {
   seasonInfo     Json?      @map("season_info")
   facilities     String[]   @default([])
   clubType       ClubType   @default(PAID) @map("club_type")
+  latitude       Float?
+  longitude      Float?
   isActive       Boolean    @default(true) @map("is_active")
   createdAt      DateTime   @default(now()) @map("created_at")
   updatedAt      DateTime   @updatedAt @map("updated_at")
@@ -37,6 +39,7 @@ model Club {
   @@index([companyId])
   @@index([status])
   @@index([isActive])
+  @@index([latitude, longitude])
   @@map("clubs")
 }
 
@@ -102,7 +105,7 @@ model TeeBox {
   holeId     Int         @map("hole_id")
   createdAt  DateTime    @default(now()) @map("created_at")
   updatedAt  DateTime    @updatedAt @map("updated_at")
-  hole       Hole        @relation(fields: [holeId], references: [id])
+  hole       Hole        @relation(fields: [holeId], references: [id], onDelete: Cascade)
 
   @@index([holeId])
   @@map("tee_boxes")
@@ -209,7 +212,7 @@ model GameWeeklySchedule {
   id            Int      @id @default(autoincrement())
 
   gameId        Int      @map("game_id")
-  game          Game     @relation(fields: [gameId], references: [id])
+  game          Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
 
   dayOfWeek     Int      @map("day_of_week") // 0=일, 1=월, ...
   startTime     String   @map("start_time")  // 첫 타임 시작
@@ -220,7 +223,8 @@ model GameWeeklySchedule {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  @@unique([gameId, dayOfWeek])
+  @@unique([gameId, dayOfWeek, startTime])
+  @@index([gameId])
   @@map("game_weekly_schedules")
 }
 

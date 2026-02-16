@@ -19,8 +19,14 @@ export * from './booking';
 // User Queries & Mutations
 export * from './user';
 
+// CompanyMember Queries & Mutations
+export * from './companyMember';
+
 // Game Queries & Mutations
 export * from './game';
 
 // Policy Queries & Mutations
 export * from './policy';
+
+// Dashboard Queries
+export * from './dashboard';

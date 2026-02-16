@@ -1,105 +1,41 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  Calendar,
-  MapPin,
-  Users,
-  Settings,
   Menu,
   X,
   LogOut,
   ChevronDown,
   ChevronRight,
-  Gamepad2,
-  CreditCard,
+  Users,
+  Settings,
+  LayoutDashboard,
   Building2,
-  UserCog,
-  Shield,
-  Wrench,
+  AlertCircle,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useMenuTreeQuery } from '@/hooks/queries/menu';
+import { getIcon } from '@/utils/icon-map';
+import { SupportBanner } from '@/components/layout/SupportBanner';
+import { useAuthStore } from '@/stores/auth.store';
+import type { MenuTreeItem } from '@/lib/api/menuApi';
 
-interface MenuItem {
-  path: string;
-  label: string;
-  icon?: LucideIcon;
-}
-
-interface MenuGroup {
-  label: string;
-  icon: LucideIcon;
-  basePath: string;
-  items: MenuItem[];
-}
+const COMPANY_TYPE_LABELS: Record<string, string> = {
+  PLATFORM: '본사',
+  ASSOCIATION: '협회',
+  FRANCHISE: '가맹점',
+};
 
 interface AdminLayoutProps {
   currentUser: {
     username: string;
     email: string;
     role?: string;
+    company?: string;
+    companyType?: string;
   };
   onLogout: () => void;
   children: React.ReactNode;
 }
-
-// 대분류 + 서브메뉴 구조 (도메인 관계 기반)
-// 회사 → 골프장 소유, 관리자 소속, 역할/권한 관리
-const menuGroups: MenuGroup[] = [
-  {
-    label: '대시보드',
-    icon: LayoutDashboard,
-    basePath: '/dashboard',
-    items: [
-      { path: '/dashboard', label: '홈 대시보드' },
-    ],
-  },
-  {
-    label: '회사',
-    icon: Building2,
-    basePath: '/companies',
-    items: [
-      { path: '/companies', label: '회사 관리', icon: Building2 },
-      { path: '/admin-management', label: '관리자 관리', icon: UserCog },
-      { path: '/roles', label: '역할 및 권한', icon: Shield },
-    ],
-  },
-  {
-    label: '골프장',
-    icon: MapPin,
-    basePath: '/clubs',
-    items: [
-      { path: '/clubs', label: '골프장 관리', icon: MapPin },
-      { path: '/games', label: '라운드 관리', icon: Gamepad2 },
-    ],
-  },
-  {
-    label: '예약',
-    icon: Calendar,
-    basePath: '/bookings',
-    items: [
-      { path: '/bookings', label: '예약 현황', icon: Calendar },
-      { path: '/bookings/cancellations', label: '환불 관리', icon: CreditCard },
-    ],
-  },
-  {
-    label: '회원',
-    icon: Users,
-    basePath: '/user',
-    items: [
-      { path: '/user-management', label: '사용자 관리', icon: Users },
-    ],
-  },
-  {
-    label: '설정',
-    icon: Settings,
-    basePath: '/settings',
-    items: [
-      { path: '/system-settings', label: '시스템 설정', icon: Wrench },
-    ],
-  },
-];
 
 export const AdminLayout: React.FC<AdminLayoutProps> = ({
   currentUser,
@@ -109,46 +45,45 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const { data: menuTree, isLoading: menuLoading } = useMenuTreeQuery();
+  const primaryScope = useAuthStore((state) => state.currentAdmin?.primaryScope);
+
   const [expandedGroups, setExpandedGroups] = useState<string[]>(() => {
-    // 현재 경로에 해당하는 그룹을 기본 확장
-    const currentGroup = menuGroups.find(group =>
-      group.items.some(item => location.pathname === item.path || location.pathname.startsWith(item.path + '/'))
-    );
-    return currentGroup ? [currentGroup.label] : ['대시보드'];
+    return ['A_DASHBOARD', 'P_DASHBOARD'];
   });
 
-  const isActive = (path: string) => {
+  const isActive = (path: string | null) => {
+    if (!path) return false;
     if (path === '/dashboard') {
       return location.pathname === '/dashboard';
     }
-    // 정확한 매칭 또는 하위 경로 매칭
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  const isGroupActive = (group: MenuGroup) => {
-    return group.items.some(item => isActive(item.path));
+  const isGroupActive = (group: MenuTreeItem) => {
+    return group.children.some(item => isActive(item.path));
   };
 
-  const toggleGroup = (label: string) => {
+  const toggleGroup = (code: string) => {
     setExpandedGroups(prev =>
-      prev.includes(label)
-        ? prev.filter(g => g !== label)
-        : [...prev, label]
+      prev.includes(code)
+        ? prev.filter(g => g !== code)
+        : [...prev, code]
     );
   };
 
-  const NavGroup = ({ group }: { group: MenuGroup }) => {
-    const Icon = group.icon;
-    const isExpanded = expandedGroups.includes(group.label);
+  const NavGroup = ({ group }: { group: MenuTreeItem }) => {
+    const Icon = getIcon(group.icon);
+    const isExpanded = expandedGroups.includes(group.code);
     const hasActiveItem = isGroupActive(group);
-    const isSingleItem = group.items.length === 1;
+    const isSingleItem = group.children.length === 1;
 
     // 단일 아이템인 경우 바로 링크
     if (isSingleItem) {
-      const item = group.items[0];
+      const item = group.children[0];
       return (
         <Link
-          to={item.path}
+          to={item.path || '/dashboard'}
           onClick={() => setSidebarOpen(false)}
           className={cn(
             'nav-item',
@@ -156,24 +91,23 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           )}
         >
           <Icon className="nav-item-icon" />
-          <span className="font-medium">{group.label}</span>
+          <span className="font-medium">{group.name}</span>
         </Link>
       );
     }
 
     return (
       <div className="space-y-1">
-        {/* Group Header */}
         <button
-          onClick={() => toggleGroup(group.label)}
+          onClick={() => toggleGroup(group.code)}
           className={cn(
             'w-full nav-item justify-between',
-            hasActiveItem && 'text-blue-400'
+            hasActiveItem && 'text-emerald-400'
           )}
         >
           <div className="flex items-center gap-3">
             <Icon className="nav-item-icon" />
-            <span className="font-medium">{group.label}</span>
+            <span className="font-medium">{group.name}</span>
           </div>
           <ChevronRight
             className={cn(
@@ -183,25 +117,24 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           />
         </button>
 
-        {/* Sub Items */}
         {isExpanded && (
-          <div className="ml-4 pl-4 border-l border-gray-700 space-y-1">
-            {group.items.map((item) => {
-              const ItemIcon = item.icon;
+          <div className="ml-4 pl-4 border-l border-white/15 space-y-1">
+            {group.children.map((item) => {
+              const ItemIcon = getIcon(item.icon);
               return (
                 <Link
-                  key={item.path}
-                  to={item.path}
+                  key={item.code}
+                  to={item.path || '#'}
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
                     'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
                     isActive(item.path)
-                      ? 'bg-blue-600/20 text-blue-400'
-                      : 'text-gray-400 hover:bg-white/10 hover:text-gray-100'
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : 'text-white/40 hover:bg-white/10 hover:text-white/80'
                   )}
                 >
-                  {ItemIcon && <ItemIcon className="w-4 h-4" />}
-                  <span>{item.label}</span>
+                  <ItemIcon className="w-4 h-4" />
+                  <span>{item.name}</span>
                 </Link>
               );
             })}
@@ -211,13 +144,47 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     );
   };
 
+  // 메뉴 로딩 중 스켈레톤
+  const MenuSkeleton = () => (
+    <div className="space-y-4 px-4 py-6">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="space-y-2">
+          <div className="h-9 bg-white/5 rounded-lg animate-pulse" />
+          <div className="ml-8 space-y-1">
+            <div className="h-7 bg-white/5 rounded-lg animate-pulse" />
+            <div className="h-7 bg-white/5 rounded-lg animate-pulse" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const SidebarNav = () => {
+    if (menuLoading) return <MenuSkeleton />;
+    if (!menuTree || menuTree.length === 0) {
+      return (
+        <div className="px-4 py-6 text-center text-white/40 text-sm">
+          <AlertCircle className="w-5 h-5 mx-auto mb-2" />
+          메뉴를 불러올 수 없습니다
+        </div>
+      );
+    }
+    return (
+      <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+        {menuTree.map((group) => (
+          <NavGroup key={group.code} group={group} />
+        ))}
+      </nav>
+    );
+  };
+
   return (
     <div className="min-h-screen flex">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex md:flex-col md:w-64 fixed inset-y-0 left-0 z-30">
-        <div className="flex flex-col h-full bg-gray-800 border-r border-gray-700">
+        <div className="flex flex-col h-full bg-[#053929] border-r border-white/10">
           {/* Logo */}
-          <div className="flex items-center h-16 px-6 border-b border-gray-700">
+          <div className="flex items-center h-16 px-6 border-b border-white/10">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
                 <span className="text-white font-bold text-sm">P</span>
@@ -227,14 +194,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-            {menuGroups.map((group) => (
-              <NavGroup key={group.label} group={group} />
-            ))}
-          </nav>
+          <SidebarNav />
 
           {/* User Profile */}
-          <div className="p-4 border-t border-gray-700">
+          <div className="p-4 border-t border-white/10">
             <div className="relative">
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -249,13 +212,24 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   <p className="text-sm font-medium text-white truncate">
                     {currentUser.username}
                   </p>
-                  <p className="text-xs text-gray-400 truncate">
-                    {currentUser.email}
-                  </p>
+                  {currentUser.company ? (
+                    <p className="text-xs text-white/40 truncate">
+                      {currentUser.company}
+                      {currentUser.companyType && (
+                        <span className="ml-1 text-white/25">
+                          ({COMPANY_TYPE_LABELS[currentUser.companyType] || currentUser.companyType})
+                        </span>
+                      )}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-white/40 truncate">
+                      {currentUser.email}
+                    </p>
+                  )}
                 </div>
                 <ChevronDown
                   className={cn(
-                    'w-4 h-4 text-gray-400 transition-transform',
+                    'w-4 h-4 text-white/40 transition-transform',
                     userMenuOpen && 'rotate-180'
                   )}
                 />
@@ -263,11 +237,28 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
               {/* User Dropdown */}
               {userMenuOpen && (
-                <div className="absolute bottom-full left-0 right-0 mb-2 bg-gray-800 border border-gray-700 rounded-lg shadow-lg p-2 animate-slide-up">
+                <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#053929] border border-white/15 rounded-lg shadow-lg animate-slide-up">
+                  {/* 사용자 정보 */}
+                  <div className="px-3 py-2.5 border-b border-white/10">
+                    <p className="text-sm font-medium text-white truncate">{currentUser.username}</p>
+                    <p className="text-xs text-white/40 truncate">{currentUser.email}</p>
+                    {currentUser.company && (
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <Building2 className="w-3 h-3 text-white/30 flex-shrink-0" />
+                        <span className="text-xs text-white/50 truncate">{currentUser.company}</span>
+                        {currentUser.companyType && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/40 flex-shrink-0">
+                            {COMPANY_TYPE_LABELS[currentUser.companyType] || currentUser.companyType}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-2">
                   <Link
                     to="/profile"
                     onClick={() => setUserMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-white/10 hover:text-gray-100 transition-colors"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/50 hover:bg-white/10 hover:text-white/80 transition-colors"
                   >
                     <Users className="w-4 h-4" />
                     프로필 설정
@@ -275,12 +266,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   <Link
                     to="/change-password"
                     onClick={() => setUserMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-white/10 hover:text-gray-100 transition-colors"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/50 hover:bg-white/10 hover:text-white/80 transition-colors"
                   >
                     <Settings className="w-4 h-4" />
                     비밀번호 변경
                   </Link>
-                  <div className="my-2 border-t border-gray-700" />
+                  <div className="my-2 border-t border-white/15" />
                   <button
                     onClick={() => {
                       setUserMenuOpen(false);
@@ -291,6 +282,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     <LogOut className="w-4 h-4" />
                     로그아웃
                   </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -309,13 +301,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* Mobile Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 border-r border-gray-700 transform transition-transform duration-300 md:hidden',
+          'fixed inset-y-0 left-0 z-50 w-64 bg-[#053929] border-r border-white/10 transform transition-transform duration-300 md:hidden',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="flex items-center justify-between h-16 px-4 border-b border-gray-700">
+          <div className="flex items-center justify-between h-16 px-4 border-b border-white/10">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
                 <span className="text-white font-bold text-sm">P</span>
@@ -324,21 +315,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="p-2 rounded-lg text-gray-400 hover:bg-white/10"
+              className="p-2 rounded-lg text-white/40 hover:bg-white/10"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-            {menuGroups.map((group) => (
-              <NavGroup key={group.label} group={group} />
-            ))}
-          </nav>
+          <SidebarNav />
 
-          {/* User Profile */}
-          <div className="p-4 border-t border-gray-700">
+          <div className="p-4 border-t border-white/10">
             <div className="flex items-center gap-3 p-3">
               <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-medium">
@@ -349,9 +334,20 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                 <p className="text-sm font-medium text-white truncate">
                   {currentUser.username}
                 </p>
-                <p className="text-xs text-gray-400 truncate">
-                  {currentUser.email}
-                </p>
+                {currentUser.company ? (
+                  <p className="text-xs text-white/40 truncate">
+                    {currentUser.company}
+                    {currentUser.companyType && (
+                      <span className="ml-1 text-white/25">
+                        ({COMPANY_TYPE_LABELS[currentUser.companyType] || currentUser.companyType})
+                      </span>
+                    )}
+                  </p>
+                ) : (
+                  <p className="text-xs text-white/40 truncate">
+                    {currentUser.email}
+                  </p>
+                )}
               </div>
             </div>
             <button
@@ -368,10 +364,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* Main Content */}
       <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
         {/* Mobile Header */}
-        <header className="md:hidden sticky top-0 z-20 h-16 px-4 flex items-center justify-between bg-gray-800 border-b border-gray-700">
+        <header className="md:hidden sticky top-0 z-20 h-16 px-4 flex items-center justify-between bg-[#053929] border-b border-white/10">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-lg text-gray-400 hover:bg-white/10"
+            className="p-2 rounded-lg text-white/40 hover:bg-white/10"
           >
             <Menu className="w-6 h-6" />
           </button>
@@ -381,11 +377,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             </div>
             <span className="font-semibold text-white">ParkMate</span>
           </div>
-          <div className="w-10" /> {/* Spacer for centering */}
+          <div className="w-10" />
         </header>
 
+        {/* Support Banner (본사/협회가 가맹점 지원 모드일 때) */}
+        {primaryScope === 'PLATFORM' && <SupportBanner />}
+
         {/* Page Content */}
-        <main className="flex-1 p-4 md:p-6 bg-gray-50">
+        <main className="flex-1 p-4 md:p-6">
           {children}
         </main>
       </div>

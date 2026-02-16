@@ -4,6 +4,7 @@ import com.parkgolf.app.data.mapper.toDomain
 import com.parkgolf.app.data.remote.api.RoundApi
 import com.parkgolf.app.domain.model.Round
 import com.parkgolf.app.domain.model.RoundSearchParams
+import com.parkgolf.app.domain.model.TimeOfDay
 import com.parkgolf.app.domain.model.TimeSlot
 import com.parkgolf.app.domain.repository.RoundRepository
 import com.parkgolf.app.util.PaginatedData
@@ -23,9 +24,12 @@ class RoundRepositoryImpl @Inject constructor(
     }
 
     override suspend fun searchRounds(params: RoundSearchParams): Result<PaginatedData<Round>> = safeApiCall {
+        val timeOfDay = params.timeOfDay?.takeIf { it != TimeOfDay.ALL }
         roundApi.searchRounds(
             search = params.search,
             date = params.date,
+            startTimeFrom = timeOfDay?.startTimeFrom,
+            startTimeTo = timeOfDay?.startTimeTo,
             minPrice = params.minPrice,
             maxPrice = params.maxPrice,
             minPlayers = params.minPlayers,

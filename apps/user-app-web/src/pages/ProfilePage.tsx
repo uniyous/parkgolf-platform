@@ -110,7 +110,7 @@ export function ProfilePage() {
               </div>
             </div>
             <button
-              onClick={() => {/* TODO: Edit profile */}}
+              onClick={() => navigate('/profile/edit')}
               className="px-3 py-1.5 rounded-lg bg-[var(--color-surface)] text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
             >
               편집

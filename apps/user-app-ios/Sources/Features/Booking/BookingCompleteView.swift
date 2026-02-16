@@ -12,30 +12,26 @@ struct BookingCompleteView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background
                 LinearGradient.parkBackground
                     .ignoresSafeArea()
 
-                // Content
                 ScrollView {
                     VStack(spacing: ParkSpacing.lg) {
-                        // Success Icon
-                        successHeader
+                        // 1. Success Message + Booking Number
+                        successCard
 
-                        // Booking Number
-                        bookingNumberCard
-
-                        // Booking Details
+                        // 2. Booking Details
                         bookingDetailsCard
 
-                        // Notice
-                        noticeCard
-
-                        // Actions
+                        // 3. Action Buttons
                         actionButtons
+
+                        // 4. Notice
+                        noticeCard
                     }
-                    .padding(ParkSpacing.md)
+                    .padding(.horizontal, ParkSpacing.md)
                     .padding(.top, ParkSpacing.xl)
+                    .padding(.bottom, ParkSpacing.xxl)
                 }
             }
             .navigationBarBackButtonHidden(true)
@@ -45,6 +41,7 @@ struct BookingCompleteView: View {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
+                            .font(.system(size: 18, weight: .medium))
                             .foregroundStyle(.white)
                     }
                 }
@@ -58,170 +55,306 @@ struct BookingCompleteView: View {
         }
     }
 
-    // MARK: - Success Header
+    // MARK: - 1. Success Card (체크 + 메시지 + 예약번호)
 
-    private var successHeader: some View {
-        VStack(spacing: ParkSpacing.md) {
-            // Animated Success Icon
-            ZStack {
-                Circle()
-                    .fill(Color.parkSuccess.opacity(0.2))
-                    .frame(width: 120, height: 120)
-                    .scaleEffect(showConfetti ? 1.0 : 0.5)
-                    .opacity(showConfetti ? 1.0 : 0)
+    private var successCard: some View {
+        GlassCard(padding: ParkSpacing.xl) {
+            VStack(spacing: ParkSpacing.lg) {
+                // Animated Checkmark
+                ZStack {
+                    Circle()
+                        .fill(Color.parkSuccess.opacity(0.3))
+                        .frame(width: 80, height: 80)
 
-                Circle()
-                    .fill(Color.parkSuccess.opacity(0.3))
-                    .frame(width: 90, height: 90)
-                    .scaleEffect(showConfetti ? 1.0 : 0.5)
-                    .opacity(showConfetti ? 1.0 : 0)
+                    Circle()
+                        .stroke(Color.parkSuccess.opacity(0.5), lineWidth: 2)
+                        .frame(width: 80, height: 80)
 
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 60))
-                    .foregroundStyle(Color.parkSuccess)
-                    .scaleEffect(showConfetti ? 1.0 : 0)
-                    .rotationEffect(.degrees(showConfetti ? 0 : -180))
-            }
-            .animation(.spring(response: 0.6, dampingFraction: 0.7), value: showConfetti)
-
-            VStack(spacing: ParkSpacing.xs) {
-                Text("예약이 완료되었습니다!")
-                    .font(.parkDisplaySmall)
-                    .foregroundStyle(.white)
-
-                Text("예약 확인 메일이 발송되었습니다")
-                    .font(.parkBodyMedium)
-                    .foregroundStyle(.white.opacity(0.7))
-            }
-        }
-        .padding(.vertical, ParkSpacing.lg)
-    }
-
-    // MARK: - Booking Number Card
-
-    private var bookingNumberCard: some View {
-        GlassCard {
-            VStack(spacing: ParkSpacing.sm) {
-                Text("예약번호")
-                    .font(.parkLabelMedium)
-                    .foregroundStyle(.white.opacity(0.6))
-
-                Text(booking.bookingNumber)
-                    .font(.parkDisplayMedium)
-                    .foregroundStyle(Color.parkPrimary)
-                    .textSelection(.enabled)
-
-                Button {
-                    UIPasteboard.general.string = booking.bookingNumber
-                    let impactFeedback = UINotificationFeedbackGenerator()
-                    impactFeedback.notificationOccurred(.success)
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "doc.on.doc")
-                        Text("복사하기")
-                    }
-                    .font(.parkLabelSmall)
-                    .foregroundStyle(.white.opacity(0.6))
+                    Text("✅")
+                        .font(.system(size: 40))
+                        .scaleEffect(showConfetti ? 1.0 : 0)
+                        .rotationEffect(.degrees(showConfetti ? 0 : -180))
                 }
+                .animation(.spring(response: 0.6, dampingFraction: 0.7), value: showConfetti)
+
+                // Title
+                Text("예약이 완료되었습니다!")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+
+                // Subtitle
+                Text("라운드 예약이 성공적으로 완료되었습니다.\n예약 확인 메일이 발송되었습니다.")
+                    .font(.parkBodyLarge)
+                    .foregroundStyle(.white.opacity(0.8))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+
+                // Booking Number Box
+                VStack(spacing: ParkSpacing.xs) {
+                    Text("예약번호")
+                        .font(.parkLabelLarge)
+                        .foregroundStyle(Color.parkSuccess.opacity(0.9))
+
+                    Text(booking.bookingNumber)
+                        .font(.system(size: 22, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.white)
+                        .tracking(3)
+                        .textSelection(.enabled)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, ParkSpacing.md)
+                .padding(.horizontal, ParkSpacing.lg)
+                .background(
+                    RoundedRectangle(cornerRadius: ParkRadius.lg)
+                        .fill(Color.parkSuccess.opacity(0.2))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: ParkRadius.lg)
+                                .stroke(Color.parkSuccess.opacity(0.4), lineWidth: 2)
+                        )
+                )
             }
+            .frame(maxWidth: .infinity)
         }
     }
 
-    // MARK: - Booking Details Card
+    // MARK: - 2. Booking Details Card
 
     private var bookingDetailsCard: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: ParkSpacing.md) {
-                Text("📋 예약 상세")
-                    .font(.parkHeadlineSmall)
+        GlassCard(padding: ParkSpacing.lg) {
+            VStack(alignment: .leading, spacing: ParkSpacing.lg) {
+                // Section Title
+                Text("예약 상세 정보")
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
 
-                VStack(alignment: .leading, spacing: ParkSpacing.sm) {
-                    if let gameName = booking.gameName {
-                        DetailRow(icon: "flag", label: "게임", value: gameName)
-                    }
+                // Game Info Box
+                gameInfoBox
 
-                    if let clubName = booking.clubName {
-                        DetailRow(icon: "building.2", label: "골프장", value: clubName)
-                    }
+                // Info Grid (2x2)
+                infoGrid
 
-                    if let courseNames = booking.courseNames {
-                        DetailRow(icon: "map", label: "코스", value: courseNames)
-                    }
-
-                    DetailRow(icon: "calendar", label: "날짜", value: booking.formattedDate)
-
-                    DetailRow(icon: "clock", label: "시간", value: booking.timeRange)
-
-                    DetailRow(icon: "person.2", label: "인원", value: "\(booking.playerCount)명")
-
-                    if let specialRequests = booking.specialRequests, !specialRequests.isEmpty {
-                        DetailRow(icon: "text.bubble", label: "요청사항", value: specialRequests)
-                    }
+                // Special Requests (conditional)
+                if let specialRequests = booking.specialRequests, !specialRequests.isEmpty {
+                    specialRequestsBox(specialRequests)
                 }
 
-                Divider()
-                    .background(Color.white.opacity(0.2))
-
-                HStack {
-                    Text("총 결제 금액")
-                        .font(.parkBodyMedium)
-                        .foregroundStyle(.white.opacity(0.8))
-
-                    Spacer()
-
-                    PriceDisplay(amount: booking.totalPrice, size: .large, color: .parkPrimary)
-                }
+                // Payment Summary
+                paymentSummaryBox
             }
         }
     }
 
-    // MARK: - Notice Card
+    // MARK: - Game Info Box
 
-    private var noticeCard: some View {
-        GlassCard(padding: ParkSpacing.md) {
-            VStack(alignment: .leading, spacing: ParkSpacing.sm) {
-                HStack {
-                    Image(systemName: "info.circle.fill")
-                        .foregroundStyle(Color.parkInfo)
-                    Text("이용 안내")
-                        .font(.parkHeadlineSmall)
+    private var gameInfoBox: some View {
+        HStack(alignment: .top, spacing: ParkSpacing.md) {
+            // Emoji Box
+            ZStack {
+                RoundedRectangle(cornerRadius: ParkRadius.lg)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color(red: 0.2, green: 0.8, blue: 0.5).opacity(0.3),
+                                     Color(red: 0.1, green: 0.6, blue: 0.4).opacity(0.3)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                Text("🏌️")
+                    .font(.system(size: 36))
+            }
+            .frame(width: 80, height: 80)
+
+            // Info
+            VStack(alignment: .leading, spacing: ParkSpacing.xs) {
+                if let gameName = booking.gameName {
+                    Text(gameName)
+                        .font(.parkHeadlineMedium)
                         .foregroundStyle(.white)
                 }
 
-                VStack(alignment: .leading, spacing: ParkSpacing.xs) {
-                    NoticeItem(text: "라운드 3일 전까지 무료 취소 가능합니다")
-                    NoticeItem(text: "당일 취소는 수수료가 발생할 수 있습니다")
-                    NoticeItem(text: "드레스 코드를 확인해주세요")
-                    NoticeItem(text: "문의사항은 고객센터로 연락해주세요")
+                if let clubName = booking.clubName {
+                    Text(clubName)
+                        .font(.parkBodyMedium)
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+
+                // Tags
+                HStack(spacing: ParkSpacing.xs) {
+                    InfoTag(text: "\(booking.playerCount)명")
+
+                    if let courseNames = booking.courseNames {
+                        InfoTag(text: courseNames, isAccent: true)
+                    }
+                }
+                .padding(.top, ParkSpacing.xxs)
+            }
+
+            Spacer()
+        }
+        .padding(ParkSpacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: ParkRadius.lg)
+                .fill(Color.white.opacity(0.1))
+                .overlay(
+                    RoundedRectangle(cornerRadius: ParkRadius.lg)
+                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                )
+        )
+    }
+
+    // MARK: - Info Grid (2x2)
+
+    private var infoGrid: some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: ParkSpacing.sm) {
+            InfoGridItem(label: "예약 날짜", value: booking.formattedDate)
+            InfoGridItem(label: "예약 시간", value: booking.startTime)
+            InfoGridItem(label: "플레이어 수", value: "\(booking.playerCount)명")
+            InfoGridItem(label: "결제 방법", value: paymentMethodDisplay)
+        }
+    }
+
+    private var paymentMethodDisplay: String {
+        if let method = booking.paymentMethod,
+           let pm = PaymentMethod(rawValue: method) {
+            return "\(pm.icon) \(pm.displayName)"
+        }
+        return "결제 완료"
+    }
+
+    // MARK: - Special Requests Box
+
+    private func specialRequestsBox(_ text: String) -> some View {
+        VStack(alignment: .leading, spacing: ParkSpacing.xs) {
+            Text("특별 요청사항")
+                .font(.parkLabelLarge)
+                .fontWeight(.semibold)
+                .foregroundStyle(Color(red: 1.0, green: 0.85, blue: 0.4))
+
+            Text(text)
+                .font(.parkBodyMedium)
+                .foregroundStyle(.white)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(ParkSpacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: ParkRadius.lg)
+                .fill(Color(red: 1.0, green: 0.75, blue: 0.2).opacity(0.2))
+                .overlay(
+                    RoundedRectangle(cornerRadius: ParkRadius.lg)
+                        .stroke(Color(red: 1.0, green: 0.75, blue: 0.2).opacity(0.4), lineWidth: 1)
+                )
+        )
+    }
+
+    // MARK: - Payment Summary Box
+
+    private var paymentSummaryBox: some View {
+        VStack(alignment: .leading, spacing: ParkSpacing.xs) {
+            Text("결제 완료 금액")
+                .font(.parkBodyLarge)
+                .fontWeight(.semibold)
+                .foregroundStyle(Color.parkSuccess.opacity(0.9))
+
+            Text(formatPrice(booking.totalPrice))
+                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+
+            if booking.pricePerPerson > 0 {
+                Text("(기본요금: \(formatPrice(booking.pricePerPerson * booking.playerCount))원\(booking.serviceFee > 0 ? " + 수수료: \(formatPrice(booking.serviceFee))원" : ""))")
+                    .font(.parkLabelMedium)
+                    .foregroundStyle(Color.parkSuccess.opacity(0.7))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(ParkSpacing.lg)
+        .background(
+            RoundedRectangle(cornerRadius: ParkRadius.lg)
+                .fill(Color.parkSuccess.opacity(0.2))
+                .overlay(
+                    RoundedRectangle(cornerRadius: ParkRadius.lg)
+                        .stroke(Color.parkSuccess.opacity(0.4), lineWidth: 2)
+                )
+        )
+    }
+
+    // MARK: - 3. Action Buttons
+
+    private var actionButtons: some View {
+        HStack(spacing: ParkSpacing.sm) {
+            // 새로운 예약하기
+            Button {
+                appState.bookingCompleteAction = .newBooking
+                dismiss()
+            } label: {
+                Text("새로운 예약하기")
+                    .font(.parkHeadlineSmall)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(
+                        RoundedRectangle(cornerRadius: ParkRadius.lg)
+                            .fill(Color.parkSuccess.opacity(0.2))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: ParkRadius.lg)
+                                    .stroke(Color.parkSuccess.opacity(0.4), lineWidth: 2)
+                            )
+                    )
+            }
+
+            // 내 예약 보기
+            Button {
+                appState.bookingCompleteAction = .myBookings
+                dismiss()
+            } label: {
+                Text("내 예약 보기")
+                    .font(.parkHeadlineSmall)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(
+                        RoundedRectangle(cornerRadius: ParkRadius.lg)
+                            .fill(Color.white.opacity(0.1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: ParkRadius.lg)
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 2)
+                            )
+                    )
+            }
+        }
+    }
+
+    // MARK: - 4. Notice Card
+
+    private var noticeCard: some View {
+        GlassCard(padding: ParkSpacing.lg) {
+            VStack(alignment: .leading, spacing: ParkSpacing.md) {
+                Text("예약 안내사항")
+                    .font(.parkHeadlineMedium)
+                    .foregroundStyle(.white)
+
+                VStack(alignment: .leading, spacing: ParkSpacing.sm) {
+                    NoticeItem(text: "예약 확인 메일을 확인해주세요.")
+                    NoticeItem(text: "예약 변경/취소는 예약일 3일 전까지 가능합니다.")
+                    NoticeItem(text: "당일 취소 시 취소 수수료가 부과될 수 있습니다.")
+                    NoticeItem(text: "골프장 이용 시 드레스 코드를 준수해주세요.")
+                    NoticeItem(text: "문의사항이 있으시면 고객센터로 연락주세요.")
                 }
             }
         }
     }
 
-    // MARK: - Action Buttons
+    // MARK: - Helpers
 
-    private var actionButtons: some View {
-        VStack(spacing: ParkSpacing.sm) {
-            GradientButton(
-                title: "🔍 새로운 예약하기",
-                style: .secondary
-            ) {
-                appState.bookingCompleteAction = .newBooking
-                dismiss()
-            }
-
-            GradientButton(
-                title: "📋 내 예약 보기"
-            ) {
-                appState.bookingCompleteAction = .myBookings
-                dismiss()
-            }
-        }
+    private func formatPrice(_ price: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        return "₩\(formatter.string(from: NSNumber(value: price)) ?? "\(price)")"
     }
 }
 
-// MARK: - Detail Row
+// MARK: - Detail Row (used by MyBookingsView)
 
 struct DetailRow: View {
     let icon: String
@@ -231,19 +364,71 @@ struct DetailRow: View {
     var body: some View {
         HStack(alignment: .top) {
             Image(systemName: icon)
-                .frame(width: 20)
+                .frame(width: 24)
                 .foregroundStyle(.white.opacity(0.6))
 
             Text(label)
                 .foregroundStyle(.white.opacity(0.6))
-                .frame(width: 60, alignment: .leading)
+                .frame(width: 72, alignment: .leading)
 
             Text(value)
                 .foregroundStyle(.white)
 
             Spacer()
         }
-        .font(.parkBodySmall)
+        .font(.parkBodyLarge)
+    }
+}
+
+// MARK: - Info Tag
+
+struct InfoTag: View {
+    let text: String
+    var isAccent: Bool = false
+
+    var body: some View {
+        Text(text)
+            .font(.parkLabelMedium)
+            .fontWeight(.medium)
+            .foregroundStyle(isAccent ? Color(red: 0.4, green: 0.9, blue: 0.6) : .white.opacity(0.9))
+            .padding(.horizontal, ParkSpacing.sm)
+            .padding(.vertical, ParkSpacing.xxs)
+            .background(
+                Capsule()
+                    .fill(isAccent ? Color(red: 0.2, green: 0.8, blue: 0.5).opacity(0.2) : Color.white.opacity(0.2))
+            )
+    }
+}
+
+// MARK: - Info Grid Item
+
+struct InfoGridItem: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ParkSpacing.xs) {
+            Text(label)
+                .font(.parkLabelMedium)
+                .foregroundStyle(.white.opacity(0.6))
+
+            Text(value)
+                .font(.parkBodyLarge)
+                .fontWeight(.semibold)
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(ParkSpacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: ParkRadius.lg)
+                .fill(Color.white.opacity(0.1))
+                .overlay(
+                    RoundedRectangle(cornerRadius: ParkRadius.lg)
+                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                )
+        )
     }
 }
 
@@ -255,11 +440,12 @@ struct NoticeItem: View {
     var body: some View {
         HStack(alignment: .top, spacing: ParkSpacing.xs) {
             Text("•")
-                .foregroundStyle(.white.opacity(0.4))
+                .foregroundStyle(.white.opacity(0.5))
 
             Text(text)
-                .font(.parkBodySmall)
-                .foregroundStyle(.white.opacity(0.7))
+                .font(.parkBodyMedium)
+                .foregroundStyle(.white.opacity(0.8))
+                .lineSpacing(2)
 
             Spacer()
         }
@@ -292,7 +478,7 @@ struct NoticeItem: View {
             serviceFee: 3000,
             totalPrice: 103000,
             status: "CONFIRMED",
-            paymentMethod: "CREDIT_CARD",
+            paymentMethod: "card",
             specialRequests: "카트 요청드립니다",
             notes: nil,
             userEmail: nil,

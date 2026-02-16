@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - Social View (Friends + Chat Combined)
 
 struct SocialView: View {
+    @EnvironmentObject private var appState: AppState
     @State private var selectedSegment: SocialSegment = .friends
     @StateObject private var friendsViewModel = FriendsViewModel()
     @StateObject private var chatViewModel = ChatListViewModel()
@@ -45,9 +46,15 @@ struct SocialView: View {
             .sheet(isPresented: $chatViewModel.showNewChatSheet) {
                 NewChatSheet()
             }
+            .navigationDestination(item: $navigateToChatRoom) { room in
+                ChatRoomViewWrapper(room: room)
+            }
             .task {
                 await friendsViewModel.loadAll()
                 await chatViewModel.loadChatRooms()
+
+                // 알림에서 네비게이션 요청 처리
+                handlePendingNavigation()
             }
             .onChange(of: selectedSegment) { _, newSegment in
                 Task {
@@ -58,6 +65,10 @@ struct SocialView: View {
                         await chatViewModel.loadChatRooms()
                     }
                 }
+            }
+            .onAppear {
+                // 탭 전환 시에도 pendingNavigation 처리
+                handlePendingNavigation()
             }
             .navigationBarHidden(true)
         }
@@ -451,9 +462,6 @@ struct SocialView: View {
             }
 
         }
-        .navigationDestination(item: $navigateToChatRoom) { room in
-            ChatRoomViewWrapper(room: room)
-        }
         .overlay {
             if isCreatingChat {
                 Color.black.opacity(0.3)
@@ -525,6 +533,37 @@ struct SocialView: View {
                     await chatViewModel.loadChatRooms()
                 }
             }
+        }
+    }
+
+    // MARK: - Handle Pending Navigation (알림에서 네비게이션 요청 처리)
+
+    private func handlePendingNavigation() {
+        // 세그먼트 전환 처리
+        if let pendingSegment = appState.pendingSocialSegment {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                switch pendingSegment {
+                case .friends:
+                    selectedSegment = .friends
+                case .chat:
+                    selectedSegment = .chat
+                }
+            }
+            appState.pendingSocialSegment = nil
+        }
+
+        // 특정 채팅방으로 이동 처리
+        if let chatRoomId = appState.pendingChatRoomId {
+            // 채팅 세그먼트로 전환
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedSegment = .chat
+            }
+
+            // 채팅방 목록에서 해당 채팅방 찾아서 이동
+            if let room = chatViewModel.chatRooms.first(where: { $0.id == chatRoomId }) {
+                navigateToChatRoom = room
+            }
+            appState.pendingChatRoomId = nil
         }
     }
 }

@@ -8,6 +8,7 @@ import com.parkgolf.app.data.remote.dto.common.PaginatedResponse
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -26,9 +27,9 @@ interface BookingApi {
     @GET("api/user/bookings/number/{bookingNumber}")
     suspend fun getBookingByNumber(@Path("bookingNumber") bookingNumber: String): ApiResponse<BookingDto>
 
-    @DELETE("api/user/bookings/{id}")
+    @HTTP(method = "DELETE", path = "api/user/bookings/{id}", hasBody = true)
     suspend fun cancelBooking(
         @Path("id") id: String,
         @Body request: CancelBookingRequest? = null
-    ): ApiResponse<Unit>
+    ): ApiResponse<BookingDto>
 }

@@ -6,7 +6,6 @@ import {
   LoginPage,
   SignupPage,
   HomePage,
-  SearchPage,
   BookingsPage,
   BookingDetailPage,
   BookingViewPage,
@@ -16,6 +15,8 @@ import {
   SocialPage,
   ChatRoomPage,
   ChangePasswordPage,
+  EditProfilePage,
+  NotificationSettingsPage,
 } from './pages';
 import { NotificationsPage } from './pages/NotificationsPage';
 
@@ -42,18 +43,19 @@ function App() {
           <Route element={<PrivateRoute />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/bookings" element={<BookingsPage />} />
-            <Route path="/search" element={<SearchPage />} />
             <Route path="/my-bookings" element={<MyBookingsPage />} />
             <Route path="/booking/:bookingNumber" element={<BookingViewPage />} />
             <Route path="/booking-detail" element={<BookingDetailPage />} />
             <Route path="/booking-complete" element={<BookingCompletePage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/profile/edit" element={<EditProfilePage />} />
             <Route path="/social" element={<SocialPage />} />
             <Route path="/friends" element={<Navigate to="/social" replace />} />
             <Route path="/chat" element={<Navigate to="/social?tab=chat" replace />} />
             <Route path="/chat/:roomId" element={<ChatRoomPage />} />
             <Route path="/change-password" element={<ChangePasswordPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

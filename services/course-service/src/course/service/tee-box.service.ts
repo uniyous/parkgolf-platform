@@ -31,21 +31,12 @@ export class TeeBoxService {
       throw new ConflictException(`A tee box with name "${createDto.name}" already exists for hole ID ${holeId}.`);
     }
 
-    try {
-      return await this.prisma.teeBox.create({
-        data: {
-          ...createDto,
-          holeId: holeId, // 경로에서 받은 holeId 사용
-        },
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        this.logger.error(`Failed to create tee box: ${error.message}`, error.stack);
-      } else {
-        this.logger.error(`Failed to create tee box: ${JSON.stringify(error)}`);
-      }
-      throw error;
-    }
+    return this.prisma.teeBox.create({
+      data: {
+        ...createDto,
+        holeId: holeId,
+      },
+    });
   }
 
   async findAllByHoleId(holeId: number, query: FindTeeBoxesQueryDto): Promise<TeeBox[]> {
@@ -100,23 +91,15 @@ export class TeeBoxService {
       }
     }
 
-    try {
-      return await this.prisma.teeBox.update({
-        where: { id: teeBoxId },
-        data: {
-          // holeId는 변경하지 않음
-          name: updateDto.name,
-          distance: updateDto.distance,
-        },
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        this.logger.error(`Failed to update tee box ID ${teeBoxId}: ${error.message}`, error.stack);
-      } else {
-        this.logger.error(`Failed to update tee box ID ${teeBoxId}: ${JSON.stringify(error)}`);
-      }
-      throw error;
-    }
+    return this.prisma.teeBox.update({
+      where: { id: teeBoxId },
+      data: {
+        name: updateDto.name,
+        color: updateDto.color,
+        distance: updateDto.distance,
+        difficulty: updateDto.difficulty,
+      },
+    });
   }
 
   async remove(holeId: number, teeBoxId: number): Promise<TeeBox> {
@@ -129,15 +112,8 @@ export class TeeBoxService {
         where: { id: teeBoxId },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          // Record to delete not found
-          throw new NotFoundException(`Tee box with ID ${teeBoxId} not found.`);
-        }
-      } else if (error instanceof Error) {
-        this.logger.error(`Failed to delete tee box ID ${teeBoxId}: ${error.message}`, error.stack);
-      } else {
-        this.logger.error(`Failed to delete tee box ID ${teeBoxId}: ${JSON.stringify(error)}`);
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new NotFoundException(`Tee box with ID ${teeBoxId} not found.`);
       }
       throw error;
     }

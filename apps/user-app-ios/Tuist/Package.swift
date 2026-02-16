@@ -9,6 +9,7 @@ let packageSettings = PackageSettings(
         "Alamofire": .framework,
         "KeychainAccess": .framework,
         "SocketIO": .framework,
+        "TossPayments": .framework,
     ]
 )
 #endif
@@ -22,5 +23,7 @@ let package = Package(
         .package(url: "https://github.com/kishikawakatsumi/KeychainAccess.git", from: "4.2.2"),
         // Socket.IO
         .package(url: "https://github.com/socketio/socket.io-client-swift.git", from: "16.1.1"),
+        // TossPayments
+        .package(url: "https://github.com/tosspayments/payment-sdk-ios", from: "0.1.35"),
     ]
 )

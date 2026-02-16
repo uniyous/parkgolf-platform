@@ -59,7 +59,7 @@ jobs:
         run: |
           INPUT="${{ github.event.inputs.services }}"
           if [ "$INPUT" = "all" ] || [ -z "$INPUT" ]; then
-            SERVICES="iam-service,course-service,booking-service,chat-service,notify-service,admin-api,user-api,chat-gateway"
+            SERVICES="iam-service,course-service,booking-service,payment-service,chat-service,notify-service,admin-api,user-api,chat-gateway,weather-service,location-service,job-service"
           else
             SERVICES="$INPUT"
           fi
@@ -169,31 +169,39 @@ jobs:
           case $SERVICE in
             iam-service)
               DB_NAME="iam_db"; NEEDS_DB="true"
-              CPU_REQ="50m"; CPU_LIM="200m"; MEM_REQ="96Mi"; MEM_LIM="256Mi"
+              CPU_REQ="50m"; CPU_LIM="250m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
               ;;
             course-service)
               DB_NAME="course_db"; NEEDS_DB="true"
-              CPU_REQ="50m"; CPU_LIM="200m"; MEM_REQ="96Mi"; MEM_LIM="256Mi"
+              CPU_REQ="50m"; CPU_LIM="250m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
               ;;
             booking-service)
               DB_NAME="booking_db"; NEEDS_DB="true"
-              CPU_REQ="50m"; CPU_LIM="200m"; MEM_REQ="96Mi"; MEM_LIM="256Mi"
+              CPU_REQ="50m"; CPU_LIM="250m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
               ;;
             chat-service)
               DB_NAME="chat_db"; NEEDS_DB="true"
-              CPU_REQ="50m"; CPU_LIM="200m"; MEM_REQ="96Mi"; MEM_LIM="256Mi"
+              CPU_REQ="50m"; CPU_LIM="250m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
               ;;
             notify-service)
               DB_NAME="notify_db"; NEEDS_DB="true"
-              CPU_REQ="50m"; CPU_LIM="200m"; MEM_REQ="96Mi"; MEM_LIM="256Mi"
+              CPU_REQ="50m"; CPU_LIM="250m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
+              ;;
+            payment-service)
+              DB_NAME="payment_db"; NEEDS_DB="true"
+              CPU_REQ="50m"; CPU_LIM="250m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
               ;;
             chat-gateway)
               DB_NAME=""; NEEDS_DB="false"
               CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
               ;;
+            job-service)
+              DB_NAME=""; NEEDS_DB="false"
+              CPU_REQ="50m"; CPU_LIM="200m"; MEM_REQ="64Mi"; MEM_LIM="256Mi"
+              ;;
             *)
               DB_NAME=""; NEEDS_DB="false"
-              CPU_REQ="50m"; CPU_LIM="200m"; MEM_REQ="96Mi"; MEM_LIM="256Mi"
+              CPU_REQ="50m"; CPU_LIM="250m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
               ;;
           esac
           echo "db_name=$DB_NAME" >> $GITHUB_OUTPUT
@@ -228,6 +236,46 @@ jobs:
                         key: DATABASE_URL"
           else
             DB_ENV=""
+          fi
+
+          # Set service-specific env vars
+          EXTRA_ENV=""
+          if [ "$SERVICE" = "weather-service" ]; then
+            EXTRA_ENV="
+                  - name: KMA_API_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: parkgolf-secrets
+                        key: KMA_API_KEY
+                  - name: KMA_API_URL
+                    valueFrom:
+                      configMapKeyRef:
+                        name: parkgolf-config
+                        key: KMA_API_URL"
+          elif [ "$SERVICE" = "location-service" ]; then
+            EXTRA_ENV="
+                  - name: KAKAO_API_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: parkgolf-secrets
+                        key: KAKAO_API_KEY"
+          elif [ "$SERVICE" = "payment-service" ]; then
+            EXTRA_ENV="
+                  - name: TOSS_SECRET_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: parkgolf-secrets
+                        key: TOSS_SECRET_KEY
+                  - name: TOSS_SECURITY_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: parkgolf-secrets
+                        key: TOSS_SECURITY_KEY
+                  - name: TOSS_API_URL
+                    valueFrom:
+                      configMapKeyRef:
+                        name: parkgolf-config
+                        key: TOSS_API_URL"
           fi
 
           # Set replicas and strategy per service
@@ -301,6 +349,7 @@ jobs:
                         name: parkgolf-secrets
                         key: JWT_REFRESH_SECRET
           $DB_ENV
+          $EXTRA_ENV
                   resources:
                     requests:
                       cpu: "${{ steps.config.outputs.cpu_req }}"
@@ -308,18 +357,26 @@ jobs:
                     limits:
                       cpu: "${{ steps.config.outputs.cpu_lim }}"
                       memory: "${{ steps.config.outputs.mem_lim }}"
-                  readinessProbe:
+                  startupProbe:
                     httpGet:
                       path: /health
                       port: 8080
-                    initialDelaySeconds: 15
+                    failureThreshold: 12
                     periodSeconds: 5
+                  readinessProbe:
+                    httpGet:
+                      path: /health/ready
+                      port: 8080
+                    initialDelaySeconds: 5
+                    periodSeconds: 5
+                    failureThreshold: 3
                   livenessProbe:
                     httpGet:
-                      path: /health
+                      path: /health/live
                       port: 8080
                     initialDelaySeconds: 30
                     periodSeconds: 10
+                    failureThreshold: 3
           EOF
 
       - name: Wait for Rollout
@@ -409,9 +466,9 @@ jobs:
         run: |
           ENV="${{ needs.setup.outputs.environment }}"
           if [ "$ENV" == "prod" ]; then
-            echo "domain=api.goparkmate.com" >> $GITHUB_OUTPUT
+            echo "domain=api.parkgolfmate.com" >> $GITHUB_OUTPUT
           else
-            echo "domain=dev-api.goparkmate.com" >> $GITHUB_OUTPUT
+            echo "domain=dev-api.parkgolfmate.com" >> $GITHUB_OUTPUT
           fi
 
       - name: Deploy ManagedCertificate
@@ -516,6 +573,20 @@ jobs:
                       name: chat-gateway
                       port:
                         number: 8080
+                - path: /webhook
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: payment-service
+                      port:
+                        number: 8080
+                - path: /webhook/*
+                  pathType: ImplementationSpecific
+                  backend:
+                    service:
+                      name: payment-service
+                      port:
+                        number: 8080
           EOF
 
       - name: Summary
@@ -532,3 +603,4 @@ jobs:
           echo "- Admin API: https://${{ steps.domain.outputs.domain }}/api/admin" >> $GITHUB_STEP_SUMMARY
           echo "- User API: https://${{ steps.domain.outputs.domain }}/api/user" >> $GITHUB_STEP_SUMMARY
           echo "- WebSocket: wss://${{ steps.domain.outputs.domain }}/socket.io" >> $GITHUB_STEP_SUMMARY
+          echo "- Webhook: https://${{ steps.domain.outputs.domain }}/webhook" >> $GITHUB_STEP_SUMMARY

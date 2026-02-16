@@ -50,6 +50,13 @@ export const bookingKeys = {
     [...bookingKeys.all, 'timeSlotAvailability', gameId, date] as const,
 };
 
+// Payment Keys
+export const paymentKeys = {
+  all: ['payments'] as const,
+  prepare: () => [...paymentKeys.all, 'prepare'] as const,
+  confirm: () => [...paymentKeys.all, 'confirm'] as const,
+};
+
 // Notification Keys
 export const notificationKeys = {
   all: ['notifications'] as const,

@@ -15,6 +15,8 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { UsersModule } from './users/users.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { PoliciesModule } from './policies/policies.module';
+import { MenusModule } from './menus/menus.module';
+import { CompanyMembersModule } from './company-members/company-members.module';
 
 @Module({
   imports: [
@@ -39,6 +41,8 @@ import { PoliciesModule } from './policies/policies.module';
     UsersModule,
     DashboardModule,
     PoliciesModule,
+    MenusModule,
+    CompanyMembersModule,
   ],
   controllers: [],
   providers: [

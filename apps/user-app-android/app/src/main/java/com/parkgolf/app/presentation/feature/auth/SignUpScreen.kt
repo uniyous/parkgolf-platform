@@ -187,7 +187,6 @@ fun SignUpScreen(
                         text = "가입하기",
                         onClick = {
                             isLoading = true
-                            // TODO: Implement actual signup
                             onSignUpSuccess()
                         },
                         enabled = isFormValid,

@@ -252,10 +252,10 @@ export const CancellationManagementPage: React.FC = () => {
 
       {/* 테이블 */}
       {isLoading ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-12">
+        <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-12">
           <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-            <span className="ml-3 text-gray-600">취소 내역을 불러오는 중...</span>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
+            <span className="ml-3 text-white/60">취소 내역을 불러오는 중...</span>
           </div>
         </div>
       ) : (
@@ -268,8 +268,8 @@ export const CancellationManagementPage: React.FC = () => {
       )}
 
       {/* 하단 정보 */}
-      <div className="bg-gray-50 rounded-lg p-4">
-        <p className="text-sm text-gray-600 text-center">
+      <div className="bg-white/5 rounded-lg p-4">
+        <p className="text-sm text-white/60 text-center">
           총 {filteredRecords.length}건의 취소 내역
           {searchKeyword && ` (검색: "${searchKeyword}")`}
         </p>

@@ -80,10 +80,10 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
 
   // 가동률 색상
   const getUtilizationColor = (rate: number) => {
-    if (rate >= 80) return 'text-green-600 bg-green-100';
-    if (rate >= 60) return 'text-yellow-600 bg-yellow-100';
-    if (rate >= 40) return 'text-orange-600 bg-orange-100';
-    return 'text-red-600 bg-red-100';
+    if (rate >= 80) return 'text-green-600 bg-green-500/20';
+    if (rate >= 60) return 'text-yellow-600 bg-yellow-500/20';
+    if (rate >= 40) return 'text-orange-600 bg-orange-500/20';
+    return 'text-red-600 bg-red-500/20';
   };
 
   // 시즌 정보 업데이트
@@ -104,7 +104,7 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
   if (isLoading && !stats && !analytics.length) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
       </div>
     );
   }
@@ -114,30 +114,30 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">운영 정보</h2>
-          <p className="text-gray-600 mt-1">골프장 운영 현황 및 통계를 확인하세요</p>
+          <h2 className="text-xl font-semibold text-white">운영 정보</h2>
+          <p className="text-white/60 mt-1">골프장 운영 현황 및 통계를 확인하세요</p>
         </div>
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-2 text-sm">
-            <label className="text-gray-700">분석 기간:</label>
+            <label className="text-white/70">분석 기간:</label>
             <input
               type="date"
               value={dateRange.startDate}
               onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-              className="border border-gray-300 rounded px-2 py-1"
+              className="border border-white/15 rounded px-2 py-1"
             />
-            <span className="text-gray-500">~</span>
+            <span className="text-white/50">~</span>
             <input
               type="date"
               value={dateRange.endDate}
               onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-              className="border border-gray-300 rounded px-2 py-1"
+              className="border border-white/15 rounded px-2 py-1"
             />
           </div>
           <button
             onClick={() => refetch()}
             disabled={isLoading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors disabled:opacity-50"
           >
             새로고침
           </button>
@@ -146,16 +146,16 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
 
       {/* 실시간 현황 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4 border border-emerald-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-blue-700">오늘 예약 가능</p>
-              <p className="text-2xl font-bold text-blue-900">
+              <p className="text-sm text-emerald-300">오늘 예약 가능</p>
+              <p className="text-2xl font-bold text-white">
                 {availability ? `${availability.available}/${availability.total}` : '-/-'}
               </p>
             </div>
-            <div className="w-12 h-12 bg-blue-200 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-12 h-12 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
@@ -218,34 +218,34 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
       {/* 18홀 조합별 분석 */}
       {analytics.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-medium text-gray-900">18홀 조합별 성과 분석</h3>
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <h3 className="text-lg font-medium text-white">18홀 조합별 성과 분석</h3>
+          <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-white/15">
+                <thead className="bg-white/5">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">조합</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">총 슬롯</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">예약</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">가동률</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">평균 가격</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">수익</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">인기 시간</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white/50 uppercase tracking-wider">조합</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-white/50 uppercase tracking-wider">총 슬롯</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-white/50 uppercase tracking-wider">예약</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-white/50 uppercase tracking-wider">가동률</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-white/50 uppercase tracking-wider">평균 가격</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-white/50 uppercase tracking-wider">수익</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-white/50 uppercase tracking-wider">인기 시간</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white/10 divide-y divide-white/15">
                   {analytics.map((combo) => (
-                    <tr key={combo.comboId} className="hover:bg-gray-50">
+                    <tr key={combo.comboId} className="hover:bg-white/5">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{combo.comboName}</div>
-                        <div className="text-sm text-gray-500">ID: {combo.comboId}</div>
+                        <div className="text-sm font-medium text-white">{combo.comboName}</div>
+                        <div className="text-sm text-white/50">ID: {combo.comboId}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-white">
                         {combo.totalSlots}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm text-gray-900">{combo.bookedSlots}</div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-sm text-white">{combo.bookedSlots}</div>
+                        <div className="text-xs text-white/50">
                           주중: {combo.weekdayBookings} / 주말: {combo.weekendBookings}
                         </div>
                       </td>
@@ -254,14 +254,14 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
                           {Math.round(combo.utilizationRate)}%
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-white">
                         ₩{combo.averagePrice.toLocaleString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-white">
                         ₩{(combo.totalRevenue / 1000000).toFixed(1)}M
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-xs text-gray-600">
+                        <div className="text-xs text-white/60">
                           {combo.peakHours.slice(0, 3).join(', ')}
                           {combo.peakHours.length > 3 && '...'}
                         </div>
@@ -277,26 +277,26 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
 
       {/* 시즌 정보 관리 */}
       <div className="space-y-4">
-        <h3 className="text-lg font-medium text-gray-900">시즌 정보</h3>
-        <div className="bg-gray-50 rounded-lg p-6">
+        <h3 className="text-lg font-medium text-white">시즌 정보</h3>
+        <div className="bg-white/5 rounded-lg p-6">
           {club.seasonInfo ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-medium font-semibold text-gray-900">
+                  <h4 className="text-medium font-semibold text-white">
                     현재 시즌: {
                       club.seasonInfo.type === 'peak' ? '성수기' :
                       club.seasonInfo.type === 'regular' ? '정수기' : '비수기'
                     }
                   </h4>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-white/60 mt-1">
                     {club.seasonInfo.startDate} ~ {club.seasonInfo.endDate}
                   </p>
                 </div>
                 <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
-                  club.seasonInfo.type === 'peak' ? 'bg-red-100 text-red-800' :
-                  club.seasonInfo.type === 'regular' ? 'bg-blue-100 text-blue-800' :
-                  'bg-green-100 text-green-800'
+                  club.seasonInfo.type === 'peak' ? 'bg-red-500/20 text-red-800' :
+                  club.seasonInfo.type === 'regular' ? 'bg-emerald-500/20 text-emerald-300' :
+                  'bg-green-500/20 text-green-800'
                 }`}>
                   {club.seasonInfo.type === 'peak' ? '🔥 성수기' :
                    club.seasonInfo.type === 'regular' ? '📅 정수기' :
@@ -306,11 +306,11 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
             </div>
           ) : (
             <div className="text-center py-8">
-              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="mx-auto h-12 w-12 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <h3 className="mt-2 text-sm font-medium text-gray-900">시즌 정보 없음</h3>
-              <p className="mt-1 text-sm text-gray-500">시즌별 운영 정보를 설정하면 더 나은 분석이 가능합니다.</p>
+              <h3 className="mt-2 text-sm font-medium text-white">시즌 정보 없음</h3>
+              <p className="mt-1 text-sm text-white/50">시즌별 운영 정보를 설정하면 더 나은 분석이 가능합니다.</p>
               <div className="mt-6">
                 <button
                   onClick={() => {
@@ -327,7 +327,7 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
                       }
                     }
                   }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors"
                 >
                   시즌 정보 설정
                 </button>
@@ -338,9 +338,9 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
       </div>
 
       {/* 운영 팁 */}
-      <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
-        <h3 className="text-lg font-medium text-blue-900 mb-4">💡 운영 개선 제안</h3>
-        <div className="space-y-3 text-sm text-blue-800">
+      <div className="bg-emerald-500/10 rounded-lg p-6 border border-emerald-500/30">
+        <h3 className="text-lg font-medium text-white mb-4">💡 운영 개선 제안</h3>
+        <div className="space-y-3 text-sm text-emerald-300">
           {analytics.length > 0 && (
             <>
               {analytics.some(a => a.utilizationRate < 50) && (
@@ -360,7 +360,7 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
                 </div>
               )}
               <div className="flex items-start space-x-2">
-                <svg className="w-4 h-4 mt-0.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 mt-0.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <p>정기적인 분석을 통해 고객 선호도 변화를 모니터링하고 운영 전략을 조정하세요.</p>

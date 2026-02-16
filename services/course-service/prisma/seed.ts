@@ -134,18 +134,19 @@ async function main() {
   await prisma.club.deleteMany();
   // Note: Company는 iam-service(iam_db)에서 관리됨 - 여기서는 companyId만 참조
 
-  // 가상의 회사 데이터 (iam-service에서 관리되는 회사의 ID와 정보를 가정)
-  // 실제 환경에서는 iam-service API를 통해 회사 목록을 가져와야 함
-  console.log('🏢 회사 참조 데이터를 준비합니다... (iam-service에서 관리)');
+  // 회사 참조 데이터 (iam-service에서 관리)
+  // SEED_COMPANY_ID 환경변수로 실제 iam-service의 FRANCHISE company ID를 지정
+  const seedCompanyId = parseInt(process.env.SEED_COMPANY_ID || '15', 10);
+  console.log(`🏢 회사 참조: companyId=${seedCompanyId} (SEED_COMPANY_ID 환경변수로 변경 가능)`);
+
   const companies = companyNames.map((name, index) => ({
-    id: index + 1, // iam-service의 companies 테이블 ID 가정
+    id: seedCompanyId, // 모든 골프장을 동일한 FRANCHISE 회사에 할당
     name,
     address: locations[index],
     phoneNumber: generatePhoneNumber(),
   }));
 
-  console.log(`  ℹ️  ${companies.length}개 회사 참조 준비 완료 (companyId: 1-${companies.length})`);
-  console.log('  ⚠️  주의: 실제 iam-service의 companies 테이블에 해당 ID가 존재해야 합니다.');
+  console.log(`  ℹ️  ${companies.length}개 골프장 → companyId=${seedCompanyId} 할당`);
 
   // Golf clubs 생성
   console.log('🏌️ 파크골프클럽 데이터를 생성합니다...');

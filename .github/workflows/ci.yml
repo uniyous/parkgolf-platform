@@ -56,7 +56,7 @@ jobs:
       - name: Determine apps list
         id: apps-list
         run: |
-          APPS=$(ls -d apps/*/ 2>/dev/null | xargs -n1 basename | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          APPS=$(for d in apps/*/; do [ -f "$d/package.json" ] && basename "$d"; done | jq -R -s -c 'split("\n") | map(select(. != ""))')
           echo "list=$APPS" >> $GITHUB_OUTPUT
 
       - name: Determine services list

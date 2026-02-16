@@ -65,3 +65,18 @@ export {
   useMarkAllAsReadMutation,
   useDeleteNotificationMutation,
 } from './notification';
+
+// Location Queries
+export {
+  locationKeys,
+  useReverseGeoQuery,
+  useNearbyClubsQuery,
+} from './location';
+
+// Weather Queries
+export {
+  weatherKeys,
+  useCurrentWeatherQuery,
+  useHourlyForecastQuery,
+  useDailyForecastQuery,
+} from './weather';

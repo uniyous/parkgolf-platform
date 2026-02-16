@@ -170,9 +170,47 @@ export interface UpdateTeeBoxDto {
   difficulty?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PROFESSIONAL';
 }
 
+// --- CompanyMember Types ---
+export type CompanyMemberSource = 'BOOKING' | 'MANUAL' | 'WALK_IN';
+
+export interface CompanyMember {
+  id: number;
+  companyId: number;
+  userId: number;
+  source: CompanyMemberSource;
+  memo: string | null;
+  isActive: boolean;
+  joinedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: number;
+    email: string;
+    name: string | null;
+    phone: string | null;
+    isActive: boolean;
+  };
+}
+
+export interface CompanyMemberFilters {
+  search?: string;
+  isActive?: boolean;
+}
+
+export interface CreateCompanyMemberDto {
+  userId: number;
+  source?: CompanyMemberSource;
+  memo?: string;
+}
+
+export interface UpdateCompanyMemberDto {
+  memo?: string;
+  isActive?: boolean;
+}
+
 // --- Auth & User Types ---
-export type UserMembershipTier = 'PREMIUM' | 'REGULAR' | 'GUEST' | 'SILVER' | 'VIP' | 'GOLD' | 'PLATINUM';
 export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING';
+export type UserMembershipTier = 'REGULAR' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'VIP' | 'PREMIUM' | 'GUEST';
 
 export interface User {
   id: number;
@@ -184,10 +222,10 @@ export interface User {
   updatedAt: string | null;
   // 추가 필드 (확장된 사용자 정보)
   phone?: string;
-  membershipTier?: UserMembershipTier;
   status?: UserStatus;
   lastLoginAt?: string | null;
   // 멤버십 관련 필드
+  membershipTier?: UserMembershipTier;
   membershipStartDate?: string | null;
   membershipEndDate?: string | null;
   totalBookings?: number;
@@ -197,7 +235,7 @@ export interface User {
   /** @deprecated Use email.split('@')[0] for display purposes */
   username?: string;
   /** @deprecated Use roleCode instead */
-  role?: AdminRole | UserMembershipTier;
+  role?: AdminRole;
   // Admin 관련 필드 (관리자 사용자인 경우)
   scope?: AdminScope;
   permissions?: Permission[];
@@ -209,14 +247,10 @@ export interface User {
 
 export interface UserFilters {
   search: string;
-  membershipTier?: UserMembershipTier;
   status?: UserStatus;
   sortBy: string;
   sortOrder: 'asc' | 'desc';
 }
-
-// 이전 role 타입은 admin 전용으로 유지 (하위 호환성)
-export type UserRole = UserMembershipTier;
 
 export interface LoginCredentials {
   email: string;
@@ -388,7 +422,6 @@ export interface CreateUserDto {
   name: string;
   password: string;
   phone?: string;
-  membershipTier?: UserMembershipTier;
   status?: UserStatus;
 }
 
@@ -397,7 +430,6 @@ export interface UpdateUserDto {
   name?: string;
   password?: string;
   phone?: string;
-  membershipTier?: UserMembershipTier;
   status?: UserStatus;
 }
 
@@ -665,18 +697,25 @@ export type {
 
 // Settings types re-export
 export type {
+  PolicyScope,
+  PolicyInheritanceInfo,
   CancellationType,
-  CancellationDeadline,
   CancellationPolicy,
+  ResolvedCancellationPolicy,
   RefundRateTier,
   RefundPolicy,
+  ResolvedRefundPolicy,
   NoShowPenaltyType,
   NoShowPenalty,
   NoShowPolicy,
+  ResolvedNoShowPolicy,
+  OperatingPolicy,
+  ResolvedOperatingPolicy,
   SystemSettings,
   UpdateCancellationPolicyDto,
   UpdateRefundPolicyDto,
   UpdateNoShowPolicyDto,
+  UpdateOperatingPolicyDto,
   PolicyApiResponse,
   PolicyListResponse,
 } from './settings';

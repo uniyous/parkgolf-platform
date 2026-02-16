@@ -65,6 +65,10 @@ export const BookingErrors = defineErrors({
   MAX_EXCEEDED: { code: 'BOOK_005', message: '최대 예약 가능 횟수를 초과했습니다', httpStatus: 400 },
   INVALID_DATE: { code: 'BOOK_006', message: '유효하지 않은 예약 날짜입니다', httpStatus: 400 },
   PAST_DATE: { code: 'BOOK_007', message: '과거 날짜는 예약할 수 없습니다', httpStatus: 400 },
+  DUPLICATE_REQUEST: { code: 'BOOK_008', message: '중복된 요청입니다', httpStatus: 409 },
+  INSUFFICIENT_CAPACITY: { code: 'BOOK_009', message: '예약 가능 인원이 부족합니다', httpStatus: 400 },
+  INVALID_STATUS: { code: 'BOOK_010', message: '현재 상태에서는 해당 작업을 수행할 수 없습니다', httpStatus: 400 },
+  UNAUTHORIZED_CANCEL: { code: 'BOOK_011', message: '예약 취소 권한이 없습니다', httpStatus: 403 },
 });
 
 // ============================================

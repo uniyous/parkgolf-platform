@@ -107,6 +107,11 @@ export class SearchBookingDto {
   @IsOptional()
   clubId?: number;
 
+  @ApiProperty({ description: 'Company ID (가맹점 필터)', example: 1, required: false })
+  @IsNumber()
+  @IsOptional()
+  companyId?: number;
+
   @ApiProperty({ description: '사용자 ID', example: 1, required: false })
   @IsNumber()
   @IsOptional()
@@ -484,6 +489,25 @@ export interface SlotReserveFailedEvent {
   gameTimeSlotId: number;
   reason: string;
   failedAt: string;
+}
+
+// payment-service → booking-service: 결제 완료
+export interface PaymentConfirmedEvent {
+  paymentId: number;
+  paymentKey: string;
+  orderId: string;
+  amount: number;
+  bookingId: number;
+  userId: number;
+}
+
+// payment-service → booking-service: 결제 취소(환불) 완료
+export interface PaymentCanceledEvent {
+  paymentId: number;
+  paymentKey: string;
+  cancelAmount: number;
+  bookingId: number;
+  userId: number;
 }
 
 // booking-service → course-service: 슬롯 해제 요청

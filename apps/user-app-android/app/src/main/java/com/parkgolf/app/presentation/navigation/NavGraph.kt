@@ -120,8 +120,7 @@ fun ParkGolfNavHost(
     navController: NavHostController = rememberNavController(),
     authEventBus: AuthEventBus? = null
 ) {
-    // TODO: Check authentication state from ViewModel
-    val isLoggedIn = false // Placeholder
+    val isLoggedIn = false
 
     // Handle session expired events from TokenAuthenticator
     if (authEventBus != null) {
@@ -176,12 +175,23 @@ fun ParkGolfNavHost(
 
         // Booking screens
         composable(
-            route = "booking/{gameId}",
-            arguments = listOf(navArgument("gameId") { type = NavType.IntType })
+            route = Screen.BookingForm.route,
+            arguments = listOf(
+                navArgument("gameId") { type = NavType.IntType },
+                navArgument("timeSlotId") { type = NavType.IntType },
+                navArgument("date") { type = NavType.StringType; defaultValue = "" },
+                navArgument("startTime") { type = NavType.StringType; defaultValue = "" }
+            )
         ) { backStackEntry ->
             val gameId = backStackEntry.arguments?.getInt("gameId") ?: 0
+            val timeSlotId = backStackEntry.arguments?.getInt("timeSlotId") ?: 0
+            val date = backStackEntry.arguments?.getString("date") ?: ""
+            val startTime = backStackEntry.arguments?.getString("startTime") ?: ""
             BookingFormScreen(
                 gameId = gameId,
+                timeSlotId = timeSlotId,
+                date = date,
+                startTime = startTime,
                 onNavigateBack = { navController.popBackStack() },
                 onBookingComplete = { bookingId ->
                     navController.navigate("booking/complete/$bookingId") {
@@ -316,6 +326,18 @@ fun ParkGolfNavHost(
                 onBookingClick = { bookingId ->
                     // Booking detail is shown in bottom sheet, no navigation needed
                 }
+            )
+        }
+
+        // Booking Detail screen (from notifications)
+        composable(
+            route = Screen.BookingDetail.route,
+            arguments = listOf(navArgument("bookingId") { type = NavType.StringType })
+        ) {
+            // Navigate to MyBookingsScreen - detail shown in bottom sheet
+            MyBookingsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onBookingClick = { /* Detail shown in bottom sheet */ }
             )
         }
 

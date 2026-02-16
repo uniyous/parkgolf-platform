@@ -1,7 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateTemplateDto, UpdateTemplateDto } from '../dto/template.dto';
 import { NotificationTemplate, NotificationType } from '@prisma/client';
+import { AppException } from '../../common/exceptions/app.exception';
+import { Errors } from '../../common/exceptions/catalog/error-catalog';
 
 @Injectable()
 export class TemplateService {
@@ -38,7 +40,7 @@ export class TemplateService {
     });
 
     if (!template) {
-      throw new NotFoundException(`Template with ID ${id} not found`);
+      throw new AppException(Errors.Notification.TEMPLATE_NOT_FOUND);
     }
 
     return template;

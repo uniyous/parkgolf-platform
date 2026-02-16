@@ -22,13 +22,13 @@ const MEMBERSHIP_LABELS: Record<UserMembershipTier, string> = {
 };
 
 const TIER_STYLES: Record<UserMembershipTier, string> = {
-  VIP: 'bg-purple-100 text-purple-800',
+  VIP: 'bg-purple-500/20 text-purple-400',
   PLATINUM: 'bg-slate-100 text-slate-800',
-  GOLD: 'bg-yellow-100 text-yellow-800',
-  SILVER: 'bg-gray-100 text-gray-800',
-  REGULAR: 'bg-blue-100 text-blue-800',
+  GOLD: 'bg-yellow-500/20 text-yellow-400',
+  SILVER: 'bg-white/10 text-white',
+  REGULAR: 'bg-emerald-500/20 text-emerald-300',
   PREMIUM: 'bg-amber-100 text-amber-800',
-  GUEST: 'bg-green-100 text-green-800',
+  GUEST: 'bg-green-500/20 text-green-400',
 };
 
 const STATUS_LABELS: Record<UserStatus, string> = {
@@ -39,10 +39,10 @@ const STATUS_LABELS: Record<UserStatus, string> = {
 };
 
 const STATUS_STYLES: Record<UserStatus, string> = {
-  ACTIVE: 'bg-green-100 text-green-800',
-  INACTIVE: 'bg-gray-100 text-gray-800',
-  SUSPENDED: 'bg-red-100 text-red-800',
-  PENDING: 'bg-yellow-100 text-yellow-800',
+  ACTIVE: 'bg-green-500/20 text-green-400',
+  INACTIVE: 'bg-white/10 text-white',
+  SUSPENDED: 'bg-red-500/20 text-red-400',
+  PENDING: 'bg-yellow-500/20 text-yellow-400',
 };
 
 export const UserDetailPage: React.FC = () => {
@@ -68,7 +68,7 @@ export const UserDetailPage: React.FC = () => {
         isLoading={isLoading}
         isEmpty={!user && !isLoading}
         emptyIcon={
-          <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="h-12 w-12 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16.5c-.77.833.192 3 1.732 3z" />
           </svg>
         }
@@ -77,7 +77,7 @@ export const UserDetailPage: React.FC = () => {
         emptyAction={
           <button
             onClick={() => navigate('/user-management')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors"
           >
             목록으로 돌아가기
           </button>
@@ -88,14 +88,14 @@ export const UserDetailPage: React.FC = () => {
         {user && (
           <div className="space-y-6">
             {/* 헤더 */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-6">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-4">
                   <button
                     onClick={() => navigate('/user-management')}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
                   >
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                   </button>
@@ -103,11 +103,11 @@ export const UserDetailPage: React.FC = () => {
                     {user.name?.charAt(0) || 'U'}
                   </div>
                   <div>
-                    <h1 className="text-2xl font-bold text-gray-900">{user.name || '이름 없음'}</h1>
+                    <h1 className="text-2xl font-bold text-white">{user.name || '이름 없음'}</h1>
                     <div className="flex items-center space-x-3 mt-1">
-                      <p className="text-gray-600 text-sm">{user.email}</p>
+                      <p className="text-white/60 text-sm">{user.email}</p>
                       {user.phone && (
-                        <p className="text-gray-500 text-sm">{user.phone}</p>
+                        <p className="text-white/50 text-sm">{user.phone}</p>
                       )}
                       {user.membershipTier && (
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${TIER_STYLES[user.membershipTier]}`}>
@@ -125,7 +125,7 @@ export const UserDetailPage: React.FC = () => {
                 <div className="flex items-center space-x-3">
                   <button
                     onClick={handleEdit}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                    className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors flex items-center space-x-2"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -136,13 +136,13 @@ export const UserDetailPage: React.FC = () => {
               </div>
 
               {/* 탭 네비게이션 */}
-              <div className="flex space-x-1 border-b border-gray-200">
+              <div className="flex space-x-1 border-b border-white/15">
                 <button
                   onClick={() => setActiveTab('basic')}
                   className={`px-6 py-3 text-sm font-medium rounded-t-md transition-colors ${
                     activeTab === 'basic'
-                      ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-500'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'bg-emerald-500/10 text-emerald-300 border-b-2 border-emerald-500'
+                      : 'text-white/60 hover:text-white'
                   }`}
                 >
                   <div className="flex items-center space-x-2">
@@ -156,8 +156,8 @@ export const UserDetailPage: React.FC = () => {
                   onClick={() => setActiveTab('bookings')}
                   className={`px-6 py-3 text-sm font-medium rounded-t-md transition-colors ${
                     activeTab === 'bookings'
-                      ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-500'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'bg-emerald-500/10 text-emerald-300 border-b-2 border-emerald-500'
+                      : 'text-white/60 hover:text-white'
                   }`}
                 >
                   <div className="flex items-center space-x-2">
@@ -171,8 +171,8 @@ export const UserDetailPage: React.FC = () => {
                   onClick={() => setActiveTab('notifications')}
                   className={`px-6 py-3 text-sm font-medium rounded-t-md transition-colors ${
                     activeTab === 'notifications'
-                      ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-500'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'bg-emerald-500/10 text-emerald-300 border-b-2 border-emerald-500'
+                      : 'text-white/60 hover:text-white'
                   }`}
                 >
                   <div className="flex items-center space-x-2">
@@ -186,7 +186,7 @@ export const UserDetailPage: React.FC = () => {
             </div>
 
             {/* 탭 컨텐츠 */}
-            <div className="bg-white rounded-lg border border-gray-200">
+            <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15">
               {activeTab === 'basic' && (
                 <UserBasicInfoTab user={user} onUpdate={() => refetch()} />
               )}

@@ -10,6 +10,8 @@ export interface AdminJwtPayload {
     email: string;
     roles: string[];
     type: 'admin';
+    companyId?: number;
+    scope?: string;
 }
 
 export interface UserJwtPayload {

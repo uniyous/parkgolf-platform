@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { RoomType } from '@prisma/client';
 
 export interface CreateRoomDto {
@@ -17,6 +17,8 @@ export interface AddMemberDto {
   userName: string;
   userEmail?: string;
 }
+
+const BOOKING_ROOM_NAME_PREFIX = '예약';
 
 @Injectable()
 export class RoomService {
@@ -197,7 +199,7 @@ export class RoomService {
       });
 
       room = await this.createRoom({
-        name: `예약 #${bookingId}`,
+        name: `${BOOKING_ROOM_NAME_PREFIX} #${bookingId}`,
         type: 'BOOKING',
         bookingId,
         memberIds: members.map((m) => m.id),

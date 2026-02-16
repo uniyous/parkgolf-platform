@@ -196,6 +196,24 @@ fun MyBookingsScreen(
                     Text(message, color = TextOnGradient)
                 }
             }
+
+            // Error Snackbar
+            if (uiState.bookings.isNotEmpty()) {
+                uiState.error?.let { errorMessage ->
+                    Snackbar(
+                        modifier = Modifier
+                            .padding(16.dp),
+                        containerColor = ParkError,
+                        action = {
+                            TextButton(onClick = { viewModel.clearError() }) {
+                                Text("확인", color = TextOnGradient)
+                            }
+                        }
+                    ) {
+                        Text(errorMessage, color = TextOnGradient)
+                    }
+                }
+            }
         }
     }
 

@@ -4,18 +4,18 @@ import SwiftUI
 
 extension Color {
     // MARK: - Primary Colors
-    static let parkPrimary = Color(hex: "#10B981")       // Emerald
+    static let parkPrimary = Color(hex: "#34D399")       // Emerald-400 (밝은 에메랄드)
     static let parkSecondary = Color(hex: "#059669")     // Dark Emerald
     static let parkAccent = Color(hex: "#F59E0B")        // Amber (Premium)
 
     // MARK: - Semantic Colors
-    static let parkSuccess = Color(hex: "#22C55E")       // Green
+    static let parkSuccess = Color(hex: "#4ADE80")       // Green-400 (밝은 녹색)
     static let parkWarning = Color(hex: "#EAB308")       // Yellow
     static let parkError = Color(hex: "#EF4444")         // Red
     static let parkInfo = Color(hex: "#3B82F6")          // Blue
 
     // MARK: - Status Colors
-    static let statusConfirmed = Color(hex: "#22C55E")   // Green
+    static let statusConfirmed = Color(hex: "#4ADE80")   // Green-400 (밝은 녹색)
     static let statusPending = Color(hex: "#F59E0B")     // Amber
     static let statusCancelled = Color(hex: "#EF4444")   // Red
     static let statusCompleted = Color(hex: "#6B7280")   // Gray

@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../user/user.service';
+import { AccountDeletionService } from '../user/account-deletion.service';
 import { AdminService } from '../admin/admin.service';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -9,6 +10,9 @@ import * as crypto from 'crypto';
 import { User, Admin } from '@prisma/client';
 import { JwtPayload, UserJwtPayload, AdminJwtPayload } from './interfaces/jwt-payload.interface';
 
+const REFRESH_TOKEN_EXPIRES_IN = '7d';
+const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
 @Injectable()
 export class AuthService {
     private readonly logger = new Logger(AuthService.name);
@@ -16,6 +20,7 @@ export class AuthService {
 
     constructor(
         private userService: UserService,
+        private accountDeletionService: AccountDeletionService,
         private adminService: AdminService,
         private jwtService: JwtService,
         private prisma: PrismaService,
@@ -33,7 +38,9 @@ export class AuthService {
         const user = await this.userService.findOneByEmail(email);
         this.logger.debug(`User found: ${user ? `${user.email} (active: ${user.isActive}, hasPassword: ${!!user?.password})` : 'null'}`);
 
-        if (user && user.isActive) {
+        // 유예 기간 중인 사용자도 로그인 허용 (로그인 시 삭제 취소)
+        const canLogin = user && (user.isActive || user.deletionRequestedAt !== null);
+        if (canLogin) {
             if (!pass || !user.password) {
                 this.logger.debug(`Missing password data: pass=${!!pass}, user.password=${!!user?.password}`);
                 return null;
@@ -53,6 +60,12 @@ export class AuthService {
     }
 
     async login(user: Omit<User, 'password'>) {
+        // 유예 기간 중 로그인 시 삭제 요청 자동 취소
+        if ((user as any).deletionRequestedAt) {
+            await this.accountDeletionService.handleLoginDuringGracePeriod(user.id);
+            this.logger.log(`Account deletion auto-cancelled on login: userId=${user.id}`);
+        }
+
         const payload: UserJwtPayload = {
             email: user.email,
             sub: user.id,
@@ -64,13 +77,13 @@ export class AuthService {
         const accessToken = this.jwtService.sign(payload);
         const refreshToken = this.jwtService.sign(payload, {
             secret: this.refreshSecret,
-            expiresIn: '7d',
+            expiresIn: REFRESH_TOKEN_EXPIRES_IN,
             jwtid: crypto.randomUUID(),
         });
 
         // Store hashed refresh token in DB
         const hashedToken = this.hashToken(refreshToken);
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
         await this.prisma.refreshToken.create({
             data: {
                 token: hashedToken,
@@ -170,12 +183,12 @@ export class AuthService {
             const newAccessToken = this.jwtService.sign(newPayload);
             const newRefreshToken = this.jwtService.sign(newPayload, {
                 secret: this.refreshSecret,
-                expiresIn: '7d',
+                expiresIn: REFRESH_TOKEN_EXPIRES_IN,
                 jwtid: crypto.randomUUID(),
             });
 
             // Store new hashed refresh token
-            const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+            const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
             await this.prisma.refreshToken.create({
                 data: {
                     token: this.hashToken(newRefreshToken),
@@ -233,23 +246,30 @@ export class AuthService {
         // 주 소속 역할 코드 (레거시 호환성)
         const roleCode = admin.roleCode || 'COMPANY_VIEWER';
 
+        // 주 소속 회사 ID 및 scope 결정
+        const primaryCompany = (admin.companies || []).find((ac: any) => ac.isPrimary && ac.isActive);
+        const primaryCompanyId = primaryCompany?.companyId || null;
+        const scope = await this.getRoleScope(roleCode);
+
         const payload: AdminJwtPayload = {
             email: admin.email,
             sub: admin.id,
             roles: [roleCode],
             type: 'admin',
+            ...(primaryCompanyId && { companyId: primaryCompanyId }),
+            ...(scope && { scope }),
         };
 
         const accessToken = this.jwtService.sign(payload);
         const refreshToken = this.jwtService.sign(payload, {
             secret: this.refreshSecret,
-            expiresIn: '7d',
+            expiresIn: REFRESH_TOKEN_EXPIRES_IN,
             jwtid: crypto.randomUUID(),
         });
 
         // Store hashed refresh token in DB
         const hashedToken = this.hashToken(refreshToken);
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
         await this.prisma.adminRefreshToken.create({
             data: {
                 token: hashedToken,
@@ -335,22 +355,30 @@ export class AuthService {
                 throw new UnauthorizedException('Admin not found or inactive');
             }
 
+            // 주 소속 회사 ID 및 scope
+            const adminFull = await this.adminService.findOne(admin.id);
+            const primaryCompany = (adminFull?.companies || []).find((ac: any) => ac.isPrimary && ac.isActive);
+            const primaryCompanyId = primaryCompany?.companyId || null;
+            const scope = await this.getRoleScope(admin.roleCode);
+
             const newPayload: AdminJwtPayload = {
                 email: admin.email,
                 sub: admin.id,
                 roles: [admin.roleCode],
                 type: 'admin',
+                ...(primaryCompanyId && { companyId: primaryCompanyId }),
+                ...(scope && { scope }),
             };
 
             const newAccessToken = this.jwtService.sign(newPayload);
             const newRefreshToken = this.jwtService.sign(newPayload, {
                 secret: this.refreshSecret,
-                expiresIn: '7d',
+                expiresIn: REFRESH_TOKEN_EXPIRES_IN,
                 jwtid: crypto.randomUUID(),
             });
 
             // Store new hashed refresh token
-            const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+            const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
             await this.prisma.adminRefreshToken.create({
                 data: {
                     token: this.hashToken(newRefreshToken),
@@ -444,7 +472,7 @@ export class AuthService {
                 // 레거시 호환성
                 roleCode,
                 roles: [roleCode],
-                scope: this.getAdminScope(roleCode),
+                scope: await this.getRoleScope(roleCode),
                 permissions: permissionCodes,
                 type: 'admin'
             };
@@ -460,33 +488,18 @@ export class AuthService {
             return {
                 ...userResult,
                 roles: [userResult.roleCode],
-                scope: 'USER',
+                scope: await this.getRoleScope(userResult.roleCode),
                 permissions: [],
                 type: 'user'
             };
         }
     }
 
-    private getAdminScope(roleCode: string): string {
-        // Map role codes to admin scopes (v3 - CompanyType 기반)
-        const roleToScope: Record<string, string> = {
-            // 플랫폼 역할
-            'PLATFORM_ADMIN': 'PLATFORM',
-            'PLATFORM_SUPPORT': 'PLATFORM',
-            'PLATFORM_VIEWER': 'PLATFORM',
-            // 회사 역할
-            'COMPANY_ADMIN': 'COMPANY',
-            'COMPANY_MANAGER': 'COMPANY',
-            'COMPANY_STAFF': 'COMPANY',
-            'COMPANY_VIEWER': 'COMPANY',
-            // 레거시 호환성
-            'ADMIN': 'PLATFORM',
-            'SUPPORT': 'PLATFORM',
-            'MANAGER': 'COMPANY',
-            'STAFF': 'COMPANY',
-            'VIEWER': 'COMPANY'
-        };
-
-        return roleToScope[roleCode] || 'COMPANY';
+    private async getRoleScope(roleCode: string): Promise<string> {
+        const role = await this.prisma.roleMaster.findUnique({
+            where: { code: roleCode },
+            select: { scope: true },
+        });
+        return role?.scope || 'COMPANY';
     }
 }

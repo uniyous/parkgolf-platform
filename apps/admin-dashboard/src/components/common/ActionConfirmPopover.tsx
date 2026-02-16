@@ -16,40 +16,40 @@ interface ActionConfig {
 const ACTION_CONFIGS: Record<ActionType, ActionConfig> = {
   complete: {
     title: '완료 처리',
-    icon: <CheckCircle className="w-5 h-5 text-green-600" />,
-    iconBgColor: 'bg-green-100',
+    icon: <CheckCircle className="w-5 h-5 text-green-400" />,
+    iconBgColor: 'bg-green-500/20',
     buttonColor: 'bg-green-600',
     buttonHoverColor: 'hover:bg-green-700',
     buttonLabel: '완료',
   },
   cancel: {
     title: '예약 취소',
-    icon: <XCircle className="w-5 h-5 text-red-600" />,
-    iconBgColor: 'bg-red-100',
+    icon: <XCircle className="w-5 h-5 text-red-400" />,
+    iconBgColor: 'bg-red-500/20',
     buttonColor: 'bg-red-600',
     buttonHoverColor: 'hover:bg-red-700',
     buttonLabel: '취소',
   },
   noshow: {
     title: '노쇼 처리',
-    icon: <UserX className="w-5 h-5 text-gray-600" />,
-    iconBgColor: 'bg-gray-100',
-    buttonColor: 'bg-gray-600',
-    buttonHoverColor: 'hover:bg-gray-700',
+    icon: <UserX className="w-5 h-5 text-white/60" />,
+    iconBgColor: 'bg-white/10',
+    buttonColor: 'bg-white/20',
+    buttonHoverColor: 'hover:bg-white/30',
     buttonLabel: '노쇼 처리',
   },
   warning: {
     title: '확인',
-    icon: <AlertTriangle className="w-5 h-5 text-yellow-600" />,
-    iconBgColor: 'bg-yellow-100',
+    icon: <AlertTriangle className="w-5 h-5 text-yellow-400" />,
+    iconBgColor: 'bg-yellow-500/20',
     buttonColor: 'bg-yellow-600',
     buttonHoverColor: 'hover:bg-yellow-700',
     buttonLabel: '확인',
   },
   danger: {
     title: '삭제 확인',
-    icon: <AlertTriangle className="w-5 h-5 text-red-600" />,
-    iconBgColor: 'bg-red-100',
+    icon: <AlertTriangle className="w-5 h-5 text-red-400" />,
+    iconBgColor: 'bg-red-500/20',
     buttonColor: 'bg-red-600',
     buttonHoverColor: 'hover:bg-red-700',
     buttonLabel: '삭제',
@@ -145,7 +145,7 @@ export const ActionConfirmPopover: React.FC<ActionConfirmPopoverProps> = ({
 
       <Popover.Portal>
         <Popover.Content
-          className="z-50 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-lg animate-in fade-in-0 zoom-in-95"
+          className="z-50 w-72 rounded-lg border border-white/15 bg-emerald-900/95 backdrop-blur-xl p-4 shadow-lg animate-in fade-in-0 zoom-in-95"
           align={align}
           side={side}
           sideOffset={8}
@@ -158,10 +158,10 @@ export const ActionConfirmPopover: React.FC<ActionConfirmPopoverProps> = ({
               </div>
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-medium text-gray-900">{displayTitle}</h3>
-              <p className="mt-1 text-sm text-gray-500">{displayMessage}</p>
+              <h3 className="text-sm font-medium text-white">{displayTitle}</h3>
+              <p className="mt-1 text-sm text-white/50">{displayMessage}</p>
               {displayWarning && (
-                <p className={`mt-1 text-xs ${actionType === 'complete' ? 'text-green-600' : 'text-red-500'}`}>
+                <p className={`mt-1 text-xs ${actionType === 'complete' ? 'text-green-400' : 'text-red-400'}`}>
                   {displayWarning}
                 </p>
               )}
@@ -174,7 +174,7 @@ export const ActionConfirmPopover: React.FC<ActionConfirmPopoverProps> = ({
               <button
                 type="button"
                 disabled={isPending}
-                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
+                className="px-3 py-1.5 text-sm font-medium text-white/70 bg-white/10 border border-white/15 rounded-lg hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white/20 disabled:opacity-50"
               >
                 닫기
               </button>
@@ -197,7 +197,7 @@ export const ActionConfirmPopover: React.FC<ActionConfirmPopoverProps> = ({
           </div>
 
           {/* 화살표 */}
-          <Popover.Arrow className="fill-white" />
+          <Popover.Arrow className="fill-emerald-900/95" />
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>

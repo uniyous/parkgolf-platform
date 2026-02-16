@@ -5,6 +5,7 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import { ServerOptions } from 'socket.io';
 import { connect, NatsConnection } from 'nats';
 import { createNatsAdapter } from './adapters/nats-adapter';
+import { getCorsConfig } from './common/cors.config';
 
 class ChatIoAdapter extends IoAdapter {
   constructor(
@@ -80,21 +81,7 @@ async function bootstrap() {
   );
 
   // CORS
-  const corsOrigins = process.env.CORS_ALLOWED_ORIGINS;
-  app.enableCors({
-    origin: corsOrigins
-      ? corsOrigins.split(',').map(o => o.trim())
-      : [
-          'http://localhost:3002',
-          'https://parkgolf-user.web.app',
-          'https://parkgolf-user-dev.web.app',
-          'https://dev-user.goparkmate.com',
-          'https://user.goparkmate.com',
-          'https://dev-api.goparkmate.com',
-          'https://api.goparkmate.com',
-        ],
-    credentials: true,
-  });
+  app.enableCors(getCorsConfig());
 
   // 3. Graceful shutdown
   app.enableShutdownHooks();

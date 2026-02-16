@@ -13,6 +13,37 @@ export const NATS_CLIENT_OPTIONS: ClientsProviderAsyncOptions[] = [
       transport: Transport.NATS,
       options: {
         servers: [configService.get<string>('NATS_URL') || 'nats://localhost:4222'],
+        reconnect: true,
+        maxReconnectAttempts: -1,
+        reconnectTimeWait: 1000,
+      },
+    }),
+    inject: [ConfigService],
+  },
+  {
+    name: 'BOOKING_SERVICE',
+    imports: [ConfigModule],
+    useFactory: (configService: ConfigService) => ({
+      transport: Transport.NATS,
+      options: {
+        servers: [configService.get<string>('NATS_URL') || 'nats://localhost:4222'],
+        reconnect: true,
+        maxReconnectAttempts: -1,
+        reconnectTimeWait: 1000,
+      },
+    }),
+    inject: [ConfigService],
+  },
+  {
+    name: 'PAYMENT_SERVICE',
+    imports: [ConfigModule],
+    useFactory: (configService: ConfigService) => ({
+      transport: Transport.NATS,
+      options: {
+        servers: [configService.get<string>('NATS_URL') || 'nats://localhost:4222'],
+        reconnect: true,
+        maxReconnectAttempts: -1,
+        reconnectTimeWait: 1000,
       },
     }),
     inject: [ConfigService],

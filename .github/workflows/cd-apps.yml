@@ -58,7 +58,7 @@ jobs:
       - name: Determine apps to deploy
         id: apps
         run: |
-          ALL_APPS='["admin-dashboard","user-app-web"]'
+          ALL_APPS='["admin-dashboard","platform-dashboard","user-app-web"]'
 
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             if [ "${{ github.event.inputs.apps }}" == "all" ]; then
@@ -84,6 +84,7 @@ jobs:
     name: Build ${{ matrix.app }}
     needs: setup
     runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
     strategy:
       fail-fast: false
       matrix:
@@ -110,16 +111,19 @@ jobs:
 
           # GKE Ingress URL (환경별)
           if [ "$ENV" == "prod" ]; then
-            echo "api_url=https://api.goparkmate.com" >> $GITHUB_OUTPUT
+            echo "api_url=https://api.parkgolfmate.com" >> $GITHUB_OUTPUT
           else
-            echo "api_url=https://dev-api.goparkmate.com" >> $GITHUB_OUTPUT
+            echo "api_url=https://dev-api.parkgolfmate.com" >> $GITHUB_OUTPUT
           fi
 
       - name: Build
         working-directory: apps/${{ matrix.app }}
         env:
           VITE_API_URL: ${{ steps.env-vars.outputs.api_url }}
+          VITE_CHAT_SOCKET_URL: ${{ steps.env-vars.outputs.api_url }}
           VITE_ENV: ${{ needs.setup.outputs.environment }}
+          VITE_TOSS_CLIENT_KEY: ${{ secrets.TOSS_CLIENT_KEY }}
+          VITE_KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
         run: npm run build
 
       - name: Upload build artifact
@@ -165,6 +169,8 @@ jobs:
           # Map app to Firebase hosting site
           if [ "$APP" == "admin-dashboard" ]; then
             SITE="parkgolf-admin"
+          elif [ "$APP" == "platform-dashboard" ]; then
+            SITE="parkgolf-platform"
           else
             SITE="parkgolf-user"
           fi

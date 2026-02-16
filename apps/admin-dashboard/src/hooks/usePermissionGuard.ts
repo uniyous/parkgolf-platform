@@ -28,10 +28,10 @@ export function withPermission<P extends object>(
           'div',
           { className: 'text-center' },
           React.createElement('div', { className: 'text-6xl mb-4' }, '🔒'),
-          React.createElement('h2', { className: 'text-2xl font-bold text-gray-900 mb-2' }, '접근 권한이 없습니다'),
+          React.createElement('h2', { className: 'text-2xl font-bold text-white mb-2' }, '접근 권한이 없습니다'),
           React.createElement(
             'p',
-            { className: 'text-gray-600' },
+            { className: 'text-white/60' },
             '이 페이지에 접근하려면 ',
             React.createElement('span', { className: 'font-medium' }, permission),
             ' 권한이 필요합니다.'
@@ -73,10 +73,10 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
         'div',
         { className: 'text-center' },
         React.createElement('div', { className: 'text-6xl mb-4' }, '🔒'),
-        React.createElement('h2', { className: 'text-2xl font-bold text-gray-900 mb-2' }, '접근 권한이 없습니다'),
+        React.createElement('h2', { className: 'text-2xl font-bold text-white mb-2' }, '접근 권한이 없습니다'),
         React.createElement(
           'p',
-          { className: 'text-gray-600' },
+          { className: 'text-white/60' },
           '이 페이지에 접근하려면 ',
           React.createElement('span', { className: 'font-medium' }, permission),
           ' 권한이 필요합니다.'

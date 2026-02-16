@@ -9,7 +9,7 @@ import { test, expect, request, type Page, type BrowserContext } from '@playwrig
  * 실행: npx playwright test chat-realtime.spec.ts --project=standalone
  */
 
-const API_BASE_URL = process.env.E2E_BASE_URL || 'https://dev-api.goparkmate.com';
+const API_BASE_URL = process.env.E2E_BASE_URL || 'https://dev-api.parkgolfmate.com';
 
 // ── 테스트 사용자 ────────────────────────────────
 

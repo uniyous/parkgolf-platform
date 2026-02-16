@@ -8,6 +8,8 @@ import {
   JetStreamClient,
   JetStreamManager,
   StringCodec,
+  RetentionPolicy,
+  StorageType,
 } from 'nats';
 
 export interface ChatMessage {
@@ -111,7 +113,14 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
 
   private async disconnect() {
     if (this.nc) {
-      await this.nc.drain();
+      try {
+        await this.nc.drain();
+      } catch (error: any) {
+        // CONNECTION_DRAINING is expected during SIGTERM graceful shutdown
+        if (error?.code !== 'CONNECTION_DRAINING') {
+          this.logger.warn(`NATS drain error: ${error.message}`);
+        }
+      }
       this.nc = null;
     }
   }
@@ -124,10 +133,10 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
       await this.jsm.streams.add({
         name: 'CHAT_MESSAGES',
         subjects: ['chat.room.*.message', 'chat.dm.*.message'],
-        retention: 'limits' as any,
+        retention: RetentionPolicy.Limits,
         max_msgs: 100000,
         max_age: 30 * 24 * 60 * 60 * 1000000000, // 30 days in nanoseconds
-        storage: 'file' as any,
+        storage: StorageType.File,
         duplicate_window: 60 * 1000000000, // 1 minute
       });
       this.logger.log('Created CHAT_MESSAGES stream');
@@ -144,10 +153,10 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
       await this.jsm.streams.add({
         name: 'CHAT_PRESENCE',
         subjects: ['chat.user.*.presence'],
-        retention: 'limits' as any,
+        retention: RetentionPolicy.Limits,
         max_msgs: 10000,
         max_age: 5 * 60 * 1000000000, // 5 minutes
-        storage: 'memory' as any,
+        storage: StorageType.Memory,
       });
       this.logger.log('Created CHAT_PRESENCE stream');
     } catch (error: any) {
@@ -160,6 +169,7 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Publish message to room (JetStream persistence)
+  // type is uppercased to match Prisma MessageType enum for DB storage
   async publishMessage(roomId: string, message: ChatMessage): Promise<void> {
     if (!this.js) {
       this.logger.warn('JetStream not available');
@@ -167,7 +177,8 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
     }
 
     const subject = `chat.room.${roomId}.message`;
-    const data = this.sc.encode(JSON.stringify(message));
+    const payload = { ...message, type: message.type.toUpperCase() };
+    const data = this.sc.encode(JSON.stringify(payload));
 
     try {
       await this.js.publish(subject, data, {

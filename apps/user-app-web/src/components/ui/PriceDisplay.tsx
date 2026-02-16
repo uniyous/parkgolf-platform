@@ -4,7 +4,7 @@ import { formatCurrency } from '@/lib/formatting';
 
 interface PriceDisplayProps {
   price: number;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   showUnit?: boolean;
   unit?: string;
   className?: string;
@@ -21,12 +21,14 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
     sm: 'text-sm font-semibold',
     md: 'text-lg font-bold',
     lg: 'text-2xl font-bold',
+    xl: 'text-3xl font-bold',
   };
 
   const unitSizeStyles = {
     sm: 'text-xs',
     md: 'text-xs',
     lg: 'text-sm',
+    xl: 'text-base',
   };
 
   return (

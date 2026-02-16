@@ -28,4 +28,4 @@ COPY --from=builder /app/dist ./dist
 ENV PORT=8080
 EXPOSE 8080
 
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main"]

@@ -249,7 +249,8 @@ function PasswordInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="input-glass pl-10 pr-10"
+        className="input-glass"
+        style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
       />
       <button
         type="button"

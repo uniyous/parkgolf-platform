@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { Button, Input } from '../components';
+import { Button, Input } from '@/components';
 
 export const SignupPage: React.FC = () => {
   const { register } = useAuth();
@@ -100,7 +100,7 @@ export const SignupPage: React.FC = () => {
       });
 
       if (success) {
-        navigate('/search');
+        navigate('/bookings');
       } else {
         setErrors({ submit: '회원가입에 실패했습니다.' });
       }

@@ -1,5 +1,6 @@
 package com.parkgolf.app.presentation.feature.home
 
+import android.Manifest
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,39 +23,43 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 import com.parkgolf.app.domain.model.Booking
 import com.parkgolf.app.domain.model.BookingStatus
-import com.parkgolf.app.domain.model.ChatRoom
-import com.parkgolf.app.domain.model.FriendRequest
+import com.parkgolf.app.domain.model.NearbyClub
 import com.parkgolf.app.presentation.components.BadgeStatus
 import com.parkgolf.app.presentation.components.GlassCard
 import com.parkgolf.app.presentation.components.GradientBackground
@@ -67,6 +72,7 @@ import com.parkgolf.app.presentation.theme.ParkError
 import com.parkgolf.app.presentation.theme.TextOnGradient
 import com.parkgolf.app.presentation.theme.TextOnGradientSecondary
 import com.parkgolf.app.presentation.theme.TextOnGradientTertiary
+import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -77,6 +83,7 @@ import java.time.temporal.ChronoUnit
  * 에메랄드 그라데이션 배경 + 글래스 모피즘 스타일
  */
 
+@OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onNavigate: (String) -> Unit,
@@ -84,7 +91,40 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    // Pull-to-Refresh
+    val pullRefreshState = rememberPullToRefreshState()
+    if (pullRefreshState.isRefreshing) {
+        LaunchedEffect(true) {
+            viewModel.refresh()
+            delay(1500)
+            pullRefreshState.endRefresh()
+        }
+    }
+
+    // 위치 권한 요청
+    val locationPermissionState = rememberPermissionState(
+        Manifest.permission.ACCESS_COARSE_LOCATION
+    ) { isGranted ->
+        if (isGranted) {
+            viewModel.onLocationPermissionGranted()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (locationPermissionState.status.isGranted) {
+            // 이미 권한이 있는 경우 위치 데이터 로드 보장
+            viewModel.onLocationPermissionGranted()
+        } else {
+            locationPermissionState.launchPermissionRequest()
+        }
+    }
+
     GradientBackground {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(pullRefreshState.nestedScrollConnection)
+        ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -97,7 +137,9 @@ fun HomeScreen(
             )
 
             // Welcome Section (항상 표시)
-            WelcomeSection(userName = uiState.user?.name ?: "회원")
+            WelcomeSection(
+                userName = uiState.user?.name ?: "회원"
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -105,6 +147,15 @@ fun HomeScreen(
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp)
             ) {
+                // Weather Card (위치 데이터가 있을 때만)
+                if (uiState.currentWeather != null) {
+                    WeatherCard(
+                        regionName = uiState.regionName,
+                        weather = uiState.currentWeather!!
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+
                 // Notifications Section (친구 요청 + 읽지 않은 메시지) - iOS 스타일 요약 카드
                 if (uiState.hasNotifications) {
                     NotificationsSection(
@@ -154,30 +205,250 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Popular Clubs Section
-                SectionHeader(title = "이번 주 인기 골프장")
+                // Nearby Clubs Section
+                SectionHeader(title = "주변 파크골프장")
 
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            // Popular Clubs Horizontal Scroll
-            if (uiState.isLoading && uiState.popularClubs.isEmpty()) {
-                PopularClubsLoading()
-            } else {
+            // Nearby Clubs Horizontal Scroll or Empty States
+            if (uiState.nearbyClubs.isNotEmpty()) {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(uiState.popularClubs) { club ->
-                        PopularClubCard(
+                    items(uiState.nearbyClubs) { club ->
+                        NearbyClubCard(
                             club = club,
                             onClick = { onNavigate("club/${club.id}") }
                         )
                     }
                 }
+            } else if (uiState.isLoading || !uiState.locationDataLoaded) {
+                PopularClubsLoading()
+            } else if (!uiState.hasLocation) {
+                // 위치 권한 없음
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    GlassCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                modifier = Modifier.size(36.dp),
+                                tint = TextOnGradientTertiary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "위치 권한을 허용하면\n주변 골프장을 볼 수 있어요",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextOnGradientSecondary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            } else {
+                // 위치는 있지만 주변 골프장 없음
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    GlassCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                modifier = Modifier.size(36.dp),
+                                tint = TextOnGradientTertiary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "주변에 골프장이 없습니다",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextOnGradientSecondary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "반경 30km 내 등록된 골프장이 없습니다",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextOnGradientTertiary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
+        }
+
+        PullToRefreshContainer(
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+        }
+    }
+}
+
+// ============================================
+// Weather Card
+// ============================================
+@Composable
+private fun WeatherCard(
+    regionName: String?,
+    weather: com.parkgolf.app.domain.model.CurrentWeather
+) {
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // 날씨 아이콘
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            color = ParkAccent.copy(alpha = 0.2f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = when (weather.precipitationType) {
+                            "RAIN", "DRIZZLE", "SLEET", "SNOW", "SNOW_FLURRY" -> Icons.Default.Cloud
+                            else -> Icons.Default.WbSunny
+                        },
+                        contentDescription = null,
+                        tint = ParkAccent,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Column {
+                    if (regionName != null) {
+                        Text(
+                            text = regionName,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextOnGradientSecondary
+                        )
+                    }
+                    Text(
+                        text = "${weather.temperature.toInt()}°C",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = TextOnGradient
+                    )
+                }
+            }
+
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = weather.weatherDescription,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = TextOnGradient
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "습도 ${weather.humidity.toInt()}% · 풍속 ${String.format("%.1f", weather.windSpeed)}m/s",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextOnGradientSecondary
+                )
+            }
+        }
+    }
+}
+
+// ============================================
+// Nearby Club Card
+// ============================================
+@Composable
+private fun NearbyClubCard(
+    club: NearbyClub,
+    onClick: () -> Unit
+) {
+    GlassCard(
+        modifier = Modifier.width(200.dp),
+        onClick = onClick,
+        contentPadding = 0.dp
+    ) {
+        Column {
+            // Club Image Placeholder
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp)
+                    .background(GlassCardColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Eco,
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp),
+                    tint = TextOnGradientTertiary
+                )
+            }
+
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                    text = club.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextOnGradient,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = TextOnGradientSecondary
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = club.distanceText,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = ParkPrimary
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "· ${club.address}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextOnGradientSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${club.totalHoles}홀 · ${club.totalCourses}코스",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextOnGradientTertiary
+                )
+            }
         }
     }
 }
@@ -329,7 +600,9 @@ private fun BrandHeader(
 // Welcome Section
 // ============================================
 @Composable
-private fun WelcomeSection(userName: String) {
+private fun WelcomeSection(
+    userName: String
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -341,21 +614,15 @@ private fun WelcomeSection(userName: String) {
             fontWeight = FontWeight.Bold,
             color = TextOnGradient
         )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "오늘도 즐거운 파크골프 되세요!",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextOnGradientSecondary
-        )
     }
 }
 
 private fun getGreetingMessage(name: String): String {
     val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
     return when {
-        hour < 12 -> "좋은 아침이에요, ${name}님!"
-        hour < 18 -> "좋은 오후에요, ${name}님!"
-        else -> "좋은 저녁이에요, ${name}님!"
+        hour < 12 -> "좋은 아침이에요, ${name}님! ☀️"
+        hour < 18 -> "안녕하세요, ${name}님! 👋"
+        else -> "좋은 저녁이에요, ${name}님! 🌙"
     }
 }
 
@@ -695,85 +962,4 @@ private fun calculateDDay(bookingDate: LocalDate): Long {
 private fun formatBookingDate(date: LocalDate): String {
     val formatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 (E)")
     return date.format(formatter)
-}
-
-// ============================================
-// Popular Club Card
-// ============================================
-@Composable
-private fun PopularClubCard(
-    club: PopularClub,
-    onClick: () -> Unit
-) {
-    GlassCard(
-        modifier = Modifier.width(200.dp),
-        onClick = onClick,
-        contentPadding = 0.dp
-    ) {
-        Column {
-            // Club Image Placeholder
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp)
-                    .background(GlassCardColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Eco,
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp),
-                    tint = TextOnGradientTertiary
-                )
-            }
-
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    text = club.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextOnGradient,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = TextOnGradientSecondary
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = club.location,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextOnGradientSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = ParkAccent
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = String.format("%.1f", club.rating),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium,
-                        color = TextOnGradient
-                    )
-                }
-            }
-        }
-    }
 }

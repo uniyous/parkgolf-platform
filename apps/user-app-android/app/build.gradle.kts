@@ -27,9 +27,10 @@ android {
     buildTypes {
         debug {
             isMinifyEnabled = false
-            buildConfigField("String", "API_BASE_URL", "\"https://dev-api.goparkmate.com/\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://dev-api.parkgolfmate.com/\"")
             // GKE dev domain for chat socket
-            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://dev-api.goparkmate.com\"")
+            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://dev-api.parkgolfmate.com\"")
+            buildConfigField("String", "TOSS_CLIENT_KEY", "\"test_ck_yL0qZ4G1VOapeeLL1gNO8oWb2MQY\"")
         }
         release {
             isMinifyEnabled = true
@@ -37,9 +38,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "API_BASE_URL", "\"https://api.goparkmate.com/\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://api.parkgolfmate.com/\"")
             // GKE prod domain for chat socket
-            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://api.goparkmate.com\"")
+            buildConfigField("String", "CHAT_SOCKET_URL", "\"https://api.parkgolfmate.com\"")
+            buildConfigField("String", "TOSS_CLIENT_KEY", "\"live_ck_REPLACE_WITH_PRODUCTION_KEY\"")
         }
     }
     compileOptions {
@@ -52,6 +54,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        viewBinding = true
     }
     packaging {
         resources {
@@ -73,6 +76,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.material)
     implementation(libs.androidx.material.icons.extended)
 
     // Navigation
@@ -106,6 +110,9 @@ dependencies {
 
     // Accompanist
     implementation(libs.accompanist.permissions)
+
+    // TossPayments
+    implementation(libs.tosspayments)
 
     // Testing
     testImplementation(libs.junit)

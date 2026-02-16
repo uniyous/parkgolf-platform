@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { GamesService } from './games.service';
-import { BearerToken } from '../common';
+import { BearerToken, AdminContext, AdminContextData } from '../common';
 import {
   CreateGameDto,
   UpdateGameDto,
@@ -42,9 +42,14 @@ export class GamesController {
   @ApiResponse({ status: 200, description: 'Games retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getGames(
+    @AdminContext() ctx: AdminContextData | null,
     @BearerToken() token: string,
     @Query() filters: GameFilterDto,
   ) {
+    // AdminContext에서 companyId 주입
+    if (ctx?.companyId && !(filters as any).companyId) {
+      (filters as any).companyId = ctx.companyId;
+    }
     this.logger.log('Fetching games');
     return this.gamesService.getGames(filters, token);
   }

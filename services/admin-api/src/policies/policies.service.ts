@@ -8,7 +8,10 @@ import {
   UpdateRefundPolicyDto,
   CreateNoShowPolicyDto,
   UpdateNoShowPolicyDto,
+  CreateOperatingPolicyDto,
+  UpdateOperatingPolicyDto,
   PolicyFilterDto,
+  PolicyResolveQueryDto,
 } from './dto/policy.dto';
 
 @Injectable()
@@ -31,9 +34,9 @@ export class PoliciesService {
     return this.natsClient.send('policy.cancellation.findById', { id }, NATS_TIMEOUTS.QUICK);
   }
 
-  async getDefaultCancellationPolicy(clubId?: number): Promise<ApiResponse<unknown>> {
-    this.logger.log('Fetching default cancellation policy');
-    return this.natsClient.send('policy.cancellation.getDefault', { clubId }, NATS_TIMEOUTS.QUICK);
+  async resolveCancellationPolicy(query: PolicyResolveQueryDto): Promise<ApiResponse<unknown>> {
+    this.logger.log('Resolving cancellation policy');
+    return this.natsClient.send('policy.cancellation.resolve', query, NATS_TIMEOUTS.QUICK);
   }
 
   async createCancellationPolicy(dto: CreateCancellationPolicyDto): Promise<ApiResponse<unknown>> {
@@ -68,9 +71,9 @@ export class PoliciesService {
     return this.natsClient.send('policy.refund.findById', { id }, NATS_TIMEOUTS.QUICK);
   }
 
-  async getDefaultRefundPolicy(clubId?: number): Promise<ApiResponse<unknown>> {
-    this.logger.log('Fetching default refund policy');
-    return this.natsClient.send('policy.refund.getDefault', { clubId }, NATS_TIMEOUTS.QUICK);
+  async resolveRefundPolicy(query: PolicyResolveQueryDto): Promise<ApiResponse<unknown>> {
+    this.logger.log('Resolving refund policy');
+    return this.natsClient.send('policy.refund.resolve', query, NATS_TIMEOUTS.QUICK);
   }
 
   async createRefundPolicy(dto: CreateRefundPolicyDto): Promise<ApiResponse<unknown>> {
@@ -115,9 +118,9 @@ export class PoliciesService {
     return this.natsClient.send('policy.noshow.findById', { id }, NATS_TIMEOUTS.QUICK);
   }
 
-  async getDefaultNoShowPolicy(clubId?: number): Promise<ApiResponse<unknown>> {
-    this.logger.log('Fetching default no-show policy');
-    return this.natsClient.send('policy.noshow.getDefault', { clubId }, NATS_TIMEOUTS.QUICK);
+  async resolveNoShowPolicy(query: PolicyResolveQueryDto): Promise<ApiResponse<unknown>> {
+    this.logger.log('Resolving no-show policy');
+    return this.natsClient.send('policy.noshow.resolve', query, NATS_TIMEOUTS.QUICK);
   }
 
   async createNoShowPolicy(dto: CreateNoShowPolicyDto): Promise<ApiResponse<unknown>> {
@@ -135,21 +138,66 @@ export class PoliciesService {
     return this.natsClient.send('policy.noshow.delete', { id }, NATS_TIMEOUTS.QUICK);
   }
 
-  async getUserNoShowCount(userId: number, clubId?: number): Promise<ApiResponse<unknown>> {
+  async getUserNoShowCount(
+    userId: number,
+    clubId?: number,
+    companyId?: number,
+  ): Promise<ApiResponse<unknown>> {
     this.logger.log(`Fetching user no-show count: ${userId}`);
     return this.natsClient.send(
       'policy.noshow.getUserCount',
-      { userId, clubId },
+      { userId, clubId, companyId },
       NATS_TIMEOUTS.QUICK,
     );
   }
 
-  async getApplicablePenalty(userId: number, clubId?: number): Promise<ApiResponse<unknown>> {
+  async getApplicablePenalty(
+    userId: number,
+    clubId?: number,
+    companyId?: number,
+  ): Promise<ApiResponse<unknown>> {
     this.logger.log(`Fetching applicable penalty for user: ${userId}`);
     return this.natsClient.send(
       'policy.noshow.getApplicablePenalty',
-      { userId, clubId },
+      { userId, clubId, companyId },
       NATS_TIMEOUTS.QUICK,
     );
+  }
+
+  // =====================================================
+  // Operating Policy
+  // =====================================================
+
+  async getOperatingPolicies(filter?: PolicyFilterDto): Promise<ApiResponse<unknown>> {
+    this.logger.log('Fetching operating policies');
+    return this.natsClient.send('policy.operating.list', { filter }, NATS_TIMEOUTS.QUICK);
+  }
+
+  async getOperatingPolicyById(id: number): Promise<ApiResponse<unknown>> {
+    this.logger.log(`Fetching operating policy: ${id}`);
+    return this.natsClient.send('policy.operating.findById', { id }, NATS_TIMEOUTS.QUICK);
+  }
+
+  async resolveOperatingPolicy(query: PolicyResolveQueryDto): Promise<ApiResponse<unknown>> {
+    this.logger.log('Resolving operating policy');
+    return this.natsClient.send('policy.operating.resolve', query, NATS_TIMEOUTS.QUICK);
+  }
+
+  async createOperatingPolicy(dto: CreateOperatingPolicyDto): Promise<ApiResponse<unknown>> {
+    this.logger.log('Creating operating policy');
+    return this.natsClient.send('policy.operating.create', dto, NATS_TIMEOUTS.QUICK);
+  }
+
+  async updateOperatingPolicy(
+    id: number,
+    dto: UpdateOperatingPolicyDto,
+  ): Promise<ApiResponse<unknown>> {
+    this.logger.log(`Updating operating policy: ${id}`);
+    return this.natsClient.send('policy.operating.update', { id, dto }, NATS_TIMEOUTS.QUICK);
+  }
+
+  async deleteOperatingPolicy(id: number): Promise<ApiResponse<unknown>> {
+    this.logger.log(`Deleting operating policy: ${id}`);
+    return this.natsClient.send('policy.operating.delete', { id }, NATS_TIMEOUTS.QUICK);
   }
 }

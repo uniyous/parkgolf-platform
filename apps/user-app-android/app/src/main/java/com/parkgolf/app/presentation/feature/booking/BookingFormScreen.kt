@@ -1,45 +1,101 @@
 package com.parkgolf.app.presentation.feature.booking
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.parkgolf.app.domain.model.TimeSlot
 import com.parkgolf.app.presentation.components.GlassCard
-import com.parkgolf.app.presentation.components.GlassTextField
 import com.parkgolf.app.presentation.components.GradientButton
+import com.parkgolf.app.presentation.feature.payment.PaymentActivity
 import com.parkgolf.app.presentation.theme.*
 import java.text.NumberFormat
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.util.Locale
+
+// 시니어 UI: 결제 방법 2개
+private data class PaymentMethodOption(
+    val id: String,
+    val name: String,
+    val icon: String
+)
+
+private val SIMPLE_PAYMENT_METHODS = listOf(
+    PaymentMethodOption("onsite", "현장결제", "🏪"),
+    PaymentMethodOption("card", "카드결제", "💳")
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookingFormScreen(
-    gameId: Int,  // API 호환성을 위해 파라미터명 유지
+    gameId: Int,
+    timeSlotId: Int = 0,
+    date: String = "",
+    startTime: String = "",
     onNavigateBack: () -> Unit,
     onBookingComplete: (String) -> Unit,
     viewModel: BookingFormViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    val paymentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        when (result.resultCode) {
+            Activity.RESULT_OK -> {
+                val data = result.data
+                val paymentKey = data?.getStringExtra(PaymentActivity.EXTRA_PAYMENT_KEY) ?: ""
+                val orderId = data?.getStringExtra(PaymentActivity.EXTRA_ORDER_ID) ?: ""
+                val amount = data?.getIntExtra(PaymentActivity.EXTRA_AMOUNT, 0) ?: 0
+                viewModel.handlePaymentSuccess(paymentKey, orderId, amount)
+            }
+            Activity.RESULT_CANCELED -> {
+                viewModel.handlePaymentCancelled()
+            }
+            PaymentActivity.RESULT_PAYMENT_FAILED -> {
+                val data = result.data
+                val errorCode = data?.getStringExtra(PaymentActivity.EXTRA_ERROR_CODE)
+                val errorMessage = data?.getStringExtra(PaymentActivity.EXTRA_ERROR_MESSAGE)
+                viewModel.handlePaymentFailure(errorCode, errorMessage)
+            }
+        }
+    }
 
     LaunchedEffect(gameId) {
-        viewModel.loadRoundForBooking(gameId)
+        viewModel.loadRoundForBooking(gameId, timeSlotId, date, startTime)
+    }
+
+    LaunchedEffect(uiState.showPaymentActivity) {
+        if (uiState.showPaymentActivity) {
+            val prepareData = uiState.paymentPrepareData ?: return@LaunchedEffect
+            val intent = PaymentActivity.createIntent(
+                context = context,
+                orderId = prepareData.orderId,
+                orderName = prepareData.orderName,
+                amount = prepareData.amount
+            )
+            paymentLauncher.launch(intent)
+            viewModel.onPaymentActivityLaunched()
+        }
     }
 
     LaunchedEffect(uiState.bookingSuccess) {
@@ -51,19 +107,26 @@ fun BookingFormScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("예약하기") },
+                title = {
+                    Text(
+                        "예약 확인",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = ParkPrimary,
+                    containerColor = Color.Transparent,
                     titleContentColor = ParkOnPrimary,
                     navigationIconContentColor = ParkOnPrimary
                 )
             )
-        }
+        },
+        containerColor = Color.Transparent
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -82,133 +145,57 @@ fun BookingFormScreen(
                 )
             } else {
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    // Round Info Card
-                    uiState.round?.let { round ->
-                        GlassCard {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(
-                                    text = round.name,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = ParkOnPrimary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = round.clubName ?: "",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = ParkOnPrimary.copy(alpha = 0.8f)
-                                )
-                                if (round.description != null) {
-                                    Text(
-                                        text = round.description,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = ParkOnPrimary.copy(alpha = 0.7f)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Date Selection
-                    DateSelectionSection(
-                        selectedDate = uiState.selectedDate,
-                        onDateSelected = { date ->
-                            uiState.round?.let { round ->
-                                viewModel.loadTimeSlotsForDate(round.id, date)
-                            }
-                        }
-                    )
-
-                    // Time Slot Selection
-                    if (uiState.selectedDate.isNotBlank()) {
-                        TimeSlotSection(
-                            timeSlots = uiState.timeSlots,
-                            selectedSlot = uiState.selectedTimeSlot,
-                            onSlotSelected = { viewModel.selectTimeSlot(it) }
-                        )
-                    }
-
-                    // Player Count
-                    if (uiState.selectedTimeSlot != null) {
-                        PlayerCountSection(
-                            count = uiState.playerCount,
-                            maxPlayers = uiState.selectedTimeSlot?.maxPlayers ?: 4,
-                            onCountChange = { viewModel.updatePlayerCount(it) }
-                        )
-                    }
-
-                    // User Info
-                    GlassCard {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                    // Scrollable Content
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp)
+                    ) {
+                        // 시니어 UI: 단일 카드 레이아웃
+                        GlassCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = 0.dp
                         ) {
-                            Text(
-                                text = "예약자 정보",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = ParkOnPrimary,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Column {
+                                // 예약 정보
+                                BookingInfoSection(uiState)
 
-                            GlassTextField(
-                                value = uiState.userName,
-                                onValueChange = { viewModel.updateUserName(it) },
-                                label = "이름",
-                                leadingIcon = Icons.Default.Person
-                            )
+                                SectionDivider()
 
-                            GlassTextField(
-                                value = uiState.userEmail,
-                                onValueChange = { viewModel.updateUserEmail(it) },
-                                label = "이메일",
-                                leadingIcon = Icons.Default.Email
-                            )
-
-                            GlassTextField(
-                                value = uiState.userPhone,
-                                onValueChange = { viewModel.updateUserPhone(it) },
-                                label = "전화번호 (선택)",
-                                leadingIcon = Icons.Default.Phone
-                            )
-
-                            GlassTextField(
-                                value = uiState.specialRequests,
-                                onValueChange = { viewModel.updateSpecialRequests(it) },
-                                label = "특별 요청사항 (선택)",
-                                singleLine = false,
-                                modifier = Modifier.height(100.dp)
-                            )
-                        }
-                    }
-
-                    // Price Summary
-                    if (uiState.totalPrice > 0) {
-                        GlassCard {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "총 결제 금액",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = ParkOnPrimary
+                                // 인원 선택
+                                PlayerCountSection(
+                                    count = uiState.playerCount,
+                                    maxPlayers = uiState.selectedTimeSlot?.availablePlayers ?: 4,
+                                    onCountChange = { viewModel.updatePlayerCount(it) }
                                 )
-                                Text(
-                                    text = formatPrice(uiState.totalPrice),
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    color = ParkOnPrimary,
-                                    fontWeight = FontWeight.Bold
+
+                                SectionDivider()
+
+                                // 결제 방법
+                                PaymentMethodSection(
+                                    selectedMethod = uiState.paymentMethod,
+                                    totalPrice = uiState.totalPrice,
+                                    onMethodChange = { viewModel.updatePaymentMethod(it) }
+                                )
+
+                                SectionDivider()
+
+                                // 결제 금액
+                                PriceSection(
+                                    totalPrice = uiState.totalPrice,
+                                    playerCount = uiState.playerCount,
+                                    pricePerPerson = uiState.selectedTimeSlot?.price ?: uiState.round?.pricePerPerson ?: uiState.round?.basePrice ?: 0
+                                )
+
+                                SectionDivider()
+
+                                // 약관 동의
+                                TermsSection(
+                                    agreed = uiState.agreedToTerms,
+                                    onAgreedChange = { viewModel.updateAgreedToTerms(it) }
                                 )
                             }
                         }
@@ -218,82 +205,31 @@ fun BookingFormScreen(
                     uiState.error?.let { error ->
                         Text(
                             text = error,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium
+                            color = ParkError,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
 
-                    // Submit Button
-                    GradientButton(
-                        text = if (uiState.isLoading) "예약 중..." else "예약하기",
-                        onClick = { viewModel.createBooking() },
-                        enabled = !uiState.isLoading &&
-                                uiState.selectedDate.isNotBlank() &&
-                                uiState.selectedTimeSlot != null &&
-                                uiState.userName.isNotBlank() &&
-                                uiState.userEmail.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DateSelectionSection(
-    selectedDate: String,
-    onDateSelected: (String) -> Unit
-) {
-    val today = LocalDate.now()
-    val dates = (0..13).map { today.plusDays(it.toLong()) }
-    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-    val displayFormatter = DateTimeFormatter.ofPattern("M/d")
-    val dayFormatter = DateTimeFormatter.ofPattern("E", Locale.KOREAN)
-
-    GlassCard {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "날짜 선택",
-                style = MaterialTheme.typography.titleMedium,
-                color = ParkOnPrimary,
-                fontWeight = FontWeight.Bold
-            )
-
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(dates) { date ->
-                    val dateStr = date.format(formatter)
-                    val isSelected = selectedDate == dateStr
-
-                    Surface(
+                    // Bottom Button (시니어 UI: 큰 버튼)
+                    Box(
                         modifier = Modifier
-                            .clickable { onDateSelected(dateStr) },
-                        shape = MaterialTheme.shapes.medium,
-                        color = if (isSelected) ParkPrimary else GlassCard
+                            .fillMaxWidth()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f))
+                                )
+                            )
+                            .padding(16.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = date.format(dayFormatter),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (isSelected) ParkOnPrimary else ParkOnPrimary.copy(alpha = 0.7f)
-                            )
-                            Text(
-                                text = date.format(displayFormatter),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = ParkOnPrimary,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
+                        GradientButton(
+                            text = if (uiState.isLoading || uiState.isPaymentProcessing) "처리 중..." else "₩${formatPrice(uiState.totalPrice)} 예약하기",
+                            onClick = { viewModel.createBooking() },
+                            enabled = !uiState.isLoading && !uiState.isPaymentProcessing && uiState.canProceed,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(64.dp)
+                        )
                     }
                 }
             }
@@ -302,70 +238,58 @@ private fun DateSelectionSection(
 }
 
 @Composable
-private fun TimeSlotSection(
-    timeSlots: List<TimeSlot>,
-    selectedSlot: TimeSlot?,
-    onSlotSelected: (TimeSlot) -> Unit
-) {
-    GlassCard {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+private fun SectionDivider() {
+    HorizontalDivider(
+        color = GlassBorder,
+        modifier = Modifier.padding(vertical = 16.dp)
+    )
+}
+
+// MARK: - Booking Info Section (시니어 UI: 단순화)
+
+@Composable
+private fun BookingInfoSection(uiState: BookingFormUiState) {
+    Column(
+        modifier = Modifier.padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        uiState.round?.let { round ->
             Text(
-                text = "시간 선택",
-                style = MaterialTheme.typography.titleMedium,
-                color = ParkOnPrimary,
-                fontWeight = FontWeight.Bold
+                text = round.clubName,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextOnGradient
             )
 
-            if (timeSlots.isEmpty()) {
+            round.club?.address?.let { address ->
                 Text(
-                    text = "선택 가능한 시간이 없습니다",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = ParkOnPrimary.copy(alpha = 0.7f)
+                    text = "📍 $address",
+                    fontSize = 16.sp,
+                    color = TextOnGradientSecondary
                 )
-            } else {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(timeSlots) { slot ->
-                        val isSelected = selectedSlot?.id == slot.id
-                        val isAvailable = slot.isAvailable
-
-                        Surface(
-                            modifier = Modifier
-                                .clickable(enabled = isAvailable) { onSlotSelected(slot) },
-                            shape = MaterialTheme.shapes.medium,
-                            color = when {
-                                isSelected -> ParkPrimary
-                                !isAvailable -> ParkOnPrimary.copy(alpha = 0.2f)
-                                else -> GlassCard
-                            }
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = slot.startTime,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = if (isAvailable) ParkOnPrimary else ParkOnPrimary.copy(alpha = 0.5f),
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                )
-                                Text(
-                                    text = "${slot.availablePlayers}/${slot.maxPlayers}명",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (isAvailable) ParkOnPrimary.copy(alpha = 0.7f) else ParkOnPrimary.copy(alpha = 0.3f)
-                                )
-                            }
-                        }
-                    }
-                }
             }
+        }
+
+        if (uiState.selectedDate.isNotBlank()) {
+            Text(
+                text = "📅 ${uiState.selectedDate}",
+                fontSize = 16.sp,
+                color = TextOnGradient.copy(alpha = 0.9f)
+            )
+        }
+
+        val displayTime = uiState.selectedTimeSlot?.startTime ?: uiState.selectedStartTime
+        if (displayTime.isNotBlank()) {
+            Text(
+                text = "🕐 $displayTime",
+                fontSize = 16.sp,
+                color = TextOnGradient.copy(alpha = 0.9f)
+            )
         }
     }
 }
+
+// MARK: - Player Count Section (시니어 UI: 버튼 토글)
 
 @Composable
 private fun PlayerCountSection(
@@ -373,59 +297,215 @@ private fun PlayerCountSection(
     maxPlayers: Int,
     onCountChange: (Int) -> Unit
 ) {
-    GlassCard {
+    Column(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "인원 선택",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = TextOnGradient.copy(alpha = 0.9f)
+        )
+
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = "인원",
-                style = MaterialTheme.typography.titleMedium,
-                color = ParkOnPrimary,
-                fontWeight = FontWeight.Bold
-            )
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                IconButton(
-                    onClick = { onCountChange(count - 1) },
-                    enabled = count > 1
-                ) {
-                    Icon(
-                        Icons.Default.Remove,
-                        contentDescription = "감소",
-                        tint = if (count > 1) ParkOnPrimary else ParkOnPrimary.copy(alpha = 0.3f)
-                    )
-                }
-
-                Text(
-                    text = "$count 명",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = ParkOnPrimary,
-                    fontWeight = FontWeight.Bold
+            (1..minOf(maxPlayers, 4)).forEach { num ->
+                PlayerCountButton(
+                    count = num,
+                    isSelected = count == num,
+                    onClick = { onCountChange(num) },
+                    modifier = Modifier.weight(1f)
                 )
-
-                IconButton(
-                    onClick = { onCountChange(count + 1) },
-                    enabled = count < maxPlayers
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "증가",
-                        tint = if (count < maxPlayers) ParkOnPrimary else ParkOnPrimary.copy(alpha = 0.3f)
-                    )
-                }
             }
         }
     }
 }
 
+@Composable
+private fun PlayerCountButton(
+    count: Int,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .height(48.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (isSelected) ParkSuccess.copy(alpha = 0.3f) else GlassBackground
+            )
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "${count}명",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            color = if (isSelected) ParkSuccess else TextOnGradientSecondary
+        )
+    }
+}
+
+// MARK: - Payment Method Section (시니어 UI: 2개 큰 버튼)
+
+@Composable
+private fun PaymentMethodSection(
+    selectedMethod: String,
+    totalPrice: Int,
+    onMethodChange: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "결제 방법",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = TextOnGradient.copy(alpha = 0.9f)
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            SIMPLE_PAYMENT_METHODS.forEach { method ->
+                val isCardDisabled = method.id == "card" && totalPrice <= 0
+                PaymentMethodButton(
+                    method = method,
+                    isSelected = selectedMethod == method.id,
+                    isDisabled = isCardDisabled,
+                    onClick = { onMethodChange(method.id) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PaymentMethodButton(
+    method: PaymentMethodOption,
+    isSelected: Boolean,
+    isDisabled: Boolean = false,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .height(80.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                when {
+                    isDisabled -> Color.White.copy(alpha = 0.05f)
+                    isSelected -> ParkSuccess.copy(alpha = 0.3f)
+                    else -> GlassBackground
+                }
+            )
+            .clickable(enabled = !isDisabled) { onClick() },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = method.icon,
+            fontSize = 28.sp
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = method.name,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            color = when {
+                isDisabled -> Color.White.copy(alpha = 0.3f)
+                isSelected -> ParkSuccess
+                else -> TextOnGradientSecondary
+            }
+        )
+        if (isDisabled) {
+            Text(
+                text = "무료 게임은 현장결제만 가능",
+                fontSize = 10.sp,
+                color = Color.White.copy(alpha = 0.4f)
+            )
+        }
+    }
+}
+
+// MARK: - Price Section (시니어 UI: 큰 금액 표시)
+
+@Composable
+private fun PriceSection(
+    totalPrice: Int,
+    playerCount: Int,
+    pricePerPerson: Int
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "총 결제 금액",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = TextOnGradient.copy(alpha = 0.9f)
+        )
+
+        Text(
+            text = "₩${formatPrice(totalPrice)}",
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextOnGradient
+        )
+
+        Text(
+            text = "(${playerCount}명 × ₩${formatPrice(pricePerPerson)})",
+            fontSize = 16.sp,
+            color = TextOnGradientSecondary
+        )
+    }
+}
+
+// MARK: - Terms Section (시니어 UI: 1개로 통합)
+
+@Composable
+private fun TermsSection(
+    agreed: Boolean,
+    onAgreedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clickable { onAgreedChange(!agreed) },
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Checkbox(
+            checked = agreed,
+            onCheckedChange = { onAgreedChange(it) },
+            colors = CheckboxDefaults.colors(
+                checkedColor = ParkPrimary,
+                uncheckedColor = TextOnGradientSecondary
+            ),
+            modifier = Modifier.size(24.dp)
+        )
+
+        Text(
+            text = "이용약관 및 개인정보처리방침에 동의합니다",
+            fontSize = 16.sp,
+            color = TextOnGradient.copy(alpha = 0.9f)
+        )
+    }
+}
+
 private fun formatPrice(price: Int): String {
     val formatter = NumberFormat.getNumberInstance(Locale.KOREA)
-    return "${formatter.format(price)}원"
+    return formatter.format(price)
 }

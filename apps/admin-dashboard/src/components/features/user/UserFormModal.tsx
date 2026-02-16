@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCreateUserMutation, useUpdateUserMutation } from '@/hooks/queries';
 import { Modal, Button } from '@/components/ui';
-import type { User, UserStatus, UserMembershipTier } from '@/types';
+import type { User, UserStatus } from '@/types';
 
 interface UserFormModalProps {
   open: boolean;
@@ -15,7 +15,6 @@ interface FormData {
   password: string;
   confirmPassword: string;
   phone: string;
-  membershipTier: UserMembershipTier;
   status: UserStatus;
 }
 
@@ -25,7 +24,6 @@ const initialFormData: FormData = {
   password: '',
   confirmPassword: '',
   phone: '',
-  membershipTier: 'REGULAR',
   status: 'ACTIVE',
 };
 
@@ -45,7 +43,6 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
         password: '',
         confirmPassword: '',
         phone: user.phone || '',
-        membershipTier: user.membershipTier || 'REGULAR',
         status: user.status || 'ACTIVE',
       });
     } else {
@@ -102,7 +99,6 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
             email: formData.email,
             name: formData.name,
             phone: formData.phone || undefined,
-            membershipTier: formData.membershipTier,
             status: formData.status,
             ...(formData.password ? { password: formData.password } : {}),
           },
@@ -113,7 +109,6 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
           name: formData.name,
           password: formData.password,
           phone: formData.phone || undefined,
-          membershipTier: formData.membershipTier,
           status: formData.status,
         });
       }
@@ -142,15 +137,15 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
       <form onSubmit={handleSubmit} className="space-y-4">
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-white/70 mb-1">
               이메일 <span className="text-red-500">*</span>
             </label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => handleChange('email', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                errors.email ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-3 py-2 bg-white/10 text-white placeholder:text-white/40 border rounded-lg focus:ring-2 focus:ring-emerald-500 ${
+                errors.email ? 'border-red-500' : 'border-white/15'
               }`}
               placeholder="user@example.com"
             />
@@ -159,15 +154,15 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
 
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-white/70 mb-1">
               이름 <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => handleChange('name', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                errors.name ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-3 py-2 bg-white/10 text-white placeholder:text-white/40 border rounded-lg focus:ring-2 focus:ring-emerald-500 ${
+                errors.name ? 'border-red-500' : 'border-white/15'
               }`}
               placeholder="홍길동"
             />
@@ -176,16 +171,16 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
 
           {/* Password */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-white/70 mb-1">
               비밀번호 {!isEditing && <span className="text-red-500">*</span>}
-              {isEditing && <span className="text-gray-500 font-normal">(변경시에만 입력)</span>}
+              {isEditing && <span className="text-white/50 font-normal">(변경시에만 입력)</span>}
             </label>
             <input
               type="password"
               value={formData.password}
               onChange={(e) => handleChange('password', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                errors.password ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-3 py-2 bg-white/10 text-white placeholder:text-white/40 border rounded-lg focus:ring-2 focus:ring-emerald-500 ${
+                errors.password ? 'border-red-500' : 'border-white/15'
               }`}
               placeholder="********"
             />
@@ -194,15 +189,15 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
 
           {/* Confirm Password */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-white/70 mb-1">
               비밀번호 확인 {!isEditing && <span className="text-red-500">*</span>}
             </label>
             <input
               type="password"
               value={formData.confirmPassword}
               onChange={(e) => handleChange('confirmPassword', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-3 py-2 bg-white/10 text-white placeholder:text-white/40 border rounded-lg focus:ring-2 focus:ring-emerald-500 ${
+                errors.confirmPassword ? 'border-red-500' : 'border-white/15'
               }`}
               placeholder="********"
             />
@@ -211,39 +206,23 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
 
           {/* Phone */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">연락처</label>
+            <label className="block text-sm font-medium text-white/70 mb-1">연락처</label>
             <input
               type="tel"
               value={formData.phone}
               onChange={(e) => handleChange('phone', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-white/10 text-white placeholder:text-white/40 border border-white/15 rounded-lg focus:ring-2 focus:ring-emerald-500"
               placeholder="010-1234-5678"
             />
           </div>
 
-          {/* Membership Tier */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">회원 등급</label>
-            <select
-              value={formData.membershipTier}
-              onChange={(e) => handleChange('membershipTier', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="REGULAR">일반</option>
-              <option value="SILVER">실버</option>
-              <option value="GOLD">골드</option>
-              <option value="PLATINUM">플래티넘</option>
-              <option value="VIP">VIP</option>
-            </select>
-          </div>
-
           {/* Status */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">상태</label>
+            <label className="block text-sm font-medium text-white/70 mb-1">상태</label>
             <select
               value={formData.status}
               onChange={(e) => handleChange('status', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-white/10 text-white placeholder:text-white/40 border border-white/15 rounded-lg focus:ring-2 focus:ring-emerald-500"
             >
               <option value="ACTIVE">활성</option>
               <option value="INACTIVE">비활성</option>
@@ -253,7 +232,7 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
           </div>
 
         {/* Buttons */}
-        <div className="flex justify-end gap-3 pt-4 border-t">
+        <div className="flex justify-end gap-3 pt-4 border-t border-white/15">
           <Button type="button" variant="outline" onClick={onClose}>
             취소
           </Button>

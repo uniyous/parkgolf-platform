@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { MessageType } from '@prisma/client';
+import { AppException, Errors } from '../common/exceptions';
 
 export interface SaveMessageDto {
   id: string;
@@ -23,6 +24,8 @@ export interface MarkReadDto {
   userId: number;
   messageId: string;
 }
+
+const DEFAULT_PAGE_SIZE = 50;
 
 @Injectable()
 export class ChatService {
@@ -67,7 +70,7 @@ export class ChatService {
 
   // 메시지 목록 조회 (cursor pagination)
   async getMessages(dto: GetMessagesDto) {
-    const { roomId, cursor, limit = 50 } = dto;
+    const { roomId, cursor, limit = DEFAULT_PAGE_SIZE } = dto;
 
     const messages = await this.prisma.chatMessage.findMany({
       where: {
@@ -146,18 +149,41 @@ export class ChatService {
     });
 
     if (!message) {
-      return { success: false, error: 'Message not found' };
+      throw new AppException(Errors.Chat.MESSAGE_NOT_FOUND);
     }
 
     if (message.senderId !== userId) {
-      return { success: false, error: 'Not authorized' };
+      throw new AppException(Errors.Chat.NOT_AUTHORIZED);
     }
 
     await this.prisma.chatMessage.update({
       where: { id: messageId },
       data: { deletedAt: new Date() },
     });
+  }
 
-    return { success: true };
+  /**
+   * 사용자 탈퇴 시 채팅 데이터 익명화
+   */
+  async anonymizeUserData(userId: number): Promise<number> {
+    const DELETED_LABEL = '[탈퇴한 회원]';
+
+    const [memberResult, messageResult] = await this.prisma.$transaction([
+      this.prisma.chatRoomMember.updateMany({
+        where: { userId },
+        data: {
+          userName: DELETED_LABEL,
+          userEmail: null,
+        },
+      }),
+      this.prisma.chatMessage.updateMany({
+        where: { senderId: userId },
+        data: {
+          senderName: DELETED_LABEL,
+        },
+      }),
+    ]);
+
+    return memberResult.count + messageResult.count;
   }
 }

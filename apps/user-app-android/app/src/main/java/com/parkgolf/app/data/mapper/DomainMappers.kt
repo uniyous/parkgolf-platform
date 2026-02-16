@@ -12,6 +12,9 @@ import com.parkgolf.app.data.remote.dto.friends.FriendDto
 import com.parkgolf.app.data.remote.dto.friends.FriendRequestDto
 import com.parkgolf.app.data.remote.dto.friends.SentFriendRequestDto
 import com.parkgolf.app.data.remote.dto.friends.UserSearchResultDto
+import com.parkgolf.app.data.remote.dto.location.CurrentWeatherDto
+import com.parkgolf.app.data.remote.dto.location.NearbyClubDto
+import com.parkgolf.app.data.remote.dto.location.RegionInfoDto
 import com.parkgolf.app.data.remote.dto.notification.NotificationDataDto
 import com.parkgolf.app.data.remote.dto.notification.NotificationDto
 import com.parkgolf.app.data.remote.dto.round.RoundDto
@@ -254,6 +257,50 @@ fun TimeSlotDto.toDomain(): TimeSlot {
         price = price,
         isPremium = isPremium,
         isAvailable = isAvailable
+    )
+}
+
+// ==================== Location & Weather ====================
+
+fun RegionInfoDto.toDomain(): RegionInfo {
+    return RegionInfo(
+        regionType = regionType,
+        addressName = addressName,
+        region1 = region1,
+        region2 = region2,
+        region3 = region3,
+        region4 = region4,
+        code = code
+    )
+}
+
+fun CurrentWeatherDto.toDomain(): CurrentWeather {
+    return CurrentWeather(
+        temperature = temperature,
+        humidity = humidity,
+        windSpeed = windSpeed,
+        windDirection = windDirection,
+        precipitation = precipitation,
+        precipitationType = precipitationType,
+        updatedAt = updatedAt
+    )
+}
+
+fun NearbyClubDto.toDomain(): NearbyClub {
+    return NearbyClub(
+        id = id,
+        name = name,
+        location = location,
+        address = address,
+        phone = phone,
+        latitude = latitude,
+        longitude = longitude,
+        totalHoles = totalHoles,
+        totalCourses = totalCourses,
+        status = status,
+        clubType = clubType,
+        facilities = facilities,
+        distance = distance
     )
 }
 

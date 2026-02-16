@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { Response } from 'express';
+import { throwError, Observable } from 'rxjs';
 import { AppException, StandardErrorResponse } from './app.exception';
 import { Errors } from './catalog/error-catalog';
 
@@ -63,17 +64,17 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
   /**
    * RPC 컨텍스트 예외 처리
    *
-   * RpcException을 throw하여 NATS를 통해 에러를 전파합니다.
+   * Observable.throwError를 반환하여 NATS를 통해 에러를 전파합니다.
+   * 직접 throw하면 NestJS 마이크로서비스 핸들러가 잡지 못해 프로세스가 크래시합니다.
    * BFF의 NatsClientService.handleError에서 이 에러를 파싱하여 HttpException으로 변환합니다.
    */
-  private handleRpcException(exception: unknown, host: ArgumentsHost) {
+  private handleRpcException(exception: unknown, _host: ArgumentsHost): Observable<never> {
     const errorResponse = this.createErrorResponse(exception);
 
     this.logError(exception, 'RPC', 'MESSAGE');
 
-    // RpcException을 throw하여 NATS 클라이언트가 에러로 수신할 수 있도록 함
-    // JSON 문자열로 변환하여 전달 (NatsClientService.handleError에서 파싱)
-    throw new RpcException(JSON.stringify(errorResponse));
+    // Observable.throwError로 반환하여 NATS 클라이언트가 에러로 수신할 수 있도록 함
+    return throwError(() => new RpcException(JSON.stringify(errorResponse)));
   }
 
   /**

@@ -8,11 +8,6 @@ export interface GameSearchFilters {
   search: string;
   date: string;  // 기본값은 오늘 날짜 (항상 타임슬롯이 있는 게임만 조회)
   timeOfDay: string;
-  minPrice: number | null;
-  maxPrice: number | null;
-  minPlayers: number | null;
-  sortBy: 'price' | 'name' | 'createdAt';
-  sortOrder: 'asc' | 'desc';
   page: number;
 }
 
@@ -23,11 +18,6 @@ export function useGameSearchParams() {
     search: searchParams.get('search') || '',
     date: searchParams.get('date') || getTodayDateString(),  // 기본값을 오늘 날짜로 설정 - 항상 타임슬롯이 있는 게임만 조회
     timeOfDay: searchParams.get('timeOfDay') || '',
-    minPrice: searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : null,
-    maxPrice: searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : null,
-    minPlayers: searchParams.get('minPlayers') ? Number(searchParams.get('minPlayers')) : null,
-    sortBy: (searchParams.get('sortBy') as GameSearchFilters['sortBy']) || 'name',
-    sortOrder: (searchParams.get('sortOrder') as GameSearchFilters['sortOrder']) || 'asc',
     page: Number(searchParams.get('page')) || 1,
   }), [searchParams]);
 
@@ -39,12 +29,6 @@ export function useGameSearchParams() {
         newParams.delete(key);
       } else if (key === 'page' && value === 1) {
         // Don't include page=1 in URL
-        newParams.delete(key);
-      } else if (key === 'sortBy' && value === 'name') {
-        // Don't include default sortBy in URL
-        newParams.delete(key);
-      } else if (key === 'sortOrder' && value === 'asc') {
-        // Don't include default sortOrder in URL
         newParams.delete(key);
       } else if (key === 'timeOfDay' && value === '') {
         // Don't include default timeOfDay in URL

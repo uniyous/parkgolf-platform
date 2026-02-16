@@ -38,13 +38,13 @@ let project = Project(
                 "NSCameraUsageDescription": "QR 코드 스캔을 위해 카메라가 필요합니다.",
                 "NSLocationWhenInUseUsageDescription": "주변 골프장을 찾기 위해 위치 정보가 필요합니다.",
                 "NSContactsUsageDescription": "친구를 찾기 위해 주소록 접근이 필요합니다.",
-                // App Transport Security - HTTPS 사용으로 예외 불필요
-                // Push Notification background modes (개인 개발 팀에서는 비활성화)
+                // Push Notifications - Apple Developer Program 필요 (Personal Team 미지원)
                 // "UIBackgroundModes": ["remote-notification"],
             ]),
             sources: ["Sources/**"],
             resources: ["Resources/**"],
-            // Push Notifications는 Apple Developer Program 팀 필요 (개인 개발 팀 미지원)
+            // Push Notifications - Apple Developer Program 필요 ($99/년)
+            // Personal Team (무료)에서는 Push Notifications 지원 안됨
             // entitlements: .dictionary([
             //     "aps-environment": .string("development"),
             // ]),
@@ -53,6 +53,7 @@ let project = Project(
                 .external(name: "Alamofire"),
                 .external(name: "KeychainAccess"),
                 .external(name: "SocketIO"),
+                .external(name: "TossPayments"),
             ],
             settings: .settings(
                 base: [

@@ -28,7 +28,7 @@ model ChatRoom {
   messages    ChatMessage[]
 
   @@index([bookingId])
-  @@index([type])
+  @@index([type, bookingId])
   @@map("chat_rooms")
 }
 
@@ -51,7 +51,7 @@ model ChatRoomMember {
   room      ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@unique([roomId, userId])
-  @@index([userId])
+  @@index([userId, leftAt])
   @@map("chat_room_members")
 }
 
@@ -78,7 +78,7 @@ model ChatMessage {
   // 관계
   room       ChatRoom    @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
-  @@index([roomId, createdAt])
+  @@index([roomId, deletedAt, createdAt])
   @@index([senderId])
   @@map("chat_messages")
 }

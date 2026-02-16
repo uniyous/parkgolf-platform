@@ -250,44 +250,23 @@ export class GameTimeSlotService {
 
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       const dayOfWeek = d.getDay();
-      const schedule = game.weeklySchedules.find(s => s.dayOfWeek === dayOfWeek);
+      const schedulesForDay = game.weeklySchedules.filter(s => s.dayOfWeek === dayOfWeek);
 
-      if (!schedule) continue;
+      if (schedulesForDay.length === 0) continue;
 
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
       const price = isWeekend && game.weekendPrice
         ? Number(game.weekendPrice)
         : Number(game.basePrice);
 
-      if (game.slotMode === 'SESSION') {
-        // SESSION 모드: 스케줄 1건 = 슬롯 1건 (interval 무시)
-        slotsToCreate.push({
-          gameId: dto.gameId,
-          date: new Date(d),
-          startTime: schedule.startTime,
-          endTime: schedule.endTime,
-          maxPlayers: game.maxPlayers,
-          bookedPlayers: 0,
-          price,
-          isPremium: isWeekend,
-          status: 'AVAILABLE',
-          isActive: true,
-        });
-      } else {
-        // TEE_TIME 모드: interval 기반 슬롯 생성
-        const slots = this.generateSlotsForDay(
-          schedule.startTime,
-          schedule.endTime,
-          schedule.interval,
-          game.estimatedDuration
-        );
-
-        for (const slot of slots) {
+      for (const schedule of schedulesForDay) {
+        if (game.slotMode === 'SESSION') {
+          // SESSION 모드: 스케줄 1건 = 슬롯 1건 (interval 무시)
           slotsToCreate.push({
             gameId: dto.gameId,
             date: new Date(d),
-            startTime: slot.startTime,
-            endTime: slot.endTime,
+            startTime: schedule.startTime,
+            endTime: schedule.endTime,
             maxPlayers: game.maxPlayers,
             bookedPlayers: 0,
             price,
@@ -295,6 +274,29 @@ export class GameTimeSlotService {
             status: 'AVAILABLE',
             isActive: true,
           });
+        } else {
+          // TEE_TIME 모드: interval 기반 슬롯 생성
+          const slots = this.generateSlotsForDay(
+            schedule.startTime,
+            schedule.endTime,
+            schedule.interval,
+            game.estimatedDuration
+          );
+
+          for (const slot of slots) {
+            slotsToCreate.push({
+              gameId: dto.gameId,
+              date: new Date(d),
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+              maxPlayers: game.maxPlayers,
+              bookedPlayers: 0,
+              price,
+              isPremium: isWeekend,
+              status: 'AVAILABLE',
+              isActive: true,
+            });
+          }
         }
       }
     }
@@ -352,39 +354,6 @@ export class GameTimeSlotService {
     const h = Math.floor(minutes / 60) % 24;
     const m = minutes % 60;
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-  }
-
-  async bookSlot(id: number, playerCount: number): Promise<GameTimeSlot> {
-    return this.prisma.$transaction(async (tx) => {
-      const slot = await tx.gameTimeSlot.findUnique({
-        where: { id },
-      });
-
-      if (!slot) {
-        throw new NotFoundException(`GameTimeSlot with ID ${id} not found`);
-      }
-
-      if (slot.status !== 'AVAILABLE') {
-        throw new ConflictException(`Time slot is not available (status: ${slot.status})`);
-      }
-
-      const newBookedPlayers = slot.bookedPlayers + playerCount;
-      if (newBookedPlayers > slot.maxPlayers) {
-        throw new ConflictException(
-          `Not enough capacity. Available: ${slot.maxPlayers - slot.bookedPlayers}, Requested: ${playerCount}`
-        );
-      }
-
-      const newStatus = newBookedPlayers >= slot.maxPlayers ? 'FULLY_BOOKED' : 'AVAILABLE';
-
-      return tx.gameTimeSlot.update({
-        where: { id },
-        data: {
-          bookedPlayers: newBookedPlayers,
-          status: newStatus,
-        },
-      });
-    });
   }
 
   async releaseSlot(id: number, playerCount: number): Promise<GameTimeSlot> {

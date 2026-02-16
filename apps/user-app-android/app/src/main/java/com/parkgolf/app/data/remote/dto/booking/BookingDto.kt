@@ -46,20 +46,3 @@ data class CancelBookingRequest(
     val reason: String? = null
 )
 
-enum class BookingStatus(val value: String, val displayName: String) {
-    PENDING("pending", "대기중"),
-    SLOT_RESERVED("slot_reserved", "대기중"),
-    CONFIRMED("confirmed", "예약확정"),
-    CANCELLED("cancelled", "취소됨"),
-    COMPLETED("completed", "완료"),
-    NO_SHOW("no_show", "노쇼"),
-    FAILED("failed", "실패");
-
-    val canCancel: Boolean
-        get() = this in listOf(CONFIRMED, PENDING, SLOT_RESERVED)
-
-    companion object {
-        fun fromValue(value: String): BookingStatus =
-            entries.find { it.value == value } ?: PENDING
-    }
-}

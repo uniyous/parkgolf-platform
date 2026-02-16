@@ -1,8 +1,12 @@
-import { Injectable, Logger, NotFoundException, Inject, Optional } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateNotificationDto, UpdateNotificationDto, NotificationQueryDto, SendNotificationDto } from '../dto/notification.dto';
 import { Notification, NotificationStatus, NotificationType } from '@prisma/client';
+import { AppException } from '../../common/exceptions/app.exception';
+import { Errors } from '../../common/exceptions/catalog/error-catalog';
+
+const DEFAULT_MAX_RETRIES = 3;
 
 @Injectable()
 export class NotificationService {
@@ -91,7 +95,7 @@ export class NotificationService {
     });
 
     if (!notification) {
-      throw new NotFoundException(`Notification with ID ${id} not found`);
+      throw new AppException(Errors.Notification.NOT_FOUND);
     }
 
     return notification;
@@ -231,7 +235,7 @@ export class NotificationService {
       where: {
         status: NotificationStatus.FAILED,
         retryCount: {
-          lt: 3, // maxRetries default value
+          lt: DEFAULT_MAX_RETRIES,
         },
       },
     });
@@ -252,7 +256,7 @@ export class NotificationService {
       where: {
         status: NotificationStatus.FAILED,
         retryCount: {
-          lt: 3,
+          lt: DEFAULT_MAX_RETRIES,
         },
       },
     });
@@ -275,9 +279,20 @@ export class NotificationService {
       where: {
         status: NotificationStatus.FAILED,
         retryCount: {
-          gte: 3, // maxRetries default value
+          gte: DEFAULT_MAX_RETRIES,
         },
       },
     });
+  }
+
+  /**
+   * 사용자 탈퇴 시 알림 및 설정 삭제
+   */
+  async deleteAllByUser(userId: string): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.notification.deleteMany({ where: { userId } }),
+      this.prisma.notificationSettings.deleteMany({ where: { userId } }),
+    ]);
+    this.logger.log(`Deleted all notifications and settings for user ${userId}`);
   }
 }

@@ -92,7 +92,3 @@ fun GradientButton(
         }
     }
 }
-
-private fun androidx.compose.ui.graphics.Brush.copy(alpha: Float): androidx.compose.ui.graphics.Brush {
-    return this // Simplified for now
-}

@@ -17,7 +17,7 @@ const navItems: NavItem[] = [
     icon: Calendar,
     label: '예약',
     path: '/bookings',
-    matchPaths: ['/bookings', '/booking', '/search'],
+    matchPaths: ['/bookings', '/booking'],
   },
   {
     icon: Users,

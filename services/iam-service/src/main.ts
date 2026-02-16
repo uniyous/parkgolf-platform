@@ -1,9 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { INestApplication, ValidationPipe, Logger } from '@nestjs/common';
 import { UnifiedExceptionFilter } from './common/exceptions';
-import { ResponseTransformInterceptor } from './common/interceptor/response-transform.interceptor';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { setNatsReady } from './common/readiness';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -46,6 +46,9 @@ async function bootstrap() {
       credentials: true,
     });
 
+    // Graceful shutdown
+    app.enableShutdownHooks();
+
     // Start HTTP server first for Cloud Run health check
     const port = parseInt(process.env.PORT || '8080');
     await app.listen(port, '0.0.0.0');
@@ -53,34 +56,9 @@ async function bootstrap() {
     logger.log(`🚀 IAM Service is running on port ${port}`);
     logger.log(`🩺 Health check available at: http://0.0.0.0:${port}/health`);
 
-    // Register global interceptor BEFORE connecting microservice
-    app.useGlobalInterceptors(new ResponseTransformInterceptor());
-
-    // Connect NATS microservice asynchronously (optional for Cloud Run)
+    // NATS 마이크로서비스 연결 (백그라운드 재시도)
     if (process.env.NATS_URL) {
-      setImmediate(async () => {
-        try {
-          // inheritAppConfig: true - inherit global pipes, interceptors, guards, filters
-          app.connectMicroservice<MicroserviceOptions>(
-            {
-              transport: Transport.NATS,
-              options: {
-                servers: [process.env.NATS_URL],
-                queue: 'iam-service',
-                reconnect: true,
-                maxReconnectAttempts: 3,
-                reconnectTimeWait: 2000,
-              },
-            },
-            { inheritAppConfig: true },
-          );
-
-          await app.startAllMicroservices();
-          logger.log(`🔗 NATS connected to: ${process.env.NATS_URL}`);
-        } catch (natsError) {
-          logger.warn('Failed to connect NATS microservice, continuing with HTTP only...', natsError.message);
-        }
-      });
+      connectNatsWithRetry(app, process.env.NATS_URL, 'iam-service', logger).catch(() => {});
     } else {
       logger.warn('NATS_URL not provided, running in HTTP-only mode');
     }
@@ -96,9 +74,48 @@ async function bootstrap() {
     logger.log(`   [Permissions] iam.permissions.list`);
     logger.log(`   [Roles] iam.roles.list, iam.roles.permissions, iam.roles.withPermissions`);
     logger.log(`   [Companies] iam.companies.list, iam.companies.getById, iam.companies.create, iam.companies.update, iam.companies.delete`);
+    logger.log(`   [Menu] iam.menu.getByAdmin`);
+    logger.log(`   [Account] iam.account.requestDeletion, iam.account.cancelDeletion, iam.account.deletionStatus`);
+    logger.log(`   [CronJob] iam.deletion.execute, iam.deletion.processReminders`);
   } catch (error) {
     logger.error('Failed to start IAM Service', error);
     process.exit(1);
+  }
+}
+
+async function connectNatsWithRetry(
+  app: INestApplication, natsUrl: string, queue: string, logger: Logger,
+) {
+  const MAX_ATTEMPTS = 50;
+  app.connectMicroservice<MicroserviceOptions>(
+    {
+      transport: Transport.NATS,
+      options: {
+        servers: [natsUrl],
+        queue,
+        reconnect: true,
+        reconnectTimeWait: 2000,
+        maxReconnectAttempts: -1,
+      },
+    },
+    { inheritAppConfig: true },
+  );
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      await app.startAllMicroservices();
+      setNatsReady(true);
+      logger.log(`NATS connected to ${natsUrl} (attempt ${attempt})`);
+      return;
+    } catch (error: any) {
+      if (attempt === MAX_ATTEMPTS) {
+        logger.error(`NATS failed after ${MAX_ATTEMPTS} attempts`);
+        return;
+      }
+      const delay = Math.min(2000 * 2 ** Math.min(attempt - 1, 3), 15000);
+      logger.warn(`NATS attempt ${attempt}/${MAX_ATTEMPTS}: ${error.message}. Retry in ${delay / 1000}s`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
   }
 }
 

@@ -22,28 +22,37 @@
 
 ```mermaid
 flowchart TB
-    subgraph GCP["GCP Project: uniyous-319808<br/>Region: asia-northeast3 (Seoul)"]
+    subgraph GCP["GCP Project: parkgolf-uniyous<br/>Region: asia-northeast3 (Seoul)"]
 
         subgraph SHARED["Shared Resources"]
             AR[("Artifact<br/>Registry")]
             FH[("Firebase<br/>Hosting")]
-            SM[("Secret<br/>Manager")]
         end
 
-        subgraph GKE["GKE Autopilot Cluster: parkgolf-cluster-{env}"]
+        subgraph GKE["GKE Autopilot Cluster: parkgolf-{env}-cluster<br/>Namespace: parkgolf-{env}"]
             subgraph INGRESS["Ingress Layer"]
-                ING["GKE Ingress<br/>Static IP: 34.160.211.91"]
+                ING["GKE Ingress<br/>Static IP"]
             end
 
-            subgraph APPS["Application Deployments"]
+            subgraph BFF["BFF Layer"]
                 ADMIN_API["admin-api"]
                 USER_API["user-api"]
                 CHAT_GW["chat-gateway"]
+            end
+
+            subgraph CORE["Core Services"]
                 IAM["iam-service"]
                 COURSE["course-service"]
                 BOOKING["booking-service"]
+                PAY["payment-service"]
                 NOTIFY["notify-service"]
                 CHAT["chat-service"]
+            end
+
+            subgraph EXT["AI & External API Services"]
+                AGENT["agent-service"]
+                WEATHER["weather-service"]
+                LOCATION["location-service"]
             end
 
             subgraph INFRA["Infrastructure"]
@@ -62,6 +71,7 @@ flowchart TB
     ING --> ADMIN_API
     ING --> USER_API
     ING --> CHAT_GW
+    ING --> PAY
 
     ADMIN_API --> NATS
     USER_API --> NATS
@@ -70,19 +80,23 @@ flowchart TB
     NATS <--> IAM
     NATS <--> COURSE
     NATS <--> BOOKING
+    NATS <--> PAY
     NATS <--> NOTIFY
     NATS <--> CHAT
+    NATS <--> AGENT
+    NATS <--> WEATHER
+    NATS <--> LOCATION
 
     IAM --> PG
     COURSE --> PG
     BOOKING --> PG
+    PAY --> PG
     NOTIFY --> PG
     CHAT --> PG
 
     PG --> PVC
 
     AR --> GKE
-    SM --> GKE
 ```
 
 ### 서비스 통신 흐름도
@@ -96,24 +110,34 @@ flowchart LR
 
     subgraph HOSTING["Firebase Hosting (CDN)"]
         ADMIN_UI["Admin Dashboard"]
+        PLATFORM_UI["Platform Dashboard"]
         USER_UI["User WebApp"]
     end
 
     subgraph GKE["GKE Autopilot Cluster"]
         subgraph INGRESS["Ingress"]
-            ING["Static IP<br/>34.160.211.91"]
+            ING["Static IP"]
         end
 
         subgraph BFF["BFF Layer"]
             ADMIN_API["admin-api<br/>:8080"]
             USER_API["user-api<br/>:8080"]
+            CHAT_GW["chat-gateway<br/>:8080"]
         end
 
         subgraph SERVICES["Microservices"]
             IAM["iam-service"]
             COURSE["course-service"]
             BOOKING["booking-service"]
+            PAY["payment-service"]
             NOTIFY["notify-service"]
+            CHAT["chat-service"]
+        end
+
+        subgraph AI_EXT["AI & External"]
+            AGENT["agent-service"]
+            WEATHER["weather-service"]
+            LOCATION["location-service"]
         end
 
         subgraph MESSAGING["Messaging"]
@@ -126,27 +150,38 @@ flowchart LR
     end
 
     WEB --> ADMIN_UI
+    WEB --> PLATFORM_UI
     WEB --> USER_UI
     MOBILE --> ING
 
     ADMIN_UI -->|HTTPS| ING
+    PLATFORM_UI -->|HTTPS| ING
     USER_UI -->|HTTPS| ING
 
     ING --> ADMIN_API
     ING --> USER_API
+    ING --> CHAT_GW
 
     ADMIN_API -->|NATS| NATS
     USER_API -->|NATS| NATS
+    CHAT_GW -->|NATS| NATS
 
     NATS <-->|Request/Response| IAM
     NATS <-->|Request/Response| COURSE
     NATS <-->|Request/Response| BOOKING
+    NATS <-->|Request/Response| PAY
     NATS <-->|Pub/Sub| NOTIFY
+    NATS <-->|Request/Response| CHAT
+    NATS <-->|Request/Response| AGENT
+    NATS <-->|Request/Response| WEATHER
+    NATS <-->|Request/Response| LOCATION
 
     IAM --> SQL
     COURSE --> SQL
     BOOKING --> SQL
+    PAY --> SQL
     NOTIFY --> SQL
+    CHAT --> SQL
 ```
 
 ---
@@ -157,17 +192,18 @@ flowchart LR
 
 | 구분 | Development | Production |
 |------|-------------|------------|
-| **GKE Cluster** | parkgolf-cluster-dev | parkgolf-cluster-prod |
+| **GKE Cluster** | parkgolf-dev-cluster | parkgolf-prod-cluster |
+| **Namespace** | parkgolf-dev | parkgolf-prod |
 | **Cluster Type** | Autopilot | Autopilot |
 | **Region** | asia-northeast3 | asia-northeast3 |
-| **Static IP** | 34.160.211.91 | (Production IP) |
-| **Service CPU** | 100m request, 300m limit | 200m request, 500m limit |
-| **Service Memory** | 128Mi request, 256Mi limit | 256Mi request, 512Mi limit |
+| **Domain** | dev-api.parkgolfmate.com | api.parkgolfmate.com |
+| **Service CPU** | 50m request, 250m limit | 200m request, 500m limit |
+| **Service Memory** | 128Mi request, 384Mi limit | 256Mi request, 512Mi limit |
 | **PostgreSQL Storage** | standard-rwo (Balanced PD) | premium-rwo (SSD) |
 | **PostgreSQL Size** | 10Gi | 50Gi |
 | **NATS** | 1 replica | 3 replicas (HA) |
-| **Min Replicas** | 1 | 2 |
-| **Max Replicas** | 3 | 10 |
+| **Service Count** | 12 (1 replica each) | 12 (2+ replicas) |
+| **Firebase Project** | parkgolf-uniyous | parkgolf-uniyous |
 
 ---
 
@@ -186,18 +222,33 @@ GKE Autopilot은 노드 관리가 자동화된 Kubernetes 서비스입니다:
 
 ```yaml
 # GitHub Actions workflow에서 GKE 클러스터 생성
-gcloud container clusters create-auto parkgolf-cluster-$ENVIRONMENT \
+gcloud container clusters create-auto parkgolf-${ENVIRONMENT}-cluster \
   --region=$REGION \
-  --project=$PROJECT_ID
+  --project=$PROJECT_ID \
+  --network=parkgolf-${ENVIRONMENT} \
+  --subnetwork=parkgolf-private-${ENVIRONMENT}
 ```
+
+gke-setup 시 자동 구성:
+1. GCP API 활성화 (container, artifactregistry, compute)
+2. Artifact Registry 생성 (parkgolf)
+3. GKE Autopilot 클러스터 생성
+4. Namespace 생성 (parkgolf-{env})
+5. Kubernetes Secrets + ConfigMap 생성
+6. PostgreSQL StatefulSet 배포 + DB 초기화
+7. NATS Deployment 배포
+8. PodDisruptionBudget 설정
 
 ### 클러스터 접근
 
 ```bash
 # 클러스터 인증 정보 획득
-gcloud container clusters get-credentials parkgolf-cluster-dev \
+gcloud container clusters get-credentials parkgolf-dev-cluster \
   --region asia-northeast3 \
-  --project uniyous-319808
+  --project parkgolf-uniyous
+
+# 네임스페이스 설정
+kubectl config set-context --current --namespace=parkgolf-dev
 
 # 클러스터 정보 확인
 kubectl cluster-info
@@ -213,54 +264,53 @@ kubectl get nodes
 ### Kubernetes 네트워크 아키텍처
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         GKE Autopilot Cluster                                │
-├─────────────────────────────────────────────────────────────────────────────┤
+┌──────────────────────────────────────────────────────────────────────────────┐
+│               GKE Autopilot Cluster (namespace: parkgolf-{env})              │
+├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                          Ingress Layer                               │    │
-│  │                                                                      │    │
-│  │  Static IP: 34.160.211.91                                           │    │
-│  │  Path Routing:                                                       │    │
-│  │    /api/admin/* → admin-api:8080                                    │    │
-│  │    /api/user/*  → user-api:8080                                     │    │
-│  │    /socket.io/* → chat-gateway:8080                                 │    │
-│  │                                                                      │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │                          Ingress Layer                                 │  │
+│  │  Path Routing:                                                         │  │
+│  │    /api/admin/*    → admin-api:8080                                    │  │
+│  │    /api/user/*     → user-api:8080                                     │  │
+│  │    /socket.io/*    → chat-gateway:8080                                 │  │
+│  │    /chat/*         → chat-gateway:8080                                 │  │
+│  │    /notification/* → chat-gateway:8080                                 │  │
+│  │    /webhook/*      → payment-service:8080                              │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
 │                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                        Services (ClusterIP)                          │    │
-│  │                                                                      │    │
-│  │  admin-api:8080      user-api:8080       chat-gateway:8080          │    │
-│  │  iam-service:8080    course-service:8080 booking-service:8080       │    │
-│  │  chat-service:8080   notify-service:8080                            │    │
-│  │  nats:4222           postgresql:5432                                │    │
-│  │                                                                      │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │                        Services (ClusterIP)                            │  │
+│  │                                                                        │  │
+│  │  BFF:     admin-api:8080     user-api:8080     chat-gateway:8080       │  │
+│  │  Core:    iam-service:8080   course-service:8080                       │  │
+│  │           booking-service:8080  payment-service:8080                    │  │
+│  │           chat-service:8080  notify-service:8080                       │  │
+│  │  AI/Ext:  agent-service:8080 weather-service:8080 location-service:8080│  │
+│  │  Infra:   nats:4222          postgres:5432                             │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
 │                                                                              │
-│  Internal DNS:                                                              │
-│    - http://admin-api:8080                                                  │
-│    - http://user-api:8080                                                   │
-│    - http://iam-service:8080                                                │
-│    - nats://nats:4222                                                       │
-│    - postgresql://postgresql:5432                                           │
+│  Internal DNS:                                                               │
+│    - http://admin-api:8080                                                   │
+│    - http://iam-service:8080                                                 │
+│    - nats://nats:4222                                                        │
+│    - postgresql://postgres:5432/{db_name}                                    │
 │                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Static IP 예약
 
 ```bash
-# Global Static IP 예약 (Ingress용)
-gcloud compute addresses create parkgolf-ingress-ip \
+# Global Static IP 예약 (Ingress용, cd-services.yml의 setup-ingress에서 자동 생성)
+gcloud compute addresses create parkgolf-dev-cluster-ip \
   --global \
-  --project uniyous-319808
+  --project parkgolf-uniyous
 
 # IP 주소 확인
-gcloud compute addresses describe parkgolf-ingress-ip \
+gcloud compute addresses describe parkgolf-dev-cluster-ip \
   --global \
   --format="get(address)"
-# 결과: 34.160.211.91
 ```
 
 ---
@@ -272,11 +322,12 @@ gcloud compute addresses describe parkgolf-ingress-ip \
 모든 백엔드 서비스는 Kubernetes Deployment로 배포됩니다.
 
 ```yaml
-# 서비스 Deployment 예시 (cd-services.yml에서 생성)
+# 서비스 Deployment 예시 (cd-services.yml에서 inline YAML로 생성)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: iam-service
+  namespace: parkgolf-dev
 spec:
   replicas: 1
   selector:
@@ -289,45 +340,48 @@ spec:
     spec:
       containers:
       - name: iam-service
-        image: asia-northeast3-docker.pkg.dev/uniyous-319808/parkgolf/iam-service:latest
+        image: asia-northeast3-docker.pkg.dev/parkgolf-uniyous/parkgolf/iam-service:dev-latest
         ports:
         - containerPort: 8080
         resources:
           requests:
-            cpu: "100m"
+            cpu: "50m"
             memory: "128Mi"
           limits:
-            cpu: "300m"
-            memory: "256Mi"
+            cpu: "250m"
+            memory: "384Mi"
+        envFrom:
+        - configMapRef:
+            name: parkgolf-config
+        - secretRef:
+            name: parkgolf-secrets
         env:
-        - name: NODE_ENV
-          value: "production"
-        - name: PORT
-          value: "8080"
-        - name: NATS_URL
-          value: "nats://nats:4222"
         - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: db-credentials
-              key: iam-url
-        livenessProbe:
+          value: "postgresql://parkgolf:$(DB_PASSWORD)@postgres:5432/iam_db"
+        startupProbe:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 30
+          failureThreshold: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /health
+            path: /health/ready
             port: 8080
           initialDelaySeconds: 5
-          periodSeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: iam-service
+  namespace: parkgolf-dev
 spec:
   selector:
     app: iam-service
@@ -337,27 +391,35 @@ spec:
   type: ClusterIP
 ```
 
+> **참고:** K8s 매니페스트 파일은 별도 디렉토리에 없으며, `cd-services.yml` 워크플로우 내 inline YAML(heredoc)로 관리됩니다.
+
 ### 서비스 목록
 
 | Service | Type | Port | Purpose |
 |---------|------|------|---------|
-| admin-api | Deployment + ClusterIP | 8080 | Admin BFF |
-| user-api | Deployment + ClusterIP | 8080 | User BFF |
-| chat-gateway | Deployment + ClusterIP | 8080 | WebSocket Gateway |
-| iam-service | Deployment + ClusterIP | 8080 | Authentication |
-| course-service | Deployment + ClusterIP | 8080 | Course Management |
-| booking-service | Deployment + ClusterIP | 8080 | Booking Management |
-| chat-service | Deployment + ClusterIP | 8080 | Chat Backend |
-| notify-service | Deployment + ClusterIP | 8080 | Notifications |
-| nats | Deployment + ClusterIP | 4222 | Message Broker |
-| postgresql | StatefulSet + ClusterIP | 5432 | Database |
+| admin-api | Deployment + ClusterIP | 8080 | 관리자 BFF (Admin + Platform Dashboard) |
+| user-api | Deployment + ClusterIP | 8080 | 사용자 BFF |
+| chat-gateway | Deployment + ClusterIP | 8080 | WebSocket Gateway (2 replicas) |
+| iam-service | Deployment + ClusterIP | 8080 | 인증/인가/회원관리 |
+| course-service | Deployment + ClusterIP | 8080 | 골프장/게임 관리 |
+| booking-service | Deployment + ClusterIP | 8080 | 예약/정책 관리 |
+| payment-service | Deployment + ClusterIP | 8080 | 결제 (Toss Payments) |
+| chat-service | Deployment + ClusterIP | 8080 | 채팅 백엔드 |
+| notify-service | Deployment + ClusterIP | 8080 | 알림 |
+| agent-service | Deployment + ClusterIP | 8080 | AI 예약 어시스턴트 (Gemini) |
+| weather-service | Deployment + ClusterIP | 8080 | 날씨 (기상청 API) |
+| location-service | Deployment + ClusterIP | 8080 | 위치 (카카오 로컬 API) |
+| nats | Deployment + ClusterIP | 4222 | 메시지 브로커 |
+| postgres | StatefulSet + ClusterIP | 5432 | 데이터베이스 |
 
 ### 리소스 스펙
 
 | Environment | CPU Request | CPU Limit | Memory Request | Memory Limit |
 |-------------|-------------|-----------|----------------|--------------|
-| **Development** | 100m | 300m | 128Mi | 256Mi |
+| **Development** | 50m | 250m | 128Mi | 384Mi |
 | **Production** | 200m | 500m | 256Mi | 512Mi |
+
+> chat-gateway는 WebSocket 연결 유지를 위해 2 replicas + RollingUpdate + BackendConfig(3600s timeout, session affinity) 설정
 
 ---
 
@@ -372,20 +434,21 @@ PostgreSQL은 GKE 내부에 StatefulSet으로 배포됩니다.
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: postgresql
+  name: postgres
+  namespace: parkgolf-dev
 spec:
-  serviceName: postgresql
+  serviceName: postgres
   replicas: 1
   selector:
     matchLabels:
-      app: postgresql
+      app: postgres
   template:
     metadata:
       labels:
-        app: postgresql
+        app: postgres
     spec:
       containers:
-      - name: postgresql
+      - name: postgres
         image: postgres:15-alpine
         ports:
         - containerPort: 5432
@@ -395,8 +458,8 @@ spec:
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: db-credentials
-              key: password
+              name: parkgolf-secrets
+              key: DB_PASSWORD
         - name: PGDATA
           value: /var/lib/postgresql/data/pgdata
         volumeMounts:
@@ -424,9 +487,10 @@ spec:
 
 | Database | Service | Purpose |
 |----------|---------|---------|
-| iam_db | iam-service | Users, Admins, Roles, Friends |
-| course_db | course-service | Companies, Clubs, Courses, TimeSlots |
-| booking_db | booking-service | Bookings, Payments, History |
+| iam_db | iam-service | Users, Admins, Roles, Friends, CompanyMembers, Menus |
+| course_db | course-service | Companies, Clubs, Courses, Games, TimeSlots, Schedules |
+| booking_db | booking-service | Bookings, Refunds, NoShowRecords, Policies |
+| payment_db | payment-service | Payments, BillingKeys, Refunds, WebhookLogs |
 | chat_db | chat-service | ChatRooms, Messages |
 | notify_db | notify-service | Notifications, Templates |
 
@@ -441,21 +505,24 @@ spec:
 
 ```bash
 # PostgreSQL Pod에 직접 접속
-kubectl exec -it postgresql-0 -- psql -U parkgolf -d iam_db
+kubectl exec -it postgres-0 -n parkgolf-dev -- psql -U parkgolf -d iam_db
 
 # 로컬에서 포트 포워딩으로 접속
-kubectl port-forward svc/postgresql 5432:5432
+kubectl port-forward svc/postgres 5432:5432 -n parkgolf-dev
 psql -h localhost -U parkgolf -d iam_db
+
+# Prisma를 통한 스키마 적용 (포트포워딩 상태에서)
+DATABASE_URL="postgresql://parkgolf:PASSWORD@localhost:5432/booking_db" npx prisma db push
 ```
 
 ### 백업 및 복원
 
 ```bash
 # 백업 (kubectl exec 사용)
-kubectl exec postgresql-0 -- pg_dump -U parkgolf iam_db > iam_db_backup.sql
+kubectl exec postgres-0 -n parkgolf-dev -- pg_dump -U parkgolf iam_db > iam_db_backup.sql
 
 # 복원
-kubectl exec -i postgresql-0 -- psql -U parkgolf iam_db < iam_db_backup.sql
+kubectl exec -i postgres-0 -n parkgolf-dev -- psql -U parkgolf iam_db < iam_db_backup.sql
 ```
 
 ---
@@ -470,6 +537,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nats
+  namespace: parkgolf-dev
 spec:
   replicas: 1
   selector:
@@ -504,6 +572,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: nats
+  namespace: parkgolf-dev
 spec:
   selector:
     app: nats
@@ -551,9 +620,11 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: parkgolf-ingress
+  namespace: parkgolf-dev
   annotations:
-    kubernetes.io/ingress.global-static-ip-name: parkgolf-ingress-ip
+    kubernetes.io/ingress.global-static-ip-name: parkgolf-dev-cluster-ip
     kubernetes.io/ingress.class: "gce"
+    networking.gke.io/managed-certificates: parkgolf-cert
 spec:
   rules:
   - http:
@@ -579,15 +650,44 @@ spec:
             name: chat-gateway
             port:
               number: 8080
+      - path: /chat/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: chat-gateway
+            port:
+              number: 8080
+      - path: /notification/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: chat-gateway
+            port:
+              number: 8080
+      - path: /webhook/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: payment-service
+            port:
+              number: 8080
 ```
+
+chat-gateway에 BackendConfig 적용:
+- WebSocket timeout: 3600s
+- Session affinity 활성화
+- PodDisruptionBudget: maxUnavailable=1
 
 ### 경로 라우팅
 
 | Path | Service | Port | Description |
 |------|---------|------|-------------|
-| `/api/admin/*` | admin-api | 8080 | Admin API |
+| `/api/admin/*` | admin-api | 8080 | Admin/Platform API |
 | `/api/user/*` | user-api | 8080 | User API |
 | `/socket.io/*` | chat-gateway | 8080 | WebSocket (Socket.IO) |
+| `/chat/*` | chat-gateway | 8080 | 채팅 REST |
+| `/notification/*` | chat-gateway | 8080 | 알림 REST |
+| `/webhook/*` | payment-service | 8080 | 결제 웹훅 (Toss) |
 
 ### Ingress 상태 확인
 
@@ -606,49 +706,56 @@ kubectl get ingress parkgolf-ingress -o jsonpath='{.status.loadBalancer.ingress[
 
 ## 시크릿 관리
 
-### Kubernetes Secrets
+### Kubernetes Secret
 
 ```yaml
-# Secret 생성 (cd-infra.yml에서 생성)
+# 통합 Secret (cd-infra.yml의 gke-setup에서 생성)
 apiVersion: v1
 kind: Secret
 metadata:
-  name: db-credentials
+  name: parkgolf-secrets
+  namespace: parkgolf-dev
 type: Opaque
 stringData:
-  password: "${DB_PASSWORD}"
-  iam-url: "postgresql://parkgolf:${DB_PASSWORD}@postgresql:5432/iam_db"
-  course-url: "postgresql://parkgolf:${DB_PASSWORD}@postgresql:5432/course_db"
-  booking-url: "postgresql://parkgolf:${DB_PASSWORD}@postgresql:5432/booking_db"
-  chat-url: "postgresql://parkgolf:${DB_PASSWORD}@postgresql:5432/chat_db"
-  notify-url: "postgresql://parkgolf:${DB_PASSWORD}@postgresql:5432/notify_db"
-
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: jwt-secrets
-type: Opaque
-stringData:
-  jwt-secret: "${JWT_SECRET}"
-  jwt-refresh-secret: "${JWT_REFRESH_SECRET}"
+  DB_PASSWORD: "${DB_PASSWORD}"
+  JWT_SECRET: "${JWT_SECRET}"
+  JWT_REFRESH_SECRET: "${JWT_REFRESH_SECRET}"
+  TOSS_SECRET_KEY: "${TOSS_SECRET_KEY}"
+  TOSS_SECURITY_KEY: "${TOSS_SECURITY_KEY}"
+  KMA_API_KEY: "${KMA_API_KEY}"
+  KAKAO_API_KEY: "${KAKAO_API_KEY}"
 ```
 
-### Secret 사용
+### Kubernetes ConfigMap
 
 ```yaml
-# Deployment에서 Secret 사용
+# 공통 ConfigMap (cd-infra.yml의 gke-setup에서 생성)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: parkgolf-config
+  namespace: parkgolf-dev
+data:
+  NODE_ENV: "production"
+  PORT: "8080"
+  NATS_URL: "nats://nats:4222"
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+  DB_USER: "parkgolf"
+```
+
+### Secret/ConfigMap 사용
+
+```yaml
+# Deployment에서 envFrom으로 일괄 주입
+envFrom:
+- configMapRef:
+    name: parkgolf-config
+- secretRef:
+    name: parkgolf-secrets
 env:
 - name: DATABASE_URL
-  valueFrom:
-    secretKeyRef:
-      name: db-credentials
-      key: iam-url
-- name: JWT_SECRET
-  valueFrom:
-    secretKeyRef:
-      name: jwt-secrets
-      key: jwt-secret
+  value: "postgresql://parkgolf:$(DB_PASSWORD)@postgres:5432/iam_db"
 ```
 
 ### GitHub Secrets
@@ -657,8 +764,14 @@ env:
 |--------|-------------|
 | `GCP_SA_KEY` | GCP 서비스 계정 JSON 키 |
 | `DB_PASSWORD` | PostgreSQL 비밀번호 |
-| `JWT_SECRET` | JWT 서명 키 |
-| `JWT_REFRESH_SECRET` | JWT 리프레시 키 |
+| `JWT_SECRET` | JWT 서명 키 (32자 이상) |
+| `JWT_REFRESH_SECRET` | JWT 리프레시 키 (32자 이상) |
+| `TOSS_CLIENT_KEY` | Toss Payments 클라이언트 키 (프론트엔드용) |
+| `TOSS_SECRET_KEY` | Toss Payments 시크릿 키 |
+| `TOSS_SECURITY_KEY` | Toss Payments 보안 키 |
+| `KMA_API_KEY` | 기상청 API 인증 키 |
+| `KAKAO_API_KEY` | 카카오 로컬 API 키 |
+| `FIREBASE_TOKEN` | Firebase CLI 배포 토큰 |
 
 ---
 
@@ -666,16 +779,31 @@ env:
 
 ### Health Checks
 
-모든 서비스는 `/health` 엔드포인트를 제공합니다:
+모든 서비스는 3개의 Health Check 엔드포인트를 제공합니다:
+
+| Endpoint | K8s Probe | Purpose |
+|----------|-----------|---------|
+| `GET /health` | startupProbe | 기본 헬스체크 (항상 OK) |
+| `GET /health/ready` | readinessProbe | NATS + DB 연결 상태 확인 |
+| `GET /health/live` | livenessProbe | 프로세스 생존 확인 |
 
 ```typescript
-// NestJS Health Controller
-@Controller('health')
-export class HealthController {
-  @Get()
-  check() {
-    return { status: 'ok', timestamp: new Date().toISOString() };
-  }
+// NestJS Health Controller (모든 서비스 공통)
+@Get('health')
+check() {
+  return { status: 'ok', service: 'iam-service', timestamp: new Date().toISOString() };
+}
+
+@Get('health/ready')
+async readiness() {
+  const nats = isNatsReady();
+  const db = await this.checkDatabase();
+  return { status: nats && db ? 'ready' : 'not_ready', checks: { nats, database: db } };
+}
+
+@Get('health/live')
+liveness() {
+  return { status: 'alive', uptime: process.uptime() };
 }
 ```
 
@@ -713,24 +841,24 @@ GCP Console에서 GKE 클러스터 모니터링:
 
 | 리소스 | 스펙 | 예상 비용 |
 |--------|------|-----------|
-| GKE Autopilot (8 services) | 100m CPU, 128Mi 각 | ~$30-50 |
+| GKE Autopilot (12 services) | 50m CPU, 128Mi 각 | ~$40-70 |
 | PostgreSQL PVC | 10Gi standard-rwo | ~$2 |
 | NATS | 100m CPU, 128Mi | ~$5 |
 | Static IP | 1 IP | ~$5 |
-| Artifact Registry | ~5GB | ~$1 |
-| **Total** | | **~$45-65/month** |
+| Artifact Registry | ~10GB | ~$1 |
+| **Total** | | **~$55-85/month** |
 
 #### Production Environment
 
 | 리소스 | 스펙 | 예상 비용 |
 |--------|------|-----------|
-| GKE Autopilot (8 services) | 200m CPU, 256Mi 각 | ~$80-150 |
+| GKE Autopilot (12 services) | 200m CPU, 256Mi 각 | ~$120-200 |
 | PostgreSQL PVC | 50Gi premium-rwo | ~$20 |
 | NATS (3 replicas) | 100m CPU, 128Mi 각 | ~$15 |
 | Static IP | 1 IP | ~$5 |
-| Artifact Registry | ~10GB | ~$2 |
+| Artifact Registry | ~20GB | ~$3 |
 | Firebase Hosting | CDN bandwidth | ~$10-50 |
-| **Total** | | **~$130-250/month** |
+| **Total** | | **~$175-300/month** |
 
 ### 비용 절감 전략
 
@@ -791,20 +919,20 @@ kubectl get pods -l app=nats
 kubectl logs -l app=nats
 
 # 서비스에서 NATS 연결 테스트
-kubectl exec -it <service-pod> -- nc -zv nats 4222
+kubectl exec -it <service-pod> -n parkgolf-dev -- nc -zv nats 4222
 ```
 
 ### 5. PostgreSQL 연결 실패
 
 ```bash
 # PostgreSQL Pod 상태 확인
-kubectl get pods -l app=postgresql
+kubectl get pods -l app=postgres -n parkgolf-dev
 
 # PostgreSQL 로그 확인
-kubectl logs postgresql-0
+kubectl logs postgres-0 -n parkgolf-dev
 
 # 연결 테스트
-kubectl exec -it <service-pod> -- nc -zv postgresql 5432
+kubectl exec -it <service-pod> -n parkgolf-dev -- nc -zv postgres 5432
 ```
 
 ### 6. 이미지 Pull 실패
@@ -818,7 +946,7 @@ gcloud auth configure-docker asia-northeast3-docker.pkg.dev
 
 # 이미지 존재 확인
 gcloud artifacts docker images list \
-  asia-northeast3-docker.pkg.dev/uniyous-319808/parkgolf
+  asia-northeast3-docker.pkg.dev/parkgolf-uniyous/parkgolf
 ```
 
 ---
@@ -829,14 +957,18 @@ gcloud artifacts docker images list \
 
 ```bash
 # 클러스터 인증
-gcloud container clusters get-credentials parkgolf-cluster-dev \
-  --region asia-northeast3
+gcloud container clusters get-credentials parkgolf-dev-cluster \
+  --region asia-northeast3 \
+  --project parkgolf-uniyous
+
+# 네임스페이스 설정
+kubectl config set-context --current --namespace=parkgolf-dev
 
 # 모든 리소스 확인
-kubectl get all
+kubectl get all -n parkgolf-dev
 
-# 네임스페이스별 리소스
-kubectl get all -n default
+# Pod 상태 확인
+kubectl get pods -n parkgolf-dev
 ```
 
 ### 디버깅
@@ -883,6 +1015,6 @@ kubectl set image deployment/<name> <container>=<new-image>
 
 ---
 
-**Document Version**: 2.0.0
-**Last Updated**: 2026-01-28
-**Architecture**: GKE Autopilot (migrated from Cloud Run)
+**Document Version**: 3.0.0
+**Last Updated**: 2026-02-14
+**Architecture**: GKE Autopilot

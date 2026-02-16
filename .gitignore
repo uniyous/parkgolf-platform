@@ -606,3 +606,9 @@ services/*/*.tmp
 services/*/*.temp
 # Vite cache
 .vite/
+
+# Claude Code
+.claude/plans/
+
+# E2E auth state (temporary tokens)
+**/e2e/.auth/

@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AdminService } from './admins.service';
-import { BearerToken } from '../common';
+import { BearerToken, AdminContext, AdminContextData } from '../common';
 import { CreateAdminDto, UpdateAdminDto } from './dto/admin.dto';
 
 @ApiTags('admins')
@@ -32,6 +32,7 @@ export class AdminsController {
   @ApiResponse({ status: 200, description: 'Admin list retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getAdminList(
+    @AdminContext() ctx: AdminContextData | null,
     @BearerToken() token: string,
     @Query('search') search?: string,
     @Query('role') role?: string,
@@ -41,11 +42,13 @@ export class AdminsController {
   ) {
     const pageNum = parseInt(page.toString(), 10) || 1;
     const limitNum = parseInt(limit.toString(), 10) || 20;
-    const filters = {
+    const filters: Record<string, unknown> = {
       search,
       role,
       isActive: isActive === undefined ? undefined : isActive === 'true',
     };
+    // AdminContext에서 companyId 주입
+    if (ctx?.companyId) filters.companyId = ctx.companyId;
 
     this.logger.log(`Fetching admin list with filters: ${JSON.stringify(filters)}, page: ${pageNum}, limit: ${limitNum}`);
 

@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsString,
   IsInt,
+  IsNumber,
   IsOptional,
   IsBoolean,
   IsEmail,
@@ -89,6 +90,18 @@ export class CreateClubDto {
   clubType?: ClubType;
 
   @IsOptional()
+  @IsNumber()
+  @Min(33)
+  @Max(43)
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(124)
+  @Max(132)
+  longitude?: number;
+
+  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 }
@@ -156,11 +169,52 @@ export class UpdateClubDto {
   clubType?: ClubType;
 
   @IsOptional()
+  @IsNumber()
+  @Min(33)
+  @Max(43)
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(124)
+  @Max(132)
+  longitude?: number;
+
+  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 }
 
+export class FindNearbyDto {
+  @IsNumber()
+  @Min(33)
+  @Max(43)
+  latitude: number;
+
+  @IsNumber()
+  @Min(124)
+  @Max(132)
+  longitude: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(50)
+  radiusKm?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+}
+
 export class ClubFilterDto {
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  companyId?: number;
+
   @IsOptional()
   @IsString()
   search?: string;
@@ -232,6 +286,8 @@ export class ClubResponseDto {
   totalCourses: number;
   status: ClubStatus;
   clubType: string;
+  latitude: number | null;
+  longitude: number | null;
   operatingHours: Record<string, unknown> | null;
   seasonInfo: Record<string, unknown> | null;
   facilities: string[];
@@ -258,6 +314,8 @@ export class ClubResponseDto {
     dto.totalCourses = entity.totalCourses;
     dto.status = entity.status as ClubStatus;
     dto.clubType = entity.clubType;
+    dto.latitude = entity.latitude;
+    dto.longitude = entity.longitude;
     dto.operatingHours = entity.operatingHours as Record<string, unknown> | null;
     dto.seasonInfo = entity.seasonInfo as Record<string, unknown> | null;
     dto.facilities = entity.facilities;
@@ -274,6 +332,10 @@ export class ClubResponseDto {
   static fromEntities(entities: ClubWithRelations[]): ClubResponseDto[] {
     return entities.map(entity => ClubResponseDto.fromEntity(entity));
   }
+}
+
+export interface NearbyClubResponseDto extends ClubResponseDto {
+  distance: number; // km
 }
 
 export interface ClubListResponseDto {

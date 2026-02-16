@@ -5,6 +5,7 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = HomeViewModel()
+    @ObservedObject private var locationManager = LocationManager.shared
 
     var body: some View {
         NavigationStack {
@@ -21,6 +22,11 @@ struct HomeView: View {
                         VStack(spacing: ParkSpacing.lg) {
                             // Welcome Header
                             welcomeHeader
+
+                            // Weather Card
+                            if let weather = viewModel.currentWeather {
+                                weatherCard(weather: weather)
+                            }
 
                             // Notifications Section
                             if viewModel.hasNotifications {
@@ -40,11 +46,12 @@ struct HomeView: View {
                         .padding(.bottom, ParkSpacing.xxl)
                     }
                     .refreshable {
-                        await viewModel.loadData()
+                        await viewModel.refresh()
                     }
                 }
             }
             .task {
+                locationManager.requestPermission()
                 await viewModel.loadData()
             }
             .navigationBarHidden(true)
@@ -98,10 +105,6 @@ struct HomeView: View {
             Text(greetingMessage)
                 .font(.parkDisplaySmall)
                 .foregroundStyle(.white)
-
-            Text(weatherMessage)
-                .font(.parkBodyMedium)
-                .foregroundStyle(.white.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, ParkSpacing.md)
@@ -120,8 +123,51 @@ struct HomeView: View {
         }
     }
 
-    private var weatherMessage: String {
-        "오늘도 파크골프하기 좋은 날이에요"
+    // MARK: - Weather Card
+
+    private func weatherCard(weather: CurrentWeather) -> some View {
+        GlassCard {
+            HStack {
+                HStack(spacing: ParkSpacing.md) {
+                    // Weather icon
+                    ZStack {
+                        Circle()
+                            .fill(Color.parkAccent.opacity(0.2))
+                            .frame(width: 48, height: 48)
+
+                        Image(systemName: weather.weatherIcon)
+                            .font(.system(size: 22))
+                            .foregroundStyle(Color.parkAccent)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        if let region = viewModel.regionName {
+                            Text(region)
+                                .font(.parkCaption)
+                                .foregroundStyle(.white.opacity(0.7))
+                        }
+                        Text("\(Int(weather.temperature))°C")
+                            .font(.parkDisplaySmall)
+                            .foregroundStyle(.white)
+                    }
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(weather.weatherDescription)
+                        .font(.parkHeadlineSmall)
+                        .foregroundStyle(.white)
+
+                    HStack(spacing: ParkSpacing.sm) {
+                        Label("\(Int(weather.humidity))%", systemImage: "humidity.fill")
+                        Label(String(format: "%.1fm/s", weather.windSpeed), systemImage: "wind")
+                    }
+                    .font(.parkCaption)
+                    .foregroundStyle(.white.opacity(0.7))
+                }
+            }
+        }
     }
 
     // MARK: - Notifications Section
@@ -242,23 +288,64 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Popular Clubs Section
+    // MARK: - Nearby Clubs Section
 
     private var popularClubsSection: some View {
         VStack(alignment: .leading, spacing: ParkSpacing.sm) {
             HStack {
-                Text("🏆 이번 주 인기 골프장")
+                Label("주변 골프장", systemImage: "mappin.circle.fill")
                     .font(.parkHeadlineSmall)
                     .foregroundStyle(.white)
 
                 Spacer()
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: ParkSpacing.sm) {
-                    ForEach(viewModel.popularClubs) { club in
-                        HomePopularClubCard(club: club)
+            if !viewModel.nearbyClubs.isEmpty {
+                // 주변 골프장 목록
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: ParkSpacing.sm) {
+                        ForEach(viewModel.nearbyClubs) { club in
+                            HomeNearbyClubCard(club: club)
+                        }
                     }
+                }
+            } else if !viewModel.hasLocation && viewModel.locationDataLoaded {
+                // 위치 권한 없음
+                GlassCard {
+                    VStack(spacing: ParkSpacing.sm) {
+                        Image(systemName: "location.slash.fill")
+                            .font(.system(size: 32))
+                            .foregroundStyle(.white.opacity(0.5))
+
+                        Text("위치 정보를 사용할 수 없습니다")
+                            .font(.parkBodyMedium)
+                            .foregroundStyle(.white.opacity(0.7))
+
+                        Text("설정에서 위치 권한을 허용해주세요")
+                            .font(.parkCaption)
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, ParkSpacing.md)
+                }
+            } else if viewModel.hasLocation && viewModel.locationDataLoaded {
+                // 위치는 있지만 주변 골프장 없음
+                GlassCard {
+                    VStack(spacing: ParkSpacing.sm) {
+                        Image(systemName: "mappin.slash")
+                            .font(.system(size: 32))
+                            .foregroundStyle(.white.opacity(0.5))
+
+                        Text("주변에 골프장이 없습니다")
+                            .font(.parkBodyMedium)
+                            .foregroundStyle(.white.opacity(0.7))
+
+                        Text("반경 30km 내 등록된 골프장이 없습니다")
+                            .font(.parkCaption)
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, ParkSpacing.md)
                 }
             }
         }
@@ -341,10 +428,10 @@ struct HomeUpcomingBookingCard: View {
     }
 }
 
-// MARK: - Popular Club Card
+// MARK: - Nearby Club Card
 
-struct HomePopularClubCard: View {
-    let club: Club
+struct HomeNearbyClubCard: View {
+    let club: NearbyClub
 
     var body: some View {
         GlassCard(padding: 0, cornerRadius: ParkRadius.lg) {
@@ -371,10 +458,19 @@ struct HomePopularClubCard: View {
                         .foregroundStyle(.white)
                         .lineLimit(1)
 
-                    Text(club.address)
+                    Text(club.location)
                         .font(.parkCaption)
                         .foregroundStyle(.white.opacity(0.6))
                         .lineLimit(1)
+
+                    HStack(spacing: ParkSpacing.xxs) {
+                        Image(systemName: "location.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(Color.parkPrimary)
+                        Text(String(format: "%.1fkm", club.distance))
+                            .font(.parkCaption)
+                            .foregroundStyle(.white)
+                    }
                 }
                 .padding(ParkSpacing.sm)
             }
@@ -525,14 +621,7 @@ struct HomeFriendRequestRow: View {
         GlassCard {
             HStack(spacing: ParkSpacing.md) {
                 // Profile Image
-                Circle()
-                    .fill(Color.parkPrimary.opacity(0.3))
-                    .frame(width: 50, height: 50)
-                    .overlay(
-                        Text(String(request.fromUserName.prefix(1)))
-                            .font(.parkHeadlineMedium)
-                            .foregroundStyle(.white)
-                    )
+                AvatarCircle(name: request.fromUserName)
 
                 // Info
                 VStack(alignment: .leading, spacing: ParkSpacing.xxs) {

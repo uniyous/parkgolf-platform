@@ -49,64 +49,91 @@ export const companyKeys = {
   stats: () => [...companyKeys.all, 'stats'] as const,
 };
 
-// Course Keys
+// Course Keys (company-scoped)
 export const courseKeys = {
-  all: ['courses'] as const,
-  lists: () => [...courseKeys.all, 'list'] as const,
-  list: (filters?: CourseFilters) => [...courseKeys.lists(), filters] as const,
-  details: () => [...courseKeys.all, 'detail'] as const,
-  detail: (id: number) => [...courseKeys.details(), id] as const,
-  byClub: (clubId: number) => [...courseKeys.all, 'club', clubId] as const,
-  byCompany: (companyId: number) => [...courseKeys.all, 'company', companyId] as const,
-  stats: () => [...courseKeys.all, 'stats'] as const,
-  holes: (courseId: number) => [...courseKeys.all, 'holes', courseId] as const,
+  all: (companyId?: number | null) => ['courses', companyId] as const,
+  lists: (companyId?: number | null) => [...courseKeys.all(companyId), 'list'] as const,
+  list: (companyId?: number | null, filters?: CourseFilters) => [...courseKeys.lists(companyId), filters] as const,
+  details: (companyId?: number | null) => [...courseKeys.all(companyId), 'detail'] as const,
+  detail: (companyId?: number | null, id?: number) => [...courseKeys.details(companyId), id] as const,
+  byClub: (companyId?: number | null, clubId?: number) => [...courseKeys.all(companyId), 'club', clubId] as const,
+  byCompany: (companyId?: number | null, targetCompanyId?: number) => [...courseKeys.all(companyId), 'company', targetCompanyId] as const,
+  stats: (companyId?: number | null) => [...courseKeys.all(companyId), 'stats'] as const,
+  holes: (companyId?: number | null, courseId?: number) => [...courseKeys.all(companyId), 'holes', courseId] as const,
 };
 
-// Club Keys
+// Club Keys (company-scoped)
 export const clubKeys = {
-  all: ['clubs'] as const,
-  lists: () => [...clubKeys.all, 'list'] as const,
-  list: (filters?: Record<string, unknown>) => [...clubKeys.lists(), filters] as const,
-  details: () => [...clubKeys.all, 'detail'] as const,
-  detail: (id: number) => [...clubKeys.details(), id] as const,
-  byCompany: (companyId: number) => [...clubKeys.all, 'company', companyId] as const,
-  search: (query: string) => [...clubKeys.all, 'search', query] as const,
+  all: (companyId?: number | null) => ['clubs', companyId] as const,
+  lists: (companyId?: number | null) => [...clubKeys.all(companyId), 'list'] as const,
+  list: (companyId?: number | null, filters?: Record<string, unknown>) => [...clubKeys.lists(companyId), filters] as const,
+  details: (companyId?: number | null) => [...clubKeys.all(companyId), 'detail'] as const,
+  detail: (companyId?: number | null, id?: number) => [...clubKeys.details(companyId), id] as const,
+  byCompany: (companyId?: number | null, targetCompanyId?: number) => [...clubKeys.all(companyId), 'company', targetCompanyId] as const,
+  search: (companyId?: number | null, query?: string) => [...clubKeys.all(companyId), 'search', query] as const,
 };
 
-// Booking Keys
+// Booking Keys (company-scoped)
 export const bookingKeys = {
-  all: ['bookings'] as const,
-  lists: () => [...bookingKeys.all, 'list'] as const,
-  list: (filters?: BookingFilters) => [...bookingKeys.lists(), filters] as const,
-  details: () => [...bookingKeys.all, 'detail'] as const,
-  detail: (id: number) => [...bookingKeys.details(), id] as const,
-  stats: () => [...bookingKeys.all, 'stats'] as const,
-  calendar: (date: string) => [...bookingKeys.all, 'calendar', date] as const,
+  all: (companyId?: number | null) => ['bookings', companyId] as const,
+  lists: (companyId?: number | null) => [...bookingKeys.all(companyId), 'list'] as const,
+  list: (companyId?: number | null, filters?: BookingFilters) => [...bookingKeys.lists(companyId), filters] as const,
+  details: (companyId?: number | null) => [...bookingKeys.all(companyId), 'detail'] as const,
+  detail: (companyId?: number | null, id?: number) => [...bookingKeys.details(companyId), id] as const,
+  stats: (companyId?: number | null) => [...bookingKeys.all(companyId), 'stats'] as const,
+  calendar: (companyId?: number | null, date?: string) => [...bookingKeys.all(companyId), 'calendar', date] as const,
 };
 
-// Game Keys
+// Game Keys (company-scoped)
 export const gameKeys = {
-  all: ['games'] as const,
-  lists: () => [...gameKeys.all, 'list'] as const,
-  list: (filters?: Record<string, unknown>) => [...gameKeys.lists(), filters] as const,
-  details: () => [...gameKeys.all, 'detail'] as const,
-  detail: (id: number) => [...gameKeys.details(), id] as const,
-  byClub: (clubId: number) => [...gameKeys.all, 'club', clubId] as const,
-  weeklySchedules: (gameId: number) => [...gameKeys.all, 'weekly-schedules', gameId] as const,
-  timeSlots: (gameId: number, filter?: Record<string, unknown>) => [...gameKeys.all, 'time-slots', gameId, filter] as const,
-  timeSlotStats: (filter?: Record<string, unknown>) => [...gameKeys.all, 'time-slot-stats', filter] as const,
+  all: (companyId?: number | null) => ['games', companyId] as const,
+  lists: (companyId?: number | null) => [...gameKeys.all(companyId), 'list'] as const,
+  list: (companyId?: number | null, filters?: Record<string, unknown>) => [...gameKeys.lists(companyId), filters] as const,
+  details: (companyId?: number | null) => [...gameKeys.all(companyId), 'detail'] as const,
+  detail: (companyId?: number | null, id?: number) => [...gameKeys.details(companyId), id] as const,
+  byClub: (companyId?: number | null, clubId?: number) => [...gameKeys.all(companyId), 'club', clubId] as const,
+  weeklySchedules: (companyId?: number | null, gameId?: number) => [...gameKeys.all(companyId), 'weekly-schedules', gameId] as const,
+  timeSlots: (companyId?: number | null, gameId?: number, filter?: Record<string, unknown>) => [...gameKeys.all(companyId), 'time-slots', gameId, filter] as const,
+  timeSlotStats: (companyId?: number | null, filter?: Record<string, unknown>) => [...gameKeys.all(companyId), 'time-slot-stats', filter] as const,
 };
 
-// Policy Keys
+// CompanyMember Keys (company-scoped)
+export const companyMemberKeys = {
+  all: (companyId?: number | null) => ['companyMembers', companyId] as const,
+  lists: (companyId?: number | null) => [...companyMemberKeys.all(companyId), 'list'] as const,
+  list: (companyId?: number | null, filters?: Record<string, unknown>) => [...companyMemberKeys.lists(companyId), filters] as const,
+};
+
+// Dashboard Keys
+export const dashboardKeys = {
+  all: ['dashboard'] as const,
+  overview: (startDate?: string, endDate?: string) => [...dashboardKeys.all, 'overview', startDate, endDate] as const,
+  realTime: () => [...dashboardKeys.all, 'realTime'] as const,
+  trends: (period: string) => [...dashboardKeys.all, 'trends', period] as const,
+};
+
+// Menu Keys
+export const menuKeys = {
+  all: ['menus'] as const,
+  tree: (companyType: string, scope: string) => [...menuKeys.all, 'tree', companyType, scope] as const,
+};
+
+// Policy Keys (company-scoped)
 export const policyKeys = {
-  all: ['policies'] as const,
-  cancellation: () => [...policyKeys.all, 'cancellation'] as const,
-  cancellationDefault: (clubId?: number) => [...policyKeys.cancellation(), 'default', clubId] as const,
-  cancellationDetail: (id: number) => [...policyKeys.cancellation(), 'detail', id] as const,
-  refund: () => [...policyKeys.all, 'refund'] as const,
-  refundDefault: (clubId?: number) => [...policyKeys.refund(), 'default', clubId] as const,
-  refundDetail: (id: number) => [...policyKeys.refund(), 'detail', id] as const,
-  noShow: () => [...policyKeys.all, 'noShow'] as const,
-  noShowDefault: (clubId?: number) => [...policyKeys.noShow(), 'default', clubId] as const,
-  noShowDetail: (id: number) => [...policyKeys.noShow(), 'detail', id] as const,
+  all: (companyId?: number | null) => ['policies', companyId] as const,
+  cancellation: (companyId?: number | null) => [...policyKeys.all(companyId), 'cancellation'] as const,
+  cancellationResolve: (companyId?: number | null, clubId?: number) => [...policyKeys.cancellation(companyId), 'resolve', clubId] as const,
+  cancellationDefault: (companyId?: number | null, clubId?: number) => [...policyKeys.cancellation(companyId), 'default', clubId] as const,
+  cancellationDetail: (companyId?: number | null, id?: number) => [...policyKeys.cancellation(companyId), 'detail', id] as const,
+  refund: (companyId?: number | null) => [...policyKeys.all(companyId), 'refund'] as const,
+  refundResolve: (companyId?: number | null, clubId?: number) => [...policyKeys.refund(companyId), 'resolve', clubId] as const,
+  refundDefault: (companyId?: number | null, clubId?: number) => [...policyKeys.refund(companyId), 'default', clubId] as const,
+  refundDetail: (companyId?: number | null, id?: number) => [...policyKeys.refund(companyId), 'detail', id] as const,
+  noShow: (companyId?: number | null) => [...policyKeys.all(companyId), 'noShow'] as const,
+  noShowResolve: (companyId?: number | null, clubId?: number) => [...policyKeys.noShow(companyId), 'resolve', clubId] as const,
+  noShowDefault: (companyId?: number | null, clubId?: number) => [...policyKeys.noShow(companyId), 'default', clubId] as const,
+  noShowDetail: (companyId?: number | null, id?: number) => [...policyKeys.noShow(companyId), 'detail', id] as const,
+  operating: (companyId?: number | null) => [...policyKeys.all(companyId), 'operating'] as const,
+  operatingResolve: (companyId?: number | null, clubId?: number) => [...policyKeys.operating(companyId), 'resolve', clubId] as const,
+  operatingDetail: (companyId?: number | null, id?: number) => [...policyKeys.operating(companyId), 'detail', id] as const,
 };

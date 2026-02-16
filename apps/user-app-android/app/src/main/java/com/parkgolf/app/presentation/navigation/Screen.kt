@@ -4,8 +4,6 @@ sealed class Screen(val route: String) {
     // Auth
     data object Login : Screen("login")
     data object SignUp : Screen("signup")
-    data object ForgotPassword : Screen("forgot_password")
-
     // Main Tabs
     data object Home : Screen("home")
     data object Search : Screen("search")
@@ -13,8 +11,9 @@ sealed class Screen(val route: String) {
     data object Profile : Screen("profile")
 
     // Booking Flow
-    data object BookingForm : Screen("booking/{gameId}/{timeSlotId}") {
-        fun createRoute(gameId: Int, timeSlotId: Int) = "booking/$gameId/$timeSlotId"
+    data object BookingForm : Screen("booking/{gameId}/{timeSlotId}?date={date}&startTime={startTime}") {
+        fun createRoute(gameId: Int, timeSlotId: Int, date: String, startTime: String) =
+            "booking/$gameId/$timeSlotId?date=$date&startTime=$startTime"
     }
     data object BookingComplete : Screen("booking/complete/{bookingId}") {
         fun createRoute(bookingId: String) = "booking/complete/$bookingId"
@@ -28,10 +27,7 @@ sealed class Screen(val route: String) {
     data object ChatRoom : Screen("chat/{roomId}") {
         fun createRoute(roomId: String) = "chat/$roomId"
     }
-    data object NewChat : Screen("chat/new")
-
     // Friends
-    data object AddFriend : Screen("friends/add")
     data object FriendRequests : Screen("friends/requests")
     data object UnreadChats : Screen("chats/unread")
 

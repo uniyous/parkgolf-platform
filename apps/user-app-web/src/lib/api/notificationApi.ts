@@ -166,19 +166,6 @@ export const getNotificationTypeDisplayName = (type: NotificationType): string =
   return displayNames[type];
 };
 
-export const getNotificationTypeIcon = (type: NotificationType): string => {
-  const icons: Record<NotificationType, string> = {
-    BOOKING_CONFIRMED: 'check-circle',
-    BOOKING_CANCELLED: 'x-circle',
-    PAYMENT_SUCCESS: 'credit-card',
-    PAYMENT_FAILED: 'alert-triangle',
-    FRIEND_REQUEST: 'user-plus',
-    FRIEND_ACCEPTED: 'users',
-    CHAT_MESSAGE: 'message-circle',
-    SYSTEM_ALERT: 'bell',
-  };
-  return icons[type];
-};
 
 export const isNotificationRead = (notification: AppNotification): boolean => {
   return notification.readAt !== null || notification.status === 'READ';

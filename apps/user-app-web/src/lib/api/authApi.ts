@@ -19,6 +19,11 @@ export interface User {
   passwordChangedAt?: string | null;
 }
 
+export interface UpdateProfileRequest {
+  name?: string;
+  phone?: string;
+}
+
 export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;
@@ -99,6 +104,14 @@ export const authApi = {
   checkPasswordExpiry: async () => {
     const response = await apiClient.get<{ success: boolean; data: PasswordExpiryResponse }>(
       '/api/user/account/password-expiry'
+    );
+    return response.data.data;
+  },
+
+  updateProfile: async (data: UpdateProfileRequest) => {
+    const response = await apiClient.patch<{ success: boolean; data: User }>(
+      '/api/user/iam/profile',
+      data
     );
     return response.data.data;
   },

@@ -41,15 +41,20 @@ async function bootstrap() {
         ? corsOrigins.split(',').map(o => o.trim())
         : [
             'http://localhost:3001',
+            'http://localhost:3002',
             'https://parkgolf-admin.web.app',
             'https://parkgolf-admin-dev.web.app',
-            'https://dev-admin.goparkmate.com',
-            'https://admin.goparkmate.com',
-            'https://dev-api.goparkmate.com',
-            'https://api.goparkmate.com',
+            'https://parkgolf-platform.web.app',
+            'https://parkgolf-platform-dev.web.app',
+            'https://dev-admin.parkgolfmate.com',
+            'https://admin.parkgolfmate.com',
+            'https://dev-platform.parkgolfmate.com',
+            'https://platform.parkgolfmate.com',
+            'https://dev-api.parkgolfmate.com',
+            'https://api.parkgolfmate.com',
           ],
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Company-Id'],
       credentials: true,
     });
 
@@ -70,6 +75,9 @@ async function bootstrap() {
 
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api-docs', app, document);
+
+    // Graceful shutdown
+    app.enableShutdownHooks();
 
     const port = parseInt(process.env.PORT || '8080');
     await app.listen(port, '0.0.0.0');

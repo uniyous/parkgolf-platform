@@ -21,8 +21,41 @@ export class AdminNatsController {
   @MessagePattern('iam.admins.list')
   async getAdminList(@Payload() data: { filters?: any; page?: number; limit?: number; token?: string }) {
     this.logger.log('Get admin list request');
-    const { filters, page = 1, limit = 20 } = data;
-    const result = await this.adminService.findAll({ ...filters, page, limit });
+    const { filters = {}, page = 1, limit = 20 } = data;
+
+    // Prisma WHERE 절 구성
+    const where: any = {};
+    if (filters.search) {
+      where.OR = [
+        { name: { contains: filters.search, mode: 'insensitive' } },
+        { email: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+    if (filters.isActive !== undefined) {
+      where.isActive = filters.isActive;
+    }
+    // companyId 필터: AdminCompany 관계를 통해 필터링
+    if (filters.companyId) {
+      where.companies = {
+        some: {
+          companyId: Number(filters.companyId),
+          isActive: true,
+        },
+      };
+    }
+    // role 필터: AdminCompany.companyRoleCode를 통해 필터링
+    if (filters.role) {
+      const companyFilter = where.companies?.some || {};
+      where.companies = {
+        some: {
+          ...companyFilter,
+          companyRoleCode: filters.role,
+          isActive: true,
+        },
+      };
+    }
+
+    const result = await this.adminService.findAll({ where, page, limit });
     return NatsResponse.paginated(AdminResponseDto.fromEntities(result.admins), result.total, result.page, result.limit);
   }
 

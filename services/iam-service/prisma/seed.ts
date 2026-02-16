@@ -4,9 +4,10 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 // ============================================
-// IAM Service 시드 데이터 (v6)
+// IAM Service 시드 데이터 (v7)
 // - CompanyType 기반 역할 관리
 // - 본사/협회/가맹점 구조
+// - DB 기반 동적 메뉴 시스템
 // ============================================
 
 // 역할-권한 매핑
@@ -37,6 +38,9 @@ const ALLOWED_ROLES_BY_COMPANY_TYPE: Record<string, string[]> = {
 
 async function clearAllData() {
   console.log('Clearing all existing data...');
+  await prisma.menuCompanyType.deleteMany({});
+  await prisma.menuPermission.deleteMany({});
+  await prisma.menuMaster.deleteMany({});
   await prisma.rolePermission.deleteMany({});
   await prisma.adminActivityLog.deleteMany({});
   await prisma.adminRefreshToken.deleteMany({});
@@ -50,16 +54,373 @@ async function clearAllData() {
   console.log('  All data cleared.');
 }
 
+// ============================================
+// 메뉴 시드 데이터
+// ============================================
+interface MenuSeedItem {
+  code: string;
+  name: string;
+  path?: string;
+  icon?: string;
+  sortOrder: number;
+  platformOnly?: boolean;
+  writePermission?: string;
+  permissions: string[];          // 접근에 필요한 권한 (OR)
+  companyTypes: CompanyType[];    // 표시 대상 회사 유형
+  children?: MenuSeedItem[];
+}
+
+// Platform Dashboard 메뉴
+const PLATFORM_MENUS: MenuSeedItem[] = [
+  {
+    code: 'P_DASHBOARD',
+    name: '대시보드',
+    icon: 'LayoutDashboard',
+    sortOrder: 1,
+    platformOnly: true,
+    permissions: ['VIEW', 'ALL'],
+    companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION],
+    children: [
+      {
+        code: 'P_DASHBOARD_HOME',
+        name: '플랫폼 현황',
+        path: '/dashboard',
+        icon: 'BarChart3',
+        sortOrder: 1,
+        platformOnly: true,
+        permissions: ['VIEW', 'ALL'],
+        companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION],
+      },
+    ],
+  },
+  {
+    code: 'P_COMPANIES',
+    name: '가맹점 관리',
+    icon: 'Building2',
+    sortOrder: 2,
+    platformOnly: true,
+    permissions: ['COMPANIES', 'ALL'],
+    companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION],
+    children: [
+      {
+        code: 'P_COMPANY_MGMT',
+        name: '가맹점 관리',
+        path: '/companies',
+        icon: 'Building',
+        sortOrder: 1,
+        platformOnly: true,
+        writePermission: 'COMPANIES',
+        permissions: ['COMPANIES', 'VIEW', 'ALL'],
+        companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION],
+      },
+    ],
+  },
+  {
+    code: 'P_ANALYTICS',
+    name: '현황 분석',
+    icon: 'BarChart3',
+    sortOrder: 3,
+    platformOnly: true,
+    permissions: ['ANALYTICS', 'VIEW', 'ALL'],
+    companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION],
+    children: [
+      {
+        code: 'P_ANALYTICS_BOOKINGS',
+        name: '예약 현황',
+        path: '/analytics/bookings',
+        icon: 'CalendarCheck',
+        sortOrder: 1,
+        platformOnly: true,
+        permissions: ['ANALYTICS', 'VIEW', 'ALL'],
+        companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION],
+      },
+      {
+        code: 'P_ANALYTICS_CLUBS',
+        name: '골프장 현황',
+        path: '/analytics/clubs',
+        icon: 'MapPin',
+        sortOrder: 2,
+        platformOnly: true,
+        permissions: ['ANALYTICS', 'VIEW', 'ALL'],
+        companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION],
+      },
+      {
+        code: 'P_ANALYTICS_REVENUE',
+        name: '매출 현황',
+        path: '/analytics/revenue',
+        icon: 'DollarSign',
+        sortOrder: 3,
+        platformOnly: true,
+        writePermission: 'ANALYTICS',
+        permissions: ['ANALYTICS', 'ALL'],
+        companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION],
+      },
+    ],
+  },
+  {
+    code: 'P_OPERATIONS',
+    name: '운영 관리',
+    icon: 'Settings',
+    sortOrder: 4,
+    platformOnly: true,
+    permissions: ['ADMINS', 'USERS', 'ALL'],
+    companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION],
+    children: [
+      {
+        code: 'P_POLICIES',
+        name: '정책 관리',
+        path: '/policies',
+        icon: 'ClipboardList',
+        sortOrder: 1,
+        platformOnly: true,
+        writePermission: 'ALL',
+        permissions: ['ALL'],
+        companyTypes: [CompanyType.PLATFORM],
+      },
+      {
+        code: 'P_USER_MGMT',
+        name: '회원 관리',
+        path: '/members',
+        icon: 'Users',
+        sortOrder: 2,
+        platformOnly: true,
+        writePermission: 'USERS',
+        permissions: ['USERS', 'VIEW', 'ALL'],
+        companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION],
+      },
+      {
+        code: 'P_ADMIN_MGMT',
+        name: '관리자 관리',
+        path: '/admins',
+        icon: 'UserCog',
+        sortOrder: 3,
+        platformOnly: true,
+        writePermission: 'ADMINS',
+        permissions: ['ADMINS', 'VIEW', 'ALL'],
+        companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION],
+      },
+      {
+        code: 'P_ROLES',
+        name: '역할 및 권한',
+        path: '/roles',
+        icon: 'Shield',
+        sortOrder: 4,
+        platformOnly: true,
+        writePermission: 'ALL',
+        permissions: ['ALL'],
+        companyTypes: [CompanyType.PLATFORM],
+      },
+      {
+        code: 'P_NOTIFICATIONS',
+        name: '알림 설정',
+        path: '/notifications',
+        icon: 'Bell',
+        sortOrder: 5,
+        platformOnly: true,
+        writePermission: 'ALL',
+        permissions: ['ALL'],
+        companyTypes: [CompanyType.PLATFORM],
+      },
+    ],
+  },
+];
+
+// Admin Dashboard 메뉴
+const ADMIN_MENUS: MenuSeedItem[] = [
+  {
+    code: 'A_DASHBOARD',
+    name: '대시보드',
+    icon: 'LayoutDashboard',
+    sortOrder: 1,
+    permissions: ['VIEW', 'ALL'],
+    companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION, CompanyType.FRANCHISE],
+    children: [
+      {
+        code: 'A_DASHBOARD_HOME',
+        name: '매장 현황',
+        path: '/dashboard',
+        icon: 'BarChart3',
+        sortOrder: 1,
+        permissions: ['VIEW', 'ALL'],
+        companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION, CompanyType.FRANCHISE],
+      },
+    ],
+  },
+  {
+    code: 'A_GOLF',
+    name: '골프장',
+    icon: 'Flag',
+    sortOrder: 2,
+    permissions: ['COURSES', 'TIMESLOTS', 'ALL'],
+    companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION, CompanyType.FRANCHISE],
+    children: [
+      {
+        code: 'A_CLUB_MGMT',
+        name: '골프장 관리',
+        path: '/clubs',
+        icon: 'MapPin',
+        sortOrder: 1,
+        writePermission: 'COURSES',
+        permissions: ['COURSES', 'VIEW', 'ALL'],
+        companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION, CompanyType.FRANCHISE],
+      },
+      {
+        code: 'A_GAME_MGMT',
+        name: '라운드 관리',
+        path: '/games',
+        icon: 'Clock',
+        sortOrder: 2,
+        writePermission: 'TIMESLOTS',
+        permissions: ['COURSES', 'TIMESLOTS', 'VIEW', 'ALL'],
+        companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION, CompanyType.FRANCHISE],
+      },
+    ],
+  },
+  {
+    code: 'A_BOOKING',
+    name: '예약',
+    icon: 'CalendarDays',
+    sortOrder: 3,
+    permissions: ['BOOKINGS', 'ALL'],
+    companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION, CompanyType.FRANCHISE],
+    children: [
+      {
+        code: 'A_BOOKING_LIST',
+        name: '예약 현황',
+        path: '/bookings',
+        icon: 'CalendarCheck',
+        sortOrder: 1,
+        writePermission: 'BOOKINGS',
+        permissions: ['BOOKINGS', 'VIEW', 'ALL'],
+        companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION, CompanyType.FRANCHISE],
+      },
+      {
+        code: 'A_BOOKING_CANCEL',
+        name: '환불 관리',
+        path: '/bookings/cancellations',
+        icon: 'ReceiptText',
+        sortOrder: 2,
+        writePermission: 'BOOKINGS',
+        permissions: ['BOOKINGS', 'VIEW', 'ALL'],
+        companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION, CompanyType.FRANCHISE],
+      },
+    ],
+  },
+  {
+    code: 'A_MANAGEMENT',
+    name: '관리',
+    icon: 'Users',
+    sortOrder: 4,
+    permissions: ['ADMINS', 'USERS', 'ALL'],
+    companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION, CompanyType.FRANCHISE],
+    children: [
+      {
+        code: 'A_ADMIN_MGMT',
+        name: '직원 관리',
+        path: '/admin-management',
+        icon: 'UserCog',
+        sortOrder: 1,
+        writePermission: 'ADMINS',
+        permissions: ['ADMINS', 'VIEW', 'ALL'],
+        companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION, CompanyType.FRANCHISE],
+      },
+      {
+        code: 'A_USER_MGMT',
+        name: '회원 관리',
+        path: '/user-management',
+        icon: 'UserCheck',
+        sortOrder: 2,
+        writePermission: 'USERS',
+        permissions: ['USERS', 'VIEW', 'ALL'],
+        companyTypes: [CompanyType.PLATFORM, CompanyType.ASSOCIATION, CompanyType.FRANCHISE],
+      },
+    ],
+  },
+];
+
+async function seedMenus() {
+  console.log('[7/7] Creating menu masters...');
+
+  const allMenus = [...PLATFORM_MENUS, ...ADMIN_MENUS];
+  let menuCount = 0;
+
+  for (const group of allMenus) {
+    // Level 1 그룹 생성
+    const parentMenu = await prisma.menuMaster.create({
+      data: {
+        code: group.code,
+        name: group.name,
+        icon: group.icon,
+        sortOrder: group.sortOrder,
+        platformOnly: group.platformOnly ?? false,
+        writePermission: group.writePermission,
+        isActive: true,
+      },
+    });
+    menuCount++;
+
+    // 그룹 권한 매핑
+    for (const perm of group.permissions) {
+      await prisma.menuPermission.create({
+        data: { menuId: parentMenu.id, permissionCode: perm },
+      });
+    }
+
+    // 그룹 회사유형 매핑
+    for (const ct of group.companyTypes) {
+      await prisma.menuCompanyType.create({
+        data: { menuId: parentMenu.id, companyType: ct },
+      });
+    }
+
+    // Level 2 자식 메뉴 생성
+    if (group.children) {
+      for (const child of group.children) {
+        const childMenu = await prisma.menuMaster.create({
+          data: {
+            code: child.code,
+            name: child.name,
+            path: child.path,
+            icon: child.icon,
+            parentId: parentMenu.id,
+            sortOrder: child.sortOrder,
+            platformOnly: child.platformOnly ?? false,
+            writePermission: child.writePermission,
+            isActive: true,
+          },
+        });
+        menuCount++;
+
+        // 자식 권한 매핑
+        for (const perm of child.permissions) {
+          await prisma.menuPermission.create({
+            data: { menuId: childMenu.id, permissionCode: perm },
+          });
+        }
+
+        // 자식 회사유형 매핑
+        for (const ct of child.companyTypes) {
+          await prisma.menuCompanyType.create({
+            data: { menuId: childMenu.id, companyType: ct },
+          });
+        }
+      }
+    }
+  }
+
+  console.log(`  → ${menuCount} menus (platform + admin dashboard)`);
+}
+
 async function main() {
   console.log('========================================');
-  console.log('IAM Service Database Seeding (v6)');
-  console.log('CompanyType 기반 역할 관리 구조');
+  console.log('IAM Service Database Seeding (v7)');
+  console.log('CompanyType 기반 역할 관리 + 동적 메뉴');
   console.log('========================================\n');
 
   await clearAllData();
 
   // 1. 권한 마스터
-  console.log('[1/6] Creating permission masters...');
+  console.log('[1/7] Creating permission masters...');
   const permissions = [
     { code: 'ALL', name: '전체 권한', category: 'ADMIN', level: 'high', description: '모든 기능 접근' },
     { code: 'COMPANIES', name: '회사 관리', category: 'ADMIN', level: 'high', description: '회사 CRUD' },
@@ -86,7 +447,7 @@ async function main() {
   console.log(`  → ${permissions.length} permissions`);
 
   // 2. 역할 마스터
-  console.log('[2/6] Creating role masters...');
+  console.log('[2/7] Creating role masters...');
   const roles = [
     // 플랫폼 역할 (본사, 협회용)
     { code: 'PLATFORM_ADMIN', name: '플랫폼 관리자', userType: 'ADMIN', scope: 'PLATFORM', level: 100, description: '본사 최고 관리자' },
@@ -108,7 +469,7 @@ async function main() {
   console.log(`  → ${roles.length} roles`);
 
   // 3. 역할-권한 매핑
-  console.log('[3/6] Creating role-permission mappings...');
+  console.log('[3/7] Creating role-permission mappings...');
   let mappingCount = 0;
   for (const [roleCode, perms] of Object.entries(ROLE_PERMISSIONS)) {
     for (const permissionCode of perms) {
@@ -119,7 +480,7 @@ async function main() {
   console.log(`  → ${mappingCount} mappings`);
 
   // 4. 회사 생성 (본사, 가맹점)
-  console.log('[4/6] Creating companies...');
+  console.log('[4/7] Creating companies...');
   const hashedPassword = await bcrypt.hash('admin123!@#', 10);
 
   // 4-1. 본사 (PLATFORM)
@@ -154,7 +515,7 @@ async function main() {
   console.log(`  → [가맹점] ${franchiseCompany.name} (${franchiseCompany.code})`);
 
   // 5. 관리자 생성 및 회사 연결
-  console.log('[5/6] Creating admins with company assignments...');
+  console.log('[5/7] Creating admins with company assignments...');
 
   // 5-1. 본사 플랫폼 관리자
   const platformAdmin = await prisma.admin.create({
@@ -196,13 +557,58 @@ async function main() {
   });
   console.log(`  → ${companyAdmin.email} @ ${franchiseCompany.code} (COMPANY_ADMIN)`);
 
+  // 5-3. 가맹점 매니저
+  const companyManager = await prisma.admin.create({
+    data: {
+      email: 'manager@gangnam.com',
+      password: hashedPassword,
+      name: '강남매니저',
+      department: '강남 파크골프장',
+      isActive: true,
+    },
+  });
+  await prisma.adminCompany.create({
+    data: {
+      adminId: companyManager.id,
+      companyId: franchiseCompany.id,
+      companyRoleCode: 'COMPANY_MANAGER',
+      isPrimary: true,
+    },
+  });
+  console.log(`  → ${companyManager.email} @ ${franchiseCompany.code} (COMPANY_MANAGER)`);
+
+  // 5-4. 가맹점 직원
+  const companyStaff = await prisma.admin.create({
+    data: {
+      email: 'staff@gangnam.com',
+      password: hashedPassword,
+      name: '강남직원',
+      department: '강남 파크골프장',
+      isActive: true,
+    },
+  });
+  await prisma.adminCompany.create({
+    data: {
+      adminId: companyStaff.id,
+      companyId: franchiseCompany.id,
+      companyRoleCode: 'COMPANY_STAFF',
+      isPrimary: true,
+    },
+  });
+  console.log(`  → ${companyStaff.email} @ ${franchiseCompany.code} (COMPANY_STAFF)`);
+
   // 6. 테스트 사용자 (E2E 테스트용)
+  console.log('[6/7] Creating test users...');
   const e2ePassword = await bcrypt.hash('test1234', 10);
   const e2eUsers = [
-    { email: 'test@parkgolf.com', name: '테스트사용자', phone: '01011112222', roleCode: 'USER' },
-    { email: 'kim@parkgolf.com', name: '김철수', phone: '01033334444', roleCode: 'USER' },
-    { email: 'park@parkgolf.com', name: '박영희', phone: '01055556666', roleCode: 'USER' },
-    { email: 'lee@parkgolf.com', name: '이민수', phone: '01077778888', roleCode: 'USER' },
+    { email: 'test@parkgolf.com', name: '테스트', phone: '01011112222', roleCode: 'USER' },
+    { email: 'cheolsu@parkgolf.com', name: '김철수', phone: '01033334444', roleCode: 'USER' },
+    { email: 'younghee@parkgolf.com', name: '박영희', phone: '01055556666', roleCode: 'USER' },
+    { email: 'minsu@parkgolf.com', name: '이민수', phone: '01077778888', roleCode: 'USER' },
+    { email: 'minsoo@parkgolf.com', name: '김민수', phone: '01099990001', roleCode: 'USER' },
+    { email: 'jieun@parkgolf.com', name: '이지은', phone: '01099990002', roleCode: 'USER' },
+    { email: 'junhyuk@parkgolf.com', name: '박준혁', phone: '01099990003', roleCode: 'USER' },
+    { email: 'seoyeon@parkgolf.com', name: '최서연', phone: '01099990004', roleCode: 'USER' },
   ];
   for (const e2eUser of e2eUsers) {
     const created = await prisma.user.create({
@@ -218,6 +624,9 @@ async function main() {
     console.log(`  → ${created.email} / ${e2eUser.phone} (${e2eUser.roleCode}) [E2E]`);
   }
 
+  // 7. 메뉴 시드 데이터
+  await seedMenus();
+
   // 결과 요약
   console.log('\n========================================');
   console.log('Seeding completed!');
@@ -229,13 +638,19 @@ async function main() {
   console.log('\n테스트 계정:');
   console.log('  [본사 관리자]');
   console.log(`  - ${platformAdmin.email} / admin123!@# (PLATFORM_ADMIN)`);
-  console.log('  [가맹점 관리자]');
+  console.log('  [가맹점]');
   console.log(`  - ${companyAdmin.email} / admin123!@# (COMPANY_ADMIN)`);
+  console.log(`  - ${companyManager.email} / admin123!@# (COMPANY_MANAGER)`);
+  console.log(`  - ${companyStaff.email} / admin123!@# (COMPANY_STAFF)`);
   console.log('  [일반 사용자 - E2E 테스트용]');
   console.log('  - test@parkgolf.com / test1234 / 01011112222');
-  console.log('  - kim@parkgolf.com / test1234 / 01033334444');
-  console.log('  - park@parkgolf.com / test1234 / 01055556666');
-  console.log('  - lee@parkgolf.com / test1234 / 01077778888');
+  console.log('  - cheolsu@parkgolf.com / test1234 / 01033334444');
+  console.log('  - younghee@parkgolf.com / test1234 / 01055556666');
+  console.log('  - minsu@parkgolf.com / test1234 / 01077778888');
+  console.log('  - minsoo@parkgolf.com / test1234 / 01099990001');
+  console.log('  - jieun@parkgolf.com / test1234 / 01099990002');
+  console.log('  - junhyuk@parkgolf.com / test1234 / 01099990003');
+  console.log('  - seoyeon@parkgolf.com / test1234 / 01099990004');
 }
 
 main()

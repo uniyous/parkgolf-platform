@@ -1,20 +1,25 @@
 import { Controller, Logger } from '@nestjs/common';
-import { EventPattern, Payload } from '@nestjs/microservices';
+import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
 import { SagaHandlerService } from '../service/saga-handler.service';
-import { SlotReservedEvent, SlotReserveFailedEvent } from '../dto/booking.dto';
+import { BookingService } from '../service/booking.service';
+import { SlotReservedEvent, SlotReserveFailedEvent, PaymentConfirmedEvent, PaymentCanceledEvent } from '../dto/booking.dto';
 
 /**
  * Saga 이벤트 핸들러 컨트롤러
  *
- * course-service로부터 수신하는 Saga 이벤트 처리:
- * - slot.reserved: 슬롯 예약 성공 → PENDING → CONFIRMED
+ * course-service / payment-service로부터 수신하는 Saga 이벤트 처리:
+ * - slot.reserved: 슬롯 예약 성공 → PENDING → CONFIRMED(현장) / SLOT_RESERVED(카드)
  * - slot.reserve.failed: 슬롯 예약 실패 → PENDING → FAILED
+ * - booking.paymentConfirmed: 결제 완료 → SLOT_RESERVED → CONFIRMED
  */
 @Controller()
 export class BookingSagaController {
   private readonly logger = new Logger(BookingSagaController.name);
 
-  constructor(private readonly sagaHandler: SagaHandlerService) {}
+  constructor(
+    private readonly sagaHandler: SagaHandlerService,
+    private readonly bookingService: BookingService,
+  ) {}
 
   /**
    * 슬롯 예약 성공 이벤트 핸들러
@@ -53,6 +58,63 @@ export class BookingSagaController {
   }
 
   /**
+   * 결제 완료 이벤트 핸들러 (Request-Reply)
+   * payment-service에서 결제가 완료되면 이 메시지를 전송함
+   * SLOT_RESERVED → CONFIRMED
+   */
+  @MessagePattern('booking.paymentConfirmed')
+  async handlePaymentConfirmed(@Payload() data: PaymentConfirmedEvent) {
+    this.logger.log(`NATS: Received booking.paymentConfirmed for booking ${data.bookingId}`);
+    this.logger.debug(`NATS: booking.paymentConfirmed payload: ${JSON.stringify(data)}`);
+
+    try {
+      const result = await this.sagaHandler.handlePaymentConfirmed(data);
+      this.logger.log(`NATS: Successfully processed booking.paymentConfirmed for booking ${data.bookingId}`);
+      return result;
+    } catch (error) {
+      this.logger.error(`NATS: Error processing booking.paymentConfirmed: ${error.message}`, error.stack);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 가상계좌 입금 완료 이벤트 핸들러 (Request-Reply)
+   * payment-service에서 가상계좌 입금이 확인되면 이 메시지를 전송함
+   * SLOT_RESERVED → CONFIRMED (결제 확정과 동일 흐름)
+   */
+  @MessagePattern('booking.paymentDeposited')
+  async handlePaymentDeposited(@Payload() data: PaymentConfirmedEvent) {
+    this.logger.log(`NATS: Received booking.paymentDeposited for booking ${data.bookingId}`);
+
+    try {
+      const result = await this.sagaHandler.handlePaymentConfirmed(data);
+      this.logger.log(`NATS: Successfully processed booking.paymentDeposited for booking ${data.bookingId}`);
+      return result;
+    } catch (error) {
+      this.logger.error(`NATS: Error processing booking.paymentDeposited: ${error.message}`, error.stack);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 결제 취소(환불) 완료 이벤트 핸들러
+   * payment-service에서 환불이 완료되면 이 이벤트를 발행함
+   * BookingHistory에 REFUND_COMPLETED 기록 + 환불 알림 발행
+   */
+  @EventPattern('booking.paymentCanceled')
+  async handlePaymentCanceled(@Payload() data: PaymentCanceledEvent) {
+    this.logger.log(`NATS: Received booking.paymentCanceled for booking ${data.bookingId}`);
+    this.logger.debug(`NATS: booking.paymentCanceled payload: ${JSON.stringify(data)}`);
+
+    try {
+      await this.sagaHandler.handlePaymentCanceled(data);
+      this.logger.log(`NATS: Successfully processed booking.paymentCanceled for booking ${data.bookingId}`);
+    } catch (error) {
+      this.logger.error(`NATS: Error processing booking.paymentCanceled: ${error.message}`, error.stack);
+    }
+  }
+
+  /**
    * 슬롯 해제 완료 이벤트 핸들러
    * course-service에서 슬롯 해제가 완료되면 이 이벤트를 발행함
    */
@@ -74,6 +136,22 @@ export class BookingSagaController {
       this.logger.log(`NATS: Successfully processed slot.released for booking ${data.bookingId}`);
     } catch (error) {
       this.logger.error(`NATS: Error processing slot.released: ${error.message}`, error.stack);
+    }
+  }
+
+  /**
+   * 사용자 삭제 이벤트 핸들러
+   * iam-service에서 계정 삭제 시 예약 데이터 익명화
+   */
+  @EventPattern('user.deleted')
+  async handleUserDeleted(@Payload() data: { userId: number; email: string; deletedAt: string }) {
+    this.logger.log(`NATS: Received user.deleted event for user ${data.userId}`);
+
+    try {
+      const count = await this.bookingService.anonymizeUserBookings(data.userId);
+      this.logger.log(`NATS: Anonymized ${count} bookings for user ${data.userId}`);
+    } catch (error) {
+      this.logger.error(`NATS: Error processing user.deleted: ${error.message}`, error.stack);
     }
   }
 }

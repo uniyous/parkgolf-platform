@@ -44,45 +44,45 @@ export const UserMenu: React.FC<UserMenuProps> = ({ currentUser, onLogout }) => 
   ];
 
   const roleLabel = ADMIN_ROLE_LABELS[currentUser.role as AdminRole] || currentUser.role;
-  const roleColor = ADMIN_ROLE_COLORS[currentUser.role as AdminRole] || 'bg-gray-100 text-gray-800';
+  const roleColor = ADMIN_ROLE_COLORS[currentUser.role as AdminRole] || 'bg-white/10 text-white';
 
   return (
     <div className="relative" ref={dropdownRef}>
       {/* 트리거 버튼 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+        className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/10 transition-colors"
       >
-        <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
+        <div className="h-8 w-8 rounded-full bg-emerald-500 flex items-center justify-center">
           <span className="text-sm font-medium text-white">
             {currentUser.username?.charAt(0).toUpperCase() || 'A'}
           </span>
         </div>
         <div className="hidden md:block text-left">
-          <div className="text-sm font-medium text-gray-900">{currentUser.username}</div>
+          <div className="text-sm font-medium text-white">{currentUser.username}</div>
           {currentUser.role && (
             <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${roleColor}`}>
               {roleLabel}
             </span>
           )}
         </div>
-        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`h-4 w-4 text-white/40 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {/* 드롭다운 메뉴 */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+        <div className="absolute right-0 mt-2 w-64 bg-white/10 backdrop-blur-xl border border-white/15 rounded-lg shadow-lg z-50">
           {/* 헤더 */}
-          <div className="px-4 py-3 border-b border-gray-200">
+          <div className="px-4 py-3 border-b border-white/15">
             <div className="flex items-center space-x-3">
-              <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center">
                 <span className="text-lg font-medium text-white">
                   {currentUser.username?.charAt(0).toUpperCase() || 'A'}
                 </span>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-900">{currentUser.username}</div>
-                <div className="text-xs text-gray-500">{currentUser.email}</div>
+                <div className="text-sm font-medium text-white">{currentUser.username}</div>
+                <div className="text-xs text-white/50">{currentUser.email}</div>
               </div>
             </div>
           </div>
@@ -93,17 +93,17 @@ export const UserMenu: React.FC<UserMenuProps> = ({ currentUser, onLogout }) => 
               <Link
                 key={idx}
                 to={item.href}
-                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                className="flex items-center px-4 py-2 text-sm text-white/70 hover:bg-white/10"
                 onClick={() => setIsOpen(false)}
               >
                 <span className="mr-3">{item.icon}</span>
                 {item.label}
               </Link>
             ))}
-            <div className="border-t border-gray-200 my-1" />
+            <div className="border-t border-white/15 my-1" />
             <button
               onClick={() => { setIsOpen(false); onLogout(); }}
-              className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              className="w-full flex items-center px-4 py-2 text-sm text-white/70 hover:bg-white/10"
             >
               <span className="mr-3">🚪</span>
               로그아웃

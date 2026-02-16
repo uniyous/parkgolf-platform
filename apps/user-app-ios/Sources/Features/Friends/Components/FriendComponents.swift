@@ -13,15 +13,7 @@ struct FriendCard: View {
         GlassCard(padding: 0) {
             HStack(spacing: ParkSpacing.md) {
                 // Avatar
-                ZStack {
-                    Circle()
-                        .fill(Color.parkPrimary.opacity(0.3))
-                        .frame(width: 50, height: 50)
-
-                    Text(String(friend.friendName.prefix(1)))
-                        .font(.parkHeadlineLarge)
-                        .foregroundStyle(.white)
-                }
+                AvatarCircle(name: friend.friendName)
 
                 // Info
                 VStack(alignment: .leading, spacing: ParkSpacing.xxs) {
@@ -105,15 +97,7 @@ struct FriendRequestCard: View {
                 // Content
                 HStack(spacing: ParkSpacing.md) {
                     // Avatar
-                    ZStack {
-                        Circle()
-                            .fill(Color.parkPrimary.opacity(0.3))
-                            .frame(width: 50, height: 50)
-
-                        Text(String(request.fromUserName.prefix(1)))
-                            .font(.parkHeadlineLarge)
-                            .foregroundStyle(.white)
-                    }
+                    AvatarCircle(name: request.fromUserName)
 
                     // Info
                     VStack(alignment: .leading, spacing: ParkSpacing.xxs) {
@@ -248,15 +232,7 @@ struct UserSearchCard: View {
         GlassCard(padding: 0) {
             HStack(spacing: ParkSpacing.md) {
                 // Avatar
-                ZStack {
-                    Circle()
-                        .fill(Color.parkPrimary.opacity(0.3))
-                        .frame(width: 50, height: 50)
-
-                    Text(String(user.name.prefix(1)))
-                        .font(.parkHeadlineLarge)
-                        .foregroundStyle(.white)
-                }
+                AvatarCircle(name: user.name)
 
                 // Info
                 VStack(alignment: .leading, spacing: ParkSpacing.xxs) {

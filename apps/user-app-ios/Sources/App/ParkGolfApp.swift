@@ -15,23 +15,31 @@ struct ParkGolfApp: App {
                 .environmentObject(appState)
                 .onReceive(NotificationCenter.default.publisher(for: .navigateToBookingDetail)) { notification in
                     if let bookingId = notification.userInfo?["bookingId"] as? Int {
+                        #if DEBUG
                         print("[Navigation] Navigate to booking: \(bookingId)")
+                        #endif
                         // TODO: Handle navigation to booking detail
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .navigateToFriendRequests)) { notification in
                     if let requestId = notification.userInfo?["requestId"] as? Int {
+                        #if DEBUG
                         print("[Navigation] Navigate to friend request: \(requestId)")
+                        #endif
                         // TODO: Handle navigation to friend requests
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .navigateToFriendsList)) { _ in
+                    #if DEBUG
                     print("[Navigation] Navigate to friends list")
+                    #endif
                     // TODO: Handle navigation to friends list
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .navigateToChatRoom)) { notification in
                     if let chatRoomId = notification.userInfo?["chatRoomId"] as? String {
+                        #if DEBUG
                         print("[Navigation] Navigate to chat room: \(chatRoomId)")
+                        #endif
                         // TODO: Handle navigation to chat room
                     }
                 }
@@ -55,7 +63,31 @@ final class AppDelegate: NSObject, UIApplicationDelegate, @unchecked Sendable {
         // Request push notification permission
         requestPushNotificationPermission(application: application)
 
+        // Pre-warm keyboard to avoid first-launch delay
+        preWarmKeyboard()
+
         return true
+    }
+
+    // MARK: - Keyboard Pre-warm
+
+    private func preWarmKeyboard() {
+        let window = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first?.windows.first
+
+        let field = UITextField()
+        field.inputAccessoryView = UIView()
+        field.alpha = 0
+        window?.addSubview(field)
+
+        DispatchQueue.main.async {
+            field.becomeFirstResponder()
+            DispatchQueue.main.async {
+                field.resignFirstResponder()
+                field.removeFromSuperview()
+            }
+        }
     }
 
     // MARK: - Push Notification Permission
@@ -65,17 +97,23 @@ final class AppDelegate: NSObject, UIApplicationDelegate, @unchecked Sendable {
 
         center.requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
             if let error = error {
+                #if DEBUG
                 print("[Push] Authorization error: \(error.localizedDescription)")
+                #endif
                 return
             }
 
             if granted {
+                #if DEBUG
                 print("[Push] Permission granted")
+                #endif
                 DispatchQueue.main.async {
                     application.registerForRemoteNotifications()
                 }
             } else {
+                #if DEBUG
                 print("[Push] Permission denied")
+                #endif
             }
         }
     }
@@ -87,7 +125,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, @unchecked Sendable {
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
         let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
+        #if DEBUG
         print("[Push] APNs token received: \(tokenString.prefix(20))...")
+        #endif
 
         // Store token and register with server
         Task {
@@ -100,7 +140,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, @unchecked Sendable {
         _ application: UIApplication,
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
+        #if DEBUG
         print("[Push] Failed to register: \(error.localizedDescription)")
+        #endif
     }
 
 }
@@ -115,7 +157,9 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         let userInfo = notification.request.content.userInfo
+        #if DEBUG
         print("[Push] Foreground notification received: \(userInfo)")
+        #endif
 
         // Show banner and play sound even when app is in foreground
         completionHandler([.banner, .badge, .sound])
@@ -128,7 +172,9 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let userInfo = response.notification.request.content.userInfo
+        #if DEBUG
         print("[Push] Notification tapped: \(userInfo)")
+        #endif
 
         // Copy userInfo to Sendable dictionary
         let notificationType = userInfo["type"] as? String
@@ -159,7 +205,9 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         chatRoomId: String?
     ) {
         guard let type = type else {
+            #if DEBUG
             print("[Push] Unknown notification type")
+            #endif
             return
         }
 
@@ -183,7 +231,9 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
             }
 
         default:
+            #if DEBUG
             print("[Push] Unhandled notification type: \(type)")
+            #endif
         }
     }
 
@@ -249,6 +299,13 @@ final class AppState: ObservableObject {
     @Published var navigateToTab: MainTabView.Tab?
     @Published var pendingChatRoomId: String?
     @Published var pendingBookingId: Int?
+    @Published var pendingSocialSegment: SocialSegment?
+
+    /// 소셜 탭 세그먼트
+    enum SocialSegment {
+        case friends
+        case chat
+    }
 
     /// 비밀번호 변경 권유를 이미 표시했는지 (세션 내 1회만)
     private var hasShownPasswordReminder = false

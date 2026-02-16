@@ -163,20 +163,25 @@ struct RoundSearchParams: Sendable {
         self.limit = limit
     }
 
+    // 시니어 UI: 3개 옵션으로 단순화
     enum TimeOfDay: String, CaseIterable, Sendable {
         case all = ""
-        case dawn = "DAWN"
-        case morning = "MORNING"
-        case afternoon = "AFTERNOON"
-        case evening = "EVENING"
+        case morning = "DAWN,MORNING"      // 새벽+오전 = 05~12시
+        case afternoon = "AFTERNOON,EVENING" // 오후+저녁 = 12~22시
 
         var displayName: String {
             switch self {
             case .all: return "전체"
-            case .dawn: return "새벽"
             case .morning: return "오전"
             case .afternoon: return "오후"
-            case .evening: return "저녁"
+            }
+        }
+
+        var timeRange: (start: String, end: String) {
+            switch self {
+            case .all: return ("00:00", "23:59")
+            case .morning: return ("05:00", "12:00")
+            case .afternoon: return ("12:00", "22:00")
             }
         }
     }

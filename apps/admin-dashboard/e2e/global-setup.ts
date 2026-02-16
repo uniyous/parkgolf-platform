@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const BASE_URL = 'https://dev-api.goparkmate.com';
+const BASE_URL = 'https://dev-api.parkgolfmate.com';
 const AUTH_FILE = path.resolve(__dirname, '.auth/admin.json');
 
 const HEALTH_ENDPOINTS = [

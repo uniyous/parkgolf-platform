@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Inject, Logger, HttpException, HttpStatus, OnModuleInit } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, TimeoutError } from 'rxjs';
 import { Errors } from '../exceptions';
@@ -9,12 +9,42 @@ import { NATS_TIMEOUTS } from '../constants';
  * NATS 통신을 위한 공통 래퍼 - 타임아웃, 에러 핸들링, 로깅 통합
  */
 @Injectable()
-export class NatsClientService {
+export class NatsClientService implements OnModuleInit {
   private readonly logger = new Logger(NatsClientService.name);
+  private isConnected = false;
 
   constructor(
     @Inject('NATS_CLIENT') private readonly natsClient: ClientProxy,
   ) {}
+
+  async onModuleInit() {
+    this.connectWithRetry().catch(() => {});
+  }
+
+  private async connectWithRetry() {
+    const MAX_ATTEMPTS = 50;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        await this.natsClient.connect();
+        this.isConnected = true;
+        this.logger.log(`NATS connected (attempt ${attempt})`);
+        return;
+      } catch (error: any) {
+        this.isConnected = false;
+        if (attempt === MAX_ATTEMPTS) {
+          this.logger.error(`NATS failed after ${MAX_ATTEMPTS} attempts`);
+          return;
+        }
+        const delay = Math.min(2000 * 2 ** Math.min(attempt - 1, 3), 15000);
+        this.logger.warn(`NATS attempt ${attempt}/${MAX_ATTEMPTS}: ${error.message}. Retry in ${delay / 1000}s`);
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+  }
+
+  getConnectionStatus(): boolean {
+    return this.isConnected;
+  }
 
   /**
    * NATS 메시지 전송 (공통 래퍼)
@@ -131,7 +161,9 @@ export class NatsClientService {
 
   /**
    * 에러 코드에서 HTTP 상태 코드 추출
-   * 에러 카탈로그 코드 패턴: AUTH_xxx, USER_xxx, ADMIN_xxx, BOOK_xxx, COURSE_xxx, VAL_xxx, EXT_xxx, DB_xxx, SYS_xxx
+   * 에러 카탈로그 코드 패턴: AUTH_xxx, USER_xxx, ADMIN_xxx, FRIEND_xxx, BOOK_xxx, COURSE_xxx,
+   * CHAT_xxx, NOTI_xxx, PAY_xxx, REFUND_xxx, BILLING_xxx, WEATHER_xxx, KMA_xxx,
+   * LOCATION_xxx, KAKAO_xxx, VAL_xxx, EXT_xxx, DB_xxx, SYS_xxx
    */
   private getStatusFromErrorCode(code: string): HttpStatus {
     if (!code) return HttpStatus.INTERNAL_SERVER_ERROR;
@@ -188,6 +220,58 @@ export class NatsClientService {
         if (code === 'SYS_002' || code === 'SYS_005') return HttpStatus.SERVICE_UNAVAILABLE;
         if (code === 'SYS_003') return HttpStatus.REQUEST_TIMEOUT;
         if (code === 'SYS_004') return HttpStatus.TOO_MANY_REQUESTS;
+        return HttpStatus.INTERNAL_SERVER_ERROR;
+
+      case 'PAY':
+        if (code === 'PAY_001') return HttpStatus.NOT_FOUND;
+        return HttpStatus.BAD_REQUEST;
+
+      case 'REFUND':
+        if (code === 'REFUND_001') return HttpStatus.NOT_FOUND;
+        return HttpStatus.BAD_REQUEST;
+
+      case 'BILLING':
+        if (code === 'BILLING_001') return HttpStatus.NOT_FOUND;
+        if (code === 'BILLING_003') return HttpStatus.CONFLICT;
+        return HttpStatus.BAD_REQUEST;
+
+      case 'FRIEND':
+        if (code === 'FRIEND_001') return HttpStatus.NOT_FOUND;
+        if (code === 'FRIEND_003' || code === 'FRIEND_004') return HttpStatus.CONFLICT;
+        if (code === 'FRIEND_006') return HttpStatus.FORBIDDEN;
+        return HttpStatus.BAD_REQUEST;
+
+      case 'CHAT':
+        if (code === 'CHAT_001' || code === 'CHAT_002') return HttpStatus.NOT_FOUND;
+        if (code === 'CHAT_003') return HttpStatus.FORBIDDEN;
+        return HttpStatus.BAD_REQUEST;
+
+      case 'NOTI':
+        if (code === 'NOTI_001' || code === 'NOTI_003') return HttpStatus.NOT_FOUND;
+        if (code === 'NOTI_004') return HttpStatus.BAD_REQUEST;
+        return HttpStatus.INTERNAL_SERVER_ERROR;
+
+      case 'WEATHER':
+        if (code === 'WEATHER_001') return HttpStatus.BAD_REQUEST;
+        if (code === 'WEATHER_002') return HttpStatus.NOT_FOUND;
+        return HttpStatus.SERVICE_UNAVAILABLE;
+
+      case 'KMA':
+        if (code === 'KMA_001') return HttpStatus.BAD_GATEWAY;
+        if (code === 'KMA_002') return HttpStatus.GATEWAY_TIMEOUT;
+        if (code === 'KMA_003') return HttpStatus.SERVICE_UNAVAILABLE;
+        if (code === 'KMA_004') return HttpStatus.UNAUTHORIZED;
+        if (code === 'KMA_005') return HttpStatus.NOT_FOUND;
+        return HttpStatus.BAD_GATEWAY;
+
+      case 'LOCATION':
+        if (code === 'LOCATION_001') return HttpStatus.NOT_FOUND;
+        if (code === 'LOCATION_002') return HttpStatus.BAD_REQUEST;
+        return HttpStatus.SERVICE_UNAVAILABLE;
+
+      case 'KAKAO':
+        if (code === 'KAKAO_001') return HttpStatus.BAD_GATEWAY;
+        if (code === 'KAKAO_002') return HttpStatus.GATEWAY_TIMEOUT;
         return HttpStatus.INTERNAL_SERVER_ERROR;
 
       default:

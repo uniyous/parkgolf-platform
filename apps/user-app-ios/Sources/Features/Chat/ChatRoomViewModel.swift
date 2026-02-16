@@ -27,7 +27,7 @@ final class ChatRoomViewModel: ObservableObject {
     private var cursor: String?
     private var cachedToken: String?
     private nonisolated(unsafe) var foregroundObserver: (any NSObjectProtocol)?
-    private var typingTimer: Timer?
+    private nonisolated(unsafe) var typingTimer: Timer?
 
     // MARK: - Init
 
@@ -39,6 +39,8 @@ final class ChatRoomViewModel: ObservableObject {
     }
 
     deinit {
+        typingTimer?.invalidate()
+        typingTimer = nil
         if let observer = foregroundObserver {
             NotificationCenter.default.removeObserver(observer)
         }

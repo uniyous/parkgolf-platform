@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.parkgolf.app.data.local.datastore.AuthPreferences
+import com.parkgolf.app.util.LocationManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -29,4 +30,10 @@ object DataModule {
     fun provideAuthPreferences(
         dataStore: DataStore<Preferences>
     ): AuthPreferences = AuthPreferences(dataStore)
+
+    @Provides
+    @Singleton
+    fun provideLocationManager(
+        @ApplicationContext context: Context
+    ): LocationManager = LocationManager(context)
 }

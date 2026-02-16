@@ -4,13 +4,13 @@ import { ActionConfirmPopover } from '@/components/common/ActionConfirmPopover';
 import type { Booking, BookingStatusType } from '@/types';
 
 const BOOKING_STATUSES: Record<string, { label: string; color: string }> = {
-  PENDING: { label: '대기', color: 'bg-yellow-100 text-yellow-800' },
-  CONFIRMED: { label: '확정', color: 'bg-blue-100 text-blue-800' },
-  COMPLETED: { label: '완료', color: 'bg-green-100 text-green-800' },
-  CANCELLED: { label: '취소', color: 'bg-red-100 text-red-800' },
-  NO_SHOW: { label: '노쇼', color: 'bg-gray-100 text-gray-800' },
-  SAGA_PENDING: { label: '처리중', color: 'bg-purple-100 text-purple-800' },
-  SAGA_FAILED: { label: '실패', color: 'bg-red-100 text-red-800' },
+  PENDING: { label: '대기', color: 'bg-yellow-500/20 text-yellow-400' },
+  CONFIRMED: { label: '확정', color: 'bg-emerald-500/20 text-emerald-400' },
+  COMPLETED: { label: '완료', color: 'bg-green-500/20 text-green-400' },
+  CANCELLED: { label: '취소', color: 'bg-red-500/20 text-red-400' },
+  NO_SHOW: { label: '노쇼', color: 'bg-white/10 text-white/60' },
+  SAGA_PENDING: { label: '처리중', color: 'bg-purple-500/20 text-purple-400' },
+  SAGA_FAILED: { label: '실패', color: 'bg-red-500/20 text-red-400' },
 };
 
 const PAYMENT_METHODS: Record<string, string> = {
@@ -79,10 +79,10 @@ export const BookingTable: React.FC<BookingTableProps> = ({
 }) => {
   if (bookings.length === 0) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-12">
+      <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-12">
         <div className="text-center">
           <svg
-            className="mx-auto h-12 w-12 text-gray-400"
+            className="mx-auto h-12 w-12 text-white/40"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -94,8 +94,8 @@ export const BookingTable: React.FC<BookingTableProps> = ({
               d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
             />
           </svg>
-          <h3 className="mt-2 text-lg font-medium text-gray-900">예약이 없습니다</h3>
-          <p className="mt-1 text-sm text-gray-500">
+          <h3 className="mt-2 text-lg font-medium text-white">예약이 없습니다</h3>
+          <p className="mt-1 text-sm text-white/50">
             선택한 조건에 해당하는 예약이 없습니다.
           </p>
         </div>
@@ -104,63 +104,63 @@ export const BookingTable: React.FC<BookingTableProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-white/15">
+          <thead className="bg-white/5">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase tracking-wider">
                 예약번호
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase tracking-wider">
                 클럽/코스
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase tracking-wider">
                 날짜/시간
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase tracking-wider">
                 예약자
               </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-center text-xs font-medium text-white/50 uppercase tracking-wider">
                 인원
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-right text-xs font-medium text-white/50 uppercase tracking-wider">
                 금액
               </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-center text-xs font-medium text-white/50 uppercase tracking-wider">
                 결제
               </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-center text-xs font-medium text-white/50 uppercase tracking-wider">
                 상태
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-right text-xs font-medium text-white/50 uppercase tracking-wider">
                 액션
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white/10 divide-y divide-white/15">
             {bookings.map((booking) => {
               const isTodayBooking = isToday(booking.bookingDate);
               const statusConfig = BOOKING_STATUSES[booking.status] || {
                 label: booking.status,
-                color: 'bg-gray-100 text-gray-800',
+                color: 'bg-white/10 text-white',
               };
 
               return (
                 <tr
                   key={booking.id}
-                  className={`hover:bg-gray-50 transition-colors ${
-                    isTodayBooking ? 'bg-blue-50/50 border-l-4 border-l-blue-500' : ''
+                  className={`hover:bg-white/5 transition-colors ${
+                    isTodayBooking ? 'bg-emerald-500/10 border-l-4 border-l-emerald-500' : ''
                   }`}
                 >
                   {/* 예약번호 */}
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900">
+                      <span className="text-sm font-medium text-white">
                         {booking.bookingNumber || `B${String(booking.id).padStart(4, '0')}`}
                       </span>
                       {isTodayBooking && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-emerald-500/20 text-emerald-400">
                           오늘
                         </span>
                       )}
@@ -169,20 +169,20 @@ export const BookingTable: React.FC<BookingTableProps> = ({
 
                   {/* 클럽/코스 */}
                   <td className="px-4 py-3">
-                    <div className="text-sm font-medium text-gray-900 truncate max-w-[160px]">
+                    <div className="text-sm font-medium text-white truncate max-w-[160px]">
                       {booking.clubName || '-'}
                     </div>
-                    <div className="text-xs text-gray-500 truncate max-w-[160px]">
+                    <div className="text-xs text-white/50 truncate max-w-[160px]">
                       {getCourseDisplayName(booking)}
                     </div>
                   </td>
 
                   {/* 날짜/시간 */}
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
+                    <div className="text-sm text-white">
                       {formatDisplayDate(booking.bookingDate)}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-white/50">
                       {booking.startTime}
                       {booking.endTime && ` ~ ${booking.endTime}`}
                     </div>
@@ -190,31 +190,31 @@ export const BookingTable: React.FC<BookingTableProps> = ({
 
                   {/* 예약자 */}
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="text-sm font-medium text-white">
                       {getCustomerName(booking)}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-white/50">
                       {getCustomerPhone(booking)}
                     </div>
                   </td>
 
                   {/* 인원 */}
                   <td className="px-4 py-3 whitespace-nowrap text-center">
-                    <span className="text-sm text-gray-900">
+                    <span className="text-sm text-white">
                       {booking.playerCount || booking.numberOfPlayers || 0}명
                     </span>
                   </td>
 
                   {/* 금액 */}
                   <td className="px-4 py-3 whitespace-nowrap text-right">
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-white">
                       ₩{(booking.totalPrice || booking.totalAmount || 0).toLocaleString()}
                     </span>
                   </td>
 
                   {/* 결제 */}
                   <td className="px-4 py-3 whitespace-nowrap text-center">
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-white/60">
                       {booking.paymentMethod
                         ? PAYMENT_METHODS[booking.paymentMethod] || booking.paymentMethod
                         : '-'}
@@ -236,7 +236,7 @@ export const BookingTable: React.FC<BookingTableProps> = ({
                       {/* 상세 보기 */}
                       <button
                         onClick={() => onViewDetail(booking)}
-                        className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
+                        className="p-1.5 text-white/60 hover:text-white hover:bg-white/10 rounded transition-colors"
                         title="상세 보기"
                       >
                         <Eye className="h-4 w-4" />
@@ -254,7 +254,7 @@ export const BookingTable: React.FC<BookingTableProps> = ({
                             align="center"
                           >
                             <button
-                              className="p-1.5 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
+                              className="p-1.5 text-green-400 hover:text-green-300 hover:bg-green-500/10 rounded transition-colors disabled:opacity-50"
                               title="완료 처리"
                             >
                               <CheckCircle className="h-4 w-4" />
@@ -269,7 +269,7 @@ export const BookingTable: React.FC<BookingTableProps> = ({
                             align="center"
                           >
                             <button
-                              className="p-1.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+                              className="p-1.5 text-white/60 hover:text-white hover:bg-white/10 rounded transition-colors disabled:opacity-50"
                               title="노쇼 처리"
                             >
                               <UserX className="h-4 w-4" />
@@ -284,7 +284,7 @@ export const BookingTable: React.FC<BookingTableProps> = ({
                             align="center"
                           >
                             <button
-                              className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                              className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50"
                               title="취소"
                             >
                               <XCircle className="h-4 w-4" />
@@ -304,7 +304,7 @@ export const BookingTable: React.FC<BookingTableProps> = ({
                           align="center"
                         >
                           <button
-                            className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                            className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50"
                             title="취소"
                           >
                             <XCircle className="h-4 w-4" />

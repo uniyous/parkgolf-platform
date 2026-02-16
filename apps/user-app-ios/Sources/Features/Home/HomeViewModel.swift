@@ -3,7 +3,6 @@ import Foundation
 @MainActor
 class HomeViewModel: ObservableObject {
     @Published var upcomingBookings: [BookingResponse] = []
-    @Published var popularClubs: [Club] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
 
@@ -11,6 +10,13 @@ class HomeViewModel: ObservableObject {
     @Published var friendRequests: [FriendRequest] = []
     @Published var unreadChatRooms: [ChatRoom] = []
     @Published var unreadNotificationCount: Int = 0
+
+    // 위치/날씨 데이터
+    @Published var regionName: String?
+    @Published var currentWeather: CurrentWeather?
+    @Published var nearbyClubs: [NearbyClub] = []
+    @Published var hasLocation = false
+    @Published var locationDataLoaded = false
 
     var pendingFriendRequestsCount: Int {
         friendRequests.count
@@ -25,86 +31,186 @@ class HomeViewModel: ObservableObject {
     }
 
     // 전체 알림 배지 수 (헤더 벨 아이콘용)
+    // 알림 서비스에 친구요청/채팅 알림이 이미 포함되어 있으므로 중복 카운트 방지
     var totalNotificationBadgeCount: Int {
-        unreadNotificationCount + pendingFriendRequestsCount + totalUnreadMessagesCount
+        unreadNotificationCount
     }
 
     private let bookingService = BookingService()
     private let friendService = FriendService()
     private let notificationService = NotificationService()
+    private let locationWeatherService = LocationWeatherService()
     private let apiClient = APIClient.shared
 
-    func loadData() async {
-        isLoading = true
+    // MARK: - Public
+
+    func loadData(isRefresh: Bool = false) async {
+        if !isRefresh {
+            isLoading = true
+        }
         errorMessage = nil
 
-        // Load all data concurrently using async let
-        async let bookingsTask = loadBookings()
-        async let friendRequestsTask = loadFriendRequests()
-        async let chatRoomsTask = loadChatRooms()
-        async let notificationCountTask = loadUnreadNotificationCount()
+        #if DEBUG
+        print("[Home] loadData started (isRefresh: \(isRefresh))")
+        #endif
 
-        // Await all tasks
-        let (bookings, requests, rooms, notifCount) = await (bookingsTask, friendRequestsTask, chatRoomsTask, notificationCountTask)
+        // 4가지 데이터를 동시에 로드 (실패 시 기존 데이터 유지)
+        async let b: Void = refreshBookings()
+        async let f: Void = refreshFriendRequests()
+        async let c: Void = refreshChatRooms()
+        async let n: Void = refreshNotificationCount()
 
-        upcomingBookings = bookings
-        friendRequests = requests
-        unreadChatRooms = rooms
-        unreadNotificationCount = notifCount
+        _ = await (b, f, c, n)
 
-        // Mock popular clubs for now
-        popularClubs = [
-            Club(id: "1", name: "서울파크골프장", address: "서울시 강남구", phoneNumber: nil, imageUrl: nil, latitude: nil, longitude: nil, courses: nil),
-            Club(id: "2", name: "부산파크골프장", address: "부산시 해운대구", phoneNumber: nil, imageUrl: nil, latitude: nil, longitude: nil, courses: nil),
-            Club(id: "3", name: "제주파크골프장", address: "제주시 애월읍", phoneNumber: nil, imageUrl: nil, latitude: nil, longitude: nil, courses: nil),
-        ]
+        // 위치 기반 데이터 로드
+        await refreshLocationData()
 
         isLoading = false
+
+        #if DEBUG
+        print("[Home] loadData completed")
+        #endif
     }
 
-    private func loadBookings() async -> [BookingResponse] {
+    func refresh() async {
+        // .refreshable의 structured concurrency 취소 전파 방지
+        // unstructured Task로 실행하여 pull 제스처 해제 시에도 API 호출이 취소되지 않도록 함
+        await withCheckedContinuation { continuation in
+            Task {
+                await loadData(isRefresh: true)
+                continuation.resume()
+            }
+        }
+    }
+
+    // MARK: - Data Refresh (실패 시 기존 데이터 유지)
+
+    private func refreshBookings() async {
         do {
             let allBookings = try await bookingService.getMyBookings(status: nil, page: 1, limit: 5)
             let now = Date()
-            return allBookings.filter { booking in
+            upcomingBookings = allBookings.filter { booking in
                 guard let date = DateHelper.fromISODateString(booking.bookingDate) else { return false }
                 return date >= Calendar.current.startOfDay(for: now) &&
                        (booking.status == "PENDING" || booking.status == "SLOT_RESERVED" || booking.status == "CONFIRMED")
             }.prefix(5).map { $0 }
+            #if DEBUG
+            print("[Home] bookings refreshed: \(upcomingBookings.count)건")
+            #endif
         } catch {
-            return []
+            #if DEBUG
+            print("[Home] bookings refresh failed: \(error.localizedDescription)")
+            #endif
         }
     }
 
-    private func loadFriendRequests() async -> [FriendRequest] {
+    private func refreshFriendRequests() async {
         do {
-            return try await friendService.getFriendRequests()
+            friendRequests = try await friendService.getFriendRequests()
+            #if DEBUG
+            print("[Home] friendRequests refreshed: \(friendRequests.count)건")
+            #endif
         } catch {
-            return []
+            #if DEBUG
+            print("[Home] friendRequests refresh failed: \(error.localizedDescription)")
+            #endif
         }
     }
 
-    private func loadChatRooms() async -> [ChatRoom] {
+    private func refreshChatRooms() async {
         do {
             let rooms = try await apiClient.requestArray(
                 ChatEndpoints.rooms(page: 1, limit: 50),
                 responseType: ChatRoom.self
             )
-            return rooms.filter { $0.unreadCount > 0 }
+            unreadChatRooms = rooms.filter { $0.unreadCount > 0 }
+            #if DEBUG
+            print("[Home] chatRooms refreshed: unread \(unreadChatRooms.count)건")
+            #endif
         } catch {
-            return []
+            #if DEBUG
+            print("[Home] chatRooms refresh failed: \(error.localizedDescription)")
+            #endif
         }
     }
 
-    private func loadUnreadNotificationCount() async -> Int {
+    private func refreshNotificationCount() async {
         do {
-            return try await notificationService.getUnreadCount()
+            unreadNotificationCount = try await notificationService.getUnreadCount()
+            #if DEBUG
+            print("[Home] notificationCount refreshed: \(unreadNotificationCount)")
+            #endif
         } catch {
-            return 0
+            #if DEBUG
+            print("[Home] notificationCount refresh failed: \(error.localizedDescription)")
+            #endif
         }
     }
 
-    func refresh() async {
-        await loadData()
+    // MARK: - Location Data
+
+    private func refreshLocationData() async {
+        let locationManager = LocationManager.shared
+
+        guard locationManager.hasLocation,
+              let lat = locationManager.latitude,
+              let lon = locationManager.longitude else {
+            if !locationDataLoaded {
+                hasLocation = false
+                locationDataLoaded = true
+            }
+            return
+        }
+
+        hasLocation = true
+
+        // 행정동, 날씨, 주변 골프장 동시 로드
+        async let r: Void = refreshRegion(lat: lat, lon: lon)
+        async let w: Void = refreshWeather(lat: lat, lon: lon)
+        async let n: Void = refreshNearbyClubs(lat: lat, lon: lon)
+
+        _ = await (r, w, n)
+
+        locationDataLoaded = true
+    }
+
+    private func refreshRegion(lat: Double, lon: Double) async {
+        do {
+            let region = try await locationWeatherService.reverseGeo(lat: lat, lon: lon)
+            regionName = region.displayName.isEmpty ? nil : region.displayName
+            #if DEBUG
+            print("[Home] region refreshed: \(regionName ?? "nil")")
+            #endif
+        } catch {
+            #if DEBUG
+            print("[Home] region refresh failed: \(error.localizedDescription)")
+            #endif
+        }
+    }
+
+    private func refreshWeather(lat: Double, lon: Double) async {
+        do {
+            currentWeather = try await locationWeatherService.getCurrentWeather(lat: lat, lon: lon)
+            #if DEBUG
+            print("[Home] weather refreshed: \(currentWeather?.temperature ?? 0)°C")
+            #endif
+        } catch {
+            #if DEBUG
+            print("[Home] weather refresh failed: \(error.localizedDescription)")
+            #endif
+        }
+    }
+
+    private func refreshNearbyClubs(lat: Double, lon: Double) async {
+        do {
+            nearbyClubs = try await locationWeatherService.nearbyClubs(lat: lat, lon: lon)
+            #if DEBUG
+            print("[Home] nearbyClubs refreshed: \(nearbyClubs.count)개")
+            #endif
+        } catch {
+            #if DEBUG
+            print("[Home] nearbyClubs refresh failed: \(error.localizedDescription)")
+            #endif
+        }
     }
 }

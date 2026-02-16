@@ -1,29 +1,22 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Search,
-  SlidersHorizontal,
-  X,
-  ChevronUp,
-  ChevronDown,
-} from 'lucide-react';
+import { X } from 'lucide-react';
 import { AppLayout, Container } from '@/components/layout';
-import { GlassCard, Button, SectionHeader } from '@/components/ui';
-import { Input, Select, Pagination, GameCard, GameCardSkeleton } from '@/components';
+import { GlassCard } from '@/components/ui';
+import { Pagination, GameCard, GameCardSkeleton } from '@/components';
 import { useSearchGamesQuery } from '@/hooks/queries';
 import { useGameSearchParams } from '@/hooks/useSearchParams';
 import { useDebounce } from '@/hooks/useDebounce';
-import { SORT_OPTIONS, PLAYER_OPTIONS, DATE_FILTER_MAX_MONTHS, TIME_PERIOD_CHIPS } from '@/lib/constants';
+import { DATE_FILTER_MAX_MONTHS, SIMPLE_TIME_PERIODS, DEFAULT_PAGE_SIZE, DEBOUNCE_DELAY_MS } from '@/lib/constants';
 import type { Game, GameTimeSlot, GameSearchParams } from '@/lib/api/gameApi';
 
 export function BookingsPage() {
   const navigate = useNavigate();
-  const { filters, updateFilters, resetFilters } = useGameSearchParams();
+  const { filters, updateFilters } = useGameSearchParams();
 
   const [searchInput, setSearchInput] = useState(filters.search);
-  const [showFilters, setShowFilters] = useState(false);
 
-  const debouncedSearch = useDebounce(searchInput, 300);
+  const debouncedSearch = useDebounce(searchInput, DEBOUNCE_DELAY_MS);
 
   React.useEffect(() => {
     if (debouncedSearch !== filters.search) {
@@ -37,18 +30,12 @@ export function BookingsPage() {
       search: filters.search || undefined,
       date: filters.date || undefined,
       timeOfDay: filters.timeOfDay || undefined,
-      minPrice: filters.minPrice ?? undefined,
-      maxPrice: filters.maxPrice ?? undefined,
-      minPlayers: filters.minPlayers ?? undefined,
-      sortBy: filters.sortBy,
-      sortOrder: filters.sortOrder,
       page: filters.page,
-      limit: 20,
+      limit: DEFAULT_PAGE_SIZE,
     }),
-    [filters]
+    [filters.search, filters.date, filters.timeOfDay, filters.page]
   );
 
-  // Query hooks
   const {
     data: searchResult,
     isLoading: isLoadingGames,
@@ -60,7 +47,7 @@ export function BookingsPage() {
     ? {
         total: searchResult.total || games.length,
         page: searchResult.page || filters.page,
-        limit: searchResult.limit || 20,
+        limit: searchResult.limit || DEFAULT_PAGE_SIZE,
         totalPages: searchResult.totalPages || 1,
       }
     : undefined;
@@ -78,60 +65,37 @@ export function BookingsPage() {
     });
   };
 
-  const handleSortChange = (value: string | number) => {
-    const [sortBy, sortOrder] = String(value).split('-') as [
-      GameSearchParams['sortBy'],
-      GameSearchParams['sortOrder']
-    ];
-    updateFilters({ sortBy, sortOrder });
-  };
-
-  const currentSortValue = `${filters.sortBy}-${filters.sortOrder}`;
-
-  const selectedPeriods = filters.timeOfDay ? filters.timeOfDay.split(',').filter(Boolean) : [];
-
-  const toggleTimePeriod = (period: string) => {
-    const newPeriods = selectedPeriods.includes(period)
-      ? selectedPeriods.filter(p => p !== period)
-      : [...selectedPeriods, period];
-    updateFilters({ timeOfDay: newPeriods.join(',') || '' });
-  };
-
-  const hasActiveFilters = filters.search || filters.minPrice || filters.maxPrice || filters.minPlayers;
-
   return (
     <AppLayout title="예약">
       <Container className="py-4 md:py-6 space-y-6">
-        {/* Search Section */}
-        <div>
-          <SectionHeader title="라운드 검색" icon={Search} className="mb-3 px-1" />
-          <GlassCard>
-            {/* Basic Filters */}
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-[var(--color-text-secondary)]">
-                예약 조건
-              </h3>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-1.5"
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-                필터
-                {showFilters ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              </Button>
+        {/* Search Filters */}
+        <GlassCard>
+          <h2 className="text-xl font-semibold text-white mb-6">언제 치러 가세요?</h2>
+
+          <div className="space-y-5">
+            {/* 날짜 선택 */}
+            <div>
+              <label className="block text-base font-semibold text-white/90 mb-2">예약 날짜</label>
+              <input
+                type="date"
+                value={filters.date}
+                onChange={(e) => updateFilters({ date: e.target.value })}
+                min={getMinDate()}
+                max={getMaxDate()}
+                className="w-full h-14 px-4 text-lg bg-white/10 border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/30 appearance-none"
+              />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Search Input */}
+            {/* 검색어 */}
+            <div>
+              <label className="block text-base font-semibold text-white/90 mb-2">골프장 검색</label>
               <div className="relative">
                 <input
                   type="text"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="골프장, 지역 검색..."
-                  className="input-glass pr-10"
+                  className="w-full h-14 px-4 text-lg bg-white/10 border border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30"
                 />
                 {searchInput && (
                   <button
@@ -139,116 +103,36 @@ export function BookingsPage() {
                       setSearchInput('');
                       updateFilters({ search: '' });
                     }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-white transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-5 h-5" />
                   </button>
                 )}
               </div>
-
-              {/* Date */}
-              <Input
-                type="date"
-                value={filters.date}
-                onChange={(e) => updateFilters({ date: e.target.value })}
-                min={getMinDate()}
-                max={getMaxDate()}
-                glass
-              />
-
-              {/* 시간대 (다중선택 칩) */}
-              <div>
-                <label className="block text-xs text-[var(--color-text-muted)] mb-1">시간대</label>
-                <div className="flex flex-wrap gap-2">
-                  {TIME_PERIOD_CHIPS.map((chip) => (
-                    <button
-                      key={chip.value}
-                      type="button"
-                      onClick={() => toggleTimePeriod(chip.value)}
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
-                        selectedPeriods.includes(chip.value)
-                          ? 'bg-green-500/30 text-green-300 border-green-500/50'
-                          : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
-                      }`}
-                    >
-                      {chip.label}
-                      <span className="ml-1 text-xs opacity-70">{chip.desc}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
 
-            {/* Advanced Filters */}
-            {showFilters && (
-              <div className="border-t border-[var(--color-border)] pt-4 mt-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-xs text-[var(--color-text-muted)] mb-1">
-                      최소 가격
-                    </label>
-                    <input
-                      type="number"
-                      value={filters.minPrice ?? ''}
-                      onChange={(e) =>
-                        updateFilters({ minPrice: e.target.value ? Number(e.target.value) : null })
-                      }
-                      placeholder="0"
-                      min={0}
-                      step={1000}
-                      className="input-glass"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-[var(--color-text-muted)] mb-1">
-                      최대 가격
-                    </label>
-                    <input
-                      type="number"
-                      value={filters.maxPrice ?? ''}
-                      onChange={(e) =>
-                        updateFilters({ maxPrice: e.target.value ? Number(e.target.value) : null })
-                      }
-                      placeholder="100,000"
-                      min={0}
-                      step={1000}
-                      className="input-glass"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-[var(--color-text-muted)] mb-1">인원</label>
-                    <Select
-                      value={filters.minPlayers ? String(filters.minPlayers) : 'all'}
-                      onValueChange={(value) =>
-                        updateFilters({ minPlayers: value === 'all' ? null : Number(value) })
-                      }
-                      options={PLAYER_OPTIONS}
-                      glass
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-[var(--color-text-muted)] mb-1">정렬</label>
-                    <Select
-                      value={currentSortValue}
-                      onValueChange={handleSortChange}
-                      options={SORT_OPTIONS}
-                      glass
-                    />
-                  </div>
-                </div>
-
-                {hasActiveFilters && (
-                  <div className="mt-4 flex justify-end">
-                    <Button variant="secondary" size="sm" onClick={resetFilters}>
-                      <X className="w-4 h-4" />
-                      필터 초기화
-                    </Button>
-                  </div>
-                )}
+            {/* 시간대 (3개 단일선택) */}
+            <div>
+              <label className="block text-base font-semibold text-white/90 mb-2">시간대</label>
+              <div className="grid grid-cols-3 gap-3">
+                {SIMPLE_TIME_PERIODS.map((period) => (
+                  <button
+                    key={period.label}
+                    type="button"
+                    onClick={() => updateFilters({ timeOfDay: period.value })}
+                    className={`py-3 text-lg font-medium rounded-xl transition-all border ${
+                      (filters.timeOfDay || '') === period.value
+                        ? 'bg-green-500/30 text-green-300 border-green-500/50'
+                        : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
+                    }`}
+                  >
+                    {period.label}
+                  </button>
+                ))}
               </div>
-            )}
-          </GlassCard>
-        </div>
+            </div>
+          </div>
+        </GlassCard>
 
         {/* Error */}
         {gamesError && (
@@ -272,7 +156,7 @@ export function BookingsPage() {
         {!isLoadingGames && (
           <div>
             <div className="flex justify-between items-center mb-4 px-1">
-              <h3 className="text-lg font-semibold text-white">
+              <h3 className="text-xl font-bold text-white">
                 예약 가능한 라운드 ({pagination?.total || games.length}개)
               </h3>
               {pagination && pagination.total > pagination.limit && (
@@ -285,17 +169,12 @@ export function BookingsPage() {
             {games.length === 0 ? (
               <GlassCard className="text-center py-12">
                 <div className="text-5xl mb-4">🏌️</div>
-                <h3 className="text-lg font-semibold text-white mb-2">
+                <h3 className="text-xl font-semibold text-white mb-2">
                   예약 가능한 라운드가 없습니다
                 </h3>
-                <p className="text-[var(--color-text-muted)] mb-4">
+                <p className="text-[var(--color-text-muted)]">
                   다른 검색 조건을 선택해 보세요
                 </p>
-                {hasActiveFilters && (
-                  <Button variant="secondary" onClick={resetFilters}>
-                    필터 초기화
-                  </Button>
-                )}
               </GlassCard>
             ) : (
               <>
@@ -304,7 +183,6 @@ export function BookingsPage() {
                     <GameCard
                       key={game.id}
                       game={game}
-                      date={filters.date}
                       onTimeSlotSelect={handleTimeSlotSelect}
                     />
                   ))}

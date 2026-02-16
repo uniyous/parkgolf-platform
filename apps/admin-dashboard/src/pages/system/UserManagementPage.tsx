@@ -1,7 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, RefreshCw, Trash2, AlertTriangle } from 'lucide-react';
-import { useUsersQuery, useDeleteUserMutation, useUpdateUserStatusMutation } from '@/hooks/queries';
+import { Plus, RefreshCw, Trash2, AlertTriangle, Edit2 } from 'lucide-react';
+import {
+  useUsersQuery,
+  useDeleteUserMutation,
+  useUpdateUserStatusMutation,
+  useCompanyMembersQuery,
+  useCreateCompanyMemberMutation,
+  useUpdateCompanyMemberMutation,
+  useDeleteCompanyMemberMutation,
+} from '@/hooks/queries';
 import { Modal } from '@/components/ui';
 import { DataContainer } from '@/components/common';
 import {
@@ -13,26 +21,16 @@ import {
 } from '@/components/common/filters';
 import { UserFormModal } from '@/components/features/user/UserFormModal';
 import { PageLayout } from '@/components/layout';
-import type { User, UserStatus, UserMembershipTier } from '@/types';
+import { useAuthStore } from '@/stores/auth.store';
+import type { User, UserStatus, CompanyMember, CompanyMemberSource } from '@/types';
 
-type SortField = 'name' | 'email' | 'membershipTier' | 'status' | 'createdAt' | 'lastLoginAt';
+type SortField = 'name' | 'email' | 'status' | 'createdAt' | 'lastLoginAt' | 'joinedAt' | 'source';
 type SortDirection = 'asc' | 'desc';
 
 interface FilterState {
   search: string;
-  membershipTier: UserMembershipTier | 'ALL';
   status: UserStatus | 'ALL';
 }
-
-const MEMBERSHIP_LABELS: Record<UserMembershipTier, string> = {
-  REGULAR: '일반',
-  SILVER: '실버',
-  GOLD: '골드',
-  PLATINUM: '플래티넘',
-  VIP: 'VIP',
-  PREMIUM: '프리미엄',
-  GUEST: '게스트',
-};
 
 const STATUS_LABELS: Record<UserStatus, string> = {
   ACTIVE: '활성',
@@ -41,18 +39,525 @@ const STATUS_LABELS: Record<UserStatus, string> = {
   PENDING: '대기',
 };
 
-// 등급별 스타일 정보
-const TIER_META: Record<UserMembershipTier, { icon: string; color: string }> = {
-  VIP: { icon: '👑', color: 'bg-purple-100 text-purple-800 border-purple-200' },
-  PLATINUM: { icon: '💎', color: 'bg-slate-100 text-slate-800 border-slate-200' },
-  GOLD: { icon: '🥇', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-  SILVER: { icon: '🥈', color: 'bg-gray-100 text-gray-800 border-gray-200' },
-  REGULAR: { icon: '👤', color: 'bg-blue-100 text-blue-800 border-blue-200' },
-  PREMIUM: { icon: '⭐', color: 'bg-amber-100 text-amber-800 border-amber-200' },
-  GUEST: { icon: '👋', color: 'bg-green-100 text-green-800 border-green-200' },
+const SOURCE_LABELS: Record<CompanyMemberSource, string> = {
+  MANUAL: '수동 등록',
+  BOOKING: '예약 등록',
+  WALK_IN: '현장 등록',
 };
 
-export const UserManagementPage: React.FC = () => {
+// ============================================
+// COMPANY 스코프: 가맹점 회원 관리 뷰
+// ============================================
+const CompanyMemberView: React.FC = () => {
+  const [filters, setFilters] = useState({ search: '' });
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [addModal, setAddModal] = useState(false);
+  const [editModal, setEditModal] = useState<{ open: boolean; member?: CompanyMember }>({ open: false });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; member?: CompanyMember }>({ open: false });
+  const [newMemberEmail, setNewMemberEmail] = useState('');
+  const [newMemberMemo, setNewMemberMemo] = useState('');
+  const [editMemo, setEditMemo] = useState('');
+  const [editIsActive, setEditIsActive] = useState(true);
+
+  const { data: membersResponse, refetch, isLoading } = useCompanyMembersQuery(
+    filters.search ? { search: filters.search } : undefined,
+  );
+  const createMember = useCreateCompanyMemberMutation();
+  const updateMember = useUpdateCompanyMemberMutation();
+  const deleteMember = useDeleteCompanyMemberMutation();
+
+  // user query for searching users by email
+  const { data: usersResponse } = useUsersQuery(
+    newMemberEmail.length >= 3 ? { search: newMemberEmail } : undefined,
+    1,
+    5,
+  );
+  const searchedUsers = usersResponse?.users || [];
+
+  const members = membersResponse?.members || [];
+
+  const stats = useMemo(() => ({
+    total: membersResponse?.total || 0,
+    active: members.filter((m) => m.isActive).length,
+    inactive: members.filter((m) => !m.isActive).length,
+  }), [members, membersResponse]);
+
+  const handleAddMember = async (userId: number) => {
+    try {
+      await createMember.mutateAsync({
+        userId,
+        source: 'MANUAL',
+        memo: newMemberMemo || undefined,
+      });
+      setAddModal(false);
+      setNewMemberEmail('');
+      setNewMemberMemo('');
+    } catch {
+      // error handled by mutation
+    }
+  };
+
+  const handleUpdateMember = async () => {
+    if (!editModal.member) return;
+    try {
+      await updateMember.mutateAsync({
+        id: editModal.member.id,
+        data: { memo: editMemo || undefined, isActive: editIsActive },
+      });
+      setEditModal({ open: false });
+    } catch {
+      // error handled by mutation
+    }
+  };
+
+  const handleDeleteMember = async () => {
+    if (!deleteConfirm.member) return;
+    try {
+      await deleteMember.mutateAsync(deleteConfirm.member.id);
+      setDeleteConfirm({ open: false });
+    } catch {
+      // error handled by mutation
+    }
+  };
+
+  const openEditModal = (member: CompanyMember) => {
+    setEditMemo(member.memo || '');
+    setEditIsActive(member.isActive);
+    setEditModal({ open: true, member });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === members.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(members.map((m) => m.id));
+    }
+  };
+
+  const handleSelect = (id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  return (
+    <PageLayout>
+      {/* 헤더 카드 */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-white">회원 관리</h2>
+            <p className="mt-1 text-sm text-white/50">
+              가맹점에 등록된 회원을 관리합니다
+            </p>
+          </div>
+          <button
+            onClick={() => setAddModal(true)}
+            className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors shadow-sm"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            회원 추가
+          </button>
+        </div>
+
+        {/* 통계 */}
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="bg-emerald-500/10 p-4 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-emerald-400">{stats.total}</div>
+                <div className="text-sm text-emerald-400">전체 회원</div>
+              </div>
+              <div className="text-3xl">👥</div>
+            </div>
+          </div>
+          <div className="bg-green-500/10 p-4 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+                <div className="text-sm text-green-600">활성 회원</div>
+              </div>
+              <div className="text-3xl">✅</div>
+            </div>
+          </div>
+          <div className="bg-red-500/10 p-4 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-red-600">{stats.inactive}</div>
+                <div className="text-sm text-red-600">비활성 회원</div>
+              </div>
+              <div className="text-3xl">⏸️</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 필터 */}
+      <FilterContainer columns="flex">
+        <div className="flex items-end justify-between w-full">
+          <div className="flex items-end gap-4">
+            <FilterSearch
+              label="검색"
+              showLabel
+              value={filters.search}
+              onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
+              placeholder="이름, 이메일, 전화번호..."
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <button
+              onClick={() => refetch()}
+              className="inline-flex items-center px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              새로고침
+            </button>
+            <FilterResetButton
+              hasActiveFilters={!!filters.search}
+              onClick={() => setFilters({ search: '' })}
+              variant="text"
+            />
+          </div>
+        </div>
+      </FilterContainer>
+
+      {/* 활성 필터 태그 */}
+      <ActiveFilterTags
+        filters={[
+          ...(filters.search ? [{ id: 'search', label: '검색', value: filters.search }] : []),
+        ]}
+        onRemove={(id) => {
+          if (id === 'search') setFilters((f) => ({ ...f, search: '' }));
+        }}
+        onResetAll={() => setFilters({ search: '' })}
+      />
+
+      {/* 회원 목록 테이블 */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/15 flex items-center justify-between">
+          <h3 className="text-lg font-medium text-white">
+            회원 목록
+            <span className="ml-2 text-sm font-normal text-white/50">
+              ({members.length}명)
+            </span>
+          </h3>
+          {selectedIds.length > 0 && (
+            <span className="text-sm text-emerald-400">{selectedIds.length}명 선택됨</span>
+          )}
+        </div>
+        <DataContainer
+          isLoading={isLoading}
+          isEmpty={members.length === 0}
+          emptyIcon="🔍"
+          emptyMessage={filters.search ? '검색 결과가 없습니다' : '등록된 회원이 없습니다'}
+          emptyDescription={filters.search ? '다른 검색어를 시도해 보세요' : '새 회원을 추가해 보세요'}
+          emptyAction={
+            !filters.search ? (
+              <button
+                onClick={() => setAddModal(true)}
+                className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                회원 추가
+              </button>
+            ) : undefined
+          }
+          loadingMessage="회원 목록을 불러오는 중..."
+        >
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-white/15">
+              <thead className="bg-white/5">
+                <tr>
+                  <th className="px-4 py-3 w-12">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.length === members.length && members.length > 0}
+                      onChange={handleSelectAll}
+                      className="rounded border-white/15 text-emerald-400 focus:ring-emerald-500"
+                    />
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase">
+                    회원 정보
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase">
+                    등록 경로
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase">
+                    메모
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase">
+                    상태
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase">
+                    등록일
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-white/50 uppercase">
+                    액션
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/15">
+                {members.map((member) => (
+                  <tr key={member.id} className="hover:bg-white/5 transition-colors">
+                    <td className="px-4 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(member.id)}
+                        onChange={() => handleSelect(member.id)}
+                        className="rounded border-white/15 text-emerald-400 focus:ring-emerald-500"
+                      />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold">
+                          {member.user.name?.charAt(0) || 'U'}
+                        </div>
+                        <div>
+                          <div className="font-medium text-white">{member.user.name || '-'}</div>
+                          <div className="text-sm text-white/50">{member.user.email}</div>
+                          {member.user.phone && (
+                            <div className="text-xs text-white/40">{member.user.phone}</div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${
+                        member.source === 'BOOKING'
+                          ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                          : member.source === 'WALK_IN'
+                          ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+                          : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                      }`}>
+                        {SOURCE_LABELS[member.source]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-sm text-white/50 max-w-48 truncate">
+                      {member.memo || '-'}
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full ${
+                        member.isActive
+                          ? 'bg-green-500/20 text-green-400'
+                          : 'bg-white/10 text-white/50'
+                      }`}>
+                        {member.isActive ? '활성' : '비활성'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-sm text-white/50">
+                      {new Date(member.joinedAt).toLocaleDateString('ko-KR', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => openEditModal(member)}
+                          className="inline-flex items-center px-3 py-1.5 text-sm text-white/60 hover:bg-white/10 rounded-lg transition-colors"
+                        >
+                          <Edit2 className="w-4 h-4 mr-1" />
+                          수정
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm({ open: true, member })}
+                          className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          삭제
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DataContainer>
+      </div>
+
+      {/* Add Member Modal */}
+      <Modal
+        isOpen={addModal}
+        onClose={() => { setAddModal(false); setNewMemberEmail(''); setNewMemberMemo(''); }}
+        title="회원 추가"
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-1">
+              이메일로 사용자 검색
+            </label>
+            <input
+              type="text"
+              value={newMemberEmail}
+              onChange={(e) => setNewMemberEmail(e.target.value)}
+              placeholder="이메일을 입력하세요 (3자 이상)"
+              className="w-full px-3 py-2 bg-white/10 border border-white/15 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          {newMemberEmail.length >= 3 && searchedUsers.length > 0 && (
+            <div className="border border-white/15 rounded-lg overflow-hidden">
+              <div className="text-xs font-medium text-white/50 px-3 py-2 bg-white/5">
+                검색 결과
+              </div>
+              {searchedUsers.map((user) => (
+                <div
+                  key={user.id}
+                  className="flex items-center justify-between px-3 py-2 hover:bg-white/5 border-t border-white/10"
+                >
+                  <div>
+                    <div className="text-sm text-white">{user.name || '-'}</div>
+                    <div className="text-xs text-white/50">{user.email}</div>
+                  </div>
+                  <button
+                    onClick={() => handleAddMember(user.id)}
+                    disabled={createMember.isPending}
+                    className="px-3 py-1 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 disabled:opacity-50"
+                  >
+                    {createMember.isPending ? '등록 중...' : '등록'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {newMemberEmail.length >= 3 && searchedUsers.length === 0 && (
+            <p className="text-sm text-white/40">검색 결과가 없습니다.</p>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-white/70 mb-1">메모 (선택)</label>
+            <input
+              type="text"
+              value={newMemberMemo}
+              onChange={(e) => setNewMemberMemo(e.target.value)}
+              placeholder="메모를 입력하세요"
+              className="w-full px-3 py-2 bg-white/10 border border-white/15 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              onClick={() => { setAddModal(false); setNewMemberEmail(''); setNewMemberMemo(''); }}
+              className="px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Member Modal */}
+      <Modal
+        isOpen={editModal.open && !!editModal.member}
+        onClose={() => setEditModal({ open: false })}
+        title="회원 정보 수정"
+        maxWidth="sm"
+      >
+        {editModal.member && (
+          <div className="space-y-4">
+            <div className="flex items-center space-x-3 p-3 bg-white/5 rounded-lg">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold">
+                {editModal.member.user.name?.charAt(0) || 'U'}
+              </div>
+              <div>
+                <div className="font-medium text-white">{editModal.member.user.name || '-'}</div>
+                <div className="text-sm text-white/50">{editModal.member.user.email}</div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-1">메모</label>
+              <input
+                type="text"
+                value={editMemo}
+                onChange={(e) => setEditMemo(e.target.value)}
+                placeholder="메모를 입력하세요"
+                className="w-full px-3 py-2 bg-white/10 border border-white/15 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={editIsActive}
+                  onChange={(e) => setEditIsActive(e.target.checked)}
+                  className="rounded border-white/15 text-emerald-400 focus:ring-emerald-500"
+                />
+                <span className="text-sm text-white/70">활성 상태</span>
+              </label>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setEditModal({ open: false })}
+                className="px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleUpdateMember}
+                disabled={updateMember.isPending}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 disabled:opacity-50 transition-colors"
+              >
+                {updateMember.isPending ? '저장 중...' : '저장'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete Confirm Modal */}
+      <Modal
+        isOpen={deleteConfirm.open && !!deleteConfirm.member}
+        onClose={() => setDeleteConfirm({ open: false })}
+        title="회원 제거"
+        maxWidth="sm"
+      >
+        {deleteConfirm.member && (
+          <>
+            <div className="flex items-center space-x-4 p-4 bg-red-500/10 rounded-lg mb-6">
+              <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <div className="font-medium text-white">{deleteConfirm.member.user.name || '-'}</div>
+                <div className="text-sm text-white/50">{deleteConfirm.member.user.email}</div>
+              </div>
+            </div>
+            <p className="text-white/60 mb-2">
+              이 회원을 가맹점 목록에서 제거하시겠습니까?
+            </p>
+            <p className="text-sm text-white/40 mb-6">
+              사용자 계정은 삭제되지 않으며, 가맹점 회원 연결만 해제됩니다.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteConfirm({ open: false })}
+                className="px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDeleteMember}
+                disabled={deleteMember.isPending}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {deleteMember.isPending ? '제거 중...' : '제거'}
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
+    </PageLayout>
+  );
+};
+
+// ============================================
+// PLATFORM 스코프: 전체 사용자 관리 뷰 (기존)
+// ============================================
+const PlatformUserView: React.FC = () => {
   const navigate = useNavigate();
 
   // Queries & Mutations
@@ -65,7 +570,6 @@ export const UserManagementPage: React.FC = () => {
   // Local UI State
   const [filters, setFilters] = useState<FilterState>({
     search: '',
-    membershipTier: 'ALL',
     status: 'ALL',
   });
   const [sortField, setSortField] = useState<SortField>('name');
@@ -92,11 +596,6 @@ export const UserManagementPage: React.FC = () => {
       );
     }
 
-    // Membership tier filter
-    if (filters.membershipTier !== 'ALL') {
-      result = result.filter((u) => u.membershipTier === filters.membershipTier);
-    }
-
     // Status filter
     if (filters.status !== 'ALL') {
       result = result.filter((u) => u.status === filters.status);
@@ -104,8 +603,8 @@ export const UserManagementPage: React.FC = () => {
 
     // Sort
     result.sort((a, b) => {
-      let aVal: any = a[sortField];
-      let bVal: any = b[sortField];
+      let aVal: any = a[sortField as keyof User];
+      let bVal: any = b[sortField as keyof User];
 
       if (sortField === 'createdAt' || sortField === 'lastLoginAt') {
         aVal = aVal ? new Date(aVal).getTime() : 0;
@@ -125,7 +624,6 @@ export const UserManagementPage: React.FC = () => {
     total: users.length,
     active: users.filter((u) => u.status === 'ACTIVE').length,
     inactive: users.filter((u) => u.status !== 'ACTIVE').length,
-    tierCount: new Set(users.map(u => u.membershipTier)).size,
   }), [users]);
 
   // Handlers
@@ -172,28 +670,28 @@ export const UserManagementPage: React.FC = () => {
 
   const getStatusBadgeStyle = (status: UserStatus) => {
     switch (status) {
-      case 'ACTIVE': return 'bg-green-100 text-green-800';
-      case 'INACTIVE': return 'bg-gray-100 text-gray-800';
-      case 'SUSPENDED': return 'bg-red-100 text-red-800';
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'ACTIVE': return 'bg-green-500/20 text-green-400';
+      case 'INACTIVE': return 'bg-white/10 text-white';
+      case 'SUSPENDED': return 'bg-red-500/20 text-red-400';
+      case 'PENDING': return 'bg-yellow-500/20 text-yellow-400';
+      default: return 'bg-white/10 text-white';
     }
   };
 
   return (
     <PageLayout>
       {/* 헤더 카드 */}
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">회원 관리</h2>
-            <p className="mt-1 text-sm text-gray-500">
-              서비스 이용 회원을 관리하고 등급을 설정합니다
+            <h2 className="text-xl font-semibold text-white">회원 관리</h2>
+            <p className="mt-1 text-sm text-white/50">
+              서비스 이용 회원을 관리합니다
             </p>
           </div>
           <button
             onClick={() => setFormModal({ open: true })}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+            className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors shadow-sm"
           >
             <Plus className="w-5 h-5 mr-2" />
             회원 추가
@@ -201,17 +699,17 @@ export const UserManagementPage: React.FC = () => {
         </div>
 
         {/* 통계 */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="bg-emerald-500/10 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
-                <div className="text-sm text-blue-600">전체 회원</div>
+                <div className="text-2xl font-bold text-emerald-400">{stats.total}</div>
+                <div className="text-sm text-emerald-400">전체 회원</div>
               </div>
               <div className="text-3xl">👥</div>
             </div>
           </div>
-          <div className="bg-green-50 p-4 rounded-lg">
+          <div className="bg-green-500/10 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-green-600">{stats.active}</div>
@@ -220,7 +718,7 @@ export const UserManagementPage: React.FC = () => {
               <div className="text-3xl">✅</div>
             </div>
           </div>
-          <div className="bg-red-50 p-4 rounded-lg">
+          <div className="bg-red-500/10 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-red-600">{stats.inactive}</div>
@@ -229,65 +727,47 @@ export const UserManagementPage: React.FC = () => {
               <div className="text-3xl">⏸️</div>
             </div>
           </div>
-          <div className="bg-purple-50 p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-purple-600">{stats.tierCount}</div>
-                <div className="text-sm text-purple-600">등급 종류</div>
-              </div>
-              <div className="text-3xl">🏷️</div>
-            </div>
-          </div>
         </div>
       </div>
 
       {/* 필터 */}
-      <FilterContainer columns={5}>
-        <FilterSearch
-          label="검색"
-          showLabel
-          value={filters.search}
-          onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
-          placeholder="이름, 이메일, 전화번호..."
-        />
-        <FilterSelect
-          label="등급"
-          value={filters.membershipTier === 'ALL' ? '' : filters.membershipTier}
-          onChange={(value) => setFilters((f) => ({ ...f, membershipTier: (value || 'ALL') as UserMembershipTier | 'ALL' }))}
-          options={[
-            { value: 'VIP', label: 'VIP' },
-            { value: 'PLATINUM', label: '플래티넘' },
-            { value: 'GOLD', label: '골드' },
-            { value: 'SILVER', label: '실버' },
-            { value: 'REGULAR', label: '일반' },
-          ]}
-          placeholder="전체 등급"
-        />
-        <FilterSelect
-          label="상태"
-          value={filters.status === 'ALL' ? '' : filters.status}
-          onChange={(value) => setFilters((f) => ({ ...f, status: (value || 'ALL') as UserStatus | 'ALL' }))}
-          options={[
-            { value: 'ACTIVE', label: '활성' },
-            { value: 'INACTIVE', label: '비활성' },
-            { value: 'SUSPENDED', label: '정지' },
-            { value: 'PENDING', label: '대기' },
-          ]}
-          placeholder="전체 상태"
-        />
-        <div className="flex items-end gap-2">
-          <button
-            onClick={() => refetch()}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            새로고침
-          </button>
-          <FilterResetButton
-            hasActiveFilters={!!(filters.search || filters.membershipTier !== 'ALL' || filters.status !== 'ALL')}
-            onClick={() => setFilters({ search: '', membershipTier: 'ALL', status: 'ALL' })}
-            variant="text"
-          />
+      <FilterContainer columns="flex">
+        <div className="flex items-end justify-between w-full">
+          <div className="flex items-end gap-4">
+            <FilterSearch
+              label="검색"
+              showLabel
+              value={filters.search}
+              onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
+              placeholder="이름, 이메일, 전화번호..."
+            />
+            <FilterSelect
+              label="상태"
+              value={filters.status === 'ALL' ? '' : filters.status}
+              onChange={(value) => setFilters((f) => ({ ...f, status: (value || 'ALL') as UserStatus | 'ALL' }))}
+              options={[
+                { value: 'ACTIVE', label: '활성' },
+                { value: 'INACTIVE', label: '비활성' },
+                { value: 'SUSPENDED', label: '정지' },
+                { value: 'PENDING', label: '대기' },
+              ]}
+              placeholder="전체 상태"
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <button
+              onClick={() => refetch()}
+              className="inline-flex items-center px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              새로고침
+            </button>
+            <FilterResetButton
+              hasActiveFilters={!!(filters.search || filters.status !== 'ALL')}
+              onClick={() => setFilters({ search: '', status: 'ALL' })}
+              variant="text"
+            />
+          </div>
         </div>
       </FilterContainer>
 
@@ -295,28 +775,26 @@ export const UserManagementPage: React.FC = () => {
       <ActiveFilterTags
         filters={[
           ...(filters.search ? [{ id: 'search', label: '검색', value: filters.search }] : []),
-          ...(filters.membershipTier !== 'ALL' ? [{ id: 'tier', label: '등급', value: MEMBERSHIP_LABELS[filters.membershipTier], color: 'purple' as const }] : []),
           ...(filters.status !== 'ALL' ? [{ id: 'status', label: '상태', value: STATUS_LABELS[filters.status], color: 'green' as const }] : []),
         ]}
         onRemove={(id) => {
           if (id === 'search') setFilters(f => ({ ...f, search: '' }));
-          if (id === 'tier') setFilters(f => ({ ...f, membershipTier: 'ALL' }));
           if (id === 'status') setFilters(f => ({ ...f, status: 'ALL' }));
         }}
-        onResetAll={() => setFilters({ search: '', membershipTier: 'ALL', status: 'ALL' })}
+        onResetAll={() => setFilters({ search: '', status: 'ALL' })}
       />
 
       {/* 회원 목록 테이블 */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h3 className="text-lg font-medium text-gray-900">
+      <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/15 flex items-center justify-between">
+          <h3 className="text-lg font-medium text-white">
             회원 목록
-            <span className="ml-2 text-sm font-normal text-gray-500">
+            <span className="ml-2 text-sm font-normal text-white/50">
               ({filteredUsers.length}명)
             </span>
           </h3>
           {selectedIds.length > 0 && (
-            <span className="text-sm text-blue-600">{selectedIds.length}명 선택됨</span>
+            <span className="text-sm text-emerald-400">{selectedIds.length}명 선택됨</span>
           )}
         </div>
         <DataContainer
@@ -329,7 +807,7 @@ export const UserManagementPage: React.FC = () => {
             users.length === 0 ? (
               <button
                 onClick={() => setFormModal({ open: true })}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors"
               >
                 <Plus className="w-5 h-5 mr-2" />
                 회원 추가
@@ -339,79 +817,68 @@ export const UserManagementPage: React.FC = () => {
           loadingMessage="회원 목록을 불러오는 중..."
         >
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-white/15">
+              <thead className="bg-white/5">
                 <tr>
                   <th className="px-4 py-3 w-12">
                     <input
                       type="checkbox"
                       checked={selectedIds.length === filteredUsers.length && filteredUsers.length > 0}
                       onChange={handleSelectAll}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-white/15 text-emerald-400 focus:ring-emerald-500"
                     />
                   </th>
                   <th
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase cursor-pointer hover:bg-white/10 transition-colors"
                     onClick={() => handleSort('name')}
                   >
                     <div className="flex items-center space-x-1">
                       <span>회원 정보</span>
                       {sortField === 'name' && (
-                        <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        <span className="text-emerald-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </div>
                   </th>
                   <th
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
-                    onClick={() => handleSort('membershipTier')}
-                  >
-                    <div className="flex items-center space-x-1">
-                      <span>등급</span>
-                      {sortField === 'membershipTier' && (
-                        <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase cursor-pointer hover:bg-white/10 transition-colors"
                     onClick={() => handleSort('status')}
                   >
                     <div className="flex items-center space-x-1">
                       <span>상태</span>
                       {sortField === 'status' && (
-                        <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        <span className="text-emerald-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </div>
                   </th>
                   <th
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase cursor-pointer hover:bg-white/10 transition-colors"
                     onClick={() => handleSort('lastLoginAt')}
                   >
                     <div className="flex items-center space-x-1">
                       <span>마지막 로그인</span>
                       {sortField === 'lastLoginAt' && (
-                        <span className="text-blue-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        <span className="text-emerald-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </div>
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-right text-xs font-medium text-white/50 uppercase">
                     액션
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-white/15">
                 {filteredUsers.map((user) => (
                   <tr
                     key={user.id}
                     onClick={() => navigate(`/user-management/${user.id}`)}
-                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    className="hover:bg-white/5 transition-colors cursor-pointer"
                   >
                     <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.includes(user.id)}
                         onChange={() => handleSelect(user.id)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-white/15 text-emerald-400 focus:ring-emerald-500"
                       />
                     </td>
                     <td className="px-4 py-4">
@@ -420,20 +887,12 @@ export const UserManagementPage: React.FC = () => {
                           {user.name?.charAt(0) || 'U'}
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900">{user.name}</div>
-                          <div className="text-sm text-gray-500">{user.email}</div>
+                          <div className="font-medium text-white">{user.name}</div>
+                          <div className="text-sm text-white/50">{user.email}</div>
                           {user.phone && (
-                            <div className="text-xs text-gray-400">{user.phone}</div>
+                            <div className="text-xs text-white/40">{user.phone}</div>
                           )}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg">{user.membershipTier ? TIER_META[user.membershipTier]?.icon : '👤'}</span>
-                        <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${user.membershipTier ? TIER_META[user.membershipTier]?.color : 'bg-gray-100 text-gray-800'}`}>
-                          {user.membershipTier ? (MEMBERSHIP_LABELS[user.membershipTier] || user.membershipTier) : '-'}
-                        </span>
                       </div>
                     </td>
                     <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
@@ -448,19 +907,19 @@ export const UserManagementPage: React.FC = () => {
                         <option value="PENDING">대기</option>
                       </select>
                     </td>
-                    <td className="px-4 py-4 text-sm text-gray-500">
+                    <td className="px-4 py-4 text-sm text-white/50">
                       {user.lastLoginAt
                         ? new Date(user.lastLoginAt).toLocaleDateString('ko-KR', {
                             year: 'numeric',
                             month: 'short',
                             day: 'numeric',
                           })
-                        : <span className="text-gray-400">-</span>}
+                        : <span className="text-white/40">-</span>}
                     </td>
                     <td className="px-4 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => setDeleteConfirm({ open: true, user })}
-                        className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10 rounded-lg transition-colors"
                       >
                         <Trash2 className="w-4 h-4 mr-1" />
                         삭제
@@ -490,16 +949,16 @@ export const UserManagementPage: React.FC = () => {
       >
         {deleteConfirm.user && (
           <>
-            <div className="flex items-center space-x-4 p-4 bg-red-50 rounded-lg mb-6">
-              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+            <div className="flex items-center space-x-4 p-4 bg-red-500/10 rounded-lg mb-6">
+              <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
                 <AlertTriangle className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <div className="font-medium text-gray-900">{deleteConfirm.user.name}</div>
-                <div className="text-sm text-gray-500">{deleteConfirm.user.email}</div>
+                <div className="font-medium text-white">{deleteConfirm.user.name}</div>
+                <div className="text-sm text-white/50">{deleteConfirm.user.email}</div>
               </div>
             </div>
-            <p className="text-gray-600 mb-2">
+            <p className="text-white/60 mb-2">
               이 회원을 삭제하시겠습니까?
             </p>
             <p className="text-sm text-red-600 mb-6">
@@ -508,7 +967,7 @@ export const UserManagementPage: React.FC = () => {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeleteConfirm({ open: false })}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
               >
                 취소
               </button>
@@ -525,4 +984,11 @@ export const UserManagementPage: React.FC = () => {
       </Modal>
     </PageLayout>
   );
+};
+
+// ============================================
+// Main Component: admin-dashboard는 가맹점 회원 관리 뷰 통일
+// ============================================
+export const UserManagementPage: React.FC = () => {
+  return <CompanyMemberView />;
 };

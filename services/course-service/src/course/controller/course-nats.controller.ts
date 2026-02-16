@@ -19,12 +19,12 @@ export class CourseNatsController {
   @MessagePattern('course.ping')
   async ping(@Payload() payload: { ping: boolean; timestamp: string }) {
     this.logger.debug(`NATS ping received: ${payload.timestamp}`);
-    return {
+    return NatsResponse.success({
       pong: true,
       service: 'course-service',
       timestamp: new Date().toISOString(),
       receivedAt: payload.timestamp,
-    };
+    });
   }
 
   // ============================================
@@ -96,5 +96,12 @@ export class CourseNatsController {
     await this.courseService.remove(Number(data.courseId));
     this.logger.log(`NATS: Deleted course ${data.courseId}`);
     return NatsResponse.deleted();
+  }
+
+  @MessagePattern('courses.stats')
+  async getCourseStats(@Payload() data: { dateRange?: { startDate: string; endDate: string } }) {
+    this.logger.log('NATS: Getting course statistics');
+    const stats = await this.courseService.getStats(data.dateRange);
+    return NatsResponse.success(stats);
   }
 }

@@ -30,6 +30,7 @@ import {
   getNotificationTypeDisplayName,
 } from '@/lib/api/notificationApi';
 import { cn } from '@/lib/utils';
+import { NOTIFICATION_PAGE_SIZE } from '@/lib/constants';
 
 // ============================================
 // Filter Types
@@ -73,7 +74,7 @@ export function NotificationsPage() {
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<NotificationFilter>('all');
 
-  const { data, isLoading, isError } = useNotificationsQuery({ page, limit: 50 });
+  const { data, isLoading, isError } = useNotificationsQuery({ page, limit: NOTIFICATION_PAGE_SIZE });
   const markAsReadMutation = useMarkAsReadMutation();
   const markAllAsReadMutation = useMarkAllAsReadMutation();
   const deleteMutation = useDeleteNotificationMutation();

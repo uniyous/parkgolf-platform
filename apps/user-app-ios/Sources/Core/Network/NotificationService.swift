@@ -23,11 +23,30 @@ actor NotificationService {
             type: type,
             unreadOnly: unreadOnly
         )
-        let response = try await apiClient.requestDirect(
-            endpoint,
-            responseType: NotificationsResponse.self
-        )
-        return response.data
+        #if DEBUG
+        print("[NotificationService] Fetching notifications: page=\(page), limit=\(limit)")
+        #endif
+        do {
+            let response = try await apiClient.requestDirect(
+                endpoint,
+                responseType: NotificationsResponse.self
+            )
+            #if DEBUG
+            print("[NotificationService] Response: success=\(response.success), count=\(response.data.count), total=\(response.total)")
+            #endif
+            // 백엔드 응답을 NotificationsData로 변환
+            return NotificationsData(
+                notifications: response.data,
+                total: response.total,
+                page: response.page,
+                totalPages: response.totalPages
+            )
+        } catch {
+            #if DEBUG
+            print("[NotificationService] Error: \(error)")
+            #endif
+            throw error
+        }
     }
 
     // MARK: - Get Unread Count

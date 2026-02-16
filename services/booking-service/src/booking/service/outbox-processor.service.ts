@@ -21,6 +21,7 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
     private readonly prisma: PrismaService,
     @Inject('COURSE_SERVICE') private readonly courseServiceClient: ClientProxy,
     @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
+    @Inject('PAYMENT_SERVICE') private readonly paymentServiceClient: ClientProxy,
   ) {}
 
   onModuleInit() {
@@ -127,7 +128,7 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
 
       if (isRequestReply) {
         // Request-Reply 패턴 (응답 대기)
-        this.logger.log(`[Outbox] Sending ${event.event_type} to course-service (Request-Reply)...`);
+        this.logger.log(`[Outbox] Sending ${event.event_type} (Request-Reply)...`);
         const response = await firstValueFrom(
           client.send(event.event_type, event.payload).pipe(
             timeout(NATS_TIMEOUTS.DEFAULT),
@@ -167,6 +168,9 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
     if (eventType.startsWith('slot.') || eventType.startsWith('gameTimeSlots.')) {
       return this.courseServiceClient;
     }
+    if (eventType.startsWith('payment.')) {
+      return this.paymentServiceClient;
+    }
     if (eventType.startsWith('booking.') || eventType.startsWith('notification.')) {
       return this.notificationClient;
     }
@@ -183,6 +187,7 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
       'slot.release',
       'gameTimeSlots.reserve',
       'gameTimeSlots.release',
+      'payment.cancelByBookingId',
     ];
     return requestReplyEvents.includes(eventType);
   }

@@ -165,16 +165,6 @@ export class GameNatsController {
     return NatsResponse.success(result);
   }
 
-  @MessagePattern('gameTimeSlots.book')
-  async bookGameTimeSlot(@Payload() data: any) {
-    this.logger.log(`NATS: Booking time slot ${data.timeSlotId} for ${data.playerCount} players`);
-    const slot = await this.gameTimeSlotService.bookSlot(
-      Number(data.timeSlotId),
-      Number(data.playerCount)
-    );
-    return NatsResponse.success(this.mapTimeSlotToResponse(slot));
-  }
-
   @MessagePattern('gameTimeSlots.release')
   async releaseGameTimeSlot(@Payload() data: any) {
     this.logger.log(`NATS: Releasing time slot ${data.timeSlotId} for ${data.playerCount} players`);

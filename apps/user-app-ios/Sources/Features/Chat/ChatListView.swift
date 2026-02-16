@@ -423,13 +423,7 @@ struct FriendSelectCard: View {
             HStack(spacing: ParkSpacing.md) {
                 // Avatar
                 ZStack {
-                    Circle()
-                        .fill(Color.parkPrimary.opacity(0.3))
-                        .frame(width: 50, height: 50)
-
-                    Text(String(friend.friendName.prefix(1)))
-                        .font(.parkHeadlineLarge)
-                        .foregroundStyle(.white)
+                    AvatarCircle(name: friend.friendName)
                 }
 
                 // Info

@@ -12,15 +12,36 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { IsOptional, IsNumber, IsString, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 import { CourseService } from './courses.service';
-import { BearerToken } from '../common';
+import { BearerToken, AdminContext, AdminContextData } from '../common';
 
 // Club DTOs
-export interface ClubFiltersDto {
+export class ClubFiltersDto {
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
   companyId?: number;
+
+  @IsOptional()
+  @IsString()
   location?: string;
+
+  @IsOptional()
+  @IsString()
   status?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(1)
   page?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(1)
   limit?: number;
 }
 
@@ -81,9 +102,14 @@ export class CoursesController {
   @ApiResponse({ status: 200, description: 'Clubs retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getClubs(
+    @AdminContext() ctx: AdminContextData | null,
     @BearerToken() token: string,
     @Query() filters: ClubFiltersDto,
   ) {
+    // AdminContext에서 companyId 주입 (명시적 필터가 없을 때)
+    if (ctx?.companyId && !filters.companyId) {
+      filters.companyId = ctx.companyId;
+    }
     this.logger.log('Fetching clubs');
     return this.courseService.getClubs(filters, token);
   }

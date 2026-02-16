@@ -21,6 +21,9 @@ struct NotificationsView: View {
                 // Content
                 if viewModel.isLoading && viewModel.notifications.isEmpty {
                     loadingView
+                } else if viewModel.notifications.isEmpty, let error = viewModel.error {
+                    // 데이터가 없고 에러가 있을 때만 에러 화면 표시
+                    errorView(error)
                 } else if viewModel.filteredNotifications.isEmpty {
                     emptyView
                 } else {
@@ -67,9 +70,6 @@ struct NotificationsView: View {
         .onDisappear {
             viewModel.disconnectSocket()
         }
-        .refreshable {
-            await viewModel.loadNotifications()
-        }
     }
 
     // MARK: - Filter Tabs
@@ -108,6 +108,41 @@ struct NotificationsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    // MARK: - Error View
+
+    private func errorView(_ error: String) -> some View {
+        VStack(spacing: ParkSpacing.md) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 48))
+                .foregroundStyle(Color.orange)
+
+            Text("알림을 불러올 수 없습니다")
+                .font(.parkHeadlineMedium)
+                .foregroundStyle(.white)
+
+            Text(error)
+                .font(.parkBodySmall)
+                .foregroundStyle(.white.opacity(0.6))
+                .multilineTextAlignment(.center)
+
+            Button {
+                Task {
+                    await viewModel.loadNotifications()
+                }
+            } label: {
+                Text("다시 시도")
+                    .font(.parkLabelMedium)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, ParkSpacing.lg)
+                    .padding(.vertical, ParkSpacing.sm)
+                    .background(Color.parkPrimary)
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(ParkSpacing.xl)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     // MARK: - Empty View
 
     private var emptyView: some View {
@@ -134,33 +169,48 @@ struct NotificationsView: View {
     // MARK: - Notifications List
 
     private var notificationsList: some View {
-        ScrollView {
-            LazyVStack(spacing: ParkSpacing.sm) {
-                ForEach(viewModel.filteredNotifications) { notification in
-                    NotificationRow(
-                        notification: notification,
-                        onTap: {
-                            Task {
-                                await viewModel.markAsRead(notification)
-                                handleNotificationTap(notification)
-                            }
-                        },
-                        onDelete: {
-                            Task {
-                                await viewModel.deleteNotification(notification)
-                            }
+        List {
+            ForEach(viewModel.filteredNotifications) { notification in
+                NotificationRow(
+                    notification: notification,
+                    onTap: {
+                        Task {
+                            await viewModel.markAsRead(notification)
+                            handleNotificationTap(notification)
                         }
-                    )
-                }
+                    },
+                    onDelete: {
+                        Task {
+                            await viewModel.deleteNotification(notification)
+                        }
+                    }
+                )
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(
+                    top: ParkSpacing.xs,
+                    leading: ParkSpacing.md,
+                    bottom: ParkSpacing.xs,
+                    trailing: ParkSpacing.md
+                ))
+            }
 
-                // Load more indicator
-                if viewModel.isLoadingMore {
+            // Load more indicator
+            if viewModel.isLoadingMore {
+                HStack {
+                    Spacer()
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .padding()
+                    Spacer()
                 }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
-            .padding(ParkSpacing.md)
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .refreshable {
+            await viewModel.loadNotifications()
         }
     }
 
@@ -169,21 +219,23 @@ struct NotificationsView: View {
     private func handleNotificationTap(_ notification: AppNotification) {
         switch notification.type {
         case .bookingConfirmed, .bookingCancelled:
-            if let bookingId = notification.data?.bookingId {
+            if let bookingIdStr = notification.data?.bookingId,
+               let bookingId = Int(bookingIdStr) {
                 dismiss()
                 NotificationCenter.default.post(
                     name: .navigateToBookingDetail,
                     object: nil,
-                    userInfo: ["bookingId": Int(bookingId) ?? 0]
+                    userInfo: ["bookingId": bookingId]
                 )
             }
         case .paymentSuccess, .paymentFailed:
-            if let bookingId = notification.data?.bookingId {
+            if let bookingIdStr = notification.data?.bookingId,
+               let bookingId = Int(bookingIdStr) {
                 dismiss()
                 NotificationCenter.default.post(
                     name: .navigateToBookingDetail,
                     object: nil,
-                    userInfo: ["bookingId": Int(bookingId) ?? 0]
+                    userInfo: ["bookingId": bookingId]
                 )
             }
         case .friendRequest, .friendAccepted:
@@ -301,10 +353,11 @@ struct NotificationRow: View {
                         HStack {
                             Text(notification.type.displayName)
                                 .font(.parkCaption)
-                                .foregroundStyle(iconColor.opacity(0.8))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(iconColor.opacity(0.2))
+                                .fontWeight(.medium)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(iconColor.opacity(0.85))
                                 .clipShape(Capsule())
 
                             Spacer()

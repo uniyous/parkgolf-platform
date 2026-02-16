@@ -9,10 +9,11 @@ import {
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 import { Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { NatsService, ChatMessage, TypingEvent } from '../nats/nats.service';
-import { AuthenticatedSocket, WsUser } from '../auth/ws-auth.guard';
+import { AuthenticatedSocket, WsUser } from '../common/ws.types';
+import { authenticateSocket } from '../common/ws.utils';
+import { getCorsConfig } from '../common/cors.config';
 import { v4 as uuidv4 } from 'uuid';
 
 interface SendMessageDto {
@@ -31,20 +32,7 @@ interface TypingDto {
 }
 
 @WebSocketGateway({
-  cors: {
-    origin: process.env.CORS_ALLOWED_ORIGINS
-      ? process.env.CORS_ALLOWED_ORIGINS.split(',').map(o => o.trim())
-      : [
-          'http://localhost:3002',
-          'https://parkgolf-user.web.app',
-          'https://parkgolf-user-dev.web.app',
-          'https://dev-user.goparkmate.com',
-          'https://user.goparkmate.com',
-          'https://dev-api.goparkmate.com',
-          'https://api.goparkmate.com',
-        ],
-    credentials: true,
-  },
+  cors: getCorsConfig(),
   namespace: '/chat',
 })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit, OnModuleDestroy {
@@ -62,7 +50,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   constructor(
     private readonly natsService: NatsService,
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
   ) {}
 
   onModuleInit() {
@@ -105,59 +92,31 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   }
 
   async handleConnection(client: AuthenticatedSocket) {
-    try {
-      // Authenticate on connection
-      const token = this.extractToken(client);
-      if (!token) {
-        this.logger.warn(`Connection rejected: No token - ${client.id}`);
-        client.emit('error', { message: 'Unauthorized' });
-        client.disconnect();
-        return;
-      }
+    const user = await authenticateSocket(client, this.jwtService, this.logger);
+    if (!user) return;
 
-      const payload = await this.jwtService.verifyAsync(token);
-      const user: WsUser = {
-        id: payload.sub || payload.id,
-        email: payload.email,
-        name: payload.name,
-      };
-      client.user = user;
+    // Track online user on this pod
+    this.onlineUsers.set(client.id, user);
 
-      // Store user info in socket.data for cross-pod fetchSockets()
-      client.data = {
-        ...client.data,
-        userId: user.id,
-        userName: user.name,
-        tokenExp: payload.exp,
-      };
+    // Join user-specific room for DM and cross-pod presence
+    client.join(`user:${user.id}`);
 
-      // Track online user on this pod
-      this.onlineUsers.set(client.id, user);
+    // Publish online status
+    await this.natsService.publishPresence(user.id, {
+      userId: user.id,
+      userName: user.name,
+      status: 'online',
+      timestamp: new Date().toISOString(),
+    });
 
-      // Join user-specific room for DM and cross-pod presence
-      client.join(`user:${user.id}`);
+    this.logger.log(`User connected: ${user.name} (${user.id}) - Socket: ${client.id}`);
 
-      // Publish online status
-      await this.natsService.publishPresence(user.id, {
-        userId: user.id,
-        userName: user.name,
-        status: 'online',
-        timestamp: new Date().toISOString(),
-      });
-
-      this.logger.log(`User connected: ${user.name} (${user.id}) - Socket: ${client.id}`);
-
-      // Send connection success
-      client.emit('connected', {
-        userId: user.id,
-        name: user.name,
-        socketId: client.id,
-      });
-    } catch (error) {
-      this.logger.warn(`Connection failed: ${error} - ${client.id}`);
-      client.emit('error', { message: 'Authentication failed' });
-      client.disconnect();
-    }
+    // Send connection success
+    client.emit('connected', {
+      userId: user.id,
+      name: user.name,
+      socketId: client.id,
+    });
   }
 
   async handleDisconnect(client: AuthenticatedSocket) {
@@ -305,25 +264,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     client.to(roomId).emit('new_message', message);
     this.logger.debug(`Message sent to room ${roomId} by ${user.name}`);
 
-    // 2. DB 저장 - 비동기 (응답 대기 없이)
-    this.natsService.requestChatService('messages.save', {
-      id: message.id,
-      roomId: message.roomId,
-      senderId: message.senderId,
-      senderName: message.senderName,
-      content: message.content,
-      type: message.type.toUpperCase(),
-      createdAt: message.createdAt,
-    }).catch((error) => {
-      this.logger.error(`Failed to save message to DB: ${error}`);
-    });
-
-    // 3. JetStream 발행 - 비동기 (메시지 영속성)
+    // 2. JetStream 발행 - 비동기 (메시지 영속성, chat-service consumer가 DB 저장)
     this.natsService.publishMessage(roomId, message).catch((error) => {
       this.logger.error(`Failed to publish message to JetStream: ${error}`);
     });
 
-    // 4. 오프라인 참여자에게 push 알림
+    // 3. 오프라인 참여자에게 push 알림
     this.sendChatNotifications(roomId, user, content).catch((error) => {
       this.logger.error(`Failed to send chat notifications: ${error}`);
     });
@@ -391,31 +337,5 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
         recipientId: member.userId, messagePreview: preview, createdAt: new Date().toISOString(),
       });
     }
-  }
-
-  private extractToken(client: AuthenticatedSocket): string | null {
-    // 1. Preferred: auth object (Socket.IO auth)
-    const auth = client.handshake.auth;
-    if (auth?.token) {
-      return auth.token;
-    }
-
-    // 2. Authorization header
-    const authHeader = client.handshake.headers.authorization;
-    if (authHeader?.startsWith('Bearer ')) {
-      return authHeader.substring(7);
-    }
-
-    // 3. Deprecated: query param (token exposed in URL/logs)
-    const token = client.handshake.query.token;
-    if (typeof token === 'string') {
-      this.logger.warn(
-        `[DEPRECATION] Client ${client.id} using query param for token. ` +
-        'Migrate to auth object or Authorization header.',
-      );
-      return token;
-    }
-
-    return null;
   }
 }

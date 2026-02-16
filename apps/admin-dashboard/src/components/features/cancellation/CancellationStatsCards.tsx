@@ -17,29 +17,29 @@ const STATS_CONFIG = [
   {
     key: 'ALL',
     label: '전체 취소',
-    bgColor: 'bg-blue-50',
-    textColor: 'text-blue-600',
+    bgColor: 'bg-emerald-500/10',
+    textColor: 'text-emerald-400',
     icon: '📋',
   },
   {
     key: 'PENDING',
     label: '환불 대기',
-    bgColor: 'bg-yellow-50',
-    textColor: 'text-yellow-600',
+    bgColor: 'bg-yellow-500/10',
+    textColor: 'text-yellow-400',
     icon: '⏳',
   },
   {
     key: 'COMPLETED',
     label: '환불 완료',
-    bgColor: 'bg-green-50',
-    textColor: 'text-green-600',
+    bgColor: 'bg-green-500/10',
+    textColor: 'text-green-400',
     icon: '✅',
   },
   {
     key: 'NO_REFUND',
     label: '환불 없음',
-    bgColor: 'bg-red-50',
-    textColor: 'text-red-600',
+    bgColor: 'bg-red-500/10',
+    textColor: 'text-red-400',
     icon: '🚫',
   },
 ];
@@ -65,18 +65,18 @@ export const CancellationStatsCards: React.FC<CancellationStatsCardsProps> = ({
   };
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
+    <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">취소/환불 관리</h2>
-          <p className="mt-1 text-sm text-gray-500">
+          <h2 className="text-xl font-semibold text-white">취소/환불 관리</h2>
+          <p className="mt-1 text-sm text-white/50">
             취소 내역 및 환불 현황을 관리하세요
           </p>
         </div>
-        <div className="bg-indigo-50 px-4 py-2 rounded-lg">
-          <div className="text-sm text-indigo-600">총 환불 금액</div>
-          <div className="text-xl font-bold text-indigo-700">
+        <div className="bg-indigo-500/10 px-4 py-2 rounded-lg">
+          <div className="text-sm text-indigo-400">총 환불 금액</div>
+          <div className="text-xl font-bold text-indigo-300">
             ₩{stats.totalRefundAmount.toLocaleString()}
           </div>
         </div>
@@ -95,7 +95,7 @@ export const CancellationStatsCards: React.FC<CancellationStatsCardsProps> = ({
               className={cn(
                 'p-4 rounded-lg cursor-pointer transition-all',
                 config.bgColor,
-                isActive ? 'ring-2 ring-offset-1 ring-blue-500' : 'hover:shadow-md'
+                isActive ? 'ring-2 ring-offset-1 ring-emerald-500 ring-offset-transparent' : 'hover:shadow-md'
               )}
             >
               <div className="flex items-center justify-between">
