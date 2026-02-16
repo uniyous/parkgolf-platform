@@ -115,27 +115,6 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    fun deleteAccount() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-
-            userRepository.deleteAccount()
-                .onSuccess {
-                    authRepository.logout()
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        logoutComplete = true
-                    )
-                }
-                .onFailure { exception ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = exception.message ?: "계정 삭제 실패"
-                    )
-                }
-        }
-    }
-
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }

@@ -3,6 +3,7 @@ package com.parkgolf.app.di
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.parkgolf.app.BuildConfig
 import com.parkgolf.app.data.local.datastore.AuthPreferences
+import com.parkgolf.app.data.remote.api.AccountApi
 import com.parkgolf.app.data.remote.api.AuthApi
 import com.parkgolf.app.data.remote.api.BookingApi
 import com.parkgolf.app.data.remote.api.ChatApi
@@ -148,4 +149,9 @@ object NetworkModule {
     @Singleton
     fun provideWeatherApi(retrofit: Retrofit): WeatherApi =
         retrofit.create(WeatherApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideAccountApi(retrofit: Retrofit): AccountApi =
+        retrofit.create(AccountApi::class.java)
 }

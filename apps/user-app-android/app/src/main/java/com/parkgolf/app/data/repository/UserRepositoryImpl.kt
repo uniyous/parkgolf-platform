@@ -7,7 +7,6 @@ import com.parkgolf.app.domain.model.User
 import com.parkgolf.app.domain.repository.UserRepository
 import com.parkgolf.app.util.safeApiCall
 import com.parkgolf.app.util.toResult
-import com.parkgolf.app.util.toUnitResult
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,7 +24,4 @@ class UserRepositoryImpl @Inject constructor(
         userApi.updateProfile(request).toResult("프로필 수정에 실패했습니다") { it.toDomain() }
     }
 
-    override suspend fun deleteAccount(): Result<Unit> = safeApiCall {
-        userApi.deleteAccount().toUnitResult("계정 삭제에 실패했습니다")
-    }
 }

@@ -32,6 +32,24 @@ final class AccountService: Sendable {
         let endpoint = AccountEndpoints.passwordExpiry()
         return try await apiClient.request(endpoint, responseType: PasswordExpiryResponse.self)
     }
+
+    /// 계정 삭제 상태 조회
+    func getDeletionStatus() async throws -> DeletionStatusResponse {
+        let endpoint = AccountEndpoints.deletionStatus()
+        return try await apiClient.request(endpoint, responseType: DeletionStatusResponse.self)
+    }
+
+    /// 계정 삭제 요청 (7일 유예기간)
+    func requestDeletion(password: String, reason: String?) async throws -> RequestDeletionResponse {
+        let endpoint = AccountEndpoints.requestDeletion(password: password, reason: reason)
+        return try await apiClient.request(endpoint, responseType: RequestDeletionResponse.self)
+    }
+
+    /// 계정 삭제 취소
+    func cancelDeletion() async throws -> CancelDeletionResponse {
+        let endpoint = AccountEndpoints.cancelDeletion()
+        return try await apiClient.request(endpoint, responseType: CancelDeletionResponse.self)
+    }
 }
 
 // MARK: - Password Validation
