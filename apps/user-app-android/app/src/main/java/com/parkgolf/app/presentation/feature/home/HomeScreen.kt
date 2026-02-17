@@ -26,8 +26,10 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.GolfCourse
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -206,7 +208,7 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Nearby Clubs Section
-                SectionHeader(title = "주변 파크골프장")
+                SectionHeader(title = "주변 골프장")
 
                 Spacer(modifier = Modifier.height(12.dp))
             }
@@ -385,7 +387,7 @@ private fun NearbyClubCard(
     onClick: () -> Unit
 ) {
     GlassCard(
-        modifier = Modifier.width(200.dp),
+        modifier = Modifier.width(160.dp),
         onClick = onClick,
         contentPadding = 0.dp
     ) {
@@ -399,7 +401,7 @@ private fun NearbyClubCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Eco,
+                    imageVector = Icons.Default.GolfCourse,
                     contentDescription = null,
                     modifier = Modifier.size(40.dp),
                     tint = TextOnGradientTertiary
@@ -425,29 +427,33 @@ private fun NearbyClubCard(
                         modifier = Modifier.size(14.dp),
                         tint = TextOnGradientSecondary
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text(
+                        text = club.location,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextOnGradientSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.NearMe,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = ParkPrimary
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
                     Text(
                         text = club.distanceText,
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
                         color = ParkPrimary
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "· ${club.address}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextOnGradientSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "${club.totalHoles}홀 · ${club.totalCourses}코스",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextOnGradientTertiary
-                )
             }
         }
     }
