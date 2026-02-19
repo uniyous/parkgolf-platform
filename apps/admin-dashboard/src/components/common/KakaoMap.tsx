@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 declare global {
   interface Window {
@@ -26,29 +26,24 @@ declare global {
   }
 }
 
-// index.html <script> 태그로 SDK가 로드되기를 기다림
 let sdkPromise: Promise<void> | null = null;
 
 function waitForKakaoSdk(): Promise<void> {
-  // 이미 완전히 로드됨
   if (window.kakao?.maps?.LatLng) return Promise.resolve();
   if (sdkPromise) return sdkPromise;
 
   sdkPromise = new Promise<void>((resolve, reject) => {
-    // autoload=false 상태: load() 호출
     if (window.kakao?.maps?.load) {
       window.kakao.maps.load(() => resolve());
       return;
     }
 
-    // SDK 스크립트가 아직 로드 안 됨 → 폴링으로 대기 (최대 10초)
     let elapsed = 0;
     const interval = 200;
     const maxWait = 10000;
 
     const timer = setInterval(() => {
       elapsed += interval;
-
       if (window.kakao?.maps?.LatLng) {
         clearInterval(timer);
         resolve();
@@ -80,17 +75,31 @@ export const KakaoMap: React.FC<KakaoMapProps> = ({
   height = '280px',
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<{ relayout: () => void } | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
-  const createMap = useCallback(() => {
+  // SDK 로딩
+  useEffect(() => {
+    let cancelled = false;
+    waitForKakaoSdk()
+      .then(() => { if (!cancelled) setStatus('ready'); })
+      .catch(() => { if (!cancelled) setStatus('error'); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // SDK 로드 완료 + mapRef가 항상 DOM에 있으므로 바로 지도 생성
+  useEffect(() => {
+    if (status !== 'ready') return;
     const container = mapRef.current;
     if (!container || !window.kakao?.maps?.LatLng) return;
+    if (mapInstanceRef.current) return; // 이미 생성됨
 
     const position = new window.kakao.maps.LatLng(latitude, longitude);
     const map = new window.kakao.maps.Map(container, {
       center: position,
       level: 4,
     });
+    mapInstanceRef.current = map;
 
     const marker = new window.kakao.maps.Marker({ map, position });
 
@@ -101,27 +110,8 @@ export const KakaoMap: React.FC<KakaoMapProps> = ({
       infoWindow.open(map, marker);
     }
 
-    setTimeout(() => map.relayout(), 100);
-  }, [latitude, longitude, clubName]);
-
-  // SDK 로딩
-  useEffect(() => {
-    let cancelled = false;
-
-    waitForKakaoSdk()
-      .then(() => { if (!cancelled) setStatus('ready'); })
-      .catch(() => { if (!cancelled) setStatus('error'); });
-
-    return () => { cancelled = true; };
-  }, []);
-
-  // SDK 로드 완료 후 지도 생성 (re-render 후 mapRef가 DOM에 있을 때)
-  useEffect(() => {
-    if (status === 'ready') {
-      // requestAnimationFrame으로 DOM 업데이트 보장
-      requestAnimationFrame(() => createMap());
-    }
-  }, [status, createMap]);
+    setTimeout(() => map.relayout(), 200);
+  }, [status, latitude, longitude, clubName]);
 
   if (status === 'error') {
     return (
@@ -145,25 +135,22 @@ export const KakaoMap: React.FC<KakaoMapProps> = ({
     );
   }
 
-  if (status === 'loading') {
-    return (
-      <div
-        className="w-full rounded-lg overflow-hidden bg-white/5 flex items-center justify-center"
-        style={{ height }}
-      >
-        <div className="flex items-center gap-2 text-white/40">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white/40" />
-          <span className="text-sm">지도 로딩 중...</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div
-      ref={mapRef}
-      className="w-full rounded-lg overflow-hidden bg-white/5"
-      style={{ height }}
-    />
+    <div className="relative w-full" style={{ height }}>
+      {/* 지도 div — 항상 DOM에 존재 */}
+      <div
+        ref={mapRef}
+        className="w-full h-full rounded-lg overflow-hidden"
+      />
+      {/* 로딩 오버레이 */}
+      {status === 'loading' && (
+        <div className="absolute inset-0 rounded-lg bg-white/5 flex items-center justify-center">
+          <div className="flex items-center gap-2 text-white/40">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white/40" />
+            <span className="text-sm">지도 로딩 중...</span>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
