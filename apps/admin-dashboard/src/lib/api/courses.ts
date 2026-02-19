@@ -67,12 +67,12 @@ export interface CreateClubDto {
   phone: string;
   email?: string;
   website?: string;
-  operatingHours: {
+  operatingHours?: {
     open: string;
     close: string;
   };
   facilities?: string[];
-  status: 'ACTIVE' | 'MAINTENANCE' | 'SEASONAL_CLOSED' | 'INACTIVE';
+  status?: 'ACTIVE' | 'MAINTENANCE' | 'SEASONAL_CLOSED' | 'INACTIVE';
   clubType?: ClubType;
 }
 
