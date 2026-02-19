@@ -9,6 +9,17 @@ declare global {
         LatLng: new (lat: number, lng: number) => unknown;
         Marker: new (options: { map: unknown; position: unknown }) => unknown;
         InfoWindow: new (options: { content: string }) => { open: (map: unknown, marker: unknown) => void };
+        services: {
+          Geocoder: new () => {
+            addressSearch: (
+              address: string,
+              callback: (result: Array<{ x: string; y: string; address_name: string }>, status: string) => void,
+            ) => void;
+          };
+          Status: {
+            OK: string;
+          };
+        };
       };
     };
   }

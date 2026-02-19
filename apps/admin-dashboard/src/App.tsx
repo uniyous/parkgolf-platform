@@ -14,6 +14,7 @@ import { CompanyPage } from './pages/company/CompanyPage';
 import { BookingManagementPage } from './pages/booking/BookingManagementPage';
 import { CancellationManagementPage } from './pages/booking/CancellationManagementPage';
 import { ClubListPage } from './pages/club/ClubListPage';
+import { ClubCreatePage } from './pages/club/ClubCreatePage';
 import { ClubDetailPage } from './pages/club/ClubDetailPage';
 import { GameListPage } from './pages/game/GameListPage';
 import { GameDetailPage } from './pages/game/GameDetailPage';
@@ -54,6 +55,7 @@ function App() {
 
           {/* 골프장 관리 (Master Data) */}
           <Route path="/clubs" element={<ClubListPage />} />
+          <Route path="/clubs/new" element={<ClubCreatePage />} />
           <Route path="/clubs/:clubId" element={<ClubDetailPage />} />
 
           {/* 라운드 관리 (Game) */}
