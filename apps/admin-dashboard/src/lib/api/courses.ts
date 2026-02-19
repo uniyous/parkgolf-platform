@@ -198,6 +198,19 @@ export const courseApi = {
   },
 
   // ============================================
+  // Geocoding
+  // ============================================
+
+  /**
+   * 주소 → 좌표 변환 (location-service 경유)
+   */
+  async geocodeAddress(address: string): Promise<{ latitude: number; longitude: number } | null> {
+    const response = await apiClient.get<unknown>('/admin/courses/geocode', { address });
+    const data = extractSingle<{ latitude: number; longitude: number }>(response.data);
+    return data || null;
+  },
+
+  // ============================================
   // Course Management
   // ============================================
 

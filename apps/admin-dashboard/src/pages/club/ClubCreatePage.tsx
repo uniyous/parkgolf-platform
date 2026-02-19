@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useCreateClubMutation } from '@/hooks/queries';
 import { useActiveCompanyId } from '@/hooks/useActiveCompany';
+import { courseApi } from '@/lib/api/courses';
 import { PageLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { KakaoMap } from '@/components/common/KakaoMap';
@@ -88,43 +89,30 @@ export const ClubCreatePage: React.FC = () => {
     }));
   };
 
-  const handleGeocode = useCallback(() => {
+  const handleGeocode = useCallback(async () => {
     const address = formData.address.trim();
     if (!address) {
       toast.error('주소를 먼저 입력해 주세요.');
       return;
     }
 
-    if (!window.kakao?.maps) {
-      toast.error('카카오맵을 로드할 수 없습니다.');
-      return;
-    }
-
     setIsGeocoding(true);
 
-    window.kakao.maps.load(() => {
-      if (!window.kakao.maps.services) {
-        setIsGeocoding(false);
-        toast.error('카카오맵 서비스를 로드할 수 없습니다.');
-        return;
+    try {
+      const result = await courseApi.geocodeAddress(address);
+      if (result?.latitude && result?.longitude) {
+        setCoordinates({ latitude: result.latitude, longitude: result.longitude });
+        toast.success('주소 확인 완료');
+      } else {
+        setCoordinates(null);
+        toast.error('주소를 찾을 수 없습니다. 정확한 주소를 입력해 주세요.');
       }
-
-      const geocoder = new window.kakao.maps.services.Geocoder();
-      geocoder.addressSearch(address, (result, status) => {
-        setIsGeocoding(false);
-        if (status === window.kakao.maps.services.Status.OK && result.length > 0) {
-          const { y, x } = result[0];
-          setCoordinates({
-            latitude: parseFloat(y),
-            longitude: parseFloat(x),
-          });
-          toast.success('주소 확인 완료');
-        } else {
-          setCoordinates(null);
-          toast.error('주소를 찾을 수 없습니다. 정확한 주소를 입력해 주세요.');
-        }
-      });
-    });
+    } catch {
+      setCoordinates(null);
+      toast.error('주소 확인에 실패했습니다. 다시 시도해 주세요.');
+    } finally {
+      setIsGeocoding(false);
+    }
   }, [formData.address]);
 
   const handleSubmit = async () => {

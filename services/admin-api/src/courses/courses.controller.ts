@@ -189,6 +189,21 @@ export class CoursesController {
   }
 
   // ============================================
+  // Geocoding
+  // ============================================
+  @Get('geocode')
+  @ApiOperation({ summary: 'Geocode address to coordinates' })
+  @ApiQuery({ name: 'address', required: true, description: 'Address to geocode' })
+  @ApiResponse({ status: 200, description: 'Coordinates retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async geocodeAddress(
+    @Query('address') address: string,
+  ) {
+    this.logger.log(`Geocoding address: ${address}`);
+    return this.courseService.geocodeAddress(address);
+  }
+
+  // ============================================
   // Course Management
   // ============================================
   @Get()
