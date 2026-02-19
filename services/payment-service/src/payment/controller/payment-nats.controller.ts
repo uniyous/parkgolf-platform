@@ -134,6 +134,20 @@ export class PaymentNatsController {
   }
 
   // ============================================
+  // Admin Dashboard Stats
+  // ============================================
+
+  /**
+   * 매출 통계 (대시보드용)
+   */
+  @MessagePattern('payments.revenueStats')
+  async getRevenueStats(@Payload() data: { dateRange: { startDate: string; endDate: string }; token?: string }) {
+    this.logger.log('Fetching revenue statistics');
+    const result = await this.paymentService.getRevenueStats(data.dateRange);
+    return NatsResponse.success(result);
+  }
+
+  // ============================================
   // Account Deletion
   // ============================================
 

@@ -354,6 +354,15 @@ export class NotificationNatsController {
     }
   }
 
+  // ===== Admin Dashboard Stats =====
+
+  @MessagePattern('notifications.stats')
+  async getNotificationStats(@Payload() data: { dateRange: { startDate: string; endDate: string }; token?: string }) {
+    this.logger.log('NATS: Received notifications.stats request');
+    const stats = await this.notificationService.getStats(data.dateRange);
+    return NatsResponse.success(stats);
+  }
+
   // ===== MessagePattern Handlers (Request-Response) =====
 
   @MessagePattern('notification.send')

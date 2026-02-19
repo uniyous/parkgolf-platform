@@ -1015,6 +1015,97 @@ export class BookingService {
     }
   }
 
+  // 관리자 대시보드 - 예약 통계
+  async getBookingStats(dateRange: { startDate: string; endDate: string }) {
+    const startDate = new Date(dateRange.startDate);
+    const endDate = new Date(dateRange.endDate);
+    endDate.setHours(23, 59, 59, 999);
+
+    const dateFilter = { bookingDate: { gte: startDate, lte: endDate } };
+
+    const [totalBookings, statusGroups, revenueAgg] = await Promise.all([
+      this.prisma.booking.count({ where: dateFilter }),
+      this.prisma.booking.groupBy({
+        by: ['status'],
+        where: dateFilter,
+        _count: true,
+      }),
+      this.prisma.booking.aggregate({
+        where: dateFilter,
+        _sum: { totalPrice: true },
+      }),
+    ]);
+
+    const statusMap = new Map(statusGroups.map((g) => [g.status, g._count]));
+    const confirmedBookings = statusMap.get(BookingStatus.CONFIRMED) ?? 0;
+    const cancelledBookings = statusMap.get(BookingStatus.CANCELLED) ?? 0;
+    const completedBookings = statusMap.get(BookingStatus.COMPLETED) ?? 0;
+    const pendingBookings = (statusMap.get(BookingStatus.PENDING) ?? 0)
+      + (statusMap.get(BookingStatus.SLOT_RESERVED) ?? 0);
+    const noShowBookings = statusMap.get(BookingStatus.NO_SHOW) ?? 0;
+
+    // 이전 동일 기간 계산
+    const periodMs = endDate.getTime() - startDate.getTime();
+    const prevStart = new Date(startDate.getTime() - periodMs - 1);
+    const prevEnd = new Date(startDate.getTime() - 1);
+    const prevTotal = await this.prisma.booking.count({
+      where: { bookingDate: { gte: prevStart, lte: prevEnd } },
+    });
+
+    const bookingGrowthRate = prevTotal > 0
+      ? Math.round(((totalBookings - prevTotal) / prevTotal) * 100 * 10) / 10
+      : 0;
+
+    const days = Math.max(1, Math.ceil(periodMs / (1000 * 60 * 60 * 24)));
+    const averageBookingsPerDay = Math.round((totalBookings / days) * 10) / 10;
+    const revenue = Number(revenueAgg._sum.totalPrice ?? 0);
+
+    return {
+      totalBookings,
+      confirmedBookings,
+      cancelledBookings,
+      completedBookings,
+      pendingBookings,
+      noShowBookings,
+      bookingGrowthRate,
+      averageBookingsPerDay,
+      count: totalBookings,
+      revenue,
+    };
+  }
+
+  // 관리자 대시보드 - 트렌드 차트 데이터
+  async getDashboardStats(dateRange: { startDate: string; endDate: string }) {
+    const startDate = new Date(dateRange.startDate);
+    const endDate = new Date(dateRange.endDate);
+    endDate.setHours(23, 59, 59, 999);
+
+    const dailyGroups = await this.prisma.booking.groupBy({
+      by: ['bookingDate'],
+      where: { bookingDate: { gte: startDate, lte: endDate } },
+      _count: true,
+      _sum: { totalPrice: true },
+      orderBy: { bookingDate: 'asc' },
+    });
+
+    const bookings = dailyGroups.map((g) => ({
+      date: g.bookingDate.toISOString().split('T')[0],
+      count: g._count,
+    }));
+
+    const revenue = dailyGroups.map((g) => ({
+      date: g.bookingDate.toISOString().split('T')[0],
+      amount: Number(g._sum.totalPrice ?? 0),
+    }));
+
+    return {
+      bookings,
+      revenue,
+      users: [],
+      courseUtilization: [],
+    };
+  }
+
   // 사용자 예약 통계 조회
   async getUserStats(userId: number): Promise<{ totalBookings: number }> {
     const totalBookings = await this.prisma.booking.count({

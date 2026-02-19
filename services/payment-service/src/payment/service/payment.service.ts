@@ -530,6 +530,83 @@ export class PaymentService {
   }
 
   /**
+   * 관리자 대시보드 - 매출 통계
+   */
+  async getRevenueStats(dateRange: { startDate: string; endDate: string }) {
+    const startDate = new Date(dateRange.startDate);
+    const endDate = new Date(dateRange.endDate);
+    endDate.setHours(23, 59, 59, 999);
+
+    const approvedFilter: Prisma.PaymentWhereInput = {
+      status: { in: [PaymentStatus.DONE, PaymentStatus.PARTIAL_CANCELED] },
+      approvedAt: { gte: startDate, lte: endDate },
+    };
+
+    const [paymentAgg, refundAgg] = await Promise.all([
+      this.prisma.payment.aggregate({
+        where: approvedFilter,
+        _sum: { amount: true },
+        _count: { id: true },
+        _avg: { amount: true },
+      }),
+      this.prisma.refund.aggregate({
+        where: {
+          payment: { approvedAt: { gte: startDate, lte: endDate } },
+          refundStatus: RefundStatus.COMPLETED,
+        },
+        _sum: { cancelAmount: true },
+      }),
+    ]);
+
+    const grossRevenue = paymentAgg._sum.amount ?? 0;
+    const refundTotal = refundAgg._sum.cancelAmount ?? 0;
+    const totalRevenue = grossRevenue - refundTotal;
+    const transactionCount = paymentAgg._count.id;
+    const averageRevenuePerBooking = Math.round(paymentAgg._avg.amount ?? 0);
+
+    // 이전 동일 기간 계산
+    const periodMs = endDate.getTime() - startDate.getTime();
+    const prevStart = new Date(startDate.getTime() - periodMs - 1);
+    const prevEnd = new Date(startDate.getTime() - 1);
+
+    const [prevPaymentAgg, prevRefundAgg] = await Promise.all([
+      this.prisma.payment.aggregate({
+        where: {
+          status: { in: [PaymentStatus.DONE, PaymentStatus.PARTIAL_CANCELED] },
+          approvedAt: { gte: prevStart, lte: prevEnd },
+        },
+        _sum: { amount: true },
+      }),
+      this.prisma.refund.aggregate({
+        where: {
+          payment: { approvedAt: { gte: prevStart, lte: prevEnd } },
+          refundStatus: RefundStatus.COMPLETED,
+        },
+        _sum: { cancelAmount: true },
+      }),
+    ]);
+
+    const prevRevenue = (prevPaymentAgg._sum.amount ?? 0) - (prevRefundAgg._sum.cancelAmount ?? 0);
+    const revenueGrowthRate = prevRevenue > 0
+      ? Math.round(((totalRevenue - prevRevenue) / prevRevenue) * 100 * 10) / 10
+      : 0;
+
+    const days = Math.max(1, Math.ceil(periodMs / (1000 * 60 * 60 * 24)));
+    const monthlyRecurringRevenue = Math.round((totalRevenue / days) * 30);
+
+    return {
+      totalRevenue,
+      revenueGrowthRate,
+      averageRevenuePerBooking,
+      monthlyRecurringRevenue,
+      transactionCount,
+      refundTotal,
+      total: totalRevenue,
+      growth: revenueGrowthRate,
+    };
+  }
+
+  /**
    * 미결제/환불 진행중 확인 (계정 삭제 제한 조건)
    */
   async checkUserActivePayments(userId: number) {

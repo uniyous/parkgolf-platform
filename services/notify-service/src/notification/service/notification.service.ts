@@ -149,6 +149,37 @@ export class NotificationService {
     });
   }
 
+  // 관리자 대시보드 - 알림 통계
+  async getStats(dateRange: { startDate: string; endDate: string }) {
+    const startDate = new Date(dateRange.startDate);
+    const endDate = new Date(dateRange.endDate);
+    endDate.setHours(23, 59, 59, 999);
+
+    const statusGroups = await this.prisma.notification.groupBy({
+      by: ['status'],
+      where: { createdAt: { gte: startDate, lte: endDate } },
+      _count: true,
+    });
+
+    const statusMap = new Map(statusGroups.map((g) => [g.status, g._count]));
+    const pending = statusMap.get(NotificationStatus.PENDING) ?? 0;
+    const sent = statusMap.get(NotificationStatus.SENT) ?? 0;
+    const failed = statusMap.get(NotificationStatus.FAILED) ?? 0;
+    const read = statusMap.get(NotificationStatus.READ) ?? 0;
+
+    const total = pending + sent + failed + read;
+    const totalSent = sent + read;
+    const deliveryRate = total > 0 ? Math.round((totalSent / total) * 100 * 10) / 10 : 0;
+    const readRate = totalSent > 0 ? Math.round((read / totalSent) * 100 * 10) / 10 : 0;
+
+    return {
+      totalSent,
+      deliveryRate,
+      readRate,
+      failedNotifications: failed,
+    };
+  }
+
   async sendToMultipleUsers(sendNotificationDto: SendNotificationDto): Promise<Notification[]> {
     const { userIds, ...notificationData } = sendNotificationDto;
     

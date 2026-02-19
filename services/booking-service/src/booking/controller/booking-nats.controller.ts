@@ -233,6 +233,24 @@ export class BookingNatsController {
   }
 
   // ============================================
+  // Admin Dashboard Stats
+  // ============================================
+
+  @MessagePattern('bookings.stats')
+  async getBookingStats(@Payload() data: { dateRange: { startDate: string; endDate: string }; token?: string }) {
+    this.logger.log(`NATS: Received bookings.stats request`);
+    const stats = await this.bookingService.getBookingStats(data.dateRange);
+    return NatsResponse.success(stats);
+  }
+
+  @MessagePattern('dashboard.stats')
+  async getDashboardStats(@Payload() data: { dateRange: { startDate: string; endDate: string }; token?: string }) {
+    this.logger.log(`NATS: Received dashboard.stats request`);
+    const stats = await this.bookingService.getDashboardStats(data.dateRange);
+    return NatsResponse.success(stats);
+  }
+
+  // ============================================
   // User Stats
   // ============================================
 
