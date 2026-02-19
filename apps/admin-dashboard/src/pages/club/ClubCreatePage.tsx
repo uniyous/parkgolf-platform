@@ -95,14 +95,20 @@ export const ClubCreatePage: React.FC = () => {
       return;
     }
 
-    if (!window.kakao?.maps?.services) {
-      toast.error('카카오맵 서비스를 로드할 수 없습니다.');
+    if (!window.kakao?.maps) {
+      toast.error('카카오맵을 로드할 수 없습니다.');
       return;
     }
 
     setIsGeocoding(true);
 
     window.kakao.maps.load(() => {
+      if (!window.kakao.maps.services) {
+        setIsGeocoding(false);
+        toast.error('카카오맵 서비스를 로드할 수 없습니다.');
+        return;
+      }
+
       const geocoder = new window.kakao.maps.services.Geocoder();
       geocoder.addressSearch(address, (result, status) => {
         setIsGeocoding(false);
