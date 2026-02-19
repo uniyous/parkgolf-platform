@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { toast } from 'sonner';
 import { useBookingsQuery } from '@/hooks/queries/booking';
 import { useClubsQuery } from '@/hooks/queries';
+import { bookingApi } from '@/lib/api/bookingApi';
 import type { Booking } from '@/types';
 
 import { CancellationStatsCards } from '@/components/features/cancellation/CancellationStatsCards';
@@ -187,22 +188,19 @@ export const CancellationManagementPage: React.FC = () => {
   ) => {
     setIsProcessing(true);
     try {
-      // TODO: 실제 API 호출
-      console.log('Processing refund:', {
-        bookingId: record.booking.id,
-        adjustedAmount,
-        note,
+      await bookingApi.processRefund(record.booking.id, {
+        cancelAmount: adjustedAmount > 0 ? adjustedAmount : undefined,
+        cancelReason: note || '관리자 환불 처리',
+        adminNote: note || undefined,
       });
-
-      // 임시로 성공 처리
-      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       toast.success(`₩${adjustedAmount.toLocaleString()} 환불 처리가 완료되었습니다.`);
       handleCloseRefundModal();
       refetch();
     } catch (error) {
       console.error('Failed to process refund:', error);
-      toast.error('환불 처리에 실패했습니다.');
+      const message = error instanceof Error ? error.message : '환불 처리에 실패했습니다.';
+      toast.error(message);
     } finally {
       setIsProcessing(false);
     }

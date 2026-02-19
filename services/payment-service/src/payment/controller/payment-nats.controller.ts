@@ -134,6 +134,21 @@ export class PaymentNatsController {
   }
 
   // ============================================
+  // Admin Refund
+  // ============================================
+
+  /**
+   * 관리자 환불 처리 (bookingId 기반)
+   * 전체 환불: cancelAmount 생략, 부분 환불: cancelAmount 지정
+   */
+  @MessagePattern('payments.refund')
+  async processRefund(@Payload() data: { bookingId: number; cancelAmount?: number; cancelReason: string }) {
+    this.logger.log(`Processing refund for bookingId: ${data.bookingId}, amount: ${data.cancelAmount ?? 'FULL'}`);
+    const result = await this.paymentService.processRefundByBooking(data);
+    return NatsResponse.success(result);
+  }
+
+  // ============================================
   // Admin Dashboard Stats
   // ============================================
 

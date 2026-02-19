@@ -134,7 +134,7 @@ export class PaymentService {
       throw new AppException(Errors.Payment.ALREADY_CANCELLED);
     }
 
-    if (payment.status !== PaymentStatus.DONE) {
+    if (payment.status !== PaymentStatus.DONE && payment.status !== PaymentStatus.PARTIAL_CANCELED) {
       throw new AppException(Errors.Payment.INVALID_STATUS, '완료된 결제만 취소할 수 있습니다');
     }
 
@@ -526,6 +526,43 @@ export class PaymentService {
         payload: payload as Prisma.InputJsonValue,
         status: OutboxStatus.PENDING,
       },
+    });
+  }
+
+  /**
+   * 관리자 환불 처리 (bookingId 기반)
+   * 전체 환불: cancelAmount 생략
+   * 부분 환불: cancelAmount 지정
+   */
+  async processRefundByBooking(data: {
+    bookingId: number;
+    cancelAmount?: number;
+    cancelReason: string;
+  }) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { bookingId: data.bookingId },
+    });
+
+    if (!payment) {
+      throw new AppException(Errors.Payment.NOT_FOUND, `bookingId=${data.bookingId}에 대한 결제를 찾을 수 없습니다`);
+    }
+
+    if (payment.status === PaymentStatus.CANCELED) {
+      throw new AppException(Errors.Payment.ALREADY_CANCELLED);
+    }
+
+    if (payment.status !== PaymentStatus.DONE && payment.status !== PaymentStatus.PARTIAL_CANCELED) {
+      throw new AppException(Errors.Payment.INVALID_STATUS, '완료된 결제만 환불할 수 있습니다');
+    }
+
+    if (!payment.paymentKey) {
+      throw new AppException(Errors.Payment.INVALID_STATUS, '결제키가 없어 환불할 수 없습니다');
+    }
+
+    return this.cancelPayment({
+      paymentKey: payment.paymentKey,
+      cancelReason: data.cancelReason,
+      cancelAmount: data.cancelAmount,
     });
   }
 
