@@ -149,7 +149,7 @@ export class ConversationService {
   }
 
   /**
-   * 최근 메시지 조회 (Gemini 컨텍스트용)
+   * 최근 메시지 조회 (LLM 컨텍스트용)
    */
   getRecentMessages(
     context: ConversationContext,

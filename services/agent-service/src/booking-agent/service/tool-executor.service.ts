@@ -15,7 +15,7 @@ export interface ToolResult {
 
 /**
  * 도구 실행 서비스
- * Gemini Function Call을 실제 NATS 요청으로 변환
+ * LLM Function Call을 실제 NATS 요청으로 변환
  */
 @Injectable()
 export class ToolExecutorService {

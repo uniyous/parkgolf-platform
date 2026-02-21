@@ -59,7 +59,7 @@ jobs:
         run: |
           INPUT="${{ github.event.inputs.services }}"
           if [ "$INPUT" = "all" ] || [ -z "$INPUT" ]; then
-            SERVICES="iam-service,course-service,booking-service,payment-service,chat-service,notify-service,admin-api,user-api,chat-gateway,weather-service,location-service,job-service"
+            SERVICES="iam-service,course-service,booking-service,payment-service,chat-service,notify-service,admin-api,user-api,chat-gateway,weather-service,location-service,job-service,agent-service"
           else
             SERVICES="$INPUT"
           fi

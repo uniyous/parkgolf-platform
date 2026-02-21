@@ -13,7 +13,7 @@ import { AppException, Errors } from '../../common/exceptions';
 
 /**
  * 예약 에이전트 서비스
- * Gemini + 도구 실행 + 대화 관리 통합
+ * DeepSeek + 도구 실행 + 대화 관리 통합
  */
 @Injectable()
 export class BookingAgentService {
@@ -39,8 +39,8 @@ export class BookingAgentService {
     this.conversationService.addUserMessage(context, message);
 
     try {
-      // Gemini 대화 처리 (도구 호출 포함)
-      const response = await this.processWithGemini(context);
+      // DeepSeek 대화 처리 (도구 호출 포함)
+      const response = await this.processWithLLM(context);
 
       return {
         conversationId: context.conversationId,
@@ -83,9 +83,9 @@ export class BookingAgentService {
   }
 
   /**
-   * Gemini 대화 처리 (도구 호출 루프)
+   * DeepSeek 대화 처리 (도구 호출 루프)
    */
-  private async processWithGemini(
+  private async processWithLLM(
     context: ConversationContext,
   ): Promise<{ text: string; actions?: ChatAction[] }> {
     const messages = this.conversationService.getRecentMessages(context);
