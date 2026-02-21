@@ -6,7 +6,7 @@ import { unwrapResponse, extractPaginatedList, type BffResponse, type PaginatedR
 // ============================================
 
 export type ChatRoomType = 'DIRECT' | 'GROUP' | 'BOOKING';
-export type MessageType = 'TEXT' | 'IMAGE' | 'SYSTEM' | 'BOOKING_INVITE';
+export type MessageType = 'TEXT' | 'IMAGE' | 'SYSTEM' | 'BOOKING_INVITE' | 'AI_ASSISTANT';
 
 export interface ChatParticipant {
   id: string;
@@ -55,6 +55,70 @@ export interface MessagesResponse {
   messages: ChatMessage[];
   hasMore: boolean;
   nextCursor: string | null;
+}
+
+// ============================================
+// AI Chat Types
+// ============================================
+
+export type ConversationState = 'IDLE' | 'COLLECTING' | 'CONFIRMING' | 'BOOKING' | 'COMPLETED' | 'CANCELLED';
+export type ActionType = 'SHOW_CLUBS' | 'SHOW_SLOTS' | 'SHOW_WEATHER' | 'CONFIRM_BOOKING' | 'BOOKING_COMPLETE';
+
+export interface ChatAction {
+  type: ActionType;
+  data: unknown;
+}
+
+export interface AiChatResponse {
+  conversationId: string;
+  message: string;
+  state: ConversationState;
+  actions?: ChatAction[];
+}
+
+export interface ClubCardData {
+  found: number;
+  clubs: Array<{
+    id: string;
+    name: string;
+    address: string;
+    region: string;
+  }>;
+}
+
+export interface SlotCardData {
+  date: string;
+  availableCount: number;
+  slots: Array<{
+    id: string;
+    time: string;
+    endTime: string;
+    availableSpots: number;
+    price: number;
+    courseName: string;
+  }>;
+}
+
+export interface WeatherCardData {
+  date: string;
+  clubName: string;
+  temperature: number;
+  humidity: number;
+  sky: string;
+  precipitation: number;
+  recommendation: string;
+}
+
+export interface BookingCompleteData {
+  success: boolean;
+  bookingId: string;
+  confirmationNumber: string;
+  details: {
+    date: string;
+    time: string;
+    playerCount: number;
+    totalPrice: number;
+  };
 }
 
 // ============================================
@@ -261,5 +325,16 @@ export const chatApi = {
    */
   markAsRead: async (roomId: string): Promise<void> => {
     await apiClient.post<BffResponse<void>>(`/api/user/chat/rooms/${roomId}/read`);
+  },
+
+  /**
+   * AI 예약 도우미에게 메시지 전송
+   */
+  sendAiMessage: async (roomId: string, message: string, conversationId?: string): Promise<AiChatResponse> => {
+    const response = await apiClient.post<BffResponse<AiChatResponse>>(
+      `/api/user/chat/rooms/${roomId}/agent`,
+      { message, conversationId },
+    );
+    return unwrapResponse(response.data);
   },
 };

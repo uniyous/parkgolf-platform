@@ -208,6 +208,66 @@ export class ChatService {
   }
 
   /**
+   * AI 예약 도우미에게 메시지 전송
+   */
+  async sendAiMessage(
+    roomId: string,
+    userId: number,
+    userName: string,
+    message: string,
+    conversationId?: string,
+  ) {
+    this.logger.log(`Send AI message: roomId=${roomId}, userId=${userId}`);
+
+    // 1. 사용자 메시지를 chat-service에 TEXT로 저장
+    const userMessageData = {
+      id: randomUUID(),
+      roomId,
+      senderId: userId,
+      senderName: userName,
+      content: message,
+      messageType: 'TEXT',
+      createdAt: new Date().toISOString(),
+    };
+    this.natsClient.send('chat.messages.save', userMessageData, NATS_TIMEOUTS.QUICK).catch((err) => {
+      this.logger.warn(`Failed to save user message: ${err}`);
+    });
+
+    // 2. agent-service에 AI 채팅 요청 (60초 타임아웃)
+    const agentResponse = await this.natsClient.send<any>(
+      'agent.chat',
+      { userId, message, conversationId },
+      NATS_TIMEOUTS.PAYMENT, // 60초 - AI 처리 시간 고려
+    );
+
+    // 3. AI 응답을 chat-service에 AI_ASSISTANT로 저장 (fire-and-forget)
+    if (agentResponse?.success && agentResponse?.data) {
+      const aiData = agentResponse.data;
+      const metadata = JSON.stringify({
+        conversationId: aiData.conversationId,
+        state: aiData.state,
+        actions: aiData.actions,
+      });
+
+      this.natsClient.send('chat.messages.save', {
+        id: randomUUID(),
+        roomId,
+        senderId: userId,
+        senderName: 'AI 예약 도우미',
+        content: aiData.message || '',
+        messageType: 'AI_ASSISTANT',
+        metadata,
+        createdAt: new Date().toISOString(),
+      }, NATS_TIMEOUTS.QUICK).catch((err) => {
+        this.logger.warn(`Failed to save AI message: ${err}`);
+      });
+    }
+
+    // 4. agent-service 응답 그대로 반환 (BFF 패스스루)
+    return agentResponse;
+  }
+
+  /**
    * 읽지 않은 메시지 수 조회
    */
   async getUnreadCount(roomId: string, userId: number): Promise<ApiResponse<{ count: number }>> {

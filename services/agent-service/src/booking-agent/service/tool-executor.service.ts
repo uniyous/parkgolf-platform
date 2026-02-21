@@ -1,7 +1,7 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, catchError } from 'rxjs';
-import { ToolCall } from './gemini.service';
+import { ToolCall } from './deepseek.service';
 
 /**
  * 도구 실행 결과
@@ -85,6 +85,9 @@ export class ToolExecutorService {
 
       case 'get_nearby_clubs':
         return this.getNearbyClubs(toolCall.args);
+
+      case 'get_booking_policy':
+        return this.getBookingPolicy(toolCall.args);
 
       default:
         throw new Error(`Unknown tool: ${toolCall.name}`);
@@ -424,5 +427,74 @@ export class ToolExecutorService {
     }
 
     return { found: 0, nearbyClubs: [], message: '근처에 파크골프장을 찾을 수 없습니다' };
+  }
+
+  /**
+   * 골프장 부킹 정책 조회
+   */
+  private async getBookingPolicy(args: Record<string, unknown>): Promise<unknown> {
+    const { clubId, policyType = 'all' } = args as { clubId: string; policyType?: string };
+
+    // 클럽의 companyId 조회
+    const clubResponse = await firstValueFrom(
+      this.courseClient.send('clubs.get', { id: clubId }).pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError((err) => {
+          throw new Error(`Failed to get club info: ${err.message}`);
+        }),
+      ),
+    );
+
+    const club = clubResponse?.success ? clubResponse.data : null;
+    const companyId = club?.companyId;
+
+    const resolvePayload = {
+      scopeLevel: 'CLUB',
+      companyId: companyId || undefined,
+      clubId,
+    };
+
+    const results: Record<string, unknown> = {};
+
+    const policyRequests: Array<{ key: string; pattern: string }> = [];
+    if (policyType === 'all' || policyType === 'operating') {
+      policyRequests.push({ key: 'operating', pattern: 'policy.operating.resolve' });
+    }
+    if (policyType === 'all' || policyType === 'cancellation') {
+      policyRequests.push({ key: 'cancellation', pattern: 'policy.cancellation.resolve' });
+    }
+    if (policyType === 'all' || policyType === 'refund') {
+      policyRequests.push({ key: 'refund', pattern: 'policy.refund.resolve' });
+    }
+    if (policyType === 'all' || policyType === 'noshow') {
+      policyRequests.push({ key: 'noshow', pattern: 'policy.noshow.resolve' });
+    }
+
+    // 병렬 호출
+    await Promise.all(
+      policyRequests.map(async ({ key, pattern }) => {
+        try {
+          const response = await firstValueFrom(
+            this.bookingClient.send(pattern, resolvePayload).pipe(
+              timeout(this.REQUEST_TIMEOUT),
+              catchError(() => {
+                return [{ success: false }];
+              }),
+            ),
+          );
+          if (response?.success && response?.data) {
+            results[key] = response.data;
+          }
+        } catch {
+          this.logger.warn(`Failed to resolve ${key} policy for club ${clubId}`);
+        }
+      }),
+    );
+
+    return {
+      clubId,
+      clubName: club?.name,
+      policies: results,
+    };
   }
 }

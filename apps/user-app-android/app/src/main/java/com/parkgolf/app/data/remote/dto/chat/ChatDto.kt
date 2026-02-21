@@ -105,5 +105,28 @@ enum class MessageType(val value: String) {
     TEXT("TEXT"),
     IMAGE("IMAGE"),
     SYSTEM("SYSTEM"),
-    BOOKING_INVITE("BOOKING_INVITE")
+    BOOKING_INVITE("BOOKING_INVITE"),
+    AI_ASSISTANT("AI_ASSISTANT")
 }
+
+// AI Chat DTOs
+
+@Serializable
+data class AiChatRequest(
+    val message: String,
+    val conversationId: String? = null
+)
+
+@Serializable
+data class AiChatActionDto(
+    val type: String,
+    val data: kotlinx.serialization.json.JsonObject? = null
+)
+
+@Serializable
+data class AiChatResponseDto(
+    val conversationId: String,
+    val message: String,
+    val state: String,
+    val actions: List<AiChatActionDto> = emptyList()
+)

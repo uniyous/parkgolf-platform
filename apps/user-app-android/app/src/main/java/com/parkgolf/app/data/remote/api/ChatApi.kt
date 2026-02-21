@@ -1,5 +1,7 @@
 package com.parkgolf.app.data.remote.api
 
+import com.parkgolf.app.data.remote.dto.chat.AiChatRequest
+import com.parkgolf.app.data.remote.dto.chat.AiChatResponseDto
 import com.parkgolf.app.data.remote.dto.chat.ChatMessageDto
 import com.parkgolf.app.data.remote.dto.chat.ChatRoomDto
 import com.parkgolf.app.data.remote.dto.chat.CreateChatRoomRequest
@@ -56,4 +58,10 @@ interface ChatApi {
 
     @GET("api/user/chat/rooms/{roomId}/unread")
     suspend fun getUnreadCount(@Path("roomId") roomId: String): ApiResponse<Int>
+
+    @POST("api/user/chat/rooms/{roomId}/agent")
+    suspend fun sendAiMessage(
+        @Path("roomId") roomId: String,
+        @Body request: AiChatRequest
+    ): ApiResponse<AiChatResponseDto>
 }

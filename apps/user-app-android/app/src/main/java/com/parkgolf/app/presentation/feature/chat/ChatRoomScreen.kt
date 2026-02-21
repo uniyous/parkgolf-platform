@@ -26,8 +26,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.parkgolf.app.domain.model.ChatMessage
 import com.parkgolf.app.domain.model.Friend
+import com.parkgolf.app.domain.model.MessageType
 import com.parkgolf.app.presentation.components.GlassCard
 import com.parkgolf.app.presentation.components.GlassTextField
+import com.parkgolf.app.presentation.feature.chat.components.AiButton
+import com.parkgolf.app.presentation.feature.chat.components.AiMessageBubble
 import com.parkgolf.app.presentation.theme.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.format.DateTimeFormatter
@@ -152,9 +155,18 @@ fun ChatRoomScreen(
             ChatInputBar(
                 value = uiState.messageInput,
                 onValueChange = { viewModel.updateMessageInput(it) },
-                onSend = { viewModel.sendMessage() },
+                onSend = {
+                    if (uiState.isAiMode) {
+                        viewModel.sendAiMessage()
+                    } else {
+                        viewModel.sendMessage()
+                    }
+                },
                 isSending = uiState.isSending,
-                enabled = uiState.isConnected
+                isAiMode = uiState.isAiMode,
+                isAiLoading = uiState.isAiLoading,
+                enabled = uiState.isConnected || uiState.isAiMode,
+                onToggleAi = { viewModel.toggleAiMode() }
             )
         }
     ) { paddingValues ->
@@ -219,11 +231,32 @@ fun ChatRoomScreen(
 
                         // Messages (oldest first, newest at bottom)
                         items(uiState.messages) { message ->
-                            val isOwnMessage = message.senderId == uiState.currentUserId
-                            ChatMessageBubble(
-                                message = message,
-                                isOwnMessage = isOwnMessage
-                            )
+                            if (message.messageType == MessageType.AI_ASSISTANT) {
+                                AiMessageBubble(
+                                    content = message.content,
+                                    actions = viewModel.getActionsForMessage(message.id),
+                                    createdAt = message.createdAt,
+                                    onClubSelect = { _, clubName ->
+                                        viewModel.sendAiMessage("${clubName}(으)로 선택할게요")
+                                    },
+                                    onSlotSelect = { _, time ->
+                                        viewModel.sendAiMessage("$time 시간으로 예약해주세요")
+                                    }
+                                )
+                            } else {
+                                val isOwnMessage = message.senderId == uiState.currentUserId
+                                ChatMessageBubble(
+                                    message = message,
+                                    isOwnMessage = isOwnMessage
+                                )
+                            }
+                        }
+
+                        // AI loading indicator
+                        if (uiState.isAiLoading) {
+                            item {
+                                AiTypingIndicator()
+                            }
                         }
                     }
                 }
@@ -434,7 +467,10 @@ private fun ChatInputBar(
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
     isSending: Boolean,
-    enabled: Boolean
+    isAiMode: Boolean = false,
+    isAiLoading: Boolean = false,
+    enabled: Boolean,
+    onToggleAi: () -> Unit = {}
 ) {
     Surface(
         color = GradientStart.copy(alpha = 0.95f),
@@ -455,14 +491,18 @@ private fun ChatInputBar(
                 modifier = Modifier.weight(1f),
                 placeholder = {
                     Text(
-                        text = if (enabled) "메시지를 입력하세요" else "연결 중...",
+                        text = when {
+                            isAiMode -> "AI에게 질문하기..."
+                            enabled -> "메시지를 입력하세요"
+                            else -> "연결 중..."
+                        },
                         color = ParkOnPrimary.copy(alpha = 0.5f)
                     )
                 },
                 enabled = enabled,
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = GlassCard,
-                    unfocusedContainerColor = GlassCard,
+                    focusedContainerColor = if (isAiMode) ParkPrimary.copy(alpha = 0.15f) else GlassCard,
+                    unfocusedContainerColor = if (isAiMode) ParkPrimary.copy(alpha = 0.15f) else GlassCard,
                     disabledContainerColor = GlassCard.copy(alpha = 0.5f),
                     focusedTextColor = ParkOnPrimary,
                     unfocusedTextColor = ParkOnPrimary,
@@ -474,9 +514,14 @@ private fun ChatInputBar(
                 maxLines = 4
             )
 
+            AiButton(
+                isActive = isAiMode,
+                onClick = onToggleAi
+            )
+
             IconButton(
                 onClick = onSend,
-                enabled = enabled && value.isNotBlank() && !isSending,
+                enabled = enabled && value.isNotBlank() && !isSending && !isAiLoading,
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
@@ -484,7 +529,7 @@ private fun ChatInputBar(
                         if (enabled && value.isNotBlank()) ParkPrimary else ParkPrimary.copy(alpha = 0.3f)
                     )
             ) {
-                if (isSending) {
+                if (isSending || isAiLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         color = ParkOnPrimary,
@@ -499,6 +544,35 @@ private fun ChatInputBar(
                 }
             }
         }
+    }
+}
+
+/**
+ * AI 타이핑 인디케이터
+ */
+@Composable
+private fun AiTypingIndicator() {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(start = 8.dp)
+    ) {
+        Icon(
+            Icons.Default.AutoAwesome,
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = ParkPrimary
+        )
+        Text(
+            text = "AI가 답변 중...",
+            style = MaterialTheme.typography.bodySmall,
+            color = ParkOnPrimary.copy(alpha = 0.6f)
+        )
+        CircularProgressIndicator(
+            modifier = Modifier.size(12.dp),
+            color = ParkPrimary,
+            strokeWidth = 1.5.dp
+        )
     }
 }
 

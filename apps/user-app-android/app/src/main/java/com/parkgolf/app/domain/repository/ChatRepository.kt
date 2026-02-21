@@ -1,6 +1,7 @@
 package com.parkgolf.app.domain.repository
 
 import com.parkgolf.app.data.remote.socket.TypingEvent
+import com.parkgolf.app.domain.model.AiChatResponse
 import com.parkgolf.app.domain.model.ChatMessage
 import com.parkgolf.app.domain.model.ChatRoom
 import com.parkgolf.app.domain.model.ChatRoomType
@@ -40,6 +41,12 @@ interface ChatRepository {
     suspend fun inviteMembers(roomId: String, userIds: List<String>): Result<Unit>
 
     suspend fun markAsRead(roomId: String): Result<Unit>
+
+    suspend fun sendAiMessage(
+        roomId: String,
+        message: String,
+        conversationId: String? = null
+    ): Result<AiChatResponse>
 
     // Socket operations
     fun connect(token: String)

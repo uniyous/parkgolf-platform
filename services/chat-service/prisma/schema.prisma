@@ -59,7 +59,8 @@ model ChatRoomMember {
 enum MessageType {
   TEXT
   IMAGE
-  SYSTEM  // 입장/퇴장 등 시스템 메시지
+  SYSTEM        // 입장/퇴장 등 시스템 메시지
+  AI_ASSISTANT  // AI 예약 도우미 응답
 }
 
 // 채팅 메시지
@@ -70,6 +71,7 @@ model ChatMessage {
   senderName String      // 캐시용 (비정규화)
   content    String
   type       MessageType @default(TEXT)
+  metadata   String?     // AI 액션 JSON (AI_ASSISTANT 메시지용)
   createdAt  DateTime    @default(now())
 
   // 삭제 처리 (soft delete)

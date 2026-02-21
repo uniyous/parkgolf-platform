@@ -12,6 +12,7 @@ export enum MessageType {
   IMAGE = 'IMAGE',
   SYSTEM = 'SYSTEM',
   BOOKING_INVITE = 'BOOKING_INVITE',
+  AI_ASSISTANT = 'AI_ASSISTANT',
 }
 
 export class CreateChatRoomDto {
@@ -69,4 +70,15 @@ export class AddMembersDto {
   @IsArray()
   @IsString({ each: true })
   user_ids: string[];
+}
+
+export class AiChatRequestDto {
+  @ApiProperty({ description: 'AI에게 보낼 메시지' })
+  @IsString()
+  message: string;
+
+  @ApiPropertyOptional({ description: '기존 대화 ID (없으면 새 대화)' })
+  @IsOptional()
+  @IsString()
+  conversationId?: string;
 }

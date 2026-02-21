@@ -3,10 +3,15 @@ package com.parkgolf.app.presentation.feature.chat
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.parkgolf.app.domain.model.AiChatResponse
+import com.parkgolf.app.domain.model.ChatAction
 import com.parkgolf.app.domain.model.ChatMessage
 import com.parkgolf.app.domain.model.ChatRoom
+import com.parkgolf.app.domain.model.MessageType
 import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.ChatRepository
+import java.time.LocalDateTime
+import java.util.UUID
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +38,11 @@ data class ChatUiState(
     val currentUserId: String? = null,
     val error: String? = null,
     val canReconnect: Boolean = true,
-    val typingUserName: String? = null
+    val typingUserName: String? = null,
+    val isAiMode: Boolean = false,
+    val isAiLoading: Boolean = false,
+    val aiConversationId: String? = null,
+    val aiMessageActions: Map<String, List<ChatAction>> = emptyMap()
 )
 
 @HiltViewModel
@@ -348,6 +357,78 @@ class ChatViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    // AI Mode
+
+    fun toggleAiMode() {
+        _uiState.value = _uiState.value.copy(
+            isAiMode = !_uiState.value.isAiMode
+        )
+    }
+
+    fun sendAiMessage(message: String? = null) {
+        val content = (message ?: _uiState.value.messageInput).trim()
+        val roomId = currentRoomId
+
+        if (content.isBlank() || roomId == null) return
+
+        // Clear input if using message input
+        if (message == null) {
+            _uiState.value = _uiState.value.copy(messageInput = "")
+        }
+
+        // Add user message locally
+        val userMsg = ChatMessage(
+            id = UUID.randomUUID().toString(),
+            roomId = roomId,
+            senderId = _uiState.value.currentUserId ?: "",
+            senderName = "나",
+            content = content,
+            messageType = MessageType.TEXT,
+            createdAt = LocalDateTime.now()
+        )
+        _uiState.value = _uiState.value.copy(
+            messages = _uiState.value.messages + userMsg,
+            isAiLoading = true
+        )
+
+        viewModelScope.launch {
+            chatRepository.sendAiMessage(
+                roomId = roomId,
+                message = content,
+                conversationId = _uiState.value.aiConversationId
+            ).onSuccess { response ->
+                val aiMsg = ChatMessage(
+                    id = UUID.randomUUID().toString(),
+                    roomId = roomId,
+                    senderId = "ai-assistant",
+                    senderName = "AI 예약 도우미",
+                    content = response.message,
+                    messageType = MessageType.AI_ASSISTANT,
+                    createdAt = LocalDateTime.now()
+                )
+                val updatedActions = _uiState.value.aiMessageActions.toMutableMap()
+                if (response.actions.isNotEmpty()) {
+                    updatedActions[aiMsg.id] = response.actions
+                }
+                _uiState.value = _uiState.value.copy(
+                    messages = _uiState.value.messages + aiMsg,
+                    isAiLoading = false,
+                    aiConversationId = response.conversationId,
+                    aiMessageActions = updatedActions
+                )
+            }.onFailure { exception ->
+                _uiState.value = _uiState.value.copy(
+                    isAiLoading = false,
+                    error = exception.message ?: "AI 응답 오류"
+                )
+            }
+        }
+    }
+
+    fun getActionsForMessage(messageId: String): List<ChatAction> {
+        return _uiState.value.aiMessageActions[messageId] ?: emptyList()
     }
 
     override fun onCleared() {

@@ -190,6 +190,14 @@ enum ChatEndpoints {
             method: .post
         )
     }
+
+    static func sendAiMessage(roomId: String, message: String, conversationId: String? = nil) -> Endpoint {
+        Endpoint(
+            path: "/api/user/chat/rooms/\(roomId)/agent",
+            method: .post,
+            body: AiChatRequest(message: message, conversationId: conversationId)
+        )
+    }
 }
 
 // MARK: - Request DTOs

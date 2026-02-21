@@ -315,6 +315,7 @@ jobs:
             --from-literal=KAKAO_API_KEY='${{ secrets.KAKAO_API_KEY }}' \
             --from-literal=TOSS_SECRET_KEY='${{ secrets.TOSS_SECRET_KEY }}' \
             --from-literal=TOSS_SECURITY_KEY='${{ secrets.TOSS_SECURITY_KEY }}' \
+            --from-literal=DEEPSEEK_API_KEY='${{ secrets.DEEPSEEK_API_KEY }}' \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Create ConfigMap
@@ -332,6 +333,10 @@ jobs:
             DB_PORT: "5432"
             KMA_API_URL: "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0"
             TOSS_API_URL: "https://api.tosspayments.com/v1"
+            DEEPSEEK_API_URL: "https://api.deepseek.com"
+            DEEPSEEK_MODEL: "deepseek-chat"
+            CONVERSATION_TTL: "1800"
+            MAX_HISTORY_TURNS: "10"
           EOF
 
       - name: Deploy PostgreSQL
@@ -671,6 +676,7 @@ jobs:
             --from-literal=KAKAO_API_KEY='${{ secrets.KAKAO_API_KEY }}' \
             --from-literal=TOSS_SECRET_KEY='${{ secrets.TOSS_SECRET_KEY }}' \
             --from-literal=TOSS_SECURITY_KEY='${{ secrets.TOSS_SECURITY_KEY }}' \
+            --from-literal=DEEPSEEK_API_KEY='${{ secrets.DEEPSEEK_API_KEY }}' \
             --dry-run=client -o yaml | kubectl apply -f -
           echo "Secrets updated"
 
@@ -689,6 +695,10 @@ jobs:
             DB_PORT: "5432"
             KMA_API_URL: "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0"
             TOSS_API_URL: "https://api.tosspayments.com/v1"
+            DEEPSEEK_API_URL: "https://api.deepseek.com"
+            DEEPSEEK_MODEL: "deepseek-chat"
+            CONVERSATION_TTL: "1800"
+            MAX_HISTORY_TURNS: "10"
           EOF
           echo "ConfigMap updated"
 

@@ -4,6 +4,7 @@ struct ChatRoomView: View {
     let room: ChatRoom
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel: ChatRoomViewModel
+    @StateObject private var aiViewModel = AiChatViewModel()
     @Environment(\.dismiss) private var dismiss
     @FocusState private var isInputFocused: Bool
     @State private var showInviteSheet = false
@@ -150,24 +151,44 @@ struct ChatRoomView: View {
                     }
 
                     ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
-                        let isCurrentUser = message.senderId == viewModel.currentUserId
-                        let showSender = !isCurrentUser &&
-                            (index == 0 || viewModel.messages[index - 1].senderId != message.senderId)
+                        if message.messageType == .aiAssistant {
+                            AiMessageBubble(
+                                content: message.content,
+                                actions: nil,
+                                createdAt: message.createdAt,
+                                onClubSelect: { _, clubName in
+                                    sendAiFollowUp("\(clubName)(으)로 선택할게요")
+                                },
+                                onSlotSelect: { _, time in
+                                    sendAiFollowUp("\(time) 시간으로 예약해주세요")
+                                }
+                            )
+                            .id(message.id)
+                        } else {
+                            let isCurrentUser = message.senderId == viewModel.currentUserId
+                            let showSender = !isCurrentUser &&
+                                (index == 0 || viewModel.messages[index - 1].senderId != message.senderId)
 
-                        MessageBubble(
-                            message: message,
-                            isCurrentUser: isCurrentUser,
-                            showSender: showSender
-                        )
-                        .id(message.id)
-                        .onAppear {
-                            // 첫 번째 메시지가 보이면 이전 메시지 로드
-                            if message.id == viewModel.messages.first?.id {
-                                Task {
-                                    await viewModel.loadMoreMessages()
+                            MessageBubble(
+                                message: message,
+                                isCurrentUser: isCurrentUser,
+                                showSender: showSender
+                            )
+                            .id(message.id)
+                            .onAppear {
+                                // 첫 번째 메시지가 보이면 이전 메시지 로드
+                                if message.id == viewModel.messages.first?.id {
+                                    Task {
+                                        await viewModel.loadMoreMessages()
+                                    }
                                 }
                             }
                         }
+                    }
+
+                    // AI 로딩 인디케이터
+                    if aiViewModel.isAiLoading {
+                        aiTypingIndicator
                     }
                 }
                 .padding(.horizontal, ParkSpacing.md)
@@ -231,6 +252,75 @@ struct ChatRoomView: View {
         .animation(.easeInOut(duration: 0.2), value: name)
     }
 
+    // MARK: - AI Typing Indicator
+
+    private var aiTypingIndicator: some View {
+        HStack(spacing: ParkSpacing.xs) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 14))
+                .foregroundStyle(Color.parkPrimary)
+
+            HStack(spacing: 4) {
+                ForEach(0..<3, id: \.self) { i in
+                    Circle()
+                        .fill(Color.parkPrimary.opacity(0.6))
+                        .frame(width: 6, height: 6)
+                        .offset(y: aiViewModel.isAiLoading ? -4 : 0)
+                        .animation(
+                            .easeInOut(duration: 0.5)
+                                .repeatForever(autoreverses: true)
+                                .delay(Double(i) * 0.15),
+                            value: aiViewModel.isAiLoading
+                        )
+                }
+            }
+
+            Text("AI가 답변 중...")
+                .font(.parkCaption)
+                .foregroundStyle(.white.opacity(0.6))
+        }
+        .padding(.horizontal, ParkSpacing.md)
+        .padding(.vertical, ParkSpacing.xs)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - AI Follow-up
+
+    private func sendAiFollowUp(_ message: String) {
+        Task {
+            // 사용자 후속 메시지를 로컬에 추가
+            let userMsg = ChatMessage(
+                id: UUID().uuidString,
+                roomId: room.id,
+                senderId: viewModel.currentUserId,
+                senderName: "나",
+                content: message,
+                messageType: .text,
+                createdAt: Date(),
+                readBy: nil
+            )
+            viewModel.messages.append(userMsg)
+
+            // AI에 메시지 전송
+            await aiViewModel.sendAiMessage(roomId: room.id, message: message)
+
+            // AI 응답을 메시지로 추가
+            if let response = aiViewModel.lastResponse {
+                let aiMsg = ChatMessage(
+                    id: UUID().uuidString,
+                    roomId: room.id,
+                    senderId: "ai-assistant",
+                    senderName: "AI 예약 도우미",
+                    content: response.message,
+                    messageType: .aiAssistant,
+                    createdAt: Date(),
+                    readBy: nil
+                )
+                viewModel.messages.append(aiMsg)
+            }
+        }
+    }
+
     // MARK: - Message Input
 
     private var messageInput: some View {
@@ -243,12 +333,27 @@ struct ChatRoomView: View {
                     .foregroundStyle(.white.opacity(0.6))
             }
 
-            TextField("메시지 입력", text: $viewModel.inputText, axis: .vertical)
+            TextField(
+                aiViewModel.isAiMode ? "AI에게 질문하기..." : "메시지 입력",
+                text: $viewModel.inputText,
+                axis: .vertical
+            )
                 .textFieldStyle(.plain)
                 .padding(.horizontal, ParkSpacing.sm)
                 .padding(.vertical, ParkSpacing.xs)
-                .background(Color.white.opacity(0.15))
+                .background(
+                    aiViewModel.isAiMode
+                        ? Color.parkPrimary.opacity(0.15)
+                        : Color.white.opacity(0.15)
+                )
                 .clipShape(RoundedRectangle(cornerRadius: ParkRadius.full))
+                .overlay(
+                    RoundedRectangle(cornerRadius: ParkRadius.full)
+                        .stroke(
+                            aiViewModel.isAiMode ? Color.parkPrimary.opacity(0.4) : Color.clear,
+                            lineWidth: 1
+                        )
+                )
                 .foregroundStyle(.white)
                 .focused($isInputFocused)
                 .lineLimit(1...5)
@@ -258,19 +363,39 @@ struct ChatRoomView: View {
                 .task(id: viewModel.inputText) {
                     // Debounce typing indicator (300ms)
                     try? await Task.sleep(nanoseconds: 300_000_000)
-                    viewModel.sendTypingIndicator(!viewModel.inputText.isEmpty)
+                    if !aiViewModel.isAiMode {
+                        viewModel.sendTypingIndicator(!viewModel.inputText.isEmpty)
+                    }
                 }
 
+            AiButton(isActive: aiViewModel.isAiMode) {
+                aiViewModel.toggleAiMode()
+            }
+
             Button {
-                Task {
-                    await viewModel.sendMessage()
+                if aiViewModel.isAiMode {
+                    let text = viewModel.inputText
+                    viewModel.inputText = ""
+                    sendAiFollowUp(text)
+                } else {
+                    Task {
+                        await viewModel.sendMessage()
+                    }
                 }
             } label: {
-                Image(systemName: viewModel.isSending ? "arrow.up.circle" : "arrow.up.circle.fill")
-                    .font(.title)
-                    .foregroundStyle(viewModel.inputText.isEmpty ? .white.opacity(0.4) : Color.parkPrimary)
+                Group {
+                    if aiViewModel.isAiLoading {
+                        ProgressView()
+                            .tint(Color.parkPrimary)
+                            .frame(width: 28, height: 28)
+                    } else {
+                        Image(systemName: viewModel.isSending ? "arrow.up.circle" : "arrow.up.circle.fill")
+                            .font(.title)
+                            .foregroundStyle(viewModel.inputText.isEmpty ? .white.opacity(0.4) : Color.parkPrimary)
+                    }
+                }
             }
-            .disabled(viewModel.inputText.isEmpty || viewModel.isSending)
+            .disabled(viewModel.inputText.isEmpty || viewModel.isSending || aiViewModel.isAiLoading)
         }
         .padding(.horizontal, ParkSpacing.md)
         .padding(.vertical, ParkSpacing.sm)

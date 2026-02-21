@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw, Loader2, UserPlus, Search, X, Check } from 'lucide-react';
+import { Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw, Loader2, UserPlus, Search, X, Check, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SubPageHeader } from '@/components/layout';
 import { Button, LoadingView } from '@/components/ui';
@@ -12,7 +12,10 @@ import { authStorage } from '@/lib/storage';
 import { showErrorToast, showSuccessToast } from '@/lib/toast';
 import { useAuthStore } from '@/stores/authStore';
 import { useConfirm } from '@/contexts/ConfirmContext';
-import { chatApi, getChatRoomDisplayName, type ChatMessage } from '@/lib/api/chatApi';
+import { chatApi, getChatRoomDisplayName, type ChatMessage, type ChatAction } from '@/lib/api/chatApi';
+import { useAiChat } from '@/hooks/useAiChat';
+import { AiButton } from '@/components/features/chat/AiButton';
+import { AiMessageBubble } from '@/components/features/chat/AiMessageBubble';
 
 export const ChatRoomPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -27,6 +30,7 @@ export const ChatRoomPage: React.FC = () => {
   const [showMenu, setShowMenu] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
+  const [aiMessageActions, setAiMessageActions] = useState<Map<string, ChatAction[]>>(new Map());
 
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -45,6 +49,7 @@ export const ChatRoomPage: React.FC = () => {
   } = useMessagesInfiniteQuery(roomId ?? '');
   const sendMessageMutation = useSendMessageMutation();
   const leaveMutation = useLeaveChatRoomMutation();
+  const { isAiMode, toggleAiMode, sendAiMessage, isAiLoading } = useAiChat(roomId ?? '');
 
   // Merge DB messages from infinite query with realtime messages
   const messages = useMemo(() => {
@@ -164,6 +169,34 @@ export const ChatRoomPage: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Send AI follow-up message (from card interaction)
+  const handleAiFollowUp = useCallback(async (followUpMessage: string) => {
+    if (!roomId) return;
+    try {
+      const response = await sendAiMessage(followUpMessage);
+
+      // Add AI response as a local message
+      const aiMsg: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        roomId,
+        senderId: 'ai',
+        senderName: 'AI 예약 도우미',
+        content: response.message,
+        messageType: 'AI_ASSISTANT',
+        createdAt: new Date().toISOString(),
+        readBy: null,
+      };
+
+      if (response.actions) {
+        setAiMessageActions((prev) => new Map(prev).set(aiMsg.id, response.actions!));
+      }
+
+      setRealtimeMessages((prev) => [...prev, aiMsg]);
+    } catch {
+      showErrorToast('AI 응답에 실패했습니다.');
+    }
+  }, [roomId, sendAiMessage]);
+
   // Send message handler
   const handleSendMessage = useCallback(async () => {
     const text = inputText.trim();
@@ -171,7 +204,49 @@ export const ChatRoomPage: React.FC = () => {
 
     setInputText('');
 
-    // Try socket first
+    // AI mode: send to AI endpoint
+    if (isAiMode) {
+      // Add user message locally
+      const userMsg: ChatMessage = {
+        id: `user-${Date.now()}`,
+        roomId,
+        senderId: currentUserId,
+        senderName: user?.name || '',
+        content: text,
+        messageType: 'TEXT',
+        createdAt: new Date().toISOString(),
+        readBy: null,
+      };
+      setRealtimeMessages((prev) => [...prev, userMsg]);
+
+      try {
+        const response = await sendAiMessage(text);
+
+        // Add AI response as a local message
+        const aiMsg: ChatMessage = {
+          id: `ai-${Date.now()}`,
+          roomId,
+          senderId: 'ai',
+          senderName: 'AI 예약 도우미',
+          content: response.message,
+          messageType: 'AI_ASSISTANT',
+          createdAt: new Date().toISOString(),
+          readBy: null,
+        };
+
+        if (response.actions) {
+          setAiMessageActions((prev) => new Map(prev).set(aiMsg.id, response.actions!));
+        }
+
+        setRealtimeMessages((prev) => [...prev, aiMsg]);
+      } catch {
+        showErrorToast('AI 응답에 실패했습니다.');
+        setInputText(text);
+      }
+      return;
+    }
+
+    // Normal mode: Try socket first
     if (chatSocket.isConnected) {
       const result = await chatSocket.sendMessage(roomId, text);
       if (result) {
@@ -198,7 +273,7 @@ export const ChatRoomPage: React.FC = () => {
       showErrorToast('메시지 전송에 실패했습니다.');
       setInputText(text); // Restore input
     }
-  }, [inputText, roomId, sendMessageMutation]);
+  }, [inputText, roomId, isAiMode, currentUserId, user?.name, sendAiMessage, sendMessageMutation]);
 
   // Handle key press
   const handleKeyPress = useCallback(
@@ -392,6 +467,26 @@ export const ChatRoomPage: React.FC = () => {
 
           <div className="space-y-3">
             {messages.map((message, index) => {
+              // AI 메시지는 AiMessageBubble로 렌더링
+              if (message.messageType === 'AI_ASSISTANT') {
+                const actions = aiMessageActions.get(message.id) ||
+                  (message as any).metadata?.actions;
+                return (
+                  <AiMessageBubble
+                    key={message.id}
+                    content={message.content}
+                    actions={actions}
+                    createdAt={message.createdAt}
+                    onClubSelect={(clubId, clubName) =>
+                      handleAiFollowUp(`${clubName}(으)로 선택할게요`)
+                    }
+                    onSlotSelect={(slotId, time) =>
+                      handleAiFollowUp(`${time} 시간으로 예약해주세요`)
+                    }
+                  />
+                );
+              }
+
               const isCurrentUser = String(message.senderId) === String(currentUserId);
               const showSender =
                 !isCurrentUser &&
@@ -406,6 +501,28 @@ export const ChatRoomPage: React.FC = () => {
                 />
               );
             })}
+
+            {/* AI 타이핑 인디케이터 */}
+            {isAiLoading && (
+              <div className="flex justify-start">
+                <div className="max-w-[85%]">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                      <Bot className="w-3 h-3 text-emerald-400" />
+                    </div>
+                    <span className="text-xs text-emerald-400 font-medium">AI 예약 도우미</span>
+                  </div>
+                  <div className="bg-white/10 rounded-2xl rounded-bl-sm px-3.5 py-2">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2 h-2 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2 h-2 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
         </div>
@@ -421,17 +538,20 @@ export const ChatRoomPage: React.FC = () => {
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="메시지 입력..."
+              placeholder={isAiMode ? 'AI에게 예약 요청하기...' : '메시지 입력...'}
               className={cn(
                 'flex-1 px-4 py-2.5 rounded-full',
                 'bg-white/10 text-white placeholder:text-white/40',
-                'border border-white/10 focus:border-emerald-500/50',
-                'outline-none transition-colors'
+                'outline-none transition-colors',
+                isAiMode
+                  ? 'border border-emerald-500/50 focus:border-emerald-500'
+                  : 'border border-white/10 focus:border-emerald-500/50'
               )}
             />
+            <AiButton active={isAiMode} onClick={toggleAiMode} />
             <button
               onClick={handleSendMessage}
-              disabled={!inputText.trim() || sendMessageMutation.isPending}
+              disabled={!inputText.trim() || sendMessageMutation.isPending || isAiLoading}
               className={cn(
                 'p-2.5 rounded-full transition-colors',
                 inputText.trim()
@@ -439,7 +559,11 @@ export const ChatRoomPage: React.FC = () => {
                   : 'bg-white/10 text-white/40'
               )}
             >
-              <Send className="w-5 h-5" />
+              {isAiLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
             </button>
           </div>
         </div>

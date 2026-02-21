@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { GeminiService, GeminiResponse, ToolCall } from './gemini.service';
+import { DeepSeekService, DeepSeekResponse, ToolCall } from './deepseek.service';
 import { ToolExecutorService, ToolResult } from './tool-executor.service';
 import { ConversationService } from './conversation.service';
 import {
@@ -21,7 +21,7 @@ export class BookingAgentService {
   private readonly MAX_TOOL_ITERATIONS = 5;
 
   constructor(
-    private readonly geminiService: GeminiService,
+    private readonly deepseekService: DeepSeekService,
     private readonly toolExecutor: ToolExecutorService,
     private readonly conversationService: ConversationService,
   ) {}
@@ -89,34 +89,34 @@ export class BookingAgentService {
     context: ConversationContext,
   ): Promise<{ text: string; actions?: ChatAction[] }> {
     const messages = this.conversationService.getRecentMessages(context);
-    let geminiResponse: GeminiResponse;
+    let llmResponse: DeepSeekResponse;
     let iterations = 0;
     let allActions: ChatAction[] = [];
 
-    // 초기 Gemini 호출
-    geminiResponse = await this.geminiService.chat(messages);
+    // 초기 DeepSeek 호출
+    llmResponse = await this.deepseekService.chat(messages);
 
     // 도구 호출 루프
-    while (geminiResponse.toolCalls && geminiResponse.toolCalls.length > 0) {
+    while (llmResponse.toolCalls && llmResponse.toolCalls.length > 0) {
       if (iterations >= this.MAX_TOOL_ITERATIONS) {
         this.logger.warn('Max tool iterations reached');
         break;
       }
 
       // 도구 실행
-      const toolResults = await this.executeTools(geminiResponse.toolCalls);
+      const toolResults = await this.executeTools(llmResponse.toolCalls);
 
       // UI 액션 생성
-      const actions = this.createActionsFromToolResults(geminiResponse.toolCalls, toolResults);
+      const actions = this.createActionsFromToolResults(llmResponse.toolCalls, toolResults);
       allActions = [...allActions, ...actions];
 
       // 슬롯 업데이트
-      this.updateSlotsFromToolResults(context, geminiResponse.toolCalls, toolResults);
+      this.updateSlotsFromToolResults(context, llmResponse.toolCalls, toolResults);
 
-      // Gemini 계속 호출
-      geminiResponse = await this.geminiService.continueWithToolResults(
+      // DeepSeek 계속 호출
+      llmResponse = await this.deepseekService.continueWithToolResults(
         messages,
-        geminiResponse.toolCalls,
+        llmResponse.toolCalls,
         toolResults.map((tr) => ({ name: tr.name, result: tr.result })),
       );
 
@@ -124,15 +124,15 @@ export class BookingAgentService {
     }
 
     // 최종 텍스트 응답 저장
-    if (geminiResponse.text) {
-      this.conversationService.addAssistantMessage(context, geminiResponse.text);
+    if (llmResponse.text) {
+      this.conversationService.addAssistantMessage(context, llmResponse.text);
     }
 
     // 상태 업데이트
-    this.updateStateFromResponse(context, geminiResponse, allActions);
+    this.updateStateFromResponse(context, llmResponse, allActions);
 
     return {
-      text: geminiResponse.text || '',
+      text: llmResponse.text || '',
       actions: allActions.length > 0 ? allActions : undefined,
     };
   }
@@ -255,7 +255,7 @@ export class BookingAgentService {
    */
   private updateStateFromResponse(
     context: ConversationContext,
-    response: GeminiResponse,
+    response: DeepSeekResponse,
     actions: ChatAction[],
   ): void {
     // 예약 완료 확인

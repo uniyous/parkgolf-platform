@@ -259,6 +259,33 @@ jobs:
                       secretKeyRef:
                         name: parkgolf-secrets
                         key: KAKAO_API_KEY"
+          elif [ "$SERVICE" = "agent-service" ]; then
+            EXTRA_ENV="
+                  - name: DEEPSEEK_API_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: parkgolf-secrets
+                        key: DEEPSEEK_API_KEY
+                  - name: DEEPSEEK_API_URL
+                    valueFrom:
+                      configMapKeyRef:
+                        name: parkgolf-config
+                        key: DEEPSEEK_API_URL
+                  - name: DEEPSEEK_MODEL
+                    valueFrom:
+                      configMapKeyRef:
+                        name: parkgolf-config
+                        key: DEEPSEEK_MODEL
+                  - name: CONVERSATION_TTL
+                    valueFrom:
+                      configMapKeyRef:
+                        name: parkgolf-config
+                        key: CONVERSATION_TTL
+                  - name: MAX_HISTORY_TURNS
+                    valueFrom:
+                      configMapKeyRef:
+                        name: parkgolf-config
+                        key: MAX_HISTORY_TURNS"
           elif [ "$SERVICE" = "payment-service" ]; then
             EXTRA_ENV="
                   - name: TOSS_SECRET_KEY
