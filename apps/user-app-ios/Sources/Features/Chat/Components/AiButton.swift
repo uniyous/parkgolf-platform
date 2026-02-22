@@ -21,5 +21,6 @@ struct AiButton: View {
                         .stroke(isActive ? Color.parkPrimary : Color.clear, lineWidth: 1)
                 )
         }
+        .accessibilityLabel(isActive ? "AI 모드 끄기" : "AI 예약 도우미")
     }
 }

@@ -492,7 +492,7 @@ private fun ChatInputBar(
                 placeholder = {
                     Text(
                         text = when {
-                            isAiMode -> "AI에게 질문하기..."
+                            isAiMode -> "AI에게 예약 요청하기..."
                             enabled -> "메시지를 입력하세요"
                             else -> "연결 중..."
                         },
@@ -564,9 +564,9 @@ private fun AiTypingIndicator() {
             tint = ParkPrimary
         )
         Text(
-            text = "AI가 답변 중...",
+            text = "AI 예약 도우미",
             style = MaterialTheme.typography.bodySmall,
-            color = ParkOnPrimary.copy(alpha = 0.6f)
+            color = ParkPrimary
         )
         CircularProgressIndicator(
             modifier = Modifier.size(12.dp),

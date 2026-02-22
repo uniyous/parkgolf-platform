@@ -421,7 +421,8 @@ class ChatViewModel @Inject constructor(
             }.onFailure { exception ->
                 _uiState.value = _uiState.value.copy(
                     isAiLoading = false,
-                    error = exception.message ?: "AI 응답 오류"
+                    messageInput = content, // 입력 복원 (Web 패턴)
+                    error = "AI 응답에 실패했습니다."
                 )
             }
         }

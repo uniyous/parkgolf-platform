@@ -108,6 +108,26 @@ struct ChatRoomView: View {
         .onDisappear {
             viewModel.disconnectSocket()
         }
+        .overlay(alignment: .top) {
+            if let error = aiViewModel.lastError {
+                Text(error)
+                    .font(.parkCaption)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, ParkSpacing.md)
+                    .padding(.vertical, ParkSpacing.xs)
+                    .background(Color.red.opacity(0.9))
+                    .clipShape(Capsule())
+                    .padding(.top, ParkSpacing.sm)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .onAppear {
+                        // 3초 후 자동 dismiss
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                            withAnimation { aiViewModel.lastError = nil }
+                        }
+                    }
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: aiViewModel.lastError)
     }
 
     // MARK: - Connection Status Banner
@@ -154,7 +174,7 @@ struct ChatRoomView: View {
                         if message.messageType == .aiAssistant {
                             AiMessageBubble(
                                 content: message.content,
-                                actions: nil,
+                                actions: aiViewModel.getActions(for: message.id),
                                 createdAt: message.createdAt,
                                 onClubSelect: { _, clubName in
                                     sendAiFollowUp("\(clubName)(으)로 선택할게요")
@@ -275,9 +295,9 @@ struct ChatRoomView: View {
                 }
             }
 
-            Text("AI가 답변 중...")
+            Text("AI 예약 도우미")
                 .font(.parkCaption)
-                .foregroundStyle(.white.opacity(0.6))
+                .foregroundStyle(Color.parkPrimary)
         }
         .padding(.horizontal, ParkSpacing.md)
         .padding(.vertical, ParkSpacing.xs)
@@ -304,10 +324,17 @@ struct ChatRoomView: View {
             // AI에 메시지 전송
             await aiViewModel.sendAiMessage(roomId: room.id, message: message)
 
+            // 에러 발생 시 입력 복원
+            if aiViewModel.lastError != nil {
+                viewModel.inputText = message
+                return
+            }
+
             // AI 응답을 메시지로 추가
             if let response = aiViewModel.lastResponse {
+                let aiMsgId = UUID().uuidString
                 let aiMsg = ChatMessage(
-                    id: UUID().uuidString,
+                    id: aiMsgId,
                     roomId: room.id,
                     senderId: "ai-assistant",
                     senderName: "AI 예약 도우미",
@@ -316,6 +343,12 @@ struct ChatRoomView: View {
                     createdAt: Date(),
                     readBy: nil
                 )
+
+                // actions 저장 (Web의 aiMessageActions 패턴)
+                if let actions = response.actions, !actions.isEmpty {
+                    aiViewModel.storeActions(messageId: aiMsgId, actions: actions)
+                }
+
                 viewModel.messages.append(aiMsg)
             }
         }
@@ -334,7 +367,7 @@ struct ChatRoomView: View {
             }
 
             TextField(
-                aiViewModel.isAiMode ? "AI에게 질문하기..." : "메시지 입력",
+                aiViewModel.isAiMode ? "AI에게 예약 요청하기..." : "메시지 입력",
                 text: $viewModel.inputText,
                 axis: .vertical
             )
