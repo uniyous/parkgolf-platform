@@ -102,9 +102,10 @@ export class ToolExecutorService {
    */
   private async searchClubs(args: Record<string, unknown>): Promise<unknown> {
     const { location, name } = args as { location: string; name?: string };
+    const query = name ? `${location} ${name}` : location;
 
     const response = await firstValueFrom(
-      this.courseClient.send('clubs.search', { location, name }).pipe(
+      this.courseClient.send('club.search', { query }).pipe(
         timeout(this.REQUEST_TIMEOUT),
         catchError((err) => {
           throw new Error(`Failed to search clubs: ${err.message}`);
@@ -121,7 +122,7 @@ export class ToolExecutorService {
           id: club.id,
           name: club.name,
           address: club.address,
-          region: club.region,
+          region: club.location,
         })),
       };
     }
@@ -141,8 +142,9 @@ export class ToolExecutorService {
     };
 
     // 1) 골프장 검색
+    const query = name ? `${location} ${name}` : location;
     const searchResponse = await firstValueFrom(
-      this.courseClient.send('clubs.search', { location, name }).pipe(
+      this.courseClient.send('club.search', { query }).pipe(
         timeout(this.REQUEST_TIMEOUT),
         catchError((err) => {
           throw new Error(`Failed to search clubs: ${err.message}`);
@@ -182,7 +184,7 @@ export class ToolExecutorService {
             id: club.id,
             name: club.name,
             address: club.address,
-            region: club.region,
+            region: club.location,
             availableSlotCount: slots.length,
             earliestTime: times[0],
             latestTime: times[times.length - 1],
