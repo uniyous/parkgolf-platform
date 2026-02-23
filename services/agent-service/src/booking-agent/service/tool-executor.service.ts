@@ -465,7 +465,7 @@ export class ToolExecutorService {
   }
 
   /**
-   * 근처 골프장 검색 (현재 위치 기반)
+   * 근처 골프장 검색 (현재 위치 기반, course-service DB Haversine 조회)
    */
   private async getNearbyClubs(args: Record<string, unknown>): Promise<unknown> {
     const { latitude, longitude, radius } = args as {
@@ -474,13 +474,15 @@ export class ToolExecutorService {
       radius?: number;
     };
 
-    // 카카오 API로 근처 파크골프장 검색
-    const locationResponse = await firstValueFrom(
-      this.locationClient
-        .send('location.nearbyGolf', {
-          x: longitude,
-          y: latitude,
-          radius: radius || 10000,
+    // radius: LLM이 미터 단위로 넘길 수 있으므로 km로 변환 (1000 이상이면 미터로 간주)
+    const radiusKm = radius && radius >= 1000 ? Math.round(radius / 1000) : (radius || 10);
+
+    const response = await firstValueFrom(
+      this.courseClient
+        .send('club.findNearby', {
+          latitude,
+          longitude,
+          radiusKm,
         })
         .pipe(
           timeout(this.REQUEST_TIMEOUT),
@@ -490,17 +492,17 @@ export class ToolExecutorService {
         ),
     );
 
-    if (locationResponse?.success && locationResponse?.data?.places?.length > 0) {
-      const places = locationResponse.data.places;
+    if (response?.success && Array.isArray(response?.data) && response.data.length > 0) {
+      const clubs = response.data;
       return {
-        found: places.length,
-        nearbyClubs: places.slice(0, 5).map((place: any) => ({
-          name: place.placeName,
-          address: place.addressName,
-          phone: place.phone,
-          distance: place.distance ? `${(place.distance / 1000).toFixed(1)}km` : undefined,
-          latitude: place.coordinates.latitude,
-          longitude: place.coordinates.longitude,
+        found: clubs.length,
+        nearbyClubs: clubs.slice(0, 5).map((club: any) => ({
+          id: club.id,
+          name: club.name,
+          address: club.address,
+          region: club.location,
+          phone: club.phone,
+          distance: club.distance != null ? `${club.distance}km` : undefined,
         })),
       };
     }

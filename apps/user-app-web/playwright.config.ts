@@ -48,7 +48,7 @@ export default defineConfig({
         storageState: 'e2e/.auth/user.json',
       },
       dependencies: ['setup'],
-      testIgnore: /.*(token-refresh|security|chat-realtime).*/,
+      testIgnore: /.*(token-refresh|security|chat-realtime|.*-api\.spec).*/,
     },
 
     // 모바일 테스트 (Optional)
@@ -59,7 +59,7 @@ export default defineConfig({
         storageState: 'e2e/.auth/user.json',
       },
       dependencies: ['setup'],
-      testIgnore: /.*(token-refresh|security|chat-realtime).*/,
+      testIgnore: /.*(token-refresh|security|chat-realtime|.*-api\.spec).*/,
     },
 
     // 독립 실행 테스트 (자체 인증 관리, setup 불필요)
@@ -69,6 +69,12 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
       },
       testMatch: /.*(token-refresh|security|chat-realtime).*/,
+    },
+
+    // API 통합 테스트 (브라우저 없이 HTTP 호출만, setup/webServer 불필요)
+    {
+      name: 'api',
+      testMatch: /.*-api\.spec\.ts/,
     },
   ],
 
