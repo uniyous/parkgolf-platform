@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bot } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import type { ChatAction, ClubCardData, SlotCardData, WeatherCardData, BookingCompleteData } from '@/lib/api/chatApi';
 import { ClubCard } from './cards/ClubCard';
 import { SlotCard } from './cards/SlotCard';
@@ -10,16 +10,22 @@ interface AiMessageBubbleProps {
   content: string;
   actions?: ChatAction[];
   createdAt: string;
+  showLabel?: boolean;
   onClubSelect?: (clubId: string, clubName: string) => void;
   onSlotSelect?: (slotId: string, time: string) => void;
+  selectedClubId?: string | null;
+  selectedSlotId?: string | null;
 }
 
 export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   content,
   actions,
   createdAt,
+  showLabel = true,
   onClubSelect,
   onSlotSelect,
+  selectedClubId,
+  selectedSlotId,
 }) => {
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -29,24 +35,34 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   return (
     <div className="flex justify-start">
       <div className="max-w-[85%]">
-        <div className="flex items-center gap-1.5 mb-1">
-          <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
-            <Bot className="w-3 h-3 text-emerald-400" />
+        {showLabel && (
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+              <Sparkles className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span className="text-xs text-emerald-400 font-semibold">AI 예약 도우미</span>
           </div>
-          <span className="text-xs text-emerald-400 font-medium">AI 예약 도우미</span>
-        </div>
+        )}
 
         <div className="flex items-end gap-1.5">
-          <div className="bg-white/10 rounded-2xl rounded-bl-sm px-3.5 py-2">
-            <p className="text-sm text-white whitespace-pre-wrap break-words">{content}</p>
+          <div className="bg-emerald-500/5 border-l-[3px] border-l-emerald-500/40 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
+            <p className="text-sm text-white whitespace-pre-wrap break-words leading-relaxed">{content}</p>
 
             {actions?.map((action, index) => (
               <div key={index}>
                 {action.type === 'SHOW_CLUBS' && (
-                  <ClubCard data={action.data as ClubCardData} onSelect={onClubSelect} />
+                  <ClubCard
+                    data={action.data as ClubCardData}
+                    onSelect={onClubSelect}
+                    selectedClubId={selectedClubId}
+                  />
                 )}
                 {action.type === 'SHOW_SLOTS' && (
-                  <SlotCard data={action.data as SlotCardData} onSelect={onSlotSelect} />
+                  <SlotCard
+                    data={action.data as SlotCardData}
+                    onSelect={onSlotSelect}
+                    selectedSlotId={selectedSlotId}
+                  />
                 )}
                 {action.type === 'SHOW_WEATHER' && (
                   <WeatherCard data={action.data as WeatherCardData} />
