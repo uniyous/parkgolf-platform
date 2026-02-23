@@ -68,6 +68,9 @@ export class ToolExecutorService {
       case 'search_clubs':
         return this.searchClubs(toolCall.args);
 
+      case 'search_clubs_with_slots':
+        return this.searchClubsWithSlots(toolCall.args);
+
       case 'get_club_info':
         return this.getClubInfo(toolCall.args);
 
@@ -124,6 +127,80 @@ export class ToolExecutorService {
     }
 
     return { found: 0, clubs: [] };
+  }
+
+  /**
+   * 날짜 기반 골프장 검색 (타임슬롯 있는 골프장만 반환)
+   */
+  private async searchClubsWithSlots(args: Record<string, unknown>): Promise<unknown> {
+    const { location, date, name, timePreference } = args as {
+      location: string;
+      date: string;
+      name?: string;
+      timePreference?: 'morning' | 'afternoon' | 'evening';
+    };
+
+    // 1) 골프장 검색
+    const searchResponse = await firstValueFrom(
+      this.courseClient.send('clubs.search', { location, name }).pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError((err) => {
+          throw new Error(`Failed to search clubs: ${err.message}`);
+        }),
+      ),
+    );
+
+    if (!searchResponse?.success || !searchResponse?.data?.length) {
+      return { found: 0, date, clubs: [] };
+    }
+
+    const clubs = searchResponse.data.slice(0, 10);
+
+    // 2) 각 골프장의 가용 슬롯 병렬 조회
+    const clubsWithSlots = await Promise.all(
+      clubs.map(async (club: any) => {
+        try {
+          const slotsResponse = await firstValueFrom(
+            this.courseClient.send('games.available-slots', { clubId: club.id, date }).pipe(
+              timeout(this.REQUEST_TIMEOUT),
+              catchError(() => [{ success: false }]),
+            ),
+          );
+
+          let slots = slotsResponse?.success && slotsResponse?.data ? slotsResponse.data : [];
+
+          // 시간대 필터링
+          if (timePreference && slots.length > 0) {
+            slots = this.filterByTimePreference(slots, timePreference);
+          }
+
+          if (slots.length === 0) return null;
+
+          const times = slots.map((s: any) => s.startTime).sort();
+
+          return {
+            id: club.id,
+            name: club.name,
+            address: club.address,
+            region: club.region,
+            availableSlotCount: slots.length,
+            earliestTime: times[0],
+            latestTime: times[times.length - 1],
+          };
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    // 3) 슬롯이 있는 골프장만 필터링
+    const available = clubsWithSlots.filter((c): c is NonNullable<typeof c> => c !== null);
+
+    return {
+      found: available.length,
+      date,
+      clubs: available,
+    };
   }
 
   /**

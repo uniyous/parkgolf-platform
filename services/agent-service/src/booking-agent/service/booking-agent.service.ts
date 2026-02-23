@@ -162,6 +162,7 @@ export class BookingAgentService {
 
       switch (call.name) {
         case 'search_clubs':
+        case 'search_clubs_with_slots':
           if (result.result && (result.result as any).found > 0) {
             actions.push({
               type: 'SHOW_CLUBS',
@@ -219,6 +220,19 @@ export class BookingAgentService {
           if (call.args.location) {
             this.conversationService.updateSlots(context, {
               location: call.args.location as string,
+            });
+          }
+          break;
+
+        case 'search_clubs_with_slots':
+          if (call.args.location) {
+            this.conversationService.updateSlots(context, {
+              location: call.args.location as string,
+            });
+          }
+          if (call.args.date) {
+            this.conversationService.updateSlots(context, {
+              date: call.args.date as string,
             });
           }
           break;

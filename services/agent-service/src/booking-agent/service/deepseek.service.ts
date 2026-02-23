@@ -45,6 +45,10 @@ export class DeepSeekService implements OnModuleInit {
 - 날씨 정보가 있으면 골프 치기 좋은지 알려주세요
 - 예약 확인 시 모든 정보를 명확하게 요약해주세요
 
+도구 사용 규칙:
+- 사용자가 날짜를 언급한 경우 search_clubs 대신 search_clubs_with_slots를 사용하세요
+- 날짜 없이 지역만 물어보면 기존 search_clubs를 사용하세요
+
 날짜 해석:
 - "내일" → 오늘 날짜 + 1일
 - "모레" → 오늘 날짜 + 2일
@@ -66,6 +70,27 @@ export class DeepSeekService implements OnModuleInit {
             name: { type: 'string', description: '골프장 이름 일부 (선택사항)' },
           },
           required: ['location'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'search_clubs_with_slots',
+        description: '지역명으로 파크골프장을 검색하되, 특정 날짜에 예약 가능한 타임슬롯이 있는 골프장만 반환합니다. 사용자가 날짜를 언급한 경우 이 도구를 우선 사용하세요.',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string', description: '지역명 (예: 천안, 서울, 대전)' },
+            date: { type: 'string', description: '예약 날짜 (YYYY-MM-DD 형식)' },
+            name: { type: 'string', description: '골프장 이름 일부 (선택사항)' },
+            timePreference: {
+              type: 'string',
+              description: '선호 시간대 (morning, afternoon, evening)',
+              enum: ['morning', 'afternoon', 'evening'],
+            },
+          },
+          required: ['location', 'date'],
         },
       },
     },
