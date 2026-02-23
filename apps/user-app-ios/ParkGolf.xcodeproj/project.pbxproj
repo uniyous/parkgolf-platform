@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 55;
+	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -19,6 +19,7 @@
 		14097D34585ADCD3E4FC7909 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 10A39E55B286FF830175386E /* Assets.xcassets */; };
 		174160DA33594118F9BF712A /* Chat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89425BF9DF38E68E383B64D5 /* Chat.swift */; };
 		196B7A527035A2B87D8B3A1B /* ProfilePlaceholderViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DEA1FDFCDA9868E91E2CB8D /* ProfilePlaceholderViews.swift */; };
+		1B3D16251398655058AACE3A /* WeatherCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D487886CE4D34E354C619875 /* WeatherCardView.swift */; };
 		1FFE7625A32A3B766AAE82AD /* AvatarCircle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9644994821B6F2167521C1C /* AvatarCircle.swift */; };
 		256B07D37E11F0610F42A985 /* LocationWeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5645CA23FDC4221B5BF30228 /* LocationWeatherService.swift */; };
 		2E0251B7203D23A84EC52931 /* SocketIO.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1945F2879C86D793A82BE000 /* SocketIO.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -35,6 +36,7 @@
 		504CA8834704C0B94E17D725 /* FriendsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5622CA22113E881C0532A8 /* FriendsViewModel.swift */; };
 		51D3930AD6C579767C2ED188 /* BookingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A5C3F9E2AB4ADD370434FAD /* BookingView.swift */; };
 		54152A3EBE9657B82E834E32 /* NewChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED554D599CB387E4FF93237 /* NewChatViewModel.swift */; };
+		54166E67AC99C188D0525E2C /* AiMessageBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = B15D1AD7970FB666BFCFE104 /* AiMessageBubble.swift */; };
 		56B1835CE1858F6A6A8FEEB2 /* LoadableState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8335830EDEA6638DE0F4C67 /* LoadableState.swift */; };
 		57FCFD8A5FBACB2DF3C7CBDF /* DateHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE190D9AE9D3581875BFE238 /* DateHelper.swift */; };
 		5B01553790406887872558AE /* BookingFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F95880DFF69A896E0CC90951 /* BookingFormView.swift */; };
@@ -46,7 +48,9 @@
 		6BE62BA55702D2E9464AD1AB /* Alamofire.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 843D0F5C4E6AAEADB31D1366 /* Alamofire.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		6E1A5E6B1B86F4A60E44BE4A /* NotificationSocketManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FB800B49FBA07162D9DA6D4 /* NotificationSocketManager.swift */; };
 		6E64635F965160EE2189713E /* RoundService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F37E6F00B3B10E3026CD368F /* RoundService.swift */; };
+		6F76E326D8387E8A2D195C9B /* SlotCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA9E3489C1CD497553CB1016 /* SlotCardView.swift */; };
 		70455E2873E7F8101CD91BFB /* ParkGolfApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D1ACDEDC2649EE22183C418 /* ParkGolfApp.swift */; };
+		7293883E372970C2E075B8A2 /* BookingCompleteCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 511068654918BCE5A62A72A1 /* BookingCompleteCardView.swift */; };
 		72F63CCEFE75CBF98EC12A6D /* Round.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7BC2B942DF8F763DD87B0E1 /* Round.swift */; };
 		75BD4D31885D94721DC45F95 /* NotificationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03CB599183FFF9B529E84DAB /* NotificationSettingsView.swift */; };
 		78CE0F8C0D36AC45A943AAE9 /* StatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 585D3A244497AC23603D0E03 /* StatusBadge.swift */; };
@@ -66,6 +70,7 @@
 		89A22F0A71FDE3B5CAD7042F /* TestUser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0898D33FF04F8B441037E98 /* TestUser.swift */; };
 		900E3377CD74C0F75238B147 /* TuistBundle+ParkGolf.swift in Sources */ = {isa = PBXBuildFile; fileRef = 128489985F4AC1F300CF628C /* TuistBundle+ParkGolf.swift */; };
 		902703BA6A09BD826DA60E70 /* GradientButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0390C2F676958F1F9C37936B /* GradientButton.swift */; };
+		936087BEB6B47A624245976E /* AiButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB101266F65B0E0F0452592E /* AiButton.swift */; };
 		95875B41115E528559A0EC87 /* Booking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 880051E9F996505E9E6C7E0D /* Booking.swift */; };
 		975427803D3BDA2873D3F611 /* BookingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 651647EF9DAB12B4A9B21DF3 /* BookingViewModel.swift */; };
 		98E5873757F807A1E0CDF001 /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED45DEF85021870A3EAC449 /* GlassCard.swift */; };
@@ -91,6 +96,7 @@
 		C65349DDDCAB835051701150 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AA1A8748BA3DC8EFCF1D4BB /* Typography.swift */; };
 		C9E9D851FC90396E46C49A47 /* SocialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62FB99EA7F4B9930F8CE064A /* SocialView.swift */; };
 		CCE4CD4C89A5D3849135B94A /* SignUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB7C0FDCBF5B3EAE9D76202C /* SignUpView.swift */; };
+		CEFA473687AD285A2FC3D578 /* AiChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFCE3F8983C34E1C58FC46EE /* AiChatViewModel.swift */; };
 		D13DC4CAC6EC5DB66B31CE89 /* NotificationsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0967E423E9502F643ABA8624 /* NotificationsViewModel.swift */; };
 		D348F918A34B2403F1484182 /* FriendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A23E0AC86E247F4A4D855300 /* FriendsView.swift */; };
 		D4DA98E1BDF82A3E960102CF /* ChatRoomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9625D8645524C3682FBDFD5D /* ChatRoomView.swift */; };
@@ -99,6 +105,7 @@
 		D879C67B3899AD05986FBE13 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 3B79E216E450AC8711B4A800 /* Localizable.strings */; };
 		DE9713165B7F235DB81AFBD1 /* AddFriendSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89C46EC481DED9C6513BB24F /* AddFriendSheet.swift */; };
 		E37393C0927DF046ACBD5BF8 /* Endpoints.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD4B375DEE30695ECC01789A /* Endpoints.swift */; };
+		E78EB92E21C291BA4707AF76 /* ClubCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC56DB6810DFF5383E00DFED /* ClubCardView.swift */; };
 		EF22F1A81A96CA11AAB9436E /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B792B32C33EA798BBF9892C3 /* ContentView.swift */; };
 		F2366E4B7B3B3539C9C96463 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48E0B560B4793A3955A88125 /* Colors.swift */; };
 		FE39C665D329030FFC014FBE /* PriceDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 753181B21AFA032180271E5A /* PriceDisplay.swift */; };
@@ -187,6 +194,7 @@
 		48E0B560B4793A3955A88125 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		494C590AAABDFF697299705F /* ParkGolfTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ParkGolfTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4FB800B49FBA07162D9DA6D4 /* NotificationSocketManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSocketManager.swift; sourceTree = "<group>"; };
+		511068654918BCE5A62A72A1 /* BookingCompleteCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingCompleteCardView.swift; sourceTree = "<group>"; };
 		52AB2AC3D3A243B207CE8910 /* ParkGolfUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParkGolfUITests.swift; sourceTree = "<group>"; };
 		5428577075E683CB996E64B5 /* ForgotPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgotPasswordView.swift; sourceTree = "<group>"; };
 		547F9274EB6CAD5370C7791E /* NotificationSettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSettingsViewModel.swift; sourceTree = "<group>"; };
@@ -227,6 +235,8 @@
 		A23E0AC86E247F4A4D855300 /* FriendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsView.swift; sourceTree = "<group>"; };
 		A2F9AE35D890EBD4A30E760D /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		A9644994821B6F2167521C1C /* AvatarCircle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarCircle.swift; sourceTree = "<group>"; };
+		AFCE3F8983C34E1C58FC46EE /* AiChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AiChatViewModel.swift; sourceTree = "<group>"; };
+		B15D1AD7970FB666BFCFE104 /* AiMessageBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AiMessageBubble.swift; sourceTree = "<group>"; };
 		B456827BE183917EAA25A611 /* TimeSlotButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeSlotButton.swift; sourceTree = "<group>"; };
 		B792B32C33EA798BBF9892C3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B81F5F98544420CA57DFDC44 /* FriendService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendService.swift; sourceTree = "<group>"; };
@@ -236,11 +246,13 @@
 		BE190D9AE9D3581875BFE238 /* DateHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateHelper.swift; sourceTree = "<group>"; };
 		C7AB3C5D9E4ACA536CA84375 /* ClubDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClubDetailView.swift; sourceTree = "<group>"; };
 		C993CA8A06E4DA8F5E8CCC48 /* TuistAssets+ParkGolf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TuistAssets+ParkGolf.swift"; sourceTree = "<group>"; };
+		CB101266F65B0E0F0452592E /* AiButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AiButton.swift; sourceTree = "<group>"; };
 		CBDF00FDA7FC2E17D83C61F4 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		CDD2464708846F51E17C42C8 /* ParkGolfTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParkGolfTests.swift; sourceTree = "<group>"; };
 		CEF5BFBD7C403F5B2ED5D233 /* ParkGolfUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ParkGolfUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0898D33FF04F8B441037E98 /* TestUser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestUser.swift; sourceTree = "<group>"; };
 		D44CA76E3797AFBA09C2B624 /* GlassSecureField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassSecureField.swift; sourceTree = "<group>"; };
+		D487886CE4D34E354C619875 /* WeatherCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherCardView.swift; sourceTree = "<group>"; };
 		D4B1A89F227DECBA510B0AD7 /* GameSearchUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSearchUITests.swift; sourceTree = "<group>"; };
 		DB7C0FDCBF5B3EAE9D76202C /* SignUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpView.swift; sourceTree = "<group>"; };
 		DC45188362F320C28183A541 /* ChatListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListView.swift; sourceTree = "<group>"; };
@@ -248,12 +260,14 @@
 		DF0B66433BF22A363996D154 /* SettingsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsService.swift; sourceTree = "<group>"; };
 		E0AECD6BBD4F6C4DB1192ADF /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
 		E2613DCF7C9DE5C6464C01A1 /* MyBookingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyBookingsView.swift; sourceTree = "<group>"; };
+		EA9E3489C1CD497553CB1016 /* SlotCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotCardView.swift; sourceTree = "<group>"; };
 		EAE0D414B8069A1B24F4CCFD /* ParkGolfUITests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "ParkGolfUITests-Info.plist"; sourceTree = "<group>"; };
 		EC8A2C0B92A34FE85FCB8279 /* Spacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Spacing.swift; sourceTree = "<group>"; };
 		EECCDCD78EA163F7FA13493C /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		F37E6F00B3B10E3026CD368F /* RoundService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundService.swift; sourceTree = "<group>"; };
 		F7BC2B942DF8F763DD87B0E1 /* Round.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Round.swift; sourceTree = "<group>"; };
 		F95880DFF69A896E0CC90951 /* BookingFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingFormView.swift; sourceTree = "<group>"; };
+		FC56DB6810DFF5383E00DFED /* ClubCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClubCardView.swift; sourceTree = "<group>"; };
 		FD4B375DEE30695ECC01789A /* Endpoints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Endpoints.swift; sourceTree = "<group>"; };
 		FE5DD9FD879A1A7621C99F49 /* ParkGolf-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "ParkGolf-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -491,6 +505,17 @@
 			path = Components;
 			sourceTree = "<group>";
 		};
+		9968D851B118C5D9646E7359 /* Cards */ = {
+			isa = PBXGroup;
+			children = (
+				511068654918BCE5A62A72A1 /* BookingCompleteCardView.swift */,
+				FC56DB6810DFF5383E00DFED /* ClubCardView.swift */,
+				EA9E3489C1CD497553CB1016 /* SlotCardView.swift */,
+				D487886CE4D34E354C619875 /* WeatherCardView.swift */,
+			);
+			path = Cards;
+			sourceTree = "<group>";
+		};
 		B315EA331FBC6680C7CDFE26 /* Network */ = {
 			isa = PBXGroup;
 			children = (
@@ -555,9 +580,21 @@
 			path = Profile;
 			sourceTree = "<group>";
 		};
+		CF9070C67C5E675CE5DBE940 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				9968D851B118C5D9646E7359 /* Cards */,
+				CB101266F65B0E0F0452592E /* AiButton.swift */,
+				B15D1AD7970FB666BFCFE104 /* AiMessageBubble.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
 		D2E987F0D84BD7F3ED7F78DE /* Chat */ = {
 			isa = PBXGroup;
 			children = (
+				CF9070C67C5E675CE5DBE940 /* Components */,
+				AFCE3F8983C34E1C58FC46EE /* AiChatViewModel.swift */,
 				DC45188362F320C28183A541 /* ChatListView.swift */,
 				06EB2ABAE1EAE4D11226C91A /* ChatListViewModel.swift */,
 				9625D8645524C3682FBDFD5D /* ChatRoomView.swift */,
@@ -841,10 +878,17 @@
 				8486B25C1261D9A72D87143A /* RoundBookingView.swift in Sources */,
 				7F62C51ACD23DFF2FE1A0193 /* RoundBookingViewModel.swift in Sources */,
 				AB08FF4D7F2E05195CEFB23E /* TossPaymentView.swift in Sources */,
+				CEFA473687AD285A2FC3D578 /* AiChatViewModel.swift in Sources */,
 				9B4D3654635BDD44E16192D7 /* ChatListView.swift in Sources */,
 				7DF75505037C00F58A50D9D8 /* ChatListViewModel.swift in Sources */,
 				D4DA98E1BDF82A3E960102CF /* ChatRoomView.swift in Sources */,
 				0B69CC4639637FDB980350BD /* ChatRoomViewModel.swift in Sources */,
+				936087BEB6B47A624245976E /* AiButton.swift in Sources */,
+				54166E67AC99C188D0525E2C /* AiMessageBubble.swift in Sources */,
+				7293883E372970C2E075B8A2 /* BookingCompleteCardView.swift in Sources */,
+				E78EB92E21C291BA4707AF76 /* ClubCardView.swift in Sources */,
+				6F76E326D8387E8A2D195C9B /* SlotCardView.swift in Sources */,
+				1B3D16251398655058AACE3A /* WeatherCardView.swift in Sources */,
 				54152A3EBE9657B82E834E32 /* NewChatViewModel.swift in Sources */,
 				C55EE84D77A6604E0B3DBD39 /* ClubDetailView.swift in Sources */,
 				993AD598651A08F4899E6D38 /* ClubDetailViewModel.swift in Sources */,
@@ -909,6 +953,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 7W4BQTPNLB;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = "Derived/InfoPlists/ParkGolf-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -922,10 +967,7 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
-					"$(inherited)",
-					DEBUG,
-				);
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
 				SWIFT_COMPILATION_MODE = singlefile;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -950,10 +992,7 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
-					"$(inherited)",
-					DEBUG,
-				);
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
 				SWIFT_COMPILATION_MODE = singlefile;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1091,10 +1130,7 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
-					"$(inherited)",
-					DEBUG,
-				);
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
 				SWIFT_COMPILATION_MODE = singlefile;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1108,6 +1144,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 7W4BQTPNLB;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = "Derived/InfoPlists/ParkGolf-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

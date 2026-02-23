@@ -4,7 +4,6 @@ import {
   Users,
   MessageCircle,
   UserPlus,
-  Search,
   Check,
   X,
   UserMinus,
@@ -290,13 +289,12 @@ export function SocialPage() {
               <section className="space-y-4">
                 {/* Search */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
                   <input
                     type="text"
                     placeholder="친구 검색..."
                     value={friendListSearch}
                     onChange={(e) => setFriendListSearch(e.target.value)}
-                    className="input-glass pl-10"
+                    className="input-glass"
                   />
                 </div>
 
@@ -799,13 +797,12 @@ function AddFriendContent({
   return (
     <>
       <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
         <input
           type="text"
           placeholder="이메일 또는 이름으로 검색..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="input-glass pl-10"
+          className="input-glass"
           autoFocus
         />
       </div>
@@ -968,13 +965,12 @@ function NewChatContent({ onClose }: { onClose: () => void }) {
   return (
     <>
       <div className="relative mb-3">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
         <input
           type="text"
           placeholder="친구 검색..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="input-glass pl-10"
+          className="input-glass"
           autoFocus
         />
       </div>

@@ -298,7 +298,7 @@ struct ChatAction: Codable, Sendable {
     let type: ActionType
     let data: AnyCodable
 
-    struct AnyCodable: Codable, Sendable {
+    struct AnyCodable: Codable, @unchecked Sendable {
         let value: Any
 
         init(_ value: Any) {
