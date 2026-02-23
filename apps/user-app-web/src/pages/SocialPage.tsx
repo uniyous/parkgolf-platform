@@ -65,7 +65,7 @@ export function SocialPage() {
   // Queries
   const { data: friends = [], isLoading: isLoadingFriends, refetch: refetchFriends } = useFriendsQuery();
   const { data: friendRequests = [], isLoading: isLoadingRequests, refetch: refetchRequests } = useFriendRequestsQuery();
-  const { data: sentRequests = [] } = useSentFriendRequestsQuery();
+  const { data: sentRequests = [], refetch: refetchSentRequests } = useSentFriendRequestsQuery();
   const { data: searchResults = [], isLoading: isSearching } = useSearchUsersQuery(debouncedSearch);
   const { data: chatRoomsData, isLoading: isLoadingChats, refetch: refetchChatRooms } = useChatRoomsQuery();
   const chatRooms = chatRoomsData?.data ?? [];
@@ -100,6 +100,19 @@ export function SocialPage() {
     } else {
       refetchFriends();
       refetchRequests();
+      refetchSentRequests();
+    }
+  };
+
+  const handleFriendSubTab = (tab: FriendSubTab) => {
+    setFriendSubTab(tab);
+
+    // 서브탭 전환 시 데이터 새로고침
+    if (tab === 'friends') {
+      refetchFriends();
+    } else {
+      refetchRequests();
+      refetchSentRequests();
     }
   };
 
@@ -256,7 +269,7 @@ export function SocialPage() {
             {/* Friend Sub Tabs (칩 스타일) */}
             <div className="flex gap-2">
               <button
-                onClick={() => setFriendSubTab('friends')}
+                onClick={() => handleFriendSubTab('friends')}
                 className={cn(
                   'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all',
                   friendSubTab === 'friends'
@@ -267,7 +280,7 @@ export function SocialPage() {
                 친구
               </button>
               <button
-                onClick={() => setFriendSubTab('requests')}
+                onClick={() => handleFriendSubTab('requests')}
                 className={cn(
                   'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all',
                   friendSubTab === 'requests'
