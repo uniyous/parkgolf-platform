@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw, Loader2, UserPlus, Search, X, Check, Bot } from 'lucide-react';
+import { Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw, Loader2, UserPlus, Search, X, Check, Bot, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SubPageHeader } from '@/components/layout';
 import { Button, LoadingView } from '@/components/ui';
@@ -27,6 +27,7 @@ export const ChatRoomPage: React.FC = () => {
   const [realtimeMessages, setRealtimeMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isConnected, setIsConnected] = useState(false);
+  const [isNatsConnected, setIsNatsConnected] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
@@ -134,6 +135,17 @@ export const ChatRoomPage: React.FC = () => {
       console.error('Socket error:', error);
     });
 
+    // NATS status — 서버 측 NATS 연결 상태 추적
+    const unsubNatsStatus = chatSocket.onNatsStatus((connected) => {
+      setIsNatsConnected(connected);
+      if (connected && roomId) {
+        // NATS 복구 시 방 재참여 + 메시지 갱신
+        joinRoomWithRetry(roomId);
+        setRealtimeMessages([]);
+        queryClient.invalidateQueries({ queryKey: ['chat', 'messages', roomId] });
+      }
+    });
+
     // 탭 백그라운드 → 포그라운드 전환 시 소켓 재연결 + 메시지 갭 복구
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -157,6 +169,7 @@ export const ChatRoomPage: React.FC = () => {
       unsubReconnect();
       unsubMessage();
       unsubError();
+      unsubNatsStatus();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (roomId) {
         chatSocket.leaveRoom(roomId);
@@ -427,6 +440,14 @@ export const ChatRoomPage: React.FC = () => {
           </>
         }
       />
+
+      {/* NATS disconnected warning banner */}
+      {isConnected && !isNatsConnected && (
+        <div className="flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500/90 text-white text-sm">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          <span>서버 내부 연결 불안정 — 메시지 전송이 지연될 수 있습니다</span>
+        </div>
+      )}
 
       {/* Messages — full-width scroll area */}
       <div

@@ -14,8 +14,6 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-
-
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,6 +21,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.parkgolf.app.domain.model.ChatMessage
 import com.parkgolf.app.domain.model.Friend
@@ -49,8 +48,11 @@ fun ChatRoomScreen(
     var showInviteDialog by remember { mutableStateOf(false) }
     var showParticipantsDialog by remember { mutableStateOf(false) }
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+
     LaunchedEffect(roomId) {
         viewModel.loadRoom(roomId)
+        viewModel.observeAppLifecycle(lifecycleOwner)
     }
 
     // Scroll to bottom when new message arrives (newest at bottom)
@@ -186,6 +188,11 @@ fun ChatRoomScreen(
                     canReconnect = uiState.canReconnect,
                     onReconnect = { viewModel.forceReconnect() }
                 )
+            }
+
+            // NATS disconnected warning banner
+            if (uiState.isConnected && !uiState.isNatsConnected) {
+                NatsWarningBanner()
             }
 
             // Message list
@@ -368,6 +375,38 @@ private fun ConnectionStatusBanner(
                     color = Color.White.copy(alpha = 0.7f)
                 )
             }
+        }
+    }
+}
+
+/**
+ * NATS 연결 불안정 경고 배너
+ */
+@Composable
+private fun NatsWarningBanner() {
+    Surface(
+        color = Color(0xFFEAB308).copy(alpha = 0.9f),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "서버 내부 연결 불안정 — 메시지 전송이 지연될 수 있습니다",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White
+            )
         }
     }
 }

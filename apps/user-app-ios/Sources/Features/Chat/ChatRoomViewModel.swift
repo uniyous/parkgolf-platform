@@ -13,6 +13,7 @@ final class ChatRoomViewModel: ObservableObject {
     @Published var isSending = false
     @Published var error: Error?
     @Published var isConnected = false
+    @Published var isNatsConnected = true
     @Published private(set) var hasMoreMessages = true
     @Published var typingUserName: String?
 
@@ -109,6 +110,34 @@ final class ChatRoomViewModel: ObservableObject {
                 Task {
                     await self.loadMessages()
                 }
+            }
+            .store(in: &cancellables)
+
+        // Subscribe to NATS status changes
+        socketManager.natsStatusChanged
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] connected in
+                guard let self = self else { return }
+                self.isNatsConnected = connected
+                if connected {
+                    // NATS 복구 시 방 재참여 + 메시지 갱신
+                    self.socketManager.joinRoom(roomId: self.roomId) { success in
+                        #if DEBUG
+                        print(success ? "✅ Rejoined room after NATS recovery" : "❌ Failed to rejoin room after NATS recovery")
+                        #endif
+                    }
+                    Task {
+                        await self.loadMessages()
+                    }
+                }
+            }
+            .store(in: &cancellables)
+
+        // Subscribe to NATS connected published property
+        socketManager.$isNatsConnected
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] connected in
+                self?.isNatsConnected = connected
             }
             .store(in: &cancellables)
     }

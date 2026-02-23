@@ -30,6 +30,11 @@ struct ChatRoomView: View {
                     connectionStatusBanner
                 }
 
+                // NATS disconnected warning banner
+                if viewModel.isConnected && !viewModel.isNatsConnected {
+                    natsWarningBanner
+                }
+
                 // Messages
                 messageList
 
@@ -157,6 +162,26 @@ struct ChatRoomView: View {
         .background(Color.parkWarning.opacity(0.8))
         .clipShape(Capsule())
         .padding(.top, ParkSpacing.xs)
+    }
+
+    // MARK: - NATS Warning Banner
+
+    private var natsWarningBanner: some View {
+        HStack(spacing: ParkSpacing.xs) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.9))
+
+            Text("서버 내부 연결 불안정 — 메시지 전송이 지연될 수 있습니다")
+                .font(.parkCaption)
+                .foregroundStyle(.white.opacity(0.9))
+        }
+        .padding(.vertical, ParkSpacing.xxs)
+        .padding(.horizontal, ParkSpacing.sm)
+        .frame(maxWidth: .infinity)
+        .background(Color.yellow.opacity(0.8))
+        .transition(.move(edge: .top).combined(with: .opacity))
+        .animation(.easeInOut(duration: 0.3), value: viewModel.isNatsConnected)
     }
 
     // MARK: - Message List

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 interface ChatRepository {
     val messageFlow: Flow<ChatMessage>
     val connectionState: Flow<Boolean>
+    val natsConnectionState: Flow<Boolean>
     val tokenRefreshNeeded: Flow<Unit>
     val typingFlow: Flow<TypingEvent>
 
@@ -63,6 +64,7 @@ interface ChatRepository {
     fun forceReconnect(token: String)
     fun startConnectionCheck(token: String)
     fun stopConnectionCheck()
+    fun handleAppForeground()
 }
 
 data class MessagesResult(

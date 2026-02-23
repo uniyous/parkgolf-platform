@@ -45,6 +45,7 @@ export type UserJoinedHandler = (event: UserJoinedEvent) => void;
 export type UserLeftHandler = (event: UserLeftEvent) => void;
 export type ConnectionHandler = () => void;
 export type ErrorHandler = (error: string) => void;
+export type NatsStatusHandler = (connected: boolean) => void;
 
 // ============================================
 // Chat Socket Manager
@@ -61,6 +62,10 @@ class ChatSocketManager {
   private static readonly HEARTBEAT_INTERVAL = 30_000;
   private static readonly MAX_MISSED_HEARTBEATS = 2;
 
+  // Periodic connection check — 30초마다 연결 상태 확인
+  private connectionCheckTimer: ReturnType<typeof setInterval> | null = null;
+  private static readonly CONNECTION_CHECK_INTERVAL = 30_000;
+
   // Event handlers
   private messageHandlers: Set<MessageHandler> = new Set();
   private typingHandlers: Set<TypingHandler> = new Set();
@@ -70,6 +75,7 @@ class ChatSocketManager {
   private disconnectHandlers: Set<ConnectionHandler> = new Set();
   private reconnectHandlers: Set<ConnectionHandler> = new Set();
   private errorHandlers: Set<ErrorHandler> = new Set();
+  private natsStatusHandlers: Set<NatsStatusHandler> = new Set();
 
   // ============================================
   // Connection
@@ -102,6 +108,7 @@ class ChatSocketManager {
    * 강제 재연결 (수동 재연결 버튼용)
    */
   forceReconnect(token: string): void {
+    this.stopConnectionCheck();
     if (this.socket) {
       this.socket.removeAllListeners();
       this.socket.disconnect();
@@ -113,6 +120,7 @@ class ChatSocketManager {
 
   disconnect(): void {
     this.stopHeartbeat();
+    this.stopConnectionCheck();
     if (this.socket) {
       this.socket.removeAllListeners();
       this.socket.disconnect();
@@ -178,6 +186,30 @@ class ChatSocketManager {
   }
 
   // ============================================
+  // Periodic Connection Check (30s)
+  // ============================================
+
+  private startConnectionCheck(): void {
+    this.stopConnectionCheck();
+    this.connectionCheckTimer = setInterval(() => {
+      if (!this.socket?.connected) {
+        console.warn('[ChatSocket] Connection check: disconnected, attempting reconnect');
+        const token = authStorage.getToken() || this.token;
+        if (token) {
+          this.forceReconnect(token);
+        }
+      }
+    }, ChatSocketManager.CONNECTION_CHECK_INTERVAL);
+  }
+
+  private stopConnectionCheck(): void {
+    if (this.connectionCheckTimer) {
+      clearInterval(this.connectionCheckTimer);
+      this.connectionCheckTimer = null;
+    }
+  }
+
+  // ============================================
   // Event Handlers Setup
   // ============================================
 
@@ -187,12 +219,14 @@ class ChatSocketManager {
     this.socket.on('connect', () => {
       console.log('✅ Chat socket connected');
       this.startHeartbeat();
+      this.startConnectionCheck();
       this.connectHandlers.forEach(handler => handler());
     });
 
     this.socket.on('disconnect', () => {
       console.log('🔌 Chat socket disconnected');
       this.stopHeartbeat();
+      this.stopConnectionCheck();
       this.disconnectHandlers.forEach(handler => handler());
     });
 
@@ -236,6 +270,12 @@ class ChatSocketManager {
       // Server session stays alive — just refresh the REST API token in background
       console.log('[ChatSocket] Token expired, refreshing REST API token...');
       apiClient.refreshAccessToken().catch(console.error);
+    });
+
+    // NATS status event from gateway — server-side NATS connection status
+    this.socket.on('system:nats_status', (data: { connected: boolean }) => {
+      console.log(`[ChatSocket] NATS status: ${data.connected ? 'connected' : 'disconnected'}`);
+      this.natsStatusHandlers.forEach(handler => handler(data.connected));
     });
 
     // Socket.IO Manager 레벨 재연결 이벤트
@@ -345,6 +385,11 @@ class ChatSocketManager {
   onError(handler: ErrorHandler): () => void {
     this.errorHandlers.add(handler);
     return () => this.errorHandlers.delete(handler);
+  }
+
+  onNatsStatus(handler: NatsStatusHandler): () => void {
+    this.natsStatusHandlers.add(handler);
+    return () => this.natsStatusHandlers.delete(handler);
   }
 }
 

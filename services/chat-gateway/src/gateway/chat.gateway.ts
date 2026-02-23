@@ -9,6 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 import { Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Subscription } from 'rxjs';
 import { JwtService } from '@nestjs/jwt';
 import { NatsService, ChatMessage, TypingEvent } from '../nats/nats.service';
 import { AuthenticatedSocket, WsUser } from '../common/ws.types';
@@ -47,6 +48,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   // Token expiry check interval
   private tokenCheckInterval: ReturnType<typeof setInterval> | null = null;
 
+  // NATS status subscription
+  private natsStatusSubscription: Subscription | null = null;
+
   constructor(
     private readonly natsService: NatsService,
     private readonly jwtService: JwtService,
@@ -57,12 +61,22 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     this.tokenCheckInterval = setInterval(() => {
       this.checkExpiredTokens();
     }, 60_000);
+
+    // Subscribe to NATS connection status and broadcast to all Socket.IO clients
+    this.natsStatusSubscription = this.natsService.natsStatus$.subscribe((connected) => {
+      this.logger.log(`NATS status changed: ${connected ? 'connected' : 'disconnected'}, broadcasting to clients`);
+      this.server?.emit('system:nats_status', { connected });
+    });
   }
 
   onModuleDestroy() {
     if (this.tokenCheckInterval) {
       clearInterval(this.tokenCheckInterval);
       this.tokenCheckInterval = null;
+    }
+    if (this.natsStatusSubscription) {
+      this.natsStatusSubscription.unsubscribe();
+      this.natsStatusSubscription = null;
     }
   }
 

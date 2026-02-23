@@ -1,6 +1,8 @@
 package com.parkgolf.app.presentation.feature.chat
 
 import android.util.Log
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.parkgolf.app.domain.model.AiChatResponse
@@ -32,6 +34,7 @@ data class ChatUiState(
     val messages: List<ChatMessage> = emptyList(),
     val messageInput: String = "",
     val isConnected: Boolean = false,
+    val isNatsConnected: Boolean = true,
     val isSending: Boolean = false,
     val hasMore: Boolean = false,
     val nextCursor: String? = null,
@@ -59,8 +62,12 @@ class ChatViewModel @Inject constructor(
 
     private var typingClearJob: kotlinx.coroutines.Job? = null
 
+    // Lifecycle observer for foreground/background detection
+    private var lifecycleObserver: DefaultLifecycleObserver? = null
+
     init {
         observeConnectionState()
+        observeNatsStatus()
         observeMessages()
         observeTyping()
         observeTokenRefresh()
@@ -81,6 +88,23 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             chatRepository.connectionState.collect { isConnected ->
                 _uiState.value = _uiState.value.copy(isConnected = isConnected)
+            }
+        }
+    }
+
+    private fun observeNatsStatus() {
+        viewModelScope.launch {
+            chatRepository.natsConnectionState.collect { isNatsConnected ->
+                val wasDisconnected = !_uiState.value.isNatsConnected
+                _uiState.value = _uiState.value.copy(isNatsConnected = isNatsConnected)
+                // NATS 복구 시 방 재참여 + 메시지 갱신
+                if (isNatsConnected && wasDisconnected) {
+                    currentRoomId?.let { roomId ->
+                        chatRepository.joinRoom(roomId)
+                        Log.d(TAG, "Rejoined room after NATS recovery: $roomId")
+                        loadMessages(roomId)
+                    }
+                }
             }
         }
     }
@@ -430,6 +454,25 @@ class ChatViewModel @Inject constructor(
 
     fun getActionsForMessage(messageId: String): List<ChatAction> {
         return _uiState.value.aiMessageActions[messageId] ?: emptyList()
+    }
+
+    /**
+     * 라이프사이클 옵저버 등록 — 포그라운드 복귀 시 재연결 처리
+     */
+    fun observeAppLifecycle(lifecycleOwner: LifecycleOwner) {
+        // 이미 등록된 옵저버가 있으면 제거
+        lifecycleObserver?.let { lifecycleOwner.lifecycle.removeObserver(it) }
+
+        val observer = object : DefaultLifecycleObserver {
+            override fun onResume(owner: LifecycleOwner) {
+                Log.d(TAG, "App resumed, checking connection")
+                chatRepository.handleAppForeground()
+                // 메시지 갭 복구
+                currentRoomId?.let { loadMessages(it) }
+            }
+        }
+        lifecycleObserver = observer
+        lifecycleOwner.lifecycle.addObserver(observer)
     }
 
     override fun onCleared() {

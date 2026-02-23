@@ -37,6 +37,8 @@ class ChatRepositoryImpl @Inject constructor(
 
     override val connectionState: Flow<Boolean> = chatSocketManager.connectionState
 
+    override val natsConnectionState: Flow<Boolean> = chatSocketManager.natsConnectionState
+
     override val tokenRefreshNeeded: Flow<Unit> = chatSocketManager.tokenRefreshNeeded
 
     override val typingFlow = chatSocketManager.typingEvent
@@ -184,5 +186,9 @@ class ChatRepositoryImpl @Inject constructor(
 
     override fun stopConnectionCheck() {
         chatSocketManager.stopConnectionCheck()
+    }
+
+    override fun handleAppForeground() {
+        chatSocketManager.handleAppForeground()
     }
 }

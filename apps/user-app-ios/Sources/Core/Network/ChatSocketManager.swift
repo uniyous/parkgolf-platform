@@ -12,6 +12,7 @@ class ChatSocketManager: ObservableObject {
     // MARK: - Published Properties
 
     @Published var isConnected = false
+    @Published var isNatsConnected = true
     @Published var connectionError: String?
 
     // MARK: - Event Publishers
@@ -21,6 +22,7 @@ class ChatSocketManager: ObservableObject {
     let userLeft = PassthroughSubject<UserLeftEvent, Never>()
     let typingReceived = PassthroughSubject<TypingEvent, Never>()
     let reconnected = PassthroughSubject<Void, Never>()
+    let natsStatusChanged = PassthroughSubject<Bool, Never>()
 
     // MARK: - Private Properties
 
@@ -34,6 +36,10 @@ class ChatSocketManager: ObservableObject {
     private var missedHeartbeats = 0
     private let heartbeatInterval: TimeInterval = 30
     private let maxMissedHeartbeats = 2
+
+    // Periodic connection check — 30초마다 연결 상태 확인
+    private var connectionCheckTimer: Timer?
+    private let connectionCheckInterval: TimeInterval = 30
 
     // MARK: - Configuration
 
@@ -133,6 +139,7 @@ class ChatSocketManager: ObservableObject {
 
     private func cleanupSocket() {
         stopHeartbeat()
+        stopConnectionCheck()
         socket?.removeAllHandlers()
         socket?.disconnect()
         socket = nil
@@ -179,6 +186,28 @@ class ChatSocketManager: ObservableObject {
         }
     }
 
+    // MARK: - Connection Check
+
+    private func startConnectionCheck() {
+        stopConnectionCheck()
+        connectionCheckTimer = Timer.scheduledTimer(withTimeInterval: connectionCheckInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self = self else { return }
+                if !self.isConnected, let token = self.currentToken {
+                    #if DEBUG
+                    print("[ChatSocket] Connection check: disconnected, attempting reconnect")
+                    #endif
+                    self.forceReconnect(token: token)
+                }
+            }
+        }
+    }
+
+    private func stopConnectionCheck() {
+        connectionCheckTimer?.invalidate()
+        connectionCheckTimer = nil
+    }
+
     // MARK: - Event Handlers
 
     private func setupEventHandlers() {
@@ -188,8 +217,10 @@ class ChatSocketManager: ObservableObject {
         socket.on(clientEvent: .connect) { [weak self] _, _ in
             Task { @MainActor in
                 self?.isConnected = true
+                self?.isNatsConnected = true
                 self?.connectionError = nil
                 self?.startHeartbeat()
+                self?.startConnectionCheck()
                 #if DEBUG
                 print("✅ Socket.IO connected")
                 #endif
@@ -200,6 +231,7 @@ class ChatSocketManager: ObservableObject {
             Task { @MainActor in
                 self?.isConnected = false
                 self?.stopHeartbeat()
+                self?.stopConnectionCheck()
                 #if DEBUG
                 print("🔌 Socket.IO disconnected")
                 #endif
@@ -248,6 +280,19 @@ class ChatSocketManager: ObservableObject {
                 print("⚠️ Token expired, refreshing REST API token...")
                 #endif
                 _ = await APIClient.shared.refreshAccessToken()
+            }
+        }
+
+        // NATS status event — server-side NATS connection status
+        socket.on("system:nats_status") { [weak self] data, _ in
+            guard let dict = data.first as? [String: Any],
+                  let connected = dict["connected"] as? Bool else { return }
+            Task { @MainActor in
+                self?.isNatsConnected = connected
+                self?.natsStatusChanged.send(connected)
+                #if DEBUG
+                print("[ChatSocket] NATS status: \(connected ? "connected" : "disconnected")")
+                #endif
             }
         }
 

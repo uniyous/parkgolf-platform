@@ -24,7 +24,7 @@ import javax.inject.Singleton
 import kotlin.concurrent.withLock
 
 private const val TAG = "ChatSocketManager"
-private const val MAX_RECONNECT_ATTEMPTS = 10
+private const val MAX_RECONNECT_ATTEMPTS = Int.MAX_VALUE  // 무한 재시도 (Web/iOS 통일)
 private const val MIN_RECONNECT_INTERVAL_MS = 3000L
 private const val CONNECTION_CHECK_INTERVAL_MS = 30000L
 private const val HEARTBEAT_INTERVAL_MS = 30000L
@@ -62,6 +62,9 @@ class ChatSocketManager @Inject constructor() {
 
     private val _connectionState = MutableStateFlow(false)
     val connectionState: StateFlow<Boolean> = _connectionState.asStateFlow()
+
+    private val _natsConnectionState = MutableStateFlow(true)
+    val natsConnectionState: StateFlow<Boolean> = _natsConnectionState.asStateFlow()
 
     private val _messageReceived = MutableSharedFlow<ChatMessage>(extraBufferCapacity = 100)
     val messageReceived: SharedFlow<ChatMessage> = _messageReceived.asSharedFlow()
@@ -357,12 +360,29 @@ class ChatSocketManager @Inject constructor() {
     val currentRoom: String?
         get() = socketLock.withLock { currentRoomId }
 
+    /**
+     * 앱 포그라운드 복귀 시 재연결 처리 (iOS와 동일)
+     */
+    fun handleAppForeground() {
+        if (!isConnected) {
+            val token = savedToken
+            if (token != null) {
+                Log.d(TAG, "App returned to foreground, attempting reconnect")
+                forceReconnect(token)
+            }
+        } else {
+            // 연결 유지 중이면 현재 방 재참여 트리거
+            currentRoomId?.let { joinRoom(it) }
+        }
+    }
+
     // Private helper methods
 
     private fun Socket.setupEventListeners() {
         on(Socket.EVENT_CONNECT) {
             isConnecting.set(false)
             _connectionState.value = true
+            _natsConnectionState.value = true  // Reset NATS status on fresh connect
             // Reset reconnect counter on successful connection (like iOS)
             reconnectAttempts = 0
             startHeartbeat()
@@ -409,6 +429,14 @@ class ChatSocketManager @Inject constructor() {
         on("token_refresh_needed") {
             Log.d(TAG, "Token expired, requesting REST API token refresh")
             _tokenRefreshNeeded.tryEmit(Unit)
+        }
+
+        on("system:nats_status") { args ->
+            if (args.isEmpty()) return@on
+            val data = args[0] as? JSONObject ?: return@on
+            val connected = data.optBoolean("connected", true)
+            Log.d(TAG, "NATS status: ${if (connected) "connected" else "disconnected"}")
+            _natsConnectionState.value = connected
         }
 
         on("error") { args ->
