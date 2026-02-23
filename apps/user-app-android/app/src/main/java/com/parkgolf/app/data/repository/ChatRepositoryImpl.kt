@@ -110,9 +110,11 @@ class ChatRepositoryImpl @Inject constructor(
     override suspend fun sendAiMessage(
         roomId: String,
         message: String,
-        conversationId: String?
+        conversationId: String?,
+        latitude: Double?,
+        longitude: Double?
     ): Result<AiChatResponse> = safeApiCall {
-        val request = AiChatRequest(message, conversationId)
+        val request = AiChatRequest(message, conversationId, latitude, longitude)
         chatApi.sendAiMessage(roomId, request).toResult("AI 메시지 전송에 실패했습니다") { dto ->
             AiChatResponse(
                 conversationId = dto.conversationId,

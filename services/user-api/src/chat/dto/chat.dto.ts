@@ -81,4 +81,14 @@ export class AiChatRequestDto {
   @IsOptional()
   @IsString()
   conversationId?: string;
+
+  @ApiPropertyOptional({ description: '사용자 현재 위치 위도' })
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @ApiPropertyOptional({ description: '사용자 현재 위치 경도' })
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
 }

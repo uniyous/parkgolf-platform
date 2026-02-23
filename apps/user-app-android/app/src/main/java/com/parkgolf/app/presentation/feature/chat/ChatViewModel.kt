@@ -12,6 +12,7 @@ import com.parkgolf.app.domain.model.ChatRoom
 import com.parkgolf.app.domain.model.MessageType
 import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.ChatRepository
+import com.parkgolf.app.util.LocationManager
 import java.time.LocalDateTime
 import java.util.UUID
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -51,7 +52,8 @@ data class ChatUiState(
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val locationManager: LocationManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatUiState())
@@ -418,10 +420,13 @@ class ChatViewModel @Inject constructor(
         )
 
         viewModelScope.launch {
+            val location = locationManager.getCurrentLocation()
             chatRepository.sendAiMessage(
                 roomId = roomId,
                 message = content,
-                conversationId = _uiState.value.aiConversationId
+                conversationId = _uiState.value.aiConversationId,
+                latitude = location?.latitude,
+                longitude = location?.longitude
             ).onSuccess { response ->
                 val aiMsg = ChatMessage(
                     id = UUID.randomUUID().toString(),

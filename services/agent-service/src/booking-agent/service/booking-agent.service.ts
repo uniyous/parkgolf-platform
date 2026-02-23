@@ -30,10 +30,15 @@ export class BookingAgentService {
    * 채팅 처리
    */
   async chat(request: ChatRequestDto): Promise<ChatResponseDto> {
-    const { userId, message, conversationId } = request;
+    const { userId, message, conversationId, latitude, longitude } = request;
 
     // 대화 컨텍스트 조회/생성
     const context = this.conversationService.getOrCreate(userId, conversationId);
+
+    // 위치 정보 저장 (첫 메시지에서만)
+    if (latitude && longitude && !context.slots.latitude) {
+      this.conversationService.updateSlots(context, { latitude, longitude });
+    }
 
     // 사용자 메시지 추가
     this.conversationService.addUserMessage(context, message);
@@ -89,6 +94,15 @@ export class BookingAgentService {
     context: ConversationContext,
   ): Promise<{ text: string; actions?: ChatAction[] }> {
     const messages = this.conversationService.getRecentMessages(context);
+
+    // 위치 정보를 시스템 메시지로 주입
+    if (context.slots.latitude && context.slots.longitude) {
+      messages.unshift({
+        role: 'user',
+        content: `[시스템 정보] 사용자의 현재 위치: 위도 ${context.slots.latitude}, 경도 ${context.slots.longitude}. "내 근처", "가까운 곳" 요청 시 get_nearby_clubs 도구에 이 좌표를 사용하세요. 이 메시지에 대해 직접 응답하지 마세요.`,
+      });
+    }
+
     let llmResponse: DeepSeekResponse;
     let iterations = 0;
     let allActions: ChatAction[] = [];

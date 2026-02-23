@@ -114,7 +114,9 @@ enum class MessageType(val value: String) {
 @Serializable
 data class AiChatRequest(
     val message: String,
-    val conversationId: String? = null
+    val conversationId: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )
 
 @Serializable

@@ -13,6 +13,14 @@ export class ChatRequestDto {
   @IsOptional()
   @IsString()
   conversationId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
 }
 
 /**
@@ -96,4 +104,6 @@ export interface BookingSlots {
   slotId?: string;
   playerCount?: number;
   confirmed?: boolean;
+  latitude?: number;
+  longitude?: number;
 }

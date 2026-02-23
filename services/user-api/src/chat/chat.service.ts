@@ -216,6 +216,8 @@ export class ChatService {
     userName: string,
     message: string,
     conversationId?: string,
+    latitude?: number,
+    longitude?: number,
   ) {
     this.logger.log(`Send AI message: roomId=${roomId}, userId=${userId}`);
 
@@ -236,7 +238,7 @@ export class ChatService {
     // 2. agent-service에 AI 채팅 요청 (60초 타임아웃)
     const agentResponse = await this.natsClient.send<any>(
       'agent.chat',
-      { userId, message, conversationId },
+      { userId, message, conversationId, latitude, longitude },
       NATS_TIMEOUTS.PAYMENT, // 60초 - AI 처리 시간 고려
     );
 

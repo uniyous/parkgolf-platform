@@ -351,6 +351,8 @@ struct AiChatResponse: Codable, Sendable {
 struct AiChatRequest: Codable, Sendable {
     let message: String
     let conversationId: String?
+    let latitude: Double?
+    let longitude: Double?
 }
 
 struct ClubCardData: Sendable {

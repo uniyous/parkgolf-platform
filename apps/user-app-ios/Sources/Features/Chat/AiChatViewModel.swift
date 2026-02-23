@@ -23,10 +23,13 @@ final class AiChatViewModel: ObservableObject {
         defer { isAiLoading = false }
 
         do {
+            let location = LocationManager.shared
             let endpoint = ChatEndpoints.sendAiMessage(
                 roomId: roomId,
                 message: message,
-                conversationId: conversationId
+                conversationId: conversationId,
+                latitude: location.latitude,
+                longitude: location.longitude
             )
             let response: AiChatResponse = try await APIClient.shared.request(endpoint, responseType: AiChatResponse.self)
             conversationId = response.conversationId

@@ -46,7 +46,9 @@ interface ChatRepository {
     suspend fun sendAiMessage(
         roomId: String,
         message: String,
-        conversationId: String? = null
+        conversationId: String? = null,
+        latitude: Double? = null,
+        longitude: Double? = null
     ): Result<AiChatResponse>
 
     // Socket operations

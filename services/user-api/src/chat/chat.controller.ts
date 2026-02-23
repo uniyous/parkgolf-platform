@@ -173,6 +173,8 @@ export class ChatController {
       user.name,
       dto.message,
       dto.conversationId,
+      dto.latitude,
+      dto.longitude,
     );
   }
 

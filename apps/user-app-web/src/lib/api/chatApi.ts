@@ -330,10 +330,16 @@ export const chatApi = {
   /**
    * AI 예약 도우미에게 메시지 전송
    */
-  sendAiMessage: async (roomId: string, message: string, conversationId?: string): Promise<AiChatResponse> => {
+  sendAiMessage: async (
+    roomId: string,
+    message: string,
+    conversationId?: string,
+    latitude?: number | null,
+    longitude?: number | null,
+  ): Promise<AiChatResponse> => {
     const response = await apiClient.post<BffResponse<AiChatResponse>>(
       `/api/user/chat/rooms/${roomId}/agent`,
-      { message, conversationId },
+      { message, conversationId, latitude, longitude },
     );
     return unwrapResponse(response.data);
   },
