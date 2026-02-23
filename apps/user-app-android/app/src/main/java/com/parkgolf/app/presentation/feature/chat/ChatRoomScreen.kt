@@ -21,7 +21,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.LifecycleOwner
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.parkgolf.app.domain.model.ChatMessage
 import com.parkgolf.app.domain.model.Friend
@@ -48,7 +49,7 @@ fun ChatRoomScreen(
     var showInviteDialog by remember { mutableStateOf(false) }
     var showParticipantsDialog by remember { mutableStateOf(false) }
 
-    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleOwner = LocalContext.current as LifecycleOwner
 
     LaunchedEffect(roomId) {
         viewModel.loadRoom(roomId)
