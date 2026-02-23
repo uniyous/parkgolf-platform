@@ -132,6 +132,7 @@ export class ToolExecutorService {
 
   /**
    * 날짜 기반 골프장 검색 (타임슬롯 있는 골프장만 반환)
+   * games.search NATS 패턴을 사용하여 단일 호출로 Game + Club + TimeSlot 조회
    */
   private async searchClubsWithSlots(args: Record<string, unknown>): Promise<unknown> {
     const { location, date, name, timePreference } = args as {
@@ -141,67 +142,77 @@ export class ToolExecutorService {
       timePreference?: 'morning' | 'afternoon' | 'evening';
     };
 
-    // 1) 골프장 검색
-    const query = name ? `${location} ${name}` : location;
-    const searchResponse = await firstValueFrom(
-      this.courseClient.send('club.search', { query }).pipe(
+    // timePreference → games.search의 timeOfDay 매핑
+    const timeOfDayMap: Record<string, string> = {
+      morning: 'MORNING',
+      afternoon: 'AFTERNOON',
+      evening: 'EVENING',
+    };
+
+    const search = name ? `${location} ${name}` : location;
+
+    const response = await firstValueFrom(
+      this.courseClient.send('games.search', {
+        search,
+        date,
+        timeOfDay: timePreference ? timeOfDayMap[timePreference] : undefined,
+        limit: 20,
+      }).pipe(
         timeout(this.REQUEST_TIMEOUT),
         catchError((err) => {
-          throw new Error(`Failed to search clubs: ${err.message}`);
+          throw new Error(`Failed to search clubs with slots: ${err.message}`);
         }),
       ),
     );
 
-    if (!searchResponse?.success || !searchResponse?.data?.length) {
+    if (!response?.success || !response?.data?.length) {
       return { found: 0, date, clubs: [] };
     }
 
-    const clubs = searchResponse.data.slice(0, 10);
+    // games.search 응답을 Club 단위로 그룹핑
+    const clubMap = new Map<number, {
+      id: number;
+      name: string;
+      address: string;
+      region: string;
+      availableSlotCount: number;
+      earliestTime: string;
+      latestTime: string;
+    }>();
 
-    // 2) 각 골프장의 가용 슬롯 병렬 조회
-    const clubsWithSlots = await Promise.all(
-      clubs.map(async (club: any) => {
-        try {
-          const slotsResponse = await firstValueFrom(
-            this.courseClient.send('games.available-slots', { clubId: club.id, date }).pipe(
-              timeout(this.REQUEST_TIMEOUT),
-              catchError(() => [{ success: false }]),
-            ),
-          );
+    for (const game of response.data) {
+      const club = game.club;
+      if (!club) continue;
 
-          let slots = slotsResponse?.success && slotsResponse?.data ? slotsResponse.data : [];
+      const slots = game.timeSlots || [];
+      if (slots.length === 0) continue;
 
-          // 시간대 필터링
-          if (timePreference && slots.length > 0) {
-            slots = this.filterByTimePreference(slots, timePreference);
-          }
+      const times = slots.map((s: any) => s.startTime).sort();
+      const existing = clubMap.get(club.id);
 
-          if (slots.length === 0) return null;
+      if (existing) {
+        existing.availableSlotCount += slots.length;
+        if (times[0] < existing.earliestTime) existing.earliestTime = times[0];
+        if (times[times.length - 1] > existing.latestTime) existing.latestTime = times[times.length - 1];
+      } else {
+        clubMap.set(club.id, {
+          id: club.id,
+          name: club.name,
+          address: club.address,
+          region: club.location,
+          availableSlotCount: slots.length,
+          earliestTime: times[0],
+          latestTime: times[times.length - 1],
+        });
+      }
+    }
 
-          const times = slots.map((s: any) => s.startTime).sort();
-
-          return {
-            id: club.id,
-            name: club.name,
-            address: club.address,
-            region: club.location,
-            availableSlotCount: slots.length,
-            earliestTime: times[0],
-            latestTime: times[times.length - 1],
-          };
-        } catch {
-          return null;
-        }
-      }),
-    );
-
-    // 3) 슬롯이 있는 골프장만 필터링
-    const available = clubsWithSlots.filter((c): c is NonNullable<typeof c> => c !== null);
+    const clubs = Array.from(clubMap.values());
 
     return {
-      found: available.length,
+      found: clubs.length,
       date,
-      clubs: available,
+      clubs,
     };
   }
 
@@ -319,6 +330,7 @@ export class ToolExecutorService {
 
   /**
    * 예약 가능 슬롯 조회
+   * games.search NATS 패턴을 사용하여 clubId + date로 조회
    */
   private async getAvailableSlots(args: Record<string, unknown>): Promise<unknown> {
     const { clubId, date, timePreference } = args as {
@@ -327,8 +339,19 @@ export class ToolExecutorService {
       timePreference?: 'morning' | 'afternoon' | 'evening';
     };
 
+    const timeOfDayMap: Record<string, string> = {
+      morning: 'MORNING',
+      afternoon: 'AFTERNOON',
+      evening: 'EVENING',
+    };
+
     const response = await firstValueFrom(
-      this.courseClient.send('games.available-slots', { clubId, date }).pipe(
+      this.courseClient.send('games.search', {
+        clubId: Number(clubId),
+        date,
+        timeOfDay: timePreference ? timeOfDayMap[timePreference] : undefined,
+        limit: 50,
+      }).pipe(
         timeout(this.REQUEST_TIMEOUT),
         catchError((err) => {
           throw new Error(`Failed to get available slots: ${err.message}`);
@@ -336,49 +359,34 @@ export class ToolExecutorService {
       ),
     );
 
-    if (response?.success && response?.data) {
-      let slots = response.data;
-
-      // 시간대 필터링
-      if (timePreference) {
-        slots = this.filterByTimePreference(slots, timePreference);
+    if (response?.success && response?.data?.length) {
+      // 모든 게임의 타임슬롯을 하나의 배열로 합침
+      const allSlots: any[] = [];
+      for (const game of response.data) {
+        const slots = game.timeSlots || [];
+        for (const slot of slots) {
+          allSlots.push({
+            id: slot.id,
+            time: slot.startTime,
+            endTime: slot.endTime,
+            availableSpots: slot.availablePlayers ?? (slot.maxPlayers - slot.bookedPlayers),
+            price: Number(slot.price),
+            courseName: game.name,
+          });
+        }
       }
+
+      // 시간순 정렬
+      allSlots.sort((a, b) => a.time.localeCompare(b.time));
 
       return {
         date,
-        availableCount: slots.length,
-        slots: slots.slice(0, 10).map((slot: any) => ({
-          id: slot.id,
-          time: slot.startTime,
-          endTime: slot.endTime,
-          availableSpots: slot.availableSpots,
-          price: slot.price,
-          courseName: slot.courseName,
-        })),
+        availableCount: allSlots.length,
+        slots: allSlots.slice(0, 10),
       };
     }
 
     return { date, availableCount: 0, slots: [] };
-  }
-
-  /**
-   * 시간대별 필터링
-   */
-  private filterByTimePreference(slots: any[], preference: string): any[] {
-    return slots.filter((slot) => {
-      const hour = parseInt(slot.startTime?.split(':')[0] || '0', 10);
-
-      switch (preference) {
-        case 'morning':
-          return hour >= 6 && hour < 12;
-        case 'afternoon':
-          return hour >= 12 && hour < 17;
-        case 'evening':
-          return hour >= 17 && hour < 21;
-        default:
-          return true;
-      }
-    });
   }
 
   /**
