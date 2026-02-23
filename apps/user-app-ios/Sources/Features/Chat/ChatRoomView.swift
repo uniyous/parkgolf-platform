@@ -195,18 +195,34 @@ struct ChatRoomView: View {
                         loadMoreButton
                     }
 
+                    // AI 웰컴 카드
+                    if aiViewModel.showWelcome && aiViewModel.isAiMode {
+                        AiWelcomeCard { message in
+                            aiViewModel.showWelcome = false
+                            sendAiFollowUp(message)
+                        }
+                    }
+
                     ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
                         if message.messageType == .aiAssistant {
+                            // 연속 AI 메시지 그룹핑: 이전 메시지도 AI면 라벨 숨김
+                            let prevIsAi = index > 0 && viewModel.messages[index - 1].messageType == .aiAssistant
+
                             AiMessageBubble(
                                 content: message.content,
                                 actions: aiViewModel.getActions(for: message.id),
                                 createdAt: message.createdAt,
-                                onClubSelect: { _, clubName in
+                                showLabel: !prevIsAi,
+                                onClubSelect: { clubId, clubName in
+                                    aiViewModel.selectedClubId = clubId
                                     sendAiFollowUp("\(clubName)(으)로 선택할게요")
                                 },
-                                onSlotSelect: { _, time in
+                                onSlotSelect: { slotId, time in
+                                    aiViewModel.selectedSlotId = slotId
                                     sendAiFollowUp("\(time) 시간으로 예약해주세요")
-                                }
+                                },
+                                selectedClubId: aiViewModel.selectedClubId,
+                                selectedSlotId: aiViewModel.selectedSlotId
                             )
                             .id(message.id)
                         } else {
@@ -300,33 +316,63 @@ struct ChatRoomView: View {
     // MARK: - AI Typing Indicator
 
     private var aiTypingIndicator: some View {
-        HStack(spacing: ParkSpacing.xs) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 14))
-                .foregroundStyle(Color.parkPrimary)
-
-            HStack(spacing: 4) {
-                ForEach(0..<3, id: \.self) { i in
-                    Circle()
-                        .fill(Color.parkPrimary.opacity(0.6))
-                        .frame(width: 6, height: 6)
-                        .offset(y: aiViewModel.isAiLoading ? -4 : 0)
-                        .animation(
-                            .easeInOut(duration: 0.5)
-                                .repeatForever(autoreverses: true)
-                                .delay(Double(i) * 0.15),
-                            value: aiViewModel.isAiLoading
+        HStack(alignment: .bottom, spacing: 0) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 10))
+                        .foregroundColor(.white)
+                        .frame(width: 24, height: 24)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.parkPrimary, Color.parkPrimary.opacity(0.7)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
+                        .clipShape(Circle())
+                        .shadow(color: Color.parkPrimary.opacity(0.3), radius: 3)
+
+                    Text("AI 예약 도우미")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(Color.parkPrimary)
                 }
+
+                HStack(spacing: 8) {
+                    HStack(spacing: 4) {
+                        ForEach(0..<3, id: \.self) { i in
+                            Circle()
+                                .fill(Color.parkPrimary.opacity(0.6))
+                                .frame(width: 5, height: 5)
+                                .offset(y: aiViewModel.isAiLoading ? -3 : 0)
+                                .animation(
+                                    .easeInOut(duration: 0.5)
+                                        .repeatForever(autoreverses: true)
+                                        .delay(Double(i) * 0.15),
+                                    value: aiViewModel.isAiLoading
+                                )
+                        }
+                    }
+
+                    Text(aiViewModel.aiLoadingText)
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.5))
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color.parkPrimary.opacity(0.05))
+                .overlay(
+                    Rectangle()
+                        .fill(Color.parkPrimary.opacity(0.4))
+                        .frame(width: 3),
+                    alignment: .leading
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 16))
             }
 
-            Text("AI 예약 도우미")
-                .font(.parkCaption)
-                .foregroundStyle(Color.parkPrimary)
+            Spacer(minLength: 40)
         }
-        .padding(.horizontal, ParkSpacing.md)
-        .padding(.vertical, ParkSpacing.xs)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - AI Follow-up
@@ -427,7 +473,9 @@ struct ChatRoomView: View {
                 }
 
             AiButton(isActive: aiViewModel.isAiMode) {
-                aiViewModel.toggleAiMode()
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    aiViewModel.toggleAiMode()
+                }
             }
 
             Button {

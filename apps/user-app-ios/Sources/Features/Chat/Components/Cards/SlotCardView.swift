@@ -3,12 +3,15 @@ import SwiftUI
 struct SlotCardView: View {
     let data: Any
     var onSelect: ((String, String) -> Void)?
+    var selectedSlotId: String?
 
     private var slots: [[String: Any]] {
         guard let dict = data as? [String: Any],
               let slots = dict["slots"] as? [[String: Any]] else { return [] }
         return slots
     }
+
+    private var hasSelection: Bool { selectedSlotId != nil }
 
     var body: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
@@ -17,39 +20,55 @@ struct SlotCardView: View {
                 let time = slot["time"] as? String ?? ""
                 let courseName = slot["courseName"] as? String ?? ""
                 let price = slot["price"] as? Int ?? 0
+                let isSelected = selectedSlotId == id
+                let isDisabled = hasSelection && !isSelected
 
                 Button {
-                    onSelect?(id, time)
-                } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "clock.fill")
-                                .font(.system(size: 10))
-                                .foregroundColor(Color.parkPrimary)
-                            Text(time)
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.white)
-                        }
-
-                        Text(courseName)
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.6))
-
-                        Text("₩\(price.formatted())")
-                            .font(.caption)
-                            .foregroundColor(Color.parkPrimary)
+                    if !isDisabled {
+                        onSelect?(id, time)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                } label: {
+                    ZStack(alignment: .topTrailing) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "clock.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(isSelected ? Color.parkPrimary : Color.parkPrimary)
+                                Text(time)
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.white)
+                            }
+
+                            Text(courseName)
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.6))
+
+                            Text("₩\(price.formatted())")
+                                .font(.caption)
+                                .foregroundColor(Color.parkPrimary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        if isSelected {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(Color.parkPrimary)
+                        }
+                    }
                     .padding(12)
                     .background(Color.white.opacity(0.05))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            .stroke(
+                                isSelected ? Color.parkPrimary.opacity(0.4) : Color.white.opacity(0.1),
+                                lineWidth: isSelected ? 1.5 : 1
+                            )
                     )
+                    .opacity(isDisabled ? 0.5 : 1.0)
                 }
-                .disabled(onSelect == nil)
+                .disabled(onSelect == nil || isDisabled)
             }
         }
     }

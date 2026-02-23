@@ -4,25 +4,37 @@ struct AiMessageBubble: View {
     let content: String
     let actions: [ChatAction]?
     let createdAt: Date
+    var showLabel: Bool = true
     var onClubSelect: ((String, String) -> Void)?
     var onSlotSelect: ((String, String) -> Void)?
+    var selectedClubId: String?
+    var selectedSlotId: String?
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
-                // AI avatar + name
-                HStack(spacing: 6) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 10))
-                        .foregroundColor(Color.parkPrimary)
-                        .frame(width: 20, height: 20)
-                        .background(Color.parkPrimary.opacity(0.2))
-                        .clipShape(Circle())
+                // AI avatar + name (hidden for consecutive AI messages)
+                if showLabel {
+                    HStack(spacing: 6) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white)
+                            .frame(width: 24, height: 24)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.parkPrimary, Color.parkPrimary.opacity(0.7)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .clipShape(Circle())
+                            .shadow(color: Color.parkPrimary.opacity(0.3), radius: 3)
 
-                    Text("AI 예약 도우미")
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .foregroundColor(Color.parkPrimary)
+                        Text("AI 예약 도우미")
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(Color.parkPrimary)
+                    }
                 }
 
                 HStack(alignment: .bottom, spacing: 6) {
@@ -39,7 +51,13 @@ struct AiMessageBubble: View {
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(Color.white.opacity(0.1))
+                    .background(Color.parkPrimary.opacity(0.05))
+                    .overlay(
+                        Rectangle()
+                            .fill(Color.parkPrimary.opacity(0.4))
+                            .frame(width: 3),
+                        alignment: .leading
+                    )
                     .clipShape(RoundedRectangle(cornerRadius: 16))
 
                     Text(DateHelper.toKoreanTime(createdAt))
@@ -56,9 +74,17 @@ struct AiMessageBubble: View {
     private func actionView(for action: ChatAction) -> some View {
         switch action.type {
         case .showClubs:
-            ClubCardView(data: action.data.value, onSelect: onClubSelect)
+            ClubCardView(
+                data: action.data.value,
+                onSelect: onClubSelect,
+                selectedClubId: selectedClubId
+            )
         case .showSlots:
-            SlotCardView(data: action.data.value, onSelect: onSlotSelect)
+            SlotCardView(
+                data: action.data.value,
+                onSelect: onSlotSelect,
+                selectedSlotId: selectedSlotId
+            )
         case .showWeather:
             WeatherCardView(data: action.data.value)
         case .bookingComplete:

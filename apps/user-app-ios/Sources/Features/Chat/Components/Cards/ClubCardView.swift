@@ -3,6 +3,7 @@ import SwiftUI
 struct ClubCardView: View {
     let data: Any
     var onSelect: ((String, String) -> Void)?
+    var selectedClubId: String?
 
     private var clubs: [[String: Any]] {
         guard let dict = data as? [String: Any],
@@ -10,12 +11,16 @@ struct ClubCardView: View {
         return clubs
     }
 
+    private var hasSelection: Bool { selectedClubId != nil }
+
     var body: some View {
         VStack(spacing: 8) {
             ForEach(Array(clubs.enumerated()), id: \.offset) { _, club in
                 let id = club["id"] as? String ?? ""
                 let name = club["name"] as? String ?? ""
                 let address = club["address"] as? String ?? ""
+                let isSelected = selectedClubId == id
+                let isDisabled = hasSelection && !isSelected
 
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -37,11 +42,15 @@ struct ClubCardView: View {
 
                     Spacer()
 
-                    if onSelect != nil {
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 22))
+                            .foregroundColor(Color.parkPrimary)
+                    } else if onSelect != nil && !isDisabled {
                         Button {
                             onSelect?(id, name)
                         } label: {
-                            Text("선택하기")
+                            Text("선택")
                                 .font(.caption)
                                 .fontWeight(.medium)
                                 .foregroundColor(Color.parkPrimary)
@@ -57,8 +66,12 @@ struct ClubCardView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                        .stroke(
+                            isSelected ? Color.parkPrimary.opacity(0.4) : Color.white.opacity(0.1),
+                            lineWidth: isSelected ? 1.5 : 1
+                        )
                 )
+                .opacity(isDisabled ? 0.5 : 1.0)
             }
         }
     }

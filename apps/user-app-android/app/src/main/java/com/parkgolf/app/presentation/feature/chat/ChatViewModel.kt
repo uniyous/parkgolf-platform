@@ -9,6 +9,7 @@ import com.parkgolf.app.domain.model.AiChatResponse
 import com.parkgolf.app.domain.model.ChatAction
 import com.parkgolf.app.domain.model.ChatMessage
 import com.parkgolf.app.domain.model.ChatRoom
+import com.parkgolf.app.domain.model.ConversationState
 import com.parkgolf.app.domain.model.MessageType
 import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.ChatRepository
@@ -46,8 +47,20 @@ data class ChatUiState(
     val isAiMode: Boolean = false,
     val isAiLoading: Boolean = false,
     val aiConversationId: String? = null,
+    val aiConversationState: ConversationState = ConversationState.IDLE,
+    val showWelcome: Boolean = false,
+    val selectedClubId: String? = null,
+    val selectedSlotId: String? = null,
     val aiMessageActions: Map<String, List<ChatAction>> = emptyMap()
-)
+) {
+    val aiLoadingText: String
+        get() = when (aiConversationState) {
+            ConversationState.COLLECTING -> "검색 중..."
+            ConversationState.CONFIRMING -> "예약 확인 중..."
+            ConversationState.BOOKING -> "예약 처리 중..."
+            else -> "생각 중..."
+        }
+}
 
 @HiltViewModel
 class ChatViewModel @Inject constructor(
@@ -388,9 +401,32 @@ class ChatViewModel @Inject constructor(
     // AI Mode
 
     fun toggleAiMode() {
-        _uiState.value = _uiState.value.copy(
-            isAiMode = !_uiState.value.isAiMode
-        )
+        val wasOff = !_uiState.value.isAiMode
+        if (wasOff) {
+            _uiState.value = _uiState.value.copy(
+                isAiMode = true,
+                showWelcome = true,
+                selectedClubId = null,
+                selectedSlotId = null
+            )
+        } else {
+            _uiState.value = _uiState.value.copy(
+                isAiMode = false,
+                showWelcome = false,
+                aiConversationId = null,
+                aiConversationState = ConversationState.IDLE,
+                selectedClubId = null,
+                selectedSlotId = null
+            )
+        }
+    }
+
+    fun selectClub(clubId: String) {
+        _uiState.value = _uiState.value.copy(selectedClubId = clubId)
+    }
+
+    fun selectSlot(slotId: String) {
+        _uiState.value = _uiState.value.copy(selectedSlotId = slotId)
     }
 
     fun sendAiMessage(message: String? = null) {
@@ -416,7 +452,8 @@ class ChatViewModel @Inject constructor(
         )
         _uiState.value = _uiState.value.copy(
             messages = _uiState.value.messages + userMsg,
-            isAiLoading = true
+            isAiLoading = true,
+            showWelcome = false
         )
 
         viewModelScope.launch {
@@ -445,6 +482,7 @@ class ChatViewModel @Inject constructor(
                     messages = _uiState.value.messages + aiMsg,
                     isAiLoading = false,
                     aiConversationId = response.conversationId,
+                    aiConversationState = response.state,
                     aiMessageActions = updatedActions
                 )
             }.onFailure { exception ->

@@ -31,6 +31,7 @@ import com.parkgolf.app.presentation.components.GlassCard
 import com.parkgolf.app.presentation.components.GlassTextField
 import com.parkgolf.app.presentation.feature.chat.components.AiButton
 import com.parkgolf.app.presentation.feature.chat.components.AiMessageBubble
+import com.parkgolf.app.presentation.feature.chat.components.AiWelcomeCard
 import com.parkgolf.app.presentation.theme.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.format.DateTimeFormatter
@@ -237,19 +238,39 @@ fun ChatRoomScreen(
                             }
                         }
 
+                        // AI 웰컴 카드
+                        if (uiState.showWelcome && uiState.isAiMode) {
+                            item {
+                                AiWelcomeCard(
+                                    onQuickAction = { message ->
+                                        viewModel.sendAiMessage(message)
+                                    }
+                                )
+                            }
+                        }
+
                         // Messages (oldest first, newest at bottom)
-                        items(uiState.messages) { message ->
+                        items(uiState.messages.size) { index ->
+                            val message = uiState.messages[index]
                             if (message.messageType == MessageType.AI_ASSISTANT) {
+                                // 연속 AI 메시지 그룹핑: 이전 메시지도 AI면 라벨 숨김
+                                val prevIsAi = index > 0 && uiState.messages[index - 1].messageType == MessageType.AI_ASSISTANT
+
                                 AiMessageBubble(
                                     content = message.content,
                                     actions = viewModel.getActionsForMessage(message.id),
                                     createdAt = message.createdAt,
-                                    onClubSelect = { _, clubName ->
+                                    showLabel = !prevIsAi,
+                                    onClubSelect = { clubId, clubName ->
+                                        viewModel.selectClub(clubId)
                                         viewModel.sendAiMessage("${clubName}(으)로 선택할게요")
                                     },
-                                    onSlotSelect = { _, time ->
+                                    onSlotSelect = { slotId, time ->
+                                        viewModel.selectSlot(slotId)
                                         viewModel.sendAiMessage("$time 시간으로 예약해주세요")
-                                    }
+                                    },
+                                    selectedClubId = uiState.selectedClubId,
+                                    selectedSlotId = uiState.selectedSlotId
                                 )
                             } else {
                                 val isOwnMessage = message.senderId == uiState.currentUserId
@@ -263,7 +284,7 @@ fun ChatRoomScreen(
                         // AI loading indicator
                         if (uiState.isAiLoading) {
                             item {
-                                AiTypingIndicator()
+                                AiTypingIndicator(loadingText = uiState.aiLoadingText)
                             }
                         }
                     }
@@ -591,28 +612,71 @@ private fun ChatInputBar(
  * AI 타이핑 인디케이터
  */
 @Composable
-private fun AiTypingIndicator() {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(start = 8.dp)
+private fun AiTypingIndicator(loadingText: String = "생각 중...") {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.Start
     ) {
-        Icon(
-            Icons.Default.AutoAwesome,
-            contentDescription = null,
-            modifier = Modifier.size(14.dp),
-            tint = ParkPrimary
-        )
-        Text(
-            text = "AI 예약 도우미",
-            style = MaterialTheme.typography.bodySmall,
-            color = ParkPrimary
-        )
-        CircularProgressIndicator(
-            modifier = Modifier.size(12.dp),
-            color = ParkPrimary,
-            strokeWidth = 1.5.dp
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(ParkPrimary, ParkPrimary.copy(alpha = 0.7f))
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp),
+                    tint = Color.White
+                )
+            }
+            Text(
+                text = "AI 예약 도우미",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = ParkPrimary
+            )
+        }
+
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = ParkPrimary.copy(alpha = 0.05f)
+        ) {
+            Row {
+                Box(
+                    modifier = Modifier
+                        .width(3.dp)
+                        .height(40.dp)
+                        .background(ParkPrimary.copy(alpha = 0.4f))
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(12.dp),
+                        color = ParkPrimary.copy(alpha = 0.6f),
+                        strokeWidth = 1.5.dp
+                    )
+                    Text(
+                        text = loadingText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ParkOnPrimary.copy(alpha = 0.5f)
+                    )
+                }
+            }
+        }
     }
 }
 
