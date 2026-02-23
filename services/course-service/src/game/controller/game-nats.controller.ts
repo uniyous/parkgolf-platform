@@ -334,6 +334,8 @@ export class GameNatsController {
     if (game.timeSlots && Array.isArray(game.timeSlots)) {
       return {
         ...baseResponse,
+        // searchGames Raw SQL 결과의 club 객체 보존 (agent-service tool-executor에서 사용)
+        club: game.club || null,
         timeSlots: game.timeSlots.map((slot: any) => ({
           ...slot,
           // 게임 정보 추가 (Raw SQL 결과에는 없음)
