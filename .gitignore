@@ -612,3 +612,9 @@ services/*/*.temp
 
 # E2E auth state (temporary tokens)
 **/e2e/.auth/
+
+# E2E screenshots (generated artifacts)
+**/e2e/screenshots/
+
+# Kotlin build metadata
+**/.kotlin/
