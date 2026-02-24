@@ -27,6 +27,7 @@ export class ToolExecutorService {
     @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
     @Inject('WEATHER_SERVICE') private readonly weatherClient: ClientProxy,
     @Inject('LOCATION_SERVICE') private readonly locationClient: ClientProxy,
+    @Inject('PAYMENT_SERVICE') private readonly paymentClient: ClientProxy,
   ) {}
 
   /**
@@ -58,6 +59,49 @@ export class ToolExecutorService {
    */
   async executeAll(toolCalls: ToolCall[]): Promise<ToolResult[]> {
     return Promise.all(toolCalls.map((tc) => this.execute(tc)));
+  }
+
+  /**
+   * 결제 준비 (payment.prepare 호출)
+   * 원샷 처리: booking.create → Saga 폴링 → payment.prepare
+   */
+  async preparePayment(params: {
+    bookingId: number;
+    amount: number;
+    orderName: string;
+    userId: number;
+  }): Promise<{ orderId: string; paymentId: number } | null> {
+    try {
+      const response = await firstValueFrom(
+        this.paymentClient
+          .send('payment.prepare', {
+            bookingId: params.bookingId,
+            amount: params.amount,
+            orderName: params.orderName,
+            userId: params.userId,
+          })
+          .pipe(
+            timeout(this.REQUEST_TIMEOUT),
+            catchError((err) => {
+              this.logger.error(`payment.prepare failed: ${err.message}`);
+              return [null];
+            }),
+          ),
+      );
+
+      if (response?.success && response?.data) {
+        return {
+          orderId: response.data.orderId,
+          paymentId: response.data.id,
+        };
+      }
+
+      this.logger.warn('payment.prepare returned unsuccessful response');
+      return null;
+    } catch (error) {
+      this.logger.error('preparePayment unexpected error', error);
+      return null;
+    }
   }
 
   /**

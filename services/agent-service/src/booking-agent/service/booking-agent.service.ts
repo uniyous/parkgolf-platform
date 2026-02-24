@@ -222,14 +222,27 @@ export class BookingAgentService {
         this.conversationService.updateSlots(context, { confirmed: true });
         this.conversationService.setState(context, 'COMPLETED');
       } else if (status === 'SLOT_RESERVED') {
-        // 카드결제 — 슬롯 확보 완료, 결제 대기
+        // 카드결제 — 슬롯 확보 완료, payment.prepare 원샷 처리
         this.conversationService.updateSlots(context, { bookingId: result.bookingId });
+
+        const amount = result.details?.totalPrice || 0;
+        const orderName = `ParkGolf #${result.bookingNumber || result.bookingId}`;
+
+        // payment.prepare 호출 → orderId 발급
+        const prepareResult = await this.toolExecutor.preparePayment({
+          bookingId: result.bookingId,
+          amount,
+          orderName,
+          userId: request.userId,
+        });
+
         actions.push({
           type: 'SHOW_PAYMENT',
           data: {
             bookingId: result.bookingId,
-            amount: result.details?.totalPrice || 0,
-            orderName: `ParkGolf #${result.bookingNumber || result.bookingId}`,
+            orderId: prepareResult?.orderId || null,
+            amount,
+            orderName,
             clubName: context.slots.clubName || '',
             date: result.details?.date || context.slots.date || '',
             time: result.details?.time || context.slots.time || '',

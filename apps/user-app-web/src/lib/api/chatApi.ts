@@ -132,6 +132,7 @@ export interface ConfirmBookingData {
 
 export interface PaymentCardData {
   bookingId: number;
+  orderId?: string | null;
   amount: number;
   orderName: string;
   clubName: string;

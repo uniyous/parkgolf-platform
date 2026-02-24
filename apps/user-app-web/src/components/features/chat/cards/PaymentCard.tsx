@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { CreditCard, MapPin, Calendar, Clock, Users, Banknote, Timer, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PaymentCardData } from '@/lib/api/chatApi';
+import { paymentApi } from '@/lib/api/paymentApi';
 
 interface PaymentCardProps {
   data: PaymentCardData;
@@ -55,17 +56,26 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, onPaymentComplet
     setIsPaying(true);
 
     try {
-      // TODO: 실제 Toss 결제 API 연동
-      // 1. paymentApi.preparePayment({ bookingId, amount, orderName }) → orderId
-      // 2. Toss 위젯 requestPayment(orderId)
-      // 3. 승인 시 → paymentApi.confirmPayment({ paymentKey, orderId, amount })
+      // orderId: 원샷 처리로 이미 발급된 경우 바로 사용, 없으면 fallback 호출
+      let orderId = data.orderId;
+      if (!orderId) {
+        const prepared = await paymentApi.preparePayment({
+          bookingId: data.bookingId,
+          amount: data.amount,
+          orderName: data.orderName,
+        });
+        orderId = prepared.orderId;
+      }
+
+      // TODO: Toss 위젯 requestPayment(orderId)
+      // 승인 시 → paymentApi.confirmPayment({ paymentKey, orderId, amount })
       // 현재는 placeholder — 결제 성공 시뮬레이션
       onPaymentComplete?.(true);
     } catch {
       setIsPaying(false);
       onPaymentComplete?.(false);
     }
-  }, [isPaying, isExpired, onPaymentComplete]);
+  }, [isPaying, isExpired, data, onPaymentComplete]);
 
   const handleCancel = useCallback(() => {
     onPaymentComplete?.(false);
