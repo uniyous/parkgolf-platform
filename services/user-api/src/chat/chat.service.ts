@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
 import { ApiResponse } from '../common/types';
-import { CreateChatRoomDto, MessageType } from './dto/chat.dto';
+import { AiChatRequestDto, CreateChatRoomDto, MessageType } from './dto/chat.dto';
 
 export interface ChatParticipant {
   id: string;
@@ -214,10 +214,7 @@ export class ChatService {
     roomId: string,
     userId: number,
     userName: string,
-    message: string,
-    conversationId?: string,
-    latitude?: number,
-    longitude?: number,
+    dto: AiChatRequestDto,
   ) {
     this.logger.log(`Send AI message: roomId=${roomId}, userId=${userId}`);
 
@@ -227,7 +224,7 @@ export class ChatService {
       roomId,
       senderId: userId,
       senderName: userName,
-      content: message,
+      content: dto.message,
       messageType: 'TEXT',
       createdAt: new Date().toISOString(),
     };
@@ -238,7 +235,23 @@ export class ChatService {
     // 2. agent-service에 AI 채팅 요청 (60초 타임아웃)
     const agentResponse = await this.natsClient.send<any>(
       'agent.chat',
-      { userId, message, conversationId, latitude, longitude },
+      {
+        userId,
+        message: dto.message,
+        conversationId: dto.conversationId,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+        selectedClubId: dto.selectedClubId,
+        selectedClubName: dto.selectedClubName,
+        selectedSlotId: dto.selectedSlotId,
+        selectedSlotTime: dto.selectedSlotTime,
+        selectedSlotPrice: dto.selectedSlotPrice,
+        confirmBooking: dto.confirmBooking,
+        cancelBooking: dto.cancelBooking,
+        paymentMethod: dto.paymentMethod,
+        paymentComplete: dto.paymentComplete,
+        paymentSuccess: dto.paymentSuccess,
+      },
       NATS_TIMEOUTS.PAYMENT, // 60초 - AI 처리 시간 고려
     );
 

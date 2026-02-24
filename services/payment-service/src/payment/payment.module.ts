@@ -10,7 +10,7 @@ import { WebhookController } from './controller/webhook.controller';
 @Module({
   imports: [
     HttpModule.register({
-      timeout: 30000,
+      timeout: 60000, // 토스페이먼츠 권장 Read Timeout 60초 (카드사 승인 최대 지연 대비)
       maxRedirects: 5,
     }),
     ScheduleModule.forRoot(),

@@ -48,6 +48,7 @@ export class DeepSeekService implements OnModuleInit {
 도구 사용 규칙:
 - 사용자가 날짜를 언급한 경우 search_clubs 대신 search_clubs_with_slots를 사용하세요
 - 날짜 없이 지역만 물어보면 기존 search_clubs를 사용하세요
+- 사용자가 인원수를 언급하면 search_clubs_with_slots의 playerCount 파라미터에 포함하세요
 
 날짜 해석:
 - "내일" → 오늘 날짜 + 1일
@@ -88,6 +89,10 @@ export class DeepSeekService implements OnModuleInit {
               type: 'string',
               description: '선호 시간대 (morning, afternoon, evening)',
               enum: ['morning', 'afternoon', 'evening'],
+            },
+            playerCount: {
+              type: 'number',
+              description: '예약 인원 수 (사용자가 언급한 경우)',
             },
           },
           required: ['location', 'date'],
@@ -154,9 +159,8 @@ export class DeepSeekService implements OnModuleInit {
             clubId: { type: 'string', description: '골프장 ID' },
             slotId: { type: 'string', description: '타임슬롯 ID' },
             playerCount: { type: 'number', description: '예약 인원 수' },
-            userId: { type: 'number', description: '사용자 ID' },
           },
-          required: ['clubId', 'slotId', 'playerCount', 'userId'],
+          required: ['clubId', 'slotId', 'playerCount'],
         },
       },
     },

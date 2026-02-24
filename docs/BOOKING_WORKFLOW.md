@@ -1,7 +1,7 @@
 # 예약 워크플로우 및 Saga 아키텍처
 
-> 버전: 3.1
-> 최종 수정: 2026-02-15
+> 버전: 3.4
+> 최종 수정: 2026-02-24
 > 이전 문서: BOOKING_SAGA_ARCHITECTURE.md, booking-workflow-design.md (통합됨)
 
 ## 목차
@@ -32,6 +32,9 @@
 | **iam-service** | 인증/사용자/CompanyMember 관리 | iam_db |
 | **user-api** | BFF, 클라이언트 요청 처리 | - |
 | **notify-service** | 알림 발송 | notify_db |
+| **agent-service** | AI 예약 에이전트 (booking.create 호출) | - (in-memory) |
+
+> AI 에이전트 예약 워크플로우 상세는 [AGENT_BOOKING_WORKFLOW.md](./AGENT_BOOKING_WORKFLOW.md) 섹션 11 참조
 
 ### 1.2 사용 기술
 
@@ -69,6 +72,7 @@ flowchart TB
         P[payment-service]
         IAM[iam-service]
         E[notify-service]
+        AG[agent-service]
     end
 
     subgraph "Message Broker"
@@ -89,6 +93,8 @@ flowchart TB
     A -->|REST API| B
     B -->|NATS Request| C
     B -->|NATS Request| P
+    B -->|NATS Request| AG
+    AG -->|booking.create| NATS
     C -->|slot.reserve| NATS
     NATS -->|slot.reserve| D
     D -->|slot.reserved / slot.reserve.failed| NATS
@@ -225,9 +231,14 @@ stateDiagram-v2
 
     READY --> IN_PROGRESS: payment.confirm 시작
     READY --> ABORTED: 사용자 취소 / 타임아웃
+    READY --> EXPIRED: 결제 만료 (가상계좌)
 
     IN_PROGRESS --> DONE: 토스 API 승인 성공
+    IN_PROGRESS --> WAITING_FOR_DEPOSIT: 가상계좌 입금 대기
     IN_PROGRESS --> ABORTED: 토스 API 승인 실패
+
+    WAITING_FOR_DEPOSIT --> DONE: 입금 완료 (Webhook)
+    WAITING_FOR_DEPOSIT --> EXPIRED: 입금 기한 초과
 
     DONE --> CANCELED: 전체 환불
     DONE --> PARTIAL_CANCELED: 부분 환불
@@ -293,6 +304,8 @@ sequenceDiagram
     BS->>CS: club.findOne → companyId 조회
     BS->>IAM: iam.companyMembers.addByBooking (upsert)
 ```
+
+> **AI 에이전트 경유 예약**: agent-service의 `tool-executor`에서 `booking.create` 후 `waitForSagaCompletion()`으로 폴링(300ms × 최대 20회)하여 Saga 완료를 확인합니다. 현장결제는 CONFIRMED, 카드결제는 SLOT_RESERVED까지 대기 후 프론트엔드에 응답합니다. 상세는 [AGENT_BOOKING_WORKFLOW.md](./AGENT_BOOKING_WORKFLOW.md) 섹션 11.4 참조.
 
 ### 4.2 카드결제 시퀀스 (신규)
 
@@ -385,12 +398,22 @@ if (existingIdempotencyKey?.aggregateId) {
 
 ```typescript
 // booking.service.ts
+
+// 가격 계산 (슬롯 조회 후)
+const pricePerPerson = slot.price;
+const totalAmount = pricePerPerson * dto.playerCount;
+const serviceFee = Math.floor(totalAmount * 0.03); // 3% 서비스 수수료
+const totalPrice = totalAmount + serviceFee;
+
 const booking = await this.prisma.$transaction(async (tx) => {
   // 1. 예약 생성 (PENDING 상태)
   const newBooking = await tx.booking.create({
     data: {
       status: BookingStatus.PENDING,
       paymentMethod: dto.paymentMethod, // 'onsite' | 'card'
+      pricePerPerson,
+      serviceFee,
+      totalPrice,
       // ... other fields
     },
   });
@@ -426,7 +449,7 @@ const booking = await this.prisma.$transaction(async (tx) => {
 
 ```typescript
 // outbox-processor.service.ts
-const POLL_INTERVAL_MS = 1000;    // 1초마다 폴링
+const POLL_INTERVAL_MS = 3000;    // 3초마다 폴링
 const BATCH_SIZE = 10;            // 한 번에 처리할 이벤트 수
 const MAX_RETRY_COUNT = 5;        // 최대 재시도 횟수
 
@@ -705,7 +728,7 @@ FOR UPDATE SKIP LOCKED;
 ```mermaid
 flowchart LR
     subgraph "booking-service"
-        A[Outbox Poll: 1초]
+        A[Outbox Poll: 3초]
         B[NATS Timeout: 30초]
         C[Max Retry: 5회]
         D[Saga Timeout: 60초 PENDING]
@@ -723,6 +746,7 @@ flowchart LR
     subgraph "payment-service"
         J[Outbox Poll: 5초]
         K[Max Retry: 5회]
+        L[Toss HTTP Timeout: 60초]
     end
 
     A --> F
@@ -734,7 +758,7 @@ flowchart LR
 
 | 설정 | 값 | 서비스 | 용도 |
 |------|-----|--------|------|
-| `POLL_INTERVAL_MS` | 1,000ms | booking | Outbox 폴링 주기 |
+| `POLL_INTERVAL_MS` | 3,000ms | booking | Outbox 폴링 주기 |
 | `BATCH_SIZE` | 10 | booking | 한 번에 처리할 이벤트 수 |
 | `MAX_RETRY_COUNT` | 5 | booking | Outbox 최대 재시도 |
 | `NATS_TIMEOUT` | 30,000ms | booking | NATS 요청 타임아웃 |
@@ -746,6 +770,7 @@ flowchart LR
 | `LOCK_RETRY_COUNT` | 3 | course | Optimistic Lock 재시도 |
 | `SLOT_IDEMPOTENCY_TTL` | 60,000ms | course | 슬롯 예약 멱등성 TTL |
 | `PAYMENT_OUTBOX_POLL` | 5,000ms | payment | 결제 Outbox 폴링 주기 |
+| `TOSS_HTTP_TIMEOUT` | 60,000ms | payment | 토스페이먼츠 API HTTP 타임아웃 (공식 권장) |
 
 ### 7.3 정리 작업 스케줄
 
@@ -813,37 +838,51 @@ sequenceDiagram
     actor User as 고객/관리자
     participant API as API
     participant BS as booking-service
+    participant DB1 as booking-db
+    participant NATS as NATS
     participant CS as course-service
     participant PS as payment-service
     participant TOSS as 토스페이먼츠
     participant NS as notify-service
 
     User->>API: 취소 요청 (bookingId, reason)
-    API->>BS: cancelBooking()
+    API->>BS: booking.cancel (NATS)
 
     BS->>BS: 상태 검증 (SLOT_RESERVED/CONFIRMED)
-    BS->>BS: 취소 정책 검증 + 환불 금액 계산
+    BS->>BS: 취소 정책 검증
 
     alt 취소 가능
-        BS->>BS: status → CANCELLED
-        BS->>BS: OutboxEvent 생성 (slot.release)
-        BS->>BS: OutboxEvent 생성 (payment.requestCancel)
+        BS->>DB1: status → CANCELLED
+        BS->>DB1: GameTimeSlotCache 복원 (bookedPlayers--, availablePlayers++)
+        BS->>DB1: OutboxEvent 생성 (slot.release)
+        BS->>DB1: OutboxEvent 생성 (payment.cancelByBookingId)
+        BS-->>API: 취소 완료
+        API-->>User: 취소 완료 응답
 
-        Note over BS: Outbox Processing
-        BS->>CS: slot.release (NATS)
-        CS-->>BS: slot.released
+        Note over BS: Outbox Processing (비동기)
+        BS->>NATS: slot.release
+        NATS->>CS: slot.release
+        CS->>CS: bookedPlayers 감소, version++
+        CS-->>NATS: slot.released
 
-        BS->>PS: payment.cancel (NATS)
+        BS->>NATS: payment.cancelByBookingId
+        NATS->>PS: payment.cancelByBookingId (멱등)
         PS->>TOSS: POST /payments/{paymentKey}/cancel
         TOSS-->>PS: 환불 완료
-        PS-->>BS: 환불 결과
+        PS->>DB1: Refund 레코드 생성
+        PS->>DB1: OutboxEvent 생성 (payment.canceled)
 
-        BS->>NS: booking.cancelled (NATS)
-        NS-->>User: 취소/환불 알림
-
-        BS-->>API: 취소 완료
+        Note over PS: Payment Outbox Processing (비동기)
+        PS->>NATS: booking.paymentCanceled
+        NATS-->>BS: booking.paymentCanceled
+        BS->>DB1: BookingHistory (REFUND_COMPLETED)
+        BS->>NATS: booking.refundCompleted
+        NATS->>NS: booking.refundCompleted
+        NS-->>User: 환불 완료 알림
     end
 ```
+
+> **참고**: `payment.cancelByBookingId`는 멱등성이 보장됩니다. 결제 내역이 없거나, 이미 취소된 경우, 또는 paymentKey가 없는 경우 `{ skipped: true }` 를 반환합니다.
 
 ### 8.4 결제 타임아웃 Compensation (SLOT_RESERVED → FAILED)
 
@@ -884,6 +923,45 @@ for (const booking of timedOutBookings) {
 }
 ```
 
+> **참고**: 결제 타임아웃 시점에서는 미결제 상태이므로 `payment.cancelByBookingId` Outbox 이벤트는 생성하지 않습니다.
+> 단, 타임아웃 이후 결제가 도착하는 엣지 케이스는 아래 8.4.1에서 처리합니다.
+
+#### 8.4.1 결제 타임아웃 이후 결제 도착 시 자동 환불
+
+사용자가 Toss 결제 위젯에서 10분 이상 결제를 지연한 경우:
+1. 스케줄러가 SLOT_RESERVED → FAILED 처리 + 슬롯 해제
+2. 이후 사용자가 결제를 완료하면 payment-service가 `booking.paymentConfirmed` 이벤트 발행
+3. `handlePaymentConfirmed()`에서 booking이 FAILED 상태임을 감지 → **자동 환불** 트리거
+
+```typescript
+// saga-handler.service.ts — handlePaymentConfirmed 내부
+if (booking.status === BookingStatus.FAILED) {
+  // 1. BookingHistory에 AUTO_REFUND_REQUESTED 기록
+  await prisma.bookingHistory.create({
+    data: {
+      bookingId: data.bookingId,
+      action: 'AUTO_REFUND_REQUESTED',
+      details: {
+        reason: 'Payment arrived after booking timeout',
+        paymentId: data.paymentId,
+        amount: data.amount,
+      },
+    },
+  });
+
+  // 2. payment.cancelByBookingId Outbox 이벤트 → payment-service가 Toss 환불 API 호출
+  await prisma.outboxEvent.create({
+    data: {
+      eventType: 'payment.cancelByBookingId',
+      payload: { bookingId: data.bookingId, cancelReason: 'Auto-refund: payment arrived after booking timeout' },
+      status: OutboxStatus.PENDING,
+    },
+  });
+}
+```
+
+> **흐름**: `handlePaymentConfirmed` → Outbox `payment.cancelByBookingId` → payment-service 환불 → `booking.paymentCanceled` 이벤트 → `handlePaymentCanceled`에서 `REFUND_COMPLETED` 기록 + 알림
+
 ### 8.5 슬롯 해제 (Compensation)
 
 ```typescript
@@ -914,18 +992,90 @@ async releaseSlotForSaga(timeSlotId: number, playerCount: number) {
 }
 ```
 
-### 8.6 환불 정책
+### 8.6 환불 정책 (동적 계층 정책)
+
+환불 정책은 **3-tier 계층 구조**로 관리됩니다. 골프장(Club)별로 다른 환불 규칙을 설정할 수 있으며,
+설정이 없으면 상위 스코프(Company → Platform)의 정책으로 자동 폴백합니다.
+
+#### 정책 스코프
 
 ```
-┌──────────────────────┬──────────────────────────────────────────────────┐
-│ 예약일 7일 전 취소   │ 100% 환불                                        │
-│ 예약일 3~7일 전 취소 │ 80% 환불 (20% 수수료)                            │
-│ 예약일 1~3일 전 취소 │ 50% 환불 (50% 수수료)                            │
-│ 예약일 24시간 이내   │ 환불 불가 (또는 30%)                             │
-│ 노쇼                 │ 환불 불가                                        │
-│ 관리자/시스템 취소   │ 100% 환불                                        │
-│ 결제 타임아웃        │ 미결제 상태이므로 환불 불필요                      │
-└──────────────────────┴──────────────────────────────────────────────────┘
+PLATFORM (플랫폼 기본값)
+  └── COMPANY (가맹점별 설정)
+        └── CLUB (골프장별 설정)
+```
+
+| 스코프 | 설정 주체 | 폴백 |
+|--------|----------|------|
+| `PLATFORM` | 시스템 관리자 | - (최종 기본값) |
+| `COMPANY` | 가맹점 관리자 | → PLATFORM |
+| `CLUB` | 골프장 관리자 | → COMPANY → PLATFORM |
+
+#### RefundPolicy 모델
+
+```typescript
+interface RefundPolicy {
+  scopeLevel: 'PLATFORM' | 'COMPANY' | 'CLUB';
+  companyId?: number;
+  clubId?: number;
+  name: string;                   // "기본 환불 정책"
+
+  adminCancelRefundRate: number;  // 관리자 취소 환불율 (기본: 100%)
+  systemCancelRefundRate: number; // 시스템 취소 환불율 (기본: 100%)
+
+  minRefundAmount: number;        // 최소 환불 금액 (기본: 0원)
+  refundFee: number;              // 환불 수수료 (정액, KRW)
+  refundFeeRate: number;          // 환불 수수료 (정률, %)
+
+  tiers: RefundTier[];            // 시간 기반 환불율 계단
+}
+
+interface RefundTier {
+  minHoursBefore: number;         // 예약 시작 N시간 전 (하한)
+  maxHoursBefore?: number;        // 예약 시작 N시간 전 (상한, null=무한)
+  refundRate: number;             // 환불율 (%)
+  label?: string;                 // "7일 전", "당일" 등
+}
+```
+
+#### 기본 환불율 (PLATFORM 기본값 예시)
+
+| 취소 시점 | 환불율 | label |
+|----------|--------|-------|
+| 예약일 7일 전 (168시간+) | 100% | 7일 전 |
+| 예약일 3~7일 전 (72~168시간) | 80% | 3~7일 전 |
+| 예약일 1~3일 전 (24~72시간) | 50% | 1~3일 전 |
+| 예약일 24시간 이내 | 0% (환불 불가) | 당일 |
+
+| 취소 유형 | 환불율 |
+|----------|--------|
+| 관리자 취소 (`adminCancelRefundRate`) | 100% |
+| 시스템 취소 (`systemCancelRefundRate`) | 100% |
+| 결제 타임아웃 | 타임아웃 시점에서는 미결제이므로 환불 불필요. 단, 타임아웃 후 결제 도착 시 자동 환불 (8.4.1) |
+| 노쇼 | 0% (별도 NoShowPolicy로 관리) |
+
+#### Resolve 패턴 (policy.refund.resolve)
+
+```typescript
+// booking-service에서 환불 정책 조회 시
+const policy = await this.natsClient.send('policy.refund.resolve', {
+  scopeLevel: 'CLUB',
+  companyId: booking.companyId,
+  clubId: booking.clubId,
+});
+
+// 응답: { ...policy, inherited: boolean, inheritedFrom: 'PLATFORM' | 'COMPANY' | null }
+// CLUB에 설정이 없으면 COMPANY → PLATFORM 순으로 폴백
+```
+
+#### 취소 유형 (CancellationType)
+
+```
+USER_NORMAL      // 일반 고객 취소 (기한 내)
+USER_LATE        // 지연 고객 취소 (1~3일 전)
+USER_LASTMINUTE  // 긴급 취소 (24시간 이내)
+ADMIN            // 관리자 취소
+SYSTEM           // 시스템 취소 (Saga 실패 등)
 ```
 
 ---
@@ -1014,6 +1164,9 @@ textPayload:("[Outbox]")
 
 | 버전 | 날짜 | 변경 내용 |
 |------|------|----------|
+| 3.4 | 2026-02-24 | 결제 타임아웃 이후 결제 도착 시 자동 환불 (handlePaymentConfirmed → AUTO_REFUND_REQUESTED) |
+| 3.3 | 2026-02-24 | AI 에이전트 Saga 폴링 노트 추가, Toss HTTP Timeout 60초 설정 반영 |
+| 3.2 | 2026-02-23 | 결제 관련 보완: PaymentStatus 누락 상태 추가, serviceFee 계산 반영, Outbox 폴링 주기 수정 (1s→3s), 카드결제 취소 시퀀스 Outbox 기반으로 수정, 환불 정책 3-tier 동적 계층 시스템 반영, agent-service 크로스 레퍼런스 추가 |
 | 3.1 | 2026-02-15 | 예약 확정 시 CompanyMember 자동 등록 (iam-service 연동) 추가 |
 | 3.0 | 2026-02-10 | 토스페이먼츠 결제 연동, SLOT_RESERVED 상태 활성화, 결제 타임아웃 Compensation 추가 |
 | 2.0 | 2026-01-21 | BOOKING_SAGA_ARCHITECTURE.md, booking-workflow-design.md 통합 및 소스 코드 반영 |

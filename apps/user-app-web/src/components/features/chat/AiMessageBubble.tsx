@@ -1,10 +1,12 @@
 import React from 'react';
 import { Sparkles } from 'lucide-react';
-import type { ChatAction, ClubCardData, SlotCardData, WeatherCardData, BookingCompleteData } from '@/lib/api/chatApi';
+import type { ChatAction, ClubCardData, SlotCardData, WeatherCardData, BookingCompleteData, ConfirmBookingData, PaymentCardData } from '@/lib/api/chatApi';
 import { ClubCard } from './cards/ClubCard';
 import { SlotCard } from './cards/SlotCard';
 import { WeatherCard } from './cards/WeatherCard';
 import { BookingCompleteCard } from './cards/BookingCompleteCard';
+import { ConfirmBookingCard } from './cards/ConfirmBookingCard';
+import { PaymentCard } from './cards/PaymentCard';
 
 interface AiMessageBubbleProps {
   content: string;
@@ -12,7 +14,10 @@ interface AiMessageBubbleProps {
   createdAt: string;
   showLabel?: boolean;
   onClubSelect?: (clubId: string, clubName: string) => void;
-  onSlotSelect?: (slotId: string, time: string) => void;
+  onSlotSelect?: (slotId: string, time: string, price: number) => void;
+  onConfirmBooking?: (paymentMethod: 'onsite' | 'card') => void;
+  onCancelBooking?: () => void;
+  onPaymentComplete?: (success: boolean) => void;
   selectedClubId?: string | null;
   selectedSlotId?: string | null;
 }
@@ -24,6 +29,9 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   showLabel = true,
   onClubSelect,
   onSlotSelect,
+  onConfirmBooking,
+  onCancelBooking,
+  onPaymentComplete,
   selectedClubId,
   selectedSlotId,
 }) => {
@@ -66,6 +74,19 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                 )}
                 {action.type === 'SHOW_WEATHER' && (
                   <WeatherCard data={action.data as WeatherCardData} />
+                )}
+                {action.type === 'CONFIRM_BOOKING' && (
+                  <ConfirmBookingCard
+                    data={action.data as ConfirmBookingData}
+                    onConfirm={onConfirmBooking}
+                    onCancel={onCancelBooking}
+                  />
+                )}
+                {action.type === 'SHOW_PAYMENT' && (
+                  <PaymentCard
+                    data={action.data as PaymentCardData}
+                    onPaymentComplete={onPaymentComplete}
+                  />
                 )}
                 {action.type === 'BOOKING_COMPLETE' && (
                   <BookingCompleteCard data={action.data as BookingCompleteData} />

@@ -7,9 +7,7 @@ import {
   ChatResponseDto,
   ChatAction,
   ConversationContext,
-  ConversationState,
 } from '../dto/chat.dto';
-import { AppException, Errors } from '../../common/exceptions';
 
 /**
  * 예약 에이전트 서비스
@@ -40,12 +38,20 @@ export class BookingAgentService {
       this.conversationService.updateSlots(context, { latitude, longitude });
     }
 
+    // ── Direct Handling (LLM 없음) ──
+    if (request.paymentComplete) return this.handlePaymentComplete(context, request);
+    if (request.confirmBooking) return this.handleDirectBooking(context, request);
+    if (request.cancelBooking) return this.handleCancelBooking(context);
+    if (request.selectedSlotId) return this.handleDirectSlotSelect(context, request);
+    if (request.selectedClubId) return this.handleDirectClubSelect(context, request);
+
+    // ── LLM Processing (기존 방식) ──
     // 사용자 메시지 추가
     this.conversationService.addUserMessage(context, message);
 
     try {
       // DeepSeek 대화 처리 (도구 호출 포함)
-      const response = await this.processWithLLM(context);
+      const response = await this.processWithLLM(context, request.userId);
 
       return {
         conversationId: context.conversationId,
@@ -87,11 +93,252 @@ export class BookingAgentService {
     };
   }
 
+  // ── Direct Handlers (LLM 없이 직접 처리) ──
+
+  /**
+   * 골프장 카드 클릭 → 해당 골프장의 슬롯 조회
+   */
+  private async handleDirectClubSelect(
+    context: ConversationContext,
+    request: ChatRequestDto,
+  ): Promise<ChatResponseDto> {
+    const { selectedClubId, selectedClubName } = request;
+    const date = context.slots.date || this.getTomorrowDate();
+
+    this.conversationService.updateSlots(context, {
+      clubId: selectedClubId,
+      clubName: selectedClubName,
+    });
+
+    // get_available_slots 직접 호출
+    const toolResult = await this.toolExecutor.execute({
+      name: 'get_available_slots',
+      args: { clubId: selectedClubId, date },
+    });
+
+    const actions: ChatAction[] = [];
+    let message: string;
+
+    if (toolResult.success && (toolResult.result as any)?.availableCount > 0) {
+      actions.push({ type: 'SHOW_SLOTS', data: toolResult.result });
+      message = `${selectedClubName}의 예약 가능 시간이에요!`;
+      this.conversationService.setState(context, 'CONFIRMING');
+    } else {
+      message = `${selectedClubName}에 ${date} 예약 가능한 시간이 없어요. 다른 날짜나 골프장을 선택해 주세요.`;
+    }
+
+    this.conversationService.addAssistantMessage(context, message);
+
+    return {
+      conversationId: context.conversationId,
+      message,
+      state: context.state,
+      actions: actions.length > 0 ? actions : undefined,
+    };
+  }
+
+  /**
+   * 슬롯 카드 클릭 → 예약 확인 카드 표시
+   */
+  private handleDirectSlotSelect(
+    context: ConversationContext,
+    request: ChatRequestDto,
+  ): ChatResponseDto {
+    const { selectedSlotId, selectedSlotTime, selectedSlotPrice } = request;
+
+    this.conversationService.updateSlots(context, {
+      slotId: selectedSlotId,
+      time: selectedSlotTime,
+    });
+
+    const playerCount = context.slots.playerCount || 4;
+    const price = (selectedSlotPrice || 0) * playerCount;
+
+    const confirmData = {
+      clubName: context.slots.clubName || '',
+      date: context.slots.date || this.getTomorrowDate(),
+      time: selectedSlotTime || '',
+      playerCount,
+      price,
+    };
+
+    const message = '예약 정보를 확인해 주세요!';
+    this.conversationService.addAssistantMessage(context, message);
+    this.conversationService.setState(context, 'CONFIRMING');
+
+    return {
+      conversationId: context.conversationId,
+      message,
+      state: context.state,
+      actions: [{ type: 'CONFIRM_BOOKING', data: confirmData }],
+    };
+  }
+
+  /**
+   * 예약 확인 버튼 클릭 → 예약 생성
+   * 결제방법에 따라 CONFIRMED(현장결제) 또는 SLOT_RESERVED(카드결제) 분기
+   */
+  private async handleDirectBooking(
+    context: ConversationContext,
+    request: ChatRequestDto,
+  ): Promise<ChatResponseDto> {
+    const { clubId, slotId, playerCount } = context.slots;
+
+    if (!clubId || !slotId) {
+      const message = '예약에 필요한 정보가 부족해요. 골프장과 시간을 다시 선택해 주세요.';
+      this.conversationService.addAssistantMessage(context, message);
+      return {
+        conversationId: context.conversationId,
+        message,
+        state: context.state,
+      };
+    }
+
+    const paymentMethod = request.paymentMethod || 'onsite';
+    this.conversationService.setState(context, 'BOOKING');
+
+    const toolResult = await this.toolExecutor.execute({
+      name: 'create_booking',
+      args: {
+        userId: request.userId,
+        clubId,
+        slotId,
+        playerCount: playerCount || 4,
+        paymentMethod,
+      },
+    });
+
+    const actions: ChatAction[] = [];
+    let message: string;
+    const result = toolResult.result as any;
+
+    if (toolResult.success && result?.success) {
+      const status = result.status; // CONFIRMED | SLOT_RESERVED | PENDING
+
+      if (status === 'CONFIRMED') {
+        // 현장결제 — Saga 완료, 바로 예약 확정
+        actions.push({ type: 'BOOKING_COMPLETE', data: result });
+        message = '예약이 완료되었습니다!';
+        this.conversationService.updateSlots(context, { confirmed: true });
+        this.conversationService.setState(context, 'COMPLETED');
+      } else if (status === 'SLOT_RESERVED') {
+        // 카드결제 — 슬롯 확보 완료, 결제 대기
+        this.conversationService.updateSlots(context, { bookingId: result.bookingId });
+        actions.push({
+          type: 'SHOW_PAYMENT',
+          data: {
+            bookingId: result.bookingId,
+            amount: result.details?.totalPrice || 0,
+            orderName: `ParkGolf #${result.bookingNumber || result.bookingId}`,
+            clubName: context.slots.clubName || '',
+            date: result.details?.date || context.slots.date || '',
+            time: result.details?.time || context.slots.time || '',
+            playerCount: result.details?.playerCount || playerCount || 4,
+          },
+        });
+        message = '결제를 진행해 주세요!';
+        // state stays BOOKING
+      } else {
+        // PENDING — 폴링 타임아웃 (graceful degradation)
+        actions.push({ type: 'BOOKING_COMPLETE', data: result });
+        message = '예약이 처리 중이에요. 잠시 후 예약 내역에서 확인해 주세요.';
+        this.conversationService.updateSlots(context, { confirmed: true });
+        this.conversationService.setState(context, 'COMPLETED');
+      }
+    } else {
+      const errorMsg = result?.message || toolResult.error || '예약에 실패했습니다';
+      message = `예약에 실패했어요: ${errorMsg}. 다른 시간을 선택해 주세요.`;
+      this.conversationService.setState(context, 'COLLECTING');
+    }
+
+    this.conversationService.addAssistantMessage(context, message);
+
+    return {
+      conversationId: context.conversationId,
+      message,
+      state: context.state,
+      actions: actions.length > 0 ? actions : undefined,
+    };
+  }
+
+  /**
+   * 결제 완료/실패 후 결과 처리
+   */
+  private handlePaymentComplete(
+    context: ConversationContext,
+    request: ChatRequestDto,
+  ): ChatResponseDto {
+    const actions: ChatAction[] = [];
+    let message: string;
+
+    if (request.paymentSuccess) {
+      // 결제 성공 — BOOKING_COMPLETE 카드 표시
+      actions.push({
+        type: 'BOOKING_COMPLETE',
+        data: {
+          success: true,
+          bookingId: context.slots.bookingId,
+          details: {
+            date: context.slots.date,
+            time: context.slots.time,
+            playerCount: context.slots.playerCount,
+          },
+        },
+      });
+      message = '결제가 완료되었습니다! 예약이 확정되었어요!';
+      this.conversationService.updateSlots(context, { confirmed: true });
+      this.conversationService.setState(context, 'COMPLETED');
+    } else {
+      // 결제 실패/취소 — 재시도 안내
+      message = '결제가 취소되었어요. 다시 시도하거나 다른 결제방법을 선택해 주세요.';
+      this.conversationService.setState(context, 'CONFIRMING');
+    }
+
+    this.conversationService.addAssistantMessage(context, message);
+
+    return {
+      conversationId: context.conversationId,
+      message,
+      state: context.state,
+      actions: actions.length > 0 ? actions : undefined,
+    };
+  }
+
+  /**
+   * 취소 버튼 클릭 → 슬롯 선택 초기화
+   */
+  private handleCancelBooking(context: ConversationContext): ChatResponseDto {
+    this.conversationService.updateSlots(context, {
+      slotId: undefined,
+      time: undefined,
+    });
+    this.conversationService.setState(context, 'COLLECTING');
+
+    const message = '취소했어요. 다른 시간을 선택해 주세요.';
+    this.conversationService.addAssistantMessage(context, message);
+
+    return {
+      conversationId: context.conversationId,
+      message,
+      state: context.state,
+    };
+  }
+
+  /**
+   * 내일 날짜 반환 (YYYY-MM-DD)
+   */
+  private getTomorrowDate(): string {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  }
+
   /**
    * DeepSeek 대화 처리 (도구 호출 루프)
    */
   private async processWithLLM(
     context: ConversationContext,
+    userId?: number,
   ): Promise<{ text: string; actions?: ChatAction[] }> {
     const messages = this.conversationService.getRecentMessages(context);
 
@@ -118,7 +365,7 @@ export class BookingAgentService {
       }
 
       // 도구 실행
-      const toolResults = await this.executeTools(llmResponse.toolCalls);
+      const toolResults = await this.executeTools(llmResponse.toolCalls, userId);
 
       // UI 액션 생성
       const actions = this.createActionsFromToolResults(llmResponse.toolCalls, toolResults);
@@ -152,10 +399,20 @@ export class BookingAgentService {
   }
 
   /**
-   * 도구 실행
+   * 도구 실행 (create_booking 시 userId 서버사이드 주입)
    */
-  private async executeTools(toolCalls: ToolCall[]): Promise<ToolResult[]> {
+  private async executeTools(toolCalls: ToolCall[], userId?: number): Promise<ToolResult[]> {
     this.logger.debug(`Executing ${toolCalls.length} tools`);
+
+    // create_booking에 userId 서버사이드 주입
+    if (userId) {
+      toolCalls = toolCalls.map((tc) =>
+        tc.name === 'create_booking'
+          ? { ...tc, args: { ...tc.args, userId } }
+          : tc,
+      );
+    }
+
     return this.toolExecutor.executeAll(toolCalls);
   }
 
@@ -203,10 +460,12 @@ export class BookingAgentService {
 
         case 'create_booking':
           if ((result.result as any)?.success) {
-            actions.push({
-              type: 'BOOKING_COMPLETE',
-              data: result.result,
-            });
+            const status = (result.result as any)?.status;
+            if (status === 'SLOT_RESERVED') {
+              actions.push({ type: 'SHOW_PAYMENT', data: result.result });
+            } else {
+              actions.push({ type: 'BOOKING_COMPLETE', data: result.result });
+            }
           }
           break;
       }
@@ -247,6 +506,11 @@ export class BookingAgentService {
           if (call.args.date) {
             this.conversationService.updateSlots(context, {
               date: call.args.date as string,
+            });
+          }
+          if (call.args.playerCount) {
+            this.conversationService.updateSlots(context, {
+              playerCount: call.args.playerCount as number,
             });
           }
           break;

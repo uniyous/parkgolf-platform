@@ -391,13 +391,15 @@ export class ToolExecutorService {
 
   /**
    * 예약 생성
+   * booking.create 후 Saga 완료를 폴링하여 최종 상태를 반환
    */
   private async createBooking(args: Record<string, unknown>): Promise<unknown> {
-    const { clubId, slotId, playerCount, userId } = args as {
+    const { clubId, slotId, playerCount, userId, paymentMethod } = args as {
       clubId: string;
       slotId: string;
       playerCount: number;
       userId: number;
+      paymentMethod?: string;
     };
 
     const response = await firstValueFrom(
@@ -407,6 +409,7 @@ export class ToolExecutorService {
           clubId,
           slotId,
           playerCount,
+          paymentMethod: paymentMethod || 'onsite',
           source: 'AI_AGENT',
         })
         .pipe(
@@ -419,13 +422,28 @@ export class ToolExecutorService {
 
     if (response?.success && response?.data) {
       const booking = response.data;
+      const bookingId = booking.id;
+
+      // Saga 완료 대기 (polling)
+      const finalStatus = await this.waitForSagaCompletion(bookingId, paymentMethod);
+
+      if (finalStatus === 'FAILED') {
+        return {
+          success: false,
+          message: '슬롯 예약에 실패했습니다. 다른 시간을 선택해 주세요.',
+        };
+      }
+
       return {
         success: true,
-        bookingId: booking.id,
-        confirmationNumber: booking.confirmationNumber,
-        message: '예약이 완료되었습니다!',
+        bookingId,
+        bookingNumber: booking.bookingNumber,
+        status: finalStatus, // 'CONFIRMED' | 'SLOT_RESERVED' | 'PENDING'
+        message: finalStatus === 'CONFIRMED'
+          ? '예약이 완료되었습니다!'
+          : '결제를 진행해 주세요.',
         details: {
-          date: booking.date,
+          date: booking.bookingDate || booking.date,
           time: booking.startTime,
           playerCount: booking.playerCount,
           totalPrice: booking.totalPrice,
@@ -437,6 +455,47 @@ export class ToolExecutorService {
       success: false,
       message: response?.error?.message || '예약에 실패했습니다',
     };
+  }
+
+  /**
+   * Saga 완료 대기 (폴링)
+   * booking.create 직후 PENDING 상태에서 CONFIRMED/SLOT_RESERVED/FAILED까지 폴링
+   */
+  private async waitForSagaCompletion(
+    bookingId: number,
+    paymentMethod?: string,
+  ): Promise<string> {
+    const POLL_INTERVAL = 300; // 300ms
+    const MAX_ATTEMPTS = 20;   // 최대 6초
+    const targetStatus =
+      !paymentMethod || paymentMethod === 'onsite'
+        ? 'CONFIRMED'
+        : 'SLOT_RESERVED';
+
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
+
+      try {
+        const response = await firstValueFrom(
+          this.bookingClient
+            .send('booking.findById', { id: bookingId })
+            .pipe(
+              timeout(5000),
+              catchError(() => [null]),
+            ),
+        );
+
+        const status = response?.data?.status;
+        if (status === targetStatus || status === 'CONFIRMED') return status;
+        if (status === 'FAILED') return 'FAILED';
+        // PENDING → 계속 폴링
+      } catch {
+        // ignore, retry
+      }
+    }
+
+    this.logger.warn(`Saga polling timeout for booking ${bookingId}`);
+    return 'PENDING'; // 타임아웃 시 PENDING 반환 (graceful degradation)
   }
 
   /**

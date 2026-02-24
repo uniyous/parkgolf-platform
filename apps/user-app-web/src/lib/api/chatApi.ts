@@ -62,7 +62,7 @@ export interface MessagesResponse {
 // ============================================
 
 export type ConversationState = 'IDLE' | 'COLLECTING' | 'CONFIRMING' | 'BOOKING' | 'COMPLETED' | 'CANCELLED';
-export type ActionType = 'SHOW_CLUBS' | 'SHOW_SLOTS' | 'SHOW_WEATHER' | 'CONFIRM_BOOKING' | 'BOOKING_COMPLETE';
+export type ActionType = 'SHOW_CLUBS' | 'SHOW_SLOTS' | 'SHOW_WEATHER' | 'CONFIRM_BOOKING' | 'SHOW_PAYMENT' | 'BOOKING_COMPLETE';
 
 export interface ChatAction {
   type: ActionType;
@@ -119,6 +119,42 @@ export interface BookingCompleteData {
     playerCount: number;
     totalPrice: number;
   };
+}
+
+export interface ConfirmBookingData {
+  clubName: string;
+  date: string;
+  time: string;
+  playerCount: number;
+  price: number;
+  courseName?: string;
+}
+
+export interface PaymentCardData {
+  bookingId: number;
+  amount: number;
+  orderName: string;
+  clubName: string;
+  date: string;
+  time: string;
+  playerCount: number;
+}
+
+export interface AiChatRequest {
+  message: string;
+  conversationId?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  selectedClubId?: string;
+  selectedClubName?: string;
+  selectedSlotId?: string;
+  selectedSlotTime?: string;
+  selectedSlotPrice?: number;
+  confirmBooking?: boolean;
+  cancelBooking?: boolean;
+  paymentMethod?: string;
+  paymentComplete?: boolean;
+  paymentSuccess?: boolean;
 }
 
 // ============================================
@@ -332,14 +368,11 @@ export const chatApi = {
    */
   sendAiMessage: async (
     roomId: string,
-    message: string,
-    conversationId?: string,
-    latitude?: number | null,
-    longitude?: number | null,
+    request: AiChatRequest,
   ): Promise<AiChatResponse> => {
     const response = await apiClient.post<BffResponse<AiChatResponse>>(
       `/api/user/chat/rooms/${roomId}/agent`,
-      { message, conversationId, latitude, longitude },
+      request,
     );
     return unwrapResponse(response.data);
   },

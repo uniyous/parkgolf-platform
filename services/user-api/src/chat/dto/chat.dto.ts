@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsArray, IsEnum, IsOptional, IsNumber } from 'class-validator';
+import { IsString, IsArray, IsEnum, IsOptional, IsNumber, IsBoolean } from 'class-validator';
 
 export enum ChatRoomType {
   DIRECT = 'DIRECT',
@@ -91,4 +91,58 @@ export class AiChatRequestDto {
   @IsOptional()
   @IsNumber()
   longitude?: number;
+
+  // ── 구조화된 선택 필드 (Direct Handling) ──
+
+  @ApiPropertyOptional({ description: '선택한 골프장 ID' })
+  @IsOptional()
+  @IsString()
+  selectedClubId?: string;
+
+  @ApiPropertyOptional({ description: '선택한 골프장 이름' })
+  @IsOptional()
+  @IsString()
+  selectedClubName?: string;
+
+  @ApiPropertyOptional({ description: '선택한 슬롯 ID' })
+  @IsOptional()
+  @IsString()
+  selectedSlotId?: string;
+
+  @ApiPropertyOptional({ description: '선택한 슬롯 시간' })
+  @IsOptional()
+  @IsString()
+  selectedSlotTime?: string;
+
+  @ApiPropertyOptional({ description: '선택한 슬롯 가격' })
+  @IsOptional()
+  @IsNumber()
+  selectedSlotPrice?: number;
+
+  @ApiPropertyOptional({ description: '예약 확인 버튼 클릭' })
+  @IsOptional()
+  @IsBoolean()
+  confirmBooking?: boolean;
+
+  @ApiPropertyOptional({ description: '취소 버튼 클릭' })
+  @IsOptional()
+  @IsBoolean()
+  cancelBooking?: boolean;
+
+  // ── 결제 관련 필드 ──
+
+  @ApiPropertyOptional({ description: '결제방법 ("onsite" | "card")' })
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
+
+  @ApiPropertyOptional({ description: '결제 완료 콜백 (Toss 위젯 후)' })
+  @IsOptional()
+  @IsBoolean()
+  paymentComplete?: boolean;
+
+  @ApiPropertyOptional({ description: '결제 성공 여부' })
+  @IsOptional()
+  @IsBoolean()
+  paymentSuccess?: boolean;
 }

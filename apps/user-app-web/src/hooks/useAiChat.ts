@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { chatApi, type AiChatResponse, type ConversationState } from '@/lib/api/chatApi';
+import { chatApi, type AiChatRequest, type AiChatResponse, type ConversationState } from '@/lib/api/chatApi';
 import { useCurrentLocation } from '@/hooks/useCurrentLocation';
 
 export function useAiChat(roomId: string) {
@@ -10,8 +10,12 @@ export function useAiChat(roomId: string) {
   const { latitude, longitude } = useCurrentLocation();
 
   const mutation = useMutation({
-    mutationFn: (message: string) =>
-      chatApi.sendAiMessage(roomId, message, conversationId, latitude, longitude),
+    mutationFn: (request: string | AiChatRequest) => {
+      const req: AiChatRequest = typeof request === 'string'
+        ? { message: request, conversationId, latitude, longitude }
+        : { ...request, conversationId: request.conversationId ?? conversationId, latitude: request.latitude ?? latitude, longitude: request.longitude ?? longitude };
+      return chatApi.sendAiMessage(roomId, req);
+    },
     onSuccess: (data: AiChatResponse) => {
       setConversationId(data.conversationId);
       setConversationState(data.state);
@@ -30,8 +34,8 @@ export function useAiChat(roomId: string) {
   }, []);
 
   const sendAiMessage = useCallback(
-    async (message: string) => {
-      return mutation.mutateAsync(message);
+    async (request: string | AiChatRequest) => {
+      return mutation.mutateAsync(request);
     },
     [mutation],
   );

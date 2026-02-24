@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsBoolean } from 'class-validator';
 
 /**
  * 채팅 요청 DTO
@@ -21,6 +21,50 @@ export class ChatRequestDto {
   @IsOptional()
   @IsNumber()
   longitude?: number;
+
+  // ── 구조화된 선택 필드 (Direct Handling) ──
+
+  @IsOptional()
+  @IsString()
+  selectedClubId?: string;
+
+  @IsOptional()
+  @IsString()
+  selectedClubName?: string;
+
+  @IsOptional()
+  @IsString()
+  selectedSlotId?: string;
+
+  @IsOptional()
+  @IsString()
+  selectedSlotTime?: string;
+
+  @IsOptional()
+  @IsNumber()
+  selectedSlotPrice?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  confirmBooking?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  cancelBooking?: boolean;
+
+  // ── 결제 관련 필드 ──
+
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string; // "onsite" | "card"
+
+  @IsOptional()
+  @IsBoolean()
+  paymentComplete?: boolean; // 결제 완료 콜백
+
+  @IsOptional()
+  @IsBoolean()
+  paymentSuccess?: boolean; // 결제 성공 여부
 }
 
 /**
@@ -42,6 +86,7 @@ export type ActionType =
   | 'SHOW_SLOTS'     // 타임슬롯 표시
   | 'SHOW_WEATHER'   // 날씨 정보 표시
   | 'CONFIRM_BOOKING'// 예약 확인 UI
+  | 'SHOW_PAYMENT'   // 결제 카드 표시 (카드결제)
   | 'BOOKING_COMPLETE'; // 예약 완료
 
 /**
@@ -106,4 +151,5 @@ export interface BookingSlots {
   confirmed?: boolean;
   latitude?: number;
   longitude?: number;
+  bookingId?: number;
 }

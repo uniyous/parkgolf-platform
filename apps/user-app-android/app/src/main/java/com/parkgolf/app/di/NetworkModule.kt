@@ -71,7 +71,7 @@ object NetworkModule {
             .addInterceptor(loggingInterceptor)
             .authenticator(tokenAuthenticator)
             .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS) // 결제 승인 API 최대 지연 대비 (Toss 권장 60초)
             .writeTimeout(30, TimeUnit.SECONDS)
             .build()
     }

@@ -12,7 +12,7 @@ import { authStorage } from '@/lib/storage';
 import { showErrorToast, showSuccessToast } from '@/lib/toast';
 import { useAuthStore } from '@/stores/authStore';
 import { useConfirm } from '@/contexts/ConfirmContext';
-import { chatApi, getChatRoomDisplayName, type ChatMessage, type ChatAction } from '@/lib/api/chatApi';
+import { chatApi, getChatRoomDisplayName, type ChatMessage, type ChatAction, type AiChatRequest } from '@/lib/api/chatApi';
 import { useAiChat } from '@/hooks/useAiChat';
 import { AiButton } from '@/components/features/chat/AiButton';
 import { AiMessageBubble } from '@/components/features/chat/AiMessageBubble';
@@ -252,7 +252,7 @@ export const ChatRoomPage: React.FC = () => {
   }, [roomId, currentUserId, user?.name, sendAiMessage]);
 
   // Send AI follow-up message (from card interaction)
-  const handleAiFollowUp = useCallback(async (followUpMessage: string) => {
+  const handleAiFollowUp = useCallback(async (followUpMessage: string | AiChatRequest) => {
     if (!roomId) return;
     try {
       const response = await sendAiMessage(followUpMessage);
@@ -583,11 +583,42 @@ export const ChatRoomPage: React.FC = () => {
                     selectedSlotId={selectedSlotId}
                     onClubSelect={(clubId, clubName) => {
                       setSelectedClubId(clubId);
-                      handleAiFollowUp(`${clubName}(으)로 선택할게요`);
+                      setSelectedSlotId(null);
+                      handleAiFollowUp({
+                        message: `${clubName} 선택`,
+                        selectedClubId: clubId,
+                        selectedClubName: clubName,
+                      });
                     }}
-                    onSlotSelect={(slotId, time) => {
+                    onSlotSelect={(slotId, time, price) => {
                       setSelectedSlotId(slotId);
-                      handleAiFollowUp(`${time} 시간으로 예약해주세요`);
+                      handleAiFollowUp({
+                        message: `${time} 선택`,
+                        selectedSlotId: slotId,
+                        selectedSlotTime: time,
+                        selectedSlotPrice: price,
+                      });
+                    }}
+                    onConfirmBooking={(paymentMethod: 'onsite' | 'card') => {
+                      handleAiFollowUp({
+                        message: paymentMethod === 'card' ? '카드결제로 예약 확인' : '예약 확인',
+                        confirmBooking: true,
+                        paymentMethod,
+                      });
+                    }}
+                    onCancelBooking={() => {
+                      setSelectedSlotId(null);
+                      handleAiFollowUp({
+                        message: '취소',
+                        cancelBooking: true,
+                      });
+                    }}
+                    onPaymentComplete={(success: boolean) => {
+                      handleAiFollowUp({
+                        message: success ? '결제 완료' : '결제 취소',
+                        paymentComplete: true,
+                        paymentSuccess: success,
+                      });
                     }}
                   />
                 );

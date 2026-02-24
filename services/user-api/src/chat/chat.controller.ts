@@ -171,10 +171,7 @@ export class ChatController {
       roomId,
       user.userId,
       user.name,
-      dto.message,
-      dto.conversationId,
-      dto.latitude,
-      dto.longitude,
+      dto,
     );
   }
 

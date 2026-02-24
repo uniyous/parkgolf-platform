@@ -5,7 +5,7 @@ import type { SlotCardData } from '@/lib/api/chatApi';
 
 interface SlotCardProps {
   data: SlotCardData;
-  onSelect?: (slotId: string, time: string) => void;
+  onSelect?: (slotId: string, time: string, price: number) => void;
   selectedSlotId?: string | null;
 }
 
@@ -25,7 +25,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
           return (
             <button
               key={slot.id}
-              onClick={() => !isDisabled && onSelect?.(slot.id, slot.time)}
+              onClick={() => !isDisabled && onSelect?.(slot.id, slot.time, slot.price)}
               disabled={!onSelect || isDisabled}
               className={cn(
                 'rounded-xl p-3 border text-left transition-all relative',
