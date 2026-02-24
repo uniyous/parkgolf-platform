@@ -1,7 +1,7 @@
 # AI 예약 에이전트 워크플로우
 
-> 버전: 2.0
-> 최종 수정: 2026-02-23
+> 버전: 2.1
+> 최종 수정: 2026-02-24
 > 관련 문서: BOOKING_WORKFLOW.md, CHAT_WORKFLOW.md
 
 ## 목차
@@ -19,6 +19,7 @@
 11. [간소화 워크플로우 (Direct Handling + LLM 하이브리드)](#11-간소화-워크플로우-direct-handling--llm-하이브리드)
 12. [구현 범위](#12-구현-범위)
 13. [향후 확장 (음성 입력)](#13-향후-확장-음성-입력)
+14. [시나리오별 컴포넌트 다이어그램](#14-시나리오별-컴포넌트-다이어그램)
 
 ---
 
@@ -2137,6 +2138,399 @@ STT API (Google Speech-to-Text / Whisper)
 - **공통 Fallback**: Google Cloud STT (서버 사이드, 높은 정확도)
 
 각 플랫폼의 기기 내장 STT를 먼저 활용하고, 인식률이 낮은 경우에만 서버 사이드 STT로 전환합니다. 음성은 클라이언트에서 텍스트로 변환 후 기존 `agent.chat` 파이프라인을 그대로 사용하므로, agent-service 변경은 불필요합니다.
+
+---
+
+## 14. 시나리오별 컴포넌트 다이어그램
+
+AI 채팅 부킹 처리의 전체 흐름을 시나리오별로 추상화한 컴포넌트 다이어그램입니다.
+
+### 14.1 컴포넌트 아키텍처 개요
+
+```mermaid
+graph TB
+    subgraph Client["🖥️ Client Layer"]
+        UI["ChatRoomPage<br/>AiMessageBubble"]
+        Cards["인터랙티브 카드<br/>ClubCard · SlotCard<br/>ConfirmBookingCard · PaymentCard<br/>BookingCompleteCard"]
+    end
+
+    subgraph BFF["🔀 BFF Layer"]
+        API["user-api<br/>ChatController → ChatService"]
+    end
+
+    subgraph Agent["🤖 Agent Layer"]
+        Router["BookingAgentService<br/>(라우터 · 오케스트레이터)"]
+        LLM["DeepSeekService<br/>(자연어 → Function Calling)"]
+        Executor["ToolExecutorService<br/>(NATS 도구 실행)"]
+        Session["ConversationService<br/>(세션 · 상태 관리)"]
+    end
+
+    subgraph Services["⚙️ Microservice Layer"]
+        Course["course-service<br/>골프장 · 슬롯"]
+        Booking["booking-service<br/>예약 · Saga"]
+        Payment["payment-service<br/>결제 · 환불"]
+        Location["location-service<br/>위치 · 좌표"]
+        Weather["weather-service<br/>날씨"]
+    end
+
+    UI -->|REST| API
+    API -->|NATS agent.chat| Router
+    Router -->|자연어| LLM
+    Router -->|Direct 선택| Executor
+    LLM -->|Function Call| Executor
+    Router <--> Session
+    Executor -->|NATS| Course
+    Executor -->|NATS| Booking
+    Executor -->|NATS| Location
+    Executor -->|NATS| Weather
+    UI -->|REST 직접| Payment
+
+    style Client fill:#e8f5e9
+    style BFF fill:#e3f2fd
+    style Agent fill:#fff3e0
+    style Services fill:#fce4ec
+```
+
+### 14.2 처리 경로 분류
+
+```mermaid
+flowchart LR
+    Input["사용자 입력"]
+
+    Input -->|자연어 텍스트| LLM_PATH["🧠 LLM 경로<br/>(3~10초)"]
+    Input -->|구조화된 선택| DIRECT_PATH["⚡ Direct 경로<br/>(~200ms)"]
+
+    LLM_PATH --> R1["DeepSeek<br/>Function Calling"]
+    R1 --> R2["ToolExecutor<br/>NATS 호출"]
+    R2 --> R3["UI 액션 생성"]
+
+    DIRECT_PATH --> D1["BookingAgentService<br/>핸들러 직접 실행"]
+    D1 --> D2["ToolExecutor<br/>NATS 호출 (필요 시)"]
+    D2 --> D3["UI 액션 생성"]
+
+    style LLM_PATH fill:#fff3e0,stroke:#ff9800
+    style DIRECT_PATH fill:#e8f5e9,stroke:#4caf50
+```
+
+### 14.3 시나리오 A — 현장결제 (Happy Path)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as 👤 사용자
+    participant C as 🖥️ Client
+    participant B as 🔀 user-api
+    participant A as 🤖 agent-service
+    participant DS as 🧠 DeepSeek
+    participant CS as ⛳ course-service
+    participant BK as 📋 booking-service
+
+    Note over U,BK: 1단계: 자연어 검색 (LLM 경로)
+    U->>C: "내일 천안 오후에 4명 부킹해줘"
+    C->>B: POST /chat/rooms/:id/agent
+    B->>A: NATS agent.chat
+    A->>DS: LLM 호출 (Function Calling)
+    DS-->>A: search_clubs_with_slots(천안, 내일, 4명)
+    A->>CS: NATS games.search
+    CS-->>A: 골프장+슬롯 목록
+    A-->>B: { actions: [SHOW_CLUBS] }
+    B-->>C: 응답
+    C->>U: 🃏 골프장 카드 목록 표시
+
+    Note over U,BK: 2단계: 골프장 선택 (Direct 경로)
+    U->>C: 골프장 카드 클릭
+    C->>B: { selectedClubId: "32" }
+    B->>A: NATS agent.chat
+    Note right of A: LLM 없이 직접 처리
+    A->>CS: NATS games.search (해당 골프장)
+    CS-->>A: 가용 슬롯 목록
+    A-->>B: { actions: [SHOW_SLOTS] }
+    B-->>C: 응답
+    C->>U: 🃏 슬롯 카드 목록 표시
+
+    Note over U,BK: 3단계: 슬롯 선택 (Direct 경로)
+    U->>C: 슬롯 카드 클릭
+    C->>B: { selectedSlotId: "59007" }
+    B->>A: NATS agent.chat
+    Note right of A: NATS 호출 없음 (메모리)
+    A-->>B: { actions: [CONFIRM_BOOKING] }
+    B-->>C: 응답
+    C->>U: 🃏 예약확인 카드 (결제방법 선택)
+
+    Note over U,BK: 4단계: 예약 확인 — 현장결제 (Direct 경로)
+    U->>C: "예약 확인" (현장결제)
+    C->>B: { confirmBooking: true, paymentMethod: "onsite" }
+    B->>A: NATS agent.chat
+    A->>BK: NATS booking.create
+    BK-->>A: { status: PENDING }
+
+    rect rgb(255, 248, 225)
+        Note right of A: Saga 폴링 (300ms × 1~2회)
+        A->>BK: NATS booking.findById
+        BK-->>A: { status: CONFIRMED }
+    end
+
+    A-->>B: { actions: [BOOKING_COMPLETE] }
+    B-->>C: 응답
+    C->>U: 🃏 예약완료 카드 🎉
+```
+
+### 14.4 시나리오 B — 카드결제 (Happy Path)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as 👤 사용자
+    participant C as 🖥️ Client
+    participant B as 🔀 user-api
+    participant A as 🤖 agent-service
+    participant BK as 📋 booking-service
+    participant PM as 💳 payment-service
+    participant TOSS as 🏦 Toss API
+
+    Note over U,TOSS: 1~3단계: 시나리오 A와 동일 (생략)
+
+    Note over U,TOSS: 4단계: 예약 확인 — 카드결제 (Direct 경로)
+    U->>C: "예약 확인" (카드결제)
+    C->>B: { confirmBooking: true, paymentMethod: "card" }
+    B->>A: NATS agent.chat
+    A->>BK: NATS booking.create (paymentMethod: card)
+    BK-->>A: { status: PENDING }
+
+    rect rgb(255, 248, 225)
+        Note right of A: Saga 폴링 (300ms × 1~2회)
+        A->>BK: NATS booking.findById
+        BK-->>A: { status: SLOT_RESERVED }
+    end
+
+    A-->>B: { actions: [SHOW_PAYMENT] }
+    B-->>C: 응답
+    C->>U: 🃏 결제 카드 (10분 타이머)
+
+    Note over U,TOSS: 5단계: Toss 결제 (Client → payment-service 직접)
+    U->>C: "결제하기" 클릭
+    C->>B: POST /payment/prepare
+    B->>PM: NATS payment.prepare
+    PM-->>B: { orderId }
+    B-->>C: orderId
+
+    C->>TOSS: Toss 위젯 requestPayment
+    TOSS-->>C: paymentKey (승인 완료)
+
+    C->>B: POST /payment/confirm
+    B->>PM: NATS payment.confirm
+    PM->>TOSS: 서버 승인 요청
+    TOSS-->>PM: 승인 성공
+    PM->>BK: Outbox → booking.paymentConfirmed
+    BK->>BK: SLOT_RESERVED → CONFIRMED
+    PM-->>B: { success: true }
+    B-->>C: 결제 성공
+
+    Note over U,TOSS: 6단계: 결제 결과 → agent-service
+    C->>B: { paymentComplete: true, paymentSuccess: true }
+    B->>A: NATS agent.chat
+    A-->>B: { actions: [BOOKING_COMPLETE] }
+    B-->>C: 응답
+    C->>U: 🃏 예약완료 카드 🎉
+```
+
+### 14.5 시나리오 C — 카드결제 실패/취소
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as 👤 사용자
+    participant C as 🖥️ Client
+    participant B as 🔀 user-api
+    participant A as 🤖 agent-service
+    participant BK as 📋 booking-service
+    participant TOSS as 🏦 Toss API
+
+    Note over U,TOSS: 1~4단계 완료, SHOW_PAYMENT 카드 표시 중
+
+    U->>C: "결제하기" 클릭
+    C->>TOSS: Toss 위젯 requestPayment
+
+    alt 사용자가 위젯에서 취소
+        TOSS-->>C: 사용자 취소
+    else 결제 실패 (잔액 부족 등)
+        TOSS-->>C: 결제 실패
+    end
+
+    Note over C: 슬롯은 아직 SLOT_RESERVED<br/>(10분 이내 재시도 가능)
+
+    C->>B: { paymentComplete: true, paymentSuccess: false }
+    B->>A: NATS agent.chat
+    A-->>B: "결제가 취소되었어요. 다시 시도해 주세요."
+    B-->>C: 응답
+    C->>U: 💬 안내 메시지 (state → CONFIRMING)
+
+    Note over U,TOSS: 재시도 가능 (10분 이내)
+    U->>C: "다시 결제" 또는 "현장결제로 변경"
+```
+
+### 14.6 시나리오 D — 결제 타임아웃 + 자동 환불
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as 👤 사용자
+    participant C as 🖥️ Client
+    participant B as 🔀 user-api
+    participant A as 🤖 agent-service
+    participant BK as 📋 booking-service
+    participant PM as 💳 payment-service
+    participant TOSS as 🏦 Toss API
+
+    Note over U,TOSS: SHOW_PAYMENT 카드 표시 중 (10분 카운트다운)
+
+    rect rgb(255, 235, 238)
+        Note over BK: ⏰ 10분 경과 (saga-scheduler)
+        BK->>BK: SLOT_RESERVED → FAILED
+        BK->>BK: Outbox: slot.release
+        Note over BK: 슬롯 해제 완료
+    end
+
+    C->>C: 타이머 만료 감지
+    C->>B: { paymentComplete: true, paymentSuccess: false }
+    B->>A: NATS agent.chat
+    A-->>B: "결제 시간이 초과되었어요. 다시 예약해 주세요."
+    B-->>C: 응답
+    C->>U: 💬 타임아웃 안내 (state → COLLECTING)
+
+    Note over U,TOSS: ⚠️ 엣지 케이스: 타임아웃 후 결제 도착
+
+    opt 사용자가 Toss 위젯에서 뒤늦게 결제 완료
+        U->>TOSS: 카드 결제 승인
+        TOSS-->>PM: 결제 성공
+        PM->>BK: Outbox → booking.paymentConfirmed
+        rect rgb(255, 243, 224)
+            Note over BK: booking.status === FAILED 감지
+            BK->>BK: AUTO_REFUND_REQUESTED 이력
+            BK->>BK: Outbox: payment.cancelByBookingId
+        end
+        BK->>PM: payment.cancelByBookingId
+        PM->>TOSS: 환불 API 호출
+        TOSS-->>PM: 환불 성공
+        PM->>BK: booking.paymentCanceled
+        BK->>BK: REFUND_COMPLETED 이력
+        Note over U: 🔔 환불 완료 알림 발송
+    end
+```
+
+### 14.7 시나리오 E — Saga 실패 (슬롯 선점 실패)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as 👤 사용자
+    participant C as 🖥️ Client
+    participant B as 🔀 user-api
+    participant A as 🤖 agent-service
+    participant CS as ⛳ course-service
+    participant BK as 📋 booking-service
+
+    Note over U,BK: 1~3단계 완료, 예약 확인 클릭
+
+    U->>C: "예약 확인"
+    C->>B: { confirmBooking: true, paymentMethod: "onsite" }
+    B->>A: NATS agent.chat
+    A->>BK: NATS booking.create
+    BK-->>A: { status: PENDING }
+
+    Note over BK,CS: Saga: slot.reserve 시도
+    BK->>CS: Outbox → slot.reserve
+    CS-->>BK: slot.reserve.failed (잔여 인원 부족)
+    BK->>BK: PENDING → FAILED
+
+    rect rgb(255, 235, 238)
+        Note right of A: Saga 폴링 → FAILED 감지
+        A->>BK: NATS booking.findById
+        BK-->>A: { status: FAILED }
+    end
+
+    A-->>B: "슬롯 예약에 실패했습니다. 다른 시간을 선택해 주세요."
+    B-->>C: 응답
+    C->>U: 💬 에러 메시지 (state → COLLECTING)
+
+    Note over U: 사용자는 다른 슬롯을 선택하여 재시도 가능
+```
+
+### 14.8 단계별 컴포넌트 참여 요약
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        AI 부킹 단계별 컴포넌트 참여 매트릭스                        │
+├──────────┬──────────┬──────────┬──────────┬──────────┬──────────┬───────────────┤
+│          │ Client   │ user-api │ agent    │ course   │ booking  │ payment       │
+│          │          │ (BFF)    │ service  │ service  │ service  │ service       │
+├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼───────────────┤
+│ 1. 검색  │ 입력     │ 전달     │ LLM+도구  │ ● 조회   │          │               │
+│ (LLM)   │          │          │          │          │          │               │
+├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼───────────────┤
+│ 2. 골프장│ 카드클릭  │ 전달     │ Direct   │ ● 조회   │          │               │
+│ (Direct) │          │          │          │          │          │               │
+├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼───────────────┤
+│ 3. 슬롯  │ 카드클릭  │ 전달     │ Direct   │          │          │               │
+│ (Direct) │          │          │ (메모리) │          │          │               │
+├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼───────────────┤
+│ 4. 예약  │ 확인클릭  │ 전달     │ Direct   │          │ ● 생성   │               │
+│ (Direct) │          │          │ +폴링    │          │ +Saga    │               │
+├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼───────────────┤
+│ 5. 결제  │ Toss위젯  │ 전달     │ 결과수신  │          │ ● 확정   │ ● prepare     │
+│ (카드)   │ ● 직접   │          │          │          │          │ ● confirm     │
+├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼───────────────┤
+│ 자동환불 │          │          │          │          │ ● 감지   │ ● cancel      │
+│ (엣지)   │          │          │          │          │ Outbox   │ Toss 환불     │
+└──────────┴──────────┴──────────┴──────────┴──────────┴──────────┴───────────────┘
+
+범례: ● = 핵심 처리  |  Direct = LLM 없이 직접 처리  |  LLM = DeepSeek 경유
+```
+
+### 14.9 상태 전이 통합 다이어그램
+
+대화 상태(ConversationState)와 예약 상태(BookingStatus)의 연동을 보여줍니다.
+
+```mermaid
+stateDiagram-v2
+    state "대화 상태 (agent-service)" as Conv {
+        [*] --> IDLE
+        IDLE --> COLLECTING: SHOW_CLUBS
+
+        COLLECTING --> CONFIRMING: SHOW_SLOTS
+        CONFIRMING --> CONFIRMING: CONFIRM_BOOKING 카드 표시
+
+        CONFIRMING --> BOOKING: confirmBooking 클릭
+        BOOKING --> COMPLETED: BOOKING_COMPLETE
+
+        BOOKING --> COLLECTING: Saga 실패
+        CONFIRMING --> COLLECTING: cancelBooking
+    }
+
+    state "예약 상태 (booking-service)" as Book {
+        [*] --> PENDING_B: booking.create
+        PENDING_B --> SLOT_RESERVED_B: slot.reserved (카드)
+        PENDING_B --> CONFIRMED_B: slot.reserved (현장)
+        PENDING_B --> FAILED_B: slot.reserve.failed
+
+        SLOT_RESERVED_B --> CONFIRMED_B: payment.confirmed
+        SLOT_RESERVED_B --> FAILED_B: 10분 타임아웃
+        FAILED_B --> REFUND_B: 자동 환불
+    }
+
+    state "결제 상태 (payment-service)" as Pay {
+        [*] --> READY_P: payment.prepare
+        READY_P --> DONE_P: payment.confirm
+        DONE_P --> CANCELED_P: 자동 환불
+    }
+
+    BOOKING --> PENDING_B
+    CONFIRMED_B --> COMPLETED
+    FAILED_B --> COLLECTING
+
+    SLOT_RESERVED_B --> READY_P
+    DONE_P --> CONFIRMED_B
+```
 
 ---
 
