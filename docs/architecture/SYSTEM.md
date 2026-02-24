@@ -49,7 +49,7 @@ graph TB
         end
 
         subgraph "AI & External API Services"
-            AGENT[Agent Service<br/>Gemini 1.5 Flash<br/>:8088]
+            AGENT[Agent Service<br/>DeepSeek<br/>:8088]
             WEATHER[Weather Service<br/>기상청 API<br/>:8087]
             LOCATION[Location Service<br/>카카오 로컬 API<br/>:8089]
         end
@@ -70,7 +70,7 @@ graph TB
         TOSS[Toss Payments API]
         KMA[기상청 API]
         KAKAO[카카오 로컬 API]
-        GEMINI[Google Gemini API]
+        DEEPSEEK[DeepSeek API]
     end
 
     subgraph "Firebase Hosting"
@@ -119,7 +119,7 @@ graph TB
     PAY --> TOSS
     WEATHER --> KMA
     LOCATION --> KAKAO
-    AGENT --> GEMINI
+    AGENT --> DEEPSEEK
 
     %% Service to Database
     IAM --> PG
@@ -146,7 +146,7 @@ graph TB
     class PG data
     class NATS message
     class ING ingress
-    class TOSS,KMA,KAKAO,GEMINI external
+    class TOSS,KMA,KAKAO,DEEPSEEK external
 ```
 
 ## Service Dependencies
@@ -397,11 +397,11 @@ Events (Server→Client): connected, new_message, user_joined/left, typing, erro
 
 #### Agent Service (:8088)
 ```
-External API: Google Gemini 1.5 Flash
+External API: DeepSeek (OpenAI-compatible)
 Cache: In-memory (node-cache)
 
 Architecture:
-  GeminiService → Function Calling
+  DeepSeekService → Function Calling
   ToolExecutorService → NATS 통신 (5개 서비스 연동)
   ConversationService → 메모리 캐시 대화 관리
   BookingAgentService → 예약 플로우 오케스트레이션
@@ -637,7 +637,7 @@ graph TD
 | chat-service | 8080 | Chat |
 | payment-service | 8086 | Toss Payments |
 | weather-service | 8087 | 기상청 API |
-| agent-service | 8088 | AI Agent (Gemini) |
+| agent-service | 8088 | AI Agent (DeepSeek) |
 | job-service | 8080 | Batch Scheduler |
 | location-service | 8089 | 카카오 로컬 API |
 

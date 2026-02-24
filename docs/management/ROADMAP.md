@@ -1,6 +1,6 @@
 # Park Golf Platform - Development Roadmap
 
-**Overall Progress**: `██████████` 97%
+**Overall Progress**: `█████████░` 90%
 **Last Updated**: 2026-02-24
 **Target Release**: 2026-Q1
 
@@ -40,7 +40,7 @@
 - Webhook 수신/검증, Transactional Outbox
 
 ## Milestone 6: AI Agent ✅
-- Gemini 1.5 Flash + Function Calling (9개 도구)
+- DeepSeek + Function Calling (9개 도구)
 - 5개 서비스 NATS 연동 (Course, Booking, Payment, Weather, Location)
 - 원샷 처리: booking.create → Saga 폴링 → payment.prepare
 - Direct Handlers (LLM 없이 UI 카드 이벤트 직접 처리)
@@ -62,14 +62,38 @@
 - Weather Service: 기상청 API (초단기실황/예보, 단기예보, LCC 좌표 변환)
 - Location Service: 카카오 로컬 API (주소/키워드/카테고리 검색, 좌표 변환)
 
+## Milestone 10: Batch & Account Lifecycle 🟡
+- ✅ Job Service: @nestjs/schedule 기반 배치 스케줄러
+  - 계정 삭제 리마인더 (매일 09:00 KST), 삭제 실행 (매일 12:00 KST)
+  - NATS를 통한 수동 트리거 (job.run, job.deletion.*)
+- ✅ 계정 삭제 백엔드: AccountDeletionService (iam-service)
+  - 삭제 요청 (비밀번호 확인), 유예 기간 (7일), 취소 기능
+  - 제약 조건 검사 (활성 예약, 미결제, 진행 중 환불)
+- [ ] 계정 삭제 프론트엔드 UI (Web/iOS/Android — 현재 플레이스홀더만 존재)
+- [ ] 연관 서비스 `user.deleted` 이벤트 구독 (booking, chat, notify, payment)
+
 ---
 
-## Remaining (3%)
+## Remaining (10%)
+
+### 계정 삭제 프론트엔드 완성
+- [ ] User WebApp: 설정 > 계정 삭제 플로우 UI
+- [ ] iOS App: DeleteAccountView 구현 (현재 플레이스홀더)
+- [ ] Android App: 설정 > 계정 삭제 기능 완성
+- [ ] 연관 서비스 이벤트 핸들러 (`user.deleted` 구독)
 
 ### Toss 결제위젯 실제 연동
 - [ ] PaymentCard에서 Toss 위젯 requestPayment() 호출
 - [ ] 결제 승인 콜백 → paymentApi.confirmPayment()
 - [ ] 결제 실패/취소 UX 완성
+
+### 멤버십 티어 시스템
+- [ ] 정책 설계 완료 (docs/policy/MEMBERSHIP_TIER.md)
+- [ ] FREE / PLUS 등급 모델 구현 (MembershipPlan, MembershipSubscription)
+- [ ] 가맹점 패스 시스템 (CompanyPassType, CompanyMemberPass)
+- [ ] 등급별 혜택 적용 (우선 예약, 할인, 취소 수수료 면제)
+- [ ] 관리자 대시보드 멤버십 관리 UI
+- [ ] 사용자 앱 멤버십 가입/관리 UI
 
 ### Production 준비
 - [ ] 프로덕션 환경 GKE 클러스터 구성 (prod)
