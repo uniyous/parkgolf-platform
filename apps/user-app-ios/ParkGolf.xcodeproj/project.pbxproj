@@ -22,6 +22,7 @@
 		1B3D16251398655058AACE3A /* WeatherCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D487886CE4D34E354C619875 /* WeatherCardView.swift */; };
 		1FFE7625A32A3B766AAE82AD /* AvatarCircle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9644994821B6F2167521C1C /* AvatarCircle.swift */; };
 		256B07D37E11F0610F42A985 /* LocationWeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5645CA23FDC4221B5BF30228 /* LocationWeatherService.swift */; };
+		2C8EAB2F3F213F319C81C904 /* AiWelcomeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496EBE7029C2885128868A2E /* AiWelcomeCard.swift */; };
 		2E0251B7203D23A84EC52931 /* SocketIO.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1945F2879C86D793A82BE000 /* SocketIO.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		2EC743CA0E4E00B11D22D8E4 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA486415ADDCA27B3F74AE8A /* KeychainManager.swift */; };
 		305FBC5E25E30F6E3B5DCC0F /* TossPayments.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6259293609AE2D46B01385F1 /* TossPayments.framework */; };
@@ -193,6 +194,7 @@
 		40E101B4CF841C3D29D3AB50 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		48E0B560B4793A3955A88125 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		494C590AAABDFF697299705F /* ParkGolfTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ParkGolfTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		496EBE7029C2885128868A2E /* AiWelcomeCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AiWelcomeCard.swift; sourceTree = "<group>"; };
 		4FB800B49FBA07162D9DA6D4 /* NotificationSocketManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSocketManager.swift; sourceTree = "<group>"; };
 		511068654918BCE5A62A72A1 /* BookingCompleteCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingCompleteCardView.swift; sourceTree = "<group>"; };
 		52AB2AC3D3A243B207CE8910 /* ParkGolfUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParkGolfUITests.swift; sourceTree = "<group>"; };
@@ -586,6 +588,7 @@
 				9968D851B118C5D9646E7359 /* Cards */,
 				CB101266F65B0E0F0452592E /* AiButton.swift */,
 				B15D1AD7970FB666BFCFE104 /* AiMessageBubble.swift */,
+				496EBE7029C2885128868A2E /* AiWelcomeCard.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -885,6 +888,7 @@
 				0B69CC4639637FDB980350BD /* ChatRoomViewModel.swift in Sources */,
 				936087BEB6B47A624245976E /* AiButton.swift in Sources */,
 				54166E67AC99C188D0525E2C /* AiMessageBubble.swift in Sources */,
+				2C8EAB2F3F213F319C81C904 /* AiWelcomeCard.swift in Sources */,
 				7293883E372970C2E075B8A2 /* BookingCompleteCardView.swift in Sources */,
 				E78EB92E21C291BA4707AF76 /* ClubCardView.swift in Sources */,
 				6F76E326D8387E8A2D195C9B /* SlotCardView.swift in Sources */,
