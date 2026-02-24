@@ -54,6 +54,10 @@ graph TB
             LOCATION[Location Service<br/>카카오 로컬 API<br/>:8089]
         end
 
+        subgraph "Batch Services"
+            JOB[Job Service<br/>NestJS Schedule<br/>:8080]
+        end
+
         subgraph "Infrastructure Layer"
             NATS[NATS JetStream<br/>:4222]
             PG[(PostgreSQL<br/>:5432)]
@@ -108,6 +112,9 @@ graph TB
     NATS <--> WEATHER
     NATS <--> LOCATION
 
+    %% NATS to Batch Services
+    NATS <--> JOB
+
     %% External API connections
     PAY --> TOSS
     WEATHER --> KMA
@@ -135,6 +142,7 @@ graph TB
     class AAPI,UAPI,CHATGW bff
     class IAM,COURSE,BOOK,NOTIFY,CHAT,PAY service
     class AGENT,WEATHER,LOCATION aiservice
+    class JOB service
     class PG data
     class NATS message
     class ING ingress
@@ -167,6 +175,10 @@ graph LR
         LOCATION[Location Service]
     end
 
+    subgraph "Batch Services"
+        JOB[Job Service]
+    end
+
     BOOK --> IAM
     BOOK --> COURSE
     BOOK --> NOTIFY
@@ -180,6 +192,7 @@ graph LR
     AGENT --> PAY
     AGENT --> WEATHER
     AGENT --> LOCATION
+    JOB --> IAM
 
     style IAM fill:#ef9a9a,stroke:#c62828,stroke-width:2px,color:#000
     style COURSE fill:#90caf9,stroke:#1565c0,stroke-width:2px,color:#000
@@ -191,6 +204,7 @@ graph LR
     style AGENT fill:#80cbc4,stroke:#00695c,stroke-width:2px,color:#000
     style WEATHER fill:#b2dfdb,stroke:#00796b,stroke-width:2px,color:#000
     style LOCATION fill:#c8e6c9,stroke:#388e3c,stroke-width:2px,color:#000
+    style JOB fill:#b0bec5,stroke:#37474f,stroke-width:2px,color:#000
 ```
 
 ## Service Details
@@ -453,6 +467,35 @@ NATS Patterns:
   location.nearbyGolf / location.stats
 ```
 
+### 6. Batch Services
+
+#### Job Service (:8080)
+```
+Stateless scheduler (No DB)
+Dependency: @nestjs/schedule (Cron)
+
+Core Features:
+  - 계정 삭제 워크플로우 스케줄링 (리마인더 + 실행)
+  - Cron 기반 배치 작업 관리
+  - NATS를 통한 수동 작업 트리거 지원
+
+Scheduled Jobs:
+  deletion-reminder: 매일 00:00 UTC (09:00 KST)
+    → iam.deletion.processReminders (D-3, D-1 리마인더 알림)
+  deletion-executor: 매일 03:00 UTC (12:00 KST)
+    → iam.deletion.execute (유예 기간 만료 계정 삭제)
+
+NATS Patterns — Inbound:
+  job.list (등록된 작업 목록 조회)
+  job.run (작업명으로 수동 실행)
+  job.deletion.reminder (리마인더 수동 트리거)
+  job.deletion.execute (삭제 수동 트리거)
+
+NATS Patterns — Outbound:
+  iam.deletion.processReminders (→ iam-service)
+  iam.deletion.execute (→ iam-service)
+```
+
 ## Saga Pattern (Distributed Transactions)
 
 ### Booking Saga Flow
@@ -535,10 +578,11 @@ graph TD
     NOTIFY[Notify Service] --> NOTIFY_DB
     CHAT[Chat Service] --> CHAT_DB
 
-    subgraph "In-Memory Cache (No DB)"
+    subgraph "In-Memory Cache / Stateless (No DB)"
         AGENT[Agent Service<br/>node-cache]
         WEATHER[Weather Service<br/>node-cache]
         LOCATION[Location Service<br/>node-cache]
+        JOB[Job Service<br/>Stateless Scheduler]
     end
 ```
 
@@ -565,6 +609,7 @@ graph TD
             AGENT[agent-service<br/>Deployment]
             WEATHER[weather-service<br/>Deployment]
             LOCATION[location-service<br/>Deployment]
+            JOB[job-service<br/>Deployment]
         end
 
         subgraph "Infrastructure Pods"
@@ -593,6 +638,7 @@ graph TD
 | payment-service | 8086 | Toss Payments |
 | weather-service | 8087 | 기상청 API |
 | agent-service | 8088 | AI Agent (Gemini) |
+| job-service | 8080 | Batch Scheduler |
 | location-service | 8089 | 카카오 로컬 API |
 
 ### CI/CD Pipeline
