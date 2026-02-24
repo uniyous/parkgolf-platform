@@ -1717,8 +1717,9 @@ async chat(request: ChatRequestDto): Promise<ChatResponseDto> {
   └── 카드결제: booking.create → SLOT_RESERVED → SHOW_PAYMENT 카드 (결제 대기)
 
 5단계: 결제 완료 (Direct, 카드결제만)
-  사용자 → Toss 결제 위젯에서 결제 완료
-  → 프론트엔드에서 payment.prepare → Toss 승인 → payment.confirm 처리
+  ※ payment.prepare는 4단계에서 agent가 이미 처리 (orderId 발급 완료)
+  사용자 → "결제하기" 클릭 → Toss 위젯(orderId) → 카드 승인
+  → 프론트엔드에서 payment.confirm(paymentKey, orderId, amount) 처리
   → { paymentComplete: true, paymentSuccess: true }
   → BOOKING_COMPLETE 카드
 
@@ -1737,10 +1738,10 @@ CONFIRM_BOOKING → confirmBooking(paymentMethod=onsite)
 
 [카드결제 (card)]
 CONFIRM_BOOKING → confirmBooking(paymentMethod=card)
-  → booking.create → slot.reserve → slot.reserved → SLOT_RESERVED
-  → SHOW_PAYMENT 카드 (state: BOOKING)
-    → 프론트엔드: payment.prepare (orderId 발급)
-    → 프론트엔드: Toss 결제 위젯 표시
+  → agent: booking.create → slot.reserve → slot.reserved → SLOT_RESERVED
+  → agent: payment.prepare → orderId 발급 (원샷 처리)
+  → SHOW_PAYMENT 카드 (orderId 포함, state: BOOKING)
+    → 프론트엔드: Toss 결제 위젯 표시 (orderId)
     → 사용자: 카드 결제 승인
     → 프론트엔드: payment.confirm (paymentKey, orderId, amount)
     → booking-service: booking.paymentConfirmed → CONFIRMED
@@ -1823,15 +1824,18 @@ CONFIRM_BOOKING → confirmBooking(paymentMethod=card)
      [카드결제 (card)]
      → booking-service Saga: PENDING → SLOT_RESERVED (결제 대기)
      → context.slots.bookingId 저장
-     → SHOW_PAYMENT 액션 생성 (bookingId, amount, orderName 포함)
+     → payment.prepare 호출 (bookingId, amount, orderName) → orderId 발급
+     → SHOW_PAYMENT 액션 생성 (orderId 포함)
      → state → BOOKING
      출력: {
        message: "결제를 진행해 주세요!",
        actions: [{
          type: "SHOW_PAYMENT",
-         data: { bookingId, amount, orderName, clubName, date, time, playerCount }
+         data: { bookingId, orderId, amount, orderName, clubName, date, time, playerCount }
        }]
      }
+     ※ 원샷 처리: booking.create → Saga 폴링 → payment.prepare를 한 요청에서 순차 실행
+       Client는 orderId를 이미 받은 상태이므로 "결제하기" 클릭 시 바로 Toss 위젯 표시
 ```
 
 #### handlePaymentComplete
@@ -1943,6 +1947,7 @@ interface ConfirmBookingData {
 ```typescript
 interface PaymentCardData {
   bookingId: number;       // 생성된 예약 ID
+  orderId: string;         // payment.prepare에서 발급된 주문 ID (agent가 선처리)
   amount: number;          // 결제 금액
   orderName: string;       // 주문명 (예: "ParkGolf #BK-001")
   clubName: string;        // 골프장 이름
@@ -1971,30 +1976,42 @@ interface PaymentCardData {
 └────────────────────────────────────┘
 ```
 
-#### 프론트엔드 결제 처리 흐름
+#### 결제 처리 흐름 (agent-service + Client 분담)
 
-SHOW_PAYMENT 카드에서 "결제하기" 클릭 시 프론트엔드가 직접 처리합니다 (agent-service 경유 없음).
+**payment.prepare는 agent-service가 선처리**하고, **Toss 위젯과 payment.confirm은 Client가 처리**합니다.
 
 ```
+[4단계 — agent-service 원샷 처리]
+  예약 확인 클릭 (paymentMethod: "card")
+     ↓
+  agent-service:
+     booking.create → Saga 폴링 → SLOT_RESERVED 확인
+     → payment.prepare({ bookingId, amount, orderName })  ← agent가 호출
+     → orderId 발급
+     ↓
+  Client에 SHOW_PAYMENT 카드 반환 (orderId 포함)
+
+[5단계 — Client 직접 처리]
 1. "결제하기" 버튼 클릭
    ↓
-2. paymentApi.preparePayment({ bookingId, amount, orderName })
-   → user-api → payment-service (NATS payment.prepare)
-   → orderId 발급
+2. Toss 결제 위젯 표시 (toss.requestPayment(orderId))
+   → 사용자가 카드 정보 입력 & 승인 (PCI DSS: Client ↔ Toss만)
    ↓
-3. Toss 결제 위젯 표시 (toss.requestPayment)
-   → 사용자가 카드 정보 입력 & 승인
-   ↓
-4. paymentApi.confirmPayment({ paymentKey, orderId, amount })
+3. paymentApi.confirmPayment({ paymentKey, orderId, amount })
    → user-api → payment-service (NATS payment.confirm)
    → payment-service → Toss API 서버 승인
    → payment.confirmed Outbox 이벤트
    → booking-service: SLOT_RESERVED → CONFIRMED
    ↓
-5. agent-service에 결제 결과 전송
+4. agent-service에 결제 결과 전송
    → { paymentComplete: true, paymentSuccess: true }
    → BOOKING_COMPLETE 카드 표시
 ```
+
+> **왜 분담하는가?**
+> - `payment.prepare`: 서버 간 통신이므로 agent가 예약과 함께 원샷 처리 가능
+> - `Toss 위젯`: PCI DSS 규정상 카드 정보는 Client ↔ Toss 간 직접 통신 필수
+> - `payment.confirm`: Toss 위젯에서 받은 `paymentKey`가 필요하므로 Client가 호출
 
 #### 결제 실패/취소 처리
 
@@ -2181,15 +2198,29 @@ graph TB
     Router <--> Session
     Executor -->|NATS| Course
     Executor -->|NATS| Booking
+    Executor -->|NATS| Payment
     Executor -->|NATS| Location
     Executor -->|NATS| Weather
-    UI -->|REST 직접| Payment
+    Booking <-.->|Outbox/Event| Payment
+    Booking <-.->|Outbox/Event| Course
+    API -->|NATS payment.confirm| Payment
+    Cards -.->|Toss 위젯| TOSS["🏦 Toss Payments"]
+    TOSS -.->|승인 결과| Cards
 
     style Client fill:#e8f5e9
     style BFF fill:#e3f2fd
     style Agent fill:#fff3e0
     style Services fill:#fce4ec
 ```
+
+> **핵심 포인트:**
+> - `ToolExecutorService`는 `booking-service`뿐 아니라 `payment-service`도 NATS로 직접 호출합니다
+>   - `payment.prepare` → orderId 발급 (예약 확인 시 agent가 선처리)
+>   - 이를 통해 **의도 분석 → 예약 생성 → 결제 준비**를 한 요청에서 처리
+> - `booking-service ↔ payment-service`는 Outbox 이벤트로 비동기 연동 (paymentConfirmed, cancelByBookingId)
+> - `booking-service ↔ course-service`는 Outbox 이벤트로 연동 (slot.reserve, slot.release)
+> - Client는 **Toss 위젯 표시**와 **payment.confirm** (서버 승인 요청)만 직접 처리
+>   - Toss 위젯은 PCI DSS 규정상 반드시 Client에서 실행해야 합니다
 
 ### 14.2 처리 경로 분류
 
@@ -2294,30 +2325,31 @@ sequenceDiagram
     U->>C: "예약 확인" (카드결제)
     C->>B: { confirmBooking: true, paymentMethod: "card" }
     B->>A: NATS agent.chat
-    A->>BK: NATS booking.create (paymentMethod: card)
-    BK-->>A: { status: PENDING }
 
-    rect rgb(255, 248, 225)
-        Note right of A: Saga 폴링 (300ms × 1~2회)
-        A->>BK: NATS booking.findById
-        BK-->>A: { status: SLOT_RESERVED }
+    rect rgb(232, 245, 233)
+        Note over A,PM: agent-service 원샷 처리 (예약 + 결제 준비)
+        A->>BK: NATS booking.create (paymentMethod: card)
+        BK-->>A: { status: PENDING }
+        rect rgb(255, 248, 225)
+            Note right of A: Saga 폴링 (300ms × 1~2회)
+            A->>BK: NATS booking.findById
+            BK-->>A: { status: SLOT_RESERVED }
+        end
+        A->>PM: NATS payment.prepare (bookingId, amount)
+        PM-->>A: { orderId }
     end
 
-    A-->>B: { actions: [SHOW_PAYMENT] }
+    A-->>B: { actions: [SHOW_PAYMENT], data: { orderId, ... } }
     B-->>C: 응답
-    C->>U: 🃏 결제 카드 (10분 타이머)
+    C->>U: 🃏 결제 카드 (orderId 포함, 10분 타이머)
 
-    Note over U,TOSS: 5단계: Toss 결제 (Client → payment-service 직접)
+    Note over U,TOSS: 5단계: Toss 결제 (Client ↔ Toss 직접)
     U->>C: "결제하기" 클릭
-    C->>B: POST /payment/prepare
-    B->>PM: NATS payment.prepare
-    PM-->>B: { orderId }
-    B-->>C: orderId
-
-    C->>TOSS: Toss 위젯 requestPayment
+    C->>TOSS: Toss 위젯 requestPayment(orderId)
+    Note right of C: PCI DSS: 카드 정보는<br/>Client ↔ Toss만 처리
     TOSS-->>C: paymentKey (승인 완료)
 
-    C->>B: POST /payment/confirm
+    C->>B: POST /payment/confirm (paymentKey, orderId, amount)
     B->>PM: NATS payment.confirm
     PM->>TOSS: 서버 승인 요청
     TOSS-->>PM: 승인 성공
@@ -2333,6 +2365,10 @@ sequenceDiagram
     B-->>C: 응답
     C->>U: 🃏 예약완료 카드 🎉
 ```
+
+> **원샷 처리**: 4단계에서 agent-service가 `booking.create` → Saga 폴링 → `payment.prepare`를 **한 요청 안에서** 순차 처리합니다.
+> Client는 이미 `orderId`를 받은 상태이므로 "결제하기" 클릭 시 바로 Toss 위젯을 띄울 수 있습니다.
+> 단, `payment.confirm` (서버 승인)은 Toss 위젯 결과(`paymentKey`)가 필요하므로 Client가 직접 호출합니다.
 
 ### 14.5 시나리오 C — 카드결제 실패/취소
 
@@ -2459,32 +2495,41 @@ sequenceDiagram
 ### 14.8 단계별 컴포넌트 참여 요약
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                        AI 부킹 단계별 컴포넌트 참여 매트릭스                        │
-├──────────┬──────────┬──────────┬──────────┬──────────┬──────────┬───────────────┤
-│          │ Client   │ user-api │ agent    │ course   │ booking  │ payment       │
-│          │          │ (BFF)    │ service  │ service  │ service  │ service       │
-├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼───────────────┤
-│ 1. 검색  │ 입력     │ 전달     │ LLM+도구  │ ● 조회   │          │               │
-│ (LLM)   │          │          │          │          │          │               │
-├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼───────────────┤
-│ 2. 골프장│ 카드클릭  │ 전달     │ Direct   │ ● 조회   │          │               │
-│ (Direct) │          │          │          │          │          │               │
-├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼───────────────┤
-│ 3. 슬롯  │ 카드클릭  │ 전달     │ Direct   │          │          │               │
-│ (Direct) │          │          │ (메모리) │          │          │               │
-├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼───────────────┤
-│ 4. 예약  │ 확인클릭  │ 전달     │ Direct   │          │ ● 생성   │               │
-│ (Direct) │          │          │ +폴링    │          │ +Saga    │               │
-├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼───────────────┤
-│ 5. 결제  │ Toss위젯  │ 전달     │ 결과수신  │          │ ● 확정   │ ● prepare     │
-│ (카드)   │ ● 직접   │          │          │          │          │ ● confirm     │
-├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼───────────────┤
-│ 자동환불 │          │          │          │          │ ● 감지   │ ● cancel      │
-│ (엣지)   │          │          │          │          │ Outbox   │ Toss 환불     │
-└──────────┴──────────┴──────────┴──────────┴──────────┴──────────┴───────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                        AI 부킹 단계별 컴포넌트 참여 매트릭스                         │
+├──────────┬──────────┬──────────┬───────────┬──────────┬──────────┬───────────────┤
+│          │ Client   │ user-api │ agent     │ course   │ booking  │ payment       │
+│          │          │ (BFF)    │ service   │ service  │ service  │ service       │
+├──────────┼──────────┼──────────┼───────────┼──────────┼──────────┼───────────────┤
+│ 1. 검색  │ 입력     │ 전달     │ LLM+도구   │ ● 조회   │          │               │
+│ (LLM)   │          │          │           │          │          │               │
+├──────────┼──────────┼──────────┼───────────┼──────────┼──────────┼───────────────┤
+│ 2. 골프장│ 카드클릭  │ 전달     │ Direct    │ ● 조회   │          │               │
+│ (Direct) │          │          │           │          │          │               │
+├──────────┼──────────┼──────────┼───────────┼──────────┼──────────┼───────────────┤
+│ 3. 슬롯  │ 카드클릭  │ 전달     │ Direct    │          │          │               │
+│ (Direct) │          │          │ (메모리)  │          │          │               │
+├──────────┼──────────┼──────────┼───────────┼──────────┼──────────┼───────────────┤
+│ 4. 예약  │ 확인클릭  │ 전달     │ Direct    │          │ ● 생성   │ ● prepare     │
+│ +결제준비│          │          │ 원샷 처리  │          │ +Saga    │ orderId 발급  │
+│ (Direct) │          │          │ 예약→폴링  │          │          │               │
+│          │          │          │ →결제준비  │          │          │               │
+├──────────┼──────────┼──────────┼───────────┼──────────┼──────────┼───────────────┤
+│ 5. 결제  │ Toss위젯  │ 전달     │           │          │ ● 확정   │ ● confirm     │
+│ (카드)   │ ● PCI DSS│          │           │          │ (이벤트) │ Toss 서버승인 │
+├──────────┼──────────┼──────────┼───────────┼──────────┼──────────┼───────────────┤
+│ 6. 완료  │ 카드표시  │ 전달     │ 결과수신   │          │          │               │
+│          │          │          │ COMPLETE  │          │          │               │
+├──────────┼──────────┼──────────┼───────────┼──────────┼──────────┼───────────────┤
+│ 자동환불 │          │          │           │          │ ● 감지   │ ● cancel      │
+│ (엣지)   │          │          │           │          │ Outbox   │ Toss 환불     │
+└──────────┴──────────┴──────────┴───────────┴──────────┴──────────┴───────────────┘
 
 범례: ● = 핵심 처리  |  Direct = LLM 없이 직접 처리  |  LLM = DeepSeek 경유
+
+원샷 처리: 4단계에서 agent-service가 booking.create → Saga 폴링 → payment.prepare를
+          한 요청 안에서 순차 실행. Client는 orderId를 받아 Toss 위젯만 표시.
+PCI DSS:  5단계 Toss 위젯(카드 정보 입력)은 규정상 Client에서만 실행 가능.
 ```
 
 ### 14.9 상태 전이 통합 다이어그램
