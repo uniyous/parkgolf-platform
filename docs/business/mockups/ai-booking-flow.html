@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 800px;
+    font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    -webkit-font-smoothing: antialiased;
+    padding: 40px;
+  }
+
+  /* Title */
+  .main-title {
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .main-title .highlight { color: #3fb950; font-size: 32px; font-weight: 800; }
+  .main-title .normal { font-size: 32px; font-weight: 800; }
+  .subtitle { text-align: center; font-size: 14px; color: #8b949e; margin-bottom: 16px; }
+  .time-badge {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    margin: 0 auto 32px; padding: 6px 20px;
+    background: rgba(46, 160, 67, 0.12); border: 1px solid #2ea043;
+    border-radius: 20px; font-size: 14px; color: #3fb950; font-weight: 600;
+    width: fit-content;
+  }
+
+  /* Input section */
+  .input-section {
+    background: rgba(46, 160, 67, 0.06);
+    border: 1px solid rgba(46, 160, 67, 0.2);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .input-label { font-size: 12px; color: #8b949e; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .input-bubble {
+    background: #2ea043; color: #fff; display: inline-block;
+    padding: 12px 20px; border-radius: 14px; font-size: 18px; font-weight: 700;
+    margin-bottom: 16px;
+  }
+  .tags { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tag {
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    padding: 6px 14px; font-size: 13px;
+  }
+  .tag .key { color: #8b949e; }
+  .tag .val { color: #e6edf3; font-weight: 600; }
+  .tag .inferred { color: #3fb950; }
+
+  /* Analysis sections */
+  .analysis-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    margin-bottom: 24px;
+  }
+  .analysis-card {
+    background: #161b22; border: 1px solid #30363d; border-radius: 14px; padding: 20px;
+  }
+  .analysis-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+  }
+  .analysis-icon { font-size: 24px; }
+  .analysis-title { font-size: 16px; font-weight: 700; }
+  .analysis-subtitle { font-size: 12px; color: #8b949e; }
+  .api-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 0; font-size: 13px;
+  }
+  .api-row .icon { width: 16px; text-align: center; }
+  .api-row .name { font-family: 'SF Mono', monospace; color: #3fb950; font-weight: 600; flex: 1; }
+  .api-row .desc { color: #8b949e; flex: 1; }
+  .api-row .time {
+    background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+    padding: 2px 8px; font-size: 11px; font-weight: 600;
+  }
+
+  /* Steps row */
+  .steps-row {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    margin-bottom: 24px;
+  }
+  .step-card {
+    background: #161b22; border: 1px solid #30363d; border-radius: 14px;
+    padding: 16px; position: relative;
+  }
+  .step-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .step-num {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .step-num .num {
+    width: 22px; height: 22px; border-radius: 6px; background: #2ea043;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: #fff;
+  }
+  .step-num .label { font-size: 13px; font-weight: 700; }
+  .step-time { font-size: 11px; color: #8b949e; }
+  .step-content { font-size: 12px; line-height: 1.6; }
+
+  /* Step 1 */
+  .step1-bubble {
+    background: #2ea043; color: #fff; padding: 8px 12px;
+    border-radius: 10px; font-size: 12px; font-weight: 600; margin-bottom: 10px;
+  }
+  .step1-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+  .step1-tag {
+    background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+    padding: 3px 8px; font-size: 10px; display: flex; align-items: center; gap: 3px;
+  }
+
+  /* Step 2 */
+  .step2-weather {
+    background: #0d1117; border-radius: 8px; padding: 8px 10px;
+    font-size: 11px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+  }
+  .step2-club { margin-bottom: 8px; }
+  .step2-club .name {
+    font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 4px;
+  }
+  .step2-club .loc { font-size: 11px; color: #8b949e; margin-top: 2px; }
+  .step2-club .drive-time { color: #58a6ff; }
+  .step2-slots { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  .step2-slot {
+    background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+    padding: 3px 8px; font-size: 11px; font-weight: 600;
+  }
+  .step2-slot.rec { border-color: #2ea043; color: #3fb950; }
+
+  /* Step 3 */
+  .step3-table { width: 100%; font-size: 11px; }
+  .step3-table tr { border-bottom: 1px solid #21262d; }
+  .step3-table td { padding: 3px 0; }
+  .step3-table .label { color: #8b949e; width: 40px; }
+  .step3-table .value { font-weight: 600; }
+  .step3-table .price { font-size: 16px; font-weight: 800; color: #3fb950; }
+  .step3-cancel { font-size: 10px; color: #8b949e; margin-top: 6px; }
+  .step3-btns { display: flex; gap: 4px; margin-top: 8px; }
+  .step3-btn {
+    padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  }
+  .step3-btn.primary { background: #2ea043; color: #fff; }
+  .step3-btn.secondary { background: #21262d; color: #8b949e; }
+
+  /* Step 4 */
+  .step4-check {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(46, 160, 67, 0.15); border: 2px solid #2ea043;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: #2ea043; margin: 0 auto 6px;
+  }
+  .step4-text { text-align: center; font-size: 12px; color: #8b949e; margin-bottom: 4px; }
+  .step4-num {
+    text-align: center; font-family: 'SF Mono', monospace;
+    font-size: 13px; font-weight: 700; color: #3fb950; margin-bottom: 10px;
+  }
+  .step4-weather {
+    font-size: 10px; color: #8b949e; text-align: center; margin-bottom: 8px;
+  }
+  .step4-actions { display: flex; gap: 4px; justify-content: center; }
+  .step4-action {
+    background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+    padding: 4px 8px; font-size: 10px; text-align: center;
+  }
+  .step4-action .icon { font-size: 14px; }
+  .step4-action .label { color: #8b949e; }
+
+  /* Stats */
+  .stats-row {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  }
+  .stat-card {
+    background: #161b22; border: 1px solid #30363d; border-radius: 14px;
+    padding: 20px; text-align: center;
+  }
+  .stat-value { font-size: 36px; font-weight: 800; }
+  .stat-value.green { color: #3fb950; }
+  .stat-value.blue { color: #58a6ff; }
+  .stat-value.purple { color: #8b5cf6; }
+  .stat-value.yellow { color: #e3b341; }
+  .stat-label { font-size: 12px; color: #8b949e; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="main-title">
+  <span class="highlight">AI 원샷 부킹</span> <span class="normal">— 말 한마디로 예약 완료</span>
+</div>
+<div class="subtitle">자연어 입력 하나로 골프장 검색, 날씨 확인, 슬롯 조회, 결제까지 자동 처리</div>
+<div class="time-badge">● 총 소요시간 약 15초</div>
+
+<!-- Input Section -->
+<div class="input-section">
+  <div class="input-label">🗣 사용자 입력 (자연어)</div>
+  <div class="input-bubble">"천안 골프장 2명 예약해 줘"</div>
+  <div class="tags">
+    <div class="tag"><span class="key">지역 →</span> <span class="val">천안</span></div>
+    <div class="tag"><span class="key">인원 →</span> <span class="val">2명</span></div>
+    <div class="tag"><span class="key">날짜 →</span> <span class="inferred">오늘 (추론)</span></div>
+    <div class="tag"><span class="key">시간 →</span> <span class="inferred">전체 (미지정)</span></div>
+    <div class="tag"><span class="key">의도 →</span> <span class="val">예약 생성</span></div>
+  </div>
+</div>
+
+<!-- Analysis row -->
+<div class="analysis-row">
+  <div class="analysis-card">
+    <div class="analysis-header">
+      <span class="analysis-icon">🧠</span>
+      <div>
+        <div class="analysis-title">AI 자연어 분석 (NLU)</div>
+        <div class="analysis-subtitle">DeepSeek Function Calling</div>
+      </div>
+    </div>
+    <div class="api-row">
+      <span class="icon">📍</span>
+      <span class="name">location.search</span>
+      <span class="desc">"천안" → 좌표 변환</span>
+      <span class="time">0.2s</span>
+    </div>
+    <div class="api-row">
+      <span class="icon">🏌️</span>
+      <span class="name">club.findNearby</span>
+      <span class="desc">반경 10km 골프장 검색</span>
+      <span class="time">0.3s</span>
+    </div>
+  </div>
+  <div class="analysis-card">
+    <div class="analysis-header">
+      <span class="analysis-icon">⚡</span>
+      <div>
+        <div class="analysis-title">병렬 데이터 수집</div>
+        <div class="analysis-subtitle">4개 서비스 동시 호출</div>
+      </div>
+    </div>
+    <div class="api-row">
+      <span class="icon">📅</span>
+      <span class="name">slot.search</span>
+      <span class="desc">빈 타임슬롯 조회</span>
+      <span class="time">0.4s</span>
+    </div>
+    <div class="api-row">
+      <span class="icon">☀️</span>
+      <span class="name">weather.current</span>
+      <span class="desc">실시간 날씨 확인</span>
+      <span class="time">0.3s</span>
+    </div>
+    <div class="api-row">
+      <span class="icon">💳</span>
+      <span class="name">payment.prepare</span>
+      <span class="desc">결제 사전 준비</span>
+      <span class="time">0.2s</span>
+    </div>
+    <div class="api-row">
+      <span class="icon">📋</span>
+      <span class="name">policy.resolve</span>
+      <span class="desc">취소/환불 정책 조회</span>
+      <span class="time">0.2s</span>
+    </div>
+  </div>
+</div>
+
+<!-- Steps -->
+<div class="steps-row">
+  <!-- Step 1 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num"><div class="num">1</div><span class="label">AI에게 말하기</span></div>
+      <span class="step-time">~2s</span>
+    </div>
+    <div class="step-content">
+      <div class="step1-bubble">천안 골프장 2명 예약해 줘</div>
+      <div style="font-size: 11px; color: #8b949e; margin-bottom: 6px;">AI가 자동 파싱:</div>
+      <div class="step1-tags">
+        <div class="step1-tag">📍 천안</div>
+        <div class="step1-tag">👤 2명</div>
+        <div class="step1-tag">📅 오늘</div>
+        <div class="step1-tag">🏌️ 예약</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num"><div class="num">2</div><span class="label">AI 검색 결과</span></div>
+      <span class="step-time">~3s</span>
+    </div>
+    <div class="step-content">
+      <div class="step2-weather">☀️ 18°C 맑음 · 골프 치기 좋은 날씨!</div>
+      <div class="step2-club">
+        <div class="name">🏌️ 천안시민 파크골프장</div>
+        <div class="loc">천안시 서북구 · <span class="drive-time">🚗 25분</span></div>
+        <div class="step2-slots">
+          <div class="step2-slot">10:00</div>
+          <div class="step2-slot rec">10:30 ⭐추천</div>
+          <div class="step2-slot">11:00</div>
+        </div>
+      </div>
+      <div class="step2-club">
+        <div class="name">🏌️ 두정 파크골프장</div>
+        <div class="loc">천안시 서북구 · 3.5km</div>
+        <div class="step2-slots">
+          <div class="step2-slot">09:30</div>
+          <div class="step2-slot">10:00</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num"><div class="num">3</div><span class="label">예약 확인</span></div>
+      <span class="step-time">~5s</span>
+    </div>
+    <div class="step-content">
+      <table class="step3-table">
+        <tr><td class="label">골프장</td><td class="value">천안시민 파크골프장</td></tr>
+        <tr><td class="label">코스</td><td class="value">A코스</td></tr>
+        <tr><td class="label">시간</td><td class="value">10:30</td></tr>
+        <tr><td class="label">인원</td><td class="value">2명</td></tr>
+        <tr><td class="label">금액</td><td class="price">₩20,000</td></tr>
+      </table>
+      <div class="step3-cancel">📋 취소: 7일 전 전액환불</div>
+      <div class="step3-btns">
+        <div class="step3-btn primary">간편결제</div>
+        <div class="step3-btn secondary">현장결제</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num"><div class="num">4</div><span class="label">예약 완료!</span></div>
+      <span class="step-time">~5s</span>
+    </div>
+    <div class="step-content" style="text-align: center;">
+      <div class="step4-check">✓</div>
+      <div class="step4-text">예약이 확정되었습니다</div>
+      <div class="step4-num">BK-20260225-0042</div>
+      <div class="step4-weather">☀️ 18°C · 선크림 챙기세요!</div>
+      <div class="step4-actions">
+        <div class="step4-action">
+          <div class="icon">📅</div>
+          <div class="label">캘린더 추가</div>
+        </div>
+        <div class="step4-action">
+          <div class="icon">📤</div>
+          <div class="label">공유하기</div>
+        </div>
+        <div class="step4-action">
+          <div class="icon">🏌️</div>
+          <div class="label">골프장 연결</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-value green">15초</div>
+    <div class="stat-label">전체 소요시간</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value blue">6회</div>
+    <div class="stat-label">AI 도구 호출</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value purple">4개</div>
+    <div class="stat-label">서비스 병렬 처리</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value yellow">0회</div>
+    <div class="stat-label">화면 전환 필요</div>
+  </div>
+</div>
+
+</body>
+</html>
