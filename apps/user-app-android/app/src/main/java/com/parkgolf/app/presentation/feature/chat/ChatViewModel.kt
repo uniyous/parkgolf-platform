@@ -5,6 +5,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.parkgolf.app.data.remote.dto.chat.AiChatRequest
 import com.parkgolf.app.domain.model.AiChatResponse
 import com.parkgolf.app.domain.model.ChatAction
 import com.parkgolf.app.domain.model.ChatMessage
@@ -441,6 +442,58 @@ class ChatViewModel @Inject constructor(
         }
 
         // Add user message locally
+        addUserMessage(roomId, content)
+
+        viewModelScope.launch {
+            val location = locationManager.getCurrentLocation()
+            chatRepository.sendAiMessage(
+                roomId = roomId,
+                message = content,
+                conversationId = _uiState.value.aiConversationId,
+                latitude = location?.latitude,
+                longitude = location?.longitude
+            ).onSuccess { response ->
+                handleAiResponse(roomId, response)
+            }.onFailure {
+                _uiState.value = _uiState.value.copy(
+                    isAiLoading = false,
+                    messageInput = content,
+                    error = "AI 응답에 실패했습니다."
+                )
+            }
+        }
+    }
+
+    /**
+     * 구조화된 AI 요청 전송 (카드 인터랙션용)
+     * Web의 handleAiFollowUp 패턴과 동일
+     */
+    fun sendAiFollowUp(request: AiChatRequest) {
+        val roomId = currentRoomId ?: return
+
+        addUserMessage(roomId, request.message)
+
+        viewModelScope.launch {
+            val location = locationManager.getCurrentLocation()
+            val fullRequest = request.copy(
+                conversationId = request.conversationId ?: _uiState.value.aiConversationId,
+                latitude = request.latitude ?: location?.latitude,
+                longitude = request.longitude ?: location?.longitude
+            )
+            chatRepository.sendAiRequest(roomId, fullRequest)
+                .onSuccess { response ->
+                    handleAiResponse(roomId, response)
+                }
+                .onFailure {
+                    _uiState.value = _uiState.value.copy(
+                        isAiLoading = false,
+                        error = "AI 응답에 실패했습니다."
+                    )
+                }
+        }
+    }
+
+    private fun addUserMessage(roomId: String, content: String) {
         val userMsg = ChatMessage(
             id = UUID.randomUUID().toString(),
             roomId = roomId,
@@ -455,44 +508,29 @@ class ChatViewModel @Inject constructor(
             isAiLoading = true,
             showWelcome = false
         )
+    }
 
-        viewModelScope.launch {
-            val location = locationManager.getCurrentLocation()
-            chatRepository.sendAiMessage(
-                roomId = roomId,
-                message = content,
-                conversationId = _uiState.value.aiConversationId,
-                latitude = location?.latitude,
-                longitude = location?.longitude
-            ).onSuccess { response ->
-                val aiMsg = ChatMessage(
-                    id = UUID.randomUUID().toString(),
-                    roomId = roomId,
-                    senderId = "ai-assistant",
-                    senderName = "AI 예약 도우미",
-                    content = response.message,
-                    messageType = MessageType.AI_ASSISTANT,
-                    createdAt = LocalDateTime.now()
-                )
-                val updatedActions = _uiState.value.aiMessageActions.toMutableMap()
-                if (response.actions.isNotEmpty()) {
-                    updatedActions[aiMsg.id] = response.actions
-                }
-                _uiState.value = _uiState.value.copy(
-                    messages = _uiState.value.messages + aiMsg,
-                    isAiLoading = false,
-                    aiConversationId = response.conversationId,
-                    aiConversationState = response.state,
-                    aiMessageActions = updatedActions
-                )
-            }.onFailure { exception ->
-                _uiState.value = _uiState.value.copy(
-                    isAiLoading = false,
-                    messageInput = content, // 입력 복원 (Web 패턴)
-                    error = "AI 응답에 실패했습니다."
-                )
-            }
+    private fun handleAiResponse(roomId: String, response: AiChatResponse) {
+        val aiMsg = ChatMessage(
+            id = UUID.randomUUID().toString(),
+            roomId = roomId,
+            senderId = "ai-assistant",
+            senderName = "AI 예약 도우미",
+            content = response.message,
+            messageType = MessageType.AI_ASSISTANT,
+            createdAt = LocalDateTime.now()
+        )
+        val updatedActions = _uiState.value.aiMessageActions.toMutableMap()
+        if (response.actions.isNotEmpty()) {
+            updatedActions[aiMsg.id] = response.actions
         }
+        _uiState.value = _uiState.value.copy(
+            messages = _uiState.value.messages + aiMsg,
+            isAiLoading = false,
+            aiConversationId = response.conversationId,
+            aiConversationState = response.state,
+            aiMessageActions = updatedActions
+        )
     }
 
     fun getActionsForMessage(messageId: String): List<ChatAction> {

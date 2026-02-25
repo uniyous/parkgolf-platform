@@ -116,7 +116,17 @@ data class AiChatRequest(
     val message: String,
     val conversationId: String? = null,
     val latitude: Double? = null,
-    val longitude: Double? = null
+    val longitude: Double? = null,
+    val selectedClubId: String? = null,
+    val selectedClubName: String? = null,
+    val selectedSlotId: String? = null,
+    val selectedSlotTime: String? = null,
+    val selectedSlotPrice: Int? = null,
+    val confirmBooking: Boolean? = null,
+    val cancelBooking: Boolean? = null,
+    val paymentMethod: String? = null,
+    val paymentComplete: Boolean? = null,
+    val paymentSuccess: Boolean? = null
 )
 
 @Serializable

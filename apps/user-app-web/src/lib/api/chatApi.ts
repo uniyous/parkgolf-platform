@@ -87,8 +87,22 @@ export interface ClubCardData {
 }
 
 export interface SlotCardData {
+  clubName?: string;
+  clubAddress?: string;
   date: string;
   availableCount: number;
+  rounds?: Array<{
+    gameId: number;
+    name: string;
+    price: number;
+    slots: Array<{
+      id: string;
+      time: string;
+      endTime?: string;
+      availableSpots?: number;
+      price: number;
+    }>;
+  }>;
   slots: Array<{
     id: string;
     time: string;

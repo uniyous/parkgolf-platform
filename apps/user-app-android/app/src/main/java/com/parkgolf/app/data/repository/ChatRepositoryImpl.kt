@@ -116,29 +116,52 @@ class ChatRepositoryImpl @Inject constructor(
     ): Result<AiChatResponse> = safeApiCall {
         val request = AiChatRequest(message, conversationId, latitude, longitude)
         chatApi.sendAiMessage(roomId, request).toResult("AI 메시지 전송에 실패했습니다") { dto ->
-            AiChatResponse(
-                conversationId = dto.conversationId,
-                message = dto.message,
-                state = ConversationState.fromValue(dto.state),
-                actions = dto.actions.mapNotNull { actionDto ->
-                    val actionType = ActionType.fromValue(actionDto.type) ?: return@mapNotNull null
-                    val dataMap = actionDto.data?.let { jsonObj ->
-                        jsonObj.entries.associate { (key, value) ->
-                            key to when (value) {
-                                is JsonPrimitive -> when {
-                                    value.isString -> value.content
-                                    value.booleanOrNull != null -> value.booleanOrNull
-                                    value.intOrNull != null -> value.intOrNull
-                                    value.doubleOrNull != null -> value.doubleOrNull
-                                    else -> value.content
-                                }
-                                else -> value.toString()
-                            }
-                        }
-                    } ?: emptyMap()
-                    ChatAction(type = actionType, data = dataMap)
-                }
-            )
+            mapAiChatResponse(dto)
+        }
+    }
+
+    override suspend fun sendAiRequest(
+        roomId: String,
+        request: AiChatRequest
+    ): Result<AiChatResponse> = safeApiCall {
+        chatApi.sendAiMessage(roomId, request).toResult("AI 메시지 전송에 실패했습니다") { dto ->
+            mapAiChatResponse(dto)
+        }
+    }
+
+    private fun mapAiChatResponse(dto: AiChatResponseDto): AiChatResponse {
+        return AiChatResponse(
+            conversationId = dto.conversationId,
+            message = dto.message,
+            state = ConversationState.fromValue(dto.state),
+            actions = dto.actions.mapNotNull { actionDto ->
+                val actionType = ActionType.fromValue(actionDto.type) ?: return@mapNotNull null
+                val dataMap = actionDto.data?.let { jsonObj ->
+                    jsonElementToMap(jsonObj)
+                } ?: emptyMap()
+                ChatAction(type = actionType, data = dataMap)
+            }
+        )
+    }
+
+    private fun jsonElementToAny(element: kotlinx.serialization.json.JsonElement): Any? {
+        return when (element) {
+            is JsonPrimitive -> when {
+                element.isString -> element.content
+                element.booleanOrNull != null -> element.booleanOrNull
+                element.intOrNull != null -> element.intOrNull
+                element.doubleOrNull != null -> element.doubleOrNull
+                else -> element.content
+            }
+            is kotlinx.serialization.json.JsonObject -> jsonElementToMap(element)
+            is kotlinx.serialization.json.JsonArray -> element.map { jsonElementToAny(it) }
+            else -> element.toString()
+        }
+    }
+
+    private fun jsonElementToMap(jsonObj: kotlinx.serialization.json.JsonObject): Map<String, Any?> {
+        return jsonObj.entries.associate { (key, value) ->
+            key to jsonElementToAny(value)
         }
     }
 

@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.LifecycleOwner
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.parkgolf.app.data.remote.dto.chat.AiChatRequest
 import com.parkgolf.app.domain.model.ChatMessage
 import com.parkgolf.app.domain.model.Friend
 import com.parkgolf.app.domain.model.MessageType
@@ -263,11 +264,41 @@ fun ChatRoomScreen(
                                     showLabel = !prevIsAi,
                                     onClubSelect = { clubId, clubName ->
                                         viewModel.selectClub(clubId)
-                                        viewModel.sendAiMessage("${clubName}(으)로 선택할게요")
+                                        viewModel.sendAiFollowUp(AiChatRequest(
+                                            message = "$clubName 선택",
+                                            selectedClubId = clubId,
+                                            selectedClubName = clubName
+                                        ))
                                     },
-                                    onSlotSelect = { slotId, time ->
+                                    onSlotSelect = { slotId, time, price ->
                                         viewModel.selectSlot(slotId)
-                                        viewModel.sendAiMessage("$time 시간으로 예약해주세요")
+                                        viewModel.sendAiFollowUp(AiChatRequest(
+                                            message = "$time 선택",
+                                            selectedSlotId = slotId,
+                                            selectedSlotTime = time,
+                                            selectedSlotPrice = price
+                                        ))
+                                    },
+                                    onConfirmBooking = { paymentMethod ->
+                                        viewModel.sendAiFollowUp(AiChatRequest(
+                                            message = if (paymentMethod == "card") "카드결제로 예약 확인" else "예약 확인",
+                                            confirmBooking = true,
+                                            paymentMethod = paymentMethod
+                                        ))
+                                    },
+                                    onCancelBooking = {
+                                        viewModel.selectSlot("")
+                                        viewModel.sendAiFollowUp(AiChatRequest(
+                                            message = "취소",
+                                            cancelBooking = true
+                                        ))
+                                    },
+                                    onPaymentComplete = { success ->
+                                        viewModel.sendAiFollowUp(AiChatRequest(
+                                            message = if (success) "결제 완료" else "결제 취소",
+                                            paymentComplete = true,
+                                            paymentSuccess = success
+                                        ))
                                     },
                                     selectedClubId = uiState.selectedClubId,
                                     selectedSlotId = uiState.selectedSlotId

@@ -121,6 +121,9 @@ export class ToolExecutorService {
       case 'get_weather':
         return this.getWeather(toolCall.args);
 
+      case 'get_weather_by_location':
+        return this.getWeatherByLocation(toolCall.args);
+
       case 'get_available_slots':
         return this.getAvailableSlots(toolCall.args);
 
@@ -373,6 +376,67 @@ export class ToolExecutorService {
   }
 
   /**
+   * 지역명으로 날씨 정보 조회
+   * location.search.address → 좌표 추출 → weather.forecast
+   */
+  private async getWeatherByLocation(args: Record<string, unknown>): Promise<unknown> {
+    const { location, date } = args as { location: string; date: string };
+
+    // 1. 지역명 → 좌표 변환
+    const addrResponse = await firstValueFrom(
+      this.locationClient.send('location.search.address', { query: location }).pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError((err: any) => {
+          throw new Error(`Failed to search address: ${err.message}`);
+        }),
+      ),
+    );
+
+    let lat = 36.5;
+    let lon = 127.0;
+    let resolvedLocation = location;
+
+    if (addrResponse?.success && addrResponse?.data?.addresses?.length > 0) {
+      const addr = addrResponse.data.addresses[0];
+      lat = addr.coordinates.latitude;
+      lon = addr.coordinates.longitude;
+      resolvedLocation = addr.region1
+        ? `${addr.region1} ${addr.region2 || ''}`.trim()
+        : location;
+    }
+
+    // 2. 날씨 조회
+    const weatherResponse = await firstValueFrom(
+      this.weatherClient.send('weather.forecast', { lat, lon, date }).pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError((err: any) => {
+          throw new Error(`Failed to get weather: ${err.message}`);
+        }),
+      ),
+    );
+
+    if (weatherResponse?.success && weatherResponse?.data) {
+      const weather = weatherResponse.data;
+      return {
+        date,
+        location: resolvedLocation,
+        temperature: weather.temperature,
+        humidity: weather.humidity,
+        sky: weather.sky,
+        precipitation: weather.precipitation,
+        windSpeed: weather.windSpeed,
+        recommendation: this.getWeatherRecommendation(weather),
+      };
+    }
+
+    return {
+      date,
+      location: resolvedLocation,
+      message: '날씨 정보를 가져올 수 없습니다',
+    };
+  }
+
+  /**
    * 예약 가능 슬롯 조회
    * games.search NATS 패턴을 사용하여 clubId + date로 조회
    */
@@ -404,33 +468,53 @@ export class ToolExecutorService {
     );
 
     if (response?.success && response?.data?.length) {
-      // 모든 게임의 타임슬롯을 하나의 배열로 합침
+      // 골프장 정보 추출
+      const firstGame = response.data[0];
+      const club = firstGame.club;
+
+      // 게임 라운드별 그룹핑
+      const rounds: any[] = [];
       const allSlots: any[] = [];
+
       for (const game of response.data) {
         const slots = game.timeSlots || [];
-        for (const slot of slots) {
-          allSlots.push({
-            id: slot.id,
-            time: slot.startTime,
-            endTime: slot.endTime,
-            availableSpots: slot.availablePlayers ?? (slot.maxPlayers - slot.bookedPlayers),
-            price: Number(slot.price),
-            courseName: game.name,
-          });
+        if (slots.length === 0) continue;
+
+        const roundSlots = slots.map((slot: any) => ({
+          id: slot.id,
+          time: slot.startTime,
+          endTime: slot.endTime,
+          availableSpots: slot.availablePlayers ?? (slot.maxPlayers - slot.bookedPlayers),
+          price: Number(slot.price),
+        }));
+        roundSlots.sort((a: any, b: any) => a.time.localeCompare(b.time));
+
+        rounds.push({
+          gameId: game.id,
+          name: game.name,
+          price: Number(roundSlots[0]?.price || 0),
+          slots: roundSlots,
+        });
+
+        // 하위 호환용 flat 목록
+        for (const slot of roundSlots) {
+          allSlots.push({ ...slot, courseName: game.name });
         }
       }
 
-      // 시간순 정렬
       allSlots.sort((a, b) => a.time.localeCompare(b.time));
 
       return {
+        clubName: club?.name || '',
+        clubAddress: club?.address || '',
         date,
         availableCount: allSlots.length,
+        rounds,
         slots: allSlots.slice(0, 10),
       };
     }
 
-    return { date, availableCount: 0, slots: [] };
+    return { date, availableCount: 0, rounds: [], slots: [] };
   }
 
   /**

@@ -465,6 +465,7 @@ export class BookingAgentService {
           break;
 
         case 'get_weather':
+        case 'get_weather_by_location':
           actions.push({
             type: 'SHOW_WEATHER',
             data: result.result,

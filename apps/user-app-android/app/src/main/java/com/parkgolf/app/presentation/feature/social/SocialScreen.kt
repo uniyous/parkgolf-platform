@@ -126,7 +126,13 @@ fun SocialScreen(
                     selectedTab = selectedMainTab,
                     pendingRequestsCount = uiState.friendRequests.size + uiState.sentFriendRequests.size,
                     unreadChatCount = uiState.totalUnreadCount,
-                    onTabSelected = { selectedMainTab = it }
+                    onTabSelected = { tab ->
+                        selectedMainTab = tab
+                        when (tab) {
+                            SocialMainTab.FRIENDS -> viewModel.loadFriendsData()
+                            SocialMainTab.CHAT -> viewModel.loadChatRooms()
+                        }
+                    }
                 )
 
                 // Content
@@ -300,7 +306,10 @@ private fun FriendsContent(
         FriendSubTabRow(
             selectedTab = selectedSubTab,
             requestsCount = uiState.friendRequests.size + uiState.sentFriendRequests.size,
-            onTabSelected = { selectedSubTab = it }
+            onTabSelected = { tab ->
+                    selectedSubTab = tab
+                    viewModel.loadFriendsData()
+                }
         )
 
         Spacer(modifier = Modifier.height(16.dp))

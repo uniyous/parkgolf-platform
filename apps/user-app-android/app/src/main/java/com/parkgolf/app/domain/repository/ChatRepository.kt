@@ -51,6 +51,11 @@ interface ChatRepository {
         longitude: Double? = null
     ): Result<AiChatResponse>
 
+    suspend fun sendAiRequest(
+        roomId: String,
+        request: com.parkgolf.app.data.remote.dto.chat.AiChatRequest
+    ): Result<AiChatResponse>
+
     // Socket operations
     fun connect(token: String)
     fun disconnect()

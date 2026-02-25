@@ -49,6 +49,8 @@ export class DeepSeekService implements OnModuleInit {
 - 사용자가 날짜를 언급한 경우 search_clubs 대신 search_clubs_with_slots를 사용하세요
 - 날짜 없이 지역만 물어보면 기존 search_clubs를 사용하세요
 - 사용자가 인원수를 언급하면 search_clubs_with_slots의 playerCount 파라미터에 포함하세요
+- 사용자가 날씨만 물어볼 때(예약 의도 없이)는 get_weather_by_location을 사용하세요
+- 특정 골프장의 날씨를 물어보면 get_weather(clubId 필요)를 사용하세요
 
 날짜 해석:
 - "내일" → 오늘 날짜 + 1일
@@ -117,7 +119,7 @@ export class DeepSeekService implements OnModuleInit {
       type: 'function',
       function: {
         name: 'get_weather',
-        description: '특정 골프장의 날씨 정보를 조회합니다',
+        description: '특정 골프장의 날씨 정보를 조회합니다. clubId를 알고 있을 때 사용합니다.',
         parameters: {
           type: 'object',
           properties: {
@@ -125,6 +127,21 @@ export class DeepSeekService implements OnModuleInit {
             date: { type: 'string', description: '조회할 날짜 (YYYY-MM-DD 형식)' },
           },
           required: ['clubId', 'date'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'get_weather_by_location',
+        description: '지역명으로 날씨 정보를 조회합니다. 사용자가 특정 지역의 날씨를 물어볼 때 사용합니다. (예: "천안 내일 날씨", "대전 날씨 어때?")',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string', description: '지역명 (예: 천안, 서울, 대전)' },
+            date: { type: 'string', description: '조회할 날짜 (YYYY-MM-DD 형식)' },
+          },
+          required: ['location', 'date'],
         },
       },
     },

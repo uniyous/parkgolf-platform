@@ -234,9 +234,42 @@ interface ChatAction {
 
 ### 카드 데이터 예시
 
-**SHOW_CLUBS**: `{ found, clubs: [{ id, name, address, region }] }`
+**SHOW_CLUBS**:
+```json
+{ "found": 3, "clubs": [{ "id": 1, "name": "한밭파크골프장", "address": "대전시...", "region": "대전" }] }
+```
 
-**SHOW_SLOTS**: `{ date, availableCount, slots: [{ id, time, endTime, availableSpots, price, courseName }] }`
+**SHOW_SLOTS** (라운드 그룹핑 + 골프장 정보):
+```json
+{
+  "clubName": "한밭파크골프장",
+  "clubAddress": "대전광역시 유성구...",
+  "date": "2026-02-26",
+  "availableCount": 8,
+  "rounds": [
+    {
+      "gameId": 1,
+      "name": "A코스 오전",
+      "price": 15000,
+      "slots": [
+        { "id": 1, "time": "09:00", "endTime": "10:30", "availableSpots": 4, "price": 15000 },
+        { "id": 2, "time": "09:30", "endTime": "11:00", "availableSpots": 3, "price": 15000 }
+      ]
+    },
+    {
+      "gameId": 2,
+      "name": "B코스 오후",
+      "price": 20000,
+      "slots": [
+        { "id": 5, "time": "14:00", "endTime": "15:30", "availableSpots": 4, "price": 20000 }
+      ]
+    }
+  ],
+  "slots": [...]
+}
+```
+> `rounds`: 게임 라운드별 그룹핑 (프론트엔드 카드 렌더링용)
+> `slots`: 하위 호환용 flat 목록 (LLM 컨텍스트 / 레거시 클라이언트)
 
 **CONFIRM_BOOKING**: `{ clubName, date, time, playerCount, price }`
 
@@ -246,7 +279,190 @@ interface ChatAction {
 
 ---
 
-## 8. 결제 원샷 플로우
+## 8. 프론트엔드 UI 카드 렌더링
+
+agent-service가 반환한 `actions[]`를 프론트엔드가 채팅 버블 안에 카드로 렌더링.
+
+### 8.1 렌더링 흐름
+
+```
+agent-service 응답
+  → { message, actions: [{ type, data }] }
+  → 채팅 메시지 목록에 AI 메시지 추가
+  → actions[]을 messageId에 매핑하여 저장
+  → AiMessageBubble 렌더링 시 action.type별 카드 컴포넌트 분기
+```
+
+```
+AiMessageBubble
+  ├─ 텍스트 메시지 (message)
+  └─ actions.forEach { action →
+       when (action.type)
+         SHOW_CLUBS      → ClubCard
+         SHOW_SLOTS      → SlotCard
+         SHOW_WEATHER    → WeatherCard
+         CONFIRM_BOOKING → ConfirmBookingCard
+         SHOW_PAYMENT    → PaymentCard
+         BOOKING_COMPLETE → BookingCompleteCard
+     }
+```
+
+### 8.2 카드별 UI 구조
+
+#### ClubCard (SHOW_CLUBS)
+
+골프장 목록을 수직 스택으로 표시. 각 카드에 "선택" 버튼.
+
+```
+┌──────────────────────────────────────┐
+│ 한밭파크골프장                [선택] │
+│ 📍 대전광역시 유성구 한밭로 123      │
+├──────────────────────────────────────┤
+│ 강남파크골프                 [선택] │
+│ 📍 서울특별시 강남구 ...            │
+└──────────────────────────────────────┘
+```
+
+- 선택 시: 선택된 카드에 체크 아이콘, 나머지 비활성화 (alpha=0.5)
+- 클릭 → 구조화 요청: `{ selectedClubId, selectedClubName }` (Direct Handler)
+
+#### SlotCard (SHOW_SLOTS)
+
+골프장 정보 헤더 + 게임 라운드별 그룹 + 타임슬롯 칩.
+
+```
+┌──────────────────────────────────────┐
+│ ⛳ 한밭파크골프장                     │
+│ 📍 대전광역시 유성구 한밭로 123       │
+│ 📅 2026년 2월 26일 (목)              │
+├──────────────────────────────────────┤
+│ A코스 오전                  ₩15,000 │
+│ ┌──────────┐ ┌──────────┐           │
+│ │ 09:00 4명│ │ 09:30 3명│           │
+│ └──────────┘ └──────────┘           │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ B코스 오후                  ₩20,000 │
+│ ┌──────────┐ ┌──────────┐           │
+│ │ 14:00 4명│ │ 14:30 4명│           │
+│ └──────────┘ └──────────┘           │
+└──────────────────────────────────────┘
+```
+
+- 라운드 헤더: 라운드명 (좌) + 이용금액 (우)
+- 타임슬롯 칩: 시간 + 예약가능 인원 (FlowRow 배치)
+- 선택 시: 체크 아이콘 + 하이라이트, 나머지 비활성화
+- 클릭 → 구조화 요청: `{ selectedSlotId, selectedSlotTime, selectedSlotPrice }` (Direct Handler)
+- `rounds` 없으면 하위 호환 flat `slots` 2열 그리드로 폴백
+
+#### WeatherCard (SHOW_WEATHER)
+
+```
+┌──────────────────────────────────────┐
+│ ☀️ 18°C 맑음                         │
+│ 골프 치기 좋은 날씨예요!              │
+└──────────────────────────────────────┘
+```
+
+- 날씨 아이콘 (비/맑음/흐림) + 기온 + 추천 메시지
+
+#### ConfirmBookingCard (CONFIRM_BOOKING)
+
+예약 정보 확인 + 결제방법 선택 + 확인/취소 버튼.
+
+```
+┌──────────────────────────────────────┐
+│ 예약 정보 확인                        │
+│ 📍 한밭파크골프장                     │
+│ 📅 2026-02-26 (목)                   │
+│ 🕐 09:00                             │
+│ 👥 2명                               │
+│ 💳 ₩30,000                           │
+│                                      │
+│ 결제방법                              │
+│ ┌──────────┐ ┌──────────┐           │
+│ │ 🏪 현장결제│ │ 💳 카드결제│           │
+│ └──────────┘ └──────────┘           │
+│                                      │
+│ ┌──────┐ ┌──────────┐               │
+│ │ 취소  │ │ 예약 확인  │               │
+│ └──────┘ └──────────┘               │
+└──────────────────────────────────────┘
+```
+
+- 무료(price=0)일 때 결제방법 UI 숨김, 자동으로 `onsite` 전달
+- 확인 클릭 → `onConfirm(paymentMethod)` → 구조화 요청: `{ confirmBooking: true, paymentMethod }`
+- 취소 클릭 → `onCancel()` → 구조화 요청: `{ cancelBooking: true }`
+
+#### PaymentCard (SHOW_PAYMENT)
+
+카드결제 시 표시되는 결제 카드. 10분 타이머 포함.
+
+```
+┌──────────────────────────────────────┐
+│ 💳 카드결제                           │
+│ 📍 한밭파크골프장                     │
+│ 📅 2026-02-26 (목) 09:00             │
+│ 👥 2명                               │
+│ 💰 ₩30,000                           │
+│                                      │
+│ ┌────────────────────────────┐      │
+│ │ ⏱ 결제 제한시간: 09:45 남음 │      │
+│ └────────────────────────────┘      │
+│                                      │
+│ ┌──────┐ ┌──────────┐               │
+│ │예약취소│ │ 결제하기  │               │
+│ └──────┘ └──────────┘               │
+└──────────────────────────────────────┘
+```
+
+- 10분 카운트다운 (1분 미만 시 노란색, 만료 시 빨간색)
+- 만료 시 → `onPaymentComplete(false)` 자동 호출
+- 결제하기 클릭 → Toss Payments SDK 호출 → `onPaymentComplete(true/false)`
+- 예약취소 클릭 → `onPaymentComplete(false)`
+
+#### BookingCompleteCard (BOOKING_COMPLETE)
+
+```
+┌──────────────────────────────────────┐
+│ ✅ 예약 완료                          │
+│ 🏷️ 예약번호  PG-20260226-001         │
+│ 📅 2026.02.26  09:00                 │
+│ 👥 4명                               │
+│ 💳 ₩60,000                           │
+└──────────────────────────────────────┘
+```
+
+- 예약 확인 정보 (번호, 날짜, 시간, 인원, 금액)
+
+### 8.3 카드 인터랙션 → 백엔드 연동
+
+| 사용자 액션 | 구조화 요청 필드 | 백엔드 경로 |
+|-------------|----------------|------------|
+| ClubCard 클릭 | `selectedClubId`, `selectedClubName` | Direct: handleDirectClubSelect |
+| SlotCard 칩 클릭 | `selectedSlotId`, `selectedSlotTime`, `selectedSlotPrice` | Direct: handleDirectSlotSelect |
+| 예약 확인 버튼 | `confirmBooking=true`, `paymentMethod` | Direct: handleDirectBooking |
+| 예약 취소 버튼 | `cancelBooking=true` | Direct: handleCancelBooking |
+| 결제 완료 콜백 | `paymentComplete=true`, `paymentSuccess` | Direct: handlePaymentComplete |
+
+> 모든 카드 인터랙션은 구조화 필드를 포함하여 **Direct Handler**로 즉시 처리 (~100ms).
+> LLM 경로는 자연어 텍스트 입력에만 사용.
+
+### 8.4 컴포넌트 파일 위치
+
+| 플랫폼 | 경로 |
+|--------|------|
+| Web | `apps/user-app-web/src/components/features/chat/cards/{ClubCard,SlotCard,WeatherCard,ConfirmBookingCard,PaymentCard,BookingCompleteCard}.tsx` |
+| Web | `apps/user-app-web/src/components/features/chat/AiMessageBubble.tsx` (카드 분기) |
+| Web | `apps/user-app-web/src/pages/ChatRoomPage.tsx` (콜백 연결) |
+| Web | `apps/user-app-web/src/hooks/useAiChat.ts` (구조화 요청 전송) |
+| Android | `apps/user-app-android/.../chat/components/cards/{ClubCard,SlotCard,WeatherCard,ConfirmBookingCard,PaymentCard,BookingCompleteCard}.kt` |
+| Android | `apps/user-app-android/.../chat/components/AiMessageBubble.kt` (카드 분기) |
+| Android | `apps/user-app-android/.../chat/ChatViewModel.kt` (상태 관리 + sendAiFollowUp) |
+| Android | `apps/user-app-android/.../chat/ChatRoomScreen.kt` (콜백 연결) |
+
+---
+
+## 9. 결제 원샷 플로우
 
 카드결제 시 Agent가 `booking.create` → Saga 폴링 → `payment.prepare`를 한 번에 처리하여, 프론트엔드는 orderId가 포함된 SHOW_PAYMENT 카드만 받으면 바로 Toss 결제위젯을 띄울 수 있음.
 
@@ -283,7 +499,7 @@ sequenceDiagram
 
 ---
 
-## 9. NATS 메시지 패턴
+## 10. NATS 메시지 패턴
 
 ### Inbound (agent-service가 수신)
 
@@ -311,7 +527,7 @@ sequenceDiagram
 
 ---
 
-## 10. 세션 관리
+## 11. 세션 관리
 
 | 항목 | 값 |
 |------|-----|
@@ -340,7 +556,7 @@ sequenceDiagram
 
 ---
 
-## 11. 전체 예약 플로우 (요약)
+## 12. 전체 예약 플로우 (요약)
 
 ```
 ① 사용자: "내일 강남 근처 골프장 알려줘"
@@ -364,4 +580,4 @@ sequenceDiagram
 
 ---
 
-**Last Updated**: 2026-02-24
+**Last Updated**: 2026-02-25

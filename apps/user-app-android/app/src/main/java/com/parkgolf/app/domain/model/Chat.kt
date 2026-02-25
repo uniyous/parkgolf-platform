@@ -138,6 +138,7 @@ enum class ActionType(val value: String) {
     SHOW_SLOTS("SHOW_SLOTS"),
     SHOW_WEATHER("SHOW_WEATHER"),
     CONFIRM_BOOKING("CONFIRM_BOOKING"),
+    SHOW_PAYMENT("SHOW_PAYMENT"),
     BOOKING_COMPLETE("BOOKING_COMPLETE");
 
     companion object {

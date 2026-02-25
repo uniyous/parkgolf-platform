@@ -20,6 +20,8 @@ import com.parkgolf.app.domain.model.ActionType
 import com.parkgolf.app.domain.model.ChatAction
 import com.parkgolf.app.presentation.feature.chat.components.cards.BookingCompleteCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.ClubCard
+import com.parkgolf.app.presentation.feature.chat.components.cards.ConfirmBookingCard
+import com.parkgolf.app.presentation.feature.chat.components.cards.PaymentCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.SlotCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.WeatherCard
 import com.parkgolf.app.presentation.theme.ParkOnPrimary
@@ -34,7 +36,10 @@ fun AiMessageBubble(
     createdAt: LocalDateTime,
     showLabel: Boolean = true,
     onClubSelect: ((String, String) -> Unit)? = null,
-    onSlotSelect: ((String, String) -> Unit)? = null,
+    onSlotSelect: ((String, String, Int) -> Unit)? = null,
+    onConfirmBooking: ((String) -> Unit)? = null,
+    onCancelBooking: (() -> Unit)? = null,
+    onPaymentComplete: ((Boolean) -> Unit)? = null,
     selectedClubId: String? = null,
     selectedSlotId: String? = null
 ) {
@@ -123,7 +128,15 @@ fun AiMessageBubble(
                                 selectedSlotId = selectedSlotId
                             )
                             ActionType.SHOW_WEATHER -> WeatherCard(data = action.data)
-                            ActionType.CONFIRM_BOOKING -> {} // Handled by text
+                            ActionType.CONFIRM_BOOKING -> ConfirmBookingCard(
+                                data = action.data,
+                                onConfirm = onConfirmBooking,
+                                onCancel = onCancelBooking
+                            )
+                            ActionType.SHOW_PAYMENT -> PaymentCard(
+                                data = action.data,
+                                onPaymentComplete = onPaymentComplete
+                            )
                             ActionType.BOOKING_COMPLETE -> BookingCompleteCard(data = action.data)
                         }
                     }
