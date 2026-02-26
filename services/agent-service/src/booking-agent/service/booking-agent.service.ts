@@ -44,6 +44,7 @@ export class BookingAgentService {
     }
 
     // ── Direct Handling (LLM 없음) ──
+    if (request.splitPaymentComplete) return this.handleSplitPaymentComplete(context, request);
     if (request.paymentComplete) return this.handlePaymentComplete(context, request);
     if (request.confirmGroupBooking) return this.handleGroupBookingConfirm(context, request);
     if (request.confirmBooking) return this.handleDirectBooking(context, request);
@@ -335,6 +336,83 @@ export class BookingAgentService {
   }
 
   /**
+   * 분할결제 완료 → 갱신된 정산 카드 반환
+   */
+  private async handleSplitPaymentComplete(
+    context: ConversationContext,
+    request: ChatRequestDto,
+  ): Promise<ChatResponseDto> {
+    const { bookingGroupId, bookerId } = context.slots;
+
+    if (!bookingGroupId) {
+      const message = '정산 정보를 찾을 수 없어요. 다시 시도해 주세요.';
+      this.conversationService.addAssistantMessage(context, message);
+      return {
+        conversationId: context.conversationId,
+        message,
+        state: context.state,
+      };
+    }
+
+    // 최신 분할결제 상태 조회
+    const splitStatus = await this.toolExecutor.getSplitStatus(bookingGroupId);
+
+    if (!splitStatus) {
+      const message = '정산 상태를 조회할 수 없어요.';
+      this.conversationService.addAssistantMessage(context, message);
+      return {
+        conversationId: context.conversationId,
+        message,
+        state: context.state,
+      };
+    }
+
+    const participants = splitStatus.splits || [];
+    const totalParticipants = participants.length;
+    const paidCount = participants.filter((s: any) => s.status === 'PAID').length;
+    const pricePerPerson = participants[0]?.amount || 0;
+    const allPaid = paidCount === totalParticipants;
+
+    const actions: ChatAction[] = [{
+      type: 'SETTLEMENT_STATUS',
+      data: {
+        groupNumber: splitStatus.groupNumber || '',
+        bookingGroupId,
+        bookerId: bookerId || 0,
+        totalParticipants,
+        pricePerPerson,
+        totalPrice: totalParticipants * pricePerPerson,
+        paidCount,
+        participants: participants.map((s: any) => ({
+          userId: s.userId,
+          userName: s.userName,
+          orderId: s.orderId || '',
+          amount: s.amount || pricePerPerson,
+          status: s.status,
+          expiredAt: s.expiredAt || '',
+        })),
+      },
+    }];
+
+    let message: string;
+    if (allPaid) {
+      message = '모든 참여자의 결제가 완료되었어요!';
+      this.conversationService.setState(context, 'COMPLETED');
+    } else {
+      message = `결제가 확인되었어요. (${paidCount}/${totalParticipants})`;
+    }
+
+    this.conversationService.addAssistantMessage(context, message);
+
+    return {
+      conversationId: context.conversationId,
+      message,
+      state: context.state,
+      actions,
+    };
+  }
+
+  /**
    * 복수 슬롯 선택 → 결제방법 선택 카드(CONFIRM_GROUP) 표시
    */
   private handleMultiSlotSelect(
@@ -577,19 +655,20 @@ export class BookingAgentService {
     } else {
       // 더치페이 → 분할결제 준비
       const totalParticipants = teams.reduce((sum, t) => sum + t.members.length, 0);
-      const allParticipants = teams.flatMap((t) =>
-        t.members.map((m) => ({
-          userId: m.userId,
-          userName: m.userName,
-          userEmail: m.userEmail,
-          amount: pricePerPerson,
-        })),
-      );
 
-      // 각 Booking별로 분할결제 준비
+      // 각 Booking별로 분할결제 준비 + 결과 수집
+      const allSplits: Array<{
+        userId: number;
+        userName: string;
+        orderId: string;
+        amount: number;
+        status: string;
+        expiredAt: string;
+      }> = [];
+
       for (const booking of groupResult.bookings) {
         const teamMembers = teams.find((t) => Number(t.slotId) === booking.gameTimeSlotId)?.members || [];
-        await this.toolExecutor.prepareSplitPayment({
+        const splitResult = await this.toolExecutor.prepareSplitPayment({
           bookingGroupId: groupResult.group.id,
           bookingId: booking.id,
           participants: teamMembers.map((m) => ({
@@ -599,24 +678,70 @@ export class BookingAgentService {
             amount: pricePerPerson,
           })),
         });
+
+        if (splitResult?.splits) {
+          allSplits.push(...splitResult.splits.map((s: any) => ({
+            userId: s.userId,
+            userName: s.userName || teamMembers.find((m) => m.userId === s.userId)?.userName || '',
+            orderId: s.orderId,
+            amount: s.amount || pricePerPerson,
+            status: s.status || 'PENDING',
+            expiredAt: s.expiredAt || '',
+          })));
+        } else {
+          // splitPrepare가 splits를 반환하지 않은 경우 폴백
+          for (const m of teamMembers) {
+            allSplits.push({
+              userId: m.userId,
+              userName: m.userName,
+              orderId: '',
+              amount: pricePerPerson,
+              status: 'PENDING',
+              expiredAt: '',
+            });
+          }
+        }
       }
+
+      // bookerId 저장
+      this.conversationService.updateSlots(context, { bookerId: request.userId });
 
       actions.push({
         type: 'SETTLEMENT_STATUS',
         data: {
           groupNumber: groupResult.group.groupNumber,
           bookingGroupId: groupResult.group.id,
+          bookerId: request.userId,
           totalParticipants,
           pricePerPerson,
           totalPrice: totalParticipants * pricePerPerson,
           paidCount: 0,
-          participants: allParticipants.map((p) => ({
-            userId: p.userId,
-            userName: p.userName,
-            status: 'PENDING',
+          participants: allSplits.map((s) => ({
+            userId: s.userId,
+            userName: s.userName,
+            orderId: s.orderId,
+            amount: s.amount,
+            status: s.status,
+            expiredAt: s.expiredAt,
           })),
         },
       });
+
+      // 부커 제외 참여자에게 푸시 알림 발송
+      const otherParticipants = allSplits.filter((s) => s.userId !== request.userId);
+      if (otherParticipants.length > 0) {
+        this.toolExecutor.emitSplitPaymentNotification({
+          bookerId: request.userId,
+          bookerName: request.userName || '',
+          bookingGroupId: groupResult.group.id,
+          chatRoomId: chatRoomId || '',
+          participants: otherParticipants.map((s) => ({
+            userId: s.userId,
+            userName: s.userName,
+            amount: s.amount,
+          })),
+        });
+      }
 
       message = `그룹 예약이 생성되었어요! 참여자들에게 개별 결제 요청이 전송됩니다.`;
       this.conversationService.setState(context, 'SETTLING');

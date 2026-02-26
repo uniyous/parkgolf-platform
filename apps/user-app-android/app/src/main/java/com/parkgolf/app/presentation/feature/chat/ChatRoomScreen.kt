@@ -264,6 +264,7 @@ fun ChatRoomScreen(
                                     actions = viewModel.getActionsForMessage(message.id),
                                     createdAt = message.createdAt,
                                     showLabel = !prevIsAi,
+                                    currentUserId = uiState.currentUserId?.toIntOrNull(),
                                     onClubSelect = { clubId, clubName ->
                                         viewModel.selectClub(clubId)
                                         viewModel.sendAiFollowUp(AiChatRequest(
@@ -329,6 +330,13 @@ fun ChatRoomScreen(
                                                 )
                                             },
                                             confirmGroupBooking = true
+                                        ))
+                                    },
+                                    onSplitPaymentComplete = { success, orderId ->
+                                        viewModel.sendAiFollowUp(AiChatRequest(
+                                            message = if (success) "결제 완료" else "결제 실패",
+                                            splitPaymentComplete = true,
+                                            splitOrderId = orderId
                                         ))
                                     },
                                     selectedClubId = uiState.selectedClubId,

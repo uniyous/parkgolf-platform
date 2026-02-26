@@ -16,6 +16,7 @@ interface AiMessageBubbleProps {
   actions?: ChatAction[];
   createdAt: string;
   showLabel?: boolean;
+  currentUserId?: number;
   onClubSelect?: (clubId: string, clubName: string) => void;
   onSlotSelect?: (slotId: string, time: string, price: number, clubId?: string, clubName?: string) => void;
   onConfirmBooking?: (paymentMethod: 'onsite' | 'card') => void;
@@ -24,6 +25,7 @@ interface AiMessageBubbleProps {
   onConfirmGroup?: (paymentMethod: string) => void;
   onCancelGroup?: () => void;
   onTeamConfirm?: (teams: Array<{ teamNumber: number; slotId: string; members: TeamMember[] }>) => void;
+  onSplitPaymentComplete?: (success: boolean, orderId: string) => void;
   selectedClubId?: string | null;
   selectedSlotId?: string | null;
 }
@@ -33,6 +35,7 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   actions,
   createdAt,
   showLabel = true,
+  currentUserId,
   onClubSelect,
   onSlotSelect,
   onConfirmBooking,
@@ -41,6 +44,7 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   onConfirmGroup,
   onCancelGroup,
   onTeamConfirm,
+  onSplitPaymentComplete,
   selectedClubId,
   selectedSlotId,
 }) => {
@@ -118,7 +122,11 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                   />
                 )}
                 {action.type === 'SETTLEMENT_STATUS' && (
-                  <SettlementStatusCard data={action.data as SettlementStatusData} />
+                  <SettlementStatusCard
+                    data={action.data as SettlementStatusData}
+                    currentUserId={currentUserId}
+                    onSplitPaymentComplete={onSplitPaymentComplete}
+                  />
                 )}
               </div>
             ))}

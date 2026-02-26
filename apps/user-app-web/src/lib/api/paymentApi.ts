@@ -36,6 +36,12 @@ export interface PaymentStatusResponse {
   bookingId: number | null;
 }
 
+export interface ConfirmSplitPaymentRequest {
+  paymentKey: string;
+  orderId: string;
+  amount: number;
+}
+
 export const paymentApi = {
   preparePayment: async (data: PreparePaymentRequest): Promise<PreparePaymentResponse> => {
     const response = await apiClient.post<BffResponse<PreparePaymentResponse>>(
@@ -48,6 +54,14 @@ export const paymentApi = {
   confirmPayment: async (data: ConfirmPaymentRequest): Promise<ConfirmPaymentResponse> => {
     const response = await apiClient.post<BffResponse<ConfirmPaymentResponse>>(
       '/api/user/payments/confirm',
+      data,
+    );
+    return unwrapResponse(response.data);
+  },
+
+  confirmSplitPayment: async (data: ConfirmSplitPaymentRequest): Promise<ConfirmPaymentResponse> => {
+    const response = await apiClient.post<BffResponse<ConfirmPaymentResponse>>(
+      '/api/user/payments/split/confirm',
       data,
     );
     return unwrapResponse(response.data);

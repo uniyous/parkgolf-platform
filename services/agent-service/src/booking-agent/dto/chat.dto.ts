@@ -107,6 +107,16 @@ export class ChatRequestDto {
   @IsOptional()
   @IsBoolean()
   confirmGroupBooking?: boolean;
+
+  // ── 분할결제 완료 필드 ──
+
+  @IsOptional()
+  @IsBoolean()
+  splitPaymentComplete?: boolean;
+
+  @IsOptional()
+  @IsString()
+  splitOrderId?: string;
 }
 
 /**
@@ -205,6 +215,7 @@ export interface BookingSlots {
   // 그룹 예약
   chatRoomId?: string;
   bookingGroupId?: number;
+  bookerId?: number;
   selectedSlots?: Array<{
     slotId: string;
     slotTime: string;

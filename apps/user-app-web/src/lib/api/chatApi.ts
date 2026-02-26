@@ -204,6 +204,7 @@ export interface SelectParticipantsData {
 export interface SettlementStatusData {
   groupNumber: string;
   bookingGroupId: number;
+  bookerId?: number;
   totalParticipants: number;
   pricePerPerson: number;
   totalPrice: number;
@@ -211,7 +212,10 @@ export interface SettlementStatusData {
   participants: Array<{
     userId: number;
     userName: string;
+    orderId?: string;
+    amount?: number;
     status: 'PENDING' | 'PAID' | 'CANCELLED';
+    expiredAt?: string;
   }>;
 }
 
@@ -243,6 +247,9 @@ export interface AiChatRequest {
     members: TeamMember[];
   }>;
   confirmGroupBooking?: boolean;
+  // 분할결제 완료
+  splitPaymentComplete?: boolean;
+  splitOrderId?: string;
 }
 
 // ============================================

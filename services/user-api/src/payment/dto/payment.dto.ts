@@ -42,3 +42,21 @@ export class ConfirmPaymentDto {
   @Min(1)
   amount: number;
 }
+
+export class ConfirmSplitPaymentDto {
+  @ApiProperty({ description: '토스 paymentKey', example: 'tgen_20240101...' })
+  @IsString()
+  @IsNotEmpty()
+  paymentKey: string;
+
+  @ApiProperty({ description: '분할결제 주문 ID', example: 'SPLIT-20240101-abc123' })
+  @IsString()
+  @IsNotEmpty()
+  orderId: string;
+
+  @ApiProperty({ description: '결제 금액', example: 15000 })
+  @IsNumber()
+  @IsNotEmpty()
+  @Min(1)
+  amount: number;
+}

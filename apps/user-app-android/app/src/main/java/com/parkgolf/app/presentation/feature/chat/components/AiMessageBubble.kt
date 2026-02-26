@@ -39,6 +39,7 @@ fun AiMessageBubble(
     actions: List<ChatAction>,
     createdAt: LocalDateTime,
     showLabel: Boolean = true,
+    currentUserId: Int? = null,
     onClubSelect: ((String, String) -> Unit)? = null,
     onSlotSelect: ((slotId: String, time: String, price: Int, clubId: String?, clubName: String?) -> Unit)? = null,
     onConfirmBooking: ((String) -> Unit)? = null,
@@ -47,6 +48,7 @@ fun AiMessageBubble(
     onConfirmGroup: ((String) -> Unit)? = null,
     onCancelGroup: (() -> Unit)? = null,
     onTeamConfirm: ((List<TeamConfirmData>) -> Unit)? = null,
+    onSplitPaymentComplete: ((Boolean, String) -> Unit)? = null,
     selectedClubId: String? = null,
     selectedSlotId: String? = null
 ) {
@@ -159,7 +161,11 @@ fun AiMessageBubble(
                                 onConfirm = onTeamConfirm,
                                 onCancel = onCancelGroup
                             )
-                            ActionType.SETTLEMENT_STATUS -> SettlementStatusCard(data = action.data)
+                            ActionType.SETTLEMENT_STATUS -> SettlementStatusCard(
+                                data = action.data,
+                                currentUserId = currentUserId,
+                                onSplitPaymentComplete = onSplitPaymentComplete
+                            )
                             ActionType.SPLIT_PAYMENT -> { /* handled by settlement status */ }
                         }
                     }

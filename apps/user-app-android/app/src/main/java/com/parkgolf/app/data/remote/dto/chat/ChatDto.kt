@@ -130,7 +130,10 @@ data class AiChatRequest(
     // 그룹 예약
     val selectedSlots: List<SelectedSlotDto>? = null,
     val teams: List<TeamDto>? = null,
-    val confirmGroupBooking: Boolean? = null
+    val confirmGroupBooking: Boolean? = null,
+    // 분할결제 완료
+    val splitPaymentComplete: Boolean? = null,
+    val splitOrderId: String? = null
 )
 
 @Serializable

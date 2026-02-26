@@ -259,6 +259,9 @@ export class ChatService {
         selectedSlots: dto.selectedSlots,
         teams: dto.teams,
         confirmGroupBooking: dto.confirmGroupBooking,
+        // 분할결제 완료 필드
+        splitPaymentComplete: dto.splitPaymentComplete,
+        splitOrderId: dto.splitOrderId,
       },
       NATS_TIMEOUTS.PAYMENT, // 60초 - AI 처리 시간 고려
     );

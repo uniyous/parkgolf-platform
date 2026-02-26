@@ -576,6 +576,7 @@ export const ChatRoomPage: React.FC = () => {
                     actions={actions}
                     createdAt={message.createdAt}
                     showLabel={!prevIsAi}
+                    currentUserId={user?.id ? Number(user.id) : undefined}
                     selectedClubId={selectedClubId}
                     selectedSlotId={selectedSlotId}
                     onClubSelect={(clubId, clubName) => {
@@ -637,6 +638,13 @@ export const ChatRoomPage: React.FC = () => {
                         message: '팀 편성 확정',
                         teams,
                         confirmGroupBooking: true,
+                      });
+                    }}
+                    onSplitPaymentComplete={(success: boolean, orderId: string) => {
+                      handleAiFollowUp({
+                        message: success ? '결제 완료' : '결제 실패',
+                        splitPaymentComplete: true,
+                        splitOrderId: orderId,
                       });
                     }}
                   />

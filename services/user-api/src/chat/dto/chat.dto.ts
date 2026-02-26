@@ -174,4 +174,16 @@ export class AiChatRequestDto {
   @IsOptional()
   @IsBoolean()
   confirmGroupBooking?: boolean;
+
+  // ── 분할결제 완료 필드 ──
+
+  @ApiPropertyOptional({ description: '분할결제 완료 콜백' })
+  @IsOptional()
+  @IsBoolean()
+  splitPaymentComplete?: boolean;
+
+  @ApiPropertyOptional({ description: '분할결제 orderId' })
+  @IsOptional()
+  @IsString()
+  splitOrderId?: string;
 }

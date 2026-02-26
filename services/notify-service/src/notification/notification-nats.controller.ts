@@ -341,6 +341,44 @@ export class NotificationNatsController {
     }
   }
 
+  @EventPattern('payment.splitRequested')
+  async handleSplitPaymentRequested(@Payload() data: {
+    bookerId: number;
+    bookerName: string;
+    bookingGroupId: number;
+    chatRoomId: string;
+    participants: Array<{
+      userId: number;
+      userName: string;
+      amount: number;
+    }>;
+  }) {
+    this.logger.log(`NATS Event: payment.splitRequested - booker ${data.bookerId}, group ${data.bookingGroupId}`);
+
+    try {
+      for (const participant of data.participants) {
+        const notification = await this.notificationService.create({
+          userId: String(participant.userId),
+          type: NotificationType.SPLIT_PAYMENT_REQUEST,
+          title: `${data.bookerName}님이 더치페이를 요청했습니다`,
+          message: `${participant.amount.toLocaleString()}원을 결제해 주세요.`,
+          data: {
+            bookingGroupId: data.bookingGroupId,
+            chatRoomId: data.chatRoomId,
+            bookerId: data.bookerId,
+            bookerName: data.bookerName,
+            amount: participant.amount,
+          },
+          deliveryChannel: DeliveryChannelType.PUSH,
+        });
+
+        await this.deliveryService.deliverNotification(notification);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to handle payment.splitRequested event: ${error}`);
+    }
+  }
+
   @EventPattern('notification.dismiss')
   async handleDismiss(@Payload() data: { userId: string; type: string; dataFilter?: Record<string, any> }) {
     this.logger.log(`NATS Event: notification.dismiss - user ${data.userId}, type ${data.type}`);

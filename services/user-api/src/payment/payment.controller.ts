@@ -18,7 +18,7 @@ import {
 import { PaymentService } from './payment.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators';
-import { PreparePaymentDto, ConfirmPaymentDto } from './dto/payment.dto';
+import { PreparePaymentDto, ConfirmPaymentDto, ConfirmSplitPaymentDto } from './dto/payment.dto';
 
 @ApiTags('Payment')
 @Controller('api/user/payments')
@@ -54,6 +54,21 @@ export class PaymentController {
   ) {
     this.logger.log(`Confirming payment orderId: ${dto.orderId}`);
     return this.paymentService.confirmPayment(dto);
+  }
+
+  @Post('split/confirm')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '분할결제 승인 (더치페이 개별 결제)' })
+  @ApiResponse({ status: 200, description: '분할결제 승인 완료' })
+  @ApiResponse({ status: 401, description: '인증이 필요합니다.' })
+  async confirmSplitPayment(
+    @CurrentUser('userId') userId: number,
+    @Body() dto: ConfirmSplitPaymentDto,
+  ) {
+    this.logger.log(`Confirming split payment for user ${userId}, orderId: ${dto.orderId}`);
+    return this.paymentService.confirmSplitPayment(userId, dto);
   }
 
   @Get('order/:orderId')
