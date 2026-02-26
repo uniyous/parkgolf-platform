@@ -361,12 +361,13 @@ export class ToolExecutorService {
     const lat = club.latitude || 36.5; // 기본값
     const lon = club.longitude || 127.0;
 
-    // 날씨 조회
-    const weatherResponse = await firstValueFrom(
-      this.weatherClient.send('weather.forecast', { lat, lon, date }).pipe(
+    // 날씨 조회 (forecast 실패 시 current fallback)
+    let weatherResponse = await firstValueFrom(
+      this.weatherClient.send('weather.forecast', { lat, lon }).pipe(
         timeout(this.REQUEST_TIMEOUT),
         catchError((err) => {
-          throw new Error(`Failed to get weather: ${err.message}`);
+          this.logger.warn(`weather.forecast failed for club ${clubId}: ${err.message}`);
+          return [{ success: false, error: err.message }];
         }),
       ),
     );
@@ -387,6 +388,30 @@ export class ToolExecutorService {
           recommendation: this.getWeatherRecommendation(weather),
         };
       }
+    }
+
+    // forecast 실패 시 current fallback
+    weatherResponse = await firstValueFrom(
+      this.weatherClient.send('weather.current', { lat, lon }).pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError((err) => {
+          this.logger.warn(`weather.current also failed for club ${clubId}: ${err.message}`);
+          return [{ success: false }];
+        }),
+      ),
+    );
+
+    if (weatherResponse?.success && weatherResponse?.data) {
+      const weather = weatherResponse.data;
+      return {
+        date,
+        clubName: club.name,
+        temperature: weather.temperature,
+        sky: weather.sky || 'UNKNOWN',
+        precipitation: weather.precipitation ?? 0,
+        recommendation: this.getWeatherRecommendation(weather),
+        note: '현재 날씨 기준',
+      };
     }
 
     return {
@@ -481,16 +506,18 @@ export class ToolExecutorService {
       }
     }
 
-    // 2. 날씨 조회
-    const weatherResponse = await firstValueFrom(
-      this.weatherClient.send('weather.forecast', { lat, lon, date }).pipe(
+    // 2. 날씨 조회 (forecast 실패 시 current fallback)
+    let weatherResponse = await firstValueFrom(
+      this.weatherClient.send('weather.forecast', { lat, lon }).pipe(
         timeout(this.REQUEST_TIMEOUT),
         catchError((err: any) => {
-          throw new Error(`Failed to get weather: ${err.message}`);
+          this.logger.warn(`weather.forecast failed (lat=${lat}, lon=${lon}): ${err.message}`);
+          return [{ success: false, error: err.message }];
         }),
       ),
     );
 
+    // forecast 성공 시 배열에서 해당 날짜 추출
     if (weatherResponse?.success && weatherResponse?.data) {
       const forecasts = Array.isArray(weatherResponse.data) ? weatherResponse.data : [weatherResponse.data];
       const weather = forecasts.find((f: any) => f.date === date) || forecasts[0];
@@ -509,10 +536,36 @@ export class ToolExecutorService {
       }
     }
 
+    // forecast 실패 시 current (현재 날씨) fallback
+    this.logger.debug(`Falling back to weather.current for lat=${lat}, lon=${lon}`);
+    weatherResponse = await firstValueFrom(
+      this.weatherClient.send('weather.current', { lat, lon }).pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError((err: any) => {
+          this.logger.warn(`weather.current also failed: ${err.message}`);
+          return [{ success: false, error: err.message }];
+        }),
+      ),
+    );
+
+    if (weatherResponse?.success && weatherResponse?.data) {
+      const weather = weatherResponse.data;
+      return {
+        date,
+        location: resolvedLocation,
+        temperature: weather.temperature,
+        humidity: weather.humidity,
+        sky: weather.sky || 'UNKNOWN',
+        precipitation: weather.precipitation ?? 0,
+        recommendation: this.getWeatherRecommendation(weather),
+        note: '현재 날씨 기준 (예보 데이터 일시 불가)',
+      };
+    }
+
     return {
       date,
       location: resolvedLocation,
-      message: '날씨 정보를 가져올 수 없습니다',
+      message: '날씨 정보를 가져올 수 없습니다. 기상청 서비스가 일시적으로 응답하지 않습니다.',
     };
   }
 
