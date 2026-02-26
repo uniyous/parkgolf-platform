@@ -427,29 +427,58 @@ export class ToolExecutorService {
    * location.search.address → 좌표 추출 → weather.forecast
    */
   private async getWeatherByLocation(args: Record<string, unknown>): Promise<unknown> {
-    const { location, date } = args as { location: string; date: string };
+    const { location, date, latitude, longitude } = args as {
+      location: string;
+      date: string;
+      latitude?: number;
+      longitude?: number;
+    };
 
-    // 1. 지역명 → 좌표 변환
-    const addrResponse = await firstValueFrom(
-      this.locationClient.send('location.search.address', { query: location }).pipe(
-        timeout(this.REQUEST_TIMEOUT),
-        catchError((err: any) => {
-          throw new Error(`Failed to search address: ${err.message}`);
-        }),
-      ),
-    );
-
-    let lat = 36.5;
-    let lon = 127.0;
+    let lat: number;
+    let lon: number;
     let resolvedLocation = location;
 
-    if (addrResponse?.success && addrResponse?.data?.addresses?.length > 0) {
-      const addr = addrResponse.data.addresses[0];
-      lat = addr.coordinates.latitude;
-      lon = addr.coordinates.longitude;
-      resolvedLocation = addr.region1
-        ? `${addr.region1} ${addr.region2 || ''}`.trim()
-        : location;
+    // 좌표가 직접 전달되면 주소 검색 건너뜀
+    if (latitude && longitude) {
+      lat = latitude;
+      lon = longitude;
+    } else {
+      // 지역명 → 좌표 변환
+      const addrResponse = await firstValueFrom(
+        this.locationClient.send('location.search.address', { query: location }).pipe(
+          timeout(this.REQUEST_TIMEOUT),
+          catchError((err: any) => {
+            this.logger.warn(`Address search failed for "${location}": ${err.message}`);
+            return [null];
+          }),
+        ),
+      );
+
+      if (addrResponse?.success && addrResponse?.data?.addresses?.length > 0) {
+        const addr = addrResponse.data.addresses[0];
+        lat = addr.coordinates.latitude;
+        lon = addr.coordinates.longitude;
+        resolvedLocation = addr.region1
+          ? `${addr.region1} ${addr.region2 || ''}`.trim()
+          : location;
+      } else {
+        // 주소 검색 실패 시 키워드 검색 시도
+        const keywordResponse = await firstValueFrom(
+          this.locationClient.send('location.search.keyword', { query: location }).pipe(
+            timeout(this.REQUEST_TIMEOUT),
+            catchError(() => [null]),
+          ),
+        );
+
+        if (keywordResponse?.success && keywordResponse?.data?.places?.length > 0) {
+          const place = keywordResponse.data.places[0];
+          lat = place.coordinates.latitude;
+          lon = place.coordinates.longitude;
+          resolvedLocation = place.addressName || location;
+        } else {
+          return { date, location, message: `"${location}" 지역을 찾을 수 없습니다. 다른 지역명으로 시도해주세요.` };
+        }
+      }
     }
 
     // 2. 날씨 조회

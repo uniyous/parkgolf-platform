@@ -377,8 +377,8 @@ export class BookingAgentService {
       }
 
       const locationInfo = context.slots.regionName
-        ? `사용자의 현재 위치: ${context.slots.regionName} (위도 ${context.slots.latitude}, 경도 ${context.slots.longitude}). "내 근처", "가까운 곳" 요청 시 get_nearby_clubs 도구에 이 좌표를 사용하세요. 날씨 질문 시 지역명 없으면 "${context.slots.regionName}"을 location으로 사용하세요.`
-        : `사용자의 현재 위치: 위도 ${context.slots.latitude}, 경도 ${context.slots.longitude}. "내 근처", "가까운 곳" 요청 시 get_nearby_clubs 도구에 이 좌표를 사용하세요.`;
+        ? `사용자의 현재 위치: ${context.slots.regionName} (위도 ${context.slots.latitude}, 경도 ${context.slots.longitude}). "내 근처" 요청 시 get_nearby_clubs에 이 좌표를 사용하세요. 날씨 질문 시 get_weather_by_location에 location="${context.slots.regionName}", latitude=${context.slots.latitude}, longitude=${context.slots.longitude}를 모두 전달하세요.`
+        : `사용자의 현재 위치: 위도 ${context.slots.latitude}, 경도 ${context.slots.longitude}. "내 근처" 요청 시 get_nearby_clubs에 이 좌표를 사용하세요. 날씨 질문 시 get_weather_by_location에 latitude=${context.slots.latitude}, longitude=${context.slots.longitude}를 전달하세요.`;
 
       messages.unshift({
         role: 'user',

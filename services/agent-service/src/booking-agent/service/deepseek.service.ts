@@ -134,12 +134,14 @@ export class DeepSeekService implements OnModuleInit {
       type: 'function',
       function: {
         name: 'get_weather_by_location',
-        description: '지역명으로 날씨 정보를 조회합니다. 사용자가 특정 지역의 날씨를 물어볼 때 사용합니다. (예: "천안 내일 날씨", "대전 날씨 어때?")',
+        description: '지역명 또는 좌표로 날씨 정보를 조회합니다. 사용자가 날씨를 물어볼 때 사용합니다. 좌표(latitude/longitude)를 알고 있으면 함께 전달하세요.',
         parameters: {
           type: 'object',
           properties: {
             location: { type: 'string', description: '지역명 (예: 천안, 서울, 대전)' },
             date: { type: 'string', description: '조회할 날짜 (YYYY-MM-DD 형식)' },
+            latitude: { type: 'number', description: '위도 (있으면 주소 검색 없이 바로 날씨 조회)' },
+            longitude: { type: 'number', description: '경도 (있으면 주소 검색 없이 바로 날씨 조회)' },
           },
           required: ['location', 'date'],
         },
