@@ -15,6 +15,9 @@ import { NatsService } from './nats.service';
           options: {
             servers: [configService.get<string>('NATS_URL') || 'nats://localhost:4222'],
             queue: 'chat-service',
+            reconnect: true,
+            maxReconnectAttempts: -1,
+            reconnectTimeWait: 2000,
           },
         }),
         inject: [ConfigService],
@@ -27,6 +30,9 @@ import { NatsService } from './nats.service';
           options: {
             servers: [configService.get<string>('NATS_URL') || 'nats://localhost:4222'],
             queue: 'notify-service',
+            reconnect: true,
+            maxReconnectAttempts: -1,
+            reconnectTimeWait: 2000,
           },
         }),
         inject: [ConfigService],

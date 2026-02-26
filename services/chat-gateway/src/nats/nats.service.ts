@@ -151,13 +151,26 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
             break;
 
           case 'reconnect':
-            this.logger.log('NATS reconnected, reinitializing JetStream');
+            this.logger.log('NATS reconnected, reinitializing JetStream and ClientProxies');
             // Reinitialize JetStream client after reconnect
             try {
               this.js = this.nc!.jetstream();
               this.jsm = await this.nc!.jetstreamManager();
             } catch (error) {
               this.logger.error('Failed to reinitialize JetStream after reconnect', error);
+            }
+            // Reconnect NestJS ClientProxies
+            try {
+              await this.chatServiceClient.connect();
+              this.logger.log('Reconnected chat-service ClientProxy');
+            } catch (error: any) {
+              this.logger.warn(`Failed to reconnect chat-service ClientProxy: ${error.message}`);
+            }
+            try {
+              await this.notifyClient.connect();
+              this.logger.log('Reconnected notify-service ClientProxy');
+            } catch (error: any) {
+              this.logger.warn(`Failed to reconnect notify-service ClientProxy: ${error.message}`);
             }
             this.natsStatusSubject.next(true);
             break;
