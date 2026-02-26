@@ -67,12 +67,12 @@ export interface CreateClubDto {
   phone: string;
   email?: string;
   website?: string;
-  operatingHours: {
+  operatingHours?: {
     open: string;
     close: string;
   };
   facilities?: string[];
-  status: 'ACTIVE' | 'MAINTENANCE' | 'SEASONAL_CLOSED' | 'INACTIVE';
+  status?: 'ACTIVE' | 'MAINTENANCE' | 'SEASONAL_CLOSED' | 'INACTIVE';
   clubType?: ClubType;
 }
 
@@ -195,6 +195,19 @@ export const courseApi = {
    */
   async deleteClub(id: number): Promise<void> {
     await apiClient.delete(`/admin/courses/clubs/${id}`);
+  },
+
+  // ============================================
+  // Geocoding
+  // ============================================
+
+  /**
+   * 주소 → 좌표 변환 (location-service 경유)
+   */
+  async geocodeAddress(address: string): Promise<{ latitude: number; longitude: number } | null> {
+    const response = await apiClient.get<unknown>('/admin/courses/geocode', { address });
+    const data = extractSingle<{ latitude: number; longitude: number }>(response.data);
+    return data || null;
   },
 
   // ============================================

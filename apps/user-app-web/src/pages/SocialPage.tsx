@@ -4,7 +4,6 @@ import {
   Users,
   MessageCircle,
   UserPlus,
-  Search,
   Check,
   X,
   UserMinus,
@@ -66,7 +65,7 @@ export function SocialPage() {
   // Queries
   const { data: friends = [], isLoading: isLoadingFriends, refetch: refetchFriends } = useFriendsQuery();
   const { data: friendRequests = [], isLoading: isLoadingRequests, refetch: refetchRequests } = useFriendRequestsQuery();
-  const { data: sentRequests = [] } = useSentFriendRequestsQuery();
+  const { data: sentRequests = [], refetch: refetchSentRequests } = useSentFriendRequestsQuery();
   const { data: searchResults = [], isLoading: isSearching } = useSearchUsersQuery(debouncedSearch);
   const { data: chatRoomsData, isLoading: isLoadingChats, refetch: refetchChatRooms } = useChatRoomsQuery();
   const chatRooms = chatRoomsData?.data ?? [];
@@ -101,6 +100,19 @@ export function SocialPage() {
     } else {
       refetchFriends();
       refetchRequests();
+      refetchSentRequests();
+    }
+  };
+
+  const handleFriendSubTab = (tab: FriendSubTab) => {
+    setFriendSubTab(tab);
+
+    // 서브탭 전환 시 데이터 새로고침
+    if (tab === 'friends') {
+      refetchFriends();
+    } else {
+      refetchRequests();
+      refetchSentRequests();
     }
   };
 
@@ -257,7 +269,7 @@ export function SocialPage() {
             {/* Friend Sub Tabs (칩 스타일) */}
             <div className="flex gap-2">
               <button
-                onClick={() => setFriendSubTab('friends')}
+                onClick={() => handleFriendSubTab('friends')}
                 className={cn(
                   'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all',
                   friendSubTab === 'friends'
@@ -268,7 +280,7 @@ export function SocialPage() {
                 친구
               </button>
               <button
-                onClick={() => setFriendSubTab('requests')}
+                onClick={() => handleFriendSubTab('requests')}
                 className={cn(
                   'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all',
                   friendSubTab === 'requests'
@@ -290,13 +302,12 @@ export function SocialPage() {
               <section className="space-y-4">
                 {/* Search */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
                   <input
                     type="text"
                     placeholder="친구 검색..."
                     value={friendListSearch}
                     onChange={(e) => setFriendListSearch(e.target.value)}
-                    className="input-glass pl-10"
+                    className="input-glass"
                   />
                 </div>
 
@@ -799,13 +810,12 @@ function AddFriendContent({
   return (
     <>
       <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
         <input
           type="text"
           placeholder="이메일 또는 이름으로 검색..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="input-glass pl-10"
+          className="input-glass"
           autoFocus
         />
       </div>
@@ -968,13 +978,12 @@ function NewChatContent({ onClose }: { onClose: () => void }) {
   return (
     <>
       <div className="relative mb-3">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
         <input
           type="text"
           placeholder="친구 검색..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="input-glass pl-10"
+          className="input-glass"
           autoFocus
         />
       </div>

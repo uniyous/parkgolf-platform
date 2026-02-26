@@ -1,0 +1,141 @@
+import React from 'react';
+import { Sparkles } from 'lucide-react';
+import type { ChatAction, ClubCardData, SlotCardData, WeatherCardData, BookingCompleteData, ConfirmBookingData, PaymentCardData, ConfirmGroupData, SelectParticipantsData, SettlementStatusData, TeamMember } from '@/lib/api/chatApi';
+import { ClubCard } from './cards/ClubCard';
+import { SlotCard } from './cards/SlotCard';
+import { WeatherCard } from './cards/WeatherCard';
+import { BookingCompleteCard } from './cards/BookingCompleteCard';
+import { ConfirmBookingCard } from './cards/ConfirmBookingCard';
+import { PaymentCard } from './cards/PaymentCard';
+import { ConfirmGroupCard } from './cards/ConfirmGroupCard';
+import { SelectParticipantsCard } from './cards/SelectParticipantsCard';
+import { SettlementStatusCard } from './cards/SettlementStatusCard';
+
+interface AiMessageBubbleProps {
+  content: string;
+  actions?: ChatAction[];
+  createdAt: string;
+  showLabel?: boolean;
+  currentUserId?: number;
+  onClubSelect?: (clubId: string, clubName: string) => void;
+  onSlotSelect?: (slotId: string, time: string, price: number, clubId?: string, clubName?: string) => void;
+  onConfirmBooking?: (paymentMethod: 'onsite' | 'card') => void;
+  onCancelBooking?: () => void;
+  onPaymentComplete?: (success: boolean) => void;
+  onConfirmGroup?: (paymentMethod: string) => void;
+  onCancelGroup?: () => void;
+  onTeamConfirm?: (teams: Array<{ teamNumber: number; slotId: string; members: TeamMember[] }>) => void;
+  onSplitPaymentComplete?: (success: boolean, orderId: string) => void;
+  selectedClubId?: string | null;
+  selectedSlotId?: string | null;
+}
+
+export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
+  content,
+  actions,
+  createdAt,
+  showLabel = true,
+  currentUserId,
+  onClubSelect,
+  onSlotSelect,
+  onConfirmBooking,
+  onCancelBooking,
+  onPaymentComplete,
+  onConfirmGroup,
+  onCancelGroup,
+  onTeamConfirm,
+  onSplitPaymentComplete,
+  selectedClubId,
+  selectedSlotId,
+}) => {
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[85%]">
+        {showLabel && (
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+              <Sparkles className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span className="text-xs text-emerald-400 font-semibold">AI 예약 도우미</span>
+          </div>
+        )}
+
+        <div className="flex items-end gap-1.5">
+          <div className="bg-emerald-500/5 border-l-[3px] border-l-emerald-500/40 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
+            <p className="text-sm text-white whitespace-pre-wrap break-words leading-relaxed">{content}</p>
+
+            {actions?.map((action, index) => (
+              <div key={index}>
+                {action.type === 'SHOW_CLUBS' && (
+                  <ClubCard
+                    data={action.data as ClubCardData}
+                    onSelect={onClubSelect}
+                    selectedClubId={selectedClubId}
+                  />
+                )}
+                {action.type === 'SHOW_SLOTS' && (
+                  <SlotCard
+                    data={action.data as SlotCardData}
+                    onSelect={(slotId, time, price) => {
+                      const slotData = action.data as SlotCardData;
+                      onSlotSelect?.(slotId, time, price, slotData.clubId, slotData.clubName);
+                    }}
+                    selectedSlotId={selectedSlotId}
+                  />
+                )}
+                {action.type === 'SHOW_WEATHER' && (
+                  <WeatherCard data={action.data as WeatherCardData} />
+                )}
+                {action.type === 'CONFIRM_BOOKING' && (
+                  <ConfirmBookingCard
+                    data={action.data as ConfirmBookingData}
+                    onConfirm={onConfirmBooking}
+                    onCancel={onCancelBooking}
+                  />
+                )}
+                {action.type === 'SHOW_PAYMENT' && (
+                  <PaymentCard
+                    data={action.data as PaymentCardData}
+                    onPaymentComplete={onPaymentComplete}
+                  />
+                )}
+                {action.type === 'BOOKING_COMPLETE' && (
+                  <BookingCompleteCard data={action.data as BookingCompleteData} />
+                )}
+                {action.type === 'CONFIRM_GROUP' && (
+                  <ConfirmGroupCard
+                    data={action.data as ConfirmGroupData}
+                    onConfirm={onConfirmGroup}
+                    onCancel={onCancelGroup}
+                  />
+                )}
+                {action.type === 'SELECT_PARTICIPANTS' && (
+                  <SelectParticipantsCard
+                    data={action.data as SelectParticipantsData}
+                    onConfirm={onTeamConfirm}
+                    onCancel={onCancelGroup}
+                  />
+                )}
+                {action.type === 'SETTLEMENT_STATUS' && (
+                  <SettlementStatusCard
+                    data={action.data as SettlementStatusData}
+                    currentUserId={currentUserId}
+                    onSplitPaymentComplete={onSplitPaymentComplete}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+          <span className="text-[10px] text-white/40 shrink-0">
+            {formatTime(createdAt)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};

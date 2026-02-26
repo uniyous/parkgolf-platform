@@ -336,17 +336,30 @@ struct PolicyItem: View {
 
 struct DeleteAccountView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
+    @StateObject private var viewModel = DeleteAccountViewModel()
+
+    private let deletionReasons = [
+        "더 이상 서비스를 이용하지 않아요",
+        "다른 계정을 사용할 거예요",
+        "개인정보가 걱정돼요",
+        "서비스에 불만이 있어요",
+        "기타"
+    ]
 
     var body: some View {
         ZStack {
             LinearGradient.parkBackground
                 .ignoresSafeArea()
 
-            ParkEmptyStateView(
-                icon: "trash.fill",
-                title: "계정 삭제",
-                description: "준비중입니다"
-            )
+            if viewModel.isLoading {
+                ProgressView()
+                    .tint(.parkPrimary)
+            } else if viewModel.status?.isDeletionRequested == true {
+                deletionStatusView
+            } else {
+                deletionRequestForm
+            }
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
@@ -356,17 +369,259 @@ struct DeleteAccountView: View {
                     .font(.parkHeadlineMedium)
                     .foregroundStyle(.white)
             }
-
             ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    dismiss()
-                } label: {
+                Button { dismiss() } label: {
                     Image(systemName: "chevron.left")
                         .foregroundStyle(.white)
                 }
             }
         }
         .toolbarBackground(.hidden, for: .navigationBar)
+        .task {
+            await viewModel.loadDeletionStatus()
+        }
+        .onChange(of: viewModel.logoutComplete) { _, complete in
+            if complete {
+                appState.signOut()
+            }
+        }
+        .alert("오류", isPresented: .init(
+            get: { viewModel.error != nil },
+            set: { if !$0 { viewModel.error = nil } }
+        )) {
+            Button("확인", role: .cancel) {}
+        } message: {
+            Text(viewModel.error ?? "")
+        }
+    }
+
+    // MARK: - Deletion Status (Grace Period)
+
+    private var deletionStatusView: some View {
+        ScrollView {
+            VStack(spacing: ParkSpacing.md) {
+                GlassCard {
+                    VStack(alignment: .leading, spacing: ParkSpacing.md) {
+                        // Header
+                        HStack(spacing: 12) {
+                            Circle()
+                                .fill(Color.parkWarning.opacity(0.2))
+                                .frame(width: 48, height: 48)
+                                .overlay {
+                                    Image(systemName: "clock.fill")
+                                        .foregroundStyle(Color.parkWarning)
+                                        .font(.title3)
+                                }
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("삭제 예정")
+                                    .font(.parkHeadlineMedium)
+                                    .foregroundStyle(.white)
+                                Text("계정 삭제가 진행 중입니다")
+                                    .font(.parkCaption)
+                                    .foregroundStyle(Color.textSecondary)
+                            }
+                        }
+
+                        // Timeline
+                        VStack(spacing: 0) {
+                            statusRow(label: "요청일", value: formatDate(viewModel.status?.deletionRequestedAt))
+                            Divider().overlay(Color.glassBorder)
+                                .padding(.vertical, 8)
+                            statusRow(label: "삭제 예정일", value: formatDate(viewModel.status?.deletionScheduledAt))
+                            Divider().overlay(Color.glassBorder)
+                                .padding(.vertical, 8)
+                            HStack {
+                                Text("남은 기간")
+                                    .font(.parkBodyMedium)
+                                    .foregroundStyle(Color.textSecondary)
+                                Spacer()
+                                Text("D-\(viewModel.status?.daysRemaining ?? 0)")
+                                    .font(.parkHeadlineMedium)
+                                    .foregroundStyle(Color.parkWarning)
+                            }
+                        }
+
+                        // Info
+                        Text("삭제 예정일까지 로그인하거나 아래 버튼을 누르면 삭제가 취소됩니다.")
+                            .font(.parkCaption)
+                            .foregroundStyle(Color.textSecondary)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.parkPrimary.opacity(0.1))
+                            )
+                    }
+                }
+
+                GradientButton(
+                    title: viewModel.isCancelling ? "취소 중..." : "계정 삭제 취소",
+                    isLoading: viewModel.isCancelling
+                ) {
+                    Task { await viewModel.cancelDeletion() }
+                }
+
+                Button("돌아가기") { dismiss() }
+                    .font(.parkCaption)
+                    .foregroundStyle(Color.textSecondary)
+            }
+            .padding(.horizontal, ParkSpacing.md)
+            .padding(.top, ParkSpacing.sm)
+        }
+    }
+
+    // MARK: - Deletion Request Form
+
+    private var deletionRequestForm: some View {
+        ScrollView {
+            VStack(spacing: ParkSpacing.md) {
+                // Warnings
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(Color.parkError)
+                            Text("주의사항")
+                                .font(.parkHeadlineSmall)
+                                .foregroundStyle(Color.parkError)
+                        }
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            warningRow("계정 삭제 요청 후 7일의 유예 기간이 있습니다")
+                            warningRow("유예 기간 내 로그인하면 삭제가 자동 취소됩니다")
+                            warningRow("삭제 후 예약 내역, 채팅, 친구 등 모든 데이터가 삭제됩니다")
+                            warningRow("삭제된 계정은 복구할 수 없습니다")
+                        }
+                    }
+                }
+
+                // Reason
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("삭제 사유 (선택)")
+                            .font(.parkHeadlineSmall)
+                            .foregroundStyle(.white)
+
+                        ForEach(deletionReasons, id: \.self) { r in
+                            Button {
+                                viewModel.reason = r
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: viewModel.reason == r ? "largecircle.fill.circle" : "circle")
+                                        .foregroundStyle(viewModel.reason == r ? Color.parkPrimary : Color.textTertiary)
+                                        .font(.body)
+                                    Text(r)
+                                        .font(.parkBodyMedium)
+                                        .foregroundStyle(.white)
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(viewModel.reason == r ? Color.parkPrimary.opacity(0.1) : Color.clear)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Password
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("본인 확인")
+                            .font(.parkHeadlineSmall)
+                            .foregroundStyle(.white)
+                        Text("계정 삭제를 위해 비밀번호를 입력해 주세요.")
+                            .font(.parkCaption)
+                            .foregroundStyle(Color.textSecondary)
+
+                        SecureField("비밀번호 입력", text: $viewModel.password)
+                            .textContentType(.password)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.white.opacity(0.08))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                            )
+                            .foregroundStyle(.white)
+                    }
+                }
+
+                // Confirmation
+                Button {
+                    viewModel.confirmed.toggle()
+                } label: {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: viewModel.confirmed ? "checkmark.square.fill" : "square")
+                            .foregroundStyle(viewModel.confirmed ? Color.parkError : Color.textTertiary)
+                            .font(.title3)
+                        Text("위 내용을 확인했으며, 계정 삭제를 요청합니다. 7일 후 모든 데이터가 영구 삭제됨을 이해합니다.")
+                            .font(.parkCaption)
+                            .foregroundStyle(Color.textSecondary)
+                            .multilineTextAlignment(.leading)
+                    }
+                    .padding(.horizontal, 4)
+                }
+
+                // Submit
+                GradientButton(
+                    title: viewModel.isSubmitting ? "처리 중..." : "계정 삭제 요청",
+                    style: .destructive,
+                    isLoading: viewModel.isSubmitting
+                ) {
+                    Task { await viewModel.requestDeletion() }
+                }
+                .disabled(!viewModel.canSubmit)
+                .opacity(viewModel.canSubmit ? 1.0 : 0.5)
+
+                Button("돌아가기") { dismiss() }
+                    .font(.parkCaption)
+                    .foregroundStyle(Color.textSecondary)
+                    .padding(.bottom, ParkSpacing.lg)
+            }
+            .padding(.horizontal, ParkSpacing.md)
+            .padding(.top, ParkSpacing.sm)
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func statusRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.parkBodyMedium)
+                .foregroundStyle(Color.textSecondary)
+            Spacer()
+            Text(value)
+                .font(.parkBodyMedium)
+                .foregroundStyle(.white)
+        }
+    }
+
+    private func warningRow(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "shield.fill")
+                .foregroundStyle(Color.parkError)
+                .font(.caption)
+            Text(text)
+                .font(.parkCaption)
+                .foregroundStyle(Color.textSecondary)
+        }
+    }
+
+    private func formatDate(_ dateString: String?) -> String {
+        guard let dateString = dateString, dateString.count >= 10 else { return "-" }
+        let prefix = String(dateString.prefix(10))
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard let date = formatter.date(from: prefix) else { return prefix }
+        formatter.dateFormat = "yyyy년 M월 d일"
+        return formatter.string(from: date)
     }
 }
 

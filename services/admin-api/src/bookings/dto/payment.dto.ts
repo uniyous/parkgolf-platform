@@ -10,32 +10,30 @@ import {
 import { Type } from 'class-transformer';
 
 export class ProcessRefundDto {
-  @ApiProperty({
-    description: 'Refund amount',
+  @ApiPropertyOptional({
+    description: 'Refund amount (omit for full refund)',
     example: 50000,
   })
+  @IsOptional()
   @IsNumber()
-  @IsNotEmpty({ message: 'Refund amount is required' })
-  @Min(0)
-  amount: number;
+  @Min(1)
+  cancelAmount?: number;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: 'Reason for refund',
-    example: 'Customer requested cancellation within 24 hours',
+    example: '고객 요청에 의한 환불',
   })
-  @IsOptional()
+  @IsNotEmpty({ message: '환불 사유를 입력해 주세요' })
   @IsString()
-  reason?: string;
+  cancelReason: string;
 
   @ApiPropertyOptional({
-    description: 'Refund type',
-    example: 'FULL',
-    enum: ['FULL', 'PARTIAL'],
+    description: 'Admin note for refund adjustment',
+    example: '정책 금액과 다른 금액으로 환불 처리',
   })
   @IsOptional()
   @IsString()
-  @IsIn(['FULL', 'PARTIAL'])
-  refundType?: string;
+  adminNote?: string;
 }
 
 export class PaymentFilterDto {

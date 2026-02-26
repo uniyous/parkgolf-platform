@@ -35,6 +35,26 @@ export interface ChangePasswordResponse {
   passwordChangedAt: string;
 }
 
+export interface RequestDeletionRequest {
+  password: string;
+  reason?: string;
+}
+
+export interface DeletionStatusResponse {
+  userId: number;
+  isDeletionRequested: boolean;
+  deletionRequestedAt: string | null;
+  deletionScheduledAt: string | null;
+  daysRemaining: number | null;
+}
+
+export interface RequestDeletionResponse {
+  userId: number;
+  deletionRequestedAt: string;
+  deletionScheduledAt: string;
+  gracePeriodDays: number;
+}
+
 export interface PasswordExpiryResponse {
   needsChange: boolean;
   daysSinceChange: number | null;
@@ -112,6 +132,28 @@ export const authApi = {
     const response = await apiClient.patch<{ success: boolean; data: User }>(
       '/api/user/iam/profile',
       data
+    );
+    return response.data.data;
+  },
+
+  getDeletionStatus: async () => {
+    const response = await apiClient.get<{ success: boolean; data: DeletionStatusResponse }>(
+      '/api/user/account/delete-status'
+    );
+    return response.data.data;
+  },
+
+  requestDeletion: async (data: RequestDeletionRequest) => {
+    const response = await apiClient.post<{ success: boolean; data: RequestDeletionResponse }>(
+      '/api/user/account/delete-request',
+      data
+    );
+    return response.data.data;
+  },
+
+  cancelDeletion: async () => {
+    const response = await apiClient.post<{ success: boolean; data: { userId: number; cancelled: boolean } }>(
+      '/api/user/account/delete-cancel'
     );
     return response.data.data;
   },

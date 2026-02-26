@@ -3,9 +3,11 @@ package com.parkgolf.app.di
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.parkgolf.app.BuildConfig
 import com.parkgolf.app.data.local.datastore.AuthPreferences
+import com.parkgolf.app.data.remote.api.AccountApi
 import com.parkgolf.app.data.remote.api.AuthApi
 import com.parkgolf.app.data.remote.api.BookingApi
 import com.parkgolf.app.data.remote.api.ChatApi
+import com.parkgolf.app.data.remote.api.ClubApi
 import com.parkgolf.app.data.remote.api.FriendsApi
 import com.parkgolf.app.data.remote.api.LocationApi
 import com.parkgolf.app.data.remote.api.NotificationApi
@@ -69,7 +71,7 @@ object NetworkModule {
             .addInterceptor(loggingInterceptor)
             .authenticator(tokenAuthenticator)
             .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS) // 결제 승인 API 최대 지연 대비 (Toss 권장 60초)
             .writeTimeout(30, TimeUnit.SECONDS)
             .build()
     }
@@ -97,6 +99,11 @@ object NetworkModule {
     @Singleton
     fun provideRoundApi(retrofit: Retrofit): RoundApi =
         retrofit.create(RoundApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideClubApi(retrofit: Retrofit): ClubApi =
+        retrofit.create(ClubApi::class.java)
 
     @Provides
     @Singleton
@@ -142,4 +149,9 @@ object NetworkModule {
     @Singleton
     fun provideWeatherApi(retrofit: Retrofit): WeatherApi =
         retrofit.create(WeatherApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideAccountApi(retrofit: Retrofit): AccountApi =
+        retrofit.create(AccountApi::class.java)
 }

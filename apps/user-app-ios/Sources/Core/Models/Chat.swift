@@ -205,6 +205,7 @@ enum MessageType: String, Codable, Sendable {
     case image = "IMAGE"
     case system = "SYSTEM"
     case bookingInvite = "BOOKING_INVITE"
+    case aiAssistant = "AI_ASSISTANT"
 }
 
 // MARK: - Chat Messages Response (API response for messages endpoint)
@@ -271,5 +272,136 @@ struct InviteMembersRequest: Codable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case userIds = "user_ids"
+    }
+}
+
+// MARK: - AI Chat Models
+
+enum ConversationState: String, Codable, Sendable {
+    case idle = "IDLE"
+    case collecting = "COLLECTING"
+    case confirming = "CONFIRMING"
+    case booking = "BOOKING"
+    case completed = "COMPLETED"
+    case cancelled = "CANCELLED"
+}
+
+enum ActionType: String, Codable, Sendable {
+    case showClubs = "SHOW_CLUBS"
+    case showSlots = "SHOW_SLOTS"
+    case showWeather = "SHOW_WEATHER"
+    case confirmBooking = "CONFIRM_BOOKING"
+    case bookingComplete = "BOOKING_COMPLETE"
+}
+
+struct ChatAction: Codable, Sendable {
+    let type: ActionType
+    let data: AnyCodable
+
+    struct AnyCodable: Codable, @unchecked Sendable {
+        let value: Any
+
+        init(_ value: Any) {
+            self.value = value
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            if let dict = try? container.decode([String: AnyCodable].self) {
+                value = dict.mapValues { $0.value }
+            } else if let array = try? container.decode([AnyCodable].self) {
+                value = array.map { $0.value }
+            } else if let string = try? container.decode(String.self) {
+                value = string
+            } else if let int = try? container.decode(Int.self) {
+                value = int
+            } else if let double = try? container.decode(Double.self) {
+                value = double
+            } else if let bool = try? container.decode(Bool.self) {
+                value = bool
+            } else {
+                value = ""
+            }
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.singleValueContainer()
+            if let string = value as? String {
+                try container.encode(string)
+            } else if let int = value as? Int {
+                try container.encode(int)
+            } else if let double = value as? Double {
+                try container.encode(double)
+            } else if let bool = value as? Bool {
+                try container.encode(bool)
+            } else {
+                try container.encodeNil()
+            }
+        }
+    }
+}
+
+struct AiChatResponse: Codable, Sendable {
+    let conversationId: String
+    let message: String
+    let state: ConversationState
+    let actions: [ChatAction]?
+}
+
+struct AiChatRequest: Codable, Sendable {
+    let message: String
+    let conversationId: String?
+    let latitude: Double?
+    let longitude: Double?
+}
+
+struct ClubCardData: Sendable {
+    let found: Int
+    let clubs: [ClubItem]
+
+    struct ClubItem: Identifiable, Sendable {
+        let id: String
+        let name: String
+        let address: String
+        let region: String
+    }
+}
+
+struct SlotCardData: Sendable {
+    let date: String
+    let availableCount: Int
+    let slots: [SlotItem]
+
+    struct SlotItem: Identifiable, Sendable {
+        let id: String
+        let time: String
+        let endTime: String
+        let availableSpots: Int
+        let price: Int
+        let courseName: String
+    }
+}
+
+struct WeatherCardData: Sendable {
+    let date: String
+    let clubName: String
+    let temperature: Double
+    let humidity: Double
+    let sky: String
+    let precipitation: Double
+    let recommendation: String
+}
+
+struct BookingCompleteData: Sendable {
+    let success: Bool
+    let bookingId: String
+    let confirmationNumber: String
+    let details: BookingDetails
+
+    struct BookingDetails: Sendable {
+        let date: String
+        let time: String
+        let playerCount: Int
+        let totalPrice: Int
     }
 }

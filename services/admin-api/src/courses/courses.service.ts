@@ -54,6 +54,14 @@ export class CourseService {
   }
 
   // ============================================
+  // Geocoding
+  // ============================================
+  async geocodeAddress(address: string): Promise<any> {
+    this.logger.log(`Geocoding address: ${address}`);
+    return this.natsClient.send('location.getCoordinates', { address }, NATS_TIMEOUTS.QUICK);
+  }
+
+  // ============================================
   // Course Management
   // ============================================
   async getCourses(companyId?: string, page = 1, limit = 20, adminToken?: string): Promise<any> {

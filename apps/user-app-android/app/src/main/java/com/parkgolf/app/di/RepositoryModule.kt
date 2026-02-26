@@ -1,9 +1,13 @@
 package com.parkgolf.app.di
 
 import com.parkgolf.app.data.local.datastore.AuthPreferences
+import com.parkgolf.app.data.remote.api.AccountApi
 import com.parkgolf.app.data.remote.api.AuthApi
 import com.parkgolf.app.data.remote.api.BookingApi
 import com.parkgolf.app.data.remote.api.ChatApi
+import com.parkgolf.app.data.remote.api.ClubApi
+import com.parkgolf.app.data.repository.ClubRepositoryImpl
+import com.parkgolf.app.domain.repository.ClubRepository
 import com.parkgolf.app.data.remote.api.FriendsApi
 import com.parkgolf.app.data.remote.api.LocationApi
 import com.parkgolf.app.data.remote.api.NotificationApi
@@ -17,6 +21,7 @@ import com.parkgolf.app.data.repository.AuthRepositoryImpl
 import com.parkgolf.app.data.repository.BookingRepositoryImpl
 import com.parkgolf.app.data.repository.ChatRepositoryImpl
 import com.parkgolf.app.data.repository.FriendsRepositoryImpl
+import com.parkgolf.app.data.repository.AccountRepositoryImpl
 import com.parkgolf.app.data.repository.LocationWeatherRepositoryImpl
 import com.parkgolf.app.data.repository.NotificationRepositoryImpl
 import com.parkgolf.app.data.repository.PaymentRepositoryImpl
@@ -24,6 +29,7 @@ import com.parkgolf.app.data.repository.RoundRepositoryImpl
 import com.parkgolf.app.data.repository.SettingsRepositoryImpl
 import com.parkgolf.app.domain.repository.SettingsRepository
 import com.parkgolf.app.data.repository.UserRepositoryImpl
+import com.parkgolf.app.domain.repository.AccountRepository
 import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.BookingRepository
 import com.parkgolf.app.domain.repository.ChatRepository
@@ -105,8 +111,20 @@ object RepositoryModule {
 
     @Provides
     @Singleton
+    fun provideClubRepository(
+        clubApi: ClubApi
+    ): ClubRepository = ClubRepositoryImpl(clubApi)
+
+    @Provides
+    @Singleton
     fun provideLocationWeatherRepository(
         locationApi: LocationApi,
         weatherApi: WeatherApi
     ): LocationWeatherRepository = LocationWeatherRepositoryImpl(locationApi, weatherApi)
+
+    @Provides
+    @Singleton
+    fun provideAccountRepository(
+        accountApi: AccountApi
+    ): AccountRepository = AccountRepositoryImpl(accountApi)
 }

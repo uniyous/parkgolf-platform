@@ -1,6 +1,18 @@
 import { apiClient } from './client';
 import { extractSingle } from './bffParser';
 
+/**
+ * NATS 응답 래핑 제거
+ * BFF가 마이크로서비스의 NatsResponse를 그대로 전달하므로
+ * { success: true, data: { ... } } → { ... } 로 벗김
+ */
+function unwrapNats<T>(obj: unknown): T {
+  if (obj && typeof obj === 'object' && 'success' in obj && 'data' in obj) {
+    return (obj as { data: T }).data;
+  }
+  return obj as T;
+}
+
 // Dashboard analytics types
 export interface DashboardOverview {
   dateRange: {
@@ -156,6 +168,12 @@ export const dashboardApi = {
     if (!data) {
       throw new Error('Failed to fetch dashboard overview');
     }
+    // 하위 NATS 래핑 제거 (BFF가 마이크로서비스 응답을 그대로 전달)
+    data.bookings = unwrapNats(data.bookings);
+    data.revenue = unwrapNats(data.revenue);
+    data.notifications = unwrapNats(data.notifications);
+    data.users = unwrapNats(data.users);
+    data.courses = unwrapNats(data.courses);
     return data;
   },
 
@@ -167,6 +185,10 @@ export const dashboardApi = {
     const data = extractSingle<RealTimeStats>(response.data);
     if (!data) {
       throw new Error('Failed to fetch real-time statistics');
+    }
+    if (data.today) {
+      data.today.bookings = unwrapNats(data.today.bookings);
+      data.today.revenue = unwrapNats(data.today.revenue);
     }
     return data;
   },
@@ -180,6 +202,7 @@ export const dashboardApi = {
     if (!data) {
       throw new Error('Failed to fetch trend analytics');
     }
+    data.trends = unwrapNats(data.trends);
     return data;
   },
 

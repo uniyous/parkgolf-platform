@@ -7,6 +7,7 @@ export const authKeys = {
   all: ['auth'] as const,
   profile: () => [...authKeys.all, 'profile'] as const,
   passwordExpiry: () => [...authKeys.all, 'passwordExpiry'] as const,
+  deletionStatus: () => [...authKeys.all, 'deletionStatus'] as const,
 };
 
 // Game Keys
@@ -55,6 +56,13 @@ export const paymentKeys = {
   all: ['payments'] as const,
   prepare: () => [...paymentKeys.all, 'prepare'] as const,
   confirm: () => [...paymentKeys.all, 'confirm'] as const,
+};
+
+// Club Keys
+export const clubKeys = {
+  all: ['clubs'] as const,
+  details: () => [...clubKeys.all, 'detail'] as const,
+  detail: (id: number) => [...clubKeys.details(), id] as const,
 };
 
 // Notification Keys

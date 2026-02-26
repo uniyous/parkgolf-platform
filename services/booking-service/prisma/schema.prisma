@@ -69,9 +69,15 @@ model Booking {
   createdAt             DateTime      @default(now()) @map("created_at")
   updatedAt             DateTime      @updatedAt @map("updated_at")
 
+  // 그룹 예약 (멀티팀)
+  bookingGroupId        Int?          @map("booking_group_id")
+  teamNumber            Int?          @map("team_number") // 팀 번호 (1, 2, 3...)
+
   // Relations
+  bookingGroup          BookingGroup? @relation(fields: [bookingGroupId], references: [id])
   payments              Payment[]
   histories             BookingHistory[]
+  participants          BookingParticipant[]
 
   @@index([userId])
   @@index([gameTimeSlotId])
@@ -84,7 +90,86 @@ model Booking {
   @@index([status, createdAt])
   @@index([userId, bookingDate])
   @@index([bookingDate, status])
+  @@index([bookingGroupId])
   @@map("bookings")
+}
+
+// =====================================================
+// 그룹 예약 (멀티팀 묶음)
+// =====================================================
+
+model BookingGroup {
+  id                Int              @id @default(autoincrement())
+  groupNumber       String           @unique @map("group_number") // GRP-20260227-001
+  chatRoomId        String           @map("chat_room_id")
+  bookerId          Int              @map("booker_id")
+  bookerName        String           @map("booker_name")
+  bookerEmail       String           @map("booker_email")
+  clubId            Int              @map("club_id")
+  clubName          String           @map("club_name")
+  date              String                                        // YYYY-MM-DD
+  teamCount         Int              @map("team_count")
+  totalParticipants Int              @map("total_participants")
+  totalPrice        Int              @map("total_price")          // 전체 금액 (원)
+  pricePerPerson    Int              @map("price_per_person")     // 1인당 금액
+  settlementStatus  SettlementStatus @default(PENDING) @map("settlement_status")
+  expiredAt         DateTime         @map("expired_at")           // 결제 기한
+
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  bookings          Booking[]
+
+  @@index([bookerId])
+  @@index([chatRoomId])
+  @@index([settlementStatus])
+  @@map("booking_groups")
+}
+
+enum SettlementStatus {
+  PENDING       // 정산 대기 (일부 미결제)
+  PARTIAL       // 부분 결제 완료
+  COMPLETED     // 전원 결제 완료
+  CANCELLED     // 정산 취소
+}
+
+// =====================================================
+// 예약 참여자 (그룹/더치페이)
+// =====================================================
+
+model BookingParticipant {
+  id          Int               @id @default(autoincrement())
+  bookingId   Int               @map("booking_id")
+  userId      Int               @map("user_id")
+  userName    String            @map("user_name")
+  userEmail   String            @map("user_email")
+  role        ParticipantRole   @default(MEMBER)
+  status      ParticipantStatus @default(PENDING)
+  amount      Int                                                 // 1인 부담 금액 (원)
+  paidAt      DateTime?         @map("paid_at")
+
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  booking     Booking           @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, userId])
+  @@index([userId, status])
+  @@map("booking_participants")
+}
+
+enum ParticipantRole {
+  BOOKER    // 예약 대표자
+  MEMBER    // 일반 참여자
+}
+
+enum ParticipantStatus {
+  PENDING    // 결제 대기
+  PAID       // 결제 완료
+  CANCELLED  // 참여 취소
+  REFUNDED   // 환불 완료
 }
 
 model Payment {

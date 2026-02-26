@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=390">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 390px;
+    font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    -webkit-font-smoothing: antialiased;
+  }
+  .phone-frame {
+    width: 390px;
+    min-height: 844px;
+    background: #0d1117;
+    border-radius: 40px;
+    border: 3px solid #30363d;
+    overflow: hidden;
+    position: relative;
+  }
+  /* Status bar */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 28px 8px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .status-icons { display: flex; gap: 6px; align-items: center; }
+  .status-icons svg { width: 16px; height: 16px; fill: #e6edf3; }
+  /* Nav bar */
+  .nav-bar {
+    display: flex;
+    align-items: center;
+    padding: 8px 20px 12px;
+    gap: 12px;
+    border-bottom: 1px solid #21262d;
+  }
+  .nav-bar .back { font-size: 22px; color: #e6edf3; }
+  .nav-bar .title { font-size: 18px; font-weight: 600; }
+  .nav-bar .ai-badge {
+    background: #2ea043;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  /* Chat area */
+  .chat-area { padding: 16px; }
+  /* User bubble */
+  .user-bubble {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 4px;
+  }
+  .user-bubble .bubble {
+    background: #2ea043;
+    color: #fff;
+    padding: 12px 18px;
+    border-radius: 18px 18px 4px 18px;
+    font-size: 15px;
+    font-weight: 500;
+    max-width: 280px;
+  }
+  .user-time {
+    text-align: right;
+    font-size: 11px;
+    color: #8b949e;
+    margin-bottom: 16px;
+  }
+  /* AI section */
+  .ai-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .ai-avatar {
+    width: 32px;
+    height: 32px;
+    background: #2ea043;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+  .ai-name { font-size: 14px; font-weight: 600; color: #3fb950; }
+  .ai-content {
+    margin-left: 8px;
+    border-left: 3px solid #2ea043;
+    padding-left: 12px;
+  }
+  .ai-text {
+    font-size: 15px;
+    color: #e6edf3;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  /* Weather card */
+  .weather-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .weather-icon { font-size: 32px; }
+  .weather-info .temp { font-size: 18px; font-weight: 700; }
+  .weather-info .temp span { font-weight: 400; color: #8b949e; font-size: 14px; margin-left: 4px; }
+  .weather-info .desc { font-size: 13px; color: #8b949e; margin-top: 2px; }
+  /* Club card */
+  .club-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .club-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 6px;
+  }
+  .club-name { font-size: 16px; font-weight: 700; }
+  .select-btn {
+    background: #2ea043;
+    color: #fff;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .club-location {
+    font-size: 13px;
+    color: #8b949e;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .club-location .drive-time {
+    color: #58a6ff;
+    margin-left: 4px;
+  }
+  .slots-label {
+    font-size: 12px;
+    color: #8b949e;
+    margin: 10px 0 8px;
+  }
+  .slots-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .slot-item {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    position: relative;
+  }
+  .slot-item:hover { border-color: #2ea043; }
+  .slot-item.recommended {
+    border-color: #2ea043;
+    background: rgba(46, 160, 67, 0.08);
+  }
+  .slot-time {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .slot-time .clock { font-size: 16px; }
+  .slot-detail { font-size: 12px; color: #8b949e; }
+  .slot-price { font-size: 13px; color: #3fb950; font-weight: 600; margin-top: 4px; }
+  .badge-ai {
+    background: #2ea043;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 6px;
+    margin-left: 6px;
+  }
+  .badge-closing {
+    color: #f85149;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  /* Bottom input */
+  .bottom-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px 16px 28px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #0d1117;
+    border-top: 1px solid #21262d;
+  }
+  .bottom-bar .star-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #161b22;
+    border: 1px solid #30363d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #2ea043;
+  }
+  .bottom-bar .input {
+    flex: 1;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 20px;
+    padding: 10px 16px;
+    color: #8b949e;
+    font-size: 14px;
+  }
+  .bottom-bar .send-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #2ea043;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #fff;
+  }
+</style>
+</head>
+<body>
+<div class="phone-frame">
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <span>9:41</span>
+    <div class="status-icons">
+      <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M2 22h20V2L2 22z"/></svg>
+    </div>
+  </div>
+  <!-- Nav Bar -->
+  <div class="nav-bar">
+    <span class="back">←</span>
+    <span class="title">AI 예약 도우미</span>
+    <span class="ai-badge">AI</span>
+  </div>
+  <!-- Chat -->
+  <div class="chat-area">
+    <div class="user-bubble">
+      <div class="bubble">천안 골프장 2명 예약해 줘</div>
+    </div>
+    <div class="user-time">오전 9:41</div>
+
+    <div class="ai-header">
+      <div class="ai-avatar">★</div>
+      <span class="ai-name">AI 예약 도우미</span>
+    </div>
+    <div class="ai-content">
+      <div class="ai-text">오늘(2/25, 화) 천안 근처 골프장을 검색했어요! 🏌️</div>
+
+      <!-- Weather -->
+      <div class="weather-card">
+        <div class="weather-icon">☀️</div>
+        <div class="weather-info">
+          <div class="temp">18°C <span>맑음</span></div>
+          <div class="desc">골프 치기 좋은 날씨예요!</div>
+        </div>
+      </div>
+
+      <!-- Club 1 -->
+      <div class="club-card">
+        <div class="club-header">
+          <div class="club-name">천안시민 파크골프장</div>
+          <button class="select-btn">선택</button>
+        </div>
+        <div class="club-location">
+          📍 충남 천안시 서북구 성정동 <span class="drive-time">· 🚗 약 25분</span>
+        </div>
+        <div class="slots-label">빈 타임슬롯</div>
+        <div class="slots-grid">
+          <div class="slot-item">
+            <div class="slot-time"><span class="clock">🕐</span> 10:00</div>
+            <div class="slot-detail">A코스 · 4자리</div>
+            <div class="slot-price">₩10,000</div>
+          </div>
+          <div class="slot-item recommended">
+            <div class="slot-time"><span class="clock">🕐</span> 10:30 <span class="badge-ai">⭐AI추천</span></div>
+            <div class="slot-detail">A코스 · 3자리</div>
+            <div class="slot-price">₩10,000</div>
+          </div>
+          <div class="slot-item">
+            <div class="slot-time"><span class="clock">🕐</span> 11:00</div>
+            <div class="slot-detail">B코스 · 4자리</div>
+            <div class="slot-price">₩10,000</div>
+          </div>
+          <div class="slot-item">
+            <div class="slot-time"><span class="clock">🕐</span> 11:30 <span class="badge-closing">🔴</span></div>
+            <div class="slot-detail">B코스 · 2자리</div>
+            <div class="slot-price">₩10,000</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Club 2 -->
+      <div class="club-card">
+        <div class="club-header">
+          <div class="club-name">두정 파크골프장</div>
+          <button class="select-btn">선택</button>
+        </div>
+        <div class="club-location">
+          📍 충남 천안시 서북구 두정동 <span class="drive-time">· 🚗 약 35분</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom bar -->
+  <div class="bottom-bar">
+    <div class="star-btn">☆</div>
+    <div class="input">메시지를 입력하세요....</div>
+    <div class="send-btn">➤</div>
+  </div>
+</div>
+</body>
+</html>

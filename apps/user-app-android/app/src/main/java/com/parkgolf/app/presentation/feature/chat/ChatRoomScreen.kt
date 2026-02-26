@@ -9,12 +9,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-
-
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,11 +21,20 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.LifecycleOwner
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.parkgolf.app.data.remote.dto.chat.AiChatRequest
+import com.parkgolf.app.data.remote.dto.chat.TeamDto
+import com.parkgolf.app.presentation.feature.chat.components.cards.TeamConfirmData
 import com.parkgolf.app.domain.model.ChatMessage
 import com.parkgolf.app.domain.model.Friend
+import com.parkgolf.app.domain.model.MessageType
 import com.parkgolf.app.presentation.components.GlassCard
 import com.parkgolf.app.presentation.components.GlassTextField
+import com.parkgolf.app.presentation.feature.chat.components.AiButton
+import com.parkgolf.app.presentation.feature.chat.components.AiMessageBubble
+import com.parkgolf.app.presentation.feature.chat.components.AiWelcomeCard
 import com.parkgolf.app.presentation.theme.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.format.DateTimeFormatter
@@ -45,8 +53,11 @@ fun ChatRoomScreen(
     var showInviteDialog by remember { mutableStateOf(false) }
     var showParticipantsDialog by remember { mutableStateOf(false) }
 
+    val lifecycleOwner = LocalContext.current as LifecycleOwner
+
     LaunchedEffect(roomId) {
         viewModel.loadRoom(roomId)
+        viewModel.observeAppLifecycle(lifecycleOwner)
     }
 
     // Scroll to bottom when new message arrives (newest at bottom)
@@ -133,7 +144,7 @@ fun ChatRoomScreen(
                                     showMenu = false
                                 },
                                 leadingIcon = {
-                                    Icon(Icons.Default.ExitToApp, contentDescription = null, tint = ParkError)
+                                    Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, tint = ParkError)
                                 }
                             )
                         }
@@ -151,9 +162,18 @@ fun ChatRoomScreen(
             ChatInputBar(
                 value = uiState.messageInput,
                 onValueChange = { viewModel.updateMessageInput(it) },
-                onSend = { viewModel.sendMessage() },
+                onSend = {
+                    if (uiState.isAiMode) {
+                        viewModel.sendAiMessage()
+                    } else {
+                        viewModel.sendMessage()
+                    }
+                },
                 isSending = uiState.isSending,
-                enabled = uiState.isConnected
+                isAiMode = uiState.isAiMode,
+                isAiLoading = uiState.isAiLoading,
+                enabled = uiState.isConnected || uiState.isAiMode,
+                onToggleAi = { viewModel.toggleAiMode() }
             )
         }
     ) { paddingValues ->
@@ -173,6 +193,11 @@ fun ChatRoomScreen(
                     canReconnect = uiState.canReconnect,
                     onReconnect = { viewModel.forceReconnect() }
                 )
+            }
+
+            // NATS disconnected warning banner
+            if (uiState.isConnected && !uiState.isNatsConnected) {
+                NatsWarningBanner()
             }
 
             // Message list
@@ -216,13 +241,121 @@ fun ChatRoomScreen(
                             }
                         }
 
+                        // AI 웰컴 카드
+                        if (uiState.showWelcome && uiState.isAiMode) {
+                            item {
+                                AiWelcomeCard(
+                                    onQuickAction = { message ->
+                                        viewModel.sendAiMessage(message)
+                                    }
+                                )
+                            }
+                        }
+
                         // Messages (oldest first, newest at bottom)
-                        items(uiState.messages) { message ->
-                            val isOwnMessage = message.senderId == uiState.currentUserId
-                            ChatMessageBubble(
-                                message = message,
-                                isOwnMessage = isOwnMessage
-                            )
+                        items(uiState.messages.size) { index ->
+                            val message = uiState.messages[index]
+                            if (message.messageType == MessageType.AI_ASSISTANT) {
+                                // 연속 AI 메시지 그룹핑: 이전 메시지도 AI면 라벨 숨김
+                                val prevIsAi = index > 0 && uiState.messages[index - 1].messageType == MessageType.AI_ASSISTANT
+
+                                AiMessageBubble(
+                                    content = message.content,
+                                    actions = viewModel.getActionsForMessage(message.id),
+                                    createdAt = message.createdAt,
+                                    showLabel = !prevIsAi,
+                                    currentUserId = uiState.currentUserId?.toIntOrNull(),
+                                    onClubSelect = { clubId, clubName ->
+                                        viewModel.selectClub(clubId)
+                                        viewModel.sendAiFollowUp(AiChatRequest(
+                                            message = "$clubName 선택",
+                                            selectedClubId = clubId,
+                                            selectedClubName = clubName
+                                        ))
+                                    },
+                                    onSlotSelect = { slotId, time, price, clubId, clubName ->
+                                        viewModel.selectSlot(slotId)
+                                        viewModel.sendAiFollowUp(AiChatRequest(
+                                            message = "$time 선택",
+                                            selectedSlotId = slotId,
+                                            selectedSlotTime = time,
+                                            selectedSlotPrice = price,
+                                            selectedClubId = clubId,
+                                            selectedClubName = clubName
+                                        ))
+                                    },
+                                    onConfirmBooking = { paymentMethod ->
+                                        viewModel.sendAiFollowUp(AiChatRequest(
+                                            message = if (paymentMethod == "card") "카드결제로 예약 확인" else "예약 확인",
+                                            confirmBooking = true,
+                                            paymentMethod = paymentMethod
+                                        ))
+                                    },
+                                    onCancelBooking = {
+                                        viewModel.selectSlot("")
+                                        viewModel.sendAiFollowUp(AiChatRequest(
+                                            message = "취소",
+                                            cancelBooking = true
+                                        ))
+                                    },
+                                    onPaymentComplete = { success ->
+                                        viewModel.sendAiFollowUp(AiChatRequest(
+                                            message = if (success) "결제 완료" else "결제 취소",
+                                            paymentComplete = true,
+                                            paymentSuccess = success
+                                        ))
+                                    },
+                                    onConfirmGroup = { paymentMethod ->
+                                        viewModel.sendAiFollowUp(AiChatRequest(
+                                            message = if (paymentMethod == "dutchpay") "더치페이로 예약" else "현장결제로 예약",
+                                            confirmGroupBooking = true,
+                                            paymentMethod = paymentMethod
+                                        ))
+                                    },
+                                    onCancelGroup = {
+                                        viewModel.selectSlot("")
+                                        viewModel.sendAiFollowUp(AiChatRequest(
+                                            message = "그룹 예약 취소",
+                                            cancelBooking = true
+                                        ))
+                                    },
+                                    onTeamConfirm = { teamConfirmData: List<TeamConfirmData> ->
+                                        viewModel.sendAiFollowUp(AiChatRequest(
+                                            message = "팀 편성 확정",
+                                            teams = teamConfirmData.map { t ->
+                                                TeamDto(
+                                                    teamNumber = t.teamNumber,
+                                                    slotId = t.slotId,
+                                                    members = t.members
+                                                )
+                                            },
+                                            confirmGroupBooking = true
+                                        ))
+                                    },
+                                    onSplitPaymentComplete = { success, orderId ->
+                                        viewModel.sendAiFollowUp(AiChatRequest(
+                                            message = if (success) "결제 완료" else "결제 실패",
+                                            splitPaymentComplete = true,
+                                            splitOrderId = orderId
+                                        ))
+                                    },
+                                    selectedClubId = uiState.selectedClubId,
+                                    selectedSlotId = uiState.selectedSlotId
+                                )
+                            } else {
+                                val isOwnMessage = message.senderId == uiState.currentUserId
+                                ChatMessageBubble(
+                                    message = message,
+                                    isOwnMessage = isOwnMessage
+                                )
+                            }
+                        }
+
+                        // AI loading indicator
+                        if (uiState.isAiLoading) {
+                            item {
+                                AiTypingIndicator(loadingText = uiState.aiLoadingText)
+                            }
                         }
                     }
                 }
@@ -339,6 +472,38 @@ private fun ConnectionStatusBanner(
 }
 
 /**
+ * NATS 연결 불안정 경고 배너
+ */
+@Composable
+private fun NatsWarningBanner() {
+    Surface(
+        color = Color(0xFFEAB308).copy(alpha = 0.9f),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "서버 내부 연결 불안정 — 메시지 전송이 지연될 수 있습니다",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White
+            )
+        }
+    }
+}
+
+/**
  * 타이핑 인디케이터
  */
 @Composable
@@ -433,7 +598,10 @@ private fun ChatInputBar(
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
     isSending: Boolean,
-    enabled: Boolean
+    isAiMode: Boolean = false,
+    isAiLoading: Boolean = false,
+    enabled: Boolean,
+    onToggleAi: () -> Unit = {}
 ) {
     Surface(
         color = GradientStart.copy(alpha = 0.95f),
@@ -454,14 +622,18 @@ private fun ChatInputBar(
                 modifier = Modifier.weight(1f),
                 placeholder = {
                     Text(
-                        text = if (enabled) "메시지를 입력하세요" else "연결 중...",
+                        text = when {
+                            isAiMode -> "AI에게 예약 요청하기..."
+                            enabled -> "메시지를 입력하세요"
+                            else -> "연결 중..."
+                        },
                         color = ParkOnPrimary.copy(alpha = 0.5f)
                     )
                 },
                 enabled = enabled,
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = GlassCard,
-                    unfocusedContainerColor = GlassCard,
+                    focusedContainerColor = if (isAiMode) ParkPrimary.copy(alpha = 0.15f) else GlassCard,
+                    unfocusedContainerColor = if (isAiMode) ParkPrimary.copy(alpha = 0.15f) else GlassCard,
                     disabledContainerColor = GlassCard.copy(alpha = 0.5f),
                     focusedTextColor = ParkOnPrimary,
                     unfocusedTextColor = ParkOnPrimary,
@@ -473,9 +645,14 @@ private fun ChatInputBar(
                 maxLines = 4
             )
 
+            AiButton(
+                isActive = isAiMode,
+                onClick = onToggleAi
+            )
+
             IconButton(
                 onClick = onSend,
-                enabled = enabled && value.isNotBlank() && !isSending,
+                enabled = enabled && value.isNotBlank() && !isSending && !isAiLoading,
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
@@ -483,7 +660,7 @@ private fun ChatInputBar(
                         if (enabled && value.isNotBlank()) ParkPrimary else ParkPrimary.copy(alpha = 0.3f)
                     )
             ) {
-                if (isSending) {
+                if (isSending || isAiLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         color = ParkOnPrimary,
@@ -494,6 +671,78 @@ private fun ChatInputBar(
                         Icons.AutoMirrored.Filled.Send,
                         contentDescription = "보내기",
                         tint = ParkOnPrimary
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * AI 타이핑 인디케이터
+ */
+@Composable
+private fun AiTypingIndicator(loadingText: String = "생각 중...") {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.Start
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(ParkPrimary, ParkPrimary.copy(alpha = 0.7f))
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp),
+                    tint = Color.White
+                )
+            }
+            Text(
+                text = "AI 예약 도우미",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = ParkPrimary
+            )
+        }
+
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = ParkPrimary.copy(alpha = 0.05f)
+        ) {
+            Row {
+                Box(
+                    modifier = Modifier
+                        .width(3.dp)
+                        .height(40.dp)
+                        .background(ParkPrimary.copy(alpha = 0.4f))
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(12.dp),
+                        color = ParkPrimary.copy(alpha = 0.6f),
+                        strokeWidth = 1.5.dp
+                    )
+                    Text(
+                        text = loadingText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ParkOnPrimary.copy(alpha = 0.5f)
                     )
                 }
             }

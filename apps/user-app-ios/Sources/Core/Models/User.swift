@@ -124,3 +124,25 @@ struct PasswordExpiryResponse: Codable, Sendable {
     let daysSinceChange: Int?
     let passwordChangedAt: Date?
 }
+
+// MARK: - Account Deletion
+
+struct DeletionStatusResponse: Codable, Sendable {
+    let userId: Int
+    let isDeletionRequested: Bool
+    let deletionRequestedAt: String?
+    let deletionScheduledAt: String?
+    let daysRemaining: Int?
+}
+
+struct RequestDeletionResponse: Codable, Sendable {
+    let userId: Int
+    let deletionRequestedAt: String
+    let deletionScheduledAt: String
+    let gracePeriodDays: Int
+}
+
+struct CancelDeletionResponse: Codable, Sendable {
+    let userId: Int
+    let cancelled: Bool
+}

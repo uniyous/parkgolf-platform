@@ -9,6 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 import { Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Subscription } from 'rxjs';
 import { JwtService } from '@nestjs/jwt';
 import { NatsService, ChatMessage, TypingEvent } from '../nats/nats.service';
 import { AuthenticatedSocket, WsUser } from '../common/ws.types';
@@ -47,6 +48,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   // Token expiry check interval
   private tokenCheckInterval: ReturnType<typeof setInterval> | null = null;
 
+  // NATS status subscription
+  private natsStatusSubscription: Subscription | null = null;
+
   constructor(
     private readonly natsService: NatsService,
     private readonly jwtService: JwtService,
@@ -57,12 +61,22 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     this.tokenCheckInterval = setInterval(() => {
       this.checkExpiredTokens();
     }, 60_000);
+
+    // Subscribe to NATS connection status and broadcast to all Socket.IO clients
+    this.natsStatusSubscription = this.natsService.natsStatus$.subscribe((connected) => {
+      this.logger.log(`NATS status changed: ${connected ? 'connected' : 'disconnected'}, broadcasting to clients`);
+      this.server?.emit('system:nats_status', { connected });
+    });
   }
 
   onModuleDestroy() {
     if (this.tokenCheckInterval) {
       clearInterval(this.tokenCheckInterval);
       this.tokenCheckInterval = null;
+    }
+    if (this.natsStatusSubscription) {
+      this.natsStatusSubscription.unsubscribe();
+      this.natsStatusSubscription = null;
     }
   }
 
@@ -260,11 +274,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       createdAt: new Date().toISOString(),
     };
 
-    // 1. Broadcast to other clients (adapter propagates to all pods)
+    // 1. Broadcast to other clients — 실시간 전달 우선 (adapter propagates to all pods)
     client.to(roomId).emit('new_message', message);
     this.logger.debug(`Message sent to room ${roomId} by ${user.name}`);
 
-    // 2. JetStream 발행 - 비동기 (메시지 영속성, chat-service consumer가 DB 저장)
+    // 2. JetStream 발행 — DB 저장 (broadcast 이후, 실패해도 실시간 전달은 완료)
     this.natsService.publishMessage(roomId, message).catch((error) => {
       this.logger.error(`Failed to publish message to JetStream: ${error}`);
     });

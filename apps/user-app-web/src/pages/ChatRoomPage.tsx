@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw, Loader2, UserPlus, Search, X, Check } from 'lucide-react';
+import { Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw, Loader2, UserPlus, Search, X, Check, Sparkles, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SubPageHeader } from '@/components/layout';
 import { Button, LoadingView } from '@/components/ui';
@@ -12,7 +12,11 @@ import { authStorage } from '@/lib/storage';
 import { showErrorToast, showSuccessToast } from '@/lib/toast';
 import { useAuthStore } from '@/stores/authStore';
 import { useConfirm } from '@/contexts/ConfirmContext';
-import { chatApi, getChatRoomDisplayName, type ChatMessage } from '@/lib/api/chatApi';
+import { chatApi, getChatRoomDisplayName, type ChatMessage, type ChatAction, type AiChatRequest, type TeamMember } from '@/lib/api/chatApi';
+import { useAiChat } from '@/hooks/useAiChat';
+import { AiButton } from '@/components/features/chat/AiButton';
+import { AiMessageBubble } from '@/components/features/chat/AiMessageBubble';
+import { AiWelcomeCard } from '@/components/features/chat/AiWelcomeCard';
 
 export const ChatRoomPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -24,9 +28,14 @@ export const ChatRoomPage: React.FC = () => {
   const [realtimeMessages, setRealtimeMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isConnected, setIsConnected] = useState(false);
+  const [isNatsConnected, setIsNatsConnected] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
+  const [aiMessageActions, setAiMessageActions] = useState<Map<string, ChatAction[]>>(new Map());
+  const [selectedClubId, setSelectedClubId] = useState<string | null>(null);
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
 
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -45,6 +54,7 @@ export const ChatRoomPage: React.FC = () => {
   } = useMessagesInfiniteQuery(roomId ?? '');
   const sendMessageMutation = useSendMessageMutation();
   const leaveMutation = useLeaveChatRoomMutation();
+  const { isAiMode, toggleAiMode, sendAiMessage, isAiLoading, conversationState } = useAiChat(roomId ?? '');
 
   // Merge DB messages from infinite query with realtime messages
   const messages = useMemo(() => {
@@ -129,6 +139,17 @@ export const ChatRoomPage: React.FC = () => {
       console.error('Socket error:', error);
     });
 
+    // NATS status — 서버 측 NATS 연결 상태 추적
+    const unsubNatsStatus = chatSocket.onNatsStatus((connected) => {
+      setIsNatsConnected(connected);
+      if (connected && roomId) {
+        // NATS 복구 시 방 재참여 + 메시지 갱신
+        joinRoomWithRetry(roomId);
+        setRealtimeMessages([]);
+        queryClient.invalidateQueries({ queryKey: ['chat', 'messages', roomId] });
+      }
+    });
+
     // 탭 백그라운드 → 포그라운드 전환 시 소켓 재연결 + 메시지 갭 복구
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -152,6 +173,7 @@ export const ChatRoomPage: React.FC = () => {
       unsubReconnect();
       unsubMessage();
       unsubError();
+      unsubNatsStatus();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (roomId) {
         chatSocket.leaveRoom(roomId);
@@ -162,7 +184,102 @@ export const ChatRoomPage: React.FC = () => {
   // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, showWelcome]);
+
+  // AI loading state text
+  const aiLoadingText = useMemo(() => {
+    switch (conversationState) {
+      case 'COLLECTING': return '검색 중...';
+      case 'CONFIRMING': return '예약 확인 중...';
+      case 'BOOKING': return '예약 처리 중...';
+      case 'SELECTING_PARTICIPANTS': return '팀 편성 중...';
+      case 'SETTLING': return '정산 처리 중...';
+      default: return '생각 중...';
+    }
+  }, [conversationState]);
+
+  // Toggle AI mode with welcome card
+  const handleToggleAiMode = useCallback(() => {
+    const wasOff = !isAiMode;
+    toggleAiMode();
+    if (wasOff) {
+      setShowWelcome(true);
+      setSelectedClubId(null);
+      setSelectedSlotId(null);
+    } else {
+      setShowWelcome(false);
+    }
+  }, [isAiMode, toggleAiMode]);
+
+  // Handle quick action from welcome card
+  const handleQuickAction = useCallback(async (message: string) => {
+    if (!roomId) return;
+    setShowWelcome(false);
+
+    // Add user message locally
+    const userMsg: ChatMessage = {
+      id: `user-${Date.now()}`,
+      roomId,
+      senderId: currentUserId,
+      senderName: user?.name || '',
+      content: message,
+      messageType: 'TEXT',
+      createdAt: new Date().toISOString(),
+      readBy: null,
+    };
+    setRealtimeMessages((prev) => [...prev, userMsg]);
+
+    try {
+      const response = await sendAiMessage(message);
+
+      const aiMsg: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        roomId,
+        senderId: 'ai',
+        senderName: 'AI 예약 도우미',
+        content: response.message,
+        messageType: 'AI_ASSISTANT',
+        createdAt: new Date().toISOString(),
+        readBy: null,
+      };
+
+      if (response.actions) {
+        setAiMessageActions((prev) => new Map(prev).set(aiMsg.id, response.actions!));
+      }
+
+      setRealtimeMessages((prev) => [...prev, aiMsg]);
+    } catch {
+      showErrorToast('AI 응답에 실패했습니다.');
+    }
+  }, [roomId, currentUserId, user?.name, sendAiMessage]);
+
+  // Send AI follow-up message (from card interaction)
+  const handleAiFollowUp = useCallback(async (followUpMessage: string | AiChatRequest) => {
+    if (!roomId) return;
+    try {
+      const response = await sendAiMessage(followUpMessage);
+
+      // Add AI response as a local message
+      const aiMsg: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        roomId,
+        senderId: 'ai',
+        senderName: 'AI 예약 도우미',
+        content: response.message,
+        messageType: 'AI_ASSISTANT',
+        createdAt: new Date().toISOString(),
+        readBy: null,
+      };
+
+      if (response.actions) {
+        setAiMessageActions((prev) => new Map(prev).set(aiMsg.id, response.actions!));
+      }
+
+      setRealtimeMessages((prev) => [...prev, aiMsg]);
+    } catch {
+      showErrorToast('AI 응답에 실패했습니다.');
+    }
+  }, [roomId, sendAiMessage]);
 
   // Send message handler
   const handleSendMessage = useCallback(async () => {
@@ -171,7 +288,51 @@ export const ChatRoomPage: React.FC = () => {
 
     setInputText('');
 
-    // Try socket first
+    // AI mode: send to AI endpoint
+    if (isAiMode) {
+      setShowWelcome(false);
+
+      // Add user message locally
+      const userMsg: ChatMessage = {
+        id: `user-${Date.now()}`,
+        roomId,
+        senderId: currentUserId,
+        senderName: user?.name || '',
+        content: text,
+        messageType: 'TEXT',
+        createdAt: new Date().toISOString(),
+        readBy: null,
+      };
+      setRealtimeMessages((prev) => [...prev, userMsg]);
+
+      try {
+        const response = await sendAiMessage(text);
+
+        // Add AI response as a local message
+        const aiMsg: ChatMessage = {
+          id: `ai-${Date.now()}`,
+          roomId,
+          senderId: 'ai',
+          senderName: 'AI 예약 도우미',
+          content: response.message,
+          messageType: 'AI_ASSISTANT',
+          createdAt: new Date().toISOString(),
+          readBy: null,
+        };
+
+        if (response.actions) {
+          setAiMessageActions((prev) => new Map(prev).set(aiMsg.id, response.actions!));
+        }
+
+        setRealtimeMessages((prev) => [...prev, aiMsg]);
+      } catch {
+        showErrorToast('AI 응답에 실패했습니다.');
+        setInputText(text);
+      }
+      return;
+    }
+
+    // Normal mode: Try socket first
     if (chatSocket.isConnected) {
       const result = await chatSocket.sendMessage(roomId, text);
       if (result) {
@@ -198,7 +359,7 @@ export const ChatRoomPage: React.FC = () => {
       showErrorToast('메시지 전송에 실패했습니다.');
       setInputText(text); // Restore input
     }
-  }, [inputText, roomId, sendMessageMutation]);
+  }, [inputText, roomId, isAiMode, currentUserId, user?.name, sendAiMessage, sendMessageMutation]);
 
   // Handle key press
   const handleKeyPress = useCallback(
@@ -353,6 +514,14 @@ export const ChatRoomPage: React.FC = () => {
         }
       />
 
+      {/* NATS disconnected warning banner */}
+      {isConnected && !isNatsConnected && (
+        <div className="flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500/90 text-white text-sm">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          <span>서버 내부 연결 불안정 — 메시지 전송이 지연될 수 있습니다</span>
+        </div>
+      )}
+
       {/* Messages — full-width scroll area */}
       <div
         ref={messagesContainerRef}
@@ -384,7 +553,7 @@ export const ChatRoomPage: React.FC = () => {
             </div>
           )}
 
-          {!isLoadingMessages && messages.length === 0 && (
+          {!isLoadingMessages && messages.length === 0 && !showWelcome && (
             <div className="flex flex-col items-center justify-center h-full text-white/40">
               <p>대화를 시작해보세요!</p>
             </div>
@@ -392,6 +561,96 @@ export const ChatRoomPage: React.FC = () => {
 
           <div className="space-y-3">
             {messages.map((message, index) => {
+              // AI 메시지는 AiMessageBubble로 렌더링
+              if (message.messageType === 'AI_ASSISTANT') {
+                const actions = aiMessageActions.get(message.id) ||
+                  (message as any).metadata?.actions;
+
+                // 연속 AI 메시지 그룹핑: 이전 메시지도 AI면 라벨 숨김
+                const prevIsAi = index > 0 && messages[index - 1]?.messageType === 'AI_ASSISTANT';
+
+                return (
+                  <AiMessageBubble
+                    key={message.id}
+                    content={message.content}
+                    actions={actions}
+                    createdAt={message.createdAt}
+                    showLabel={!prevIsAi}
+                    currentUserId={user?.id ? Number(user.id) : undefined}
+                    selectedClubId={selectedClubId}
+                    selectedSlotId={selectedSlotId}
+                    onClubSelect={(clubId, clubName) => {
+                      setSelectedClubId(clubId);
+                      setSelectedSlotId(null);
+                      handleAiFollowUp({
+                        message: `${clubName} 선택`,
+                        selectedClubId: clubId,
+                        selectedClubName: clubName,
+                      });
+                    }}
+                    onSlotSelect={(slotId, time, price, clubId, clubName) => {
+                      setSelectedSlotId(slotId);
+                      handleAiFollowUp({
+                        message: `${time} 선택`,
+                        selectedSlotId: slotId,
+                        selectedSlotTime: time,
+                        selectedSlotPrice: price,
+                        ...(clubId ? { selectedClubId: clubId, selectedClubName: clubName } : {}),
+                      });
+                    }}
+                    onConfirmBooking={(paymentMethod: 'onsite' | 'card') => {
+                      handleAiFollowUp({
+                        message: paymentMethod === 'card' ? '카드결제로 예약 확인' : '예약 확인',
+                        confirmBooking: true,
+                        paymentMethod,
+                      });
+                    }}
+                    onCancelBooking={() => {
+                      setSelectedSlotId(null);
+                      handleAiFollowUp({
+                        message: '취소',
+                        cancelBooking: true,
+                      });
+                    }}
+                    onPaymentComplete={(success: boolean) => {
+                      handleAiFollowUp({
+                        message: success ? '결제 완료' : '결제 취소',
+                        paymentComplete: true,
+                        paymentSuccess: success,
+                      });
+                    }}
+                    onConfirmGroup={(paymentMethod: string) => {
+                      handleAiFollowUp({
+                        message: paymentMethod === 'dutchpay' ? '더치페이로 예약' : '현장결제로 예약',
+                        confirmGroupBooking: true,
+                        paymentMethod,
+                      });
+                    }}
+                    onCancelGroup={() => {
+                      setSelectedSlotId(null);
+                      handleAiFollowUp({
+                        message: '그룹 예약 취소',
+                        cancelBooking: true,
+                      });
+                    }}
+                    onTeamConfirm={(teams: Array<{ teamNumber: number; slotId: string; members: TeamMember[] }>) => {
+                      handleAiFollowUp({
+                        message: '팀 편성 확정',
+                        teams,
+                        confirmGroupBooking: true,
+                      });
+                    }}
+                    onSplitPaymentComplete={(success: boolean, orderId: string) => {
+                      handleAiFollowUp({
+                        message: success ? '결제 완료' : '결제 실패',
+                        splitPaymentComplete: true,
+                        splitOrderId: orderId,
+                      });
+                    }}
+                  />
+                );
+              }
+
               const isCurrentUser = String(message.senderId) === String(currentUserId);
               const showSender =
                 !isCurrentUser &&
@@ -406,6 +665,36 @@ export const ChatRoomPage: React.FC = () => {
                 />
               );
             })}
+
+            {/* AI 웰컴 카드 — 메시지 카드로 표시 */}
+            {showWelcome && isAiMode && (
+              <AiWelcomeCard onQuickAction={handleQuickAction} />
+            )}
+
+            {/* AI 타이핑 인디케이터 */}
+            {isAiLoading && (
+              <div className="flex justify-start animate-fade-in">
+                <div className="max-w-[85%]">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                      <Sparkles className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <span className="text-xs text-emerald-400 font-semibold">AI 예약 도우미</span>
+                  </div>
+                  <div className="bg-emerald-500/5 border-l-[3px] border-l-emerald-500/40 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        <div className="w-1.5 h-1.5 bg-emerald-400/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-1.5 h-1.5 bg-emerald-400/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-1.5 h-1.5 bg-emerald-400/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                      <span className="text-xs text-white/50">{aiLoadingText}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
         </div>
@@ -421,17 +710,20 @@ export const ChatRoomPage: React.FC = () => {
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="메시지 입력..."
+              placeholder={isAiMode ? 'AI에게 예약 요청하기...' : '메시지 입력...'}
               className={cn(
                 'flex-1 px-4 py-2.5 rounded-full',
                 'bg-white/10 text-white placeholder:text-white/40',
-                'border border-white/10 focus:border-emerald-500/50',
-                'outline-none transition-colors'
+                'outline-none transition-colors',
+                isAiMode
+                  ? 'border border-emerald-500/50 focus:border-emerald-500'
+                  : 'border border-white/10 focus:border-emerald-500/50'
               )}
             />
+            <AiButton active={isAiMode} onClick={handleToggleAiMode} />
             <button
               onClick={handleSendMessage}
-              disabled={!inputText.trim() || sendMessageMutation.isPending}
+              disabled={!inputText.trim() || sendMessageMutation.isPending || isAiLoading}
               className={cn(
                 'p-2.5 rounded-full transition-colors',
                 inputText.trim()
@@ -439,7 +731,11 @@ export const ChatRoomPage: React.FC = () => {
                   : 'bg-white/10 text-white/40'
               )}
             >
-              <Send className="w-5 h-5" />
+              {isAiLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
             </button>
           </div>
         </div>

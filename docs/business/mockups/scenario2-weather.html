@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 420px;
+    font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    -webkit-font-smoothing: antialiased;
+  }
+  .card {
+    width: 420px;
+    background: #161b22;
+    border-radius: 20px;
+    border: 1px solid #30363d;
+    overflow: hidden;
+    padding-bottom: 30px;
+  }
+  .header {
+    padding: 24px 24px 20px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .header .num {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: #58a6ff; display: flex; align-items: center;
+    justify-content: center; font-size: 20px; font-weight: 800; color: #fff;
+  }
+  .header .label { font-size: 12px; color: #58a6ff; font-weight: 600; letter-spacing: 1px; }
+  .header .title { font-size: 20px; font-weight: 800; }
+
+  .chat { padding: 0 24px; }
+  .user-msg { display: flex; justify-content: flex-end; margin-bottom: 16px; }
+  .user-msg .bubble {
+    background: #2ea043; color: #fff; padding: 12px 18px;
+    border-radius: 16px 16px 4px 16px; font-size: 15px; font-weight: 500; max-width: 320px;
+  }
+  .ai-msg { margin-bottom: 16px; display: flex; gap: 8px; }
+  .ai-icon {
+    width: 28px; height: 28px; background: #2ea043; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0; margin-top: 2px;
+  }
+  .ai-bubble { flex: 1; }
+  .ai-bubble .text { font-size: 14px; margin-bottom: 10px; line-height: 1.5; }
+
+  /* Weather cards */
+  .weather-compare {
+    display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px;
+  }
+  .weather-day {
+    background: #0d1117; border: 1px solid #30363d; border-radius: 12px;
+    padding: 14px; display: flex; align-items: center; gap: 12px;
+  }
+  .weather-day.recommended { border-color: #2ea043; }
+  .weather-day.not-recommended { border-color: #f85149; opacity: 0.8; }
+  .weather-day .icon { font-size: 32px; }
+  .weather-day .info { flex: 1; }
+  .weather-day .day-name { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+  .weather-day .conditions { font-size: 12px; color: #8b949e; line-height: 1.4; }
+  .weather-day .stars { margin-top: 4px; font-size: 12px; color: #8b949e; }
+  .weather-day .stars .label { font-size: 11px; margin-right: 4px; }
+  .star-filled { color: #e3b341; }
+  .star-empty { color: #30363d; }
+  .rec-badge {
+    padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .rec-badge.good { background: #2ea043; color: #fff; }
+  .rec-badge.bad { background: #f85149; color: #fff; }
+
+  /* Slot chips */
+  .slot-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+  .slot-chip {
+    background: #0d1117; border: 1px solid #30363d; border-radius: 10px;
+    padding: 8px 12px; font-size: 13px; display: flex; align-items: center; gap: 5px;
+  }
+  .slot-chip.recommended {
+    border-color: #2ea043; background: rgba(46, 160, 67, 0.08);
+  }
+  .slot-chip .time { font-weight: 700; }
+  .ai-recommend-badge {
+    background: #2ea043; color: #fff; font-size: 10px; font-weight: 700;
+    padding: 2px 5px; border-radius: 4px;
+  }
+  .ai-tip {
+    font-size: 12px; color: #e3b341; margin-top: 6px;
+    display: flex; align-items: center; gap: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <div class="num">2</div>
+    <div>
+      <div class="label">SCENARIO</div>
+      <div class="title">날씨 포함 추천</div>
+    </div>
+  </div>
+
+  <div class="chat">
+    <div class="user-msg">
+      <div class="bubble">이번 주말 세종시에서 치고 싶은데 날씨 괜찮을까?</div>
+    </div>
+
+    <!-- AI: weather -->
+    <div class="ai-msg">
+      <div class="ai-icon">★</div>
+      <div class="ai-bubble">
+        <div class="text">세종시 주말 날씨를 확인했어요!</div>
+        <div class="weather-compare">
+          <div class="weather-day recommended">
+            <div class="icon">☀️</div>
+            <div class="info">
+              <div class="day-name">토요일 (3/1)</div>
+              <div class="conditions">맑음 · 18°C · 바람 2m/s · UV 보통</div>
+              <div class="stars">
+                <span class="label">🏌️ 골프 적합도:</span>
+                <span class="star-filled">★★★★★</span>
+              </div>
+            </div>
+            <div class="rec-badge good">추천!</div>
+          </div>
+          <div class="weather-day not-recommended">
+            <div class="icon">🌧️</div>
+            <div class="info">
+              <div class="day-name">일요일 (3/2)</div>
+              <div class="conditions">비 · 12°C · 바람 5m/s · 강수확률 80%</div>
+              <div class="stars">
+                <span class="label">🏌️ 골프 적합도:</span>
+                <span class="star-filled">★★</span><span class="star-empty">☆☆☆</span>
+              </div>
+            </div>
+            <div class="rec-badge bad">비추천</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI: slots -->
+    <div class="ai-msg">
+      <div class="ai-icon">★</div>
+      <div class="ai-bubble">
+        <div class="text">토요일 세종 파크골프장 빈 슬롯이에요!</div>
+        <div class="slot-chips">
+          <div class="slot-chip"><span>🕐</span><span class="time">09:00</span></div>
+          <div class="slot-chip"><span>🕐</span><span class="time">09:30</span></div>
+          <div class="slot-chip recommended"><span>🕐</span><span class="time">10:00</span><span class="ai-recommend-badge">⭐추천</span></div>
+          <div class="slot-chip"><span>🕐</span><span class="time">10:30</span></div>
+        </div>
+        <div class="ai-tip">✨ 토요일 오전이 라운드하기 가장 좋아요!</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

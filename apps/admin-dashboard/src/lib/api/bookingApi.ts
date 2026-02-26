@@ -178,6 +178,20 @@ export const bookingApi = {
     };
   },
 
+  // ===== 환불 처리 =====
+
+  /**
+   * 환불 처리 (전체/부분)
+   * cancelAmount 생략 시 전체 환불, 지정 시 부분 환불
+   */
+  async processRefund(
+    bookingId: number,
+    data: { cancelAmount?: number; cancelReason: string; adminNote?: string },
+  ): Promise<unknown> {
+    const response = await apiClient.post<unknown>(`/admin/bookings/${bookingId}/refund`, data);
+    return extractSingle(response.data);
+  },
+
   // ===== 캘린더 데이터 =====
 
   /**

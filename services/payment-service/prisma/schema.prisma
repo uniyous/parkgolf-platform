@@ -85,6 +85,7 @@ model Payment {
   // Relations
   refunds           Refund[]
   webhookLogs       WebhookLog[]
+  splits            PaymentSplit[]
 
   @@index([userId])
   @@index([bookingId])
@@ -93,6 +94,44 @@ model Payment {
   @@index([method])
   @@index([userId, status, createdAt])
   @@map("payments")
+}
+
+// =====================================================
+// 분할 결제 (더치페이)
+// =====================================================
+
+model PaymentSplit {
+  id              Int          @id @default(autoincrement())
+  paymentId       Int?         @map("payment_id")        // Toss 결제 완료 시 생성되는 Payment ID
+  bookingGroupId  Int?         @map("booking_group_id")  // 멀티팀일 때 그룹 ID
+  bookingId       Int          @map("booking_id")        // 소속 Booking
+  userId          Int          @map("user_id")
+  userName        String       @map("user_name")
+  userEmail       String       @map("user_email")
+  amount          Int                                     // 분담 금액 (원)
+  status          SplitStatus  @default(PENDING)
+  orderId         String       @unique @map("order_id")  // Toss 주문 ID (개별)
+  paidAt          DateTime?    @map("paid_at")
+  expiredAt       DateTime?    @map("expired_at")         // 결제 기한
+
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  payment         Payment?     @relation(fields: [paymentId], references: [id])
+
+  @@index([bookingGroupId, status])
+  @@index([bookingId])
+  @@index([userId, status])
+  @@map("payment_splits")
+}
+
+enum SplitStatus {
+  PENDING     // 결제 대기
+  PAID        // 결제 완료
+  EXPIRED     // 기한 만료
+  CANCELLED   // 취소
+  REFUNDED    // 환불
 }
 
 // =====================================================

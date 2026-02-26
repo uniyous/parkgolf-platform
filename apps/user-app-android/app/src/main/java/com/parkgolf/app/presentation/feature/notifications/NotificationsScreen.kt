@@ -24,7 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
@@ -507,7 +507,7 @@ private val NotificationType.icon: ImageVector
         NotificationType.PAYMENT_FAILED -> Icons.Default.Error
         NotificationType.FRIEND_REQUEST -> Icons.Default.PersonAdd
         NotificationType.FRIEND_ACCEPTED -> Icons.Default.People
-        NotificationType.CHAT_MESSAGE -> Icons.Default.Chat
+        NotificationType.CHAT_MESSAGE -> Icons.AutoMirrored.Filled.Chat
         NotificationType.SYSTEM_ALERT -> Icons.Default.Notifications
     }
 

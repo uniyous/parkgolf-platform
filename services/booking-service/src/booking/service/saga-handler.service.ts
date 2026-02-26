@@ -3,6 +3,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { BookingStatus, OutboxStatus, TimeSlotCacheStatus } from '@prisma/client';
+import { OutboxProcessorService } from './outbox-processor.service';
 
 // Saga 타임아웃 설정
 const SAGA_TIMEOUT_MS = 60000; // 1분
@@ -22,6 +23,7 @@ export class SagaHandlerService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly outboxProcessor: OutboxProcessorService,
     @Optional() @Inject('NOTIFICATION_SERVICE') private readonly notificationPublisher?: ClientProxy,
     @Optional() @Inject('COURSE_SERVICE') private readonly courseService?: ClientProxy,
     @Optional() @Inject('IAM_SERVICE') private readonly iamService?: ClientProxy,
@@ -319,6 +321,50 @@ export class SagaHandlerService {
         this.logger.warn(
           `[SagaHandler] Booking ${data.bookingId} is NOT in SLOT_RESERVED status (current: ${booking.status}), IGNORING payment.confirmed`
         );
+
+        // 결제 타임아웃으로 FAILED된 예약에 대해 결제가 도착한 경우 → 자동 환불
+        if (booking.status === BookingStatus.FAILED) {
+          this.logger.warn(
+            `[SagaHandler] Booking ${data.bookingId} is FAILED but payment was confirmed — triggering AUTO-REFUND`
+          );
+
+          await this.prisma.$transaction(async (prisma) => {
+            // 자동 환불 이력 기록
+            await prisma.bookingHistory.create({
+              data: {
+                bookingId: data.bookingId,
+                action: 'AUTO_REFUND_REQUESTED',
+                userId: booking.userId,
+                details: {
+                  reason: 'Payment arrived after booking timeout — auto-refund triggered',
+                  paymentId: data.paymentId,
+                  paymentKey: data.paymentKey,
+                  orderId: data.orderId,
+                  amount: data.amount,
+                  requestedAt: new Date().toISOString(),
+                },
+              },
+            });
+
+            // 환불 Outbox 이벤트 생성
+            await prisma.outboxEvent.create({
+              data: {
+                aggregateType: 'Booking',
+                aggregateId: String(data.bookingId),
+                eventType: 'payment.cancelByBookingId',
+                payload: {
+                  bookingId: data.bookingId,
+                  cancelReason: 'Auto-refund: payment arrived after booking timeout',
+                } as any,
+                status: OutboxStatus.PENDING,
+              },
+            });
+          });
+
+          // Outbox 즉시 처리 트리거
+          setImmediate(() => this.outboxProcessor.triggerImmediate());
+        }
+
         return { success: false };
       }
 

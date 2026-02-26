@@ -1,6 +1,7 @@
 package com.parkgolf.app.domain.repository
 
 import com.parkgolf.app.data.remote.socket.TypingEvent
+import com.parkgolf.app.domain.model.AiChatResponse
 import com.parkgolf.app.domain.model.ChatMessage
 import com.parkgolf.app.domain.model.ChatRoom
 import com.parkgolf.app.domain.model.ChatRoomType
@@ -9,7 +10,9 @@ import kotlinx.coroutines.flow.Flow
 interface ChatRepository {
     val messageFlow: Flow<ChatMessage>
     val connectionState: Flow<Boolean>
+    val natsConnectionState: Flow<Boolean>
     val tokenRefreshNeeded: Flow<Unit>
+    val reconnectWithNewToken: Flow<Unit>
     val typingFlow: Flow<TypingEvent>
 
     // API returns simple array, not paginated
@@ -41,6 +44,19 @@ interface ChatRepository {
 
     suspend fun markAsRead(roomId: String): Result<Unit>
 
+    suspend fun sendAiMessage(
+        roomId: String,
+        message: String,
+        conversationId: String? = null,
+        latitude: Double? = null,
+        longitude: Double? = null
+    ): Result<AiChatResponse>
+
+    suspend fun sendAiRequest(
+        roomId: String,
+        request: com.parkgolf.app.data.remote.dto.chat.AiChatRequest
+    ): Result<AiChatResponse>
+
     // Socket operations
     fun connect(token: String)
     fun disconnect()
@@ -54,8 +70,9 @@ interface ChatRepository {
     val canReconnect: Boolean
     fun ensureConnected(token: String)
     fun forceReconnect(token: String)
-    fun startConnectionCheck(token: String)
+    fun startConnectionCheck()
     fun stopConnectionCheck()
+    fun handleAppForeground()
 }
 
 data class MessagesResult(

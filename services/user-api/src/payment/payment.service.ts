@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { NatsClientService } from '../common/nats';
 import { ApiResponse } from '../common/types';
-import { PreparePaymentDto, ConfirmPaymentDto } from './dto/payment.dto';
+import { PreparePaymentDto, ConfirmPaymentDto, ConfirmSplitPaymentDto } from './dto/payment.dto';
 import { NATS_TIMEOUTS } from '../common/constants';
 
 export interface PreparePaymentResponse {
@@ -46,6 +46,16 @@ export class PaymentService {
   async confirmPayment(dto: ConfirmPaymentDto): Promise<ApiResponse<ConfirmPaymentResponse>> {
     this.logger.log(`Confirming payment orderId: ${dto.orderId}`);
     return this.natsClient.send('payment.confirm', {
+      paymentKey: dto.paymentKey,
+      orderId: dto.orderId,
+      amount: dto.amount,
+    }, NATS_TIMEOUTS.PAYMENT);
+  }
+
+  async confirmSplitPayment(userId: number, dto: ConfirmSplitPaymentDto): Promise<ApiResponse<ConfirmPaymentResponse>> {
+    this.logger.log(`Confirming split payment for user ${userId}, orderId: ${dto.orderId}`);
+    return this.natsClient.send('payment.splitConfirm', {
+      userId,
       paymentKey: dto.paymentKey,
       orderId: dto.orderId,
       amount: dto.amount,

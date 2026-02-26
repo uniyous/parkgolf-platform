@@ -68,6 +68,27 @@ enum AccountEndpoints {
     static func passwordExpiry() -> Endpoint {
         Endpoint(path: "/api/user/account/password-expiry")
     }
+
+    static func deletionStatus() -> Endpoint {
+        Endpoint(path: "/api/user/account/delete-status")
+    }
+
+    static func requestDeletion(password: String, reason: String?) -> Endpoint {
+        var body: [String: String] = ["password": password]
+        if let reason = reason { body["reason"] = reason }
+        return Endpoint(
+            path: "/api/user/account/delete-request",
+            method: .post,
+            body: body
+        )
+    }
+
+    static func cancelDeletion() -> Endpoint {
+        Endpoint(
+            path: "/api/user/account/delete-cancel",
+            method: .post
+        )
+    }
 }
 
 // MARK: - Booking Endpoints
@@ -167,6 +188,14 @@ enum ChatEndpoints {
         Endpoint(
             path: "/api/user/chat/rooms/\(roomId)/read",
             method: .post
+        )
+    }
+
+    static func sendAiMessage(roomId: String, message: String, conversationId: String? = nil, latitude: Double? = nil, longitude: Double? = nil) -> Endpoint {
+        Endpoint(
+            path: "/api/user/chat/rooms/\(roomId)/agent",
+            method: .post,
+            body: AiChatRequest(message: message, conversationId: conversationId, latitude: latitude, longitude: longitude)
         )
     }
 }

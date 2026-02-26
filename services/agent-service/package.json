@@ -1,7 +1,7 @@
 {
   "name": "parkgolf-agent-service",
   "version": "0.0.1",
-  "description": "AI Agent Service - Gemini 1.5 Flash 기반 예약 어시스턴트",
+  "description": "AI Agent Service - DeepSeek V3.2 기반 예약 어시스턴트",
   "author": "Parkgolf Team",
   "private": true,
   "license": "UNLICENSED",
@@ -19,7 +19,6 @@
     "test:cov": "jest --coverage"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.21.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
@@ -31,6 +30,7 @@
     "class-validator": "^0.14.3",
     "nats": "^2.29.3",
     "node-cache": "^5.1.2",
+    "openai": "^4.104.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "uuid": "^11.0.5"
@@ -53,11 +53,19 @@
     "typescript": "^5.7.3"
   },
   "jest": {
-    "moduleFileExtensions": ["js", "json", "ts"],
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
-    "transform": { "^.+\\.(t|j)s$": "ts-jest" },
-    "collectCoverageFrom": ["**/*.(t|j)s"],
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
   }

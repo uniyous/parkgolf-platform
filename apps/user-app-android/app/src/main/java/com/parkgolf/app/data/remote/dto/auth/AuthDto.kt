@@ -1,5 +1,6 @@
 package com.parkgolf.app.data.remote.dto.auth
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -46,6 +47,7 @@ data class UserStatsDto(
     val upcomingBookings: Int = 0,
     val completedBookings: Int = 0,
     val cancelledBookings: Int = 0,
+    @SerialName("friendCount")
     val friendsCount: Int = 0
 )
 

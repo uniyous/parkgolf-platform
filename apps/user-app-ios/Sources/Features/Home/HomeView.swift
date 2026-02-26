@@ -305,7 +305,11 @@ struct HomeView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: ParkSpacing.sm) {
                         ForEach(viewModel.nearbyClubs) { club in
-                            HomeNearbyClubCard(club: club)
+                            NavigationLink {
+                                ClubDetailView(clubId: club.id)
+                            } label: {
+                                HomeNearbyClubCard(club: club)
+                            }
                         }
                     }
                 }

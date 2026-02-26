@@ -24,7 +24,7 @@ import javax.inject.Singleton
 import kotlin.concurrent.withLock
 
 private const val TAG = "ChatSocketManager"
-private const val MAX_RECONNECT_ATTEMPTS = 10
+private const val MAX_RECONNECT_ATTEMPTS = Int.MAX_VALUE  // 무한 재시도 (Web/iOS 통일)
 private const val MIN_RECONNECT_INTERVAL_MS = 3000L
 private const val CONNECTION_CHECK_INTERVAL_MS = 30000L
 private const val HEARTBEAT_INTERVAL_MS = 30000L
@@ -63,6 +63,9 @@ class ChatSocketManager @Inject constructor() {
     private val _connectionState = MutableStateFlow(false)
     val connectionState: StateFlow<Boolean> = _connectionState.asStateFlow()
 
+    private val _natsConnectionState = MutableStateFlow(true)
+    val natsConnectionState: StateFlow<Boolean> = _natsConnectionState.asStateFlow()
+
     private val _messageReceived = MutableSharedFlow<ChatMessage>(extraBufferCapacity = 100)
     val messageReceived: SharedFlow<ChatMessage> = _messageReceived.asSharedFlow()
 
@@ -81,6 +84,10 @@ class ChatSocketManager @Inject constructor() {
     // Token refresh signal — server session stays alive, just refresh REST API token
     private val _tokenRefreshNeeded = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val tokenRefreshNeeded: SharedFlow<Unit> = _tokenRefreshNeeded.asSharedFlow()
+
+    // Reconnect signal — token refresh + socket reconnect needed (disconnect, connect error, etc.)
+    private val _reconnectWithNewToken = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val reconnectWithNewToken: SharedFlow<Unit> = _reconnectWithNewToken.asSharedFlow()
 
     /**
      * 소켓 연결
@@ -117,13 +124,17 @@ class ChatSocketManager @Inject constructor() {
                 Log.d(TAG, "Connecting to socket URL: $socketUrl")
 
                 val options = IO.Options().apply {
+                    // 인증: query param (iOS와 동일, 가장 확실한 방식)
+                    // + auth map, Authorization 헤더를 백업으로 전달
                     query = "token=$token"
+                    auth = mapOf("token" to token)
+                    extraHeaders = mutableMapOf(
+                        "Authorization" to listOf("Bearer $token")
+                    )
                     forceNew = true
-                    reconnection = true
-                    reconnectionAttempts = MAX_RECONNECT_ATTEMPTS
-                    reconnectionDelay = MIN_RECONNECT_INTERVAL_MS
+                    reconnection = false  // 우리 코드가 토큰 갱신 후 직접 재연결
+
                     timeout = 20000
-                    // Force WebSocket transport like iOS
                     transports = arrayOf("websocket")
                 }
 
@@ -190,18 +201,14 @@ class ChatSocketManager @Inject constructor() {
     /**
      * 주기적 연결 체크 시작 (30초마다, iOS와 동일)
      */
-    fun startConnectionCheck(token: String) {
+    fun startConnectionCheck() {
         stopConnectionCheck()
         connectionCheckJob = java.util.Timer().apply {
             scheduleAtFixedRate(object : java.util.TimerTask() {
                 override fun run() {
-                    if (!isConnected && canReconnect) {
-                        Log.d(TAG, "Periodic check: connection lost, attempting reconnect")
-                        ensureConnected(token)
-                        // Rejoin room if we have one
-                        currentRoomId?.let { roomId ->
-                            joinRoom(roomId)
-                        }
+                    if (!isConnected) {
+                        Log.d(TAG, "Periodic check: disconnected, requesting reconnect")
+                        _reconnectWithNewToken.tryEmit(Unit)
                     }
                 }
             }, CONNECTION_CHECK_INTERVAL_MS, CONNECTION_CHECK_INTERVAL_MS)
@@ -236,8 +243,9 @@ class ChatSocketManager @Inject constructor() {
                                     missedHeartbeats = 0
                                 })
                                 if (missedHeartbeats > MAX_MISSED_HEARTBEATS) {
-                                    Log.w(TAG, "Missed $missedHeartbeats heartbeats, forcing reconnect")
-                                    savedToken?.let { token -> forceReconnect(token) }
+                                    Log.w(TAG, "Missed $missedHeartbeats heartbeats, requesting reconnect")
+                                    cleanupSocketUnsafe()
+                                    _reconnectWithNewToken.tryEmit(Unit)
                                 }
                             }
                         }
@@ -357,12 +365,26 @@ class ChatSocketManager @Inject constructor() {
     val currentRoom: String?
         get() = socketLock.withLock { currentRoomId }
 
+    /**
+     * 앱 포그라운드 복귀 시 재연결 처리 (iOS와 동일)
+     */
+    fun handleAppForeground() {
+        if (!isConnected) {
+            Log.d(TAG, "App returned to foreground, requesting reconnect with fresh token")
+            _reconnectWithNewToken.tryEmit(Unit)
+        } else {
+            // 연결 유지 중이면 현재 방 재참여 트리거
+            currentRoomId?.let { joinRoom(it) }
+        }
+    }
+
     // Private helper methods
 
     private fun Socket.setupEventListeners() {
         on(Socket.EVENT_CONNECT) {
             isConnecting.set(false)
             _connectionState.value = true
+            _natsConnectionState.value = true  // Reset NATS status on fresh connect
             // Reset reconnect counter on successful connection (like iOS)
             reconnectAttempts = 0
             startHeartbeat()
@@ -374,14 +396,21 @@ class ChatSocketManager @Inject constructor() {
             stopHeartbeat()
             val reason = args.firstOrNull()?.toString() ?: "unknown"
             Log.d(TAG, "Socket disconnected: $reason")
+
+            // 서버가 명시적으로 끊은 경우(io server disconnect)가 아니면 자동 재연결
+            if (reason != "io server disconnect") {
+                _reconnectWithNewToken.tryEmit(Unit)
+            }
         }
 
         on(Socket.EVENT_CONNECT_ERROR) { args ->
             isConnecting.set(false)
             _connectionState.value = false
-            reconnectAttempts++
             val errorMsg = args.firstOrNull()?.toString() ?: "Unknown connection error"
-            Log.e(TAG, "Socket connection error ($reconnectAttempts/$MAX_RECONNECT_ATTEMPTS): $errorMsg")
+            Log.e(TAG, "Socket connection error: $errorMsg")
+            // 인증 에러든 일반 에러든 → 소켓 정리 후 토큰 갱신 + 재연결 시도
+            socketLock.withLock { cleanupSocketUnsafe() }
+            _reconnectWithNewToken.tryEmit(Unit)
             _error.tryEmit(SocketError.ConnectionFailed(errorMsg))
         }
 
@@ -409,6 +438,14 @@ class ChatSocketManager @Inject constructor() {
         on("token_refresh_needed") {
             Log.d(TAG, "Token expired, requesting REST API token refresh")
             _tokenRefreshNeeded.tryEmit(Unit)
+        }
+
+        on("system:nats_status") { args ->
+            if (args.isEmpty()) return@on
+            val data = args[0] as? JSONObject ?: return@on
+            val connected = data.optBoolean("connected", true)
+            Log.d(TAG, "NATS status: ${if (connected) "connected" else "disconnected"}")
+            _natsConnectionState.value = connected
         }
 
         on("error") { args ->

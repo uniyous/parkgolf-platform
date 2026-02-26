@@ -34,7 +34,7 @@ Park Golf Platform 테스트 전략 및 실행 가이드
 
 ## 1. Contract Test
 
-서비스 간 계약(스키마)을 검증하여 독립적 배포 보장
+서비스 간 계약(스키마)을 검증하여 독립적 배포 보장.
 
 ### 실행
 
@@ -51,7 +51,7 @@ npm run test:contract:provider
 npm run test:nats-contract
 ```
 
-### 주요 패턴
+### 패턴
 
 | 유형 | 설명 |
 |------|------|
@@ -59,13 +59,17 @@ npm run test:nats-contract
 | Pact Provider | Provider가 계약 충족 검증 |
 | NATS Schema | 메시지 요청/응답 JSON Schema 검증 |
 
-**상세 가이드**: [contract/SKILL.md](./contract/SKILL.md)
+### 작성 규칙
+
+- Consumer 테스트는 BFF 서비스(`user-api`, `admin-api`)에 작성
+- Provider 테스트는 대상 Microservice에 작성
+- NATS 메시지 스키마는 `test/contract/` 폴더에 JSON Schema로 정의
 
 ---
 
 ## 2. Integration Test
 
-API 엔드포인트와 서비스 간 NATS 통신 검증
+API 엔드포인트와 서비스 간 NATS 통신 검증.
 
 ### 실행
 
@@ -84,7 +88,7 @@ npm run test:integration -- --grep "User API"
 
 ```bash
 # 인증 플로우
-curl -X POST "$USER_API/auth/login" \
+curl -X POST "$API_URL/api/user/auth/login" \
   -H "Content-Type: application/json" \
   -d '{"email": "test@example.com", "password": "Test1234!@"}'
 
@@ -92,23 +96,20 @@ curl -X POST "$USER_API/auth/login" \
 npx ts-node test/integration/nats-test.ts
 ```
 
-### 서비스 URL (dev)
+### 서비스 접근 (GKE 기반)
 
-| 서비스 | URL |
-|--------|-----|
-| admin-api | https://admin-api-dev-xxx.a.run.app |
-| user-api | https://user-api-dev-xxx.a.run.app |
-| iam-service | https://iam-service-dev-xxx.a.run.app |
-| course-service | https://course-service-dev-xxx.a.run.app |
-| booking-service | https://booking-service-dev-xxx.a.run.app |
+| 환경 | API URL |
+|------|---------|
+| dev | `https://dev-api.parkgolfmate.com` |
+| prod | `https://api.parkgolfmate.com` |
 
-**상세 가이드**: [integration/SKILL.md](./integration/SKILL.md)
+> 개별 서비스는 K8s 내부 통신 (`http://{service}:8080`). 외부 접근은 Ingress를 통해.
 
 ---
 
 ## 3. E2E Test
 
-브라우저 기반 전체 사용자 시나리오 검증
+브라우저 기반 전체 사용자 시나리오 검증 (Playwright).
 
 ### 실행
 
@@ -144,17 +145,24 @@ npx playwright test booking-flow.spec.ts
 | admin | 강남대표 | manager@gangnam-golf.com | admin123!@# |
 | user | 테스트사용자 | test@parkgolf.com | test123!@# |
 
-**상세 가이드**: [e2e/SKILL.md](./e2e/SKILL.md)
+### Playwright 작성 규칙
+
+- `test.describe`로 기능별 그룹화
+- `page.getByRole()`, `page.getByText()` 등 시멘틱 로케이터 우선
+- 인증 상태는 `storageState`로 캐싱 (`e2e/.auth/`)
+- 네트워크 대기: `page.waitForResponse()` 사용
+- 테스트 간 독립성 보장 (DB 상태에 의존하지 않음)
 
 ---
 
 ## 테스트 실행 순서
 
-### PR 생성 시 (자동)
+### PR 생성 시 (CI 자동)
 
 ```
 1. Contract Test → Pact Consumer/Provider 검증
 2. Unit Test → 개별 함수/모듈 검증
+3. Build → 빌드 검증
 ```
 
 ### 배포 후 (수동/스케줄)
@@ -190,10 +198,6 @@ npx playwright test booking-flow.spec.ts
 
 ## 트러블슈팅
 
-### Cloud Run Cold Start
-- `global-setup.ts`에서 서버 웜업 수행
-- E2E 테스트에서 `test.slow()` 사용
-
 ### 인증 캐시 초기화
 ```bash
 rm -rf e2e/.auth
@@ -205,5 +209,11 @@ npx playwright install chromium
 ```
 
 ### NATS 연결 실패
-- VPC 네트워크 확인
-- NATS_URL 환경변수 확인
+- K8s 내부 네트워크 확인
+- NATS_URL 환경변수 확인 (`nats://nats:4222`)
+- NATS Pod 상태 확인: `kubectl get pods -n parkgolf-{env} | grep nats`
+
+### 테스트 타임아웃
+- Playwright 기본 타임아웃: 30초
+- 느린 테스트: `test.slow()` 사용 (타임아웃 3배)
+- API 응답 대기: `page.waitForResponse()` 활용

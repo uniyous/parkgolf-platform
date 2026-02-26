@@ -11,6 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const BASE_URL = 'https://dev-api.parkgolfmate.com';
+const FRONTEND_ORIGIN = process.env.E2E_BASE_URL || 'http://localhost:3001';
 const AUTH_FILE = path.resolve(__dirname, '.auth/admin.json');
 
 const HEALTH_ENDPOINTS = [
@@ -52,7 +53,9 @@ function isTokenValid(): boolean {
     }
 
     const authData = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf-8'));
-    const localStorage = authData.origins?.[0]?.localStorage || [];
+    // 현재 FRONTEND_ORIGIN에 맞는 origin에서 토큰 찾기, 없으면 첫 번째 사용
+    const matchedOrigin = authData.origins?.find((o: any) => o.origin === FRONTEND_ORIGIN) || authData.origins?.[0];
+    const localStorage = matchedOrigin?.localStorage || [];
     const accessTokenItem = localStorage.find((item: any) => item.name === 'accessToken');
 
     if (!accessTokenItem?.value) {
@@ -111,22 +114,29 @@ async function loginAndSaveToken(): Promise<boolean> {
     };
 
     // Playwright storageState 형식으로 저장
+    // 참고: 플랫폼 관리자는 가맹점 선택(select-company) 페이지를 거쳐야 함
+    // support-storage는 테스트의 beforeEach에서 UI 플로우로 처리
+    const localStorageItems = [
+      { name: 'accessToken', value: accessToken },
+      { name: 'refreshToken', value: refreshToken },
+      {
+        name: 'auth-storage',
+        value: JSON.stringify({ state: { token: accessToken }, version: 0 }),
+      },
+      { name: 'currentUser', value: JSON.stringify(currentUser) },
+    ];
+
+    // localhost + E2E_BASE_URL 두 origin 모두 등록
+    const origins = [
+      { origin: 'http://localhost:3001', localStorage: localStorageItems },
+    ];
+    if (FRONTEND_ORIGIN !== 'http://localhost:3001') {
+      origins.push({ origin: FRONTEND_ORIGIN, localStorage: localStorageItems });
+    }
+
     const authState = {
       cookies: [],
-      origins: [
-        {
-          origin: 'http://localhost:3001',
-          localStorage: [
-            { name: 'accessToken', value: accessToken },
-            { name: 'refreshToken', value: refreshToken },
-            {
-              name: 'auth-storage',
-              value: JSON.stringify({ state: { token: accessToken }, version: 0 }),
-            },
-            { name: 'currentUser', value: JSON.stringify(currentUser) },
-          ],
-        },
-      ],
+      origins,
     };
 
     const authDir = path.dirname(AUTH_FILE);

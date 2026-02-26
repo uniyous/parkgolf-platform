@@ -66,6 +66,11 @@ export {
   useDeleteNotificationMutation,
 } from './notification';
 
+// Club Queries
+export {
+  useClubDetailQuery,
+} from './club';
+
 // Location Queries
 export {
   locationKeys,

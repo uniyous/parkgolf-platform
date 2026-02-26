@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
 import { ApiResponse } from '../common/types';
-import { CreateChatRoomDto, MessageType } from './dto/chat.dto';
+import { AiChatRequestDto, CreateChatRoomDto, MessageType } from './dto/chat.dto';
 
 export interface ChatParticipant {
   id: string;
@@ -160,7 +160,7 @@ export class ChatService {
       senderId: userId,
       senderName: userName,
       content,
-      messageType,
+      type: messageType,
       createdAt: new Date().toISOString(),
     };
 
@@ -205,6 +205,92 @@ export class ChatService {
       }),
     );
     return { success: true, data: undefined } as ApiResponse<void>;
+  }
+
+  /**
+   * AI 예약 도우미에게 메시지 전송
+   */
+  async sendAiMessage(
+    roomId: string,
+    userId: number,
+    userName: string,
+    userEmail: string,
+    dto: AiChatRequestDto,
+  ) {
+    this.logger.log(`Send AI message: roomId=${roomId}, userId=${userId}`);
+
+    // 1. 사용자 메시지를 chat-service에 TEXT로 저장 (fire-and-forget — AI 흐름 차단 방지)
+    const userMessageData = {
+      id: randomUUID(),
+      roomId,
+      senderId: userId,
+      senderName: userName,
+      content: dto.message,
+      type: 'TEXT',
+      createdAt: new Date().toISOString(),
+    };
+    this.natsClient.send('chat.messages.save', userMessageData, NATS_TIMEOUTS.QUICK).catch((err) => {
+      this.logger.warn(`Failed to save user message: ${err}`);
+    });
+
+    // 2. agent-service에 AI 채팅 요청 (60초 타임아웃)
+    const agentResponse = await this.natsClient.send<any>(
+      'agent.chat',
+      {
+        userId,
+        userName,
+        userEmail,
+        message: dto.message,
+        conversationId: dto.conversationId,
+        chatRoomId: roomId,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+        selectedClubId: dto.selectedClubId,
+        selectedClubName: dto.selectedClubName,
+        selectedSlotId: dto.selectedSlotId,
+        selectedSlotTime: dto.selectedSlotTime,
+        selectedSlotPrice: dto.selectedSlotPrice,
+        confirmBooking: dto.confirmBooking,
+        cancelBooking: dto.cancelBooking,
+        paymentMethod: dto.paymentMethod,
+        paymentComplete: dto.paymentComplete,
+        paymentSuccess: dto.paymentSuccess,
+        // 그룹 예약 필드
+        selectedSlots: dto.selectedSlots,
+        teams: dto.teams,
+        confirmGroupBooking: dto.confirmGroupBooking,
+        // 분할결제 완료 필드
+        splitPaymentComplete: dto.splitPaymentComplete,
+        splitOrderId: dto.splitOrderId,
+      },
+      NATS_TIMEOUTS.PAYMENT, // 60초 - AI 처리 시간 고려
+    );
+
+    // 3. AI 응답을 chat-service에 AI_ASSISTANT로 저장 (fire-and-forget — 응답 반환 차단 방지)
+    if (agentResponse?.success && agentResponse?.data) {
+      const aiData = agentResponse.data;
+      const metadata = JSON.stringify({
+        conversationId: aiData.conversationId,
+        state: aiData.state,
+        actions: aiData.actions,
+      });
+
+      this.natsClient.send('chat.messages.save', {
+        id: randomUUID(),
+        roomId,
+        senderId: userId,
+        senderName: 'AI 예약 도우미',
+        content: aiData.message || '',
+        type: 'AI_ASSISTANT',
+        metadata,
+        createdAt: new Date().toISOString(),
+      }, NATS_TIMEOUTS.QUICK).catch((err) => {
+        this.logger.warn(`Failed to save AI message: ${err}`);
+      });
+    }
+
+    // 4. agent-service 응답 그대로 반환 (BFF 패스스루)
+    return agentResponse;
   }
 
   /**

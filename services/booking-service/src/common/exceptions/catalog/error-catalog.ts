@@ -72,6 +72,17 @@ export const BookingErrors = defineErrors({
 });
 
 // ============================================
+// 그룹 예약 에러 (GROUP_xxx)
+// ============================================
+export const GroupErrors = defineErrors({
+  NOT_FOUND: { code: 'GROUP_001', message: '그룹 예약을 찾을 수 없습니다', httpStatus: 404 },
+  INVALID_TEAM_COUNT: { code: 'GROUP_002', message: '팀 수가 올바르지 않습니다', httpStatus: 400 },
+  PARTICIPANT_NOT_FOUND: { code: 'GROUP_003', message: '참여자를 찾을 수 없습니다', httpStatus: 404 },
+  ALREADY_SETTLED: { code: 'GROUP_004', message: '이미 정산이 완료되었습니다', httpStatus: 400 },
+  SETTLEMENT_EXPIRED: { code: 'GROUP_005', message: '결제 기한이 만료되었습니다', httpStatus: 400 },
+});
+
+// ============================================
 // 코스 에러 (COURSE_xxx)
 // ============================================
 export const CourseErrors = defineErrors({
@@ -135,6 +146,7 @@ export const Errors = {
   User: UserErrors,
   Admin: AdminErrors,
   Booking: BookingErrors,
+  Group: GroupErrors,
   Course: CourseErrors,
   Validation: ValidationErrors,
   External: ExternalErrors,

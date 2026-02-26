@@ -72,6 +72,7 @@ enum NotificationType {
   FRIEND_ACCEPTED
   CHAT_MESSAGE
   SYSTEM_ALERT
+  SPLIT_PAYMENT_REQUEST
 }
 
 enum NotificationStatus {

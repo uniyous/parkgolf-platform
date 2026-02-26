@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import NodeCache from 'node-cache';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -16,21 +17,23 @@ import {
 export class ConversationService {
   private readonly logger = new Logger(ConversationService.name);
   private readonly cache: NodeCache;
+  private readonly maxHistoryTurns: number;
 
-  // 캐시 설정
-  private readonly TTL_SECONDS = 30 * 60; // 30분
-  private readonly CHECK_PERIOD = 60; // 1분마다 만료 체크
+  constructor(private readonly configService: ConfigService) {
+    const ttl = this.configService.get<number>('CONVERSATION_TTL') || 1800;
+    this.maxHistoryTurns = this.configService.get<number>('MAX_HISTORY_TURNS') || 10;
 
-  constructor() {
     this.cache = new NodeCache({
-      stdTTL: this.TTL_SECONDS,
-      checkperiod: this.CHECK_PERIOD,
+      stdTTL: ttl,
+      checkperiod: 60,
       useClones: true,
     });
 
     this.cache.on('expired', (key: string) => {
       this.logger.debug(`Conversation expired: ${key}`);
     });
+
+    this.logger.log(`Conversation TTL: ${ttl}s, Max history turns: ${this.maxHistoryTurns}`);
   }
 
   /**
@@ -149,12 +152,13 @@ export class ConversationService {
   }
 
   /**
-   * 최근 메시지 조회 (Gemini 컨텍스트용)
+   * 최근 메시지 조회 (LLM 컨텍스트용)
    */
   getRecentMessages(
     context: ConversationContext,
-    limit: number = 20,
+    limit?: number,
   ): Array<{ role: 'user' | 'assistant'; content: string }> {
+    limit = limit ?? this.maxHistoryTurns * 2;
     return context.messages.slice(-limit).map((msg) => ({
       role: msg.role,
       content: msg.content,

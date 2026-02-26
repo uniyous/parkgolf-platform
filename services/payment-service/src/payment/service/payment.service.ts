@@ -134,7 +134,7 @@ export class PaymentService {
       throw new AppException(Errors.Payment.ALREADY_CANCELLED);
     }
 
-    if (payment.status !== PaymentStatus.DONE) {
+    if (payment.status !== PaymentStatus.DONE && payment.status !== PaymentStatus.PARTIAL_CANCELED) {
       throw new AppException(Errors.Payment.INVALID_STATUS, '완료된 결제만 취소할 수 있습니다');
     }
 
@@ -527,6 +527,120 @@ export class PaymentService {
         status: OutboxStatus.PENDING,
       },
     });
+  }
+
+  /**
+   * 관리자 환불 처리 (bookingId 기반)
+   * 전체 환불: cancelAmount 생략
+   * 부분 환불: cancelAmount 지정
+   */
+  async processRefundByBooking(data: {
+    bookingId: number;
+    cancelAmount?: number;
+    cancelReason: string;
+  }) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { bookingId: data.bookingId },
+    });
+
+    if (!payment) {
+      throw new AppException(Errors.Payment.NOT_FOUND, `bookingId=${data.bookingId}에 대한 결제를 찾을 수 없습니다`);
+    }
+
+    if (payment.status === PaymentStatus.CANCELED) {
+      throw new AppException(Errors.Payment.ALREADY_CANCELLED);
+    }
+
+    if (payment.status !== PaymentStatus.DONE && payment.status !== PaymentStatus.PARTIAL_CANCELED) {
+      throw new AppException(Errors.Payment.INVALID_STATUS, '완료된 결제만 환불할 수 있습니다');
+    }
+
+    if (!payment.paymentKey) {
+      throw new AppException(Errors.Payment.INVALID_STATUS, '결제키가 없어 환불할 수 없습니다');
+    }
+
+    return this.cancelPayment({
+      paymentKey: payment.paymentKey,
+      cancelReason: data.cancelReason,
+      cancelAmount: data.cancelAmount,
+    });
+  }
+
+  /**
+   * 관리자 대시보드 - 매출 통계
+   */
+  async getRevenueStats(dateRange: { startDate: string; endDate: string }) {
+    const startDate = new Date(dateRange.startDate);
+    const endDate = new Date(dateRange.endDate);
+    endDate.setHours(23, 59, 59, 999);
+
+    const approvedFilter: Prisma.PaymentWhereInput = {
+      status: { in: [PaymentStatus.DONE, PaymentStatus.PARTIAL_CANCELED] },
+      approvedAt: { gte: startDate, lte: endDate },
+    };
+
+    const [paymentAgg, refundAgg] = await Promise.all([
+      this.prisma.payment.aggregate({
+        where: approvedFilter,
+        _sum: { amount: true },
+        _count: { id: true },
+        _avg: { amount: true },
+      }),
+      this.prisma.refund.aggregate({
+        where: {
+          payment: { approvedAt: { gte: startDate, lte: endDate } },
+          refundStatus: RefundStatus.COMPLETED,
+        },
+        _sum: { cancelAmount: true },
+      }),
+    ]);
+
+    const grossRevenue = paymentAgg._sum.amount ?? 0;
+    const refundTotal = refundAgg._sum.cancelAmount ?? 0;
+    const totalRevenue = grossRevenue - refundTotal;
+    const transactionCount = paymentAgg._count.id;
+    const averageRevenuePerBooking = Math.round(paymentAgg._avg.amount ?? 0);
+
+    // 이전 동일 기간 계산
+    const periodMs = endDate.getTime() - startDate.getTime();
+    const prevStart = new Date(startDate.getTime() - periodMs - 1);
+    const prevEnd = new Date(startDate.getTime() - 1);
+
+    const [prevPaymentAgg, prevRefundAgg] = await Promise.all([
+      this.prisma.payment.aggregate({
+        where: {
+          status: { in: [PaymentStatus.DONE, PaymentStatus.PARTIAL_CANCELED] },
+          approvedAt: { gte: prevStart, lte: prevEnd },
+        },
+        _sum: { amount: true },
+      }),
+      this.prisma.refund.aggregate({
+        where: {
+          payment: { approvedAt: { gte: prevStart, lte: prevEnd } },
+          refundStatus: RefundStatus.COMPLETED,
+        },
+        _sum: { cancelAmount: true },
+      }),
+    ]);
+
+    const prevRevenue = (prevPaymentAgg._sum.amount ?? 0) - (prevRefundAgg._sum.cancelAmount ?? 0);
+    const revenueGrowthRate = prevRevenue > 0
+      ? Math.round(((totalRevenue - prevRevenue) / prevRevenue) * 100 * 10) / 10
+      : 0;
+
+    const days = Math.max(1, Math.ceil(periodMs / (1000 * 60 * 60 * 24)));
+    const monthlyRecurringRevenue = Math.round((totalRevenue / days) * 30);
+
+    return {
+      totalRevenue,
+      revenueGrowthRate,
+      averageRevenuePerBooking,
+      monthlyRecurringRevenue,
+      transactionCount,
+      refundTotal,
+      total: totalRevenue,
+      growth: revenueGrowthRate,
+    };
   }
 
   /**

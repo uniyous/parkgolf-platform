@@ -1,12 +1,22 @@
 package com.parkgolf.app.presentation.feature.chat
 
 import android.util.Log
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.parkgolf.app.data.remote.dto.chat.AiChatRequest
+import com.parkgolf.app.domain.model.AiChatResponse
+import com.parkgolf.app.domain.model.ChatAction
 import com.parkgolf.app.domain.model.ChatMessage
 import com.parkgolf.app.domain.model.ChatRoom
+import com.parkgolf.app.domain.model.ConversationState
+import com.parkgolf.app.domain.model.MessageType
 import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.ChatRepository
+import com.parkgolf.app.util.LocationManager
+import java.time.LocalDateTime
+import java.util.UUID
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,19 +37,39 @@ data class ChatUiState(
     val messages: List<ChatMessage> = emptyList(),
     val messageInput: String = "",
     val isConnected: Boolean = false,
+    val isNatsConnected: Boolean = true,
     val isSending: Boolean = false,
     val hasMore: Boolean = false,
     val nextCursor: String? = null,
     val currentUserId: String? = null,
     val error: String? = null,
     val canReconnect: Boolean = true,
-    val typingUserName: String? = null
-)
+    val typingUserName: String? = null,
+    val isAiMode: Boolean = false,
+    val isAiLoading: Boolean = false,
+    val aiConversationId: String? = null,
+    val aiConversationState: ConversationState = ConversationState.IDLE,
+    val showWelcome: Boolean = false,
+    val selectedClubId: String? = null,
+    val selectedSlotId: String? = null,
+    val aiMessageActions: Map<String, List<ChatAction>> = emptyMap()
+) {
+    val aiLoadingText: String
+        get() = when (aiConversationState) {
+            ConversationState.COLLECTING -> "검색 중..."
+            ConversationState.CONFIRMING -> "예약 확인 중..."
+            ConversationState.BOOKING -> "예약 처리 중..."
+            ConversationState.SELECTING_PARTICIPANTS -> "팀 편성 중..."
+            ConversationState.SETTLING -> "정산 처리 중..."
+            else -> "생각 중..."
+        }
+}
 
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val locationManager: LocationManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatUiState())
@@ -50,11 +80,16 @@ class ChatViewModel @Inject constructor(
 
     private var typingClearJob: kotlinx.coroutines.Job? = null
 
+    // Lifecycle observer for foreground/background detection
+    private var lifecycleObserver: DefaultLifecycleObserver? = null
+
     init {
         observeConnectionState()
+        observeNatsStatus()
         observeMessages()
         observeTyping()
         observeTokenRefresh()
+        observeReconnectSignal()
         loadCurrentUser()
     }
 
@@ -76,12 +111,66 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    private fun observeNatsStatus() {
+        viewModelScope.launch {
+            chatRepository.natsConnectionState.collect { isNatsConnected ->
+                val wasDisconnected = !_uiState.value.isNatsConnected
+                _uiState.value = _uiState.value.copy(isNatsConnected = isNatsConnected)
+                // NATS 복구 시 방 재참여 + 메시지 갱신
+                if (isNatsConnected && wasDisconnected) {
+                    currentRoomId?.let { roomId ->
+                        chatRepository.joinRoom(roomId)
+                        Log.d(TAG, "Rejoined room after NATS recovery: $roomId")
+                        loadMessages(roomId)
+                    }
+                }
+            }
+        }
+    }
+
     private fun observeTokenRefresh() {
         viewModelScope.launch {
             chatRepository.tokenRefreshNeeded.collect {
-                // Server session stays alive — just refresh REST API token in background
-                Log.d(TAG, "Token refresh needed, refreshing REST API token...")
+                Log.d(TAG, "Refreshing REST API token (socket stays connected)")
                 authRepository.refreshToken()
+                    .onSuccess {
+                        val newToken = authRepository.getAccessToken()
+                        if (newToken != null) {
+                            savedToken = newToken
+                        }
+                    }
+                    .onFailure { error ->
+                        Log.e(TAG, "Token refresh failed: ${error.message}")
+                    }
+            }
+        }
+    }
+
+    private fun observeReconnectSignal() {
+        viewModelScope.launch {
+            chatRepository.reconnectWithNewToken.collect {
+                Log.d(TAG, "Reconnect signal received, refreshing token then reconnecting")
+                // 1. 토큰 갱신
+                authRepository.refreshToken()
+                    .onFailure { Log.w(TAG, "Token refresh failed, using cached token") }
+
+                // 2. 최신 토큰으로 재연결
+                val freshToken = authRepository.getAccessToken()
+                if (freshToken != null) {
+                    savedToken = freshToken
+                    chatRepository.forceReconnect(freshToken)
+
+                    // 3. 연결 대기 후 방 재참여
+                    delay(2000)
+                    if (chatRepository.isConnected) {
+                        currentRoomId?.let { roomId ->
+                            chatRepository.joinRoom(roomId)
+                            loadMessages(roomId)
+                        }
+                    }
+                } else {
+                    Log.e(TAG, "No token available for reconnect")
+                }
             }
         }
     }
@@ -127,7 +216,7 @@ class ChatViewModel @Inject constructor(
         savedToken = token
         chatRepository.connect(token)
         // Start periodic connection check (like iOS)
-        chatRepository.startConnectionCheck(token)
+        chatRepository.startConnectionCheck()
     }
 
     fun disconnectSocket() {
@@ -176,7 +265,9 @@ class ChatViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(isLoading = true, messages = emptyList())
 
         viewModelScope.launch {
-            // 1. Get token and connect socket first (like iOS)
+            // 1. 토큰 갱신 후 소켓 연결 (만료 토큰으로 연결 시도 방지)
+            authRepository.refreshToken()
+                .onFailure { Log.w(TAG, "Token pre-refresh failed, using cached token") }
             val token = authRepository.getAccessToken()
             if (token != null) {
                 savedToken = token
@@ -197,7 +288,7 @@ class ChatViewModel @Inject constructor(
                 }
 
                 // Start periodic connection check
-                chatRepository.startConnectionCheck(token)
+                chatRepository.startConnectionCheck()
             } else {
                 Log.w(TAG, "No access token available for socket connection")
             }
@@ -348,6 +439,163 @@ class ChatViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    // AI Mode
+
+    fun toggleAiMode() {
+        val wasOff = !_uiState.value.isAiMode
+        if (wasOff) {
+            _uiState.value = _uiState.value.copy(
+                isAiMode = true,
+                showWelcome = true,
+                selectedClubId = null,
+                selectedSlotId = null
+            )
+        } else {
+            _uiState.value = _uiState.value.copy(
+                isAiMode = false,
+                showWelcome = false,
+                aiConversationId = null,
+                aiConversationState = ConversationState.IDLE,
+                selectedClubId = null,
+                selectedSlotId = null
+            )
+        }
+    }
+
+    fun selectClub(clubId: String) {
+        _uiState.value = _uiState.value.copy(selectedClubId = clubId)
+    }
+
+    fun selectSlot(slotId: String) {
+        _uiState.value = _uiState.value.copy(selectedSlotId = slotId)
+    }
+
+    fun sendAiMessage(message: String? = null) {
+        val content = (message ?: _uiState.value.messageInput).trim()
+        val roomId = currentRoomId
+
+        if (content.isBlank() || roomId == null) return
+
+        // Clear input if using message input
+        if (message == null) {
+            _uiState.value = _uiState.value.copy(messageInput = "")
+        }
+
+        // Add user message locally
+        addUserMessage(roomId, content)
+
+        viewModelScope.launch {
+            val location = locationManager.getCurrentLocation()
+            chatRepository.sendAiMessage(
+                roomId = roomId,
+                message = content,
+                conversationId = _uiState.value.aiConversationId,
+                latitude = location?.latitude,
+                longitude = location?.longitude
+            ).onSuccess { response ->
+                handleAiResponse(roomId, response)
+            }.onFailure {
+                _uiState.value = _uiState.value.copy(
+                    isAiLoading = false,
+                    messageInput = content,
+                    error = "AI 응답에 실패했습니다."
+                )
+            }
+        }
+    }
+
+    /**
+     * 구조화된 AI 요청 전송 (카드 인터랙션용)
+     * Web의 handleAiFollowUp 패턴과 동일
+     */
+    fun sendAiFollowUp(request: AiChatRequest) {
+        val roomId = currentRoomId ?: return
+
+        addUserMessage(roomId, request.message)
+
+        viewModelScope.launch {
+            val location = locationManager.getCurrentLocation()
+            val fullRequest = request.copy(
+                conversationId = request.conversationId ?: _uiState.value.aiConversationId,
+                latitude = request.latitude ?: location?.latitude,
+                longitude = request.longitude ?: location?.longitude
+            )
+            chatRepository.sendAiRequest(roomId, fullRequest)
+                .onSuccess { response ->
+                    handleAiResponse(roomId, response)
+                }
+                .onFailure {
+                    _uiState.value = _uiState.value.copy(
+                        isAiLoading = false,
+                        error = "AI 응답에 실패했습니다."
+                    )
+                }
+        }
+    }
+
+    private fun addUserMessage(roomId: String, content: String) {
+        val userMsg = ChatMessage(
+            id = UUID.randomUUID().toString(),
+            roomId = roomId,
+            senderId = _uiState.value.currentUserId ?: "",
+            senderName = "나",
+            content = content,
+            messageType = MessageType.TEXT,
+            createdAt = LocalDateTime.now()
+        )
+        _uiState.value = _uiState.value.copy(
+            messages = _uiState.value.messages + userMsg,
+            isAiLoading = true,
+            showWelcome = false
+        )
+    }
+
+    private fun handleAiResponse(roomId: String, response: AiChatResponse) {
+        val aiMsg = ChatMessage(
+            id = UUID.randomUUID().toString(),
+            roomId = roomId,
+            senderId = "ai-assistant",
+            senderName = "AI 예약 도우미",
+            content = response.message,
+            messageType = MessageType.AI_ASSISTANT,
+            createdAt = LocalDateTime.now()
+        )
+        val updatedActions = _uiState.value.aiMessageActions.toMutableMap()
+        if (response.actions.isNotEmpty()) {
+            updatedActions[aiMsg.id] = response.actions
+        }
+        _uiState.value = _uiState.value.copy(
+            messages = _uiState.value.messages + aiMsg,
+            isAiLoading = false,
+            aiConversationId = response.conversationId,
+            aiConversationState = response.state,
+            aiMessageActions = updatedActions
+        )
+    }
+
+    fun getActionsForMessage(messageId: String): List<ChatAction> {
+        return _uiState.value.aiMessageActions[messageId] ?: emptyList()
+    }
+
+    /**
+     * 라이프사이클 옵저버 등록 — 포그라운드 복귀 시 재연결 처리
+     */
+    fun observeAppLifecycle(lifecycleOwner: LifecycleOwner) {
+        // 이미 등록된 옵저버가 있으면 제거
+        lifecycleObserver?.let { lifecycleOwner.lifecycle.removeObserver(it) }
+
+        val observer = object : DefaultLifecycleObserver {
+            override fun onResume(owner: LifecycleOwner) {
+                Log.d(TAG, "App resumed, checking connection")
+                chatRepository.handleAppForeground()
+                // 메시지 갭 복구
+                currentRoomId?.let { loadMessages(it) }
+            }
+        }
+        lifecycleObserver = observer
+        lifecycleOwner.lifecycle.addObserver(observer)
     }
 
     override fun onCleared() {

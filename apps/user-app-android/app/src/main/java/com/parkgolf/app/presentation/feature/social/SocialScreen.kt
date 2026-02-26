@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -125,7 +126,13 @@ fun SocialScreen(
                     selectedTab = selectedMainTab,
                     pendingRequestsCount = uiState.friendRequests.size + uiState.sentFriendRequests.size,
                     unreadChatCount = uiState.totalUnreadCount,
-                    onTabSelected = { selectedMainTab = it }
+                    onTabSelected = { tab ->
+                        selectedMainTab = tab
+                        when (tab) {
+                            SocialMainTab.FRIENDS -> viewModel.loadFriendsData()
+                            SocialMainTab.CHAT -> viewModel.loadChatRooms()
+                        }
+                    }
                 )
 
                 // Content
@@ -299,7 +306,10 @@ private fun FriendsContent(
         FriendSubTabRow(
             selectedTab = selectedSubTab,
             requestsCount = uiState.friendRequests.size + uiState.sentFriendRequests.size,
-            onTabSelected = { selectedSubTab = it }
+            onTabSelected = { tab ->
+                    selectedSubTab = tab
+                    viewModel.loadFriendsData()
+                }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -788,7 +798,7 @@ private fun SentRequestCard(request: SentFriendRequest) {
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Send,
+                        imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
                         tint = ParkWarning

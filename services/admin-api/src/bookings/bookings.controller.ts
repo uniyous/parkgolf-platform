@@ -12,6 +12,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@ne
 import { BookingService } from './bookings.service';
 import { BearerToken, AdminContext, AdminContextData } from '../common';
 import { CreateBookingDto, UpdateBookingDto } from './dto/booking.dto';
+import { ProcessRefundDto } from './dto/payment.dto';
 
 @ApiTags('bookings')
 @ApiBearerAuth()
@@ -296,17 +297,17 @@ export class BookingsController {
     return this.bookingService.markNoShow(bookingId, token);
   }
 
-  @Post('payments/:paymentId/refund')
-  @ApiOperation({ summary: 'Process payment refund' })
+  @Post(':bookingId/refund')
+  @ApiOperation({ summary: 'Process booking refund (full or partial)' })
   @ApiResponse({ status: 200, description: 'Refund processed successfully' })
   @ApiResponse({ status: 404, description: 'Payment not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async processRefund(
     @BearerToken() token: string,
-    @Param('paymentId') paymentId: string,
-    @Body() refundData: Record<string, unknown>,
+    @Param('bookingId') bookingId: string,
+    @Body() refundData: ProcessRefundDto,
   ) {
-    this.logger.log(`Processing refund for payment: ${paymentId}`);
-    return this.bookingService.processRefund(paymentId, refundData, token);
+    this.logger.log(`Processing refund for booking: ${bookingId}`);
+    return this.bookingService.processRefund(bookingId, refundData, token);
   }
 }

@@ -6,7 +6,7 @@ import { unwrapResponse, extractPaginatedList, type BffResponse, type PaginatedR
 // ============================================
 
 export type ChatRoomType = 'DIRECT' | 'GROUP' | 'BOOKING';
-export type MessageType = 'TEXT' | 'IMAGE' | 'SYSTEM' | 'BOOKING_INVITE';
+export type MessageType = 'TEXT' | 'IMAGE' | 'SYSTEM' | 'BOOKING_INVITE' | 'AI_ASSISTANT';
 
 export interface ChatParticipant {
   id: string;
@@ -55,6 +55,201 @@ export interface MessagesResponse {
   messages: ChatMessage[];
   hasMore: boolean;
   nextCursor: string | null;
+}
+
+// ============================================
+// AI Chat Types
+// ============================================
+
+export type ConversationState = 'IDLE' | 'COLLECTING' | 'CONFIRMING' | 'SELECTING_PARTICIPANTS' | 'BOOKING' | 'SETTLING' | 'COMPLETED' | 'CANCELLED';
+export type ActionType = 'SHOW_CLUBS' | 'SHOW_SLOTS' | 'SHOW_WEATHER' | 'CONFIRM_BOOKING' | 'CONFIRM_GROUP' | 'SELECT_PARTICIPANTS' | 'SHOW_PAYMENT' | 'SPLIT_PAYMENT' | 'SETTLEMENT_STATUS' | 'BOOKING_COMPLETE';
+
+export interface ChatAction {
+  type: ActionType;
+  data: unknown;
+}
+
+export interface AiChatResponse {
+  conversationId: string;
+  message: string;
+  state: ConversationState;
+  actions?: ChatAction[];
+}
+
+export interface ClubCardData {
+  found: number;
+  clubs: Array<{
+    id: string;
+    name: string;
+    address: string;
+    region: string;
+  }>;
+}
+
+export interface SlotCardData {
+  clubId?: string;
+  clubName?: string;
+  clubAddress?: string;
+  date: string;
+  availableCount: number;
+  rounds?: Array<{
+    gameId: number;
+    name: string;
+    price: number;
+    slots: Array<{
+      id: string;
+      time: string;
+      endTime?: string;
+      availableSpots?: number;
+      price: number;
+    }>;
+  }>;
+  slots: Array<{
+    id: string;
+    time: string;
+    endTime: string;
+    availableSpots: number;
+    price: number;
+    courseName: string;
+  }>;
+}
+
+export interface WeatherCardData {
+  date: string;
+  clubName?: string;
+  location?: string;
+  temperature: number;
+  minTemperature?: number;
+  maxTemperature?: number;
+  sky: string;
+  precipitation: number;
+  recommendation: string;
+}
+
+export interface BookingCompleteData {
+  success: boolean;
+  bookingId: string;
+  confirmationNumber: string;
+  details: {
+    date: string;
+    time: string;
+    playerCount: number;
+    totalPrice: number;
+  };
+}
+
+export interface ConfirmBookingData {
+  clubName: string;
+  date: string;
+  time: string;
+  playerCount: number;
+  price: number;
+  courseName?: string;
+}
+
+export interface PaymentCardData {
+  bookingId: number;
+  orderId?: string | null;
+  amount: number;
+  orderName: string;
+  clubName: string;
+  date: string;
+  time: string;
+  playerCount: number;
+}
+
+export interface ConfirmGroupData {
+  clubName: string;
+  date: string;
+  teamCount: number;
+  slots: Array<{
+    slotId: string;
+    slotTime: string;
+    courseName: string;
+    price: number;
+  }>;
+  maxParticipants: number;
+  pricePerPerson: number;
+  totalPrice: number;
+}
+
+export interface TeamMember {
+  userId: number;
+  userName: string;
+  userEmail: string;
+}
+
+export interface SelectParticipantsData {
+  clubId?: string;
+  clubName: string;
+  date: string;
+  pricePerPerson: number;
+  teams: Array<{
+    teamNumber: number;
+    slotId: string;
+    slotTime: string;
+    courseName: string;
+    maxPlayers: number;
+    members: TeamMember[];
+  }>;
+  unassigned: TeamMember[];
+  availableSlots: Array<{
+    slotId: string;
+    slotTime: string;
+    courseName: string;
+    maxPlayers: number;
+  }>;
+}
+
+export interface SettlementStatusData {
+  groupNumber: string;
+  bookingGroupId: number;
+  bookerId?: number;
+  totalParticipants: number;
+  pricePerPerson: number;
+  totalPrice: number;
+  paidCount: number;
+  participants: Array<{
+    userId: number;
+    userName: string;
+    orderId?: string;
+    amount?: number;
+    status: 'PENDING' | 'PAID' | 'CANCELLED';
+    expiredAt?: string;
+  }>;
+}
+
+export interface AiChatRequest {
+  message: string;
+  conversationId?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  selectedClubId?: string;
+  selectedClubName?: string;
+  selectedSlotId?: string;
+  selectedSlotTime?: string;
+  selectedSlotPrice?: number;
+  confirmBooking?: boolean;
+  cancelBooking?: boolean;
+  paymentMethod?: string;
+  paymentComplete?: boolean;
+  paymentSuccess?: boolean;
+  // 그룹 예약
+  selectedSlots?: Array<{
+    slotId: string;
+    slotTime: string;
+    courseName: string;
+    price: number;
+  }>;
+  teams?: Array<{
+    teamNumber: number;
+    slotId: string;
+    members: TeamMember[];
+  }>;
+  confirmGroupBooking?: boolean;
+  // 분할결제 완료
+  splitPaymentComplete?: boolean;
+  splitOrderId?: string;
 }
 
 // ============================================
@@ -261,5 +456,19 @@ export const chatApi = {
    */
   markAsRead: async (roomId: string): Promise<void> => {
     await apiClient.post<BffResponse<void>>(`/api/user/chat/rooms/${roomId}/read`);
+  },
+
+  /**
+   * AI 예약 도우미에게 메시지 전송
+   */
+  sendAiMessage: async (
+    roomId: string,
+    request: AiChatRequest,
+  ): Promise<AiChatResponse> => {
+    const response = await apiClient.post<BffResponse<AiChatResponse>>(
+      `/api/user/chat/rooms/${roomId}/agent`,
+      request,
+    );
+    return unwrapResponse(response.data);
   },
 };

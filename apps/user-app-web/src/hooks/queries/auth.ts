@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { authApi, type LoginRequest, type RegisterRequest, type ChangePasswordRequest, type UpdateProfileRequest } from '@/lib/api/authApi';
+import { authApi, type LoginRequest, type RegisterRequest, type ChangePasswordRequest, type UpdateProfileRequest, type RequestDeletionRequest } from '@/lib/api/authApi';
 import { useAuthStore } from '@/stores/authStore';
 import { authStorage } from '@/lib/storage';
 import { authKeys } from './keys';
@@ -96,5 +96,40 @@ export const usePasswordExpiryQuery = () => {
     enabled: authStorage.isAuthenticated(),
     staleTime: 1000 * 60 * 60, // 1 hour
     retry: false,
+  });
+};
+
+// Account Deletion Status Query
+export const useDeletionStatusQuery = () => {
+  return useQuery({
+    queryKey: authKeys.deletionStatus(),
+    queryFn: () => authApi.getDeletionStatus(),
+    enabled: authStorage.isAuthenticated(),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: false,
+  });
+};
+
+// Request Account Deletion Mutation
+export const useRequestDeletionMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: RequestDeletionRequest) => authApi.requestDeletion(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: authKeys.deletionStatus() });
+    },
+  });
+};
+
+// Cancel Account Deletion Mutation
+export const useCancelDeletionMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => authApi.cancelDeletion(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: authKeys.deletionStatus() });
+    },
   });
 };

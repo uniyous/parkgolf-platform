@@ -12,6 +12,7 @@ import com.parkgolf.app.data.remote.dto.friends.FriendDto
 import com.parkgolf.app.data.remote.dto.friends.FriendRequestDto
 import com.parkgolf.app.data.remote.dto.friends.SentFriendRequestDto
 import com.parkgolf.app.data.remote.dto.friends.UserSearchResultDto
+import com.parkgolf.app.data.remote.dto.location.ClubDetailDto
 import com.parkgolf.app.data.remote.dto.location.CurrentWeatherDto
 import com.parkgolf.app.data.remote.dto.location.NearbyClubDto
 import com.parkgolf.app.data.remote.dto.location.RegionInfoDto
@@ -301,6 +302,33 @@ fun NearbyClubDto.toDomain(): NearbyClub {
         clubType = clubType,
         facilities = facilities,
         distance = distance
+    )
+}
+
+fun ClubDetailDto.toDomain(): ClubDetail {
+    return ClubDetail(
+        id = id,
+        name = name,
+        companyId = companyId,
+        location = location,
+        address = address,
+        phone = phone,
+        email = email,
+        website = website,
+        totalHoles = totalHoles,
+        totalCourses = totalCourses,
+        status = status,
+        clubType = clubType,
+        latitude = latitude,
+        longitude = longitude,
+        operatingHours = operatingHours?.let {
+            ClubDetail.OperatingHours(open = it.open, close = it.close)
+        },
+        seasonInfo = seasonInfo?.let {
+            ClubDetail.SeasonInfo(type = it.type, startDate = it.startDate, endDate = it.endDate)
+        },
+        facilities = facilities,
+        isActive = isActive
     )
 }
 

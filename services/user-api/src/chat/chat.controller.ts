@@ -25,6 +25,7 @@ import {
   GetMessagesQueryDto,
   GetRoomsQueryDto,
   AddMembersDto,
+  AiChatRequestDto,
   MessageType,
 } from './dto/chat.dto';
 
@@ -154,6 +155,25 @@ export class ChatController {
     @Body('messageId') messageId: string,
   ) {
     return this.chatService.markAsRead(roomId, userId, messageId);
+  }
+
+  @Post('rooms/:roomId/agent')
+  @ApiOperation({ summary: 'AI 예약 도우미에게 메시지 전송' })
+  @ApiParam({ name: 'roomId', description: '채팅방 ID' })
+  @ApiResponse({ status: 200, description: 'AI 응답 성공' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  async sendAiMessage(
+    @CurrentUser() user: JwtUser,
+    @Param('roomId') roomId: string,
+    @Body() dto: AiChatRequestDto,
+  ) {
+    return this.chatService.sendAiMessage(
+      roomId,
+      user.userId,
+      user.name,
+      user.email,
+      dto,
+    );
   }
 
   @Get('rooms/:roomId/unread')

@@ -105,5 +105,69 @@ enum class MessageType(val value: String) {
     TEXT("TEXT"),
     IMAGE("IMAGE"),
     SYSTEM("SYSTEM"),
-    BOOKING_INVITE("BOOKING_INVITE")
+    BOOKING_INVITE("BOOKING_INVITE"),
+    AI_ASSISTANT("AI_ASSISTANT")
 }
+
+// AI Chat DTOs
+
+@Serializable
+data class AiChatRequest(
+    val message: String,
+    val conversationId: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val selectedClubId: String? = null,
+    val selectedClubName: String? = null,
+    val selectedSlotId: String? = null,
+    val selectedSlotTime: String? = null,
+    val selectedSlotPrice: Int? = null,
+    val confirmBooking: Boolean? = null,
+    val cancelBooking: Boolean? = null,
+    val paymentMethod: String? = null,
+    val paymentComplete: Boolean? = null,
+    val paymentSuccess: Boolean? = null,
+    // 그룹 예약
+    val selectedSlots: List<SelectedSlotDto>? = null,
+    val teams: List<TeamDto>? = null,
+    val confirmGroupBooking: Boolean? = null,
+    // 분할결제 완료
+    val splitPaymentComplete: Boolean? = null,
+    val splitOrderId: String? = null
+)
+
+@Serializable
+data class SelectedSlotDto(
+    val slotId: String,
+    val slotTime: String,
+    val courseName: String,
+    val price: Int
+)
+
+@Serializable
+data class TeamDto(
+    val teamNumber: Int,
+    val slotId: String,
+    val members: List<TeamMemberDto>
+)
+
+@Serializable
+data class TeamMemberDto(
+    val userId: Int,
+    val userName: String,
+    val userEmail: String
+)
+
+@Serializable
+data class AiChatActionDto(
+    val type: String,
+    val data: kotlinx.serialization.json.JsonObject? = null
+)
+
+@Serializable
+data class AiChatResponseDto(
+    val conversationId: String,
+    val message: String,
+    val state: String,
+    val actions: List<AiChatActionDto> = emptyList()
+)

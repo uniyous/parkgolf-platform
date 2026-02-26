@@ -52,7 +52,11 @@ export function BookingsPage() {
       }
     : undefined;
 
-  const getMinDate = () => new Date().toISOString().split('T')[0];
+  const getMinDate = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  };
   const getMaxDate = () => {
     const date = new Date();
     date.setMonth(date.getMonth() + DATE_FILTER_MAX_MONTHS);

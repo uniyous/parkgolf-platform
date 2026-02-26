@@ -108,10 +108,59 @@ enum class MessageType(val value: String) {
     TEXT("TEXT"),
     IMAGE("IMAGE"),
     SYSTEM("SYSTEM"),
-    BOOKING_INVITE("BOOKING_INVITE");
+    BOOKING_INVITE("BOOKING_INVITE"),
+    AI_ASSISTANT("AI_ASSISTANT");
 
     companion object {
         fun fromValue(value: String): MessageType =
             entries.find { it.value == value } ?: TEXT
     }
 }
+
+// AI Chat Models
+
+enum class ConversationState(val value: String) {
+    IDLE("idle"),
+    COLLECTING("collecting"),
+    CONFIRMING("confirming"),
+    BOOKING("booking"),
+    SELECTING_PARTICIPANTS("selecting_participants"),
+    SETTLING("settling"),
+    COMPLETED("completed"),
+    CANCELLED("cancelled");
+
+    companion object {
+        fun fromValue(value: String): ConversationState =
+            entries.find { it.value == value } ?: IDLE
+    }
+}
+
+enum class ActionType(val value: String) {
+    SHOW_CLUBS("SHOW_CLUBS"),
+    SHOW_SLOTS("SHOW_SLOTS"),
+    SHOW_WEATHER("SHOW_WEATHER"),
+    CONFIRM_BOOKING("CONFIRM_BOOKING"),
+    SHOW_PAYMENT("SHOW_PAYMENT"),
+    BOOKING_COMPLETE("BOOKING_COMPLETE"),
+    CONFIRM_GROUP("CONFIRM_GROUP"),
+    SELECT_PARTICIPANTS("SELECT_PARTICIPANTS"),
+    SPLIT_PAYMENT("SPLIT_PAYMENT"),
+    SETTLEMENT_STATUS("SETTLEMENT_STATUS");
+
+    companion object {
+        fun fromValue(value: String): ActionType? =
+            entries.find { it.value == value }
+    }
+}
+
+data class ChatAction(
+    val type: ActionType,
+    val data: Map<String, Any?>
+)
+
+data class AiChatResponse(
+    val conversationId: String,
+    val message: String,
+    val state: ConversationState,
+    val actions: List<ChatAction>
+)

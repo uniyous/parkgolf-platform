@@ -46,6 +46,12 @@ export class RoomNatsController {
     return NatsResponse.success({ isMember: !!member });
   }
 
+  @MessagePattern('chat.room.getMembers')
+  async getMembers(@Payload() data: { roomId: string }) {
+    const members = await this.roomService.getMembers(data.roomId);
+    return NatsResponse.success(members);
+  }
+
   @MessagePattern('chat.rooms.booking')
   async getOrCreateBookingRoom(@Payload() data: { bookingId: number; members: { id: number; name: string }[] }) {
     const room = await this.roomService.getOrCreateBookingRoom(data.bookingId, data.members);

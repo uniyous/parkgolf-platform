@@ -201,14 +201,15 @@ export class BookingService {
   }
 
   async processRefund(
-    paymentId: string,
-    refundData: { amount?: number; reason?: string },
+    bookingId: string,
+    refundData: { cancelAmount?: number; cancelReason: string; adminNote?: string },
     adminToken: string,
   ): Promise<ApiResponse<PaymentResponseDto>> {
-    this.logger.log(`Processing refund: ${paymentId}`);
+    this.logger.log(`Processing refund for booking: ${bookingId}`);
     return this.natsClient.send('payments.refund', {
-      paymentId,
-      data: refundData,
+      bookingId: parseInt(bookingId, 10),
+      cancelAmount: refundData.cancelAmount,
+      cancelReason: refundData.cancelReason,
       token: adminToken,
     }, NATS_TIMEOUTS.LIST_QUERY);
   }

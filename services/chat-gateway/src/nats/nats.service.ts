@@ -1,7 +1,8 @@
 import { Injectable, Inject, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout } from 'rxjs';
+import { BehaviorSubject, firstValueFrom, Observable, timeout } from 'rxjs';
+import { distinctUntilChanged } from 'rxjs/operators';
 import {
   connect,
   NatsConnection,
@@ -55,6 +56,10 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
   private jsm: JetStreamManager | null = null;
   private sc = StringCodec();
 
+  // NATS connection status observable for broadcasting to Socket.IO clients
+  private readonly natsStatusSubject = new BehaviorSubject<boolean>(false);
+  readonly natsStatus$: Observable<boolean> = this.natsStatusSubject.pipe(distinctUntilChanged());
+
   constructor(
     private configService: ConfigService,
     @Inject('CHAT_SERVICE') private chatServiceClient: ClientProxy,
@@ -105,13 +110,17 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
       this.jsm = await this.nc.jetstreamManager();
 
       await this.setupStreams();
+      this.natsStatusSubject.next(true);
+      this.monitorNatsStatus();
       this.logger.log(`Connected to NATS: ${natsUrl}`);
     } catch (error) {
       this.logger.error('Failed to connect to NATS', error);
+      this.natsStatusSubject.next(false);
     }
   }
 
   private async disconnect() {
+    this.natsStatusSubject.next(false);
     if (this.nc) {
       try {
         await this.nc.drain();
@@ -122,6 +131,40 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
         }
       }
       this.nc = null;
+    }
+  }
+
+  /**
+   * Monitor NATS connection status via async iterator.
+   * Emits status changes to natsStatusSubject for broadcasting to Socket.IO clients.
+   */
+  private async monitorNatsStatus() {
+    if (!this.nc) return;
+
+    try {
+      for await (const status of this.nc.status()) {
+        switch (status.type) {
+          case 'disconnect':
+          case 'reconnecting':
+            this.logger.warn(`NATS status: ${status.type}`);
+            this.natsStatusSubject.next(false);
+            break;
+
+          case 'reconnect':
+            this.logger.log('NATS reconnected, reinitializing JetStream');
+            // Reinitialize JetStream client after reconnect
+            try {
+              this.js = this.nc!.jetstream();
+              this.jsm = await this.nc!.jetstreamManager();
+            } catch (error) {
+              this.logger.error('Failed to reinitialize JetStream after reconnect', error);
+            }
+            this.natsStatusSubject.next(true);
+            break;
+        }
+      }
+    } catch (error) {
+      this.logger.error('NATS status monitor error', error);
     }
   }
 
@@ -172,7 +215,7 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
   // type is uppercased to match Prisma MessageType enum for DB storage
   async publishMessage(roomId: string, message: ChatMessage): Promise<void> {
     if (!this.js) {
-      this.logger.warn('JetStream not available');
+      this.logger.warn('JetStream not available, message will not be persisted');
       return;
     }
 

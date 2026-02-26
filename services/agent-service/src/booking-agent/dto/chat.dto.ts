@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsBoolean, IsArray } from 'class-validator';
 
 /**
  * 채팅 요청 DTO
@@ -7,34 +7,145 @@ export class ChatRequestDto {
   @IsNumber()
   userId: number;
 
+  @IsOptional()
+  @IsString()
+  userName?: string;
+
+  @IsOptional()
+  @IsString()
+  userEmail?: string;
+
   @IsString()
   message: string;
 
   @IsOptional()
   @IsString()
   conversationId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  // ── 구조화된 선택 필드 (Direct Handling) ──
+
+  @IsOptional()
+  @IsString()
+  selectedClubId?: string;
+
+  @IsOptional()
+  @IsString()
+  selectedClubName?: string;
+
+  @IsOptional()
+  @IsString()
+  selectedSlotId?: string;
+
+  @IsOptional()
+  @IsString()
+  selectedSlotTime?: string;
+
+  @IsOptional()
+  @IsNumber()
+  selectedSlotPrice?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  confirmBooking?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  cancelBooking?: boolean;
+
+  // ── 결제 관련 필드 ──
+
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string; // "onsite" | "card" | "dutchpay"
+
+  @IsOptional()
+  @IsBoolean()
+  paymentComplete?: boolean; // 결제 완료 콜백
+
+  @IsOptional()
+  @IsBoolean()
+  paymentSuccess?: boolean; // 결제 성공 여부
+
+  // ── 그룹 예약 필드 ──
+
+  @IsOptional()
+  @IsString()
+  chatRoomId?: string;
+
+  @IsOptional()
+  @IsArray()
+  selectedSlotIds?: string[]; // 복수 슬롯 선택 (멀티팀)
+
+  @IsOptional()
+  @IsArray()
+  selectedSlots?: Array<{
+    slotId: string;
+    slotTime: string;
+    courseName: string;
+    price: number;
+  }>;
+
+  @IsOptional()
+  teams?: Array<{
+    teamNumber: number;
+    slotId: string;
+    members: Array<{
+      userId: number;
+      userName: string;
+      userEmail: string;
+    }>;
+  }>;
+
+  @IsOptional()
+  @IsBoolean()
+  confirmGroupBooking?: boolean;
+
+  // ── 분할결제 완료 필드 ──
+
+  @IsOptional()
+  @IsBoolean()
+  splitPaymentComplete?: boolean;
+
+  @IsOptional()
+  @IsString()
+  splitOrderId?: string;
 }
 
 /**
  * 대화 상태
  */
 export type ConversationState =
-  | 'IDLE'           // 초기 상태
-  | 'COLLECTING'     // 정보 수집 중
-  | 'CONFIRMING'     // 예약 확인 중
-  | 'BOOKING'        // 예약 진행 중
-  | 'COMPLETED'      // 완료
-  | 'CANCELLED';     // 취소
+  | 'IDLE'                    // 초기 상태
+  | 'COLLECTING'              // 정보 수집 중
+  | 'CONFIRMING'              // 예약 확인 중
+  | 'SELECTING_PARTICIPANTS'  // 그룹: 팀 편성 중
+  | 'BOOKING'                 // 예약 진행 중
+  | 'SETTLING'                // 더치페이 정산 중
+  | 'COMPLETED'               // 완료
+  | 'CANCELLED';              // 취소
 
 /**
  * UI 액션 타입
  */
 export type ActionType =
-  | 'SHOW_CLUBS'     // 골프장 목록 표시
-  | 'SHOW_SLOTS'     // 타임슬롯 표시
-  | 'SHOW_WEATHER'   // 날씨 정보 표시
-  | 'CONFIRM_BOOKING'// 예약 확인 UI
-  | 'BOOKING_COMPLETE'; // 예약 완료
+  | 'SHOW_CLUBS'              // 골프장 목록 표시
+  | 'SHOW_SLOTS'              // 타임슬롯 표시
+  | 'SHOW_WEATHER'            // 날씨 정보 표시
+  | 'CONFIRM_BOOKING'         // 예약 확인 UI
+  | 'CONFIRM_GROUP'           // 그룹 예약 확인 (결제방법 선택)
+  | 'SELECT_PARTICIPANTS'     // 팀 편성 UI
+  | 'SHOW_PAYMENT'            // 결제 카드 표시 (카드결제)
+  | 'SPLIT_PAYMENT'           // 더치페이 결제 상태
+  | 'SETTLEMENT_STATUS'       // 정산 현황
+  | 'BOOKING_COMPLETE';       // 예약 완료
 
 /**
  * UI 액션
@@ -96,4 +207,29 @@ export interface BookingSlots {
   slotId?: string;
   playerCount?: number;
   confirmed?: boolean;
+  latitude?: number;
+  longitude?: number;
+  regionName?: string;
+  bookingId?: number;
+
+  // 그룹 예약
+  chatRoomId?: string;
+  bookingGroupId?: number;
+  bookerId?: number;
+  selectedSlots?: Array<{
+    slotId: string;
+    slotTime: string;
+    courseName: string;
+    price: number;
+  }>;
+  teams?: Array<{
+    teamNumber: number;
+    slotId: string;
+    members: Array<{
+      userId: number;
+      userName: string;
+      userEmail: string;
+    }>;
+  }>;
+  paymentMethod?: string;
 }
