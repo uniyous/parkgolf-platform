@@ -372,17 +372,21 @@ export class ToolExecutorService {
     );
 
     if (weatherResponse?.success && weatherResponse?.data) {
-      const weather = weatherResponse.data;
-      return {
-        date,
-        clubName: club.name,
-        temperature: weather.temperature,
-        humidity: weather.humidity,
-        sky: weather.sky,
-        precipitation: weather.precipitation,
-        windSpeed: weather.windSpeed,
-        recommendation: this.getWeatherRecommendation(weather),
-      };
+      const forecasts = Array.isArray(weatherResponse.data) ? weatherResponse.data : [weatherResponse.data];
+      const weather = forecasts.find((f: any) => f.date === date) || forecasts[0];
+
+      if (weather) {
+        return {
+          date,
+          clubName: club.name,
+          temperature: weather.maxTemperature ?? weather.temperature,
+          minTemperature: weather.minTemperature,
+          maxTemperature: weather.maxTemperature,
+          sky: weather.sky,
+          precipitation: weather.precipitationProbability ?? weather.precipitation ?? 0,
+          recommendation: this.getWeatherRecommendation(weather),
+        };
+      }
     }
 
     return {
@@ -396,18 +400,22 @@ export class ToolExecutorService {
    * 날씨 기반 추천 메시지
    */
   private getWeatherRecommendation(weather: any): string {
-    const temp = weather.temperature;
-    const precipitation = weather.precipitation;
+    const temp = weather.maxTemperature ?? weather.temperature;
+    const precipitation = weather.precipitationProbability ?? weather.precipitation ?? 0;
 
-    if (precipitation > 0) {
+    if (precipitation > 50) {
       return '비가 예보되어 있어요. 우산을 챙기시거나 다른 날을 추천드려요.';
     }
 
-    if (temp < 5) {
+    if (precipitation > 30) {
+      return '비 올 가능성이 있어요. 우산을 준비하시면 좋겠어요.';
+    }
+
+    if (temp !== undefined && temp < 5) {
       return '추운 날씨예요. 따뜻하게 입고 오시면 좋겠어요.';
     }
 
-    if (temp > 30) {
+    if (temp !== undefined && temp > 30) {
       return '더운 날씨예요. 이른 아침이나 저녁 시간대를 추천드려요.';
     }
 
@@ -455,17 +463,21 @@ export class ToolExecutorService {
     );
 
     if (weatherResponse?.success && weatherResponse?.data) {
-      const weather = weatherResponse.data;
-      return {
-        date,
-        location: resolvedLocation,
-        temperature: weather.temperature,
-        humidity: weather.humidity,
-        sky: weather.sky,
-        precipitation: weather.precipitation,
-        windSpeed: weather.windSpeed,
-        recommendation: this.getWeatherRecommendation(weather),
-      };
+      const forecasts = Array.isArray(weatherResponse.data) ? weatherResponse.data : [weatherResponse.data];
+      const weather = forecasts.find((f: any) => f.date === date) || forecasts[0];
+
+      if (weather) {
+        return {
+          date,
+          location: resolvedLocation,
+          temperature: weather.maxTemperature ?? weather.temperature,
+          minTemperature: weather.minTemperature,
+          maxTemperature: weather.maxTemperature,
+          sky: weather.sky,
+          precipitation: weather.precipitationProbability ?? weather.precipitation ?? 0,
+          recommendation: this.getWeatherRecommendation(weather),
+        };
+      }
     }
 
     return {

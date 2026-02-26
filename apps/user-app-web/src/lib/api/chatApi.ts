@@ -116,9 +116,11 @@ export interface SlotCardData {
 
 export interface WeatherCardData {
   date: string;
-  clubName: string;
+  clubName?: string;
+  location?: string;
   temperature: number;
-  humidity: number;
+  minTemperature?: number;
+  maxTemperature?: number;
   sky: string;
   precipitation: number;
   recommendation: string;
