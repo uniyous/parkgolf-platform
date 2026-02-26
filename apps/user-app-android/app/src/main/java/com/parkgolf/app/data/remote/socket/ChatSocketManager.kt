@@ -85,6 +85,10 @@ class ChatSocketManager @Inject constructor() {
     private val _tokenRefreshNeeded = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val tokenRefreshNeeded: SharedFlow<Unit> = _tokenRefreshNeeded.asSharedFlow()
 
+    // Reconnect signal — token refresh + socket reconnect needed (disconnect, connect error, etc.)
+    private val _reconnectWithNewToken = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val reconnectWithNewToken: SharedFlow<Unit> = _reconnectWithNewToken.asSharedFlow()
+
     /**
      * 소켓 연결
      * @param token JWT 인증 토큰
@@ -128,10 +132,8 @@ class ChatSocketManager @Inject constructor() {
                         "Authorization" to listOf("Bearer $token")
                     )
                     forceNew = true
-                    reconnection = true
-                    reconnectionAttempts = MAX_RECONNECT_ATTEMPTS
-                    reconnectionDelay = MIN_RECONNECT_INTERVAL_MS
-                    reconnectionDelayMax = 30000
+                    reconnection = false  // 우리 코드가 토큰 갱신 후 직접 재연결
+
                     timeout = 20000
                     transports = arrayOf("websocket")
                 }
@@ -199,23 +201,14 @@ class ChatSocketManager @Inject constructor() {
     /**
      * 주기적 연결 체크 시작 (30초마다, iOS와 동일)
      */
-    fun startConnectionCheck(token: String) {
+    fun startConnectionCheck() {
         stopConnectionCheck()
-        savedToken = token  // 최신 토큰 저장
         connectionCheckJob = java.util.Timer().apply {
             scheduleAtFixedRate(object : java.util.TimerTask() {
                 override fun run() {
-                    if (!isConnected && canReconnect) {
-                        Log.d(TAG, "Periodic check: connection lost, attempting reconnect")
-                        // savedToken 사용 (토큰 갱신 후 최신 토큰 반영)
-                        val latestToken = savedToken
-                        if (latestToken != null) {
-                            ensureConnected(latestToken)
-                            // Rejoin room if we have one
-                            currentRoomId?.let { roomId ->
-                                joinRoom(roomId)
-                            }
-                        }
+                    if (!isConnected) {
+                        Log.d(TAG, "Periodic check: disconnected, requesting reconnect")
+                        _reconnectWithNewToken.tryEmit(Unit)
                     }
                 }
             }, CONNECTION_CHECK_INTERVAL_MS, CONNECTION_CHECK_INTERVAL_MS)
@@ -250,8 +243,9 @@ class ChatSocketManager @Inject constructor() {
                                     missedHeartbeats = 0
                                 })
                                 if (missedHeartbeats > MAX_MISSED_HEARTBEATS) {
-                                    Log.w(TAG, "Missed $missedHeartbeats heartbeats, forcing reconnect")
-                                    savedToken?.let { token -> forceReconnect(token) }
+                                    Log.w(TAG, "Missed $missedHeartbeats heartbeats, requesting reconnect")
+                                    cleanupSocketUnsafe()
+                                    _reconnectWithNewToken.tryEmit(Unit)
                                 }
                             }
                         }
@@ -376,11 +370,8 @@ class ChatSocketManager @Inject constructor() {
      */
     fun handleAppForeground() {
         if (!isConnected) {
-            val token = savedToken
-            if (token != null) {
-                Log.d(TAG, "App returned to foreground, attempting reconnect")
-                forceReconnect(token)
-            }
+            Log.d(TAG, "App returned to foreground, requesting reconnect with fresh token")
+            _reconnectWithNewToken.tryEmit(Unit)
         } else {
             // 연결 유지 중이면 현재 방 재참여 트리거
             currentRoomId?.let { joinRoom(it) }
@@ -405,26 +396,21 @@ class ChatSocketManager @Inject constructor() {
             stopHeartbeat()
             val reason = args.firstOrNull()?.toString() ?: "unknown"
             Log.d(TAG, "Socket disconnected: $reason")
+
+            // 서버가 명시적으로 끊은 경우(io server disconnect)가 아니면 자동 재연결
+            if (reason != "io server disconnect") {
+                _reconnectWithNewToken.tryEmit(Unit)
+            }
         }
 
         on(Socket.EVENT_CONNECT_ERROR) { args ->
             isConnecting.set(false)
             _connectionState.value = false
-            reconnectAttempts++
             val errorMsg = args.firstOrNull()?.toString() ?: "Unknown connection error"
-            Log.e(TAG, "Socket connection error ($reconnectAttempts/$MAX_RECONNECT_ATTEMPTS): $errorMsg")
-            // 인증/토큰 만료 에러 시 토큰 갱신 신호 발송 (Web handleAuthError 패턴)
-            // 서버 에러: "TokenExpiredError: jwt expired", "Unauthorized", etc.
-            if (errorMsg.contains("Unauthorized", ignoreCase = true) ||
-                errorMsg.contains("Authentication", ignoreCase = true) ||
-                errorMsg.contains("jwt expired", ignoreCase = true) ||
-                errorMsg.contains("TokenExpiredError", ignoreCase = true) ||
-                errorMsg.contains("No token", ignoreCase = true)) {
-                Log.w(TAG, "Auth error detected, stopping auto-reconnect and requesting token refresh")
-                // 만료 토큰으로 자동 재연결 반복 방지 — 소켓 정리
-                socketLock.withLock { cleanupSocketUnsafe() }
-                _tokenRefreshNeeded.tryEmit(Unit)
-            }
+            Log.e(TAG, "Socket connection error: $errorMsg")
+            // 인증 에러든 일반 에러든 → 소켓 정리 후 토큰 갱신 + 재연결 시도
+            socketLock.withLock { cleanupSocketUnsafe() }
+            _reconnectWithNewToken.tryEmit(Unit)
             _error.tryEmit(SocketError.ConnectionFailed(errorMsg))
         }
 

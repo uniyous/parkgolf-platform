@@ -89,6 +89,7 @@ class ChatViewModel @Inject constructor(
         observeMessages()
         observeTyping()
         observeTokenRefresh()
+        observeReconnectSignal()
         loadCurrentUser()
     }
 
@@ -130,30 +131,46 @@ class ChatViewModel @Inject constructor(
     private fun observeTokenRefresh() {
         viewModelScope.launch {
             chatRepository.tokenRefreshNeeded.collect {
-                Log.d(TAG, "Token refresh needed, refreshing token and reconnecting...")
+                Log.d(TAG, "Refreshing REST API token (socket stays connected)")
                 authRepository.refreshToken()
                     .onSuccess {
-                        // 갱신된 토큰으로 소켓 강제 재연결 (Web handleAuthError 패턴)
                         val newToken = authRepository.getAccessToken()
                         if (newToken != null) {
                             savedToken = newToken
-                            Log.d(TAG, "Token refreshed, force reconnecting socket")
-                            chatRepository.forceReconnect(newToken)
-                            chatRepository.startConnectionCheck(newToken)
-
-                            // 재연결 후 방 재참여 대기
-                            delay(2000)
-                            if (chatRepository.isConnected) {
-                                currentRoomId?.let { roomId ->
-                                    chatRepository.joinRoom(roomId)
-                                    Log.d(TAG, "Rejoined room after token refresh: $roomId")
-                                }
-                            }
                         }
                     }
                     .onFailure { error ->
                         Log.e(TAG, "Token refresh failed: ${error.message}")
                     }
+            }
+        }
+    }
+
+    private fun observeReconnectSignal() {
+        viewModelScope.launch {
+            chatRepository.reconnectWithNewToken.collect {
+                Log.d(TAG, "Reconnect signal received, refreshing token then reconnecting")
+                // 1. 토큰 갱신
+                authRepository.refreshToken()
+                    .onFailure { Log.w(TAG, "Token refresh failed, using cached token") }
+
+                // 2. 최신 토큰으로 재연결
+                val freshToken = authRepository.getAccessToken()
+                if (freshToken != null) {
+                    savedToken = freshToken
+                    chatRepository.forceReconnect(freshToken)
+
+                    // 3. 연결 대기 후 방 재참여
+                    delay(2000)
+                    if (chatRepository.isConnected) {
+                        currentRoomId?.let { roomId ->
+                            chatRepository.joinRoom(roomId)
+                            loadMessages(roomId)
+                        }
+                    }
+                } else {
+                    Log.e(TAG, "No token available for reconnect")
+                }
             }
         }
     }
@@ -199,7 +216,7 @@ class ChatViewModel @Inject constructor(
         savedToken = token
         chatRepository.connect(token)
         // Start periodic connection check (like iOS)
-        chatRepository.startConnectionCheck(token)
+        chatRepository.startConnectionCheck()
     }
 
     fun disconnectSocket() {
@@ -271,7 +288,7 @@ class ChatViewModel @Inject constructor(
                 }
 
                 // Start periodic connection check
-                chatRepository.startConnectionCheck(token)
+                chatRepository.startConnectionCheck()
             } else {
                 Log.w(TAG, "No access token available for socket connection")
             }

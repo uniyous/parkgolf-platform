@@ -42,6 +42,8 @@ class ChatRepositoryImpl @Inject constructor(
 
     override val tokenRefreshNeeded: Flow<Unit> = chatSocketManager.tokenRefreshNeeded
 
+    override val reconnectWithNewToken: Flow<Unit> = chatSocketManager.reconnectWithNewToken
+
     override val typingFlow = chatSocketManager.typingEvent
 
     // API returns simple array response, not paginated
@@ -206,8 +208,8 @@ class ChatRepositoryImpl @Inject constructor(
         chatSocketManager.forceReconnect(token)
     }
 
-    override fun startConnectionCheck(token: String) {
-        chatSocketManager.startConnectionCheck(token)
+    override fun startConnectionCheck() {
+        chatSocketManager.startConnectionCheck()
     }
 
     override fun stopConnectionCheck() {

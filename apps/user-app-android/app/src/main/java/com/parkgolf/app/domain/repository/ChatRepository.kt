@@ -12,6 +12,7 @@ interface ChatRepository {
     val connectionState: Flow<Boolean>
     val natsConnectionState: Flow<Boolean>
     val tokenRefreshNeeded: Flow<Unit>
+    val reconnectWithNewToken: Flow<Unit>
     val typingFlow: Flow<TypingEvent>
 
     // API returns simple array, not paginated
@@ -69,7 +70,7 @@ interface ChatRepository {
     val canReconnect: Boolean
     fun ensureConnected(token: String)
     fun forceReconnect(token: String)
-    fun startConnectionCheck(token: String)
+    fun startConnectionCheck()
     fun stopConnectionCheck()
     fun handleAppForeground()
 }

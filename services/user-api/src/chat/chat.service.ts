@@ -160,7 +160,7 @@ export class ChatService {
       senderId: userId,
       senderName: userName,
       content,
-      messageType,
+      type: messageType,
       createdAt: new Date().toISOString(),
     };
 
@@ -219,17 +219,19 @@ export class ChatService {
   ) {
     this.logger.log(`Send AI message: roomId=${roomId}, userId=${userId}`);
 
-    // 1. 사용자 메시지를 chat-service에 TEXT로 저장 (await — DB 저장 보장)
+    // 1. 사용자 메시지를 chat-service에 TEXT로 저장 (fire-and-forget — AI 흐름 차단 방지)
     const userMessageData = {
       id: randomUUID(),
       roomId,
       senderId: userId,
       senderName: userName,
       content: dto.message,
-      messageType: 'TEXT',
+      type: 'TEXT',
       createdAt: new Date().toISOString(),
     };
-    await this.natsClient.send('chat.messages.save', userMessageData, NATS_TIMEOUTS.QUICK);
+    this.natsClient.send('chat.messages.save', userMessageData, NATS_TIMEOUTS.QUICK).catch((err) => {
+      this.logger.warn(`Failed to save user message: ${err}`);
+    });
 
     // 2. agent-service에 AI 채팅 요청 (60초 타임아웃)
     const agentResponse = await this.natsClient.send<any>(
@@ -264,7 +266,7 @@ export class ChatService {
       NATS_TIMEOUTS.PAYMENT, // 60초 - AI 처리 시간 고려
     );
 
-    // 3. AI 응답을 chat-service에 AI_ASSISTANT로 저장 (await — DB 저장 보장)
+    // 3. AI 응답을 chat-service에 AI_ASSISTANT로 저장 (fire-and-forget — 응답 반환 차단 방지)
     if (agentResponse?.success && agentResponse?.data) {
       const aiData = agentResponse.data;
       const metadata = JSON.stringify({
@@ -273,16 +275,18 @@ export class ChatService {
         actions: aiData.actions,
       });
 
-      await this.natsClient.send('chat.messages.save', {
+      this.natsClient.send('chat.messages.save', {
         id: randomUUID(),
         roomId,
         senderId: userId,
         senderName: 'AI 예약 도우미',
         content: aiData.message || '',
-        messageType: 'AI_ASSISTANT',
+        type: 'AI_ASSISTANT',
         metadata,
         createdAt: new Date().toISOString(),
-      }, NATS_TIMEOUTS.QUICK);
+      }, NATS_TIMEOUTS.QUICK).catch((err) => {
+        this.logger.warn(`Failed to save AI message: ${err}`);
+      });
     }
 
     // 4. agent-service 응답 그대로 반환 (BFF 패스스루)
