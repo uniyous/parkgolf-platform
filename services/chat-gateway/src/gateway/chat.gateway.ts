@@ -274,14 +274,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       createdAt: new Date().toISOString(),
     };
 
-    // 1. Broadcast to other clients (adapter propagates to all pods)
+    // 1. JetStream 발행 — DB 저장 보장 (await)
+    try {
+      await this.natsService.publishMessage(roomId, message);
+    } catch (error) {
+      this.logger.error(`Failed to publish message to JetStream: ${error}`);
+      return { success: false, error: { code: 'PERSISTENCE_FAILED', message: 'Failed to save message' } };
+    }
+
+    // 2. Broadcast to other clients (adapter propagates to all pods)
     client.to(roomId).emit('new_message', message);
     this.logger.debug(`Message sent to room ${roomId} by ${user.name}`);
-
-    // 2. JetStream 발행 - 비동기 (메시지 영속성, chat-service consumer가 DB 저장)
-    this.natsService.publishMessage(roomId, message).catch((error) => {
-      this.logger.error(`Failed to publish message to JetStream: ${error}`);
-    });
 
     // 3. 오프라인 참여자에게 push 알림
     this.sendChatNotifications(roomId, user, content).catch((error) => {
