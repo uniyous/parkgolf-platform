@@ -444,7 +444,73 @@ CMD ["node", "dist/main.js"]
 
 ---
 
-## 13. 금지 패턴
+## 13. Microservice → Microservice NATS 호출 패턴
+
+Microservice가 다른 Microservice를 NATS로 호출하는 경우 (예: agent-service → weather-service, course-service → location-service).
+
+### 표준 패턴
+
+```typescript
+// ✅ catchError에서 반드시 throw — 상위 try-catch(또는 UnifiedExceptionFilter)가 처리
+const response = await firstValueFrom(
+  this.weatherClient.send('weather.forecast', { lat, lon }).pipe(
+    timeout(this.REQUEST_TIMEOUT),
+    catchError((err) => {
+      throw new Error(`Failed to get weather: ${err.message}`);
+    }),
+  ),
+);
+```
+
+### 예외 처리 흐름
+
+```
+NATS 호출 실패
+    ↓
+catchError → throw new Error(...)
+    ↓
+상위 호출자(execute, Controller 등)의 try-catch 또는 UnifiedExceptionFilter가 처리
+    ↓
+클라이언트에 표준 에러 응답 전달
+```
+
+### 허용되는 예외 케이스
+
+```typescript
+// ✅ 보조 조회 (실패해도 메인 로직에 영향 없는 경우만)
+// 예: 지역명 해석 실패해도 좌표 기반 진행 가능
+catchError(() => [null])   // 보조 조회에 한해 허용
+```
+
+### 금지 패턴
+
+```typescript
+// ❌ 에러를 삼키고 자체 fallback 응답 반환
+catchError((err) => {
+  return [{ success: false, error: err.message }];
+})
+
+// ❌ 실패 시 다른 API로 자체 fallback
+catchError(() => {
+  return this.otherClient.send('other.api', payload);  // fallback 금지
+})
+
+// ❌ 에러를 무시하고 빈 데이터 반환 (메인 로직에서)
+catchError(() => [{ data: [] }])
+```
+
+### 원칙 요약
+
+| 구분 | 패턴 | 이유 |
+|------|------|------|
+| 메인 NATS 호출 | `catchError → throw` | UnifiedExceptionFilter 표준 플로우 |
+| 보조 조회 (optional) | `catchError → [null]` | 실패해도 메인 로직 계속 가능 |
+| 자체 fallback | **금지** | 에러 전파 차단, 디버깅 어려움 |
+| 에러 삼키기 | **금지** | 장애 감지 불가, 잘못된 응답 |
+
+---
+
+## 14. 금지 패턴
 
 ```typescript
 // ❌ BFF에서 Microservice 응답 언래핑/변환

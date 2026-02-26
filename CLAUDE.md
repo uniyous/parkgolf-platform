@@ -108,7 +108,8 @@ Frontend → BFF (REST) → NATS → Microservice (Prisma)
 ```
 
 - **NatsResponse 헬퍼**: Microservice는 `NatsResponse.success()`, `.paginated()`, `.deleted()`로 응답
-- **예외 처리**: `UnifiedExceptionFilter`에 위임, Controller에 try-catch 넣지 않음
+- **예외 처리**: `UnifiedExceptionFilter`에 위임, Controller/Service에 자체 에러 핸들링 금지
+- **NATS 호출 에러**: `catchError`에서 반드시 `throw` — 에러를 삼키거나 자체 fallback 금지
 - **BFF 역할**: Microservice 응답을 그대로 전달 (변환/언래핑 절대 금지)
 
 ---
@@ -121,6 +122,13 @@ return response.data;  // 그대로 반환해야 함
 
 // ❌ Controller에서 try-catch
 try { ... } catch (e) { return NatsResponse.error(...); }
+
+// ❌ NATS catchError에서 에러 삼키기 (자체 fallback 금지)
+catchError(() => [{ success: false }])           // 금지
+catchError(() => [null])                          // 금지 (resolveRegionName 같은 보조 조회 제외)
+
+// ✅ NATS catchError 표준: 반드시 throw
+catchError((err) => { throw new Error(`Failed to ...: ${err.message}`); })
 
 // ❌ ResponseTransformInterceptor (이중 래핑 유발)
 
