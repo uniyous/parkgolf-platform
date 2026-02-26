@@ -618,3 +618,7 @@ services/*/*.temp
 
 # Kotlin build metadata
 **/.kotlin/
+
+# Docs mockups build artifacts
+docs/business/mockups/node_modules/
+docs/business/mockups/package-lock.json

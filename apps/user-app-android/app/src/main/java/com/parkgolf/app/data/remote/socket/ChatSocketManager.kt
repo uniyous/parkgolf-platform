@@ -120,13 +120,19 @@ class ChatSocketManager @Inject constructor() {
                 Log.d(TAG, "Connecting to socket URL: $socketUrl")
 
                 val options = IO.Options().apply {
+                    // 인증: query param (iOS와 동일, 가장 확실한 방식)
+                    // + auth map, Authorization 헤더를 백업으로 전달
                     query = "token=$token"
+                    auth = mapOf("token" to token)
+                    extraHeaders = mutableMapOf(
+                        "Authorization" to listOf("Bearer $token")
+                    )
                     forceNew = true
                     reconnection = true
                     reconnectionAttempts = MAX_RECONNECT_ATTEMPTS
                     reconnectionDelay = MIN_RECONNECT_INTERVAL_MS
+                    reconnectionDelayMax = 30000
                     timeout = 20000
-                    // Force WebSocket transport like iOS
                     transports = arrayOf("websocket")
                 }
 
@@ -195,15 +201,20 @@ class ChatSocketManager @Inject constructor() {
      */
     fun startConnectionCheck(token: String) {
         stopConnectionCheck()
+        savedToken = token  // 최신 토큰 저장
         connectionCheckJob = java.util.Timer().apply {
             scheduleAtFixedRate(object : java.util.TimerTask() {
                 override fun run() {
                     if (!isConnected && canReconnect) {
                         Log.d(TAG, "Periodic check: connection lost, attempting reconnect")
-                        ensureConnected(token)
-                        // Rejoin room if we have one
-                        currentRoomId?.let { roomId ->
-                            joinRoom(roomId)
+                        // savedToken 사용 (토큰 갱신 후 최신 토큰 반영)
+                        val latestToken = savedToken
+                        if (latestToken != null) {
+                            ensureConnected(latestToken)
+                            // Rejoin room if we have one
+                            currentRoomId?.let { roomId ->
+                                joinRoom(roomId)
+                            }
                         }
                     }
                 }
@@ -402,6 +413,18 @@ class ChatSocketManager @Inject constructor() {
             reconnectAttempts++
             val errorMsg = args.firstOrNull()?.toString() ?: "Unknown connection error"
             Log.e(TAG, "Socket connection error ($reconnectAttempts/$MAX_RECONNECT_ATTEMPTS): $errorMsg")
+            // 인증/토큰 만료 에러 시 토큰 갱신 신호 발송 (Web handleAuthError 패턴)
+            // 서버 에러: "TokenExpiredError: jwt expired", "Unauthorized", etc.
+            if (errorMsg.contains("Unauthorized", ignoreCase = true) ||
+                errorMsg.contains("Authentication", ignoreCase = true) ||
+                errorMsg.contains("jwt expired", ignoreCase = true) ||
+                errorMsg.contains("TokenExpiredError", ignoreCase = true) ||
+                errorMsg.contains("No token", ignoreCase = true)) {
+                Log.w(TAG, "Auth error detected, stopping auto-reconnect and requesting token refresh")
+                // 만료 토큰으로 자동 재연결 반복 방지 — 소켓 정리
+                socketLock.withLock { cleanupSocketUnsafe() }
+                _tokenRefreshNeeded.tryEmit(Unit)
+            }
             _error.tryEmit(SocketError.ConnectionFailed(errorMsg))
         }
 

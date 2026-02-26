@@ -3,6 +3,7 @@ package com.parkgolf.app.data.repository
 import com.parkgolf.app.data.mapper.toDomain
 import com.parkgolf.app.data.remote.api.ChatApi
 import com.parkgolf.app.data.remote.dto.chat.AiChatRequest
+import com.parkgolf.app.data.remote.dto.chat.AiChatResponseDto
 import com.parkgolf.app.data.remote.dto.chat.CreateChatRoomRequest
 import com.parkgolf.app.data.remote.dto.chat.InviteMembersRequest
 import com.parkgolf.app.data.remote.dto.chat.SendMessageRequest
@@ -136,7 +137,7 @@ class ChatRepositoryImpl @Inject constructor(
             state = ConversationState.fromValue(dto.state),
             actions = dto.actions.mapNotNull { actionDto ->
                 val actionType = ActionType.fromValue(actionDto.type) ?: return@mapNotNull null
-                val dataMap = actionDto.data?.let { jsonObj ->
+                val dataMap: Map<String, Any?> = actionDto.data?.let { jsonObj ->
                     jsonElementToMap(jsonObj)
                 } ?: emptyMap()
                 ChatAction(type = actionType, data = dataMap)

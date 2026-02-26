@@ -1,0 +1,11 @@
+{
+  "name": "proposal-pdf-generator",
+  "private": true,
+  "description": "PROPOSAL.html → PROPOSAL.pdf 변환 도구",
+  "scripts": {
+    "pdf": "node generate-pdf.js"
+  },
+  "dependencies": {
+    "playwright": "^1.52.0"
+  }
+}
