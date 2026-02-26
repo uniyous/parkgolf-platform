@@ -51,7 +51,7 @@ export class BookingAgentService {
 
     try {
       // DeepSeek 대화 처리 (도구 호출 포함)
-      const response = await this.processWithLLM(context, request.userId);
+      const response = await this.processWithLLM(context, request);
 
       return {
         conversationId: context.conversationId,
@@ -209,8 +209,9 @@ export class BookingAgentService {
       name: 'create_booking',
       args: {
         userId: request.userId,
-        clubId,
-        slotId,
+        userName: request.userName,
+        userEmail: request.userEmail,
+        gameTimeSlotId: Number(slotId),
         playerCount: playerCount || 4,
         paymentMethod,
       },
@@ -359,7 +360,7 @@ export class BookingAgentService {
    */
   private async processWithLLM(
     context: ConversationContext,
-    userId?: number,
+    request?: ChatRequestDto,
   ): Promise<{ text: string; actions?: ChatAction[] }> {
     const messages = this.conversationService.getRecentMessages(context);
 
@@ -401,7 +402,7 @@ export class BookingAgentService {
       }
 
       // 도구 실행
-      const toolResults = await this.executeTools(llmResponse.toolCalls, userId);
+      const toolResults = await this.executeTools(llmResponse.toolCalls, request);
 
       // UI 액션 생성
       const actions = this.createActionsFromToolResults(llmResponse.toolCalls, toolResults);
@@ -435,16 +436,24 @@ export class BookingAgentService {
   }
 
   /**
-   * 도구 실행 (create_booking 시 userId 서버사이드 주입)
+   * 도구 실행 (create_booking 시 사용자 정보 서버사이드 주입)
    */
-  private async executeTools(toolCalls: ToolCall[], userId?: number): Promise<ToolResult[]> {
+  private async executeTools(toolCalls: ToolCall[], request?: ChatRequestDto): Promise<ToolResult[]> {
     this.logger.debug(`Executing ${toolCalls.length} tools`);
 
-    // create_booking에 userId 서버사이드 주입
-    if (userId) {
+    // create_booking에 사용자 정보 서버사이드 주입
+    if (request?.userId) {
       toolCalls = toolCalls.map((tc) =>
         tc.name === 'create_booking'
-          ? { ...tc, args: { ...tc.args, userId } }
+          ? {
+              ...tc,
+              args: {
+                ...tc.args,
+                userId: request.userId,
+                userName: request.userName,
+                userEmail: request.userEmail,
+              },
+            }
           : tc,
       );
     }

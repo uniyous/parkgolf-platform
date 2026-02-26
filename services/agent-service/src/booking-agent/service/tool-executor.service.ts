@@ -602,23 +602,25 @@ export class ToolExecutorService {
    * booking.create 후 Saga 완료를 폴링하여 최종 상태를 반환
    */
   private async createBooking(args: Record<string, unknown>): Promise<unknown> {
-    const { clubId, slotId, playerCount, userId, paymentMethod } = args as {
-      clubId: string;
-      slotId: string;
+    const { gameTimeSlotId, playerCount, userId, userName, userEmail, paymentMethod } = args as {
+      gameTimeSlotId: number;
       playerCount: number;
       userId: number;
+      userName?: string;
+      userEmail?: string;
       paymentMethod?: string;
     };
 
     const response = await firstValueFrom(
       this.bookingClient
         .send('booking.create', {
+          idempotencyKey: crypto.randomUUID(),
           userId,
-          clubId,
-          slotId,
+          userName: userName || '',
+          userEmail: userEmail || '',
+          gameTimeSlotId,
           playerCount,
           paymentMethod: paymentMethod || 'onsite',
-          source: 'AI_AGENT',
         })
         .pipe(
           timeout(this.REQUEST_TIMEOUT),

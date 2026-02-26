@@ -171,6 +171,7 @@ export class ChatController {
       roomId,
       user.userId,
       user.name,
+      user.email,
       dto,
     );
   }

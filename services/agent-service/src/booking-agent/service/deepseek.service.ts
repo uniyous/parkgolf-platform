@@ -175,11 +175,10 @@ export class DeepSeekService implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            clubId: { type: 'string', description: '골프장 ID' },
-            slotId: { type: 'string', description: '타임슬롯 ID' },
+            gameTimeSlotId: { type: 'number', description: '게임 타임슬롯 ID' },
             playerCount: { type: 'number', description: '예약 인원 수' },
           },
-          required: ['clubId', 'slotId', 'playerCount'],
+          required: ['gameTimeSlotId', 'playerCount'],
         },
       },
     },

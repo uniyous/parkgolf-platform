@@ -7,6 +7,14 @@ export class ChatRequestDto {
   @IsNumber()
   userId: number;
 
+  @IsOptional()
+  @IsString()
+  userName?: string;
+
+  @IsOptional()
+  @IsString()
+  userEmail?: string;
+
   @IsString()
   message: string;
 

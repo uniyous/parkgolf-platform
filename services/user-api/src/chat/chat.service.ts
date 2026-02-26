@@ -214,6 +214,7 @@ export class ChatService {
     roomId: string,
     userId: number,
     userName: string,
+    userEmail: string,
     dto: AiChatRequestDto,
   ) {
     this.logger.log(`Send AI message: roomId=${roomId}, userId=${userId}`);
@@ -237,6 +238,8 @@ export class ChatService {
       'agent.chat',
       {
         userId,
+        userName,
+        userEmail,
         message: dto.message,
         conversationId: dto.conversationId,
         latitude: dto.latitude,
