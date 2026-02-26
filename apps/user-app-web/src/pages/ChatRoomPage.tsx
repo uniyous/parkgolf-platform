@@ -184,7 +184,7 @@ export const ChatRoomPage: React.FC = () => {
   // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, showWelcome]);
 
   // AI loading state text
   const aiLoadingText = useMemo(() => {
@@ -558,11 +558,6 @@ export const ChatRoomPage: React.FC = () => {
           )}
 
           <div className="space-y-3">
-            {/* AI 웰컴 카드 */}
-            {showWelcome && isAiMode && (
-              <AiWelcomeCard onQuickAction={handleQuickAction} />
-            )}
-
             {messages.map((message, index) => {
               // AI 메시지는 AiMessageBubble로 렌더링
               if (message.messageType === 'AI_ASSISTANT') {
@@ -590,13 +585,14 @@ export const ChatRoomPage: React.FC = () => {
                         selectedClubName: clubName,
                       });
                     }}
-                    onSlotSelect={(slotId, time, price) => {
+                    onSlotSelect={(slotId, time, price, clubId, clubName) => {
                       setSelectedSlotId(slotId);
                       handleAiFollowUp({
                         message: `${time} 선택`,
                         selectedSlotId: slotId,
                         selectedSlotTime: time,
                         selectedSlotPrice: price,
+                        ...(clubId ? { selectedClubId: clubId, selectedClubName: clubName } : {}),
                       });
                     }}
                     onConfirmBooking={(paymentMethod: 'onsite' | 'card') => {
@@ -638,6 +634,11 @@ export const ChatRoomPage: React.FC = () => {
                 />
               );
             })}
+
+            {/* AI 웰컴 카드 — 메시지 카드로 표시 */}
+            {showWelcome && isAiMode && (
+              <AiWelcomeCard onQuickAction={handleQuickAction} />
+            )}
 
             {/* AI 타이핑 인디케이터 */}
             {isAiLoading && (

@@ -151,5 +151,6 @@ export interface BookingSlots {
   confirmed?: boolean;
   latitude?: number;
   longitude?: number;
+  regionName?: string;
   bookingId?: number;
 }

@@ -146,6 +146,14 @@ export class BookingAgentService {
   ): ChatResponseDto {
     const { selectedSlotId, selectedSlotTime, selectedSlotPrice } = request;
 
+    // 검색 결과에서 바로 슬롯 선택한 경우 — clubId도 설정
+    if (!context.slots.clubId && request.selectedClubId) {
+      this.conversationService.updateSlots(context, {
+        clubId: request.selectedClubId,
+        clubName: request.selectedClubName,
+      });
+    }
+
     this.conversationService.updateSlots(context, {
       slotId: selectedSlotId,
       time: selectedSlotTime,
@@ -357,9 +365,24 @@ export class BookingAgentService {
 
     // 위치 정보를 시스템 메시지로 주입
     if (context.slots.latitude && context.slots.longitude) {
+      // 지역명 캐시: 최초 1회만 coord2region 호출
+      if (!context.slots.regionName) {
+        const regionName = await this.toolExecutor.resolveRegionName(
+          context.slots.latitude,
+          context.slots.longitude,
+        );
+        if (regionName) {
+          this.conversationService.updateSlots(context, { regionName });
+        }
+      }
+
+      const locationInfo = context.slots.regionName
+        ? `사용자의 현재 위치: ${context.slots.regionName} (위도 ${context.slots.latitude}, 경도 ${context.slots.longitude}). "내 근처", "가까운 곳" 요청 시 get_nearby_clubs 도구에 이 좌표를 사용하세요. 날씨 질문 시 지역명 없으면 "${context.slots.regionName}"을 location으로 사용하세요.`
+        : `사용자의 현재 위치: 위도 ${context.slots.latitude}, 경도 ${context.slots.longitude}. "내 근처", "가까운 곳" 요청 시 get_nearby_clubs 도구에 이 좌표를 사용하세요.`;
+
       messages.unshift({
         role: 'user',
-        content: `[시스템 정보] 사용자의 현재 위치: 위도 ${context.slots.latitude}, 경도 ${context.slots.longitude}. "내 근처", "가까운 곳" 요청 시 get_nearby_clubs 도구에 이 좌표를 사용하세요. 이 메시지에 대해 직접 응답하지 마세요.`,
+        content: `[시스템 정보] ${locationInfo} 이 메시지에 대해 직접 응답하지 마세요.`,
       });
     }
 
@@ -446,7 +469,6 @@ export class BookingAgentService {
 
       switch (call.name) {
         case 'search_clubs':
-        case 'search_clubs_with_slots':
           if (result.result && (result.result as any).found > 0) {
             actions.push({
               type: 'SHOW_CLUBS',
@@ -454,6 +476,31 @@ export class BookingAgentService {
             });
           }
           break;
+
+        case 'search_clubs_with_slots': {
+          const searchData = result.result as any;
+          if (searchData?.found > 0 && searchData.clubs) {
+            for (const club of searchData.clubs) {
+              if (club.rounds?.length > 0) {
+                actions.push({
+                  type: 'SHOW_SLOTS',
+                  data: {
+                    clubId: club.id,
+                    clubName: club.name,
+                    clubAddress: club.address,
+                    date: searchData.date,
+                    availableCount: club.availableSlotCount,
+                    rounds: club.rounds,
+                    slots: club.rounds
+                      .flatMap((r: any) => r.slots.map((s: any) => ({ ...s, courseName: r.name })))
+                      .slice(0, 10),
+                  },
+                });
+              }
+            }
+          }
+          break;
+        }
 
         case 'get_available_slots':
           if (result.result && (result.result as any).availableCount > 0) {

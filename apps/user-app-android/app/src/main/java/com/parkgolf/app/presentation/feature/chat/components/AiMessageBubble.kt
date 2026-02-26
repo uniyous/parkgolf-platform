@@ -36,7 +36,7 @@ fun AiMessageBubble(
     createdAt: LocalDateTime,
     showLabel: Boolean = true,
     onClubSelect: ((String, String) -> Unit)? = null,
-    onSlotSelect: ((String, String, Int) -> Unit)? = null,
+    onSlotSelect: ((slotId: String, time: String, price: Int, clubId: String?, clubName: String?) -> Unit)? = null,
     onConfirmBooking: ((String) -> Unit)? = null,
     onCancelBooking: (() -> Unit)? = null,
     onPaymentComplete: ((Boolean) -> Unit)? = null,
@@ -124,7 +124,11 @@ fun AiMessageBubble(
                             )
                             ActionType.SHOW_SLOTS -> SlotCard(
                                 data = action.data,
-                                onSelect = onSlotSelect,
+                                onSelect = { slotId, time, price ->
+                                    val clubId = action.data["clubId"]?.toString()
+                                    val clubName = action.data["clubName"]?.toString()
+                                    onSlotSelect?.invoke(slotId, time, price, clubId, clubName)
+                                },
                                 selectedSlotId = selectedSlotId
                             )
                             ActionType.SHOW_WEATHER -> WeatherCard(data = action.data)

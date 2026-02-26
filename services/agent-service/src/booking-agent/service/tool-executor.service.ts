@@ -31,6 +31,31 @@ export class ToolExecutorService {
   ) {}
 
   /**
+   * 좌표 → 지역명 변환 (location.coord2region)
+   */
+  async resolveRegionName(latitude: number, longitude: number): Promise<string | null> {
+    try {
+      const response = await firstValueFrom(
+        this.locationClient.send('location.coord2region', {
+          x: longitude,
+          y: latitude,
+        }).pipe(
+          timeout(this.REQUEST_TIMEOUT),
+          catchError(() => [null]),
+        ),
+      );
+
+      if (response?.success && response.data) {
+        const { region1, region2, region3 } = response.data;
+        return [region1, region2, region3].filter(Boolean).join(' ');
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * 도구 호출 실행
    */
   async execute(toolCall: ToolCall): Promise<ToolResult> {
@@ -216,15 +241,14 @@ export class ToolExecutorService {
       return { found: 0, date, clubs: [] };
     }
 
-    // games.search 응답을 Club 단위로 그룹핑
+    // games.search 응답을 Club 단위로 그룹핑 (rounds/slots 포함)
     const clubMap = new Map<number, {
       id: number;
       name: string;
       address: string;
       region: string;
       availableSlotCount: number;
-      earliestTime: string;
-      latestTime: string;
+      rounds: Array<{ gameId: number; name: string; price: number; slots: any[] }>;
     }>();
 
     for (const game of response.data) {
@@ -234,22 +258,37 @@ export class ToolExecutorService {
       const slots = game.timeSlots || [];
       if (slots.length === 0) continue;
 
-      const times = slots.map((s: any) => s.startTime).sort();
+      const roundSlots = slots.map((slot: any) => ({
+        id: slot.id,
+        time: slot.startTime,
+        endTime: slot.endTime,
+        availableSpots: slot.availablePlayers ?? (slot.maxPlayers - slot.bookedPlayers),
+        price: Number(slot.price),
+      })).sort((a: any, b: any) => a.time.localeCompare(b.time));
+
       const existing = clubMap.get(club.id);
 
       if (existing) {
-        existing.availableSlotCount += slots.length;
-        if (times[0] < existing.earliestTime) existing.earliestTime = times[0];
-        if (times[times.length - 1] > existing.latestTime) existing.latestTime = times[times.length - 1];
+        existing.availableSlotCount += roundSlots.length;
+        existing.rounds.push({
+          gameId: game.id,
+          name: game.name,
+          price: Number(roundSlots[0]?.price || 0),
+          slots: roundSlots,
+        });
       } else {
         clubMap.set(club.id, {
           id: club.id,
           name: club.name,
           address: club.address,
           region: club.location,
-          availableSlotCount: slots.length,
-          earliestTime: times[0],
-          latestTime: times[times.length - 1],
+          availableSlotCount: roundSlots.length,
+          rounds: [{
+            gameId: game.id,
+            name: game.name,
+            price: Number(roundSlots[0]?.price || 0),
+            slots: roundSlots,
+          }],
         });
       }
     }

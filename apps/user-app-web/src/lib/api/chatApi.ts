@@ -87,6 +87,7 @@ export interface ClubCardData {
 }
 
 export interface SlotCardData {
+  clubId?: string;
   clubName?: string;
   clubAddress?: string;
   date: string;
