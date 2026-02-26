@@ -183,6 +183,23 @@ export class RoomService {
     });
   }
 
+  // 채팅방 활성 멤버 목록 조회
+  async getMembers(roomId: string) {
+    const members = await this.prisma.chatRoomMember.findMany({
+      where: { roomId, leftAt: null },
+      select: {
+        userId: true,
+        userName: true,
+        userEmail: true,
+        isAdmin: true,
+        joinedAt: true,
+      },
+      orderBy: { joinedAt: 'asc' },
+    });
+
+    return members;
+  }
+
   // 예약 채팅방 찾기 또는 생성
   async getOrCreateBookingRoom(bookingId: number, members: { id: number; name: string }[]) {
     // 기존 방 찾기

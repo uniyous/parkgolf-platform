@@ -28,6 +28,7 @@ export class ToolExecutorService {
     @Inject('WEATHER_SERVICE') private readonly weatherClient: ClientProxy,
     @Inject('LOCATION_SERVICE') private readonly locationClient: ClientProxy,
     @Inject('PAYMENT_SERVICE') private readonly paymentClient: ClientProxy,
+    @Inject('CHAT_SERVICE') private readonly chatClient: ClientProxy,
   ) {}
 
   /**
@@ -854,5 +855,114 @@ export class ToolExecutorService {
       clubName: club?.name,
       policies: results,
     };
+  }
+
+  // ── 그룹 예약 관련 메서드 ──
+
+  /**
+   * 채팅방 멤버 목록 조회
+   */
+  async getChatRoomMembers(roomId: string): Promise<Array<{
+    userId: number;
+    userName: string;
+    userEmail: string;
+  }> | null> {
+    try {
+      const response = await firstValueFrom(
+        this.chatClient.send('chat.room.getMembers', { roomId }).pipe(
+          timeout(this.REQUEST_TIMEOUT),
+          catchError(() => [null]),
+        ),
+      );
+
+      if (response?.success && Array.isArray(response.data)) {
+        return response.data.map((m: any) => ({
+          userId: m.userId,
+          userName: m.userName,
+          userEmail: m.userEmail || '',
+        }));
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * 그룹 예약 생성
+   */
+  async createBookingGroup(params: {
+    chatRoomId: string;
+    bookerId: number;
+    bookerName: string;
+    bookerEmail: string;
+    clubId: number;
+    clubName: string;
+    date: string;
+    teams: Array<{
+      gameTimeSlotId: number;
+      participants: Array<{
+        userId: number;
+        userName: string;
+        userEmail: string;
+        role: string;
+      }>;
+    }>;
+    pricePerPerson: number;
+    paymentMethod: string;
+  }): Promise<any> {
+    try {
+      const response = await firstValueFrom(
+        this.bookingClient.send('bookingGroup.create', params).pipe(
+          timeout(30000), // 그룹 예약은 복수 Booking 생성 → 긴 타임아웃
+          catchError((err) => {
+            this.logger.error(`bookingGroup.create failed: ${err.message}`);
+            return [null];
+          }),
+        ),
+      );
+
+      if (response?.success && response?.data) {
+        return response.data;
+      }
+      return null;
+    } catch (error) {
+      this.logger.error('createBookingGroup unexpected error', error);
+      return null;
+    }
+  }
+
+  /**
+   * 분할결제 준비
+   */
+  async prepareSplitPayment(params: {
+    bookingGroupId?: number;
+    bookingId: number;
+    participants: Array<{
+      userId: number;
+      userName: string;
+      userEmail: string;
+      amount: number;
+    }>;
+  }): Promise<any> {
+    try {
+      const response = await firstValueFrom(
+        this.paymentClient.send('payment.splitPrepare', params).pipe(
+          timeout(this.REQUEST_TIMEOUT),
+          catchError((err) => {
+            this.logger.error(`payment.splitPrepare failed: ${err.message}`);
+            return [null];
+          }),
+        ),
+      );
+
+      if (response?.success && response?.data) {
+        return response.data;
+      }
+      return null;
+    } catch (error) {
+      this.logger.error('prepareSplitPayment unexpected error', error);
+      return null;
+    }
   }
 }

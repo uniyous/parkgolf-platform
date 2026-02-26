@@ -12,7 +12,7 @@ import { authStorage } from '@/lib/storage';
 import { showErrorToast, showSuccessToast } from '@/lib/toast';
 import { useAuthStore } from '@/stores/authStore';
 import { useConfirm } from '@/contexts/ConfirmContext';
-import { chatApi, getChatRoomDisplayName, type ChatMessage, type ChatAction, type AiChatRequest } from '@/lib/api/chatApi';
+import { chatApi, getChatRoomDisplayName, type ChatMessage, type ChatAction, type AiChatRequest, type TeamMember } from '@/lib/api/chatApi';
 import { useAiChat } from '@/hooks/useAiChat';
 import { AiButton } from '@/components/features/chat/AiButton';
 import { AiMessageBubble } from '@/components/features/chat/AiMessageBubble';
@@ -192,6 +192,8 @@ export const ChatRoomPage: React.FC = () => {
       case 'COLLECTING': return '검색 중...';
       case 'CONFIRMING': return '예약 확인 중...';
       case 'BOOKING': return '예약 처리 중...';
+      case 'SELECTING_PARTICIPANTS': return '팀 편성 중...';
+      case 'SETTLING': return '정산 처리 중...';
       default: return '생각 중...';
     }
   }, [conversationState]);
@@ -614,6 +616,27 @@ export const ChatRoomPage: React.FC = () => {
                         message: success ? '결제 완료' : '결제 취소',
                         paymentComplete: true,
                         paymentSuccess: success,
+                      });
+                    }}
+                    onConfirmGroup={(paymentMethod: string) => {
+                      handleAiFollowUp({
+                        message: paymentMethod === 'dutchpay' ? '더치페이로 예약' : '현장결제로 예약',
+                        confirmGroupBooking: true,
+                        paymentMethod,
+                      });
+                    }}
+                    onCancelGroup={() => {
+                      setSelectedSlotId(null);
+                      handleAiFollowUp({
+                        message: '그룹 예약 취소',
+                        cancelBooking: true,
+                      });
+                    }}
+                    onTeamConfirm={(teams: Array<{ teamNumber: number; slotId: string; members: TeamMember[] }>) => {
+                      handleAiFollowUp({
+                        message: '팀 편성 확정',
+                        teams,
+                        confirmGroupBooking: true,
                       });
                     }}
                   />

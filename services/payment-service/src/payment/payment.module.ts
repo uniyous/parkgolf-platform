@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PaymentService } from './service/payment.service';
+import { PaymentSplitService } from './service/payment-split.service';
 import { TossApiService } from './service/toss-api.service';
 import { OutboxProcessorService } from './service/outbox-processor.service';
 import { PaymentNatsController } from './controller/payment-nats.controller';
@@ -16,7 +17,7 @@ import { WebhookController } from './controller/webhook.controller';
     ScheduleModule.forRoot(),
   ],
   controllers: [PaymentNatsController, WebhookController],
-  providers: [PaymentService, TossApiService, OutboxProcessorService],
-  exports: [PaymentService],
+  providers: [PaymentService, PaymentSplitService, TossApiService, OutboxProcessorService],
+  exports: [PaymentService, PaymentSplitService],
 })
 export class PaymentModule {}

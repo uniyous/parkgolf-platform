@@ -38,12 +38,20 @@ export class BookingAgentService {
       this.conversationService.updateSlots(context, { latitude, longitude });
     }
 
+    // chatRoomId 저장 (그룹 예약용)
+    if (request.chatRoomId && !context.slots.chatRoomId) {
+      this.conversationService.updateSlots(context, { chatRoomId: request.chatRoomId });
+    }
+
     // ── Direct Handling (LLM 없음) ──
     if (request.paymentComplete) return this.handlePaymentComplete(context, request);
+    if (request.confirmGroupBooking) return this.handleGroupBookingConfirm(context, request);
     if (request.confirmBooking) return this.handleDirectBooking(context, request);
     if (request.cancelBooking) return this.handleCancelBooking(context);
+    if (request.selectedSlots && request.selectedSlots.length > 1) return this.handleMultiSlotSelect(context, request);
     if (request.selectedSlotId) return this.handleDirectSlotSelect(context, request);
     if (request.selectedClubId) return this.handleDirectClubSelect(context, request);
+    if (request.teams) return this.handleTeamConfirm(context, request);
 
     // ── LLM Processing (기존 방식) ──
     // 사용자 메시지 추가
@@ -324,6 +332,360 @@ export class BookingAgentService {
       state: context.state,
       actions: actions.length > 0 ? actions : undefined,
     };
+  }
+
+  /**
+   * 복수 슬롯 선택 → 결제방법 선택 카드(CONFIRM_GROUP) 표시
+   */
+  private handleMultiSlotSelect(
+    context: ConversationContext,
+    request: ChatRequestDto,
+  ): ChatResponseDto {
+    const { selectedSlots } = request;
+    if (!selectedSlots || selectedSlots.length < 2) {
+      return this.handleDirectSlotSelect(context, request);
+    }
+
+    // 선택된 슬롯 저장
+    this.conversationService.updateSlots(context, {
+      selectedSlots,
+      clubId: request.selectedClubId || context.slots.clubId,
+      clubName: request.selectedClubName || context.slots.clubName,
+    });
+
+    const teamCount = selectedSlots.length;
+    const maxPlayers = 4;
+    const totalParticipants = teamCount * maxPlayers;
+    const pricePerSlot = selectedSlots[0]?.price || 0;
+
+    const confirmData = {
+      clubName: context.slots.clubName || '',
+      date: context.slots.date || this.getTomorrowDate(),
+      teamCount,
+      slots: selectedSlots,
+      maxParticipants: totalParticipants,
+      pricePerPerson: pricePerSlot,
+      totalPrice: totalParticipants * pricePerSlot,
+    };
+
+    const message = `${teamCount}개 팀 예약을 준비했어요! 결제 방법을 선택해 주세요.`;
+    this.conversationService.addAssistantMessage(context, message);
+    this.conversationService.setState(context, 'CONFIRMING');
+
+    return {
+      conversationId: context.conversationId,
+      message,
+      state: context.state,
+      actions: [{ type: 'CONFIRM_GROUP', data: confirmData }],
+    };
+  }
+
+  /**
+   * 팀 편성 확인 → 그룹 예약 생성
+   */
+  private async handleTeamConfirm(
+    context: ConversationContext,
+    request: ChatRequestDto,
+  ): Promise<ChatResponseDto> {
+    const { teams } = request;
+    if (!teams || teams.length === 0) {
+      const message = '팀 편성 정보가 없어요. 다시 시도해 주세요.';
+      this.conversationService.addAssistantMessage(context, message);
+      return {
+        conversationId: context.conversationId,
+        message,
+        state: context.state,
+      };
+    }
+
+    // 팀 정보 저장
+    this.conversationService.updateSlots(context, { teams });
+
+    // paymentMethod가 dutchpay가 아니면 현장결제 그룹 예약
+    const paymentMethod = context.slots.paymentMethod || 'dutchpay';
+
+    if (paymentMethod === 'onsite') {
+      // 현장결제 → 바로 그룹 예약 생성
+      return this.executeGroupBooking(context, request, 'onsite');
+    }
+
+    // 더치페이 → 최종 확인 카드 표시
+    const confirmData = {
+      clubName: context.slots.clubName || '',
+      date: context.slots.date || this.getTomorrowDate(),
+      teams: teams.map((t) => ({
+        teamNumber: t.teamNumber,
+        slotTime: context.slots.selectedSlots?.find((s) => s.slotId === t.slotId)?.slotTime || '',
+        courseName: context.slots.selectedSlots?.find((s) => s.slotId === t.slotId)?.courseName || '',
+        memberCount: t.members.length,
+        members: t.members.map((m) => m.userName),
+      })),
+      pricePerPerson: context.slots.selectedSlots?.[0]?.price || 0,
+      totalParticipants: teams.reduce((sum, t) => sum + t.members.length, 0),
+      paymentMethod,
+    };
+
+    const message = '팀 편성이 완료되었어요! 최종 확인 후 예약을 진행해 주세요.';
+    this.conversationService.addAssistantMessage(context, message);
+    this.conversationService.setState(context, 'CONFIRMING');
+
+    return {
+      conversationId: context.conversationId,
+      message,
+      state: context.state,
+      actions: [{ type: 'CONFIRM_GROUP', data: confirmData }],
+    };
+  }
+
+  /**
+   * 그룹 예약 확인 → 그룹 예약 생성 + 더치페이 준비
+   */
+  private async handleGroupBookingConfirm(
+    context: ConversationContext,
+    request: ChatRequestDto,
+  ): Promise<ChatResponseDto> {
+    const paymentMethod = request.paymentMethod || context.slots.paymentMethod || 'dutchpay';
+
+    // 결제방법 저장
+    this.conversationService.updateSlots(context, { paymentMethod });
+
+    if (paymentMethod === 'onsite') {
+      // 현장결제 → 바로 그룹 예약 생성
+      return this.executeGroupBooking(context, request, 'onsite');
+    }
+
+    // 더치페이 → 팀 편성 단계로
+    if (!context.slots.chatRoomId) {
+      const message = '채팅방 정보가 없어요. 채팅방에서 다시 시도해 주세요.';
+      this.conversationService.addAssistantMessage(context, message);
+      return {
+        conversationId: context.conversationId,
+        message,
+        state: context.state,
+      };
+    }
+
+    // 채팅방 멤버 조회
+    const members = await this.toolExecutor.getChatRoomMembers(context.slots.chatRoomId);
+
+    if (!members || members.length === 0) {
+      const message = '채팅방 멤버를 조회할 수 없어요. 다시 시도해 주세요.';
+      this.conversationService.addAssistantMessage(context, message);
+      return {
+        conversationId: context.conversationId,
+        message,
+        state: context.state,
+      };
+    }
+
+    const selectedSlots = context.slots.selectedSlots || [];
+    const teamCount = selectedSlots.length;
+    const maxPlayersPerTeam = 4;
+
+    // 자동 팀 편성
+    const autoTeams = this.autoAssignTeams(members, selectedSlots, request.userId, maxPlayersPerTeam);
+
+    const selectData = {
+      clubId: context.slots.clubId,
+      clubName: context.slots.clubName || '',
+      date: context.slots.date || this.getTomorrowDate(),
+      pricePerPerson: selectedSlots[0]?.price || 0,
+      teams: autoTeams.teams,
+      unassigned: autoTeams.unassigned,
+      availableSlots: [], // 미사용 슬롯 (현재는 모두 사용)
+    };
+
+    const message = `${teamCount}개 팀으로 자동 편성했어요! 드래그로 멤버를 이동할 수 있어요.`;
+    this.conversationService.addAssistantMessage(context, message);
+    this.conversationService.setState(context, 'SELECTING_PARTICIPANTS');
+
+    return {
+      conversationId: context.conversationId,
+      message,
+      state: context.state,
+      actions: [{ type: 'SELECT_PARTICIPANTS', data: selectData }],
+    };
+  }
+
+  /**
+   * 그룹 예약 실행 (Saga)
+   */
+  private async executeGroupBooking(
+    context: ConversationContext,
+    request: ChatRequestDto,
+    paymentMethod: string,
+  ): Promise<ChatResponseDto> {
+    const { teams, selectedSlots, clubId, clubName, date, chatRoomId } = context.slots;
+
+    if (!teams || !selectedSlots || !clubId) {
+      const message = '예약에 필요한 정보가 부족해요. 다시 시도해 주세요.';
+      this.conversationService.addAssistantMessage(context, message);
+      return {
+        conversationId: context.conversationId,
+        message,
+        state: context.state,
+      };
+    }
+
+    this.conversationService.setState(context, 'BOOKING');
+    const pricePerPerson = selectedSlots[0]?.price || 0;
+
+    const groupResult = await this.toolExecutor.createBookingGroup({
+      chatRoomId: chatRoomId || '',
+      bookerId: request.userId,
+      bookerName: request.userName || '',
+      bookerEmail: request.userEmail || '',
+      clubId: Number(clubId),
+      clubName: clubName || '',
+      date: date || this.getTomorrowDate(),
+      teams: teams.map((t) => ({
+        gameTimeSlotId: Number(t.slotId),
+        participants: t.members.map((m) => ({
+          userId: m.userId,
+          userName: m.userName,
+          userEmail: m.userEmail,
+          role: m.userId === request.userId ? 'BOOKER' : 'MEMBER',
+        })),
+      })),
+      pricePerPerson,
+      paymentMethod,
+    });
+
+    if (!groupResult) {
+      const message = '그룹 예약에 실패했어요. 다시 시도해 주세요.';
+      this.conversationService.addAssistantMessage(context, message);
+      this.conversationService.setState(context, 'COLLECTING');
+      return {
+        conversationId: context.conversationId,
+        message,
+        state: context.state,
+      };
+    }
+
+    this.conversationService.updateSlots(context, {
+      bookingGroupId: groupResult.group.id,
+    });
+
+    const actions: ChatAction[] = [];
+    let message: string;
+
+    if (paymentMethod === 'onsite') {
+      // 현장결제 → 예약 완료
+      actions.push({ type: 'BOOKING_COMPLETE', data: groupResult });
+      message = `${teams.length}개 팀 예약이 완료되었습니다!`;
+      this.conversationService.setState(context, 'COMPLETED');
+    } else {
+      // 더치페이 → 분할결제 준비
+      const totalParticipants = teams.reduce((sum, t) => sum + t.members.length, 0);
+      const allParticipants = teams.flatMap((t) =>
+        t.members.map((m) => ({
+          userId: m.userId,
+          userName: m.userName,
+          userEmail: m.userEmail,
+          amount: pricePerPerson,
+        })),
+      );
+
+      // 각 Booking별로 분할결제 준비
+      for (const booking of groupResult.bookings) {
+        const teamMembers = teams.find((t) => Number(t.slotId) === booking.gameTimeSlotId)?.members || [];
+        await this.toolExecutor.prepareSplitPayment({
+          bookingGroupId: groupResult.group.id,
+          bookingId: booking.id,
+          participants: teamMembers.map((m) => ({
+            userId: m.userId,
+            userName: m.userName,
+            userEmail: m.userEmail,
+            amount: pricePerPerson,
+          })),
+        });
+      }
+
+      actions.push({
+        type: 'SETTLEMENT_STATUS',
+        data: {
+          groupNumber: groupResult.group.groupNumber,
+          bookingGroupId: groupResult.group.id,
+          totalParticipants,
+          pricePerPerson,
+          totalPrice: totalParticipants * pricePerPerson,
+          paidCount: 0,
+          participants: allParticipants.map((p) => ({
+            userId: p.userId,
+            userName: p.userName,
+            status: 'PENDING',
+          })),
+        },
+      });
+
+      message = `그룹 예약이 생성되었어요! 참여자들에게 개별 결제 요청이 전송됩니다.`;
+      this.conversationService.setState(context, 'SETTLING');
+    }
+
+    this.conversationService.addAssistantMessage(context, message);
+
+    return {
+      conversationId: context.conversationId,
+      message,
+      state: context.state,
+      actions: actions.length > 0 ? actions : undefined,
+    };
+  }
+
+  /**
+   * 자동 팀 편성 알고리즘
+   * - Booker는 팀 1에 고정
+   * - 나머지 멤버를 순서대로 배분
+   * - 초과 인원 → unassigned
+   */
+  private autoAssignTeams(
+    members: Array<{ userId: number; userName: string; userEmail: string }>,
+    slots: Array<{ slotId: string; slotTime: string; courseName: string; price: number }>,
+    bookerId: number,
+    maxPlayersPerTeam: number,
+  ) {
+    const teams: Array<{
+      teamNumber: number;
+      slotId: string;
+      slotTime: string;
+      courseName: string;
+      maxPlayers: number;
+      members: Array<{ userId: number; userName: string; userEmail: string }>;
+    }> = slots.map((slot, i) => ({
+      teamNumber: i + 1,
+      slotId: slot.slotId,
+      slotTime: slot.slotTime,
+      courseName: slot.courseName,
+      maxPlayers: maxPlayersPerTeam,
+      members: [],
+    }));
+
+    // Booker를 팀 1에 고정
+    const booker = members.find((m) => m.userId === bookerId);
+    const others = members.filter((m) => m.userId !== bookerId);
+
+    if (booker && teams.length > 0) {
+      teams[0].members.push(booker);
+    }
+
+    // 나머지 멤버를 순서대로 배분
+    const unassigned: Array<{ userId: number; userName: string; userEmail: string }> = [];
+    let teamIdx = 0;
+
+    for (const member of others) {
+      // 현재 팀이 꽉 찼으면 다음 팀으로
+      while (teamIdx < teams.length && teams[teamIdx].members.length >= maxPlayersPerTeam) {
+        teamIdx++;
+      }
+
+      if (teamIdx < teams.length) {
+        teams[teamIdx].members.push(member);
+      } else {
+        unassigned.push(member);
+      }
+    }
+
+    return { teams, unassigned };
   }
 
   /**

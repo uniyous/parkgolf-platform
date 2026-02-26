@@ -61,8 +61,8 @@ export interface MessagesResponse {
 // AI Chat Types
 // ============================================
 
-export type ConversationState = 'IDLE' | 'COLLECTING' | 'CONFIRMING' | 'BOOKING' | 'COMPLETED' | 'CANCELLED';
-export type ActionType = 'SHOW_CLUBS' | 'SHOW_SLOTS' | 'SHOW_WEATHER' | 'CONFIRM_BOOKING' | 'SHOW_PAYMENT' | 'BOOKING_COMPLETE';
+export type ConversationState = 'IDLE' | 'COLLECTING' | 'CONFIRMING' | 'SELECTING_PARTICIPANTS' | 'BOOKING' | 'SETTLING' | 'COMPLETED' | 'CANCELLED';
+export type ActionType = 'SHOW_CLUBS' | 'SHOW_SLOTS' | 'SHOW_WEATHER' | 'CONFIRM_BOOKING' | 'CONFIRM_GROUP' | 'SELECT_PARTICIPANTS' | 'SHOW_PAYMENT' | 'SPLIT_PAYMENT' | 'SETTLEMENT_STATUS' | 'BOOKING_COMPLETE';
 
 export interface ChatAction {
   type: ActionType;
@@ -158,6 +158,63 @@ export interface PaymentCardData {
   playerCount: number;
 }
 
+export interface ConfirmGroupData {
+  clubName: string;
+  date: string;
+  teamCount: number;
+  slots: Array<{
+    slotId: string;
+    slotTime: string;
+    courseName: string;
+    price: number;
+  }>;
+  maxParticipants: number;
+  pricePerPerson: number;
+  totalPrice: number;
+}
+
+export interface TeamMember {
+  userId: number;
+  userName: string;
+  userEmail: string;
+}
+
+export interface SelectParticipantsData {
+  clubId?: string;
+  clubName: string;
+  date: string;
+  pricePerPerson: number;
+  teams: Array<{
+    teamNumber: number;
+    slotId: string;
+    slotTime: string;
+    courseName: string;
+    maxPlayers: number;
+    members: TeamMember[];
+  }>;
+  unassigned: TeamMember[];
+  availableSlots: Array<{
+    slotId: string;
+    slotTime: string;
+    courseName: string;
+    maxPlayers: number;
+  }>;
+}
+
+export interface SettlementStatusData {
+  groupNumber: string;
+  bookingGroupId: number;
+  totalParticipants: number;
+  pricePerPerson: number;
+  totalPrice: number;
+  paidCount: number;
+  participants: Array<{
+    userId: number;
+    userName: string;
+    status: 'PENDING' | 'PAID' | 'CANCELLED';
+  }>;
+}
+
 export interface AiChatRequest {
   message: string;
   conversationId?: string;
@@ -173,6 +230,19 @@ export interface AiChatRequest {
   paymentMethod?: string;
   paymentComplete?: boolean;
   paymentSuccess?: boolean;
+  // 그룹 예약
+  selectedSlots?: Array<{
+    slotId: string;
+    slotTime: string;
+    courseName: string;
+    price: number;
+  }>;
+  teams?: Array<{
+    teamNumber: number;
+    slotId: string;
+    members: TeamMember[];
+  }>;
+  confirmGroupBooking?: boolean;
 }
 
 // ============================================

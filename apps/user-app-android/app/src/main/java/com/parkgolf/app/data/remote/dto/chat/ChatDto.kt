@@ -126,7 +126,33 @@ data class AiChatRequest(
     val cancelBooking: Boolean? = null,
     val paymentMethod: String? = null,
     val paymentComplete: Boolean? = null,
-    val paymentSuccess: Boolean? = null
+    val paymentSuccess: Boolean? = null,
+    // 그룹 예약
+    val selectedSlots: List<SelectedSlotDto>? = null,
+    val teams: List<TeamDto>? = null,
+    val confirmGroupBooking: Boolean? = null
+)
+
+@Serializable
+data class SelectedSlotDto(
+    val slotId: String,
+    val slotTime: String,
+    val courseName: String,
+    val price: Int
+)
+
+@Serializable
+data class TeamDto(
+    val teamNumber: Int,
+    val slotId: String,
+    val members: List<TeamMemberDto>
+)
+
+@Serializable
+data class TeamMemberDto(
+    val userId: Int,
+    val userName: String,
+    val userEmail: String
 )
 
 @Serializable

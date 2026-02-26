@@ -1,6 +1,7 @@
 import { Controller, Logger } from '@nestjs/common';
 import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
 import { PaymentService } from '../service/payment.service';
+import { PaymentSplitService, SplitPrepareDto, SplitConfirmDto } from '../service/payment-split.service';
 import { NatsResponse } from '../../common/types/response.types';
 import {
   PreparePaymentDto,
@@ -19,7 +20,10 @@ import {
 export class PaymentNatsController {
   private readonly logger = new Logger(PaymentNatsController.name);
 
-  constructor(private readonly paymentService: PaymentService) {}
+  constructor(
+    private readonly paymentService: PaymentService,
+    private readonly splitService: PaymentSplitService,
+  ) {}
 
   /**
    * 결제 준비
@@ -130,6 +134,44 @@ export class PaymentNatsController {
   async deleteBillingKey(@Payload() data: { billingKey: string; userId: number }) {
     this.logger.log(`Deleting billing key: ${data.billingKey}`);
     const result = await this.paymentService.deleteBillingKey(data.billingKey, data.userId);
+    return NatsResponse.success(result);
+  }
+
+  // ============================================
+  // Split Payment (더치페이)
+  // ============================================
+
+  /**
+   * 분할결제 준비
+   * 참여자별 개별 orderId 생성
+   */
+  @MessagePattern('payment.splitPrepare')
+  async prepareSplit(@Payload() data: SplitPrepareDto) {
+    this.logger.log(`Preparing split payment for booking ${data.bookingId}`);
+    const result = await this.splitService.prepareSplit(data);
+    return NatsResponse.success(result);
+  }
+
+  /**
+   * 개별 분할결제 승인
+   */
+  @MessagePattern('payment.splitConfirm')
+  async confirmSplit(@Payload() data: SplitConfirmDto) {
+    this.logger.log(`Confirming split payment: ${data.orderId}`);
+    const result = await this.splitService.confirmSplit(data);
+    return NatsResponse.success(result);
+  }
+
+  /**
+   * 분할결제 상태 조회 (그룹)
+   */
+  @MessagePattern('payment.splitGet')
+  async getSplits(@Payload() data: { bookingGroupId?: number; bookingId?: number }) {
+    if (data.bookingGroupId) {
+      const result = await this.splitService.getSplitsByBookingGroup(data.bookingGroupId);
+      return NatsResponse.success(result);
+    }
+    const result = await this.splitService.getSplitsByBooking(data.bookingId!);
     return NatsResponse.success(result);
   }
 

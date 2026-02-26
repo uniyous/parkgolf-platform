@@ -145,4 +145,33 @@ export class AiChatRequestDto {
   @IsOptional()
   @IsBoolean()
   paymentSuccess?: boolean;
+
+  // ── 그룹 예약 필드 ──
+
+  @ApiPropertyOptional({ description: '복수 슬롯 선택 (멀티팀)' })
+  @IsOptional()
+  @IsArray()
+  selectedSlots?: Array<{
+    slotId: string;
+    slotTime: string;
+    courseName: string;
+    price: number;
+  }>;
+
+  @ApiPropertyOptional({ description: '팀 편성 데이터' })
+  @IsOptional()
+  teams?: Array<{
+    teamNumber: number;
+    slotId: string;
+    members: Array<{
+      userId: number;
+      userName: string;
+      userEmail: string;
+    }>;
+  }>;
+
+  @ApiPropertyOptional({ description: '그룹 예약 확인' })
+  @IsOptional()
+  @IsBoolean()
+  confirmGroupBooking?: boolean;
 }

@@ -59,6 +59,8 @@ data class ChatUiState(
             ConversationState.COLLECTING -> "검색 중..."
             ConversationState.CONFIRMING -> "예약 확인 중..."
             ConversationState.BOOKING -> "예약 처리 중..."
+            ConversationState.SELECTING_PARTICIPANTS -> "팀 편성 중..."
+            ConversationState.SETTLING -> "정산 처리 중..."
             else -> "생각 중..."
         }
 }
@@ -128,9 +130,30 @@ class ChatViewModel @Inject constructor(
     private fun observeTokenRefresh() {
         viewModelScope.launch {
             chatRepository.tokenRefreshNeeded.collect {
-                // Server session stays alive — just refresh REST API token in background
-                Log.d(TAG, "Token refresh needed, refreshing REST API token...")
+                Log.d(TAG, "Token refresh needed, refreshing token and reconnecting...")
                 authRepository.refreshToken()
+                    .onSuccess {
+                        // 갱신된 토큰으로 소켓 강제 재연결 (Web handleAuthError 패턴)
+                        val newToken = authRepository.getAccessToken()
+                        if (newToken != null) {
+                            savedToken = newToken
+                            Log.d(TAG, "Token refreshed, force reconnecting socket")
+                            chatRepository.forceReconnect(newToken)
+                            chatRepository.startConnectionCheck(newToken)
+
+                            // 재연결 후 방 재참여 대기
+                            delay(2000)
+                            if (chatRepository.isConnected) {
+                                currentRoomId?.let { roomId ->
+                                    chatRepository.joinRoom(roomId)
+                                    Log.d(TAG, "Rejoined room after token refresh: $roomId")
+                                }
+                            }
+                        }
+                    }
+                    .onFailure { error ->
+                        Log.e(TAG, "Token refresh failed: ${error.message}")
+                    }
             }
         }
     }
@@ -225,7 +248,9 @@ class ChatViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(isLoading = true, messages = emptyList())
 
         viewModelScope.launch {
-            // 1. Get token and connect socket first (like iOS)
+            // 1. 토큰 갱신 후 소켓 연결 (만료 토큰으로 연결 시도 방지)
+            authRepository.refreshToken()
+                .onFailure { Log.w(TAG, "Token pre-refresh failed, using cached token") }
             val token = authRepository.getAccessToken()
             if (token != null) {
                 savedToken = token

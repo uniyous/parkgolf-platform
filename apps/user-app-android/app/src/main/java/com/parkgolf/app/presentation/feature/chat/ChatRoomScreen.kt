@@ -25,6 +25,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.LifecycleOwner
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.parkgolf.app.data.remote.dto.chat.AiChatRequest
+import com.parkgolf.app.data.remote.dto.chat.TeamDto
+import com.parkgolf.app.presentation.feature.chat.components.cards.TeamConfirmData
 import com.parkgolf.app.domain.model.ChatMessage
 import com.parkgolf.app.domain.model.Friend
 import com.parkgolf.app.domain.model.MessageType
@@ -300,6 +302,33 @@ fun ChatRoomScreen(
                                             message = if (success) "결제 완료" else "결제 취소",
                                             paymentComplete = true,
                                             paymentSuccess = success
+                                        ))
+                                    },
+                                    onConfirmGroup = { paymentMethod ->
+                                        viewModel.sendAiFollowUp(AiChatRequest(
+                                            message = if (paymentMethod == "dutchpay") "더치페이로 예약" else "현장결제로 예약",
+                                            confirmGroupBooking = true,
+                                            paymentMethod = paymentMethod
+                                        ))
+                                    },
+                                    onCancelGroup = {
+                                        viewModel.selectSlot("")
+                                        viewModel.sendAiFollowUp(AiChatRequest(
+                                            message = "그룹 예약 취소",
+                                            cancelBooking = true
+                                        ))
+                                    },
+                                    onTeamConfirm = { teamConfirmData: List<TeamConfirmData> ->
+                                        viewModel.sendAiFollowUp(AiChatRequest(
+                                            message = "팀 편성 확정",
+                                            teams = teamConfirmData.map { t ->
+                                                TeamDto(
+                                                    teamNumber = t.teamNumber,
+                                                    slotId = t.slotId,
+                                                    members = t.members
+                                                )
+                                            },
+                                            confirmGroupBooking = true
                                         ))
                                     },
                                     selectedClubId = uiState.selectedClubId,

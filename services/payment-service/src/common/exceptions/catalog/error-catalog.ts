@@ -69,6 +69,16 @@ export const BillingErrors = defineErrors({
 });
 
 // ============================================
+// 분할결제 에러 (SPLIT_xxx)
+// ============================================
+export const SplitErrors = defineErrors({
+  NOT_FOUND: { code: 'SPLIT_001', message: '분할결제 정보를 찾을 수 없습니다', httpStatus: 404 },
+  ALREADY_PAID: { code: 'SPLIT_002', message: '이미 결제가 완료되었습니다', httpStatus: 400 },
+  EXPIRED: { code: 'SPLIT_003', message: '결제 기한이 만료되었습니다', httpStatus: 400 },
+  INVALID_STATUS: { code: 'SPLIT_004', message: '분할결제 상태가 올바르지 않습니다', httpStatus: 400 },
+});
+
+// ============================================
 // 유효성 검증 에러 (VAL_xxx)
 // ============================================
 export const ValidationErrors = defineErrors({
@@ -117,6 +127,7 @@ export const Errors = {
   Payment: PaymentErrors,
   Refund: RefundErrors,
   Billing: BillingErrors,
+  Split: SplitErrors,
   Validation: ValidationErrors,
   External: ExternalErrors,
   Database: DatabaseErrors,

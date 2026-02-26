@@ -242,6 +242,7 @@ export class ChatService {
         userEmail,
         message: dto.message,
         conversationId: dto.conversationId,
+        chatRoomId: roomId,
         latitude: dto.latitude,
         longitude: dto.longitude,
         selectedClubId: dto.selectedClubId,
@@ -254,6 +255,10 @@ export class ChatService {
         paymentMethod: dto.paymentMethod,
         paymentComplete: dto.paymentComplete,
         paymentSuccess: dto.paymentSuccess,
+        // 그룹 예약 필드
+        selectedSlots: dto.selectedSlots,
+        teams: dto.teams,
+        confirmGroupBooking: dto.confirmGroupBooking,
       },
       NATS_TIMEOUTS.PAYMENT, // 60초 - AI 처리 시간 고려
     );

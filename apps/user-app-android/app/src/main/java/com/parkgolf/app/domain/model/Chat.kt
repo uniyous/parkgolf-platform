@@ -124,6 +124,8 @@ enum class ConversationState(val value: String) {
     COLLECTING("collecting"),
     CONFIRMING("confirming"),
     BOOKING("booking"),
+    SELECTING_PARTICIPANTS("selecting_participants"),
+    SETTLING("settling"),
     COMPLETED("completed"),
     CANCELLED("cancelled");
 
@@ -139,7 +141,11 @@ enum class ActionType(val value: String) {
     SHOW_WEATHER("SHOW_WEATHER"),
     CONFIRM_BOOKING("CONFIRM_BOOKING"),
     SHOW_PAYMENT("SHOW_PAYMENT"),
-    BOOKING_COMPLETE("BOOKING_COMPLETE");
+    BOOKING_COMPLETE("BOOKING_COMPLETE"),
+    CONFIRM_GROUP("CONFIRM_GROUP"),
+    SELECT_PARTICIPANTS("SELECT_PARTICIPANTS"),
+    SPLIT_PAYMENT("SPLIT_PAYMENT"),
+    SETTLEMENT_STATUS("SETTLEMENT_STATUS");
 
     companion object {
         fun fromValue(value: String): ActionType? =

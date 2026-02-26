@@ -21,8 +21,12 @@ import com.parkgolf.app.domain.model.ChatAction
 import com.parkgolf.app.presentation.feature.chat.components.cards.BookingCompleteCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.ClubCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.ConfirmBookingCard
+import com.parkgolf.app.presentation.feature.chat.components.cards.ConfirmGroupCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.PaymentCard
+import com.parkgolf.app.presentation.feature.chat.components.cards.SelectParticipantsCard
+import com.parkgolf.app.presentation.feature.chat.components.cards.SettlementStatusCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.SlotCard
+import com.parkgolf.app.presentation.feature.chat.components.cards.TeamConfirmData
 import com.parkgolf.app.presentation.feature.chat.components.cards.WeatherCard
 import com.parkgolf.app.presentation.theme.ParkOnPrimary
 import com.parkgolf.app.presentation.theme.ParkPrimary
@@ -40,6 +44,9 @@ fun AiMessageBubble(
     onConfirmBooking: ((String) -> Unit)? = null,
     onCancelBooking: (() -> Unit)? = null,
     onPaymentComplete: ((Boolean) -> Unit)? = null,
+    onConfirmGroup: ((String) -> Unit)? = null,
+    onCancelGroup: (() -> Unit)? = null,
+    onTeamConfirm: ((List<TeamConfirmData>) -> Unit)? = null,
     selectedClubId: String? = null,
     selectedSlotId: String? = null
 ) {
@@ -142,6 +149,18 @@ fun AiMessageBubble(
                                 onPaymentComplete = onPaymentComplete
                             )
                             ActionType.BOOKING_COMPLETE -> BookingCompleteCard(data = action.data)
+                            ActionType.CONFIRM_GROUP -> ConfirmGroupCard(
+                                data = action.data,
+                                onConfirm = onConfirmGroup,
+                                onCancel = onCancelGroup
+                            )
+                            ActionType.SELECT_PARTICIPANTS -> SelectParticipantsCard(
+                                data = action.data,
+                                onConfirm = onTeamConfirm,
+                                onCancel = onCancelGroup
+                            )
+                            ActionType.SETTLEMENT_STATUS -> SettlementStatusCard(data = action.data)
+                            ActionType.SPLIT_PAYMENT -> { /* handled by settlement status */ }
                         }
                     }
                 }

@@ -1,12 +1,15 @@
 import React from 'react';
 import { Sparkles } from 'lucide-react';
-import type { ChatAction, ClubCardData, SlotCardData, WeatherCardData, BookingCompleteData, ConfirmBookingData, PaymentCardData } from '@/lib/api/chatApi';
+import type { ChatAction, ClubCardData, SlotCardData, WeatherCardData, BookingCompleteData, ConfirmBookingData, PaymentCardData, ConfirmGroupData, SelectParticipantsData, SettlementStatusData, TeamMember } from '@/lib/api/chatApi';
 import { ClubCard } from './cards/ClubCard';
 import { SlotCard } from './cards/SlotCard';
 import { WeatherCard } from './cards/WeatherCard';
 import { BookingCompleteCard } from './cards/BookingCompleteCard';
 import { ConfirmBookingCard } from './cards/ConfirmBookingCard';
 import { PaymentCard } from './cards/PaymentCard';
+import { ConfirmGroupCard } from './cards/ConfirmGroupCard';
+import { SelectParticipantsCard } from './cards/SelectParticipantsCard';
+import { SettlementStatusCard } from './cards/SettlementStatusCard';
 
 interface AiMessageBubbleProps {
   content: string;
@@ -18,6 +21,9 @@ interface AiMessageBubbleProps {
   onConfirmBooking?: (paymentMethod: 'onsite' | 'card') => void;
   onCancelBooking?: () => void;
   onPaymentComplete?: (success: boolean) => void;
+  onConfirmGroup?: (paymentMethod: string) => void;
+  onCancelGroup?: () => void;
+  onTeamConfirm?: (teams: Array<{ teamNumber: number; slotId: string; members: TeamMember[] }>) => void;
   selectedClubId?: string | null;
   selectedSlotId?: string | null;
 }
@@ -32,6 +38,9 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   onConfirmBooking,
   onCancelBooking,
   onPaymentComplete,
+  onConfirmGroup,
+  onCancelGroup,
+  onTeamConfirm,
   selectedClubId,
   selectedSlotId,
 }) => {
@@ -93,6 +102,23 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                 )}
                 {action.type === 'BOOKING_COMPLETE' && (
                   <BookingCompleteCard data={action.data as BookingCompleteData} />
+                )}
+                {action.type === 'CONFIRM_GROUP' && (
+                  <ConfirmGroupCard
+                    data={action.data as ConfirmGroupData}
+                    onConfirm={onConfirmGroup}
+                    onCancel={onCancelGroup}
+                  />
+                )}
+                {action.type === 'SELECT_PARTICIPANTS' && (
+                  <SelectParticipantsCard
+                    data={action.data as SelectParticipantsData}
+                    onConfirm={onTeamConfirm}
+                    onCancel={onCancelGroup}
+                  />
+                )}
+                {action.type === 'SETTLEMENT_STATUS' && (
+                  <SettlementStatusCard data={action.data as SettlementStatusData} />
                 )}
               </div>
             ))}
