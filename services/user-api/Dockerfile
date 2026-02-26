@@ -3,6 +3,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# bcrypt native build dependencies
+RUN apk add --no-cache python3 make g++
+
 # Copy package files first for better caching
 COPY package*.json ./
 
@@ -20,15 +23,16 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Install dumb-init and bcrypt native build dependencies
+RUN apk add --no-cache dumb-init python3 make g++
 
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies only
+# Install production dependencies only and clean up build tools
 RUN npm ci --only=production && \
-    npm cache clean --force
+    npm cache clean --force && \
+    apk del python3 make g++
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
