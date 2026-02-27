@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw, Loader2, UserPlus, Search, X, Check, Sparkles, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,8 @@ import { useAiChat } from '@/hooks/useAiChat';
 import { AiButton } from '@/components/features/chat/AiButton';
 import { AiMessageBubble } from '@/components/features/chat/AiMessageBubble';
 import { AiWelcomeCard } from '@/components/features/chat/AiWelcomeCard';
+import { paymentApi } from '@/lib/api/paymentApi';
+import { CHAT_PAYMENT_CONTEXT_KEY, type ChatPaymentContext } from '@/lib/constants';
 
 export const ChatRoomPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -54,7 +56,117 @@ export const ChatRoomPage: React.FC = () => {
   } = useMessagesInfiniteQuery(roomId ?? '');
   const sendMessageMutation = useSendMessageMutation();
   const leaveMutation = useLeaveChatRoomMutation();
-  const { isAiMode, toggleAiMode, sendAiMessage, isAiLoading, conversationState } = useAiChat(roomId ?? '');
+  const { isAiMode, toggleAiMode, sendAiMessage, isAiLoading, conversationState, conversationId } = useAiChat(roomId ?? '');
+  const [searchParams] = useSearchParams();
+
+  // ── Toss 결제 복귀 처리 ──
+  const paymentHandledRef = useRef(false);
+
+  useEffect(() => {
+    if (paymentHandledRef.current || !roomId) return;
+
+    const paymentKey = searchParams.get('paymentKey');
+    const paymentOrderId = searchParams.get('orderId');
+    const paymentAmount = searchParams.get('amount');
+    const paymentFail = searchParams.get('payment') === 'fail';
+
+    if (paymentKey && paymentOrderId && paymentAmount) {
+      paymentHandledRef.current = true;
+      handlePaymentReturn(paymentKey, paymentOrderId, Number(paymentAmount));
+    } else if (paymentFail) {
+      paymentHandledRef.current = true;
+      handlePaymentFailure();
+    }
+  }, [roomId, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handlePaymentReturn = async (paymentKey: string, orderId: string, amount: number) => {
+    // sessionStorage에서 결제 컨텍스트 읽기
+    const raw = sessionStorage.getItem(CHAT_PAYMENT_CONTEXT_KEY);
+    const ctx: ChatPaymentContext | null = raw ? JSON.parse(raw) : null;
+    const paymentType = ctx?.type || 'single';
+
+    try {
+      if (paymentType === 'split') {
+        await paymentApi.confirmSplitPayment({ paymentKey, orderId, amount });
+        // 에이전트에 분할결제 완료 통지
+        const response = await sendAiMessage({
+          message: '결제 완료',
+          splitPaymentComplete: true,
+          splitOrderId: orderId,
+        });
+        if (response.actions) {
+          const aiMsg: ChatMessage = {
+            id: `ai-${Date.now()}`,
+            roomId: roomId!,
+            senderId: 'ai',
+            senderName: 'AI 예약 도우미',
+            content: response.message,
+            messageType: 'AI_ASSISTANT',
+            createdAt: new Date().toISOString(),
+            readBy: null,
+          };
+          setAiMessageActions((prev) => new Map(prev).set(aiMsg.id, response.actions!));
+          setRealtimeMessages((prev) => [...prev, aiMsg]);
+        }
+      } else {
+        await paymentApi.confirmPayment({ paymentKey, orderId, amount });
+        // 에이전트에 결제 완료 통지
+        const response = await sendAiMessage({
+          message: '결제 완료',
+          paymentComplete: true,
+          paymentSuccess: true,
+        });
+        if (response.actions) {
+          const aiMsg: ChatMessage = {
+            id: `ai-${Date.now()}`,
+            roomId: roomId!,
+            senderId: 'ai',
+            senderName: 'AI 예약 도우미',
+            content: response.message,
+            messageType: 'AI_ASSISTANT',
+            createdAt: new Date().toISOString(),
+            readBy: null,
+          };
+          setAiMessageActions((prev) => new Map(prev).set(aiMsg.id, response.actions!));
+          setRealtimeMessages((prev) => [...prev, aiMsg]);
+        }
+      }
+    } catch (err) {
+      console.error('결제 승인 실패:', err);
+      // fallback: 서버에서 이미 승인된 경우 확인
+      try {
+        const status = await paymentApi.getPaymentByOrderId(orderId);
+        if (status.status === 'DONE' || status.status === 'PAID') {
+          const notifyReq = paymentType === 'split'
+            ? { message: '결제 완료', splitPaymentComplete: true, splitOrderId: orderId }
+            : { message: '결제 완료', paymentComplete: true, paymentSuccess: true };
+          await sendAiMessage(notifyReq);
+        } else {
+          showErrorToast('결제 승인에 실패했습니다. 다시 시도해주세요.');
+        }
+      } catch {
+        showErrorToast('결제 승인에 실패했습니다.');
+      }
+    } finally {
+      sessionStorage.removeItem(CHAT_PAYMENT_CONTEXT_KEY);
+      window.history.replaceState({}, '', `/chat/${roomId}`);
+    }
+  };
+
+  const handlePaymentFailure = async () => {
+    sessionStorage.removeItem(CHAT_PAYMENT_CONTEXT_KEY);
+    window.history.replaceState({}, '', `/chat/${roomId}`);
+    // 에이전트에 실패 통지
+    try {
+      await sendAiMessage({
+        message: '결제 취소',
+        paymentComplete: true,
+        paymentSuccess: false,
+      });
+    } catch {
+      // 실패 통지가 안 되어도 무시
+    }
+  };
 
   // Merge DB messages from infinite query with realtime messages
   const messages = useMemo(() => {
@@ -577,6 +689,8 @@ export const ChatRoomPage: React.FC = () => {
                     createdAt={message.createdAt}
                     showLabel={!prevIsAi}
                     currentUserId={user?.id ? Number(user.id) : undefined}
+                    roomId={roomId}
+                    conversationId={conversationId}
                     selectedClubId={selectedClubId}
                     selectedSlotId={selectedSlotId}
                     onClubSelect={(clubId, clubName) => {

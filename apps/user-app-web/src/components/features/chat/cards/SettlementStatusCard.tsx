@@ -1,11 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Users, CheckCircle2, Clock, AlertCircle, CreditCard, Loader2, Timer } from 'lucide-react';
+import { loadTossPayments, type TossPayments } from '@tosspayments/payment-sdk';
 import { cn } from '@/lib/utils';
 import type { SettlementStatusData } from '@/lib/api/chatApi';
+import { CHAT_PAYMENT_CONTEXT_KEY, type ChatPaymentContext } from '@/lib/constants';
+
+const TOSS_CLIENT_KEY = import.meta.env.VITE_TOSS_CLIENT_KEY;
 
 interface SettlementStatusCardProps {
   data: SettlementStatusData;
   currentUserId?: number;
+  roomId?: string;
+  conversationId?: string;
   onSplitPaymentComplete?: (success: boolean, orderId: string) => void;
 }
 
@@ -99,11 +105,31 @@ const BookerDashboardView: React.FC<{ data: SettlementStatusData }> = ({ data })
  */
 const ParticipantPaymentView: React.FC<{
   participant: SettlementStatusData['participants'][0];
+  roomId?: string;
+  conversationId?: string;
   onPay: (orderId: string) => void;
-}> = ({ participant, onPay }) => {
+}> = ({ participant, roomId, conversationId, onPay }) => {
   const [isPaying, setIsPaying] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [isExpired, setIsExpired] = useState(false);
+  const tossRef = useRef<TossPayments | null>(null);
+
+  // Toss SDK 초기화
+  useEffect(() => {
+    if (!TOSS_CLIENT_KEY) return;
+    let mounted = true;
+
+    (async () => {
+      try {
+        const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY);
+        if (mounted) tossRef.current = tossPayments;
+      } catch (err) {
+        console.error('Toss SDK 초기화 실패:', err);
+      }
+    })();
+
+    return () => { mounted = false; };
+  }, []);
 
   // 카운트다운 (expiredAt 기준)
   useEffect(() => {
@@ -134,11 +160,35 @@ const ParticipantPaymentView: React.FC<{
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-  const handlePay = () => {
-    if (!participant.orderId || isPaying || isExpired) return;
+  const handlePay = async () => {
+    if (!participant.orderId || isPaying || isExpired || !tossRef.current || !roomId) return;
     setIsPaying(true);
-    // TODO: Toss 결제 위젯 연동 → 현재 placeholder로 즉시 성공
-    onPay(participant.orderId);
+
+    try {
+      // sessionStorage에 결제 컨텍스트 저장
+      const paymentContext: ChatPaymentContext = {
+        roomId,
+        conversationId: conversationId || '',
+        orderId: participant.orderId,
+        amount: participant.amount || 0,
+        orderName: '더치페이 결제',
+        type: 'split',
+      };
+      sessionStorage.setItem(CHAT_PAYMENT_CONTEXT_KEY, JSON.stringify(paymentContext));
+
+      // Toss 결제 요청 → redirect
+      await tossRef.current.requestPayment('카드', {
+        amount: participant.amount || 0,
+        orderId: participant.orderId,
+        orderName: '더치페이 결제',
+        successUrl: `${window.location.origin}/chat/${roomId}`,
+        failUrl: `${window.location.origin}/chat/${roomId}?payment=fail`,
+      });
+    } catch (err: any) {
+      setIsPaying(false);
+      // 사용자 취소는 무시
+      if (err?.code === 'USER_CANCEL' || err?.message?.includes('CANCEL')) return;
+    }
   };
 
   const amount = participant.amount || 0;
@@ -168,10 +218,10 @@ const ParticipantPaymentView: React.FC<{
       ) : (
         <button
           onClick={handlePay}
-          disabled={isPaying || !participant.orderId}
+          disabled={isPaying || !participant.orderId || !tossRef.current}
           className={cn(
             'w-full py-2.5 rounded-lg text-sm font-semibold transition-all',
-            isPaying
+            isPaying || !tossRef.current
               ? 'bg-white/10 text-white/50 cursor-not-allowed'
               : 'bg-emerald-500 text-white hover:bg-emerald-600 active:scale-[0.98]'
           )}
@@ -215,6 +265,8 @@ const ParticipantPaidView: React.FC<{
 export const SettlementStatusCard: React.FC<SettlementStatusCardProps> = ({
   data,
   currentUserId,
+  roomId,
+  conversationId,
   onSplitPaymentComplete,
 }) => {
   // currentUserId가 없거나 부커인 경우 → 대시보드
@@ -237,6 +289,8 @@ export const SettlementStatusCard: React.FC<SettlementStatusCardProps> = ({
   return (
     <ParticipantPaymentView
       participant={myParticipant}
+      roomId={roomId}
+      conversationId={conversationId}
       onPay={(orderId) => onSplitPaymentComplete?.(true, orderId)}
     />
   );

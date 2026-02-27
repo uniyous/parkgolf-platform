@@ -559,6 +559,22 @@ export class BookingAgentService {
     const selectedSlots = context.slots.selectedSlots || [];
     const teamCount = selectedSlots.length;
     const maxPlayersPerTeam = 4;
+    const playerCount = context.slots.playerCount || members.length;
+
+    // 소규모 그룹 간소화: 1슬롯 + 4명 이하 → 팀편성 생략, 자동 1팀 배정
+    if (selectedSlots.length === 1 && playerCount <= 4) {
+      const autoTeam = {
+        teamNumber: 1,
+        slotId: selectedSlots[0].slotId,
+        members: members.map((m) => ({
+          userId: m.userId,
+          userName: m.userName,
+          userEmail: m.userEmail,
+        })),
+      };
+      this.conversationService.updateSlots(context, { teams: [autoTeam] });
+      return this.executeGroupBooking(context, request, 'dutchpay');
+    }
 
     // 자동 팀 편성
     const autoTeams = this.autoAssignTeams(members, selectedSlots, request.userId, maxPlayersPerTeam);

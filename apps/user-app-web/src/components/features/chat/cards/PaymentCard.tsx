@@ -1,20 +1,27 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { CreditCard, MapPin, Calendar, Clock, Users, Banknote, Timer, Loader2 } from 'lucide-react';
+import { loadTossPayments, type TossPayments } from '@tosspayments/payment-sdk';
 import { cn } from '@/lib/utils';
 import type { PaymentCardData } from '@/lib/api/chatApi';
 import { paymentApi } from '@/lib/api/paymentApi';
+import { CHAT_PAYMENT_CONTEXT_KEY, type ChatPaymentContext } from '@/lib/constants';
+
+const TOSS_CLIENT_KEY = import.meta.env.VITE_TOSS_CLIENT_KEY;
 
 interface PaymentCardProps {
   data: PaymentCardData;
+  roomId?: string;
+  conversationId?: string;
   onPaymentComplete?: (success: boolean) => void;
 }
 
 const PAYMENT_TIMEOUT_SECONDS = 10 * 60; // 10분
 
-export const PaymentCard: React.FC<PaymentCardProps> = ({ data, onPaymentComplete }) => {
+export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversationId, onPaymentComplete }) => {
   const [remainingSeconds, setRemainingSeconds] = useState(PAYMENT_TIMEOUT_SECONDS);
   const [isPaying, setIsPaying] = useState(false);
   const [isExpired, setIsExpired] = useState(false);
+  const tossRef = useRef<TossPayments | null>(null);
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat('ko-KR').format(price);
@@ -31,6 +38,23 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, onPaymentComplet
     const s = seconds % 60;
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
+
+  // Toss SDK 초기화
+  useEffect(() => {
+    if (!TOSS_CLIENT_KEY) return;
+    let mounted = true;
+
+    (async () => {
+      try {
+        const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY);
+        if (mounted) tossRef.current = tossPayments;
+      } catch (err) {
+        console.error('Toss SDK 초기화 실패:', err);
+      }
+    })();
+
+    return () => { mounted = false; };
+  }, []);
 
   // 카운트다운 타이머
   useEffect(() => {
@@ -52,7 +76,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, onPaymentComplet
   }, [isExpired, isPaying, onPaymentComplete]);
 
   const handlePayment = useCallback(async () => {
-    if (isPaying || isExpired) return;
+    if (isPaying || isExpired || !tossRef.current || !roomId) return;
     setIsPaying(true);
 
     try {
@@ -67,15 +91,32 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, onPaymentComplet
         orderId = prepared.orderId;
       }
 
-      // TODO: Toss 위젯 requestPayment(orderId)
-      // 승인 시 → paymentApi.confirmPayment({ paymentKey, orderId, amount })
-      // 현재는 placeholder — 결제 성공 시뮬레이션
-      onPaymentComplete?.(true);
-    } catch {
+      // sessionStorage에 결제 컨텍스트 저장
+      const paymentContext: ChatPaymentContext = {
+        roomId,
+        conversationId: conversationId || '',
+        orderId: orderId!,
+        amount: data.amount,
+        orderName: data.orderName,
+        type: 'single',
+      };
+      sessionStorage.setItem(CHAT_PAYMENT_CONTEXT_KEY, JSON.stringify(paymentContext));
+
+      // Toss 결제 요청 → redirect
+      await tossRef.current.requestPayment('카드', {
+        amount: data.amount,
+        orderId: orderId!,
+        orderName: data.orderName,
+        successUrl: `${window.location.origin}/chat/${roomId}`,
+        failUrl: `${window.location.origin}/chat/${roomId}?payment=fail`,
+      });
+    } catch (err: any) {
       setIsPaying(false);
+      // 사용자 취소는 무시
+      if (err?.code === 'USER_CANCEL' || err?.message?.includes('CANCEL')) return;
       onPaymentComplete?.(false);
     }
-  }, [isPaying, isExpired, data, onPaymentComplete]);
+  }, [isPaying, isExpired, data, roomId, conversationId, onPaymentComplete]);
 
   const handleCancel = useCallback(() => {
     onPaymentComplete?.(false);
@@ -142,7 +183,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, onPaymentComplet
           </button>
           <button
             onClick={handlePayment}
-            disabled={isPaying}
+            disabled={isPaying || !tossRef.current}
             className={cn(
               'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
               'bg-blue-500 text-white hover:bg-blue-600',

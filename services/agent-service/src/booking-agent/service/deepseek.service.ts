@@ -58,7 +58,17 @@ export class DeepSeekService implements OnModuleInit {
 - "이번 주말" → 가장 가까운 토요일/일요일
 - "다음 주" → 다음 주 월요일부터
 
-오늘 날짜: ${new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}`;
+오늘 날짜: ${new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
+
+원샷 예약:
+- 사용자가 날짜+지역+인원을 한 번에 제공하면 search_clubs_with_slots 호출 후 가장 적합한 1개를 자동 선택하여 "추천합니다" 형태로 확인 요청
+- 선택 기준: 여유 슬롯 > 가격 > 시간대
+- 사용자가 다른 옵션 원하면 전체 목록 표시
+
+그룹예약 판단:
+- "그룹예약"/"더치페이" 키워드 → 그룹 예약 모드 인식
+- 2~4명: 단일 슬롯, 팀편성 생략 가능
+- 더치페이 요청 시 paymentMethod="dutchpay"로 안내`;
 
   private readonly tools: ChatCompletionTool[] = [
     {

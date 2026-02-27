@@ -17,6 +17,8 @@ interface AiMessageBubbleProps {
   createdAt: string;
   showLabel?: boolean;
   currentUserId?: number;
+  roomId?: string;
+  conversationId?: string;
   onClubSelect?: (clubId: string, clubName: string) => void;
   onSlotSelect?: (slotId: string, time: string, price: number, clubId?: string, clubName?: string) => void;
   onConfirmBooking?: (paymentMethod: 'onsite' | 'card') => void;
@@ -36,6 +38,8 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   createdAt,
   showLabel = true,
   currentUserId,
+  roomId,
+  conversationId,
   onClubSelect,
   onSlotSelect,
   onConfirmBooking,
@@ -101,6 +105,8 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                 {action.type === 'SHOW_PAYMENT' && (
                   <PaymentCard
                     data={action.data as PaymentCardData}
+                    roomId={roomId}
+                    conversationId={conversationId}
                     onPaymentComplete={onPaymentComplete}
                   />
                 )}
@@ -125,6 +131,8 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                   <SettlementStatusCard
                     data={action.data as SettlementStatusData}
                     currentUserId={currentUserId}
+                    roomId={roomId}
+                    conversationId={conversationId}
                     onSplitPaymentComplete={onSplitPaymentComplete}
                   />
                 )}
