@@ -650,6 +650,7 @@ export class ToolExecutorService {
         success: true,
         bookingId,
         bookingNumber: booking.bookingNumber,
+        confirmationNumber: booking.bookingNumber,
         status: finalStatus, // 'CONFIRMED' | 'SLOT_RESERVED' | 'PENDING'
         message: finalStatus === 'CONFIRMED'
           ? '예약이 완료되었습니다!'

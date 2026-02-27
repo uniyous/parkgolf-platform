@@ -241,7 +241,11 @@ export class BookingAgentService {
         this.conversationService.setState(context, 'COMPLETED');
       } else if (status === 'SLOT_RESERVED') {
         // 카드결제 — 슬롯 확보 완료, payment.prepare 원샷 처리
-        this.conversationService.updateSlots(context, { bookingId: result.bookingId });
+        this.conversationService.updateSlots(context, {
+          bookingId: result.bookingId,
+          bookingNumber: result.bookingNumber,
+          totalPrice: result.details?.totalPrice,
+        });
 
         const amount = result.details?.totalPrice || 0;
         const orderName = `ParkGolf #${result.bookingNumber || result.bookingId}`;
@@ -309,10 +313,13 @@ export class BookingAgentService {
         data: {
           success: true,
           bookingId: context.slots.bookingId,
+          bookingNumber: context.slots.bookingNumber,
+          confirmationNumber: context.slots.bookingNumber,
           details: {
             date: context.slots.date,
             time: context.slots.time,
             playerCount: context.slots.playerCount,
+            totalPrice: context.slots.totalPrice,
           },
         },
       });

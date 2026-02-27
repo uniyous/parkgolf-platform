@@ -211,6 +211,8 @@ export interface BookingSlots {
   longitude?: number;
   regionName?: string;
   bookingId?: number;
+  bookingNumber?: string;
+  totalPrice?: number;
 
   // 그룹 예약
   chatRoomId?: string;
