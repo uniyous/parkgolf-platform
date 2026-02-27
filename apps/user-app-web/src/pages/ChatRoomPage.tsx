@@ -16,6 +16,7 @@ import { chatApi, getChatRoomDisplayName, type ChatMessage, type ChatAction, typ
 import { useAiChat } from '@/hooks/useAiChat';
 import { AiButton } from '@/components/features/chat/AiButton';
 import { AiMessageBubble } from '@/components/features/chat/AiMessageBubble';
+import { AiUserMessageBubble } from '@/components/features/chat/AiUserMessageBubble';
 import { AiWelcomeCard } from '@/components/features/chat/AiWelcomeCard';
 import { paymentApi } from '@/lib/api/paymentApi';
 import { CHAT_PAYMENT_CONTEXT_KEY, type ChatPaymentContext } from '@/lib/constants';
@@ -328,14 +329,14 @@ export const ChatRoomPage: React.FC = () => {
     if (!roomId) return;
     setShowWelcome(false);
 
-    // Add user message locally
+    // Add user message locally (AI_USER type for violet styling)
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       roomId,
       senderId: currentUserId,
       senderName: user?.name || '',
       content: message,
-      messageType: 'TEXT',
+      messageType: 'AI_USER' as ChatMessage['messageType'],
       createdAt: new Date().toISOString(),
       readBy: null,
     };
@@ -404,14 +405,14 @@ export const ChatRoomPage: React.FC = () => {
     if (isAiMode) {
       setShowWelcome(false);
 
-      // Add user message locally
+      // Add user message locally (AI_USER type for violet styling)
       const userMsg: ChatMessage = {
         id: `user-${Date.now()}`,
         roomId,
         senderId: currentUserId,
         senderName: user?.name || '',
         content: text,
-        messageType: 'TEXT',
+        messageType: 'AI_USER' as ChatMessage['messageType'],
         createdAt: new Date().toISOString(),
         readBy: null,
       };
@@ -765,6 +766,17 @@ export const ChatRoomPage: React.FC = () => {
                 );
               }
 
+              // AI 모드 사용자 메시지는 AiUserMessageBubble로 렌더링
+              if (message.messageType === 'AI_USER') {
+                return (
+                  <AiUserMessageBubble
+                    key={message.id}
+                    content={message.content}
+                    createdAt={message.createdAt}
+                  />
+                );
+              }
+
               const isCurrentUser = String(message.senderId) === String(currentUserId);
               const showSender =
                 !isCurrentUser &&
@@ -790,17 +802,17 @@ export const ChatRoomPage: React.FC = () => {
               <div className="flex justify-start animate-fade-in">
                 <div className="max-w-[85%]">
                   <div className="flex items-center gap-2 mb-1.5">
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
                       <Sparkles className="w-3.5 h-3.5 text-white" />
                     </div>
-                    <span className="text-xs text-emerald-400 font-semibold">AI 예약 도우미</span>
+                    <span className="text-xs text-violet-400 font-semibold">AI 예약 도우미</span>
                   </div>
-                  <div className="bg-emerald-500/5 border-l-[3px] border-l-emerald-500/40 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
+                  <div className="bg-violet-500/5 border-l-[3px] border-l-violet-500/40 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1">
-                        <div className="w-1.5 h-1.5 bg-emerald-400/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-1.5 h-1.5 bg-emerald-400/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="w-1.5 h-1.5 bg-emerald-400/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <div className="w-1.5 h-1.5 bg-violet-400/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-1.5 h-1.5 bg-violet-400/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-1.5 h-1.5 bg-violet-400/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                       </div>
                       <span className="text-xs text-white/50">{aiLoadingText}</span>
                     </div>
@@ -830,7 +842,7 @@ export const ChatRoomPage: React.FC = () => {
                 'bg-white/10 text-white placeholder:text-white/40',
                 'outline-none transition-colors',
                 isAiMode
-                  ? 'border border-emerald-500/50 focus:border-emerald-500'
+                  ? 'border border-violet-500/50 focus:border-violet-500'
                   : 'border border-white/10 focus:border-emerald-500/50'
               )}
             />
@@ -841,7 +853,9 @@ export const ChatRoomPage: React.FC = () => {
               className={cn(
                 'p-2.5 rounded-full transition-colors',
                 inputText.trim()
-                  ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                  ? isAiMode
+                    ? 'bg-violet-500 text-white hover:bg-violet-600'
+                    : 'bg-emerald-500 text-white hover:bg-emerald-600'
                   : 'bg-white/10 text-white/40'
               )}
             >

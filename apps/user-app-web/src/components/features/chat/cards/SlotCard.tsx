@@ -34,7 +34,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
           <>
             <div className="px-4 py-3 space-y-1">
               <div className="flex items-center gap-1.5">
-                <Flag className="w-3.5 h-3.5 text-emerald-400" />
+                <Flag className="w-3.5 h-3.5 text-violet-400" />
                 <span className="text-sm font-bold text-white">{data.clubName}</span>
               </div>
               {data.clubAddress && (
@@ -61,7 +61,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
               {/* 라운드 헤더: 이름 + 가격 */}
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-semibold text-white">{round.name}</span>
-                <span className="text-xs font-semibold text-emerald-400">
+                <span className="text-xs font-semibold text-violet-400">
                   {'\u20A9'}{formatPrice(round.price)}
                 </span>
               </div>
@@ -80,26 +80,26 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
                       className={cn(
                         'rounded-lg px-2.5 py-1.5 border text-left transition-all inline-flex items-center gap-1',
                         isSelected
-                          ? 'bg-emerald-500/15 border-emerald-500'
+                          ? 'bg-violet-500/15 border-violet-500'
                           : isDisabled
                             ? 'bg-white/[0.02] border-white/5 opacity-40 cursor-default'
                             : 'bg-white/[0.06] border-white/10',
-                        onSelect && !isDisabled && !isSelected && 'hover:bg-white/10 hover:border-emerald-500/30'
+                        onSelect && !isDisabled && !isSelected && 'hover:bg-white/10 hover:border-violet-500/30'
                       )}
                     >
                       {isSelected && (
-                        <Check className="w-3 h-3 text-emerald-400" />
+                        <Check className="w-3 h-3 text-violet-400" />
                       )}
                       <span className={cn(
                         'text-xs',
-                        isSelected ? 'font-bold text-emerald-400' : 'font-medium text-white'
+                        isSelected ? 'font-bold text-violet-400' : 'font-medium text-white'
                       )}>
                         {slot.time}
                       </span>
                       {slot.availableSpots != null && (
                         <span className={cn(
                           'text-[10px]',
-                          isSelected ? 'text-emerald-400/70' : 'text-white/40'
+                          isSelected ? 'text-violet-400/70' : 'text-white/40'
                         )}>
                           {slot.availableSpots}명
                         </span>
@@ -135,24 +135,24 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
               className={cn(
                 'rounded-xl p-3 border text-left transition-all relative',
                 isSelected
-                  ? 'bg-emerald-500/10 border-emerald-500/40'
+                  ? 'bg-violet-500/10 border-violet-500/40'
                   : isDisabled
                     ? 'bg-white/[0.02] border-white/5 opacity-50 cursor-default'
                     : 'bg-white/5 border-white/10',
-                onSelect && !isDisabled && !isSelected && 'hover:bg-white/10 hover:border-emerald-500/30'
+                onSelect && !isDisabled && !isSelected && 'hover:bg-white/10 hover:border-violet-500/30'
               )}
             >
               {isSelected && (
-                <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-violet-500 flex items-center justify-center">
                   <Check className="w-3 h-3 text-white" />
                 </div>
               )}
               <div className="flex items-center gap-1.5 mb-1">
-                <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                <Clock className="w-3.5 h-3.5 text-violet-400" />
                 <span className="text-sm font-semibold text-white">{slot.time}</span>
               </div>
               <p className="text-xs text-white/60">{slot.courseName}</p>
-              <p className="text-xs text-emerald-400 mt-1">
+              <p className="text-xs text-violet-400 mt-1">
                 {'\u20A9'}{formatPrice(slot.price)}
               </p>
             </button>

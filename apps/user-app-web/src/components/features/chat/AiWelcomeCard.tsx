@@ -17,13 +17,13 @@ export const AiWelcomeCard: React.FC<AiWelcomeCardProps> = ({ onQuickAction }) =
     <div className="flex justify-start animate-slide-up">
       <div className="max-w-[85%]">
         <div className="flex items-center gap-2 mb-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
             <Sparkles className="w-4 h-4 text-white" />
           </div>
-          <span className="text-sm text-emerald-400 font-semibold">AI 예약 도우미</span>
+          <span className="text-sm text-violet-400 font-semibold">AI 예약 도우미</span>
         </div>
 
-        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl rounded-tl-sm px-4 py-3">
+        <div className="bg-violet-500/5 border border-violet-500/20 rounded-2xl rounded-tl-sm px-4 py-3">
           <p className="text-sm text-white leading-relaxed">
             안녕하세요! 파크골프 예약 도우미입니다.
           </p>
@@ -36,7 +36,7 @@ export const AiWelcomeCard: React.FC<AiWelcomeCardProps> = ({ onQuickAction }) =
               <button
                 key={label}
                 onClick={() => onQuickAction(message)}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-emerald-500/30 transition-all text-left group"
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-violet-500/30 transition-all text-left group"
               >
                 <Icon className={`w-4 h-4 ${color} shrink-0 group-hover:scale-110 transition-transform`} />
                 <span className="text-xs text-white/80 font-medium">{label}</span>

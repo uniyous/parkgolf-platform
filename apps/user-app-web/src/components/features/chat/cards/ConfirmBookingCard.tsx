@@ -24,28 +24,28 @@ export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, on
   };
 
   return (
-    <div className="mt-2 bg-white/5 rounded-xl p-4 border border-emerald-500/20">
+    <div className="mt-2 bg-white/5 rounded-xl p-4 border border-violet-500/20">
       <div className="text-sm font-semibold text-white mb-3">예약 정보 확인</div>
 
       <div className="space-y-2 text-sm">
         <div className="flex items-center gap-2 text-white/70">
-          <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <MapPin className="w-3.5 h-3.5 text-violet-400 shrink-0" />
           <span>{data.clubName}</span>
         </div>
         <div className="flex items-center gap-2 text-white/70">
-          <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <Calendar className="w-3.5 h-3.5 text-violet-400 shrink-0" />
           <span>{formatDate(data.date)}</span>
         </div>
         <div className="flex items-center gap-2 text-white/70">
-          <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <Clock className="w-3.5 h-3.5 text-violet-400 shrink-0" />
           <span>{data.time}</span>
         </div>
         <div className="flex items-center gap-2 text-white/70">
-          <Users className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <Users className="w-3.5 h-3.5 text-violet-400 shrink-0" />
           <span>{data.playerCount}명</span>
         </div>
         <div className="flex items-center gap-2 text-white/70">
-          <Banknote className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <Banknote className="w-3.5 h-3.5 text-violet-400 shrink-0" />
           <span>{isFree ? '무료' : `\u20A9${formatPrice(data.price)}`}</span>
         </div>
       </div>
@@ -60,7 +60,7 @@ export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, on
               className={cn(
                 'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors border',
                 paymentMethod === 'onsite'
-                  ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                  ? 'bg-violet-500/20 border-violet-500/50 text-violet-400'
                   : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10',
               )}
             >
@@ -101,7 +101,7 @@ export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, on
               onClick={() => onConfirm(isFree ? 'onsite' : paymentMethod)}
               className={cn(
                 'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                'bg-emerald-500 text-white hover:bg-emerald-600',
+                'bg-violet-500 text-white hover:bg-violet-600',
               )}
             >
               예약 확인

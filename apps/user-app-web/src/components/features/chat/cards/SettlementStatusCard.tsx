@@ -32,13 +32,13 @@ const BookerDashboardView: React.FC<{ data: SettlementStatusData }> = ({ data })
       {/* Header */}
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-          <Users className="w-4 h-4 text-emerald-400" />
+          <Users className="w-4 h-4 text-violet-400" />
           정산 현황
         </h4>
         <span className={cn(
           'text-xs font-medium px-2 py-0.5 rounded-full',
           allPaid
-            ? 'bg-emerald-500/20 text-emerald-400'
+            ? 'bg-violet-500/20 text-violet-400'
             : 'bg-yellow-500/20 text-yellow-400'
         )}>
           {allPaid ? '완료' : `${data.paidCount}/${data.totalParticipants}`}
@@ -50,7 +50,7 @@ const BookerDashboardView: React.FC<{ data: SettlementStatusData }> = ({ data })
         <div
           className={cn(
             'h-1.5 rounded-full transition-all duration-500',
-            allPaid ? 'bg-emerald-500' : 'bg-yellow-500'
+            allPaid ? 'bg-violet-500' : 'bg-yellow-500'
           )}
           style={{ width: `${progress}%` }}
         />
@@ -59,7 +59,7 @@ const BookerDashboardView: React.FC<{ data: SettlementStatusData }> = ({ data })
       {/* Amount */}
       <div className="flex justify-between text-xs text-white/60">
         <span>1인당 {formatPrice(data.pricePerPerson)}원</span>
-        <span className="text-emerald-400 font-medium">
+        <span className="text-violet-400 font-medium">
           총 {formatPrice(data.totalPrice)}원
         </span>
       </div>
@@ -73,7 +73,7 @@ const BookerDashboardView: React.FC<{ data: SettlementStatusData }> = ({ data })
           >
             <span className="text-xs text-white/70">{p.userName}</span>
             {p.status === 'PAID' ? (
-              <div className="flex items-center gap-1 text-emerald-400">
+              <div className="flex items-center gap-1 text-violet-400">
                 <CheckCircle2 className="w-3 h-3" />
                 <span className="text-xs">완료</span>
               </div>
@@ -196,7 +196,7 @@ const ParticipantPaymentView: React.FC<{
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 p-4 mt-2 space-y-3">
       <div className="flex items-center gap-2">
-        <CreditCard className="w-4 h-4 text-emerald-400" />
+        <CreditCard className="w-4 h-4 text-violet-400" />
         <h4 className="text-sm font-semibold text-white">결제 요청</h4>
       </div>
 
@@ -223,7 +223,7 @@ const ParticipantPaymentView: React.FC<{
             'w-full py-2.5 rounded-lg text-sm font-semibold transition-all',
             isPaying || !tossRef.current
               ? 'bg-white/10 text-white/50 cursor-not-allowed'
-              : 'bg-emerald-500 text-white hover:bg-emerald-600 active:scale-[0.98]'
+              : 'bg-violet-500 text-white hover:bg-violet-600 active:scale-[0.98]'
           )}
         >
           {isPaying ? (
@@ -249,8 +249,8 @@ const ParticipantPaidView: React.FC<{
   const amount = participant.amount || 0;
 
   return (
-    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 mt-2 space-y-2">
-      <div className="flex items-center justify-center gap-2 text-emerald-400">
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4 mt-2 space-y-2">
+      <div className="flex items-center justify-center gap-2 text-violet-400">
         <CheckCircle2 className="w-5 h-5" />
         <span className="text-sm font-semibold">결제 완료</span>
       </div>

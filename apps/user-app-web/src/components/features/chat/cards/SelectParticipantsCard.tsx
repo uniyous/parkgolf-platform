@@ -109,7 +109,7 @@ export const SelectParticipantsCard: React.FC<SelectParticipantsCardProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-          <Users className="w-4 h-4 text-emerald-400" />
+          <Users className="w-4 h-4 text-violet-400" />
           팀 편성
         </h4>
         <span className="text-xs text-white/50">
@@ -129,7 +129,7 @@ export const SelectParticipantsCard: React.FC<SelectParticipantsCardProps> = ({
             {/* Team Header */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-white/5">
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-emerald-400 font-semibold">팀{team.teamNumber}</span>
+                <span className="text-violet-400 font-semibold">팀{team.teamNumber}</span>
                 <Clock className="w-3 h-3 text-white/40" />
                 <span className="text-white/60">{team.slotTime}</span>
                 <span className="text-white/30">·</span>
@@ -202,7 +202,7 @@ export const SelectParticipantsCard: React.FC<SelectParticipantsCardProps> = ({
         <span className="text-white/50">
           1인당 {data.pricePerPerson.toLocaleString()}원
         </span>
-        <span className="text-emerald-400 font-semibold">
+        <span className="text-violet-400 font-semibold">
           총 {(totalAssigned * data.pricePerPerson).toLocaleString()}원
         </span>
       </div>
@@ -221,7 +221,7 @@ export const SelectParticipantsCard: React.FC<SelectParticipantsCardProps> = ({
           className={cn(
             'flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors',
             totalAssigned > 0
-              ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
+              ? 'bg-violet-500/20 text-violet-400 hover:bg-violet-500/30'
               : 'bg-white/5 text-white/20 cursor-not-allowed'
           )}
         >

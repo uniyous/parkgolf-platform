@@ -19,7 +19,7 @@ export const ConfirmGroupCard: React.FC<ConfirmGroupCardProps> = ({
       {/* Header */}
       <div>
         <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-          <Users className="w-4 h-4 text-emerald-400" />
+          <Users className="w-4 h-4 text-violet-400" />
           그룹 예약 ({data.teamCount}팀)
         </h4>
         <div className="flex items-center gap-1 mt-1 text-white/50 text-xs">
@@ -38,7 +38,7 @@ export const ConfirmGroupCard: React.FC<ConfirmGroupCardProps> = ({
             className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5"
           >
             <div className="flex items-center gap-2 text-xs text-white/70">
-              <span className="text-emerald-400 font-medium">팀{i + 1}</span>
+              <span className="text-violet-400 font-medium">팀{i + 1}</span>
               <Clock className="w-3 h-3" />
               <span>{slot.slotTime}</span>
               <span className="text-white/40">·</span>
@@ -59,7 +59,7 @@ export const ConfirmGroupCard: React.FC<ConfirmGroupCardProps> = ({
         </div>
         <div className="flex justify-between text-sm font-semibold text-white mt-1">
           <span>예상 총액</span>
-          <span className="text-emerald-400">{data.totalPrice.toLocaleString()}원</span>
+          <span className="text-violet-400">{data.totalPrice.toLocaleString()}원</span>
         </div>
       </div>
 
@@ -81,7 +81,7 @@ export const ConfirmGroupCard: React.FC<ConfirmGroupCardProps> = ({
             onClick={() => onConfirm?.('dutchpay')}
             className={cn(
               'flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium',
-              'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors border border-emerald-500/30'
+              'bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 transition-colors border border-violet-500/30'
             )}
           >
             <CreditCard className="w-4 h-4" />

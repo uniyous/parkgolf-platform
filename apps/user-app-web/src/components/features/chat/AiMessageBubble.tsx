@@ -62,15 +62,15 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
       <div className="max-w-[85%]">
         {showLabel && (
           <div className="flex items-center gap-2 mb-1.5">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
               <Sparkles className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="text-xs text-emerald-400 font-semibold">AI 예약 도우미</span>
+            <span className="text-xs text-violet-400 font-semibold">AI 예약 도우미</span>
           </div>
         )}
 
         <div className="flex items-end gap-1.5">
-          <div className="bg-emerald-500/5 border-l-[3px] border-l-emerald-500/40 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
+          <div className="bg-violet-500/5 border-l-[3px] border-l-violet-500/40 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
             <p className="text-sm text-white whitespace-pre-wrap break-words leading-relaxed">{content}</p>
 
             {actions?.map((action, index) => (
