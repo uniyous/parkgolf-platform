@@ -900,6 +900,10 @@ export class BookingAgentService {
     let llmResponse: DeepSeekResponse;
     let iterations = 0;
     let allActions: ChatAction[] = [];
+    const toolHistory: Array<{
+      toolCalls: ToolCall[];
+      results: Array<{ name: string; result: unknown }>;
+    }> = [];
 
     // 초기 DeepSeek 호출
     llmResponse = await this.deepseekService.chat(messages);
@@ -921,11 +925,16 @@ export class BookingAgentService {
       // 슬롯 업데이트
       this.updateSlotsFromToolResults(context, llmResponse.toolCalls, toolResults);
 
-      // DeepSeek 계속 호출
+      // 도구 호출/결과 누적
+      toolHistory.push({
+        toolCalls: llmResponse.toolCalls,
+        results: toolResults.map((tr) => ({ name: tr.name, result: tr.result })),
+      });
+
+      // DeepSeek 계속 호출 (전체 도구 히스토리 전달)
       llmResponse = await this.deepseekService.continueWithToolResults(
         messages,
-        llmResponse.toolCalls,
-        toolResults.map((tr) => ({ name: tr.name, result: tr.result })),
+        toolHistory,
       );
 
       iterations++;

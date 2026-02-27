@@ -312,11 +312,14 @@ export class DeepSeekService implements OnModuleInit {
 
   /**
    * 도구 결과와 함께 대화 계속
+   * toolHistory: 모든 이전 반복의 도구 호출/결과를 누적하여 전달
    */
   async continueWithToolResults(
     messages: Array<{ role: 'user' | 'assistant'; content: string }>,
-    toolCalls: ToolCall[],
-    toolResults: Array<{ name: string; result: unknown }>,
+    toolHistory: Array<{
+      toolCalls: ToolCall[];
+      results: Array<{ name: string; result: unknown }>;
+    }>,
   ): Promise<DeepSeekResponse> {
     try {
       const chatMessages: ChatCompletionMessageParam[] = [
@@ -327,28 +330,32 @@ export class DeepSeekService implements OnModuleInit {
         })),
       ];
 
-      // 도구 호출 메시지 추가 (assistant)
-      chatMessages.push({
-        role: 'assistant',
-        content: null,
-        tool_calls: toolCalls.map((tc, i) => ({
-          id: `call_${i}`,
-          type: 'function' as const,
-          function: {
-            name: tc.name,
-            arguments: JSON.stringify(tc.args),
-          },
-        })),
-      });
-
-      // 도구 결과 메시지 추가 (tool)
-      toolResults.forEach((tr, i) => {
+      // 모든 반복의 도구 호출/결과를 순서대로 추가
+      let callIndex = 0;
+      for (const { toolCalls, results } of toolHistory) {
         chatMessages.push({
-          role: 'tool',
-          tool_call_id: `call_${i}`,
-          content: JSON.stringify(tr.result),
+          role: 'assistant',
+          content: null,
+          tool_calls: toolCalls.map((tc, i) => ({
+            id: `call_${callIndex + i}`,
+            type: 'function' as const,
+            function: {
+              name: tc.name,
+              arguments: JSON.stringify(tc.args),
+            },
+          })),
         });
-      });
+
+        results.forEach((tr, i) => {
+          chatMessages.push({
+            role: 'tool',
+            tool_call_id: `call_${callIndex + i}`,
+            content: JSON.stringify(tr.result),
+          });
+        });
+
+        callIndex += toolCalls.length;
+      }
 
       const response = await this.client.chat.completions.create({
         model: this.model,
