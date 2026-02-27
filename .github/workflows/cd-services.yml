@@ -462,6 +462,20 @@ jobs:
               drainingTimeoutSec: 60
           EOF
 
+      - name: Deploy BackendConfig for User API (AI agent long requests)
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: cloud.google.com/v1
+          kind: BackendConfig
+          metadata:
+            name: user-api-backend-config
+            namespace: ${{ needs.setup.outputs.namespace }}
+          spec:
+            timeoutSec: 120
+            connectionDraining:
+              drainingTimeoutSec: 30
+          EOF
+
       - name: Deploy PDB for chat-gateway
         run: |
           cat <<EOF | kubectl apply -f -
@@ -484,6 +498,17 @@ jobs:
             "metadata": {
               "annotations": {
                 "cloud.google.com/backend-config": "{\"default\": \"websocket-backend-config\"}"
+              }
+            }
+          }' || true
+
+      - name: Patch user-api for AI agent timeout
+        run: |
+          kubectl patch service user-api -n ${{ needs.setup.outputs.namespace }} --type=merge -p '
+          {
+            "metadata": {
+              "annotations": {
+                "cloud.google.com/backend-config": "{\"default\": \"user-api-backend-config\"}"
               }
             }
           }' || true
