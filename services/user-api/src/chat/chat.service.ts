@@ -219,14 +219,14 @@ export class ChatService {
   ) {
     this.logger.log(`Send AI message: roomId=${roomId}, userId=${userId}`);
 
-    // 1. 사용자 메시지를 chat-service에 TEXT로 저장 (fire-and-forget — AI 흐름 차단 방지)
+    // 1. 사용자 메시지를 chat-service에 AI_USER로 저장 (fire-and-forget — AI 흐름 차단 방지)
     const userMessageData = {
       id: randomUUID(),
       roomId,
       senderId: userId,
       senderName: userName,
       content: dto.message,
-      type: 'TEXT',
+      type: 'AI_USER',
       createdAt: new Date().toISOString(),
     };
     this.natsClient.send('chat.messages.save', userMessageData, NATS_TIMEOUTS.QUICK).catch((err) => {

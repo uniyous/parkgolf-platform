@@ -12,6 +12,7 @@ export enum MessageType {
   IMAGE = 'IMAGE',
   SYSTEM = 'SYSTEM',
   BOOKING_INVITE = 'BOOKING_INVITE',
+  AI_USER = 'AI_USER',
   AI_ASSISTANT = 'AI_ASSISTANT',
 }
 

@@ -60,6 +60,7 @@ enum MessageType {
   TEXT
   IMAGE
   SYSTEM        // 입장/퇴장 등 시스템 메시지
+  AI_USER       // AI 모드 사용자 메시지
   AI_ASSISTANT  // AI 예약 도우미 응답
 }
 

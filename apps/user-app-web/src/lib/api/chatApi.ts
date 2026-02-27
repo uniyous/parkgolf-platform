@@ -6,7 +6,7 @@ import { unwrapResponse, extractPaginatedList, type BffResponse, type PaginatedR
 // ============================================
 
 export type ChatRoomType = 'DIRECT' | 'GROUP' | 'BOOKING';
-export type MessageType = 'TEXT' | 'IMAGE' | 'SYSTEM' | 'BOOKING_INVITE' | 'AI_ASSISTANT';
+export type MessageType = 'TEXT' | 'IMAGE' | 'SYSTEM' | 'BOOKING_INVITE' | 'AI_USER' | 'AI_ASSISTANT';
 
 export interface ChatParticipant {
   id: string;
@@ -25,6 +25,7 @@ export interface ChatMessage {
   senderName: string;
   content: string;
   messageType: MessageType;
+  metadata?: string;
   createdAt: string;
   readBy: string[] | null;
 }
@@ -417,7 +418,16 @@ export const chatApi = {
       `/api/user/chat/rooms/${roomId}/messages`,
       params
     );
-    return unwrapResponse(response.data);
+    const result = unwrapResponse(response.data);
+    // DB 응답의 'type' 필드를 프론트엔드 'messageType'으로 정규화
+    result.messages = result.messages.map((msg) => {
+      const raw = msg as Record<string, unknown>;
+      return {
+        ...msg,
+        messageType: msg.messageType || (raw.type as MessageType) || 'TEXT',
+      };
+    });
+    return result;
   },
 
   /**

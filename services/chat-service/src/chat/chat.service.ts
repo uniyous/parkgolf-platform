@@ -10,11 +10,13 @@ export interface SaveMessageDto {
   senderName: string;
   content: string;
   type: MessageType;
+  metadata?: string;
   createdAt: string;
 }
 
 export interface GetMessagesDto {
   roomId: string;
+  userId?: number;
   cursor?: string;
   limit?: number;
 }
@@ -35,7 +37,7 @@ export class ChatService {
 
   // 메시지 저장
   async saveMessage(dto: SaveMessageDto) {
-    const { id, roomId, senderId, senderName, content, type, createdAt } = dto;
+    const { id, roomId, senderId, senderName, content, type, metadata, createdAt } = dto;
 
     // 중복 체크 (idempotency)
     const existing = await this.prisma.chatMessage.findUnique({
@@ -54,6 +56,7 @@ export class ChatService {
         senderName,
         content,
         type,
+        metadata,
         createdAt: new Date(createdAt),
       },
     });
@@ -70,7 +73,17 @@ export class ChatService {
 
   // 메시지 목록 조회 (cursor pagination)
   async getMessages(dto: GetMessagesDto) {
-    const { roomId, cursor, limit = DEFAULT_PAGE_SIZE } = dto;
+    const { roomId, userId, cursor, limit = DEFAULT_PAGE_SIZE } = dto;
+
+    // AI 메시지(AI_USER, AI_ASSISTANT)는 본인만 볼 수 있도록 필터링
+    const aiFilter = userId
+      ? {
+          OR: [
+            { type: { notIn: [MessageType.AI_USER, MessageType.AI_ASSISTANT] } },
+            { type: { in: [MessageType.AI_USER, MessageType.AI_ASSISTANT] }, senderId: userId },
+          ],
+        }
+      : {};
 
     const messages = await this.prisma.chatMessage.findMany({
       where: {
@@ -79,6 +92,7 @@ export class ChatService {
         ...(cursor && {
           createdAt: { lt: new Date(cursor) },
         }),
+        ...aiFilter,
       },
       orderBy: { createdAt: 'desc' },
       take: limit + 1, // 다음 페이지 여부 확인용

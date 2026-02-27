@@ -676,8 +676,18 @@ export const ChatRoomPage: React.FC = () => {
             {messages.map((message, index) => {
               // AI 메시지는 AiMessageBubble로 렌더링
               if (message.messageType === 'AI_ASSISTANT') {
-                const actions = aiMessageActions.get(message.id) ||
-                  (message as any).metadata?.actions;
+                // realtime actions 우선, 없으면 DB metadata에서 파싱
+                let actions = aiMessageActions.get(message.id);
+                if (!actions && message.metadata) {
+                  try {
+                    const parsed = typeof message.metadata === 'string'
+                      ? JSON.parse(message.metadata)
+                      : message.metadata;
+                    actions = parsed?.actions;
+                  } catch {
+                    // metadata 파싱 실패 시 무시
+                  }
+                }
 
                 // 연속 AI 메시지 그룹핑: 이전 메시지도 AI면 라벨 숨김
                 const prevIsAi = index > 0 && messages[index - 1]?.messageType === 'AI_ASSISTANT';
