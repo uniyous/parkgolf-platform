@@ -29,8 +29,9 @@ export class DeepSeekService implements OnModuleInit {
   private readonly logger = new Logger(DeepSeekService.name);
   private client: OpenAI;
   private model: string;
+  private readonly REQUEST_TIMEOUT = 25000; // 25초 (NATS 60초 타임아웃 내 2회 호출 + 도구 실행 가능)
 
-  private readonly systemPrompt = `당신은 파크골프장 예약을 도와주는 친절한 AI 어시스턴트입니다.
+  private readonly systemPromptTemplate = `당신은 파크골프장 예약을 도와주는 친절한 AI 어시스턴트입니다.
 
 역할:
 - 사용자의 자연어 요청을 이해하고 예약을 도와줍니다
@@ -58,7 +59,7 @@ export class DeepSeekService implements OnModuleInit {
 - "이번 주말" → 가장 가까운 토요일/일요일
 - "다음 주" → 다음 주 월요일부터
 
-오늘 날짜: ${new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
+오늘 날짜: {{TODAY_DATE}}
 
 원샷 예약:
 - 사용자가 날짜+지역+인원을 한 번에 제공하면 search_clubs_with_slots 호출 후 가장 적합한 1개를 자동 선택하여 "추천합니다" 형태로 확인 요청
@@ -69,6 +70,19 @@ export class DeepSeekService implements OnModuleInit {
 - "그룹예약"/"더치페이" 키워드 → 그룹 예약 모드 인식
 - 2~4명: 단일 슬롯, 팀편성 생략 가능
 - 더치페이 요청 시 paymentMethod="dutchpay"로 안내`;
+
+  /**
+   * 매 요청마다 오늘 날짜를 주입한 시스템 프롬프트 생성
+   */
+  private getSystemPrompt(): string {
+    const today = new Date().toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'long',
+    });
+    return this.systemPromptTemplate.replace('{{TODAY_DATE}}', today);
+  }
 
   private readonly tools: ChatCompletionTool[] = [
     {
@@ -267,7 +281,7 @@ export class DeepSeekService implements OnModuleInit {
   ): Promise<DeepSeekResponse> {
     try {
       const chatMessages: ChatCompletionMessageParam[] = [
-        { role: 'system', content: this.systemPrompt },
+        { role: 'system', content: this.getSystemPrompt() },
         ...messages.map((msg) => ({
           role: msg.role as 'user' | 'assistant',
           content: msg.content,
@@ -279,7 +293,7 @@ export class DeepSeekService implements OnModuleInit {
         messages: chatMessages,
         tools: this.tools,
         tool_choice: 'auto',
-      });
+      }, { timeout: this.REQUEST_TIMEOUT });
 
       const choice = response.choices[0];
       if (!choice) {
@@ -306,7 +320,7 @@ export class DeepSeekService implements OnModuleInit {
   ): Promise<DeepSeekResponse> {
     try {
       const chatMessages: ChatCompletionMessageParam[] = [
-        { role: 'system', content: this.systemPrompt },
+        { role: 'system', content: this.getSystemPrompt() },
         ...messages.map((msg) => ({
           role: msg.role as 'user' | 'assistant',
           content: msg.content,
@@ -341,7 +355,7 @@ export class DeepSeekService implements OnModuleInit {
         messages: chatMessages,
         tools: this.tools,
         tool_choice: 'auto',
-      });
+      }, { timeout: this.REQUEST_TIMEOUT });
 
       const choice = response.choices[0];
       if (!choice) {
