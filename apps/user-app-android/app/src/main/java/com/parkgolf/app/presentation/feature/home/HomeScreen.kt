@@ -42,16 +42,17 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -74,7 +75,6 @@ import com.parkgolf.app.presentation.theme.ParkError
 import com.parkgolf.app.presentation.theme.TextOnGradient
 import com.parkgolf.app.presentation.theme.TextOnGradientSecondary
 import com.parkgolf.app.presentation.theme.TextOnGradientTertiary
-import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -94,14 +94,7 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     // Pull-to-Refresh
-    val pullRefreshState = rememberPullToRefreshState()
-    if (pullRefreshState.isRefreshing) {
-        LaunchedEffect(true) {
-            viewModel.refresh()
-            delay(1500)
-            pullRefreshState.endRefresh()
-        }
-    }
+    var isRefreshing by remember { mutableStateOf(false) }
 
     // 위치 권한 요청
     val locationPermissionState = rememberPermissionState(
@@ -122,10 +115,14 @@ fun HomeScreen(
     }
 
     GradientBackground {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(pullRefreshState.nestedScrollConnection)
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                isRefreshing = true
+                viewModel.refresh()
+                isRefreshing = false
+            },
+            modifier = Modifier.fillMaxSize()
         ) {
         Column(
             modifier = Modifier
@@ -296,10 +293,6 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(32.dp))
         }
 
-        PullToRefreshContainer(
-            state = pullRefreshState,
-            modifier = Modifier.align(Alignment.TopCenter)
-        )
         }
     }
 }
