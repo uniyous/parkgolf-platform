@@ -15,6 +15,7 @@ import javax.inject.Inject
 
 data class AuthUiState(
     val isLoading: Boolean = false,
+    val isInitialized: Boolean = false,
     val isLoggedIn: Boolean = false,
     val user: User? = null,
     val error: String? = null,
@@ -48,6 +49,7 @@ class AuthViewModel @Inject constructor(
             }.collect { (isLoggedIn, user) ->
                 _uiState.update {
                     it.copy(
+                        isInitialized = true,
                         isLoggedIn = isLoggedIn,
                         user = if (isLoggedIn) user else null
                     )

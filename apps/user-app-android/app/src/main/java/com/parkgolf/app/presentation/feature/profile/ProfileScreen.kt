@@ -92,9 +92,9 @@ fun ProfileScreen(
     val profileState by profileViewModel.uiState.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
 
-    // 로그아웃 완료 시 화면 전환
-    LaunchedEffect(authState.isLoggedIn) {
-        if (!authState.isLoggedIn && authState.user == null) {
+    // 로그아웃 완료 시 화면 전환 (초기화 전 false 상태에서 오동작 방지)
+    LaunchedEffect(authState.isInitialized, authState.isLoggedIn) {
+        if (authState.isInitialized && !authState.isLoggedIn && authState.user == null) {
             onLogout()
         }
     }
