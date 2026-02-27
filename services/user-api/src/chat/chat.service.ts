@@ -170,11 +170,11 @@ export class ChatService {
   /**
    * 메시지 읽음 처리
    */
-  async markAsRead(roomId: string, userId: number, messageId: string): Promise<ApiResponse<void>> {
-    this.logger.log(`Mark as read: roomId=${roomId}, userId=${userId}, messageId=${messageId}`);
+  async markAsRead(roomId: string, userId: number, messageId?: string): Promise<ApiResponse<void>> {
+    this.logger.log(`Mark as read: roomId=${roomId}, userId=${userId}, messageId=${messageId ?? '(latest)'}`);
     return this.natsClient.send(
       'chat.messages.markRead',
-      { roomId, userId, messageId },
+      { roomId, userId, ...(messageId && { messageId }) },
       NATS_TIMEOUTS.QUICK,
     );
   }

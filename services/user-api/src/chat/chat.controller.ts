@@ -152,7 +152,7 @@ export class ChatController {
   async markAsRead(
     @CurrentUser('userId') userId: number,
     @Param('roomId') roomId: string,
-    @Body('messageId') messageId: string,
+    @Body('messageId') messageId?: string,
   ) {
     return this.chatService.markAsRead(roomId, userId, messageId);
   }

@@ -22,7 +22,7 @@ export interface GetMessagesDto {
 export interface MarkReadDto {
   roomId: string;
   userId: number;
-  messageId: string;
+  messageId?: string;
 }
 
 const DEFAULT_PAGE_SIZE = 50;
@@ -99,23 +99,34 @@ export class ChatService {
   async markRead(dto: MarkReadDto) {
     const { roomId, userId, messageId } = dto;
 
-    // 멤버의 마지막 읽은 메시지 업데이트
+    // messageId가 없으면 최신 메시지 조회
+    const resolvedMessageId = messageId ?? (
+      await this.prisma.chatMessage.findFirst({
+        where: { roomId, deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true },
+      })
+    )?.id;
+
+    // 멤버의 마지막 읽은 시각 업데이트
     await this.prisma.chatRoomMember.updateMany({
       where: { roomId, userId },
       data: {
-        lastReadMessageId: messageId,
+        ...(resolvedMessageId && { lastReadMessageId: resolvedMessageId }),
         lastReadAt: new Date(),
       },
     });
 
-    // 상세 읽음 기록 (선택적)
-    await this.prisma.messageRead.upsert({
-      where: {
-        messageId_userId: { messageId, userId },
-      },
-      create: { messageId, userId },
-      update: { readAt: new Date() },
-    });
+    // 상세 읽음 기록 (messageId가 있는 경우만)
+    if (resolvedMessageId) {
+      await this.prisma.messageRead.upsert({
+        where: {
+          messageId_userId: { messageId: resolvedMessageId, userId },
+        },
+        create: { messageId: resolvedMessageId, userId },
+        update: { readAt: new Date() },
+      });
+    }
 
     return { success: true };
   }
