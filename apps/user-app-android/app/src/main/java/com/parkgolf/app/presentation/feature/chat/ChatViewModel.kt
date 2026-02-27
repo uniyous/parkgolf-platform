@@ -106,7 +106,15 @@ class ChatViewModel @Inject constructor(
     private fun observeConnectionState() {
         viewModelScope.launch {
             chatRepository.connectionState.collect { isConnected ->
+                val wasDisconnected = !_uiState.value.isConnected
                 _uiState.value = _uiState.value.copy(isConnected = isConnected)
+                // 연결 성공 시 방 참여 (Web의 onConnect 콜백과 동일 패턴)
+                if (isConnected && wasDisconnected) {
+                    currentRoomId?.let { roomId ->
+                        chatRepository.joinRoom(roomId)
+                        Log.d(TAG, "Joined room on socket connected: $roomId")
+                    }
+                }
             }
         }
     }
