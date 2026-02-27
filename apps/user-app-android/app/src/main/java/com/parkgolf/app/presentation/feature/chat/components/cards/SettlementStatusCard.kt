@@ -51,7 +51,8 @@ private fun parseParticipants(data: Map<String, Any?>): List<ParticipantInfo> {
 fun SettlementStatusCard(
     data: Map<String, Any?>,
     currentUserId: Int? = null,
-    onSplitPaymentComplete: ((Boolean, String) -> Unit)? = null
+    onSplitPaymentComplete: ((Boolean, String) -> Unit)? = null,
+    onRequestSplitPayment: ((orderId: String, amount: Int) -> Unit)? = null
 ) {
     val bookerId = (data["bookerId"] as? Number)?.toInt()
     val participants = remember(data) { parseParticipants(data) }
@@ -74,7 +75,13 @@ fun SettlementStatusCard(
         "PAID" -> ParticipantPaidView(participant = myParticipant)
         else -> ParticipantPaymentView(
             participant = myParticipant,
-            onPay = { orderId -> onSplitPaymentComplete?.invoke(true, orderId) }
+            onPay = { orderId ->
+                if (onRequestSplitPayment != null) {
+                    onRequestSplitPayment(orderId, myParticipant.amount)
+                } else {
+                    onSplitPaymentComplete?.invoke(true, orderId)
+                }
+            }
         )
     }
 }

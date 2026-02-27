@@ -1,5 +1,8 @@
 package com.parkgolf.app.presentation.feature.chat
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.LifecycleOwner
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.parkgolf.app.presentation.feature.payment.PaymentActivity
 import com.parkgolf.app.data.remote.dto.chat.AiChatRequest
 import com.parkgolf.app.data.remote.dto.chat.TeamDto
 import com.parkgolf.app.presentation.feature.chat.components.cards.TeamConfirmData
@@ -53,7 +57,38 @@ fun ChatRoomScreen(
     var showInviteDialog by remember { mutableStateOf(false) }
     var showParticipantsDialog by remember { mutableStateOf(false) }
 
-    val lifecycleOwner = LocalContext.current as LifecycleOwner
+    val context = LocalContext.current
+    val lifecycleOwner = context as LifecycleOwner
+
+    // Toss Payment Activity Result launcher
+    val paymentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        when (result.resultCode) {
+            Activity.RESULT_OK -> {
+                val data = result.data
+                val paymentKey = data?.getStringExtra(PaymentActivity.EXTRA_PAYMENT_KEY) ?: ""
+                val resultOrderId = data?.getStringExtra(PaymentActivity.EXTRA_ORDER_ID) ?: ""
+                val resultAmount = data?.getIntExtra(PaymentActivity.EXTRA_AMOUNT, 0) ?: 0
+                viewModel.handlePaymentResult(paymentKey, resultOrderId, resultAmount)
+            }
+            else -> {
+                viewModel.handlePaymentCancelled()
+            }
+        }
+    }
+
+    // pendingPayment 감시 → PaymentActivity 실행
+    LaunchedEffect(uiState.pendingPayment) {
+        val pending = uiState.pendingPayment ?: return@LaunchedEffect
+        val intent = PaymentActivity.createIntent(
+            context = context,
+            orderId = pending.orderId,
+            orderName = pending.orderName,
+            amount = pending.amount
+        )
+        paymentLauncher.launch(intent)
+    }
 
     LaunchedEffect(roomId) {
         viewModel.loadRoom(roomId)
@@ -305,6 +340,9 @@ fun ChatRoomScreen(
                                             paymentSuccess = success
                                         ))
                                     },
+                                    onRequestPayment = { orderId, orderName, amount ->
+                                        viewModel.requestPayment(orderId, orderName, amount, "single")
+                                    },
                                     onConfirmGroup = { paymentMethod ->
                                         viewModel.sendAiFollowUp(AiChatRequest(
                                             message = if (paymentMethod == "dutchpay") "더치페이로 예약" else "현장결제로 예약",
@@ -338,6 +376,9 @@ fun ChatRoomScreen(
                                             splitPaymentComplete = true,
                                             splitOrderId = orderId
                                         ))
+                                    },
+                                    onRequestSplitPayment = { orderId, amount ->
+                                        viewModel.requestPayment(orderId, "더치페이 결제", amount, "split")
                                     },
                                     selectedClubId = uiState.selectedClubId,
                                     selectedSlotId = uiState.selectedSlotId

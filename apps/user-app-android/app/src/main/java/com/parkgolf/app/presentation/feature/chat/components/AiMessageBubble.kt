@@ -45,10 +45,12 @@ fun AiMessageBubble(
     onConfirmBooking: ((String) -> Unit)? = null,
     onCancelBooking: (() -> Unit)? = null,
     onPaymentComplete: ((Boolean) -> Unit)? = null,
+    onRequestPayment: ((orderId: String, orderName: String, amount: Int) -> Unit)? = null,
     onConfirmGroup: ((String) -> Unit)? = null,
     onCancelGroup: (() -> Unit)? = null,
     onTeamConfirm: ((List<TeamConfirmData>) -> Unit)? = null,
     onSplitPaymentComplete: ((Boolean, String) -> Unit)? = null,
+    onRequestSplitPayment: ((orderId: String, amount: Int) -> Unit)? = null,
     selectedClubId: String? = null,
     selectedSlotId: String? = null
 ) {
@@ -148,7 +150,8 @@ fun AiMessageBubble(
                             )
                             ActionType.SHOW_PAYMENT -> PaymentCard(
                                 data = action.data,
-                                onPaymentComplete = onPaymentComplete
+                                onPaymentComplete = onPaymentComplete,
+                                onRequestPayment = onRequestPayment
                             )
                             ActionType.BOOKING_COMPLETE -> BookingCompleteCard(data = action.data)
                             ActionType.CONFIRM_GROUP -> ConfirmGroupCard(
@@ -164,7 +167,8 @@ fun AiMessageBubble(
                             ActionType.SETTLEMENT_STATUS -> SettlementStatusCard(
                                 data = action.data,
                                 currentUserId = currentUserId,
-                                onSplitPaymentComplete = onSplitPaymentComplete
+                                onSplitPaymentComplete = onSplitPaymentComplete,
+                                onRequestSplitPayment = onRequestSplitPayment
                             )
                             ActionType.SPLIT_PAYMENT -> { /* handled by settlement status */ }
                         }

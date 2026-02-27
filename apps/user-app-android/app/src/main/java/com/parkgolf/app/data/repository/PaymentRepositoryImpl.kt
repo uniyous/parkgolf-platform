@@ -43,6 +43,19 @@ class PaymentRepositoryImpl @Inject constructor(
         paymentApi.confirmPayment(request).toResult("결제 승인에 실패했습니다")
     }
 
+    override suspend fun confirmSplitPayment(
+        paymentKey: String,
+        orderId: String,
+        amount: Int
+    ): Result<ConfirmPaymentResponse> = safeApiCall {
+        val request = ConfirmPaymentRequest(
+            paymentKey = paymentKey,
+            orderId = orderId,
+            amount = amount
+        )
+        paymentApi.confirmSplitPayment(request).toResult("분할결제 승인에 실패했습니다")
+    }
+
     override suspend fun getPaymentByOrderId(orderId: String): Result<PaymentStatusResponse> = safeApiCall {
         paymentApi.getPaymentByOrderId(orderId).toResult("결제 상태 조회에 실패했습니다")
     }

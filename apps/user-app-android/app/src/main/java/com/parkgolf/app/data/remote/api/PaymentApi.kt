@@ -19,6 +19,9 @@ interface PaymentApi {
     @POST("api/user/payments/confirm")
     suspend fun confirmPayment(@Body request: ConfirmPaymentRequest): ApiResponse<ConfirmPaymentResponse>
 
+    @POST("api/user/payments/split/confirm")
+    suspend fun confirmSplitPayment(@Body request: ConfirmPaymentRequest): ApiResponse<ConfirmPaymentResponse>
+
     @GET("api/user/payments/order/{orderId}")
     suspend fun getPaymentByOrderId(@Path("orderId") orderId: String): ApiResponse<PaymentStatusResponse>
 }

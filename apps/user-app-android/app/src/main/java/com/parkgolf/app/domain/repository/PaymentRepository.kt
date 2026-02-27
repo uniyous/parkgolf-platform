@@ -7,5 +7,6 @@ import com.parkgolf.app.data.remote.dto.payment.PreparePaymentResponse
 interface PaymentRepository {
     suspend fun preparePayment(amount: Int, orderName: String, bookingId: Int?): Result<PreparePaymentResponse>
     suspend fun confirmPayment(paymentKey: String, orderId: String, amount: Int): Result<ConfirmPaymentResponse>
+    suspend fun confirmSplitPayment(paymentKey: String, orderId: String, amount: Int): Result<ConfirmPaymentResponse>
     suspend fun getPaymentByOrderId(orderId: String): Result<PaymentStatusResponse>
 }

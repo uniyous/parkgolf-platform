@@ -14,6 +14,7 @@ import com.parkgolf.app.domain.model.ConversationState
 import com.parkgolf.app.domain.model.MessageType
 import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.ChatRepository
+import com.parkgolf.app.domain.repository.PaymentRepository
 import com.parkgolf.app.util.LocationManager
 import java.time.LocalDateTime
 import java.util.UUID
@@ -30,6 +31,13 @@ private const val TYPING_CLEAR_DELAY_MS = 3000L
 private const val SOCKET_CONNECT_RETRIES = 50
 private const val SOCKET_RETRY_DELAY_MS = 100L
 private const val MESSAGES_PAGE_LIMIT = 30
+
+data class PendingPayment(
+    val orderId: String,
+    val orderName: String,
+    val amount: Int,
+    val type: String  // "single" | "split"
+)
 
 data class ChatUiState(
     val isLoading: Boolean = false,
@@ -52,7 +60,8 @@ data class ChatUiState(
     val showWelcome: Boolean = false,
     val selectedClubId: String? = null,
     val selectedSlotId: String? = null,
-    val aiMessageActions: Map<String, List<ChatAction>> = emptyMap()
+    val aiMessageActions: Map<String, List<ChatAction>> = emptyMap(),
+    val pendingPayment: PendingPayment? = null
 ) {
     val aiLoadingText: String
         get() = when (aiConversationState) {
@@ -69,6 +78,7 @@ data class ChatUiState(
 class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val authRepository: AuthRepository,
+    private val paymentRepository: PaymentRepository,
     private val locationManager: LocationManager
 ) : ViewModel() {
 
@@ -585,6 +595,94 @@ class ChatViewModel @Inject constructor(
 
     fun getActionsForMessage(messageId: String): List<ChatAction> {
         return _uiState.value.aiMessageActions[messageId] ?: emptyList()
+    }
+
+    // Payment
+
+    fun requestPayment(orderId: String, orderName: String, amount: Int, type: String = "single") {
+        _uiState.value = _uiState.value.copy(
+            pendingPayment = PendingPayment(orderId, orderName, amount, type)
+        )
+    }
+
+    fun handlePaymentResult(paymentKey: String, orderId: String, amount: Int) {
+        val type = _uiState.value.pendingPayment?.type ?: "single"
+        _uiState.value = _uiState.value.copy(pendingPayment = null)
+
+        viewModelScope.launch {
+            val confirmResult = if (type == "split") {
+                paymentRepository.confirmSplitPayment(paymentKey, orderId, amount)
+            } else {
+                paymentRepository.confirmPayment(paymentKey, orderId, amount)
+            }
+
+            confirmResult
+                .onSuccess {
+                    if (type == "split") {
+                        sendAiFollowUp(AiChatRequest(
+                            message = "결제 완료",
+                            splitPaymentComplete = true,
+                            splitOrderId = orderId
+                        ))
+                    } else {
+                        sendAiFollowUp(AiChatRequest(
+                            message = "결제 완료",
+                            paymentComplete = true,
+                            paymentSuccess = true
+                        ))
+                    }
+                }
+                .onFailure { error ->
+                    Log.e(TAG, "Payment confirm failed: ${error.message}, checking status...")
+                    // Fallback: 서버 상태 확인
+                    paymentRepository.getPaymentByOrderId(orderId)
+                        .onSuccess { status ->
+                            if (status.status == "DONE" || status.status == "PAID") {
+                                if (type == "split") {
+                                    sendAiFollowUp(AiChatRequest(
+                                        message = "결제 완료",
+                                        splitPaymentComplete = true,
+                                        splitOrderId = orderId
+                                    ))
+                                } else {
+                                    sendAiFollowUp(AiChatRequest(
+                                        message = "결제 완료",
+                                        paymentComplete = true,
+                                        paymentSuccess = true
+                                    ))
+                                }
+                            } else {
+                                notifyPaymentFailed(type, orderId)
+                            }
+                        }
+                        .onFailure {
+                            notifyPaymentFailed(type, orderId)
+                        }
+                }
+        }
+    }
+
+    fun handlePaymentCancelled() {
+        val type = _uiState.value.pendingPayment?.type ?: "single"
+        val orderId = _uiState.value.pendingPayment?.orderId ?: ""
+        _uiState.value = _uiState.value.copy(pendingPayment = null)
+        notifyPaymentFailed(type, orderId)
+    }
+
+    private fun notifyPaymentFailed(type: String, orderId: String) {
+        if (type == "split") {
+            sendAiFollowUp(AiChatRequest(
+                message = "결제 실패",
+                splitPaymentComplete = true,
+                splitOrderId = orderId
+            ))
+        } else {
+            sendAiFollowUp(AiChatRequest(
+                message = "결제 취소",
+                paymentComplete = true,
+                paymentSuccess = false
+            ))
+        }
     }
 
     /**

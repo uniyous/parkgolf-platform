@@ -22,7 +22,8 @@ private const val PAYMENT_TIMEOUT_SECONDS = 10 * 60 // 10분
 @Composable
 fun PaymentCard(
     data: Map<String, Any?>,
-    onPaymentComplete: ((Boolean) -> Unit)? = null
+    onPaymentComplete: ((Boolean) -> Unit)? = null,
+    onRequestPayment: ((orderId: String, orderName: String, amount: Int) -> Unit)? = null
 ) {
     val clubName = data["clubName"]?.toString() ?: ""
     val date = data["date"]?.toString() ?: ""
@@ -167,9 +168,15 @@ fun PaymentCard(
                     }
                     Button(
                         onClick = {
-                            isPaying = true
-                            // TODO: Toss SDK requestPayment(orderId)
-                            onPaymentComplete?.invoke(true)
+                            val orderId = data["orderId"]?.toString()
+                            if (orderId != null && onRequestPayment != null) {
+                                isPaying = true
+                                val orderName = "${clubName} 파크골프 예약"
+                                onRequestPayment(orderId, orderName, amount)
+                            } else {
+                                // orderId 없거나 콜백 없으면 fallback
+                                onPaymentComplete?.invoke(false)
+                            }
                         },
                         enabled = !isPaying,
                         modifier = Modifier.weight(1f),
