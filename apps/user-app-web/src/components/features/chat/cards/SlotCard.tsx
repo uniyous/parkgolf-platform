@@ -28,8 +28,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
   // ── 라운드 그룹 레이아웃 ──
   if (data.rounds && data.rounds.length > 0) {
     return (
-      <div className="mt-2 rounded-2xl bg-gradient-to-br from-violet-500/10 to-purple-900/20 border border-violet-500/30 shadow-lg shadow-violet-500/10 overflow-hidden">
-        <div className="h-0.5 bg-gradient-to-r from-violet-400 to-purple-500" />
+      <div className="mt-2 rounded-2xl bg-violet-500/10 border border-violet-500/20 overflow-hidden">
         {/* 골프장 헤더 */}
         {data.clubName && (
           <>
@@ -122,9 +121,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
 
   // ── 하위 호환: flat slots 그리드 ──
   return (
-    <div className="mt-2 rounded-2xl bg-gradient-to-br from-violet-500/10 to-purple-900/20 border border-violet-500/30 shadow-lg shadow-violet-500/10 overflow-hidden">
-      <div className="h-0.5 bg-gradient-to-r from-violet-400 to-purple-500" />
-      <div className="p-3">
+    <div className="mt-2 rounded-2xl bg-violet-500/10 border border-violet-500/20 p-3">
         <div className="grid grid-cols-2 gap-2">
           {data.slots.map((slot) => {
             const isSelected = selectedSlotId === slot.id;
@@ -162,7 +159,6 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
             );
           })}
         </div>
-      </div>
     </div>
   );
 };

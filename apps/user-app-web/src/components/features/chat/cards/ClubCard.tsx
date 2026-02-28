@@ -22,44 +22,41 @@ export const ClubCard: React.FC<ClubCardProps> = ({ data, onSelect, selectedClub
           <div
             key={club.id}
             className={cn(
-              'rounded-xl overflow-hidden border transition-all shadow-lg shadow-violet-500/10',
+              'rounded-xl p-3 border transition-all',
               isSelected
                 ? 'bg-violet-500/15 border-violet-500/40'
                 : isDisabled
                   ? 'bg-white/[0.02] border-white/5 opacity-50'
-                  : 'bg-gradient-to-br from-violet-500/10 to-purple-900/20 border-violet-500/30'
+                  : 'bg-violet-500/10 border-violet-500/20'
             )}
           >
-            <div className="h-0.5 bg-gradient-to-r from-violet-400 to-purple-500" />
-            <div className="p-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-white truncate">
-                    {club.name}
-                  </h4>
-                  <div className="flex items-center gap-1 mt-1 text-white/50 text-xs">
-                    <MapPin className="w-3 h-3 shrink-0" />
-                    <span className="truncate">{club.address}</span>
-                  </div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-semibold text-white truncate">
+                  {club.name}
+                </h4>
+                <div className="flex items-center gap-1 mt-1 text-white/50 text-xs">
+                  <MapPin className="w-3 h-3 shrink-0" />
+                  <span className="truncate">{club.address}</span>
                 </div>
-                {isSelected ? (
-                  <div className="w-7 h-7 rounded-full bg-violet-500 flex items-center justify-center shrink-0">
-                    <Check className="w-4 h-4 text-white" />
-                  </div>
-                ) : (
-                  onSelect && !isDisabled && (
-                    <button
-                      onClick={() => onSelect(club.id, club.name)}
-                      className={cn(
-                        'px-3 py-1.5 rounded-lg text-xs font-medium shrink-0',
-                        'bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 transition-colors'
-                      )}
-                    >
-                      선택
-                    </button>
-                  )
-                )}
               </div>
+              {isSelected ? (
+                <div className="w-7 h-7 rounded-full bg-violet-500 flex items-center justify-center shrink-0">
+                  <Check className="w-4 h-4 text-white" />
+                </div>
+              ) : (
+                onSelect && !isDisabled && (
+                  <button
+                    onClick={() => onSelect(club.id, club.name)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg text-xs font-medium shrink-0',
+                      'bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 transition-colors'
+                    )}
+                  >
+                    선택
+                  </button>
+                )
+              )}
             </div>
           </div>
         );

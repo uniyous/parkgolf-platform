@@ -125,9 +125,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversa
   const isUrgent = remainingSeconds < 60;
 
   return (
-    <div className="mt-2 bg-gradient-to-br from-violet-500/10 to-purple-900/20 rounded-xl border border-violet-500/30 shadow-lg shadow-violet-500/10 overflow-hidden">
-      <div className="h-0.5 bg-gradient-to-r from-violet-400 to-purple-500" />
-      <div className="p-4">
+    <div className="mt-2 bg-violet-500/10 rounded-xl p-4 border border-violet-500/20">
         <div className="flex items-center gap-2 mb-3">
           <CreditCard className="w-4 h-4 text-blue-400" />
           <span className="text-sm font-semibold text-white">카드결제</span>
@@ -203,7 +201,6 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversa
             </button>
           </div>
         )}
-      </div>
     </div>
   );
 };

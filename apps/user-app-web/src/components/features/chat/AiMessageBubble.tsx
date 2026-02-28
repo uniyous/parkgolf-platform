@@ -74,7 +74,7 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
         )}
 
         <div className="flex items-end gap-1.5">
-          <div className="bg-gradient-to-br from-violet-500/15 to-purple-600/10 border-l-[3px] border-l-violet-400 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
+          <div className="bg-violet-500/10 border-l-[3px] border-l-violet-400 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
             <p className="text-sm text-white whitespace-pre-wrap break-words leading-relaxed">{content}</p>
 
             {actions?.map((action, index) => (

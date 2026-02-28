@@ -34,9 +34,7 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
   };
 
   return (
-    <div className="rounded-xl border border-violet-500/30 bg-gradient-to-br from-violet-500/10 to-purple-900/20 mt-2 shadow-lg shadow-violet-500/10 overflow-hidden">
-      <div className="h-0.5 bg-gradient-to-r from-violet-400 to-purple-500" />
-      <div className="p-4 space-y-4">
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-4">
         {/* Header */}
         <div>
           <h4 className="text-sm font-semibold text-white flex items-center gap-2">
@@ -134,7 +132,6 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
             확정 ({selectedIds.size}명)
           </button>
         </div>
-      </div>
     </div>
   );
 };
