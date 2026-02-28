@@ -439,22 +439,253 @@ sequenceDiagram
 | "내일 천안 3팀 예약해줘" | 그룹 예약 → 1팀부터 순차 |
 | 싱글 완료 후 "한 팀 더" | 다음 팀 진행 |
 
-### 12.2 플로우
+### 12.2 UI 카드 흐름
 
 ```
-┌─────────────────────────────────────────┐
-│ 🔄 팀별 반복                              │
-│  ① SELECT_MEMBERS → 멤버 4명 선택        │
-│  ② SHOW_SLOTS     → 슬롯 선택            │
-│  ③ CONFIRM_BOOKING → 결제방법 선택        │
-│  ④ SETTLEMENT_STATUS → 더치페이 결제      │
-│  ⑤ TEAM_COMPLETE  → [다음 팀] [종료]      │
-└─────────────────────────────────────────┘
-         ↓ 종료 시
-SYSTEM 메시지로 채팅방 전체에 예약완료 안내
+진행자 채팅 화면 (AI 모드)
+─────────────────────────────────────────
+① SELECT_MEMBERS 카드
+┌──────────────────────────────────────┐
+│ 👥 1팀 멤버 선택 (최대 4명)           │
+│                                      │
+│ ☑ 김민수 (나) 🔒                     │
+│ ☑ 박지영                            │
+│ ☑ 이준호                            │
+│ ☑ 최서연                            │
+│ ☐ 정우진                            │
+│ ☐ 한소희  ...                       │
+│                                      │
+│ 선택: 4/4명                          │
+│ [취소] [멤버 확정]                    │
+└──────────────────────────────────────┘
+         ↓ 멤버 확정 클릭
+
+② SHOW_SLOTS 카드 (기존 재사용)
+┌──────────────────────────────────────┐
+│ ⛳ 한밭파크골프장                     │
+│ 📍 천안시 ... | 📅 2026-02-28       │
+│ 🏌️ 1팀 시간대를 선택해 주세요        │
+│──────────────────────────────────────│
+│ A코스 오전               ₩15,000    │
+│ [09:00 4명] [09:30 4명] [10:00 4명] │
+│──────────────────────────────────────│
+│ B코스 오후               ₩15,000    │
+│ [14:00 4명] [14:30 4명]             │
+└──────────────────────────────────────┘
+         ↓ 슬롯 선택
+
+③ CONFIRM_BOOKING 카드 (더치페이 옵션 추가)
+┌──────────────────────────────────────┐
+│ 1팀 예약 확인                        │
+│ 📍 한밭파크골프장                     │
+│ 📅 2026-02-28 (금) 09:00            │
+│ 👥 4명: 김민수, 박지영, 이준호, 최서연 │
+│ 💳 ₩60,000 (1인당 ₩15,000)         │
+│                                      │
+│ 결제방법                              │
+│ [🏪 현장결제] [💰 더치페이]           │
+│                                      │
+│ [취소] [예약 확인]                    │
+└──────────────────────────────────────┘
+         ↓ 더치페이 + 예약 확인
+
+④ SETTLEMENT_STATUS 카드 (진행자에게 표시)
+┌──────────────────────────────────────┐
+│ 💰 1팀 더치페이 현황                  │
+│ 📍 한밭파크골프장 | 📅 02-28 09:00   │
+│ 💳 ₩60,000 (1인당 ₩15,000)         │
+│                                      │
+│ ✅ 김민수 (나)   ₩15,000  결제완료   │
+│ ✅ 박지영        ₩15,000  결제완료   │
+│ ⏳ 이준호        ₩15,000  대기중     │
+│ ⏳ 최서연        ₩15,000  대기중     │
+│                                      │
+│ 결제 완료: 2/4명  |  ⏱ 25분 남음    │
+│ [리마인더 보내기] [현황 새로고침]      │
+└──────────────────────────────────────┘
+
+④-1 SPLIT_PAYMENT 카드 (참여자에게 push 알림)
+┌──────────────────────────────────────┐
+│ 💳 결제 요청                          │
+│ 김민수님이 더치페이를 요청했어요       │
+│                                      │
+│ 📍 한밭파크골프장                     │
+│ 📅 2026-02-28 (금) 09:00            │
+│ 👥 4명 (1팀)                         │
+│ 💰 ₩15,000                          │
+│ ⏱ 결제 기한: 25분 남음               │
+│                                      │
+│ [결제하기]                            │
+└──────────────────────────────────────┘
+         ↓ 전원 결제 완료
+
+⑤ TEAM_COMPLETE 카드
+┌──────────────────────────────────────┐
+│ ✅ 1팀 예약 완료!                     │
+│ 📍 한밭파크골프장                     │
+│ 📅 2026-02-28 (금) 09:00            │
+│ 👥 김민수, 박지영, 이준호, 최서연      │
+│ 💳 ₩60,000 (더치페이 완료)           │
+│ 🏷️ 예약번호 PG-20260228-001        │
+│                                      │
+│ [🏌️ 다음 팀 예약] [종료]             │
+└──────────────────────────────────────┘
+         ↓ "다음 팀" 클릭
+
+⑥ SELECT_MEMBERS 카드 (2팀 — 이전 팀 배정 표시)
+┌──────────────────────────────────────┐
+│ 👥 2팀 멤버 선택 (최대 4명)           │
+│                                      │
+│ ── 1팀 배정완료 ──────────────────── │
+│ ✅ 김민수 (09:00 A코스)       1팀   │
+│ ✅ 박지영 (09:00 A코스)       1팀   │
+│ ✅ 이준호 (09:00 A코스)       1팀   │
+│ ✅ 최서연 (09:00 A코스)       1팀   │
+│ ── 미배정 ──────────────────────── │
+│ ☑ 정우진                            │
+│ ☑ 한소희                            │
+│ ☑ 강태우                            │
+│ ☑ 윤지민                            │
+│ ☐ 오서준                            │
+│ ☐ 류현아                            │
+│                                      │
+│ 선택: 4/4명                          │
+│ [취소] [멤버 확정]                    │
+└──────────────────────────────────────┘
+         ↓ (② ~ ⑤ 반복)
+
+⑦ 종료 → 채팅방 전체 SYSTEM 메시지
+┌──────────────────────────────────────┐
+│ 🎉 그룹 예약이 완료되었습니다!         │
+│ 📍 한밭파크골프장 | 📅 2026-02-28    │
+│                                      │
+│ 🏌️ 1팀 09:00 A코스 (4명)            │
+│    김민수, 박지영, 이준호, 최서연      │
+│ 🏌️ 2팀 09:30 A코스 (4명)            │
+│    정우진, 한소희, 강태우, 윤지민      │
+│                                      │
+│ 💳 총 ₩120,000 | 🏷️ 2팀 8명        │
+└──────────────────────────────────────┘
 ```
 
-### 12.3 멤버 선택 규칙
+### 12.3 카드 컴포넌트
+
+| 카드 | 컴포넌트 | 파일 | 비고 |
+|------|---------|------|------|
+| SELECT_MEMBERS | `SelectMembersCard` | `cards/SelectMembersCard.tsx` | **신규** |
+| SHOW_SLOTS | `SlotCard` | `cards/SlotCard.tsx` | 기존 재사용, 이전 팀 슬롯 비활성 |
+| CONFIRM_BOOKING | `ConfirmBookingCard` | `cards/ConfirmBookingCard.tsx` | 기존 확장 (더치페이 옵션) |
+| SETTLEMENT_STATUS | `SettlementStatusCard` | `cards/SettlementStatusCard.tsx` | **신규** |
+| SPLIT_PAYMENT | `SplitPaymentCard` | `cards/SplitPaymentCard.tsx` | **신규** (참여자용) |
+| TEAM_COMPLETE | `TeamCompleteCard` | `cards/TeamCompleteCard.tsx` | **신규** |
+
+#### SelectMembersCard
+
+```typescript
+interface SelectMembersCardProps {
+  data: {
+    teamNumber: number;
+    clubName: string;
+    date: string;
+    maxPlayers: number;
+    assignedTeams: Array<{
+      teamNumber: number;
+      slotTime: string;
+      courseName: string;
+      members: Array<{ userId: number; userName: string }>;
+    }>;
+    availableMembers: Array<{
+      userId: number;
+      userName: string;
+      userEmail: string;
+    }>;
+  };
+  onConfirm: (members: Array<{ userId: number; userName: string; userEmail: string }>) => void;
+  onCancel: () => void;
+}
+```
+
+- `assignedTeams` → "N팀 배정완료" 섹션 (비활성, ✅ 표시)
+- `availableMembers` → "미배정" 섹션 (체크박스 선택)
+- 선택 인원이 `maxPlayers`에 도달하면 나머지 비활성
+
+#### SettlementStatusCard
+
+```typescript
+interface SettlementStatusCardProps {
+  data: {
+    teamNumber: number;
+    clubName: string;
+    date: string;
+    slotTime: string;
+    totalPrice: number;
+    pricePerPerson: number;
+    expiredAt: string;
+    participants: Array<{
+      userId: number;
+      userName: string;
+      amount: number;
+      status: 'PENDING' | 'PAID' | 'CANCELLED';
+    }>;
+  };
+  onRefresh: () => void;
+  onSendReminder: () => void;
+}
+```
+
+- 결제 완료: ✅ / 대기중: ⏳ / 취소: ❌
+- 남은 시간 카운트다운 (1분 미만 시 노란색, 만료 시 빨간색)
+- "리마인더 보내기" → 미결제 참여자에게 push 재발송
+- "현황 새로고침" → payment-service 실시간 조회
+
+#### SplitPaymentCard
+
+```typescript
+interface SplitPaymentCardProps {
+  data: {
+    orderId: string;
+    bookerName: string;
+    clubName: string;
+    date: string;
+    slotTime: string;
+    teamNumber: number;
+    amount: number;
+    expiredAt: string;
+  };
+  onPay: (orderId: string) => void;
+}
+```
+
+- 참여자가 push 알림 딥링크로 접근
+- "결제하기" → Toss Payments SDK 호출
+- 만료 시 자동 비활성화
+
+#### TeamCompleteCard
+
+```typescript
+interface TeamCompleteCardProps {
+  data: {
+    teamNumber: number;
+    bookingId: number;
+    bookingNumber: string;
+    clubName: string;
+    date: string;
+    slotTime: string;
+    courseName: string;
+    participants: Array<{ userId: number; userName: string }>;
+    totalPrice: number;
+    paymentMethod: string;
+    hasMoreTeams: boolean;
+  };
+  onNextTeam: () => void;
+  onFinish: () => void;
+}
+```
+
+- `hasMoreTeams=true` → "다음 팀 예약" + "종료" 버튼
+- `hasMoreTeams=false` → "종료" 버튼만
+
+### 12.4 멤버 선택 규칙
 
 | 규칙 | 내용 |
 |------|------|
@@ -463,7 +694,7 @@ SYSTEM 메시지로 채팅방 전체에 예약완료 안내
 | 섹션 구분 | "N팀 배정완료" / "미배정" 섹션으로 분리 |
 | 인원 | 최소 1명, 최대 4명 (availableSpots) |
 
-### 12.4 DB 스키마
+### 12.5 DB 스키마
 
 **booking-service**:
 ```prisma
@@ -512,7 +743,7 @@ model PaymentSplit {
 }
 ```
 
-### 12.5 시퀀스 다이어그램
+### 12.6 시퀀스 다이어그램
 
 ```mermaid
 sequenceDiagram
