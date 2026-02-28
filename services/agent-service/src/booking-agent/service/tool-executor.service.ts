@@ -891,50 +891,6 @@ export class ToolExecutorService {
   }
 
   /**
-   * 그룹 예약 생성
-   */
-  async createBookingGroup(params: {
-    chatRoomId: string;
-    bookerId: number;
-    bookerName: string;
-    bookerEmail: string;
-    clubId: number;
-    clubName: string;
-    date: string;
-    teams: Array<{
-      gameTimeSlotId: number;
-      participants: Array<{
-        userId: number;
-        userName: string;
-        userEmail: string;
-        role: string;
-      }>;
-    }>;
-    pricePerPerson: number;
-    paymentMethod: string;
-  }): Promise<any> {
-    try {
-      const response = await firstValueFrom(
-        this.bookingClient.send('bookingGroup.create', params).pipe(
-          timeout(30000), // 그룹 예약은 복수 Booking 생성 → 긴 타임아웃
-          catchError((err) => {
-            this.logger.error(`bookingGroup.create failed: ${err.message}`);
-            return [null];
-          }),
-        ),
-      );
-
-      if (response?.success && response?.data) {
-        return response.data;
-      }
-      return null;
-    } catch (error) {
-      this.logger.error('createBookingGroup unexpected error', error);
-      return null;
-    }
-  }
-
-  /**
    * 분할결제 준비
    */
   async prepareSplitPayment(params: {
@@ -969,12 +925,12 @@ export class ToolExecutorService {
   }
 
   /**
-   * 분할결제 상태 조회
+   * 분할결제 상태 조회 (bookingId 기반)
    */
-  async getSplitStatus(bookingGroupId: number): Promise<any> {
+  async getSplitStatus(bookingId: number): Promise<any> {
     try {
       const response = await firstValueFrom(
-        this.paymentClient.send('payment.splitGet', { bookingGroupId }).pipe(
+        this.paymentClient.send('payment.splitGet', { bookingId }).pipe(
           timeout(this.REQUEST_TIMEOUT),
           catchError((err) => {
             this.logger.error(`payment.splitGet failed: ${err.message}`);
@@ -1011,6 +967,25 @@ export class ToolExecutorService {
       this.notifyClient.emit('payment.splitRequested', data);
     } catch (error) {
       this.logger.error('emitSplitPaymentNotification failed', error);
+    }
+  }
+
+  /**
+   * 채팅방에 SYSTEM 메시지 전송 (fire-and-forget)
+   */
+  sendSystemMessage(roomId: string, content: string): void {
+    try {
+      this.chatClient.emit('chat.messages.save', {
+        id: crypto.randomUUID(),
+        roomId,
+        senderId: 0,
+        senderName: 'SYSTEM',
+        content,
+        type: 'SYSTEM',
+        createdAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      this.logger.error('sendSystemMessage failed', error);
     }
   }
 }

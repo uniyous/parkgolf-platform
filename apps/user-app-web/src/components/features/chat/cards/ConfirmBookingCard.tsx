@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { MapPin, Calendar, Clock, Users, Banknote, Store, CreditCard } from 'lucide-react';
+import { MapPin, Calendar, Clock, Users, Banknote, Store, CreditCard, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ConfirmBookingData } from '@/lib/api/chatApi';
 
+type PaymentMethod = 'onsite' | 'card' | 'dutchpay';
+
 interface ConfirmBookingCardProps {
   data: ConfirmBookingData;
-  onConfirm?: (paymentMethod: 'onsite' | 'card') => void;
+  onConfirm?: (paymentMethod: PaymentMethod) => void;
   onCancel?: () => void;
 }
 
 export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, onConfirm, onCancel }) => {
   const isFree = data.price === 0;
-  const [paymentMethod, setPaymentMethod] = useState<'onsite' | 'card'>('onsite');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(data.groupMode ? 'dutchpay' : 'onsite');
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat('ko-KR').format(price);
@@ -25,7 +27,9 @@ export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, on
 
   return (
     <div className="mt-2 bg-white/5 rounded-xl p-4 border border-violet-500/20">
-      <div className="text-sm font-semibold text-white mb-3">예약 정보 확인</div>
+      <div className="text-sm font-semibold text-white mb-3">
+        {data.groupMode ? `팀${data.teamNumber} 예약 정보 확인` : '예약 정보 확인'}
+      </div>
 
       <div className="space-y-2 text-sm">
         <div className="flex items-center gap-2 text-white/70">
@@ -44,9 +48,17 @@ export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, on
           <Users className="w-3.5 h-3.5 text-violet-400 shrink-0" />
           <span>{data.playerCount}명</span>
         </div>
+        {data.groupMode && data.members && (
+          <div className="flex items-center gap-2 text-white/60 text-xs pl-5">
+            {data.members.map((m) => m.userName).join(', ')}
+          </div>
+        )}
         <div className="flex items-center gap-2 text-white/70">
           <Banknote className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-          <span>{isFree ? '무료' : `\u20A9${formatPrice(data.price)}`}</span>
+          <span>
+            {isFree ? '무료' : `\u20A9${formatPrice(data.price)}`}
+            {data.groupMode && data.pricePerPerson ? ` (1인 ${formatPrice(data.pricePerPerson)}원)` : ''}
+          </span>
         </div>
       </div>
 
@@ -54,7 +66,7 @@ export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, on
       {!isFree && (
         <div className="mt-3">
           <div className="text-xs text-white/50 mb-2">결제방법</div>
-          <div className="flex gap-2">
+          <div className={cn('flex gap-2', data.groupMode && 'flex-wrap')}>
             <button
               onClick={() => setPaymentMethod('onsite')}
               className={cn(
@@ -79,6 +91,20 @@ export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, on
               <CreditCard className="w-3.5 h-3.5" />
               카드결제
             </button>
+            {data.groupMode && (
+              <button
+                onClick={() => setPaymentMethod('dutchpay')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors border',
+                  paymentMethod === 'dutchpay'
+                    ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                    : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10',
+                )}
+              >
+                <Wallet className="w-3.5 h-3.5" />
+                더치페이
+              </button>
+            )}
           </div>
         </div>
       )}

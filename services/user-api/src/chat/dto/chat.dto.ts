@@ -147,34 +147,27 @@ export class AiChatRequestDto {
   @IsBoolean()
   paymentSuccess?: boolean;
 
-  // ── 그룹 예약 필드 ──
+  // ── 그룹 예약 필드 (팀 단위 순차) ──
 
-  @ApiPropertyOptional({ description: '복수 슬롯 선택 (멀티팀)' })
+  @ApiPropertyOptional({ description: '팀 멤버 선택' })
   @IsOptional()
   @IsArray()
-  selectedSlots?: Array<{
-    slotId: string;
-    slotTime: string;
-    courseName: string;
-    price: number;
-  }>;
+  teamMembers?: Array<{ userId: number; userName: string; userEmail: string }>;
 
-  @ApiPropertyOptional({ description: '팀 편성 데이터' })
-  @IsOptional()
-  teams?: Array<{
-    teamNumber: number;
-    slotId: string;
-    members: Array<{
-      userId: number;
-      userName: string;
-      userEmail: string;
-    }>;
-  }>;
-
-  @ApiPropertyOptional({ description: '그룹 예약 확인' })
+  @ApiPropertyOptional({ description: '다음 팀 버튼' })
   @IsOptional()
   @IsBoolean()
-  confirmGroupBooking?: boolean;
+  nextTeam?: boolean;
+
+  @ApiPropertyOptional({ description: '그룹 예약 종료 버튼' })
+  @IsOptional()
+  @IsBoolean()
+  finishGroup?: boolean;
+
+  @ApiPropertyOptional({ description: '리마인더 발송 버튼' })
+  @IsOptional()
+  @IsBoolean()
+  sendReminder?: boolean;
 
   // ── 분할결제 완료 필드 ──
 

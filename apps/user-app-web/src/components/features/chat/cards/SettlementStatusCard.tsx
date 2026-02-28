@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, CheckCircle2, Clock, AlertCircle, CreditCard, Loader2, Timer } from 'lucide-react';
+import { Users, CheckCircle2, Clock, AlertCircle, CreditCard, Loader2, Timer, Bell, RefreshCw, MapPin } from 'lucide-react';
 import { loadTossPayments, type TossPayments } from '@tosspayments/payment-sdk';
 import { cn } from '@/lib/utils';
 import type { SettlementStatusData } from '@/lib/api/chatApi';
@@ -13,6 +13,8 @@ interface SettlementStatusCardProps {
   roomId?: string;
   conversationId?: string;
   onSplitPaymentComplete?: (success: boolean, orderId: string) => void;
+  onSendReminder?: () => void;
+  onRefresh?: () => void;
 }
 
 const formatPrice = (price: number) =>
@@ -21,11 +23,43 @@ const formatPrice = (price: number) =>
 /**
  * 진행자(부커) 대시보드 — 전체 정산 현황
  */
-const BookerDashboardView: React.FC<{ data: SettlementStatusData }> = ({ data }) => {
+const BookerDashboardView: React.FC<{
+  data: SettlementStatusData;
+  onSendReminder?: () => void;
+  onRefresh?: () => void;
+}> = ({ data, onSendReminder, onRefresh }) => {
   const allPaid = data.paidCount === data.totalParticipants;
   const progress = data.totalParticipants > 0
     ? Math.round((data.paidCount / data.totalParticipants) * 100)
     : 0;
+
+  // 카운트다운 (expiredAt 기준)
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+
+  useEffect(() => {
+    const expiredAt = data.expiredAt;
+    if (!expiredAt) return;
+
+    const calcRemaining = () => {
+      const diff = Math.floor((new Date(expiredAt).getTime() - Date.now()) / 1000);
+      return Math.max(0, diff);
+    };
+
+    setRemainingSeconds(calcRemaining());
+    const interval = setInterval(() => {
+      const remaining = calcRemaining();
+      setRemainingSeconds(remaining);
+      if (remaining <= 0) clearInterval(interval);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [data.expiredAt]);
+
+  const formatCountdown = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
 
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 p-4 mt-2 space-y-3">
@@ -33,7 +67,7 @@ const BookerDashboardView: React.FC<{ data: SettlementStatusData }> = ({ data })
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-white flex items-center gap-2">
           <Users className="w-4 h-4 text-violet-400" />
-          정산 현황
+          {data.teamNumber ? `팀${data.teamNumber} 정산 현황` : '정산 현황'}
         </h4>
         <span className={cn(
           'text-xs font-medium px-2 py-0.5 rounded-full',
@@ -45,6 +79,15 @@ const BookerDashboardView: React.FC<{ data: SettlementStatusData }> = ({ data })
         </span>
       </div>
 
+      {/* Team Info */}
+      {data.clubName && (
+        <div className="flex items-center gap-2 text-xs text-white/50">
+          <MapPin className="w-3 h-3" />
+          <span>{data.clubName}</span>
+          {data.slotTime && <><span className="text-white/30">·</span><span>{data.slotTime}</span></>}
+        </div>
+      )}
+
       {/* Progress Bar */}
       <div className="w-full bg-white/10 rounded-full h-1.5">
         <div
@@ -55,6 +98,14 @@ const BookerDashboardView: React.FC<{ data: SettlementStatusData }> = ({ data })
           style={{ width: `${progress}%` }}
         />
       </div>
+
+      {/* Countdown */}
+      {remainingSeconds !== null && remainingSeconds > 0 && !allPaid && (
+        <div className="flex items-center justify-center gap-1.5 text-yellow-400">
+          <Timer className="w-3.5 h-3.5" />
+          <span className="text-xs font-medium">{formatCountdown(remainingSeconds)} 남음</span>
+        </div>
+      )}
 
       {/* Amount */}
       <div className="flex justify-between text-xs text-white/60">
@@ -92,10 +143,36 @@ const BookerDashboardView: React.FC<{ data: SettlementStatusData }> = ({ data })
         ))}
       </div>
 
+      {/* Action Buttons */}
+      {!allPaid && (onSendReminder || onRefresh) && (
+        <div className="flex gap-2 pt-1 border-t border-white/5">
+          {onSendReminder && (
+            <button
+              onClick={onSendReminder}
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-white/5 text-white/60 hover:bg-white/10 transition-colors"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              리마인더
+            </button>
+          )}
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              새로고침
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Group Number */}
-      <div className="text-center text-xs text-white/30 pt-1 border-t border-white/5">
-        {data.groupNumber}
-      </div>
+      {data.groupNumber && (
+        <div className="text-center text-xs text-white/30 pt-1 border-t border-white/5">
+          {data.groupNumber}
+        </div>
+      )}
     </div>
   );
 };
@@ -268,10 +345,12 @@ export const SettlementStatusCard: React.FC<SettlementStatusCardProps> = ({
   roomId,
   conversationId,
   onSplitPaymentComplete,
+  onSendReminder,
+  onRefresh,
 }) => {
   // currentUserId가 없거나 부커인 경우 → 대시보드
   if (!currentUserId || currentUserId === data.bookerId) {
-    return <BookerDashboardView data={data} />;
+    return <BookerDashboardView data={data} onSendReminder={onSendReminder} onRefresh={onRefresh} />;
   }
 
   // 참여자 찾기

@@ -12,7 +12,7 @@ import { authStorage } from '@/lib/storage';
 import { showErrorToast, showSuccessToast } from '@/lib/toast';
 import { useAuthStore } from '@/stores/authStore';
 import { useConfirm } from '@/contexts/ConfirmContext';
-import { chatApi, getChatRoomDisplayName, type ChatMessage, type ChatAction, type AiChatRequest, type TeamMember } from '@/lib/api/chatApi';
+import { chatApi, getChatRoomDisplayName, type ChatMessage, type ChatAction, type AiChatRequest } from '@/lib/api/chatApi';
 import { useAiChat } from '@/hooks/useAiChat';
 import { AiButton } from '@/components/features/chat/AiButton';
 import { AiMessageBubble } from '@/components/features/chat/AiMessageBubble';
@@ -303,10 +303,11 @@ export const ChatRoomPage: React.FC = () => {
   const aiLoadingText = useMemo(() => {
     switch (conversationState) {
       case 'COLLECTING': return '검색 중...';
+      case 'SELECTING_MEMBERS': return '멤버 선택 중...';
       case 'CONFIRMING': return '예약 확인 중...';
       case 'BOOKING': return '예약 처리 중...';
-      case 'SELECTING_PARTICIPANTS': return '팀 편성 중...';
       case 'SETTLING': return '정산 처리 중...';
+      case 'TEAM_COMPLETE': return '다음 팀 준비 중...';
       default: return '생각 중...';
     }
   }, [conversationState]);
@@ -723,9 +724,14 @@ export const ChatRoomPage: React.FC = () => {
                         ...(clubId ? { selectedClubId: clubId, selectedClubName: clubName } : {}),
                       });
                     }}
-                    onConfirmBooking={(paymentMethod: 'onsite' | 'card') => {
+                    onConfirmBooking={(paymentMethod: 'onsite' | 'card' | 'dutchpay') => {
+                      const labels: Record<string, string> = {
+                        card: '카드결제로 예약 확인',
+                        dutchpay: '더치페이로 예약 확인',
+                        onsite: '예약 확인',
+                      };
                       handleAiFollowUp({
-                        message: paymentMethod === 'card' ? '카드결제로 예약 확인' : '예약 확인',
+                        message: labels[paymentMethod] || '예약 확인',
                         confirmBooking: true,
                         paymentMethod,
                       });
@@ -744,25 +750,34 @@ export const ChatRoomPage: React.FC = () => {
                         paymentSuccess: success,
                       });
                     }}
-                    onConfirmGroup={(paymentMethod: string) => {
+                    onTeamMemberSelect={(members) => {
                       handleAiFollowUp({
-                        message: paymentMethod === 'dutchpay' ? '더치페이로 예약' : '현장결제로 예약',
-                        confirmGroupBooking: true,
-                        paymentMethod,
+                        message: '멤버 확정',
+                        teamMembers: members,
                       });
                     }}
-                    onCancelGroup={() => {
-                      setSelectedSlotId(null);
+                    onNextTeam={() => {
                       handleAiFollowUp({
-                        message: '그룹 예약 취소',
-                        cancelBooking: true,
+                        message: '다음 팀',
+                        nextTeam: true,
                       });
                     }}
-                    onTeamConfirm={(teams: Array<{ teamNumber: number; slotId: string; members: TeamMember[] }>) => {
+                    onFinishGroup={() => {
                       handleAiFollowUp({
-                        message: '팀 편성 확정',
-                        teams,
-                        confirmGroupBooking: true,
+                        message: '종료',
+                        finishGroup: true,
+                      });
+                    }}
+                    onSendReminder={() => {
+                      handleAiFollowUp({
+                        message: '리마인더',
+                        sendReminder: true,
+                      });
+                    }}
+                    onRefreshSettlement={() => {
+                      handleAiFollowUp({
+                        message: '정산 현황',
+                        splitPaymentComplete: true,
                       });
                     }}
                     onSplitPaymentComplete={(success: boolean, orderId: string) => {

@@ -255,10 +255,11 @@ export class ChatService {
         paymentMethod: dto.paymentMethod,
         paymentComplete: dto.paymentComplete,
         paymentSuccess: dto.paymentSuccess,
-        // 그룹 예약 필드
-        selectedSlots: dto.selectedSlots,
-        teams: dto.teams,
-        confirmGroupBooking: dto.confirmGroupBooking,
+        // 그룹 예약 필드 (팀 단위 순차)
+        teamMembers: dto.teamMembers,
+        nextTeam: dto.nextTeam,
+        finishGroup: dto.finishGroup,
+        sendReminder: dto.sendReminder,
         // 분할결제 완료 필드
         splitPaymentComplete: dto.splitPaymentComplete,
         splitOrderId: dto.splitOrderId,
