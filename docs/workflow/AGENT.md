@@ -746,6 +746,7 @@ enum SplitStatus {
 
 진행자가 채팅방 멤버 중 이번 팀에 참여할 멤버를 선택한다. (최대 4명)
 
+**1팀 (최초):**
 ```
 ┌──────────────────────────────────────────┐
 │ 👥 1팀 멤버 선택 (최대 4명)               │
@@ -756,7 +757,33 @@ enum SplitStatus {
 │ ☑ 최서연                                │
 │ ☐ 정우진                                │
 │ ☐ 한소희                                │
-│ ... (채팅방 멤버 20명)                    │
+│ ... (채팅방 멤버 10명)                    │
+│                                          │
+│ 선택: 4/4명                              │
+│                                          │
+│ ┌────────┐ ┌──────────┐                │
+│ │  취소   │ │  멤버 확정  │                │
+│ └────────┘ └──────────┘                │
+└──────────────────────────────────────────┘
+```
+
+**2팀 (이전 팀 배정 표시):**
+```
+┌──────────────────────────────────────────┐
+│ 👥 2팀 멤버 선택 (최대 4명)               │
+│                                          │
+│ ── 1팀 배정완료 ──────────────────────── │
+│ ✅ 김민수 (09:00 A코스)        1팀       │
+│ ✅ 박지영 (09:00 A코스)        1팀       │
+│ ✅ 이준호 (09:00 A코스)        1팀       │
+│ ✅ 최서연 (09:00 A코스)        1팀       │
+│ ── 미배정 ────────────────────────────── │
+│ ☑ 정우진                                │
+│ ☑ 한소희                                │
+│ ☑ 강태우                                │
+│ ☑ 윤지민                                │
+│ ☐ 오서준                                │
+│ ☐ 류현아                                │
 │                                          │
 │ 선택: 4/4명                              │
 │                                          │
@@ -770,7 +797,8 @@ enum SplitStatus {
 |------|------|
 | 진행자 고정 | 진행자(나)는 1팀에 자동 선택, 해제 불가 (🔒) |
 | 2팀 이후 | 진행자는 자동 선택 안 됨, 원하면 선택 가능 |
-| 이전 팀 제외 | 이전 팀에 배정된 멤버는 비활성 표시 (중복 방지) |
+| 이전 팀 표시 | 배정된 멤버는 ✅ + 팀번호/슬롯 정보와 함께 비활성 표시 (중복 방지) |
+| 섹션 구분 | "N팀 배정완료" / "미배정" 섹션으로 구분하여 현황 한눈에 파악 |
 | 최대 인원 | 슬롯의 `availableSpots` (보통 4명) |
 | 최소 인원 | 1명 이상 |
 
@@ -975,8 +1003,10 @@ sequenceDiagram
 
     Note over App,Agent: ── 2팀 ──
     App->>Agent: "다음 팀" 클릭
-    Agent-->>App: SELECT_MEMBERS (1팀 멤버 제외)
-    Note over App,P: (동일 플로우 반복)
+    Agent-->>App: SELECT_MEMBERS (assignedTeams + availableMembers)
+    Note over App: UI: 1팀 배정완료 표시 + 미배정 멤버 선택
+    App->>Agent: 2팀 멤버 4명 선택
+    Note over App,P: (이후 슬롯 선택 → 결제 동일 플로우 반복)
 
     Note over App,Agent: ── 종료 ──
     App->>Agent: "종료" 클릭
@@ -1034,19 +1064,36 @@ if (request.sendReminder)         → handleSendReminder()
 
 ```json
 {
-  "teamNumber": 1,
+  "teamNumber": 2,
   "clubName": "한밭파크골프장",
   "date": "2026-02-28",
   "maxPlayers": 4,
-  "members": [
-    { "userId": 1, "userName": "김민수", "userEmail": "kim@email.com", "isBooker": true, "disabled": false },
-    { "userId": 2, "userName": "박지영", "userEmail": "park@email.com", "isBooker": false, "disabled": false },
-    { "userId": 5, "userName": "정우진", "userEmail": "jung@email.com", "isBooker": false, "disabled": true, "assignedTeam": 1 }
+  "assignedTeams": [
+    {
+      "teamNumber": 1,
+      "slotTime": "09:00",
+      "courseName": "A코스",
+      "members": [
+        { "userId": 1, "userName": "김민수" },
+        { "userId": 2, "userName": "박지영" },
+        { "userId": 3, "userName": "이준호" },
+        { "userId": 4, "userName": "최서연" }
+      ]
+    }
+  ],
+  "availableMembers": [
+    { "userId": 5, "userName": "정우진", "userEmail": "jung@email.com" },
+    { "userId": 6, "userName": "한소희", "userEmail": "han@email.com" },
+    { "userId": 7, "userName": "강태우", "userEmail": "kang@email.com" },
+    { "userId": 8, "userName": "윤지민", "userEmail": "yoon@email.com" },
+    { "userId": 9, "userName": "오서준", "userEmail": "oh@email.com" },
+    { "userId": 10, "userName": "류현아", "userEmail": "ryu@email.com" }
   ]
 }
 ```
 
-> `disabled: true` + `assignedTeam` = 이전 팀에 이미 배정됨 (선택 불가)
+> `assignedTeams[]` = 이전 팀 배정 현황 (팀번호, 슬롯, 멤버) → UI에서 "N팀 배정완료" 섹션 렌더링
+> `availableMembers[]` = 미배정 멤버 목록 → UI에서 "미배정" 섹션 렌더링 (선택 가능)
 
 #### TEAM_COMPLETE 데이터
 
