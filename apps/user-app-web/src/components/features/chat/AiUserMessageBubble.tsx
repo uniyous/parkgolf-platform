@@ -18,7 +18,7 @@ export const AiUserMessageBubble: React.FC<AiUserMessageBubbleProps> = ({
     <div className="flex justify-end">
       <div className="max-w-[85%]">
         <div className="flex items-end gap-1.5 flex-row-reverse">
-          <div className="bg-violet-500/10 border-r-[3px] border-r-violet-500/40 rounded-2xl rounded-tr-sm px-3.5 py-2.5">
+          <div className="bg-gradient-to-bl from-violet-500/20 to-purple-600/15 border-r-[3px] border-r-violet-400 rounded-2xl rounded-tr-sm px-3.5 py-2.5">
             <p className="text-sm text-white whitespace-pre-wrap break-words leading-relaxed">{content}</p>
           </div>
           <span className="text-[10px] text-white/40 shrink-0">

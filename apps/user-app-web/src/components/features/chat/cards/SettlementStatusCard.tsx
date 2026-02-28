@@ -62,117 +62,120 @@ const BookerDashboardView: React.FC<{
   };
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-4 mt-2 space-y-3">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-          <Users className="w-4 h-4 text-violet-400" />
-          {data.teamNumber ? `팀${data.teamNumber} 정산 현황` : '정산 현황'}
-        </h4>
-        <span className={cn(
-          'text-xs font-medium px-2 py-0.5 rounded-full',
-          allPaid
-            ? 'bg-violet-500/20 text-violet-400'
-            : 'bg-yellow-500/20 text-yellow-400'
-        )}>
-          {allPaid ? '완료' : `${data.paidCount}/${data.totalParticipants}`}
-        </span>
-      </div>
-
-      {/* Team Info */}
-      {data.clubName && (
-        <div className="flex items-center gap-2 text-xs text-white/50">
-          <MapPin className="w-3 h-3" />
-          <span>{data.clubName}</span>
-          {data.slotTime && <><span className="text-white/30">·</span><span>{data.slotTime}</span></>}
+    <div className="rounded-xl border border-violet-500/30 bg-gradient-to-br from-violet-500/10 to-purple-900/20 mt-2 shadow-lg shadow-violet-500/10 overflow-hidden">
+      <div className="h-0.5 bg-gradient-to-r from-violet-400 to-purple-500" />
+      <div className="p-4 space-y-3">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+            <Users className="w-4 h-4 text-violet-400" />
+            {data.teamNumber ? `팀${data.teamNumber} 정산 현황` : '정산 현황'}
+          </h4>
+          <span className={cn(
+            'text-xs font-medium px-2 py-0.5 rounded-full',
+            allPaid
+              ? 'bg-violet-500/20 text-violet-400'
+              : 'bg-yellow-500/20 text-yellow-400'
+          )}>
+            {allPaid ? '완료' : `${data.paidCount}/${data.totalParticipants}`}
+          </span>
         </div>
-      )}
 
-      {/* Progress Bar */}
-      <div className="w-full bg-white/10 rounded-full h-1.5">
-        <div
-          className={cn(
-            'h-1.5 rounded-full transition-all duration-500',
-            allPaid ? 'bg-violet-500' : 'bg-yellow-500'
-          )}
-          style={{ width: `${progress}%` }}
-        />
-      </div>
+        {/* Team Info */}
+        {data.clubName && (
+          <div className="flex items-center gap-2 text-xs text-white/50">
+            <MapPin className="w-3 h-3" />
+            <span>{data.clubName}</span>
+            {data.slotTime && <><span className="text-white/30">·</span><span>{data.slotTime}</span></>}
+          </div>
+        )}
 
-      {/* Countdown */}
-      {remainingSeconds !== null && remainingSeconds > 0 && !allPaid && (
-        <div className="flex items-center justify-center gap-1.5 text-yellow-400">
-          <Timer className="w-3.5 h-3.5" />
-          <span className="text-xs font-medium">{formatCountdown(remainingSeconds)} 남음</span>
-        </div>
-      )}
-
-      {/* Amount */}
-      <div className="flex justify-between text-xs text-white/60">
-        <span>1인당 {formatPrice(data.pricePerPerson)}원</span>
-        <span className="text-violet-400 font-medium">
-          총 {formatPrice(data.totalPrice)}원
-        </span>
-      </div>
-
-      {/* Participants */}
-      <div className="space-y-1">
-        {data.participants.map((p) => (
+        {/* Progress Bar */}
+        <div className="w-full bg-white/10 rounded-full h-1.5">
           <div
-            key={p.userId}
-            className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white/[0.02]"
-          >
-            <span className="text-xs text-white/70">{p.userName}</span>
-            {p.status === 'PAID' ? (
-              <div className="flex items-center gap-1 text-violet-400">
-                <CheckCircle2 className="w-3 h-3" />
-                <span className="text-xs">완료</span>
-              </div>
-            ) : p.status === 'CANCELLED' ? (
-              <div className="flex items-center gap-1 text-red-400">
-                <AlertCircle className="w-3 h-3" />
-                <span className="text-xs">취소</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1 text-yellow-400">
-                <Clock className="w-3 h-3" />
-                <span className="text-xs">대기</span>
-              </div>
+            className={cn(
+              'h-1.5 rounded-full transition-all duration-500',
+              allPaid ? 'bg-violet-500' : 'bg-yellow-500'
+            )}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+
+        {/* Countdown */}
+        {remainingSeconds !== null && remainingSeconds > 0 && !allPaid && (
+          <div className="flex items-center justify-center gap-1.5 text-yellow-400">
+            <Timer className="w-3.5 h-3.5" />
+            <span className="text-xs font-medium">{formatCountdown(remainingSeconds)} 남음</span>
+          </div>
+        )}
+
+        {/* Amount */}
+        <div className="flex justify-between text-xs text-white/60">
+          <span>1인당 {formatPrice(data.pricePerPerson)}원</span>
+          <span className="text-violet-400 font-medium">
+            총 {formatPrice(data.totalPrice)}원
+          </span>
+        </div>
+
+        {/* Participants */}
+        <div className="space-y-1">
+          {data.participants.map((p) => (
+            <div
+              key={p.userId}
+              className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white/[0.02]"
+            >
+              <span className="text-xs text-white/70">{p.userName}</span>
+              {p.status === 'PAID' ? (
+                <div className="flex items-center gap-1 text-violet-400">
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span className="text-xs">완료</span>
+                </div>
+              ) : p.status === 'CANCELLED' ? (
+                <div className="flex items-center gap-1 text-red-400">
+                  <AlertCircle className="w-3 h-3" />
+                  <span className="text-xs">취소</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 text-yellow-400">
+                  <Clock className="w-3 h-3" />
+                  <span className="text-xs">대기</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Action Buttons */}
+        {!allPaid && (onSendReminder || onRefresh) && (
+          <div className="flex gap-2 pt-1 border-t border-white/5">
+            {onSendReminder && (
+              <button
+                onClick={onSendReminder}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-white/5 text-white/60 hover:bg-white/10 transition-colors"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                리마인더
+              </button>
+            )}
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                새로고침
+              </button>
             )}
           </div>
-        ))}
+        )}
+
+        {/* Group Number */}
+        {data.groupNumber && (
+          <div className="text-center text-xs text-white/30 pt-1 border-t border-white/5">
+            {data.groupNumber}
+          </div>
+        )}
       </div>
-
-      {/* Action Buttons */}
-      {!allPaid && (onSendReminder || onRefresh) && (
-        <div className="flex gap-2 pt-1 border-t border-white/5">
-          {onSendReminder && (
-            <button
-              onClick={onSendReminder}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-white/5 text-white/60 hover:bg-white/10 transition-colors"
-            >
-              <Bell className="w-3.5 h-3.5" />
-              리마인더
-            </button>
-          )}
-          {onRefresh && (
-            <button
-              onClick={onRefresh}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              새로고침
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Group Number */}
-      {data.groupNumber && (
-        <div className="text-center text-xs text-white/30 pt-1 border-t border-white/5">
-          {data.groupNumber}
-        </div>
-      )}
     </div>
   );
 };
@@ -271,48 +274,51 @@ const ParticipantPaymentView: React.FC<{
   const amount = participant.amount || 0;
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-4 mt-2 space-y-3">
-      <div className="flex items-center gap-2">
-        <CreditCard className="w-4 h-4 text-violet-400" />
-        <h4 className="text-sm font-semibold text-white">결제 요청</h4>
-      </div>
-
-      <div className="text-center py-3">
-        <p className="text-2xl font-bold text-white">{formatPrice(amount)}원</p>
-        <p className="text-xs text-white/50 mt-1">더치페이 결제 금액</p>
-      </div>
-
-      {/* 카운트다운 */}
-      {remainingSeconds !== null && !isExpired && (
-        <div className="flex items-center justify-center gap-1.5 text-yellow-400">
-          <Timer className="w-3.5 h-3.5" />
-          <span className="text-xs font-medium">{formatTime(remainingSeconds)} 남음</span>
+    <div className="rounded-xl border border-violet-500/30 bg-gradient-to-br from-violet-500/10 to-purple-900/20 mt-2 shadow-lg shadow-violet-500/10 overflow-hidden">
+      <div className="h-0.5 bg-gradient-to-r from-violet-400 to-purple-500" />
+      <div className="p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <CreditCard className="w-4 h-4 text-violet-400" />
+          <h4 className="text-sm font-semibold text-white">결제 요청</h4>
         </div>
-      )}
 
-      {isExpired ? (
-        <div className="text-center text-xs text-red-400">결제 시간이 만료되었습니다</div>
-      ) : (
-        <button
-          onClick={handlePay}
-          disabled={isPaying || !participant.orderId || !tossRef.current}
-          className={cn(
-            'w-full py-2.5 rounded-lg text-sm font-semibold transition-all',
-            isPaying || !tossRef.current
-              ? 'bg-white/10 text-white/50 cursor-not-allowed'
-              : 'bg-violet-500 text-white hover:bg-violet-600 active:scale-[0.98]'
-          )}
-        >
-          {isPaying ? (
-            <span className="flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              결제 처리 중...
-            </span>
-          ) : (
-            '결제하기'
-          )}
-        </button>
-      )}
+        <div className="text-center py-3">
+          <p className="text-2xl font-bold text-white">{formatPrice(amount)}원</p>
+          <p className="text-xs text-white/50 mt-1">더치페이 결제 금액</p>
+        </div>
+
+        {/* 카운트다운 */}
+        {remainingSeconds !== null && !isExpired && (
+          <div className="flex items-center justify-center gap-1.5 text-yellow-400">
+            <Timer className="w-3.5 h-3.5" />
+            <span className="text-xs font-medium">{formatTime(remainingSeconds)} 남음</span>
+          </div>
+        )}
+
+        {isExpired ? (
+          <div className="text-center text-xs text-red-400">결제 시간이 만료되었습니다</div>
+        ) : (
+          <button
+            onClick={handlePay}
+            disabled={isPaying || !participant.orderId || !tossRef.current}
+            className={cn(
+              'w-full py-2.5 rounded-lg text-sm font-semibold transition-all',
+              isPaying || !tossRef.current
+                ? 'bg-white/10 text-white/50 cursor-not-allowed'
+                : 'bg-violet-500 text-white hover:bg-violet-600 active:scale-[0.98]'
+            )}
+          >
+            {isPaying ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                결제 처리 중...
+              </span>
+            ) : (
+              '결제하기'
+            )}
+          </button>
+        )}
+      </div>
     </div>
   );
 };
@@ -326,12 +332,15 @@ const ParticipantPaidView: React.FC<{
   const amount = participant.amount || 0;
 
   return (
-    <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4 mt-2 space-y-2">
-      <div className="flex items-center justify-center gap-2 text-violet-400">
-        <CheckCircle2 className="w-5 h-5" />
-        <span className="text-sm font-semibold">결제 완료</span>
+    <div className="rounded-xl border border-violet-500/30 bg-gradient-to-br from-violet-500/10 to-purple-900/20 mt-2 shadow-lg shadow-violet-500/10 overflow-hidden">
+      <div className="h-0.5 bg-gradient-to-r from-violet-400 to-purple-500" />
+      <div className="p-4 space-y-2">
+        <div className="flex items-center justify-center gap-2 text-violet-400">
+          <CheckCircle2 className="w-5 h-5" />
+          <span className="text-sm font-semibold">결제 완료</span>
+        </div>
+        <p className="text-center text-lg font-bold text-white">{formatPrice(amount)}원</p>
       </div>
-      <p className="text-center text-lg font-bold text-white">{formatPrice(amount)}원</p>
     </div>
   );
 };

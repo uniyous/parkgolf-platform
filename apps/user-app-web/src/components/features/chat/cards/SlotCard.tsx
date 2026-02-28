@@ -28,7 +28,8 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
   // ── 라운드 그룹 레이아웃 ──
   if (data.rounds && data.rounds.length > 0) {
     return (
-      <div className="mt-2 rounded-2xl bg-white/[0.08] border border-white/10 overflow-hidden">
+      <div className="mt-2 rounded-2xl bg-gradient-to-br from-violet-500/10 to-purple-900/20 border border-violet-500/30 shadow-lg shadow-violet-500/10 overflow-hidden">
+        <div className="h-0.5 bg-gradient-to-r from-violet-400 to-purple-500" />
         {/* 골프장 헤더 */}
         {data.clubName && (
           <>
@@ -121,43 +122,46 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
 
   // ── 하위 호환: flat slots 그리드 ──
   return (
-    <div className="mt-2">
-      <div className="grid grid-cols-2 gap-2">
-        {data.slots.map((slot) => {
-          const isSelected = selectedSlotId === slot.id;
-          const isDisabled = hasSelection && !isSelected;
+    <div className="mt-2 rounded-2xl bg-gradient-to-br from-violet-500/10 to-purple-900/20 border border-violet-500/30 shadow-lg shadow-violet-500/10 overflow-hidden">
+      <div className="h-0.5 bg-gradient-to-r from-violet-400 to-purple-500" />
+      <div className="p-3">
+        <div className="grid grid-cols-2 gap-2">
+          {data.slots.map((slot) => {
+            const isSelected = selectedSlotId === slot.id;
+            const isDisabled = hasSelection && !isSelected;
 
-          return (
-            <button
-              key={slot.id}
-              onClick={() => !isDisabled && onSelect?.(slot.id, slot.time, slot.price)}
-              disabled={!onSelect || isDisabled}
-              className={cn(
-                'rounded-xl p-3 border text-left transition-all relative',
-                isSelected
-                  ? 'bg-violet-500/10 border-violet-500/40'
-                  : isDisabled
-                    ? 'bg-white/[0.02] border-white/5 opacity-50 cursor-default'
-                    : 'bg-white/5 border-white/10',
-                onSelect && !isDisabled && !isSelected && 'hover:bg-white/10 hover:border-violet-500/30'
-              )}
-            >
-              {isSelected && (
-                <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-violet-500 flex items-center justify-center">
-                  <Check className="w-3 h-3 text-white" />
+            return (
+              <button
+                key={slot.id}
+                onClick={() => !isDisabled && onSelect?.(slot.id, slot.time, slot.price)}
+                disabled={!onSelect || isDisabled}
+                className={cn(
+                  'rounded-xl p-3 border text-left transition-all relative',
+                  isSelected
+                    ? 'bg-violet-500/15 border-violet-500/40'
+                    : isDisabled
+                      ? 'bg-white/[0.02] border-white/5 opacity-50 cursor-default'
+                      : 'bg-white/[0.06] border-white/10',
+                  onSelect && !isDisabled && !isSelected && 'hover:bg-white/10 hover:border-violet-500/30'
+                )}
+              >
+                {isSelected && (
+                  <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-violet-500 flex items-center justify-center">
+                    <Check className="w-3 h-3 text-white" />
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Clock className="w-3.5 h-3.5 text-violet-400" />
+                  <span className="text-sm font-semibold text-white">{slot.time}</span>
                 </div>
-              )}
-              <div className="flex items-center gap-1.5 mb-1">
-                <Clock className="w-3.5 h-3.5 text-violet-400" />
-                <span className="text-sm font-semibold text-white">{slot.time}</span>
-              </div>
-              <p className="text-xs text-white/60">{slot.courseName}</p>
-              <p className="text-xs text-violet-400 mt-1">
-                {'\u20A9'}{formatPrice(slot.price)}
-              </p>
-            </button>
-          );
-        })}
+                <p className="text-xs text-white/60">{slot.courseName}</p>
+                <p className="text-xs text-violet-400 mt-1">
+                  {'\u20A9'}{formatPrice(slot.price)}
+                </p>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
