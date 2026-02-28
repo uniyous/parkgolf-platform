@@ -205,6 +205,7 @@ enum MessageType: String, Codable, Sendable {
     case image = "IMAGE"
     case system = "SYSTEM"
     case bookingInvite = "BOOKING_INVITE"
+    case aiUser = "AI_USER"
     case aiAssistant = "AI_ASSISTANT"
 }
 
@@ -282,6 +283,9 @@ enum ConversationState: String, Codable, Sendable {
     case collecting = "COLLECTING"
     case confirming = "CONFIRMING"
     case booking = "BOOKING"
+    case selectingParticipants = "SELECTING_PARTICIPANTS"
+    case settling = "SETTLING"
+    case teamComplete = "TEAM_COMPLETE"
     case completed = "COMPLETED"
     case cancelled = "CANCELLED"
 }
@@ -292,6 +296,12 @@ enum ActionType: String, Codable, Sendable {
     case showWeather = "SHOW_WEATHER"
     case confirmBooking = "CONFIRM_BOOKING"
     case bookingComplete = "BOOKING_COMPLETE"
+    case showPayment = "SHOW_PAYMENT"
+    case confirmGroup = "CONFIRM_GROUP"
+    case selectParticipants = "SELECT_PARTICIPANTS"
+    case splitPayment = "SPLIT_PAYMENT"
+    case settlementStatus = "SETTLEMENT_STATUS"
+    case teamComplete = "TEAM_COMPLETE"
 }
 
 struct ChatAction: Codable, Sendable {
@@ -349,10 +359,59 @@ struct AiChatResponse: Codable, Sendable {
 }
 
 struct AiChatRequest: Codable, Sendable {
-    let message: String
-    let conversationId: String?
-    let latitude: Double?
-    let longitude: Double?
+    var message: String
+    var conversationId: String?
+    var latitude: Double?
+    var longitude: Double?
+    // 카드 상호작용
+    var selectedClubId: String?
+    var selectedClubName: String?
+    var selectedSlotId: String?
+    var selectedSlotTime: String?
+    var selectedSlotPrice: Int?
+    var confirmBooking: Bool?
+    var cancelBooking: Bool?
+    var paymentMethod: String?
+    var paymentComplete: Bool?
+    var paymentSuccess: Bool?
+    // 그룹 예약
+    var selectedSlots: [SelectedSlotDto]?
+    var teams: [TeamDto]?
+    var confirmGroupBooking: Bool?
+    // 분할결제
+    var splitPaymentComplete: Bool?
+    var splitOrderId: String?
+    // 그룹 후속 액션
+    var chatRoomId: String?
+    var teamMembers: [TeamMemberDto]?
+    var nextTeam: Bool?
+    var finishGroup: Bool?
+    var sendReminder: Bool?
+}
+
+struct SelectedSlotDto: Codable, Sendable {
+    let slotId: String
+    let slotTime: String
+    let courseName: String
+    let price: Int
+}
+
+struct TeamDto: Codable, Sendable {
+    let teamNumber: Int
+    let slotId: String
+    let members: [TeamMemberDto]
+}
+
+struct TeamMemberDto: Codable, Sendable {
+    let userId: Int
+    let userName: String
+    let userEmail: String
+}
+
+struct TeamConfirmData: Sendable {
+    let teamNumber: Int
+    let slotId: String
+    let members: [TeamMemberDto]
 }
 
 struct ClubCardData: Sendable {

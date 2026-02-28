@@ -70,6 +70,18 @@ actor PaymentService {
         return try await apiClient.request(endpoint, responseType: ConfirmPaymentResponse.self)
     }
 
+    // MARK: - Confirm Split Payment
+
+    func confirmSplitPayment(request: ConfirmPaymentRequest) async throws -> ConfirmPaymentResponse {
+        let endpoint = Endpoint(
+            path: "/api/user/payments/split/confirm",
+            method: .post,
+            body: request
+        )
+
+        return try await apiClient.request(endpoint, responseType: ConfirmPaymentResponse.self)
+    }
+
     // MARK: - Get Payment by Order ID
 
     func getPaymentByOrderId(orderId: String) async throws -> PaymentStatusResponse {
