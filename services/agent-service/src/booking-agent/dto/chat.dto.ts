@@ -1,4 +1,19 @@
-import { IsString, IsOptional, IsNumber, IsBoolean, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsBoolean, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+
+/**
+ * 팀 멤버 DTO (중첩 객체 — whitelist 호환)
+ */
+export class TeamMemberDto {
+  @IsNumber()
+  userId: number;
+
+  @IsString()
+  userName: string;
+
+  @IsString()
+  userEmail: string;
+}
 
 /**
  * 채팅 요청 DTO
@@ -82,7 +97,9 @@ export class ChatRequestDto {
 
   @IsOptional()
   @IsArray()
-  teamMembers?: Array<{ userId: number; userName: string; userEmail: string }>;
+  @ValidateNested({ each: true })
+  @Type(() => TeamMemberDto)
+  teamMembers?: TeamMemberDto[];
 
   @IsOptional()
   @IsBoolean()

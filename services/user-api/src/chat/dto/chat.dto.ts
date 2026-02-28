@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsArray, IsEnum, IsOptional, IsNumber, IsBoolean } from 'class-validator';
+import { IsString, IsArray, IsEnum, IsOptional, IsNumber, IsBoolean, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export enum ChatRoomType {
   DIRECT = 'DIRECT',
@@ -71,6 +72,17 @@ export class AddMembersDto {
   @IsArray()
   @IsString({ each: true })
   user_ids: string[];
+}
+
+export class TeamMemberDto {
+  @IsNumber()
+  userId: number;
+
+  @IsString()
+  userName: string;
+
+  @IsString()
+  userEmail: string;
 }
 
 export class AiChatRequestDto {
@@ -152,7 +164,9 @@ export class AiChatRequestDto {
   @ApiPropertyOptional({ description: '팀 멤버 선택' })
   @IsOptional()
   @IsArray()
-  teamMembers?: Array<{ userId: number; userName: string; userEmail: string }>;
+  @ValidateNested({ each: true })
+  @Type(() => TeamMemberDto)
+  teamMembers?: TeamMemberDto[];
 
   @ApiPropertyOptional({ description: '다음 팀 버튼' })
   @IsOptional()
