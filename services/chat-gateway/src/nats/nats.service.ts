@@ -152,10 +152,11 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
 
           case 'reconnect':
             this.logger.log('NATS reconnected, reinitializing JetStream and ClientProxies');
-            // Reinitialize JetStream client after reconnect
+            // Reinitialize JetStream client + recreate streams (NATS 파드 재시작 시 스트림 소실 대응)
             try {
               this.js = this.nc!.jetstream();
               this.jsm = await this.nc!.jetstreamManager();
+              await this.setupStreams();
             } catch (error) {
               this.logger.error('Failed to reinitialize JetStream after reconnect', error);
             }
@@ -241,7 +242,19 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
         msgID: message.id,
       });
       this.logger.debug(`Published message to ${subject}`);
-    } catch (error) {
+    } catch (error: any) {
+      // 503 = 스트림 없음 (NATS 파드 재배치 후) → 스트림 재생성 후 재시도
+      if (error?.code === '503') {
+        this.logger.warn('JetStream 503 — recreating streams and retrying');
+        try {
+          await this.setupStreams();
+          await this.js.publish(subject, data, { msgID: message.id });
+          this.logger.log('Retry publish succeeded after stream recreation');
+          return;
+        } catch (retryError) {
+          this.logger.error('Retry publish failed after stream recreation', retryError);
+        }
+      }
       this.logger.error(`Failed to publish message to ${subject}`, error);
       throw error;
     }
@@ -256,7 +269,14 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
 
     try {
       await this.js.publish(subject, data);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.code === '503') {
+        try {
+          await this.setupStreams();
+          await this.js.publish(subject, data);
+          return;
+        } catch { /* ignore retry failure for presence */ }
+      }
       this.logger.error(`Failed to publish presence for user ${userId}`, error);
     }
   }
