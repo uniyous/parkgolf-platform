@@ -109,6 +109,7 @@ enum class MessageType(val value: String) {
     IMAGE("IMAGE"),
     SYSTEM("SYSTEM"),
     BOOKING_INVITE("BOOKING_INVITE"),
+    AI_USER("AI_USER"),
     AI_ASSISTANT("AI_ASSISTANT");
 
     companion object {
@@ -126,6 +127,7 @@ enum class ConversationState(val value: String) {
     BOOKING("booking"),
     SELECTING_PARTICIPANTS("selecting_participants"),
     SETTLING("settling"),
+    TEAM_COMPLETE("team_complete"),
     COMPLETED("completed"),
     CANCELLED("cancelled");
 
@@ -145,7 +147,8 @@ enum class ActionType(val value: String) {
     CONFIRM_GROUP("CONFIRM_GROUP"),
     SELECT_PARTICIPANTS("SELECT_PARTICIPANTS"),
     SPLIT_PAYMENT("SPLIT_PAYMENT"),
-    SETTLEMENT_STATUS("SETTLEMENT_STATUS");
+    SETTLEMENT_STATUS("SETTLEMENT_STATUS"),
+    TEAM_COMPLETE("TEAM_COMPLETE");
 
     companion object {
         fun fromValue(value: String): ActionType? =

@@ -26,6 +26,7 @@ import com.parkgolf.app.presentation.feature.chat.components.cards.PaymentCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.SelectParticipantsCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.SettlementStatusCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.SlotCard
+import com.parkgolf.app.presentation.feature.chat.components.cards.TeamCompleteCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.TeamConfirmData
 import com.parkgolf.app.presentation.feature.chat.components.cards.WeatherCard
 import com.parkgolf.app.presentation.theme.ParkOnPrimary
@@ -51,6 +52,10 @@ fun AiMessageBubble(
     onTeamConfirm: ((List<TeamConfirmData>) -> Unit)? = null,
     onSplitPaymentComplete: ((Boolean, String) -> Unit)? = null,
     onRequestSplitPayment: ((orderId: String, amount: Int) -> Unit)? = null,
+    onNextTeam: (() -> Unit)? = null,
+    onFinish: (() -> Unit)? = null,
+    onSendReminder: (() -> Unit)? = null,
+    onRefresh: (() -> Unit)? = null,
     selectedClubId: String? = null,
     selectedSlotId: String? = null
 ) {
@@ -102,7 +107,7 @@ fun AiMessageBubble(
                 bottomStart = 4.dp,
                 bottomEnd = 16.dp
             ),
-            color = ParkPrimary.copy(alpha = 0.05f)
+            color = ParkPrimary.copy(alpha = 0.10f)
         ) {
             Row(modifier = Modifier.height(IntrinsicSize.Min)) {
                 // Left accent border
@@ -110,7 +115,7 @@ fun AiMessageBubble(
                     modifier = Modifier
                         .width(3.dp)
                         .fillMaxHeight()
-                        .background(ParkPrimary.copy(alpha = 0.4f))
+                        .background(ParkPrimary)
                 )
 
                 Column(
@@ -168,7 +173,14 @@ fun AiMessageBubble(
                                 data = action.data,
                                 currentUserId = currentUserId,
                                 onSplitPaymentComplete = onSplitPaymentComplete,
-                                onRequestSplitPayment = onRequestSplitPayment
+                                onRequestSplitPayment = onRequestSplitPayment,
+                                onSendReminder = onSendReminder,
+                                onRefresh = onRefresh
+                            )
+                            ActionType.TEAM_COMPLETE -> TeamCompleteCard(
+                                data = action.data,
+                                onNextTeam = onNextTeam,
+                                onFinish = onFinish
                             )
                             ActionType.SPLIT_PAYMENT -> { /* handled by settlement status */ }
                         }
@@ -184,5 +196,64 @@ fun AiMessageBubble(
             color = ParkOnPrimary.copy(alpha = 0.5f),
             modifier = Modifier.padding(start = 8.dp, top = 2.dp)
         )
+    }
+}
+
+/**
+ * AI_USER 메시지 버블: 사용자가 AI 모드에서 보낸 메시지
+ * 우측 정렬, ParkPrimary 테마, 우측 보더
+ */
+@Composable
+fun AiUserMessageBubble(
+    content: String,
+    createdAt: LocalDateTime
+) {
+    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End
+    ) {
+        Column(
+            horizontalAlignment = Alignment.End
+        ) {
+            Surface(
+                shape = RoundedCornerShape(
+                    topStart = 16.dp,
+                    topEnd = 16.dp,
+                    bottomStart = 16.dp,
+                    bottomEnd = 4.dp
+                ),
+                color = ParkPrimary.copy(alpha = 0.15f)
+            ) {
+                Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(12.dp)
+                    ) {
+                        Text(
+                            text = content,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = ParkOnPrimary
+                        )
+                    }
+                    // Right accent border
+                    Box(
+                        modifier = Modifier
+                            .width(3.dp)
+                            .fillMaxHeight()
+                            .background(ParkPrimary)
+                    )
+                }
+            }
+
+            Text(
+                text = createdAt.format(timeFormatter),
+                style = MaterialTheme.typography.labelSmall,
+                color = ParkOnPrimary.copy(alpha = 0.5f),
+                modifier = Modifier.padding(end = 8.dp, top = 2.dp)
+            )
+        }
     }
 }

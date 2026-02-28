@@ -106,6 +106,7 @@ enum class MessageType(val value: String) {
     IMAGE("IMAGE"),
     SYSTEM("SYSTEM"),
     BOOKING_INVITE("BOOKING_INVITE"),
+    AI_USER("AI_USER"),
     AI_ASSISTANT("AI_ASSISTANT")
 }
 
@@ -133,7 +134,13 @@ data class AiChatRequest(
     val confirmGroupBooking: Boolean? = null,
     // 분할결제 완료
     val splitPaymentComplete: Boolean? = null,
-    val splitOrderId: String? = null
+    val splitOrderId: String? = null,
+    // 그룹 예약 후속 액션
+    val chatRoomId: String? = null,
+    val teamMembers: List<TeamMemberDto>? = null,
+    val nextTeam: Boolean? = null,
+    val finishGroup: Boolean? = null,
+    val sendReminder: Boolean? = null
 )
 
 @Serializable

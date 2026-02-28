@@ -12,6 +12,7 @@ import com.parkgolf.app.domain.model.ChatMessage
 import com.parkgolf.app.domain.model.ChatRoom
 import com.parkgolf.app.domain.model.ConversationState
 import com.parkgolf.app.domain.model.MessageType
+import com.parkgolf.app.data.local.datastore.AuthPreferences
 import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.ChatRepository
 import com.parkgolf.app.domain.repository.PaymentRepository
@@ -70,6 +71,7 @@ data class ChatUiState(
             ConversationState.BOOKING -> "예약 처리 중..."
             ConversationState.SELECTING_PARTICIPANTS -> "팀 편성 중..."
             ConversationState.SETTLING -> "정산 처리 중..."
+            ConversationState.TEAM_COMPLETE -> "팀 예약 완료..."
             else -> "생각 중..."
         }
 }
@@ -79,7 +81,8 @@ class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val authRepository: AuthRepository,
     private val paymentRepository: PaymentRepository,
-    private val locationManager: LocationManager
+    private val locationManager: LocationManager,
+    private val authPreferences: AuthPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatUiState())
@@ -101,6 +104,23 @@ class ChatViewModel @Inject constructor(
         observeTokenRefresh()
         observeReconnectSignal()
         loadCurrentUser()
+        recoverPendingPayment()
+    }
+
+    private fun recoverPendingPayment() {
+        viewModelScope.launch {
+            val saved = authPreferences.getPendingPayment()
+            if (saved != null && _uiState.value.pendingPayment == null) {
+                _uiState.value = _uiState.value.copy(
+                    pendingPayment = PendingPayment(
+                        orderId = saved.orderId,
+                        orderName = saved.orderName,
+                        amount = saved.amount,
+                        type = saved.type
+                    )
+                )
+            }
+        }
     }
 
     private fun loadCurrentUser() {
@@ -537,6 +557,7 @@ class ChatViewModel @Inject constructor(
             val location = locationManager.getCurrentLocation()
             val fullRequest = request.copy(
                 conversationId = request.conversationId ?: _uiState.value.aiConversationId,
+                chatRoomId = request.chatRoomId ?: currentRoomId,
                 latitude = request.latitude ?: location?.latitude,
                 longitude = request.longitude ?: location?.longitude
             )
@@ -560,7 +581,7 @@ class ChatViewModel @Inject constructor(
             senderId = _uiState.value.currentUserId ?: "",
             senderName = "나",
             content = content,
-            messageType = MessageType.TEXT,
+            messageType = MessageType.AI_USER,
             createdAt = LocalDateTime.now()
         )
         _uiState.value = _uiState.value.copy(
@@ -603,11 +624,16 @@ class ChatViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(
             pendingPayment = PendingPayment(orderId, orderName, amount, type)
         )
+        // DataStore에 영속화 (프로세스 kill 대비)
+        viewModelScope.launch {
+            authPreferences.savePendingPayment(orderId, orderName, amount, type)
+        }
     }
 
     fun handlePaymentResult(paymentKey: String, orderId: String, amount: Int) {
         val type = _uiState.value.pendingPayment?.type ?: "single"
         _uiState.value = _uiState.value.copy(pendingPayment = null)
+        viewModelScope.launch { authPreferences.clearPendingPayment() }
 
         viewModelScope.launch {
             val confirmResult = if (type == "split") {
@@ -666,6 +692,7 @@ class ChatViewModel @Inject constructor(
         val type = _uiState.value.pendingPayment?.type ?: "single"
         val orderId = _uiState.value.pendingPayment?.orderId ?: ""
         _uiState.value = _uiState.value.copy(pendingPayment = null)
+        viewModelScope.launch { authPreferences.clearPendingPayment() }
         notifyPaymentFailed(type, orderId)
     }
 
