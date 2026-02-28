@@ -1117,7 +1117,7 @@ erDiagram
     ChatRoom {
         uuid id PK
         string name
-        string type "DIRECT/GROUP/BOOKING"
+        string type "DIRECT/CHANNEL/BOOKING"
         int bookingId "cross-ref: booking_db"
         datetime createdAt
         datetime updatedAt
@@ -1281,7 +1281,7 @@ erDiagram
 
 | Enum | 값 | 설명 |
 |------|----|------|
-| RoomType | `DIRECT`, `GROUP`, `BOOKING` | 채팅방 유형 |
+| RoomType | `DIRECT`, `CHANNEL`, `BOOKING` | 채팅방 유형 |
 | MessageType | `TEXT`, `IMAGE`, `SYSTEM` | 메시지 유형 |
 
 ### Notification Service

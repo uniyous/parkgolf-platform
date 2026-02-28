@@ -378,7 +378,7 @@ Core Features:
 Database: PostgreSQL (chat_db)
 
 Data Models:
-  ChatRoom (DIRECT/GROUP/BOOKING), ChatMessage, ChatRoomMember
+  ChatRoom (DIRECT/CHANNEL/BOOKING), ChatMessage, ChatRoomMember
 
 NATS Patterns:
   chat.rooms.create/get/list/addMember/removeMember/booking
