@@ -35,7 +35,7 @@ graph TB
         BA["BookingAgentService<br/>(오케스트레이션)"]
         DS["DeepSeekService<br/>(Function Calling)"]
         TE["ToolExecutorService<br/>(NATS → 서비스)"]
-        Conv["ConversationService<br/>(node-cache, TTL 30분)"]
+        Conv["ConversationService<br/>(DB 영속 + 메모리 캐시)"]
     end
 
     subgraph Services["마이크로서비스"]
@@ -65,6 +65,101 @@ graph TB
     class API bff
     class BA,DS,TE,Conv agent
     class CS,BS,WS,LS,PS svc
+```
+
+### 2.1 대화 컨텍스트 영속화
+
+대화 컨텍스트를 DB에 저장하여 **페이지 이탈/재진입, 서버 재배포** 시에도 대화를 이어갈 수 있다.
+
+#### 왜 필요한가
+
+| 시나리오 | 메모리 캐시만 사용 시 |
+|---------|------------------|
+| 더치페이 진행 중 앱 종료 후 재진입 | 결제 현황 유실, 리마인더 전송 불가 |
+| 2팀 진행 중 페이지 새로고침 | completedTeams 유실, 1팀 정보 사라짐 |
+| agent-service Pod 재시작/배포 | 진행 중인 모든 대화 유실 |
+| 30분 이상 결제 대기 | TTL 만료로 컨텍스트 삭제 |
+
+#### DB 스키마 (agent-service Prisma)
+
+```prisma
+model AgentConversation {
+  id          String   @id @default(uuid())
+  userId      Int
+  chatRoomId  String
+  state       String   // ConversationState
+  context     Json     // slots, completedTeams, messages 등 전체 컨텍스트
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, chatRoomId])  // 채팅방당 사용자 1개 활성 대화
+  @@index([chatRoomId])
+  @@index([updatedAt])            // 오래된 대화 정리용
+}
+```
+
+#### 키 설계: `userId + chatRoomId`
+
+```
+기존:  conv:{userId}:{conversationId}  → 프론트가 conversationId를 기억해야 함
+변경:  userId + chatRoomId (유니크)     → 채팅방 진입만으로 자동 조회
+```
+
+- `conversationId`(UUID)를 프론트엔드가 관리할 필요 없음
+- 채팅방에 들어오면 `userId + chatRoomId`로 진행 중인 대화를 자동 복원
+- 진행자든 참여자든 동일한 방식
+
+#### ConversationService 변경
+
+```
+기존: NodeCache (메모리, TTL 30분)
+변경: DB (영속) + NodeCache (읽기 캐시, TTL 5분)
+```
+
+```typescript
+// 조회: 캐시 우선 → DB 폴백
+getOrCreate(userId, chatRoomId):
+  1. NodeCache 조회 → 있으면 반환
+  2. DB 조회 (userId + chatRoomId) → 있으면 캐시에 적재 후 반환
+  3. 없으면 DB에 새로 생성 + 캐시 적재
+
+// 업데이트: DB + 캐시 동시 갱신
+update(context):
+  1. DB upsert (context → JSON 직렬화)
+  2. NodeCache 갱신
+
+// 정리: 완료된 대화 삭제
+cleanup():
+  - state = COMPLETED / CANCELLED 이고 updatedAt < 24시간 전 → 삭제
+  - 스케줄러 (job-service 또는 @Cron)
+```
+
+#### 프론트엔드 변경 (useAiChat 훅)
+
+```typescript
+// 기존: conversationId를 React state로 관리
+const [conversationId, setConversationId] = useState<string | undefined>();
+
+// 변경: conversationId 제거, roomId만으로 대화 식별
+// 요청 시 conversationId 대신 chatRoomId를 전달
+// 응답의 state로 AI 모드 자동 ON/OFF 결정
+```
+
+| 시점 | 동작 |
+|------|------|
+| 채팅방 진입 | 메시지 로드 → 최근 AI_ASSISTANT metadata에서 state 확인 |
+| state가 진행 중 | AI 모드 자동 ON + 마지막 액션 카드 복원 |
+| state가 COMPLETED/IDLE | AI 모드 OFF 유지 |
+| AI 모드 ON 클릭 | 첫 메시지 → agent-service가 DB에서 기존 대화 조회 또는 신규 생성 |
+| AI 모드 OFF 클릭 | 대화 중단 (DB에는 유지, 재진입 시 이어가기 가능) |
+
+#### API 변경
+
+```
+기존: POST /chat/rooms/:id/agent  { message, conversationId, ... }
+변경: POST /chat/rooms/:id/agent  { message, ... }
+      → conversationId 파라미터 제거
+      → agent-service가 userId + chatRoomId로 대화 자동 조회
 ```
 
 ---
@@ -1015,7 +1110,50 @@ sequenceDiagram
     Agent->>Notify: 채팅방 SYSTEM 메시지
 ```
 
-### 13.7 메시지 가시성
+### 13.7 대화 복원 (페이지 재진입)
+
+더치페이 진행 중 앱 종료/새로고침 후 재진입 시 대화를 이어간다.
+섹션 2.1의 `AgentConversation` DB를 활용.
+
+#### 복원 흐름
+
+```
+채팅방 진입
+  ↓
+메시지 목록 로드 (기존)
+  ↓
+최근 AI_ASSISTANT 메시지의 metadata.state 확인
+  ├─ IDLE / COMPLETED → AI 모드 OFF (복원 불필요)
+  └─ 그 외 (COLLECTING, SETTLING 등) → 진행 중인 대화 있음
+       ↓
+   AI 모드 자동 ON
+       ↓
+   첫 요청 시 agent-service가 DB에서 컨텍스트 복원
+   (userId + chatRoomId → AgentConversation)
+       ↓
+   마지막 상태에 맞는 카드 재표시
+   (예: SETTLING → SETTLEMENT_STATUS 카드)
+```
+
+#### 복원 시나리오별 동작
+
+| 시나리오 | 복원 시 카드 | 데이터 출처 |
+|---------|------------|-----------|
+| 1팀 더치페이 결제 대기 중 | SETTLEMENT_STATUS (결제 현황) | DB context.completedTeams + payment-service 실시간 조회 |
+| 2팀 멤버 선택 중 | SELECT_MEMBERS (이전 팀 표시) | DB context.completedTeams → assignedTeams 생성 |
+| 슬롯 선택 중 | SHOW_SLOTS | DB context.slots (clubId, date) → course-service 재조회 |
+| 예약 확인 대기 | CONFIRM_BOOKING | DB context.slots 전체 |
+
+#### 진행자 vs 참여자
+
+| 역할 | 복원 대상 | 키 |
+|------|---------|-----|
+| 진행자 | AI 대화 전체 (팀 편성, 결제 현황 등) | userId(진행자) + chatRoomId |
+| 참여자 | 결제 요청 화면 (SPLIT_PAYMENT) | push 알림 딥링크로 결제 페이지 직접 접근 (대화 복원 불필요) |
+
+> 참여자는 AI 대화에 참여하지 않으므로 대화 복원이 아닌 **결제 딥링크**로 처리.
+
+### 13.8 메시지 가시성
 
 | 메시지 타입 | 누가 보는가 | DB 타입 | 채널 |
 |------------|-----------|--------|------|
@@ -1026,7 +1164,7 @@ sequenceDiagram
 | 예약완료 안내 | **채팅방 전체** | SYSTEM | 채팅방 브로드캐스트 |
 | 일반 채팅 | **채팅방 전체** | TEXT / IMAGE | 채팅방 히스토리 |
 
-### 13.8 Direct Handlers
+### 13.9 Direct Handlers
 
 ```typescript
 // 기존 체인에 추가 (그룹 예약용)
@@ -1048,7 +1186,7 @@ if (request.sendReminder)         → handleSendReminder()
 > 슬롯 선택, 예약 확인, 결제 완료는 **기존 싱글 플로우 핸들러를 그대로 재사용**
 > (handleDirectSlotSelect, handleDirectBooking, handlePaymentComplete)
 
-### 13.9 UI 카드
+### 13.10 UI 카드
 
 | ActionType | 용도 | 신규/기존 |
 |------------|------|----------|
@@ -1176,18 +1314,21 @@ slots: {
 
 | 순서 | 작업 | 영향 범위 | 복잡도 |
 |------|------|----------|--------|
-| 1 | DB 스키마: BookingParticipant, PaymentSplit | booking/payment-service | 낮음 |
-| 2 | `payment.splitPrepare` / `splitConfirm` | payment-service | 중간 |
-| 3 | agent-service: SELECT_MEMBERS 핸들러 + 팀 반복 로직 | agent-service | 중간 |
-| 4 | agent-service: TEAM_COMPLETE + 다음 팀/종료 핸들러 | agent-service | 낮음 |
-| 5 | agent-service: 종료 시 SYSTEM 메시지 브로드캐스트 | agent-service, chat-service | 낮음 |
-| 6 | Web: SELECT_MEMBERS, TEAM_COMPLETE 카드 | user-app-web | 중간 |
-| 7 | Web: CONFIRM_BOOKING 더치페이 옵션 추가 | user-app-web | 낮음 |
-| 8 | Web: SETTLEMENT_STATUS 카드 (1팀 단위) | user-app-web | 낮음 (기존 간소화) |
-| 9 | push 알림 + 참여자 결제 딥링크 | notify-service | 중간 |
-| 10 | Android: 동일 카드 구현 | user-app-android | 중간 |
-| 11 | job-service: 팀별 결제 만료 스케줄러 | job-service | 낮음 |
-| 12 | iOS: 동일 카드 구현 | user-app-ios | 중간 |
+| 1 | DB 스키마: AgentConversation (대화 영속화) | agent-service | 낮음 |
+| 2 | ConversationService: NodeCache → DB + 캐시 | agent-service | 중간 |
+| 3 | DB 스키마: BookingParticipant, PaymentSplit | booking/payment-service | 낮음 |
+| 4 | `payment.splitPrepare` / `splitConfirm` | payment-service | 중간 |
+| 5 | agent-service: SELECT_MEMBERS 핸들러 + 팀 반복 로직 | agent-service | 중간 |
+| 6 | agent-service: TEAM_COMPLETE + 다음 팀/종료 핸들러 | agent-service | 낮음 |
+| 7 | agent-service: 종료 시 SYSTEM 메시지 브로드캐스트 | agent-service, chat-service | 낮음 |
+| 8 | Web: conversationId 제거 + chatRoomId 기반 대화 복원 | user-app-web | 낮음 |
+| 9 | Web: SELECT_MEMBERS, TEAM_COMPLETE 카드 | user-app-web | 중간 |
+| 10 | Web: CONFIRM_BOOKING 더치페이 옵션 추가 | user-app-web | 낮음 |
+| 11 | Web: SETTLEMENT_STATUS 카드 (1팀 단위) | user-app-web | 낮음 (기존 간소화) |
+| 12 | push 알림 + 참여자 결제 딥링크 | notify-service | 중간 |
+| 13 | Android: 동일 카드 구현 | user-app-android | 중간 |
+| 14 | job-service: 팀별 결제 만료 스케줄러 + 대화 정리 | job-service | 낮음 |
+| 15 | iOS: 동일 카드 구현 | user-app-ios | 중간 |
 
 ### 13.14 기존 대비 변경 요약
 
@@ -1201,173 +1342,9 @@ slots: {
 | 신규 카드 | CONFIRM_GROUP, SELECT_PARTICIPANTS | **SELECT_MEMBERS, TEAM_COMPLETE** (2개) |
 | 삭제 카드 | CONFIRM_GROUP, SELECT_PARTICIPANTS (드래그) | 삭제 |
 | DB 모델 | BookingGroup + BookingParticipant + PaymentSplit | **BookingParticipant + PaymentSplit** (BookingGroup 삭제) |
-
----
-
-**Last Updated**: 2026-02-27
-```
-
-#### SPLIT_PAYMENT (참여자 개별 결제 화면)
-
-```
-┌──────────────────────────────────────┐
-│ 💳 결제 요청                          │
-│ 김민수님이 더치페이를 요청했어요       │
-│                                      │
-│ 📍 한밭파크골프장                     │
-│ 📅 2026-02-27 (목) 09:30  2팀       │
-│ 👥 4명 (내 팀)                       │
-│ 💰 ₩15,000                          │
-│                                      │
-│ ⏱ 결제 기한: 25분 남음               │
-│                                      │
-│ ┌──────────────────────┐            │
-│ │       결제하기         │            │
-│ └──────────────────────┘            │
-└──────────────────────────────────────┘
-```
-
-**데이터 구조**:
-```json
-{
-  "splitId": 456,
-  "bookingId": 101,
-  "groupNumber": "GRP-20260227-001",
-  "orderId": "SPLIT-20260227-001-U2",
-  "bookerName": "김민수",
-  "clubName": "한밭파크골프장",
-  "date": "2026-02-27",
-  "slotTime": "09:30",
-  "teamNumber": 2,
-  "amount": 15000,
-  "expiredAt": "2026-02-27T09:30:00Z"
-}
-```
-
-#### 예약완료 안내 (SYSTEM 메시지 — 채팅방 전체)
-
-전 팀 결제가 완료되면 **채팅방 전체 참여자**에게 SYSTEM 메시지를 브로드캐스트한다.
-이 메시지는 AI 메시지(AI_USER/AI_ASSISTANT)가 아닌 일반 SYSTEM 타입이므로 모든 참여자에게 노출된다.
-
-```
-┌──────────────────────────────────────────┐
-│ 🎉 그룹 예약이 완료되었습니다!             │
-│                                          │
-│ 📍 한밭파크골프장                         │
-│ 📅 2026-02-27 (목)                       │
-│                                          │
-│ 🏌️ 1팀 09:00 A코스 (4명)                │
-│    김민수, 박지영, 이준호, 최서연          │
-│ 🏌️ 2팀 09:30 A코스 (4명)                │
-│    정우진, 한소희, 류진우, 강다영          │
-│                                          │
-│ 💳 총 ₩120,000 (1인당 ₩15,000)         │
-│ 🏷️ 예약번호 GRP-20260227-001            │
-└──────────────────────────────────────────┘
-```
-
-> 진행자의 AI 채팅에는 `BOOKING_COMPLETE` 카드 표시 (AI_ASSISTANT)
-> 채팅방 전체에는 SYSTEM 메시지로 요약 안내 (모든 참여자 노출)
-
-### 13.8 메시지 가시성 정리
-
-| 메시지 타입 | 누가 보는가 | DB 저장 타입 | 채널 |
-|------------|-----------|------------|------|
-| AI 대화 (검색, 팀편성 등) | 진행자 본인만 | AI_USER / AI_ASSISTANT | senderId 필터 |
-| SETTLEMENT_STATUS 카드 | 진행자 본인만 | AI_ASSISTANT metadata | senderId 필터 |
-| BOOKING_COMPLETE 카드 | 진행자 본인만 | AI_ASSISTANT metadata | senderId 필터 |
-| 분할결제 요청 | 해당 참여자 개별 | - | push 알림 (notify-service) |
-| 예약완료 안내 | **채팅방 전체** | SYSTEM | 채팅방 브로드캐스트 |
-| 일반 채팅 메시지 | **채팅방 전체** | TEXT / IMAGE | 채팅방 히스토리 |
-
-### 13.9 NATS 패턴
-
-| 패턴 | 방향 | 대상 서비스 | 설명 |
-|------|------|-----------|------|
-| `bookingGroup.create` | agent → booking | booking-service | BookingGroup 메타데이터 생성 (Booking은 팀별로 별도) |
-| `bookingGroup.get` | agent → booking | booking-service | 그룹 정산 현황 조회 (팀별 상태 포함) |
-| `booking.create` | agent → booking | booking-service | 팀별 Booking 생성 + slot.reserve Saga |
-| `booking.participant.paid` | payment → booking | booking-service | 참여자 결제 완료 → 팀별 정산 상태 갱신 |
-| `payment.splitPrepare` | agent → payment | payment-service | **팀 단위** 참여자별 orderId 발급 |
-| `payment.splitGet` | client → payment | payment-service | 개별 결제 정보 조회 |
-| `payment.splitConfirm` | client → payment | payment-service | Toss 결제 완료 처리 |
-| `chat.room.getMembers` | agent → chat | chat-service | 채팅방 멤버 목록 조회 |
-| `chat.messages.save` | agent → chat | chat-service | 예약완료 SYSTEM 메시지 저장 |
-| `notify.sendBatch` | agent → notify | notify-service | **팀별** 참여자 push 알림 |
-
-`bookingGroup.create` 페이로드 (메타데이터만 — Booking은 팀별 별도 생성):
-```typescript
-{
-  idempotencyKey: string;
-  chatRoomId: string;
-  bookerId: number;
-  bookerName: string;
-  bookerEmail: string;
-  clubId: number;
-  clubName: string;
-  date: string;                          // YYYY-MM-DD
-  pricePerPerson: number;
-  teamCount: number;
-  totalParticipants: number;
-  teams: Array<{                         // 팀 편성 정보 (예약은 팀별로 별도)
-    teamNumber: number;
-    gameTimeSlotId: number;
-    participants: Array<{
-      userId: number;
-      userName: string;
-      userEmail: string;
-    }>;
-  }>;
-}
-```
-
-`payment.splitPrepare` 페이로드 (**팀 단위**로 호출):
-```typescript
-{
-  bookingGroupId?: number;               // 멀티팀 그룹 ID
-  bookingId: number;                     // 해당 팀의 Booking ID
-  teamNumber: number;
-  participants: Array<{
-    userId: number;
-    userName: string;
-    userEmail: string;
-    amount: number;
-  }>;
-  expiredAt: string;                     // ISO 8601
-}
-```
-
-### 13.10 결제 기한 + 만료 처리
-
-**팀별 독립 만료**: 각 팀의 결제 기한은 해당 팀 슬롯 확보 시점 기준으로 설정된다.
-
-| 시점 | 동작 |
-|------|------|
-| 팀별 슬롯 확보 시 | `expiredAt` = 현재 + 30분 (팀별 독립) |
-| 만료 10분 전 | 해당 팀 미결제 참여자에게 리마인더 자동 발송 (job-service) |
-| 만료 시 | 해당 팀 미결제 PaymentSplit → `EXPIRED`, 참여자 → `CANCELLED` |
-| 팀 만료 후 | 해당 팀 전원 미결제 → slot.release (다른 팀에 영향 없음) |
-| 팀 만료 후 | 일부 결제 → 진행자에게 선택지 (인원 축소 / 팀 취소+환불) |
-
-> 만료 처리는 `job-service`에서 Bull Queue delayed job으로 **팀별** 실행
-> 3팀 중 1팀만 만료되어도 나머지 2팀은 정상 진행
-
-### 13.11 구현 우선순위
-
-| 순서 | 작업 | 영향 범위 |
-|------|------|----------|
-| 1 | DB 스키마: BookingGroup, BookingParticipant, PaymentSplit | booking-service, payment-service |
-| 2 | `bookingGroup.create` — 메타데이터 생성 | booking-service |
-| 3 | `booking.create` 팀별 Saga (기존 싱글 플로우 재사용) | booking-service |
-| 4 | `payment.splitPrepare` / `splitConfirm` (팀 단위) | payment-service |
-| 5 | `chat.room.getMembers` NATS 핸들러 | chat-service |
-| 6 | agent-service: 멀티슬롯 선택 + 팀 편성 + 팀별 순차 결제 플로우 | agent-service |
-| 7 | agent-service: 전 팀 완료 시 SYSTEM 메시지 브로드캐스트 | agent-service, chat-service |
-| 8 | Web: SELECT_PARTICIPANTS, SETTLEMENT_STATUS, SPLIT_PAYMENT 카드 | user-app-web |
-| 9 | Android: 동일 카드 구현 | user-app-android |
-| 10 | push 알림 + 참여자 결제 딥링크 (팀별 발송) | notify-service, 클라이언트 |
-| 11 | job-service: 팀별 결제 기한 만료 스케줄러 | job-service |
-| 12 | iOS: 동일 카드 구현 | user-app-ios |
+| 대화 저장 | 메모리 캐시 (NodeCache, TTL 30분) | **DB 영속 (AgentConversation)** + 메모리 캐시 |
+| 대화 키 | `conv:{userId}:{conversationId}` | **`userId + chatRoomId`** (conversationId 제거) |
+| 페이지 재진입 | 대화 유실 | **자동 복원** (DB에서 컨텍스트 조회) |
 
 ---
 
