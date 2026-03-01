@@ -1,8 +1,12 @@
 -- CreateEnum
 CREATE TYPE "SplitStatus" AS ENUM ('PENDING', 'PAID', 'EXPIRED', 'CANCELLED', 'REFUNDED');
 
--- CreateEnum
-CREATE TYPE "RefundRequestorType" AS ENUM ('USER', 'ADMIN', 'SYSTEM');
+-- CreateEnum (skip if already exists)
+DO $$ BEGIN
+    CREATE TYPE "RefundRequestorType" AS ENUM ('USER', 'ADMIN', 'SYSTEM');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- CreateTable
 CREATE TABLE "payment_splits" (
