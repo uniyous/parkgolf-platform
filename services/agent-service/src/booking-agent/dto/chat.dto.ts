@@ -219,8 +219,9 @@ export interface BookingSlots {
   bookingId?: number;
   bookingNumber?: string;
   totalPrice?: number;
+  slotPrice?: number;
 
-  // 그룹 예약 (팀 단위 순차)
+  // 팀 예약 (모든 예약에 적용)
   chatRoomId?: string;
   bookerId?: number;
   paymentMethod?: string;

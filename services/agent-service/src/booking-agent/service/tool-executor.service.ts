@@ -859,7 +859,7 @@ export class ToolExecutorService {
     };
   }
 
-  // ── 그룹 예약 관련 메서드 ──
+  // ── 팀 예약 관련 메서드 ──
 
   /**
    * 채팅방 멤버 목록 조회
