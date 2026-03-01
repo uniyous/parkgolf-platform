@@ -311,7 +311,7 @@ export class ToolExecutorService {
     const { clubId } = args as { clubId: string };
 
     const response = await firstValueFrom(
-      this.courseClient.send('club.findOne', { id: clubId }).pipe(
+      this.courseClient.send('club.findOne', { id: Number(clubId) }).pipe(
         timeout(this.REQUEST_TIMEOUT),
         catchError((err) => {
           throw new Error(`Failed to get club info: ${err.message}`);
@@ -347,7 +347,7 @@ export class ToolExecutorService {
 
     // 먼저 골프장 위치 조회
     const clubResponse = await firstValueFrom(
-      this.courseClient.send('club.findOne', { id: clubId }).pipe(
+      this.courseClient.send('club.findOne', { id: Number(clubId) }).pipe(
         timeout(this.REQUEST_TIMEOUT),
         catchError((err) => {
           throw new Error(`Failed to get club location: ${err.message}`);
@@ -798,7 +798,7 @@ export class ToolExecutorService {
 
     // 클럽의 companyId 조회
     const clubResponse = await firstValueFrom(
-      this.courseClient.send('club.findOne', { id: clubId }).pipe(
+      this.courseClient.send('club.findOne', { id: Number(clubId) }).pipe(
         timeout(this.REQUEST_TIMEOUT),
         catchError((err) => {
           throw new Error(`Failed to get club info: ${err.message}`);
