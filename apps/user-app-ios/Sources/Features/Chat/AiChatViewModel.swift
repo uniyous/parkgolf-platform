@@ -48,7 +48,7 @@ final class AiChatViewModel: ObservableObject {
         case .collecting: return "검색 중..."
         case .confirming: return "예약 확인 중..."
         case .booking: return "예약 처리 중..."
-        case .selectingParticipants: return "팀 편성 중..."
+        case .selectingMembers: return "팀 편성 중..."
         case .settling: return "정산 처리 중..."
         case .teamComplete: return "팀 예약 완료..."
         default: return "생각 중..."

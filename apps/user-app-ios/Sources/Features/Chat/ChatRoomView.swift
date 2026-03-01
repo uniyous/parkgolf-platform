@@ -259,11 +259,25 @@ struct ChatRoomView: View {
                                 showLabel: !prevIsAi,
                                 onClubSelect: { clubId, clubName in
                                     aiViewModel.selectedClubId = clubId
-                                    sendAiFollowUp("\(clubName)(으)로 선택할게요")
+                                    sendAiFollowUp("\(clubName) 선택", request: AiChatRequest(
+                                        message: "\(clubName) 선택",
+                                        selectedClubId: clubId,
+                                        selectedClubName: clubName
+                                    ))
                                 },
-                                onSlotSelect: { slotId, time in
+                                onSlotSelect: { slotId, time, price, clubId, clubName in
                                     aiViewModel.selectedSlotId = slotId
-                                    sendAiFollowUp("\(time) 시간으로 예약해주세요")
+                                    var request = AiChatRequest(
+                                        message: "\(time) 선택",
+                                        selectedSlotId: slotId,
+                                        selectedSlotTime: time,
+                                        selectedSlotPrice: price
+                                    )
+                                    if let clubId = clubId {
+                                        request.selectedClubId = clubId
+                                        request.selectedClubName = clubName
+                                    }
+                                    sendAiFollowUp("\(time) 선택", request: request)
                                 },
                                 onConfirmBooking: { paymentMethod in
                                     sendAiFollowUp("예약 확인", request: AiChatRequest(message: "예약 확인", confirmBooking: true, paymentMethod: paymentMethod))

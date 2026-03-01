@@ -69,7 +69,7 @@ data class ChatUiState(
             ConversationState.COLLECTING -> "검색 중..."
             ConversationState.CONFIRMING -> "예약 확인 중..."
             ConversationState.BOOKING -> "예약 처리 중..."
-            ConversationState.SELECTING_PARTICIPANTS -> "팀 편성 중..."
+            ConversationState.SELECTING_MEMBERS -> "팀 편성 중..."
             ConversationState.SETTLING -> "정산 처리 중..."
             ConversationState.TEAM_COMPLETE -> "팀 예약 완료..."
             else -> "생각 중..."

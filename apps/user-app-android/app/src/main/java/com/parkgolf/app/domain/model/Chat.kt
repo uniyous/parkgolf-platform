@@ -121,15 +121,15 @@ enum class MessageType(val value: String) {
 // AI Chat Models
 
 enum class ConversationState(val value: String) {
-    IDLE("idle"),
-    COLLECTING("collecting"),
-    CONFIRMING("confirming"),
-    BOOKING("booking"),
-    SELECTING_PARTICIPANTS("selecting_participants"),
-    SETTLING("settling"),
-    TEAM_COMPLETE("team_complete"),
-    COMPLETED("completed"),
-    CANCELLED("cancelled");
+    IDLE("IDLE"),
+    COLLECTING("COLLECTING"),
+    CONFIRMING("CONFIRMING"),
+    BOOKING("BOOKING"),
+    SELECTING_MEMBERS("SELECTING_MEMBERS"),
+    SETTLING("SETTLING"),
+    TEAM_COMPLETE("TEAM_COMPLETE"),
+    COMPLETED("COMPLETED"),
+    CANCELLED("CANCELLED");
 
     companion object {
         fun fromValue(value: String): ConversationState =
@@ -145,7 +145,7 @@ enum class ActionType(val value: String) {
     SHOW_PAYMENT("SHOW_PAYMENT"),
     BOOKING_COMPLETE("BOOKING_COMPLETE"),
     CONFIRM_GROUP("CONFIRM_GROUP"),
-    SELECT_PARTICIPANTS("SELECT_PARTICIPANTS"),
+    SELECT_MEMBERS("SELECT_MEMBERS"),
     SPLIT_PAYMENT("SPLIT_PAYMENT"),
     SETTLEMENT_STATUS("SETTLEMENT_STATUS"),
     TEAM_COMPLETE("TEAM_COMPLETE");

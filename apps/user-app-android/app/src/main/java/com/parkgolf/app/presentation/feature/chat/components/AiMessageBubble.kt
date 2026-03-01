@@ -164,7 +164,7 @@ fun AiMessageBubble(
                                 onConfirm = onConfirmGroup,
                                 onCancel = onCancelGroup
                             )
-                            ActionType.SELECT_PARTICIPANTS -> SelectParticipantsCard(
+                            ActionType.SELECT_MEMBERS -> SelectParticipantsCard(
                                 data = action.data,
                                 onConfirm = onTeamConfirm,
                                 onCancel = onCancelGroup

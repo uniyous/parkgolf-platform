@@ -6,7 +6,7 @@ struct AiMessageBubble: View {
     let createdAt: Date
     var showLabel: Bool = true
     var onClubSelect: ((String, String) -> Void)?
-    var onSlotSelect: ((String, String) -> Void)?
+    var onSlotSelect: ((String, String, Int, String?, String?) -> Void)?
     var onConfirmBooking: ((String) -> Void)?
     var onCancelBooking: (() -> Void)?
     var onPaymentComplete: ((Bool) -> Void)?
@@ -121,7 +121,7 @@ struct AiMessageBubble: View {
                 onConfirm: onConfirmGroup,
                 onCancel: onCancelGroup
             )
-        case .selectParticipants:
+        case .selectMembers:
             SelectParticipantsCardView(
                 data: action.data.value,
                 onConfirm: onTeamConfirm,

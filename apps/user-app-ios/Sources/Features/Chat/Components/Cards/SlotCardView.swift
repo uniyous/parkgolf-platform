@@ -2,13 +2,25 @@ import SwiftUI
 
 struct SlotCardView: View {
     let data: Any
-    var onSelect: ((String, String) -> Void)?
+    var onSelect: ((String, String, Int, String?, String?) -> Void)?
     var selectedSlotId: String?
 
+    private var dataDict: [String: Any]? {
+        data as? [String: Any]
+    }
+
     private var slots: [[String: Any]] {
-        guard let dict = data as? [String: Any],
+        guard let dict = dataDict,
               let slots = dict["slots"] as? [[String: Any]] else { return [] }
         return slots
+    }
+
+    private var clubId: String? {
+        dataDict?["clubId"] as? String
+    }
+
+    private var clubName: String? {
+        dataDict?["clubName"] as? String
     }
 
     private var hasSelection: Bool { selectedSlotId != nil }
@@ -25,7 +37,7 @@ struct SlotCardView: View {
 
                 Button {
                     if !isDisabled {
-                        onSelect?(id, time)
+                        onSelect?(id, time, price, clubId, clubName)
                     }
                 } label: {
                     ZStack(alignment: .topTrailing) {
