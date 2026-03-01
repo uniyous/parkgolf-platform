@@ -119,9 +119,36 @@ final class AiChatViewModel: ObservableObject {
         messageActions[messageId] = actions
     }
 
-    /// 메시지 ID에 대한 actions 조회
-    func getActions(for messageId: String) -> [ChatAction]? {
-        messageActions[messageId]
+    /// 메시지 ID에 대한 actions 조회 (in-memory 캐시 → metadata fallback)
+    func getActions(for messageId: String, message: ChatMessage? = nil) -> [ChatAction]? {
+        // 1. In-memory cache (AI HTTP 응답에서 저장된 actions)
+        if let cached = messageActions[messageId] {
+            return cached
+        }
+        // 2. Metadata fallback (브로드캐스트 메시지의 metadata에서 파싱)
+        if let metadata = message?.metadata,
+           let data = metadata.data(using: .utf8),
+           let meta = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let actionsArray = meta["actions"] as? [[String: Any]] {
+            let actions = parseActionsFromMetadata(actionsArray)
+            if !actions.isEmpty {
+                messageActions[messageId] = actions
+                return actions
+            }
+        }
+        return nil
+    }
+
+    /// metadata JSON에서 ChatAction 배열 파싱
+    private func parseActionsFromMetadata(_ actionsArray: [[String: Any]]) -> [ChatAction] {
+        actionsArray.compactMap { actionDict -> ChatAction? in
+            guard let typeStr = actionDict["type"] as? String,
+                  let actionType = ActionType(rawValue: typeStr) else {
+                return nil
+            }
+            let actionData = actionDict["data"] ?? [String: Any]()
+            return ChatAction(type: actionType, data: ChatAction.AnyCodable(actionData))
+        }
     }
 
     // MARK: - Payment Persistence (UserDefaults)

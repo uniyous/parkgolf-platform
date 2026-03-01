@@ -3,6 +3,7 @@ package com.parkgolf.app.data.remote.api
 import com.parkgolf.app.data.remote.dto.common.ApiResponse
 import com.parkgolf.app.data.remote.dto.payment.ConfirmPaymentRequest
 import com.parkgolf.app.data.remote.dto.payment.ConfirmPaymentResponse
+import com.parkgolf.app.data.remote.dto.payment.ConfirmSplitPaymentResponse
 import com.parkgolf.app.data.remote.dto.payment.PaymentStatusResponse
 import com.parkgolf.app.data.remote.dto.payment.PreparePaymentRequest
 import com.parkgolf.app.data.remote.dto.payment.PreparePaymentResponse
@@ -20,7 +21,7 @@ interface PaymentApi {
     suspend fun confirmPayment(@Body request: ConfirmPaymentRequest): ApiResponse<ConfirmPaymentResponse>
 
     @POST("api/user/payments/split/confirm")
-    suspend fun confirmSplitPayment(@Body request: ConfirmPaymentRequest): ApiResponse<ConfirmPaymentResponse>
+    suspend fun confirmSplitPayment(@Body request: ConfirmPaymentRequest): ApiResponse<ConfirmSplitPaymentResponse>
 
     @GET("api/user/payments/order/{orderId}")
     suspend fun getPaymentByOrderId(@Path("orderId") orderId: String): ApiResponse<PaymentStatusResponse>

@@ -980,6 +980,7 @@ export class ToolExecutorService {
     roomId: string,
     targetUserIds: number[],
     settlementData: Record<string, unknown>,
+    content?: string,
   ): void {
     const metadata = JSON.stringify({
       conversationId: null,
@@ -993,7 +994,7 @@ export class ToolExecutorService {
       roomId,
       senderId: 0,
       senderName: 'AI 예약 도우미',
-      content: '더치페이 결제 요청이 도착했습니다.',
+      content: content || '더치페이 결제 요청이 도착했습니다.',
       type: 'AI_ASSISTANT',
       metadata,
       createdAt: new Date().toISOString(),

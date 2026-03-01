@@ -138,6 +138,7 @@ struct ChatMessage: Identifiable, Codable, Sendable {
     let senderName: String
     let content: String
     let messageType: MessageType
+    let metadata: String?
     let createdAt: Date
     let readBy: [String]?
 
@@ -150,6 +151,7 @@ struct ChatMessage: Identifiable, Codable, Sendable {
         case content
         case messageType
         case type  // API returns "type" for message type
+        case metadata
         case createdAt
         case readBy
     }
@@ -172,6 +174,7 @@ struct ChatMessage: Identifiable, Codable, Sendable {
         } else {
             messageType = try container.decode(MessageType.self, forKey: .messageType)
         }
+        metadata = try container.decodeIfPresent(String.self, forKey: .metadata)
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         readBy = try container.decodeIfPresent([String].self, forKey: .readBy)
     }
@@ -184,17 +187,19 @@ struct ChatMessage: Identifiable, Codable, Sendable {
         try container.encode(senderName, forKey: .senderName)
         try container.encode(content, forKey: .content)
         try container.encode(messageType, forKey: .type)
+        try container.encodeIfPresent(metadata, forKey: .metadata)
         try container.encode(createdAt, forKey: .createdAt)
         try container.encodeIfPresent(readBy, forKey: .readBy)
     }
 
-    init(id: String, roomId: String, senderId: String, senderName: String, content: String, messageType: MessageType, createdAt: Date, readBy: [String]?) {
+    init(id: String, roomId: String, senderId: String, senderName: String, content: String, messageType: MessageType, metadata: String? = nil, createdAt: Date, readBy: [String]?) {
         self.id = id
         self.roomId = roomId
         self.senderId = senderId
         self.senderName = senderName
         self.content = content
         self.messageType = messageType
+        self.metadata = metadata
         self.createdAt = createdAt
         self.readBy = readBy
     }

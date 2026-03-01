@@ -248,13 +248,13 @@ struct ChatRoomView: View {
                     }
 
                     ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
-                        if message.messageType == .aiAssistant {
+                        if message.messageType == .aiAssistant && !isFilteredByTargetUserIds(message) {
                             // 연속 AI 메시지 그룹핑: 이전 메시지도 AI면 라벨 숨김
                             let prevIsAi = index > 0 && viewModel.messages[index - 1].messageType == .aiAssistant
 
                             AiMessageBubble(
                                 content: message.content,
-                                actions: aiViewModel.getActions(for: message.id),
+                                actions: aiViewModel.getActions(for: message.id, message: message),
                                 createdAt: message.createdAt,
                                 showLabel: !prevIsAi,
                                 onClubSelect: { clubId, clubName in
@@ -484,6 +484,27 @@ struct ChatRoomView: View {
 
             Spacer(minLength: 40)
         }
+    }
+
+    // MARK: - Helpers
+
+    /// targetUserIds가 있는 브로드캐스트 메시지가 현재 사용자에게 해당하지 않으면 true 반환
+    private func isFilteredByTargetUserIds(_ message: ChatMessage) -> Bool {
+        guard let metadata = message.metadata,
+              let data = metadata.data(using: .utf8),
+              let meta = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let targetUserIds = meta["targetUserIds"] as? [Any] else {
+            return false
+        }
+        let targetIds = targetUserIds.compactMap { id -> Int? in
+            if let intId = id as? Int { return intId }
+            if let strId = id as? String { return Int(strId) }
+            return nil
+        }
+        guard !targetIds.isEmpty, let myId = Int(viewModel.currentUserId) else {
+            return false
+        }
+        return !targetIds.contains(myId)
     }
 
     // MARK: - AI Follow-up

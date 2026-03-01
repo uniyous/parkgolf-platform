@@ -33,6 +33,16 @@ data class ConfirmPaymentResponse(
 )
 
 @Serializable
+data class ConfirmSplitPaymentResponse(
+    val id: Int,
+    val orderId: String,
+    val userId: Int,
+    val amount: Int,
+    val status: String,
+    val paidAt: String? = null
+)
+
+@Serializable
 data class PaymentStatusResponse(
     val id: Int,
     val orderId: String,

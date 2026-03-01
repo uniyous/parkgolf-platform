@@ -446,8 +446,10 @@ class ChatSocketManager: ObservableObject {
 
         let senderId = "\(dict["senderId"] ?? "")"
         let senderName = dict["senderName"] as? String ?? "Unknown"
-        let typeString = dict["type"] as? String ?? "TEXT"
+        // Socket.IO broadcast may send "messageType" or "type"
+        let typeString = dict["messageType"] as? String ?? dict["type"] as? String ?? "TEXT"
         let messageType = MessageType(rawValue: typeString.uppercased()) ?? .text
+        let metadata = dict["metadata"] as? String
         let createdAtString = dict["createdAt"] as? String
         let createdAt = createdAtString.flatMap { ISO8601DateFormatter().date(from: $0) } ?? Date()
 
@@ -458,6 +460,7 @@ class ChatSocketManager: ObservableObject {
             senderName: senderName,
             content: content,
             messageType: messageType,
+            metadata: metadata,
             createdAt: createdAt,
             readBy: nil
         )
