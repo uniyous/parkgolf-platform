@@ -44,19 +44,6 @@ export class BookingAgentService {
     }
 
     // ── Direct Handling (LLM 없음) ──
-    this.logger.log(`[chat] userId=${userId}, conversationId=${context.conversationId}, state=${context.state}, handler=${
-      request.sendReminder ? 'sendReminder' :
-      request.finishGroup ? 'finishGroup' :
-      request.nextTeam ? 'nextTeam' :
-      request.teamMembers ? 'teamMemberSelect' :
-      request.splitPaymentComplete ? 'splitPaymentComplete' :
-      request.paymentComplete ? 'paymentComplete' :
-      request.confirmBooking ? 'directBooking' :
-      request.cancelBooking ? 'cancelBooking' :
-      request.selectedSlotId ? 'directSlotSelect' :
-      request.selectedClubId ? 'directClubSelect' : 'LLM'
-    }`);
-
     // 그룹 예약 핸들러 (우선)
     if (request.sendReminder) return this.handleSendReminder(context, request);
     if (request.finishGroup) return this.handleFinishGroup(context, request);
@@ -128,7 +115,6 @@ export class BookingAgentService {
     request: ChatRequestDto,
   ): Promise<ChatResponseDto> {
     const { selectedClubId, selectedClubName } = request;
-    this.logger.log(`[handleDirectClubSelect] clubId=${selectedClubId}, clubName=${selectedClubName}`);
 
     this.conversationService.updateSlots(context, {
       clubId: selectedClubId,
@@ -177,8 +163,6 @@ export class BookingAgentService {
     request: ChatRequestDto,
   ): Promise<ChatResponseDto> {
     const { selectedSlotId, selectedSlotTime, selectedSlotPrice } = request;
-    this.logger.log(`[handleDirectSlotSelect] slotId=${selectedSlotId}, time=${selectedSlotTime}, price=${selectedSlotPrice}, clubId=${request.selectedClubId}, clubName=${request.selectedClubName}`);
-    this.logger.log(`[handleDirectSlotSelect] current context.slots = ${JSON.stringify(context.slots)}`);
 
     // 검색 결과에서 바로 슬롯 선택한 경우 — clubId도 설정
     if (!context.slots.clubId && request.selectedClubId) {
@@ -244,7 +228,6 @@ export class BookingAgentService {
     context: ConversationContext,
     request: ChatRequestDto,
   ): Promise<ChatResponseDto> {
-    this.logger.log(`[handleDirectBooking] context.slots = ${JSON.stringify(context.slots)}`);
     const { clubId, slotId } = context.slots;
     const playerCount = context.slots.groupMode
       ? (context.slots.currentTeamMembers?.length || context.slots.playerCount || 4)
@@ -437,8 +420,6 @@ export class BookingAgentService {
     const actions: ChatAction[] = [];
     let message: string;
 
-    this.logger.log(`[handlePaymentComplete] context.slots = ${JSON.stringify(context.slots)}`);
-
     if (request.paymentSuccess) {
       // 결제 성공 → TEAM_COMPLETE 카드 (통합 플로우)
       const result = {
@@ -446,7 +427,6 @@ export class BookingAgentService {
         bookingNumber: context.slots.bookingNumber,
         details: { totalPrice: context.slots.totalPrice },
       };
-      this.logger.log(`[handlePaymentComplete] result = ${JSON.stringify(result)}`);
       return this.completeTeam(context, request, result);
     } else {
       // 결제 실패/취소 — 재시도 안내
@@ -749,9 +729,6 @@ export class BookingAgentService {
     request: ChatRequestDto,
     result: any,
   ): ChatResponseDto {
-    this.logger.log(`[completeTeam] context.slots = ${JSON.stringify(context.slots)}`);
-    this.logger.log(`[completeTeam] result = ${JSON.stringify(result)}`);
-
     const teamNumber = context.slots.currentTeamNumber || 1;
     const teamMembers = context.slots.currentTeamMembers || [];
     const paymentMethod = context.slots.paymentMethod || 'onsite';
@@ -790,8 +767,6 @@ export class BookingAgentService {
       paymentMethod,
       hasMoreTeams,
     };
-
-    this.logger.log(`[completeTeam] teamCompleteData = ${JSON.stringify(teamCompleteData)}`);
 
     const message = `팀${teamNumber} 예약이 완료되었어요!`;
     this.conversationService.addAssistantMessage(context, message);
