@@ -82,7 +82,8 @@ struct ChatRoomView: View {
                         Label("채팅방 나가기", systemImage: "rectangle.portrait.and.arrow.right")
                     }
                 } label: {
-                    Image(systemName: "ellipsis.vertical")
+                    Image(systemName: "ellipsis")
+                        .rotationEffect(.degrees(90))
                         .foregroundStyle(.white)
                 }
             }
