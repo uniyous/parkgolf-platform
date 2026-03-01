@@ -89,11 +89,12 @@ export const ChatRoomPage: React.FC = () => {
     try {
       if (paymentType === 'split') {
         await paymentApi.confirmSplitPayment({ paymentKey, orderId, amount });
-        // 에이전트에 분할결제 완료 통지
+        // 에이전트에 분할결제 완료 통지 (페이지 리다이렉트로 React state 유실 → sessionStorage에서 복원)
         const response = await sendAiMessage({
           message: '결제 완료',
           splitPaymentComplete: true,
           splitOrderId: orderId,
+          conversationId: ctx?.conversationId || undefined,
         });
         if (response.actions) {
           const aiMsg: ChatMessage = {
@@ -111,11 +112,12 @@ export const ChatRoomPage: React.FC = () => {
         }
       } else {
         await paymentApi.confirmPayment({ paymentKey, orderId, amount });
-        // 에이전트에 결제 완료 통지
+        // 에이전트에 결제 완료 통지 (페이지 리다이렉트로 React state 유실 → sessionStorage에서 복원)
         const response = await sendAiMessage({
           message: '결제 완료',
           paymentComplete: true,
           paymentSuccess: true,
+          conversationId: ctx?.conversationId || undefined,
         });
         if (response.actions) {
           const aiMsg: ChatMessage = {
@@ -139,8 +141,8 @@ export const ChatRoomPage: React.FC = () => {
         const status = await paymentApi.getPaymentByOrderId(orderId);
         if (status.status === 'DONE' || status.status === 'PAID') {
           const notifyReq = paymentType === 'split'
-            ? { message: '결제 완료', splitPaymentComplete: true, splitOrderId: orderId }
-            : { message: '결제 완료', paymentComplete: true, paymentSuccess: true };
+            ? { message: '결제 완료', splitPaymentComplete: true, splitOrderId: orderId, conversationId: ctx?.conversationId || undefined }
+            : { message: '결제 완료', paymentComplete: true, paymentSuccess: true, conversationId: ctx?.conversationId || undefined };
           await sendAiMessage(notifyReq);
         } else {
           showErrorToast('결제 승인에 실패했습니다. 다시 시도해주세요.');
@@ -155,6 +157,9 @@ export const ChatRoomPage: React.FC = () => {
   };
 
   const handlePaymentFailure = async () => {
+    // sessionStorage에서 conversationId 복원 후 삭제
+    const raw = sessionStorage.getItem(CHAT_PAYMENT_CONTEXT_KEY);
+    const ctx: ChatPaymentContext | null = raw ? JSON.parse(raw) : null;
     sessionStorage.removeItem(CHAT_PAYMENT_CONTEXT_KEY);
     window.history.replaceState({}, '', `/chat/${roomId}`);
     // 에이전트에 실패 통지
@@ -163,6 +168,7 @@ export const ChatRoomPage: React.FC = () => {
         message: '결제 취소',
         paymentComplete: true,
         paymentSuccess: false,
+        conversationId: ctx?.conversationId || undefined,
       });
     } catch {
       // 실패 통지가 안 되어도 무시
