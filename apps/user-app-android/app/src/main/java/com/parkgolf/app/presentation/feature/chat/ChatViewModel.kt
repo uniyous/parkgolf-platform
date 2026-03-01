@@ -269,15 +269,18 @@ class ChatViewModel @Inject constructor(
      */
     fun forceReconnect() {
         viewModelScope.launch {
-            // Get token from cache or fetch new one (like iOS)
-            val token = savedToken ?: authRepository.getAccessToken()
+            // 토큰 갱신 후 재연결 (만료된 토큰으로 연결 시도 방지)
+            authRepository.refreshToken()
+                .onFailure { Log.w(TAG, "Token refresh failed on force reconnect: ${it.message}") }
+
+            val token = authRepository.getAccessToken()
             if (token == null) {
                 Log.w(TAG, "No token available for force reconnect")
                 return@launch
             }
 
             savedToken = token
-            Log.d(TAG, "Force reconnect initiated")
+            Log.d(TAG, "Force reconnect initiated with fresh token")
             chatRepository.forceReconnect(token)
 
             // Wait for connection (max 5 seconds, like iOS)

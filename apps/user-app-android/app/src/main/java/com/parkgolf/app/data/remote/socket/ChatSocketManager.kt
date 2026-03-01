@@ -397,8 +397,9 @@ class ChatSocketManager @Inject constructor() {
             val reason = args.firstOrNull()?.toString() ?: "unknown"
             Log.d(TAG, "Socket disconnected: $reason")
 
-            // 서버가 명시적으로 끊은 경우(io server disconnect)가 아니면 자동 재연결
-            if (reason != "io server disconnect") {
+            // 클라이언트가 직접 끊은 경우(io client disconnect)를 제외하고 자동 재연결
+            // 서버 재배포(io server disconnect) 포함 모든 비자발적 끊김에서 재연결 시도
+            if (reason != "io client disconnect") {
                 _reconnectWithNewToken.tryEmit(Unit)
             }
         }
