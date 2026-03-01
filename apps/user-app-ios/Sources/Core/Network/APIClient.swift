@@ -80,7 +80,18 @@ actor APIClient {
     }
 
     func getAccessToken() -> String? {
-        return accessToken
+        if let token = accessToken {
+            return token
+        }
+        // Fallback: restore from Keychain when in-memory token is nil (e.g., after app backgrounding)
+        if let keychainToken = KeychainManager.shared.accessToken {
+            self.accessToken = keychainToken
+            if self.refreshToken == nil, let keychainRefresh = KeychainManager.shared.refreshToken {
+                self.refreshToken = keychainRefresh
+            }
+            return keychainToken
+        }
+        return nil
     }
 
     func setTokens(accessToken: String, refreshToken: String) {
