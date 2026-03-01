@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.parkgolf.app.data.remote.dto.chat.AiChatRequest
 import com.parkgolf.app.domain.model.AiChatResponse
+import com.parkgolf.app.domain.model.ActionType
 import com.parkgolf.app.domain.model.ChatAction
 import com.parkgolf.app.domain.model.ChatMessage
 import com.parkgolf.app.domain.model.ChatRoom
@@ -238,7 +239,7 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             chatRepository.messageFlow.collect { message ->
                 if (message.roomId == currentRoomId) {
-                    // 브로드캐스트 AI 메시지: targetUserIds 필터링 (본인 해당 시만 표시)
+                    // 브로드캐스트 AI 메시지: targetUserIds 필터링 + metadata actions 파싱
                     if (!message.metadata.isNullOrEmpty()) {
                         try {
                             val meta = org.json.JSONObject(message.metadata)
@@ -250,6 +251,17 @@ class ChatViewModel @Inject constructor(
                                     if (targetIds.optInt(i) == myId) { isTarget = true; break }
                                 }
                                 if (!isTarget) return@collect // 내가 대상이 아니면 무시
+                            }
+
+                            // metadata에서 actions 파싱 → aiMessageActions 맵에 등록
+                            val actionsArray = meta.optJSONArray("actions")
+                            if (actionsArray != null) {
+                                val actions = parseActionsFromJson(actionsArray)
+                                if (actions.isNotEmpty()) {
+                                    val updated = _uiState.value.aiMessageActions.toMutableMap()
+                                    updated[message.id] = actions
+                                    _uiState.value = _uiState.value.copy(aiMessageActions = updated)
+                                }
                             }
                         } catch (_: Exception) { /* metadata 파싱 실패 시 그냥 표시 */ }
                     }
@@ -263,6 +275,38 @@ class ChatViewModel @Inject constructor(
                     }
                 }
             }
+        }
+    }
+
+    /** metadata JSON의 actions 배열을 ChatAction 리스트로 변환 */
+    private fun parseActionsFromJson(actionsArray: org.json.JSONArray): List<ChatAction> {
+        val result = mutableListOf<ChatAction>()
+        for (i in 0 until actionsArray.length()) {
+            val actionObj = actionsArray.optJSONObject(i) ?: continue
+            val typeStr = actionObj.optString("type") ?: continue
+            val actionType = ActionType.fromValue(typeStr) ?: continue
+            val dataObj = actionObj.optJSONObject("data")
+            val dataMap = if (dataObj != null) jsonObjectToMap(dataObj) else emptyMap()
+            result.add(ChatAction(type = actionType, data = dataMap))
+        }
+        return result
+    }
+
+    /** org.json.JSONObject → Map<String, Any?> 재귀 변환 */
+    private fun jsonObjectToMap(obj: org.json.JSONObject): Map<String, Any?> {
+        val map = mutableMapOf<String, Any?>()
+        for (key in obj.keys()) {
+            map[key] = jsonValueToAny(obj.get(key))
+        }
+        return map
+    }
+
+    private fun jsonValueToAny(value: Any?): Any? {
+        return when (value) {
+            is org.json.JSONObject -> jsonObjectToMap(value)
+            is org.json.JSONArray -> (0 until value.length()).map { jsonValueToAny(value.get(it)) }
+            org.json.JSONObject.NULL -> null
+            else -> value
         }
     }
 
@@ -634,7 +678,28 @@ class ChatViewModel @Inject constructor(
     }
 
     fun getActionsForMessage(messageId: String): List<ChatAction> {
-        return _uiState.value.aiMessageActions[messageId] ?: emptyList()
+        // 1. AI 응답 캐시에서 조회
+        _uiState.value.aiMessageActions[messageId]?.let { return it }
+
+        // 2. 캐시에 없으면 메시지 metadata에서 파싱 (브로드캐스트/DB 메시지용)
+        val message = _uiState.value.messages.find { it.id == messageId }
+        if (!message?.metadata.isNullOrEmpty()) {
+            try {
+                val meta = org.json.JSONObject(message!!.metadata!!)
+                val actionsArray = meta.optJSONArray("actions")
+                if (actionsArray != null) {
+                    val actions = parseActionsFromJson(actionsArray)
+                    if (actions.isNotEmpty()) {
+                        // 캐시에 등록하여 재파싱 방지
+                        val updated = _uiState.value.aiMessageActions.toMutableMap()
+                        updated[messageId] = actions
+                        _uiState.value = _uiState.value.copy(aiMessageActions = updated)
+                        return actions
+                    }
+                }
+            } catch (_: Exception) { /* 파싱 실패 시 빈 리스트 */ }
+        }
+        return emptyList()
     }
 
     // Payment
