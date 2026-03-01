@@ -1,6 +1,6 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout, catchError } from 'rxjs';
+import { firstValueFrom, timeout, catchError, of } from 'rxjs';
 import { ToolCall } from './deepseek.service';
 
 /**
@@ -980,14 +980,15 @@ export class ToolExecutorService {
     settlementData: Record<string, unknown>,
   ): void {
     for (const participant of participants) {
-      try {
-        const metadata = JSON.stringify({
-          conversationId: null,
-          state: 'SETTLING',
-          actions: [{ type: 'SETTLEMENT_STATUS', data: settlementData }],
-        });
+      const metadata = JSON.stringify({
+        conversationId: null,
+        state: 'SETTLING',
+        actions: [{ type: 'SETTLEMENT_STATUS', data: settlementData }],
+      });
 
-        this.chatClient.emit('chat.messages.save', {
+      // @MessagePattern 핸들러이므로 send() 사용 (emit은 @EventPattern용)
+      firstValueFrom(
+        this.chatClient.send('chat.messages.save', {
           id: crypto.randomUUID(),
           roomId,
           senderId: participant.userId,
@@ -996,10 +997,14 @@ export class ToolExecutorService {
           type: 'AI_ASSISTANT',
           metadata,
           createdAt: new Date().toISOString(),
-        });
-      } catch (error) {
-        this.logger.error(`sendSettlementCard failed for userId=${participant.userId}`, error);
-      }
+        }).pipe(
+          timeout(5000),
+          catchError((err) => {
+            this.logger.error(`sendSettlementCard failed for userId=${participant.userId}: ${err.message}`);
+            return of(null);
+          }),
+        ),
+      );
     }
   }
 
@@ -1007,8 +1012,9 @@ export class ToolExecutorService {
    * 채팅방에 SYSTEM 메시지 전송 (fire-and-forget)
    */
   sendSystemMessage(roomId: string, content: string): void {
-    try {
-      this.chatClient.emit('chat.messages.save', {
+    // @MessagePattern 핸들러이므로 send() 사용 (emit은 @EventPattern용)
+    firstValueFrom(
+      this.chatClient.send('chat.messages.save', {
         id: crypto.randomUUID(),
         roomId,
         senderId: 0,
@@ -1016,9 +1022,13 @@ export class ToolExecutorService {
         content,
         type: 'SYSTEM',
         createdAt: new Date().toISOString(),
-      });
-    } catch (error) {
-      this.logger.error('sendSystemMessage failed', error);
-    }
+      }).pipe(
+        timeout(5000),
+        catchError((err) => {
+          this.logger.error(`sendSystemMessage failed: ${err.message}`);
+          return of(null);
+        }),
+      ),
+    );
   }
 }
