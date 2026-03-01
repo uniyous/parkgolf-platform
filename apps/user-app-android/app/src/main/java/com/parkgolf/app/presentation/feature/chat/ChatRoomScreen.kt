@@ -318,6 +318,22 @@ fun ChatRoomScreen(
                             val message = dedupedMessages[index]
                             when (message.messageType) {
                                 MessageType.AI_ASSISTANT -> {
+                                    // 브로드캐스트 AI 메시지: targetUserIds 필터링
+                                    if (!message.metadata.isNullOrEmpty()) {
+                                        try {
+                                            val meta = org.json.JSONObject(message.metadata)
+                                            val targetIds = meta.optJSONArray("targetUserIds")
+                                            if (targetIds != null) {
+                                                val myId = uiState.currentUserId?.toIntOrNull() ?: -1
+                                                var isTarget = false
+                                                for (i in 0 until targetIds.length()) {
+                                                    if (targetIds.optInt(i) == myId) { isTarget = true; break }
+                                                }
+                                                if (!isTarget) return@items // 내가 대상이 아니면 렌더링하지 않음
+                                            }
+                                        } catch (_: Exception) { /* metadata 파싱 실패 시 그냥 표시 */ }
+                                    }
+
                                     // 연속 AI 메시지 그룹핑: 이전 메시지도 AI면 라벨 숨김
                                     val prevIsAi = index > 0 && dedupedMessages[index - 1].messageType == MessageType.AI_ASSISTANT
 

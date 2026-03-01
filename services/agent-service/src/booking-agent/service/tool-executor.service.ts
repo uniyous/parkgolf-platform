@@ -971,40 +971,56 @@ export class ToolExecutorService {
   }
 
   /**
-   * 참여자별 정산 카드 메시지 전송 (fire-and-forget)
-   * AI_ASSISTANT 메시지를 각 참여자의 senderId로 저장하여 본인만 볼 수 있게 함
+   * 정산 카드 브로드캐스트 (fire-and-forget)
+   * 1개 AI_ASSISTANT 메시지(senderId=0)를 DB에 저장하고,
+   * NATS 이벤트로 chat-gateway에 전달하여 Socket.IO 룸 브로드캐스트.
+   * 클라이언트는 metadata.targetUserIds로 본인 해당 여부를 판단.
    */
-  sendSettlementCardToParticipants(
+  broadcastSettlementCard(
     roomId: string,
-    participants: Array<{ userId: number; userName: string }>,
+    targetUserIds: number[],
     settlementData: Record<string, unknown>,
   ): void {
-    for (const participant of participants) {
-      const metadata = JSON.stringify({
-        conversationId: null,
-        state: 'SETTLING',
-        actions: [{ type: 'SETTLEMENT_STATUS', data: settlementData }],
-      });
+    const metadata = JSON.stringify({
+      conversationId: null,
+      state: 'SETTLING',
+      actions: [{ type: 'SETTLEMENT_STATUS', data: settlementData }],
+      targetUserIds,
+    });
 
-      // @MessagePattern 핸들러이므로 send() 사용 (emit은 @EventPattern용)
-      firstValueFrom(
-        this.chatClient.send('chat.messages.save', {
-          id: crypto.randomUUID(),
-          roomId,
-          senderId: participant.userId,
-          senderName: 'AI 예약 도우미',
-          content: `${participant.userName}님, 더치페이 결제 요청이 도착했습니다.`,
-          type: 'AI_ASSISTANT',
-          metadata,
-          createdAt: new Date().toISOString(),
-        }).pipe(
-          timeout(5000),
-          catchError((err) => {
-            this.logger.error(`sendSettlementCard failed for userId=${participant.userId}: ${err.message}`);
-            return of(null);
-          }),
-        ),
-      );
+    const message = {
+      id: crypto.randomUUID(),
+      roomId,
+      senderId: 0,
+      senderName: 'AI 예약 도우미',
+      content: '더치페이 결제 요청이 도착했습니다.',
+      type: 'AI_ASSISTANT',
+      metadata,
+      createdAt: new Date().toISOString(),
+    };
+
+    // 1. DB 저장 (@MessagePattern 핸들러이므로 send() 사용)
+    firstValueFrom(
+      this.chatClient.send('chat.messages.save', message).pipe(
+        timeout(5000),
+        catchError((err) => {
+          this.logger.error(`broadcastSettlementCard DB save failed: ${err.message}`);
+          return of(null);
+        }),
+      ),
+    );
+
+    // 2. NATS 이벤트 발행 → chat-gateway가 Socket.IO 룸으로 브로드캐스트
+    try {
+      this.notifyClient.emit('chat.message.room', {
+        roomId,
+        message: {
+          ...message,
+          messageType: 'AI_ASSISTANT',
+        },
+      });
+    } catch (error) {
+      this.logger.error('broadcastSettlementCard NATS emit failed', error);
     }
   }
 

@@ -247,6 +247,15 @@ export const ChatRoomPage: React.FC = () => {
 
     const unsubMessage = chatSocket.onMessage((message) => {
       if (message.roomId === roomId) {
+        // 브로드캐스트 AI 메시지: targetUserIds 필터링 (본인 해당 시만 표시)
+        if (message.metadata) {
+          try {
+            const meta = typeof message.metadata === 'string' ? JSON.parse(message.metadata) : message.metadata;
+            if (meta?.targetUserIds && !meta.targetUserIds.includes(Number(currentUserId))) {
+              return; // 내가 대상이 아니면 무시
+            }
+          } catch { /* metadata 파싱 실패 시 그냥 표시 */ }
+        }
         setRealtimeMessages((prev) => {
           if (prev.some((m) => m.id === message.id)) return prev;
           return [...prev, message];
@@ -689,14 +698,23 @@ export const ChatRoomPage: React.FC = () => {
               if (message.messageType === 'AI_ASSISTANT') {
                 // realtime actions 우선, 없으면 DB metadata에서 파싱
                 let actions = aiMessageActions.get(message.id);
-                if (!actions && message.metadata) {
+                let parsedMeta: Record<string, unknown> | null = null;
+                if (message.metadata) {
                   try {
-                    const parsed = typeof message.metadata === 'string'
+                    parsedMeta = typeof message.metadata === 'string'
                       ? JSON.parse(message.metadata)
                       : message.metadata;
-                    actions = parsed?.actions;
+                    if (!actions) actions = parsedMeta?.actions as ChatAction[] | undefined;
                   } catch {
                     // metadata 파싱 실패 시 무시
+                  }
+                }
+
+                // 브로드캐스트 AI 메시지: targetUserIds 필터링
+                if (parsedMeta?.targetUserIds) {
+                  const targetIds = parsedMeta.targetUserIds as number[];
+                  if (!targetIds.includes(Number(currentUserId))) {
+                    return null; // 내가 대상이 아니면 렌더링하지 않음
                   }
                 }
 

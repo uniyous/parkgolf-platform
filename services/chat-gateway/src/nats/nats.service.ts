@@ -48,6 +48,21 @@ export interface NotificationEvent {
   createdAt: string;
 }
 
+export interface RoomMessageEvent {
+  roomId: string;
+  message: {
+    id: string;
+    roomId: string;
+    senderId: number;
+    senderName: string;
+    content: string;
+    type: string;
+    messageType: string;
+    metadata?: string;
+    createdAt: string;
+  };
+}
+
 @Injectable()
 export class NatsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(NatsService.name);
@@ -340,6 +355,38 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
     })();
 
     // Return cleanup function
+    return () => {
+      sub.unsubscribe();
+      this.logger.log(`Unsubscribed from ${subject}`);
+    };
+  }
+
+  // Subscribe to room message broadcast events from agent-service
+  async subscribeToRoomMessages(
+    handler: (event: RoomMessageEvent) => void,
+  ): Promise<() => void> {
+    if (!this.nc) {
+      this.logger.warn('NATS not connected, cannot subscribe to room messages');
+      return () => {};
+    }
+
+    const subject = 'chat.message.room';
+    const sub = this.nc.subscribe(subject);
+    this.logger.log(`Subscribed to ${subject} for room message broadcasts`);
+
+    (async () => {
+      for await (const msg of sub) {
+        try {
+          const raw = JSON.parse(this.sc.decode(msg.data));
+          // NestJS ClientProxy emit() wraps data in { pattern, data } envelope
+          const event = (raw.data !== undefined && raw.pattern) ? raw.data : raw;
+          handler(event as RoomMessageEvent);
+        } catch (error) {
+          this.logger.error('Failed to process room message event', error);
+        }
+      }
+    })();
+
     return () => {
       sub.unsubscribe();
       this.logger.log(`Unsubscribed from ${subject}`);

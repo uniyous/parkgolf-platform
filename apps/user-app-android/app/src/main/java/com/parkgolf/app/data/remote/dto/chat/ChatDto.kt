@@ -53,6 +53,7 @@ data class ChatMessageDto(
     // API may return 'type' or 'messageType'
     val messageType: String? = null,
     val type: String? = null, // Fallback field for API compatibility
+    val metadata: String? = null,
     val createdAt: String,
     val readBy: List<String>? = null
 ) {

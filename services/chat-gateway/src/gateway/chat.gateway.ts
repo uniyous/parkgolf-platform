@@ -11,7 +11,7 @@ import { Server } from 'socket.io';
 import { Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Subscription } from 'rxjs';
 import { JwtService } from '@nestjs/jwt';
-import { NatsService, ChatMessage, TypingEvent } from '../nats/nats.service';
+import { NatsService, ChatMessage, TypingEvent, RoomMessageEvent } from '../nats/nats.service';
 import { AuthenticatedSocket, WsUser } from '../common/ws.types';
 import { authenticateSocket } from '../common/ws.utils';
 import { getCorsConfig } from '../common/cors.config';
@@ -51,12 +51,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   // NATS status subscription
   private natsStatusSubscription: Subscription | null = null;
 
+  // Room message subscription cleanup
+  private roomMessageSubscription: (() => void) | null = null;
+
   constructor(
     private readonly natsService: NatsService,
     private readonly jwtService: JwtService,
   ) {}
 
-  onModuleInit() {
+  async onModuleInit() {
     // Check for expired tokens every 60 seconds
     this.tokenCheckInterval = setInterval(() => {
       this.checkExpiredTokens();
@@ -67,6 +70,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       this.logger.log(`NATS status changed: ${connected ? 'connected' : 'disconnected'}, broadcasting to clients`);
       this.server?.emit('system:nats_status', { connected });
     });
+
+    // Subscribe to room message broadcasts (agent-service → chat-gateway → Socket.IO)
+    this.roomMessageSubscription = await this.natsService.subscribeToRoomMessages(
+      (event: RoomMessageEvent) => {
+        this.deliverRoomMessage(event);
+      },
+    );
   }
 
   onModuleDestroy() {
@@ -77,6 +87,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     if (this.natsStatusSubscription) {
       this.natsStatusSubscription.unsubscribe();
       this.natsStatusSubscription = null;
+    }
+    if (this.roomMessageSubscription) {
+      this.roomMessageSubscription();
+      this.roomMessageSubscription = null;
     }
   }
 
@@ -325,6 +339,21 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     }));
 
     return { success: true, data: users };
+  }
+
+  /**
+   * NATS에서 수신한 메시지를 Socket.IO 룸으로 브로드캐스트
+   * agent-service가 AI 메시지를 DB에 저장한 후 이 이벤트를 발행
+   */
+  private deliverRoomMessage(event: RoomMessageEvent) {
+    const { roomId, message } = event;
+    if (!roomId || !message) {
+      this.logger.warn('Invalid room message event received');
+      return;
+    }
+
+    this.server.to(roomId).emit('new_message', message);
+    this.logger.log(`Broadcast AI message to room ${roomId} (id=${message.id})`);
   }
 
   private async sendChatNotifications(roomId: string, sender: WsUser, content: string): Promise<void> {

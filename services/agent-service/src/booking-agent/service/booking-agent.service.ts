@@ -337,14 +337,11 @@ export class BookingAgentService {
             })),
           });
 
-          // 참여자 각각에게 AI_ASSISTANT 메시지로 결제 카드 전송
+          // 참여자에게 정산 카드 브로드캐스트 (1개 메시지 → 룸 전체 전송, 클라이언트 필터링)
           if (context.slots.chatRoomId) {
-            this.toolExecutor.sendSettlementCardToParticipants(
+            this.toolExecutor.broadcastSettlementCard(
               context.slots.chatRoomId,
-              otherParticipants.map((s: any) => ({
-                userId: s.userId,
-                userName: s.userName || '',
-              })),
+              otherParticipants.map((s: any) => s.userId),
               settlementData,
             );
           }

@@ -76,11 +76,13 @@ export class ChatService {
     const { roomId, userId, cursor, limit = DEFAULT_PAGE_SIZE } = dto;
 
     // AI 메시지(AI_USER, AI_ASSISTANT)는 본인만 볼 수 있도록 필터링
+    // senderId=0인 AI_ASSISTANT는 브로드캐스트 메시지 (클라이언트에서 targetUserIds 필터링)
     const aiFilter = userId
       ? {
           OR: [
             { type: { notIn: [MessageType.AI_USER, MessageType.AI_ASSISTANT] } },
             { type: { in: [MessageType.AI_USER, MessageType.AI_ASSISTANT] }, senderId: userId },
+            { type: MessageType.AI_ASSISTANT, senderId: 0 },
           ],
         }
       : {};

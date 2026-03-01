@@ -62,6 +62,7 @@ data class ChatMessage(
     val senderName: String,
     val content: String,
     val messageType: MessageType = MessageType.TEXT,
+    val metadata: String? = null,
     val createdAt: LocalDateTime,
     val readBy: List<String>? = null
 ) {

@@ -551,6 +551,7 @@ class ChatSocketManager @Inject constructor() {
             senderName = data.optString("senderName"),
             content = data.optString("content"),
             messageType = MessageType.fromValue(data.optString("messageType", "TEXT")),
+            metadata = data.optString("metadata", null),
             createdAt = createdAt,
             readBy = null
         )

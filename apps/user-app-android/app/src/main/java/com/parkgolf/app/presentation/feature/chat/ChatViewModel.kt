@@ -238,6 +238,22 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             chatRepository.messageFlow.collect { message ->
                 if (message.roomId == currentRoomId) {
+                    // 브로드캐스트 AI 메시지: targetUserIds 필터링 (본인 해당 시만 표시)
+                    if (!message.metadata.isNullOrEmpty()) {
+                        try {
+                            val meta = org.json.JSONObject(message.metadata)
+                            val targetIds = meta.optJSONArray("targetUserIds")
+                            if (targetIds != null) {
+                                val myId = _uiState.value.currentUserId?.toIntOrNull() ?: -1
+                                var isTarget = false
+                                for (i in 0 until targetIds.length()) {
+                                    if (targetIds.optInt(i) == myId) { isTarget = true; break }
+                                }
+                                if (!isTarget) return@collect // 내가 대상이 아니면 무시
+                            }
+                        } catch (_: Exception) { /* metadata 파싱 실패 시 그냥 표시 */ }
+                    }
+
                     val currentMessages = _uiState.value.messages
                     // Avoid duplicates (like iOS)
                     if (!currentMessages.any { it.id == message.id }) {

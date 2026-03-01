@@ -141,6 +141,7 @@ fun ChatMessageDto.toDomain(): ChatMessage {
         senderName = senderName,
         content = content,
         messageType = MessageType.fromValue(getMessageTypeValue()),
+        metadata = metadata,
         createdAt = parseDateTime(createdAt),
         readBy = readBy
     )
