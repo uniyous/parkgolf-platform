@@ -298,7 +298,31 @@ export class BookingAgentService {
           expiredAt: '',
         }));
 
-        // 부커 제외 참여자에게 push 알림
+        const teamNumber = context.slots.currentTeamNumber || 1;
+
+        const settlementData = {
+          bookingId: result.bookingId,
+          bookerId: request.userId,
+          teamNumber,
+          clubName: context.slots.clubName || '',
+          date: context.slots.date || '',
+          slotTime: context.slots.time || '',
+          totalParticipants: teamMembers.length,
+          pricePerPerson: Math.round(pricePerPerson),
+          totalPrice: result.details?.totalPrice || 0,
+          paidCount: 0,
+          expiredAt: splits[0]?.expiredAt || '',
+          participants: splits.map((s: any) => ({
+            userId: s.userId,
+            userName: s.userName || '',
+            orderId: s.orderId || '',
+            amount: s.amount || Math.round(pricePerPerson),
+            status: s.status || 'PENDING',
+            expiredAt: s.expiredAt || '',
+          })),
+        };
+
+        // 부커 제외 참여자에게 push 알림 + 채팅 카드 전송
         const otherParticipants = splits.filter((s: any) => s.userId !== request.userId);
         if (otherParticipants.length > 0) {
           this.toolExecutor.emitSplitPaymentNotification({
@@ -312,34 +336,21 @@ export class BookingAgentService {
               amount: s.amount || Math.round(pricePerPerson),
             })),
           });
+
+          // 참여자 각각에게 AI_ASSISTANT 메시지로 결제 카드 전송
+          if (context.slots.chatRoomId) {
+            this.toolExecutor.sendSettlementCardToParticipants(
+              context.slots.chatRoomId,
+              otherParticipants.map((s: any) => ({
+                userId: s.userId,
+                userName: s.userName || '',
+              })),
+              settlementData,
+            );
+          }
         }
 
-        const teamNumber = context.slots.currentTeamNumber || 1;
-
-        actions.push({
-          type: 'SETTLEMENT_STATUS',
-          data: {
-            bookingId: result.bookingId,
-            bookerId: request.userId,
-            teamNumber,
-            clubName: context.slots.clubName || '',
-            date: context.slots.date || '',
-            slotTime: context.slots.time || '',
-            totalParticipants: teamMembers.length,
-            pricePerPerson: Math.round(pricePerPerson),
-            totalPrice: result.details?.totalPrice || 0,
-            paidCount: 0,
-            expiredAt: splits[0]?.expiredAt || '',
-            participants: splits.map((s: any) => ({
-              userId: s.userId,
-              userName: s.userName || '',
-              orderId: s.orderId || '',
-              amount: s.amount || Math.round(pricePerPerson),
-              status: s.status || 'PENDING',
-              expiredAt: s.expiredAt || '',
-            })),
-          },
-        });
+        actions.push({ type: 'SETTLEMENT_STATUS', data: settlementData });
 
         message = `팀${teamNumber} 예약이 생성되었어요! 참여자들에게 결제 요청이 전송됩니다.`;
         this.conversationService.setState(context, 'SETTLING');

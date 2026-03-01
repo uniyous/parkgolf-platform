@@ -971,6 +971,39 @@ export class ToolExecutorService {
   }
 
   /**
+   * 참여자별 정산 카드 메시지 전송 (fire-and-forget)
+   * AI_ASSISTANT 메시지를 각 참여자의 senderId로 저장하여 본인만 볼 수 있게 함
+   */
+  sendSettlementCardToParticipants(
+    roomId: string,
+    participants: Array<{ userId: number; userName: string }>,
+    settlementData: Record<string, unknown>,
+  ): void {
+    for (const participant of participants) {
+      try {
+        const metadata = JSON.stringify({
+          conversationId: null,
+          state: 'SETTLING',
+          actions: [{ type: 'SETTLEMENT_STATUS', data: settlementData }],
+        });
+
+        this.chatClient.emit('chat.messages.save', {
+          id: crypto.randomUUID(),
+          roomId,
+          senderId: participant.userId,
+          senderName: 'AI 예약 도우미',
+          content: `${participant.userName}님, 더치페이 결제 요청이 도착했습니다.`,
+          type: 'AI_ASSISTANT',
+          metadata,
+          createdAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        this.logger.error(`sendSettlementCard failed for userId=${participant.userId}`, error);
+      }
+    }
+  }
+
+  /**
    * 채팅방에 SYSTEM 메시지 전송 (fire-and-forget)
    */
   sendSystemMessage(roomId: string, content: string): void {
