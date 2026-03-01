@@ -247,15 +247,6 @@ export const ChatRoomPage: React.FC = () => {
 
     const unsubMessage = chatSocket.onMessage((message) => {
       if (message.roomId === roomId) {
-        // 브로드캐스트 AI 메시지: targetUserIds 필터링 (본인 해당 시만 표시)
-        if (message.metadata) {
-          try {
-            const meta = typeof message.metadata === 'string' ? JSON.parse(message.metadata) : message.metadata;
-            if (meta?.targetUserIds && !meta.targetUserIds.includes(Number(currentUserId))) {
-              return; // 내가 대상이 아니면 무시
-            }
-          } catch { /* metadata 파싱 실패 시 그냥 표시 */ }
-        }
         setRealtimeMessages((prev) => {
           if (prev.some((m) => m.id === message.id)) return prev;
           return [...prev, message];

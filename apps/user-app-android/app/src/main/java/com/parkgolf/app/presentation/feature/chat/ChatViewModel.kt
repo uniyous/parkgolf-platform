@@ -239,21 +239,10 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             chatRepository.messageFlow.collect { message ->
                 if (message.roomId == currentRoomId) {
-                    // 브로드캐스트 AI 메시지: targetUserIds 필터링 + metadata actions 파싱
+                    // metadata에서 actions 파싱 → aiMessageActions 맵에 등록
                     if (!message.metadata.isNullOrEmpty()) {
                         try {
                             val meta = org.json.JSONObject(message.metadata)
-                            val targetIds = meta.optJSONArray("targetUserIds")
-                            if (targetIds != null) {
-                                val myId = _uiState.value.currentUserId?.toIntOrNull() ?: -1
-                                var isTarget = false
-                                for (i in 0 until targetIds.length()) {
-                                    if (targetIds.optInt(i) == myId) { isTarget = true; break }
-                                }
-                                if (!isTarget) return@collect // 내가 대상이 아니면 무시
-                            }
-
-                            // metadata에서 actions 파싱 → aiMessageActions 맵에 등록
                             val actionsArray = meta.optJSONArray("actions")
                             if (actionsArray != null) {
                                 val actions = parseActionsFromJson(actionsArray)

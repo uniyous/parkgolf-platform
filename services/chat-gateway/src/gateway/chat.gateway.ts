@@ -352,8 +352,30 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       return;
     }
 
-    this.server.to(roomId).emit('new_message', message);
-    this.logger.log(`Broadcast AI message to room ${roomId} (id=${message.id})`);
+    // targetUserIds가 있으면 해당 사용자에게만 전송
+    const targetUserIds = this.extractTargetUserIds(message.metadata);
+    if (targetUserIds && targetUserIds.length > 0) {
+      for (const userId of targetUserIds) {
+        this.server.to(`user:${userId}`).emit('new_message', message);
+      }
+      this.logger.log(
+        `Targeted AI message to users [${targetUserIds.join(',')}] in room ${roomId} (id=${message.id})`,
+      );
+    } else {
+      this.server.to(roomId).emit('new_message', message);
+      this.logger.log(`Broadcast AI message to room ${roomId} (id=${message.id})`);
+    }
+  }
+
+  private extractTargetUserIds(metadata?: string): number[] | null {
+    if (!metadata) return null;
+    try {
+      const meta = JSON.parse(metadata);
+      if (Array.isArray(meta?.targetUserIds) && meta.targetUserIds.length > 0) {
+        return meta.targetUserIds;
+      }
+    } catch { /* ignore */ }
+    return null;
   }
 
   private async sendChatNotifications(roomId: string, sender: WsUser, content: string): Promise<void> {

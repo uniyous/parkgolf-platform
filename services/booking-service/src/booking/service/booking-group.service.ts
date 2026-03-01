@@ -2,7 +2,7 @@ import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { SettlementStatus, ParticipantRole, ParticipantStatus } from '@prisma/client';
 import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout, catchError } from 'rxjs';
+import { firstValueFrom, timeout, catchError, of } from 'rxjs';
 import { randomUUID } from 'crypto';
 import { NATS_TIMEOUTS } from '../../common/constants';
 import { AppException } from '../../common/exceptions/app.exception';
@@ -38,6 +38,7 @@ export class BookingGroupService {
     private readonly prisma: PrismaService,
     @Optional() @Inject('COURSE_SERVICE') private readonly courseServiceClient?: ClientProxy,
     @Optional() @Inject('NOTIFICATION_SERVICE') private readonly notificationPublisher?: ClientProxy,
+    @Optional() @Inject('CHAT_SERVICE') private readonly chatClient?: ClientProxy,
   ) {}
 
   /**
@@ -262,6 +263,77 @@ export class BookingGroupService {
       where: { id: booking.bookingGroupId },
       data: { settlementStatus: newStatus },
     });
+
+    // 실시간 정산 카드 Push (agent-service 경유 없이 직접 발행)
+    if (this.chatClient && this.notificationPublisher) {
+      const group = await this.prisma.bookingGroup.findUnique({
+        where: { id: booking.bookingGroupId },
+      });
+
+      if (group?.chatRoomId) {
+        const allPaid = paidCount === totalCount;
+        const content = allPaid
+          ? `모든 참여자의 결제가 완료되었습니다! (${paidCount}/${totalCount})`
+          : `${participant.userName}님이 결제를 완료했습니다. (${paidCount}/${totalCount})`;
+
+        const settlementData = {
+          bookingId,
+          bookerId: group.bookerId,
+          teamNumber: 1,
+          clubName: group.clubName,
+          date: group.date,
+          slotTime: '',
+          totalParticipants: totalCount,
+          pricePerPerson: group.pricePerPerson,
+          totalPrice: group.totalPrice,
+          paidCount,
+          expiredAt: group.expiredAt?.toISOString() || '',
+          participants: allParticipants.map((p) => ({
+            userId: p.userId,
+            userName: p.userName,
+            orderId: '',
+            amount: p.amount,
+            status: p.status,
+            expiredAt: '',
+          })),
+        };
+
+        const metadata = JSON.stringify({
+          conversationId: null,
+          state: 'SETTLING',
+          actions: [{ type: 'SETTLEMENT_STATUS', data: settlementData }],
+          targetUserIds: [group.bookerId],
+        });
+
+        const message = {
+          id: randomUUID(),
+          roomId: group.chatRoomId,
+          senderId: 0,
+          senderName: 'AI 예약 도우미',
+          content,
+          type: 'AI_ASSISTANT',
+          metadata,
+          createdAt: new Date().toISOString(),
+        };
+
+        // 1. DB 저장
+        firstValueFrom(
+          this.chatClient.send('chat.messages.save', message).pipe(
+            timeout(5000),
+            catchError((err) => {
+              this.logger.error(`Settlement card DB save failed: ${err.message}`);
+              return of(null);
+            }),
+          ),
+        );
+
+        // 2. Socket.IO 브로드캐스트
+        this.notificationPublisher.emit('chat.message.room', {
+          roomId: group.chatRoomId,
+          message: { ...message, messageType: 'AI_ASSISTANT' },
+        });
+      }
+    }
 
     return {
       settled: newStatus === SettlementStatus.COMPLETED,

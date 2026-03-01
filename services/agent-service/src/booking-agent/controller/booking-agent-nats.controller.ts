@@ -106,4 +106,5 @@ export class BookingAgentNatsController {
       return NatsResponse.error('STATS_ERROR', 'Failed to get stats');
     }
   }
+
 }
