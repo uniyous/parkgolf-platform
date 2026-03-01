@@ -7,12 +7,14 @@ interface SelectMembersCardProps {
   data: SelectMembersData;
   onConfirm?: (members: Array<{ userId: number; userName: string; userEmail: string }>) => void;
   onCancel?: () => void;
+  completed?: boolean;
 }
 
 export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
   data,
   onConfirm,
   onCancel,
+  completed,
 }) => {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
@@ -80,7 +82,7 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
           </div>
           {data.availableMembers.map((member) => {
             const isSelected = selectedIds.has(member.userId);
-            const isDisabled = !isSelected && selectedIds.size >= data.maxPlayers;
+            const isDisabled = completed || (!isSelected && selectedIds.size >= data.maxPlayers);
 
             return (
               <button
@@ -111,7 +113,7 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2">
+        {!completed && <div className="flex gap-2">
           <button
             onClick={onCancel}
             className="flex-1 px-3 py-2.5 rounded-lg text-xs text-white/50 hover:text-white/70 bg-white/5 hover:bg-white/10 transition-colors"
@@ -131,7 +133,7 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
             <Check className="w-3.5 h-3.5" />
             확정 ({selectedIds.size}명)
           </button>
-        </div>
+        </div>}
     </div>
   );
 };

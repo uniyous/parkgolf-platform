@@ -9,9 +9,10 @@ interface ConfirmBookingCardProps {
   data: ConfirmBookingData;
   onConfirm?: (paymentMethod: PaymentMethod) => void;
   onCancel?: () => void;
+  completed?: boolean;
 }
 
-export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, onConfirm, onCancel }) => {
+export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, onConfirm, onCancel, completed }) => {
   const isFree = data.price === 0;
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(data.groupMode ? 'dutchpay' : 'onsite');
 
@@ -62,8 +63,8 @@ export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, on
           </div>
         </div>
 
-        {/* 결제방법 선택 (유료일 때만) */}
-        {!isFree && (
+        {/* 결제방법 선택 (유료 + 활성 상태일 때만) */}
+        {!isFree && !completed && (
           <div className="mt-3">
             <div className="text-xs text-white/50 mb-2">결제방법</div>
             <div className={cn('flex gap-2', data.groupMode && 'flex-wrap')}>
@@ -109,7 +110,7 @@ export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, on
           </div>
         )}
 
-        {(onConfirm || onCancel) && (
+        {!completed && (onConfirm || onCancel) && (
           <div className="flex gap-2 mt-4">
             {onCancel && (
               <button

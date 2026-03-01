@@ -13,11 +13,13 @@ interface PaymentCardProps {
   roomId?: string;
   conversationId?: string;
   onPaymentComplete?: (success: boolean) => void;
+  /** 이전 메시지의 카드 — 타이머/버튼 숨기고 완료 상태로 표시 */
+  completed?: boolean;
 }
 
 const PAYMENT_TIMEOUT_SECONDS = 10 * 60; // 10분
 
-export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversationId, onPaymentComplete }) => {
+export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversationId, onPaymentComplete, completed }) => {
   const [remainingSeconds, setRemainingSeconds] = useState(PAYMENT_TIMEOUT_SECONDS);
   const [isPaying, setIsPaying] = useState(false);
   const [isExpired, setIsExpired] = useState(false);
@@ -58,7 +60,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversa
 
   // 카운트다운 타이머
   useEffect(() => {
-    if (isExpired || isPaying) return;
+    if (isExpired || isPaying || completed) return;
 
     const interval = setInterval(() => {
       setRemainingSeconds((prev) => {
@@ -73,7 +75,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversa
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isExpired, isPaying, onPaymentComplete]);
+  }, [isExpired, isPaying, completed, onPaymentComplete]);
 
   const handlePayment = useCallback(async () => {
     if (isPaying || isExpired || !tossRef.current || !roomId) return;
@@ -150,56 +152,65 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversa
           </div>
         </div>
 
-        {/* 타이머 */}
-        <div className={cn(
-          'flex items-center gap-2 mt-3 px-3 py-2 rounded-lg text-xs',
-          isExpired
-            ? 'bg-red-500/10 text-red-400'
-            : isUrgent
-              ? 'bg-yellow-500/10 text-yellow-400'
-              : 'bg-white/5 text-white/50',
-        )}>
-          <Timer className="w-3.5 h-3.5 shrink-0" />
-          {isExpired ? (
-            <span>결제 시간이 만료되었습니다</span>
-          ) : (
-            <span>결제 제한시간: {formatTime(remainingSeconds)} 남음</span>
-          )}
-        </div>
-
-        {/* 버튼 */}
-        {!isExpired && (
-          <div className="flex gap-2 mt-4">
-            <button
-              onClick={handleCancel}
-              disabled={isPaying}
-              className={cn(
-                'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                'bg-white/10 text-white/70 hover:bg-white/20',
-                'disabled:opacity-50 disabled:cursor-not-allowed',
-              )}
-            >
-              예약 취소
-            </button>
-            <button
-              onClick={handlePayment}
-              disabled={isPaying || !tossRef.current}
-              className={cn(
-                'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                'bg-blue-500 text-white hover:bg-blue-600',
-                'disabled:opacity-50 disabled:cursor-not-allowed',
-              )}
-            >
-              {isPaying ? (
-                <span className="flex items-center justify-center gap-1.5">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  결제 중...
-                </span>
-              ) : (
-                '결제하기'
-              )}
-            </button>
+        {/* 타이머 / 완료 상태 */}
+        {completed ? (
+          <div className="flex items-center gap-2 mt-3 px-3 py-2 rounded-lg text-xs bg-emerald-500/10 text-emerald-400">
+            <CreditCard className="w-3.5 h-3.5 shrink-0" />
+            <span>결제 완료</span>
           </div>
+        ) : (
+          <>
+            <div className={cn(
+              'flex items-center gap-2 mt-3 px-3 py-2 rounded-lg text-xs',
+              isExpired
+                ? 'bg-red-500/10 text-red-400'
+                : isUrgent
+                  ? 'bg-yellow-500/10 text-yellow-400'
+                  : 'bg-white/5 text-white/50',
+            )}>
+              <Timer className="w-3.5 h-3.5 shrink-0" />
+              {isExpired ? (
+                <span>결제 시간이 만료되었습니다</span>
+              ) : (
+                <span>결제 제한시간: {formatTime(remainingSeconds)} 남음</span>
+              )}
+            </div>
+
+            {/* 버튼 */}
+            {!isExpired && (
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={handleCancel}
+                  disabled={isPaying}
+                  className={cn(
+                    'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    'bg-white/10 text-white/70 hover:bg-white/20',
+                    'disabled:opacity-50 disabled:cursor-not-allowed',
+                  )}
+                >
+                  예약 취소
+                </button>
+                <button
+                  onClick={handlePayment}
+                  disabled={isPaying || !tossRef.current}
+                  className={cn(
+                    'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    'bg-blue-500 text-white hover:bg-blue-600',
+                    'disabled:opacity-50 disabled:cursor-not-allowed',
+                  )}
+                >
+                  {isPaying ? (
+                    <span className="flex items-center justify-center gap-1.5">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      결제 중...
+                    </span>
+                  ) : (
+                    '결제하기'
+                  )}
+                </button>
+              </div>
+            )}
+          </>
         )}
     </div>
   );

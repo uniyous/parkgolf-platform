@@ -681,6 +681,10 @@ export const ChatRoomPage: React.FC = () => {
 
           <div className="space-y-3">
             {messages.map((message, index) => {
+              // 최신 AI 메시지 판별: 이후에 다른 AI_ASSISTANT 메시지가 없으면 최신
+              const isLatestAiMessage = message.messageType === 'AI_ASSISTANT' &&
+                !messages.slice(index + 1).some((m) => m.messageType === 'AI_ASSISTANT');
+
               // AI 메시지는 AiMessageBubble로 렌더링
               if (message.messageType === 'AI_ASSISTANT') {
                 // realtime actions 우선, 없으면 DB metadata에서 파싱
@@ -711,6 +715,7 @@ export const ChatRoomPage: React.FC = () => {
                     conversationId={conversationId}
                     selectedClubId={selectedClubId}
                     selectedSlotId={selectedSlotId}
+                    isLatestAiMessage={isLatestAiMessage}
                     onClubSelect={(clubId, clubName) => {
                       setSelectedClubId(clubId);
                       setSelectedSlotId(null);

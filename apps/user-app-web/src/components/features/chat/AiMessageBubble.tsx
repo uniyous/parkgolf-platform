@@ -32,6 +32,8 @@ interface AiMessageBubbleProps {
   onSplitPaymentComplete?: (success: boolean, orderId: string) => void;
   selectedClubId?: string | null;
   selectedSlotId?: string | null;
+  /** 최신 AI 메시지 여부: false이면 액션 카드를 읽기 전용으로 렌더링 */
+  isLatestAiMessage?: boolean;
 }
 
 export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
@@ -55,6 +57,7 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   onSplitPaymentComplete,
   selectedClubId,
   selectedSlotId,
+  isLatestAiMessage = true,
 }) => {
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -104,6 +107,7 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                     data={action.data as ConfirmBookingData}
                     onConfirm={onConfirmBooking}
                     onCancel={onCancelBooking}
+                    completed={!isLatestAiMessage}
                   />
                 )}
                 {action.type === 'SHOW_PAYMENT' && (
@@ -112,6 +116,7 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                     roomId={roomId}
                     conversationId={conversationId}
                     onPaymentComplete={onPaymentComplete}
+                    completed={!isLatestAiMessage}
                   />
                 )}
                 {action.type === 'BOOKING_COMPLETE' && (
@@ -122,6 +127,7 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                     data={action.data as SelectMembersData}
                     onConfirm={onTeamMemberSelect}
                     onCancel={onCancelBooking}
+                    completed={!isLatestAiMessage}
                   />
                 )}
                 {action.type === 'TEAM_COMPLETE' && (
@@ -129,6 +135,7 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                     data={action.data as TeamCompleteData}
                     onNextTeam={onNextTeam}
                     onFinish={onFinishGroup}
+                    completed={!isLatestAiMessage}
                   />
                 )}
                 {action.type === 'SETTLEMENT_STATUS' && (

@@ -7,6 +7,7 @@ interface TeamCompleteCardProps {
   data: TeamCompleteData;
   onNextTeam?: () => void;
   onFinish?: () => void;
+  completed?: boolean;
 }
 
 const formatPrice = (price: number) =>
@@ -16,6 +17,7 @@ export const TeamCompleteCard: React.FC<TeamCompleteCardProps> = ({
   data,
   onNextTeam,
   onFinish,
+  completed,
 }) => {
   return (
     <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-3">
@@ -57,7 +59,7 @@ export const TeamCompleteCard: React.FC<TeamCompleteCardProps> = ({
       </div>
 
       {/* Actions */}
-      {(onNextTeam || onFinish) && (
+      {!completed && (onNextTeam || onFinish) && (
         <div className="flex gap-2 pt-1">
           {onFinish && (
             <button
