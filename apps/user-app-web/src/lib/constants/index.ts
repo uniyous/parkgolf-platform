@@ -6,6 +6,20 @@ import type { BookingStatus, BookingResponse } from '@/lib/api/bookingApi';
 import type { Game, GameTimeSlot } from '@/lib/api/gameApi';
 
 // =====================
+// 채팅 결제 컨텍스트
+// =====================
+export const CHAT_PAYMENT_CONTEXT_KEY = 'CHAT_PAYMENT_CONTEXT';
+
+export interface ChatPaymentContext {
+  roomId: string;
+  conversationId: string;
+  orderId: string;
+  amount: number;
+  orderName: string;
+  type: 'single' | 'split';
+}
+
+// =====================
 // 날짜 필터 설정
 // =====================
 export const DATE_FILTER_MAX_MONTHS = 2; // 최대 2개월 후까지 선택 가능

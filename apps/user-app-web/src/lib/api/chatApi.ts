@@ -419,7 +419,7 @@ export const chatApi = {
     const result = unwrapResponse(response.data);
     // DB 응답의 'type' 필드를 프론트엔드 'messageType'으로 정규화
     result.messages = result.messages.map((msg) => {
-      const raw = msg as Record<string, unknown>;
+      const raw = msg as unknown as Record<string, unknown>;
       return {
         ...msg,
         messageType: msg.messageType || (raw.type as MessageType) || 'TEXT',

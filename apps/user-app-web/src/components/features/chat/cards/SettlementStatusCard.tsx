@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Users, CheckCircle2, Clock, AlertCircle, CreditCard, Loader2, Timer, Bell, RefreshCw, MapPin } from 'lucide-react';
-import { loadTossPayments, type TossPayments } from '@tosspayments/payment-sdk';
+import { loadTossPayments, type TossPaymentsInstance } from '@tosspayments/payment-sdk';
 import { cn } from '@/lib/utils';
 import type { SettlementStatusData } from '@/lib/api/chatApi';
 import { CHAT_PAYMENT_CONTEXT_KEY, type ChatPaymentContext } from '@/lib/constants';
@@ -189,7 +189,7 @@ const ParticipantPaymentView: React.FC<{
   const [isPaying, setIsPaying] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [isExpired, setIsExpired] = useState(false);
-  const tossRef = useRef<TossPayments | null>(null);
+  const tossRef = useRef<TossPaymentsInstance | null>(null);
 
   // Toss SDK 초기화
   useEffect(() => {

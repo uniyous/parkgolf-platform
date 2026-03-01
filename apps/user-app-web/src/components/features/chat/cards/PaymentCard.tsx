@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { CreditCard, MapPin, Calendar, Clock, Users, Banknote, Timer, Loader2 } from 'lucide-react';
-import { loadTossPayments, type TossPayments } from '@tosspayments/payment-sdk';
+import { loadTossPayments, type TossPaymentsInstance } from '@tosspayments/payment-sdk';
 import { cn } from '@/lib/utils';
 import type { PaymentCardData } from '@/lib/api/chatApi';
 import { paymentApi } from '@/lib/api/paymentApi';
@@ -23,7 +23,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversa
   const [remainingSeconds, setRemainingSeconds] = useState(PAYMENT_TIMEOUT_SECONDS);
   const [isPaying, setIsPaying] = useState(false);
   const [isExpired, setIsExpired] = useState(false);
-  const tossRef = useRef<TossPayments | null>(null);
+  const tossRef = useRef<TossPaymentsInstance | null>(null);
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat('ko-KR').format(price);
