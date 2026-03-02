@@ -351,7 +351,7 @@ export class BookingAgentService {
           );
         }
 
-        actions.push({ type: 'SETTLEMENT_STATUS', data: settlementData });
+        // 정산 카드는 브로드캐스트로만 전달 (API 응답에서 제외하여 중복 방지)
 
         message = `팀${teamNumber} 예약이 생성되었어요! 참여자들에게 결제 요청이 전송됩니다.`;
         this.conversationService.setState(context, 'SETTLING');
