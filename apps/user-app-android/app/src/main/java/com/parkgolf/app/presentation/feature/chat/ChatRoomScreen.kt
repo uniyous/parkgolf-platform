@@ -539,7 +539,7 @@ fun ChatRoomScreen(
 }
 
 /**
- * 연결 상태 배너 (iOS와 동일한 UI)
+ * 연결 상태 배너 (크로스 플랫폼 통일 디자인)
  */
 @Composable
 private fun ConnectionStatusBanner(
@@ -547,7 +547,7 @@ private fun ConnectionStatusBanner(
     onReconnect: () -> Unit
 ) {
     Surface(
-        color = Color(0xFFEF4444).copy(alpha = 0.9f),
+        color = Color(0xFFF59E0B).copy(alpha = 0.9f),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -565,11 +565,11 @@ private fun ConnectionStatusBanner(
                     imageVector = Icons.Default.WifiOff,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(16.dp)
                 )
                 Text(
                     text = "연결 끊김",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = Color.White
                 )
             }
@@ -584,17 +584,14 @@ private fun ConnectionStatusBanner(
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("재연결")
+                    Text(
+                        text = "재연결",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
-            } else {
-                Text(
-                    text = "재연결 불가",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.7f)
-                )
             }
         }
     }
@@ -732,15 +729,12 @@ private fun ChatInputBar(
     enabled: Boolean,
     onToggleAi: () -> Unit = {}
 ) {
-    Surface(
-        color = GradientStart.copy(alpha = 0.95f),
-        shadowElevation = 8.dp,
-        modifier = Modifier.navigationBarsPadding()
-    ) {
+    Column(modifier = Modifier.navigationBarsPadding()) {
+        HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
                 .imePadding(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -753,17 +747,17 @@ private fun ChatInputBar(
                     Text(
                         text = when {
                             isAiMode -> "AI에게 예약 요청하기..."
-                            enabled -> "메시지를 입력하세요"
+                            enabled -> "메시지 입력..."
                             else -> "연결 중..."
                         },
-                        color = ParkOnPrimary.copy(alpha = 0.5f)
+                        color = ParkOnPrimary.copy(alpha = 0.4f)
                     )
                 },
                 enabled = enabled,
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = if (isAiMode) ParkPrimary.copy(alpha = 0.15f) else GlassCard,
-                    unfocusedContainerColor = if (isAiMode) ParkPrimary.copy(alpha = 0.15f) else GlassCard,
-                    disabledContainerColor = GlassCard.copy(alpha = 0.5f),
+                    focusedContainerColor = if (isAiMode) ParkPrimary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.1f),
+                    unfocusedContainerColor = if (isAiMode) ParkPrimary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.1f),
+                    disabledContainerColor = Color.White.copy(alpha = 0.05f),
                     focusedTextColor = ParkOnPrimary,
                     unfocusedTextColor = ParkOnPrimary,
                     cursorColor = ParkPrimary,
@@ -783,15 +777,15 @@ private fun ChatInputBar(
                 onClick = onSend,
                 enabled = enabled && value.isNotBlank() && !isSending && !isAiLoading,
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
                     .background(
-                        if (enabled && value.isNotBlank()) ParkPrimary else ParkPrimary.copy(alpha = 0.3f)
+                        if (enabled && value.isNotBlank()) ParkPrimary else Color.White.copy(alpha = 0.1f)
                     )
             ) {
                 if (isSending || isAiLoading) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(16.dp),
                         color = ParkOnPrimary,
                         strokeWidth = 2.dp
                     )
@@ -799,7 +793,8 @@ private fun ChatInputBar(
                     Icon(
                         Icons.AutoMirrored.Filled.Send,
                         contentDescription = "보내기",
-                        tint = ParkOnPrimary
+                        tint = ParkOnPrimary,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw, Loader2, UserPlus, Search, X, Check, Sparkles, AlertTriangle } from 'lucide-react';
+import { Send, MoreVertical, Users, LogOut, WifiOff, RefreshCw, Loader2, UserPlus, Search, X, Check, Sparkles, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SubPageHeader } from '@/components/layout';
 import { Button, LoadingView } from '@/components/ui';
@@ -551,25 +551,6 @@ export const ChatRoomPage: React.FC = () => {
         rightContent={
           <>
             <div className="flex items-center gap-2 text-xs">
-              {isConnected ? (
-                <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-              ) : (
-                <>
-                  <WifiOff className="w-3.5 h-3.5 text-yellow-400" />
-                  <button
-                    onClick={() => {
-                      const token = authStorage.getToken();
-                      if (token) {
-                        chatSocket.forceReconnect(token);
-                      }
-                    }}
-                    className="p-1 rounded hover:bg-white/10 transition-colors"
-                    title="재연결"
-                  >
-                    <RefreshCw className="w-3 h-3 text-yellow-400" />
-                  </button>
-                </>
-              )}
               {(room.participants?.length ?? 0) > 0 && (
                 <button
                   onClick={() => setShowParticipants(true)}
@@ -633,6 +614,28 @@ export const ChatRoomPage: React.FC = () => {
           </>
         }
       />
+
+      {/* Socket disconnected banner */}
+      {!isConnected && (
+        <div className="flex items-center justify-between px-4 py-2 bg-amber-500/90 text-white text-sm">
+          <div className="flex items-center gap-2">
+            <WifiOff className="w-4 h-4 flex-shrink-0" />
+            <span>연결 끊김</span>
+          </div>
+          <button
+            onClick={() => {
+              const token = authStorage.getToken();
+              if (token) {
+                chatSocket.forceReconnect(token);
+              }
+            }}
+            className="flex items-center gap-1 px-2 py-1 rounded hover:bg-white/20 transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>재연결</span>
+          </button>
+        </div>
+      )}
 
       {/* NATS disconnected warning banner */}
       {isConnected && !isNatsConnected && (

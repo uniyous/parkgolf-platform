@@ -168,30 +168,40 @@ struct ChatRoomView: View {
     // MARK: - Connection Status Banner
 
     private var connectionStatusBanner: some View {
-        HStack(spacing: ParkSpacing.xs) {
-            Image(systemName: "wifi.slash")
-                .font(.caption)
-                .foregroundStyle(.white.opacity(0.8))
+        HStack {
+            HStack(spacing: ParkSpacing.xs) {
+                Image(systemName: "wifi.slash")
+                    .font(.caption)
+                    .foregroundStyle(.white)
 
-            Text("연결 끊김")
-                .font(.parkCaption)
-                .foregroundStyle(.white.opacity(0.8))
+                Text("연결 끊김")
+                    .font(.parkCaption)
+                    .foregroundStyle(.white)
+            }
+
+            Spacer()
 
             Button {
                 Task {
                     await viewModel.forceReconnect()
                 }
             } label: {
-                Image(systemName: "arrow.clockwise")
-                    .font(.caption)
-                    .foregroundStyle(.white)
+                HStack(spacing: ParkSpacing.xxs) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.caption)
+                        .foregroundStyle(.white)
+                    Text("재연결")
+                        .font(.parkCaption)
+                        .foregroundStyle(.white)
+                }
+                .padding(.horizontal, ParkSpacing.xs)
+                .padding(.vertical, ParkSpacing.xxs)
             }
         }
         .padding(.vertical, ParkSpacing.xxs)
         .padding(.horizontal, ParkSpacing.sm)
-        .background(Color.parkWarning.opacity(0.8))
-        .clipShape(Capsule())
-        .padding(.top, ParkSpacing.xs)
+        .frame(maxWidth: .infinity)
+        .background(Color.parkWarning.opacity(0.9))
     }
 
     // MARK: - NATS Warning Banner
@@ -620,84 +630,89 @@ struct ChatRoomView: View {
     // MARK: - Message Input
 
     private var messageInput: some View {
-        HStack(spacing: ParkSpacing.sm) {
-            Button {
-                // Add attachment
-            } label: {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(.white.opacity(0.6))
-            }
+        VStack(spacing: 0) {
+            Divider()
+                .background(Color.white.opacity(0.1))
 
-            TextField(
-                aiViewModel.isAiMode ? "AI에게 예약 요청하기..." : "메시지 입력",
-                text: $viewModel.inputText,
-                axis: .vertical
-            )
-                .textFieldStyle(.plain)
-                .padding(.horizontal, ParkSpacing.sm)
-                .padding(.vertical, ParkSpacing.xs)
-                .background(
-                    aiViewModel.isAiMode
-                        ? Color.parkPrimary.opacity(0.15)
-                        : Color.white.opacity(0.15)
+            HStack(spacing: ParkSpacing.xs) {
+                TextField(
+                    aiViewModel.isAiMode ? "AI에게 예약 요청하기..." : "메시지 입력...",
+                    text: $viewModel.inputText,
+                    axis: .vertical
                 )
-                .clipShape(RoundedRectangle(cornerRadius: ParkRadius.full))
-                .overlay(
-                    RoundedRectangle(cornerRadius: ParkRadius.full)
-                        .stroke(
-                            aiViewModel.isAiMode ? Color.parkPrimary.opacity(0.4) : Color.clear,
-                            lineWidth: 1
-                        )
-                )
-                .foregroundStyle(.white)
-                .focused($isInputFocused)
-                .lineLimit(1...5)
-                .onSubmit {
-                    // 키보드 엔터키로 전송하지 않음 (멀티라인)
-                }
-                .task(id: viewModel.inputText) {
-                    // Debounce typing indicator (300ms)
-                    try? await Task.sleep(nanoseconds: 300_000_000)
-                    if !aiViewModel.isAiMode {
-                        viewModel.sendTypingIndicator(!viewModel.inputText.isEmpty)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, ParkSpacing.sm)
+                    .padding(.vertical, 10)
+                    .background(
+                        aiViewModel.isAiMode
+                            ? Color.parkPrimary.opacity(0.15)
+                            : Color.white.opacity(0.1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: ParkRadius.full))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: ParkRadius.full)
+                            .stroke(
+                                aiViewModel.isAiMode
+                                    ? Color.parkPrimary.opacity(0.4)
+                                    : Color.white.opacity(0.1),
+                                lineWidth: 1
+                            )
+                    )
+                    .foregroundStyle(.white)
+                    .focused($isInputFocused)
+                    .lineLimit(1...5)
+                    .onSubmit {
+                        // 키보드 엔터키로 전송하지 않음 (멀티라인)
+                    }
+                    .task(id: viewModel.inputText) {
+                        // Debounce typing indicator (300ms)
+                        try? await Task.sleep(nanoseconds: 300_000_000)
+                        if !aiViewModel.isAiMode {
+                            viewModel.sendTypingIndicator(!viewModel.inputText.isEmpty)
+                        }
+                    }
+
+                AiButton(isActive: aiViewModel.isAiMode) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        aiViewModel.toggleAiMode()
                     }
                 }
 
-            AiButton(isActive: aiViewModel.isAiMode) {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    aiViewModel.toggleAiMode()
-                }
-            }
-
-            Button {
-                if aiViewModel.isAiMode {
-                    let text = viewModel.inputText
-                    viewModel.inputText = ""
-                    sendAiFollowUp(text)
-                } else {
-                    Task {
-                        await viewModel.sendMessage()
-                    }
-                }
-            } label: {
-                Group {
-                    if aiViewModel.isAiLoading {
-                        ProgressView()
-                            .tint(Color.parkPrimary)
-                            .frame(width: 28, height: 28)
+                Button {
+                    if aiViewModel.isAiMode {
+                        let text = viewModel.inputText
+                        viewModel.inputText = ""
+                        sendAiFollowUp(text)
                     } else {
-                        Image(systemName: viewModel.isSending ? "arrow.up.circle" : "arrow.up.circle.fill")
-                            .font(.title)
-                            .foregroundStyle(viewModel.inputText.isEmpty ? .white.opacity(0.4) : Color.parkPrimary)
+                        Task {
+                            await viewModel.sendMessage()
+                        }
                     }
+                } label: {
+                    Group {
+                        if aiViewModel.isAiLoading {
+                            ProgressView()
+                                .tint(.white)
+                                .frame(width: 20, height: 20)
+                        } else {
+                            Image(systemName: "paperplane.fill")
+                                .font(.system(size: 16))
+                                .foregroundStyle(.white)
+                        }
+                    }
+                    .frame(width: 40, height: 40)
+                    .background(
+                        viewModel.inputText.isEmpty
+                            ? Color.white.opacity(0.1)
+                            : Color.parkPrimary
+                    )
+                    .clipShape(Circle())
                 }
+                .disabled(viewModel.inputText.isEmpty || viewModel.isSending || aiViewModel.isAiLoading)
             }
-            .disabled(viewModel.inputText.isEmpty || viewModel.isSending || aiViewModel.isAiLoading)
+            .padding(.horizontal, ParkSpacing.md)
+            .padding(.vertical, ParkSpacing.sm)
         }
-        .padding(.horizontal, ParkSpacing.md)
-        .padding(.vertical, ParkSpacing.sm)
-        .background(Color.black.opacity(0.6))
     }
 }
 
