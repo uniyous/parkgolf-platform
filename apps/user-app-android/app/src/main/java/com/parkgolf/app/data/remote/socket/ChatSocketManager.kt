@@ -457,14 +457,29 @@ class ChatSocketManager @Inject constructor() {
     }
 
     private fun handleNewMessage(args: Array<Any>) {
-        if (args.isEmpty()) return
-        val data = args[0] as? JSONObject ?: return
+        if (args.isEmpty()) {
+            Log.w(TAG, "new_message event received with empty args")
+            return
+        }
+
+        val data = when (val raw = args[0]) {
+            is JSONObject -> raw
+            is String -> try { JSONObject(raw) } catch (e: Exception) {
+                Log.e(TAG, "Failed to parse new_message string as JSON: $raw", e)
+                return
+            }
+            else -> {
+                Log.e(TAG, "new_message unexpected type: ${raw::class.java.name}, value: $raw")
+                return
+            }
+        }
 
         try {
             val message = parseMessage(data)
+            Log.d(TAG, "Message received: id=${message.id}, room=${message.roomId}, sender=${message.senderName}")
             _messageReceived.tryEmit(message)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to parse message", e)
+            Log.e(TAG, "Failed to parse message: $data", e)
         }
     }
 
@@ -544,14 +559,25 @@ class ChatSocketManager @Inject constructor() {
             LocalDateTime.now()
         }
 
+        // Gateway broadcasts "type" (lowercase), DB/API uses "messageType" — handle both (like iOS)
+        val typeString = data.optString("messageType").ifEmpty {
+            data.optString("type", "TEXT")
+        }.uppercase()
+
+        // senderId may be number or string from gateway
+        val senderId = when {
+            data.has("senderId") -> data.get("senderId").toString()
+            else -> ""
+        }
+
         return ChatMessage(
             id = data.optString("id"),
             roomId = data.optString("roomId"),
-            senderId = data.optString("senderId"),
+            senderId = senderId,
             senderName = data.optString("senderName"),
             content = data.optString("content"),
-            messageType = MessageType.fromValue(data.optString("messageType", "TEXT")),
-            metadata = data.optString("metadata", null),
+            messageType = MessageType.fromValue(typeString),
+            metadata = if (data.has("metadata") && !data.isNull("metadata")) data.optString("metadata") else null,
             createdAt = createdAt,
             readBy = null
         )
