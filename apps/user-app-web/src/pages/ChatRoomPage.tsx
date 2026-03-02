@@ -694,12 +694,28 @@ export const ChatRoomPage: React.FC = () => {
                   }
                 }
 
+                // DEBUG: settlement card 렌더링 추적
+                if (parsedMeta?.targetUserIds || String(message.senderId) === '0') {
+                  console.log('[DEBUG] AI broadcast message:', {
+                    id: message.id,
+                    senderId: message.senderId,
+                    messageType: message.messageType,
+                    hasMetadata: !!message.metadata,
+                    parsedMeta,
+                    actions,
+                    currentUserId,
+                    myId: Number(currentUserId),
+                  });
+                }
+
                 // 브로드캐스트 AI 메시지: targetUserIds + bookerUserId 필터링
                 if (parsedMeta?.targetUserIds) {
                   const targetIds = parsedMeta.targetUserIds as number[];
                   const bookerUserId = parsedMeta.bookerUserId as number | undefined;
                   const myId = Number(currentUserId);
+                  console.log('[DEBUG] targetUserIds filter:', { targetIds, bookerUserId, myId, includes: targetIds.includes(myId) });
                   if (!targetIds.includes(myId) && bookerUserId !== myId) {
+                    console.log('[DEBUG] FILTERED OUT message:', message.id);
                     return null; // 내가 대상이 아니면 렌더링하지 않음
                   }
                 }

@@ -422,10 +422,15 @@ export const chatApi = {
     // DB 응답의 'type' 필드를 프론트엔드 'messageType'으로 정규화
     result.messages = result.messages.map((msg) => {
       const raw = msg as unknown as Record<string, unknown>;
-      return {
+      const mapped = {
         ...msg,
         messageType: msg.messageType || (raw.type as MessageType) || 'TEXT',
       };
+      // DEBUG: senderId=0 (broadcast) 메시지 추적
+      if (raw.senderId === 0 || msg.senderId === '0') {
+        console.log('[DEBUG] getMessages broadcast msg:', { rawType: raw.type, msgMessageType: msg.messageType, mappedMessageType: mapped.messageType, metadata: raw.metadata, senderId: raw.senderId });
+      }
+      return mapped;
     });
     return result;
   },
