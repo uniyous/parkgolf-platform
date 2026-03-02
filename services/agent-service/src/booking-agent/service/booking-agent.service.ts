@@ -552,6 +552,7 @@ export class BookingAgentService {
     this.conversationService.addAssistantMessage(context, message);
 
     // 채팅방 전체에 갱신된 정산 카드 브로드캐스트 (진행자 포함 모든 참여자에게)
+    // 브로드캐스트가 유일한 카드 전달 경로 → API 응답에서는 actions 제외 (중복 방지)
     const roomId = context.slots.chatRoomId || request.chatRoomId;
     if (roomId) {
       const targetUserIds = participants.map((s: any) => s.userId);
@@ -567,7 +568,6 @@ export class BookingAgentService {
       conversationId: context.conversationId,
       message,
       state: context.state,
-      actions,
     };
   }
 
