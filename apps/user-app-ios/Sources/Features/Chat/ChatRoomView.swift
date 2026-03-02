@@ -485,7 +485,7 @@ struct ChatRoomView: View {
 
     // MARK: - Helpers
 
-    /// targetUserIds가 있는 브로드캐스트 메시지가 현재 사용자에게 해당하지 않으면 true 반환
+    /// targetUserIds + bookerUserId가 있는 브로드캐스트 메시지가 현재 사용자에게 해당하지 않으면 true 반환
     private func isFilteredByTargetUserIds(_ message: ChatMessage) -> Bool {
         guard let metadata = message.metadata,
               let data = metadata.data(using: .utf8),
@@ -501,7 +501,12 @@ struct ChatRoomView: View {
         guard !targetIds.isEmpty, let myId = Int(viewModel.currentUserId) else {
             return false
         }
-        return !targetIds.contains(myId)
+        if targetIds.contains(myId) { return false }
+        // 진행자(bookerUserId)도 대상에 포함
+        if let bookerUserId = meta["bookerUserId"] as? Int, bookerUserId == myId {
+            return false
+        }
+        return true
     }
 
     // MARK: - AI Follow-up

@@ -306,7 +306,7 @@ fun ChatRoomScreen(
                             val message = dedupedMessages[index]
                             when (message.messageType) {
                                 MessageType.AI_ASSISTANT -> {
-                                    // 브로드캐스트 AI 메시지: targetUserIds 필터링
+                                    // 브로드캐스트 AI 메시지: targetUserIds + bookerUserId 필터링
                                     if (!message.metadata.isNullOrEmpty()) {
                                         try {
                                             val meta = org.json.JSONObject(message.metadata)
@@ -316,6 +316,11 @@ fun ChatRoomScreen(
                                                 var isTarget = false
                                                 for (i in 0 until targetIds.length()) {
                                                     if (targetIds.optInt(i) == myId) { isTarget = true; break }
+                                                }
+                                                // 진행자(bookerUserId)도 대상에 포함
+                                                if (!isTarget) {
+                                                    val bookerUserId = meta.optInt("bookerUserId", -1)
+                                                    if (bookerUserId == myId) isTarget = true
                                                 }
                                                 if (!isTarget) return@items // 내가 대상이 아니면 렌더링하지 않음
                                             }

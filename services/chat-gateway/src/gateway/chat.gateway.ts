@@ -354,12 +354,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     // targetUserIds가 있으면 해당 사용자에게만 전송
     const targetUserIds = this.extractTargetUserIds(message.metadata);
+    const bookerUserId = this.extractBookerUserId(message.metadata);
     if (targetUserIds && targetUserIds.length > 0) {
       for (const userId of targetUserIds) {
         this.server.to(`user:${userId}`).emit('new_message', message);
       }
+      // 진행자에게도 별도 전송 (targetUserIds에 포함되지 않은 경우)
+      if (bookerUserId && !targetUserIds.includes(bookerUserId)) {
+        this.server.to(`user:${bookerUserId}`).emit('new_message', message);
+      }
+      const allTargets = bookerUserId && !targetUserIds.includes(bookerUserId)
+        ? [...targetUserIds, bookerUserId]
+        : targetUserIds;
       this.logger.log(
-        `Targeted AI message to users [${targetUserIds.join(',')}] in room ${roomId} (id=${message.id})`,
+        `Targeted AI message to users [${allTargets.join(',')}] in room ${roomId} (id=${message.id})`,
       );
     } else {
       this.server.to(roomId).emit('new_message', message);
@@ -373,6 +381,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       const meta = JSON.parse(metadata);
       if (Array.isArray(meta?.targetUserIds) && meta.targetUserIds.length > 0) {
         return meta.targetUserIds;
+      }
+    } catch { /* ignore */ }
+    return null;
+  }
+
+  private extractBookerUserId(metadata?: string): number | null {
+    if (!metadata) return null;
+    try {
+      const meta = JSON.parse(metadata);
+      if (typeof meta?.bookerUserId === 'number' && meta.bookerUserId > 0) {
+        return meta.bookerUserId;
       }
     } catch { /* ignore */ }
     return null;

@@ -975,6 +975,25 @@ export class ToolExecutorService {
   }
 
   /**
+   * 예약의 진행자(booker) userId 조회
+   */
+  async getBookingBookerId(bookingId: number): Promise<number | null> {
+    try {
+      const response = await firstValueFrom(
+        this.bookingClient
+          .send('booking.findById', { id: bookingId })
+          .pipe(
+            timeout(5000),
+            catchError(() => [null]),
+          ),
+      );
+      return response?.data?.userId || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * 분할결제 요청 알림 발송 (fire-and-forget)
    */
   emitSplitPaymentNotification(data: {
@@ -1006,12 +1025,14 @@ export class ToolExecutorService {
     targetUserIds: number[],
     settlementData: Record<string, unknown>,
     content?: string,
+    bookerUserId?: number,
   ): void {
     const metadata = JSON.stringify({
       conversationId: null,
       state: 'SETTLING',
       actions: [{ type: 'SETTLEMENT_STATUS', data: settlementData }],
       targetUserIds,
+      bookerUserId: bookerUserId || null,
     });
 
     const message = {

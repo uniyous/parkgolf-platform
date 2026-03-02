@@ -463,7 +463,7 @@ export class BookingAgentService {
     request: ChatRequestDto,
   ): Promise<ChatResponseDto> {
     let { bookingId } = context.slots;
-    const { bookerId } = context.slots;
+    let bookerId = context.slots.bookerId;
 
     // 비예약자: context에 bookingId 없으면 splitOrderId로 역추적
     let splitStatus: any = null;
@@ -498,6 +498,11 @@ export class BookingAgentService {
         message,
         state: context.state,
       };
+    }
+
+    // 비예약자 context에는 bookerId가 없으므로 booking에서 조회
+    if (!bookerId && bookingId) {
+      bookerId = await this.toolExecutor.getBookingBookerId(bookingId);
     }
 
     const participants = splitStatus.splits || [];
@@ -554,16 +559,18 @@ export class BookingAgentService {
 
     this.conversationService.addAssistantMessage(context, message);
 
-    // 채팅방 전체에 갱신된 정산 카드 브로드캐스트 (진행자 포함 모든 참여자에게)
+    // 채팅방 전체에 갱신된 정산 카드 브로드캐스트
     // 브로드캐스트가 유일한 카드 전달 경로 → API 응답에서는 actions 제외 (중복 방지)
     const roomId = context.slots.chatRoomId || request.chatRoomId;
     if (roomId) {
       const targetUserIds = participants.map((s: any) => s.userId);
+      const bid = bookerId || context.slots.bookerId;
       this.toolExecutor.broadcastSettlementCard(
         roomId,
         targetUserIds,
         actions[0].data as Record<string, unknown>,
         message,
+        bid || undefined,
       );
     }
 

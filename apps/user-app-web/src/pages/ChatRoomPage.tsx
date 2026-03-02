@@ -694,10 +694,12 @@ export const ChatRoomPage: React.FC = () => {
                   }
                 }
 
-                // 브로드캐스트 AI 메시지: targetUserIds 필터링
+                // 브로드캐스트 AI 메시지: targetUserIds + bookerUserId 필터링
                 if (parsedMeta?.targetUserIds) {
                   const targetIds = parsedMeta.targetUserIds as number[];
-                  if (!targetIds.includes(Number(currentUserId))) {
+                  const bookerUserId = parsedMeta.bookerUserId as number | undefined;
+                  const myId = Number(currentUserId);
+                  if (!targetIds.includes(myId) && bookerUserId !== myId) {
                     return null; // 내가 대상이 아니면 렌더링하지 않음
                   }
                 }
