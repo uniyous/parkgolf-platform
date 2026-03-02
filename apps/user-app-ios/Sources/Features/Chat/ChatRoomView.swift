@@ -393,7 +393,7 @@ struct ChatRoomView: View {
         }
     }
 
-    // MARK: - Load More Button
+    // MARK: - Load More Indicator
 
     private var loadMoreButton: some View {
         Group {
@@ -401,20 +401,6 @@ struct ChatRoomView: View {
                 ProgressView()
                     .tint(.white)
                     .padding(.vertical, ParkSpacing.sm)
-            } else {
-                Button {
-                    Task {
-                        await viewModel.loadMoreMessages()
-                    }
-                } label: {
-                    HStack(spacing: ParkSpacing.xs) {
-                        Image(systemName: "arrow.up.circle")
-                        Text("이전 메시지 보기")
-                    }
-                    .font(.parkCaption)
-                    .foregroundStyle(.white.opacity(0.7))
-                    .padding(.vertical, ParkSpacing.sm)
-                }
             }
         }
     }

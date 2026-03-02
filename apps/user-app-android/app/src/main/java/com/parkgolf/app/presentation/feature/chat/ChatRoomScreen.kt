@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -235,14 +236,27 @@ fun ChatRoomScreen(
                         color = ParkOnPrimary
                     )
                 } else {
+                    // 스크롤 상단 도달 시 이전 메시지 자동 로드
+                    val shouldLoadMore by remember {
+                        derivedStateOf {
+                            val firstVisibleItem = listState.firstVisibleItemIndex
+                            firstVisibleItem <= 1 && uiState.hasMore && !uiState.isLoading
+                        }
+                    }
+                    LaunchedEffect(shouldLoadMore) {
+                        if (shouldLoadMore) {
+                            viewModel.loadMoreMessages()
+                        }
+                    }
+
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Load more button at top (older messages)
-                        if (uiState.hasMore) {
+                        // Loading indicator at top
+                        if (uiState.hasMore && uiState.isLoading) {
                             item {
                                 Box(
                                     modifier = Modifier
@@ -250,16 +264,10 @@ fun ChatRoomScreen(
                                         .padding(8.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    if (uiState.isLoading) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(24.dp),
-                                            color = ParkOnPrimary
-                                        )
-                                    } else {
-                                        TextButton(onClick = { viewModel.loadMoreMessages() }) {
-                                            Text("이전 메시지 보기", color = ParkOnPrimary)
-                                        }
-                                    }
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        color = ParkOnPrimary
+                                    )
                                 }
                             }
                         }
@@ -794,7 +802,9 @@ private fun ChatInputBar(
                         Icons.AutoMirrored.Filled.Send,
                         contentDescription = "보내기",
                         tint = ParkOnPrimary,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier
+                            .size(20.dp)
+                            .rotate(-45f)
                     )
                 }
             }

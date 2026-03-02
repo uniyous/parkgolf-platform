@@ -660,16 +660,6 @@ export const ChatRoomPage: React.FC = () => {
             </div>
           )}
 
-          {/* Load more button (when there are more messages) */}
-          {hasNextPage && !isFetchingNextPage && (
-            <button
-              onClick={() => fetchNextPage()}
-              className="w-full py-2 mb-3 text-sm text-white/50 hover:text-white/70 transition-colors"
-            >
-              ↑ 이전 메시지 더 보기
-            </button>
-          )}
-
           {isLoadingMessages && (
             <div className="flex items-center justify-center py-8">
               <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
