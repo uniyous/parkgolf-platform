@@ -342,8 +342,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   }
 
   /**
-   * NATS에서 수신한 메시지를 Socket.IO 룸으로 브로드캐스트
-   * agent-service가 AI 메시지를 DB에 저장한 후 이 이벤트를 발행
+   * NATS에서 수신한 메시지를 Socket.IO 룸으로 브로드캐스트하고
+   * JetStream으로 발행하여 DB에 순차 저장
    */
   private deliverRoomMessage(event: RoomMessageEvent) {
     const { roomId, message } = event;
@@ -352,7 +352,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       return;
     }
 
-    // targetUserIds가 있으면 해당 사용자에게만 전송
+    // 1. Socket.IO 실시간 전달
     const targetUserIds = this.extractTargetUserIds(message.metadata);
     const bookerUserId = this.extractBookerUserId(message.metadata);
     if (targetUserIds && targetUserIds.length > 0) {
@@ -373,6 +373,21 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       this.server.to(roomId).emit('new_message', message);
       this.logger.log(`Broadcast AI message to room ${roomId} (id=${message.id})`);
     }
+
+    // 2. JetStream 발행 → DB 저장 (일반 채팅 메시지와 동일한 순차 처리 경로)
+    const chatMessage = {
+      id: message.id,
+      roomId: message.roomId,
+      senderId: message.senderId,
+      senderName: message.senderName,
+      content: message.content,
+      type: message.type || message.messageType || 'AI_ASSISTANT',
+      metadata: message.metadata,
+      createdAt: message.createdAt,
+    };
+    this.natsService.publishMessage(roomId, chatMessage).catch((error) => {
+      this.logger.error(`Failed to publish AI message to JetStream: ${error}`);
+    });
   }
 
   private extractTargetUserIds(metadata?: string): number[] | null {

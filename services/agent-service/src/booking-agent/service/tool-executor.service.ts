@@ -1046,27 +1046,7 @@ export class ToolExecutorService {
       createdAt: new Date().toISOString(),
     };
 
-    // 1. DB 저장 (@MessagePattern 핸들러이므로 send() 사용)
-    this.logger.log(`broadcastSettlementCard DB save - roomId=${roomId}, msgId=${message.id}, targetUserIds=${JSON.stringify(targetUserIds)}`);
-    firstValueFrom(
-      this.chatClient.send('chat.messages.save', message).pipe(
-        timeout(5000),
-        catchError((err) => {
-          this.logger.error(`broadcastSettlementCard DB save failed: ${err.message}`, err.stack);
-          return of(null);
-        }),
-      ),
-    ).then((result) => {
-      if (result) {
-        this.logger.log(`broadcastSettlementCard DB save success - msgId=${message.id}`);
-      } else {
-        this.logger.warn(`broadcastSettlementCard DB save returned null - msgId=${message.id}`);
-      }
-    }).catch((err) => {
-      this.logger.error(`broadcastSettlementCard DB save promise rejected: ${err.message}`, err.stack);
-    });
-
-    // 2. NATS 이벤트 발행 → chat-gateway가 Socket.IO 룸으로 브로드캐스트
+    // NATS 이벤트 발행 → chat-gateway가 Socket.IO 전달 + JetStream DB 저장
     try {
       this.notifyClient.emit('chat.message.room', {
         roomId,
@@ -1075,32 +1055,36 @@ export class ToolExecutorService {
           messageType: 'AI_ASSISTANT',
         },
       });
+      this.logger.log(`broadcastSettlementCard emitted - roomId=${roomId}, msgId=${message.id}, targetUserIds=${JSON.stringify(targetUserIds)}`);
     } catch (error) {
       this.logger.error('broadcastSettlementCard NATS emit failed', error);
     }
   }
 
   /**
-   * 채팅방에 SYSTEM 메시지 전송 (fire-and-forget)
+   * 채팅방에 SYSTEM 메시지 전송 (chat-gateway → JetStream → DB)
    */
   sendSystemMessage(roomId: string, content: string): void {
-    // @MessagePattern 핸들러이므로 send() 사용 (emit은 @EventPattern용)
-    firstValueFrom(
-      this.chatClient.send('chat.messages.save', {
-        id: crypto.randomUUID(),
+    const message = {
+      id: crypto.randomUUID(),
+      roomId,
+      senderId: 0,
+      senderName: 'SYSTEM',
+      content,
+      type: 'SYSTEM',
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      this.notifyClient.emit('chat.message.room', {
         roomId,
-        senderId: 0,
-        senderName: 'SYSTEM',
-        content,
-        type: 'SYSTEM',
-        createdAt: new Date().toISOString(),
-      }).pipe(
-        timeout(5000),
-        catchError((err) => {
-          this.logger.error(`sendSystemMessage failed: ${err.message}`);
-          return of(null);
-        }),
-      ),
-    );
+        message: {
+          ...message,
+          messageType: 'SYSTEM',
+        },
+      });
+    } catch (error) {
+      this.logger.error('sendSystemMessage NATS emit failed', error);
+    }
   }
 }

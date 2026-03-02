@@ -19,7 +19,8 @@ export interface ChatMessage {
   senderId: number;
   senderName: string;
   content: string;
-  type: 'text' | 'image' | 'system';
+  type: string;
+  metadata?: string;
   createdAt: string;
 }
 
