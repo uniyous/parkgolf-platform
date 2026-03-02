@@ -137,20 +137,20 @@ Pod 간 전파:    Pod A → NATS Adapter → Pod B, C... → 대상 유저 전�
 ```mermaid
 flowchart LR
     subgraph Gateway["chat-gateway Pod"]
-        AUTH["Auth\nJWT 검증"]
-        CHAT_NS["/chat 네임스페이스\nChatGateway"]
-        NOTI_NS["/notification 네임스페이스\nNotificationGateway"]
-        ADAPTER["NATS Socket.IO\nAdapter"]
-        NATS_SVC["NatsService\nJetStream + RPC"]
+        AUTH["Auth<br/>JWT 검증"]
+        CHAT_NS["/chat 네임스페이스<br/>ChatGateway"]
+        NOTI_NS["/notification 네임스페이스<br/>NotificationGateway"]
+        ADAPTER["NATS Socket.IO<br/>Adapter"]
+        NATS_SVC["NatsService<br/>JetStream + RPC"]
     end
 
     subgraph State["In-Memory State (Pod-local)"]
-        ONLINE["onlineUsers\nMap‹socketId, user›"]
+        ONLINE["onlineUsers<br/>Map‹socketId, user›"]
     end
 
     subgraph Rooms["Socket.IO Rooms (Adapter 관리)"]
-        USER_ROOM["user:{userId}\nDM + Presence"]
-        CHAT_ROOM["roomId\n채팅방 broadcast"]
+        USER_ROOM["user:{userId}<br/>DM + Presence"]
+        CHAT_ROOM["roomId<br/>채팅방 broadcast"]
     end
 
     Client -->|connect| AUTH
