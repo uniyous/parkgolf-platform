@@ -977,7 +977,7 @@ export class ToolExecutorService {
   /**
    * 예약의 진행자(booker) userId 조회
    */
-  async getBookingBookerId(bookingId: number): Promise<number | null> {
+  async getBookingBookerId(bookingId: number): Promise<number | undefined> {
     try {
       const response = await firstValueFrom(
         this.bookingClient
@@ -987,9 +987,9 @@ export class ToolExecutorService {
             catchError(() => [null]),
           ),
       );
-      return response?.data?.userId || null;
+      return response?.data?.userId || undefined;
     } catch {
-      return null;
+      return undefined;
     }
   }
 
