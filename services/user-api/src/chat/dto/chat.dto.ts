@@ -161,6 +161,11 @@ export class AiChatRequestDto {
 
   // ── 그룹 예약 필드 (팀 단위 순차) ──
 
+  @ApiPropertyOptional({ description: '그룹 예약 확인 버튼 클릭' })
+  @IsOptional()
+  @IsBoolean()
+  confirmGroupBooking?: boolean;
+
   @ApiPropertyOptional({ description: '팀 멤버 선택' })
   @IsOptional()
   @IsArray()
@@ -182,6 +187,13 @@ export class AiChatRequestDto {
   @IsOptional()
   @IsBoolean()
   sendReminder?: boolean;
+
+  // ── 채팅방 ID (클라이언트에서 전송, URL param으로도 전달됨) ──
+
+  @ApiPropertyOptional({ description: '채팅방 ID' })
+  @IsOptional()
+  @IsString()
+  chatRoomId?: string;
 
   // ── 분할결제 완료 필드 ──
 

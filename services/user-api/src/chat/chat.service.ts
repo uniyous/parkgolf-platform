@@ -256,6 +256,7 @@ export class ChatService {
         paymentComplete: dto.paymentComplete,
         paymentSuccess: dto.paymentSuccess,
         // 그룹 예약 필드 (팀 단위 순차)
+        confirmGroupBooking: dto.confirmGroupBooking,
         teamMembers: dto.teamMembers,
         nextTeam: dto.nextTeam,
         finishGroup: dto.finishGroup,
