@@ -135,7 +135,7 @@ class ChatSocketManager @Inject constructor() {
                     reconnection = false  // 우리 코드가 토큰 갱신 후 직접 재연결
 
                     timeout = 20000
-                    transports = arrayOf("websocket")
+                    transports = arrayOf("websocket", "polling")
                 }
 
                 socket = IO.socket(URI.create(socketUrl), options).apply {

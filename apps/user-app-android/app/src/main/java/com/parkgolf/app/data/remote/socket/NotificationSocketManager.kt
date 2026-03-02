@@ -61,7 +61,7 @@ class NotificationSocketManager @Inject constructor() {
                     reconnectionAttempts = Int.MAX_VALUE
                     reconnectionDelay = 1000
                     timeout = 20000
-                    transports = arrayOf("websocket")
+                    transports = arrayOf("websocket", "polling")
                 }
 
                 socket = IO.socket(URI.create(socketUrl), options).apply {
