@@ -5,12 +5,14 @@ import Foundation
 enum NotificationType: String, Codable, Sendable {
     case bookingConfirmed = "BOOKING_CONFIRMED"
     case bookingCancelled = "BOOKING_CANCELLED"
+    case refundCompleted = "REFUND_COMPLETED"
     case paymentSuccess = "PAYMENT_SUCCESS"
     case paymentFailed = "PAYMENT_FAILED"
     case friendRequest = "FRIEND_REQUEST"
     case friendAccepted = "FRIEND_ACCEPTED"
     case chatMessage = "CHAT_MESSAGE"
     case systemAlert = "SYSTEM_ALERT"
+    case splitPaymentRequest = "SPLIT_PAYMENT_REQUEST"
 
     var icon: String {
         switch self {
@@ -18,6 +20,8 @@ enum NotificationType: String, Codable, Sendable {
             return "checkmark.circle.fill"
         case .bookingCancelled:
             return "xmark.circle.fill"
+        case .refundCompleted:
+            return "arrow.uturn.backward.circle.fill"
         case .paymentSuccess:
             return "creditcard.fill"
         case .paymentFailed:
@@ -30,6 +34,8 @@ enum NotificationType: String, Codable, Sendable {
             return "bubble.left.fill"
         case .systemAlert:
             return "bell.badge.fill"
+        case .splitPaymentRequest:
+            return "arrow.triangle.branch"
         }
     }
 
@@ -39,6 +45,8 @@ enum NotificationType: String, Codable, Sendable {
             return "예약 확정"
         case .bookingCancelled:
             return "예약 취소"
+        case .refundCompleted:
+            return "환불 완료"
         case .paymentSuccess:
             return "결제 완료"
         case .paymentFailed:
@@ -51,6 +59,8 @@ enum NotificationType: String, Codable, Sendable {
             return "새 메시지"
         case .systemAlert:
             return "시스템 알림"
+        case .splitPaymentRequest:
+            return "정산 요청"
         }
     }
 }

@@ -365,7 +365,7 @@ fun NotificationDto.toDomain(): AppNotification {
     return AppNotification(
         id = id,
         userId = userId,
-        type = NotificationType.valueOf(type),
+        type = try { NotificationType.valueOf(type) } catch (_: Exception) { NotificationType.SYSTEM_ALERT },
         title = title,
         message = message,
         data = data?.toDomain(),

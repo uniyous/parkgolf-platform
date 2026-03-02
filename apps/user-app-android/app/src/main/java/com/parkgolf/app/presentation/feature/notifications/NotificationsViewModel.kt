@@ -37,8 +37,10 @@ enum class NotificationFilter(
         types = listOf(
             NotificationType.BOOKING_CONFIRMED,
             NotificationType.BOOKING_CANCELLED,
+            NotificationType.REFUND_COMPLETED,
             NotificationType.PAYMENT_SUCCESS,
-            NotificationType.PAYMENT_FAILED
+            NotificationType.PAYMENT_FAILED,
+            NotificationType.SPLIT_PAYMENT_REQUEST
         )
     ),
     SOCIAL(
