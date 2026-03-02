@@ -114,30 +114,10 @@ fun ChatRoomScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = uiState.room?.displayName(uiState.currentUserId ?: "") ?: "채팅",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (uiState.isConnected) Color(0xFF10B981) else Color(0xFFEF4444)
-                                    )
-                            )
-                            Text(
-                                text = if (uiState.isConnected) "연결됨" else "연결 끊김",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = ParkOnPrimary.copy(alpha = 0.7f)
-                            )
-                        }
-                    }
+                    Text(
+                        text = uiState.room?.displayName(uiState.currentUserId ?: "") ?: "채팅",
+                        style = MaterialTheme.typography.titleMedium
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
