@@ -376,9 +376,34 @@ export const SettlementStatusCard: React.FC<SettlementStatusCardProps> = ({
   onSendReminder,
   onRefresh,
 }) => {
-  // currentUserId가 없거나 부커인 경우 → 대시보드
-  if (!currentUserId || currentUserId === data.bookerId) {
+  // currentUserId가 없는 경우 → 대시보드
+  if (!currentUserId) {
     return <BookerDashboardView data={data} onSendReminder={onSendReminder} onRefresh={onRefresh} />;
+  }
+
+  // 부커(진행자)인 경우: 대시보드 + 본인 결제 카드 (참여자이기도 한 경우)
+  if (currentUserId === data.bookerId) {
+    const myParticipant = data.participants.find((p) => p.userId === currentUserId);
+    return (
+      <>
+        <BookerDashboardView data={data} onSendReminder={onSendReminder} onRefresh={onRefresh} />
+        {myParticipant && myParticipant.status === 'PENDING' && (
+          <ParticipantPaymentView
+            participant={myParticipant}
+            clubName={data.clubName}
+            gameName={data.gameName}
+            date={data.date}
+            slotTime={data.slotTime}
+            roomId={roomId}
+            conversationId={conversationId}
+            onPay={(orderId) => onSplitPaymentComplete?.(true, orderId)}
+          />
+        )}
+        {myParticipant && myParticipant.status === 'PAID' && (
+          <ParticipantPaidView participant={myParticipant} />
+        )}
+      </>
+    );
   }
 
   // 참여자 찾기

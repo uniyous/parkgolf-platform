@@ -249,8 +249,14 @@ class ChatSocketManager {
       this.errorHandlers.forEach(handler => handler(data.message));
     });
 
-    this.socket.on('new_message', (data: ChatMessage) => {
-      this.messageHandlers.forEach(handler => handler(data));
+    this.socket.on('new_message', (data: Record<string, unknown>) => {
+      // 소켓 메시지 정규화: 백엔드는 type/messageType 혼용, senderId는 number
+      const normalized: ChatMessage = {
+        ...(data as unknown as ChatMessage),
+        senderId: String(data.senderId ?? ''),
+        messageType: (data.messageType || data.type || 'TEXT') as ChatMessage['messageType'],
+      };
+      this.messageHandlers.forEach(handler => handler(normalized));
     });
 
     this.socket.on('typing', (data: TypingEvent) => {
