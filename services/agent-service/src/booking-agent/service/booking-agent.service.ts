@@ -460,7 +460,18 @@ export class BookingAgentService {
     context: ConversationContext,
     request: ChatRequestDto,
   ): Promise<ChatResponseDto> {
-    const { bookingId, bookerId } = context.slots;
+    let { bookingId } = context.slots;
+    const { bookerId } = context.slots;
+
+    // 비예약자: context에 bookingId 없으면 splitOrderId로 역추적
+    let splitStatus: any = null;
+    if (!bookingId && request.splitOrderId) {
+      splitStatus = await this.toolExecutor.getSplitStatusByOrderId(request.splitOrderId);
+      if (splitStatus?.bookingId) {
+        bookingId = splitStatus.bookingId;
+        this.conversationService.updateSlots(context, { bookingId });
+      }
+    }
 
     if (!bookingId) {
       const message = '정산 정보를 찾을 수 없어요. 다시 시도해 주세요.';
@@ -473,7 +484,9 @@ export class BookingAgentService {
     }
 
     // 최신 분할결제 상태 조회 (bookingId 기반)
-    const splitStatus = await this.toolExecutor.getSplitStatus(bookingId);
+    if (!splitStatus) {
+      splitStatus = await this.toolExecutor.getSplitStatus(bookingId);
+    }
 
     if (!splitStatus) {
       const message = '정산 상태를 조회할 수 없어요.';

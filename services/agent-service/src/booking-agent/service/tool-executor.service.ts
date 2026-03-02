@@ -950,6 +950,31 @@ export class ToolExecutorService {
   }
 
   /**
+   * 분할결제 상태 조회 (orderId 기반 → bookingId 역추적)
+   */
+  async getSplitStatusByOrderId(orderId: string): Promise<any> {
+    try {
+      const response = await firstValueFrom(
+        this.paymentClient.send('payment.splitGet', { orderId }).pipe(
+          timeout(this.REQUEST_TIMEOUT),
+          catchError((err) => {
+            this.logger.error(`payment.splitGet (orderId) failed: ${err.message}`);
+            return [null];
+          }),
+        ),
+      );
+
+      if (response?.success && response?.data) {
+        return response.data;
+      }
+      return null;
+    } catch (error) {
+      this.logger.error('getSplitStatusByOrderId unexpected error', error);
+      return null;
+    }
+  }
+
+  /**
    * 분할결제 요청 알림 발송 (fire-and-forget)
    */
   emitSplitPaymentNotification(data: {

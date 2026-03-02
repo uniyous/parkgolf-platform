@@ -199,6 +199,22 @@ export class PaymentSplitService {
   }
 
   /**
+   * 분할결제 상태 조회 (orderId → bookingId 기반)
+   * orderId로 split 레코드를 찾고, 같은 bookingId의 모든 splits 반환
+   */
+  async getSplitsByOrderId(orderId: string) {
+    const split = await this.prisma.paymentSplit.findUnique({
+      where: { orderId },
+    });
+
+    if (!split) {
+      throw new AppException(Errors.Split.NOT_FOUND);
+    }
+
+    return this.getSplitsByBooking(split.bookingId);
+  }
+
+  /**
    * 만료된 분할결제 처리
    */
   async expirePendingSplits() {
