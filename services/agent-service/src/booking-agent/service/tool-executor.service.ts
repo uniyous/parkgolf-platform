@@ -1041,20 +1041,14 @@ export class ToolExecutorService {
       senderId: 0,
       senderName: 'AI 예약 도우미',
       content: content || '더치페이 결제 요청이 도착했습니다.',
-      type: 'AI_ASSISTANT',
+      messageType: 'AI_ASSISTANT',
       metadata,
       createdAt: new Date().toISOString(),
     };
 
     // NATS 이벤트 발행 → chat-gateway가 Socket.IO 전달 + JetStream DB 저장
     try {
-      this.notifyClient.emit('chat.message.room', {
-        roomId,
-        message: {
-          ...message,
-          messageType: 'AI_ASSISTANT',
-        },
-      });
+      this.notifyClient.emit('chat.message.room', { roomId, message });
       this.logger.log(`broadcastSettlementCard emitted - roomId=${roomId}, msgId=${message.id}, targetUserIds=${JSON.stringify(targetUserIds)}`);
     } catch (error) {
       this.logger.error('broadcastSettlementCard NATS emit failed', error);
@@ -1071,18 +1065,12 @@ export class ToolExecutorService {
       senderId: 0,
       senderName: 'SYSTEM',
       content,
-      type: 'SYSTEM',
+      messageType: 'SYSTEM',
       createdAt: new Date().toISOString(),
     };
 
     try {
-      this.notifyClient.emit('chat.message.room', {
-        roomId,
-        message: {
-          ...message,
-          messageType: 'SYSTEM',
-        },
-      });
+      this.notifyClient.emit('chat.message.room', { roomId, message });
     } catch (error) {
       this.logger.error('sendSystemMessage NATS emit failed', error);
     }

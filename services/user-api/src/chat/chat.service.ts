@@ -160,7 +160,7 @@ export class ChatService {
       senderId: userId,
       senderName: userName,
       content,
-      type: messageType,
+      messageType,
       createdAt: new Date().toISOString(),
     };
 
@@ -226,7 +226,7 @@ export class ChatService {
       senderId: userId,
       senderName: userName,
       content: dto.message,
-      type: 'AI_USER',
+      messageType: 'AI_USER',
       createdAt: new Date().toISOString(),
     };
     this.natsClient.send('chat.messages.save', userMessageData, NATS_TIMEOUTS.QUICK).catch((err) => {
@@ -284,7 +284,7 @@ export class ChatService {
         senderId: userId,
         senderName: 'AI 예약 도우미',
         content: aiData.message || '',
-        type: 'AI_ASSISTANT',
+        messageType: 'AI_ASSISTANT',
         metadata,
         createdAt: new Date().toISOString(),
       }, NATS_TIMEOUTS.QUICK).catch((err) => {

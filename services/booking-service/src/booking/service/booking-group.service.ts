@@ -311,7 +311,7 @@ export class BookingGroupService {
           senderId: 0,
           senderName: 'AI 예약 도우미',
           content,
-          type: 'AI_ASSISTANT',
+          messageType: 'AI_ASSISTANT',
           metadata,
           createdAt: new Date().toISOString(),
         };
@@ -330,7 +330,7 @@ export class BookingGroupService {
         // 2. Socket.IO 브로드캐스트
         this.notificationPublisher.emit('chat.message.room', {
           roomId: group.chatRoomId,
-          message: { ...message, messageType: 'AI_ASSISTANT' },
+          message,
         });
       }
     }

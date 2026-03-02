@@ -419,15 +419,11 @@ export const chatApi = {
       params
     );
     const result = unwrapResponse(response.data);
-    // DB 응답의 'type' 필드를 프론트엔드 'messageType'으로 정규화
-    result.messages = result.messages.map((msg) => {
-      const raw = msg as unknown as Record<string, unknown>;
-      return {
-        ...msg,
-        senderId: String(raw.senderId ?? msg.senderId),
-        messageType: msg.messageType || (raw.type as MessageType) || 'TEXT',
-      };
-    });
+    // senderId를 문자열로 정규화
+    result.messages = result.messages.map((msg) => ({
+      ...msg,
+      senderId: String((msg as unknown as Record<string, unknown>).senderId ?? msg.senderId),
+    }));
     return result;
   },
 

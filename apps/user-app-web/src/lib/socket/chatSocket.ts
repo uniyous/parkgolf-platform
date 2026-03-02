@@ -250,11 +250,10 @@ class ChatSocketManager {
     });
 
     this.socket.on('new_message', (data: Record<string, unknown>) => {
-      // 소켓 메시지 정규화: 백엔드는 type/messageType 혼용, senderId는 number
+      // senderId 정규화 (백엔드는 number, 프론트엔드는 string)
       const normalized: ChatMessage = {
         ...(data as unknown as ChatMessage),
         senderId: String(data.senderId ?? ''),
-        messageType: (data.messageType || data.type || 'TEXT') as ChatMessage['messageType'],
       };
       this.messageHandlers.forEach(handler => handler(normalized));
     });

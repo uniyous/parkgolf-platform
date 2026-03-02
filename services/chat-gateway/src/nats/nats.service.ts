@@ -19,7 +19,7 @@ export interface ChatMessage {
   senderId: number;
   senderName: string;
   content: string;
-  type: string;
+  messageType: string;
   metadata?: string;
   createdAt: string;
 }
@@ -57,7 +57,6 @@ export interface RoomMessageEvent {
     senderId: number;
     senderName: string;
     content: string;
-    type: string;
     messageType: string;
     metadata?: string;
     createdAt: string;
@@ -250,7 +249,7 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
     }
 
     const subject = `chat.room.${roomId}.message`;
-    const payload = { ...message, type: message.type.toUpperCase() };
+    const payload = { ...message, messageType: message.messageType.toUpperCase() };
     const data = this.sc.encode(JSON.stringify(payload));
 
     try {

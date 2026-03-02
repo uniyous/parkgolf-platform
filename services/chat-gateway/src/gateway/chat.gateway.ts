@@ -284,7 +284,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       senderId: user.id,
       senderName: user.name,
       content,
-      type,
+      messageType: type,
       createdAt: new Date().toISOString(),
     };
 
@@ -375,13 +375,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     }
 
     // 2. JetStream 발행 → DB 저장 (일반 채팅 메시지와 동일한 순차 처리 경로)
-    const chatMessage = {
+    const chatMessage: ChatMessage = {
       id: message.id,
       roomId: message.roomId,
       senderId: message.senderId,
       senderName: message.senderName,
       content: message.content,
-      type: message.type || message.messageType || 'AI_ASSISTANT',
+      messageType: message.messageType,
       metadata: message.metadata,
       createdAt: message.createdAt,
     };

@@ -9,7 +9,7 @@ export interface SaveMessageDto {
   senderId: number;
   senderName: string;
   content: string;
-  type: MessageType;
+  messageType: MessageType;
   metadata?: string;
   createdAt: string;
 }
@@ -37,7 +37,7 @@ export class ChatService {
 
   // 메시지 저장
   async saveMessage(dto: SaveMessageDto) {
-    const { id, roomId, senderId, senderName, content, type, metadata, createdAt } = dto;
+    const { id, roomId, senderId, senderName, content, messageType, metadata, createdAt } = dto;
 
     // 중복 체크 (idempotency)
     const existing = await this.prisma.chatMessage.findUnique({
@@ -45,7 +45,7 @@ export class ChatService {
     });
 
     if (existing) {
-      return existing;
+      return this.toMessageResponse(existing);
     }
 
     const message = await this.prisma.chatMessage.create({
@@ -55,7 +55,7 @@ export class ChatService {
         senderId,
         senderName,
         content,
-        type,
+        type: messageType,
         metadata,
         createdAt: new Date(createdAt),
       },
@@ -68,7 +68,7 @@ export class ChatService {
     });
 
     this.logger.debug(`Saved message: ${id} in room ${roomId}`);
-    return message;
+    return this.toMessageResponse(message);
   }
 
   // 메시지 목록 조회 (cursor pagination)
@@ -105,7 +105,7 @@ export class ChatService {
     const nextCursor = hasMore ? data[data.length - 1].createdAt.toISOString() : null;
 
     return {
-      messages: data.reverse(), // 오래된 순으로 반환
+      messages: data.reverse().map((m) => this.toMessageResponse(m)), // 오래된 순으로 반환
       hasMore,
       nextCursor,
     };
@@ -212,5 +212,11 @@ export class ChatService {
     ]);
 
     return memberResult.count + messageResult.count;
+  }
+
+  /** Prisma ChatMessage → 외부 응답 변환 (type → messageType) */
+  private toMessageResponse(msg: { type: MessageType; [key: string]: unknown }) {
+    const { type, ...rest } = msg;
+    return { ...rest, messageType: type };
   }
 }
