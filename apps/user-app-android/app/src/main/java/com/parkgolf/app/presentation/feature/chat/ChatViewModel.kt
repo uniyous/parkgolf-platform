@@ -189,24 +189,16 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             chatRepository.reconnectWithNewToken.collect {
                 Log.d(TAG, "Reconnect signal received, refreshing token then reconnecting")
-                // 1. 토큰 갱신
+                // 1. 토큰 갱신 (만료된 토큰으로 재연결 방지)
                 authRepository.refreshToken()
                     .onFailure { Log.w(TAG, "Token refresh failed, using cached token") }
 
                 // 2. 최신 토큰으로 재연결
+                // joinRoom은 observeConnectionState()에서 처리 (중복 호출 방지)
                 val freshToken = authRepository.getAccessToken()
                 if (freshToken != null) {
                     savedToken = freshToken
                     chatRepository.forceReconnect(freshToken)
-
-                    // 3. 연결 대기 후 방 재참여
-                    delay(2000)
-                    if (chatRepository.isConnected) {
-                        currentRoomId?.let { roomId ->
-                            chatRepository.joinRoom(roomId)
-                            loadMessages(roomId)
-                        }
-                    }
                 } else {
                     Log.e(TAG, "No token available for reconnect")
                 }
@@ -392,11 +384,7 @@ class ChatViewModel @Inject constructor(
             // 3. Load messages
             loadMessages(roomId)
 
-            // 4. Join room via socket (if connected)
-            if (chatRepository.isConnected) {
-                chatRepository.joinRoom(roomId)
-                Log.d(TAG, "Joined room: $roomId")
-            }
+            // 4. joinRoom은 observeConnectionState()에서 연결 성공 시 자동 호출 (중복 방지)
 
             // 5. Mark as read
             chatRepository.markAsRead(roomId)
@@ -806,7 +794,6 @@ class ChatViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        chatRepository.stopConnectionCheck()
-        leaveRoom()
+        disconnectSocket()  // 소켓 완전 정리 (isConnecting 리셋 포함)
     }
 }

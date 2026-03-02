@@ -160,6 +160,7 @@ class ChatSocketManager @Inject constructor() {
     fun disconnect() {
         stopConnectionCheck()
         stopHeartbeat()
+        isConnecting.set(false)  // 소켓 정리 시 핸들러 제거로 isConnecting이 stuck되는 것 방지
         socketLock.withLock {
             currentRoomId = null
             cleanupSocketUnsafe()
@@ -192,6 +193,7 @@ class ChatSocketManager @Inject constructor() {
         Log.d(TAG, "Force reconnect requested, resetting attempts")
         reconnectAttempts = 0
         lastConnectAttempt = 0
+        isConnecting.set(false)  // 이전 연결 시도의 stuck 플래그 리셋
         socketLock.withLock {
             cleanupSocketUnsafe()
         }
