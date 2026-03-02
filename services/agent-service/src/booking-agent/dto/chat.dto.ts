@@ -69,7 +69,7 @@ export class ChatRequestDto {
 
   @IsOptional()
   @IsString()
-  selectedCourseName?: string;
+  selectedGameName?: string;
 
   @IsOptional()
   @IsBoolean()
@@ -212,7 +212,7 @@ export interface BookingSlots {
   location?: string;
   clubName?: string;
   clubId?: string;
-  courseName?: string;
+  gameName?: string;
   date?: string;
   time?: string;
   slotId?: string;
@@ -239,7 +239,7 @@ export interface BookingSlots {
     bookingNumber: string;
     slotId: string;
     slotTime: string;
-    courseName: string;
+    gameName: string;
     members: Array<{ userId: number; userName: string }>;
     totalPrice: number;
     paymentMethod: string;

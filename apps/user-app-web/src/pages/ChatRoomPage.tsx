@@ -727,7 +727,7 @@ export const ChatRoomPage: React.FC = () => {
                         selectedClubName: clubName,
                       });
                     }}
-                    onSlotSelect={(slotId, time, price, clubId, clubName, courseName) => {
+                    onSlotSelect={(slotId, time, price, clubId, clubName, gameName) => {
                       setSelectedSlotId(slotId);
                       handleAiFollowUp({
                         message: `${time} 선택`,
@@ -735,7 +735,7 @@ export const ChatRoomPage: React.FC = () => {
                         selectedSlotTime: time,
                         selectedSlotPrice: price,
                         ...(clubId ? { selectedClubId: clubId, selectedClubName: clubName } : {}),
-                        ...(courseName ? { selectedCourseName: courseName } : {}),
+                        ...(gameName ? { selectedGameName: gameName } : {}),
                       });
                     }}
                     onConfirmBooking={(paymentMethod: 'onsite' | 'card' | 'dutchpay') => {

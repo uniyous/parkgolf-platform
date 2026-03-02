@@ -62,7 +62,7 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
                   <span className="text-violet-400 font-medium">팀{team.teamNumber}</span>
                   <span>{team.slotTime}</span>
                   <span className="text-white/30">·</span>
-                  <span>{team.courseName}</span>
+                  <span>{team.gameName}</span>
                 </div>
                 <span className="text-xs text-white/40">
                   {team.members.map((m) => m.userName).join(', ')}

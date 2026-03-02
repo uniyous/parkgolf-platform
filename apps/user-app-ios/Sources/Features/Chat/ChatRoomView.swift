@@ -275,7 +275,7 @@ struct ChatRoomView: View {
                                         selectedClubName: clubName
                                     ))
                                 },
-                                onSlotSelect: { slotId, time, price, clubId, clubName, courseName in
+                                onSlotSelect: { slotId, time, price, clubId, clubName, gameName in
                                     aiViewModel.selectedSlotId = slotId
                                     var request = AiChatRequest(
                                         message: "\(time) 선택",
@@ -287,7 +287,7 @@ struct ChatRoomView: View {
                                         request.selectedClubId = clubId
                                         request.selectedClubName = clubName
                                     }
-                                    request.selectedCourseName = courseName
+                                    request.selectedGameName = gameName
                                     sendAiFollowUp("\(time) 선택", request: request)
                                 },
                                 onConfirmBooking: { paymentMethod in

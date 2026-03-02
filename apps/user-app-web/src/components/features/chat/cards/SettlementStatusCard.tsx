@@ -183,13 +183,13 @@ const BookerDashboardView: React.FC<{
 const ParticipantPaymentView: React.FC<{
   participant: SettlementStatusData['participants'][0];
   clubName?: string;
-  courseName?: string;
+  gameName?: string;
   date?: string;
   slotTime?: string;
   roomId?: string;
   conversationId?: string;
   onPay: (orderId: string) => void;
-}> = ({ participant, clubName, courseName, date, slotTime, roomId, conversationId, onPay }) => {
+}> = ({ participant, clubName, gameName, date, slotTime, roomId, conversationId, onPay }) => {
   const [isPaying, setIsPaying] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [isExpired, setIsExpired] = useState(false);
@@ -282,7 +282,7 @@ const ParticipantPaymentView: React.FC<{
       </div>
 
       {/* 골프장/코스/날짜/시간 정보 */}
-      {(clubName || courseName || date || slotTime) && (
+      {(clubName || gameName || date || slotTime) && (
         <div className="space-y-1 text-xs text-white/60">
           {clubName && (
             <div className="flex items-center gap-1.5">
@@ -290,10 +290,10 @@ const ParticipantPaymentView: React.FC<{
               <span>{clubName}</span>
             </div>
           )}
-          {courseName && (
+          {gameName && (
             <div className="flex items-center gap-1.5">
               <Flag className="w-3 h-3 text-white/40" />
-              <span>{courseName}</span>
+              <span>{gameName}</span>
             </div>
           )}
           {(date || slotTime) && (
@@ -397,7 +397,7 @@ export const SettlementStatusCard: React.FC<SettlementStatusCardProps> = ({
     <ParticipantPaymentView
       participant={myParticipant}
       clubName={data.clubName}
-      courseName={data.courseName}
+      gameName={data.gameName}
       date={data.date}
       slotTime={data.slotTime}
       roomId={roomId}

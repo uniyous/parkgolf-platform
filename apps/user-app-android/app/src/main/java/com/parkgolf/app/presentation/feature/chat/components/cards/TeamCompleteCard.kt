@@ -27,7 +27,7 @@ fun TeamCompleteCard(
     val clubName = data["clubName"]?.toString() ?: ""
     val date = data["date"]?.toString() ?: ""
     val slotTime = data["slotTime"]?.toString() ?: ""
-    val courseName = data["courseName"]?.toString() ?: ""
+    val gameName = data["gameName"]?.toString() ?: ""
     val totalPrice = (data["totalPrice"] as? Number)?.toInt() ?: 0
     val paymentMethod = data["paymentMethod"]?.toString() ?: "onsite"
     val hasMoreTeams = data["hasMoreTeams"] as? Boolean ?: false
@@ -102,7 +102,7 @@ fun TeamCompleteCard(
                         tint = ParkPrimary
                     )
                     Text(
-                        text = "$date $slotTime · $courseName",
+                        text = "$date $slotTime · $gameName",
                         style = MaterialTheme.typography.bodySmall,
                         color = ParkOnPrimary.copy(alpha = 0.7f)
                     )

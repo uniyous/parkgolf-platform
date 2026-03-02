@@ -339,7 +339,7 @@ fun ChatRoomScreen(
                                                 selectedClubName = clubName
                                             ))
                                         },
-                                        onSlotSelect = { slotId, time, price, clubId, clubName, courseName ->
+                                        onSlotSelect = { slotId, time, price, clubId, clubName, gameName ->
                                             viewModel.selectSlot(slotId)
                                             viewModel.sendAiFollowUp(AiChatRequest(
                                                 message = "$time 선택",
@@ -348,7 +348,7 @@ fun ChatRoomScreen(
                                                 selectedSlotPrice = price,
                                                 selectedClubId = clubId,
                                                 selectedClubName = clubName,
-                                                selectedCourseName = courseName
+                                                selectedGameName = gameName
                                             ))
                                         },
                                         onConfirmBooking = { paymentMethod ->

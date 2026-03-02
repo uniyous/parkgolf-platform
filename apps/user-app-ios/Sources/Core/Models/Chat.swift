@@ -374,7 +374,7 @@ struct AiChatRequest: Codable, Sendable {
     var selectedSlotId: String?
     var selectedSlotTime: String?
     var selectedSlotPrice: Int?
-    var selectedCourseName: String?
+    var selectedGameName: String?
     var confirmBooking: Bool?
     var cancelBooking: Bool?
     var paymentMethod: String?
@@ -398,7 +398,7 @@ struct AiChatRequest: Codable, Sendable {
 struct SelectedSlotDto: Codable, Sendable {
     let slotId: String
     let slotTime: String
-    let courseName: String
+    let gameName: String
     let price: Int
 }
 
@@ -443,7 +443,7 @@ struct SlotCardData: Sendable {
         let endTime: String
         let availableSpots: Int
         let price: Int
-        let courseName: String
+        let gameName: String
     }
 }
 

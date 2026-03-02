@@ -176,7 +176,7 @@ export class BookingAgentService {
       slotId: selectedSlotId,
       time: selectedSlotTime,
       slotPrice: selectedSlotPrice,
-      ...(request.selectedCourseName && { courseName: request.selectedCourseName }),
+      ...(request.selectedGameName && { gameName: request.selectedGameName }),
     });
 
     // 멤버 선택이 아직 안 된 경우 → SELECT_MEMBERS로 리다이렉트
@@ -306,7 +306,7 @@ export class BookingAgentService {
           bookerId: request.userId,
           teamNumber,
           clubName: context.slots.clubName || '',
-          courseName: context.slots.courseName || '',
+          gameName: context.slots.gameName || '',
           date: context.slots.date || '',
           slotTime: context.slots.time || '',
           totalParticipants: teamMembers.length,
@@ -514,7 +514,7 @@ export class BookingAgentService {
         bookerId: bookerId || 0,
         teamNumber,
         clubName: context.slots.clubName || '',
-        courseName: context.slots.courseName || '',
+        gameName: context.slots.gameName || '',
         date: context.slots.date || '',
         slotTime: context.slots.time || '',
         totalParticipants,
@@ -694,7 +694,7 @@ export class BookingAgentService {
         teamNumber: t.teamNumber,
         bookingNumber: t.bookingNumber,
         slotTime: t.slotTime,
-        courseName: t.courseName,
+        gameName: t.gameName,
         members: t.members.map((m) => m.userName),
         totalPrice: t.totalPrice,
         paymentMethod: t.paymentMethod,
@@ -775,7 +775,7 @@ export class BookingAgentService {
       bookingNumber: result.bookingNumber || context.slots.bookingNumber || '',
       slotId: context.slots.slotId || '',
       slotTime: context.slots.time || '',
-      courseName: context.slots.courseName || '',
+      gameName: context.slots.gameName || '',
       members: teamMembers.map((m) => ({ userId: m.userId, userName: m.userName })),
       totalPrice: result.details?.totalPrice || context.slots.totalPrice || 0,
       paymentMethod,
@@ -797,7 +797,7 @@ export class BookingAgentService {
       clubName: context.slots.clubName || '',
       date: context.slots.date || '',
       slotTime: context.slots.time || '',
-      courseName: completedTeam.courseName,
+      gameName: completedTeam.gameName,
       participants: completedTeam.members,
       totalPrice: completedTeam.totalPrice,
       paymentMethod,
@@ -870,7 +870,7 @@ export class BookingAgentService {
       assignedTeams: completedTeams.map((t) => ({
         teamNumber: t.teamNumber,
         slotTime: t.slotTime,
-        courseName: t.courseName,
+        gameName: t.gameName,
         members: t.members,
       })),
       availableMembers,
@@ -1052,7 +1052,7 @@ export class BookingAgentService {
                     availableCount: club.availableSlotCount,
                     rounds: club.rounds,
                     slots: club.rounds
-                      .flatMap((r: any) => r.slots.map((s: any) => ({ ...s, courseName: r.name })))
+                      .flatMap((r: any) => r.slots.map((s: any) => ({ ...s, gameName: r.name })))
                       .slice(0, 10),
                   },
                 });

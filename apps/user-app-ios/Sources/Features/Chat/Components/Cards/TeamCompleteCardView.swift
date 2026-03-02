@@ -14,7 +14,7 @@ struct TeamCompleteCardView: View {
     private var clubName: String { dict["clubName"] as? String ?? "" }
     private var date: String { dict["date"] as? String ?? "" }
     private var slotTime: String { dict["slotTime"] as? String ?? "" }
-    private var courseName: String { dict["courseName"] as? String ?? "" }
+    private var gameName: String { dict["gameName"] as? String ?? "" }
     private var totalPrice: Int { dict["totalPrice"] as? Int ?? 0 }
     private var paymentMethod: String { dict["paymentMethod"] as? String ?? "onsite" }
     private var hasMoreTeams: Bool { dict["hasMoreTeams"] as? Bool ?? false }
@@ -46,7 +46,7 @@ struct TeamCompleteCardView: View {
             // Info
             VStack(alignment: .leading, spacing: 8) {
                 infoRow(icon: "mappin.circle.fill", value: clubName)
-                infoRow(icon: "clock.fill", value: "\(date) \(slotTime) · \(courseName)")
+                infoRow(icon: "clock.fill", value: "\(date) \(slotTime) · \(gameName)")
 
                 let names = participants.compactMap { $0["userName"] as? String }.joined(separator: ", ")
                 if !names.isEmpty {

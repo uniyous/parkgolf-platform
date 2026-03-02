@@ -17,7 +17,7 @@ struct SettlementStatusCardView: View {
     private var clubName: String { dict["clubName"] as? String ?? "" }
     private var date: String { dict["date"] as? String ?? "" }
     private var slotTime: String { dict["slotTime"] as? String ?? "" }
-    private var courseName: String { dict["courseName"] as? String ?? "" }
+    private var gameName: String { dict["gameName"] as? String ?? "" }
     private var totalAmount: Int { dict["totalAmount"] as? Int ?? 0 }
     private var expiredAt: String? { dict["expiredAt"] as? String }
 
@@ -69,8 +69,8 @@ struct SettlementStatusCardView: View {
             VStack(alignment: .leading, spacing: 6) {
                 infoRow(icon: "mappin.circle.fill", value: clubName)
                 infoRow(icon: "calendar", value: "\(date) \(slotTime)")
-                if !courseName.isEmpty {
-                    infoRow(icon: "flag.fill", value: courseName)
+                if !gameName.isEmpty {
+                    infoRow(icon: "flag.fill", value: gameName)
                 }
             }
 
@@ -215,8 +215,8 @@ struct SettlementStatusCardView: View {
                     if !clubName.isEmpty {
                         infoRow(icon: "mappin.circle.fill", value: clubName)
                     }
-                    if !courseName.isEmpty {
-                        infoRow(icon: "flag.fill", value: courseName)
+                    if !gameName.isEmpty {
+                        infoRow(icon: "flag.fill", value: gameName)
                     }
                     let dateTime = [date, slotTime].filter { !$0.isEmpty }.joined(separator: " ")
                     if !dateTime.isEmpty {

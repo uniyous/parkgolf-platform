@@ -20,7 +20,7 @@ data class TeamState(
     val teamNumber: Int,
     val slotId: String,
     val slotTime: String,
-    val courseName: String,
+    val gameName: String,
     val maxPlayers: Int,
     val members: List<MemberState>
 )
@@ -56,7 +56,7 @@ fun SelectParticipantsCard(
                 teamNumber = (team["teamNumber"] as? Number)?.toInt() ?: 0,
                 slotId = team["slotId"]?.toString() ?: "",
                 slotTime = team["slotTime"]?.toString() ?: "",
-                courseName = team["courseName"]?.toString() ?: "",
+                gameName = team["gameName"]?.toString() ?: "",
                 maxPlayers = (team["maxPlayers"] as? Number)?.toInt() ?: 4,
                 members = members
             )
@@ -158,7 +158,7 @@ fun SelectParticipantsCard(
                                     color = ParkOnPrimary.copy(alpha = 0.6f)
                                 )
                                 Text(
-                                    text = " · ${team.courseName}",
+                                    text = " · ${team.gameName}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = ParkOnPrimary.copy(alpha = 0.4f)
                                 )

@@ -48,7 +48,7 @@ struct SelectParticipantsCardView: View {
                             .fontWeight(.semibold)
                             .foregroundColor(Color.parkPrimary)
                         if !team.slotTime.isEmpty {
-                            Text("\(team.slotTime) · \(team.courseName)")
+                            Text("\(team.slotTime) · \(team.gameName)")
                                 .font(.caption2)
                                 .foregroundColor(.white.opacity(0.5))
                         }
@@ -208,7 +208,7 @@ struct SelectParticipantsCardView: View {
             let teamNumber = teamDict["teamNumber"] as? Int ?? (index + 1)
             let slotId = teamDict["slotId"] as? String ?? ""
             let slotTime = teamDict["slotTime"] as? String ?? ""
-            let courseName = teamDict["courseName"] as? String ?? ""
+            let gameName = teamDict["gameName"] as? String ?? ""
             let maxPlayers = teamDict["maxPlayers"] as? Int ?? 4
             let membersData = teamDict["members"] as? [[String: Any]] ?? []
             let members = membersData.map { parseMember($0) }
@@ -217,7 +217,7 @@ struct SelectParticipantsCardView: View {
                 teamNumber: teamNumber,
                 slotId: slotId,
                 slotTime: slotTime,
-                courseName: courseName,
+                gameName: gameName,
                 maxPlayers: maxPlayers,
                 members: members
             )
@@ -266,7 +266,7 @@ private struct EditableTeam: Identifiable {
     let teamNumber: Int
     let slotId: String
     let slotTime: String
-    let courseName: String
+    let gameName: String
     let maxPlayers: Int
     var members: [MemberInfo]
 }

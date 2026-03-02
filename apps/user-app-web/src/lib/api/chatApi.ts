@@ -111,7 +111,7 @@ export interface SlotCardData {
     endTime: string;
     availableSpots: number;
     price: number;
-    courseName: string;
+    gameName: string;
   }>;
 }
 
@@ -145,7 +145,7 @@ export interface ConfirmBookingData {
   time: string;
   playerCount: number;
   price: number;
-  courseName?: string;
+  gameName?: string;
   // 그룹 예약 시
   teamNumber?: number;
   members?: Array<{ userId: number; userName: string }>;
@@ -178,7 +178,7 @@ export interface SelectMembersData {
   assignedTeams: Array<{
     teamNumber: number;
     slotTime: string;
-    courseName: string;
+    gameName: string;
     members: Array<{ userId: number; userName: string }>;
   }>;
   availableMembers: Array<{
@@ -195,7 +195,7 @@ export interface TeamCompleteData {
   clubName: string;
   date: string;
   slotTime: string;
-  courseName: string;
+  gameName: string;
   participants: Array<{ userId: number; userName: string }>;
   totalPrice: number;
   paymentMethod: string;
@@ -209,7 +209,7 @@ export interface SettlementStatusData {
   bookerId?: number;
   teamNumber?: number;
   clubName?: string;
-  courseName?: string;
+  gameName?: string;
   date?: string;
   slotTime?: string;
   totalParticipants: number;
@@ -237,7 +237,7 @@ export interface AiChatRequest {
   selectedSlotId?: string;
   selectedSlotTime?: string;
   selectedSlotPrice?: number;
-  selectedCourseName?: string;
+  selectedGameName?: string;
   confirmBooking?: boolean;
   cancelBooking?: boolean;
   paymentMethod?: string;

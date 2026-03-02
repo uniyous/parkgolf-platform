@@ -37,7 +37,7 @@ export const TeamCompleteCard: React.FC<TeamCompleteCardProps> = ({
         </div>
         <div className="flex items-center gap-2 text-white/70">
           <Clock className="w-3 h-3 text-violet-400 shrink-0" />
-          <span>{data.date} {data.slotTime} · {data.courseName}</span>
+          <span>{data.date} {data.slotTime} · {data.gameName}</span>
         </div>
         <div className="flex items-center gap-2 text-white/70">
           <Users className="w-3 h-3 text-violet-400 shrink-0" />

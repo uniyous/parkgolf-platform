@@ -42,7 +42,7 @@ fun AiMessageBubble(
     showLabel: Boolean = true,
     currentUserId: Int? = null,
     onClubSelect: ((String, String) -> Unit)? = null,
-    onSlotSelect: ((slotId: String, time: String, price: Int, clubId: String?, clubName: String?, courseName: String?) -> Unit)? = null,
+    onSlotSelect: ((slotId: String, time: String, price: Int, clubId: String?, clubName: String?, gameName: String?) -> Unit)? = null,
     onConfirmBooking: ((String) -> Unit)? = null,
     onCancelBooking: (() -> Unit)? = null,
     onPaymentComplete: ((Boolean) -> Unit)? = null,
@@ -140,10 +140,10 @@ fun AiMessageBubble(
                             )
                             ActionType.SHOW_SLOTS -> SlotCard(
                                 data = action.data,
-                                onSelect = { slotId, time, price, courseName ->
+                                onSelect = { slotId, time, price, gameName ->
                                     val clubId = action.data["clubId"]?.toString()
                                     val clubName = action.data["clubName"]?.toString()
-                                    onSlotSelect?.invoke(slotId, time, price, clubId, clubName, courseName)
+                                    onSlotSelect?.invoke(slotId, time, price, clubId, clubName, gameName)
                                 },
                                 selectedSlotId = selectedSlotId
                             )

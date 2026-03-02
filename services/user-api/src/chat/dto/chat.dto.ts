@@ -132,10 +132,10 @@ export class AiChatRequestDto {
   @IsNumber()
   selectedSlotPrice?: number;
 
-  @ApiPropertyOptional({ description: '선택한 코스/라운드명' })
+  @ApiPropertyOptional({ description: '선택한 게임(라운드)명' })
   @IsOptional()
   @IsString()
-  selectedCourseName?: string;
+  selectedGameName?: string;
 
   @ApiPropertyOptional({ description: '예약 확인 버튼 클릭' })
   @IsOptional()

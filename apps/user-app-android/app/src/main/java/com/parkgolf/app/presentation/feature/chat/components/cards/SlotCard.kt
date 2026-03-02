@@ -190,13 +190,13 @@ fun SlotCard(
                 rowSlots.forEach { slot ->
                     val id = slot["id"]?.toString() ?: ""
                     val time = slot["time"]?.toString() ?: ""
-                    val courseName = slot["courseName"]?.toString() ?: ""
+                    val gameName = slot["gameName"]?.toString() ?: ""
                     val price = (slot["price"] as? Number)?.toInt() ?: 0
                     val isSelected = selectedSlotId == id
                     val isDisabled = hasSelection && !isSelected
 
                     Surface(
-                        onClick = { if (!isDisabled) onSelect?.invoke(id, time, price, courseName) },
+                        onClick = { if (!isDisabled) onSelect?.invoke(id, time, price, gameName) },
                         enabled = onSelect != null && !isDisabled,
                         shape = RoundedCornerShape(12.dp),
                         color = GlassCard,
@@ -227,7 +227,7 @@ fun SlotCard(
                                     )
                                 }
                                 Text(
-                                    text = courseName,
+                                    text = gameName,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = ParkOnPrimary.copy(alpha = 0.6f)
                                 )

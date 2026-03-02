@@ -580,7 +580,7 @@ export class ToolExecutorService {
 
         // 하위 호환용 flat 목록
         for (const slot of roundSlots) {
-          allSlots.push({ ...slot, courseName: game.name });
+          allSlots.push({ ...slot, gameName: game.name });
         }
       }
 

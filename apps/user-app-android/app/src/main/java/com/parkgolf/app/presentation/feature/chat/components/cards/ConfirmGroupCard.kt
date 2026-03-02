@@ -32,7 +32,7 @@ fun ConfirmGroupCard(
     val slots = (data["slots"] as? List<Map<String, Any?>>)?.map { slot ->
         SlotInfo(
             slotTime = slot["slotTime"]?.toString() ?: "",
-            courseName = slot["courseName"]?.toString() ?: "",
+            gameName = slot["gameName"]?.toString() ?: "",
             price = (slot["price"] as? Number)?.toInt() ?: 0
         )
     } ?: emptyList()
@@ -132,7 +132,7 @@ fun ConfirmGroupCard(
                                     color = ParkOnPrimary.copy(alpha = 0.7f)
                                 )
                                 Text(
-                                    text = " · ${slot.courseName}",
+                                    text = " · ${slot.gameName}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = ParkOnPrimary.copy(alpha = 0.4f)
                                 )
@@ -241,6 +241,6 @@ fun ConfirmGroupCard(
 
 private data class SlotInfo(
     val slotTime: String,
-    val courseName: String,
+    val gameName: String,
     val price: Int
 )

@@ -30,14 +30,14 @@ struct SlotCardView: View {
             ForEach(Array(slots.enumerated()), id: \.offset) { _, slot in
                 let id = slot["id"] as? String ?? ""
                 let time = slot["time"] as? String ?? ""
-                let courseName = slot["courseName"] as? String ?? ""
+                let gameName = slot["gameName"] as? String ?? ""
                 let price = slot["price"] as? Int ?? 0
                 let isSelected = selectedSlotId == id
                 let isDisabled = hasSelection && !isSelected
 
                 Button {
                     if !isDisabled {
-                        onSelect?(id, time, price, clubId, clubName, courseName)
+                        onSelect?(id, time, price, clubId, clubName, gameName)
                     }
                 } label: {
                     ZStack(alignment: .topTrailing) {
@@ -52,7 +52,7 @@ struct SlotCardView: View {
                                     .foregroundColor(.white)
                             }
 
-                            Text(courseName)
+                            Text(gameName)
                                 .font(.caption)
                                 .foregroundColor(.white.opacity(0.6))
 

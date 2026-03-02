@@ -42,7 +42,7 @@ struct ConfirmGroupCardView: View {
             VStack(spacing: 6) {
                 ForEach(Array(slots.enumerated()), id: \.offset) { index, slot in
                     let slotTime = slot["slotTime"] as? String ?? ""
-                    let courseName = slot["courseName"] as? String ?? ""
+                    let gameName = slot["gameName"] as? String ?? ""
                     let price = slot["price"] as? Int ?? 0
 
                     HStack {
@@ -56,7 +56,7 @@ struct ConfirmGroupCardView: View {
                             .foregroundColor(.white.opacity(0.7))
                         Text("·")
                             .foregroundColor(.white.opacity(0.3))
-                        Text(courseName)
+                        Text(gameName)
                             .font(.caption)
                             .foregroundColor(.white.opacity(0.6))
                         Spacer()
