@@ -382,6 +382,38 @@ sequenceDiagram
     end
 ```
 
+### 3.7 AI/서비스 메시지 전달 (NATS → Socket.IO)
+
+agent-service, booking-service 등이 `chat.message.room` 이벤트를 발행하면 chat-gateway가 수신하여 Socket.IO로 전달합니다.
+
+```mermaid
+sequenceDiagram
+    participant Svc as agent/booking-service
+    participant Chat as chat-service
+    participant NATS
+    participant GW as chat-gateway
+    participant Target as 대상 사용자
+
+    Svc->>Chat: NATS send chat.messages.save (DB 저장)
+    Svc->>NATS: emit chat.message.room { roomId, message }
+
+    NATS->>GW: raw NATS 구독 수신
+    GW->>GW: extractTargetUserIds(message.metadata)
+
+    alt targetUserIds 존재
+        GW->>Target: server.to('user:{userId}').emit('new_message')
+        Note over GW,Target: 대상 사용자에게만 전달 (서버사이드 타겟팅)
+    else targetUserIds 없음
+        GW->>Target: server.to(roomId).emit('new_message')
+        Note over GW,Target: 채팅방 전체 브로드캐스트
+    end
+```
+
+**핵심:**
+- `metadata.targetUserIds`가 있으면 chat-gateway가 `user:{userId}` 룸에만 전송 (서버사이드 타겟팅)
+- `handleConnection()`에서 이미 `client.join('user:{userId}')`를 수행하므로 별도 매핑 불필요
+- 멀티 pod에서도 NATS Socket.IO Adapter가 cross-pod 전달 처리
+
 ### WebSocket 이벤트 요약
 
 #### Chat 네임스페이스 (`/chat`)
@@ -395,12 +427,13 @@ sequenceDiagram
 | `join_room` | C→S | `{ roomId }` | 채팅방 입장 |
 | `leave_room` | C→S | `{ roomId }` | 채팅방 퇴장 |
 | `send_message` | C→S | `{ roomId, content, type }` | 메시지 전송 |
-| `new_message` | S→C | `{ id, roomId, senderId, senderName, content, type, createdAt }` | 새 메시지 수신 |
+| `new_message` | S→C | `{ id, roomId, senderId, senderName, content, type, metadata?, createdAt }` | 새 메시지 수신 |
 | `typing` | C↔S | `{ roomId, userId, userName, isTyping }` | 타이핑 상태 |
 | `user_joined` | S→C | `{ roomId, userId, userName, timestamp }` | 사용자 입장 |
 | `user_left` | S→C | `{ roomId, userId, userName, timestamp }` | 사용자 퇴장 |
 | `heartbeat` | C→S | (none) | Keepalive (ACK 반환) |
 | `get_online_users` | C→S | (none) | 로컬 Pod 온라인 유저 조회 |
+| `system:nats_status` | S→C | `{ connected: boolean }` | NATS 연결 상태 변경 |
 
 #### Notification 네임스페이스 (`/notification`)
 
@@ -629,6 +662,7 @@ sequenceDiagram
 | `chat.message` | gateway → notify | `{ chatRoomId, senderId, senderName, recipientId, messagePreview }` | 오프라인 push 알림 |
 | `notification.dismiss` | gateway → notify | `{ userId, type, dataFilter }` | 알림 해제 |
 | `notification.created` | notify → gateway | `{ id, userId, type, title, message, data? }` | 실시간 알림 전달 |
+| `chat.message.room` | agent/booking → gateway | `{ roomId, message }` | AI/서비스 메시지 Socket.IO 전달 |
 
 ### JetStream Streams
 
@@ -636,6 +670,8 @@ sequenceDiagram
 flowchart TB
     subgraph Publishers["Publishers"]
         GW[chat-gateway]
+        AGENT[agent-service]
+        BOOK[booking-service]
     end
 
     subgraph Streams["JetStream Streams"]
@@ -695,10 +731,11 @@ erDiagram
     ChatMessage {
         uuid id PK
         uuid roomId FK
-        int senderId
+        int senderId "0 = AI 브로드캐스트"
         string senderName
         string content
-        enum type "TEXT|IMAGE|SYSTEM"
+        enum type "TEXT|IMAGE|SYSTEM|BOOKING_INVITE|AI_USER|AI_ASSISTANT"
+        string metadata "nullable, AI 액션 JSON"
         datetime createdAt
         datetime deletedAt "nullable"
     }
@@ -1195,7 +1232,7 @@ flowchart TD
 
 ## 10. 배포 및 운영
 
-### 9.1 GKE 배포 구성
+### 10.1 GKE 배포 구성
 
 | 서비스 | Replicas | CPU (req/lim) | Memory (req/lim) | DB |
 |--------|----------|---------------|-------------------|----|
@@ -1204,7 +1241,7 @@ flowchart TD
 | notify-service | 1 | 50m / 200m | 96Mi / 256Mi | notify_db |
 | user-api | 1 | 50m / 200m | 96Mi / 256Mi | 없음 |
 
-### 9.2 chat-gateway 고가용성 설정
+### 10.2 chat-gateway 고가용성 설정
 
 ```yaml
 # Deployment
@@ -1237,7 +1274,7 @@ spec:
 Socket.IO 초기 HTTP 핸드셰이크 → WebSocket 업그레이드까지 동일 Pod 보장.
 업그레이드 후에는 WebSocket 연결 자체가 Pod에 고정됩니다.
 
-### 9.3 Graceful Shutdown
+### 10.3 Graceful Shutdown
 
 ```mermaid
 sequenceDiagram
@@ -1254,7 +1291,7 @@ sequenceDiagram
     Pod->>K8s: exit(0)
 ```
 
-### 9.4 Health Check
+### 10.4 Health Check
 
 ```
 GET /health → { status: "ok", service: "chat-gateway", timestamp: "..." }
@@ -1263,7 +1300,7 @@ GET /health → { status: "ok", service: "chat-gateway", timestamp: "..." }
 - **readinessProbe**: 15초 후 시작, 5초 주기
 - **livenessProbe**: 30초 후 시작, 10초 주기
 
-### 9.5 모니터링
+### 10.5 모니터링
 
 ```bash
 # Pod 상태 확인
@@ -1276,7 +1313,7 @@ kubectl logs -l app=chat-gateway -n parkgolf-{env} --tail=100
 kubectl logs -l app=chat-gateway -n parkgolf-{env} -f
 ```
 
-### 9.6 문제 해결
+### 10.6 문제 해결
 
 | 증상 | 원인 | 해결 방법 |
 |------|------|----------|
@@ -1288,7 +1325,7 @@ kubectl logs -l app=chat-gateway -n parkgolf-{env} -f
 | WebSocket 연결 안됨 | BackendConfig 미적용 | Service annotation 확인 |
 | 채팅방 목록 안 뜸 | NATS 연결 실패 | NATS Pod 상태 확인 |
 
-### 9.7 파일 구조
+### 10.7 파일 구조
 
 ```
 services/chat-gateway/src/

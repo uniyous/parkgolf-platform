@@ -395,8 +395,15 @@ sequenceDiagram
     Note over Agent,P: ④ 참여자에게 브로드캐스트 (NATS 이벤트)
     Agent->>Chat: NATS send chat.messages.save (senderId=0)
     Agent->>GW: NATS emit chat.message.room
-    GW->>P: Socket.IO new_message (metadata.targetUserIds 필터링)
+    GW->>P: Socket.IO new_message (서버사이드 user:{userId} 타겟팅)
     Agent->>Notify: NATS emit notify.sendBatch (push 알림)
+
+    Note over Pay,GW: ⑤-a 결제 완료 → 정산 상태 Push (webhook 경로)
+    Pay->>Book: NATS emit participant.paid
+    Book->>Book: markParticipantPaid()
+    Book->>Chat: NATS send chat.messages.save (정산 카드)
+    Book->>GW: NATS emit chat.message.room
+    GW->>Booker: Socket.IO new_message (서버사이드 타겟팅)
 
     Note over P,Pay: ⑤ 참여자 개별 결제
     P->>Pay: POST /api/user/payments/split/confirm (Toss SDK)
@@ -449,7 +456,7 @@ NATS send 'chat.messages.save' {
     conversationId: null,
     state: 'SETTLING',
     actions: [{ type: 'SETTLEMENT_STATUS', data: settlementData }],
-    targetUserIds: [2, 3, 4]  // ← 클라이언트 필터링 키
+    targetUserIds: [2, 3, 4]  // ← chat-gateway 서버사이드 타겟팅 키
   })
 }
 
@@ -481,24 +488,25 @@ NATS emit 'chat.message.room' {
 | 메시지 유형 | 전달 경로 | 대상 |
 |------------|----------|------|
 | 진행자 AI 응답 | REST HTTP 응답 | 진행자 본인만 |
-| 참여자 정산 카드 | NATS → chat-gateway → Socket.IO | 채팅방 전체 (클라이언트 필터링) |
+| 참여자 정산 카드 | NATS → chat-gateway → Socket.IO | 타겟 사용자만 (서버사이드 타겟팅) |
+| 정산 상태 갱신 카드 | booking-service → chat-service/chat-gateway → Socket.IO | 부커만 (서버사이드 타겟팅) |
 | SYSTEM 메시지 | NATS → chat-gateway → Socket.IO | 채팅방 전체 |
 | 일반 채팅 | Socket.IO → chat-gateway → NATS Adapter | 채팅방 전체 |
 
 ### 9.2 브로드캐스트 패턴 (senderId=0)
 
-agent-service가 참여자에게 직접 메시지를 보내야 할 때 사용하는 패턴.
+agent-service 또는 booking-service가 참여자에게 직접 메시지를 보내야 할 때 사용하는 패턴.
 
 ```
-agent-service
+agent-service / booking-service
   │
   ├── NATS send 'chat.messages.save'     → chat-service (DB 영속화)
   │                                          └── senderId=0으로 저장
   │
   └── NATS emit 'chat.message.room'      → chat-gateway (실시간 전달)
-                                              └── server.to(roomId).emit('new_message', message)
-                                                   └── NATS Adapter → 모든 pod에 브로드캐스트
-                                                        └── 각 클라이언트가 targetUserIds 필터링
+                                              └── extractTargetUserIds(message.metadata)
+                                                   ├── targetUserIds 있음 → user:{userId} 룸으로 타겟 전달
+                                                   └── targetUserIds 없음 → server.to(roomId) 전체 전달
 ```
 
 **핵심 규칙:**
@@ -506,8 +514,8 @@ agent-service
 | 규칙 | 설명 |
 |------|------|
 | `senderId=0` | AI 브로드캐스트 메시지 마커. DB 조회 시 모든 사용자에게 노출 |
-| `targetUserIds` | metadata 내 배열. 클라이언트가 자신의 userId 포함 여부로 표시/숨김 결정 |
-| 1메시지 N대상 | 개별 메시지(N개) 대신 1개 메시지 + 클라이언트 필터링 (디버깅 용이) |
+| `targetUserIds` | metadata 내 배열. chat-gateway가 `user:{userId}` 룸에만 전달. 클라이언트 필터링 불필요 |
+| 1메시지 N대상 | 개별 메시지(N개) 대신 1개 메시지 + 서버사이드 타겟팅 (디버깅 용이) |
 
 ### 9.3 chat-gateway NATS 수신
 
@@ -527,7 +535,29 @@ async subscribeToRoomMessages(handler) {
 // chat-gateway/src/gateway/chat.gateway.ts
 private deliverRoomMessage(event: RoomMessageEvent) {
   const { roomId, message } = event;
-  this.server.to(roomId).emit('new_message', message);
+  if (!roomId || !message) {
+    this.logger.warn('Invalid room message event received');
+    return;
+  }
+  const targetUserIds = this.extractTargetUserIds(message.metadata);
+  if (targetUserIds && targetUserIds.length > 0) {
+    for (const userId of targetUserIds) {
+      this.server.to(`user:${userId}`).emit('new_message', message);
+    }
+  } else {
+    this.server.to(roomId).emit('new_message', message);
+  }
+}
+
+private extractTargetUserIds(metadata?: string): number[] | null {
+  if (!metadata) return null;
+  try {
+    const meta = JSON.parse(metadata);
+    if (Array.isArray(meta?.targetUserIds) && meta.targetUserIds.length > 0) {
+      return meta.targetUserIds;
+    }
+  } catch { /* ignore */ }
+  return null;
 }
 ```
 
@@ -539,8 +569,7 @@ private deliverRoomMessage(event: RoomMessageEvent) {
 **Socket.IO 수신 시** (실시간):
 ```
 new_message 이벤트 수신
-  → metadata.targetUserIds 확인
-  → 내 userId 포함 여부 필터링
+  → 서버에서 이미 targetUserIds 기반 타겟팅 완료
   → metadata.actions 파싱 → 카드 렌더링
 ```
 
@@ -548,7 +577,8 @@ new_message 이벤트 수신
 ```
 GET /chat/{roomId}/messages
   → chat-service: senderId=0 + AI_ASSISTANT → 전체 노출 (aiFilter)
-  → 클라이언트: metadata.targetUserIds 필터링 + actions 파싱
+  → Web 렌더 필터: metadata.targetUserIds 확인 (DB에서 로드한 과거 메시지 보호)
+  → actions 파싱
 ```
 
 **메시지 actions 조회 우선순위** (Android/iOS):
@@ -568,7 +598,7 @@ GET /chat/{roomId}/messages
 | SYSTEM | 입장/퇴장/예약완료 안내 | 사용자 ID | 채팅방 전체 |
 | AI_USER | AI 모드 사용자 메시지 | 사용자 ID | **본인만** (senderId 필터) |
 | AI_ASSISTANT | AI 응답 (개인) | 사용자 ID | **본인만** (senderId 필터) |
-| AI_ASSISTANT | AI 브로드캐스트 | **0** | **전체** (클라이언트 targetUserIds 필터) |
+| AI_ASSISTANT | AI 브로드캐스트 | **0** | **타겟 사용자** (chat-gateway 서버사이드 타겟팅) |
 
 ### 10.2 AI 메시지 필터링 (chat-service)
 
@@ -580,7 +610,7 @@ const aiFilter = userId ? {
     { type: { notIn: ['AI_USER', 'AI_ASSISTANT'] } },
     // AI 개인 메시지: 본인 것만
     { type: { in: ['AI_USER', 'AI_ASSISTANT'] }, senderId: userId },
-    // AI 브로드캐스트: 전부 보임 (클라이언트에서 targetUserIds 필터링)
+    // AI 브로드캐스트: 전부 보임 (실시간은 서버사이드 타겟팅, DB 조회는 전체 노출)
     { type: 'AI_ASSISTANT', senderId: 0 },
   ],
 } : {};
@@ -814,7 +844,7 @@ agent-service는 7개의 Named NATS Client를 사용:
 └──────────────────────────────────────┘
   전달 방식: senderId=0 브로드캐스트
   NATS: chat.messages.save + chat.message.room
-  필터: metadata.targetUserIds
+  타겟팅: chat-gateway가 metadata.targetUserIds로 서버사이드 전달
          ↓ 전원 결제 완료
 
 ⑥ TEAM_COMPLETE 카드
@@ -1062,4 +1092,4 @@ model ChatMessage {
 
 ---
 
-**Last Updated**: 2026-03-01
+**Last Updated**: 2026-03-02
