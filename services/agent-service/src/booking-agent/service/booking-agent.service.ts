@@ -551,6 +551,18 @@ export class BookingAgentService {
 
     this.conversationService.addAssistantMessage(context, message);
 
+    // 채팅방 전체에 갱신된 정산 카드 브로드캐스트 (진행자 포함 모든 참여자에게)
+    const roomId = context.slots.chatRoomId || request.chatRoomId;
+    if (roomId) {
+      const targetUserIds = participants.map((s: any) => s.userId);
+      this.toolExecutor.broadcastSettlementCard(
+        roomId,
+        targetUserIds,
+        actions[0].data as Record<string, unknown>,
+        message,
+      );
+    }
+
     return {
       conversationId: context.conversationId,
       message,
