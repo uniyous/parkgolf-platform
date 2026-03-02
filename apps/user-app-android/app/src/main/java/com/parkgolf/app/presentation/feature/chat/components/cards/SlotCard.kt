@@ -27,7 +27,7 @@ import java.util.Locale
 @Composable
 fun SlotCard(
     data: Map<String, Any?>,
-    onSelect: ((String, String, Int) -> Unit)? = null,
+    onSelect: ((String, String, Int, String?) -> Unit)? = null,
     selectedSlotId: String? = null
 ) {
     val clubName = data["clubName"]?.toString() ?: ""
@@ -158,7 +158,7 @@ fun SlotCard(
                                     availableSpots = availableSpots,
                                     isSelected = isSelected,
                                     isDisabled = isDisabled,
-                                    onClick = { onSelect?.invoke(slotId, time, roundPrice) }
+                                    onClick = { onSelect?.invoke(slotId, time, roundPrice, roundName) }
                                 )
                             }
                         }
@@ -196,7 +196,7 @@ fun SlotCard(
                     val isDisabled = hasSelection && !isSelected
 
                     Surface(
-                        onClick = { if (!isDisabled) onSelect?.invoke(id, time, price) },
+                        onClick = { if (!isDisabled) onSelect?.invoke(id, time, price, courseName) },
                         enabled = onSelect != null && !isDisabled,
                         shape = RoundedCornerShape(12.dp),
                         color = GlassCard,

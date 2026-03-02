@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, CheckCircle2, Clock, AlertCircle, CreditCard, Loader2, Timer, Bell, RefreshCw, MapPin } from 'lucide-react';
+import { Users, CheckCircle2, Clock, AlertCircle, CreditCard, Loader2, Timer, Bell, RefreshCw, MapPin, Flag } from 'lucide-react';
 import { loadTossPayments, type TossPaymentsInstance } from '@tosspayments/payment-sdk';
 import { cn } from '@/lib/utils';
 import type { SettlementStatusData } from '@/lib/api/chatApi';
@@ -183,12 +183,13 @@ const BookerDashboardView: React.FC<{
 const ParticipantPaymentView: React.FC<{
   participant: SettlementStatusData['participants'][0];
   clubName?: string;
+  courseName?: string;
   date?: string;
   slotTime?: string;
   roomId?: string;
   conversationId?: string;
   onPay: (orderId: string) => void;
-}> = ({ participant, clubName, date, slotTime, roomId, conversationId, onPay }) => {
+}> = ({ participant, clubName, courseName, date, slotTime, roomId, conversationId, onPay }) => {
   const [isPaying, setIsPaying] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [isExpired, setIsExpired] = useState(false);
@@ -280,13 +281,19 @@ const ParticipantPaymentView: React.FC<{
         <h4 className="text-sm font-semibold text-white">결제 요청</h4>
       </div>
 
-      {/* 골프장/날짜/시간 정보 */}
-      {(clubName || date || slotTime) && (
+      {/* 골프장/코스/날짜/시간 정보 */}
+      {(clubName || courseName || date || slotTime) && (
         <div className="space-y-1 text-xs text-white/60">
           {clubName && (
             <div className="flex items-center gap-1.5">
               <MapPin className="w-3 h-3 text-white/40" />
               <span>{clubName}</span>
+            </div>
+          )}
+          {courseName && (
+            <div className="flex items-center gap-1.5">
+              <Flag className="w-3 h-3 text-white/40" />
+              <span>{courseName}</span>
             </div>
           )}
           {(date || slotTime) && (
@@ -390,6 +397,7 @@ export const SettlementStatusCard: React.FC<SettlementStatusCardProps> = ({
     <ParticipantPaymentView
       participant={myParticipant}
       clubName={data.clubName}
+      courseName={data.courseName}
       date={data.date}
       slotTime={data.slotTime}
       roomId={roomId}

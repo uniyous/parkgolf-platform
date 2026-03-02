@@ -215,6 +215,9 @@ struct SettlementStatusCardView: View {
                     if !clubName.isEmpty {
                         infoRow(icon: "mappin.circle.fill", value: clubName)
                     }
+                    if !courseName.isEmpty {
+                        infoRow(icon: "flag.fill", value: courseName)
+                    }
                     let dateTime = [date, slotTime].filter { !$0.isEmpty }.joined(separator: " ")
                     if !dateTime.isEmpty {
                         infoRow(icon: "calendar", value: dateTime)

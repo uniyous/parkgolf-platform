@@ -374,6 +374,7 @@ struct AiChatRequest: Codable, Sendable {
     var selectedSlotId: String?
     var selectedSlotTime: String?
     var selectedSlotPrice: Int?
+    var selectedCourseName: String?
     var confirmBooking: Bool?
     var cancelBooking: Bool?
     var paymentMethod: String?

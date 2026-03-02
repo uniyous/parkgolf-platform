@@ -250,6 +250,7 @@ export class ChatService {
         selectedSlotId: dto.selectedSlotId,
         selectedSlotTime: dto.selectedSlotTime,
         selectedSlotPrice: dto.selectedSlotPrice,
+        selectedCourseName: dto.selectedCourseName,
         confirmBooking: dto.confirmBooking,
         cancelBooking: dto.cancelBooking,
         paymentMethod: dto.paymentMethod,

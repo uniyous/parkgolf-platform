@@ -124,6 +124,7 @@ data class AiChatRequest(
     val selectedSlotId: String? = null,
     val selectedSlotTime: String? = null,
     val selectedSlotPrice: Int? = null,
+    val selectedCourseName: String? = null,
     val confirmBooking: Boolean? = null,
     val cancelBooking: Boolean? = null,
     val paymentMethod: String? = null,

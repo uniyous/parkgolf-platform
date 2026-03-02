@@ -209,6 +209,7 @@ export interface SettlementStatusData {
   bookerId?: number;
   teamNumber?: number;
   clubName?: string;
+  courseName?: string;
   date?: string;
   slotTime?: string;
   totalParticipants: number;
@@ -236,6 +237,7 @@ export interface AiChatRequest {
   selectedSlotId?: string;
   selectedSlotTime?: string;
   selectedSlotPrice?: number;
+  selectedCourseName?: string;
   confirmBooking?: boolean;
   cancelBooking?: boolean;
   paymentMethod?: string;

@@ -68,6 +68,10 @@ export class ChatRequestDto {
   selectedSlotPrice?: number;
 
   @IsOptional()
+  @IsString()
+  selectedCourseName?: string;
+
+  @IsOptional()
   @IsBoolean()
   confirmBooking?: boolean;
 
@@ -208,6 +212,7 @@ export interface BookingSlots {
   location?: string;
   clubName?: string;
   clubId?: string;
+  courseName?: string;
   date?: string;
   time?: string;
   slotId?: string;

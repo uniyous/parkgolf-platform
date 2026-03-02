@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SlotCardView: View {
     let data: Any
-    var onSelect: ((String, String, Int, String?, String?) -> Void)?
+    var onSelect: ((String, String, Int, String?, String?, String?) -> Void)?
     var selectedSlotId: String?
 
     private var dataDict: [String: Any]? {
@@ -37,7 +37,7 @@ struct SlotCardView: View {
 
                 Button {
                     if !isDisabled {
-                        onSelect?(id, time, price, clubId, clubName)
+                        onSelect?(id, time, price, clubId, clubName, courseName)
                     }
                 } label: {
                     ZStack(alignment: .topTrailing) {

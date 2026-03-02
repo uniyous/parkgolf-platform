@@ -88,6 +88,7 @@ fun SettlementStatusCard(
         else -> ParticipantPaymentView(
             participant = myParticipant,
             clubName = data["clubName"]?.toString() ?: "",
+            courseName = data["courseName"]?.toString() ?: "",
             date = data["date"]?.toString() ?: "",
             slotTime = data["slotTime"]?.toString() ?: "",
             onPay = { orderId ->
@@ -367,6 +368,7 @@ private fun BookerDashboardView(
 private fun ParticipantPaymentView(
     participant: ParticipantInfo,
     clubName: String = "",
+    courseName: String = "",
     date: String = "",
     slotTime: String = "",
     onPay: (String) -> Unit
@@ -426,8 +428,8 @@ private fun ParticipantPaymentView(
                 )
             }
 
-            // 골프장/날짜/시간 정보
-            if (clubName.isNotBlank() || date.isNotBlank() || slotTime.isNotBlank()) {
+            // 골프장/코스/날짜/시간 정보
+            if (clubName.isNotBlank() || courseName.isNotBlank() || date.isNotBlank() || slotTime.isNotBlank()) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (clubName.isNotBlank()) {
                         Row(
@@ -442,6 +444,24 @@ private fun ParticipantPaymentView(
                             )
                             Text(
                                 text = clubName,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = ParkOnPrimary.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                    if (courseName.isNotBlank()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Flag,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = ParkOnPrimary.copy(alpha = 0.4f)
+                            )
+                            Text(
+                                text = courseName,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = ParkOnPrimary.copy(alpha = 0.6f)
                             )
