@@ -324,7 +324,7 @@ export class BookingAgentService {
           })),
         };
 
-        // 부커 제외 참여자에게 push 알림 + 채팅 카드 전송
+        // 진행자 제외 참여자에게 push 알림
         const otherParticipants = splits.filter((s: any) => s.userId !== request.userId);
         if (otherParticipants.length > 0) {
           this.toolExecutor.emitSplitPaymentNotification({
@@ -338,15 +338,17 @@ export class BookingAgentService {
               amount: s.amount || Math.round(pricePerPerson),
             })),
           });
+        }
 
-          // 참여자에게 정산 카드 브로드캐스트 (1개 메시지 → 룸 전체 전송, 클라이언트 필터링)
-          if (context.slots.chatRoomId) {
-            this.toolExecutor.broadcastSettlementCard(
-              context.slots.chatRoomId,
-              otherParticipants.map((s: any) => s.userId),
-              settlementData,
-            );
-          }
+        // 모든 참여자(진행자 포함)에게 정산 카드 브로드캐스트
+        if (context.slots.chatRoomId && splits.length > 0) {
+          this.toolExecutor.broadcastSettlementCard(
+            context.slots.chatRoomId,
+            splits.map((s: any) => s.userId),
+            settlementData,
+            undefined,
+            request.userId,
+          );
         }
 
         actions.push({ type: 'SETTLEMENT_STATUS', data: settlementData });
