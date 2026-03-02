@@ -182,10 +182,13 @@ const BookerDashboardView: React.FC<{
  */
 const ParticipantPaymentView: React.FC<{
   participant: SettlementStatusData['participants'][0];
+  clubName?: string;
+  date?: string;
+  slotTime?: string;
   roomId?: string;
   conversationId?: string;
   onPay: (orderId: string) => void;
-}> = ({ participant, roomId, conversationId, onPay }) => {
+}> = ({ participant, clubName, date, slotTime, roomId, conversationId, onPay }) => {
   const [isPaying, setIsPaying] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [isExpired, setIsExpired] = useState(false);
@@ -276,6 +279,24 @@ const ParticipantPaymentView: React.FC<{
         <CreditCard className="w-4 h-4 text-violet-400" />
         <h4 className="text-sm font-semibold text-white">결제 요청</h4>
       </div>
+
+      {/* 골프장/날짜/시간 정보 */}
+      {(clubName || date || slotTime) && (
+        <div className="space-y-1 text-xs text-white/60">
+          {clubName && (
+            <div className="flex items-center gap-1.5">
+              <MapPin className="w-3 h-3 text-white/40" />
+              <span>{clubName}</span>
+            </div>
+          )}
+          {(date || slotTime) && (
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-3 h-3 text-white/40" />
+              <span>{[date, slotTime].filter(Boolean).join(' ')}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="text-center py-3">
         <p className="text-2xl font-bold text-white">{formatPrice(amount)}원</p>
@@ -368,6 +389,9 @@ export const SettlementStatusCard: React.FC<SettlementStatusCardProps> = ({
   return (
     <ParticipantPaymentView
       participant={myParticipant}
+      clubName={data.clubName}
+      date={data.date}
+      slotTime={data.slotTime}
       roomId={roomId}
       conversationId={conversationId}
       onPay={(orderId) => onSplitPaymentComplete?.(true, orderId)}

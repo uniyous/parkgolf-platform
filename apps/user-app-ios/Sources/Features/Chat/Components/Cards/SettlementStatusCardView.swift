@@ -209,6 +209,20 @@ struct SettlementStatusCardView: View {
                     .foregroundColor(.white)
             }
 
+            // 골프장/날짜/시간 정보
+            if !clubName.isEmpty || !date.isEmpty || !slotTime.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    if !clubName.isEmpty {
+                        infoRow(icon: "mappin.circle.fill", value: clubName)
+                    }
+                    let dateTime = [date, slotTime].filter { !$0.isEmpty }.joined(separator: " ")
+                    if !dateTime.isEmpty {
+                        infoRow(icon: "calendar", value: dateTime)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
             Text("₩\(amount.formatted())")
                 .font(.title2)
                 .fontWeight(.bold)

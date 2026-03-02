@@ -87,6 +87,9 @@ fun SettlementStatusCard(
         "PAID" -> ParticipantPaidView(participant = myParticipant)
         else -> ParticipantPaymentView(
             participant = myParticipant,
+            clubName = data["clubName"]?.toString() ?: "",
+            date = data["date"]?.toString() ?: "",
+            slotTime = data["slotTime"]?.toString() ?: "",
             onPay = { orderId ->
                 if (onRequestSplitPayment != null) {
                     onRequestSplitPayment(orderId, myParticipant.amount)
@@ -363,6 +366,9 @@ private fun BookerDashboardView(
 @Composable
 private fun ParticipantPaymentView(
     participant: ParticipantInfo,
+    clubName: String = "",
+    date: String = "",
+    slotTime: String = "",
     onPay: (String) -> Unit
 ) {
     var isPaying by remember { mutableStateOf(false) }
@@ -418,6 +424,49 @@ private fun ParticipantPaymentView(
                     fontWeight = FontWeight.SemiBold,
                     color = ParkOnPrimary
                 )
+            }
+
+            // 골프장/날짜/시간 정보
+            if (clubName.isNotBlank() || date.isNotBlank() || slotTime.isNotBlank()) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (clubName.isNotBlank()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Place,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = ParkOnPrimary.copy(alpha = 0.4f)
+                            )
+                            Text(
+                                text = clubName,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = ParkOnPrimary.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                    val dateTime = listOf(date, slotTime).filter { it.isNotBlank() }.joinToString(" ")
+                    if (dateTime.isNotBlank()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Schedule,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = ParkOnPrimary.copy(alpha = 0.4f)
+                            )
+                            Text(
+                                text = dateTime,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = ParkOnPrimary.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                }
             }
 
             Text(
