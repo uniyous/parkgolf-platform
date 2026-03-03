@@ -1,6 +1,6 @@
 import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { BookingStatus, OutboxStatus, TimeSlotCacheStatus } from '@prisma/client';
+import { BookingStatus, OutboxStatus, TimeSlotCacheStatus, ParticipantStatus, ParticipantRole, TeamSelectionStatus } from '@prisma/client';
 import {
   CreateBookingRequestDto,
   UpdateBookingDto,
@@ -36,6 +36,7 @@ export class BookingService {
     @Optional() @Inject('NOTIFICATION_SERVICE') private readonly notificationPublisher?: ClientProxy,
     @Optional() @Inject('COURSE_SERVICE') private readonly courseServiceClient?: ClientProxy,
     @Optional() @Inject('IAM_SERVICE') private readonly iamService?: ClientProxy,
+    @Optional() @Inject('CHAT_SERVICE') private readonly chatClient?: ClientProxy,
   ) {}
 
   // 예약번호 생성 함수 - UUID 기반으로 예측 불가능하고 충돌 없는 번호 생성
@@ -1145,5 +1146,251 @@ export class BookingService {
       },
     });
     return result.count;
+  }
+
+  /**
+   * 참여자 결제 완료 처리
+   * - 참여자 미존재 시 split 데이터로 자동 생성 (upsert)
+   * - 전원 결제 완료 시 SLOT_RESERVED → CONFIRMED 전환
+   */
+  async markParticipantPaid(
+    bookingId: number,
+    userId: number,
+    userName?: string,
+    userEmail?: string,
+    amount?: number,
+  ) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+    });
+
+    if (!booking) {
+      throw new AppException(Errors.Booking.NOT_FOUND);
+    }
+
+    // 참여자 조회 → 없으면 split 데이터로 자동 생성
+    let participant = await this.prisma.bookingParticipant.findUnique({
+      where: { bookingId_userId: { bookingId, userId } },
+    });
+
+    if (!participant) {
+      if (!userName || !userEmail) {
+        this.logger.warn(
+          `Participant not found and missing info: booking=${bookingId}, user=${userId}`,
+        );
+        throw new AppException(Errors.Group.PARTICIPANT_NOT_FOUND);
+      }
+
+      const isBooker = booking.userId === userId;
+      participant = await this.prisma.bookingParticipant.create({
+        data: {
+          bookingId,
+          userId,
+          userName,
+          userEmail,
+          role: isBooker ? ParticipantRole.BOOKER : ParticipantRole.MEMBER,
+          status: ParticipantStatus.PENDING,
+          amount: amount ?? Number(booking.pricePerPerson),
+        },
+      });
+      this.logger.log(
+        `Auto-created participant: booking=${bookingId}, user=${userId} (${userName})`,
+      );
+    }
+
+    // 결제 완료 처리
+    if (participant.status !== ParticipantStatus.PAID) {
+      await this.prisma.bookingParticipant.update({
+        where: { id: participant.id },
+        data: {
+          status: ParticipantStatus.PAID,
+          paidAt: new Date(),
+        },
+      });
+    }
+
+    // 해당 booking의 모든 참여자 정산 상태 확인
+    const allParticipants = await this.prisma.bookingParticipant.findMany({
+      where: { bookingId },
+    });
+
+    const paidCount = allParticipants.filter(
+      (p) => p.status === ParticipantStatus.PAID,
+    ).length;
+    const totalCount = allParticipants.length;
+    const allPaid = paidCount === totalCount && totalCount >= booking.playerCount;
+
+    // 전원 결제 완료 → SLOT_RESERVED → CONFIRMED
+    if (allPaid && booking.status === BookingStatus.SLOT_RESERVED) {
+      await this.prisma.$transaction(async (prisma) => {
+        await prisma.booking.update({
+          where: { id: bookingId },
+          data: { status: BookingStatus.CONFIRMED },
+        });
+
+        await prisma.bookingHistory.create({
+          data: {
+            bookingId,
+            action: 'PAYMENT_CONFIRMED',
+            userId: booking.userId,
+            details: {
+              paidCount,
+              totalCount,
+              confirmedAt: new Date().toISOString(),
+              splitPayment: true,
+            },
+          },
+        });
+
+        await prisma.bookingHistory.create({
+          data: {
+            bookingId,
+            action: 'CONFIRMED',
+            userId: booking.userId,
+            details: {
+              confirmedAt: new Date().toISOString(),
+              paymentMethod: booking.paymentMethod,
+              splitPayment: true,
+            },
+          },
+        });
+      });
+
+      this.logger.log(
+        `Booking ${bookingId} CONFIRMED — all ${totalCount} participants paid (split payment)`,
+      );
+
+      // 예약 확정 이벤트 발행 (알림용)
+      if (this.notificationPublisher) {
+        this.notificationPublisher.emit('booking.confirmed', {
+          bookingId: booking.id,
+          bookingNumber: booking.bookingNumber,
+          userId: booking.userId,
+          gameId: booking.gameId,
+          gameName: booking.gameName,
+          bookingDate: booking.bookingDate.toISOString(),
+          timeSlot: booking.startTime,
+          confirmedAt: new Date().toISOString(),
+          userEmail: booking.userEmail,
+          userName: booking.userName,
+          paymentMethod: booking.paymentMethod,
+        });
+      }
+
+      // CompanyMember 자동 등록
+      if (booking.clubId && booking.userId && this.courseServiceClient && this.iamService) {
+        try {
+          const clubResponse = await firstValueFrom(
+            this.courseServiceClient.send('club.findOne', { id: booking.clubId }).pipe(
+              timeout(NATS_TIMEOUTS.DEFAULT),
+              catchError(() => of(null)),
+            ),
+          );
+          const companyId = clubResponse?.data?.companyId;
+          if (companyId) {
+            await firstValueFrom(
+              this.iamService.send('iam.companyMembers.addByBooking', {
+                companyId,
+                userId: booking.userId,
+              }).pipe(
+                timeout(NATS_TIMEOUTS.DEFAULT),
+                catchError(() => of(null)),
+              ),
+            );
+          }
+        } catch (err) {
+          this.logger.warn(`CompanyMember registration failed: ${err?.message}`);
+        }
+      }
+    }
+
+    const settlementStatus =
+      allPaid ? 'COMPLETED' :
+      paidCount > 0 ? 'PARTIAL' : 'PENDING';
+
+    return {
+      settled: allPaid,
+      paidCount,
+      totalCount,
+      settlementStatus,
+    };
+  }
+
+  /**
+   * 그룹 예약 취소 (groupId 기반)
+   * executeCancellation 재사용 → 슬롯 캐시 복구 + 카드 환불 Outbox 포함
+   */
+  async cancelGroupBookings(groupId: string) {
+    const bookings = await this.prisma.booking.findMany({
+      where: { groupId },
+    });
+
+    if (bookings.length === 0) {
+      throw new AppException(Errors.Group.NOT_FOUND);
+    }
+
+    const cancelledBookings = await this.prisma.$transaction(async (tx) => {
+      const results = [];
+
+      for (const booking of bookings) {
+        if (booking.status === BookingStatus.CANCELLED) continue;
+
+        const cancelled = await this.executeCancellation(
+          tx,
+          booking,
+          'Group booking cancelled',
+          { groupId },
+        );
+        results.push(cancelled);
+
+        // 참여자 전원 취소
+        await tx.bookingParticipant.updateMany({
+          where: { bookingId: booking.id },
+          data: { status: ParticipantStatus.CANCELLED },
+        });
+      }
+
+      // TeamSelection도 취소
+      await tx.teamSelection.updateMany({
+        where: { groupId },
+        data: { status: TeamSelectionStatus.CANCELLED },
+      });
+
+      return results;
+    });
+
+    // 트랜잭션 후: course-service 슬롯 해제 + 예약 취소 이벤트
+    for (const booking of cancelledBookings) {
+      if (this.courseServiceClient) {
+        this.courseServiceClient.emit('gameTimeSlots.release', {
+          timeSlotId: booking.gameTimeSlotId,
+          playerCount: booking.playerCount,
+        });
+      }
+
+      if (this.notificationPublisher) {
+        this.notificationPublisher.emit('booking.cancelled', {
+          bookingId: booking.id,
+          bookingNumber: booking.bookingNumber,
+          userId: booking.userId,
+          gameId: booking.gameId,
+          gameName: booking.gameName,
+          bookingDate: booking.bookingDate.toISOString(),
+          timeSlot: booking.startTime,
+          reason: 'Group booking cancelled',
+          cancelledAt: new Date().toISOString(),
+          userEmail: booking.userEmail,
+          userName: booking.userName,
+        });
+      }
+    }
+
+    // 카드결제 환불 Outbox 트리거
+    const hasCardPayment = cancelledBookings.some((b) => b.paymentMethod === 'card');
+    if (hasCardPayment) {
+      setImmediate(() => this.outboxProcessor.triggerImmediate());
+    }
+
+    return { cancelled: true, groupId };
   }
 }

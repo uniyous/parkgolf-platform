@@ -271,4 +271,30 @@ export class BookingNatsController {
     const hasActiveBooking = await this.bookingService.hasActiveBookings(data.userId);
     return NatsResponse.success({ hasActiveBooking });
   }
+
+  // ============================================
+  // Group Booking / Settlement
+  // ============================================
+
+  @MessagePattern('booking.participant.paid')
+  async markParticipantPaid(@Payload() data: {
+    bookingId: number;
+    userId: number;
+    userName?: string;
+    userEmail?: string;
+    amount?: number;
+  }) {
+    this.logger.log(`NATS: Marking participant paid: booking=${data.bookingId}, user=${data.userId}`);
+    const result = await this.bookingService.markParticipantPaid(
+      data.bookingId, data.userId, data.userName, data.userEmail, data.amount,
+    );
+    return NatsResponse.success(result);
+  }
+
+  @MessagePattern('bookingGroup.cancel')
+  async cancelGroupBookings(@Payload() data: { groupId: string }) {
+    this.logger.log(`NATS: Cancelling group bookings: groupId=${data.groupId}`);
+    const result = await this.bookingService.cancelGroupBookings(data.groupId);
+    return NatsResponse.success(result);
+  }
 }

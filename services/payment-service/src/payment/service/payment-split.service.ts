@@ -122,6 +122,9 @@ export class PaymentSplitService {
     this.bookingClient.emit('booking.participant.paid', {
       bookingId: split.bookingId,
       userId: split.userId,
+      userName: split.userName,
+      userEmail: split.userEmail,
+      amount: split.amount,
     });
 
     this.logger.log(
