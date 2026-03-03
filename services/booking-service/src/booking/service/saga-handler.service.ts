@@ -2,7 +2,7 @@ import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { BookingStatus, OutboxStatus, TimeSlotCacheStatus } from '@prisma/client';
+import { BookingStatus, OutboxStatus, TimeSlotCacheStatus, ParticipantRole, ParticipantStatus } from '@prisma/client';
 import { OutboxProcessorService } from './outbox-processor.service';
 
 // Saga 타임아웃 설정
@@ -95,6 +95,13 @@ export class SagaHandlerService {
               },
             },
           });
+
+          // 그룹 예약: teamSelectionId가 있으면 BookingParticipant 자동 생성
+          if (booking.teamSelectionId && booking.teamNumber) {
+            await this.createParticipantsFromTeamSelection(
+              prisma, data.bookingId, booking.teamSelectionId, booking.teamNumber, Number(booking.pricePerPerson),
+            );
+          }
 
           // 로컬 캐시 업데이트
           await prisma.gameTimeSlotCache.updateMany({
@@ -400,6 +407,13 @@ export class SagaHandlerService {
             },
           },
         });
+
+        // 그룹 예약: teamSelectionId가 있으면 BookingParticipant 자동 생성
+        if (booking.teamSelectionId && booking.teamNumber) {
+          await this.createParticipantsFromTeamSelection(
+            prisma, data.bookingId, booking.teamSelectionId, booking.teamNumber, Number(booking.pricePerPerson),
+          );
+        }
       });
 
       // 예약 확정 이벤트 발행 (알림용)
@@ -575,6 +589,47 @@ export class SagaHandlerService {
       this.logger.error(`[SagaHandler] FAILED to handle payment.canceled for booking ${data.bookingId}: ${error.message}`);
       throw error;
     }
+  }
+
+  /**
+   * TeamSelection 멤버로부터 BookingParticipant 자동 생성
+   * 그룹 예약이 CONFIRMED될 때 호출
+   */
+  private async createParticipantsFromTeamSelection(
+    prisma: any,
+    bookingId: number,
+    teamSelectionId: number,
+    teamNumber: number,
+    pricePerPerson: number,
+  ): Promise<void> {
+    const members = await prisma.teamSelectionMember.findMany({
+      where: { teamSelectionId, teamNumber },
+    });
+
+    if (members.length === 0) {
+      this.logger.warn(`[SagaHandler] No TeamSelectionMembers found for teamSelectionId=${teamSelectionId}, teamNumber=${teamNumber}`);
+      return;
+    }
+
+    for (const member of members) {
+      await prisma.bookingParticipant.upsert({
+        where: {
+          bookingId_userId: { bookingId, userId: member.userId },
+        },
+        update: {},
+        create: {
+          bookingId,
+          userId: member.userId,
+          userName: member.userName,
+          userEmail: member.userEmail,
+          role: member.role as ParticipantRole,
+          status: ParticipantStatus.PENDING,
+          amount: pricePerPerson,
+        },
+      });
+    }
+
+    this.logger.log(`[SagaHandler] Created ${members.length} BookingParticipants for booking ${bookingId} from TeamSelection`);
   }
 
   /**

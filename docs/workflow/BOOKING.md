@@ -1,7 +1,7 @@
 # 예약 워크플로우 및 Saga 아키텍처
 
-> 버전: 3.4
-> 최종 수정: 2026-02-24
+> 버전: 5.1
+> 최종 수정: 2026-03-03
 > 이전 문서: BOOKING_SAGA_ARCHITECTURE.md, booking-workflow-design.md (통합됨)
 
 ## 목차
@@ -15,6 +15,8 @@
 7. [타임아웃 및 재시도 설정](#7-타임아웃-및-재시도-설정)
 8. [취소 및 환불 프로세스](#8-취소-및-환불-프로세스)
 9. [모니터링 및 디버깅](#9-모니터링-및-디버깅)
+10. [그룹 예약 (Group Booking) — 3-Phase 구조](#10-그룹-예약-group-booking--3-phase-구조)
+11. [더치페이 (Split Payment)](#11-더치페이-split-payment)
 
 ---
 
@@ -26,11 +28,11 @@
 
 | 서비스 | 역할 | 데이터베이스 |
 |--------|------|-------------|
-| **booking-service** | 예약 생성, Saga 오케스트레이션, Outbox 처리 | booking_db |
+| **booking-service** | 예약 생성, 팀 선정, 그룹 예약, Saga 오케스트레이션, Outbox 처리 | booking_db |
 | **course-service** | 타임슬롯 관리, 슬롯 예약/해제 | course_db |
-| **payment-service** | 결제 준비/승인/취소 (토스페이먼츠) | payment_db |
 | **iam-service** | 인증/사용자/CompanyMember 관리 | iam_db |
 | **user-api** | BFF, 클라이언트 요청 처리 | - |
+| **payment-service** | 결제 준비/승인/취소, 더치페이 분할결제 | payment_db |
 | **notify-service** | 알림 발송 | notify_db |
 | **agent-service** | AI 예약 에이전트 (booking.create 호출) | - (in-memory) |
 
@@ -121,6 +123,7 @@ flowchart LR
         B[OutboxProcessor]
         C[SagaHandler]
         D[SagaScheduler]
+        TS[TeamSelectionService]
         E[(OutboxEvent)]
         F[(IdempotencyKey)]
     end
@@ -259,6 +262,64 @@ stateDiagram-v2
     FULLY_BOOKED --> CLOSED: 관리자 마감
 
     CLOSED --> AVAILABLE: 관리자 재개
+```
+
+### 3.7 정산 상태 (파생 — 조회 시 계산)
+
+그룹 예약 정산 상태는 별도 컬럼 없이 `BookingParticipant` 상태에서 **조회 시 계산**합니다.
+
+```typescript
+// 같은 groupId의 모든 BookingParticipant 조회
+const participants = await prisma.bookingParticipant.findMany({
+  where: { booking: { groupId } },
+});
+const paidCount = participants.filter(p => p.status === 'PAID').length;
+const totalCount = participants.length;
+
+const settlementStatus =
+  paidCount === totalCount ? 'COMPLETED' :
+  paidCount > 0 ? 'PARTIAL' : 'PENDING';
+```
+
+| 파생 상태 | 조건 |
+|----------|------|
+| `PENDING` | 결제한 참여자 없음 (`paidCount === 0`) |
+| `PARTIAL` | 일부 참여자 결제 (`0 < paidCount < totalCount`) |
+| `COMPLETED` | 전원 결제 완료 (`paidCount === totalCount`) |
+
+### 3.7.1 TeamSelectionStatus (팀 선정 상태)
+
+```
+┌───────────┬──────────────────────────────────────┐
+│ SELECTING │ 멤버 선택 진행 중                       │
+│ READY     │ 모든 팀 구성 완료                       │
+│ BOOKING   │ 예약(Saga) 진행 중                      │
+│ COMPLETED │ 모든 팀 예약 완료                       │
+│ CANCELLED │ 취소                                    │
+└───────────┴──────────────────────────────────────┘
+```
+
+### 3.8 ParticipantStatus (참여자 결제 상태)
+
+```
+┌───────────┬──────────────────────────────────────┐
+│ PENDING   │ 결제 대기                              │
+│ PAID      │ 결제 완료                              │
+│ CANCELLED │ 참여 취소                              │
+│ REFUNDED  │ 환불 완료                              │
+└───────────┴──────────────────────────────────────┘
+```
+
+### 3.9 SplitStatus (분할결제 상태)
+
+```
+┌───────────┬──────────────────────────────────────┐
+│ PENDING   │ 결제 대기                              │
+│ PAID      │ 결제 완료                              │
+│ EXPIRED   │ 결제 기한 만료                         │
+│ CANCELLED │ 취소                                   │
+│ REFUNDED  │ 환불                                   │
+└───────────┴──────────────────────────────────────┘
 ```
 
 ---
@@ -438,7 +499,7 @@ const booking = await this.prisma.$transaction(async (tx) => {
 
   // 4. 히스토리 기록
   await tx.bookingHistory.create({
-    data: { bookingId: newBooking.id, action: 'CREATED', ... },
+    data: { bookingId: newBooking.id, action: 'SAGA_STARTED', ... },
   });
 
   return newBooking;
@@ -449,9 +510,10 @@ const booking = await this.prisma.$transaction(async (tx) => {
 
 ```typescript
 // outbox-processor.service.ts
-const POLL_INTERVAL_MS = 3000;    // 3초마다 폴링
+const POLL_INTERVAL_MS = 3000;    // 3초마다 폴링 (안전망)
 const BATCH_SIZE = 10;            // 한 번에 처리할 이벤트 수
 const MAX_RETRY_COUNT = 5;        // 최대 재시도 횟수
+const PROCESSING_LOCK_MS = 30000; // 처리 중 락 시간 (30초)
 
 // FOR UPDATE SKIP LOCKED로 동시 처리 방지
 const events = await this.prisma.$queryRaw`
@@ -462,6 +524,36 @@ const events = await this.prisma.$queryRaw`
   FOR UPDATE SKIP LOCKED
 `;
 ```
+
+#### Outbox 즉시 트리거
+
+예약 생성·취소 후 Outbox 이벤트를 즉시 처리하기 위해 `setImmediate`로 트리거합니다.
+3초 폴링은 안전망 역할이며, 대부분의 이벤트는 즉시 처리됩니다.
+
+```typescript
+// booking.service.ts — 예약 생성/취소 후
+setImmediate(() => this.outboxProcessor.triggerImmediate());
+
+// outbox-processor.service.ts
+async triggerImmediate(): Promise<void> {
+  if (!this.isProcessing) {
+    await this.processOutboxEvents();
+  }
+}
+```
+
+#### Outbox 이벤트 라우팅
+
+이벤트 타입에 따라 대상 서비스 NATS 클라이언트를 자동 선택합니다:
+
+| 이벤트 접두사 | 대상 서비스 | 통신 방식 |
+|-------------|-----------|----------|
+| `slot.*`, `gameTimeSlots.*` | course-service | Request-Reply |
+| `payment.*` | payment-service | Request-Reply |
+| `booking.*`, `notification.*` | notify-service | Event (Fire-and-forget) |
+
+Request-Reply 이벤트는 응답을 대기하고 성공 여부를 확인합니다.
+Event 방식은 발행 후 즉시 SENT로 마킹합니다.
 
 #### Step 6: Optimistic Locking (course-service)
 
@@ -494,22 +586,33 @@ const booking = await this.prisma.booking.findUnique({
   where: { id: data.bookingId },
 });
 
-if (booking.paymentMethod === 'card') {
-  // 카드결제: PENDING → SLOT_RESERVED (결제 대기)
-  await this.prisma.booking.update({
-    where: { id: booking.id },
-    data: { status: BookingStatus.SLOT_RESERVED },
-  });
-} else {
+const isOnsitePayment = !booking.paymentMethod || booking.paymentMethod === 'onsite';
+
+if (isOnsitePayment) {
   // 현장결제: PENDING → CONFIRMED (즉시 확정)
-  await this.prisma.booking.update({
-    where: { id: booking.id },
-    data: { status: BookingStatus.CONFIRMED },
+  await this.prisma.$transaction(async (prisma) => {
+    await prisma.booking.update({
+      where: { id: data.bookingId },
+      data: { status: BookingStatus.CONFIRMED },
+    });
+
+    // 그룹 예약: teamSelectionId가 있으면 BookingParticipant 자동 생성
+    if (booking.teamSelectionId && booking.teamNumber) {
+      await this.createParticipantsFromTeamSelection(
+        prisma, data.bookingId, booking.teamSelectionId, booking.teamNumber, pricePerPerson,
+      );
+    }
   });
   // emit booking.confirmed
 
   // CompanyMember 자동 등록 (fail-safe)
   await this.registerCompanyMember(booking.clubId, booking.userId);
+} else {
+  // 카드결제: PENDING → SLOT_RESERVED (결제 대기)
+  await this.prisma.booking.update({
+    where: { id: data.bookingId },
+    data: { status: BookingStatus.SLOT_RESERVED },
+  });
 }
 ```
 
@@ -758,10 +861,12 @@ flowchart LR
 
 | 설정 | 값 | 서비스 | 용도 |
 |------|-----|--------|------|
-| `POLL_INTERVAL_MS` | 3,000ms | booking | Outbox 폴링 주기 |
+| `POLL_INTERVAL_MS` | 3,000ms | booking | Outbox 폴링 주기 (안전망) |
 | `BATCH_SIZE` | 10 | booking | 한 번에 처리할 이벤트 수 |
 | `MAX_RETRY_COUNT` | 5 | booking | Outbox 최대 재시도 |
+| `PROCESSING_LOCK_MS` | 30,000ms | booking | Outbox 처리 중 락 시간 |
 | `NATS_TIMEOUT` | 30,000ms | booking | NATS 요청 타임아웃 |
+| `NATS_RETRY_COUNT` | 2 | booking | 캐시 조회 NATS 재시도 횟수 |
 | `SAGA_TIMEOUT_MS` | 60,000ms | booking | PENDING 상태 타임아웃 |
 | `PAYMENT_TIMEOUT_MS` | 600,000ms (10분) | booking | SLOT_RESERVED 결제 대기 타임아웃 |
 | `IDEMPOTENCY_KEY_TTL` | 24시간 | booking | 멱등성 키 보관 기간 |
@@ -769,8 +874,11 @@ flowchart LR
 | `TX_MAX_WAIT` | 10,000ms | course | 트랜잭션 대기 최대 시간 |
 | `LOCK_RETRY_COUNT` | 3 | course | Optimistic Lock 재시도 |
 | `SLOT_IDEMPOTENCY_TTL` | 60,000ms | course | 슬롯 예약 멱등성 TTL |
-| `PAYMENT_OUTBOX_POLL` | 5,000ms | payment | 결제 Outbox 폴링 주기 |
+| `PAYMENT_OUTBOX_POLL` | 5,000ms | payment | 결제 Outbox 폴링 주기 (Cron) |
+| `PAYMENT_SEND_TIMEOUT` | 10,000ms | payment | 결제 Outbox NATS 전송 타임아웃 |
+| `PAYMENT_MAX_RETRIES` | 5 | payment | 결제 Outbox 최대 재시도 |
 | `TOSS_HTTP_TIMEOUT` | 60,000ms | payment | 토스페이먼츠 API HTTP 타임아웃 (공식 권장) |
+| `SPLIT_EXPIRATION` | 30분 | payment | 더치페이 결제 기한 (기본값) |
 
 ### 7.3 정리 작업 스케줄
 
@@ -803,6 +911,7 @@ sequenceDiagram
     actor User as 고객/관리자
     participant API as API
     participant BS as booking-service
+    participant DB as booking-db
     participant CS as course-service
     participant NS as notify-service
 
@@ -813,15 +922,14 @@ sequenceDiagram
     BS->>BS: 취소 정책 검증
 
     alt 취소 가능
-        BS->>BS: status → CANCELLED
-        BS->>BS: OutboxEvent 생성 (slot.release)
+        BS->>DB: status → CANCELLED (트랜잭션)
+        BS->>DB: GameTimeSlotCache 복원 (bookedPlayers--, availablePlayers++)
 
-        Note over BS: Outbox Processing
-        BS->>CS: slot.release (NATS)
-        CS->>CS: bookedPlayers 감소
-        CS-->>BS: slot.released
+        Note over BS: 트랜잭션 커밋 후 (Direct Emit)
+        BS->>CS: gameTimeSlots.release (NATS emit)
+        CS->>CS: bookedPlayers 감소, version++
 
-        BS->>NS: booking.cancelled (NATS)
+        BS->>NS: booking.cancelled (NATS emit)
         NS-->>User: 취소 알림
 
         BS-->>API: 취소 완료
@@ -829,6 +937,9 @@ sequenceDiagram
         BS-->>API: 취소 불가 (사유)
     end
 ```
+
+> **참고**: 현장결제 취소는 Outbox를 사용하지 않고 **Direct NATS Emit**으로 처리합니다.
+> 로컬 `GameTimeSlotCache`는 트랜잭션 내에서 즉시 복원하고, course-service에는 비동기 emit으로 알립니다.
 
 ### 8.3 취소 프로세스 (카드결제 — 환불 포함)
 
@@ -852,19 +963,18 @@ sequenceDiagram
     BS->>BS: 취소 정책 검증
 
     alt 취소 가능
-        BS->>DB1: status → CANCELLED
+        BS->>DB1: status → CANCELLED (트랜잭션)
         BS->>DB1: GameTimeSlotCache 복원 (bookedPlayers--, availablePlayers++)
-        BS->>DB1: OutboxEvent 생성 (slot.release)
         BS->>DB1: OutboxEvent 생성 (payment.cancelByBookingId)
         BS-->>API: 취소 완료
         API-->>User: 취소 완료 응답
 
-        Note over BS: Outbox Processing (비동기)
-        BS->>NATS: slot.release
-        NATS->>CS: slot.release
+        Note over BS: 트랜잭션 커밋 후 (Direct Emit)
+        BS->>CS: gameTimeSlots.release (NATS emit)
         CS->>CS: bookedPlayers 감소, version++
-        CS-->>NATS: slot.released
+        BS->>NS: booking.cancelled (NATS emit)
 
+        Note over BS: Outbox Processing (비동기)
         BS->>NATS: payment.cancelByBookingId
         NATS->>PS: payment.cancelByBookingId (멱등)
         PS->>TOSS: POST /payments/{paymentKey}/cancel
@@ -887,10 +997,10 @@ sequenceDiagram
 ### 8.4 결제 타임아웃 Compensation (SLOT_RESERVED → FAILED)
 
 ```typescript
-// saga-scheduler.service.ts
-const PAYMENT_TIMEOUT_MS = 10 * 60 * 1000; // 10분
+// saga-handler.service.ts — cleanupPaymentTimedOutBookings()
+// (SagaSchedulerService에서 매 분마다 호출)
+const PAYMENT_TIMEOUT_MS = 600000; // 10분
 
-// 결제 대기 타임아웃 처리
 const timedOutBookings = await this.prisma.booking.findMany({
   where: {
     status: BookingStatus.SLOT_RESERVED,
@@ -899,26 +1009,38 @@ const timedOutBookings = await this.prisma.booking.findMany({
 });
 
 for (const booking of timedOutBookings) {
-  // 1. SLOT_RESERVED → FAILED
-  await this.prisma.booking.update({
-    where: { id: booking.id },
-    data: {
-      status: BookingStatus.FAILED,
-      sagaFailReason: 'Payment timeout',
-    },
-  });
-
-  // 2. OutboxEvent 생성 → 슬롯 해제
-  await this.prisma.outboxEvent.create({
-    data: {
-      eventType: 'slot.release',
-      payload: {
-        bookingId: booking.id,
-        gameTimeSlotId: booking.gameTimeSlotId,
-        playerCount: booking.playerCount,
+  await this.prisma.$transaction(async (prisma) => {
+    // 1. SLOT_RESERVED → FAILED
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        status: BookingStatus.FAILED,
+        sagaFailReason: 'Payment timeout - payment not completed within 10 minutes',
       },
-      status: OutboxStatus.PENDING,
-    },
+    });
+
+    await prisma.bookingHistory.create({
+      data: {
+        bookingId: booking.id,
+        action: 'PAYMENT_TIMEOUT',
+        userId: booking.userId,
+        details: { timeoutMs: PAYMENT_TIMEOUT_MS },
+      },
+    });
+
+    // 2. OutboxEvent 생성 → 슬롯 해제
+    await prisma.outboxEvent.create({
+      data: {
+        eventType: 'slot.release',
+        payload: {
+          bookingId: booking.id,
+          gameTimeSlotId: booking.gameTimeSlotId,
+          playerCount: booking.playerCount,
+          reason: 'Payment timeout',
+        },
+        status: OutboxStatus.PENDING,
+      },
+    });
   });
 }
 ```
@@ -1096,30 +1218,33 @@ SYSTEM           // 시스템 취소 (Saga 실패 등)
 
 ```
 # 현장결제 정상 흐름
-[REQ-123] ========== BOOKING CREATE START ==========
-[REQ-123] Step 1: Idempotency key check passed
-[REQ-123] Step 2: Slot validation passed
-[REQ-123] Step 3: COMPLETED - Booking BK-ABC123 created with PENDING status (onsite)
-[Outbox] Processing event 42 (slot.reserve) for bookingId=15
+[REQ-123-abc] ========== BOOKING CREATE START ==========
+[REQ-123-abc] Step 1: Parallel query - idempotency key + slot cache...
+[REQ-123-abc] Step 1: Parallel queries completed in 3ms
+[REQ-123-abc] Step 2: Slot validation passed
+[REQ-123-abc] Step 3: COMPLETED - Booking BK-A1B2C3D4-E5F6 created with PENDING status
+[REQ-123-abc] ========== BOOKING CREATE SUCCESS (bookingId=15, total=45ms) ==========
+[Outbox] Processing event 42 (slot.reserve) for bookingId=15, retry=0
 [Saga] SLOT_RESERVE SUCCESS in 18ms - bookingId=15, emitting slot.reserved
-[SagaHandler] Booking 15: paymentMethod=onsite → CONFIRMED
+[SagaHandler] Booking 15 CONFIRMED (onsite) in 25ms
 CompanyMember registered: companyId=3, userId=42
 
 # 카드결제 정상 흐름
-[REQ-456] ========== BOOKING CREATE START ==========
-[REQ-456] Step 3: COMPLETED - Booking BK-DEF456 created with PENDING status (card)
-[Outbox] Processing event 43 (slot.reserve) for bookingId=16
+[REQ-456-def] ========== BOOKING CREATE START ==========
+[REQ-456-def] Step 3: COMPLETED - Booking BK-D1E2F3G4-H5I6 created with PENDING status
+[REQ-456-def] ========== BOOKING CREATE SUCCESS (bookingId=16, total=38ms) ==========
+[Outbox] Processing event 43 (slot.reserve) for bookingId=16, retry=0
 [Saga] SLOT_RESERVE SUCCESS in 15ms - bookingId=16, emitting slot.reserved
-[SagaHandler] Booking 16: paymentMethod=card → SLOT_RESERVED (awaiting payment)
+[SagaHandler] Booking 16 SLOT_RESERVED (awaiting payment) in 20ms
 [Payment] Prepare: orderId=ORD-1707123456789-a1b2c3d4, amount=50000
 [Payment] Confirm: orderId=ORD-1707123456789-a1b2c3d4, paymentKey=tgen_xxx
 [Payment] Outbox: emit booking.paymentConfirmed for bookingId=16
-[SagaHandler] Booking 16: SLOT_RESERVED → CONFIRMED (payment confirmed)
+[SagaHandler] Booking 16 CONFIRMED (payment completed) in 30ms
 CompanyMember registered: companyId=3, userId=42
 
 # 결제 타임아웃
-[SagaScheduler] Booking 17: SLOT_RESERVED for 10m+ → FAILED (payment timeout)
-[SagaScheduler] Creating slot.release outbox for booking 17
+[SagaHandler] Found 1 payment-timed-out SLOT_RESERVED bookings
+[SagaHandler] Booking BK-G7H8I9-J0K1 marked as FAILED due to payment timeout, slot release requested
 ```
 
 ### 9.3 GCP Cloud Logging 쿼리
@@ -1160,10 +1285,358 @@ textPayload:("[Outbox]")
 
 ---
 
+## 10. 그룹 예약 (Group Booking) — 3-Phase 구조
+
+### 10.1 개요
+
+그룹 예약은 **3단계(Phase)** 구조로 진행됩니다:
+
+1. **Phase 1 — 팀 선정 (TeamSelection)**: 채팅방에서 멤버 선택 → DB 영속화
+2. **Phase 2 — 팀별 부킹 (기존 Saga)**: `booking.create`로 팀별 독립 Saga 실행
+3. **Phase 3 — 더치페이 결제 (기존 그대로)**: 참여자별 분할결제
+
+`BookingGroup` 테이블은 제거되었으며, 그룹 식별은 `Booking.groupId` (GRP-xxx 문자열)로 관리합니다.
+정산 상태는 `BookingParticipant` 상태에서 **조회 시 파생** (Section 3.7 참조).
+
+### 10.2 데이터 모델
+
+```mermaid
+erDiagram
+    TeamSelection ||--o{ TeamSelectionMember : "1:N (팀별 멤버)"
+    TeamSelection ||..o{ Booking : "groupId로 연결"
+    Booking ||--o{ BookingParticipant : "1:N (참여자)"
+    Booking ||--o{ OutboxEvent : "1:N (Saga 이벤트)"
+
+    TeamSelection {
+        int id PK
+        string groupId UK "GRP-YYYYMMDD-XXXXXX"
+        string chatRoomId
+        int bookerId
+        string bookerName
+        int clubId
+        string clubName
+        string date "YYYY-MM-DD"
+        int teamCount
+        TeamSelectionStatus status "SELECTING"
+    }
+
+    TeamSelectionMember {
+        int id PK
+        int teamSelectionId FK
+        int teamNumber "1, 2, 3..."
+        int userId
+        string userName
+        string userEmail
+        ParticipantRole role "BOOKER|MEMBER"
+    }
+
+    Booking {
+        int id PK
+        string groupId "nullable, GRP-xxx"
+        int teamNumber "nullable, 1, 2, 3..."
+        int teamSelectionId "nullable"
+        string status "PENDING"
+    }
+
+    BookingParticipant {
+        int id PK
+        int bookingId FK
+        int userId
+        string userName
+        ParticipantRole role "BOOKER|MEMBER"
+        ParticipantStatus status "PENDING"
+        int amount
+        datetime paidAt "nullable"
+    }
+```
+
+### 10.3 NATS 패턴
+
+| 패턴 | 설명 | 요청 |
+|------|------|------|
+| `teamSelection.create` | 팀 선정 세션 생성 | `{ chatRoomId, bookerId, bookerName, clubId, clubName, date }` |
+| `teamSelection.addMembers` | 팀에 멤버 추가 | `{ teamSelectionId?, groupId?, teamNumber, members[] }` |
+| `teamSelection.get` | 팀 선정 조회 | `{ id?, groupId? }` |
+| `teamSelection.ready` | 팀 구성 완료 | `{ id?, groupId? }` |
+| `teamSelection.cancel` | 팀 선정 취소 | `{ id?, groupId? }` |
+| `booking.participant.paid` | 참여자 결제 완료 처리 | `{ bookingId, userId }` |
+| `bookingGroup.cancel` | 그룹 예약 전체 취소 | `{ groupId: string }` |
+
+### 10.4 Phase 1: 팀 선정
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Agent as agent-service
+    participant BS as booking-service
+    participant DB as booking-db
+
+    Agent->>BS: teamSelection.create (chatRoomId, clubId, date)
+    BS->>DB: INSERT TeamSelection (groupId=GRP-xxx, SELECTING)
+    BS-->>Agent: teamSelection (groupId, id)
+
+    loop 팀별 멤버 추가
+        Agent->>BS: teamSelection.addMembers (teamNumber, members[])
+        BS->>DB: UPSERT TeamSelectionMember[]
+        BS-->>Agent: updated teamSelection
+    end
+
+    Agent->>BS: teamSelection.ready (groupId)
+    BS->>DB: status → READY
+    BS-->>Agent: teamSelection (READY)
+```
+
+#### TeamSelectionStatus 전이
+
+```mermaid
+stateDiagram-v2
+    [*] --> SELECTING: teamSelection.create
+    SELECTING --> READY: teamSelection.ready
+    READY --> BOOKING: 예약 시작
+    BOOKING --> COMPLETED: 모든 팀 예약 완료
+    SELECTING --> CANCELLED: teamSelection.cancel
+    READY --> CANCELLED: teamSelection.cancel
+```
+
+### 10.5 Phase 2: 팀별 부킹 (기존 Saga)
+
+TeamSelection이 READY 상태가 되면, agent-service가 팀별로 `booking.create`를 호출합니다.
+각 팀의 Booking은 **독립적인 Saga**로 실행됩니다.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Agent as agent-service
+    participant BS as booking-service
+    participant DB as booking-db
+    participant NATS as NATS
+    participant CS as course-service
+
+    Note over Agent: TeamSelection READY 상태
+
+    loop 팀별 (teamNumber = 1, 2, ...)
+        Agent->>BS: booking.create (groupId, teamNumber, teamSelectionId, gameTimeSlotId)
+        BS->>DB: INSERT Booking (PENDING, groupId=GRP-xxx, teamNumber=N)
+        BS->>DB: INSERT OutboxEvent (slot.reserve)
+        BS-->>Agent: booking (PENDING)
+
+        Note over BS: Saga (비동기)
+        BS->>NATS: slot.reserve
+        NATS->>CS: slot.reserve
+        CS-->>NATS: slot.reserved
+        NATS-->>BS: slot.reserved
+        BS->>DB: CONFIRMED + BookingParticipant 자동 생성
+    end
+```
+
+#### BookingParticipant 자동 생성
+
+Saga에서 Booking이 CONFIRMED될 때, `teamSelectionId`가 있으면 해당 팀의 `TeamSelectionMember`를 조회하여 `BookingParticipant`를 자동 생성합니다:
+
+```typescript
+// saga-handler.service.ts — handleSlotReserved / handlePaymentConfirmed
+if (booking.teamSelectionId && booking.teamNumber) {
+  const members = await prisma.teamSelectionMember.findMany({
+    where: { teamSelectionId: booking.teamSelectionId, teamNumber: booking.teamNumber },
+  });
+
+  for (const member of members) {
+    await prisma.bookingParticipant.upsert({
+      where: { bookingId_userId: { bookingId, userId: member.userId } },
+      update: {},
+      create: {
+        bookingId,
+        userId: member.userId,
+        userName: member.userName,
+        userEmail: member.userEmail,
+        role: member.role,
+        status: ParticipantStatus.PENDING,
+        amount: pricePerPerson,
+      },
+    });
+  }
+}
+```
+
+### 10.6 Phase 3: 더치페이 결제
+
+Section 11 참조. 기존 `payment.splitPrepare` → `payment.splitConfirm` → `booking.participant.paid` 흐름 그대로입니다.
+
+### 10.7 정산 상태 파생 + 실시간 알림
+
+참여자 결제 완료 시 `groupId` 기반으로 전체 정산 상태를 파생하고, 채팅방에 브로드캐스트합니다.
+
+```mermaid
+sequenceDiagram
+    participant PS as payment-service
+    participant BS as booking-service
+    participant Chat as chat-service
+    participant GW as chat-gateway
+
+    PS->>BS: booking.participant.paid (NATS emit)
+    BS->>BS: markParticipantPaid()
+    BS->>BS: groupId 기반 정산 상태 파생 (PENDING/PARTIAL/COMPLETED)
+
+    par 채팅 메시지 저장
+        BS->>Chat: chat.messages.save (NATS send)
+    and 실시간 브로드캐스트
+        BS->>GW: chat.message.room (NATS emit)
+        GW-->>GW: Socket.IO → 채팅방 클라이언트
+    end
+```
+
+### 10.8 그룹 예약 취소
+
+```typescript
+// team-selection.service.ts
+async cancelGroupBookings(groupId: string) {
+  await this.prisma.$transaction(async (tx) => {
+    // 1. 같은 groupId의 모든 Booking → CANCELLED
+    const bookings = await tx.booking.findMany({ where: { groupId } });
+    for (const booking of bookings) {
+      await tx.booking.update({
+        where: { id: booking.id },
+        data: { status: 'CANCELLED' },
+      });
+
+      // 2. 참여자 전체 → CANCELLED
+      await tx.bookingParticipant.updateMany({
+        where: { bookingId: booking.id },
+        data: { status: ParticipantStatus.CANCELLED },
+      });
+    }
+
+    // 3. TeamSelection도 CANCELLED
+    await tx.teamSelection.updateMany({
+      where: { groupId },
+      data: { status: TeamSelectionStatus.CANCELLED },
+    });
+  });
+}
+```
+
+---
+
+## 11. 더치페이 (Split Payment)
+
+### 11.1 개요
+
+그룹 예약의 참여자 각자가 개별적으로 결제하는 분할결제 시스템입니다.
+payment-service의 `PaymentSplitService`가 담당합니다.
+
+### 11.2 데이터 모델
+
+```prisma
+model PaymentSplit {
+  id              Int          @id @default(autoincrement())
+  paymentId       Int?         // Toss 결제 완료 후 연결
+  groupId         String?      // 그룹 ID (GRP-xxx)
+  bookingId       Int          // 연결된 예약
+  userId          Int
+  userName        String
+  userEmail       String
+  amount          Int          // 개인 부담 금액 (KRW)
+  status          SplitStatus  @default(PENDING)
+  orderId         String       @unique  // SPL-{timestamp}-{uuid}
+  paidAt          DateTime?
+  expiredAt       DateTime?    // 결제 기한
+
+  @@index([groupId, status])
+  @@index([bookingId])
+  @@index([userId, status])
+}
+```
+
+### 11.3 NATS 패턴
+
+| 패턴 | 설명 | 요청 |
+|------|------|------|
+| `payment.splitPrepare` | 분할결제 준비 (참여자별 orderId 발급) | `SplitPrepareDto` |
+| `payment.splitConfirm` | 개별 참여자 결제 승인 | `{ orderId, paymentKey, amount }` |
+| `payment.splitGet` | 분할결제 현황 조회 | `{ groupId? \| bookingId? \| orderId? }` |
+
+### 11.4 더치페이 전체 흐름
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Agent as agent-service
+    participant BS as booking-service
+    participant PS as payment-service
+    participant DB as payment-db
+    participant Client as Frontend
+    participant TOSS as 토스페이먼츠
+
+    Note over Agent: 1. 그룹 예약 생성 (Section 10)
+    Agent->>BS: teamSelection → booking.create × N (dutchpay)
+    BS-->>Agent: 팀별 예약 완료 (SLOT_RESERVED)
+
+    Note over Agent: 2. 분할결제 준비
+    Agent->>PS: payment.splitPrepare
+    PS->>DB: PaymentSplit × N명 생성 (SPL-xxx orderId)
+    PS-->>Agent: splits[] (참여자별 orderId, amount, expiredAt)
+
+    Note over Client: 3. 각 참여자 개별 결제
+    Client->>TOSS: requestPayment (SPL-xxx orderId)
+    TOSS-->>Client: redirect /payment/success
+
+    Note over Client: 4. 결제 승인
+    Client->>PS: payment.splitConfirm (paymentKey, orderId, amount)
+    PS->>PS: 검증 (상태, 만료, 금액)
+    PS->>DB: PaymentSplit status → PAID
+    PS-->>Client: 결제 완료
+
+    Note over PS: 5. 참여자 결제 알림
+    PS->>BS: booking.participant.paid (NATS emit)
+    BS->>BS: markParticipantPaid() → 정산 상태 갱신
+    BS->>BS: 채팅방 정산 카드 브로드캐스트
+```
+
+### 11.5 주문 ID 체계
+
+| 서비스 | 접두사 | 형식 | 예시 |
+|--------|-------|------|------|
+| 일반 결제 | `ORD-` | `ORD-{timestamp}-{uuid8}` | `ORD-1707123456789-a1b2c3d4` |
+| 분할결제 | `SPL-` | `SPL-{timestamp}-{uuid8}` | `SPL-1707123456789-e5f6g7h8` |
+| 정기결제 | `BILLING-` | `BILLING-{timestamp}-{uuid8}` | `BILLING-1707123456789-i9j0k1l2` |
+
+### 11.6 분할결제 검증
+
+`splitConfirm` 시 다음 순서로 검증합니다:
+
+| 검증 | 실패 시 |
+|------|--------|
+| Split 존재 여부 (orderId) | `Errors.Split.NOT_FOUND` |
+| 이미 결제 완료 | `Errors.Split.ALREADY_PAID` |
+| PENDING 상태 확인 | `Errors.Split.INVALID_STATUS` |
+| 결제 기한 초과 | `Errors.Split.EXPIRED` |
+| 금액 일치 | `Errors.Payment.AMOUNT_MISMATCH` |
+
+### 11.7 만료 처리
+
+```typescript
+// payment-split.service.ts
+async expirePendingSplits() {
+  // PENDING 상태이면서 expiredAt < now인 분할결제 일괄 만료
+  await this.prisma.paymentSplit.updateMany({
+    where: {
+      status: SplitStatus.PENDING,
+      expiredAt: { lt: new Date() },
+    },
+    data: { status: SplitStatus.EXPIRED },
+  });
+}
+```
+
+---
+
 ## 변경 이력
 
 | 버전 | 날짜 | 변경 내용 |
 |------|------|----------|
+| 5.1 | 2026-03-03 | **문서 현행화**: action: CREATED→SAGA_STARTED 수정, Saga 분기 코드 실제 구현 반영(isOnsitePayment 패턴), 취소 프로세스 Outbox→Direct Emit 수정(slot.release는 직접 emit), Section 8.4 파일 참조 saga-handler.service.ts로 수정, 로그 예시 실제 형식 반영, TeamSelectionService 컴포넌트 다이어그램 추가 |
+| 5.0 | 2026-03-03 | **그룹 예약 리팩토링**: BookingGroup 테이블 제거 → TeamSelection/TeamSelectionMember로 팀 선정 분리, Booking에 groupId/teamSelectionId 흡수, 정산 상태 파생(조회 시 계산), 3-Phase 구조(팀 선정 → 부킹 → 결제) |
+| 4.0 | 2026-03-03 | 그룹 예약(BookingGroup, BookingParticipant) 섹션 추가, 더치페이(PaymentSplit) 분할결제 섹션 추가, Outbox 즉시 트리거·이벤트 라우팅·Request-Reply 패턴 문서화, 누락 상수 추가 (PROCESSING_LOCK_MS, NATS_RETRY_COUNT, PAYMENT_SEND_TIMEOUT, SPLIT_EXPIRATION), 새 상태 enum 추가 (SettlementStatus, ParticipantStatus, SplitStatus) |
 | 3.4 | 2026-02-24 | 결제 타임아웃 이후 결제 도착 시 자동 환불 (handlePaymentConfirmed → AUTO_REFUND_REQUESTED) |
 | 3.3 | 2026-02-24 | AI 에이전트 Saga 폴링 노트 추가, Toss HTTP Timeout 60초 설정 반영 |
 | 3.2 | 2026-02-23 | 결제 관련 보완: PaymentStatus 누락 상태 추가, serviceFee 계산 반영, Outbox 폴링 주기 수정 (1s→3s), 카드결제 취소 시퀀스 Outbox 기반으로 수정, 환불 정책 3-tier 동적 계층 시스템 반영, agent-service 크로스 레퍼런스 추가 |

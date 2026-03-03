@@ -62,6 +62,21 @@ export class CreateBookingRequestDto {
   @IsString()
   @IsOptional()
   userPhone?: string;
+
+  @ApiProperty({ description: '그룹 예약 ID (GRP-xxx)', required: false })
+  @IsString()
+  @IsOptional()
+  groupId?: string;
+
+  @ApiProperty({ description: '팀 번호', required: false })
+  @IsNumber()
+  @IsOptional()
+  teamNumber?: number;
+
+  @ApiProperty({ description: '팀 선정 ID', required: false })
+  @IsNumber()
+  @IsOptional()
+  teamSelectionId?: number;
 }
 
 export class UpdateBookingDto {

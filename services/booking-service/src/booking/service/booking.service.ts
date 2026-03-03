@@ -324,6 +324,10 @@ export class BookingService {
           userEmail: dto.userEmail,
           userName: dto.userName,
           userPhone: dto.userPhone,
+          // 그룹 예약 필드
+          groupId: dto.groupId,
+          teamNumber: dto.teamNumber,
+          teamSelectionId: dto.teamSelectionId,
         },
       });
 
