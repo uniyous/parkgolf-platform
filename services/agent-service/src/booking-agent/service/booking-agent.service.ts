@@ -822,12 +822,18 @@ export class BookingAgentService {
     this.conversationService.setState(context, 'TEAM_COMPLETE');
 
     // TEAM_COMPLETE 카드를 senderId=0으로 채팅방 전체 브로드캐스트
-    // (API 응답은 senderId=payer로 저장되어 payer만 보이므로, 별도 브로드캐스트 필요)
+    // 브로드캐스트 시 API 응답에서 actions 제외 (user-api가 senderId=payer로 중복 저장 방지)
     const roomId = context.slots.chatRoomId;
     if (roomId) {
       this.toolExecutor.broadcastTeamCompleteCard(roomId, teamCompleteData);
+      return {
+        conversationId: context.conversationId,
+        message,
+        state: context.state,
+      };
     }
 
+    // chatRoomId 없는 경우 (폴백): API 응답으로 직접 전달
     return {
       conversationId: context.conversationId,
       message,
