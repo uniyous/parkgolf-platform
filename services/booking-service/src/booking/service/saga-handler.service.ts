@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional, forwardRef } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -23,7 +23,7 @@ export class SagaHandlerService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly outboxProcessor: OutboxProcessorService,
+    @Inject(forwardRef(() => OutboxProcessorService)) private readonly outboxProcessor: OutboxProcessorService,
     @Optional() @Inject('NOTIFICATION_SERVICE') private readonly notificationPublisher?: ClientProxy,
     @Optional() @Inject('COURSE_SERVICE') private readonly courseService?: ClientProxy,
     @Optional() @Inject('IAM_SERVICE') private readonly iamService?: ClientProxy,

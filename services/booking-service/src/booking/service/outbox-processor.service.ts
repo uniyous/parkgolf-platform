@@ -1,9 +1,10 @@
-import { Injectable, Logger, Inject, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, Inject, OnModuleInit, OnModuleDestroy, forwardRef } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboxStatus } from '@prisma/client';
 import { firstValueFrom, timeout, catchError, of } from 'rxjs';
 import { NATS_TIMEOUTS } from '../../common/constants';
+import { SagaHandlerService } from './saga-handler.service';
 
 // Outbox 처리 설정
 const POLL_INTERVAL_MS = 3000;       // 3초 안전망 폴링 (GKE 복수 Pod 환경 대비)
@@ -22,6 +23,7 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
     @Inject('COURSE_SERVICE') private readonly courseServiceClient: ClientProxy,
     @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
     @Inject('PAYMENT_SERVICE') private readonly paymentServiceClient: ClientProxy,
+    @Inject(forwardRef(() => SagaHandlerService)) private readonly sagaHandler: SagaHandlerService,
   ) {}
 
   onModuleInit() {
@@ -143,9 +145,19 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
         if (response?.success) {
           await this.markEventAsSent(event.id);
           this.logger.log(`[Outbox] Event ${event.id} (${event.event_type}) SUCCESS in ${elapsed}ms - bookingId=${bookingId}`);
+
+          // Saga 응답 직접 처리 (course-service fire-and-forget emit 대체)
+          await this.handleSagaSuccess(event.event_type, event.payload);
         } else {
           this.logger.warn(`[Outbox] Event ${event.id} (${event.event_type}) FAILED in ${elapsed}ms: ${response?.error} - bookingId=${bookingId}`);
-          await this.handleEventFailure(event, response?.error || 'Unknown error');
+
+          // Saga 실패 직접 처리 (비즈니스 로직 실패 시 재시도 불필요)
+          const sagaHandled = await this.handleSagaFailure(event.event_type, event.payload, response?.error);
+          if (sagaHandled) {
+            await this.markEventAsSent(event.id);
+          } else {
+            await this.handleEventFailure(event, response?.error || 'Unknown error');
+          }
         }
       } else {
         // Event 패턴 (Fire-and-forget)
@@ -190,6 +202,60 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
       'payment.cancelByBookingId',
     ];
     return requestReplyEvents.includes(eventType);
+  }
+
+  /**
+   * Saga 성공 응답 직접 처리
+   * course-service의 fire-and-forget emit을 대체하여 동기적으로 처리
+   */
+  private async handleSagaSuccess(eventType: string, payload: Record<string, unknown>): Promise<void> {
+    try {
+      if (eventType === 'slot.reserve') {
+        await this.sagaHandler.handleSlotReserved({
+          bookingId: payload.bookingId as number,
+          gameTimeSlotId: payload.gameTimeSlotId as number,
+          playerCount: payload.playerCount as number,
+          reservedAt: new Date().toISOString(),
+        });
+        this.logger.log(`[Outbox] Saga handleSlotReserved completed for bookingId=${payload.bookingId}`);
+      } else if (eventType === 'slot.release') {
+        await this.sagaHandler.handleBookingCancelled({
+          bookingId: payload.bookingId as number,
+          gameTimeSlotId: payload.gameTimeSlotId as number,
+          playerCount: payload.playerCount as number,
+        });
+        this.logger.log(`[Outbox] Saga handleBookingCancelled completed for bookingId=${payload.bookingId}`);
+      }
+    } catch (error) {
+      this.logger.error(`[Outbox] Saga success handler failed for ${eventType}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Saga 실패 응답 직접 처리
+   * @returns true: 비즈니스 로직 실패 (재시도 불필요, SENT 처리)
+   *          false: 재시도 필요
+   */
+  private async handleSagaFailure(
+    eventType: string,
+    payload: Record<string, unknown>,
+    error?: string,
+  ): Promise<boolean> {
+    try {
+      if (eventType === 'slot.reserve') {
+        await this.sagaHandler.handleSlotReserveFailed({
+          bookingId: payload.bookingId as number,
+          gameTimeSlotId: payload.gameTimeSlotId as number,
+          reason: error || 'Slot reservation failed',
+        });
+        this.logger.log(`[Outbox] Saga handleSlotReserveFailed completed for bookingId=${payload.bookingId}`);
+        return true; // 비즈니스 로직 실패 → 재시도 불필요
+      }
+    } catch (err) {
+      this.logger.error(`[Outbox] Saga failure handler failed for ${eventType}: ${err.message}`);
+    }
+    // slot.release 실패 등은 재시도 필요 (슬롯 해제 일관성 보장)
+    return false;
   }
 
   /**
