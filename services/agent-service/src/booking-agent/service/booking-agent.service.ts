@@ -546,6 +546,23 @@ export class BookingAgentService {
 
     let message: string;
     if (allPaid) {
+      // 전원 결제 완료 → 예약자에게 정산카드 + 채팅방 전체에 예약완료카드
+
+      // 1) 예약자에게 정산현황 카드 (senderId=bookerId → 예약자만 조회 가능)
+      if (roomId) {
+        const settleMessage = `모든 결제가 완료되었습니다! (${paidCount}/${totalParticipants})`;
+        const bookerOnly = bid ? [bid] : participants.map((s: any) => s.userId);
+        this.toolExecutor.broadcastSettlementCard(
+          roomId,
+          bookerOnly,
+          actions[0].data as Record<string, unknown>,
+          settleMessage,
+          bid || undefined,
+          bid || 0,
+        );
+      }
+
+      // 2) 채팅방 전체에 TEAM_COMPLETE 브로드캐스트 (senderId=0 → 전체 조회 가능)
       if (context.slots.groupMode) {
         // 예약자 context: completeTeam()이 TEAM_COMPLETE 브로드캐스트 + completedTeams 관리
         const result = {
@@ -582,24 +599,24 @@ export class BookingAgentService {
       this.conversationService.setState(context, 'COMPLETED');
     } else if (isBooker) {
       message = `결제가 확인되었어요. (${paidCount}/${totalParticipants})`;
+
+      // 예약자에게만 정산현황 카드 (진행중 상태)
+      if (roomId) {
+        const bookerOnly = bid ? [bid] : participants.map((s: any) => s.userId);
+        this.toolExecutor.broadcastSettlementCard(
+          roomId,
+          bookerOnly,
+          actions[0].data as Record<string, unknown>,
+          message,
+          bid || undefined,
+          bid || 0,
+        );
+      }
     } else {
       message = '결제가 완료되었습니다!';
     }
 
     this.conversationService.addAssistantMessage(context, message);
-
-    // 예약자에게만 정산현황 카드 브로드캐스트 (senderId=bookerId → DB에서 예약자만 조회 가능)
-    if (roomId) {
-      const bookerOnly = bid ? [bid] : participants.map((s: any) => s.userId);
-      this.toolExecutor.broadcastSettlementCard(
-        roomId,
-        bookerOnly,
-        actions[0].data as Record<string, unknown>,
-        message,
-        bid || undefined,
-        bid || 0,
-      );
-    }
 
     return {
       conversationId: context.conversationId,
