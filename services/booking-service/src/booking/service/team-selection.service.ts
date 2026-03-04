@@ -1,8 +1,6 @@
-import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { TeamSelectionStatus, ParticipantRole, ParticipantStatus } from '@prisma/client';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout, catchError, of } from 'rxjs';
+import { TeamSelectionStatus, ParticipantRole } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { AppException } from '../../common/exceptions/app.exception';
 import { Errors } from '../../common/exceptions/catalog/error-catalog';
@@ -34,8 +32,6 @@ export class TeamSelectionService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Optional() @Inject('NOTIFICATION_SERVICE') private readonly notificationPublisher?: ClientProxy,
-    @Optional() @Inject('CHAT_SERVICE') private readonly chatClient?: ClientProxy,
   ) {}
 
   /**
@@ -214,168 +210,6 @@ export class TeamSelectionService {
 
     this.logger.log(`TeamSelection ${teamSelection.groupId}: status → COMPLETED`);
     return updated;
-  }
-
-  /**
-   * 참여자 결제 완료 처리
-   * BookingGroup 없이 groupId 기반으로 정산 상태 파생
-   */
-  async markParticipantPaid(bookingId: number, userId: number) {
-    // 참여자 조회
-    const participant = await this.prisma.bookingParticipant.findUnique({
-      where: { bookingId_userId: { bookingId, userId } },
-    });
-
-    if (!participant) {
-      throw new AppException(Errors.Group.PARTICIPANT_NOT_FOUND);
-    }
-
-    // 결제 완료 처리
-    await this.prisma.bookingParticipant.update({
-      where: { id: participant.id },
-      data: {
-        status: ParticipantStatus.PAID,
-        paidAt: new Date(),
-      },
-    });
-
-    // 해당 Booking의 groupId 확인
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: bookingId },
-    });
-
-    if (!booking?.groupId) return { settled: false };
-
-    // 같은 groupId의 모든 참여자 조회 → 정산 상태 파생
-    const allParticipants = await this.prisma.bookingParticipant.findMany({
-      where: {
-        booking: { groupId: booking.groupId },
-      },
-    });
-
-    const paidCount = allParticipants.filter(
-      (p) => p.status === ParticipantStatus.PAID,
-    ).length;
-    const totalCount = allParticipants.length;
-
-    const settlementStatus =
-      paidCount === totalCount ? 'COMPLETED' :
-      paidCount > 0 ? 'PARTIAL' : 'PENDING';
-
-    // 실시간 정산 카드 Push
-    if (this.chatClient && this.notificationPublisher) {
-      const teamSelection = await this.prisma.teamSelection.findUnique({
-        where: { groupId: booking.groupId },
-      });
-
-      if (teamSelection?.chatRoomId) {
-        const allPaid = paidCount === totalCount;
-        const content = allPaid
-          ? `모든 참여자의 결제가 완료되었습니다! (${paidCount}/${totalCount})`
-          : `${participant.userName}님이 결제를 완료했습니다. (${paidCount}/${totalCount})`;
-
-        const settlementData = {
-          bookingId,
-          bookerId: teamSelection.bookerId,
-          teamNumber: booking.teamNumber || 1,
-          clubName: teamSelection.clubName,
-          date: teamSelection.date,
-          slotTime: booking.startTime || '',
-          totalParticipants: totalCount,
-          pricePerPerson: Number(booking.pricePerPerson),
-          totalPrice: Number(booking.totalPrice),
-          paidCount,
-          expiredAt: '',
-          participants: allParticipants.map((p) => ({
-            userId: p.userId,
-            userName: p.userName,
-            orderId: '',
-            amount: p.amount,
-            status: p.status,
-            expiredAt: '',
-          })),
-        };
-
-        const metadata = JSON.stringify({
-          conversationId: null,
-          state: 'SETTLING',
-          actions: [{ type: 'SETTLEMENT_STATUS', data: settlementData }],
-          targetUserIds: [teamSelection.bookerId],
-        });
-
-        const message = {
-          id: randomUUID(),
-          roomId: teamSelection.chatRoomId,
-          senderId: 0,
-          senderName: 'AI 예약 도우미',
-          content,
-          messageType: 'AI_ASSISTANT',
-          metadata,
-          createdAt: new Date().toISOString(),
-        };
-
-        // 1. DB 저장
-        firstValueFrom(
-          this.chatClient.send('chat.messages.save', message).pipe(
-            timeout(5000),
-            catchError((err) => {
-              this.logger.error(`Settlement card DB save failed: ${err.message}`);
-              return of(null);
-            }),
-          ),
-        );
-
-        // 2. Socket.IO 브로드캐스트
-        this.notificationPublisher.emit('chat.message.room', {
-          roomId: teamSelection.chatRoomId,
-          message,
-        });
-      }
-    }
-
-    return {
-      settled: settlementStatus === 'COMPLETED',
-      paidCount,
-      totalCount,
-      settlementStatus,
-    };
-  }
-
-  /**
-   * 그룹 예약 취소 (groupId 기반)
-   */
-  async cancelGroupBookings(groupId: string) {
-    const bookings = await this.prisma.booking.findMany({
-      where: { groupId },
-    });
-
-    if (bookings.length === 0) {
-      throw new AppException(Errors.Group.NOT_FOUND);
-    }
-
-    await this.prisma.$transaction(async (tx) => {
-      // 모든 Booking 취소
-      for (const booking of bookings) {
-        await tx.booking.update({
-          where: { id: booking.id },
-          data: { status: 'CANCELLED' },
-        });
-
-        // 참여자 전원 취소
-        await tx.bookingParticipant.updateMany({
-          where: { bookingId: booking.id },
-          data: { status: ParticipantStatus.CANCELLED },
-        });
-      }
-
-      // TeamSelection도 취소
-      await tx.teamSelection.updateMany({
-        where: { groupId },
-        data: { status: TeamSelectionStatus.CANCELLED },
-      });
-    });
-
-    return { cancelled: true, groupId };
   }
 
   /**

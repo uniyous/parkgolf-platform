@@ -351,6 +351,15 @@ export class BookingResponseDto {
   @ApiProperty({ description: 'Saga 실패 사유 (status가 FAILED일 때)' })
   sagaFailReason?: string;
 
+  @ApiProperty({ description: '그룹 예약 ID' })
+  groupId?: string;
+
+  @ApiProperty({ description: '팀 번호' })
+  teamNumber?: number;
+
+  @ApiProperty({ description: '팀 선정 ID' })
+  teamSelectionId?: number;
+
   @ApiProperty({ description: '결제 목록' })
   payments: any[];
 
@@ -406,6 +415,10 @@ export class BookingResponseDto {
     // Saga 관련
     dto.idempotencyKey = entity.idempotencyKey ?? undefined;
     dto.sagaFailReason = entity.sagaFailReason ?? undefined;
+    // 그룹 예약 필드
+    dto.groupId = entity.groupId ?? undefined;
+    dto.teamNumber = entity.teamNumber ?? undefined;
+    dto.teamSelectionId = entity.teamSelectionId ?? undefined;
     // 관계 데이터
     dto.payments = entity.payments || [];
     dto.histories = entity.histories || [];

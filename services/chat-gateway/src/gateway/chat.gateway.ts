@@ -386,7 +386,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       createdAt: message.createdAt,
     };
     this.natsService.requestChatService('messages.save', chatMessage).catch((error) => {
-      this.logger.error(`Failed to save AI message to DB via NATS RPC: ${error}`);
+      const msg = error instanceof Error ? error.message : JSON.stringify(error);
+      this.logger.error(`Failed to save AI message to DB via NATS RPC: ${msg}`);
     });
 
     // 3. JetStream 발행 (백업 경로 — saveMessage는 idempotent)

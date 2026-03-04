@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { MessageType } from '@prisma/client';
+import { MessageType, Prisma } from '@prisma/client';
 import { AppException, Errors } from '../common/exceptions';
 
 export interface SaveMessageDto {
@@ -39,27 +39,29 @@ export class ChatService {
   async saveMessage(dto: SaveMessageDto) {
     const { id, roomId, senderId, senderName, content, messageType, metadata, createdAt } = dto;
 
-    // 중복 체크 (idempotency)
-    const existing = await this.prisma.chatMessage.findUnique({
-      where: { id },
-    });
-
-    if (existing) {
-      return this.toMessageResponse(existing);
+    // upsert 패턴: create 시도 → P2002 unique constraint 시 기존 레코드 반환
+    // NATS RPC + JetStream 동시 저장으로 인한 race condition 방지
+    let message;
+    try {
+      message = await this.prisma.chatMessage.create({
+        data: {
+          id,
+          roomId,
+          senderId,
+          senderName,
+          content,
+          type: messageType,
+          metadata,
+          createdAt: new Date(createdAt),
+        },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        const existing = await this.prisma.chatMessage.findUnique({ where: { id } });
+        if (existing) return this.toMessageResponse(existing);
+      }
+      throw error;
     }
-
-    const message = await this.prisma.chatMessage.create({
-      data: {
-        id,
-        roomId,
-        senderId,
-        senderName,
-        content,
-        type: messageType,
-        metadata,
-        createdAt: new Date(createdAt),
-      },
-    });
 
     // 채팅방 updatedAt 갱신
     await this.prisma.chatRoom.update({

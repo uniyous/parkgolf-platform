@@ -547,7 +547,7 @@ export class BookingAgentService {
     let message: string;
     if (allPaid) {
       if (context.slots.groupMode) {
-        // 전원 결제 완료 → completeTeam() 내부에서 TEAM_COMPLETE 브로드캐스트 처리
+        // 예약자 context: completeTeam()이 TEAM_COMPLETE 브로드캐스트 + completedTeams 관리
         const result = {
           bookingId,
           bookingNumber: context.slots.bookingNumber || '',
@@ -557,6 +557,27 @@ export class BookingAgentService {
         };
         return this.completeTeam(context, request, result);
       }
+
+      // 비예약자 context → 직접 TEAM_COMPLETE 브로드캐스트
+      // (비예약자 context에는 groupMode/clubName 등이 없으므로 booking 조회로 보완)
+      if (roomId) {
+        const bookingDetail = await this.toolExecutor.getBookingDetail(bookingId);
+        const teamCompleteData: Record<string, unknown> = {
+          teamNumber: context.slots.currentTeamNumber || 1,
+          bookingId,
+          bookingNumber: context.slots.bookingNumber || bookingDetail?.bookingNumber || '',
+          clubName: context.slots.clubName || bookingDetail?.clubName || '',
+          date: context.slots.date || bookingDetail?.bookingDate || '',
+          slotTime: context.slots.time || bookingDetail?.startTime || '',
+          gameName: context.slots.gameName || bookingDetail?.gameName || '',
+          participants: participants.map((s: any) => ({ userId: s.userId, userName: s.userName })),
+          totalPrice: totalParticipants * pricePerPerson,
+          paymentMethod: context.slots.paymentMethod || bookingDetail?.paymentMethod || 'dutchpay',
+          hasMoreTeams: true,
+        };
+        this.toolExecutor.broadcastTeamCompleteCard(roomId, teamCompleteData);
+      }
+
       message = '결제가 완료되었습니다!';
       this.conversationService.setState(context, 'COMPLETED');
     } else if (isBooker) {

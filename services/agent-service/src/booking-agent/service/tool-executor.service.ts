@@ -978,6 +978,23 @@ export class ToolExecutorService {
    * 예약의 진행자(booker) userId 조회
    */
   async getBookingBookerId(bookingId: number): Promise<number | undefined> {
+    const detail = await this.getBookingDetail(bookingId);
+    return detail?.userId || undefined;
+  }
+
+  /**
+   * 예약 상세 조회 (TEAM_COMPLETE 브로드캐스트용)
+   */
+  async getBookingDetail(bookingId: number): Promise<{
+    userId: number;
+    bookingNumber: string;
+    gameName: string;
+    clubName: string;
+    bookingDate: string;
+    startTime: string;
+    totalPrice: number;
+    paymentMethod: string;
+  } | null> {
     try {
       const response = await firstValueFrom(
         this.bookingClient
@@ -987,9 +1004,20 @@ export class ToolExecutorService {
             catchError(() => [null]),
           ),
       );
-      return response?.data?.userId || undefined;
+      if (!response?.data) return null;
+      const d = response.data;
+      return {
+        userId: d.userId,
+        bookingNumber: d.bookingNumber || '',
+        gameName: d.gameName || '',
+        clubName: d.clubName || '',
+        bookingDate: d.bookingDate || '',
+        startTime: d.startTime || '',
+        totalPrice: Number(d.totalPrice) || 0,
+        paymentMethod: d.paymentMethod || '',
+      };
     } catch {
-      return undefined;
+      return null;
     }
   }
 

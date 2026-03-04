@@ -46,18 +46,4 @@ export class TeamSelectionNatsController {
     const result = await this.teamSelectionService.cancel(data);
     return NatsResponse.success(result);
   }
-
-  @MessagePattern('booking.participant.paid')
-  async markParticipantPaid(@Payload() data: { bookingId: number; userId: number }) {
-    this.logger.log(`Marking participant paid: booking=${data.bookingId}, user=${data.userId}`);
-    const result = await this.teamSelectionService.markParticipantPaid(data.bookingId, data.userId);
-    return NatsResponse.success(result);
-  }
-
-  @MessagePattern('bookingGroup.cancel')
-  async cancelGroupBookings(@Payload() data: { groupId: string }) {
-    this.logger.log(`Cancelling group bookings: groupId=${data.groupId}`);
-    const result = await this.teamSelectionService.cancelGroupBookings(data.groupId);
-    return NatsResponse.success(result);
-  }
 }
