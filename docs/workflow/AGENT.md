@@ -451,7 +451,7 @@ NATS send 'chat.messages.save' {
   senderId: 0,              // ← 브로드캐스트 마커
   senderName: 'AI 예약 도우미',
   content: '더치페이 결제 요청이 도착했습니다.',
-  type: 'AI_ASSISTANT',
+  messageType: 'AI_ASSISTANT',  // ← chat-service가 DB type 컬럼으로 매핑
   metadata: JSON.stringify({
     conversationId: null,
     state: 'SETTLING',
@@ -463,7 +463,7 @@ NATS send 'chat.messages.save' {
 // Step 2: 실시간 전달 (chat-gateway → Socket.IO)
 NATS emit 'chat.message.room' {
   roomId: string,
-  message: { ...위와 동일, messageType: 'AI_ASSISTANT' }
+  message: { ...위와 동일 }  // ← messageType 필드 포함
 }
 ```
 
@@ -588,6 +588,9 @@ GET /chat/{roomId}/messages
 ---
 
 ## 10. 메시지 타입과 가시성
+
+> **`messageType` 필드 규칙**: DB(Prisma)에서는 컬럼명 `type`을 사용하고, 그 외 모든 계층(NATS 페이로드, Socket.IO 이벤트, REST API, 프론트엔드)에서는 `messageType`을 사용한다.
+> chat-service가 경계 역할: 저장 시 `messageType` → Prisma `type` 매핑, 조회 시 Prisma `type` → `messageType` 매핑 (`toMessageResponse()`).
 
 ### 10.1 메시지 타입
 
@@ -915,7 +918,7 @@ agent-service는 7개의 Named NATS Client를 사용:
 | SHOW_SLOTS | `SlotCard` | 기존 재사용, 이전 팀 슬롯 비활성 |
 | CONFIRM_BOOKING | `ConfirmBookingCard` | 결제방법 3가지 (1인이면 2가지) |
 | SHOW_PAYMENT | `PaymentCard` | Toss SDK, 10분 타이머 |
-| SETTLEMENT_STATUS | `SettlementStatusCard` | 진행자: 대시보드 / 참여자: 결제 |
+| SETTLEMENT_STATUS | `SettlementStatusCard` | 진행자: 대시보드 + 본인 결제 / 참여자: 결제 |
 | TEAM_COMPLETE | `TeamCompleteCard` | 다음 팀/종료 버튼 |
 
 #### SelectMembersCard
@@ -945,6 +948,19 @@ interface SelectMembersCardProps {
 ```
 
 #### SettlementStatusCard
+
+진행자(Booker)가 동시에 참여자인 경우(더치페이 대상), **대시보드 + 본인 결제 카드**를 함께 표시한다.
+
+```typescript
+// 뷰 분기 로직
+if (currentUserId === data.bookerId) {
+  // 1. 항상 BookerDashboardView 표시 (리마인더/새로고침)
+  // 2. 본인이 참여자이고 PENDING이면 ParticipantPaymentView 추가 표시
+  // 3. 본인이 참여자이고 PAID이면 ParticipantPaidView 추가 표시
+} else {
+  // 일반 참여자: ParticipantPaymentView 또는 ParticipantPaidView
+}
+```
 
 ```typescript
 interface SettlementStatusCardProps {

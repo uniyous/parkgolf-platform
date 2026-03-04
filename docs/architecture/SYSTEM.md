@@ -192,6 +192,10 @@ graph LR
     AGENT --> PAY
     AGENT --> WEATHER
     AGENT --> LOCATION
+    AGENT --> CHAT
+    AGENT --> NOTIFY
+    BOOK --> CHAT
+    BOOK --> CHATGW
     JOB --> IAM
 
     style IAM fill:#ef9a9a,stroke:#c62828,stroke-width:2px,color:#000
@@ -264,7 +268,7 @@ Purpose: 사용자 웹앱/모바일앱 전용 API Gateway
 - 토큰 관리, Rate limiting
 
 Connected Services (via NATS):
-  IAM / Course / Booking / Payment / Notify / Agent
+  IAM / Course / Booking / Payment / Notify / Chat / Agent
 ```
 
 ### 3. Core Microservices
@@ -323,8 +327,15 @@ Data Models - Booking:
   Booking (Saga 상태), BookingHistory, GameCache, GameTimeSlotCache
   OutboxEvent, IdempotencyKey, Refund, UserNoShowRecord
 
+Data Models - Group Booking (더치페이):
+  BookingGroup (그룹 예약, 정산 상태 관리)
+  BookingParticipant (팀 참여자, 개별 결제 상태)
+  SettlementStatus: PENDING/PARTIAL/COMPLETED/CANCELLED
+  ParticipantRole: BOOKER/MEMBER
+  ParticipantStatus: PENDING/PAID/CANCELLED/REFUNDED
+
 Data Models - Policy (계층형, PLATFORM > COMPANY > CLUB):
-  CancellationPolicy, RefundPolicy + RefundRateTier
+  CancellationPolicy, RefundPolicy + RefundTier
   NoShowPolicy + NoShowPenalty, OperatingPolicy
 
 Core Features:
@@ -332,9 +343,12 @@ Core Features:
   - Transactional Outbox, Idempotency Key
   - 계층형 정책 Resolve (Club → Company → Platform 폴백)
   - 시간대별 환불률, 노쇼 패널티
+  - 더치페이 정산: BookingGroup + BookingParticipant + 정산 카드 Push
 
 NATS Patterns:
   booking.create/findById/get/list/cancel
+  booking.group.create/get/getByNumber/cancel
+  booking.group.markParticipantPaid
   policy.cancellation.list/findById/resolve/create/update/delete
   policy.refund.list/findById/resolve/create/update/delete/calculate
   policy.noshow.list/findById/resolve/create/update/delete/getUserCount/getApplicablePenalty
@@ -348,18 +362,23 @@ External API: Toss Payments
 
 Data Models:
   Payment, BillingKey, PaymentHistory, Refund, OutboxEvent, WebhookLog
+  PaymentSplit (더치페이 분할결제, SplitStatus: PENDING/PAID/EXPIRED/CANCELLED/REFUNDED)
 
 Core Features:
   - 결제위젯 (Toss Payments), 카드/계좌이체/간편결제
   - 빌링키 자동결제, 부분/전액 환불
   - 결제 상태 (PENDING → COMPLETED → REFUNDED)
   - Webhook 수신/검증, Transactional Outbox
+  - 더치페이 분할결제 (N명 개별 orderId 발급, 결제 상태 추적)
 
 NATS Patterns:
   payment.prepare (orderId 발급)
   payment.request / payment.confirm / payment.cancel
   payment.billing.issue / payment.billing.charge
   payment.refund / payment.status / payment.webhook
+  payment.splitPrepare (더치페이 N명 orderId 발급)
+  payment.splitStatus (분할결제 상태 조회)
+  payment.split.confirm (참여자 개별 결제 확인)
 ```
 
 #### Notify Service (:8080)
@@ -378,19 +397,41 @@ Core Features:
 Database: PostgreSQL (chat_db)
 
 Data Models:
-  ChatRoom (DIRECT/CHANNEL/BOOKING), ChatMessage, ChatRoomMember
+  ChatRoom (DIRECT/CHANNEL/BOOKING), ChatRoomMember, MessageRead
+  ChatMessage (metadata: AI 액션 JSON)
+  MessageType: TEXT/IMAGE/SYSTEM/AI_USER/AI_ASSISTANT
+
+Field Convention:
+  DB 컬럼: type (Prisma)
+  서비스 간: messageType (NATS/Socket.IO/REST 페이로드)
+  chat-service가 경계 역할: messageType ↔ type 매핑
 
 NATS Patterns:
-  chat.rooms.create/get/list/addMember/removeMember/booking
+  chat.rooms.create/get/list/addMember/removeMember/booking/checkMembership
+  chat.room.getMembers (채팅방 멤버 목록)
   chat.messages.save/list/markRead/unreadCount/delete
 ```
 
 #### Chat Gateway (:8080)
 ```
-WebSocket (Socket.IO, Namespace: /chat) + NATS
+WebSocket (Socket.IO) + NATS + NATS Socket.IO Adapter (cross-pod broadcast)
+Replicas: 2 (multi-pod, Session Affinity + PDB)
 
-Events (Client→Server): join_room, leave_room, send_message, typing
-Events (Server→Client): connected, new_message, user_joined/left, typing, error
+Namespaces:
+  /chat          — 채팅 메시지, 타이핑, 입장/퇴장
+  /notification  — 실시간 알림 전달
+
+Events (Client→Server): join_room, leave_room, send_message, typing, heartbeat
+Events (Server→Client): connected, new_message, user_joined/left, typing, error,
+                         token_expiring, token_refresh_needed, system:nats_status
+
+NATS 구독 (Raw):
+  chat.message.room  — agent/booking-service가 발행한 AI/서비스 메시지를 Socket.IO로 전달
+                        metadata.targetUserIds로 서버사이드 타겟팅 (user:{userId} 룸)
+
+JetStream:
+  CHAT_MESSAGES (chat.room.*.message) — 메시지 영속성/복구
+  CHAT_PRESENCE (chat.user.*.presence) — 온라인 상태
 ```
 
 ### 5. AI & External API Services
@@ -402,12 +443,14 @@ Cache: In-memory (node-cache)
 
 Architecture:
   DeepSeekService → Function Calling
-  ToolExecutorService → NATS 통신 (5개 서비스 연동)
+  ToolExecutorService → NATS 통신 (7개 서비스 연동)
   ConversationService → 메모리 캐시 대화 관리
   BookingAgentService → 예약 플로우 오케스트레이션
 
-Connected NATS Clients:
-  COURSE_SERVICE / BOOKING_SERVICE / PAYMENT_SERVICE / WEATHER_SERVICE / LOCATION_SERVICE
+Connected NATS Clients (7개):
+  COURSE_SERVICE / BOOKING_SERVICE / PAYMENT_SERVICE
+  WEATHER_SERVICE / LOCATION_SERVICE
+  CHAT_SERVICE / NOTIFY_SERVICE
 
 Function Calling Tools:
   search_clubs, search_clubs_with_slots, get_club_info
@@ -415,29 +458,43 @@ Function Calling Tools:
   search_address, get_nearby_clubs, get_booking_policy
 
 Direct Handlers (LLM 없이 UI 이벤트 직접 처리):
-  handleDirectClubSelect: 골프장 카드 → 슬롯 조회
-  handleDirectSlotSelect: 슬롯 카드 → 예약 확인 카드
+  handleDirectClubSelect: 골프장 카드 → 멤버 조회 → SELECT_MEMBERS
+  handleTeamMemberSelect: 멤버 확정 → 슬롯 조회 → SHOW_SLOTS
+  handleDirectSlotSelect: 슬롯 선택 → CONFIRM_BOOKING (결제방법 3가지)
   handleDirectBooking:
-    - 현장결제(onsite): CONFIRMED → BOOKING_COMPLETE
-    - 카드결제(card): SLOT_RESERVED → payment.prepare → SHOW_PAYMENT (orderId 포함)
+    - 현장결제(onsite): CONFIRMED → TEAM_COMPLETE
+    - 카드결제(card): SLOT_RESERVED → payment.prepare → SHOW_PAYMENT
+    - 더치페이(dutchpay): payment.splitPrepare → SETTLEMENT_STATUS + 브로드캐스트
   handlePaymentComplete / handleCancelBooking
+  handleSplitPaymentComplete: 참여자 결제 완료 → 정산 상태 갱신
+  handleNextTeam: 다음 팀 예약 → SELECT_MEMBERS (이전 팀 멤버 제외)
+  handleFinishGroup: 그룹 예약 종료 → BOOKING_COMPLETE + SYSTEM 메시지
+  handleSendReminder: 미결제 참여자에게 push 알림
 
 NATS Patterns — Inbound:
   agent.chat / agent.reset / agent.status / agent.stats
 
-NATS Patterns — Outbound:
+NATS Patterns — Outbound (send):
   club.search / clubs.get / club.findNearby (→ course-service)
   games.search (→ course-service)
   booking.create / booking.findById (→ booking-service)
   policy.*.resolve (→ booking-service)
-  payment.prepare (→ payment-service)
+  payment.prepare / payment.splitPrepare / payment.splitStatus (→ payment-service)
   weather.forecast (→ weather-service)
   location.search.address (→ location-service)
+  chat.room.getMembers / chat.messages.save (→ chat-service)
+
+NATS Patterns — Outbound (emit, fire-and-forget):
+  chat.message.room (→ chat-gateway, Socket.IO 브로드캐스트)
+  notify.sendBatch (→ notify-service, push 알림)
 
 Conversation States:
-  IDLE → COLLECTING → CONFIRMING → BOOKING → COMPLETED
-                                            ↓
-                                        CANCELLED
+  IDLE → COLLECTING → SELECTING_MEMBERS → CONFIRMING → BOOKING → COMPLETED
+                                                          ↓
+                                                   (더치페이 시) SETTLING → TEAM_COMPLETE
+                                                                              ↓
+                                                                    다음 팀 → SELECTING_MEMBERS
+                                                                    종료   → COMPLETED
 ```
 
 #### Weather Service (:8087)
@@ -550,6 +607,7 @@ PENDING → SLOT_RESERVED → CONFIRMED
 |----------|---------------|----------|
 | **현장결제** (onsite) | `CONFIRMED` | 바로 예약 완료 |
 | **카드결제** (card) | `SLOT_RESERVED` | `payment.prepare` → orderId 발급 → Toss 결제위젯 → `payment.confirm` → `CONFIRMED` |
+| **더치페이** (dutchpay) | `SLOT_RESERVED` | `payment.splitPrepare` → N명 orderId 발급 → SETTLEMENT_STATUS + 브로드캐스트 → 전원 결제 → TEAM_COMPLETE |
 
 #### AI Agent 원샷 처리 (카드결제)
 ```
@@ -664,6 +722,6 @@ graph LR
 
 ---
 
-**Document Version**: 6.0.0
-**Last Updated**: 2026-02-24
+**Document Version**: 7.0.0
+**Last Updated**: 2026-03-02
 **Maintained By**: Platform Team

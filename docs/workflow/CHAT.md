@@ -304,7 +304,7 @@ sequenceDiagram
 
     Sender->>Gateway: emit('send_message', {<br/>roomId, content, type })
 
-    Gateway->>Gateway: 메시지 생성<br/>{ id: uuid(), createdAt, ... }
+    Gateway->>Gateway: 메시지 생성<br/>{ id: uuid(), messageType, createdAt, ... }
 
     par 1. 실시간 전달 (Adapter가 모든 Pod에 전파)
         Gateway->>Receivers: client.to(roomId).emit('new_message')
@@ -426,8 +426,8 @@ sequenceDiagram
 | `token_refresh_needed` | S→C | `{ message }` | 토큰 만료됨 |
 | `join_room` | C→S | `{ roomId }` | 채팅방 입장 |
 | `leave_room` | C→S | `{ roomId }` | 채팅방 퇴장 |
-| `send_message` | C→S | `{ roomId, content, type }` | 메시지 전송 |
-| `new_message` | S→C | `{ id, roomId, senderId, senderName, content, type, metadata?, createdAt }` | 새 메시지 수신 |
+| `send_message` | C→S | `{ roomId, content, type }` | 메시지 전송 (gateway가 `messageType`으로 변환) |
+| `new_message` | S→C | `{ id, roomId, senderId, senderName, content, messageType, metadata?, createdAt }` | 새 메시지 수신 |
 | `typing` | C↔S | `{ roomId, userId, userName, isTyping }` | 타이핑 상태 |
 | `user_joined` | S→C | `{ roomId, userId, userName, timestamp }` | 사용자 입장 |
 | `user_left` | S→C | `{ roomId, userId, userName, timestamp }` | 사용자 퇴장 |
@@ -619,7 +619,7 @@ sequenceDiagram
     Note right of Client: { content: "Hello", message_type: "TEXT" }
 
     BFF->>BFF: 메시지 ID 생성 (uuid)
-    BFF->>NATS: send('chat.messages.save', {<br/>id, roomId, senderId, content, ... })
+    BFF->>NATS: send('chat.messages.save', {<br/>id, roomId, senderId, content, messageType, ... })
 
     NATS->>Service: @MessagePattern('chat.messages.save')
     Service->>DB: SELECT WHERE id = ? (중복 체크)
@@ -641,6 +641,11 @@ sequenceDiagram
 
 ## 5. NATS 메시지 패턴
 
+> **`messageType` 필드 규칙**: 모든 NATS 페이로드에서 메시지 타입 필드명은 `messageType`을 사용한다.
+> DB(Prisma)의 `type` 컬럼과의 매핑은 chat-service가 담당한다:
+> - **저장**: `SaveMessageDto.messageType` → Prisma `type` 컬럼
+> - **조회**: Prisma `type` 컬럼 → 응답의 `messageType` 필드 (`toMessageResponse()`)
+
 ### Request/Reply 패턴 (chat-service)
 
 | 패턴 | 용도 | Payload |
@@ -651,7 +656,7 @@ sequenceDiagram
 | `chat.rooms.checkMembership` | 멤버십 확인 | `{ roomId, userId }` |
 | `chat.rooms.removeMember` | 채팅방 나가기 | `{ roomId, userId }` |
 | `chat.messages.list` | 메시지 목록 | `{ roomId, limit, cursor? }` |
-| `chat.messages.save` | 메시지 저장 | `{ id, roomId, senderId, content, type }` |
+| `chat.messages.save` | 메시지 저장 | `{ id, roomId, senderId, content, messageType }` |
 | `chat.messages.markRead` | 읽음 처리 | `{ roomId, userId, messageId }` |
 | `chat.messages.unreadCount` | 안읽은 수 | `{ userId }` |
 
@@ -662,7 +667,28 @@ sequenceDiagram
 | `chat.message` | gateway → notify | `{ chatRoomId, senderId, senderName, recipientId, messagePreview }` | 오프라인 push 알림 |
 | `notification.dismiss` | gateway → notify | `{ userId, type, dataFilter }` | 알림 해제 |
 | `notification.created` | notify → gateway | `{ id, userId, type, title, message, data? }` | 실시간 알림 전달 |
-| `chat.message.room` | agent/booking → gateway | `{ roomId, message }` | AI/서비스 메시지 Socket.IO 전달 |
+| `chat.message.room` | agent/booking → gateway | `{ roomId, message }` | AI/서비스 메시지 Socket.IO 전달 (아래 참조) |
+
+**`chat.message.room` 메시지 구조:**
+
+```typescript
+{
+  roomId: string,
+  message: {
+    id: string,           // uuid
+    roomId: string,
+    senderId: number,     // 0 = AI 브로드캐스트
+    senderName: string,
+    content: string,
+    messageType: string,  // 'AI_ASSISTANT' | 'SYSTEM'
+    metadata?: string,    // JSON: { conversationId, state, actions, targetUserIds }
+    createdAt: string,
+  }
+}
+```
+
+> chat-gateway는 raw NATS 구독으로 수신. NestJS `ClientProxy.emit()`의 `{ pattern, data }` 봉투를 벗겨 `data`를 사용.
+> `metadata.targetUserIds` 배열이 있으면 `user:{userId}` 룸으로 서버사이드 타겟팅, 없으면 `roomId`로 전체 브로드캐스트.
 
 ### JetStream Streams
 
@@ -734,7 +760,7 @@ erDiagram
         int senderId "0 = AI 브로드캐스트"
         string senderName
         string content
-        enum type "TEXT|IMAGE|SYSTEM|BOOKING_INVITE|AI_USER|AI_ASSISTANT"
+        enum type "DB 컬럼명, 서비스 간에는 messageType"
         string metadata "nullable, AI 액션 JSON"
         datetime createdAt
         datetime deletedAt "nullable"
@@ -771,7 +797,17 @@ erDiagram
 | iOS | `ChatSocketManager.swift` | `Keychain` (`KeychainManager`) | `APIClient.swift` (actor) | `ChatRoomView.swift` |
 | Android | `ChatSocketManager.kt` | `DataStore` (`AuthPreferences`) | `AuthInterceptor.kt` + `TokenAuthenticator.kt` | `ChatRoomScreen.kt` |
 
-### 7.2 공통 연결 관리 패턴
+### 7.2 메시지 필드 정규화
+
+| 필드 | 백엔드 타입 | 프론트엔드 타입 | 정규화 위치 |
+|------|-----------|--------------|------------|
+| `senderId` | `number` (0 = AI 브로드캐스트) | `string` | Socket `new_message` 핸들러, REST `getMessages` |
+| `messageType` | `string` (서비스 간 통일) | `MessageType` enum | 정규화 불필요 (서비스 계층에서 통일) |
+
+> **`senderId` 정규화**: 백엔드는 `number`, 프론트엔드는 `string`으로 사용한다.
+> Web의 `chatSocket.ts` new_message 핸들러와 `chatApi.ts` getMessages에서 `String(senderId)`로 변환.
+
+### 7.3 공통 연결 관리 패턴
 
 | 기능 | Web | iOS | Android |
 |------|-----|-----|---------|
@@ -784,7 +820,7 @@ erDiagram
 | 토큰 갱신 | REST API only | REST API only | REST API only |
 | 동시 갱신 방지 | Promise mutex | `isRefreshingToken` 플래그 | `synchronized(this)` |
 
-### 7.3 연결 상태 관리
+### 7.4 연결 상태 관리
 
 ```mermaid
 stateDiagram-v2
@@ -807,7 +843,7 @@ stateDiagram-v2
     end note
 ```
 
-### 7.4 DM(1:1 채팅) 흐름
+### 7.5 DM(1:1 채팅) 흐름
 
 모든 플랫폼에서 DM은 일반 채팅방과 동일한 흐름을 사용합니다:
 
@@ -817,7 +853,7 @@ stateDiagram-v2
 3. send_message({ roomId, content }) → new_message 수신
 ```
 
-### 7.5 Web (React + Socket.IO)
+### 7.6 Web (React + Socket.IO)
 
 ```mermaid
 flowchart TB
@@ -844,7 +880,7 @@ flowchart TB
     ROOM --> SM
 ```
 
-### 7.6 iOS (SwiftUI + SocketIO)
+### 7.7 iOS (SwiftUI + SocketIO)
 
 ```mermaid
 flowchart TB
@@ -874,7 +910,7 @@ flowchart TB
     SM --> API
 ```
 
-### 7.7 Android (Compose + Socket.IO)
+### 7.8 Android (Compose + Socket.IO)
 
 ```mermaid
 flowchart TB
@@ -1348,3 +1384,7 @@ services/chat-gateway/src/
 └── common/
     └── health.controller.ts         # GET /health
 ```
+
+---
+
+**Last Updated**: 2026-03-02

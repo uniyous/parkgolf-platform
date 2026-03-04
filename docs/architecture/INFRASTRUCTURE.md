@@ -191,7 +191,7 @@ services: all
 services: iam-service,user-api,agent-service
 ```
 
-12개 서비스: admin-api, user-api, chat-gateway, iam-service, course-service, booking-service, payment-service, chat-service, notify-service, agent-service, weather-service, location-service
+13개 서비스: admin-api, user-api, chat-gateway, iam-service, course-service, booking-service, payment-service, chat-service, notify-service, agent-service, weather-service, location-service, job-service
 
 ### cd-apps.yml
 
@@ -250,4 +250,4 @@ kubectl rollout undo deployment/<name>   # 롤백
 
 ---
 
-**Last Updated**: 2026-02-24
+**Last Updated**: 2026-03-02
