@@ -291,6 +291,13 @@ export class BookingNatsController {
     return NatsResponse.success(result);
   }
 
+  @MessagePattern('booking.settlementStatus')
+  async getSettlementStatus(@Payload() data: { bookingId: number }) {
+    this.logger.log(`NATS: Getting settlement status: booking=${data.bookingId}`);
+    const result = await this.bookingService.getSettlementStatus(data.bookingId);
+    return NatsResponse.success(result);
+  }
+
   @MessagePattern('bookingGroup.cancel')
   async cancelGroupBookings(@Payload() data: { groupId: string }) {
     this.logger.log(`NATS: Cancelling group bookings: groupId=${data.groupId}`);

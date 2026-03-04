@@ -987,6 +987,7 @@ export class ToolExecutorService {
    */
   async getBookingDetail(bookingId: number): Promise<{
     userId: number;
+    status: string;
     bookingNumber: string;
     gameName: string;
     clubName: string;
@@ -1008,6 +1009,7 @@ export class ToolExecutorService {
       const d = response.data;
       return {
         userId: d.userId,
+        status: d.status || '',
         bookingNumber: d.bookingNumber || '',
         gameName: d.gameName || '',
         clubName: d.clubName || '',
@@ -1016,6 +1018,42 @@ export class ToolExecutorService {
         totalPrice: Number(d.totalPrice) || 0,
         paymentMethod: d.paymentMethod || '',
       };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * 정산 상태 조회 (booking-service 위임)
+   * allPaid 판단의 단일 진실 공급원
+   */
+  async getSettlementStatus(bookingId: number): Promise<{
+    allPaid: boolean;
+    paidCount: number;
+    totalCount: number;
+    bookingStatus: string;
+    settlementStatus: string;
+  } | null> {
+    try {
+      const response = await firstValueFrom(
+        this.bookingClient
+          .send('booking.settlementStatus', { bookingId })
+          .pipe(
+            timeout(this.REQUEST_TIMEOUT),
+            catchError(() => [null]),
+          ),
+      );
+
+      if (response?.success && response?.data) {
+        return {
+          allPaid: response.data.allPaid,
+          paidCount: response.data.paidCount,
+          totalCount: response.data.totalCount,
+          bookingStatus: response.data.bookingStatus,
+          settlementStatus: response.data.settlementStatus,
+        };
+      }
+      return null;
     } catch {
       return null;
     }

@@ -1317,6 +1317,47 @@ export class BookingService {
   }
 
   /**
+   * 정산 상태 조회 (READ-ONLY)
+   * markParticipantPaid의 allPaid 공식을 재사용하는 단일 진실 공급원
+   */
+  async getSettlementStatus(bookingId: number) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+    });
+
+    if (!booking) {
+      throw new AppException(Errors.Booking.NOT_FOUND);
+    }
+
+    const participants = await this.prisma.bookingParticipant.findMany({
+      where: { bookingId },
+    });
+
+    const paidCount = participants.filter(
+      (p) => p.status === ParticipantStatus.PAID,
+    ).length;
+    const totalCount = participants.length;
+    const allPaid = paidCount === totalCount && totalCount >= booking.playerCount;
+
+    return {
+      bookingId,
+      bookingStatus: booking.status,
+      allPaid,
+      paidCount,
+      totalCount,
+      playerCount: booking.playerCount,
+      settlementStatus: allPaid ? 'COMPLETED' : paidCount > 0 ? 'PARTIAL' : 'PENDING',
+      participants: participants.map((p) => ({
+        userId: p.userId,
+        userName: p.userName,
+        amount: Number(p.amount),
+        status: p.status,
+        paidAt: p.paidAt?.toISOString() || null,
+      })),
+    };
+  }
+
+  /**
    * 그룹 예약 취소 (groupId 기반)
    * executeCancellation 재사용 → 슬롯 캐시 복구 + 카드 환불 Outbox 포함
    */

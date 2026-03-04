@@ -425,21 +425,28 @@ export class BookingAgentService {
   /**
    * 결제 완료/실패 후 결과 처리
    */
-  private handlePaymentComplete(
+  private async handlePaymentComplete(
     context: ConversationContext,
     request: ChatRequestDto,
-  ): ChatResponseDto {
+  ): Promise<ChatResponseDto> {
     const actions: ChatAction[] = [];
     let message: string;
 
     if (request.paymentSuccess) {
-      // 결제 성공 → TEAM_COMPLETE 카드 (통합 플로우)
-      const result = {
-        bookingId: context.slots.bookingId,
-        bookingNumber: context.slots.bookingNumber,
-        details: { totalPrice: context.slots.totalPrice },
-      };
-      return this.completeTeam(context, request, result);
+      // 결제 성공 → booking 상태 확인 후 TEAM_COMPLETE
+      const bookingId = context.slots.bookingId;
+      const detail = bookingId ? await this.toolExecutor.getBookingDetail(bookingId) : null;
+      if (detail?.status === 'CONFIRMED') {
+        const result = {
+          bookingId: context.slots.bookingId,
+          bookingNumber: context.slots.bookingNumber,
+          details: { totalPrice: context.slots.totalPrice },
+        };
+        return this.completeTeam(context, request, result);
+      }
+      // 아직 Saga 미완료 → 안내 메시지
+      message = '결제가 완료되었어요! 예약 확정 처리 중입니다.';
+      this.conversationService.setState(context, 'CONFIRMING');
     } else {
       // 결제 실패/취소 — 재시도 안내
       message = '결제가 취소되었어요. 다시 시도하거나 다른 결제방법을 선택해 주세요.';
@@ -509,9 +516,14 @@ export class BookingAgentService {
 
     const participants = splitStatus.splits || [];
     const totalParticipants = participants.length;
-    const paidCount = participants.filter((s: any) => s.status === 'PAID').length;
     const pricePerPerson = participants[0]?.amount || 0;
-    const allPaid = paidCount === totalParticipants;
+
+    // allPaid를 booking-service에 위임 (단일 진실 공급원)
+    const settlement = await this.toolExecutor.getSettlementStatus(bookingId);
+    const paidCount = settlement?.paidCount
+      ?? participants.filter((s: any) => s.status === 'PAID').length;
+    const allPaid = settlement?.allPaid
+      ?? (paidCount === totalParticipants && totalParticipants > 0);
     const teamNumber = context.slots.currentTeamNumber || 1;
 
     const actions: ChatAction[] = [{
