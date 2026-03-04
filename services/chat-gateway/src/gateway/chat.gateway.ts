@@ -374,7 +374,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       this.logger.log(`Broadcast AI message to room ${roomId} (id=${message.id})`);
     }
 
-    // 2. JetStream 발행 → DB 저장 (일반 채팅 메시지와 동일한 순차 처리 경로)
+    // 2. DB 직접 저장 (NATS RPC) — JetStream 소실 시에도 메시지 보존 보장
     const chatMessage: ChatMessage = {
       id: message.id,
       roomId: message.roomId,
@@ -385,6 +385,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       metadata: message.metadata,
       createdAt: message.createdAt,
     };
+    this.natsService.requestChatService('messages.save', chatMessage).catch((error) => {
+      this.logger.error(`Failed to save AI message to DB via NATS RPC: ${error}`);
+    });
+
+    // 3. JetStream 발행 (백업 경로 — saveMessage는 idempotent)
     this.natsService.publishMessage(roomId, chatMessage).catch((error) => {
       this.logger.error(`Failed to publish AI message to JetStream: ${error}`);
     });

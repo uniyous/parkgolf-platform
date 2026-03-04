@@ -540,10 +540,14 @@ export class BookingAgentService {
       },
     }];
 
+    const roomId = context.slots.chatRoomId || request.chatRoomId;
+    const bid = bookerId || context.slots.bookerId;
+    const isBooker = request.userId === bid;
+
     let message: string;
     if (allPaid) {
       if (context.slots.groupMode) {
-        // 전원 결제 완료 → TEAM_COMPLETE
+        // 전원 결제 완료 → completeTeam() 내부에서 TEAM_COMPLETE 브로드캐스트 처리
         const result = {
           bookingId,
           bookingNumber: context.slots.bookingNumber || '',
@@ -553,26 +557,26 @@ export class BookingAgentService {
         };
         return this.completeTeam(context, request, result);
       }
-      message = '모든 참여자의 결제가 완료되었어요!';
+      message = '결제가 완료되었습니다!';
       this.conversationService.setState(context, 'COMPLETED');
-    } else {
+    } else if (isBooker) {
       message = `결제가 확인되었어요. (${paidCount}/${totalParticipants})`;
+    } else {
+      message = '결제가 완료되었습니다!';
     }
 
     this.conversationService.addAssistantMessage(context, message);
 
-    // 채팅방 전체에 갱신된 정산 카드 브로드캐스트
-    // 브로드캐스트가 유일한 카드 전달 경로 → API 응답에서는 actions 제외 (중복 방지)
-    const roomId = context.slots.chatRoomId || request.chatRoomId;
+    // 예약자에게만 정산현황 카드 브로드캐스트 (senderId=bookerId → DB에서 예약자만 조회 가능)
     if (roomId) {
-      const targetUserIds = participants.map((s: any) => s.userId);
-      const bid = bookerId || context.slots.bookerId;
+      const bookerOnly = bid ? [bid] : participants.map((s: any) => s.userId);
       this.toolExecutor.broadcastSettlementCard(
         roomId,
-        targetUserIds,
+        bookerOnly,
         actions[0].data as Record<string, unknown>,
         message,
         bid || undefined,
+        bid || 0,
       );
     }
 
@@ -816,6 +820,13 @@ export class BookingAgentService {
     const message = `팀${teamNumber} 예약이 완료되었어요!`;
     this.conversationService.addAssistantMessage(context, message);
     this.conversationService.setState(context, 'TEAM_COMPLETE');
+
+    // TEAM_COMPLETE 카드를 senderId=0으로 채팅방 전체 브로드캐스트
+    // (API 응답은 senderId=payer로 저장되어 payer만 보이므로, 별도 브로드캐스트 필요)
+    const roomId = context.slots.chatRoomId;
+    if (roomId) {
+      this.toolExecutor.broadcastTeamCompleteCard(roomId, teamCompleteData);
+    }
 
     return {
       conversationId: context.conversationId,

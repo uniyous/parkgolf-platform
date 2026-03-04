@@ -1026,6 +1026,7 @@ export class ToolExecutorService {
     settlementData: Record<string, unknown>,
     content?: string,
     bookerUserId?: number,
+    senderId?: number,
   ): void {
     const metadata = JSON.stringify({
       conversationId: null,
@@ -1038,7 +1039,7 @@ export class ToolExecutorService {
     const message = {
       id: crypto.randomUUID(),
       roomId,
-      senderId: 0,
+      senderId: senderId ?? 0,
       senderName: 'AI 예약 도우미',
       content: content || '더치페이 결제 요청이 도착했습니다.',
       messageType: 'AI_ASSISTANT',
@@ -1052,6 +1053,38 @@ export class ToolExecutorService {
       this.logger.log(`broadcastSettlementCard emitted - roomId=${roomId}, msgId=${message.id}, targetUserIds=${JSON.stringify(targetUserIds)}`);
     } catch (error) {
       this.logger.error('broadcastSettlementCard NATS emit failed', error);
+    }
+  }
+
+  /**
+   * 팀 완료 카드 브로드캐스트 (senderId=0 → 채팅방 전체 조회 가능)
+   */
+  broadcastTeamCompleteCard(
+    roomId: string,
+    teamCompleteData: Record<string, unknown>,
+  ): void {
+    const metadata = JSON.stringify({
+      conversationId: null,
+      state: 'TEAM_COMPLETE',
+      actions: [{ type: 'TEAM_COMPLETE', data: teamCompleteData }],
+    });
+
+    const message = {
+      id: crypto.randomUUID(),
+      roomId,
+      senderId: 0,
+      senderName: 'AI 예약 도우미',
+      content: `팀${teamCompleteData['teamNumber'] || ''} 예약이 완료되었어요!`,
+      messageType: 'AI_ASSISTANT',
+      metadata,
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      this.notifyClient.emit('chat.message.room', { roomId, message });
+      this.logger.log(`broadcastTeamCompleteCard emitted - roomId=${roomId}, msgId=${message.id}`);
+    } catch (error) {
+      this.logger.error('broadcastTeamCompleteCard NATS emit failed', error);
     }
   }
 
