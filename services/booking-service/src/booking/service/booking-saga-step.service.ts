@@ -394,6 +394,20 @@ export class BookingSagaStepService {
           },
         },
       });
+
+      // 로컬 슬롯 캐시 가용성 복구
+      if (booking.gameTimeSlotId) {
+        await prisma.gameTimeSlotCache.updateMany({
+          where: { gameTimeSlotId: booking.gameTimeSlotId },
+          data: {
+            bookedPlayers: { decrement: booking.playerCount },
+            availablePlayers: { increment: booking.playerCount },
+            isAvailable: true,
+            status: TimeSlotCacheStatus.AVAILABLE,
+            lastSyncAt: new Date(),
+          },
+        });
+      }
     });
 
     this.logger.log(`Booking ${data.bookingId} CANCELLED (${previousStatus} → CANCELLED) via saga-service`);
@@ -448,6 +462,20 @@ export class BookingSagaStepService {
           },
         },
       });
+
+      // 로컬 슬롯 캐시 가용성 복구
+      if (booking.gameTimeSlotId) {
+        await prisma.gameTimeSlotCache.updateMany({
+          where: { gameTimeSlotId: booking.gameTimeSlotId },
+          data: {
+            bookedPlayers: { decrement: booking.playerCount },
+            availablePlayers: { increment: booking.playerCount },
+            isAvailable: true,
+            status: TimeSlotCacheStatus.AVAILABLE,
+            lastSyncAt: new Date(),
+          },
+        });
+      }
     });
 
     this.logger.log(`Booking ${data.bookingId} CANCELLED by admin via saga-service`);
@@ -628,6 +656,20 @@ export class BookingSagaStepService {
           },
         },
       });
+
+      // 로컬 슬롯 캐시 가용성 복구
+      if (booking.gameTimeSlotId) {
+        await prisma.gameTimeSlotCache.updateMany({
+          where: { gameTimeSlotId: booking.gameTimeSlotId },
+          data: {
+            bookedPlayers: { decrement: booking.playerCount },
+            availablePlayers: { increment: booking.playerCount },
+            isAvailable: true,
+            status: TimeSlotCacheStatus.AVAILABLE,
+            lastSyncAt: new Date(),
+          },
+        });
+      }
     });
 
     this.logger.log(`Booking ${data.bookingId} FAILED (payment timeout) via saga-service`);

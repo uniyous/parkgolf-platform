@@ -1,20 +1,16 @@
 import { Controller, Logger } from '@nestjs/common';
-import { EventPattern, Payload } from '@nestjs/microservices';
+import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
 import { SagaHandlerService } from '../service/saga-handler.service';
 import { BookingService } from '../service/booking.service';
 import { PaymentCanceledEvent } from '../dto/booking.dto';
+import { NatsResponse } from '../../common/types/response.types';
 
 /**
  * Saga 이벤트 핸들러 컨트롤러
  *
  * saga-service 범위 외의 비동기 이벤트 처리:
- * - booking.paymentCanceled: 환불 완료 이력 기록
- * - slot.released: 로컬 캐시 슬롯 가용성 복구
- * - user.deleted: 계정 삭제 시 예약 익명화
- *
- * [DEPRECATED → saga-service로 이관]
- * - slot.reserved / slot.reserve.failed → saga-service 오케스트레이션
- * - booking.paymentConfirmed / booking.paymentDeposited → saga-service PAYMENT_CONFIRMED Saga
+ * - booking.paymentCanceled: 환불 완료 이력 기록 (payment-service → client.send)
+ * - user.deleted: 계정 삭제 시 예약 익명화 (iam-service → client.emit)
  */
 @Controller()
 export class BookingSagaController {
@@ -26,47 +22,20 @@ export class BookingSagaController {
   ) {}
 
   /**
-   * 결제 취소(환불) 완료 이벤트 핸들러
-   * payment-service에서 환불이 완료되면 이 이벤트를 발행함
+   * 결제 취소(환불) 완료 핸들러
+   * payment-service가 client.send()로 호출 → @MessagePattern 필수
    * BookingHistory에 REFUND_COMPLETED 기록 + 환불 알림 발행
    */
-  @EventPattern('booking.paymentCanceled')
+  @MessagePattern('booking.paymentCanceled')
   async handlePaymentCanceled(@Payload() data: PaymentCanceledEvent) {
     this.logger.log(`NATS: Received booking.paymentCanceled for booking ${data.bookingId}`);
     this.logger.debug(`NATS: booking.paymentCanceled payload: ${JSON.stringify(data)}`);
-
-    try {
-      await this.sagaHandler.handlePaymentCanceled(data);
-      this.logger.log(`NATS: Successfully processed booking.paymentCanceled for booking ${data.bookingId}`);
-    } catch (error) {
-      this.logger.error(`NATS: Error processing booking.paymentCanceled: ${error.message}`, error.stack);
-    }
+    await this.sagaHandler.handlePaymentCanceled(data);
+    this.logger.log(`NATS: Successfully processed booking.paymentCanceled for booking ${data.bookingId}`);
+    return NatsResponse.success({ processed: true, bookingId: data.bookingId });
   }
 
-  /**
-   * 슬롯 해제 완료 이벤트 핸들러
-   * course-service에서 슬롯 해제가 완료되면 이 이벤트를 발행함
-   */
-  @EventPattern('slot.released')
-  async handleSlotReleased(@Payload() data: {
-    bookingId: number;
-    gameTimeSlotId: number;
-    playerCount: number;
-    releasedAt: string;
-  }) {
-    this.logger.log(`NATS: Received slot.released event for booking ${data.bookingId}`);
-
-    try {
-      await this.sagaHandler.handleBookingCancelled({
-        bookingId: data.bookingId,
-        gameTimeSlotId: data.gameTimeSlotId,
-        playerCount: data.playerCount,
-      });
-      this.logger.log(`NATS: Successfully processed slot.released for booking ${data.bookingId}`);
-    } catch (error) {
-      this.logger.error(`NATS: Error processing slot.released: ${error.message}`, error.stack);
-    }
-  }
+  // [REMOVED] slot.released → 발행자 없음 + 캐시 복구는 booking.saga.cancel/adminCancel/paymentTimeout에서 직접 수행
 
   /**
    * 사용자 삭제 이벤트 핸들러

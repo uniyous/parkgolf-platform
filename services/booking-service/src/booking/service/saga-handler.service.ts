@@ -1,20 +1,11 @@
 import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { TimeSlotCacheStatus } from '@prisma/client';
 
 /**
  * Saga 이벤트 후속 처리 서비스
  *
- * saga-service 범위 외의 비동기 이벤트에 대한 booking-service 내부 처리:
- * - handlePaymentCanceled: 환불 완료 이력 기록 + 알림
- * - handleBookingCancelled: 로컬 슬롯 캐시 가용성 복구
- *
- * [DEPRECATED → saga-service로 이관된 메서드]
- * - handleSlotReserved, handleSlotReserveFailed → BookingSagaStepService
- * - handlePaymentConfirmed → BookingSagaStepService.confirmPayment()
- * - cleanupTimedOutBookings, cleanupPaymentTimedOutBookings → saga-service 스케줄러
- * - registerCompanyMember → saga-service Step (iam.companyMembers.addByBooking)
+ * - handlePaymentCanceled: 환불 완료 이력 기록 + 알림 (payment-service → client.send)
  */
 @Injectable()
 export class SagaHandlerService {
@@ -87,32 +78,5 @@ export class SagaHandlerService {
     }
   }
 
-  /**
-   * 예약 취소 시 로컬 슬롯 캐시 가용성 복구
-   */
-  async handleBookingCancelled(data: {
-    bookingId: number;
-    gameTimeSlotId: number;
-    playerCount: number;
-  }): Promise<void> {
-    this.logger.log(`Handling booking cancelled for booking ${data.bookingId}`);
-
-    try {
-      await this.prisma.gameTimeSlotCache.updateMany({
-        where: { gameTimeSlotId: data.gameTimeSlotId },
-        data: {
-          bookedPlayers: { decrement: data.playerCount },
-          availablePlayers: { increment: data.playerCount },
-          isAvailable: true,
-          status: TimeSlotCacheStatus.AVAILABLE,
-          lastSyncAt: new Date(),
-        },
-      });
-
-      this.logger.log(`Slot ${data.gameTimeSlotId} availability restored`);
-    } catch (error) {
-      this.logger.error(`Failed to restore slot availability: ${error.message}`);
-      throw error;
-    }
-  }
+  // [REMOVED] handleBookingCancelled → booking-saga-step.service.ts에서 cancelBooking/adminCancel/paymentTimeout 시 직접 캐시 복구
 }
