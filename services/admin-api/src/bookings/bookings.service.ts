@@ -149,7 +149,7 @@ export class BookingService {
     const params: { bookingId: string; reason?: string; token?: string } = { bookingId };
     if (reason) params.reason = reason;
     if (adminToken) params.token = adminToken;
-    return this.natsClient.send('bookings.cancel', params);
+    return this.natsClient.send('saga.booking.cancel', params);
   }
 
   async confirmBooking(bookingId: string, adminToken: string): Promise<ApiResponse<BookingResponseDto>> {
@@ -220,7 +220,7 @@ export class BookingService {
     adminToken: string,
   ): Promise<ApiResponse<PaymentResponseDto>> {
     this.logger.log(`Processing refund for booking: ${bookingId}`);
-    return this.natsClient.send('payments.refund', {
+    return this.natsClient.send('saga.booking.adminRefund', {
       bookingId: parseInt(bookingId, 10),
       cancelAmount: refundData.cancelAmount,
       cancelReason: refundData.cancelReason,

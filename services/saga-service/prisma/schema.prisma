@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =====================================================
+// Saga 실행 인스턴스
+// =====================================================
+
+model SagaExecution {
+  id             Int         @id @default(autoincrement())
+
+  // Saga 정의
+  sagaType       String      @map("saga_type")       // CREATE_BOOKING, CANCEL_BOOKING, ADMIN_REFUND 등
+  correlationId  String      @unique @map("correlation_id") // 외부 식별자 (예: booking:123)
+
+  // 상태
+  status         SagaStatus  @default(STARTED)
+  currentStep    Int         @default(0) @map("current_step")
+  totalSteps     Int         @map("total_steps")
+
+  // 페이로드 (Saga 전체에서 공유하는 컨텍스트)
+  payload        Json
+  failReason     String?     @map("fail_reason")
+
+  // 트리거 정보
+  triggeredBy    String?     @map("triggered_by")    // USER, ADMIN, SYSTEM, SCHEDULER
+  triggeredById  Int?        @map("triggered_by_id")
+
+  // 타임스탬프
+  startedAt      DateTime    @default(now()) @map("started_at")
+  completedAt    DateTime?   @map("completed_at")
+  failedAt       DateTime?   @map("failed_at")
+
+  // Relations
+  steps          SagaStep[]
+
+  @@index([sagaType, status])
+  @@index([correlationId])
+  @@index([status, startedAt])
+  @@map("saga_executions")
+}
+
+// =====================================================
+// Saga Step 실행 이력
+// =====================================================
+
+model SagaStep {
+  id               Int            @id @default(autoincrement())
+  sagaExecutionId  Int            @map("saga_execution_id")
+
+  // Step 정보
+  stepIndex        Int            @map("step_index")
+  stepName         String         @map("step_name")
+  actionPattern    String         @map("action_pattern")
+
+  // 실행 상태
+  status           StepStatus     @default(PENDING)
+  retryCount       Int            @default(0) @map("retry_count")
+
+  // 요청/응답
+  requestPayload   Json?          @map("request_payload")
+  responsePayload  Json?          @map("response_payload")
+  errorMessage     String?        @map("error_message")
+
+  // 보상
+  isCompensation   Boolean        @default(false) @map("is_compensation")
+  compensatePattern String?       @map("compensate_pattern")
+
+  // 타임스탬프
+  startedAt        DateTime?      @map("started_at")
+  completedAt      DateTime?      @map("completed_at")
+
+  // Relations
+  sagaExecution    SagaExecution  @relation(fields: [sagaExecutionId], references: [id], onDelete: Cascade)
+
+  @@index([sagaExecutionId, stepIndex])
+  @@index([status])
+  @@map("saga_steps")
+}
+
+// =====================================================
+// Outbox (saga-service 전용)
+// =====================================================
+
+model OutboxEvent {
+  id            Int          @id @default(autoincrement())
+  aggregateType String       @map("aggregate_type")
+  aggregateId   String       @map("aggregate_id")
+  eventType     String       @map("event_type")
+  payload       Json
+  status        OutboxStatus @default(PENDING)
+  retryCount    Int          @default(0) @map("retry_count")
+  lastError     String?      @map("last_error")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  processedAt   DateTime?    @map("processed_at")
+
+  @@index([status, createdAt])
+  @@index([aggregateType, aggregateId])
+  @@map("outbox_events")
+}
+
+// =====================================================
+// Enums
+// =====================================================
+
+enum SagaStatus {
+  STARTED
+  STEP_EXECUTING
+  STEP_COMPLETED
+  COMPLETED
+  STEP_FAILED
+  COMPENSATING
+  COMPENSATION_COMPLETED
+  COMPENSATION_FAILED
+  FAILED
+  REQUIRES_MANUAL
+}
+
+enum StepStatus {
+  PENDING
+  EXECUTING
+  COMPLETED
+  FAILED
+  COMPENSATED
+  SKIPPED
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}

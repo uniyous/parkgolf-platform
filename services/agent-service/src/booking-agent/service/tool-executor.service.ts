@@ -90,7 +90,7 @@ export class ToolExecutorService {
 
   /**
    * 결제 준비 (payment.prepare 호출)
-   * 원샷 처리: booking.create → Saga 폴링 → payment.prepare
+   * 원샷 처리: saga.booking.create → Saga 폴링 → payment.prepare
    */
   async preparePayment(params: {
     bookingId: number;
@@ -601,7 +601,7 @@ export class ToolExecutorService {
 
   /**
    * 예약 생성
-   * booking.create 후 Saga 완료를 폴링하여 최종 상태를 반환
+   * saga.booking.create 후 Saga 완료를 폴링하여 최종 상태를 반환
    */
   private async createBooking(args: Record<string, unknown>): Promise<unknown> {
     const { gameTimeSlotId, playerCount, userId, userName, userEmail, paymentMethod } = args as {
@@ -615,7 +615,7 @@ export class ToolExecutorService {
 
     const response = await firstValueFrom(
       this.bookingClient
-        .send('booking.create', {
+        .send('saga.booking.create', {
           idempotencyKey: crypto.randomUUID(),
           userId,
           userName: userName || '',
@@ -672,7 +672,7 @@ export class ToolExecutorService {
 
   /**
    * Saga 완료 대기 (폴링)
-   * booking.create 직후 PENDING 상태에서 CONFIRMED/SLOT_RESERVED/FAILED까지 폴링
+   * saga.booking.create 직후 PENDING 상태에서 CONFIRMED/SLOT_RESERVED/FAILED까지 폴링
    */
   private async waitForSagaCompletion(
     bookingId: number,

@@ -58,43 +58,10 @@ export class BookingSagaController {
   }
 
   /**
-   * 결제 완료 이벤트 핸들러 (Request-Reply)
-   * payment-service에서 결제가 완료되면 이 메시지를 전송함
-   * SLOT_RESERVED → CONFIRMED
+   * [DEPRECATED] booking.paymentConfirmed / booking.paymentDeposited
+   * saga-service가 PAYMENT_CONFIRMED Saga로 오케스트레이션
+   * saga-service → booking.saga.confirmPayment (BookingSagaStepController)
    */
-  @MessagePattern('booking.paymentConfirmed')
-  async handlePaymentConfirmed(@Payload() data: PaymentConfirmedEvent) {
-    this.logger.log(`NATS: Received booking.paymentConfirmed for booking ${data.bookingId}`);
-    this.logger.debug(`NATS: booking.paymentConfirmed payload: ${JSON.stringify(data)}`);
-
-    try {
-      const result = await this.sagaHandler.handlePaymentConfirmed(data);
-      this.logger.log(`NATS: Successfully processed booking.paymentConfirmed for booking ${data.bookingId}`);
-      return result;
-    } catch (error) {
-      this.logger.error(`NATS: Error processing booking.paymentConfirmed: ${error.message}`, error.stack);
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * 가상계좌 입금 완료 이벤트 핸들러 (Request-Reply)
-   * payment-service에서 가상계좌 입금이 확인되면 이 메시지를 전송함
-   * SLOT_RESERVED → CONFIRMED (결제 확정과 동일 흐름)
-   */
-  @MessagePattern('booking.paymentDeposited')
-  async handlePaymentDeposited(@Payload() data: PaymentConfirmedEvent) {
-    this.logger.log(`NATS: Received booking.paymentDeposited for booking ${data.bookingId}`);
-
-    try {
-      const result = await this.sagaHandler.handlePaymentConfirmed(data);
-      this.logger.log(`NATS: Successfully processed booking.paymentDeposited for booking ${data.bookingId}`);
-      return result;
-    } catch (error) {
-      this.logger.error(`NATS: Error processing booking.paymentDeposited: ${error.message}`, error.stack);
-      return { success: false, error: error.message };
-    }
-  }
 
   /**
    * 결제 취소(환불) 완료 이벤트 핸들러
