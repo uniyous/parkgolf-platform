@@ -5,19 +5,20 @@ import type { Booking, BookingStatusType } from '@/types';
 
 const BOOKING_STATUSES: Record<string, { label: string; color: string }> = {
   PENDING: { label: '대기', color: 'bg-yellow-500/20 text-yellow-400' },
+  SLOT_RESERVED: { label: '결제대기', color: 'bg-orange-500/20 text-orange-400' },
   CONFIRMED: { label: '확정', color: 'bg-emerald-500/20 text-emerald-400' },
   COMPLETED: { label: '완료', color: 'bg-green-500/20 text-green-400' },
   CANCELLED: { label: '취소', color: 'bg-red-500/20 text-red-400' },
   NO_SHOW: { label: '노쇼', color: 'bg-white/10 text-white/60' },
+  FAILED: { label: '실패', color: 'bg-red-500/20 text-red-400' },
   SAGA_PENDING: { label: '처리중', color: 'bg-purple-500/20 text-purple-400' },
   SAGA_FAILED: { label: '실패', color: 'bg-red-500/20 text-red-400' },
 };
 
-const PAYMENT_METHODS: Record<string, string> = {
-  CARD: '카드',
-  CASH: '현금',
-  TRANSFER: '계좌이체',
-  MOBILE: '모바일',
+const PAYMENT_METHODS: Record<string, { label: string; color: string }> = {
+  onsite: { label: '현장결제', color: 'text-blue-400' },
+  card: { label: '카드결제', color: 'text-emerald-400' },
+  dutchpay: { label: '더치페이', color: 'text-purple-400' },
 };
 
 interface BookingTableProps {
@@ -214,11 +215,15 @@ export const BookingTable: React.FC<BookingTableProps> = ({
 
                   {/* 결제 */}
                   <td className="px-4 py-3 whitespace-nowrap text-center">
-                    <span className="text-sm text-white/60">
-                      {booking.paymentMethod
-                        ? PAYMENT_METHODS[booking.paymentMethod] || booking.paymentMethod
-                        : '-'}
-                    </span>
+                    {booking.paymentMethod && PAYMENT_METHODS[booking.paymentMethod] ? (
+                      <span className={`text-sm font-medium ${PAYMENT_METHODS[booking.paymentMethod].color}`}>
+                        {PAYMENT_METHODS[booking.paymentMethod].label}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-white/60">
+                        {booking.paymentMethod || '-'}
+                      </span>
+                    )}
                   </td>
 
                   {/* 상태 */}
@@ -293,8 +298,8 @@ export const BookingTable: React.FC<BookingTableProps> = ({
                         </>
                       )}
 
-                      {/* PENDING 상태일 때 취소만 가능 */}
-                      {booking.status === 'PENDING' && (
+                      {/* PENDING / SLOT_RESERVED 상태일 때 취소만 가능 */}
+                      {(booking.status === 'PENDING' || booking.status === 'SLOT_RESERVED') && (
                         <ActionConfirmPopover
                           actionType="cancel"
                           targetName={booking.bookingNumber || `B${String(booking.id).padStart(4, '0')}`}

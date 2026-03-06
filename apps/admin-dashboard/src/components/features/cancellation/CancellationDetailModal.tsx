@@ -52,11 +52,10 @@ const REFUND_STATUSES: Record<string, { label: string; color: string }> = {
   NO_REFUND: { label: '환불 없음', color: 'bg-white/20 text-white/70' },
 };
 
-const PAYMENT_METHODS: Record<string, string> = {
-  CARD: '카드',
-  CASH: '현금',
-  TRANSFER: '계좌이체',
-  MOBILE: '모바일',
+const PAYMENT_METHODS: Record<string, { label: string; color: string }> = {
+  onsite: { label: '현장결제', color: 'text-blue-400' },
+  card: { label: '카드결제', color: 'text-emerald-400' },
+  dutchpay: { label: '더치페이', color: 'text-purple-400' },
 };
 
 interface CancellationDetailModalProps {
@@ -338,11 +337,15 @@ export const CancellationDetailModal: React.FC<CancellationDetailModalProps> = (
             </div>
             <div>
               <p className="text-xs text-white/50">결제 수단</p>
-              <p className="text-sm font-medium text-white flex items-center gap-1">
+              <p className="text-sm font-medium flex items-center gap-1">
                 <CreditCard className="h-4 w-4 text-white/40" />
-                {booking.paymentMethod
-                  ? PAYMENT_METHODS[booking.paymentMethod] || booking.paymentMethod
-                  : '-'}
+                {booking.paymentMethod && PAYMENT_METHODS[booking.paymentMethod] ? (
+                  <span className={PAYMENT_METHODS[booking.paymentMethod].color}>
+                    {PAYMENT_METHODS[booking.paymentMethod].label}
+                  </span>
+                ) : (
+                  <span className="text-white">{booking.paymentMethod || '-'}</span>
+                )}
               </p>
             </div>
           </div>

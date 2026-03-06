@@ -43,6 +43,7 @@ export const BookingManagementPage: React.FC = () => {
   const [dateTo, setDateTo] = useState(formatDate(weekLater));
   const [statusFilter, setStatusFilter] = useState<BookingStatusKey>('ALL');
   const [clubFilter, setClubFilter] = useState<number | null>(null);
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
 
   // 모달 상태
@@ -73,21 +74,32 @@ export const BookingManagementPage: React.FC = () => {
   const bookings = bookingsData?.data || [];
   const clubs = clubsData?.data || [];
 
-  // 클라이언트 사이드 검색 필터링
+  // 클라이언트 사이드 필터링 (검색 + 결제수단)
   const filteredBookings = useMemo(() => {
-    if (!searchKeyword.trim()) return bookings;
-    const keyword = searchKeyword.toLowerCase();
-    return bookings.filter(
-      (booking) =>
-        booking.customerName?.toLowerCase().includes(keyword) ||
-        booking.userName?.toLowerCase().includes(keyword) ||
-        booking.customerPhone?.includes(keyword) ||
-        booking.userPhone?.includes(keyword) ||
-        booking.customerEmail?.toLowerCase().includes(keyword) ||
-        booking.userEmail?.toLowerCase().includes(keyword) ||
-        booking.bookingNumber?.toLowerCase().includes(keyword)
-    );
-  }, [bookings, searchKeyword]);
+    let filtered = bookings;
+
+    // 결제수단 필터
+    if (paymentMethodFilter) {
+      filtered = filtered.filter((b) => b.paymentMethod === paymentMethodFilter);
+    }
+
+    // 키워드 검색
+    if (searchKeyword.trim()) {
+      const keyword = searchKeyword.toLowerCase();
+      filtered = filtered.filter(
+        (booking) =>
+          booking.customerName?.toLowerCase().includes(keyword) ||
+          booking.userName?.toLowerCase().includes(keyword) ||
+          booking.customerPhone?.includes(keyword) ||
+          booking.userPhone?.includes(keyword) ||
+          booking.customerEmail?.toLowerCase().includes(keyword) ||
+          booking.userEmail?.toLowerCase().includes(keyword) ||
+          booking.bookingNumber?.toLowerCase().includes(keyword)
+      );
+    }
+
+    return filtered;
+  }, [bookings, searchKeyword, paymentMethodFilter]);
 
   // 상태별 카운트
   const statusCounts = useMemo(() => {
@@ -124,8 +136,15 @@ export const BookingManagementPage: React.FC = () => {
   };
 
   const handleCancel = async (booking: Booking) => {
+    const paymentInfo =
+      booking.paymentMethod === 'card'
+        ? '\n⚠️ 카드결제 예약입니다. 취소 시 자동 환불 처리됩니다.'
+        : booking.paymentMethod === 'dutchpay'
+          ? '\n⚠️ 더치페이 예약입니다. 결제 완료된 참가자에게 자동 환불됩니다.'
+          : '\n현장결제 예약입니다. 별도 환불은 없습니다.';
+
     const reason = window.prompt(
-      `${booking.userName || booking.customerName || '고객'}님의 예약을 취소하시겠습니까?\n취소 사유를 입력해주세요:`
+      `${booking.userName || booking.customerName || '고객'}님의 예약을 취소하시겠습니까?${paymentInfo}\n\n취소 사유를 입력해주세요:`
     );
     if (reason !== null) {
       try {
@@ -182,11 +201,12 @@ export const BookingManagementPage: React.FC = () => {
     setDateTo(formatDate(newWeekLater));
     setStatusFilter('ALL');
     setClubFilter(null);
+    setPaymentMethodFilter('');
     setSearchKeyword('');
   };
 
   const hasActiveFilters =
-    searchKeyword !== '' || clubFilter !== null || statusFilter !== 'ALL';
+    searchKeyword !== '' || clubFilter !== null || paymentMethodFilter !== '' || statusFilter !== 'ALL';
 
   const isActionPending =
     cancelMutation.isPending || completeMutation.isPending || noShowMutation.isPending;
@@ -206,11 +226,13 @@ export const BookingManagementPage: React.FC = () => {
         dateFrom={dateFrom}
         dateTo={dateTo}
         clubFilter={clubFilter}
+        paymentMethodFilter={paymentMethodFilter}
         searchKeyword={searchKeyword}
         clubs={clubs.map((club) => ({ id: club.id, name: club.name }))}
         onDateFromChange={setDateFrom}
         onDateToChange={setDateTo}
         onClubFilterChange={setClubFilter}
+        onPaymentMethodFilterChange={setPaymentMethodFilter}
         onSearchKeywordChange={setSearchKeyword}
         onReset={handleResetFilters}
         hasActiveFilters={hasActiveFilters}

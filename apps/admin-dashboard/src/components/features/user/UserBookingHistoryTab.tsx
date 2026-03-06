@@ -9,20 +9,24 @@ interface UserBookingHistoryTabProps {
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: '대기',
+  SLOT_RESERVED: '결제대기',
   CONFIRMED: '확정',
   CANCELLED: '취소',
   COMPLETED: '완료',
   NO_SHOW: '노쇼',
+  FAILED: '실패',
   SAGA_PENDING: '처리중',
   SAGA_FAILED: '실패',
 };
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING: 'bg-yellow-500/20 text-yellow-800',
+  SLOT_RESERVED: 'bg-orange-500/20 text-orange-300',
   CONFIRMED: 'bg-emerald-500/20 text-emerald-300',
   CANCELLED: 'bg-red-500/20 text-red-800',
   COMPLETED: 'bg-green-500/20 text-green-800',
   NO_SHOW: 'bg-white/10 text-white',
+  FAILED: 'bg-red-500/20 text-red-800',
   SAGA_PENDING: 'bg-orange-500/20 text-orange-800',
   SAGA_FAILED: 'bg-red-500/20 text-red-800',
 };

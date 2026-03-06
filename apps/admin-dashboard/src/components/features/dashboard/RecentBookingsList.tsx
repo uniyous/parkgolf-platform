@@ -11,10 +11,12 @@ interface RecentBookingsListProps {
 
 const statusConfig: Record<BookingStatusType, { label: string; className: string }> = {
   PENDING: { label: '대기', className: 'bg-yellow-500/20 text-yellow-400' },
+  SLOT_RESERVED: { label: '결제대기', className: 'bg-orange-500/20 text-orange-400' },
   CONFIRMED: { label: '확정', className: 'bg-green-500/20 text-green-400' },
   COMPLETED: { label: '완료', className: 'bg-emerald-500/20 text-emerald-400' },
   CANCELLED: { label: '취소', className: 'bg-red-500/20 text-red-400' },
   NO_SHOW: { label: '노쇼', className: 'bg-white/10 text-white/60' },
+  FAILED: { label: '실패', className: 'bg-red-500/20 text-red-400' },
   SAGA_PENDING: { label: '처리중', className: 'bg-yellow-500/20 text-yellow-400' },
   SAGA_FAILED: { label: '실패', className: 'bg-red-500/20 text-red-400' },
 };

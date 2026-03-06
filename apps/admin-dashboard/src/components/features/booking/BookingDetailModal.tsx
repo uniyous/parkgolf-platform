@@ -19,19 +19,20 @@ import type { Booking } from '@/types';
 
 const BOOKING_STATUSES: Record<string, { label: string; color: string }> = {
   PENDING: { label: '대기', color: 'bg-yellow-500/20 text-yellow-400' },
+  SLOT_RESERVED: { label: '결제대기', color: 'bg-orange-500/20 text-orange-400' },
   CONFIRMED: { label: '확정', color: 'bg-emerald-500/20 text-emerald-400' },
   COMPLETED: { label: '완료', color: 'bg-green-500/20 text-green-400' },
   CANCELLED: { label: '취소', color: 'bg-red-500/20 text-red-400' },
   NO_SHOW: { label: '노쇼', color: 'bg-white/20 text-white/70' },
+  FAILED: { label: '실패', color: 'bg-red-500/20 text-red-400' },
   SAGA_PENDING: { label: '처리중', color: 'bg-purple-500/20 text-purple-400' },
   SAGA_FAILED: { label: '실패', color: 'bg-red-500/20 text-red-400' },
 };
 
-const PAYMENT_METHODS: Record<string, string> = {
-  CARD: '카드',
-  CASH: '현금',
-  TRANSFER: '계좌이체',
-  MOBILE: '모바일',
+const PAYMENT_METHODS: Record<string, { label: string; color: string }> = {
+  onsite: { label: '현장결제', color: 'text-blue-400' },
+  card: { label: '카드결제', color: 'text-emerald-400' },
+  dutchpay: { label: '더치페이', color: 'text-purple-400' },
 };
 
 interface BookingDetailModalProps {
@@ -224,15 +225,42 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
             </div>
             <div>
               <p className="text-xs text-white/50">결제 수단</p>
-              <p className="text-sm font-medium text-white flex items-center gap-1">
+              <p className="text-sm font-medium flex items-center gap-1">
                 <CreditCard className="h-4 w-4 text-white/40" />
-                {booking.paymentMethod
-                  ? PAYMENT_METHODS[booking.paymentMethod] || booking.paymentMethod
-                  : '-'}
+                {booking.paymentMethod && PAYMENT_METHODS[booking.paymentMethod] ? (
+                  <span className={PAYMENT_METHODS[booking.paymentMethod].color}>
+                    {PAYMENT_METHODS[booking.paymentMethod].label}
+                  </span>
+                ) : (
+                  <span className="text-white">{booking.paymentMethod || '-'}</span>
+                )}
               </p>
             </div>
           </div>
         </div>
+
+        {/* 그룹/더치페이 정보 */}
+        {booking.groupId && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold text-white/70 border-b border-white/15 pb-2">그룹 예약 정보</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 bg-purple-500/10 rounded-lg p-4">
+              <div>
+                <p className="text-xs text-white/50">그룹 ID</p>
+                <p className="text-sm font-medium text-purple-400">{booking.groupId}</p>
+              </div>
+              {booking.teamNumber && (
+                <div>
+                  <p className="text-xs text-white/50">팀 번호</p>
+                  <p className="text-sm font-medium text-white">{booking.teamNumber}팀</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs text-white/50">결제 방식</p>
+                <p className="text-sm font-medium text-purple-400">더치페이</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 특별 요청사항 */}
         {booking.specialRequests && (
@@ -322,8 +350,8 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
             </>
           )}
 
-          {/* PENDING 상태일 때 취소만 가능 */}
-          {booking.status === 'PENDING' && (
+          {/* PENDING / SLOT_RESERVED 상태일 때 취소만 가능 */}
+          {(booking.status === 'PENDING' || booking.status === 'SLOT_RESERVED') && (
             <ActionConfirmPopover
               actionType="cancel"
               targetName={booking.bookingNumber || `B${String(booking.id).padStart(4, '0')}`}

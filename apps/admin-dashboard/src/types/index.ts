@@ -519,10 +519,12 @@ export interface TimeSlotAvailability {
 
 export const BookingStatusEnum = {
   PENDING: 'PENDING',
+  SLOT_RESERVED: 'SLOT_RESERVED',
   CONFIRMED: 'CONFIRMED',
   CANCELLED: 'CANCELLED',
   COMPLETED: 'COMPLETED',
   NO_SHOW: 'NO_SHOW',
+  FAILED: 'FAILED',
   SAGA_PENDING: 'SAGA_PENDING',
   SAGA_FAILED: 'SAGA_FAILED',
 } as const;
@@ -572,12 +574,19 @@ export interface Booking {
   guestEmail?: string;
   guestPhone?: string;
   // Additional fields
-  paymentMethod?: 'CASH' | 'CARD' | 'TRANSFER' | 'MOBILE';
+  paymentMethod?: 'onsite' | 'card' | 'dutchpay';
   specialRequests?: string;
   notes?: string;
   idempotencyKey?: string;
   sagaFailReason?: string;
   canCancel?: boolean;
+  // 그룹/더치페이 관련
+  groupId?: string;
+  teamNumber?: number;
+  teamSelectionId?: number;
+  // 결제 및 히스토리
+  payments?: unknown[];
+  histories?: unknown[];
   createdAt: string;
   updatedAt: string;
   // Legacy fields (하위 호환성)
@@ -603,7 +612,7 @@ export interface CreateBookingDto {
   gameTimeSlotId: number;
   bookingDate: string;
   playerCount: number;
-  paymentMethod?: 'CASH' | 'CARD' | 'TRANSFER' | 'MOBILE';
+  paymentMethod?: 'onsite' | 'card' | 'dutchpay';
   specialRequests?: string;
   // User info (for guest bookings or override)
   userId?: number;
