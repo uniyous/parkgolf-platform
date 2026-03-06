@@ -633,11 +633,31 @@ export class ToolExecutorService {
     );
 
     if (response?.success && response?.data) {
-      const booking = response.data;
-      const bookingId = booking.id;
+      const sagaResult = response.data;
+      const sagaPayload = sagaResult.payload || {};
 
-      // Saga 완료 대기 (polling)
-      const finalStatus = await this.waitForSagaCompletion(bookingId, paymentMethod);
+      // saga 응답에서 bookingId 추출 (saga payload 또는 직접 응답)
+      const bookingId = sagaPayload.bookingId || sagaResult.bookingId || sagaResult.id;
+
+      if (!bookingId) {
+        this.logger.error(`[createBooking] No bookingId in saga response: ${JSON.stringify(sagaResult).slice(0, 300)}`);
+        return {
+          success: false,
+          message: '예약 생성에 실패했습니다. 다시 시도해 주세요.',
+        };
+      }
+
+      // Saga가 이미 COMPLETED이면 바로 booking 상태 확인
+      const sagaStatus = sagaResult.status;
+      let finalStatus: string;
+
+      if (sagaStatus === 'COMPLETED') {
+        // Saga 완료 → booking 상태 직접 조회
+        finalStatus = await this.waitForSagaCompletion(bookingId, paymentMethod);
+      } else {
+        // Saga 진행 중 → polling
+        finalStatus = await this.waitForSagaCompletion(bookingId, paymentMethod);
+      }
 
       if (finalStatus === 'FAILED') {
         return {
@@ -649,24 +669,24 @@ export class ToolExecutorService {
       return {
         success: true,
         bookingId,
-        bookingNumber: booking.bookingNumber,
-        confirmationNumber: booking.bookingNumber,
+        bookingNumber: sagaPayload.bookingNumber,
+        confirmationNumber: sagaPayload.bookingNumber,
         status: finalStatus, // 'CONFIRMED' | 'SLOT_RESERVED' | 'PENDING'
         message: finalStatus === 'CONFIRMED'
           ? '예약이 완료되었습니다!'
           : '결제를 진행해 주세요.',
         details: {
-          date: booking.bookingDate || booking.date,
-          time: booking.startTime,
-          playerCount: booking.playerCount,
-          totalPrice: booking.totalPrice,
+          date: sagaPayload.bookingDate,
+          time: sagaPayload.startTime,
+          playerCount: sagaPayload.playerCount,
+          totalPrice: sagaPayload.totalPrice,
         },
       };
     }
 
     return {
       success: false,
-      message: response?.error?.message || '예약에 실패했습니다',
+      message: response?.error?.message || response?.data?.failReason || '예약에 실패했습니다',
     };
   }
 
