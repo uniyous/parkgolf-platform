@@ -625,7 +625,21 @@ export class BookingAgentService {
         );
       }
     } else {
+      // 비예약자 결제 완료 → 예약자에게 갱신된 정산카드 브로드캐스트
       message = '결제가 완료되었습니다!';
+
+      if (roomId && bid) {
+        const bookerOnly = [bid];
+        const bookerMessage = `결제가 확인되었어요. (${paidCount}/${totalParticipants})`;
+        this.toolExecutor.broadcastSettlementCard(
+          roomId,
+          bookerOnly,
+          actions[0].data as Record<string, unknown>,
+          bookerMessage,
+          bid,
+          bid,
+        );
+      }
     }
 
     this.conversationService.addAssistantMessage(context, message);
