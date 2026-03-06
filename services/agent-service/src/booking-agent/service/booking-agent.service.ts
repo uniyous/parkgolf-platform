@@ -340,11 +340,12 @@ export class BookingAgentService {
           });
         }
 
-        // 모든 참여자(진행자 포함)에게 정산 카드 브로드캐스트
-        if (context.slots.chatRoomId && splits.length > 0) {
+        // 예약자 제외 참여자에게만 정산 카드 브로드캐스트 (예약자에게는 최초 정산카드 미전송)
+        const nonBookerSplits = splits.filter((s: any) => s.userId !== request.userId);
+        if (context.slots.chatRoomId && nonBookerSplits.length > 0) {
           this.toolExecutor.broadcastSettlementCard(
             context.slots.chatRoomId,
-            splits.map((s: any) => s.userId),
+            nonBookerSplits.map((s: any) => s.userId),
             settlementData,
             undefined,
             request.userId,
