@@ -1,16 +1,20 @@
 import { Controller, Logger } from '@nestjs/common';
-import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
+import { EventPattern, Payload } from '@nestjs/microservices';
 import { SagaHandlerService } from '../service/saga-handler.service';
 import { BookingService } from '../service/booking.service';
-import { SlotReservedEvent, SlotReserveFailedEvent, PaymentConfirmedEvent, PaymentCanceledEvent } from '../dto/booking.dto';
+import { PaymentCanceledEvent } from '../dto/booking.dto';
 
 /**
  * Saga 이벤트 핸들러 컨트롤러
  *
- * course-service / payment-service로부터 수신하는 Saga 이벤트 처리:
- * - slot.reserved: 슬롯 예약 성공 → PENDING → CONFIRMED(현장) / SLOT_RESERVED(카드)
- * - slot.reserve.failed: 슬롯 예약 실패 → PENDING → FAILED
- * - booking.paymentConfirmed: 결제 완료 → SLOT_RESERVED → CONFIRMED
+ * saga-service 범위 외의 비동기 이벤트 처리:
+ * - booking.paymentCanceled: 환불 완료 이력 기록
+ * - slot.released: 로컬 캐시 슬롯 가용성 복구
+ * - user.deleted: 계정 삭제 시 예약 익명화
+ *
+ * [DEPRECATED → saga-service로 이관]
+ * - slot.reserved / slot.reserve.failed → saga-service 오케스트레이션
+ * - booking.paymentConfirmed / booking.paymentDeposited → saga-service PAYMENT_CONFIRMED Saga
  */
 @Controller()
 export class BookingSagaController {
@@ -20,48 +24,6 @@ export class BookingSagaController {
     private readonly sagaHandler: SagaHandlerService,
     private readonly bookingService: BookingService,
   ) {}
-
-  /**
-   * 슬롯 예약 성공 이벤트 핸들러
-   * course-service에서 슬롯 예약이 성공하면 이 이벤트를 발행함
-   */
-  @EventPattern('slot.reserved')
-  async handleSlotReserved(@Payload() data: SlotReservedEvent) {
-    this.logger.log(`NATS: Received slot.reserved event for booking ${data.bookingId}`);
-    this.logger.debug(`NATS: slot.reserved payload: ${JSON.stringify(data)}`);
-
-    try {
-      await this.sagaHandler.handleSlotReserved(data);
-      this.logger.log(`NATS: Successfully processed slot.reserved for booking ${data.bookingId}`);
-    } catch (error) {
-      this.logger.error(`NATS: Error processing slot.reserved: ${error.message}`, error.stack);
-      // EventPattern은 응답이 없으므로 에러는 로깅만 함
-      // 재처리는 별도 메커니즘 (예: Dead Letter Queue) 필요
-    }
-  }
-
-  /**
-   * 슬롯 예약 실패 이벤트 핸들러
-   * course-service에서 슬롯 예약이 실패하면 이 이벤트를 발행함
-   */
-  @EventPattern('slot.reserve.failed')
-  async handleSlotReserveFailed(@Payload() data: SlotReserveFailedEvent) {
-    this.logger.log(`NATS: Received slot.reserve.failed event for booking ${data.bookingId}`);
-    this.logger.debug(`NATS: slot.reserve.failed payload: ${JSON.stringify(data)}`);
-
-    try {
-      await this.sagaHandler.handleSlotReserveFailed(data);
-      this.logger.log(`NATS: Successfully processed slot.reserve.failed for booking ${data.bookingId}`);
-    } catch (error) {
-      this.logger.error(`NATS: Error processing slot.reserve.failed: ${error.message}`, error.stack);
-    }
-  }
-
-  /**
-   * [DEPRECATED] booking.paymentConfirmed / booking.paymentDeposited
-   * saga-service가 PAYMENT_CONFIRMED Saga로 오케스트레이션
-   * saga-service → booking.saga.confirmPayment (BookingSagaStepController)
-   */
 
   /**
    * 결제 취소(환불) 완료 이벤트 핸들러

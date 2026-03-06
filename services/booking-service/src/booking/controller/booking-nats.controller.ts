@@ -2,7 +2,6 @@ import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { BookingService } from '../service/booking.service';
 import {
-  CreateBookingRequestDto,
   UpdateBookingDto,
   SearchBookingDto,
 } from '../dto/booking.dto';
@@ -35,14 +34,9 @@ export class BookingNatsController {
   // Booking Operations
   // ============================================
 
-  @MessagePattern('booking.create')
-  async createBooking(@Payload() data: CreateBookingRequestDto) {
-    this.logger.log(`NATS: Received booking.create request`);
-    this.logger.debug(`NATS: booking.create data: ${JSON.stringify(data)}`);
-    const booking = await this.bookingService.createBooking(data);
-    this.logger.log(`NATS: Booking created with number: ${booking.bookingNumber}`);
-    return NatsResponse.success(booking);
-  }
+  // [REMOVED] booking.create → saga-service (saga.booking.create)
+  // [REMOVED] booking.cancel → saga-service (saga.booking.cancel)
+  // [REMOVED] bookings.cancel → saga-service (saga.booking.cancel)
 
   @MessagePattern('booking.findById')
   async findBookingById(@Payload() data: { id: number }) {
@@ -120,26 +114,6 @@ export class BookingNatsController {
     this.logger.log(`NATS: Received booking.update request for ID: ${data.id}`);
     const booking = await this.bookingService.updateBooking(data.id, data.dto);
     this.logger.log(`NATS: Booking updated for ID: ${booking.id}`);
-    return NatsResponse.success(booking);
-  }
-
-  @MessagePattern('booking.cancel')
-  async cancelBooking(@Payload() data: {
-    id: number;
-    userId: number;
-    reason?: string;
-  }) {
-    this.logger.log(`NATS: Received booking.cancel request for ID: ${data.id}`);
-    const booking = await this.bookingService.cancelBooking(data.id, data.userId, data.reason);
-    this.logger.log(`NATS: Booking cancelled for ID: ${booking.id}`);
-    return NatsResponse.success(booking);
-  }
-
-  @MessagePattern('bookings.cancel')
-  async cancelBookingAdmin(@Payload() data: { bookingId: string; reason?: string; token?: string }) {
-    this.logger.log(`NATS: Received bookings.cancel request for ID: ${data.bookingId}`);
-    const booking = await this.bookingService.adminCancelBooking(parseInt(data.bookingId), data.reason);
-    this.logger.log(`NATS: Booking cancelled for ID: ${booking.id}`);
     return NatsResponse.success(booking);
   }
 
