@@ -649,6 +649,7 @@ export class BookingAgentService {
       conversationId: context.conversationId,
       message,
       state: context.state,
+      actions: !isBooker || allPaid ? actions : undefined,
     };
   }
 
