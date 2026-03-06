@@ -1195,7 +1195,7 @@ export class BookingAgentService {
           }
           break;
 
-        case 'search_clubs_with_slots':
+        case 'search_clubs_with_slots': {
           if (call.args.location) {
             this.conversationService.updateSlots(context, {
               location: call.args.location as string,
@@ -1211,7 +1211,17 @@ export class BookingAgentService {
               playerCount: call.args.playerCount as number,
             });
           }
+          // 검색 결과가 단일 클럽이면 clubId 자동 설정
+          const searchResult = result.result as any;
+          if (searchResult?.found === 1 && searchResult.clubs?.[0]) {
+            const club = searchResult.clubs[0];
+            this.conversationService.updateSlots(context, {
+              clubId: String(club.id),
+              clubName: club.name,
+            });
+          }
           break;
+        }
 
         case 'get_club_info':
           if (call.args.clubId) {
