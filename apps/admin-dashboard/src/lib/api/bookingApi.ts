@@ -4,7 +4,10 @@ import type {
   Booking,
   CreateBookingDto,
   UpdateBookingDto,
-  TimeSlotAvailability
+  TimeSlotAvailability,
+  Payment,
+  PaymentFilters as PaymentFilterType,
+  RevenueStats,
 } from '@/types';
 
 // BFF API 응답 타입
@@ -314,4 +317,51 @@ export const bookingApi = {
     return true;
   },
 
+  // ===== 결제 관리 =====
+
+  /**
+   * 결제 목록 조회
+   */
+  async getPayments(
+    filters: PaymentFilterType = {},
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedResult<Payment>> {
+    const params: Record<string, string | number | boolean | undefined> = { page, limit };
+    if (filters.status) params.status = filters.status;
+    if (filters.startDate) params.startDate = filters.startDate;
+    if (filters.endDate) params.endDate = filters.endDate;
+    if (filters.search) params.search = filters.search;
+    const response = await apiClient.get<unknown>('/admin/bookings/payments/list', params);
+    return extractPaginatedList<Payment>(response.data, 'payments', { page, limit });
+  },
+
+  /**
+   * 결제 상세 조회
+   */
+  async getPaymentById(paymentId: number): Promise<Payment> {
+    const response = await apiClient.get<unknown>(`/admin/bookings/payments/${paymentId}`);
+    const payment = extractSingle<Payment>(response.data);
+    if (!payment) {
+      throw new Error(`Payment ${paymentId} not found`);
+    }
+    return payment;
+  },
+
+  /**
+   * 매출 통계 조회
+   */
+  async getRevenueStats(dateRange: { startDate: string; endDate: string }): Promise<RevenueStats> {
+    const response = await apiClient.get<unknown>('/admin/bookings/stats/revenue', dateRange);
+    const stats = extractSingle<RevenueStats>(response.data);
+    if (!stats) {
+      return {
+        totalRevenue: 0,
+        revenueGrowthRate: 0,
+        averageRevenuePerBooking: 0,
+        refundTotal: 0,
+      };
+    }
+    return stats;
+  },
 } as const;

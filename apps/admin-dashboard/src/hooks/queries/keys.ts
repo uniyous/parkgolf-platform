@@ -104,6 +104,16 @@ export const companyMemberKeys = {
   list: (companyId?: number | null, filters?: Record<string, unknown>) => [...companyMemberKeys.lists(companyId), filters] as const,
 };
 
+// Payment Keys (company-scoped)
+export const paymentKeys = {
+  all: (companyId?: number | null) => ['payments', companyId] as const,
+  lists: (companyId?: number | null) => [...paymentKeys.all(companyId), 'list'] as const,
+  list: (companyId?: number | null, filters?: Record<string, unknown>) => [...paymentKeys.lists(companyId), filters] as const,
+  details: (companyId?: number | null) => [...paymentKeys.all(companyId), 'detail'] as const,
+  detail: (companyId?: number | null, id?: number) => [...paymentKeys.details(companyId), id] as const,
+  revenue: (companyId?: number | null, dateRange?: Record<string, string>) => [...paymentKeys.all(companyId), 'revenue', dateRange] as const,
+};
+
 // Dashboard Keys
 export const dashboardKeys = {
   all: ['dashboard'] as const,

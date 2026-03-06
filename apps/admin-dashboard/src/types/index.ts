@@ -694,6 +694,100 @@ export interface UpdateBookingDto {
   customerEmail?: string;
 }
 
+// --- Payment Types ---
+
+export type PaymentStatus = 'READY' | 'IN_PROGRESS' | 'WAITING_FOR_DEPOSIT' | 'DONE' | 'CANCELED' | 'PARTIAL_CANCELED' | 'ABORTED' | 'EXPIRED';
+
+export type PaymentMethod = 'CARD' | 'TRANSFER' | 'VIRTUAL_ACCOUNT' | 'EASY_PAY' | 'MOBILE';
+
+export type RefundStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+
+export type RefundRequestedByType = 'USER' | 'ADMIN' | 'SYSTEM';
+
+export interface Refund {
+  id: number;
+  paymentId: number;
+  transactionKey: string;
+  cancelAmount: number;
+  cancelReason: string;
+  refundStatus: RefundStatus;
+  requestedBy: string;
+  requestedByType: RefundRequestedByType;
+  refundedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Payment {
+  id: number;
+  paymentKey: string;
+  orderId: string;
+  orderName: string;
+  amount: number;
+  currency: string;
+  method: PaymentMethod;
+  cardCompany: string | null;
+  cardNumber: string | null;
+  cardType: string | null;
+  installmentMonths: number | null;
+  virtualAccountNumber: string | null;
+  virtualBankCode: string | null;
+  virtualDueDate: string | null;
+  status: PaymentStatus;
+  userId: number;
+  bookingId: number;
+  approvedAt: string | null;
+  cancelledAt: string | null;
+  cancelAmount: number | null;
+  cancelReason: string | null;
+  refunds: Refund[];
+  createdAt: string;
+  updatedAt: string;
+  // 연관 정보 (서버에서 join 시)
+  bookingNumber?: string;
+  userName?: string;
+  userEmail?: string;
+}
+
+export interface PaymentFilters {
+  status?: PaymentStatus;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface RevenueStats {
+  totalRevenue: number;
+  revenueGrowthRate?: number;
+  averageRevenuePerBooking?: number;
+  refundTotal?: number;
+  dailyRevenue?: Record<string, number>;
+  averageBookingValue?: number;
+}
+
+export interface PaymentSplitMember {
+  id: number;
+  userId: number;
+  userName: string;
+  userEmail: string;
+  amount: number;
+  orderId: string;
+  status: 'PENDING' | 'PAID' | 'EXPIRED' | 'CANCELLED' | 'REFUNDED';
+  paidAt: string | null;
+  expiredAt: string | null;
+}
+
+export interface PaymentSplitGroup {
+  bookingGroupId: string;
+  total: number;
+  paidCount: number;
+  pendingCount: number;
+  allPaid: boolean;
+  members: PaymentSplitMember[];
+}
+
 // Common types re-export
 export * from './common';
 

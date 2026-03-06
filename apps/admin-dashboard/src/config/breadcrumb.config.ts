@@ -9,6 +9,7 @@ export const BREADCRUMB_MAP: Record<string, BreadcrumbItem[]> = {
   '/games': [{ label: '골프장', path: '/clubs' }, { label: '라운드 관리' }],
   '/bookings': [{ label: '예약', path: '/bookings' }, { label: '예약 현황' }],
   '/bookings/cancellations': [{ label: '예약', path: '/bookings' }, { label: '환불 관리' }],
+  '/payments': [{ label: '예약', path: '/bookings' }, { label: '결제 관리' }],
   '/user-management': [{ label: '회원', path: '/user-management' }, { label: '사용자 관리' }],
   '/system-settings': [{ label: '설정' }, { label: '시스템 설정' }],
 };
