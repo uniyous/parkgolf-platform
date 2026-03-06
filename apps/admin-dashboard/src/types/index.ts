@@ -540,6 +540,16 @@ export interface BookingStatus {
   NO_SHOW: 'NO_SHOW';
 }
 
+export interface BookingParticipant {
+  userId: number;
+  userName: string;
+  userEmail: string;
+  role: 'BOOKER' | 'MEMBER';
+  status: 'PENDING' | 'PAID' | 'CANCELLED';
+  amount: number;
+  paidAt: string | null;
+}
+
 export interface Booking {
   id: number;
   bookingNumber: string;
@@ -584,6 +594,8 @@ export interface Booking {
   groupId?: string;
   teamNumber?: number;
   teamSelectionId?: number;
+  // 더치페이 참가자
+  participants?: BookingParticipant[];
   // 결제 및 히스토리
   payments?: unknown[];
   histories?: unknown[];

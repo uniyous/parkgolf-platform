@@ -15,7 +15,7 @@ import {
   XCircle,
   UserX,
 } from 'lucide-react';
-import type { Booking } from '@/types';
+import type { Booking, BookingParticipant } from '@/types';
 
 const BOOKING_STATUSES: Record<string, { label: string; color: string }> = {
   PENDING: { label: '대기', color: 'bg-yellow-500/20 text-yellow-400' },
@@ -240,14 +240,17 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
         </div>
 
         {/* 그룹/더치페이 정보 */}
-        {booking.groupId && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-white/70 border-b border-white/15 pb-2">그룹 예약 정보</h4>
+        {booking.paymentMethod === 'dutchpay' && (
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-white/70 border-b border-white/15 pb-2">더치페이 정보</h4>
+            {/* 그룹 요약 */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 bg-purple-500/10 rounded-lg p-4">
-              <div>
-                <p className="text-xs text-white/50">그룹 ID</p>
-                <p className="text-sm font-medium text-purple-400">{booking.groupId}</p>
-              </div>
+              {booking.groupId && (
+                <div>
+                  <p className="text-xs text-white/50">그룹 ID</p>
+                  <p className="text-sm font-medium text-purple-400">{booking.groupId}</p>
+                </div>
+              )}
               {booking.teamNumber && (
                 <div>
                   <p className="text-xs text-white/50">팀 번호</p>
@@ -255,10 +258,65 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
                 </div>
               )}
               <div>
-                <p className="text-xs text-white/50">결제 방식</p>
-                <p className="text-sm font-medium text-purple-400">더치페이</p>
+                <p className="text-xs text-white/50">결제 현황</p>
+                <p className="text-sm font-medium text-purple-400">
+                  {booking.participants?.filter((p) => p.status === 'PAID').length || 0}
+                  /{booking.participants?.length || 0}명 결제완료
+                </p>
               </div>
             </div>
+            {/* 참가자별 결제 상태 */}
+            {booking.participants && booking.participants.length > 0 && (
+              <div className="bg-white/5 rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10">
+                      <th className="text-left text-xs text-white/50 font-medium px-4 py-2">참가자</th>
+                      <th className="text-left text-xs text-white/50 font-medium px-4 py-2">역할</th>
+                      <th className="text-right text-xs text-white/50 font-medium px-4 py-2">금액</th>
+                      <th className="text-center text-xs text-white/50 font-medium px-4 py-2">결제상태</th>
+                      <th className="text-right text-xs text-white/50 font-medium px-4 py-2">결제일시</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {booking.participants.map((participant: BookingParticipant) => (
+                      <tr key={participant.userId} className="border-b border-white/5 last:border-0">
+                        <td className="px-4 py-2.5">
+                          <p className="text-white font-medium">{participant.userName}</p>
+                          <p className="text-xs text-white/40">{participant.userEmail}</p>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span className={`text-xs px-1.5 py-0.5 rounded ${
+                            participant.role === 'BOOKER'
+                              ? 'bg-purple-500/20 text-purple-400'
+                              : 'bg-white/10 text-white/60'
+                          }`}>
+                            {participant.role === 'BOOKER' ? '대표' : '참여'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-right text-white">
+                          ₩{participant.amount.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            participant.status === 'PAID'
+                              ? 'bg-emerald-500/20 text-emerald-400'
+                              : participant.status === 'CANCELLED'
+                                ? 'bg-red-500/20 text-red-400'
+                                : 'bg-yellow-500/20 text-yellow-400'
+                          }`}>
+                            {participant.status === 'PAID' ? '결제완료' : participant.status === 'CANCELLED' ? '취소' : '대기'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-right text-xs text-white/50">
+                          {participant.paidAt ? formatDateTime(participant.paidAt) : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 

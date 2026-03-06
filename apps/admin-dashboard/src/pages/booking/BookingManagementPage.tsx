@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { toast } from 'sonner';
 import {
   useBookingsQuery,
+  useBookingQuery,
   useCancelBookingMutation,
   useCompleteBookingMutation,
   useNoShowBookingMutation,
@@ -47,7 +48,7 @@ export const BookingManagementPage: React.FC = () => {
   const [searchKeyword, setSearchKeyword] = useState('');
 
   // 모달 상태
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // API 필터 객체
@@ -65,6 +66,7 @@ export const BookingManagementPage: React.FC = () => {
   // API Queries
   const { data: bookingsData, isLoading } = useBookingsQuery(filters);
   const { data: clubsData } = useClubsQuery();
+  const { data: detailBooking } = useBookingQuery(selectedBookingId || 0);
 
   // Mutations
   const cancelMutation = useCancelBookingMutation();
@@ -124,15 +126,17 @@ export const BookingManagementPage: React.FC = () => {
     return bookings.filter((b) => isToday(b.bookingDate)).length;
   }, [bookings]);
 
+  const selectedBooking = detailBooking || bookings.find((b) => b.id === selectedBookingId) || null;
+
   // 액션 핸들러
   const handleViewDetail = (booking: Booking) => {
-    setSelectedBooking(booking);
+    setSelectedBookingId(booking.id);
     setIsDetailModalOpen(true);
   };
 
   const handleCloseDetailModal = () => {
     setIsDetailModalOpen(false);
-    setSelectedBooking(null);
+    setSelectedBookingId(null);
   };
 
   const handleCancel = async (booking: Booking) => {

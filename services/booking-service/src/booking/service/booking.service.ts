@@ -396,6 +396,9 @@ export class BookingService {
       where: { id },
       include: {
         payments: true,
+        participants: {
+          orderBy: { id: 'asc' }
+        },
         histories: {
           orderBy: { createdAt: 'desc' }
         }
@@ -410,6 +413,9 @@ export class BookingService {
       where: { bookingNumber },
       include: {
         payments: true,
+        participants: {
+          orderBy: { id: 'asc' }
+        },
         histories: {
           orderBy: { createdAt: 'desc' }
         }
