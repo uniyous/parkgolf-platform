@@ -85,11 +85,11 @@ export class UpdateBookingDto {
   @ApiPropertyOptional({
     description: 'Booking status',
     example: 'CONFIRMED',
-    enum: ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW'],
+    enum: ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW', 'SLOT_RESERVED', 'FAILED'],
   })
   @IsOptional()
   @IsString()
-  @IsIn(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW'])
+  @IsIn(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW', 'SLOT_RESERVED', 'FAILED'])
   status?: string;
 }
 
@@ -109,6 +109,8 @@ export const BookingStatus = {
   CANCELLED: 'CANCELLED',
   COMPLETED: 'COMPLETED',
   NO_SHOW: 'NO_SHOW',
+  SLOT_RESERVED: 'SLOT_RESERVED',
+  FAILED: 'FAILED',
 } as const;
 
 export type BookingStatusType = (typeof BookingStatus)[keyof typeof BookingStatus];

@@ -120,9 +120,9 @@ export class BookingService {
   }
 
   async createBooking(bookingData: CreateBookingDto, adminToken: string): Promise<ApiResponse<BookingResponseDto>> {
-    this.logger.log('Creating booking');
-    return this.natsClient.send('bookings.create', {
-      data: bookingData,
+    this.logger.log('Creating booking via saga');
+    return this.natsClient.send('saga.booking.create', {
+      ...bookingData,
       token: adminToken,
     });
   }
