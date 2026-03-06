@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { Club } from '@/types/club';
+import type { Club, SeasonType } from '@/types/club';
 import { useUpdateClubMutation } from '@/hooks/queries';
 import { bookingApi, type ClubOperationStats } from '@/lib/api/bookingApi';
 
@@ -14,11 +14,23 @@ interface DateRange {
   endDate: string;
 }
 
+interface SeasonFormData {
+  type: SeasonType;
+  startDate: string;
+  endDate: string;
+}
+
 export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpdate }) => {
   const updateClubMutation = useUpdateClubMutation();
   const [dateRange, setDateRange] = useState<DateRange>({
     startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
+  });
+  const [showSeasonModal, setShowSeasonModal] = useState(false);
+  const [seasonForm, setSeasonForm] = useState<SeasonFormData>({
+    type: club.seasonInfo?.type ?? 'regular',
+    startDate: club.seasonInfo?.startDate ?? new Date().toISOString().split('T')[0],
+    endDate: club.seasonInfo?.endDate ?? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   });
 
   // React Query로 운영 통계 데이터 조회
@@ -37,7 +49,7 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
   const availability = operationData?.availability ?? null;
 
   // 시즌 정보 업데이트
-  const updateSeasonInfo = async (seasonData: any) => {
+  const updateSeasonInfo = async (seasonData: SeasonFormData) => {
     try {
       const result = await updateClubMutation.mutateAsync({
         id: club.id,
@@ -46,9 +58,19 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
       if (result) {
         onUpdate(result);
       }
+      setShowSeasonModal(false);
     } catch (error) {
       console.error('Failed to update season info:', error);
     }
+  };
+
+  const openSeasonModal = () => {
+    setSeasonForm({
+      type: club.seasonInfo?.type ?? 'regular',
+      startDate: club.seasonInfo?.startDate ?? new Date().toISOString().split('T')[0],
+      endDate: club.seasonInfo?.endDate ?? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    });
+    setShowSeasonModal(true);
   };
 
   if (isLoading && !stats && !analytics.length) {
@@ -96,7 +118,7 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
 
       {/* 실시간 현황 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4 border border-emerald-500/30">
+        <div className="bg-white/10 backdrop-blur-xl rounded-lg p-4 border border-emerald-500/30">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-emerald-300">오늘 예약</p>
@@ -112,52 +134,52 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
+        <div className="bg-white/10 backdrop-blur-xl rounded-lg p-4 border border-green-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-green-700">운영 상태</p>
-              <p className="text-lg font-semibold text-green-900">
+              <p className="text-sm text-green-300">운영 상태</p>
+              <p className="text-lg font-semibold text-white">
                 {club.status === 'ACTIVE' ? '정상 운영' :
                  club.status === 'MAINTENANCE' ? '정비중' :
                  club.status === 'SEASONAL_CLOSED' ? '휴장' : '비활성'}
               </p>
             </div>
             <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-              club.status === 'ACTIVE' ? 'bg-green-200' : 'bg-yellow-200'
+              club.status === 'ACTIVE' ? 'bg-green-500/20' : 'bg-yellow-500/20'
             }`}>
-              <svg className={`w-6 h-6 ${club.status === 'ACTIVE' ? 'text-green-600' : 'text-yellow-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className={`w-6 h-6 ${club.status === 'ACTIVE' ? 'text-green-400' : 'text-yellow-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
+        <div className="bg-white/10 backdrop-blur-xl rounded-lg p-4 border border-purple-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-purple-700">평균 가동률</p>
-              <p className="text-2xl font-bold text-purple-900">
+              <p className="text-sm text-purple-300">평균 가동률</p>
+              <p className="text-2xl font-bold text-white">
                 {stats?.averageUtilization ? `${Math.round(stats.averageUtilization)}%` : '-'}
               </p>
             </div>
-            <div className="w-12 h-12 bg-purple-200 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
             </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg p-4 border border-orange-200">
+        <div className="bg-white/10 backdrop-blur-xl rounded-lg p-4 border border-orange-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-orange-700">월 수익</p>
-              <p className="text-2xl font-bold text-orange-900">
+              <p className="text-sm text-orange-300">월 수익</p>
+              <p className="text-2xl font-bold text-white">
                 {stats?.monthlyRevenue ? `${(stats.monthlyRevenue / 1000000).toFixed(1)}M` : '-'}
               </p>
             </div>
-            <div className="w-12 h-12 bg-orange-200 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
               </svg>
             </div>
@@ -219,7 +241,17 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
 
       {/* 시즌 정보 관리 */}
       <div className="space-y-4">
-        <h3 className="text-lg font-medium text-white">시즌 정보</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-medium text-white">시즌 정보</h3>
+          {club.seasonInfo && (
+            <button
+              onClick={openSeasonModal}
+              className="px-3 py-1.5 text-sm bg-white/10 text-white/70 rounded-lg hover:bg-white/20 transition-colors"
+            >
+              수정
+            </button>
+          )}
+        </div>
         <div className="bg-white/5 rounded-lg p-6">
           {club.seasonInfo ? (
             <div className="space-y-4">
@@ -236,13 +268,13 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
                   </p>
                 </div>
                 <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
-                  club.seasonInfo.type === 'peak' ? 'bg-red-500/20 text-red-800' :
+                  club.seasonInfo.type === 'peak' ? 'bg-red-500/20 text-red-300' :
                   club.seasonInfo.type === 'regular' ? 'bg-emerald-500/20 text-emerald-300' :
-                  'bg-green-500/20 text-green-800'
+                  'bg-blue-500/20 text-blue-300'
                 }`}>
-                  {club.seasonInfo.type === 'peak' ? '🔥 성수기' :
-                   club.seasonInfo.type === 'regular' ? '📅 정수기' :
-                   '🌱 비수기'}
+                  {club.seasonInfo.type === 'peak' ? '성수기' :
+                   club.seasonInfo.type === 'regular' ? '정수기' :
+                   '비수기'}
                 </span>
               </div>
             </div>
@@ -255,20 +287,7 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
               <p className="mt-1 text-sm text-white/50">시즌별 운영 정보를 설정하면 더 나은 분석이 가능합니다.</p>
               <div className="mt-6">
                 <button
-                  onClick={() => {
-                    const seasonType = prompt('시즌 유형을 선택하세요 (peak/regular/off):', 'regular');
-                    if (seasonType && ['peak', 'regular', 'off'].includes(seasonType)) {
-                      const startDate = prompt('시작일 (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
-                      const endDate = prompt('종료일 (YYYY-MM-DD):', new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-                      if (startDate && endDate) {
-                        updateSeasonInfo({
-                          type: seasonType,
-                          startDate,
-                          endDate
-                        });
-                      }
-                    }
-                  }}
+                  onClick={openSeasonModal}
                   className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors"
                 >
                   시즌 정보 설정
@@ -281,13 +300,13 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
 
       {/* 운영 팁 */}
       <div className="bg-emerald-500/10 rounded-lg p-6 border border-emerald-500/30">
-        <h3 className="text-lg font-medium text-white mb-4">💡 운영 개선 제안</h3>
+        <h3 className="text-lg font-medium text-white mb-4">운영 개선 제안</h3>
         <div className="space-y-3 text-sm text-emerald-300">
           {analytics.length > 0 && (
             <>
               {stats && stats.averageUtilization < 50 && (
                 <div className="flex items-start space-x-2">
-                  <svg className="w-4 h-4 mt-0.5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 mt-0.5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16.5c-.77.833.192 3 1.732 3z" />
                   </svg>
                   <p>전체 가동률이 낮습니다. 할인 이벤트나 패키지 상품을 고려해보세요.</p>
@@ -295,7 +314,7 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
               )}
               {stats && stats.averageUtilization > 90 && (
                 <div className="flex items-start space-x-2">
-                  <svg className="w-4 h-4 mt-0.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 mt-0.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <p>가동률이 매우 높습니다. 타임슬롯 추가나 프리미엄 가격을 고려해보세요.</p>
@@ -311,6 +330,92 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
           )}
         </div>
       </div>
+
+      {/* 시즌 정보 설정 모달 */}
+      {showSeasonModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowSeasonModal(false)} />
+          <div className="relative bg-gray-900 border border-white/15 rounded-xl shadow-2xl w-full max-w-md p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">시즌 정보 설정</h3>
+              <button
+                onClick={() => setShowSeasonModal(false)}
+                className="text-white/50 hover:text-white/80 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">시즌 유형</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { value: 'peak', label: '성수기', color: 'red' },
+                    { value: 'regular', label: '정수기', color: 'emerald' },
+                    { value: 'off', label: '비수기', color: 'blue' },
+                  ] as const).map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setSeasonForm(prev => ({ ...prev, type: option.value }))}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        seasonForm.type === option.value
+                          ? option.color === 'red'
+                            ? 'bg-red-500/30 text-red-300 border border-red-500/50'
+                            : option.color === 'emerald'
+                              ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/50'
+                              : 'bg-blue-500/30 text-blue-300 border border-blue-500/50'
+                          : 'bg-white/5 text-white/50 border border-white/10 hover:bg-white/10'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-1">시작일</label>
+                <input
+                  type="date"
+                  value={seasonForm.startDate}
+                  onChange={(e) => setSeasonForm(prev => ({ ...prev, startDate: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500/50"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-1">종료일</label>
+                <input
+                  type="date"
+                  value={seasonForm.endDate}
+                  onChange={(e) => setSeasonForm(prev => ({ ...prev, endDate: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500/50"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                onClick={() => setShowSeasonModal(false)}
+                className="px-4 py-2 text-sm text-white/70 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => updateSeasonInfo(seasonForm)}
+                disabled={updateClubMutation.isPending || !seasonForm.startDate || !seasonForm.endDate}
+                className="px-4 py-2 text-sm text-white bg-emerald-600 rounded-lg hover:bg-emerald-500 transition-colors disabled:opacity-50"
+              >
+                {updateClubMutation.isPending ? '저장 중...' : '저장'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
