@@ -98,7 +98,7 @@ data class MessagesData(
 
 enum class ChatRoomType(val value: String) {
     DIRECT("DIRECT"),
-    GROUP("GROUP"),
+    CHANNEL("CHANNEL"),
     BOOKING("BOOKING")
 }
 

@@ -1047,7 +1047,7 @@ struct ChatRoomViewWrapper: View {
             room: ChatRoom(
                 id: "1",
                 name: "주말 라운딩",
-                type: .group,
+                type: .channel,
                 participants: [],
                 lastMessage: nil,
                 unreadCount: 0,

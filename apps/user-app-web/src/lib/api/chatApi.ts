@@ -5,7 +5,7 @@ import { unwrapResponse, extractPaginatedList, type BffResponse, type PaginatedR
 // 타입 정의
 // ============================================
 
-export type ChatRoomType = 'DIRECT' | 'GROUP' | 'BOOKING';
+export type ChatRoomType = 'DIRECT' | 'CHANNEL' | 'BOOKING';
 export type MessageType = 'TEXT' | 'IMAGE' | 'SYSTEM' | 'BOOKING_INVITE' | 'AI_USER' | 'AI_ASSISTANT';
 
 export interface ChatParticipant {
@@ -316,7 +316,7 @@ function transformRoomResponse(room: ApiRoomResponse): ChatRoom {
 /**
  * 채팅방 표시 이름 생성
  * - DIRECT: 상대방 이름
- * - GROUP/BOOKING: 방 이름 우선, 없으면 참여자 이름 폴백
+ * - CHANNEL/BOOKING: 방 이름 우선, 없으면 참여자 이름 폴백
  */
 export function getChatRoomDisplayName(room: ChatRoom, currentUserId: string): string {
   const others = (room.participants ?? []).filter((p) => p.userId !== currentUserId);
@@ -326,7 +326,7 @@ export function getChatRoomDisplayName(room: ChatRoom, currentUserId: string): s
     return others.length > 0 ? others[0].userName : (room.name || '채팅');
   }
 
-  // GROUP/BOOKING: 방 이름이 있으면 우선 사용
+  // CHANNEL/BOOKING: 방 이름이 있으면 우선 사용
   if (room.name) {
     return room.name;
   }

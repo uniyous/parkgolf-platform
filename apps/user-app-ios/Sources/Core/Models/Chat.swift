@@ -86,7 +86,7 @@ struct ChatRoom: Identifiable, Codable, Sendable, Hashable {
             return others.first?.userName ?? (name.isEmpty ? "채팅" : name)
         }
 
-        // GROUP/BOOKING: 방 이름이 있으면 우선 사용
+        // CHANNEL/BOOKING: 방 이름이 있으면 우선 사용
         if !name.isEmpty {
             return name
         }
@@ -125,7 +125,7 @@ struct ChatRoomMember: Codable, Sendable {
 
 enum ChatRoomType: String, Codable, Sendable {
     case direct = "DIRECT"
-    case group = "GROUP"
+    case channel = "CHANNEL"
     case booking = "BOOKING"
 }
 

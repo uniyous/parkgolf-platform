@@ -176,7 +176,7 @@ test.describe.serial('채팅방 생명주기', () => {
     await expect(page.getByPlaceholder(/메시지 입력/)).toBeVisible({ timeout: 10000 });
   });
 
-  test('GROUP 채팅방 타입 배지 표시', async ({ page }) => {
+  test('CHANNEL 채팅방 타입 배지 표시', async ({ page }) => {
     await gotoChatTab(page);
     await page.waitForTimeout(2000);
 
@@ -184,7 +184,7 @@ test.describe.serial('채팅방 생명주기', () => {
     const count = await cards.count();
 
     if (count > 0) {
-      // GROUP 방의 참여자 수 배지 확인
+      // CHANNEL 방의 참여자 수 배지 확인
       // 채팅방 카드 내 참여자 수 (예: "3" 표시) 또는 Users 아이콘
       const hasParticipantInfo = await cards.first().locator('p, span').count() > 0;
       expect(hasParticipantInfo).toBeTruthy();

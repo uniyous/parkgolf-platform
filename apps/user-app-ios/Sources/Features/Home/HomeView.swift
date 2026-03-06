@@ -745,7 +745,7 @@ struct HomeUnreadChatRowLabel: View {
                     .fill(Color.parkInfo.opacity(0.3))
                     .frame(width: 50, height: 50)
                     .overlay(
-                        Image(systemName: room.type == .group ? "person.3.fill" : "person.fill")
+                        Image(systemName: room.type == .channel ? "person.3.fill" : "person.fill")
                             .foregroundStyle(.white)
                     )
 

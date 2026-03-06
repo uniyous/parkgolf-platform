@@ -22,7 +22,7 @@ data class ChatRoom(
             return others.firstOrNull()?.userName ?: name.ifEmpty { "채팅" }
         }
 
-        // GROUP/BOOKING: 방 이름이 있으면 우선 사용
+        // CHANNEL/BOOKING: 방 이름이 있으면 우선 사용
         if (name.isNotEmpty()) {
             return name
         }
@@ -96,7 +96,7 @@ data class ChatMessage(
 
 enum class ChatRoomType(val value: String) {
     DIRECT("DIRECT"),
-    GROUP("GROUP"),
+    CHANNEL("CHANNEL"),
     BOOKING("BOOKING");
 
     companion object {

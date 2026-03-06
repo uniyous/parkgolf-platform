@@ -354,7 +354,7 @@ class SocialViewModel @Inject constructor(
 
             chatRepository.createChatRoom(
                 name = chatName,
-                type = com.parkgolf.app.domain.model.ChatRoomType.GROUP,
+                type = com.parkgolf.app.domain.model.ChatRoomType.CHANNEL,
                 participantIds = friends.map { it.friendId.toString() }
             )
                 .onSuccess { chatRoom ->

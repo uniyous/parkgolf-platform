@@ -705,7 +705,7 @@ function ChatRoomCard({ room, currentUserId, onClick, onLeave }: { room: ChatRoo
 
   const getRoomIcon = () => {
     switch (room.type) {
-      case 'GROUP':
+      case 'CHANNEL':
       case 'BOOKING':
         return <Users className="w-5 h-5" />;
       default:
@@ -916,7 +916,7 @@ function NewChatContent({ onClose }: { onClose: () => void }) {
     try {
       const room = await createChatRoomMutation.mutateAsync({
         name,
-        type: 'GROUP',
+        type: 'CHANNEL',
         participantIds: selectedFriends.map((f) => String(f.friendId)),
       });
       onClose();

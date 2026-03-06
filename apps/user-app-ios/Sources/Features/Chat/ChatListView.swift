@@ -167,7 +167,7 @@ struct ChatRoomCard: View {
                 .frame(width: 50, height: 50)
 
             switch room.type {
-            case .group, .booking:
+            case .channel, .booking:
                 Image(systemName: "person.3.fill")
                     .font(.system(size: 18))
                     .foregroundStyle(.white)
