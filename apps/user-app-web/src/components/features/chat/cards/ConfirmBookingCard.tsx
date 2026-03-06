@@ -28,11 +28,11 @@ export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, on
 
   return (
     <div className="mt-2 bg-violet-500/10 rounded-xl p-4 border border-violet-500/20">
-        <div className="text-sm font-semibold text-white mb-3">
+        <div className="text-base font-semibold text-white mb-3">
           {data.groupMode ? `팀${data.teamNumber} 예약 정보 확인` : '예약 정보 확인'}
         </div>
 
-        <div className="space-y-2 text-sm">
+        <div className="space-y-2 text-base">
           <div className="flex items-center gap-2 text-white/70">
             <MapPin className="w-3.5 h-3.5 text-violet-400 shrink-0" />
             <span>{data.clubName}</span>
@@ -50,7 +50,7 @@ export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, on
             <span>{data.playerCount}명</span>
           </div>
           {data.groupMode && data.members && (
-            <div className="flex items-center gap-2 text-white/60 text-xs pl-5">
+            <div className="flex items-center gap-2 text-white/60 text-sm pl-5">
               {data.members.map((m) => m.userName).join(', ')}
             </div>
           )}
@@ -66,12 +66,12 @@ export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, on
         {/* 결제방법 선택 (유료 + 활성 상태일 때만) */}
         {!isFree && !completed && (
           <div className="mt-3">
-            <div className="text-xs text-white/50 mb-2">결제방법</div>
+            <div className="text-sm text-white/50 mb-2">결제방법</div>
             <div className={cn('flex gap-2', data.groupMode && 'flex-wrap')}>
               <button
                 onClick={() => setPaymentMethod('onsite')}
                 className={cn(
-                  'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors border',
+                  'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border',
                   paymentMethod === 'onsite'
                     ? 'bg-violet-500/20 border-violet-500/50 text-violet-400'
                     : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10',
@@ -83,7 +83,7 @@ export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, on
               <button
                 onClick={() => setPaymentMethod('card')}
                 className={cn(
-                  'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors border',
+                  'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border',
                   paymentMethod === 'card'
                     ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
                     : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10',
@@ -96,7 +96,7 @@ export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, on
                 <button
                   onClick={() => setPaymentMethod('dutchpay')}
                   className={cn(
-                    'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors border',
+                    'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border',
                     paymentMethod === 'dutchpay'
                       ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
                       : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10',
@@ -116,7 +116,7 @@ export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, on
               <button
                 onClick={onCancel}
                 className={cn(
-                  'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                  'flex-1 px-3 py-2 rounded-lg text-base font-medium transition-colors',
                   'bg-white/10 text-white/70 hover:bg-white/20',
                 )}
               >
@@ -127,7 +127,7 @@ export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, on
               <button
                 onClick={() => onConfirm(isFree ? 'onsite' : paymentMethod)}
                 className={cn(
-                  'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                  'flex-1 px-3 py-2 rounded-lg text-base font-medium transition-colors',
                   'bg-violet-500 text-white hover:bg-violet-600',
                 )}
               >

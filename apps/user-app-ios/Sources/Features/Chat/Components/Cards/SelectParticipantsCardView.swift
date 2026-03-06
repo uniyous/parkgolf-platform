@@ -30,12 +30,12 @@ struct SelectParticipantsCardView: View {
                 Image(systemName: "person.3.sequence.fill")
                     .foregroundColor(Color.parkPrimary)
                 Text("팀 편성")
-                    .font(.subheadline)
+                    .font(.body)
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
                 Spacer()
                 Text("배정 \(totalAssigned) / 미배정 \(unassigned.count)")
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundColor(.white.opacity(0.5))
             }
 
@@ -44,17 +44,17 @@ struct SelectParticipantsCardView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Text("팀\(team.teamNumber)")
-                            .font(.caption)
+                            .font(.subheadline)
                             .fontWeight(.semibold)
                             .foregroundColor(Color.parkPrimary)
                         if !team.slotTime.isEmpty {
                             Text("\(team.slotTime) · \(team.gameName)")
-                                .font(.caption2)
+                                .font(.caption)
                                 .foregroundColor(.white.opacity(0.5))
                         }
                         Spacer()
                         Text("\(team.members.count)/\(team.maxPlayers)")
-                            .font(.caption2)
+                            .font(.caption)
                             .foregroundColor(.white.opacity(0.4))
                     }
 
@@ -62,7 +62,7 @@ struct SelectParticipantsCardView: View {
                     ForEach(team.members, id: \.userId) { member in
                         HStack {
                             Text(member.userName)
-                                .font(.caption)
+                                .font(.subheadline)
                                 .foregroundColor(.white.opacity(0.8))
                             Spacer()
                             Button {
@@ -79,7 +79,7 @@ struct SelectParticipantsCardView: View {
 
                     if team.members.count < team.maxPlayers {
                         Text("+ 멤버 추가 가능")
-                            .font(.caption2)
+                            .font(.caption)
                             .foregroundColor(.white.opacity(0.3))
                             .padding(.horizontal, 8)
                     }
@@ -97,14 +97,14 @@ struct SelectParticipantsCardView: View {
             if !unassigned.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("미배정 멤버")
-                        .font(.caption)
+                        .font(.subheadline)
                         .fontWeight(.medium)
                         .foregroundColor(.white.opacity(0.5))
 
                     ForEach(unassigned, id: \.userId) { member in
                         HStack {
                             Text(member.userName)
-                                .font(.caption)
+                                .font(.subheadline)
                                 .foregroundColor(.white.opacity(0.7))
                             Spacer()
 
@@ -115,7 +115,7 @@ struct SelectParticipantsCardView: View {
                                         addMember(member, toTeamAt: teamIndex)
                                     } label: {
                                         Text("팀\(team.teamNumber)")
-                                            .font(.caption2)
+                                            .font(.caption)
                                             .foregroundColor(Color.parkPrimary)
                                             .padding(.horizontal, 8)
                                             .padding(.vertical, 4)
@@ -137,11 +137,11 @@ struct SelectParticipantsCardView: View {
             if pricePerPerson > 0 {
                 HStack {
                     Text("1인당 ₩\(pricePerPerson.formatted()) × \(totalAssigned)명")
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundColor(.white.opacity(0.5))
                     Spacer()
                     Text("₩\(totalAmount.formatted())")
-                        .font(.caption)
+                        .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundColor(Color.parkPrimary)
                 }
@@ -153,7 +153,7 @@ struct SelectParticipantsCardView: View {
                     onCancel?()
                 } label: {
                     Text("취소")
-                        .font(.caption)
+                        .font(.subheadline)
                         .fontWeight(.medium)
                         .foregroundColor(.white.opacity(0.7))
                         .frame(maxWidth: .infinity)
@@ -175,7 +175,7 @@ struct SelectParticipantsCardView: View {
                     onConfirm?(result)
                 } label: {
                     Text("확정 (\(totalAssigned)명)")
-                        .font(.caption)
+                        .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)

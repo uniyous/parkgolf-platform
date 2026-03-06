@@ -45,17 +45,17 @@ struct WeatherCardView: View {
                         .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.5))
                     Text("\(Int(temperature))°C")
-                        .font(.subheadline)
+                        .font(.body)
                         .fontWeight(.medium)
                         .foregroundColor(.white)
                     Text(sky)
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundColor(.white.opacity(0.5))
                 }
 
                 if !recommendation.isEmpty {
                     Text(recommendation)
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundColor(.white.opacity(0.6))
                 }
             }

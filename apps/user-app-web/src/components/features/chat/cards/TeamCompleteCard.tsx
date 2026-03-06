@@ -24,13 +24,13 @@ export const TeamCompleteCard: React.FC<TeamCompleteCardProps> = ({
       {/* Header */}
       <div className="flex items-center gap-2">
         <CheckCircle2 className="w-5 h-5 text-violet-400" />
-        <h4 className="text-sm font-semibold text-white">
+        <h4 className="text-base font-semibold text-white">
           팀{data.teamNumber} 예약 완료
         </h4>
       </div>
 
       {/* Booking Info */}
-      <div className="space-y-1.5 text-xs">
+      <div className="space-y-1.5 text-sm">
         <div className="flex items-center gap-2 text-white/70">
           <MapPin className="w-3 h-3 text-violet-400 shrink-0" />
           <span>{data.clubName}</span>
@@ -47,14 +47,14 @@ export const TeamCompleteCard: React.FC<TeamCompleteCardProps> = ({
 
       {/* Price & Booking Number */}
       <div className="flex items-center justify-between border-t border-white/10 pt-2">
-        <span className="text-xs text-white/50">
+        <span className="text-sm text-white/50">
           {data.paymentMethod === 'dutchpay' ? '더치페이' : data.paymentMethod === 'card' ? '카드결제' : '현장결제'}
         </span>
-        <span className="text-sm font-semibold text-violet-400">
+        <span className="text-base font-semibold text-violet-400">
           {formatPrice(data.totalPrice)}원
         </span>
       </div>
-      <div className="text-center text-xs text-white/30">
+      <div className="text-center text-sm text-white/30">
         {data.bookingNumber}
       </div>
 
@@ -65,7 +65,7 @@ export const TeamCompleteCard: React.FC<TeamCompleteCardProps> = ({
             <button
               onClick={onFinish}
               className={cn(
-                'flex-1 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors',
+                'flex-1 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                 data.hasMoreTeams
                   ? 'bg-white/10 text-white/70 hover:bg-white/20'
                   : 'bg-violet-500/20 text-violet-400 hover:bg-violet-500/30'
@@ -77,7 +77,7 @@ export const TeamCompleteCard: React.FC<TeamCompleteCardProps> = ({
           {data.hasMoreTeams && onNextTeam && (
             <button
               onClick={onNextTeam}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 transition-colors"
             >
               다음 팀 예약
               <ArrowRight className="w-3.5 h-3.5" />

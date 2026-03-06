@@ -14,12 +14,12 @@ export const BookingCompleteCard: React.FC<BookingCompleteCardProps> = ({ data }
     <div className="mt-2 bg-violet-500/10 rounded-xl p-4 border border-violet-500/20">
       <div className="flex items-center gap-2 mb-3">
         <CheckCircle className="w-5 h-5 text-violet-400" />
-        <span className="text-sm font-semibold text-violet-400">예약 완료</span>
+        <span className="text-base font-semibold text-violet-400">예약 완료</span>
       </div>
 
-      <div className="space-y-2 text-sm">
+      <div className="space-y-2 text-base">
         <div className="flex items-center gap-2 text-white/70">
-          <span className="text-white/40 text-xs">예약번호</span>
+          <span className="text-white/40 text-sm">예약번호</span>
           <span className="font-mono text-white">{data.confirmationNumber}</span>
         </div>
         <div className="flex items-center gap-2 text-white/70">

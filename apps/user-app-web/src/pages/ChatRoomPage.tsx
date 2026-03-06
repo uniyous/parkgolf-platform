@@ -550,7 +550,7 @@ export const ChatRoomPage: React.FC = () => {
         onBack={() => navigate('/social?tab=chat')}
         rightContent={
           <>
-            <div className="flex items-center gap-2 text-xs">
+            <div className="flex items-center gap-2 text-sm">
               {(room.participants?.length ?? 0) > 0 && (
                 <button
                   onClick={() => setShowParticipants(true)}
@@ -579,7 +579,7 @@ export const ChatRoomPage: React.FC = () => {
                         setShowMenu(false);
                         setShowInviteModal(true);
                       }}
-                      className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2"
+                      className="w-full px-4 py-3 text-left text-base text-white hover:bg-white/10 flex items-center gap-2"
                     >
                       <UserPlus className="w-4 h-4" />
                       친구 초대
@@ -602,7 +602,7 @@ export const ChatRoomPage: React.FC = () => {
                         }
                       }}
                       disabled={leaveMutation.isPending}
-                      className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-white/10 flex items-center gap-2 disabled:opacity-50"
+                      className="w-full px-4 py-3 text-left text-base text-red-400 hover:bg-white/10 flex items-center gap-2 disabled:opacity-50"
                     >
                       <LogOut className="w-4 h-4" />
                       {leaveMutation.isPending ? '나가는 중...' : '나가기'}
@@ -617,7 +617,7 @@ export const ChatRoomPage: React.FC = () => {
 
       {/* Socket disconnected banner */}
       {!isConnected && (
-        <div className="flex items-center justify-between px-4 py-2 bg-amber-500/90 text-white text-sm">
+        <div className="flex items-center justify-between px-4 py-2 bg-amber-500/90 text-white text-base">
           <div className="flex items-center gap-2">
             <WifiOff className="w-4 h-4 flex-shrink-0" />
             <span>연결 끊김</span>
@@ -639,7 +639,7 @@ export const ChatRoomPage: React.FC = () => {
 
       {/* NATS disconnected warning banner */}
       {isConnected && !isNatsConnected && (
-        <div className="flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500/90 text-white text-sm">
+        <div className="flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500/90 text-white text-base">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
           <span>서버 내부 연결 불안정 — 메시지 전송이 지연될 수 있습니다</span>
         </div>
@@ -656,7 +656,7 @@ export const ChatRoomPage: React.FC = () => {
           {isFetchingNextPage && (
             <div className="flex items-center justify-center py-3 mb-2">
               <Loader2 className="w-5 h-5 text-white/50 animate-spin" />
-              <span className="ml-2 text-sm text-white/50">이전 메시지 불러오는 중...</span>
+              <span className="ml-2 text-base text-white/50">이전 메시지 불러오는 중...</span>
             </div>
           )}
 
@@ -846,7 +846,7 @@ export const ChatRoomPage: React.FC = () => {
                     <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
                       <Sparkles className="w-3.5 h-3.5 text-white" />
                     </div>
-                    <span className="text-xs text-violet-400 font-semibold">AI 예약 도우미</span>
+                    <span className="text-sm text-violet-400 font-semibold">AI 예약 도우미</span>
                   </div>
                   <div className="bg-violet-500/5 border-l-[3px] border-l-violet-500/40 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
                     <div className="flex items-center gap-2">
@@ -855,7 +855,7 @@ export const ChatRoomPage: React.FC = () => {
                         <div className="w-1.5 h-1.5 bg-violet-400/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                         <div className="w-1.5 h-1.5 bg-violet-400/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                       </div>
-                      <span className="text-xs text-white/50">{aiLoadingText}</span>
+                      <span className="text-sm text-white/50">{aiLoadingText}</span>
                     </div>
                   </div>
                 </div>
@@ -964,7 +964,7 @@ function ParticipantsModal({ participants, currentUserId, onClose }: Participant
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md bg-gray-800 rounded-2xl p-6 animate-slide-up">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-white">
+          <h3 className="text-xl font-semibold text-white">
             참여자 ({participants.length}명)
           </h3>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 transition-colors">
@@ -1006,7 +1006,7 @@ function ParticipantsModal({ participants, currentUserId, onClose }: Participant
                 className="flex items-center gap-3 p-3 rounded-xl bg-white/5"
               >
                 <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-semibold text-white">
+                  <span className="text-base font-semibold text-white">
                     {p.userName.charAt(0).toUpperCase()}
                   </span>
                 </div>
@@ -1014,11 +1014,11 @@ function ParticipantsModal({ participants, currentUserId, onClose }: Participant
                   <h4 className="text-white font-medium truncate">
                     {p.userName}
                     {isMe && (
-                      <span className="ml-1.5 text-xs text-emerald-400 font-normal">(나)</span>
+                      <span className="ml-1.5 text-sm text-emerald-400 font-normal">(나)</span>
                     )}
                   </h4>
                   {p.userEmail && (
-                    <p className="text-white/40 text-xs truncate">{p.userEmail}</p>
+                    <p className="text-white/40 text-sm truncate">{p.userEmail}</p>
                   )}
                 </div>
               </div>
@@ -1029,7 +1029,7 @@ function ParticipantsModal({ participants, currentUserId, onClose }: Participant
         <div className="mt-4">
           <button
             onClick={onClose}
-            className="w-full px-4 py-2.5 rounded-xl bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors"
+            className="w-full px-4 py-2.5 rounded-xl bg-white/10 text-white text-base font-medium hover:bg-white/20 transition-colors"
           >
             닫기
           </button>
@@ -1093,7 +1093,7 @@ function InviteFriendsModal({ roomId, participants, onClose }: InviteFriendsModa
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md bg-gray-800 rounded-2xl p-6 animate-slide-up">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-white">친구 초대</h3>
+          <h3 className="text-xl font-semibold text-white">친구 초대</h3>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 transition-colors">
             <X className="w-5 h-5 text-white/60" />
           </button>
@@ -1156,14 +1156,14 @@ function InviteFriendsModal({ roomId, participants, onClose }: InviteFriendsModa
                   </div>
 
                   <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                    <span className="text-sm font-semibold text-white">
+                    <span className="text-base font-semibold text-white">
                       {friend.friendName.charAt(0).toUpperCase()}
                     </span>
                   </div>
 
                   <div className="flex-1 min-w-0 text-left">
                     <h4 className="text-white font-medium truncate">{friend.friendName}</h4>
-                    <p className="text-white/50 text-xs truncate">{friend.friendEmail}</p>
+                    <p className="text-white/50 text-sm truncate">{friend.friendEmail}</p>
                   </div>
                 </button>
               );
@@ -1174,7 +1174,7 @@ function InviteFriendsModal({ roomId, participants, onClose }: InviteFriendsModa
         <div className="flex gap-2 mt-4">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors"
+            className="flex-1 px-4 py-2.5 rounded-xl bg-white/10 text-white text-base font-medium hover:bg-white/20 transition-colors"
           >
             취소
           </button>
@@ -1182,7 +1182,7 @@ function InviteFriendsModal({ roomId, participants, onClose }: InviteFriendsModa
             onClick={handleInvite}
             disabled={selectedIds.length === 0 || inviteMutation.isPending}
             className={cn(
-              'flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors',
+              'flex-1 px-4 py-2.5 rounded-xl text-base font-medium transition-colors',
               selectedIds.length > 0
                 ? 'bg-emerald-500 text-white hover:bg-emerald-600'
                 : 'bg-white/10 text-white/40 cursor-not-allowed'
@@ -1224,7 +1224,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     <div className={cn('flex', isCurrentUser ? 'justify-end' : 'justify-start')}>
       <div className={cn('max-w-[75%]', isCurrentUser ? 'items-end' : 'items-start')}>
         {showSender && (
-          <span className="text-xs text-white/50 mb-1 ml-1">{message.senderName}</span>
+          <span className="text-sm text-white/50 mb-1 ml-1">{message.senderName}</span>
         )}
         <div className={cn('flex items-end gap-1.5', isCurrentUser && 'flex-row-reverse')}>
           <div
@@ -1235,9 +1235,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 : 'bg-white/10 text-white rounded-bl-sm'
             )}
           >
-            <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+            <p className="text-base whitespace-pre-wrap break-words">{message.content}</p>
           </div>
-          <span className="text-[10px] text-white/40 shrink-0">
+          <span className="text-xs text-white/40 shrink-0">
             {formatTime(message.createdAt)}
           </span>
         </div>

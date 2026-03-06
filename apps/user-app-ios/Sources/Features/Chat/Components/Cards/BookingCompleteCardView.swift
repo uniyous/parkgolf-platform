@@ -37,7 +37,7 @@ struct BookingCompleteCardView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(Color.parkPrimary)
                 Text("예약 완료")
-                    .font(.subheadline)
+                    .font(.body)
                     .fontWeight(.semibold)
                     .foregroundColor(Color.parkPrimary)
             }
@@ -68,12 +68,12 @@ struct BookingCompleteCardView: View {
 
             if let label = label {
                 Text(label)
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundColor(.white.opacity(0.4))
             }
 
             Text(value)
-                .font(.caption)
+                .font(.subheadline)
                 .foregroundColor(.white.opacity(0.7))
         }
     }

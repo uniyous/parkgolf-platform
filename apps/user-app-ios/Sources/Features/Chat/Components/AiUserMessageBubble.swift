@@ -11,11 +11,11 @@ struct AiUserMessageBubble: View {
             VStack(alignment: .trailing, spacing: 4) {
                 HStack(alignment: .bottom, spacing: 6) {
                     Text(DateHelper.toKoreanTime(createdAt))
-                        .font(.system(size: 10))
+                        .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.4))
 
                     Text(content)
-                        .font(.subheadline)
+                        .font(.body)
                         .foregroundColor(.white)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)

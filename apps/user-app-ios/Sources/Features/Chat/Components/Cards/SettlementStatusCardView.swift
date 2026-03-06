@@ -60,7 +60,7 @@ struct SettlementStatusCardView: View {
                 Image(systemName: "chart.bar.fill")
                     .foregroundColor(Color.parkPrimary)
                 Text("정산 현황")
-                    .font(.subheadline)
+                    .font(.body)
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
             }
@@ -81,11 +81,11 @@ struct SettlementStatusCardView: View {
             VStack(spacing: 6) {
                 HStack {
                     Text("결제 현황")
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundColor(.white.opacity(0.5))
                     Spacer()
                     Text("\(paidCount)/\(totalCount)")
-                        .font(.caption)
+                        .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundColor(Color.parkPrimary)
                 }
@@ -111,14 +111,14 @@ struct SettlementStatusCardView: View {
 
                 HStack {
                     Text(name)
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundColor(.white.opacity(0.7))
                     Spacer()
                     Text("₩\(amount.formatted())")
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundColor(.white.opacity(0.6))
                     Text(status == "PAID" ? "완료" : "대기")
-                        .font(.caption2)
+                        .font(.caption)
                         .fontWeight(.medium)
                         .foregroundColor(status == "PAID" ? .green : .yellow)
                         .padding(.horizontal, 6)
@@ -145,7 +145,7 @@ struct SettlementStatusCardView: View {
                                 Image(systemName: "bell.fill")
                                     .font(.system(size: 10))
                                 Text("리마인더")
-                                    .font(.caption2)
+                                    .font(.caption)
                             }
                             .foregroundColor(.white.opacity(0.6))
                             .frame(maxWidth: .infinity)
@@ -163,7 +163,7 @@ struct SettlementStatusCardView: View {
                                 Image(systemName: "arrow.clockwise")
                                     .font(.system(size: 10))
                                 Text("새로고침")
-                                    .font(.caption2)
+                                    .font(.caption)
                             }
                             .foregroundColor(Color.parkPrimary)
                             .frame(maxWidth: .infinity)
@@ -178,7 +178,7 @@ struct SettlementStatusCardView: View {
             // Booking number
             if !bookingNumber.isEmpty {
                 Text(bookingNumber)
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundColor(.white.opacity(0.3))
                     .frame(maxWidth: .infinity, alignment: .center)
             }
@@ -204,7 +204,7 @@ struct SettlementStatusCardView: View {
                 Image(systemName: "creditcard.fill")
                     .foregroundColor(Color.parkPrimary)
                 Text("결제 요청")
-                    .font(.subheadline)
+                    .font(.body)
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
             }
@@ -232,14 +232,14 @@ struct SettlementStatusCardView: View {
                 .foregroundColor(.white)
 
             Text("더치페이 결제 금액")
-                .font(.caption)
+                .font(.subheadline)
                 .foregroundColor(.white.opacity(0.5))
 
             Button {
                 onRequestSplitPayment?(orderId, amount)
             } label: {
                 Text("결제하기")
-                    .font(.caption)
+                    .font(.subheadline)
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -269,13 +269,13 @@ struct SettlementStatusCardView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(Color.parkPrimary)
                 Text("결제 완료")
-                    .font(.subheadline)
+                    .font(.body)
                     .fontWeight(.semibold)
                     .foregroundColor(Color.parkPrimary)
             }
 
             Text("₩\(amount.formatted())")
-                .font(.title3)
+                .font(.title2)
                 .fontWeight(.bold)
                 .foregroundColor(.white)
         }
@@ -307,7 +307,7 @@ struct SettlementStatusCardView: View {
                 .foregroundColor(.white.opacity(0.4))
                 .frame(width: 16)
             Text(value)
-                .font(.caption)
+                .font(.subheadline)
                 .foregroundColor(.white.opacity(0.7))
         }
     }
@@ -333,7 +333,7 @@ private struct CountdownView: View {
                 Image(systemName: "timer")
                     .font(.system(size: 10))
                 Text("남은 시간 \(timerText)")
-                    .font(.caption2)
+                    .font(.caption)
             }
             .foregroundColor(remainingSeconds <= 60 ? .yellow : .white.opacity(0.5))
             .frame(maxWidth: .infinity, alignment: .center)
@@ -343,7 +343,7 @@ private struct CountdownView: View {
             }
         } else if remainingSeconds == 0 {
             Text("결제 시간 만료")
-                .font(.caption2)
+                .font(.caption)
                 .foregroundColor(.red.opacity(0.8))
                 .frame(maxWidth: .infinity, alignment: .center)
                 .onAppear { parseExpDate() }

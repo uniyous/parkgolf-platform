@@ -72,13 +72,13 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
               <Sparkles className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="text-xs text-violet-400 font-semibold">AI 예약 도우미</span>
+            <span className="text-sm text-violet-400 font-semibold">AI 예약 도우미</span>
           </div>
         )}
 
         <div className="flex items-end gap-1.5">
           <div className="bg-violet-500/10 border-l-[3px] border-l-violet-400 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
-            <p className="text-sm text-white whitespace-pre-wrap break-words leading-relaxed">{content}</p>
+            <p className="text-base text-white whitespace-pre-wrap break-words leading-relaxed">{content}</p>
 
             {actions?.map((action, index) => (
               <div key={index}>
@@ -152,7 +152,7 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
               </div>
             ))}
           </div>
-          <span className="text-[10px] text-white/40 shrink-0">
+          <span className="text-xs text-white/40 shrink-0">
             {formatTime(createdAt)}
           </span>
         </div>

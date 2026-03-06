@@ -250,7 +250,7 @@ struct ChatRoomView: View {
                                 .font(.system(size: 40))
                                 .foregroundColor(.white.opacity(0.2))
                             Text("대화를 시작해보세요!")
-                                .font(.subheadline)
+                                .font(.body)
                                 .foregroundColor(.white.opacity(0.4))
                         }
                         .frame(maxWidth: .infinity)
@@ -442,7 +442,7 @@ struct ChatRoomView: View {
                         .shadow(color: Color.parkPrimary.opacity(0.3), radius: 3)
 
                     Text("AI 예약 도우미")
-                        .font(.caption2)
+                        .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundColor(Color.parkPrimary)
                 }
@@ -464,7 +464,7 @@ struct ChatRoomView: View {
                     }
 
                     Text(aiViewModel.aiLoadingText)
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundColor(.white.opacity(0.5))
                 }
                 .padding(.horizontal, 14)
@@ -754,11 +754,11 @@ struct MessageBubble: View {
         VStack(alignment: isCurrentUser ? .trailing : .leading, spacing: 2) {
             if isCurrentUser, let readBy = message.readBy, readBy.count > 1 {
                 Text("읽음")
-                    .font(.system(size: 10))
+                    .font(.system(size: 12))
                     .foregroundStyle(Color.parkPrimary.opacity(0.8))
             }
             Text(formatTime(message.createdAt))
-                .font(.system(size: 10))
+                .font(.system(size: 12))
                 .foregroundStyle(.white.opacity(0.5))
         }
     }

@@ -40,7 +40,7 @@ struct PaymentCardView: View {
                 Image(systemName: "creditcard.fill")
                     .foregroundColor(Color.parkPrimary)
                 Text("카드결제")
-                    .font(.subheadline)
+                    .font(.body)
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
             }
@@ -57,7 +57,7 @@ struct PaymentCardView: View {
                         .foregroundColor(.white.opacity(0.4))
                         .frame(width: 16)
                     Text("₩\(amount.formatted())")
-                        .font(.callout)
+                        .font(.body)
                         .fontWeight(.bold)
                         .foregroundColor(Color.parkPrimary)
                 }
@@ -68,7 +68,7 @@ struct PaymentCardView: View {
                 Image(systemName: "timer")
                     .font(.system(size: 12))
                 Text(isExpired ? "결제 시간 만료" : "남은 시간 \(timerText)")
-                    .font(.caption)
+                    .font(.subheadline)
                     .fontWeight(.medium)
             }
             .foregroundColor(timerColor)
@@ -77,7 +77,7 @@ struct PaymentCardView: View {
             // Buttons
             if isExpired {
                 Text("결제 시간이 만료되었습니다")
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundColor(.red.opacity(0.8))
                     .frame(maxWidth: .infinity, alignment: .center)
             } else {
@@ -86,7 +86,7 @@ struct PaymentCardView: View {
                         onPaymentComplete?(false)
                     } label: {
                         Text("예약 취소")
-                            .font(.caption)
+                            .font(.subheadline)
                             .fontWeight(.medium)
                             .foregroundColor(.white.opacity(0.7))
                             .frame(maxWidth: .infinity)
@@ -99,7 +99,7 @@ struct PaymentCardView: View {
                         onRequestPayment?(orderId, "\(clubName) 예약", amount)
                     } label: {
                         Text("결제하기")
-                            .font(.caption)
+                            .font(.subheadline)
                             .fontWeight(.semibold)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -138,7 +138,7 @@ struct PaymentCardView: View {
                 .foregroundColor(.white.opacity(0.4))
                 .frame(width: 16)
             Text(value)
-                .font(.caption)
+                .font(.subheadline)
                 .foregroundColor(.white.opacity(0.7))
         }
     }

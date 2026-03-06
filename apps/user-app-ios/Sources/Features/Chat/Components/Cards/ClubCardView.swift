@@ -25,7 +25,7 @@ struct ClubCardView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(name)
-                            .font(.subheadline)
+                            .font(.body)
                             .fontWeight(.semibold)
                             .foregroundColor(.white)
 
@@ -34,7 +34,7 @@ struct ClubCardView: View {
                                 .font(.system(size: 10))
                                 .foregroundColor(.white.opacity(0.5))
                             Text(address)
-                                .font(.caption)
+                                .font(.subheadline)
                                 .foregroundColor(.white.opacity(0.5))
                                 .lineLimit(1)
                         }
@@ -51,7 +51,7 @@ struct ClubCardView: View {
                             onSelect?(id, name)
                         } label: {
                             Text("선택")
-                                .font(.caption)
+                                .font(.subheadline)
                                 .fontWeight(.medium)
                                 .foregroundColor(Color.parkPrimary)
                                 .padding(.horizontal, 12)

@@ -45,7 +45,7 @@ struct AiMessageBubble: View {
                             .shadow(color: Color.parkPrimary.opacity(0.3), radius: 3)
 
                         Text("AI 예약 도우미")
-                            .font(.caption2)
+                            .font(.caption)
                             .fontWeight(.semibold)
                             .foregroundColor(Color.parkPrimary)
                     }
@@ -54,7 +54,7 @@ struct AiMessageBubble: View {
                 HStack(alignment: .bottom, spacing: 6) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(content)
-                            .font(.subheadline)
+                            .font(.body)
                             .foregroundColor(.white)
 
                         if let actions = actions {
@@ -75,7 +75,7 @@ struct AiMessageBubble: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16))
 
                     Text(DateHelper.toKoreanTime(createdAt))
-                        .font(.system(size: 10))
+                        .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.4))
                 }
             }
