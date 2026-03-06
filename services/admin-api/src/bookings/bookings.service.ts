@@ -176,6 +176,20 @@ export class BookingService {
     });
   }
 
+  // Club Operation Stats
+  async getClubOperationStats(
+    clubId: number,
+    dateRange: { startDate: string; endDate: string },
+    adminToken: string,
+  ): Promise<ApiResponse<unknown>> {
+    this.logger.log(`Fetching club operation stats for clubId: ${clubId}`);
+    return this.natsClient.send('bookings.clubOperationStats', {
+      clubId,
+      dateRange,
+      token: adminToken,
+    }, NATS_TIMEOUTS.ANALYTICS);
+  }
+
   // Payment Management
   async getPayments(
     filters: Record<string, unknown> = {},

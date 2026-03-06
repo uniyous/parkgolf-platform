@@ -104,6 +104,30 @@ export class BookingsController {
     return this.bookingService.getRevenueStats(dateRange, token);
   }
 
+  @Get('stats/clubs/:clubId')
+  @ApiOperation({ summary: 'Get club operation statistics' })
+  @ApiQuery({ name: 'startDate', required: false, description: 'Start date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'endDate', required: false, description: 'End date (YYYY-MM-DD)' })
+  @ApiResponse({ status: 200, description: 'Club operation statistics retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getClubOperationStats(
+    @BearerToken() token: string,
+    @Param('clubId') clubId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const defaultEndDate = new Date().toISOString().split('T')[0];
+    const defaultStartDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    const dateRange = {
+      startDate: startDate || defaultStartDate,
+      endDate: endDate || defaultEndDate,
+    };
+
+    this.logger.log(`Fetching club operation stats for clubId: ${clubId}, range: ${dateRange.startDate} to ${dateRange.endDate}`);
+    return this.bookingService.getClubOperationStats(parseInt(clubId, 10), dateRange, token);
+  }
+
   @Get('payments/list')
   @ApiOperation({ summary: 'Get payments list' })
   @ApiQuery({ name: 'page', required: false, description: 'Page number', example: 1 })

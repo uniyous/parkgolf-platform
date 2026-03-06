@@ -34,6 +34,31 @@ export interface DailyBookingData {
   availability: TimeSlotAvailability[];
 }
 
+export interface ClubOperationStats {
+  stats: {
+    totalBookings: number;
+    totalRevenue: number;
+    averageUtilization: number;
+    monthlyRevenue: number;
+    topCourses: string[];
+    peakTimes: string[];
+  };
+  analytics: Array<{
+    gameId: number;
+    gameName: string;
+    totalBookings: number;
+    totalRevenue: number;
+    averagePrice: number;
+    bookedSlots: number;
+    weekdayBookings: number;
+    weekendBookings: number;
+    peakHours: string[];
+  }>;
+  availability: {
+    bookedToday: number;
+  };
+}
+
 export const bookingApi = {
   // ===== 예약 CRUD =====
 
@@ -246,6 +271,37 @@ export const bookingApi = {
       };
     }
     return stats;
+  },
+
+  // ===== 클럽 운영 통계 =====
+
+  /**
+   * 클럽 운영 통계 조회 (OperationInfoTab용)
+   */
+  async getClubOperationStats(
+    clubId: number,
+    dateRange: { startDate: string; endDate: string },
+  ): Promise<ClubOperationStats> {
+    const response = await apiClient.get<unknown>(
+      `/admin/bookings/stats/clubs/${clubId}`,
+      dateRange,
+    );
+    const data = extractSingle<ClubOperationStats>(response.data);
+    if (!data) {
+      return {
+        stats: {
+          totalBookings: 0,
+          totalRevenue: 0,
+          averageUtilization: 0,
+          monthlyRevenue: 0,
+          topCourses: [],
+          peakTimes: [],
+        },
+        analytics: [],
+        availability: { bookedToday: 0 },
+      };
+    }
+    return data;
   },
 
   // ===== 예약 가능 여부 확인 =====

@@ -1085,6 +1085,156 @@ export class BookingService {
     };
   }
 
+  // 클럽 운영 통계 (OperationInfoTab용)
+  async getClubOperationStats(clubId: number, dateRange: { startDate: string; endDate: string }) {
+    const startDate = new Date(dateRange.startDate);
+    const endDate = new Date(dateRange.endDate);
+    endDate.setHours(23, 59, 59, 999);
+
+    const validStatuses = ['CONFIRMED', 'COMPLETED'];
+
+    // 1. 게임별 예약 통계 (주중/주말 포함)
+    const gameStats: Array<{
+      gameId: number;
+      gameName: string | null;
+      totalBookings: number;
+      totalRevenue: number;
+      averagePrice: number;
+      bookedSlots: number;
+      weekdayBookings: number;
+      weekendBookings: number;
+    }> = await this.prisma.$queryRaw`
+      SELECT
+        game_id AS "gameId",
+        game_name AS "gameName",
+        COUNT(*)::int AS "totalBookings",
+        COALESCE(SUM(total_price), 0)::float AS "totalRevenue",
+        COALESCE(AVG(price_per_person), 0)::float AS "averagePrice",
+        COUNT(DISTINCT game_time_slot_id)::int AS "bookedSlots",
+        COUNT(*) FILTER (WHERE EXTRACT(DOW FROM booking_date) IN (0, 6))::int AS "weekendBookings",
+        COUNT(*) FILTER (WHERE EXTRACT(DOW FROM booking_date) NOT IN (0, 6))::int AS "weekdayBookings"
+      FROM bookings
+      WHERE club_id = ${clubId}
+        AND booking_date >= ${startDate}
+        AND booking_date <= ${endDate}
+        AND status::text = ANY(${validStatuses})
+      GROUP BY game_id, game_name
+      ORDER BY COUNT(*) DESC
+    `;
+
+    // 2. 게임별 인기 시간대 (start_time 기준 top 3)
+    const peakHoursRaw: Array<{ gameId: number; startTime: string; cnt: number }> = await this.prisma.$queryRaw`
+      SELECT
+        game_id AS "gameId",
+        start_time AS "startTime",
+        COUNT(*)::int AS cnt
+      FROM bookings
+      WHERE club_id = ${clubId}
+        AND booking_date >= ${startDate}
+        AND booking_date <= ${endDate}
+        AND status::text = ANY(${validStatuses})
+      GROUP BY game_id, start_time
+      ORDER BY game_id, cnt DESC
+    `;
+
+    // 게임별 top 3 시간대 매핑
+    const peakHoursMap = new Map<number, string[]>();
+    for (const row of peakHoursRaw) {
+      const list = peakHoursMap.get(row.gameId) ?? [];
+      if (list.length < 3) list.push(row.startTime);
+      peakHoursMap.set(row.gameId, list);
+    }
+
+    // 3. 전체 인기 시간대 top 3 (stats.peakTimes)
+    const overallPeakTimes: Array<{ startTime: string }> = await this.prisma.$queryRaw`
+      SELECT start_time AS "startTime"
+      FROM bookings
+      WHERE club_id = ${clubId}
+        AND booking_date >= ${startDate}
+        AND booking_date <= ${endDate}
+        AND status::text = ANY(${validStatuses})
+      GROUP BY start_time
+      ORDER BY COUNT(*) DESC
+      LIMIT 3
+    `;
+
+    // 4. 오늘 예약 현황
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(today);
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const todayBookings = await this.prisma.booking.count({
+      where: {
+        clubId,
+        bookingDate: { gte: today, lte: todayEnd },
+        status: { in: [BookingStatus.CONFIRMED, BookingStatus.COMPLETED] },
+      },
+    });
+
+    // 5. 집계
+    const totalBookings = gameStats.reduce((sum, g) => sum + g.totalBookings, 0);
+    const totalRevenue = gameStats.reduce((sum, g) => sum + g.totalRevenue, 0);
+    const days = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+    const monthlyRevenue = Math.round((totalRevenue / days) * 30);
+
+    // 인기 코스 top 3 (gameName 기준)
+    const topCourses = gameStats
+      .filter((g) => g.gameName)
+      .slice(0, 3)
+      .map((g) => g.gameName as string);
+
+    // 전체 가동률 (예약된 슬롯 / 전체 슬롯)
+    const totalBookedSlots = gameStats.reduce((sum, g) => sum + g.bookedSlots, 0);
+    let averageUtilization = 0;
+
+    // course-service에서 전체 슬롯 수 조회
+    if (this.courseServiceClient) {
+      try {
+        const slotStats = await firstValueFrom(
+          this.courseServiceClient.send('gameTimeSlots.stats', {
+            startDate: dateRange.startDate,
+            endDate: dateRange.endDate,
+            clubId,
+          }).pipe(timeout(5000), catchError(() => of(null))),
+        );
+        const totalSlots = slotStats?.data?.totalSlots ?? slotStats?.totalSlots ?? 0;
+        if (totalSlots > 0) {
+          averageUtilization = Math.round((totalBookedSlots / totalSlots) * 100 * 10) / 10;
+        }
+      } catch {
+        this.logger.warn(`Failed to fetch slot stats from course-service for clubId=${clubId}`);
+      }
+    }
+
+    const analytics = gameStats.map((g) => ({
+      gameId: g.gameId,
+      gameName: g.gameName ?? `Game #${g.gameId}`,
+      totalBookings: g.totalBookings,
+      totalRevenue: g.totalRevenue,
+      averagePrice: Math.round(g.averagePrice),
+      bookedSlots: g.bookedSlots,
+      weekdayBookings: g.weekdayBookings,
+      weekendBookings: g.weekendBookings,
+      peakHours: peakHoursMap.get(g.gameId) ?? [],
+    }));
+
+    return {
+      stats: {
+        totalBookings,
+        totalRevenue,
+        averageUtilization,
+        monthlyRevenue,
+        topCourses,
+        peakTimes: overallPeakTimes.map((r) => r.startTime),
+      },
+      analytics,
+      availability: {
+        bookedToday: todayBookings,
+      },
+    };
+  }
+
   // 관리자 대시보드 - 트렌드 차트 데이터
   async getDashboardStats(dateRange: { startDate: string; endDate: string }) {
     const startDate = new Date(dateRange.startDate);

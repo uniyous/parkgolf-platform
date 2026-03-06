@@ -379,7 +379,7 @@ export class GameTimeSlotService {
     });
   }
 
-  async getStats(query: { gameId?: number; startDate?: string; endDate?: string }): Promise<{
+  async getStats(query: { gameId?: number; clubId?: number; startDate?: string; endDate?: string }): Promise<{
     totalSlots: number;
     availableSlots: number;
     bookedSlots: number;
@@ -390,6 +390,7 @@ export class GameTimeSlotService {
     const where: Prisma.GameTimeSlotWhereInput = { isActive: true };
 
     if (query.gameId) where.gameId = query.gameId;
+    if (query.clubId) where.game = { clubId: query.clubId };
     if (query.startDate || query.endDate) {
       where.date = {};
       if (query.startDate) where.date.gte = new Date(query.startDate);

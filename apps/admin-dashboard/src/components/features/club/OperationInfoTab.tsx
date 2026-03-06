@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { Club, ClubStats, ComboAnalytics } from '@/types/club';
+import type { Club } from '@/types/club';
 import { useUpdateClubMutation } from '@/hooks/queries';
+import { bookingApi, type ClubOperationStats } from '@/lib/api/bookingApi';
 
 interface OperationInfoTabProps {
   club: Club;
@@ -12,49 +13,6 @@ interface DateRange {
   startDate: string;
   endDate: string;
 }
-
-// Mock 데이터 fetch 함수 (실제 API 연동 시 교체)
-const fetchClubOperationStats = async (
-  _clubId: number,
-  _dateRange: DateRange
-): Promise<{
-  stats: ClubStats;
-  analytics: ComboAnalytics[];
-  availability: { available: number; total: number };
-}> => {
-  // TODO: 실제 API 연동 시 아래 코드를 API 호출로 교체
-  // const response = await clubApi.getOperationStats(clubId, dateRange);
-  // return response.data;
-
-  return {
-    stats: {
-      totalBookings: 150,
-      totalRevenue: 45000000,
-      averageUtilization: 75,
-      monthlyRevenue: 15000000,
-      topCourses: ['A코스', 'B코스'],
-      peakTimes: ['10:00', '14:00'],
-    },
-    analytics: [
-      {
-        comboId: 1,
-        comboName: 'A+B 조합',
-        totalSlots: 20,
-        bookedSlots: 15,
-        utilizationRate: 75,
-        averagePrice: 120000,
-        totalRevenue: 1800000,
-        weekdayBookings: 8,
-        weekendBookings: 7,
-        peakHours: ['10:00', '14:00', '16:00'],
-      },
-    ],
-    availability: {
-      available: 12,
-      total: 20,
-    },
-  };
-};
 
 export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpdate }) => {
   const updateClubMutation = useUpdateClubMutation();
@@ -70,21 +28,13 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
     refetch,
   } = useQuery({
     queryKey: ['club-operation-stats', club.id, dateRange],
-    queryFn: () => fetchClubOperationStats(club.id, dateRange),
+    queryFn: () => bookingApi.getClubOperationStats(club.id, dateRange),
     staleTime: 5 * 60 * 1000, // 5분
   });
 
   const stats = operationData?.stats ?? null;
   const analytics = operationData?.analytics ?? [];
   const availability = operationData?.availability ?? null;
-
-  // 가동률 색상
-  const getUtilizationColor = (rate: number) => {
-    if (rate >= 80) return 'text-green-600 bg-green-500/20';
-    if (rate >= 60) return 'text-yellow-600 bg-yellow-500/20';
-    if (rate >= 40) return 'text-orange-600 bg-orange-500/20';
-    return 'text-red-600 bg-red-500/20';
-  };
 
   // 시즌 정보 업데이트
   const updateSeasonInfo = async (seasonData: any) => {
@@ -149,9 +99,9 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4 border border-emerald-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-emerald-300">오늘 예약 가능</p>
+              <p className="text-sm text-emerald-300">오늘 예약</p>
               <p className="text-2xl font-bold text-white">
-                {availability ? `${availability.available}/${availability.total}` : '-/-'}
+                {availability ? `${availability.bookedToday}건` : '-'}
               </p>
             </div>
             <div className="w-12 h-12 bg-emerald-500/20 rounded-lg flex items-center justify-center">
@@ -218,52 +168,44 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
       {/* 18홀 조합별 분석 */}
       {analytics.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-medium text-white">18홀 조합별 성과 분석</h3>
+          <h3 className="text-lg font-medium text-white">게임별 성과 분석</h3>
           <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-white/15">
                 <thead className="bg-white/5">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white/50 uppercase tracking-wider">조합</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-white/50 uppercase tracking-wider">총 슬롯</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-white/50 uppercase tracking-wider">예약</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-white/50 uppercase tracking-wider">가동률</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white/50 uppercase tracking-wider">게임</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-white/50 uppercase tracking-wider">예약 건수</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-white/50 uppercase tracking-wider">주중/주말</th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-white/50 uppercase tracking-wider">평균 가격</th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-white/50 uppercase tracking-wider">수익</th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-white/50 uppercase tracking-wider">인기 시간</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white/10 divide-y divide-white/15">
-                  {analytics.map((combo) => (
-                    <tr key={combo.comboId} className="hover:bg-white/5">
+                  {analytics.map((game) => (
+                    <tr key={game.gameId} className="hover:bg-white/5">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-white">{combo.comboName}</div>
-                        <div className="text-sm text-white/50">ID: {combo.comboId}</div>
+                        <div className="text-sm font-medium text-white">{game.gameName}</div>
+                        <div className="text-sm text-white/50">슬롯 {game.bookedSlots}개 사용</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-white">
-                        {combo.totalSlots}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm text-white">{combo.bookedSlots}</div>
-                        <div className="text-xs text-white/50">
-                          주중: {combo.weekdayBookings} / 주말: {combo.weekendBookings}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getUtilizationColor(combo.utilizationRate)}`}>
-                          {Math.round(combo.utilizationRate)}%
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-white">
-                        ₩{combo.averagePrice.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-white">
-                        ₩{(combo.totalRevenue / 1000000).toFixed(1)}M
+                        {game.totalBookings}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="text-xs text-white/60">
-                          {combo.peakHours.slice(0, 3).join(', ')}
-                          {combo.peakHours.length > 3 && '...'}
+                          주중: {game.weekdayBookings} / 주말: {game.weekendBookings}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-white">
+                        {game.averagePrice.toLocaleString()}원
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-white">
+                        {(game.totalRevenue / 10000).toFixed(0)}만원
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="text-xs text-white/60">
+                          {game.peakHours.slice(0, 3).join(', ') || '-'}
                         </div>
                       </td>
                     </tr>
@@ -343,20 +285,20 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
         <div className="space-y-3 text-sm text-emerald-300">
           {analytics.length > 0 && (
             <>
-              {analytics.some(a => a.utilizationRate < 50) && (
+              {stats && stats.averageUtilization < 50 && (
                 <div className="flex items-start space-x-2">
                   <svg className="w-4 h-4 mt-0.5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16.5c-.77.833.192 3 1.732 3z" />
                   </svg>
-                  <p>가동률이 낮은 조합이 있습니다. 할인 이벤트나 패키지 상품을 고려해보세요.</p>
+                  <p>전체 가동률이 낮습니다. 할인 이벤트나 패키지 상품을 고려해보세요.</p>
                 </div>
               )}
-              {analytics.some(a => a.utilizationRate > 90) && (
+              {stats && stats.averageUtilization > 90 && (
                 <div className="flex items-start space-x-2">
                   <svg className="w-4 h-4 mt-0.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <p>인기 조합의 타임슬롯을 늘리거나 프리미엄 가격을 적용할 수 있습니다.</p>
+                  <p>가동률이 매우 높습니다. 타임슬롯 추가나 프리미엄 가격을 고려해보세요.</p>
                 </div>
               )}
               <div className="flex items-start space-x-2">

@@ -243,6 +243,15 @@ export class BookingNatsController {
     return NatsResponse.success(stats);
   }
 
+  @MessagePattern('bookings.clubOperationStats')
+  async getClubOperationStats(
+    @Payload() data: { clubId: number; dateRange: { startDate: string; endDate: string }; token?: string },
+  ) {
+    this.logger.log(`NATS: Received bookings.clubOperationStats for clubId: ${data.clubId}`);
+    const stats = await this.bookingService.getClubOperationStats(data.clubId, data.dateRange);
+    return NatsResponse.success(stats);
+  }
+
   @MessagePattern('dashboard.stats')
   async getDashboardStats(@Payload() data: { dateRange: { startDate: string; endDate: string }; token?: string }) {
     this.logger.log(`NATS: Received dashboard.stats request`);
