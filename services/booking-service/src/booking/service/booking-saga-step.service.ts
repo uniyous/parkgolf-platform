@@ -1,4 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom, timeout, catchError } from 'rxjs';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { BookingStatus, TimeSlotCacheStatus, OutboxStatus, ParticipantRole, ParticipantStatus } from '@prisma/client';
 import { AppException } from '../../common/exceptions/app.exception';
@@ -10,12 +12,17 @@ import { Errors } from '../../common/exceptions/catalog/error-catalog';
  * saga-service가 호출하는 개별 Step을 처리한다.
  * 각 메서드는 booking DB만 변경하고, 다른 서비스 호출이나 이벤트 발행을 하지 않는다.
  * (알림/슬롯/결제 등의 연쇄 호출은 saga-service가 오케스트레이션)
+ *
+ * 예외: 캐시 미스 시 course-service에서 슬롯/게임 정보를 조회하여 캐시를 자동 채움
  */
 @Injectable()
 export class BookingSagaStepService {
   private readonly logger = new Logger(BookingSagaStepService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() @Inject('COURSE_SERVICE') private readonly courseClient?: ClientProxy,
+  ) {}
 
   /**
    * 예약 레코드 생성 (PENDING 상태)
@@ -54,13 +61,16 @@ export class BookingSagaStepService {
       }
     }
 
-    // 슬롯 캐시에서 게임 정보 조회
-    const slotCache = await this.prisma.gameTimeSlotCache.findUnique({
+    // 슬롯 캐시에서 게임 정보 조회 (미스 시 course-service에서 동기화)
+    let slotCache = await this.prisma.gameTimeSlotCache.findUnique({
       where: { gameTimeSlotId: dto.gameTimeSlotId },
     });
 
     if (!slotCache) {
-      throw new AppException(Errors.Course.TIMESLOT_NOT_FOUND);
+      slotCache = await this.fetchAndCacheSlot(dto.gameTimeSlotId);
+      if (!slotCache) {
+        throw new AppException(Errors.Course.TIMESLOT_NOT_FOUND);
+      }
     }
 
     if (!slotCache.isAvailable || slotCache.availablePlayers < dto.playerCount) {
@@ -68,12 +78,15 @@ export class BookingSagaStepService {
         `예약 가능 인원이 부족합니다. 가능: ${slotCache.availablePlayers}, 요청: ${dto.playerCount}`);
     }
 
-    const gameInfo = await this.prisma.gameCache.findUnique({
+    let gameInfo = await this.prisma.gameCache.findUnique({
       where: { gameId: slotCache.gameId },
     });
 
     if (!gameInfo) {
-      throw new AppException(Errors.Course.GAME_NOT_FOUND);
+      gameInfo = await this.fetchAndCacheGame(slotCache.gameId);
+      if (!gameInfo) {
+        throw new AppException(Errors.Course.GAME_NOT_FOUND);
+      }
     }
 
     const pricePerPerson = Number(slotCache.price);
@@ -742,5 +755,152 @@ export class BookingSagaStepService {
     }
 
     this.logger.log(`Created ${members.length} BookingParticipants for booking ${bookingId}`);
+  }
+
+  /**
+   * 캐시 미스 시 course-service에서 슬롯 정보 조회 → 캐시 upsert
+   */
+  private async fetchAndCacheSlot(gameTimeSlotId: number) {
+    if (!this.courseClient) {
+      this.logger.warn('[CacheMiss] COURSE_SERVICE client not available');
+      return null;
+    }
+
+    try {
+      this.logger.log(`[CacheMiss] Fetching slot ${gameTimeSlotId} from course-service`);
+      const response = await firstValueFrom(
+        this.courseClient.send('gameTimeSlots.get', { timeSlotId: gameTimeSlotId }).pipe(
+          timeout(5000),
+          catchError((err) => { throw new Error(`Failed to fetch slot: ${err.message}`); }),
+        ),
+      );
+
+      if (!response?.success || !response?.data) {
+        this.logger.warn(`[CacheMiss] Slot ${gameTimeSlotId} not found in course-service`);
+        return null;
+      }
+
+      const slot = response.data;
+      const availablePlayers = (slot.maxPlayers || slot.maxBookings || 0) - (slot.bookedPlayers || slot.currentBookings || 0);
+
+      // game 정보에서 clubId 추출 (mapTimeSlotToResponse에서 clubId는 game 관계에서 옴)
+      let clubId = slot.clubId || 0;
+      let clubName = slot.clubName || '';
+      if (!clubId && slot.gameId) {
+        const gameResp = await this.fetchAndCacheGame(slot.gameId);
+        if (gameResp) {
+          clubId = gameResp.clubId;
+          clubName = gameResp.clubName;
+        }
+      }
+
+      const cached = await this.prisma.gameTimeSlotCache.upsert({
+        where: { gameTimeSlotId },
+        update: {
+          gameId: slot.gameId,
+          gameName: slot.gameName || '',
+          gameCode: slot.gameCode || '',
+          clubId,
+          clubName,
+          date: new Date(slot.date),
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          maxPlayers: slot.maxPlayers || 4,
+          bookedPlayers: slot.bookedPlayers || 0,
+          availablePlayers,
+          isAvailable: availablePlayers > 0,
+          price: slot.price || 0,
+          isPremium: slot.isPremium || false,
+          status: TimeSlotCacheStatus.AVAILABLE,
+          lastSyncAt: new Date(),
+        },
+        create: {
+          gameTimeSlotId,
+          gameId: slot.gameId,
+          gameName: slot.gameName || '',
+          gameCode: slot.gameCode || '',
+          clubId,
+          clubName,
+          date: new Date(slot.date),
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          maxPlayers: slot.maxPlayers || 4,
+          bookedPlayers: slot.bookedPlayers || 0,
+          availablePlayers,
+          isAvailable: availablePlayers > 0,
+          price: slot.price || 0,
+          isPremium: slot.isPremium || false,
+          status: TimeSlotCacheStatus.AVAILABLE,
+          lastSyncAt: new Date(),
+        },
+      });
+
+      this.logger.log(`[CacheMiss] Slot ${gameTimeSlotId} cached successfully`);
+      return cached;
+    } catch (error) {
+      this.logger.error(`[CacheMiss] Failed to fetch/cache slot ${gameTimeSlotId}: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * 캐시 미스 시 course-service에서 게임 정보 조회 → 캐시 upsert
+   */
+  private async fetchAndCacheGame(gameId: number) {
+    if (!this.courseClient) {
+      this.logger.warn('[CacheMiss] COURSE_SERVICE client not available');
+      return null;
+    }
+
+    try {
+      this.logger.log(`[CacheMiss] Fetching game ${gameId} from course-service`);
+      const response = await firstValueFrom(
+        this.courseClient.send('games.get', { gameId }).pipe(
+          timeout(5000),
+          catchError((err) => { throw new Error(`Failed to fetch game: ${err.message}`); }),
+        ),
+      );
+
+      if (!response?.success || !response?.data) {
+        this.logger.warn(`[CacheMiss] Game ${gameId} not found in course-service`);
+        return null;
+      }
+
+      const game = response.data;
+      const cached = await this.prisma.gameCache.upsert({
+        where: { gameId },
+        update: {
+          name: game.name || '',
+          code: game.code || '',
+          clubId: game.clubId || 0,
+          clubName: game.clubName || '',
+          frontNineCourseId: game.frontNineCourseId || 0,
+          frontNineCourseName: game.frontNineCourseName || '',
+          backNineCourseId: game.backNineCourseId || 0,
+          backNineCourseName: game.backNineCourseName || '',
+          basePrice: game.basePrice || 0,
+          lastSyncAt: new Date(),
+        },
+        create: {
+          gameId,
+          name: game.name || '',
+          code: game.code || '',
+          clubId: game.clubId || 0,
+          clubName: game.clubName || '',
+          frontNineCourseId: game.frontNineCourseId || 0,
+          frontNineCourseName: game.frontNineCourseName || '',
+          backNineCourseId: game.backNineCourseId || 0,
+          backNineCourseName: game.backNineCourseName || '',
+          basePrice: game.basePrice || 0,
+          lastSyncAt: new Date(),
+        },
+      });
+
+      this.logger.log(`[CacheMiss] Game ${gameId} cached successfully`);
+      return cached;
+    } catch (error) {
+      this.logger.error(`[CacheMiss] Failed to fetch/cache game ${gameId}: ${error.message}`);
+      return null;
+    }
   }
 }
