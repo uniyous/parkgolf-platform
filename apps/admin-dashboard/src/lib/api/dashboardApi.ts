@@ -96,64 +96,6 @@ export interface TrendData {
   timestamp: string;
 }
 
-export interface PerformanceMetrics {
-  services: {
-    [serviceName: string]: {
-      status: 'healthy' | 'warning' | 'critical';
-      responseTime: number; // ms
-      uptime: string;
-      lastChecked: string;
-    };
-  };
-  system: {
-    totalRequests: number;
-    averageResponseTime: number;
-    errorRate: string;
-    throughput: string;
-  };
-  timestamp: string;
-}
-
-export interface TopMetrics {
-  kpis: Array<{
-    title: string;
-    value: number | string;
-    change: string;
-    trend: 'up' | 'down' | 'stable';
-    format?: 'currency' | 'percentage' | 'number';
-  }>;
-  dateRange: {
-    startDate: string;
-    endDate: string;
-  };
-  timestamp: string;
-}
-
-export interface SystemAlerts {
-  critical: Array<{
-    id: string;
-    message: string;
-    severity: 'critical';
-    timestamp: string;
-    service: string;
-  }>;
-  warnings: Array<{
-    id: string;
-    message: string;
-    severity: 'warning';
-    timestamp: string;
-    service: string;
-  }>;
-  info: Array<{
-    id: string;
-    message: string;
-    severity: 'info';
-    timestamp: string;
-    service: string;
-  }>;
-  timestamp: string;
-}
-
 export const dashboardApi = {
   /**
    * 대시보드 개요 조회
@@ -207,46 +149,6 @@ export const dashboardApi = {
   },
 
   /**
-   * 성능 메트릭 조회
-   */
-  async getPerformanceMetrics(): Promise<PerformanceMetrics> {
-    const response = await apiClient.get<unknown>('/admin/dashboard/stats/performance');
-    const data = extractSingle<PerformanceMetrics>(response.data);
-    if (!data) {
-      throw new Error('Failed to fetch performance metrics');
-    }
-    return data;
-  },
-
-  /**
-   * 주요 메트릭 조회
-   */
-  async getTopMetrics(startDate?: string, endDate?: string): Promise<TopMetrics> {
-    const params: Record<string, string> = {};
-    if (startDate) params.startDate = startDate;
-    if (endDate) params.endDate = endDate;
-
-    const response = await apiClient.get<unknown>('/admin/dashboard/stats/top-metrics', params);
-    const data = extractSingle<TopMetrics>(response.data);
-    if (!data) {
-      throw new Error('Failed to fetch top metrics');
-    }
-    return data;
-  },
-
-  /**
-   * 시스템 알림 조회
-   */
-  async getSystemAlerts(): Promise<SystemAlerts> {
-    const response = await apiClient.get<unknown>('/admin/dashboard/stats/alerts');
-    const data = extractSingle<SystemAlerts>(response.data);
-    if (!data) {
-      throw new Error('Failed to fetch system alerts');
-    }
-    return data;
-  },
-
-  /**
    * 예약 트렌드 조회
    */
   async getBookingTrends(days: number = 30): Promise<Array<{ date: string; count: number }>> {
@@ -282,11 +184,4 @@ export const dashboardApi = {
     };
   },
 
-  /**
-   * 서비스 상태 조회
-   */
-  async getServiceHealth(): Promise<PerformanceMetrics['services']> {
-    const performance = await this.getPerformanceMetrics();
-    return performance.services;
-  },
 } as const;
