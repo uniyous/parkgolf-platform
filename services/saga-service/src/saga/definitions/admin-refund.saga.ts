@@ -16,7 +16,6 @@ export const AdminRefundSaga: SagaDefinition = {
       timeout: NATS_TIMEOUTS.QUICK,
       targetService: 'BOOKING_SERVICE',
       buildRequest: (payload) => ({
-        bookingId: payload.bookingId,
         clubId: payload.clubId,
         companyId: payload.companyId,
       }),
