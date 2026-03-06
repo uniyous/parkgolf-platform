@@ -10,7 +10,7 @@ struct ChatRoomView: View {
     @State private var showInviteSheet = false
     @State private var showParticipantsSheet = false
     @State private var showLeaveAlert = false
-    @State private var paymentItem: AiChatViewModel.PendingPayment?
+    @State private var showPaymentSheet = false
 
     init(room: ChatRoom, currentUserId: String) {
         self.room = room
@@ -117,21 +117,20 @@ struct ChatRoomView: View {
         } message: {
             Text("채팅방을 나가시겠습니까?")
         }
-        .sheet(item: $paymentItem) { payment in
-            TossPaymentView(
-                clientKey: Configuration.Payment.tossClientKey,
-                orderId: payment.orderId,
-                orderName: payment.orderName,
-                amount: payment.amount,
-                onResult: { outcome in
-                    paymentItem = nil
-                    handlePaymentResult(outcome)
-                },
-                isPresented: Binding(
-                    get: { paymentItem != nil },
-                    set: { if !$0 { paymentItem = nil } }
+        .sheet(isPresented: $showPaymentSheet) {
+            if let payment = aiViewModel.pendingPayment {
+                TossPaymentView(
+                    clientKey: Configuration.Payment.tossClientKey,
+                    orderId: payment.orderId,
+                    orderName: payment.orderName,
+                    amount: payment.amount,
+                    onResult: { outcome in
+                        showPaymentSheet = false
+                        handlePaymentResult(outcome)
+                    },
+                    isPresented: $showPaymentSheet
                 )
-            )
+            }
         }
         .task {
             await viewModel.loadMessages()
@@ -139,7 +138,7 @@ struct ChatRoomView: View {
             // 결제 복구
             if let saved = aiViewModel.loadPendingPayment() {
                 aiViewModel.pendingPayment = saved
-                paymentItem = saved
+                showPaymentSheet = true
             }
         }
         .onDisappear {
@@ -305,7 +304,7 @@ struct ChatRoomView: View {
                                     let payment = AiChatViewModel.PendingPayment(orderId: orderId, orderName: orderName, amount: amount, type: "single")
                                     aiViewModel.pendingPayment = payment
                                     aiViewModel.savePendingPayment(payment)
-                                    paymentItem = payment
+                                    showPaymentSheet = true
                                 },
                                 onConfirmGroup: { paymentMethod in
                                     sendAiFollowUp("그룹 예약 확인", request: AiChatRequest(message: "그룹 예약 확인", paymentMethod: paymentMethod, confirmGroupBooking: true))
@@ -324,7 +323,7 @@ struct ChatRoomView: View {
                                     let payment = AiChatViewModel.PendingPayment(orderId: orderId, orderName: "더치페이", amount: amount, type: "split")
                                     aiViewModel.pendingPayment = payment
                                     aiViewModel.savePendingPayment(payment)
-                                    paymentItem = payment
+                                    showPaymentSheet = true
                                 },
                                 onNextTeam: {
                                     sendAiFollowUp("다음 팀 예약", request: AiChatRequest(message: "다음 팀 예약", nextTeam: true))
