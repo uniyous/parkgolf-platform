@@ -48,6 +48,13 @@ export class SagaEngineService {
 
     // SagaExecution 생성 + 모든 SagaStep 레코드 생성
     const sagaExecution = await this.prisma.$transaction(async (prisma) => {
+      // FAILED 상태의 이전 실행이 있으면 삭제 후 재생성
+      if (existing && existing.status === SagaStatus.FAILED) {
+        this.logger.log(`[SagaEngine] Removing FAILED saga ${existing.id} for retry: ${correlationId}`);
+        await prisma.sagaStep.deleteMany({ where: { sagaExecutionId: existing.id } });
+        await prisma.sagaExecution.delete({ where: { id: existing.id } });
+      }
+
       const execution = await prisma.sagaExecution.create({
         data: {
           sagaType,
