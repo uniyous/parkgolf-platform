@@ -135,10 +135,9 @@ struct ChatRoomView: View {
         .task {
             await viewModel.loadMessages()
             await viewModel.connectSocket()
-            // 결제 복구
+            // 결제 복구: pendingPayment만 복원하고 sheet는 사용자가 직접 열도록 함
             if let saved = aiViewModel.loadPendingPayment() {
                 aiViewModel.pendingPayment = saved
-                showPaymentSheet = true
             }
         }
         .onDisappear {
