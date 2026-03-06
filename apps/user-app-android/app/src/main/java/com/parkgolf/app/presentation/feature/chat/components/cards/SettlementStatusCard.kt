@@ -175,7 +175,7 @@ private fun BookerDashboardView(
                     )
                     Text(
                         text = "정산 현황",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = ParkOnPrimary
                     )
@@ -187,7 +187,7 @@ private fun BookerDashboardView(
                 ) {
                     Text(
                         text = if (allPaid) "완료" else "$paidCount/$totalParticipants",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Medium,
                         color = if (allPaid) ParkPrimary else ParkWarning,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
@@ -211,7 +211,7 @@ private fun BookerDashboardView(
                     val s = remainingSeconds % 60
                     Text(
                         text = "${"%02d".format(m)}:${"%02d".format(s)} 남음",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Medium,
                         color = ParkWarning
                     )
@@ -242,12 +242,12 @@ private fun BookerDashboardView(
             ) {
                 Text(
                     text = "1인당 ${numberFormat.format(pricePerPerson)}원",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = ParkOnPrimary.copy(alpha = 0.6f)
                 )
                 Text(
                     text = "총 ${numberFormat.format(totalPrice)}원",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Medium,
                     color = ParkPrimary
                 )
@@ -265,7 +265,7 @@ private fun BookerDashboardView(
                     ) {
                         Text(
                             text = p.userName,
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.labelLarge,
                             color = ParkOnPrimary.copy(alpha = 0.7f)
                         )
                         when (p.status) {
@@ -279,7 +279,7 @@ private fun BookerDashboardView(
                                     modifier = Modifier.size(12.dp),
                                     tint = ParkPrimary
                                 )
-                                Text("완료", style = MaterialTheme.typography.labelSmall, color = ParkPrimary)
+                                Text("완료", style = MaterialTheme.typography.labelMedium, color = ParkPrimary)
                             }
                             "CANCELLED" -> Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -291,7 +291,7 @@ private fun BookerDashboardView(
                                     modifier = Modifier.size(12.dp),
                                     tint = ParkError
                                 )
-                                Text("취소", style = MaterialTheme.typography.labelSmall, color = ParkError)
+                                Text("취소", style = MaterialTheme.typography.labelMedium, color = ParkError)
                             }
                             else -> Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -303,7 +303,7 @@ private fun BookerDashboardView(
                                     modifier = Modifier.size(12.dp),
                                     tint = ParkWarning
                                 )
-                                Text("대기", style = MaterialTheme.typography.labelSmall, color = ParkWarning)
+                                Text("대기", style = MaterialTheme.typography.labelMedium, color = ParkWarning)
                             }
                         }
                     }
@@ -314,7 +314,7 @@ private fun BookerDashboardView(
             HorizontalDivider(color = ParkOnPrimary.copy(alpha = 0.05f))
             Text(
                 text = groupNumber,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
                 color = ParkOnPrimary.copy(alpha = 0.3f),
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
@@ -337,7 +337,7 @@ private fun BookerDashboardView(
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("리마인더", style = MaterialTheme.typography.labelSmall)
+                            Text("리마인더", style = MaterialTheme.typography.labelMedium)
                         }
                     }
                     if (onRefresh != null) {
@@ -355,7 +355,7 @@ private fun BookerDashboardView(
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("새로고침", style = MaterialTheme.typography.labelSmall)
+                            Text("새로고침", style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }
@@ -422,7 +422,7 @@ private fun ParticipantPaymentView(
                 )
                 Text(
                     text = "결제 요청",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = ParkOnPrimary
                 )
@@ -444,7 +444,7 @@ private fun ParticipantPaymentView(
                             )
                             Text(
                                 text = clubName,
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = ParkOnPrimary.copy(alpha = 0.6f)
                             )
                         }
@@ -462,7 +462,7 @@ private fun ParticipantPaymentView(
                             )
                             Text(
                                 text = gameName,
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = ParkOnPrimary.copy(alpha = 0.6f)
                             )
                         }
@@ -481,7 +481,7 @@ private fun ParticipantPaymentView(
                             )
                             Text(
                                 text = dateTime,
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = ParkOnPrimary.copy(alpha = 0.6f)
                             )
                         }
@@ -497,7 +497,7 @@ private fun ParticipantPaymentView(
             )
             Text(
                 text = "더치페이 결제 금액",
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
                 color = ParkOnPrimary.copy(alpha = 0.5f)
             )
 
@@ -517,7 +517,7 @@ private fun ParticipantPaymentView(
                     val s = remainingSeconds % 60
                     Text(
                         text = "${"%02d".format(m)}:${"%02d".format(s)} 남음",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Medium,
                         color = ParkWarning
                     )
@@ -527,7 +527,7 @@ private fun ParticipantPaymentView(
             if (isExpired) {
                 Text(
                     text = "결제 시간이 만료되었습니다",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = ParkError,
                     textAlign = TextAlign.Center
                 )
@@ -589,7 +589,7 @@ private fun ParticipantPaidView(participant: ParticipantInfo) {
                 )
                 Text(
                     text = "결제 완료",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = ParkPrimary
                 )

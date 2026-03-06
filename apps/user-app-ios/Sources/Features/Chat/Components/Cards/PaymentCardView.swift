@@ -40,7 +40,7 @@ struct PaymentCardView: View {
                 Image(systemName: "creditcard.fill")
                     .foregroundColor(Color.parkPrimary)
                 Text("카드결제")
-                    .font(.body)
+                    .font(.title3)
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
             }
@@ -53,11 +53,11 @@ struct PaymentCardView: View {
 
                 HStack(spacing: 8) {
                     Image(systemName: "wonsign")
-                        .font(.system(size: 12))
+                        .font(.system(size: 14))
                         .foregroundColor(.white.opacity(0.4))
                         .frame(width: 16)
                     Text("₩\(amount.formatted())")
-                        .font(.body)
+                        .font(.title3)
                         .fontWeight(.bold)
                         .foregroundColor(Color.parkPrimary)
                 }
@@ -68,7 +68,7 @@ struct PaymentCardView: View {
                 Image(systemName: "timer")
                     .font(.system(size: 12))
                 Text(isExpired ? "결제 시간 만료" : "남은 시간 \(timerText)")
-                    .font(.subheadline)
+                    .font(.body)
                     .fontWeight(.medium)
             }
             .foregroundColor(timerColor)
@@ -77,7 +77,7 @@ struct PaymentCardView: View {
             // Buttons
             if isExpired {
                 Text("결제 시간이 만료되었습니다")
-                    .font(.subheadline)
+                    .font(.body)
                     .foregroundColor(.red.opacity(0.8))
                     .frame(maxWidth: .infinity, alignment: .center)
             } else {
@@ -86,7 +86,7 @@ struct PaymentCardView: View {
                         onPaymentComplete?(false)
                     } label: {
                         Text("예약 취소")
-                            .font(.subheadline)
+                            .font(.body)
                             .fontWeight(.medium)
                             .foregroundColor(.white.opacity(0.7))
                             .frame(maxWidth: .infinity)
@@ -99,7 +99,7 @@ struct PaymentCardView: View {
                         onRequestPayment?(orderId, "\(clubName) 예약", amount)
                     } label: {
                         Text("결제하기")
-                            .font(.subheadline)
+                            .font(.body)
                             .fontWeight(.semibold)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -134,11 +134,11 @@ struct PaymentCardView: View {
     private func infoRow(icon: String, value: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 12))
+                .font(.system(size: 14))
                 .foregroundColor(.white.opacity(0.4))
                 .frame(width: 16)
             Text(value)
-                .font(.subheadline)
+                .font(.body)
                 .foregroundColor(.white.opacity(0.7))
         }
     }

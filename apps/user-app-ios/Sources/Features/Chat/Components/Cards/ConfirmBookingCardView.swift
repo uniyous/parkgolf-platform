@@ -35,7 +35,7 @@ struct ConfirmBookingCardView: View {
                 Image(systemName: "clipboard.fill")
                     .foregroundColor(Color.parkPrimary)
                 Text(headerTitle)
-                    .font(.body)
+                    .font(.title3)
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
             }
@@ -55,16 +55,16 @@ struct ConfirmBookingCardView: View {
 
                 HStack(spacing: 8) {
                     Image(systemName: "wonsign")
-                        .font(.system(size: 12))
+                        .font(.system(size: 14))
                         .foregroundColor(.white.opacity(0.4))
                         .frame(width: 16)
                     Text("₩\(price.formatted())")
-                        .font(.subheadline)
+                        .font(.body)
                         .fontWeight(.semibold)
                         .foregroundColor(Color.parkPrimary)
                     if let perPerson = pricePerPerson {
                         Text("(1인당 ₩\(perPerson.formatted()))")
-                            .font(.caption)
+                            .font(.subheadline)
                             .foregroundColor(.white.opacity(0.5))
                     }
                 }
@@ -73,7 +73,7 @@ struct ConfirmBookingCardView: View {
             // Payment method selection
             VStack(alignment: .leading, spacing: 8) {
                 Text("결제 방법")
-                    .font(.subheadline)
+                    .font(.body)
                     .fontWeight(.medium)
                     .foregroundColor(.white.opacity(0.6))
 
@@ -90,7 +90,7 @@ struct ConfirmBookingCardView: View {
                     onCancel?()
                 } label: {
                     Text("취소")
-                        .font(.subheadline)
+                        .font(.body)
                         .fontWeight(.medium)
                         .foregroundColor(.white.opacity(0.7))
                         .frame(maxWidth: .infinity)
@@ -103,7 +103,7 @@ struct ConfirmBookingCardView: View {
                     onConfirm?(selectedPaymentMethod)
                 } label: {
                     Text("예약 확인")
-                        .font(.subheadline)
+                        .font(.body)
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -138,7 +138,7 @@ struct ConfirmBookingCardView: View {
                     .font(.system(size: 12))
                     .foregroundColor(.white.opacity(0.6))
                 Text(label)
-                    .font(.subheadline)
+                    .font(.body)
                     .foregroundColor(.white.opacity(0.8))
                 Spacer()
             }
@@ -152,11 +152,11 @@ struct ConfirmBookingCardView: View {
     private func infoRow(icon: String, value: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 12))
+                .font(.system(size: 14))
                 .foregroundColor(.white.opacity(0.4))
                 .frame(width: 16)
             Text(value)
-                .font(.subheadline)
+                .font(.body)
                 .foregroundColor(.white.opacity(0.7))
         }
     }

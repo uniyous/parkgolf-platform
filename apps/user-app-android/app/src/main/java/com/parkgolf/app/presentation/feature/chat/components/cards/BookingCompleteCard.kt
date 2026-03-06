@@ -50,7 +50,7 @@ fun BookingCompleteCard(data: Map<String, Any?>) {
                 )
                 Text(
                     text = "예약 완료",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = ParkPrimary
                 )
@@ -85,13 +85,13 @@ private fun InfoRow(
         if (label != null) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = ParkOnPrimary.copy(alpha = 0.4f)
             )
         }
         Text(
             text = value,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = ParkOnPrimary.copy(alpha = 0.7f)
         )
     }

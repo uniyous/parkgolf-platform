@@ -30,7 +30,7 @@ struct AiWelcomeCard: View {
                         .shadow(color: Color.parkPrimary.opacity(0.3), radius: 4)
 
                     Text("AI 예약 도우미")
-                        .font(.subheadline)
+                        .font(.body)
                         .fontWeight(.semibold)
                         .foregroundColor(Color.parkPrimary)
                 }
@@ -38,11 +38,11 @@ struct AiWelcomeCard: View {
                 // Welcome message + quick actions
                 VStack(alignment: .leading, spacing: 8) {
                     Text("안녕하세요! 파크골프 예약 도우미입니다.")
-                        .font(.body)
+                        .font(.title3)
                         .foregroundColor(.white)
 
                     Text("골프장 검색, 예약, 날씨 확인 등을 도와드릴게요.")
-                        .font(.body)
+                        .font(.title3)
                         .foregroundColor(.white.opacity(0.7))
 
                     // Quick action buttons (2x2 grid)
@@ -57,7 +57,7 @@ struct AiWelcomeCard: View {
                                         .foregroundColor(action.color)
 
                                     Text(action.label)
-                                        .font(.subheadline)
+                                        .font(.body)
                                         .fontWeight(.medium)
                                         .foregroundColor(.white.opacity(0.8))
                                 }

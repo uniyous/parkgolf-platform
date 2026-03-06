@@ -53,7 +53,7 @@ fun ConfirmBookingCard(
         ) {
             Text(
                 text = if (teamNumber != null) "팀${teamNumber} 예약 정보 확인" else "예약 정보 확인",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = ParkOnPrimary
             )
@@ -82,7 +82,7 @@ fun ConfirmBookingCard(
                 Column {
                     Text(
                         text = "결제방법",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         color = ParkOnPrimary.copy(alpha = 0.5f)
                     )
                     Spacer(modifier = Modifier.height(6.dp))
@@ -149,7 +149,7 @@ fun ConfirmBookingCard(
                             ),
                             border = BorderStroke(1.dp, ParkOnPrimary.copy(alpha = 0.2f))
                         ) {
-                            Text("취소", style = MaterialTheme.typography.bodySmall)
+                            Text("취소", style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                     if (onConfirm != null) {
@@ -158,7 +158,7 @@ fun ConfirmBookingCard(
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(containerColor = ParkPrimary)
                         ) {
-                            Text("예약 확인", style = MaterialTheme.typography.bodySmall)
+                            Text("예약 확인", style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
@@ -202,7 +202,7 @@ private fun PaymentMethodButton(
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Medium,
                 color = if (isSelected) selectedColor else ParkOnPrimary.copy(alpha = 0.5f)
             )
@@ -227,7 +227,7 @@ private fun InfoRow(
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = ParkOnPrimary.copy(alpha = 0.7f)
         )
     }

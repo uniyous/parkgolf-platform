@@ -35,18 +35,18 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
             <div className="px-4 py-3 space-y-1">
               <div className="flex items-center gap-1.5">
                 <Flag className="w-3.5 h-3.5 text-violet-400" />
-                <span className="text-base font-bold text-white">{data.clubName}</span>
+                <span className="text-lg font-bold text-white">{data.clubName}</span>
               </div>
               {data.clubAddress && (
                 <div className="flex items-center gap-1.5">
                   <MapPin className="w-3 h-3 text-white/40" />
-                  <span className="text-sm text-white/40 truncate">{data.clubAddress}</span>
+                  <span className="text-base text-white/40 truncate">{data.clubAddress}</span>
                 </div>
               )}
               {data.date && (
                 <div className="flex items-center gap-1.5">
                   <Calendar className="w-3 h-3 text-white/40" />
-                  <span className="text-sm text-white/40">{formatDateKorean(data.date)}</span>
+                  <span className="text-base text-white/40">{formatDateKorean(data.date)}</span>
                 </div>
               )}
             </div>
@@ -60,8 +60,8 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
             <div className="px-4 py-3">
               {/* 라운드 헤더: 이름 + 가격 */}
               <div className="flex items-center justify-between mb-2">
-                <span className="text-base font-semibold text-white">{round.name}</span>
-                <span className="text-sm font-semibold text-violet-400">
+                <span className="text-lg font-semibold text-white">{round.name}</span>
+                <span className="text-base font-semibold text-violet-400">
                   {'\u20A9'}{formatPrice(round.price)}
                 </span>
               </div>
@@ -91,7 +91,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
                         <Check className="w-3 h-3 text-violet-400" />
                       )}
                       <span className={cn(
-                        'text-sm',
+                        'text-base',
                         isSelected ? 'font-bold text-violet-400' : 'font-medium text-white'
                       )}>
                         {slot.time}
@@ -149,10 +149,10 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
                 )}
                 <div className="flex items-center gap-1.5 mb-1">
                   <Clock className="w-3.5 h-3.5 text-violet-400" />
-                  <span className="text-base font-semibold text-white">{slot.time}</span>
+                  <span className="text-lg font-semibold text-white">{slot.time}</span>
                 </div>
-                <p className="text-sm text-white/60">{slot.gameName}</p>
-                <p className="text-sm text-violet-400 mt-1">
+                <p className="text-base text-white/60">{slot.gameName}</p>
+                <p className="text-base text-violet-400 mt-1">
                   {'\u20A9'}{formatPrice(slot.price)}
                 </p>
               </button>

@@ -65,12 +65,12 @@ const BookerDashboardView: React.FC<{
     <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h4 className="text-base font-semibold text-white flex items-center gap-2">
+        <h4 className="text-lg font-semibold text-white flex items-center gap-2">
           <Users className="w-4 h-4 text-violet-400" />
           {data.teamNumber ? `팀${data.teamNumber} 정산 현황` : '정산 현황'}
         </h4>
         <span className={cn(
-          'text-sm font-medium px-2 py-0.5 rounded-full',
+          'text-base font-medium px-2 py-0.5 rounded-full',
           allPaid
             ? 'bg-violet-500/20 text-violet-400'
             : 'bg-yellow-500/20 text-yellow-400'
@@ -81,7 +81,7 @@ const BookerDashboardView: React.FC<{
 
       {/* Team Info */}
       {data.clubName && (
-        <div className="flex items-center gap-2 text-sm text-white/50">
+        <div className="flex items-center gap-2 text-base text-white/50">
           <MapPin className="w-3 h-3" />
           <span>{data.clubName}</span>
           {data.slotTime && <><span className="text-white/30">·</span><span>{data.slotTime}</span></>}
@@ -103,12 +103,12 @@ const BookerDashboardView: React.FC<{
       {remainingSeconds !== null && remainingSeconds > 0 && !allPaid && (
         <div className="flex items-center justify-center gap-1.5 text-yellow-400">
           <Timer className="w-3.5 h-3.5" />
-          <span className="text-sm font-medium">{formatCountdown(remainingSeconds)} 남음</span>
+          <span className="text-base font-medium">{formatCountdown(remainingSeconds)} 남음</span>
         </div>
       )}
 
       {/* Amount */}
-      <div className="flex justify-between text-sm text-white/60">
+      <div className="flex justify-between text-base text-white/60">
         <span>1인당 {formatPrice(data.pricePerPerson)}원</span>
         <span className="text-violet-400 font-medium">
           총 {formatPrice(data.totalPrice)}원
@@ -122,21 +122,21 @@ const BookerDashboardView: React.FC<{
             key={p.userId}
             className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white/[0.02]"
           >
-            <span className="text-sm text-white/70">{p.userName}</span>
+            <span className="text-base text-white/70">{p.userName}</span>
             {p.status === 'PAID' ? (
               <div className="flex items-center gap-1 text-violet-400">
                 <CheckCircle2 className="w-3 h-3" />
-                <span className="text-sm">완료</span>
+                <span className="text-base">완료</span>
               </div>
             ) : p.status === 'CANCELLED' ? (
               <div className="flex items-center gap-1 text-red-400">
                 <AlertCircle className="w-3 h-3" />
-                <span className="text-sm">취소</span>
+                <span className="text-base">취소</span>
               </div>
             ) : (
               <div className="flex items-center gap-1 text-yellow-400">
                 <Clock className="w-3 h-3" />
-                <span className="text-sm">대기</span>
+                <span className="text-base">대기</span>
               </div>
             )}
           </div>
@@ -149,7 +149,7 @@ const BookerDashboardView: React.FC<{
           {onSendReminder && (
             <button
               onClick={onSendReminder}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-white/5 text-white/60 hover:bg-white/10 transition-colors"
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-base font-medium bg-white/5 text-white/60 hover:bg-white/10 transition-colors"
             >
               <Bell className="w-3.5 h-3.5" />
               리마인더
@@ -158,7 +158,7 @@ const BookerDashboardView: React.FC<{
           {onRefresh && (
             <button
               onClick={onRefresh}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors"
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-base font-medium bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               새로고침
@@ -169,7 +169,7 @@ const BookerDashboardView: React.FC<{
 
       {/* Group Number */}
       {data.groupNumber && (
-        <div className="text-center text-sm text-white/30 pt-1 border-t border-white/5">
+        <div className="text-center text-base text-white/30 pt-1 border-t border-white/5">
           {data.groupNumber}
         </div>
       )}
@@ -278,12 +278,12 @@ const ParticipantPaymentView: React.FC<{
     <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-3">
       <div className="flex items-center gap-2">
         <CreditCard className="w-4 h-4 text-violet-400" />
-        <h4 className="text-base font-semibold text-white">결제 요청</h4>
+        <h4 className="text-lg font-semibold text-white">결제 요청</h4>
       </div>
 
       {/* 골프장/코스/날짜/시간 정보 */}
       {(clubName || gameName || date || slotTime) && (
-        <div className="space-y-1 text-sm text-white/60">
+        <div className="space-y-1 text-base text-white/60">
           {clubName && (
             <div className="flex items-center gap-1.5">
               <MapPin className="w-3 h-3 text-white/40" />
@@ -306,26 +306,26 @@ const ParticipantPaymentView: React.FC<{
       )}
 
       <div className="text-center py-3">
-        <p className="text-3xl font-bold text-white">{formatPrice(amount)}원</p>
-        <p className="text-sm text-white/50 mt-1">더치페이 결제 금액</p>
+        <p className="text-4xl font-bold text-white">{formatPrice(amount)}원</p>
+        <p className="text-base text-white/50 mt-1">더치페이 결제 금액</p>
       </div>
 
       {/* 카운트다운 */}
       {remainingSeconds !== null && !isExpired && (
         <div className="flex items-center justify-center gap-1.5 text-yellow-400">
           <Timer className="w-3.5 h-3.5" />
-          <span className="text-sm font-medium">{formatTime(remainingSeconds)} 남음</span>
+          <span className="text-base font-medium">{formatTime(remainingSeconds)} 남음</span>
         </div>
       )}
 
       {isExpired ? (
-        <div className="text-center text-sm text-red-400">결제 시간이 만료되었습니다</div>
+        <div className="text-center text-base text-red-400">결제 시간이 만료되었습니다</div>
       ) : (
         <button
           onClick={handlePay}
           disabled={isPaying || !participant.orderId || !tossRef.current}
           className={cn(
-            'w-full py-2.5 rounded-lg text-base font-semibold transition-all',
+            'w-full py-2.5 rounded-lg text-lg font-semibold transition-all',
             isPaying || !tossRef.current
               ? 'bg-white/10 text-white/50 cursor-not-allowed'
               : 'bg-violet-500 text-white hover:bg-violet-600 active:scale-[0.98]'
@@ -357,9 +357,9 @@ const ParticipantPaidView: React.FC<{
     <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-2">
       <div className="flex items-center justify-center gap-2 text-violet-400">
         <CheckCircle2 className="w-5 h-5" />
-        <span className="text-base font-semibold">결제 완료</span>
+        <span className="text-lg font-semibold">결제 완료</span>
       </div>
-      <p className="text-center text-xl font-bold text-white">{formatPrice(amount)}원</p>
+      <p className="text-center text-2xl font-bold text-white">{formatPrice(amount)}원</p>
     </div>
   );
 };

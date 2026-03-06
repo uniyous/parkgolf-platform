@@ -32,21 +32,21 @@ export const WeatherCard: React.FC<WeatherCardProps> = ({ data }) => {
   return (
     <div className="mt-2 bg-violet-500/10 rounded-xl p-3 border border-violet-500/20">
       {locationName && (
-        <p className="text-sm text-white/50 mb-1.5">{locationName} · {data.date}</p>
+        <p className="text-base text-white/50 mb-1.5">{locationName} · {data.date}</p>
       )}
       <div className="flex items-center gap-3">
         {skyIcon(data.sky)}
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <Thermometer className="w-3.5 h-3.5 text-white/50" />
-            <span className="text-base text-white font-medium">{tempDisplay}</span>
-            <span className="text-sm text-white/50">{skyLabel(data.sky)}</span>
+            <span className="text-lg text-white font-medium">{tempDisplay}</span>
+            <span className="text-base text-white/50">{skyLabel(data.sky)}</span>
           </div>
           {data.precipitation > 0 && (
-            <p className="text-sm text-blue-400/80 mt-0.5">강수확률 {data.precipitation}%</p>
+            <p className="text-base text-blue-400/80 mt-0.5">강수확률 {data.precipitation}%</p>
           )}
           {data.recommendation && (
-            <p className="text-sm text-white/60 mt-1">{data.recommendation}</p>
+            <p className="text-base text-white/60 mt-1">{data.recommendation}</p>
           )}
         </div>
       </div>

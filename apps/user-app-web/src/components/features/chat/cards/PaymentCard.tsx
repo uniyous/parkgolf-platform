@@ -130,10 +130,10 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversa
     <div className="mt-2 bg-violet-500/10 rounded-xl p-4 border border-violet-500/20">
         <div className="flex items-center gap-2 mb-3">
           <CreditCard className="w-4 h-4 text-blue-400" />
-          <span className="text-base font-semibold text-white">카드결제</span>
+          <span className="text-lg font-semibold text-white">카드결제</span>
         </div>
 
-        <div className="space-y-2 text-base">
+        <div className="space-y-2 text-lg">
           <div className="flex items-center gap-2 text-white/70">
             <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
             <span>{data.clubName}</span>
@@ -154,14 +154,14 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversa
 
         {/* 타이머 / 완료 상태 */}
         {completed ? (
-          <div className="flex items-center gap-2 mt-3 px-3 py-2 rounded-lg text-sm bg-emerald-500/10 text-emerald-400">
+          <div className="flex items-center gap-2 mt-3 px-3 py-2 rounded-lg text-base bg-emerald-500/10 text-emerald-400">
             <CreditCard className="w-3.5 h-3.5 shrink-0" />
             <span>결제 완료</span>
           </div>
         ) : (
           <>
             <div className={cn(
-              'flex items-center gap-2 mt-3 px-3 py-2 rounded-lg text-sm',
+              'flex items-center gap-2 mt-3 px-3 py-2 rounded-lg text-base',
               isExpired
                 ? 'bg-red-500/10 text-red-400'
                 : isUrgent
@@ -183,7 +183,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversa
                   onClick={handleCancel}
                   disabled={isPaying}
                   className={cn(
-                    'flex-1 px-3 py-2 rounded-lg text-base font-medium transition-colors',
+                    'flex-1 px-3 py-2 rounded-lg text-lg font-medium transition-colors',
                     'bg-white/10 text-white/70 hover:bg-white/20',
                     'disabled:opacity-50 disabled:cursor-not-allowed',
                   )}
@@ -194,7 +194,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversa
                   onClick={handlePayment}
                   disabled={isPaying || !tossRef.current}
                   className={cn(
-                    'flex-1 px-3 py-2 rounded-lg text-base font-medium transition-colors',
+                    'flex-1 px-3 py-2 rounded-lg text-lg font-medium transition-colors',
                     'bg-blue-500 text-white hover:bg-blue-600',
                     'disabled:opacity-50 disabled:cursor-not-allowed',
                   )}

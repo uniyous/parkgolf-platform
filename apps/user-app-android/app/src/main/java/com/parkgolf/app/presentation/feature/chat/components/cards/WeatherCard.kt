@@ -65,12 +65,12 @@ fun WeatherCard(data: Map<String, Any?>) {
                     )
                     Text(
                         text = "${temperature.toInt()}°C",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyLarge,
                         color = ParkOnPrimary
                     )
                     Text(
                         text = sky,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = ParkOnPrimary.copy(alpha = 0.5f)
                     )
                 }
@@ -78,7 +78,7 @@ fun WeatherCard(data: Map<String, Any?>) {
                 if (recommendation.isNotEmpty()) {
                     Text(
                         text = recommendation,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = ParkOnPrimary.copy(alpha = 0.6f)
                     )
                 }

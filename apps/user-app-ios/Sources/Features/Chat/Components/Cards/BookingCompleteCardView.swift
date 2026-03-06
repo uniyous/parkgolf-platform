@@ -37,7 +37,7 @@ struct BookingCompleteCardView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(Color.parkPrimary)
                 Text("예약 완료")
-                    .font(.body)
+                    .font(.title3)
                     .fontWeight(.semibold)
                     .foregroundColor(Color.parkPrimary)
             }
@@ -62,18 +62,18 @@ struct BookingCompleteCardView: View {
     private func infoRow(icon: String, label: String?, value: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 12))
+                .font(.system(size: 14))
                 .foregroundColor(.white.opacity(0.4))
                 .frame(width: 16)
 
             if let label = label {
                 Text(label)
-                    .font(.subheadline)
+                    .font(.body)
                     .foregroundColor(.white.opacity(0.4))
             }
 
             Text(value)
-                .font(.subheadline)
+                .font(.body)
                 .foregroundColor(.white.opacity(0.7))
         }
     }

@@ -47,17 +47,17 @@ struct SlotCardView: View {
                                     .font(.system(size: 10))
                                     .foregroundColor(isSelected ? Color.parkPrimary : Color.parkPrimary)
                                 Text(time)
-                                    .font(.body)
+                                    .font(.title3)
                                     .fontWeight(.semibold)
                                     .foregroundColor(.white)
                             }
 
                             Text(gameName)
-                                .font(.subheadline)
+                                .font(.body)
                                 .foregroundColor(.white.opacity(0.6))
 
                             Text("₩\(price.formatted())")
-                                .font(.subheadline)
+                                .font(.body)
                                 .foregroundColor(Color.parkPrimary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)

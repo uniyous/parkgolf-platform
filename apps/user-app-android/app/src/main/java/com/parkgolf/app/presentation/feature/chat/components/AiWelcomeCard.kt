@@ -74,7 +74,7 @@ fun AiWelcomeCard(
             }
             Text(
                 text = "AI 예약 도우미",
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = ParkPrimary
             )
@@ -100,12 +100,12 @@ fun AiWelcomeCard(
                 ) {
                     Text(
                         text = "안녕하세요! 파크골프 예약 도우미입니다.",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyLarge,
                         color = ParkOnPrimary
                     )
                     Text(
                         text = "골프장 검색, 예약, 날씨 확인 등을 도와드릴게요.",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyLarge,
                         color = ParkOnPrimary.copy(alpha = 0.7f)
                     )
 
@@ -146,7 +146,7 @@ fun AiWelcomeCard(
                                             )
                                             Text(
                                                 text = action.label,
-                                                style = MaterialTheme.typography.labelSmall,
+                                                style = MaterialTheme.typography.labelMedium,
                                                 fontWeight = FontWeight.Medium,
                                                 color = ParkOnPrimary.copy(alpha = 0.8f)
                                             )

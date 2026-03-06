@@ -67,7 +67,7 @@ fun TeamCompleteCard(
                 )
                 Text(
                     text = "팀${teamNumber} 예약 완료",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = ParkPrimary
                 )
@@ -87,7 +87,7 @@ fun TeamCompleteCard(
                     )
                     Text(
                         text = clubName,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = ParkOnPrimary.copy(alpha = 0.7f)
                     )
                 }
@@ -103,7 +103,7 @@ fun TeamCompleteCard(
                     )
                     Text(
                         text = "$date $slotTime · $gameName",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = ParkOnPrimary.copy(alpha = 0.7f)
                     )
                 }
@@ -119,7 +119,7 @@ fun TeamCompleteCard(
                     )
                     Text(
                         text = participantNames.joinToString(", "),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = ParkOnPrimary.copy(alpha = 0.7f)
                     )
                 }
@@ -134,12 +134,12 @@ fun TeamCompleteCard(
             ) {
                 Text(
                     text = paymentLabel,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = ParkOnPrimary.copy(alpha = 0.5f)
                 )
                 Text(
                     text = "${numberFormat.format(totalPrice)}원",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = ParkPrimary
                 )
@@ -148,7 +148,7 @@ fun TeamCompleteCard(
             // Booking number
             Text(
                 text = bookingNumber,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
                 color = ParkOnPrimary.copy(alpha = 0.3f),
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
@@ -166,7 +166,7 @@ fun TeamCompleteCard(
                                 ),
                                 border = BorderStroke(1.dp, ParkOnPrimary.copy(alpha = 0.2f))
                             ) {
-                                Text("종료", style = MaterialTheme.typography.bodySmall)
+                                Text("종료", style = MaterialTheme.typography.bodyMedium)
                             }
                         } else {
                             Button(
@@ -174,7 +174,7 @@ fun TeamCompleteCard(
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(containerColor = ParkPrimary)
                             ) {
-                                Text("종료", style = MaterialTheme.typography.bodySmall)
+                                Text("종료", style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
@@ -184,7 +184,7 @@ fun TeamCompleteCard(
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(containerColor = ParkPrimary)
                         ) {
-                            Text("다음 팀 예약", style = MaterialTheme.typography.bodySmall)
+                            Text("다음 팀 예약", style = MaterialTheme.typography.bodyMedium)
                             Spacer(modifier = Modifier.width(4.dp))
                             Icon(
                                 Icons.Default.ArrowForward,

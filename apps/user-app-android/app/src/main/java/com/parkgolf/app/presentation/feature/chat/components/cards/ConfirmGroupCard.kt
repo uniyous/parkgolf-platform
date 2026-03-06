@@ -61,7 +61,7 @@ fun ConfirmGroupCard(
                 )
                 Text(
                     text = "그룹 예약 (${teamCount}팀)",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = ParkOnPrimary
                 )
@@ -80,17 +80,17 @@ fun ConfirmGroupCard(
                 )
                 Text(
                     text = clubName,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = ParkOnPrimary.copy(alpha = 0.5f)
                 )
                 Text(
                     text = " · ",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = ParkOnPrimary.copy(alpha = 0.3f)
                 )
                 Text(
                     text = date,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = ParkOnPrimary.copy(alpha = 0.5f)
                 )
             }
@@ -116,7 +116,7 @@ fun ConfirmGroupCard(
                             ) {
                                 Text(
                                     text = "팀${index + 1}",
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Medium,
                                     color = ParkPrimary
                                 )
@@ -128,18 +128,18 @@ fun ConfirmGroupCard(
                                 )
                                 Text(
                                     text = slot.slotTime,
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.labelMedium,
                                     color = ParkOnPrimary.copy(alpha = 0.7f)
                                 )
                                 Text(
                                     text = " · ${slot.gameName}",
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.labelMedium,
                                     color = ParkOnPrimary.copy(alpha = 0.4f)
                                 )
                             }
                             Text(
                                 text = "${numberFormat.format(slot.price)}원/인",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = ParkOnPrimary.copy(alpha = 0.5f)
                             )
                         }
@@ -155,12 +155,12 @@ fun ConfirmGroupCard(
             ) {
                 Text(
                     text = "최대 참여 인원",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = ParkOnPrimary.copy(alpha = 0.6f)
                 )
                 Text(
                     text = "${maxParticipants}명",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = ParkOnPrimary.copy(alpha = 0.6f)
                 )
             }
@@ -170,13 +170,13 @@ fun ConfirmGroupCard(
             ) {
                 Text(
                     text = "예상 총액",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = ParkOnPrimary
                 )
                 Text(
                     text = "${numberFormat.format(totalPrice)}원",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = ParkPrimary
                 )
@@ -186,7 +186,7 @@ fun ConfirmGroupCard(
             if (onConfirm != null) {
                 Text(
                     text = "결제 방법을 선택해주세요",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = ParkOnPrimary.copy(alpha = 0.5f)
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -204,7 +204,7 @@ fun ConfirmGroupCard(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("현장결제", style = MaterialTheme.typography.labelMedium)
+                        Text("현장결제", style = MaterialTheme.typography.labelLarge)
                     }
                     Button(
                         onClick = { onConfirm("dutchpay") },
@@ -217,7 +217,7 @@ fun ConfirmGroupCard(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("더치페이", style = MaterialTheme.typography.labelMedium)
+                        Text("더치페이", style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
@@ -230,7 +230,7 @@ fun ConfirmGroupCard(
                 ) {
                     Text(
                         "취소",
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelLarge,
                         color = ParkOnPrimary.copy(alpha = 0.4f)
                     )
                 }

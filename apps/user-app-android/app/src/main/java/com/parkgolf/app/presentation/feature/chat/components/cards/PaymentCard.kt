@@ -80,7 +80,7 @@ fun PaymentCard(
                 )
                 Text(
                     text = "카드결제",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = ParkOnPrimary
                 )
@@ -106,7 +106,7 @@ fun PaymentCard(
                     )
                     Text(
                         text = "₩${numberFormat.format(amount)}",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = ParkOnPrimary
                     )
@@ -142,7 +142,7 @@ fun PaymentCard(
                     Text(
                         text = if (isExpired) "결제 시간이 만료되었습니다"
                         else "결제 제한시간: $timerText 남음",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         color = when {
                             isExpired -> ParkError
                             isUrgent -> ParkWarning
@@ -164,7 +164,7 @@ fun PaymentCard(
                         ),
                         border = BorderStroke(1.dp, ParkOnPrimary.copy(alpha = 0.2f))
                     ) {
-                        Text("예약 취소", style = MaterialTheme.typography.bodySmall)
+                        Text("예약 취소", style = MaterialTheme.typography.bodyMedium)
                     }
                     Button(
                         onClick = {
@@ -192,10 +192,10 @@ fun PaymentCard(
                                     strokeWidth = 2.dp,
                                     color = ParkOnPrimary
                                 )
-                                Text("결제 중...", style = MaterialTheme.typography.bodySmall)
+                                Text("결제 중...", style = MaterialTheme.typography.bodyMedium)
                             }
                         } else {
-                            Text("결제하기", style = MaterialTheme.typography.bodySmall)
+                            Text("결제하기", style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
@@ -221,7 +221,7 @@ private fun PaymentInfoRow(
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = ParkOnPrimary.copy(alpha = 0.7f)
         )
     }

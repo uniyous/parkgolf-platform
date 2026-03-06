@@ -39,11 +39,11 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
     <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-4">
         {/* Header */}
         <div>
-          <h4 className="text-base font-semibold text-white flex items-center gap-2">
+          <h4 className="text-lg font-semibold text-white flex items-center gap-2">
             <Users className="w-4 h-4 text-violet-400" />
             팀{data.teamNumber} 멤버 선택
           </h4>
-          <p className="text-sm text-white/50 mt-1">
+          <p className="text-base text-white/50 mt-1">
             {data.clubName} · {data.date} · 최대 {data.maxPlayers}명
           </p>
         </div>
@@ -51,20 +51,20 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
         {/* Assigned Teams (read-only) */}
         {data.assignedTeams.length > 0 && (
           <div className="space-y-1.5">
-            <p className="text-sm text-white/40">이전 팀 배정 현황</p>
+            <p className="text-base text-white/40">이전 팀 배정 현황</p>
             {data.assignedTeams.map((team) => (
               <div
                 key={team.teamNumber}
                 className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5"
               >
-                <div className="flex items-center gap-2 text-sm text-white/50">
+                <div className="flex items-center gap-2 text-base text-white/50">
                   <CheckCircle2 className="w-3 h-3 text-violet-400" />
                   <span className="text-violet-400 font-medium">팀{team.teamNumber}</span>
                   <span>{team.slotTime}</span>
                   <span className="text-white/30">·</span>
                   <span>{team.gameName}</span>
                 </div>
-                <span className="text-sm text-white/40">
+                <span className="text-base text-white/40">
                   {team.members.map((m) => m.userName).join(', ')}
                 </span>
               </div>
@@ -75,8 +75,8 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
         {/* Available Members (checkboxes) */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-white/40">참여 가능 멤버</p>
-            <span className="text-sm text-violet-400 font-medium">
+            <p className="text-base text-white/40">참여 가능 멤버</p>
+            <span className="text-base text-violet-400 font-medium">
               {selectedIds.size}/{data.maxPlayers}
             </span>
           </div>
@@ -106,7 +106,7 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
                 >
                   {isSelected && <Check className="w-3 h-3 text-white" />}
                 </div>
-                <span className="text-sm text-white/80">{member.userName}</span>
+                <span className="text-base text-white/80">{member.userName}</span>
               </button>
             );
           })}
@@ -116,7 +116,7 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
         {!completed && <div className="flex gap-2">
           <button
             onClick={onCancel}
-            className="flex-1 px-3 py-2.5 rounded-lg text-sm text-white/50 hover:text-white/70 bg-white/5 hover:bg-white/10 transition-colors"
+            className="flex-1 px-3 py-2.5 rounded-lg text-base text-white/50 hover:text-white/70 bg-white/5 hover:bg-white/10 transition-colors"
           >
             취소
           </button>
@@ -124,7 +124,7 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
             onClick={handleConfirm}
             disabled={selectedIds.size === 0}
             className={cn(
-              'flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+              'flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-base font-medium transition-colors',
               selectedIds.size > 0
                 ? 'bg-violet-500/20 text-violet-400 hover:bg-violet-500/30'
                 : 'bg-white/5 text-white/20 cursor-not-allowed'

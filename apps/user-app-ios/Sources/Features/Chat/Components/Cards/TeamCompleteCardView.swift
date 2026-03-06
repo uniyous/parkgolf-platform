@@ -38,7 +38,7 @@ struct TeamCompleteCardView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(Color.parkPrimary)
                 Text("팀\(teamNumber) 예약 완료")
-                    .font(.body)
+                    .font(.title3)
                     .fontWeight(.semibold)
                     .foregroundColor(Color.parkPrimary)
             }
@@ -57,11 +57,11 @@ struct TeamCompleteCardView: View {
             // Price
             HStack {
                 Text(paymentLabel)
-                    .font(.subheadline)
+                    .font(.body)
                     .foregroundColor(.white.opacity(0.5))
                 Spacer()
                 Text("₩\(totalPrice.formatted())")
-                    .font(.body)
+                    .font(.title3)
                     .fontWeight(.semibold)
                     .foregroundColor(Color.parkPrimary)
             }
@@ -70,7 +70,7 @@ struct TeamCompleteCardView: View {
             // Booking number
             if !bookingNumber.isEmpty {
                 Text(bookingNumber)
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundColor(.white.opacity(0.3))
                     .frame(maxWidth: .infinity, alignment: .center)
             }
@@ -81,7 +81,7 @@ struct TeamCompleteCardView: View {
                     onFinish?()
                 } label: {
                     Text("종료")
-                        .font(.subheadline)
+                        .font(.body)
                         .fontWeight(.medium)
                         .foregroundColor(hasMoreTeams ? .white.opacity(0.7) : Color.parkPrimary)
                         .frame(maxWidth: .infinity)
@@ -96,7 +96,7 @@ struct TeamCompleteCardView: View {
                     } label: {
                         HStack(spacing: 4) {
                             Text("다음 팀 예약")
-                                .font(.subheadline)
+                                .font(.body)
                                 .fontWeight(.semibold)
                             Image(systemName: "arrow.right")
                                 .font(.system(size: 10))
@@ -123,11 +123,11 @@ struct TeamCompleteCardView: View {
     private func infoRow(icon: String, value: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 12))
+                .font(.system(size: 14))
                 .foregroundColor(.white.opacity(0.4))
                 .frame(width: 16)
             Text(value)
-                .font(.subheadline)
+                .font(.body)
                 .foregroundColor(.white.opacity(0.7))
         }
     }

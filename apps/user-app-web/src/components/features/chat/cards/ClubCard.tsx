@@ -32,10 +32,10 @@ export const ClubCard: React.FC<ClubCardProps> = ({ data, onSelect, selectedClub
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <h4 className="text-base font-semibold text-white truncate">
+                <h4 className="text-lg font-semibold text-white truncate">
                   {club.name}
                 </h4>
-                <div className="flex items-center gap-1 mt-1 text-white/50 text-sm">
+                <div className="flex items-center gap-1 mt-1 text-white/50 text-base">
                   <MapPin className="w-3 h-3 shrink-0" />
                   <span className="truncate">{club.address}</span>
                 </div>
@@ -49,7 +49,7 @@ export const ClubCard: React.FC<ClubCardProps> = ({ data, onSelect, selectedClub
                   <button
                     onClick={() => onSelect(club.id, club.name)}
                     className={cn(
-                      'px-3 py-1.5 rounded-lg text-sm font-medium shrink-0',
+                      'px-3 py-1.5 rounded-lg text-base font-medium shrink-0',
                       'bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 transition-colors'
                     )}
                   >
