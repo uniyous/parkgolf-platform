@@ -19,11 +19,20 @@ final class AiChatViewModel: ObservableObject {
 
     // MARK: - Pending Payment
 
-    struct PendingPayment {
+    struct PendingPayment: Identifiable {
+        let id: String
         let orderId: String
         let orderName: String
         let amount: Int
         let type: String  // "single" | "split"
+
+        init(orderId: String, orderName: String, amount: Int, type: String) {
+            self.id = orderId
+            self.orderId = orderId
+            self.orderName = orderName
+            self.amount = amount
+            self.type = type
+        }
     }
 
     func toggleAiMode() {
