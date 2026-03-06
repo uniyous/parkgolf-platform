@@ -1,7 +1,7 @@
 # 예약 워크플로우 및 Saga 아키텍처
 
-> 버전: 5.1
-> 최종 수정: 2026-03-03
+> 버전: 5.2
+> 최종 수정: 2026-03-04
 > 이전 문서: BOOKING_SAGA_ARCHITECTURE.md, booking-workflow-design.md (통합됨)
 
 ## 목차
@@ -99,8 +99,7 @@ flowchart TB
     AG -->|booking.create| NATS
     C -->|slot.reserve| NATS
     NATS -->|slot.reserve| D
-    D -->|slot.reserved / slot.reserve.failed| NATS
-    NATS -->|Events| C
+    D -.->|"Response {success/fail}"| C
     P -->|booking.paymentConfirmed| NATS
     NATS -->|booking.paymentConfirmed| C
     C -->|booking.confirmed| NATS
@@ -149,12 +148,13 @@ flowchart LR
     G -->|5. Check| I
     G -->|6. Reserve| H
     H -->|7. Update| J
-    H -->|8. slot.reserved| C
-    C -->|9. SLOT_RESERVED| A
-    K -->|10. payment.confirmed| M
-    M -->|11. booking.paymentConfirmed| C
-    C -->|12. CONFIRMED| A
-    D -->|13. Cleanup| A
+    G -.->|8. Response| B
+    B -->|9. handleSlotReserved| C
+    C -->|10. SLOT_RESERVED| A
+    K -->|11. payment.confirmed| M
+    M -->|12. booking.paymentConfirmed| C
+    C -->|13. CONFIRMED| A
+    D -->|14. Cleanup| A
 ```
 
 ---
@@ -276,8 +276,9 @@ const participants = await prisma.bookingParticipant.findMany({
 const paidCount = participants.filter(p => p.status === 'PAID').length;
 const totalCount = participants.length;
 
+const allPaid = paidCount === totalCount && totalCount >= booking.playerCount;
 const settlementStatus =
-  paidCount === totalCount ? 'COMPLETED' :
+  allPaid ? 'COMPLETED' :
   paidCount > 0 ? 'PARTIAL' : 'PENDING';
 ```
 
@@ -285,7 +286,9 @@ const settlementStatus =
 |----------|------|
 | `PENDING` | 결제한 참여자 없음 (`paidCount === 0`) |
 | `PARTIAL` | 일부 참여자 결제 (`0 < paidCount < totalCount`) |
-| `COMPLETED` | 전원 결제 완료 (`paidCount === totalCount`) |
+| `COMPLETED` | 전원 결제 완료 (`paidCount === totalCount && totalCount >= playerCount`) |
+
+> **Single Source of Truth**: `booking.settlementStatus` NATS 패턴으로 정산 상태를 조회합니다. `allPaid` 판단은 booking-service의 `markParticipantPaid()`에서 `paidCount === totalCount && totalCount >= playerCount` 공식으로 통일되며, agent-service는 이 API에 위임합니다.
 
 ### 3.7.1 TeamSelectionStatus (팀 선정 상태)
 
@@ -350,12 +353,13 @@ sequenceDiagram
     API-->>Client: booking (PENDING)
     Client->>Client: /booking-complete 이동
 
-    Note over BS: Step 4~6: Outbox → 슬롯 예약 (Background)
-    BS->>NATS: slot.reserve
+    Note over BS: Step 4~6: Outbox → 슬롯 예약 (Request-Reply)
+    BS->>NATS: slot.reserve (send)
     NATS->>CS: slot.reserve
     CS->>DB2: UPDATE bookedPlayers++, version++
-    CS-->>NATS: emit slot.reserved
-    NATS-->>BS: slot.reserved
+    CS-->>BS: Response {success: true}
+    Note over BS: OutboxProcessor → SagaHandler 직접 호출
+    BS->>BS: handleSlotReserved()
 
     Note over BS: Step 7: paymentMethod=onsite → 바로 CONFIRMED
     BS->>DB1: UPDATE booking SET status=CONFIRMED
@@ -393,11 +397,12 @@ sequenceDiagram
     BS-->>API: 예약 생성 완료 (PENDING)
     API-->>Client: booking (PENDING)
 
-    Note over BS: Step 4~6: Outbox → 슬롯 예약 (Background)
-    BS->>NATS: slot.reserve
+    Note over BS: Step 4~6: Outbox → 슬롯 예약 (Request-Reply)
+    BS->>NATS: slot.reserve (send)
     NATS->>CS: slot.reserve
-    CS-->>NATS: emit slot.reserved
-    NATS-->>BS: slot.reserved
+    CS-->>BS: Response {success: true}
+    Note over BS: OutboxProcessor → SagaHandler 직접 호출
+    BS->>BS: handleSlotReserved()
 
     Note over BS: Step 7: paymentMethod=card → SLOT_RESERVED (결제 대기)
     BS->>DB1: UPDATE booking SET status=SLOT_RESERVED
@@ -553,6 +558,7 @@ async triggerImmediate(): Promise<void> {
 | `booking.*`, `notification.*` | notify-service | Event (Fire-and-forget) |
 
 Request-Reply 이벤트는 응답을 대기하고 성공 여부를 확인합니다.
+Saga 이벤트(`slot.reserve`, `slot.release`)는 응답 수신 후 OutboxProcessor가 SagaHandler를 **직접 호출**하여 후속 처리합니다 (course-service fire-and-forget emit 제거).
 Event 방식은 발행 후 즉시 SENT로 마킹합니다.
 
 #### Step 6: Optimistic Locking (course-service)
@@ -1225,7 +1231,8 @@ SYSTEM           // 시스템 취소 (Saga 실패 등)
 [REQ-123-abc] Step 3: COMPLETED - Booking BK-A1B2C3D4-E5F6 created with PENDING status
 [REQ-123-abc] ========== BOOKING CREATE SUCCESS (bookingId=15, total=45ms) ==========
 [Outbox] Processing event 42 (slot.reserve) for bookingId=15, retry=0
-[Saga] SLOT_RESERVE SUCCESS in 18ms - bookingId=15, emitting slot.reserved
+[Saga] SLOT_RESERVE SUCCESS in 18ms - bookingId=15
+[Outbox] Saga handleSlotReserved completed for bookingId=15
 [SagaHandler] Booking 15 CONFIRMED (onsite) in 25ms
 CompanyMember registered: companyId=3, userId=42
 
@@ -1234,7 +1241,8 @@ CompanyMember registered: companyId=3, userId=42
 [REQ-456-def] Step 3: COMPLETED - Booking BK-D1E2F3G4-H5I6 created with PENDING status
 [REQ-456-def] ========== BOOKING CREATE SUCCESS (bookingId=16, total=38ms) ==========
 [Outbox] Processing event 43 (slot.reserve) for bookingId=16, retry=0
-[Saga] SLOT_RESERVE SUCCESS in 15ms - bookingId=16, emitting slot.reserved
+[Saga] SLOT_RESERVE SUCCESS in 15ms - bookingId=16
+[Outbox] Saga handleSlotReserved completed for bookingId=16
 [SagaHandler] Booking 16 SLOT_RESERVED (awaiting payment) in 20ms
 [Payment] Prepare: orderId=ORD-1707123456789-a1b2c3d4, amount=50000
 [Payment] Confirm: orderId=ORD-1707123456789-a1b2c3d4, paymentKey=tgen_xxx
@@ -1421,10 +1429,10 @@ sequenceDiagram
         BS-->>Agent: booking (PENDING)
 
         Note over BS: Saga (비동기)
-        BS->>NATS: slot.reserve
+        BS->>NATS: slot.reserve (Request-Reply)
         NATS->>CS: slot.reserve
-        CS-->>NATS: slot.reserved
-        NATS-->>BS: slot.reserved
+        CS-->>BS: Response {success}
+        BS->>BS: OutboxProcessor → handleSlotReserved()
         BS->>DB: CONFIRMED + BookingParticipant 자동 생성
     end
 ```
@@ -1634,6 +1642,7 @@ async expirePendingSplits() {
 
 | 버전 | 날짜 | 변경 내용 |
 |------|------|----------|
+| 5.2 | 2026-03-04 | **Saga 아키텍처 변경**: course-service fire-and-forget emit(`slot.reserved`/`slot.reserve.failed`/`slot.released`) 제거 → OutboxProcessor Request-Reply 응답 수신 후 SagaHandler 직접 호출, `booking.settlementStatus` NATS 패턴 추가 (allPaid SSOT), 정산 allPaid 공식 통일 |
 | 5.1 | 2026-03-03 | **문서 현행화**: action: CREATED→SAGA_STARTED 수정, Saga 분기 코드 실제 구현 반영(isOnsitePayment 패턴), 취소 프로세스 Outbox→Direct Emit 수정(slot.release는 직접 emit), Section 8.4 파일 참조 saga-handler.service.ts로 수정, 로그 예시 실제 형식 반영, TeamSelectionService 컴포넌트 다이어그램 추가 |
 | 5.0 | 2026-03-03 | **그룹 예약 리팩토링**: BookingGroup 테이블 제거 → TeamSelection/TeamSelectionMember로 팀 선정 분리, Booking에 groupId/teamSelectionId 흡수, 정산 상태 파생(조회 시 계산), 3-Phase 구조(팀 선정 → 부킹 → 결제) |
 | 4.0 | 2026-03-03 | 그룹 예약(BookingGroup, BookingParticipant) 섹션 추가, 더치페이(PaymentSplit) 분할결제 섹션 추가, Outbox 즉시 트리거·이벤트 라우팅·Request-Reply 패턴 문서화, 누락 상수 추가 (PROCESSING_LOCK_MS, NATS_RETRY_COUNT, PAYMENT_SEND_TIMEOUT, SPLIT_EXPIRATION), 새 상태 enum 추가 (SettlementStatus, ParticipantStatus, SplitStatus) |

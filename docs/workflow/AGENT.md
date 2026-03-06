@@ -190,11 +190,11 @@ if (request.selectedClubId)       → handleDirectClubSelect()
 | `handleTeamMemberSelect` | 멤버 확정 클릭 | groupMode=true, 멤버 저장 → 슬롯 조회 → **SHOW_SLOTS 카드** |
 | `handleDirectSlotSelect` | 슬롯 칩 클릭 | slots에 slotId 저장 → **CONFIRM_BOOKING 카드** (결제방법 3가지) |
 | `handleDirectBooking` | 예약 확인 클릭 | booking.create → Saga 폴링 → 결제방법에 따라 분기 |
-| `handlePaymentComplete` | 카드결제 완료 | **TEAM_COMPLETE** 또는 **BOOKING_COMPLETE** 카드 |
+| `handlePaymentComplete` | 카드결제 완료 | booking CONFIRMED 확인 후 **TEAM_COMPLETE** 또는 **BOOKING_COMPLETE** 카드 |
 | `handleCancelBooking` | 취소 클릭 | slots 초기화 → COLLECTING |
 | `handleNextTeam` | "다음 팀" 클릭 | teamNumber++ → **SELECT_MEMBERS** (이전 팀 멤버 제외) |
 | `handleFinishGroup` | "종료" 클릭 | **BOOKING_COMPLETE** (전체 요약) + 채팅방 SYSTEM 메시지 |
-| `handleSplitPaymentComplete` | 참여자 결제 완료 | 정산 갱신 → 전원 완료 시 **TEAM_COMPLETE** |
+| `handleSplitPaymentComplete` | 참여자 결제 완료 | `booking.settlementStatus`로 allPaid 확인 → 전원 완료 시 **TEAM_COMPLETE** |
 | `handleSendReminder` | 리마인더 버튼 | 미결제 참여자에게 push 알림 |
 
 ---
@@ -342,8 +342,9 @@ sequenceDiagram
 
     App->>Agent: confirmBooking=true, paymentMethod="card"
     Agent->>Book: booking.create
-    Book->>Course: slot.reserve (Saga)
-    Course-->>Book: reserved
+    Book->>Course: slot.reserve (Request-Reply)
+    Course-->>Book: Response {success}
+    Book->>Book: OutboxProcessor → SagaHandler 직접 호출
 
     loop Saga 폴링 (300ms × 20회)
         Agent->>Book: booking.findById
@@ -353,6 +354,7 @@ sequenceDiagram
     Pay-->>Agent: { orderId }
     Agent-->>App: SHOW_PAYMENT { orderId, amount }
     App->>Agent: paymentComplete=true
+    Agent->>Book: booking.findById (CONFIRMED 확인)
     Agent-->>App: TEAM_COMPLETE
 ```
 
@@ -377,8 +379,9 @@ sequenceDiagram
     Note over Booker,P: ① 예약 생성 + 슬롯 확보
     Booker->>Agent: confirmBooking=true, paymentMethod="dutchpay"
     Agent->>Book: NATS send booking.create
-    Book->>Course: NATS send slot.reserve (Saga)
-    Course-->>Book: reserved
+    Book->>Course: NATS send slot.reserve (Request-Reply)
+    Course-->>Book: Response {success}
+    Book->>Book: OutboxProcessor → SagaHandler 직접 호출
 
     loop Saga 폴링 (300ms × 20회)
         Agent->>Book: NATS send booking.findById
@@ -469,7 +472,7 @@ NATS emit 'chat.message.room' {
 
 **⑤ 참여자 결제**: 클라이언트에서 Toss SDK 호출 → `POST /api/user/payments/split/confirm`
 
-**⑥ 정산 갱신**: `handleSplitPaymentComplete`에서 `payment.splitStatus` 조회 → 전원 완료 시 `TEAM_COMPLETE`
+**⑥ 정산 갱신**: `handleSplitPaymentComplete`에서 `booking.settlementStatus`로 allPaid 확인 (SSOT) → 전원 완료 시 `TEAM_COMPLETE` (fallback: `payment.splitStatus` 기반 계산)
 
 #### 더치페이 타임라인
 
@@ -666,6 +669,7 @@ AI_ASSISTANT 메시지의 `metadata` 필드에 JSON 문자열로 저장:
 | `club.findNearby` | COURSE_SERVICE | course-service | 근처 골프장 |
 | `booking.create` | BOOKING_SERVICE | booking-service | 예약 생성 (Saga) |
 | `booking.findById` | BOOKING_SERVICE | booking-service | Saga 폴링 |
+| `booking.settlementStatus` | BOOKING_SERVICE | booking-service | 정산 상태 조회 (allPaid SSOT) |
 | `policy.*.resolve` | BOOKING_SERVICE | booking-service | 예약 정책 조회 |
 | `payment.prepare` | PAYMENT_SERVICE | payment-service | 카드결제 준비 |
 | `payment.splitPrepare` | PAYMENT_SERVICE | payment-service | 더치페이 준비 (N명 orderId 발급) |
@@ -1108,4 +1112,4 @@ model ChatMessage {
 
 ---
 
-**Last Updated**: 2026-03-02
+**Last Updated**: 2026-03-04
