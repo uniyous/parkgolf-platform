@@ -46,7 +46,6 @@
     <string name="special_requests_optional">특별 요청사항 (선택)</string>
     <string name="phone_optional">전화번호 (선택)</string>
     <string name="total_price">총 결제 금액</string>
-    <string name="payment_method">결제 수단</string>
     <string name="free_cancellation_notice">3일 전까지 무료 취소 가능합니다</string>
 
     <!-- Cancellation Reasons -->

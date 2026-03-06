@@ -29,7 +29,7 @@ const navItems: NavItem[] = [
     icon: User,
     label: '마이',
     path: '/profile',
-    matchPaths: ['/profile', '/my-bookings', '/payment-methods', '/settings'],
+    matchPaths: ['/profile', '/my-bookings', '/settings'],
   },
 ];
 

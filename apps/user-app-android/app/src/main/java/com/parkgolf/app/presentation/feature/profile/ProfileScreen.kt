@@ -20,7 +20,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
@@ -363,13 +362,6 @@ private fun AccountSection(onNavigate: (String) -> Unit) {
             iconColor = ParkPrimary,
             title = "예약 내역",
             onClick = { onNavigate("my_bookings") }
-        )
-
-        ProfileMenuItem(
-            icon = Icons.Default.CreditCard,
-            iconColor = ParkAccent,
-            title = "결제 수단",
-            onClick = { onNavigate("settings/payment") }
         )
 
         ProfileMenuItem(
