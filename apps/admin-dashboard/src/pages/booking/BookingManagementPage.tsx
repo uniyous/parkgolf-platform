@@ -54,13 +54,14 @@ export const BookingManagementPage: React.FC = () => {
   // API 필터 객체
   const filters: ApiBookingFilters = useMemo(
     () => ({
-      dateFrom,
-      dateTo,
+      startDate: dateFrom,
+      endDate: dateTo,
       status: statusFilter === 'ALL' ? undefined : statusFilter,
-      courseId: clubFilter || undefined,
+      clubId: clubFilter || undefined,
+      paymentMethod: paymentMethodFilter || undefined,
       search: searchKeyword || undefined,
     }),
-    [dateFrom, dateTo, statusFilter, clubFilter, searchKeyword]
+    [dateFrom, dateTo, statusFilter, clubFilter, paymentMethodFilter, searchKeyword]
   );
 
   // API Queries
@@ -76,32 +77,22 @@ export const BookingManagementPage: React.FC = () => {
   const bookings = bookingsData?.data || [];
   const clubs = clubsData?.data || [];
 
-  // 클라이언트 사이드 필터링 (검색 + 결제수단)
+  // 클라이언트 사이드 필터링 (검색)
   const filteredBookings = useMemo(() => {
-    let filtered = bookings;
+    if (!searchKeyword.trim()) return bookings;
 
-    // 결제수단 필터
-    if (paymentMethodFilter) {
-      filtered = filtered.filter((b) => b.paymentMethod === paymentMethodFilter);
-    }
-
-    // 키워드 검색
-    if (searchKeyword.trim()) {
-      const keyword = searchKeyword.toLowerCase();
-      filtered = filtered.filter(
-        (booking) =>
-          booking.customerName?.toLowerCase().includes(keyword) ||
-          booking.userName?.toLowerCase().includes(keyword) ||
-          booking.customerPhone?.includes(keyword) ||
-          booking.userPhone?.includes(keyword) ||
-          booking.customerEmail?.toLowerCase().includes(keyword) ||
-          booking.userEmail?.toLowerCase().includes(keyword) ||
-          booking.bookingNumber?.toLowerCase().includes(keyword)
-      );
-    }
-
-    return filtered;
-  }, [bookings, searchKeyword, paymentMethodFilter]);
+    const keyword = searchKeyword.toLowerCase();
+    return bookings.filter(
+      (booking) =>
+        booking.customerName?.toLowerCase().includes(keyword) ||
+        booking.userName?.toLowerCase().includes(keyword) ||
+        booking.customerPhone?.includes(keyword) ||
+        booking.userPhone?.includes(keyword) ||
+        booking.customerEmail?.toLowerCase().includes(keyword) ||
+        booking.userEmail?.toLowerCase().includes(keyword) ||
+        booking.bookingNumber?.toLowerCase().includes(keyword)
+    );
+  }, [bookings, searchKeyword]);
 
   // 상태별 카운트
   const statusCounts = useMemo(() => {

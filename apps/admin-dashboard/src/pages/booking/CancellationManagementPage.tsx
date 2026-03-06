@@ -105,10 +105,10 @@ export const CancellationManagementPage: React.FC = () => {
 
   // API Queries - 취소된 예약만 조회
   const { data: bookingsData, isLoading, refetch } = useBookingsQuery({
-    dateFrom,
-    dateTo,
+    startDate: dateFrom,
+    endDate: dateTo,
     status: 'CANCELLED',
-    courseId: clubFilter || undefined,
+    clubId: clubFilter || undefined,
     search: searchKeyword || undefined,
   });
   const { data: clubsData } = useClubsQuery();

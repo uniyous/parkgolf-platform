@@ -29,7 +29,9 @@ export class BookingsController {
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page', example: 20 })
   @ApiQuery({ name: 'status', required: false, description: 'Filter by status' })
   @ApiQuery({ name: 'gameId', required: false, description: 'Filter by game ID' })
+  @ApiQuery({ name: 'clubId', required: false, description: 'Filter by club ID' })
   @ApiQuery({ name: 'userId', required: false, description: 'Filter by user ID' })
+  @ApiQuery({ name: 'paymentMethod', required: false, description: 'Filter by payment method (onsite/card/dutchpay)' })
   @ApiQuery({ name: 'startDate', required: false, description: 'Filter from date (YYYY-MM-DD)' })
   @ApiQuery({ name: 'endDate', required: false, description: 'Filter to date (YYYY-MM-DD)' })
   @ApiResponse({ status: 200, description: 'Bookings list retrieved successfully' })
@@ -41,14 +43,18 @@ export class BookingsController {
     @Query('limit') limit = 20,
     @Query('status') status?: string,
     @Query('gameId') gameId?: string,
+    @Query('clubId') clubId?: string,
     @Query('userId') userId?: string,
+    @Query('paymentMethod') paymentMethod?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
     const filters: Record<string, string | number | undefined> = {};
     if (status) filters.status = status;
     if (gameId) filters.gameId = gameId;
+    if (clubId) filters.clubId = clubId;
     if (userId) filters.userId = userId;
+    if (paymentMethod) filters.paymentMethod = paymentMethod;
     if (startDate) filters.startDate = startDate;
     if (endDate) filters.endDate = endDate;
     // AdminContext에서 companyId 주입

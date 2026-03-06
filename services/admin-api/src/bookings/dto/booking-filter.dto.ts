@@ -30,12 +30,29 @@ export class BookingFilterDto {
   gameId?: string;
 
   @ApiPropertyOptional({
+    description: 'Filter by club ID',
+    example: '1',
+  })
+  @IsOptional()
+  @IsString()
+  clubId?: string;
+
+  @ApiPropertyOptional({
     description: 'Filter by user ID',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @IsOptional()
   @IsString()
   userId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filter by payment method',
+    example: 'card',
+    enum: ['onsite', 'card', 'dutchpay'],
+  })
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
 
   @ApiPropertyOptional({
     description: 'Filter from date (YYYY-MM-DD)',

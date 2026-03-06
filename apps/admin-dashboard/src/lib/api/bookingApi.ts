@@ -16,10 +16,12 @@ export type BookingListResponse = PaginatedResult<Booking>;
 export interface BookingFilters extends Record<string, string | number | boolean | undefined> {
   search?: string;
   status?: string;
-  courseId?: number;
+  clubId?: number;
+  gameId?: number;
   userId?: number;
-  dateFrom?: string; // YYYY-MM-DD
-  dateTo?: string;   // YYYY-MM-DD
+  paymentMethod?: string;
+  startDate?: string; // YYYY-MM-DD
+  endDate?: string;   // YYYY-MM-DD
 }
 
 export interface BookingStats {
@@ -175,8 +177,8 @@ export const bookingApi = {
   /**
    * 코스별 예약 목록 조회
    */
-  async getBookingsByCourse(courseId: number, filters: BookingFilters = {}): Promise<Booking[]> {
-    const response = await this.getBookings({ ...filters, courseId });
+  async getBookingsByCourse(clubId: number, filters: BookingFilters = {}): Promise<Booking[]> {
+    const response = await this.getBookings({ ...filters, clubId });
     return response.data;
   },
 
@@ -195,8 +197,8 @@ export const bookingApi = {
    */
   async getDailyBookings(courseId: number, date: string): Promise<DailyBookingData> {
     const bookingsResponse = await this.getBookingsByCourse(courseId, {
-      dateFrom: date,
-      dateTo: date
+      startDate: date,
+      endDate: date
     });
 
     return {
@@ -232,8 +234,8 @@ export const bookingApi = {
     const endDate = new Date(parseInt(year), parseInt(monthNum), 0).toISOString().split('T')[0];
 
     const response = await this.getBookingsByCourse(courseId, {
-      dateFrom: startDate,
-      dateTo: endDate
+      startDate,
+      endDate,
     });
 
     // Group bookings by date

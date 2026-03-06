@@ -143,6 +143,11 @@ export class SearchBookingDto {
   @IsOptional()
   endDate?: string;
 
+  @ApiProperty({ description: '결제수단 필터', example: 'card', required: false })
+  @IsString()
+  @IsOptional()
+  paymentMethod?: string;
+
   @ApiProperty({ description: '정렬 기준', example: 'bookingDate', required: false })
   @IsString()
   @IsOptional()

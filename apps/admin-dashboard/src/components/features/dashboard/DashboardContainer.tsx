@@ -22,7 +22,7 @@ export const DashboardContainer: React.FC = () => {
 
   const today = new Date().toISOString().split('T')[0];
   const { data: bookingsData, isLoading: bookingsLoading } = useBookingsQuery(
-    { dateFrom: today, dateTo: today },
+    { startDate: today, endDate: today },
     1,
     5,
   );

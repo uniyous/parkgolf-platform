@@ -95,6 +95,7 @@ export class BookingService {
       clubId,
       companyId,
       userId,
+      paymentMethod,
       startDate,
       endDate,
       sortBy = 'bookingDate',
@@ -132,6 +133,9 @@ export class BookingService {
     }
     if (userId) {
       where.userId = userId;
+    }
+    if (paymentMethod) {
+      where.paymentMethod = paymentMethod;
     }
 
     // timeFilter 적용
