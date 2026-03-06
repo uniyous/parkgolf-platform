@@ -256,7 +256,7 @@ export class BookingAgentService {
         userEmail: request.userEmail,
         gameTimeSlotId: Number(slotId),
         playerCount,
-        paymentMethod: paymentMethod === 'dutchpay' ? 'card' : paymentMethod,
+        paymentMethod,
       },
     });
 

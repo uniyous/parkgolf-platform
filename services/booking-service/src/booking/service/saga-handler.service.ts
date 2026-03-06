@@ -63,6 +63,7 @@ export class SagaHandlerService {
       }
 
       const isOnsitePayment = !booking.paymentMethod || booking.paymentMethod === 'onsite';
+      // dutchpay도 카드결제 플로우(SLOT_RESERVED → 참가자 결제 완료 시 CONFIRMED)
 
       if (isOnsitePayment) {
         // 현장결제: PENDING → CONFIRMED (바로 확정)

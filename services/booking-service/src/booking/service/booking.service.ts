@@ -624,8 +624,8 @@ export class BookingService {
       this.logger.log(`'booking.cancelled' event emitted for booking ${booking.bookingNumber}`);
     }
 
-    // 카드결제 환불 Outbox 즉시 처리 트리거
-    if (booking.paymentMethod === 'card') {
+    // 카드/더치페이 환불 Outbox 즉시 처리 트리거
+    if (booking.paymentMethod === 'card' || booking.paymentMethod === 'dutchpay') {
       setImmediate(() => this.outboxProcessor.triggerImmediate());
     }
 
@@ -648,8 +648,8 @@ export class BookingService {
       return this.executeCancellation(prisma, existingBooking, reason || 'Admin cancelled', { cancelledBy: 'admin' });
     });
 
-    // 카드결제 환불 Outbox 즉시 처리 트리거
-    if (booking.paymentMethod === 'card') {
+    // 카드/더치페이 환불 Outbox 즉시 처리 트리거
+    if (booking.paymentMethod === 'card' || booking.paymentMethod === 'dutchpay') {
       setImmediate(() => this.outboxProcessor.triggerImmediate());
     }
 
@@ -700,8 +700,8 @@ export class BookingService {
       }
     });
 
-    // 카드결제인 경우 환불 OutboxEvent 생성
-    if (existingBooking.paymentMethod === 'card') {
+    // 카드/더치페이인 경우 환불 OutboxEvent 생성
+    if (existingBooking.paymentMethod === 'card' || existingBooking.paymentMethod === 'dutchpay') {
       await prisma.outboxEvent.create({
         data: {
           aggregateType: 'Booking',
@@ -1426,8 +1426,8 @@ export class BookingService {
       }
     }
 
-    // 카드결제 환불 Outbox 트리거
-    const hasCardPayment = cancelledBookings.some((b) => b.paymentMethod === 'card');
+    // 카드/더치페이 환불 Outbox 트리거
+    const hasCardPayment = cancelledBookings.some((b) => b.paymentMethod === 'card' || b.paymentMethod === 'dutchpay');
     if (hasCardPayment) {
       setImmediate(() => this.outboxProcessor.triggerImmediate());
     }
