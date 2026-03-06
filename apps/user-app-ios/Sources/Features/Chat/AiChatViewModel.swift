@@ -132,7 +132,11 @@ final class AiChatViewModel: ObservableObject {
            let actionsArray = meta["actions"] as? [[String: Any]] {
             let actions = parseActionsFromMetadata(actionsArray)
             if !actions.isEmpty {
-                messageActions[messageId] = actions
+                // 뷰 렌더링 중 @Published 변경 방지 — 다음 런루프에서 캐시 저장
+                let mid = messageId
+                DispatchQueue.main.async { [weak self] in
+                    self?.messageActions[mid] = actions
+                }
                 return actions
             }
         }
