@@ -82,6 +82,20 @@ export const menuConfig: MenuGroup[] = [
     defaultOpen: true
   },
   {
+    name: '알림',
+    items: [
+      {
+        name: '알림 관리',
+        href: '/notifications',
+        icon: '🔔',
+        description: '알림 발송 이력, 템플릿, 통계 관리',
+        permission: 'SYSTEM'
+      },
+    ],
+    collapsible: true,
+    defaultOpen: true
+  },
+  {
     name: '시스템',
     items: [
       {

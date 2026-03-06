@@ -114,6 +114,19 @@ export const paymentKeys = {
   revenue: (companyId?: number | null, dateRange?: Record<string, string>) => [...paymentKeys.all(companyId), 'revenue', dateRange] as const,
 };
 
+// Notification Keys
+export const notificationKeys = {
+  all: ['notifications'] as const,
+  lists: () => [...notificationKeys.all, 'list'] as const,
+  list: (filters?: Record<string, unknown>) => [...notificationKeys.lists(), filters] as const,
+  details: () => [...notificationKeys.all, 'detail'] as const,
+  detail: (id?: string) => [...notificationKeys.details(), id] as const,
+  stats: (dateRange?: Record<string, string>) => [...notificationKeys.all, 'stats', dateRange] as const,
+  templates: () => [...notificationKeys.all, 'templates'] as const,
+  templateList: (filters?: Record<string, unknown>) => [...notificationKeys.templates(), 'list', filters] as const,
+  templateDetail: (id?: string) => [...notificationKeys.templates(), 'detail', id] as const,
+};
+
 // Dashboard Keys
 export const dashboardKeys = {
   all: ['dashboard'] as const,
