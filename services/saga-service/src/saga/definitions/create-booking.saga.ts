@@ -33,6 +33,8 @@ export const CreateBookingSaga: SagaDefinition = {
         startTime: response.startTime,
         userEmail: response.userEmail,
         userName: response.userName,
+        totalPrice: response.totalPrice,
+        pricePerPerson: response.pricePerPerson,
       }),
     },
     {
