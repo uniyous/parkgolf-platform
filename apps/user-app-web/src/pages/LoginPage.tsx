@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button, Input } from '@/components';
+import logoSvg from '@/assets/logo-parkgolfmate.svg';
 
 export const LoginPage: React.FC = () => {
   const { login, isLoggingIn } = useAuth();
@@ -48,13 +49,12 @@ export const LoginPage: React.FC = () => {
 
       <div className="glass-card w-full max-w-md relative z-10 p-6 md:p-8">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-2xl mb-4 backdrop-blur-sm">
-            <span className="text-3xl">⛳</span>
-          </div>
-          <h1 className="text-white mb-2 text-2xl font-bold">
-            ParkMate
+          <img src={logoSvg} alt="ParkgolfMate" className="w-24 h-24 mx-auto mb-4 rounded-2xl" />
+          <h1 className="mb-2 text-2xl font-bold" style={{ fontFamily: "'Outfit', 'Helvetica Neue', Arial, sans-serif" }}>
+            <span style={{ color: '#ffffff' }}>Parkgolf</span>
+            <span style={{ color: '#f5c842' }}>Mate</span>
           </h1>
-          <p className="text-white/80 text-sm">로그인하여 완벽한 골프 경험을 시작하세요</p>
+          <p className="text-white/80 text-sm">친구들과 함께하는 파크골프</p>
         </div>
 
         <form onSubmit={handleLogin}>

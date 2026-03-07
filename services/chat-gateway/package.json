@@ -1,8 +1,8 @@
 {
   "name": "parkgolf-chat-gateway",
   "version": "0.0.1",
-  "description": "WebSocket Gateway for ParkMate Chat",
-  "author": "ParkMate Team",
+  "description": "WebSocket Gateway for ParkgolfMate Chat",
+  "author": "ParkgolfMate Team",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {

@@ -3,6 +3,7 @@ import { Home, Calendar, Users, User, Bell, LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useUnreadCountQuery } from '@/hooks/queries/notification';
+import logoSvg from '@/assets/logo-parkgolfmate.svg';
 
 interface NavItem {
   icon: LucideIcon;
@@ -58,8 +59,11 @@ export function DesktopNavHeader() {
             onClick={() => navigate('/')}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
-            <span className="text-2xl">🏌️</span>
-            <span className="font-bold text-lg text-white">ParkMate</span>
+            <img src={logoSvg} alt="ParkgolfMate" className="w-8 h-8 rounded-lg" />
+            <span className="font-bold text-lg" style={{ fontFamily: "'Outfit', sans-serif" }}>
+              <span className="text-white">Parkgolf</span>
+              <span style={{ color: '#f5c842' }}>Mate</span>
+            </span>
           </button>
 
           {/* Navigation */}

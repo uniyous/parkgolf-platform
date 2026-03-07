@@ -59,27 +59,24 @@ struct LoginView: View {
 
     private var logoSection: some View {
         VStack(spacing: ParkSpacing.md) {
-            // Animated Logo
-            ZStack {
-                Circle()
-                    .fill(Color.parkPrimary.opacity(0.2))
-                    .frame(width: 100, height: 100)
-
-                Circle()
-                    .fill(Color.parkPrimary.opacity(0.3))
-                    .frame(width: 80, height: 80)
-
-                Image(systemName: "leaf.fill")
-                    .font(.system(size: 40))
-                    .foregroundStyle(Color.parkPrimary)
-            }
+            // App Icon
+            Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 100, height: 100)
+                .clipShape(RoundedRectangle(cornerRadius: 22))
+                .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
 
             VStack(spacing: ParkSpacing.xs) {
-                Text("ParkMate")
-                    .font(.parkDisplayMedium)
-                    .foregroundStyle(.white)
+                HStack(spacing: 0) {
+                    Text("Parkgolf")
+                        .foregroundStyle(.white)
+                    Text("Mate")
+                        .foregroundStyle(Color(hex: "f5c842"))
+                }
+                .font(.system(size: 32, weight: .bold, design: .rounded))
 
-                Text("친구와 함께하는 파크골프")
+                Text("친구들과 함께하는 파크골프")
                     .font(.parkBodyMedium)
                     .foregroundStyle(.white.opacity(0.7))
             }

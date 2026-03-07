@@ -1,8 +1,8 @@
 {
   "name": "parkgolf-chat-service",
   "version": "0.0.1",
-  "description": "Chat Service for ParkMate - Message persistence & Room management",
-  "author": "ParkMate Team",
+  "description": "Chat Service for ParkgolfMate - Message persistence & Room management",
+  "author": "ParkgolfMate Team",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {

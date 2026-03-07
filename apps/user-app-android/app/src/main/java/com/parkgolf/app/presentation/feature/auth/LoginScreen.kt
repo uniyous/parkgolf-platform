@@ -155,38 +155,36 @@ fun LoginScreen(
             ) {
                 Spacer(modifier = Modifier.height(60.dp))
 
-                // Logo Section - ParkMate Brand Icon
-                Box(
+                // Logo Section - ParkgolfMate Brand Icon
+                Image(
+                    painter = painterResource(id = R.drawable.ic_parkgolfmate_logo),
+                    contentDescription = "ParkgolfMate Logo",
                     modifier = Modifier
                         .size(100.dp)
-                        .background(
-                            color = Color.White.copy(alpha = 0.2f),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_parkmate_logo),
-                        contentDescription = "ParkMate Logo",
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(CircleShape)
-                    )
-                }
+                        .clip(RoundedCornerShape(22.dp))
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                    text = "ParkMate",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = TextOnGradient
-                )
+                Row {
+                    Text(
+                        text = "Parkgolf",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = TextOnGradient
+                    )
+                    Text(
+                        text = "Mate",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFF5C842)
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "친구와 함께하는 파크골프",
+                    text = "친구들과 함께하는 파크골프",
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextOnGradientSecondary
                 )

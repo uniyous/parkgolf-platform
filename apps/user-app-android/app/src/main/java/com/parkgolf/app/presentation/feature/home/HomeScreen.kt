@@ -1,6 +1,7 @@
 package com.parkgolf.app.presentation.feature.home
 
 import android.Manifest
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,7 +21,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import com.parkgolf.app.R
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronRight
@@ -555,17 +560,24 @@ private fun BrandHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.Eco,
-                contentDescription = null,
-                modifier = Modifier.size(28.dp),
-                tint = TextOnGradient
+            Image(
+                painter = painterResource(id = R.drawable.ic_parkgolfmate_logo),
+                contentDescription = "ParkgolfMate",
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
             )
             Text(
-                text = "ParkMate",
+                text = "Parkgolf",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = TextOnGradient
+            )
+            Text(
+                text = "Mate",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFF5C842)
             )
         }
 

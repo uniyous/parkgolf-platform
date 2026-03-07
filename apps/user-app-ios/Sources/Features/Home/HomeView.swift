@@ -63,11 +63,18 @@ struct HomeView: View {
     private var homeHeader: some View {
         HStack {
             HStack(spacing: ParkSpacing.xs) {
-                Image(systemName: "leaf.fill")
-                    .foregroundStyle(Color.parkPrimary)
-                Text("ParkMate")
-                    .font(.parkHeadlineMedium)
-                    .foregroundStyle(.white)
+                Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 32, height: 32)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                HStack(spacing: 0) {
+                    Text("Parkgolf")
+                        .foregroundStyle(.white)
+                    Text("Mate")
+                        .foregroundStyle(Color(hex: "f5c842"))
+                }
+                .font(.system(size: 20, weight: .bold, design: .rounded))
             }
 
             Spacer()

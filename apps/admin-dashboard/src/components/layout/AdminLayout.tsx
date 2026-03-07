@@ -189,7 +189,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
                 <span className="text-white font-bold text-sm">P</span>
               </div>
-              <span className="text-lg font-semibold text-white">ParkMate</span>
+              <span className="text-lg font-semibold text-white">ParkgolfMate</span>
             </div>
           </div>
 
@@ -311,7 +311,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
                 <span className="text-white font-bold text-sm">P</span>
               </div>
-              <span className="text-lg font-semibold text-white">ParkMate</span>
+              <span className="text-lg font-semibold text-white">ParkgolfMate</span>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -375,7 +375,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
               <span className="text-white font-bold text-sm">P</span>
             </div>
-            <span className="font-semibold text-white">ParkMate</span>
+            <span className="font-semibold text-white">ParkgolfMate</span>
           </div>
           <div className="w-10" />
         </header>

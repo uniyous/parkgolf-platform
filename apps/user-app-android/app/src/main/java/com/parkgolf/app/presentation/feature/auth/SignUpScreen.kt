@@ -96,7 +96,7 @@ fun SignUpScreen(
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(
-                    text = "ParkMate에 가입하고\n새로운 파크골프 경험을 시작하세요",
+                    text = "ParkgolfMate에 가입하고\n새로운 파크골프 경험을 시작하세요",
                     style = MaterialTheme.typography.bodyLarge,
                     color = TextSecondary
                 )

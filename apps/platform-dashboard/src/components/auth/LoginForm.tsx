@@ -301,7 +301,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-xl shadow-sm p-8">
               <div className="text-center mb-8">
                 <h2 className="text-3xl font-bold text-white mb-2">
-                  ParkMate 관리자
+                  ParkgolfMate 관리자
                 </h2>
                 <p className="text-white/50">
                   관리자 계정으로 로그인하세요
