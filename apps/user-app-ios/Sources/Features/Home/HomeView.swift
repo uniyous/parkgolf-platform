@@ -63,7 +63,7 @@ struct HomeView: View {
     private var homeHeader: some View {
         HStack {
             HStack(spacing: ParkSpacing.xs) {
-                Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
+                Image("ParkgolfMateLogo")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 32, height: 32)

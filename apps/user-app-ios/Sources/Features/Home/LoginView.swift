@@ -60,7 +60,7 @@ struct LoginView: View {
     private var logoSection: some View {
         VStack(spacing: ParkSpacing.md) {
             // App Icon
-            Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
+            Image("ParkgolfMateLogo")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 100, height: 100)
