@@ -156,7 +156,7 @@ IDLE → COLLECTING → SELECTING_MEMBERS → CONFIRMING → BOOKING → COMPLET
 | COLLECTING | 정보 수집 (클럽 검색, 카드 표시) | 클럽 선택 → SELECTING_MEMBERS |
 | SELECTING_MEMBERS | 팀 멤버 선택 중 | 멤버 확정 → CONFIRMING (슬롯 검색) |
 | CONFIRMING | 예약 확인 대기 (슬롯 선택 후) | 확인 → BOOKING |
-| BOOKING | 예약 처리 중 (Saga) | 성공 → COMPLETED / SETTLING |
+| BOOKING | 예약 처리 중 ([Saga](./SAGA.md)) | 성공 → COMPLETED / SETTLING |
 | SETTLING | 더치페이 정산 중 | 전원 결제 → TEAM_COMPLETE |
 | TEAM_COMPLETE | 1팀 예약 완료 | 다음 팀 → SELECTING_MEMBERS / 종료 → COMPLETED |
 | COMPLETED | 예약 완료 | 종료 |
@@ -189,7 +189,7 @@ if (request.selectedClubId)       → handleDirectClubSelect()
 | `handleDirectClubSelect` | 골프장 카드 클릭 | slots에 clubId 저장 → 채팅방 멤버 조회 → **SELECT_MEMBERS 카드** |
 | `handleTeamMemberSelect` | 멤버 확정 클릭 | groupMode=true, 멤버 저장 → 슬롯 조회 → **SHOW_SLOTS 카드** |
 | `handleDirectSlotSelect` | 슬롯 칩 클릭 | slots에 slotId 저장 → **CONFIRM_BOOKING 카드** (결제방법 3가지) |
-| `handleDirectBooking` | 예약 확인 클릭 | booking.create → Saga 폴링 → 결제방법에 따라 분기 |
+| `handleDirectBooking` | 예약 확인 클릭 | booking.create → [Saga](./SAGA.md) 폴링 → 결제방법에 따라 분기 |
 | `handlePaymentComplete` | 카드결제 완료 | booking CONFIRMED 확인 후 **TEAM_COMPLETE** 또는 **BOOKING_COMPLETE** 카드 |
 | `handleCancelBooking` | 취소 클릭 | slots 초기화 → COLLECTING |
 | `handleNextTeam` | "다음 팀" 클릭 | teamNumber++ → **SELECT_MEMBERS** (이전 팀 멤버 제외) |
@@ -342,9 +342,7 @@ sequenceDiagram
 
     App->>Agent: confirmBooking=true, paymentMethod="card"
     Agent->>Book: booking.create
-    Book->>Course: slot.reserve (Request-Reply)
-    Course-->>Book: Response {success}
-    Book->>Book: OutboxProcessor → SagaHandler 직접 호출
+    Note over Book: saga-service 트리거 (SAGA.md 참조)
 
     loop Saga 폴링 (300ms × 20회)
         Agent->>Book: booking.findById
@@ -379,9 +377,7 @@ sequenceDiagram
     Note over Booker,P: ① 예약 생성 + 슬롯 확보
     Booker->>Agent: confirmBooking=true, paymentMethod="dutchpay"
     Agent->>Book: NATS send booking.create
-    Book->>Course: NATS send slot.reserve (Request-Reply)
-    Course-->>Book: Response {success}
-    Book->>Book: OutboxProcessor → SagaHandler 직접 호출
+    Note over Book: saga-service 트리거 (SAGA.md 참조)
 
     loop Saga 폴링 (300ms × 20회)
         Agent->>Book: NATS send booking.findById
@@ -426,7 +422,7 @@ sequenceDiagram
 
 #### 단계별 상세
 
-**① 예약 생성**: 일반 예약과 동일. Saga 폴링으로 `PAYMENT_PENDING` 상태 확인.
+**① 예약 생성**: 일반 예약과 동일. [Saga](./SAGA.md) 폴링으로 `PAYMENT_PENDING` 상태 확인.
 
 **② 분할결제 준비** (`payment.splitPrepare`):
 
@@ -667,7 +663,7 @@ AI_ASSISTANT 메시지의 `metadata` 필드에 JSON 문자열로 저장:
 | `games.search` | COURSE_SERVICE | course-service | 슬롯 검색 |
 | `clubs.get` | COURSE_SERVICE | course-service | 골프장 상세 |
 | `club.findNearby` | COURSE_SERVICE | course-service | 근처 골프장 |
-| `booking.create` | BOOKING_SERVICE | booking-service | 예약 생성 (Saga) |
+| `booking.create` | BOOKING_SERVICE | booking-service | 예약 생성 → [saga-service](./SAGA.md) 트리거 |
 | `booking.findById` | BOOKING_SERVICE | booking-service | Saga 폴링 |
 | `booking.settlementStatus` | BOOKING_SERVICE | booking-service | 정산 상태 조회 (allPaid SSOT) |
 | `policy.*.resolve` | BOOKING_SERVICE | booking-service | 예약 정책 조회 |
@@ -1112,4 +1108,4 @@ model ChatMessage {
 
 ---
 
-**Last Updated**: 2026-03-04
+**Last Updated**: 2026-03-09

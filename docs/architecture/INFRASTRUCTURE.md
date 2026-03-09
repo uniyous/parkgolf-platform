@@ -25,6 +25,7 @@ flowchart TB
                 IAM["iam-service"]
                 COURSE["course-service"]
                 BOOKING["booking-service"]
+                SAGA["saga-service"]
                 PAY["payment-service"]
                 NOTIFY["notify-service"]
                 CHAT["chat-service"]
@@ -85,6 +86,7 @@ flowchart TB
 | iam_db | iam-service | Users, Admins, Roles, Friends, CompanyMembers, Menus |
 | course_db | course-service | Companies, Clubs, Courses, Games, TimeSlots, Schedules |
 | booking_db | booking-service | Bookings, Refunds, NoShowRecords, Policies |
+| saga_db | saga-service | SagaExecutions, SagaSteps, OutboxEvents |
 | payment_db | payment-service | Payments, BillingKeys, Refunds, WebhookLogs |
 | chat_db | chat-service | ChatRooms, Messages |
 | notify_db | notify-service | Notifications, Templates |
@@ -191,7 +193,7 @@ services: all
 services: iam-service,user-api,agent-service
 ```
 
-13개 서비스: admin-api, user-api, chat-gateway, iam-service, course-service, booking-service, payment-service, chat-service, notify-service, agent-service, weather-service, location-service, job-service
+14개 서비스: admin-api, user-api, chat-gateway, iam-service, course-service, booking-service, saga-service, payment-service, chat-service, notify-service, agent-service, weather-service, location-service, job-service
 
 ### cd-apps.yml
 
@@ -250,4 +252,4 @@ kubectl rollout undo deployment/<name>   # 롤백
 
 ---
 
-**Last Updated**: 2026-03-02
+**Last Updated**: 2026-03-09

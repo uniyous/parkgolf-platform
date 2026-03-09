@@ -72,7 +72,7 @@ flowchart TB
 
     subgraph Services["Microservices"]
         IAM[iam-service<br/>인증/친구]
-        BOOK[booking-service<br/>예약/Saga]
+        BOOK[booking-service<br/>예약]
         CHAT[chat-service<br/>채팅]
         NOTIFY[notify-service<br/>알림]
     end
@@ -165,7 +165,7 @@ sequenceDiagram
     BS->>CS: NATS: slot.reserve
     CS-->>BS: slot.reserved (Event)
 
-    Note over BS: Saga: PENDING → CONFIRMED
+    Note over BS: 예약 확정 (Saga 상세: SAGA.md)
 
     BS-->>NS: booking.confirmed (Event)
 

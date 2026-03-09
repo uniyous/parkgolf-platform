@@ -43,6 +43,7 @@ graph TB
             IAM[IAM Service<br/>NestJS<br/>:8080]
             COURSE[Course Service<br/>NestJS<br/>:8080]
             BOOK[Booking Service<br/>NestJS<br/>:8080]
+            SAGA[Saga Service<br/>NestJS<br/>:8080]
             NOTIFY[Notify Service<br/>NestJS<br/>:8080]
             CHAT[Chat Service<br/>NestJS<br/>:8080]
             PAY[Payment Service<br/>NestJS<br/>:8086]
@@ -103,6 +104,7 @@ graph TB
     NATS <--> IAM
     NATS <--> COURSE
     NATS <--> BOOK
+    NATS <--> SAGA
     NATS <--> NOTIFY
     NATS <--> CHAT
     NATS <--> PAY
@@ -125,6 +127,7 @@ graph TB
     IAM --> PG
     COURSE --> PG
     BOOK --> PG
+    SAGA --> PG
     NOTIFY --> PG
     CHAT --> PG
     PAY --> PG
@@ -140,7 +143,7 @@ graph TB
 
     class AD,PD,UW,IOS,AND frontend
     class AAPI,UAPI,CHATGW bff
-    class IAM,COURSE,BOOK,NOTIFY,CHAT,PAY service
+    class IAM,COURSE,BOOK,SAGA,NOTIFY,CHAT,PAY service
     class AGENT,WEATHER,LOCATION aiservice
     class JOB service
     class PG data
@@ -157,6 +160,7 @@ graph LR
         IAM[IAM Service]
         COURSE[Course Service]
         BOOK[Booking Service]
+        SAGA[Saga Service]
         PAY[Payment Service]
     end
 
@@ -179,10 +183,13 @@ graph LR
         JOB[Job Service]
     end
 
+    SAGA --> BOOK
+    SAGA --> COURSE
+    SAGA --> PAY
+    SAGA --> NOTIFY
     BOOK --> IAM
     BOOK --> COURSE
     BOOK --> NOTIFY
-    BOOK --> PAY
     IAM --> NOTIFY
     CHATGW --> CHAT
     CHATGW --> IAM
@@ -201,6 +208,7 @@ graph LR
     style IAM fill:#ef9a9a,stroke:#c62828,stroke-width:2px,color:#000
     style COURSE fill:#90caf9,stroke:#1565c0,stroke-width:2px,color:#000
     style BOOK fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px,color:#000
+    style SAGA fill:#e1bee7,stroke:#6a1b9a,stroke-width:2px,color:#000
     style PAY fill:#fff59d,stroke:#f9a825,stroke-width:2px,color:#000
     style NOTIFY fill:#a5d6a7,stroke:#2e7d32,stroke-width:2px,color:#000
     style CHAT fill:#81d4fa,stroke:#0277bd,stroke-width:2px,color:#000
@@ -316,7 +324,7 @@ NATS Patterns:
   games.list/get/create/update/delete/search
   gameTimeSlots.* / timeSlots.*
   gameWeeklySchedules.*
-  slot.reserve / slot.release (Saga)
+  slot.reserve / slot.release (← saga-service)
 ```
 
 #### Booking Service (:8080)
@@ -324,7 +332,7 @@ NATS Patterns:
 Database: PostgreSQL (booking_db)
 
 Data Models - Booking:
-  Booking (Saga 상태), BookingHistory, GameCache, GameTimeSlotCache
+  Booking, BookingHistory, GameCache, GameTimeSlotCache
   OutboxEvent, IdempotencyKey, Refund, UserNoShowRecord
 
 Data Models - Group Booking (더치페이):
@@ -339,7 +347,8 @@ Data Models - Policy (계층형, PLATFORM > COMPANY > CLUB):
   NoShowPolicy + NoShowPenalty, OperatingPolicy
 
 Core Features:
-  - Saga 패턴 (PENDING → SLOT_RESERVED → CONFIRMED / FAILED)
+  - 예약 도메인 로직 (CRUD, 상태 관리)
+  - Saga Step Handler (saga-service에서 호출하는 booking.saga.* 패턴 처리)
   - Transactional Outbox, Idempotency Key
   - 계층형 정책 Resolve (Club → Company → Platform 폴백)
   - 시간대별 환불률, 노쇼 패널티
@@ -349,10 +358,50 @@ NATS Patterns:
   booking.create/findById/get/list/cancel
   booking.group.create/get/getByNumber/cancel
   booking.group.markParticipantPaid
+  booking.saga.create/slotReserved/confirmPayment/cancel/adminCancel
+  booking.saga.finalizeCancelled/markFailed/restoreStatus/paymentTimeout
   policy.cancellation.list/findById/resolve/create/update/delete
   policy.refund.list/findById/resolve/create/update/delete/calculate
   policy.noshow.list/findById/resolve/create/update/delete/getUserCount/getApplicablePenalty
   policy.operating.list/findById/resolve/create/update/delete
+```
+
+#### Saga Service (:8080)
+```
+Database: PostgreSQL (saga_db)
+
+Data Models:
+  SagaExecution (상태 머신: STARTED → STEP_EXECUTING → COMPLETED / FAILED)
+  SagaStep (Step별 실행 이력, 보상 추적)
+  OutboxEvent (saga-service 전용)
+
+Core Features:
+  - Saga Orchestrator: 분산 트랜잭션 중앙 관리
+  - 선언적 Saga 정의: Step 배열로 흐름 선언, 보상 자동 역순 실행
+  - 상태 머신: SagaExecution 테이블로 정확한 단계 추적
+  - Transactional Outbox: Step 실행 보장
+  - 타임아웃 감지 및 자동 보상
+
+Saga Definitions:
+  CreateBookingSaga: 예약 생성 (create → slot.reserve → slotReserved → notify)
+  CancelBookingSaga: 예약 취소 (policy check → refund → cancel → slot.release → notify)
+  AdminRefundSaga: 관리자 환불 (adminCancel → refund → finalizeCancelled → slot.release → notify)
+  PaymentConfirmedSaga: 결제 완료 (confirmPayment → notify)
+  PaymentTimeoutSaga: 결제 타임아웃 (paymentTimeout → slot.release → notify)
+
+NATS Patterns — Inbound (트리거):
+  saga.booking.create / saga.booking.cancel / saga.booking.adminRefund
+  booking.paymentConfirmed / booking.paymentDeposited
+
+NATS Patterns — Inbound (관리):
+  saga.list / saga.get / saga.retry / saga.resolve / saga.stats
+
+NATS Patterns — Outbound (Step 실행):
+  booking.saga.* (→ booking-service)
+  slot.reserve / slot.release (→ course-service)
+  payment.refund (→ payment-service)
+  policy.*.resolve (→ booking-service)
+  notify.send (→ notify-service)
 ```
 
 #### Payment Service (:8086)
@@ -555,41 +604,47 @@ NATS Patterns — Outbound:
 
 ## Saga Pattern (Distributed Transactions)
 
+### Saga Orchestrator (saga-service)
+
+saga-service가 분산 트랜잭션의 중앙 오케스트레이터 역할을 합니다.
+BFF(user-api/admin-api)가 `saga.booking.*` 패턴으로 saga-service를 호출하면,
+saga-service가 각 서비스(booking/course/payment/notify)에 Step을 순차 실행합니다.
+
 ### Booking Saga Flow
 ```mermaid
 sequenceDiagram
     participant U as User
     participant UAPI as User API
+    participant SAGA as Saga Service
     participant BOOK as Booking Service
-    participant NATS as NATS
     participant COURSE as Course Service
+    participant NOTIFY as Notify Service
 
     U->>UAPI: POST /api/user/bookings
-    UAPI->>NATS: booking.create
-    NATS->>BOOK: booking.create
+    UAPI->>SAGA: saga.booking.create
 
-    Note over BOOK: 1. Idempotency check
-    Note over BOOK: 2. Create Booking (PENDING)
-    Note over BOOK: 3. Store OutboxEvent
+    Note over SAGA: 1. SagaExecution 생성 (STARTED)
+    SAGA->>BOOK: booking.saga.create
+    Note over BOOK: Idempotency check + Create Booking (PENDING)
+    BOOK-->>SAGA: bookingId
 
-    BOOK->>NATS: slot.reserve (Outbox Processor)
-    NATS->>COURSE: slot.reserve
+    SAGA->>COURSE: slot.reserve
+    Note over COURSE: Optimistic Lock (version check)
 
     alt Slot Available
-        Note over COURSE: Optimistic Lock (version check)
-        Note over COURSE: Update bookedPlayers
-        COURSE->>NATS: slot.reserved
-        NATS->>BOOK: slot.reserved
-        Note over BOOK: Update status → CONFIRMED
-        BOOK->>NATS: booking.confirmed
+        COURSE-->>SAGA: reserved
+        SAGA->>BOOK: booking.saga.slotReserved
+        Note over BOOK: Update status → SLOT_RESERVED or CONFIRMED
+        SAGA->>NOTIFY: notify.send (optional)
+        Note over SAGA: SagaExecution → COMPLETED
     else Slot Unavailable
-        COURSE->>NATS: slot.reserve.failed
-        NATS->>BOOK: slot.reserve.failed
-        Note over BOOK: Update status → FAILED
+        COURSE-->>SAGA: failed
+        Note over SAGA: 보상 시작
+        SAGA->>BOOK: booking.saga.markFailed
+        Note over SAGA: SagaExecution → FAILED
     end
 
-    BOOK-->>NATS: Booking Response
-    NATS-->>UAPI: Response
+    SAGA-->>UAPI: Booking Response
     UAPI-->>U: Result
 ```
 
@@ -606,12 +661,12 @@ PENDING → SLOT_RESERVED → CONFIRMED
 | 결제방법 | Saga 목표 상태 | 이후 처리 |
 |----------|---------------|----------|
 | **현장결제** (onsite) | `CONFIRMED` | 바로 예약 완료 |
-| **카드결제** (card) | `SLOT_RESERVED` | `payment.prepare` → orderId 발급 → Toss 결제위젯 → `payment.confirm` → `CONFIRMED` |
+| **카드결제** (card) | `SLOT_RESERVED` | `payment.prepare` → orderId 발급 → Toss 결제위젯 → `payment.confirm` → `PaymentConfirmedSaga` → `CONFIRMED` |
 | **더치페이** (dutchpay) | `SLOT_RESERVED` | `payment.splitPrepare` → N명 orderId 발급 → SETTLEMENT_STATUS + 브로드캐스트 → 전원 결제 → TEAM_COMPLETE |
 
 #### AI Agent 원샷 처리 (카드결제)
 ```
-booking.create → Saga 폴링(SLOT_RESERVED) → payment.prepare → SHOW_PAYMENT(orderId 포함)
+saga.booking.create → Saga 완료(SLOT_RESERVED) → payment.prepare → SHOW_PAYMENT(orderId 포함)
 ```
 Agent가 한 요청에서 순차 처리하여, Client는 별도 `payment.prepare` 호출 없이 바로 Toss 위젯을 띄울 수 있음.
 `payment.prepare` 실패 시 `orderId: null`로 graceful degradation (Client fallback 지원).
@@ -624,6 +679,7 @@ graph TD
         IAM_DB[(iam_db<br/>Users, Admins, Roles, Friends<br/>CompanyMembers, Menus)]
         COURSE_DB[(course_db<br/>Companies, Clubs, Courses<br/>Games, TimeSlots, Schedules)]
         BOOKING_DB[(booking_db<br/>Bookings, Refunds, NoShowRecords<br/>Policies: Cancel/Refund/NoShow/Operating)]
+        SAGA_DB[(saga_db<br/>SagaExecutions, SagaSteps<br/>OutboxEvents)]
         PAYMENT_DB[(payment_db<br/>Payments, BillingKeys, Refunds)]
         NOTIFY_DB[(notify_db<br/>Templates, Logs)]
         CHAT_DB[(chat_db<br/>Rooms, Messages)]
@@ -632,6 +688,7 @@ graph TD
     IAM[IAM Service] --> IAM_DB
     COURSE[Course Service] --> COURSE_DB
     BOOK[Booking Service] --> BOOKING_DB
+    SAGA[Saga Service] --> SAGA_DB
     PAY[Payment Service] --> PAYMENT_DB
     NOTIFY[Notify Service] --> NOTIFY_DB
     CHAT[Chat Service] --> CHAT_DB
@@ -661,6 +718,7 @@ graph TD
             IAM[iam-service<br/>Deployment]
             COURSE[course-service<br/>Deployment]
             BOOK[booking-service<br/>Deployment]
+            SAGA[saga-service<br/>Deployment]
             PAY[payment-service<br/>Deployment]
             NOTIFY[notify-service<br/>Deployment]
             CHAT[chat-service<br/>Deployment]
@@ -691,6 +749,7 @@ graph TD
 | iam-service | 8080 | Authentication |
 | course-service | 8080 | Golf Course |
 | booking-service | 8080 | Booking |
+| saga-service | 8080 | Saga Orchestrator |
 | notify-service | 8080 | Notification |
 | chat-service | 8080 | Chat |
 | payment-service | 8086 | Toss Payments |
@@ -722,6 +781,6 @@ graph LR
 
 ---
 
-**Document Version**: 7.0.0
-**Last Updated**: 2026-03-02
+**Document Version**: 8.0.0
+**Last Updated**: 2026-03-09
 **Maintained By**: Platform Team

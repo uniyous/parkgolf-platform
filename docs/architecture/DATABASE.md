@@ -2,14 +2,15 @@
 
 ## 개요
 
-Park Golf 플랫폼은 6개의 독립 마이크로서비스 데이터베이스로 구성됩니다.
+Park Golf 플랫폼은 7개의 독립 마이크로서비스 데이터베이스로 구성됩니다.
 서비스 간 데이터 참조는 NATS 메시징을 통해 이루어지며, 직접적인 FK 관계는 없습니다.
 
 | 서비스 | 데이터베이스 | 설명 |
 |--------|------------|------|
 | iam-service | iam_db | 인증, 사용자, 관리자, 역할/권한, 친구, 메뉴, 계정삭제 이력 |
 | course-service | course_db | 골프장, 코스, 홀, 게임, 타임슬롯 |
-| booking-service | booking_db | 예약, 결제, 정책, 환불/노쇼, 팀선정/더치페이, Saga 패턴 |
+| booking-service | booking_db | 예약, 결제, 정책, 환불/노쇼, 팀선정/더치페이 |
+| saga-service | saga_db | Saga 오케스트레이션, Step 실행 이력, Outbox |
 | payment-service | payment_db | 결제(토스페이먼츠), 환불, 빌링키, 분할결제, 웹훅 |
 | chat-service | chat_db | 채팅방, 멤버, 메시지 |
 | notify-service | notify_db | 알림, 템플릿, 설정 |
@@ -650,7 +651,7 @@ flowchart TB
         P_NoShow --- P_NoShowPenalty
     end
 
-    subgraph saga["Saga 패턴"]
+    subgraph outbox["Outbox / 멱등성"]
         S_Outbox["OutboxEvent"]
         S_Idempotency["IdempotencyKey"]
     end
@@ -950,7 +951,7 @@ erDiagram
 
 ---
 
-### 3-5. Saga 패턴
+### 3-5. Outbox / 멱등성
 
 ```mermaid
 erDiagram
@@ -1060,7 +1061,7 @@ flowchart TB
         P_WebhookLog["WebhookLog"]
     end
 
-    subgraph saga["Saga 패턴"]
+    subgraph outbox["Outbox"]
         P_Outbox["PaymentOutboxEvent"]
     end
 
@@ -1223,7 +1224,74 @@ erDiagram
 
 ---
 
-## 5. Chat Service (chat_db)
+## 5. Saga Service (saga_db)
+
+### 전체 구조
+
+```mermaid
+flowchart LR
+    SagaExecution --- SagaStep
+    SagaExecution -.-> OutboxEvent
+```
+
+### 상세
+
+```mermaid
+erDiagram
+    SagaExecution ||--o{ SagaStep : "has"
+
+    SagaExecution {
+        int id PK
+        string sagaType "CREATE_BOOKING/CANCEL_BOOKING/ADMIN_REFUND/PAYMENT_CONFIRMED/PAYMENT_TIMEOUT"
+        string correlationId UK "booking:123"
+        string status "STARTED/STEP_EXECUTING/STEP_COMPLETED/COMPLETED/STEP_FAILED/COMPENSATING/COMPENSATION_COMPLETED/COMPENSATION_FAILED/FAILED/REQUIRES_MANUAL"
+        int currentStep
+        int totalSteps
+        json payload "Saga 컨텍스트 (공유 데이터)"
+        string failReason
+        string triggeredBy "USER/ADMIN/SYSTEM/SCHEDULER"
+        int triggeredById
+        datetime startedAt
+        datetime completedAt
+        datetime failedAt
+    }
+
+    SagaStep {
+        int id PK
+        int sagaExecutionId FK
+        int stepIndex
+        string stepName
+        string actionPattern "NATS 패턴"
+        string status "PENDING/EXECUTING/COMPLETED/FAILED/COMPENSATED/SKIPPED"
+        int retryCount
+        json requestPayload
+        json responsePayload
+        string errorMessage
+        boolean isCompensation
+        string compensatePattern
+        datetime startedAt
+        datetime completedAt
+    }
+
+    OutboxEvent {
+        int id PK
+        string aggregateType "SagaExecution"
+        string aggregateId
+        string eventType
+        json payload
+        string status "PENDING/PROCESSING/SENT/FAILED"
+        int retryCount
+        string lastError
+        datetime createdAt
+        datetime processedAt
+    }
+```
+
+> **설명**: saga-service는 분산 트랜잭션의 중앙 오케스트레이터입니다. SagaExecution이 전체 Saga 흐름을 추적하고, SagaStep이 개별 Step의 실행/보상 이력을 기록합니다. 실패 시 보상(compensation)이 자동 역순 실행되며, 보상 실패 시 `REQUIRES_MANUAL` 상태로 전이됩니다.
+
+---
+
+## 6. Chat Service (chat_db)
 
 ### 전체 구조
 
@@ -1285,7 +1353,7 @@ erDiagram
 
 ---
 
-## 6. Notification Service (notify_db)
+## 7. Notification Service (notify_db)
 
 ### 전체 구조
 
@@ -1385,7 +1453,7 @@ erDiagram
 
 | Enum | 값 | 설명 |
 |------|----|------|
-| BookingStatus | `PENDING`, `SLOT_RESERVED`, `CONFIRMED`, `CANCELLED`, `COMPLETED`, `NO_SHOW`, `FAILED` | 예약 상태 (Saga) |
+| BookingStatus | `PENDING`, `SLOT_RESERVED`, `CONFIRMED`, `CANCELLED`, `COMPLETED`, `NO_SHOW`, `FAILED` | 예약 상태 |
 | PolicyScope | `PLATFORM`, `COMPANY`, `CLUB` | 정책 스코프 (계층형 상속) |
 | PaymentStatus | `PENDING`, `PAID`, `FAILED`, `REFUNDED` | 결제 상태 |
 | TimeSlotCacheStatus | `AVAILABLE`, `FULLY_BOOKED`, `CLOSED`, `MAINTENANCE` | 슬롯 캐시 상태 |
@@ -1396,6 +1464,14 @@ erDiagram
 | TeamSelectionStatus | `SELECTING`, `READY`, `BOOKING`, `COMPLETED`, `CANCELLED` | 팀 선정 상태 |
 | ParticipantRole | `BOOKER`, `MEMBER` | 참여자 역할 |
 | ParticipantStatus | `PENDING`, `PAID`, `CANCELLED`, `REFUNDED` | 참여자 결제 상태 |
+
+### Saga Service
+
+| Enum | 값 | 설명 |
+|------|----|------|
+| SagaStatus | `STARTED`, `STEP_EXECUTING`, `STEP_COMPLETED`, `COMPLETED`, `STEP_FAILED`, `COMPENSATING`, `COMPENSATION_COMPLETED`, `COMPENSATION_FAILED`, `FAILED`, `REQUIRES_MANUAL` | Saga 실행 상태 |
+| StepStatus | `PENDING`, `EXECUTING`, `COMPLETED`, `FAILED`, `COMPENSATED`, `SKIPPED` | Step 실행 상태 |
+| OutboxStatus | `PENDING`, `PROCESSING`, `SENT`, `FAILED` | Outbox 이벤트 상태 |
 
 ### Payment Service
 
@@ -1433,7 +1509,8 @@ erDiagram
 | iam_db | 19 | Company, Admin, User, RoleMaster, MenuMaster, CompanyMember, UserHistory |
 | course_db | 8 | Club, Course, Hole, TeeBox, Game, GameTimeSlot |
 | booking_db | 18 | Booking, TeamSelection, TeamSelectionMember, BookingParticipant, Refund, CancellationPolicy, OutboxEvent |
+| saga_db | 3 | SagaExecution, SagaStep, OutboxEvent |
 | payment_db | 6 | Payment, PaymentSplit, Refund, BillingKey, WebhookLog, PaymentOutboxEvent |
 | chat_db | 4 | ChatRoom, ChatRoomMember, ChatMessage, MessageRead |
 | notify_db | 4 | Notification, NotificationTemplate, NotificationSettings, DeadLetterNotification |
-| **합계** | **59** | |
+| **합계** | **62** | |

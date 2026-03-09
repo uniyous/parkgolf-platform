@@ -697,7 +697,7 @@ flowchart TB
     subgraph Publishers["Publishers"]
         GW[chat-gateway]
         AGENT[agent-service]
-        BOOK[booking-service]
+        BOOK[booking-service<br/>예약]
     end
 
     subgraph Streams["JetStream Streams"]
@@ -1387,4 +1387,4 @@ services/chat-gateway/src/
 
 ---
 
-**Last Updated**: 2026-03-04
+**Last Updated**: 2026-03-09
