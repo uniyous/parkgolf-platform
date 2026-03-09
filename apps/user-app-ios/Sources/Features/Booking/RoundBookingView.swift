@@ -372,7 +372,7 @@ struct RoundCardView: View {
                 // Round Info
                 VStack(alignment: .leading, spacing: ParkSpacing.xs) {
                     Text(round.clubName)
-                        .font(.parkHeadlineSmall)
+                        .font(.parkHeadlineMedium)
                         .foregroundStyle(.white)
 
                     Text("📍 \(round.club?.location ?? "") · \(round.name)")
