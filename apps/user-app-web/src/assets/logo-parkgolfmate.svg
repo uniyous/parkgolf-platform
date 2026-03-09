@@ -1,80 +1,48 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#1a5c2e"/>
-      <stop offset="100%" stop-color="#2e8b47"/>
-    </linearGradient>
-    <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#f7d24a"/>
-      <stop offset="100%" stop-color="#e8b830"/>
-    </linearGradient>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#f8f6f0"/>
-      <stop offset="100%" stop-color="#f0ebe0"/>
+      <stop offset="0%" stop-color="#e8f5e9"/>
+      <stop offset="100%" stop-color="#c8e6c9"/>
     </linearGradient>
-    <filter id="s">
-      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#1a5c2e" flood-opacity="0.15"/>
+    <filter id="shadowStr" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="3" dy="8" stdDeviation="6" flood-color="#001a12" flood-opacity="0.35"/>
     </filter>
+    <filter id="shadowMid" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="1" dy="4" stdDeviation="4" flood-color="#002a1c" flood-opacity="0.25"/>
+    </filter>
+    <filter id="shadowLight" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="1" dy="2" stdDeviation="2" flood-color="#002a1c" flood-opacity="0.2"/>
+    </filter>
+    <clipPath id="innerCircleClip">
+      <circle cx="196" cy="276" r="62"/>
+    </clipPath>
   </defs>
 
   <!-- Background -->
   <rect width="512" height="512" rx="110" ry="110" fill="url(#bg)"/>
 
-  <!-- Left Ball (Forest Green) -->
-  <g filter="url(#s)">
-    <circle cx="206" cy="230" r="120" fill="url(#g1)"/>
-    <ellipse cx="175" cy="195" rx="32" ry="24" fill="#fff" opacity="0.07" transform="rotate(-20,175,195)"/>
-    <circle cx="180" cy="195" r="7" fill="#fff" opacity="0.1"/>
-    <circle cx="210" cy="185" r="6" fill="#fff" opacity="0.08"/>
-    <circle cx="240" cy="200" r="7" fill="#fff" opacity="0.1"/>
-    <circle cx="185" cy="225" r="6" fill="#fff" opacity="0.07"/>
-    <circle cx="230" cy="240" r="5" fill="#fff" opacity="0.06"/>
-    <circle cx="170" cy="248" r="5" fill="#fff" opacity="0.06"/>
-    <circle cx="205" cy="270" r="6" fill="#fff" opacity="0.05"/>
-
-    <!-- Left Eye -->
-    <ellipse cx="180" cy="218" rx="11" ry="13" fill="#fff" opacity="0.92"/>
-    <ellipse cx="180" cy="221" rx="5.5" ry="6.5" fill="#0d3318"/>
-    <circle cx="177" cy="217" r="2.5" fill="#fff" opacity="0.7"/>
+  <!-- Chat Box Base -->
+  <g filter="url(#shadowStr)">
+    <path d="M 165 185 L 390 185 A 32 32 0 0 1 422 217 L 422 295 A 32 32 0 0 1 390 327 L 378 327 L 378 378 L 322 327 L 165 327 Z"
+          fill="#83c658" stroke="#004b36" stroke-width="26" stroke-linejoin="round"/>
   </g>
 
-  <!-- Right Ball (Sunny Yellow) -->
-  <g filter="url(#s)">
-    <circle cx="306" cy="230" r="120" fill="url(#g2)"/>
-    <ellipse cx="272" cy="192" rx="28" ry="20" fill="#fff" opacity="0.15" transform="rotate(-15,272,192)"/>
-    <circle cx="278" cy="192" r="7" fill="#fff" opacity="0.15"/>
-    <circle cx="320" cy="188" r="6" fill="#fff" opacity="0.12"/>
-    <circle cx="340" cy="208" r="7" fill="#fff" opacity="0.12"/>
-    <circle cx="295" cy="245" r="6" fill="#fff" opacity="0.1"/>
-    <circle cx="330" cy="248" r="5" fill="#fff" opacity="0.08"/>
-    <circle cx="350" cy="232" r="5" fill="#fff" opacity="0.08"/>
-
-    <!-- Right Eye -->
-    <ellipse cx="332" cy="218" rx="11" ry="13" fill="#fff" opacity="0.92"/>
-    <ellipse cx="332" cy="221" rx="5.5" ry="6.5" fill="#7a5800"/>
-    <circle cx="329" cy="217" r="2.5" fill="#fff" opacity="0.7"/>
+  <!-- Flag -->
+  <g filter="url(#shadowLight)">
+    <path d="M 148 108 L 226 130 L 148 152 Z" fill="#83c658" stroke="#83c658" stroke-width="8" stroke-linejoin="round"/>
   </g>
 
-  <!-- Heart in overlap zone -->
-  <path d="M256 175 C250 159, 233 159, 233 178 C233 198, 256 215, 256 215 C256 215, 279 198, 279 178 C279 159, 262 159, 256 175Z"
-        fill="#e85454" opacity="0.85"/>
-  <path d="M256 180 C253 172, 244 172, 244 180 C244 190, 256 198, 256 198 C256 198, 268 190, 268 180 C268 172, 259 172, 256 180Z"
-        fill="#ff6b6b" opacity="0.4"/>
+  <!-- Left Base & Flagpole -->
+  <g filter="url(#shadowStr)">
+    <circle cx="196" cy="276" r="88" fill="#004b36"/>
+    <rect x="138" y="90" width="22" height="142" rx="4" fill="#004b36"/>
+  </g>
 
-  <!-- Shared Smile -->
-  <path d="M202 258 Q256 300 310 258" stroke="#fff" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.92"/>
-
-  <!-- Cheek blush -->
-  <circle cx="165" cy="245" r="14" fill="#ff9999" opacity="0.15"/>
-  <circle cx="347" cy="245" r="14" fill="#ff9999" opacity="0.15"/>
-
-  <!-- Brand Name -->
-  <text x="256" y="410" text-anchor="middle" font-family="'Outfit','Helvetica Neue',Arial,sans-serif" font-weight="800" font-size="62" fill="#1a5c2e" letter-spacing="-1">
-    Parkgolf<tspan fill="#e8b830">Mate</tspan>
-  </text>
-
-  <!-- Tagline -->
-  <text x="256" y="455" text-anchor="middle" font-family="'Noto Sans KR','Apple SD Gothic Neo',sans-serif" font-weight="400" font-size="24" fill="#6a8a6a" letter-spacing="1">
-    친구들과 함께하는 파크골프
-  </text>
+  <!-- Left Inner Raised Disc -->
+  <g filter="url(#shadowMid)">
+    <g clip-path="url(#innerCircleClip)">
+      <circle cx="196" cy="276" r="62" fill="#e9ebd4"/>
+      <path d="M 130 292 Q 196 348 262 292 L 262 350 L 130 350 Z" fill="#83c658"/>
+    </g>
+  </g>
 </svg>
