@@ -58,7 +58,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -568,16 +571,12 @@ private fun BrandHeader(
                     .clip(RoundedCornerShape(8.dp))
             )
             Text(
-                text = "Parkgolf",
+                text = buildAnnotatedString {
+                    withStyle(SpanStyle(color = TextOnGradient)) { append("Parkgolf") }
+                    withStyle(SpanStyle(color = Color(0xFFF5C842))) { append("Mate") }
+                },
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = TextOnGradient
-            )
-            Text(
-                text = "Mate",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFF5C842)
+                fontWeight = FontWeight.Bold
             )
         }
 
