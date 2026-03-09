@@ -507,20 +507,20 @@ private fun SeniorRoundCardView(
             ) {
                 Text(
                     text = round.clubName,
-                    fontSize = 20.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextOnGradient
                 )
 
                 Text(
                     text = "\uD83D\uDCCD ${round.club?.address ?: ""} · ${round.name}",
-                    fontSize = 16.sp,
+                    fontSize = 14.sp,
                     color = TextOnGradientSecondary
                 )
 
                 Text(
                     text = "${String.format("%,d", pricePerPerson)}원 /인 · ${round.durationText} · ${round.maxPlayers}명",
-                    fontSize = 16.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = TextOnGradient.copy(alpha = 0.9f)
                 )
@@ -536,7 +536,7 @@ private fun SeniorRoundCardView(
                 ) {
                     Text(
                         text = "예약 가능 시간",
-                        fontSize = 16.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = TextOnGradient
                     )
@@ -550,7 +550,7 @@ private fun SeniorRoundCardView(
                     if (hasMoreSlots && !showAllSlots) {
                         Text(
                             text = "전체 ${slots.size}개 시간 보기 ▼",
-                            fontSize = 14.sp,
+                            fontSize = 12.sp,
                             color = TextOnGradientSecondary,
                             modifier = Modifier
                                 .clickable { showAllSlots = true }
@@ -639,7 +639,7 @@ private fun TimeSlotGridCell(
         // 시간
         Text(
             text = slot.startTime,
-            fontSize = 18.sp,
+            fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White,
             textAlign = TextAlign.Center
@@ -648,7 +648,7 @@ private fun TimeSlotGridCell(
         // 잔여 자리
         Text(
             text = availabilityText,
-            fontSize = 14.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
             color = availabilityColor,
             textAlign = TextAlign.Center
