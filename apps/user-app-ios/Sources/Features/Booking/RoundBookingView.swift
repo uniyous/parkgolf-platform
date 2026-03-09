@@ -372,15 +372,15 @@ struct RoundCardView: View {
                 // Round Info
                 VStack(alignment: .leading, spacing: ParkSpacing.xs) {
                     Text(round.clubName)
-                        .font(.parkHeadlineLarge)
+                        .font(.parkHeadlineSmall)
                         .foregroundStyle(.white)
 
                     Text("📍 \(round.club?.location ?? "") · \(round.name)")
-                        .font(.parkBodyLarge)
+                        .font(.parkBodyMedium)
                         .foregroundStyle(.white.opacity(0.7))
 
                     Text("\(pricePerPerson.formatted())원 /인 · \(round.durationText) · \(round.maxPlayers)명")
-                        .font(.parkBodyLarge)
+                        .font(.parkBodyMedium)
                         .fontWeight(.semibold)
                         .foregroundStyle(.white.opacity(0.9))
                 }
@@ -393,7 +393,7 @@ struct RoundCardView: View {
 
                     VStack(spacing: ParkSpacing.sm) {
                         Text("예약 가능 시간")
-                            .font(.parkBodyLarge)
+                            .font(.parkBodyMedium)
                             .fontWeight(.semibold)
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -413,7 +413,7 @@ struct RoundCardView: View {
                                 }
                             } label: {
                                 Text("전체 \(round.timeSlots?.count ?? 0)개 시간 보기 ▼")
-                                    .font(.parkBodyMedium)
+                                    .font(.parkBodySmall)
                                     .foregroundStyle(.white.opacity(0.7))
                                     .padding(.top, ParkSpacing.xxs)
                             }
@@ -456,12 +456,12 @@ struct TimeSlotGridCell: View {
             VStack(spacing: ParkSpacing.xxs) {
                 // Time
                 Text(slot.startTime)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
                 // Availability
                 Text(availabilityText)
-                    .font(.parkLabelMedium)
+                    .font(.parkLabelSmall)
                     .fontWeight(.semibold)
                     .foregroundStyle(availabilityColor)
             }
