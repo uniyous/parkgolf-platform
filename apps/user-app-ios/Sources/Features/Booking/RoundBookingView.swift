@@ -350,11 +350,11 @@ struct RoundCardView: View {
 
     private var displayedSlots: [TimeSlot] {
         guard let slots = round.timeSlots else { return [] }
-        return showAllSlots ? slots : Array(slots.prefix(6))
+        return showAllSlots ? slots : Array(slots.prefix(4))
     }
 
     private var hasMoreSlots: Bool {
-        (round.timeSlots?.count ?? 0) > 6
+        (round.timeSlots?.count ?? 0) > 4
     }
 
     private var pricePerPerson: Int {

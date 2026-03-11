@@ -491,8 +491,8 @@ private fun SeniorRoundCardView(
 ) {
     var showAllSlots by remember { mutableStateOf(false) }
     val slots = round.timeSlots ?: emptyList()
-    val displayedSlots = if (showAllSlots) slots else slots.take(6)
-    val hasMoreSlots = slots.size > 6
+    val displayedSlots = if (showAllSlots) slots else slots.take(4)
+    val hasMoreSlots = slots.size > 4
     val pricePerPerson = round.pricePerPerson ?: round.basePrice
 
     GlassCard(
