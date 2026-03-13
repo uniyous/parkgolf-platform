@@ -836,3 +836,13 @@ export type {
 } from './settings';
 
 export { DEFAULT_REFUND_TIERS, DEFAULT_NOSHOW_PENALTIES } from './settings';
+
+// Partner types re-export
+export type {
+  SyncMode,
+  PartnerConfig,
+  SyncLog,
+  SyncResult,
+  BookingMapping,
+  BookingSyncStatus,
+} from './partner';

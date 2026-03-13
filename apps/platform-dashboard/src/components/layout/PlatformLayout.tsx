@@ -18,6 +18,7 @@ import {
   Settings,
   ClipboardList,
   Bell,
+  Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
@@ -101,6 +102,14 @@ const PLATFORM_MENU: NavEntry[] = [
         requiredPermissions: ['ANALYTICS'],
       },
     ],
+  },
+  // 파트너 연동 (requires SYSTEM permission, PLATFORM_ADMIN only)
+  {
+    label: '파트너 연동',
+    path: '/partners',
+    icon: Link2,
+    requiredPermissions: ['SYSTEM'],
+    allowedRoles: ['PLATFORM_ADMIN'],
   },
   // 운영 관리 group
   {

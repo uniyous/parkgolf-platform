@@ -17,6 +17,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { PoliciesModule } from './policies/policies.module';
 import { MenusModule } from './menus/menus.module';
 import { CompanyMembersModule } from './company-members/company-members.module';
+import { PartnersModule } from './partners/partners.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { CompanyMembersModule } from './company-members/company-members.module';
     PoliciesModule,
     MenusModule,
     CompanyMembersModule,
+    PartnersModule,
   ],
   controllers: [],
   providers: [

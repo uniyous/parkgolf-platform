@@ -15,3 +15,6 @@ export * from './policy';
 
 // Course Queries
 export * from './course';
+
+// Partner Queries & Mutations
+export * from './partner';

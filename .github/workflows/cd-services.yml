@@ -59,7 +59,7 @@ jobs:
         run: |
           INPUT="${{ github.event.inputs.services }}"
           if [ "$INPUT" = "all" ] || [ -z "$INPUT" ]; then
-            SERVICES="iam-service,course-service,booking-service,payment-service,chat-service,notify-service,saga-service,admin-api,user-api,chat-gateway,weather-service,location-service,job-service,agent-service"
+            SERVICES="iam-service,course-service,booking-service,payment-service,chat-service,notify-service,saga-service,partner-service,admin-api,user-api,chat-gateway,weather-service,location-service,job-service,agent-service"
           else
             SERVICES="$INPUT"
           fi
@@ -195,6 +195,10 @@ jobs:
               DB_NAME="payment_db"; NEEDS_DB="true"
               CPU_REQ="50m"; CPU_LIM="250m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
               ;;
+            partner-service)
+              DB_NAME="partner_db"; NEEDS_DB="true"
+              CPU_REQ="50m"; CPU_LIM="250m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
+              ;;
             chat-gateway)
               DB_NAME=""; NEEDS_DB="false"
               CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
@@ -290,6 +294,13 @@ jobs:
                       configMapKeyRef:
                         name: parkgolf-config
                         key: MAX_HISTORY_TURNS"
+          elif [ "$SERVICE" = "partner-service" ]; then
+            EXTRA_ENV="
+                  - name: PARTNER_ENCRYPTION_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: parkgolf-secrets
+                        key: PARTNER_ENCRYPTION_KEY"
           elif [ "$SERVICE" = "payment-service" ]; then
             EXTRA_ENV="
                   - name: TOSS_SECRET_KEY

@@ -21,6 +21,7 @@ import { GameDetailPage } from './pages/game/GameDetailPage';
 import { PaymentManagementPage } from './pages/payment/PaymentManagementPage';
 import { NotificationManagementPage } from './pages/notification/NotificationManagementPage';
 import { SelectCompanyPage } from './pages/SelectCompanyPage';
+import { PartnerStatusPage } from './pages/partner/PartnerStatusPage';
 import { useAuthInitialize } from './hooks/useAuth';
 
 function App() {
@@ -73,6 +74,7 @@ function App() {
           <Route path="/bookings/cancellations" element={<CancellationManagementPage />} />
           <Route path="/payments" element={<PaymentManagementPage />} />
           <Route path="/notifications" element={<NotificationManagementPage />} />
+          <Route path="/partner-status" element={<PartnerStatusPage />} />
           <Route path="/profile" element={
             <div className="text-center py-12">
               <h1 className="text-2xl font-bold text-white mb-4">프로필 설정</h1>

@@ -10,6 +10,7 @@ import { RolesPage } from './pages/RolesPage';
 import { UserManagementPage } from './pages/UserManagementPage';
 import { PoliciesPage } from './pages/PoliciesPage';
 import { NotificationsPage } from './pages/NotificationsPage';
+import { PartnersPage } from './pages/PartnersPage';
 import { BookingAnalyticsPage } from './pages/analytics/BookingAnalyticsPage';
 import { ClubAnalyticsPage } from './pages/analytics/ClubAnalyticsPage';
 import { RevenueAnalyticsPage } from './pages/analytics/RevenueAnalyticsPage';
@@ -44,6 +45,7 @@ function App() {
             <Route path="/admins" element={<AdminManagementPage />} />
             <Route path="/roles" element={<RolesPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/partners" element={<PartnersPage />} />
           </Route>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>

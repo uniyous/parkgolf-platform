@@ -141,6 +141,14 @@ export const menuKeys = {
   tree: (companyType: string, scope: string) => [...menuKeys.all, 'tree', companyType, scope] as const,
 };
 
+// Partner Keys (company-scoped, clubId-based)
+export const partnerKeys = {
+  all: (companyId?: number | null) => ['partners', companyId] as const,
+  config: (companyId?: number | null, clubId?: number) => [...partnerKeys.all(companyId), 'config', clubId] as const,
+  syncLogs: (companyId?: number | null, clubId?: number) => [...partnerKeys.all(companyId), 'syncLogs', clubId] as const,
+  bookingMappings: (companyId?: number | null, clubId?: number) => [...partnerKeys.all(companyId), 'bookingMappings', clubId] as const,
+};
+
 // Policy Keys (company-scoped)
 export const policyKeys = {
   all: (companyId?: number | null) => ['policies', companyId] as const,

@@ -163,7 +163,7 @@ export class NatsClientService implements OnModuleInit {
    * 에러 코드에서 HTTP 상태 코드 추출
    * 에러 카탈로그 코드 패턴: AUTH_xxx, USER_xxx, ADMIN_xxx, FRIEND_xxx, BOOK_xxx, COURSE_xxx,
    * CHAT_xxx, NOTI_xxx, PAY_xxx, REFUND_xxx, BILLING_xxx, WEATHER_xxx, KMA_xxx,
-   * LOCATION_xxx, KAKAO_xxx, VAL_xxx, EXT_xxx, DB_xxx, SYS_xxx
+   * LOCATION_xxx, KAKAO_xxx, PARTNER_xxx, VAL_xxx, EXT_xxx, DB_xxx, SYS_xxx
    */
   private getStatusFromErrorCode(code: string): HttpStatus {
     if (!code) return HttpStatus.INTERNAL_SERVER_ERROR;
@@ -272,6 +272,16 @@ export class NatsClientService implements OnModuleInit {
       case 'KAKAO':
         if (code === 'KAKAO_001') return HttpStatus.BAD_GATEWAY;
         if (code === 'KAKAO_002') return HttpStatus.GATEWAY_TIMEOUT;
+        return HttpStatus.INTERNAL_SERVER_ERROR;
+
+      case 'PARTNER':
+        // CONFIG_NOT_FOUND: 404, ALREADY_EXISTS/SLOT_CONFLICT: 409, SPEC/API_ERROR: 502, CIRCUIT_OPEN: 503
+        if (code === 'PARTNER_001') return HttpStatus.NOT_FOUND;
+        if (code === 'PARTNER_002' || code === 'PARTNER_010') return HttpStatus.CONFLICT;
+        if (code === 'PARTNER_004' || code === 'PARTNER_005' || code === 'PARTNER_006') return HttpStatus.NOT_FOUND;
+        if (code === 'PARTNER_007' || code === 'PARTNER_008' || code === 'PARTNER_011') return HttpStatus.BAD_GATEWAY;
+        if (code === 'PARTNER_012') return HttpStatus.SERVICE_UNAVAILABLE;
+        if (code === 'PARTNER_013') return HttpStatus.BAD_REQUEST;
         return HttpStatus.INTERNAL_SERVER_ERROR;
 
       default:

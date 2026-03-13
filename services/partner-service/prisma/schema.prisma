@@ -1,0 +1,222 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────────
+// 연동 설정 (골프장별 1건)
+// ──────────────────────────────────────────────
+
+model PartnerConfig {
+  id                 Int      @id @default(autoincrement())
+  clubId             Int      @unique          // course-service Club.id
+  companyId          Int                       // iam-service Company.id
+
+  // 외부 시스템 정보
+  systemName         String                    // 표시명 (예: "○○파크골프 예약시스템")
+  externalClubId     String                    // 외부 시스템의 골프장 ID
+
+  // API 스펙 + 인증
+  specUrl            String                    // OpenAPI 스펙 URL (S3 또는 파트너 제공 URL)
+  apiKey             String                    // API 인증 키 (AES-256 암호화 저장)
+  apiSecret          String?                   // API 시크릿 (AES-256 암호화 저장)
+  webhookSecret      String?                   // 수신 웹훅 서명 검증용
+  responseMapping    Json                      // 응답 필드 매핑 설정 (slots/bookings 필드 변환)
+
+  // 동기화 설정
+  syncMode           SyncMode @default(API_POLLING)
+  syncIntervalMin    Int      @default(10)     // 폴링 주기 (분)
+  syncRangeDays      Int      @default(7)      // 동기화 범위 (오늘 ~ +N일)
+  slotSyncEnabled    Boolean  @default(true)
+  bookingSyncEnabled Boolean  @default(true)
+
+  // 상태
+  isActive           Boolean  @default(true)
+  lastSlotSyncAt     DateTime?
+  lastSlotSyncStatus SyncResult?
+  lastSlotSyncError  String?
+  lastBookingSyncAt  DateTime?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  courseMappings     CourseMapping[]
+  syncLogs           SyncLog[]
+
+  @@unique([externalClubId])
+  @@index([isActive])
+  @@index([companyId])
+}
+
+enum SyncMode {
+  API_POLLING
+  WEBHOOK
+  HYBRID           // 폴링 + 웹훅 병행
+  MANUAL
+}
+
+enum SyncResult {
+  SUCCESS
+  PARTIAL
+  FAILED
+}
+
+// ──────────────────────────────────────────────
+// 코스(Game) 매핑
+// ──────────────────────────────────────────────
+
+model CourseMapping {
+  id                   Int      @id @default(autoincrement())
+  partnerId            Int
+  partner              PartnerConfig @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  externalCourseName   String                  // 외부 코스명 (예: "A+B코스")
+  externalCourseId     String?                 // 외부 코스 ID (있는 경우)
+  internalGameId       Int                     // course-service Game.id
+
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  slotMappings         SlotMapping[]
+
+  @@unique([partnerId, externalCourseName])
+  @@unique([partnerId, internalGameId])
+  @@index([internalGameId])
+}
+
+// ──────────────────────────────────────────────
+// 타임슬롯 매핑
+// ──────────────────────────────────────────────
+
+model SlotMapping {
+  id                   Int      @id @default(autoincrement())
+  courseMappingId      Int
+  courseMapping         CourseMapping @relation(fields: [courseMappingId], references: [id], onDelete: Cascade)
+
+  // 외부 슬롯 식별
+  externalSlotId       String                  // 외부 시스템 슬롯 ID
+  date                 DateTime @db.Date
+  startTime            String                  // HH:mm
+  endTime              String                  // HH:mm
+
+  // 내부 매핑
+  internalSlotId       Int?                    // course-service GameTimeSlot.id
+
+  // 외부 재고 스냅샷
+  externalMaxPlayers   Int
+  externalBooked       Int     @default(0)     // 외부 예약 인원
+  externalStatus       String                  // AVAILABLE | FULLY_BOOKED | CLOSED
+  externalPrice        Decimal? @db.Decimal(10, 0)
+
+  // 동기화 상태
+  lastSyncAt           DateTime?
+  syncStatus           SlotSyncStatus @default(SYNCED)
+  syncError            String?
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([courseMappingId, externalSlotId])
+  @@unique([courseMappingId, date, startTime])
+  @@index([internalSlotId])
+  @@index([date])
+  @@index([syncStatus])
+}
+
+enum SlotSyncStatus {
+  SYNCED             // 정상 동기화됨
+  PENDING            // 내부 반영 대기
+  CONFLICT           // 재고 충돌
+  UNMAPPED           // 내부 슬롯 미매핑
+  FAILED             // 동기화 실패
+}
+
+// ──────────────────────────────────────────────
+// 예약 매핑 (양방향)
+// ──────────────────────────────────────────────
+
+model BookingMapping {
+  id                   Int      @id @default(autoincrement())
+  partnerId            Int                     // PartnerConfig.id (논리 참조)
+  courseMappingId      Int?                    // CourseMapping.id
+
+  // 양방향 ID 매핑
+  internalBookingId    Int?     @unique        // booking-service Booking.id
+  externalBookingId    String                  // 외부 시스템 예약 ID
+
+  // 동기화 정보
+  syncDirection        SyncDirection
+  syncStatus           BookingSyncStatus @default(SYNCED)
+  lastSyncAt           DateTime?
+
+  // 예약 요약 (조회 편의용)
+  date                 DateTime @db.Date
+  startTime            String
+  playerCount          Int
+  playerName           String?
+  status               String                  // CONFIRMED | CANCELLED | COMPLETED
+
+  // 충돌 시 양쪽 데이터 스냅샷
+  conflictData         Json?
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([partnerId, externalBookingId])
+  @@index([internalBookingId])
+  @@index([syncStatus])
+  @@index([date])
+}
+
+enum SyncDirection {
+  INBOUND              // 외부 → 파크골프메이트
+  OUTBOUND             // 파크골프메이트 → 외부
+}
+
+enum BookingSyncStatus {
+  SYNCED
+  PENDING
+  CONFLICT
+  FAILED
+  CANCELLED
+}
+
+// ──────────────────────────────────────────────
+// 동기화 이력
+// ──────────────────────────────────────────────
+
+model SyncLog {
+  id                 Int      @id @default(autoincrement())
+  partnerId          Int
+  partner            PartnerConfig @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  action             SyncAction
+  direction          SyncDirection
+  status             SyncResult
+  recordCount        Int      @default(0)      // 처리 건수
+  createdCount       Int      @default(0)      // 신규 건수
+  updatedCount       Int      @default(0)      // 갱신 건수
+  errorCount         Int      @default(0)      // 실패 건수
+  errorMessage       String?
+  durationMs         Int?                      // 소요 시간 (ms)
+  payload            Json?                     // 요청/응답 요약 (디버깅용)
+
+  createdAt          DateTime @default(now())
+
+  @@index([partnerId, createdAt])
+  @@index([action, status])
+  @@index([createdAt])
+}
+
+enum SyncAction {
+  SLOT_SYNC            // 타임슬롯 동기화
+  BOOKING_IMPORT       // 외부 예약 가져오기
+  BOOKING_EXPORT       // 내부 예약 내보내기
+  BOOKING_CANCEL       // 예약 취소 전파
+  CONNECTION_TEST      // 연결 테스트
+}

@@ -96,6 +96,17 @@ export const policyKeys = {
   operatingDetail: (id?: number) => [...policyKeys.operating(), 'detail', id] as const,
 };
 
+// Partner Keys
+export const partnerKeys = {
+  all: ['partners'] as const,
+  lists: () => [...partnerKeys.all, 'list'] as const,
+  list: (filters?: Record<string, unknown>) => [...partnerKeys.lists(), filters] as const,
+  details: () => [...partnerKeys.all, 'detail'] as const,
+  detail: (id: number) => [...partnerKeys.details(), id] as const,
+  courseMappings: (partnerId: number) => [...partnerKeys.all, 'courseMappings', partnerId] as const,
+  syncLogs: (partnerId: number) => [...partnerKeys.all, 'syncLogs', partnerId] as const,
+};
+
 // Analytics Keys
 export const analyticsKeys = {
   all: ['analytics'] as const,
