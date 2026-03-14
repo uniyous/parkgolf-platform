@@ -472,6 +472,7 @@ jobs:
               psql -h postgres -c 'CREATE DATABASE chat_db;' 2>/dev/null || echo 'chat_db exists'
               psql -h postgres -c 'CREATE DATABASE notify_db;' 2>/dev/null || echo 'notify_db exists'
               psql -h postgres -c 'CREATE DATABASE payment_db;' 2>/dev/null || echo 'payment_db exists'
+              psql -h postgres -c 'CREATE DATABASE partner_db;' 2>/dev/null || echo 'partner_db exists'
               echo 'Databases initialized'
             "
 
