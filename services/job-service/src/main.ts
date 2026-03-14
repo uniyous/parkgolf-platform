@@ -63,8 +63,9 @@ async function bootstrap() {
     logger.log('=== Registered Cron Jobs ===');
     logger.log('  [Deletion] deletion-reminder : 0 0 * * * (09:00 KST) → iam.deletion.processReminders');
     logger.log('  [Deletion] deletion-executor : 0 3 * * * (03:00 KST) → iam.deletion.execute');
+    logger.log('  [Partner]  partner-sync      : */10 * * * * (매 10분) → partner.sync.execute');
     logger.log('=== NATS Patterns ===');
-    logger.log('  [Job] job.list / job.run / job.deletion.reminder / job.deletion.execute');
+    logger.log('  [Job] job.list / job.run / job.deletion.reminder / job.deletion.execute / job.partner.sync');
   } catch (error) {
     logger.error('Failed to start Job Service', error);
     process.exit(1);

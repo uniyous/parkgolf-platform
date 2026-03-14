@@ -42,4 +42,13 @@ export class JobNatsController {
     const result = await this.jobSchedulerService.runJob('deletion-executor');
     return NatsResponse.success(result);
   }
+
+  /**
+   * 파트너 동기화 수동 트리거
+   */
+  @MessagePattern('job.partner.sync')
+  async runPartnerSync() {
+    const result = await this.jobSchedulerService.runJob('partner-sync');
+    return NatsResponse.success(result);
+  }
 }
