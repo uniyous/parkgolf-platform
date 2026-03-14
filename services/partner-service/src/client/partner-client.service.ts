@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CryptoService } from '../partner/service/crypto.service';
 import { AppException, Errors } from '../common/exceptions';
-import SwaggerClient from 'swagger-client';
+import * as SwaggerClient from 'swagger-client';
 
 /**
  * 외부 데이터 인터페이스
