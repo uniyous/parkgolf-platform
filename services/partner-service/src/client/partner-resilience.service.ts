@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import CircuitBreaker from 'opossum';
+import * as CircuitBreaker from 'opossum';
 import pRetry from 'p-retry';
 
 @Injectable()
