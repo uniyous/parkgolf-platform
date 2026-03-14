@@ -683,6 +683,28 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
           echo "Secrets updated"
 
+      - name: Initialize Databases
+        run: |
+          echo "Ensuring all databases exist..."
+          kubectl run postgres-init-${{ github.run_id }} \
+            --rm -i --restart=Never \
+            --namespace=${{ needs.setup.outputs.namespace }} \
+            --image=postgres:15-alpine \
+            --env="PGHOST=postgres" \
+            --env="PGUSER=parkgolf" \
+            --env="PGPASSWORD=${{ secrets.DB_PASSWORD }}" \
+            -- sh -c "
+              until pg_isready -h postgres; do sleep 2; done
+              psql -h postgres -c 'CREATE DATABASE iam_db;' 2>/dev/null || echo 'iam_db exists'
+              psql -h postgres -c 'CREATE DATABASE course_db;' 2>/dev/null || echo 'course_db exists'
+              psql -h postgres -c 'CREATE DATABASE booking_db;' 2>/dev/null || echo 'booking_db exists'
+              psql -h postgres -c 'CREATE DATABASE chat_db;' 2>/dev/null || echo 'chat_db exists'
+              psql -h postgres -c 'CREATE DATABASE notify_db;' 2>/dev/null || echo 'notify_db exists'
+              psql -h postgres -c 'CREATE DATABASE payment_db;' 2>/dev/null || echo 'payment_db exists'
+              psql -h postgres -c 'CREATE DATABASE partner_db;' 2>/dev/null || echo 'partner_db exists'
+              echo 'Databases initialized'
+            "
+
       - name: Update ConfigMap
         run: |
           cat <<EOF | kubectl apply -f -
