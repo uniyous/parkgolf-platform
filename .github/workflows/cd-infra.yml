@@ -316,6 +316,7 @@ jobs:
             --from-literal=TOSS_SECRET_KEY='${{ secrets.TOSS_SECRET_KEY }}' \
             --from-literal=TOSS_SECURITY_KEY='${{ secrets.TOSS_SECURITY_KEY }}' \
             --from-literal=DEEPSEEK_API_KEY='${{ secrets.DEEPSEEK_API_KEY }}' \
+            --from-literal=PARTNER_ENCRYPTION_KEY='${{ secrets.PARTNER_ENCRYPTION_KEY }}' \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Create ConfigMap
@@ -677,6 +678,7 @@ jobs:
             --from-literal=TOSS_SECRET_KEY='${{ secrets.TOSS_SECRET_KEY }}' \
             --from-literal=TOSS_SECURITY_KEY='${{ secrets.TOSS_SECURITY_KEY }}' \
             --from-literal=DEEPSEEK_API_KEY='${{ secrets.DEEPSEEK_API_KEY }}' \
+            --from-literal=PARTNER_ENCRYPTION_KEY='${{ secrets.PARTNER_ENCRYPTION_KEY }}' \
             --dry-run=client -o yaml | kubectl apply -f -
           echo "Secrets updated"
 

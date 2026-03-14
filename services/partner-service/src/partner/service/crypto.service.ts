@@ -13,9 +13,9 @@ export class CryptoService {
   private readonly key: Buffer;
 
   constructor(private readonly configService: ConfigService) {
-    const encryptionKey = this.configService.get<string>('ENCRYPTION_KEY');
+    const encryptionKey = this.configService.get<string>('PARTNER_ENCRYPTION_KEY');
     if (!encryptionKey) {
-      this.logger.warn('ENCRYPTION_KEY not set, using fallback key (NOT for production)');
+      this.logger.warn('PARTNER_ENCRYPTION_KEY not set, using fallback key (NOT for production)');
     }
     // 키를 32바이트로 정규화
     const keySource = encryptionKey || 'default-key-do-not-use-in-prod!!';
