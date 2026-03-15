@@ -2,10 +2,12 @@ import React, { useState, useMemo } from 'react';
 import { Plus, RefreshCw, Pencil, Trash2, AlertTriangle, Wifi, WifiOff, Play, Settings2 } from 'lucide-react';
 import {
   usePartnersQuery,
+  useCreatePartnerMutation,
   useDeletePartnerMutation,
   useTestConnectionMutation,
   useUpdatePartnerMutation,
 } from '@/hooks/queries/partner';
+import type { CreatePartnerConfigDto, UpdatePartnerConfigDto } from '@/types/partner';
 import { Modal } from '@/components/ui';
 import { DataContainer } from '@/components/common';
 import {
@@ -457,12 +459,6 @@ export const PartnersPage: React.FC = () => {
 };
 
 // ── Inline Form Component ──
-
-import {
-  useCreatePartnerMutation,
-  useUpdatePartnerMutation,
-} from '@/hooks/queries/partner';
-import type { CreatePartnerConfigDto, UpdatePartnerConfigDto } from '@/types/partner';
 
 interface PartnerFormContentProps {
   partner?: PartnerConfig;
