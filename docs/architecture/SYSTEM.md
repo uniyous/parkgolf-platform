@@ -13,6 +13,34 @@
 
 Park Golf Platform은 골프장 예약 및 관리를 위한 통합 플랫폼으로, 마이크로서비스 아키텍처(MSA)를 기반으로 구축되었습니다.
 
+### 가맹점 분류 체계
+
+#### 골프장 유형 (ClubType)
+| 유형 | 설명 | 특징 |
+|------|------|------|
+| **지자체 파크골프장** (`PUBLIC`) | 지방자치단체 운영 공공 골프장 | 무료/저렴한 이용료, 자체 부킹 시스템 없는 경우가 대부분 |
+| **사설 파크골프장** (`PRIVATE`) | 민간 사업자 운영 유료 골프장 | 유료 이용, 자체 부킹 시스템 보유 가능 |
+
+#### 부킹 연동 방식 (BookingMode)
+| 방식 | 설명 | 데이터 흐름 |
+|------|------|------------|
+| **자체 플랫폼** (`PLATFORM`) | 자체 부킹 시스템 없음 → 파크골프메이트 부킹 직접 사용 | booking-service에서 예약 직접 관리 |
+| **파트너 연동** (`PARTNER`) | 자체 부킹 시스템 보유 → API 연동 | partner-service가 외부 시스템과 슬롯/예약 동기화 (10분 주기 cron) |
+
+#### 분류 매트릭스
+```
+┌─────────────────┬─────────────────────────┬─────────────────────────┐
+│                 │ 자체 플랫폼 (PLATFORM)    │ 파트너 연동 (PARTNER)     │
+├─────────────────┼─────────────────────────┼─────────────────────────┤
+│ 지자체 (PUBLIC)  │ ✅ 주요 케이스            │ △ 드문 케이스            │
+│ 사설 (PRIVATE)   │ ○ 소규모 골프장          │ ✅ 주요 케이스            │
+└─────────────────┴─────────────────────────┴─────────────────────────┘
+```
+
+- **DB 모델**: `Club.clubType` (PUBLIC/PRIVATE), `Club.bookingMode` (PLATFORM/PARTNER)
+- **파트너 연동 시**: partner-service의 `PartnerConfig`로 연동 설정 관리
+- **자체 플랫폼 시**: booking-service + course-service로 예약 직접 처리
+
 ### Core Design Principles
 - **Microservices Architecture**: 도메인별 독립적인 서비스 분리
 - **Backend for Frontend (BFF)**: 프론트엔드별 최적화된 API 게이트웨이
@@ -47,6 +75,7 @@ graph TB
             NOTIFY[Notify Service<br/>NestJS<br/>:8080]
             CHAT[Chat Service<br/>NestJS<br/>:8080]
             PAY[Payment Service<br/>NestJS<br/>:8086]
+            PARTNER[Partner Service<br/>NestJS<br/>:8080]
         end
 
         subgraph "AI & External API Services"
@@ -108,6 +137,7 @@ graph TB
     NATS <--> NOTIFY
     NATS <--> CHAT
     NATS <--> PAY
+    NATS <--> PARTNER
 
     %% NATS to AI & External Services
     NATS <--> AGENT
@@ -131,6 +161,7 @@ graph TB
     NOTIFY --> PG
     CHAT --> PG
     PAY --> PG
+    PARTNER --> PG
 
     classDef frontend fill:#4fc3f7,stroke:#01579b,stroke-width:2px,color:#000
     classDef bff fill:#ffb74d,stroke:#e65100,stroke-width:2px,color:#000
@@ -143,7 +174,7 @@ graph TB
 
     class AD,PD,UW,IOS,AND frontend
     class AAPI,UAPI,CHATGW bff
-    class IAM,COURSE,BOOK,SAGA,NOTIFY,CHAT,PAY service
+    class IAM,COURSE,BOOK,SAGA,NOTIFY,CHAT,PAY,PARTNER service
     class AGENT,WEATHER,LOCATION aiservice
     class JOB service
     class PG data
@@ -162,6 +193,7 @@ graph LR
         BOOK[Booking Service]
         SAGA[Saga Service]
         PAY[Payment Service]
+        PARTNER[Partner Service]
     end
 
     subgraph "Social Services"
@@ -203,6 +235,8 @@ graph LR
     AGENT --> NOTIFY
     BOOK --> CHAT
     BOOK --> CHATGW
+    PARTNER --> COURSE
+    JOB --> PARTNER
     JOB --> IAM
 
     style IAM fill:#ef9a9a,stroke:#c62828,stroke-width:2px,color:#000
@@ -216,6 +250,7 @@ graph LR
     style AGENT fill:#80cbc4,stroke:#00695c,stroke-width:2px,color:#000
     style WEATHER fill:#b2dfdb,stroke:#00796b,stroke-width:2px,color:#000
     style LOCATION fill:#c8e6c9,stroke:#388e3c,stroke-width:2px,color:#000
+    style PARTNER fill:#ffab91,stroke:#bf360c,stroke-width:2px,color:#000
     style JOB fill:#b0bec5,stroke:#37474f,stroke-width:2px,color:#000
 ```
 
@@ -233,9 +268,9 @@ graph LR
 
 #### Platform Dashboard (플랫폼 관리자, :3002)
 - 플랫폼 전체 관리 (PLATFORM 스코프)
-- 가맹점(Company) 관리, 플랫폼 관리자 관리
+- 가맹점 관리: 회사(Company) 관리, 파트너 연동 관리
 - 플랫폼 기본 정책 설정 (취소/환불/노쇼/운영)
-- 역할 및 권한 관리
+- 역할 및 권한 관리, 플랫폼 관리자 관리
 
 #### User WebApp (:3001)
 - 사용자 회원가입/로그인
@@ -267,6 +302,7 @@ REST Routes:
   /api/admin/policies/*         → Booking Service (취소/환불/노쇼/운영)
   /api/admin/companies/*        → IAM Service
   /api/admin/menus/*            → IAM Service
+  /api/admin/partners/*         → Partner Service (연동 설정, 코스 매핑, 동기화)
 ```
 
 #### User API (:8080)
@@ -310,7 +346,8 @@ NATS Patterns:
 Database: PostgreSQL (course_db)
 
 Data Models:
-  Company, Club (위경도 좌표), Course (9홀), Hole, TeeBox
+  Company, Club (위경도 좌표, ClubType: PUBLIC/PRIVATE, BookingMode: PLATFORM/PARTNER)
+  Course (9홀), Hole, TeeBox
   Game (18홀, SlotMode: TEE_TIME/SESSION)
   GameTimeSlot (Optimistic Lock), GameWeeklySchedule
 
@@ -428,6 +465,47 @@ NATS Patterns:
   payment.splitPrepare (더치페이 N명 orderId 발급)
   payment.splitStatus (분할결제 상태 조회)
   payment.split.confirm (참여자 개별 결제 확인)
+```
+
+#### Partner Service (:8080)
+```
+Database: PostgreSQL (partner_db)
+
+Data Models:
+  PartnerConfig (골프장별 연동 설정, 1:1 Club 매핑)
+  CourseMapping (외부 코스 ↔ 내부 Game 매핑)
+  SlotMapping (외부 슬롯 ↔ 내부 GameTimeSlot 매핑)
+  BookingMapping (양방향 예약 매핑, INBOUND/OUTBOUND)
+  SyncLog (동기화 이력, 작업별 처리 건수/오류 기록)
+
+Core Features:
+  - 파트너 연동 설정 관리 (API 키, 스펙 URL, 동기화 주기)
+  - OpenAPI 스펙 기반 동적 API 호출 (swagger-client)
+  - 슬롯 동기화: 외부 슬롯 → SlotMapping → 내부 GameTimeSlot 반영
+  - 예약 동기화: 양방향 예약 상태 전파 (INBOUND/OUTBOUND)
+  - 서킷 브레이커: 연속 실패 시 자동 차단, 반자동 복구
+  - 코스 매핑: 외부 코스명 ↔ 내부 Game ID 매핑 관리
+
+적용 대상:
+  - BookingMode가 PARTNER인 골프장만 해당
+  - 지자체 골프장(PUBLIC)은 대부분 PLATFORM 모드 (자체 부킹 시스템 없음)
+  - 사설 골프장(PRIVATE) 중 자체 부킹 시스템 보유 시 PARTNER 모드
+
+동기화 모드:
+  - API_POLLING: 주기적 폴링 (기본 10분 간격)
+  - WEBHOOK: 외부 시스템이 변경 사항 Push
+  - HYBRID: 폴링 + 웹훅 병행
+  - MANUAL: 수동 동기화만
+
+NATS Patterns:
+  partner.config.list/get/create/update/delete
+  partner.courseMapping.list/get/create/update/delete
+  partner.slotMapping.list
+  partner.syncLog.list
+  partner.bookingMapping.list
+  partner.sync.manual (수동 동기화 트리거)
+  partner.sync.test (연결 테스트)
+  partner.conflict.resolve (충돌 해결)
 ```
 
 #### Notify Service (:8080)
@@ -590,6 +668,8 @@ Scheduled Jobs:
     → iam.deletion.processReminders (D-3, D-1 리마인더 알림)
   deletion-executor: 매일 03:00 UTC (12:00 KST)
     → iam.deletion.execute (유예 기간 만료 계정 삭제)
+  partner-slot-sync: 매 10분
+    → partner.sync.slots (파트너 연동 골프장 슬롯 동기화)
 
 NATS Patterns — Inbound:
   job.list (등록된 작업 목록 조회)
@@ -600,6 +680,7 @@ NATS Patterns — Inbound:
 NATS Patterns — Outbound:
   iam.deletion.processReminders (→ iam-service)
   iam.deletion.execute (→ iam-service)
+  partner.sync.slots (→ partner-service, 슬롯 동기화)
 ```
 
 ## Saga Pattern (Distributed Transactions)
@@ -681,6 +762,7 @@ graph TD
         BOOKING_DB[(booking_db<br/>Bookings, Refunds, NoShowRecords<br/>Policies: Cancel/Refund/NoShow/Operating)]
         SAGA_DB[(saga_db<br/>SagaExecutions, SagaSteps<br/>OutboxEvents)]
         PAYMENT_DB[(payment_db<br/>Payments, BillingKeys, Refunds)]
+        PARTNER_DB[(partner_db<br/>PartnerConfigs, CourseMappings<br/>SlotMappings, BookingMappings, SyncLogs)]
         NOTIFY_DB[(notify_db<br/>Templates, Logs)]
         CHAT_DB[(chat_db<br/>Rooms, Messages)]
     end
@@ -690,6 +772,7 @@ graph TD
     BOOK[Booking Service] --> BOOKING_DB
     SAGA[Saga Service] --> SAGA_DB
     PAY[Payment Service] --> PAYMENT_DB
+    PARTNER[Partner Service] --> PARTNER_DB
     NOTIFY[Notify Service] --> NOTIFY_DB
     CHAT[Chat Service] --> CHAT_DB
 
@@ -722,6 +805,7 @@ graph TD
             PAY[payment-service<br/>Deployment]
             NOTIFY[notify-service<br/>Deployment]
             CHAT[chat-service<br/>Deployment]
+            PARTNER[partner-service<br/>Deployment]
             AGENT[agent-service<br/>Deployment]
             WEATHER[weather-service<br/>Deployment]
             LOCATION[location-service<br/>Deployment]
@@ -752,6 +836,7 @@ graph TD
 | saga-service | 8080 | Saga Orchestrator |
 | notify-service | 8080 | Notification |
 | chat-service | 8080 | Chat |
+| partner-service | 8080 | Partner Integration |
 | payment-service | 8086 | Toss Payments |
 | weather-service | 8087 | 기상청 API |
 | agent-service | 8088 | AI Agent (DeepSeek) |
@@ -781,6 +866,6 @@ graph LR
 
 ---
 
-**Document Version**: 8.0.0
-**Last Updated**: 2026-03-09
+**Document Version**: 9.0.0
+**Last Updated**: 2026-03-15
 **Maintained By**: Platform Team

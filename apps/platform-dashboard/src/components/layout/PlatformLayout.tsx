@@ -71,13 +71,13 @@ const PLATFORM_MENU: NavEntry[] = [
     path: '/dashboard',
     icon: LayoutDashboard,
   },
-  // 회사 관리 group
+  // 가맹점 관리 group
   {
-    label: '회사 관리',
+    label: '가맹점 관리',
     icon: Building2,
     items: [
       {
-        label: '가맹점 관리',
+        label: '회사 관리',
         path: '/companies',
         icon: Building2,
         requiredPermissions: ['COMPANIES'],

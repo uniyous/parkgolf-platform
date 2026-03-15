@@ -406,6 +406,7 @@ const webhookLog = await this.prisma.webhookLog.create({
 | booking-service | `booking_db` | 예약, 정책, 환불/노쇼 |
 | saga-service | `saga_db` | Saga 오케스트레이션, Step 이력 |
 | payment-service | `payment_db` | 결제, 환불, 웹훅 로그 |
+| partner-service | `partner_db` | 파트너 연동 설정, 코스/슬롯/예약 매핑, 동기화 이력 |
 | chat-service | `chat_db` | 채팅방, 메시지, 파일 |
 | notify-service | `notify_db` | 알림 |
 
