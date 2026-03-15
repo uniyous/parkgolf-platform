@@ -105,19 +105,22 @@ export interface UpdateCourseMappingDto {
 // ── Sync Log ──
 
 export type SyncResult = 'SUCCESS' | 'PARTIAL' | 'FAILED';
+export type SyncAction = 'SLOT_SYNC' | 'BOOKING_IMPORT';
 
 export interface SyncLog {
   id: number;
   partnerId: number;
-  syncType: 'SLOT_SYNC' | 'BOOKING_IMPORT';
-  result: SyncResult;
-  slotsCreated: number;
-  slotsUpdated: number;
-  slotsDeleted: number;
+  action: SyncAction;
+  direction: SyncDirection;
+  status: SyncResult;
+  recordCount: number;
+  createdCount: number;
+  updatedCount: number;
+  errorCount: number;
   errorMessage?: string | null;
-  durationMs: number;
-  startedAt: string;
-  completedAt: string;
+  durationMs?: number | null;
+  payload?: Record<string, unknown> | null;
+  createdAt: string;
 }
 
 // ── Slot Mapping ──
