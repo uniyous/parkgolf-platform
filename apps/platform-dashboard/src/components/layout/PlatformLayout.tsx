@@ -71,12 +71,25 @@ const PLATFORM_MENU: NavEntry[] = [
     path: '/dashboard',
     icon: LayoutDashboard,
   },
-  // 가맹점 관리 (requires COMPANIES permission)
+  // 회사 관리 group
   {
-    label: '가맹점 관리',
-    path: '/companies',
+    label: '회사 관리',
     icon: Building2,
-    requiredPermissions: ['COMPANIES'],
+    items: [
+      {
+        label: '가맹점 관리',
+        path: '/companies',
+        icon: Building2,
+        requiredPermissions: ['COMPANIES'],
+      },
+      {
+        label: '파트너 연동',
+        path: '/partners',
+        icon: Link2,
+        requiredPermissions: ['SYSTEM'],
+        allowedRoles: ['PLATFORM_ADMIN'],
+      },
+    ],
   },
   // 현황 분석 group
   {
@@ -102,14 +115,6 @@ const PLATFORM_MENU: NavEntry[] = [
         requiredPermissions: ['ANALYTICS'],
       },
     ],
-  },
-  // 파트너 연동 (requires SYSTEM permission, PLATFORM_ADMIN only)
-  {
-    label: '파트너 연동',
-    path: '/partners',
-    icon: Link2,
-    requiredPermissions: ['SYSTEM'],
-    allowedRoles: ['PLATFORM_ADMIN'],
   },
   // 운영 관리 group
   {
