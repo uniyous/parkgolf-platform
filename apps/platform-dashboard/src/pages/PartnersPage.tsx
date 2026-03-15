@@ -21,7 +21,7 @@ import { PageLayout } from '@/components/layout';
 import { showSuccessToast } from '@/lib/errors';
 import type { PartnerConfig, SyncMode } from '@/types/partner';
 
-type SortField = 'name' | 'syncMode' | 'isActive' | 'createdAt';
+type SortField = 'systemName' | 'syncMode' | 'isActive' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
 
 interface FilterState {
@@ -31,15 +31,17 @@ interface FilterState {
 }
 
 const SYNC_MODE_LABELS: Record<SyncMode, string> = {
-  POLLING: '폴링',
+  API_POLLING: '폴링',
   WEBHOOK: '웹훅',
   HYBRID: '하이브리드',
+  MANUAL: '수동',
 };
 
 const SYNC_MODE_COLORS: Record<SyncMode, string> = {
-  POLLING: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  API_POLLING: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
   WEBHOOK: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
   HYBRID: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
+  MANUAL: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
 };
 
 export const PartnersPage: React.FC = () => {
@@ -57,7 +59,7 @@ export const PartnersPage: React.FC = () => {
     syncMode: 'ALL',
     status: 'ALL',
   });
-  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortField, setSortField] = useState<SortField>('systemName');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   // Modal State
@@ -72,10 +74,8 @@ export const PartnersPage: React.FC = () => {
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
       result = result.filter((p) =>
-        p.name?.toLowerCase().includes(searchLower) ||
-        p.partnerCode?.toLowerCase().includes(searchLower) ||
-        p.companyName?.toLowerCase().includes(searchLower) ||
-        p.clubName?.toLowerCase().includes(searchLower)
+        p.systemName?.toLowerCase().includes(searchLower) ||
+        p.externalClubId?.toLowerCase().includes(searchLower)
       );
     }
 
@@ -103,7 +103,7 @@ export const PartnersPage: React.FC = () => {
     total: partners.length,
     active: partners.filter((p) => p.isActive).length,
     inactive: partners.filter((p) => !p.isActive).length,
-    polling: partners.filter((p) => p.syncMode === 'POLLING').length,
+    polling: partners.filter((p) => p.syncMode === 'API_POLLING').length,
   }), [partners]);
 
   const handleSort = (field: SortField) => {
@@ -181,16 +181,17 @@ export const PartnersPage: React.FC = () => {
           showLabel
           value={filters.search}
           onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
-          placeholder="파트너명, 코드, 회사명, 골프장명..."
+          placeholder="시스템명, 외부 골프장 ID..."
         />
         <FilterSelect
           label="동기화 모드"
           value={filters.syncMode === 'ALL' ? '' : filters.syncMode}
           onChange={(value) => setFilters((f) => ({ ...f, syncMode: (value || 'ALL') as SyncMode | 'ALL' }))}
           options={[
-            { value: 'POLLING', label: '폴링' },
+            { value: 'API_POLLING', label: '폴링' },
             { value: 'WEBHOOK', label: '웹훅' },
             { value: 'HYBRID', label: '하이브리드' },
+            { value: 'MANUAL', label: '수동' },
           ]}
           placeholder="전체 모드"
         />
@@ -259,11 +260,11 @@ export const PartnersPage: React.FC = () => {
                 <tr>
                   <th
                     className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase cursor-pointer hover:bg-white/10 transition-colors"
-                    onClick={() => handleSort('name')}
+                    onClick={() => handleSort('systemName')}
                   >
                     <div className="flex items-center space-x-1">
                       <span>파트너 정보</span>
-                      {sortField === 'name' && (
+                      {sortField === 'systemName' && (
                         <span className="text-emerald-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </div>
@@ -291,23 +292,23 @@ export const PartnersPage: React.FC = () => {
                     <td className="px-4 py-4">
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold">
-                          {partner.name?.charAt(0) || '?'}
+                          {partner.systemName?.charAt(0) || '?'}
                         </div>
                         <div>
-                          <div className="font-medium text-white">{partner.name}</div>
-                          <div className="text-sm text-white/50">{partner.partnerCode}</div>
+                          <div className="font-medium text-white">{partner.systemName}</div>
+                          <div className="text-sm text-white/50">{partner.externalClubId}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <div className="text-sm text-white">{partner.companyName || '-'}</div>
-                      <div className="text-sm text-white/50">{partner.clubName || '-'}</div>
+                      <div className="text-sm text-white">회사 #{partner.companyId}</div>
+                      <div className="text-sm text-white/50">골프장 #{partner.clubId}</div>
                     </td>
                     <td className="px-4 py-4">
                       <span className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full border ${SYNC_MODE_COLORS[partner.syncMode]}`}>
                         {SYNC_MODE_LABELS[partner.syncMode]}
                       </span>
-                      <div className="text-xs text-white/40 mt-1">{partner.syncIntervalMinutes}분 간격</div>
+                      <div className="text-xs text-white/40 mt-1">{partner.syncIntervalMin}분 간격</div>
                     </td>
                     <td className="px-4 py-4">
                       <button
@@ -327,10 +328,15 @@ export const PartnersPage: React.FC = () => {
                     </td>
                     <td className="px-4 py-4">
                       <div className="text-sm text-white/60">
-                        {partner.lastSyncAt
-                          ? new Date(partner.lastSyncAt).toLocaleString('ko-KR')
+                        {partner.lastSlotSyncAt
+                          ? new Date(partner.lastSlotSyncAt).toLocaleString('ko-KR')
                           : '동기화 없음'}
                       </div>
+                      {partner.lastSlotSyncStatus && (
+                        <div className={`text-xs mt-0.5 ${partner.lastSlotSyncStatus === 'SUCCESS' ? 'text-green-400' : partner.lastSlotSyncStatus === 'FAILED' ? 'text-red-400' : 'text-yellow-400'}`}>
+                          {partner.lastSlotSyncStatus}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -393,8 +399,8 @@ export const PartnersPage: React.FC = () => {
                 <AlertTriangle className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <div className="font-medium text-white">{deleteConfirm.partner.name}</div>
-                <div className="text-sm text-white/50">{deleteConfirm.partner.partnerCode}</div>
+                <div className="font-medium text-white">{deleteConfirm.partner.systemName}</div>
+                <div className="text-sm text-white/50">{deleteConfirm.partner.externalClubId}</div>
               </div>
             </div>
             <p className="text-white/60 mb-2">이 파트너 설정을 삭제하시겠습니까?</p>
@@ -471,15 +477,15 @@ const PartnerFormContent: React.FC<PartnerFormContentProps> = ({ partner, onClos
   const isEdit = !!partner;
 
   const [form, setForm] = useState({
-    name: partner?.name || '',
-    partnerCode: partner?.partnerCode || '',
+    systemName: partner?.systemName || '',
+    externalClubId: partner?.externalClubId || '',
     specUrl: partner?.specUrl || '',
     apiKey: '',
     apiSecret: '',
     companyId: partner?.companyId?.toString() || '',
     clubId: partner?.clubId?.toString() || '',
-    syncMode: partner?.syncMode || 'POLLING' as SyncMode,
-    syncIntervalMinutes: partner?.syncIntervalMinutes?.toString() || '10',
+    syncMode: partner?.syncMode || 'API_POLLING' as SyncMode,
+    syncIntervalMin: partner?.syncIntervalMin?.toString() || '10',
     isActive: partner?.isActive ?? true,
   });
 
@@ -488,10 +494,11 @@ const PartnerFormContent: React.FC<PartnerFormContentProps> = ({ partner, onClos
 
     if (isEdit) {
       const data: UpdatePartnerConfigDto = {
-        name: form.name || undefined,
+        id: partner!.id,
+        systemName: form.systemName || undefined,
         specUrl: form.specUrl || undefined,
         syncMode: form.syncMode,
-        syncIntervalMinutes: parseInt(form.syncIntervalMinutes) || undefined,
+        syncIntervalMin: parseInt(form.syncIntervalMin) || undefined,
         isActive: form.isActive,
       };
       if (form.apiKey) data.apiKey = form.apiKey;
@@ -500,16 +507,16 @@ const PartnerFormContent: React.FC<PartnerFormContentProps> = ({ partner, onClos
       await updateMutation.mutateAsync({ id: partner!.id, data });
     } else {
       const data: CreatePartnerConfigDto = {
-        name: form.name,
-        partnerCode: form.partnerCode,
+        systemName: form.systemName,
+        externalClubId: form.externalClubId,
         specUrl: form.specUrl,
         apiKey: form.apiKey,
         apiSecret: form.apiSecret || undefined,
         companyId: parseInt(form.companyId),
         clubId: parseInt(form.clubId),
         syncMode: form.syncMode,
-        syncIntervalMinutes: parseInt(form.syncIntervalMinutes) || 10,
-        isActive: form.isActive,
+        syncIntervalMin: parseInt(form.syncIntervalMin) || 10,
+        responseMapping: {},
       };
 
       await createMutation.mutateAsync(data);
@@ -524,26 +531,26 @@ const PartnerFormContent: React.FC<PartnerFormContentProps> = ({ partner, onClos
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-white/70 mb-1">파트너명 *</label>
+          <label className="block text-sm font-medium text-white/70 mb-1">시스템명 *</label>
           <input
             type="text"
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            value={form.systemName}
+            onChange={(e) => setForm((f) => ({ ...f, systemName: e.target.value }))}
             required
             className="w-full px-3 py-2 bg-white/5 border border-white/15 rounded-lg text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             placeholder="외부 부킹 시스템 이름"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-white/70 mb-1">파트너 코드 *</label>
+          <label className="block text-sm font-medium text-white/70 mb-1">외부 골프장 ID *</label>
           <input
             type="text"
-            value={form.partnerCode}
-            onChange={(e) => setForm((f) => ({ ...f, partnerCode: e.target.value }))}
+            value={form.externalClubId}
+            onChange={(e) => setForm((f) => ({ ...f, externalClubId: e.target.value }))}
             required
             disabled={isEdit}
             className="w-full px-3 py-2 bg-white/5 border border-white/15 rounded-lg text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
-            placeholder="PARTNER_001"
+            placeholder="EXT_CLUB_001"
           />
         </div>
       </div>
@@ -619,17 +626,18 @@ const PartnerFormContent: React.FC<PartnerFormContentProps> = ({ partner, onClos
             onChange={(e) => setForm((f) => ({ ...f, syncMode: e.target.value as SyncMode }))}
             className="w-full px-3 py-2 bg-white/5 border border-white/15 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
-            <option value="POLLING">폴링</option>
+            <option value="API_POLLING">폴링</option>
             <option value="WEBHOOK">웹훅</option>
             <option value="HYBRID">하이브리드</option>
+            <option value="MANUAL">수동</option>
           </select>
         </div>
         <div>
           <label className="block text-sm font-medium text-white/70 mb-1">동기화 간격 (분)</label>
           <input
             type="number"
-            value={form.syncIntervalMinutes}
-            onChange={(e) => setForm((f) => ({ ...f, syncIntervalMinutes: e.target.value }))}
+            value={form.syncIntervalMin}
+            onChange={(e) => setForm((f) => ({ ...f, syncIntervalMin: e.target.value }))}
             min={1}
             max={1440}
             className="w-full px-3 py-2 bg-white/5 border border-white/15 rounded-lg text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500"

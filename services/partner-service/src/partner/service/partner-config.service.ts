@@ -55,12 +55,13 @@ export class PartnerConfigService {
   }
 
   async findAll(params: { page?: number; limit?: number; companyId?: number; isActive?: boolean }) {
-    const { page = 1, limit = 20, companyId, isActive } = params;
+    const page = Number(params.page) || 1;
+    const limit = Number(params.limit) || 20;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};
-    if (companyId !== undefined) where.companyId = companyId;
-    if (isActive !== undefined) where.isActive = isActive;
+    if (params.companyId !== undefined) where.companyId = Number(params.companyId);
+    if (params.isActive !== undefined) where.isActive = params.isActive === true || params.isActive === ('true' as unknown);
 
     const [items, total] = await Promise.all([
       this.prisma.partnerConfig.findMany({

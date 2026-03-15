@@ -1,51 +1,65 @@
 // ── Partner Config ──
 
-export type SyncMode = 'POLLING' | 'WEBHOOK' | 'HYBRID';
+export type SyncMode = 'API_POLLING' | 'WEBHOOK' | 'HYBRID' | 'MANUAL';
 
 export interface PartnerConfig {
   id: number;
-  name: string;
-  partnerCode: string;
+  clubId: number;
+  companyId: number;
+  systemName: string;
+  externalClubId: string;
   specUrl: string;
   apiKey: string;        // masked (********)
   apiSecret?: string;    // masked (********)
-  companyId: number;
-  clubId: number;
-  syncMode: SyncMode;
-  syncIntervalMinutes: number;
-  isActive: boolean;
+  webhookSecret?: string;
   responseMapping?: Record<string, unknown>;
-  companyName?: string;
-  clubName?: string;
-  lastSyncAt?: string | null;
+  syncMode: SyncMode;
+  syncIntervalMin: number;
+  syncRangeDays: number;
+  slotSyncEnabled: boolean;
+  bookingSyncEnabled: boolean;
+  isActive: boolean;
+  lastSlotSyncAt?: string | null;
+  lastSlotSyncStatus?: SyncResult | null;
+  lastSlotSyncError?: string | null;
+  lastBookingSyncAt?: string | null;
   circuitBreakerStatus?: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+  courseMappings?: CourseMapping[];
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreatePartnerConfigDto {
-  name: string;
-  partnerCode: string;
+  clubId: number;
+  companyId: number;
+  systemName: string;
+  externalClubId: string;
   specUrl: string;
   apiKey: string;
   apiSecret?: string;
-  companyId: number;
-  clubId: number;
+  webhookSecret?: string;
+  responseMapping: Record<string, unknown>;
   syncMode?: SyncMode;
-  syncIntervalMinutes?: number;
-  isActive?: boolean;
-  responseMapping?: Record<string, unknown>;
+  syncIntervalMin?: number;
+  syncRangeDays?: number;
+  slotSyncEnabled?: boolean;
+  bookingSyncEnabled?: boolean;
 }
 
 export interface UpdatePartnerConfigDto {
-  name?: string;
+  id: number;
+  systemName?: string;
   specUrl?: string;
   apiKey?: string;
   apiSecret?: string;
-  syncMode?: SyncMode;
-  syncIntervalMinutes?: number;
-  isActive?: boolean;
+  webhookSecret?: string;
   responseMapping?: Record<string, unknown>;
+  syncMode?: SyncMode;
+  syncIntervalMin?: number;
+  syncRangeDays?: number;
+  slotSyncEnabled?: boolean;
+  bookingSyncEnabled?: boolean;
+  isActive?: boolean;
 }
 
 export interface PartnerConfigFilters {
@@ -95,7 +109,7 @@ export type SyncResult = 'SUCCESS' | 'PARTIAL' | 'FAILED';
 export interface SyncLog {
   id: number;
   partnerId: number;
-  syncType: 'SLOT' | 'BOOKING';
+  syncType: 'SLOT_SYNC' | 'BOOKING_IMPORT';
   result: SyncResult;
   slotsCreated: number;
   slotsUpdated: number;
