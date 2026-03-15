@@ -553,15 +553,16 @@ export class SyncService {
    * SyncLog 조회 (clubId 기반)
    */
   async getSyncLogs(params: { clubId?: number; partnerId?: number; page?: number; limit?: number }) {
-    const { page = 1, limit = 20 } = params;
+    const page = Number(params.page) || 1;
+    const limit = Number(params.limit) || 20;
     const skip = (page - 1) * limit;
 
-    let partnerId = params.partnerId;
+    let partnerId = params.partnerId ? Number(params.partnerId) : undefined;
 
     // clubId로 조회 시 partnerId 변환
     if (params.clubId && !partnerId) {
       const config = await this.prisma.partnerConfig.findUnique({
-        where: { clubId: params.clubId },
+        where: { clubId: Number(params.clubId) },
       });
       if (!config) return { data: [], total: 0, page, limit };
       partnerId = config.id;
@@ -583,17 +584,62 @@ export class SyncService {
   }
 
   /**
+   * SlotMapping 목록 조회 (partnerId 기반)
+   */
+  async getSlotMappings(params: { partnerId?: number; date?: string; syncStatus?: string; page?: number; limit?: number }) {
+    const page = Number(params.page) || 1;
+    const limit = Number(params.limit) || 50;
+    const skip = (page - 1) * limit;
+
+    const where: Record<string, unknown> = {};
+
+    if (params.partnerId) {
+      const courseMappings = await this.prisma.courseMapping.findMany({
+        where: { partnerId: Number(params.partnerId) },
+        select: { id: true },
+      });
+      where.courseMappingId = { in: courseMappings.map((cm) => cm.id) };
+    }
+
+    if (params.date) {
+      where.date = new Date(params.date);
+    }
+
+    if (params.syncStatus) {
+      where.syncStatus = params.syncStatus;
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.slotMapping.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
+        include: {
+          courseMapping: {
+            select: { externalCourseName: true, internalGameId: true },
+          },
+        },
+      }),
+      this.prisma.slotMapping.count({ where }),
+    ]);
+
+    return { data: items, total, page, limit };
+  }
+
+  /**
    * BookingMapping 목록 조회 (clubId 기반)
    */
   async getBookingMappings(params: { clubId?: number; partnerId?: number; syncStatus?: string; page?: number; limit?: number }) {
-    const { page = 1, limit = 20 } = params;
+    const page = Number(params.page) || 1;
+    const limit = Number(params.limit) || 20;
     const skip = (page - 1) * limit;
 
-    let partnerId = params.partnerId;
+    let partnerId = params.partnerId ? Number(params.partnerId) : undefined;
 
     if (params.clubId && !partnerId) {
       const config = await this.prisma.partnerConfig.findUnique({
-        where: { clubId: params.clubId },
+        where: { clubId: Number(params.clubId) },
       });
       if (!config) return { data: [], total: 0, page, limit };
       partnerId = config.id;

@@ -66,6 +66,12 @@ export class PartnersService {
     return this.natsClient.send('partner.sync.logs', { ...params, token }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
+  // ── SlotMapping ──
+
+  async listSlotMappings(params: Record<string, unknown>, token: string) {
+    return this.natsClient.send('partner.slotMapping.list', { ...params, token }, NATS_TIMEOUTS.LIST_QUERY);
+  }
+
   // ── BookingMapping ──
 
   async listBookingMappings(params: Record<string, unknown>, token: string) {

@@ -59,6 +59,15 @@ export class SyncNatsController {
   }
 
   /**
+   * SlotMapping 목록 조회
+   */
+  @MessagePattern('partner.slotMapping.list')
+  async listSlotMappings(@Payload() data: { partnerId?: number; date?: string; syncStatus?: string; page?: number; limit?: number }) {
+    const result = await this.syncService.getSlotMappings(data);
+    return NatsResponse.paginated(result.data, result.total, result.page, result.limit);
+  }
+
+  /**
    * BookingMapping 목록 조회
    */
   @MessagePattern('partner.bookingMapping.list')

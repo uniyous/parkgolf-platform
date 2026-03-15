@@ -128,6 +128,20 @@ export class PartnersController {
   }
 
   // ──────────────────────────────────────────────
+  // 슬롯 매핑
+  // ──────────────────────────────────────────────
+
+  @Get(':id/slot-mappings')
+  @ApiOperation({ summary: '슬롯 매핑 목록' })
+  async listSlotMappings(
+    @Param('id', ParseIntPipe) partnerId: number,
+    @Query() query: Record<string, unknown>,
+    @BearerToken() token: string,
+  ) {
+    return this.partnersService.listSlotMappings({ ...query, partnerId }, token);
+  }
+
+  // ──────────────────────────────────────────────
   // 코스 매핑
   // ──────────────────────────────────────────────
 

@@ -120,19 +120,54 @@ export interface SyncLog {
   completedAt: string;
 }
 
+// ── Slot Mapping ──
+
+export type SlotSyncStatus = 'MAPPED' | 'UNMAPPED' | 'CHANGED' | 'DELETED';
+export type ExternalSlotStatus = 'AVAILABLE' | 'FULLY_BOOKED' | 'CLOSED';
+
+export interface SlotMapping {
+  id: number;
+  courseMappingId: number;
+  externalSlotId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  internalSlotId?: number | null;
+  externalMaxPlayers: number;
+  externalBooked: number;
+  externalStatus: ExternalSlotStatus;
+  externalPrice?: number | null;
+  syncStatus: SlotSyncStatus;
+  syncError?: string | null;
+  lastSyncAt: string;
+  courseMapping?: {
+    externalCourseName: string;
+    internalGameId: number;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ── Booking Mapping ──
 
-export type BookingSyncStatus = 'SYNCED' | 'PENDING' | 'CONFLICT' | 'FAILED';
+export type BookingSyncStatus = 'SYNCED' | 'PENDING' | 'CONFLICT' | 'FAILED' | 'CANCELLED';
+export type SyncDirection = 'INBOUND' | 'OUTBOUND';
 
 export interface BookingMapping {
   id: number;
   partnerId: number;
+  courseMappingId?: number | null;
   internalBookingId: number;
   externalBookingId: string;
+  syncDirection: SyncDirection;
   syncStatus: BookingSyncStatus;
+  lastSyncAt?: string | null;
+  date: string;
+  startTime: string;
+  playerCount: number;
+  playerName: string;
+  status: 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
   conflictData?: Record<string, unknown> | null;
-  resolvedAt?: string | null;
-  resolvedBy?: string | null;
   createdAt: string;
   updatedAt: string;
 }

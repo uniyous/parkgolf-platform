@@ -10,6 +10,7 @@ import type {
   CreateCourseMappingDto,
   UpdateCourseMappingDto,
   SyncLog,
+  SlotMapping,
   BookingMapping,
 } from '@/types/partner';
 
@@ -96,6 +97,13 @@ export const partnerApi = {
   async manualSync(partnerId: number): Promise<{ success: boolean; message: string }> {
     const response = await apiClient.post<unknown>(`/admin/partners/my/club/${partnerId}/sync`, {});
     return extractSingle(response.data) ?? { success: false, message: 'Unknown error' };
+  },
+
+  // ── Slot Mapping ──
+
+  async getSlotMappings(partnerId: number, params?: Record<string, unknown>): Promise<SlotMapping[]> {
+    const response = await apiClient.get<unknown>(`/admin/partners/${partnerId}/slot-mappings`, params);
+    return extractList<SlotMapping>(response.data);
   },
 
   // ── Booking Mapping ──

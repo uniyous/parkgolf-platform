@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, RefreshCw, Pencil, Trash2, AlertTriangle, Wifi, WifiOff, Play, Settings2 } from 'lucide-react';
+import { Plus, RefreshCw, Pencil, Trash2, AlertTriangle, Wifi, WifiOff, Play, Settings2, Eye } from 'lucide-react';
 import {
   usePartnersQuery,
   useCreatePartnerMutation,
@@ -19,6 +19,7 @@ import {
 } from '@/components/common/filters';
 import { PageLayout } from '@/components/layout';
 import { showSuccessToast } from '@/lib/errors';
+import { PartnerDetailModal } from '@/components/features/partner/PartnerDetailModal';
 import type { PartnerConfig, SyncMode } from '@/types/partner';
 
 type SortField = 'systemName' | 'syncMode' | 'isActive' | 'createdAt';
@@ -64,6 +65,7 @@ export const PartnersPage: React.FC = () => {
 
   // Modal State
   const [formModal, setFormModal] = useState<{ open: boolean; partner?: PartnerConfig }>({ open: false });
+  const [detailModal, setDetailModal] = useState<{ open: boolean; partner?: PartnerConfig }>({ open: false });
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; partner?: PartnerConfig }>({ open: false });
   const [testResult, setTestResult] = useState<{ open: boolean; success?: boolean; message?: string; latencyMs?: number }>({ open: false });
 
@@ -288,7 +290,11 @@ export const PartnersPage: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-white/15">
                 {filteredPartners.map((partner) => (
-                  <tr key={partner.id} className="hover:bg-white/5 transition-colors">
+                  <tr
+                    key={partner.id}
+                    className="hover:bg-white/5 transition-colors cursor-pointer"
+                    onClick={() => setDetailModal({ open: true, partner })}
+                  >
                     <td className="px-4 py-4">
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold">
@@ -312,7 +318,7 @@ export const PartnersPage: React.FC = () => {
                     </td>
                     <td className="px-4 py-4">
                       <button
-                        onClick={() => handleToggleActive(partner)}
+                        onClick={(e) => { e.stopPropagation(); handleToggleActive(partner); }}
                         className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full border cursor-pointer transition-colors ${
                           partner.isActive
                             ? 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30'
@@ -338,8 +344,15 @@ export const PartnersPage: React.FC = () => {
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-4 text-right">
+                    <td className="px-4 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => setDetailModal({ open: true, partner })}
+                          className="inline-flex items-center px-2.5 py-1.5 text-sm text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors"
+                          title="상세 보기"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => handleTestConnection(partner)}
                           disabled={testConnection.isPending}
@@ -425,6 +438,17 @@ export const PartnersPage: React.FC = () => {
           </>
         )}
       </Modal>
+
+      {/* Partner Detail Modal */}
+      <PartnerDetailModal
+        partner={detailModal.partner ?? null}
+        isOpen={detailModal.open}
+        onClose={() => setDetailModal({ open: false })}
+        onEdit={(partner) => {
+          setDetailModal({ open: false });
+          setFormModal({ open: true, partner });
+        }}
+      />
 
       {/* Test Result Modal */}
       <Modal

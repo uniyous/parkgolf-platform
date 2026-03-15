@@ -104,6 +104,8 @@ export const partnerKeys = {
   details: () => [...partnerKeys.all, 'detail'] as const,
   detail: (id: number) => [...partnerKeys.details(), id] as const,
   courseMappings: (partnerId: number) => [...partnerKeys.all, 'courseMappings', partnerId] as const,
+  slotMappings: (partnerId: number, filters?: Record<string, unknown>) => [...partnerKeys.all, 'slotMappings', partnerId, filters] as const,
+  bookingMappings: (partnerId: number) => [...partnerKeys.all, 'bookingMappings', partnerId] as const,
   syncLogs: (partnerId: number) => [...partnerKeys.all, 'syncLogs', partnerId] as const,
 };
 
