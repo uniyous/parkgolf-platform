@@ -79,12 +79,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Google Auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
         with:
           install_components: 'gke-gcloud-auth-plugin'
 
@@ -164,7 +164,7 @@ jobs:
         working-directory: ${{ needs.setup.outputs.tf_dir }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -172,7 +172,7 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
 
       - name: Google Auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
@@ -222,12 +222,12 @@ jobs:
     environment: ${{ needs.setup.outputs.environment }}
     steps:
       - name: Google Auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
         with:
           install_components: 'gke-gcloud-auth-plugin'
 
@@ -653,12 +653,12 @@ jobs:
     environment: ${{ needs.setup.outputs.environment }}
     steps:
       - name: Google Auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
         with:
           install_components: 'gke-gcloud-auth-plugin'
 
@@ -758,12 +758,12 @@ jobs:
           exit 1
 
       - name: Google Auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
 
       - name: Delete GKE Cluster
         run: |
@@ -847,7 +847,7 @@ jobs:
           exit 1
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -855,7 +855,7 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
 
       - name: Google Auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
