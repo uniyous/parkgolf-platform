@@ -449,8 +449,10 @@ export class GameTimeSlotService {
   ): Promise<GameTimeSlot> {
     this.logger.log(`[Partner] Updating externalBooked for slot ${timeSlotId}: ${externalBooked}`);
 
-    return this.prisma.$transaction(async (tx) => {
-      const slot = await tx.gameTimeSlot.findUnique({
+    const MAX_RETRIES = 3;
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      const slot = await this.prisma.gameTimeSlot.findUnique({
         where: { id: timeSlotId },
         include: {
           game: {
@@ -467,6 +469,9 @@ export class GameTimeSlotService {
         throw new NotFoundException(`GameTimeSlot with ID ${timeSlotId} not found`);
       }
 
+      // 변경 없으면 스킵
+      if (slot.externalBooked === externalBooked) return slot;
+
       const totalOccupied = slot.bookedPlayers + externalBooked;
       const newStatus: TimeSlotStatus = totalOccupied >= slot.maxPlayers
         ? TimeSlotStatus.FULLY_BOOKED
@@ -474,23 +479,41 @@ export class GameTimeSlotService {
           ? slot.status
           : TimeSlotStatus.AVAILABLE;
 
-      return tx.gameTimeSlot.update({
-        where: { id: timeSlotId },
+      // Optimistic Lock: version 체크 후 갱신
+      const updated = await this.prisma.gameTimeSlot.updateMany({
+        where: { id: timeSlotId, version: slot.version },
         data: {
           externalBooked,
           status: newStatus,
-        },
-        include: {
-          game: {
-            include: {
-              frontNineCourse: true,
-              backNineCourse: true,
-              club: true,
-            },
-          },
+          version: slot.version + 1,
         },
       });
-    });
+
+      if (updated.count > 0) {
+        // 성공 — 갱신된 슬롯 반환
+        return this.prisma.gameTimeSlot.findUniqueOrThrow({
+          where: { id: timeSlotId },
+          include: {
+            game: {
+              include: {
+                frontNineCourse: true,
+                backNineCourse: true,
+                club: true,
+              },
+            },
+          },
+        });
+      }
+
+      // version 충돌 → 재시도
+      this.logger.warn(
+        `[Partner] externalBooked 갱신 재시도 (${attempt}/${MAX_RETRIES}): slotId=${timeSlotId}, version=${slot.version}`,
+      );
+    }
+
+    throw new ConflictException(
+      `externalBooked 갱신 실패 (${MAX_RETRIES}회 재시도 초과): slotId=${timeSlotId}`,
+    );
   }
 
   /**
