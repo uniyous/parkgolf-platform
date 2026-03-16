@@ -481,8 +481,15 @@ export class SyncService {
         })
       : null;
 
+    // date 유효성 검증: undefined/null이면 현재 날짜 사용
+    const parsedDate = booking.date ? new Date(booking.date) : null;
+    if (!parsedDate || isNaN(parsedDate.getTime())) {
+      this.logger.warn(`[processBooking] Invalid date "${booking.date}" for booking ${booking.externalBookingId}, skipping`);
+      return 'skipped';
+    }
+
     const bookingData = {
-      date: new Date(booking.date),
+      date: parsedDate,
       startTime: booking.startTime,
       playerCount: booking.playerCount,
       playerName: booking.playerName,
