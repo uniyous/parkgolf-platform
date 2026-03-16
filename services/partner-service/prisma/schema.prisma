@@ -44,12 +44,13 @@ model PartnerConfig {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  courseMappings     CourseMapping[]
+  gameMappings       GameMapping[]
   syncLogs           SyncLog[]
 
   @@unique([externalClubId])
   @@index([isActive])
   @@index([companyId])
+  @@map("partner_configs")
 }
 
 enum SyncMode {
@@ -69,7 +70,7 @@ enum SyncResult {
 // 코스(Game) 매핑
 // ──────────────────────────────────────────────
 
-model CourseMapping {
+model GameMapping {
   id                   Int      @id @default(autoincrement())
   partnerId            Int
   partner              PartnerConfig @relation(fields: [partnerId], references: [id], onDelete: Cascade)
@@ -87,6 +88,7 @@ model CourseMapping {
   @@unique([partnerId, externalCourseName])
   @@unique([partnerId, internalGameId])
   @@index([internalGameId])
+  @@map("game_mappings")
 }
 
 // ──────────────────────────────────────────────
@@ -95,8 +97,8 @@ model CourseMapping {
 
 model SlotMapping {
   id                   Int      @id @default(autoincrement())
-  courseMappingId      Int
-  courseMapping         CourseMapping @relation(fields: [courseMappingId], references: [id], onDelete: Cascade)
+  gameMappingId        Int
+  gameMapping          GameMapping @relation(fields: [gameMappingId], references: [id], onDelete: Cascade)
 
   // 외부 슬롯 식별
   externalSlotId       String                  // 외부 시스템 슬롯 ID
@@ -121,11 +123,12 @@ model SlotMapping {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  @@unique([courseMappingId, externalSlotId])
-  @@unique([courseMappingId, date, startTime])
+  @@unique([gameMappingId, externalSlotId])
+  @@unique([gameMappingId, date, startTime])
   @@index([internalSlotId])
   @@index([date])
   @@index([syncStatus])
+  @@map("slot_mappings")
 }
 
 enum SlotSyncStatus {
@@ -143,7 +146,7 @@ enum SlotSyncStatus {
 model BookingMapping {
   id                   Int      @id @default(autoincrement())
   partnerId            Int                     // PartnerConfig.id (논리 참조)
-  courseMappingId      Int?                    // CourseMapping.id
+  gameMappingId        Int?                    // GameMapping.id
 
   // 양방향 ID 매핑
   internalBookingId    Int?     @unique        // booking-service Booking.id
@@ -171,6 +174,7 @@ model BookingMapping {
   @@index([internalBookingId])
   @@index([syncStatus])
   @@index([date])
+  @@map("booking_mappings")
 }
 
 enum SyncDirection {
@@ -211,6 +215,7 @@ model SyncLog {
   @@index([partnerId, createdAt])
   @@index([action, status])
   @@index([createdAt])
+  @@map("sync_logs")
 }
 
 enum SyncAction {

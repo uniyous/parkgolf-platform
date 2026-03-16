@@ -31,7 +31,7 @@ export class PartnerConfigService {
   async findById(id: number) {
     const config = await this.prisma.partnerConfig.findUnique({
       where: { id },
-      include: { courseMappings: true },
+      include: { gameMappings: true },
     });
 
     if (!config) {
@@ -41,10 +41,21 @@ export class PartnerConfigService {
     return this.maskSensitiveFields(config);
   }
 
+  /**
+   * 골프장의 활성 파트너 연동 여부 확인 (에러 없이 boolean 반환)
+   */
+  async isPartnerClub(clubId: number): Promise<boolean> {
+    const config = await this.prisma.partnerConfig.findUnique({
+      where: { clubId },
+      select: { isActive: true },
+    });
+    return !!config?.isActive;
+  }
+
   async findByClubId(clubId: number) {
     const config = await this.prisma.partnerConfig.findUnique({
       where: { clubId },
-      include: { courseMappings: true },
+      include: { gameMappings: true },
     });
 
     if (!config) {
@@ -69,7 +80,7 @@ export class PartnerConfigService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: { courseMappings: { select: { id: true, externalCourseName: true, internalGameId: true } } },
+        include: { gameMappings: { select: { id: true, externalCourseName: true, internalGameId: true } } },
       }),
       this.prisma.partnerConfig.count({ where }),
     ]);
@@ -119,7 +130,7 @@ export class PartnerConfigService {
   async findByIdWithDecryptedKeys(id: number) {
     const config = await this.prisma.partnerConfig.findUnique({
       where: { id },
-      include: { courseMappings: true },
+      include: { gameMappings: true },
     });
 
     if (!config) {
@@ -151,7 +162,7 @@ export class PartnerConfigService {
 
     return this.prisma.partnerConfig.findMany({
       where,
-      include: { courseMappings: { where: { isActive: true } } },
+      include: { gameMappings: { where: { isActive: true } } },
     });
   }
 

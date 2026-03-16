@@ -24,7 +24,7 @@ export interface PartnerConfig {
   lastSlotSyncError?: string | null;
   lastBookingSyncAt?: string | null;
   circuitBreakerStatus?: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
-  courseMappings?: CourseMapping[];
+  gameMappings?: GameMapping[];
   createdAt: string;
   updatedAt: string;
 }
@@ -71,9 +71,9 @@ export interface PartnerConfigFilters {
   limit?: number;
 }
 
-// ── Course Mapping ──
+// ── Game Mapping ──
 
-export interface CourseMapping {
+export interface GameMapping {
   id: number;
   partnerId: number;
   internalCourseId: number;
@@ -85,7 +85,7 @@ export interface CourseMapping {
   updatedAt: string;
 }
 
-export interface CreateCourseMappingDto {
+export interface CreateGameMappingDto {
   partnerId: number;
   internalCourseId: number;
   internalGameId: number;
@@ -94,7 +94,7 @@ export interface CreateCourseMappingDto {
   isActive?: boolean;
 }
 
-export interface UpdateCourseMappingDto {
+export interface UpdateGameMappingDto {
   internalCourseId?: number;
   internalGameId?: number;
   externalCourseId?: string;
@@ -130,7 +130,7 @@ export type ExternalSlotStatus = 'AVAILABLE' | 'FULLY_BOOKED' | 'CLOSED';
 
 export interface SlotMapping {
   id: number;
-  courseMappingId: number;
+  gameMappingId: number;
   externalSlotId: string;
   date: string;
   startTime: string;
@@ -143,7 +143,7 @@ export interface SlotMapping {
   syncStatus: SlotSyncStatus;
   syncError?: string | null;
   lastSyncAt: string;
-  courseMapping?: {
+  gameMapping?: {
     externalCourseName: string;
     internalGameId: number;
   };
@@ -159,7 +159,7 @@ export type SyncDirection = 'INBOUND' | 'OUTBOUND';
 export interface BookingMapping {
   id: number;
   partnerId: number;
-  courseMappingId?: number | null;
+  gameMappingId?: number | null;
   internalBookingId: number;
   externalBookingId: string;
   syncDirection: SyncDirection;

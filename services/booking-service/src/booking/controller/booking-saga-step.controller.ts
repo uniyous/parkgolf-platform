@@ -127,4 +127,39 @@ export class BookingSagaStepController {
     const result = await this.sagaStepService.paymentTimeout(data);
     return NatsResponse.success(result);
   }
+
+  // =====================================================
+  // 외부 파트너 연동 핸들러
+  // =====================================================
+
+  @MessagePattern('booking.createExternal')
+  async createExternalBooking(@Payload() data: {
+    gameTimeSlotId: number;
+    gameId: number;
+    playerCount: number;
+    externalBookingId: string;
+    playerName?: string;
+    playerPhone?: string;
+    bookingDate: string;
+    startTime: string;
+    endTime?: string;
+    clubId?: number;
+    clubName?: string;
+    gameName?: string;
+    pricePerPerson?: number;
+  }) {
+    this.logger.log(`NATS: booking.createExternal - externalId=${data.externalBookingId}`);
+    const result = await this.sagaStepService.createExternalBooking(data);
+    return NatsResponse.success(result);
+  }
+
+  @MessagePattern('booking.cancelExternal')
+  async cancelExternalBooking(@Payload() data: {
+    externalBookingId: string;
+    cancelReason?: string;
+  }) {
+    this.logger.log(`NATS: booking.cancelExternal - externalId=${data.externalBookingId}`);
+    const result = await this.sagaStepService.cancelExternalBooking(data);
+    return NatsResponse.success(result);
+  }
 }

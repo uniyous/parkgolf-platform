@@ -84,4 +84,58 @@ export class SyncNatsController {
     const result = await this.syncService.resolveConflict(data.bookingMappingId, { acceptSource: data.acceptSource });
     return NatsResponse.success(result);
   }
+
+  // =====================================================
+  // Saga Step 핸들러 (외부 연동)
+  // =====================================================
+
+  /**
+   * 외부 슬롯 가용성 검증 (CREATE_BOOKING Saga에서 호출)
+   */
+  @MessagePattern('partner.slot.verifyAvailability')
+  async verifySlotAvailability(@Payload() data: {
+    clubId: number;
+    gameTimeSlotId: number;
+    playerCount: number;
+    bookingDate: string;
+    startTime: string;
+  }) {
+    this.logger.log(`[partner.slot.verifyAvailability] clubId=${data.clubId}, slot=${data.gameTimeSlotId}`);
+    const result = await this.syncService.verifySlotAvailability(data);
+    return NatsResponse.success(result);
+  }
+
+  /**
+   * 외부 시스템에 예약 생성 통보 (Outbound)
+   */
+  @MessagePattern('partner.booking.notifyCreated')
+  async notifyBookingCreated(@Payload() data: {
+    clubId: number;
+    bookingId: number;
+    bookingNumber: string;
+    externalSlotId?: string;
+    playerCount: number;
+    playerName?: string;
+    bookingDate: string;
+    startTime: string;
+  }) {
+    this.logger.log(`[partner.booking.notifyCreated] clubId=${data.clubId}, bookingId=${data.bookingId}`);
+    const result = await this.syncService.notifyBookingCreated(data);
+    return NatsResponse.success(result);
+  }
+
+  /**
+   * 외부 시스템에 예약 취소 통보 (Outbound)
+   */
+  @MessagePattern('partner.booking.notifyCancelled')
+  async notifyBookingCancelled(@Payload() data: {
+    clubId: number;
+    bookingId: number;
+    bookingNumber: string;
+    cancelReason?: string;
+  }) {
+    this.logger.log(`[partner.booking.notifyCancelled] clubId=${data.clubId}, bookingId=${data.bookingId}`);
+    const result = await this.syncService.notifyBookingCancelled(data);
+    return NatsResponse.success(result);
+  }
 }

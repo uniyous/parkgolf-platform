@@ -694,6 +694,159 @@ export class BookingSagaStepService {
     };
   }
 
+  /**
+   * 외부 파트너 예약 생성 (Inbound: 외부 → 내부)
+   * Saga를 경유하지 않고 직접 CONFIRMED 상태로 생성
+   */
+  async createExternalBooking(data: {
+    gameTimeSlotId: number;
+    gameId: number;
+    playerCount: number;
+    externalBookingId: string;
+    playerName?: string;
+    playerPhone?: string;
+    bookingDate: string;
+    startTime: string;
+    endTime?: string;
+    clubId?: number;
+    clubName?: string;
+    gameName?: string;
+    pricePerPerson?: number;
+  }) {
+    // 중복 체크
+    const existing = await this.prisma.booking.findUnique({
+      where: { externalBookingId: data.externalBookingId },
+    });
+    if (existing) {
+      this.logger.warn(`External booking ${data.externalBookingId} already exists (id=${existing.id})`);
+      return this.toSagaResponse(existing as unknown as Record<string, unknown>);
+    }
+
+    const bookingNumber = this.generateBookingNumber();
+    const pricePerPerson = data.pricePerPerson ?? 0;
+    const totalPrice = pricePerPerson * data.playerCount;
+
+    const booking = await this.prisma.$transaction(async (prisma) => {
+      const newBooking = await prisma.booking.create({
+        data: {
+          gameTimeSlotId: data.gameTimeSlotId,
+          gameId: data.gameId,
+          gameName: data.gameName,
+          bookingDate: new Date(data.bookingDate),
+          startTime: data.startTime,
+          endTime: data.endTime || '',
+          clubId: data.clubId,
+          clubName: data.clubName,
+          guestName: data.playerName,
+          guestPhone: data.playerPhone,
+          playerCount: data.playerCount,
+          pricePerPerson,
+          serviceFee: 0,
+          totalPrice,
+          status: BookingStatus.CONFIRMED,
+          source: 'PARTNER',
+          externalBookingId: data.externalBookingId,
+          paymentMethod: 'onsite',
+          bookingNumber,
+        },
+      });
+
+      await prisma.bookingHistory.create({
+        data: {
+          bookingId: newBooking.id,
+          action: 'CREATED',
+          userId: 0,
+          details: {
+            source: 'PARTNER',
+            externalBookingId: data.externalBookingId,
+            createdAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      await prisma.bookingHistory.create({
+        data: {
+          bookingId: newBooking.id,
+          action: 'CONFIRMED',
+          userId: 0,
+          details: {
+            source: 'PARTNER',
+            confirmedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      return newBooking;
+    });
+
+    this.logger.log(`External booking created: ${booking.bookingNumber} (externalId=${data.externalBookingId})`);
+    return this.toSagaResponse(booking as unknown as Record<string, unknown>);
+  }
+
+  /**
+   * 외부 파트너 예약 취소 (Inbound: 외부 → 내부)
+   */
+  async cancelExternalBooking(data: {
+    externalBookingId: string;
+    cancelReason?: string;
+  }) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { externalBookingId: data.externalBookingId },
+    });
+
+    if (!booking) {
+      this.logger.warn(`External booking ${data.externalBookingId} not found`);
+      return { status: 'NOT_FOUND', externalBookingId: data.externalBookingId };
+    }
+
+    if (booking.status === BookingStatus.CANCELLED) {
+      return { status: 'ALREADY_CANCELLED', bookingId: booking.id };
+    }
+
+    await this.prisma.$transaction(async (prisma) => {
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: { status: BookingStatus.CANCELLED },
+      });
+
+      await prisma.bookingHistory.create({
+        data: {
+          bookingId: booking.id,
+          action: 'CANCELLED',
+          userId: 0,
+          details: {
+            reason: data.cancelReason || '외부 시스템 취소',
+            source: 'PARTNER',
+            previousStatus: booking.status,
+            cancelledAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      // 로컬 슬롯 캐시 가용성 복구
+      if (booking.gameTimeSlotId) {
+        await prisma.gameTimeSlotCache.updateMany({
+          where: { gameTimeSlotId: booking.gameTimeSlotId },
+          data: {
+            bookedPlayers: { decrement: booking.playerCount },
+            availablePlayers: { increment: booking.playerCount },
+            isAvailable: true,
+            status: TimeSlotCacheStatus.AVAILABLE,
+            lastSyncAt: new Date(),
+          },
+        });
+      }
+    });
+
+    this.logger.log(`External booking ${data.externalBookingId} cancelled (bookingId=${booking.id})`);
+    return {
+      status: 'CANCELLED',
+      bookingId: booking.id,
+      gameTimeSlotId: booking.gameTimeSlotId,
+      playerCount: booking.playerCount,
+    };
+  }
+
   private toSagaResponse(booking: Record<string, unknown>) {
     return {
       bookingId: booking.id,

@@ -115,7 +115,7 @@ export class GameNatsController {
 
     // Filter for available slots and map to response format
     const availableSlots = slots
-      .filter(slot => slot.bookedPlayers < slot.maxPlayers)
+      .filter(slot => (slot.bookedPlayers + (slot.externalBooked ?? 0)) < slot.maxPlayers)
       .map(slot => ({
         id: slot.id,
         gameId: slot.gameId,
@@ -124,8 +124,8 @@ export class GameNatsController {
         dayOfWeek: new Date(slot.date).getDay(),
         isActive: slot.isActive,
         maxCapacity: slot.maxPlayers,
-        currentBookings: slot.bookedPlayers,
-        available: slot.bookedPlayers < slot.maxPlayers,
+        currentBookings: slot.bookedPlayers + (slot.externalBooked ?? 0),
+        available: (slot.bookedPlayers + (slot.externalBooked ?? 0)) < slot.maxPlayers,
         price: Number(slot.price),
         isPremium: slot.isPremium,
       }));
@@ -174,6 +174,33 @@ export class GameNatsController {
     );
     return NatsResponse.success(this.mapTimeSlotToResponse(slot));
   }
+
+  // =====================================================
+  // Partner 연동용 핸들러
+  // =====================================================
+
+  @MessagePattern('slot.updateExternalBooked')
+  async updateExternalBooked(@Payload() data: { timeSlotId: number; externalBooked: number }) {
+    this.logger.log(`NATS: slot.updateExternalBooked - slot ${data.timeSlotId}, externalBooked=${data.externalBooked}`);
+    const slot = await this.gameTimeSlotService.updateExternalBooked(
+      Number(data.timeSlotId),
+      Number(data.externalBooked),
+    );
+    return NatsResponse.success(this.mapTimeSlotToResponse(slot));
+  }
+
+  @MessagePattern('slot.findByGameDateTime')
+  async findByGameDateTime(@Payload() data: { gameId: number; date: string; startTime: string }) {
+    this.logger.log(`NATS: slot.findByGameDateTime - game ${data.gameId}, date=${data.date}, startTime=${data.startTime}`);
+    const slot = await this.gameTimeSlotService.findByGameDateTime(
+      Number(data.gameId),
+      data.date,
+      data.startTime,
+    );
+    return NatsResponse.success(slot ? this.mapTimeSlotToResponse(slot) : null);
+  }
+
+  // =====================================================
 
   @MessagePattern('gameTimeSlots.stats')
   async getGameTimeSlotStats(@Payload() data: any) {
@@ -279,6 +306,7 @@ export class GameNatsController {
   private mapTimeSlotToResponse(slot: any) {
     const maxPlayers = slot.maxPlayers ?? 0;
     const bookedPlayers = slot.bookedPlayers ?? 0;
+    const externalBooked = slot.externalBooked ?? 0;
 
     return {
       id: slot.id,
@@ -293,10 +321,11 @@ export class GameNatsController {
       endTime: slot.endTime,
       maxPlayers,
       bookedPlayers,
-      availablePlayers: maxPlayers - bookedPlayers,
+      externalBooked,
+      availablePlayers: maxPlayers - bookedPlayers - externalBooked,
       // 프론트엔드 호환용 별칭
       maxBookings: maxPlayers,
-      currentBookings: bookedPlayers,
+      currentBookings: bookedPlayers + externalBooked,
       price: Number(slot.price) || 0,
       isPremium: slot.isPremium,
       status: slot.status,

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Modal } from '@/components/ui';
 import {
-  useCourseMappingsQuery,
+  useGameMappingsQuery,
   useSlotMappingsQuery,
   useBookingMappingsQuery,
   useSyncLogsQuery,
@@ -121,7 +121,7 @@ const DashboardTab: React.FC<{ partner: PartnerConfig; onEdit: (p: PartnerConfig
   const testConnection = useTestConnectionMutation();
   const manualSync = useManualSyncMutation();
   const { data: logs } = useSyncLogsQuery(partner.id);
-  const { data: courseMappings } = useCourseMappingsQuery(partner.id);
+  const { data: gameMappings } = useGameMappingsQuery(partner.id);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const handleTest = async () => {
@@ -161,7 +161,7 @@ const DashboardTab: React.FC<{ partner: PartnerConfig; onEdit: (p: PartnerConfig
         <HealthCard
           icon={<Layers className="w-5 h-5" />}
           label="코스 매핑"
-          value={`${courseMappings?.length ?? 0}개`}
+          value={`${gameMappings?.length ?? 0}개`}
           color="blue"
         />
         <HealthCard
@@ -484,7 +484,7 @@ const SlotsTab: React.FC<{ partnerId: number }> = ({ partnerId }) => {
   const grouped = useMemo(() => {
     if (!slots?.length) return {};
     return slots.reduce((acc, slot) => {
-      const course = slot.courseMapping?.externalCourseName ?? '미분류';
+      const course = slot.gameMapping?.externalCourseName ?? '미분류';
       if (!acc[course]) acc[course] = [];
       acc[course].push(slot);
       return acc;

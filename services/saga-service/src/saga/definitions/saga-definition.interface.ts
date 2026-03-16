@@ -14,7 +14,7 @@ export interface StepDefinition {
   /** 실패해도 Saga를 계속 진행할지 여부 (알림 등) */
   optional?: boolean;
   /** 대상 서비스 이름 (NATS 클라이언트 선택용) */
-  targetService: 'BOOKING_SERVICE' | 'COURSE_SERVICE' | 'PAYMENT_SERVICE' | 'NOTIFICATION_SERVICE' | 'IAM_SERVICE';
+  targetService: 'BOOKING_SERVICE' | 'COURSE_SERVICE' | 'PAYMENT_SERVICE' | 'NOTIFICATION_SERVICE' | 'IAM_SERVICE' | 'PARTNER_SERVICE';
   /** 조건부 실행 함수 — false 반환 시 SKIPPED */
   condition?: (payload: Record<string, unknown>) => boolean;
   /** payload에서 Step용 요청 데이터를 추출하는 함수 */

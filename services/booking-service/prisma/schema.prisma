@@ -49,6 +49,10 @@ model Booking {
   totalPrice            Decimal       @db.Decimal(10, 2) @map("total_price")
   status                BookingStatus @default(PENDING)
 
+  // 외부 파트너 연동
+  source                BookingSource @default(INTERNAL)
+  externalBookingId     String?       @unique @map("external_booking_id") // 외부 시스템 예약 ID
+
   // 결제 정보
   paymentMethod         String?       @map("payment_method") // card, kakaopay, naverpay, tosspay, bank
 
@@ -306,6 +310,11 @@ enum BookingStatus {
   COMPLETED         // 완료됨
   NO_SHOW           // 노쇼
   FAILED            // Saga 실패 (슬롯 예약 실패 등)
+}
+
+enum BookingSource {
+  INTERNAL          // 파크골프메이트 내부 예약
+  PARTNER           // 외부 파트너 시스템 예약
 }
 
 enum TimeSlotCacheStatus {

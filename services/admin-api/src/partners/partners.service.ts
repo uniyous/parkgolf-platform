@@ -38,22 +38,22 @@ export class PartnersService {
     return this.natsClient.send('partner.config.test', { id, token }, NATS_TIMEOUTS.BULK_OPERATION);
   }
 
-  // ── CourseMapping ──
+  // ── GameMapping ──
 
-  async createCourseMapping(data: Record<string, unknown>, token: string) {
-    return this.natsClient.send('partner.courseMapping.create', { ...data, token }, NATS_TIMEOUTS.DEFAULT);
+  async createGameMapping(data: Record<string, unknown>, token: string) {
+    return this.natsClient.send('partner.gameMapping.create', { ...data, token }, NATS_TIMEOUTS.DEFAULT);
   }
 
-  async listCourseMappings(partnerId: number, token: string) {
-    return this.natsClient.send('partner.courseMapping.list', { partnerId, token }, NATS_TIMEOUTS.LIST_QUERY);
+  async listGameMappings(partnerId: number, token: string) {
+    return this.natsClient.send('partner.gameMapping.list', { partnerId, token }, NATS_TIMEOUTS.LIST_QUERY);
   }
 
-  async updateCourseMapping(data: Record<string, unknown>, token: string) {
-    return this.natsClient.send('partner.courseMapping.update', { ...data, token }, NATS_TIMEOUTS.DEFAULT);
+  async updateGameMapping(data: Record<string, unknown>, token: string) {
+    return this.natsClient.send('partner.gameMapping.update', { ...data, token }, NATS_TIMEOUTS.DEFAULT);
   }
 
-  async deleteCourseMapping(id: number, token: string) {
-    return this.natsClient.send('partner.courseMapping.delete', { id, token }, NATS_TIMEOUTS.DEFAULT);
+  async deleteGameMapping(id: number, token: string) {
+    return this.natsClient.send('partner.gameMapping.delete', { id, token }, NATS_TIMEOUTS.DEFAULT);
   }
 
   // ── Sync ──

@@ -1,16 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { CreateCourseMappingDto } from '../dto/create-course-mapping.dto';
-import { UpdateCourseMappingDto } from '../dto/update-course-mapping.dto';
+import { CreateGameMappingDto } from '../dto/create-game-mapping.dto';
+import { UpdateGameMappingDto } from '../dto/update-game-mapping.dto';
 import { AppException, Errors } from '../../common/exceptions';
 
 @Injectable()
-export class CourseMappingService {
-  private readonly logger = new Logger(CourseMappingService.name);
+export class GameMappingService {
+  private readonly logger = new Logger(GameMappingService.name);
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateCourseMappingDto) {
+  async create(dto: CreateGameMappingDto) {
     // 파트너 존재 확인
     const partner = await this.prisma.partnerConfig.findUnique({
       where: { id: dto.partnerId },
@@ -19,11 +19,11 @@ export class CourseMappingService {
       throw new AppException(Errors.Partner.CONFIG_NOT_FOUND);
     }
 
-    return this.prisma.courseMapping.create({ data: dto });
+    return this.prisma.gameMapping.create({ data: dto });
   }
 
   async findByPartnerId(partnerId: number) {
-    return this.prisma.courseMapping.findMany({
+    return this.prisma.gameMapping.findMany({
       where: { partnerId },
       include: {
         slotMappings: {
@@ -36,27 +36,27 @@ export class CourseMappingService {
     });
   }
 
-  async update(dto: UpdateCourseMappingDto) {
+  async update(dto: UpdateGameMappingDto) {
     const { id, ...updateData } = dto;
 
-    const existing = await this.prisma.courseMapping.findUnique({ where: { id } });
+    const existing = await this.prisma.gameMapping.findUnique({ where: { id } });
     if (!existing) {
       throw new AppException(Errors.Partner.COURSE_MAPPING_NOT_FOUND);
     }
 
-    return this.prisma.courseMapping.update({
+    return this.prisma.gameMapping.update({
       where: { id },
       data: updateData,
     });
   }
 
   async delete(id: number) {
-    const existing = await this.prisma.courseMapping.findUnique({ where: { id } });
+    const existing = await this.prisma.gameMapping.findUnique({ where: { id } });
     if (!existing) {
       throw new AppException(Errors.Partner.COURSE_MAPPING_NOT_FOUND);
     }
 
-    await this.prisma.courseMapping.delete({ where: { id } });
+    await this.prisma.gameMapping.delete({ where: { id } });
     return { deleted: true };
   }
 
@@ -64,7 +64,7 @@ export class CourseMappingService {
    * 외부 코스명으로 내부 Game ID 찾기 (동기화용)
    */
   async resolveInternalGameId(partnerId: number, externalCourseName: string): Promise<number | null> {
-    const mapping = await this.prisma.courseMapping.findUnique({
+    const mapping = await this.prisma.gameMapping.findUnique({
       where: {
         partnerId_externalCourseName: { partnerId, externalCourseName },
       },

@@ -1,13 +1,17 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { PartnerConfigService } from '../service/partner-config.service';
+import { PartnerClientService } from '../../client/partner-client.service';
 import { CreatePartnerConfigDto } from '../dto/create-partner-config.dto';
 import { UpdatePartnerConfigDto } from '../dto/update-partner-config.dto';
 import { NatsResponse } from '../../common/types/response.types';
 
 @Controller()
 export class PartnerConfigNatsController {
-  constructor(private readonly partnerConfigService: PartnerConfigService) {}
+  constructor(
+    private readonly partnerConfigService: PartnerConfigService,
+    private readonly partnerClientService: PartnerClientService,
+  ) {}
 
   @MessagePattern('partner.config.create')
   async create(@Payload() data: CreatePartnerConfigDto) {
@@ -43,5 +47,21 @@ export class PartnerConfigNatsController {
   async delete(@Payload() data: { id: number }) {
     await this.partnerConfigService.delete(data.id);
     return NatsResponse.deleted();
+  }
+
+  /**
+   * 골프장의 파트너 연동 여부 확인 (Saga에서 사용)
+   * 설정이 없어도 에러를 던지지 않고 isPartnerClub: false 반환
+   */
+  @MessagePattern('partner.config.checkByClub')
+  async checkByClubId(@Payload() data: { clubId: number }) {
+    const isPartnerClub = await this.partnerConfigService.isPartnerClub(data.clubId);
+    return NatsResponse.success({ isPartnerClub });
+  }
+
+  @MessagePattern('partner.config.test')
+  async testConnection(@Payload() data: { id: number }) {
+    const result = await this.partnerClientService.testConnection(data.id);
+    return NatsResponse.success(result);
   }
 }

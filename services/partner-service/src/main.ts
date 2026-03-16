@@ -65,10 +65,12 @@ async function bootstrap() {
 
     logger.log(`Queue: partner-service`);
     logger.log(`Available message patterns:`);
-    logger.log(`   [Config] partner.config.create, get, list, update, delete, getByClub, test`);
-    logger.log(`   [Mapping] partner.courseMapping.create, list, update, delete`);
+    logger.log(`   [Config] partner.config.create, get, list, update, delete, getByClub, checkByClub, test`);
+    logger.log(`   [Mapping] partner.gameMapping.create, list, update, delete`);
     logger.log(`   [Sync] partner.sync.slots, bookings, manual, logs`);
     logger.log(`   [Verify] partner.slot.verifyAvailability`);
+    logger.log(`   [Outbound] partner.booking.notifyCreated, notifyCancelled`);
+    logger.log(`   [Webhook] POST /webhook/partner/:partnerId`);
   } catch (error) {
     logger.error('Failed to start Partner Service', error);
     process.exit(1);

@@ -57,7 +57,7 @@ flowchart LR
 
     subgraph partner["Partner Service"]
         PartnerConfig
-        CourseMapping_P["CourseMapping"]
+        GameMapping_P["GameMapping"]
         SlotMapping_P["SlotMapping"]
         BookingMapping_P["BookingMapping"]
     end
@@ -82,7 +82,7 @@ flowchart LR
     Notification -.->|userId| User
     PartnerConfig -.->|clubId| Club
     PartnerConfig -.->|companyId| Company
-    CourseMapping_P -.->|internalGameId| Game
+    GameMapping_P -.->|internalGameId| Game
     SlotMapping_P -.->|internalSlotId| GameTimeSlot
     BookingMapping_P -.->|internalBookingId| Booking
 ```
@@ -1447,7 +1447,7 @@ erDiagram
 flowchart TB
     subgraph config["연동 설정"]
         P_Config["PartnerConfig"]
-        P_Course["CourseMapping"]
+        P_Course["GameMapping"]
         P_Config --- P_Course
     end
 
@@ -1465,7 +1465,7 @@ flowchart TB
     P_Booking -.->|partnerId| P_Config
 ```
 
-> **서비스 간 참조**: PartnerConfig.clubId -> course_db.Club.id | PartnerConfig.companyId -> iam_db.Company.id | CourseMapping.internalGameId -> course_db.Game.id | SlotMapping.internalSlotId -> course_db.GameTimeSlot.id | BookingMapping.internalBookingId -> booking_db.Booking.id
+> **서비스 간 참조**: PartnerConfig.clubId -> course_db.Club.id | PartnerConfig.companyId -> iam_db.Company.id | GameMapping.internalGameId -> course_db.Game.id | SlotMapping.internalSlotId -> course_db.GameTimeSlot.id | BookingMapping.internalBookingId -> booking_db.Booking.id
 
 ---
 
@@ -1473,7 +1473,7 @@ flowchart TB
 
 ```mermaid
 erDiagram
-    PartnerConfig ||--o{ CourseMapping : "has"
+    PartnerConfig ||--o{ GameMapping : "has"
     PartnerConfig ||--o{ SyncLog : "logs"
 
     PartnerConfig {
@@ -1501,7 +1501,7 @@ erDiagram
         datetime updatedAt
     }
 
-    CourseMapping {
+    GameMapping {
         int id PK
         int partnerId FK
         string externalCourseName "외부 코스명"
@@ -1514,7 +1514,7 @@ erDiagram
 ```
 
 > **PartnerConfig**: 골프장별 1건의 연동 설정. `BookingMode: PARTNER`인 Club에만 생성됩니다. `@@unique([externalClubId])`, `@@index([isActive, companyId])`
-> **CourseMapping**: 외부 코스명 ↔ 내부 Game ID 매핑. `@@unique([partnerId, externalCourseName])`, `@@unique([partnerId, internalGameId])`
+> **GameMapping**: 외부 코스명 ↔ 내부 Game ID 매핑. `@@unique([partnerId, externalCourseName])`, `@@unique([partnerId, internalGameId])`
 
 ---
 
@@ -1522,11 +1522,11 @@ erDiagram
 
 ```mermaid
 erDiagram
-    CourseMapping ||--o{ SlotMapping : "has"
+    GameMapping ||--o{ SlotMapping : "has"
 
     SlotMapping {
         int id PK
-        int courseMappingId FK
+        int gameMappingId FK
         string externalSlotId "외부 슬롯 ID"
         date date
         string startTime "HH:mm"
@@ -1544,7 +1544,7 @@ erDiagram
     }
 ```
 
-> **SlotMapping**: 외부 슬롯 ↔ 내부 GameTimeSlot 매핑. 10분 주기 cron으로 외부 재고 스냅샷을 갱신합니다. `@@unique([courseMappingId, externalSlotId])`, `@@unique([courseMappingId, date, startTime])`
+> **SlotMapping**: 외부 슬롯 ↔ 내부 GameTimeSlot 매핑. 10분 주기 cron으로 외부 재고 스냅샷을 갱신합니다. `@@unique([gameMappingId, externalSlotId])`, `@@unique([gameMappingId, date, startTime])`
 
 ---
 
@@ -1555,7 +1555,7 @@ erDiagram
     BookingMapping {
         int id PK
         int partnerId "PartnerConfig.id (논리 참조)"
-        int courseMappingId "CourseMapping.id"
+        int gameMappingId "GameMapping.id"
         int internalBookingId UK "cross-ref: booking_db Booking.id"
         string externalBookingId "외부 예약 ID"
         string syncDirection "INBOUND/OUTBOUND"
@@ -1701,7 +1701,7 @@ erDiagram
 | booking_db | 18 | Booking, TeamSelection, TeamSelectionMember, BookingParticipant, Refund, CancellationPolicy, OutboxEvent |
 | saga_db | 3 | SagaExecution, SagaStep, OutboxEvent |
 | payment_db | 6 | Payment, PaymentSplit, Refund, BillingKey, WebhookLog, PaymentOutboxEvent |
-| partner_db | 5 | PartnerConfig, CourseMapping, SlotMapping, BookingMapping, SyncLog |
+| partner_db | 5 | PartnerConfig, GameMapping, SlotMapping, BookingMapping, SyncLog |
 | chat_db | 4 | ChatRoom, ChatRoomMember, ChatMessage, MessageRead |
 | notify_db | 4 | Notification, NotificationTemplate, NotificationSettings, DeadLetterNotification |
 | **합계** | **67** | |

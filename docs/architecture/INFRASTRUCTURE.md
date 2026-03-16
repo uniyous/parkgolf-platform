@@ -89,7 +89,7 @@ flowchart TB
 | booking_db | booking-service | Bookings, Refunds, NoShowRecords, Policies |
 | saga_db | saga-service | SagaExecutions, SagaSteps, OutboxEvents |
 | payment_db | payment-service | Payments, BillingKeys, Refunds, WebhookLogs |
-| partner_db | partner-service | PartnerConfigs, CourseMappings, SlotMappings, BookingMappings, SyncLogs |
+| partner_db | partner-service | PartnerConfigs, GameMappings, SlotMappings, BookingMappings, SyncLogs |
 | chat_db | chat-service | ChatRooms, Messages |
 | notify_db | notify-service | Notifications, Templates |
 

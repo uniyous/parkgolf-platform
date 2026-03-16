@@ -11,6 +11,8 @@ export const NATS_TIMEOUTS = {
   PAYMENT: 30000,
   /** Notification (fire-and-forget) - 5초 */
   NOTIFICATION: 5000,
+  /** Partner external API operations - 60초 */
+  PARTNER: 60000,
 } as const;
 
 /** Outbox 처리 설정 */

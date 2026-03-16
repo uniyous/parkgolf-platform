@@ -6,8 +6,8 @@ import type {
   CreatePartnerConfigDto,
   UpdatePartnerConfigDto,
   PartnerConfigFilters,
-  CreateCourseMappingDto,
-  UpdateCourseMappingDto,
+  CreateGameMappingDto,
+  UpdateGameMappingDto,
 } from '@/types/partner';
 
 // ── Queries ──
@@ -29,10 +29,10 @@ export const usePartnerQuery = (id: number, options?: { enabled?: boolean }) => 
   });
 };
 
-export const useCourseMappingsQuery = (partnerId: number, options?: { enabled?: boolean }) => {
+export const useGameMappingsQuery = (partnerId: number, options?: { enabled?: boolean }) => {
   return useQuery({
-    queryKey: partnerKeys.courseMappings(partnerId),
-    queryFn: () => partnerApi.getCourseMappings(partnerId),
+    queryKey: partnerKeys.gameMappings(partnerId),
+    queryFn: () => partnerApi.getGameMappings(partnerId),
     enabled: options?.enabled ?? !!partnerId,
     meta: { globalLoading: false },
   });
@@ -112,38 +112,38 @@ export const useTestConnectionMutation = () => {
   });
 };
 
-export const useCreateCourseMappingMutation = () => {
+export const useCreateGameMappingMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: CreateCourseMappingDto) => partnerApi.createCourseMapping(data),
+    mutationFn: (data: CreateGameMappingDto) => partnerApi.createGameMapping(data),
     onSuccess: (_, { partnerId }) => {
-      queryClient.invalidateQueries({ queryKey: partnerKeys.courseMappings(partnerId) });
+      queryClient.invalidateQueries({ queryKey: partnerKeys.gameMappings(partnerId) });
       showSuccessToast('코스 매핑이 등록되었습니다.');
     },
     meta: { errorMessage: '코스 매핑 등록에 실패했습니다.' },
   });
 };
 
-export const useUpdateCourseMappingMutation = () => {
+export const useUpdateGameMappingMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, partnerId, data }: { id: number; partnerId: number; data: UpdateCourseMappingDto }) =>
-      partnerApi.updateCourseMapping(id, data),
+    mutationFn: ({ id, partnerId, data }: { id: number; partnerId: number; data: UpdateGameMappingDto }) =>
+      partnerApi.updateGameMapping(id, data),
     onSuccess: (_, { partnerId }) => {
-      queryClient.invalidateQueries({ queryKey: partnerKeys.courseMappings(partnerId) });
+      queryClient.invalidateQueries({ queryKey: partnerKeys.gameMappings(partnerId) });
       showSuccessToast('코스 매핑이 수정되었습니다.');
     },
     meta: { errorMessage: '코스 매핑 수정에 실패했습니다.' },
   });
 };
 
-export const useDeleteCourseMappingMutation = () => {
+export const useDeleteGameMappingMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, partnerId }: { id: number; partnerId: number }) =>
-      partnerApi.deleteCourseMapping(id),
+      partnerApi.deleteGameMapping(id),
     onSuccess: (_, { partnerId }) => {
-      queryClient.invalidateQueries({ queryKey: partnerKeys.courseMappings(partnerId) });
+      queryClient.invalidateQueries({ queryKey: partnerKeys.gameMappings(partnerId) });
       showSuccessToast('코스 매핑이 삭제되었습니다.');
     },
     meta: { errorMessage: '코스 매핑 삭제에 실패했습니다.' },

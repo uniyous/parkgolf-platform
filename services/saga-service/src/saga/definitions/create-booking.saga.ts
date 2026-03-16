@@ -4,7 +4,12 @@ import { NATS_TIMEOUTS } from '../../common/constants/nats.constants';
 /**
  * 예약 생성 Saga
  *
- * 흐름: 예약 레코드 생성 → 슬롯 예약 → 상태 업데이트 → 확정 알림
+ * 흐름: 예약 레코드 생성 → 파트너 확인 → (외부 슬롯 검증) → 슬롯 예약
+ *       → 상태 업데이트 → (외부 예약 통보) → 확정 알림 → 회원 등록
+ *
+ * CHECK_PARTNER: clubId로 파트너 연동 여부 자동 판별
+ * 외부 연동 골프장: VERIFY_EXTERNAL → NOTIFY_EXTERNAL 단계 추가
+ * 내부 골프장: 기존 흐름 그대로 (condition으로 SKIP)
  */
 export const CreateBookingSaga: SagaDefinition = {
   name: 'CREATE_BOOKING',
@@ -38,6 +43,41 @@ export const CreateBookingSaga: SagaDefinition = {
       }),
     },
     {
+      name: 'CHECK_PARTNER',
+      action: 'partner.config.checkByClub',
+      compensate: null,
+      timeout: NATS_TIMEOUTS.QUICK,
+      targetService: 'PARTNER_SERVICE',
+      condition: (payload) => !!payload.clubId,
+      buildRequest: (payload) => ({
+        clubId: payload.clubId,
+      }),
+      mergeResponse: (payload, response) => ({
+        ...payload,
+        isPartnerClub: !!response.isPartnerClub,
+      }),
+    },
+    {
+      name: 'VERIFY_EXTERNAL',
+      action: 'partner.slot.verifyAvailability',
+      compensate: null,
+      timeout: NATS_TIMEOUTS.PARTNER,
+      targetService: 'PARTNER_SERVICE',
+      condition: (payload) => !!payload.isPartnerClub,
+      buildRequest: (payload) => ({
+        clubId: payload.clubId,
+        gameTimeSlotId: payload.gameTimeSlotId,
+        playerCount: payload.playerCount,
+        bookingDate: payload.bookingDate,
+        startTime: payload.startTime,
+      }),
+      mergeResponse: (payload, response) => ({
+        ...payload,
+        externalSlotId: response.externalSlotId,
+        externalAvailable: response.available,
+      }),
+    },
+    {
       name: 'RESERVE_SLOT',
       action: 'slot.reserve',
       compensate: 'slot.release',
@@ -66,6 +106,28 @@ export const CreateBookingSaga: SagaDefinition = {
       mergeResponse: (payload, response) => ({
         ...payload,
         bookingStatus: response.status,
+      }),
+    },
+    {
+      name: 'NOTIFY_EXTERNAL',
+      action: 'partner.booking.notifyCreated',
+      compensate: 'partner.booking.notifyCancelled',
+      timeout: NATS_TIMEOUTS.PARTNER,
+      targetService: 'PARTNER_SERVICE',
+      condition: (payload) => !!payload.isPartnerClub && payload.bookingStatus === 'CONFIRMED',
+      buildRequest: (payload) => ({
+        clubId: payload.clubId,
+        bookingId: payload.bookingId,
+        bookingNumber: payload.bookingNumber,
+        externalSlotId: payload.externalSlotId,
+        playerCount: payload.playerCount,
+        playerName: payload.userName,
+        bookingDate: payload.bookingDate,
+        startTime: payload.startTime,
+      }),
+      mergeResponse: (payload, response) => ({
+        ...payload,
+        externalBookingId: response.externalBookingId,
       }),
     },
     {

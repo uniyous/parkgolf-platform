@@ -4,7 +4,8 @@ import { NATS_TIMEOUTS } from '../../common/constants/nats.constants';
 /**
  * 관리자 환불 Saga
  *
- * 흐름: 환불 정책 검증 → 예약 CANCEL_REQUESTED → 결제 환불 → 슬롯 복구 → 예약 CANCELLED → 알림
+ * 흐름: 환불 정책 검증 → 예약 CANCEL_REQUESTED → 결제 환불 → 슬롯 복구
+ *       → 예약 CANCELLED → 파트너 확인 → (외부 취소 통보) → 알림
  */
 export const AdminRefundSaga: SagaDefinition = {
   name: 'ADMIN_REFUND',
@@ -89,6 +90,36 @@ export const AdminRefundSaga: SagaDefinition = {
         bookingId: payload.bookingId,
         cancelAmount: payload.actualCancelAmount,
         adminId: payload.triggeredById,
+      }),
+    },
+    {
+      name: 'CHECK_PARTNER',
+      action: 'partner.config.checkByClub',
+      compensate: null,
+      timeout: NATS_TIMEOUTS.QUICK,
+      targetService: 'PARTNER_SERVICE',
+      condition: (payload) => !!payload.clubId,
+      buildRequest: (payload) => ({
+        clubId: payload.clubId,
+      }),
+      mergeResponse: (payload, response) => ({
+        ...payload,
+        isPartnerClub: !!response.isPartnerClub,
+      }),
+    },
+    {
+      name: 'NOTIFY_EXTERNAL_CANCEL',
+      action: 'partner.booking.notifyCancelled',
+      compensate: null,
+      timeout: NATS_TIMEOUTS.PARTNER,
+      targetService: 'PARTNER_SERVICE',
+      optional: true,
+      condition: (payload) => !!payload.isPartnerClub,
+      buildRequest: (payload) => ({
+        clubId: payload.clubId,
+        bookingId: payload.bookingId,
+        bookingNumber: payload.bookingNumber,
+        cancelReason: payload.cancelReason || '관리자 환불',
       }),
     },
     {

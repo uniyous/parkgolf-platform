@@ -3,7 +3,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, catchError } from 'rxjs';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { PartnerConfigService } from './partner-config.service';
-import { CourseMappingService } from './course-mapping.service';
+import { GameMappingService } from './game-mapping.service';
 import { PartnerClientService, ExternalSlotData, ExternalBookingData } from '../../client/partner-client.service';
 import { PartnerResilienceService } from '../../client/partner-resilience.service';
 import { NATS_TIMEOUTS } from '../../common/constants';
@@ -29,7 +29,7 @@ export class SyncService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly partnerConfigService: PartnerConfigService,
-    private readonly courseMappingService: CourseMappingService,
+    private readonly gameMappingService: GameMappingService,
     private readonly partnerClientService: PartnerClientService,
     private readonly resilienceService: PartnerResilienceService,
     @Inject('COURSE_SERVICE') private readonly courseClient: ClientProxy,
@@ -110,7 +110,7 @@ export class SyncService {
     const startTime = Date.now();
     const partner = await this.prisma.partnerConfig.findUniqueOrThrow({
       where: { id: partnerId },
-      include: { courseMappings: { where: { isActive: true } } },
+      include: { gameMappings: { where: { isActive: true } } },
     });
 
     let recordCount = 0;
@@ -318,15 +318,15 @@ export class SyncService {
    * 개별 슬롯 처리: SlotMapping upsert + course-service GameTimeSlot 업데이트
    */
   private async processSlot(
-    partner: { id: number; courseMappings: Array<{ id: number; externalCourseName: string; internalGameId: number }> },
+    partner: { id: number; gameMappings: Array<{ id: number; externalCourseName: string; internalGameId: number }> },
     slot: ExternalSlotData,
   ): Promise<'created' | 'updated' | 'skipped'> {
-    // 코스 매핑 찾기
-    const courseMapping = partner.courseMappings.find(
+    // 게임 매핑 찾기
+    const gameMapping = partner.gameMappings.find(
       (m) => m.externalCourseName === slot.courseName,
     );
 
-    if (!courseMapping) {
+    if (!gameMapping) {
       this.logger.debug(`[processSlot] No mapping for courseName "${slot.courseName}", skipping`);
       return 'skipped';
     }
@@ -334,8 +334,8 @@ export class SyncService {
     // SlotMapping upsert (partner_db)
     const existing = await this.prisma.slotMapping.findUnique({
       where: {
-        courseMappingId_externalSlotId: {
-          courseMappingId: courseMapping.id,
+        gameMappingId_externalSlotId: {
+          gameMappingId: gameMapping.id,
           externalSlotId: slot.externalSlotId,
         },
       },
@@ -363,7 +363,7 @@ export class SyncService {
     } else {
       slotMapping = await this.prisma.slotMapping.create({
         data: {
-          courseMappingId: courseMapping.id,
+          gameMappingId: gameMapping.id,
           externalSlotId: slot.externalSlotId,
           date: new Date(slot.date),
           startTime: slot.startTime,
@@ -375,7 +375,7 @@ export class SyncService {
     }
 
     // course-service GameTimeSlot 매칭 및 업데이트
-    await this.syncGameTimeSlot(slotMapping, courseMapping.internalGameId, slot);
+    await this.syncGameTimeSlot(slotMapping, gameMapping.internalGameId, slot);
 
     return action;
   }
@@ -438,24 +438,17 @@ export class SyncService {
   }
 
   /**
-   * course-service GameTimeSlot bookedPlayers/status 업데이트
+   * course-service GameTimeSlot 외부 예약 인원 업데이트
    */
   private async updateGameTimeSlot(internalSlotId: number, slot: ExternalSlotData): Promise<void> {
-    const statusMap: Record<string, string> = {
-      AVAILABLE: 'AVAILABLE',
-      FULLY_BOOKED: 'FULLY_BOOKED',
-      CLOSED: 'CLOSED',
-    };
-
     await firstValueFrom(
-      this.courseClient.send('gameTimeSlots.update', {
-        id: internalSlotId,
-        bookedPlayers: slot.bookedPlayers,
-        status: statusMap[slot.status] || 'AVAILABLE',
+      this.courseClient.send('slot.updateExternalBooked', {
+        timeSlotId: internalSlotId,
+        externalBooked: slot.bookedPlayers,
       }).pipe(
         timeout(NATS_TIMEOUTS.DEFAULT),
         catchError((err) => {
-          throw new Error(`GameTimeSlot 업데이트 실패: ${err.message}`);
+          throw new Error(`GameTimeSlot externalBooked 업데이트 실패: ${err.message}`);
         }),
       ),
     );
@@ -477,9 +470,9 @@ export class SyncService {
       },
     });
 
-    // 코스 매핑 조회 (선택적)
-    const courseMapping = booking.courseName
-      ? await this.prisma.courseMapping.findFirst({
+    // 게임 매핑 조회 (선택적)
+    const gameMapping = booking.courseName
+      ? await this.prisma.gameMapping.findFirst({
           where: {
             partnerId,
             externalCourseName: booking.courseName,
@@ -536,7 +529,7 @@ export class SyncService {
     await this.prisma.bookingMapping.create({
       data: {
         partnerId,
-        courseMappingId: courseMapping?.id ?? null,
+        gameMappingId: gameMapping?.id ?? null,
         externalBookingId: booking.externalBookingId,
         syncDirection: 'INBOUND',
         syncStatus: 'SYNCED',
@@ -545,6 +538,249 @@ export class SyncService {
     });
 
     return 'created';
+  }
+
+  // ── Saga Step 메서드 (외부 연동) ──
+
+  /**
+   * 외부 슬롯 가용성 검증 (Saga VERIFY_EXTERNAL 단계)
+   */
+  async verifySlotAvailability(data: {
+    clubId: number;
+    gameTimeSlotId: number;
+    playerCount: number;
+    bookingDate: string;
+    startTime: string;
+  }): Promise<{ available: boolean; externalSlotId?: string; message?: string }> {
+    const config = await this.prisma.partnerConfig.findUnique({
+      where: { clubId: data.clubId },
+    });
+
+    if (!config || !config.isActive) {
+      return { available: true, message: '파트너 설정 없음 — 내부 예약으로 진행' };
+    }
+
+    // SlotMapping에서 외부 슬롯 찾기
+    const slotMapping = await this.prisma.slotMapping.findFirst({
+      where: {
+        internalSlotId: data.gameTimeSlotId,
+        syncStatus: { in: ['SYNCED', 'PENDING'] },
+      },
+    });
+
+    if (!slotMapping) {
+      return { available: true, message: '외부 슬롯 매핑 없음 — 내부 예약으로 진행' };
+    }
+
+    // 외부 가용 인원 체크
+    const externalAvailable = slotMapping.externalMaxPlayers - slotMapping.externalBooked;
+    if (externalAvailable < data.playerCount) {
+      return {
+        available: false,
+        externalSlotId: slotMapping.externalSlotId,
+        message: `외부 시스템 가용 인원 부족: ${externalAvailable} < ${data.playerCount}`,
+      };
+    }
+
+    // 실시간 확인이 가능하면 외부 API 호출
+    try {
+      const slots = await this.resilienceService.call(config.id, () =>
+        this.partnerClientService.fetchSlots(config.id, data.bookingDate, data.bookingDate),
+      );
+
+      const matchedSlot = slots.find(
+        (s) => s.startTime === data.startTime && s.externalSlotId === slotMapping.externalSlotId,
+      );
+
+      if (matchedSlot) {
+        const realAvailable = matchedSlot.maxPlayers - matchedSlot.bookedPlayers;
+        if (realAvailable < data.playerCount) {
+          return {
+            available: false,
+            externalSlotId: slotMapping.externalSlotId,
+            message: `외부 실시간 가용 인원 부족: ${realAvailable} < ${data.playerCount}`,
+          };
+        }
+      }
+    } catch (error) {
+      // 실시간 확인 실패 시 캐시 기반으로 진행
+      this.logger.warn(`[verifySlotAvailability] Real-time check failed, using cached data: ${error.message}`);
+    }
+
+    return {
+      available: true,
+      externalSlotId: slotMapping.externalSlotId,
+    };
+  }
+
+  /**
+   * 외부 시스템에 예약 생성 통보 (Outbound)
+   */
+  async notifyBookingCreated(data: {
+    clubId: number;
+    bookingId: number;
+    bookingNumber: string;
+    externalSlotId?: string;
+    playerCount: number;
+    playerName?: string;
+    bookingDate: string;
+    startTime: string;
+  }): Promise<{ externalBookingId?: string; status: string }> {
+    const config = await this.prisma.partnerConfig.findUnique({
+      where: { clubId: data.clubId },
+    });
+
+    if (!config || !config.isActive) {
+      return { status: 'SKIPPED' };
+    }
+
+    try {
+      const result = await this.resilienceService.call(config.id, () =>
+        this.partnerClientService.createBooking(config.id, {
+          slotId: data.externalSlotId || '',
+          playerCount: data.playerCount,
+          playerName: data.playerName || '',
+          referenceId: data.bookingNumber,
+        }),
+      );
+
+      // BookingMapping 기록
+      await this.prisma.bookingMapping.create({
+        data: {
+          partnerId: config.id,
+          internalBookingId: data.bookingId,
+          externalBookingId: result.externalBookingId,
+          syncDirection: 'OUTBOUND',
+          syncStatus: 'SYNCED',
+          lastSyncAt: new Date(),
+          date: new Date(data.bookingDate),
+          startTime: data.startTime,
+          playerCount: data.playerCount,
+          playerName: data.playerName,
+          status: 'CONFIRMED',
+        },
+      });
+
+      // SyncLog 기록
+      await this.createSyncLog({
+        partnerId: config.id,
+        action: 'BOOKING_EXPORT',
+        direction: 'OUTBOUND',
+        status: 'SUCCESS',
+        recordCount: 1,
+        createdCount: 1,
+        updatedCount: 0,
+        errorCount: 0,
+        errorMessage: null,
+        durationMs: 0,
+      });
+
+      return {
+        externalBookingId: result.externalBookingId,
+        status: 'CREATED',
+      };
+    } catch (error) {
+      this.logger.error(`[notifyBookingCreated] Failed: ${error.message}`);
+
+      await this.createSyncLog({
+        partnerId: config.id,
+        action: 'BOOKING_EXPORT',
+        direction: 'OUTBOUND',
+        status: 'FAILED',
+        recordCount: 1,
+        createdCount: 0,
+        updatedCount: 0,
+        errorCount: 1,
+        errorMessage: error.message,
+        durationMs: 0,
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * 외부 시스템에 예약 취소 통보 (Outbound)
+   */
+  async notifyBookingCancelled(data: {
+    clubId: number;
+    bookingId: number;
+    bookingNumber: string;
+    cancelReason?: string;
+  }): Promise<{ status: string }> {
+    const config = await this.prisma.partnerConfig.findUnique({
+      where: { clubId: data.clubId },
+    });
+
+    if (!config || !config.isActive) {
+      return { status: 'SKIPPED' };
+    }
+
+    // BookingMapping에서 외부 예약 ID 조회
+    const mapping = await this.prisma.bookingMapping.findFirst({
+      where: {
+        partnerId: config.id,
+        internalBookingId: data.bookingId,
+      },
+    });
+
+    if (!mapping) {
+      this.logger.warn(`[notifyBookingCancelled] No mapping for bookingId=${data.bookingId}`);
+      return { status: 'NO_MAPPING' };
+    }
+
+    try {
+      await this.resilienceService.call(config.id, () =>
+        this.partnerClientService.cancelBooking(
+          config.id,
+          mapping.externalBookingId,
+          data.cancelReason || '예약 취소',
+        ),
+      );
+
+      // BookingMapping 상태 업데이트
+      await this.prisma.bookingMapping.update({
+        where: { id: mapping.id },
+        data: {
+          syncStatus: 'CANCELLED',
+          status: 'CANCELLED',
+          lastSyncAt: new Date(),
+        },
+      });
+
+      // SyncLog 기록
+      await this.createSyncLog({
+        partnerId: config.id,
+        action: 'BOOKING_CANCEL',
+        direction: 'OUTBOUND',
+        status: 'SUCCESS',
+        recordCount: 1,
+        createdCount: 0,
+        updatedCount: 1,
+        errorCount: 0,
+        errorMessage: null,
+        durationMs: 0,
+      });
+
+      return { status: 'CANCELLED' };
+    } catch (error) {
+      this.logger.error(`[notifyBookingCancelled] Failed: ${error.message}`);
+
+      await this.createSyncLog({
+        partnerId: config.id,
+        action: 'BOOKING_CANCEL',
+        direction: 'OUTBOUND',
+        status: 'FAILED',
+        recordCount: 1,
+        createdCount: 0,
+        updatedCount: 0,
+        errorCount: 1,
+        errorMessage: error.message,
+        durationMs: 0,
+      });
+
+      throw error;
+    }
   }
 
   // ── 조회 API ──
@@ -594,11 +830,11 @@ export class SyncService {
     const where: Record<string, unknown> = {};
 
     if (params.partnerId) {
-      const courseMappings = await this.prisma.courseMapping.findMany({
+      const gameMappings = await this.prisma.gameMapping.findMany({
         where: { partnerId: Number(params.partnerId) },
         select: { id: true },
       });
-      where.courseMappingId = { in: courseMappings.map((cm) => cm.id) };
+      where.gameMappingId = { in: gameMappings.map((gm) => gm.id) };
     }
 
     if (params.date) {
@@ -616,7 +852,7 @@ export class SyncService {
         take: limit,
         orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
         include: {
-          courseMapping: {
+          gameMapping: {
             select: { externalCourseName: true, internalGameId: true },
           },
         },

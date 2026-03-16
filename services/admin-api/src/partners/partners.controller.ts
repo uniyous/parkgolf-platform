@@ -142,38 +142,38 @@ export class PartnersController {
   }
 
   // ──────────────────────────────────────────────
-  // 코스 매핑
+  // 게임 매핑
   // ──────────────────────────────────────────────
 
-  @Post(':id/course-mappings')
-  @ApiOperation({ summary: '코스 매핑 등록' })
-  async createCourseMapping(
+  @Post(':id/game-mappings')
+  @ApiOperation({ summary: '게임 매핑 등록' })
+  async createGameMapping(
     @Param('id', ParseIntPipe) partnerId: number,
     @Body() body: Record<string, unknown>,
     @BearerToken() token: string,
   ) {
-    return this.partnersService.createCourseMapping({ ...body, partnerId }, token);
+    return this.partnersService.createGameMapping({ ...body, partnerId }, token);
   }
 
-  @Get(':id/course-mappings')
-  @ApiOperation({ summary: '코스 매핑 목록' })
-  async listCourseMappings(@Param('id', ParseIntPipe) partnerId: number, @BearerToken() token: string) {
-    return this.partnersService.listCourseMappings(partnerId, token);
+  @Get(':id/game-mappings')
+  @ApiOperation({ summary: '게임 매핑 목록' })
+  async listGameMappings(@Param('id', ParseIntPipe) partnerId: number, @BearerToken() token: string) {
+    return this.partnersService.listGameMappings(partnerId, token);
   }
 
-  @Put('course-mappings/:mappingId')
-  @ApiOperation({ summary: '코스 매핑 수정' })
-  async updateCourseMapping(
+  @Put('game-mappings/:mappingId')
+  @ApiOperation({ summary: '게임 매핑 수정' })
+  async updateGameMapping(
     @Param('mappingId', ParseIntPipe) id: number,
     @Body() body: Record<string, unknown>,
     @BearerToken() token: string,
   ) {
-    return this.partnersService.updateCourseMapping({ ...body, id }, token);
+    return this.partnersService.updateGameMapping({ ...body, id }, token);
   }
 
-  @Delete('course-mappings/:mappingId')
-  @ApiOperation({ summary: '코스 매핑 삭제' })
-  async deleteCourseMapping(@Param('mappingId', ParseIntPipe) id: number, @BearerToken() token: string) {
-    return this.partnersService.deleteCourseMapping(id, token);
+  @Delete('game-mappings/:mappingId')
+  @ApiOperation({ summary: '게임 매핑 삭제' })
+  async deleteGameMapping(@Param('mappingId', ParseIntPipe) id: number, @BearerToken() token: string) {
+    return this.partnersService.deleteGameMapping(id, token);
   }
 }

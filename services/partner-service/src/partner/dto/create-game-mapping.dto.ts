@@ -1,6 +1,6 @@
 import { IsString, IsNumber, IsOptional } from 'class-validator';
 
-export class CreateCourseMappingDto {
+export class CreateGameMappingDto {
   @IsNumber()
   partnerId: number;
 

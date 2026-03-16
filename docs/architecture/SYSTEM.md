@@ -299,7 +299,7 @@ REST Routes:
   /api/admin/policies/*         → Booking Service (취소/환불/노쇼/운영)
   /api/admin/companies/*        → IAM Service
   /api/admin/menus/*            → IAM Service
-  /api/admin/partners/*         → Partner Service (연동 설정, 코스 매핑, 동기화)
+  /api/admin/partners/*         → Partner Service (연동 설정, 게임 매핑, 동기화)
 ```
 
 #### User API (:8080)
@@ -470,7 +470,7 @@ Database: PostgreSQL (partner_db)
 
 Data Models:
   PartnerConfig (골프장별 연동 설정, 1:1 Club 매핑)
-  CourseMapping (외부 코스 ↔ 내부 Game 매핑)
+  GameMapping (외부 코스 ↔ 내부 Game 매핑)
   SlotMapping (외부 슬롯 ↔ 내부 GameTimeSlot 매핑)
   BookingMapping (양방향 예약 매핑, INBOUND/OUTBOUND)
   SyncLog (동기화 이력, 작업별 처리 건수/오류 기록)
@@ -481,7 +481,7 @@ Core Features:
   - 슬롯 동기화: 외부 슬롯 → SlotMapping → 내부 GameTimeSlot 반영
   - 예약 동기화: 양방향 예약 상태 전파 (INBOUND/OUTBOUND)
   - 서킷 브레이커: 연속 실패 시 자동 차단, 반자동 복구
-  - 코스 매핑: 외부 코스명 ↔ 내부 Game ID 매핑 관리
+  - 게임 매핑: 외부 코스명 ↔ 내부 Game ID 매핑 관리
 
 적용 대상:
   - BookingMode가 PARTNER인 골프장만 해당
@@ -496,7 +496,7 @@ Core Features:
 
 NATS Patterns:
   partner.config.list/get/create/update/delete
-  partner.courseMapping.list/get/create/update/delete
+  partner.gameMapping.list/get/create/update/delete
   partner.slotMapping.list
   partner.syncLog.list
   partner.bookingMapping.list
@@ -759,7 +759,7 @@ graph TD
         BOOKING_DB[(booking_db<br/>Bookings, Refunds, NoShowRecords<br/>Policies: Cancel/Refund/NoShow/Operating)]
         SAGA_DB[(saga_db<br/>SagaExecutions, SagaSteps<br/>OutboxEvents)]
         PAYMENT_DB[(payment_db<br/>Payments, BillingKeys, Refunds)]
-        PARTNER_DB[(partner_db<br/>PartnerConfigs, CourseMappings<br/>SlotMappings, BookingMappings, SyncLogs)]
+        PARTNER_DB[(partner_db<br/>PartnerConfigs, GameMappings<br/>SlotMappings, BookingMappings, SyncLogs)]
         NOTIFY_DB[(notify_db<br/>Templates, Logs)]
         CHAT_DB[(chat_db<br/>Rooms, Messages)]
     end

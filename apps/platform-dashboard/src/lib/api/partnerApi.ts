@@ -6,9 +6,9 @@ import type {
   UpdatePartnerConfigDto,
   PartnerConfigFilters,
   PartnerListResponse,
-  CourseMapping,
-  CreateCourseMappingDto,
-  UpdateCourseMappingDto,
+  GameMapping,
+  CreateGameMappingDto,
+  UpdateGameMappingDto,
   SyncLog,
   SlotMapping,
   BookingMapping,
@@ -61,30 +61,30 @@ export const partnerApi = {
     return extractSingle(response.data) ?? { success: false, message: 'Unknown error' };
   },
 
-  // ── Course Mapping ──
+  // ── Game Mapping ──
 
-  async getCourseMappings(partnerId: number): Promise<CourseMapping[]> {
-    const response = await apiClient.get<unknown>(`/admin/partners/${partnerId}/course-mappings`);
-    return extractList<CourseMapping>(response.data, 'courseMappings');
+  async getGameMappings(partnerId: number): Promise<GameMapping[]> {
+    const response = await apiClient.get<unknown>(`/admin/partners/${partnerId}/game-mappings`);
+    return extractList<GameMapping>(response.data, 'gameMappings');
   },
 
-  async createCourseMapping(dto: CreateCourseMappingDto): Promise<CourseMapping> {
+  async createGameMapping(dto: CreateGameMappingDto): Promise<GameMapping> {
     const { partnerId, ...body } = dto;
-    const response = await apiClient.post<unknown>(`/admin/partners/${partnerId}/course-mappings`, body);
-    const data = extractSingle<CourseMapping>(response.data, 'courseMapping');
-    if (!data) throw new Error('Failed to create course mapping');
+    const response = await apiClient.post<unknown>(`/admin/partners/${partnerId}/game-mappings`, body);
+    const data = extractSingle<GameMapping>(response.data, 'gameMapping');
+    if (!data) throw new Error('Failed to create game mapping');
     return data;
   },
 
-  async updateCourseMapping(id: number, dto: UpdateCourseMappingDto): Promise<CourseMapping> {
-    const response = await apiClient.put<unknown>(`/admin/partners/course-mappings/${id}`, dto);
-    const data = extractSingle<CourseMapping>(response.data, 'courseMapping');
-    if (!data) throw new Error('Failed to update course mapping');
+  async updateGameMapping(id: number, dto: UpdateGameMappingDto): Promise<GameMapping> {
+    const response = await apiClient.put<unknown>(`/admin/partners/game-mappings/${id}`, dto);
+    const data = extractSingle<GameMapping>(response.data, 'gameMapping');
+    if (!data) throw new Error('Failed to update game mapping');
     return data;
   },
 
-  async deleteCourseMapping(id: number): Promise<void> {
-    await apiClient.delete(`/admin/partners/course-mappings/${id}`);
+  async deleteGameMapping(id: number): Promise<void> {
+    await apiClient.delete(`/admin/partners/game-mappings/${id}`);
   },
 
   // ── Sync ──
