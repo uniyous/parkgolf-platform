@@ -521,6 +521,79 @@ export class GameTimeSlotService {
     });
   }
 
+  /**
+   * 파트너 슬롯 → 내부 GameTimeSlot 자동 생성 (partner-service 연동)
+   * 외부 슬롯에 매칭되는 내부 슬롯이 없을 때 신규 생성
+   */
+  async createFromPartner(data: {
+    gameId: number;
+    date: string;
+    startTime: string;
+    endTime: string;
+    maxPlayers: number;
+    price: number;
+    externalBooked: number;
+  }): Promise<GameTimeSlot> {
+    const game = await this.prisma.game.findUnique({
+      where: { id: data.gameId },
+    });
+
+    if (!game) {
+      throw new NotFoundException(`Game with ID ${data.gameId} not found`);
+    }
+
+    const dateObj = new Date(data.date);
+    const isWeekend = [0, 6].includes(dateObj.getDay());
+    const price = isWeekend && game.weekendPrice
+      ? game.weekendPrice
+      : new Prisma.Decimal(data.price || Number(game.basePrice));
+
+    const totalOccupied = data.externalBooked;
+    const status = totalOccupied >= data.maxPlayers ? 'FULLY_BOOKED' : 'AVAILABLE';
+
+    const slot = await this.prisma.gameTimeSlot.create({
+      data: {
+        gameId: data.gameId,
+        date: dateObj,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        maxPlayers: data.maxPlayers,
+        bookedPlayers: 0,
+        externalBooked: data.externalBooked,
+        price,
+        isPremium: isWeekend,
+        status,
+      },
+    });
+
+    this.logger.log(`[Partner] Created GameTimeSlot ${slot.id} from partner: game=${data.gameId}, date=${data.date}, time=${data.startTime}`);
+    return slot;
+  }
+
+  /**
+   * 외부에서 삭제된 슬롯 CLOSED 처리 (partner-service 연동)
+   */
+  async closeExternal(gameTimeSlotId: number): Promise<GameTimeSlot> {
+    const slot = await this.prisma.gameTimeSlot.findUnique({
+      where: { id: gameTimeSlotId },
+    });
+
+    if (!slot) {
+      throw new NotFoundException(`GameTimeSlot with ID ${gameTimeSlotId} not found`);
+    }
+
+    const updated = await this.prisma.gameTimeSlot.update({
+      where: { id: gameTimeSlotId },
+      data: {
+        status: 'CLOSED',
+        externalBooked: 0,
+      },
+    });
+
+    this.logger.log(`[Partner] Closed GameTimeSlot ${gameTimeSlotId}: external slot removed`);
+    return updated;
+  }
+
   // =====================================================
   // Saga 패턴용 메서드 (Optimistic Locking)
   // =====================================================

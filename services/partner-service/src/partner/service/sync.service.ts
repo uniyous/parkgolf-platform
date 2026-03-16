@@ -147,6 +147,47 @@ export class SyncService {
         }
       }
 
+      // 외부 응답에 없는 기존 SlotMapping → 내부 슬롯 CLOSED 처리
+      const externalSlotIds = externalSlots.map((s) => s.externalSlotId);
+      const gameMappingIds = partner.gameMappings.map((gm) => gm.id);
+
+      if (gameMappingIds.length > 0) {
+        const staleSlotMappings = await this.prisma.slotMapping.findMany({
+          where: {
+            gameMappingId: { in: gameMappingIds },
+            externalSlotId: { notIn: externalSlotIds },
+            syncStatus: { in: ['SYNCED', 'PENDING'] },
+            date: { gte: new Date(startDate) },
+          },
+        });
+
+        for (const stale of staleSlotMappings) {
+          try {
+            if (stale.internalSlotId) {
+              await firstValueFrom(
+                this.courseClient.send('slot.closeExternal', {
+                  gameTimeSlotId: stale.internalSlotId,
+                }).pipe(
+                  timeout(NATS_TIMEOUTS.DEFAULT),
+                  catchError((err) => {
+                    throw new Error(`slot.closeExternal 실패: ${err.message}`);
+                  }),
+                ),
+              );
+            }
+
+            await this.prisma.slotMapping.update({
+              where: { id: stale.id },
+              data: { syncStatus: 'FAILED', syncError: '외부 슬롯 삭제됨' },
+            });
+
+            this.logger.log(`[syncSlots] Closed stale slot: mapping=${stale.id}, internalSlot=${stale.internalSlotId}`);
+          } catch (error) {
+            this.logger.warn(`[syncSlots] Failed to close stale slot ${stale.id}: ${error.message}`);
+          }
+        }
+      }
+
       // 동기화 상태 업데이트
       const status = errorCount === 0 ? 'SUCCESS' : errorCount < recordCount ? 'PARTIAL' : 'FAILED';
       const durationMs = Date.now() - startTime;
@@ -420,11 +461,36 @@ export class SyncService {
 
             await this.updateGameTimeSlot(matched.id, slot);
           } else {
-            // 매칭 실패 → UNMAPPED
-            await this.prisma.slotMapping.update({
-              where: { id: slotMapping.id },
-              data: { syncStatus: 'UNMAPPED' },
-            });
+            // 매칭 실패 → 내부 GameTimeSlot 자동 생성
+            const createResult = await firstValueFrom(
+              this.courseClient.send('slot.createFromPartner', {
+                gameId: internalGameId,
+                date: slot.date,
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+                maxPlayers: slot.maxPlayers,
+                price: slot.price || 0,
+                externalBooked: slot.bookedPlayers,
+              }).pipe(
+                timeout(NATS_TIMEOUTS.DEFAULT),
+                catchError((err) => {
+                  throw new Error(`GameTimeSlot 자동 생성 실패: ${err.message}`);
+                }),
+              ),
+            );
+
+            if (createResult?.success && createResult.data?.id) {
+              await this.prisma.slotMapping.update({
+                where: { id: slotMapping.id },
+                data: { internalSlotId: createResult.data.id, syncStatus: 'SYNCED' },
+              });
+              this.logger.log(`[syncGameTimeSlot] Auto-created GameTimeSlot ${createResult.data.id} for external slot ${slot.externalSlotId}`);
+            } else {
+              await this.prisma.slotMapping.update({
+                where: { id: slotMapping.id },
+                data: { syncStatus: 'UNMAPPED' },
+              });
+            }
           }
         }
       }

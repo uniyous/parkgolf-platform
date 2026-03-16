@@ -200,6 +200,28 @@ export class GameNatsController {
     return NatsResponse.success(slot ? this.mapTimeSlotToResponse(slot) : null);
   }
 
+  @MessagePattern('slot.createFromPartner')
+  async createFromPartner(@Payload() data: {
+    gameId: number;
+    date: string;
+    startTime: string;
+    endTime: string;
+    maxPlayers: number;
+    price: number;
+    externalBooked: number;
+  }) {
+    this.logger.log(`NATS: slot.createFromPartner - game ${data.gameId}, date=${data.date}, time=${data.startTime}`);
+    const slot = await this.gameTimeSlotService.createFromPartner(data);
+    return NatsResponse.success(this.mapTimeSlotToResponse(slot));
+  }
+
+  @MessagePattern('slot.closeExternal')
+  async closeExternal(@Payload() data: { gameTimeSlotId: number }) {
+    this.logger.log(`NATS: slot.closeExternal - slot ${data.gameTimeSlotId}`);
+    const slot = await this.gameTimeSlotService.closeExternal(Number(data.gameTimeSlotId));
+    return NatsResponse.success(this.mapTimeSlotToResponse(slot));
+  }
+
   // =====================================================
 
   @MessagePattern('gameTimeSlots.stats')
