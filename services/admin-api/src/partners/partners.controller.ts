@@ -35,8 +35,8 @@ export class PartnersController {
 
   @Post()
   @ApiOperation({ summary: '파트너 설정 등록' })
-  async createConfig(@Body() body: Record<string, unknown>, @BearerToken() token: string) {
-    return this.partnersService.createConfig(body, token);
+  async createConfig(@Body() body: Record<string, unknown>, @BearerToken() _token: string) {
+    return this.partnersService.createConfig(body);
   }
 
   @Get()
@@ -44,19 +44,19 @@ export class PartnersController {
   async listConfigs(
     @Query() query: Record<string, unknown>,
     @AdminContext() ctx: AdminContextData,
-    @BearerToken() token: string,
+    @BearerToken() _token: string,
   ) {
     // COMPANY scope: 자기 회사만 조회
     if (ctx?.scope === 'COMPANY' && ctx.companyId) {
       query.companyId = ctx.companyId;
     }
-    return this.partnersService.listConfigs(query, token);
+    return this.partnersService.listConfigs(query);
   }
 
   @Get(':id')
   @ApiOperation({ summary: '파트너 설정 상세' })
-  async getConfig(@Param('id', ParseIntPipe) id: number, @BearerToken() token: string) {
-    return this.partnersService.getConfig(id, token);
+  async getConfig(@Param('id', ParseIntPipe) id: number, @BearerToken() _token: string) {
+    return this.partnersService.getConfig(id);
   }
 
   @Put(':id')
@@ -64,21 +64,21 @@ export class PartnersController {
   async updateConfig(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: Record<string, unknown>,
-    @BearerToken() token: string,
+    @BearerToken() _token: string,
   ) {
-    return this.partnersService.updateConfig({ ...body, id }, token);
+    return this.partnersService.updateConfig({ ...body, id });
   }
 
   @Delete(':id')
   @ApiOperation({ summary: '파트너 설정 삭제' })
-  async deleteConfig(@Param('id', ParseIntPipe) id: number, @BearerToken() token: string) {
-    return this.partnersService.deleteConfig(id, token);
+  async deleteConfig(@Param('id', ParseIntPipe) id: number, @BearerToken() _token: string) {
+    return this.partnersService.deleteConfig(id);
   }
 
   @Post(':id/test')
   @ApiOperation({ summary: '연결 테스트' })
-  async testConnection(@Param('id', ParseIntPipe) id: number, @BearerToken() token: string) {
-    return this.partnersService.testConnection(id, token);
+  async testConnection(@Param('id', ParseIntPipe) id: number, @BearerToken() _token: string) {
+    return this.partnersService.testConnection(id);
   }
 
   // ──────────────────────────────────────────────
@@ -87,8 +87,8 @@ export class PartnersController {
 
   @Get('my/club/:clubId')
   @ApiOperation({ summary: '내 골프장 파트너 설정 조회' })
-  async getMyConfig(@Param('clubId', ParseIntPipe) clubId: number, @BearerToken() token: string) {
-    return this.partnersService.getConfigByClub(clubId, token);
+  async getMyConfig(@Param('clubId', ParseIntPipe) clubId: number, @BearerToken() _token: string) {
+    return this.partnersService.getConfigByClub(clubId);
   }
 
   @Get('my/club/:clubId/sync-logs')
@@ -96,15 +96,15 @@ export class PartnersController {
   async getMySyncLogs(
     @Param('clubId', ParseIntPipe) clubId: number,
     @Query() query: Record<string, unknown>,
-    @BearerToken() token: string,
+    @BearerToken() _token: string,
   ) {
-    return this.partnersService.getSyncLogs({ ...query, clubId }, token);
+    return this.partnersService.getSyncLogs({ ...query, clubId });
   }
 
   @Post('my/club/:clubId/sync')
   @ApiOperation({ summary: '내 골프장 수동 동기화' })
-  async myManualSync(@Param('clubId', ParseIntPipe) clubId: number, @BearerToken() token: string) {
-    return this.partnersService.manualSync(clubId, token);
+  async myManualSync(@Param('clubId', ParseIntPipe) clubId: number, @BearerToken() _token: string) {
+    return this.partnersService.manualSync(clubId);
   }
 
   @Get('my/club/:clubId/booking-mappings')
@@ -112,9 +112,9 @@ export class PartnersController {
   async myBookingMappings(
     @Param('clubId', ParseIntPipe) clubId: number,
     @Query() query: Record<string, unknown>,
-    @BearerToken() token: string,
+    @BearerToken() _token: string,
   ) {
-    return this.partnersService.listBookingMappings({ ...query, clubId }, token);
+    return this.partnersService.listBookingMappings({ ...query, clubId });
   }
 
   @Post('my/booking-mappings/:bid/resolve')
@@ -122,9 +122,9 @@ export class PartnersController {
   async resolveConflict(
     @Param('bid', ParseIntPipe) bid: number,
     @Body() body: Record<string, unknown>,
-    @BearerToken() token: string,
+    @BearerToken() _token: string,
   ) {
-    return this.partnersService.resolveConflict(bid, body, token);
+    return this.partnersService.resolveConflict(bid, body);
   }
 
   // ──────────────────────────────────────────────
@@ -136,9 +136,9 @@ export class PartnersController {
   async listSlotMappings(
     @Param('id', ParseIntPipe) partnerId: number,
     @Query() query: Record<string, unknown>,
-    @BearerToken() token: string,
+    @BearerToken() _token: string,
   ) {
-    return this.partnersService.listSlotMappings({ ...query, partnerId }, token);
+    return this.partnersService.listSlotMappings({ ...query, partnerId });
   }
 
   // ──────────────────────────────────────────────
@@ -150,15 +150,15 @@ export class PartnersController {
   async createGameMapping(
     @Param('id', ParseIntPipe) partnerId: number,
     @Body() body: Record<string, unknown>,
-    @BearerToken() token: string,
+    @BearerToken() _token: string,
   ) {
-    return this.partnersService.createGameMapping({ ...body, partnerId }, token);
+    return this.partnersService.createGameMapping({ ...body, partnerId });
   }
 
   @Get(':id/game-mappings')
   @ApiOperation({ summary: '게임 매핑 목록' })
-  async listGameMappings(@Param('id', ParseIntPipe) partnerId: number, @BearerToken() token: string) {
-    return this.partnersService.listGameMappings(partnerId, token);
+  async listGameMappings(@Param('id', ParseIntPipe) partnerId: number, @BearerToken() _token: string) {
+    return this.partnersService.listGameMappings(partnerId);
   }
 
   @Put('game-mappings/:mappingId')
@@ -166,14 +166,14 @@ export class PartnersController {
   async updateGameMapping(
     @Param('mappingId', ParseIntPipe) id: number,
     @Body() body: Record<string, unknown>,
-    @BearerToken() token: string,
+    @BearerToken() _token: string,
   ) {
-    return this.partnersService.updateGameMapping({ ...body, id }, token);
+    return this.partnersService.updateGameMapping({ ...body, id });
   }
 
   @Delete('game-mappings/:mappingId')
   @ApiOperation({ summary: '게임 매핑 삭제' })
-  async deleteGameMapping(@Param('mappingId', ParseIntPipe) id: number, @BearerToken() token: string) {
-    return this.partnersService.deleteGameMapping(id, token);
+  async deleteGameMapping(@Param('mappingId', ParseIntPipe) id: number, @BearerToken() _token: string) {
+    return this.partnersService.deleteGameMapping(id);
   }
 }
