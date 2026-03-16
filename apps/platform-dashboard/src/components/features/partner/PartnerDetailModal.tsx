@@ -89,7 +89,7 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner,
         {activeTab === 'dashboard' && <DashboardTab partner={partner} onEdit={onEdit} />}
         {activeTab === 'timeline' && <TimelineTab partnerId={partner.id} />}
         {activeTab === 'slots' && <SlotsTab partnerId={partner.id} />}
-        {activeTab === 'bookings' && <BookingsTab clubId={partner.clubId} />}
+        {activeTab === 'bookings' && <BookingsTab partnerId={partner.id} />}
       </div>
     </Modal>
   );
@@ -214,7 +214,7 @@ const DashboardTab: React.FC<{ partner: PartnerConfig; onEdit: (p: PartnerConfig
           {testConnection.isPending ? '테스트 중...' : '연결 테스트'}
         </button>
         <button
-          onClick={() => manualSync.mutate(partner.clubId)}
+          onClick={() => manualSync.mutate(partner.id)}
           disabled={manualSync.isPending}
           className="inline-flex items-center px-3.5 py-2 bg-indigo-600/90 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50 text-sm transition-all shadow-sm"
         >
@@ -562,8 +562,8 @@ const SlotsTab: React.FC<{ partnerId: number }> = ({ partnerId }) => {
 
 // ── Bookings Tab ──
 
-const BookingsTab: React.FC<{ clubId: number }> = ({ clubId }) => {
-  const { data: bookings, isLoading } = useBookingMappingsQuery(clubId);
+const BookingsTab: React.FC<{ partnerId: number }> = ({ partnerId }) => {
+  const { data: bookings, isLoading } = useBookingMappingsQuery(partnerId);
 
   const statusConfig: Record<string, { bg: string; label: string }> = {
     SYNCED: { bg: 'bg-green-500/15 text-green-400', label: '동기화됨' },

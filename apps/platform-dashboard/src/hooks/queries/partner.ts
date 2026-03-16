@@ -38,7 +38,7 @@ export const useGameMappingsQuery = (partnerId: number, options?: { enabled?: bo
   });
 };
 
-export const useSlotMappingsQuery = (partnerId: number, params?: Record<string, unknown>, options?: { enabled?: boolean }) => {
+export const useSlotMappingsQuery = (partnerId: number, params?: Record<string, string | number | boolean | undefined>, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: partnerKeys.slotMappings(partnerId, params),
     queryFn: () => partnerApi.getSlotMappings(partnerId, params),
@@ -47,11 +47,11 @@ export const useSlotMappingsQuery = (partnerId: number, params?: Record<string, 
   });
 };
 
-export const useBookingMappingsQuery = (clubId: number, options?: { enabled?: boolean }) => {
+export const useBookingMappingsQuery = (partnerId: number, options?: { enabled?: boolean }) => {
   return useQuery({
-    queryKey: partnerKeys.bookingMappings(clubId),
-    queryFn: () => partnerApi.getBookingMappings(clubId),
-    enabled: options?.enabled ?? !!clubId,
+    queryKey: partnerKeys.bookingMappings(partnerId),
+    queryFn: () => partnerApi.getBookingMappings(partnerId),
+    enabled: options?.enabled ?? !!partnerId,
     meta: { globalLoading: false },
   });
 };

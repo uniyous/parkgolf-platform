@@ -18,7 +18,7 @@ export const partnerApi = {
   // ── PartnerConfig CRUD ──
 
   async getPartners(filters: PartnerConfigFilters = {}, page = 1, limit = 20): Promise<PartnerListResponse> {
-    const params: Record<string, unknown> = { page, limit };
+    const params: Record<string, string | number | boolean | undefined> = { page, limit };
     if (filters.search) params.search = filters.search;
     if (filters.isActive !== undefined) params.isActive = filters.isActive;
     if (filters.syncMode) params.syncMode = filters.syncMode;
@@ -89,32 +89,32 @@ export const partnerApi = {
 
   // ── Sync ──
 
-  async getSyncLogs(partnerId: number, params?: Record<string, unknown>): Promise<SyncLog[]> {
-    const response = await apiClient.get<unknown>(`/admin/partners/my/club/${partnerId}/sync-logs`, params);
+  async getSyncLogs(partnerId: number, params?: Record<string, string | number | boolean | undefined>): Promise<SyncLog[]> {
+    const response = await apiClient.get<unknown>(`/admin/partners/${partnerId}/sync-logs`, params);
     return extractList<SyncLog>(response.data, 'syncLogs');
   },
 
   async manualSync(partnerId: number): Promise<{ success: boolean; message: string }> {
-    const response = await apiClient.post<unknown>(`/admin/partners/my/club/${partnerId}/sync`, {});
+    const response = await apiClient.post<unknown>(`/admin/partners/${partnerId}/sync`, {});
     return extractSingle(response.data) ?? { success: false, message: 'Unknown error' };
   },
 
   // ── Slot Mapping ──
 
-  async getSlotMappings(partnerId: number, params?: Record<string, unknown>): Promise<SlotMapping[]> {
+  async getSlotMappings(partnerId: number, params?: Record<string, string | number | boolean | undefined>): Promise<SlotMapping[]> {
     const response = await apiClient.get<unknown>(`/admin/partners/${partnerId}/slot-mappings`, params);
     return extractList<SlotMapping>(response.data);
   },
 
   // ── Booking Mapping ──
 
-  async getBookingMappings(clubId: number, params?: Record<string, unknown>): Promise<BookingMapping[]> {
-    const response = await apiClient.get<unknown>(`/admin/partners/my/club/${clubId}/booking-mappings`, params);
+  async getBookingMappings(partnerId: number, params?: Record<string, string | number | boolean | undefined>): Promise<BookingMapping[]> {
+    const response = await apiClient.get<unknown>(`/admin/partners/${partnerId}/booking-mappings`, params);
     return extractList<BookingMapping>(response.data, 'bookingMappings');
   },
 
-  async resolveConflict(bookingMappingId: number, resolution: Record<string, unknown>): Promise<BookingMapping> {
-    const response = await apiClient.post<unknown>(`/admin/partners/my/booking-mappings/${bookingMappingId}/resolve`, resolution);
+  async resolveConflict(bookingMappingId: number, resolution: Record<string, string | number | boolean | undefined>): Promise<BookingMapping> {
+    const response = await apiClient.post<unknown>(`/admin/partners/booking-mappings/${bookingMappingId}/resolve`, resolution);
     const data = extractSingle<BookingMapping>(response.data, 'bookingMapping');
     if (!data) throw new Error('Failed to resolve conflict');
     return data;

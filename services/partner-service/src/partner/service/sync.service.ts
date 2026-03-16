@@ -972,15 +972,22 @@ export class SyncService {
   }
 
   /**
-   * 수동 동기화 (특정 파트너 - clubId 기반)
+   * 수동 동기화 (partnerId 또는 clubId 기반)
    */
-  async manualSync(clubId: number): Promise<SyncResult[]> {
-    const config = await this.prisma.partnerConfig.findUnique({
-      where: { clubId },
-    });
+  async manualSync(params: { partnerId?: number; clubId?: number }): Promise<SyncResult[]> {
+    let config;
+    if (params.partnerId) {
+      config = await this.prisma.partnerConfig.findUnique({
+        where: { id: params.partnerId },
+      });
+    } else if (params.clubId) {
+      config = await this.prisma.partnerConfig.findUnique({
+        where: { clubId: params.clubId },
+      });
+    }
 
     if (!config) {
-      throw new Error(`clubId ${clubId}에 해당하는 파트너 설정이 없습니다`);
+      throw new Error(`파트너 설정을 찾을 수 없습니다 (partnerId=${params.partnerId}, clubId=${params.clubId})`);
     }
 
     const results: SyncResult[] = [];

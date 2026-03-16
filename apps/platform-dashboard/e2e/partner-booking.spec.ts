@@ -415,7 +415,7 @@ test.describe('3. 데이터 동기화', () => {
     expect(body.data).toBeInstanceOf(Array);
   });
 
-  test('TC-304: 예약 매핑 조회', async ({ request }) => {
+  test('TC-304: 예약 매핑 조회 (clubId 기반, admin-dashboard)', async ({ request }) => {
     const token = await getToken(request);
     if (!token || !createdClubId) { test.skip(); return; }
 
@@ -425,6 +425,60 @@ test.describe('3. 데이터 동기화', () => {
 
     const body = await response.json();
     console.log('TC-304:', JSON.stringify(body, null, 2));
+
+    expect(body.success).toBe(true);
+    expect(body.data).toBeInstanceOf(Array);
+  });
+
+  // --- platform-dashboard 전용 라우트 (partnerId 기반) ---
+
+  test('TC-305: 동기화 이력 조회 (partnerId 기반, platform-dashboard)', async ({ request }) => {
+    const token = await getToken(request);
+    if (!token || !createdPartnerId) { test.skip(); return; }
+
+    const response = await request.get(`/api/admin/partners/${createdPartnerId}/sync-logs?page=1&limit=10`, {
+      headers: authHeaders(token),
+    });
+
+    const body = await response.json();
+    console.log('TC-305:', JSON.stringify(body, null, 2));
+
+    expect(body.success).toBe(true);
+    expect(body.data).toBeInstanceOf(Array);
+    expect(body.data.length).toBeGreaterThanOrEqual(1);
+
+    // 첫 번째 로그 검증
+    const latestLog = body.data[0];
+    expect(latestLog.partnerId).toBe(createdPartnerId);
+  });
+
+  test('TC-306: 수동 동기화 트리거 (partnerId 기반, platform-dashboard)', async ({ request }) => {
+    test.setTimeout(30000);
+
+    const token = await getToken(request);
+    if (!token || !createdPartnerId) { test.skip(); return; }
+
+    const response = await request.post(`/api/admin/partners/${createdPartnerId}/sync`, {
+      headers: authHeaders(token),
+    });
+
+    const body = await response.json();
+    console.log('TC-306:', JSON.stringify(body, null, 2));
+
+    expect(body.success).toBe(true);
+    expect(body.data).toBeDefined();
+  });
+
+  test('TC-307: 예약 매핑 조회 (partnerId 기반, platform-dashboard)', async ({ request }) => {
+    const token = await getToken(request);
+    if (!token || !createdPartnerId) { test.skip(); return; }
+
+    const response = await request.get(`/api/admin/partners/${createdPartnerId}/booking-mappings?page=1&limit=10`, {
+      headers: authHeaders(token),
+    });
+
+    const body = await response.json();
+    console.log('TC-307:', JSON.stringify(body, null, 2));
 
     expect(body.success).toBe(true);
     expect(body.data).toBeInstanceOf(Array);

@@ -49,12 +49,14 @@ export class SyncNatsController {
   }
 
   /**
-   * 수동 동기화 (BFF에서 clubId를 partnerId로 전달)
+   * 수동 동기화
+   * - platform-dashboard: partnerId(config ID) 전달
+   * - admin-dashboard: clubId 전달
    */
   @MessagePattern('partner.sync.manual')
-  async manualSync(@Payload() data: { partnerId: number }) {
-    this.logger.log(`[partner.sync.manual] clubId=${data.partnerId}`);
-    const results = await this.syncService.manualSync(data.partnerId);
+  async manualSync(@Payload() data: { partnerId?: number; clubId?: number }) {
+    this.logger.log(`[partner.sync.manual] partnerId=${data.partnerId}, clubId=${data.clubId}`);
+    const results = await this.syncService.manualSync(data);
     return NatsResponse.success(results);
   }
 

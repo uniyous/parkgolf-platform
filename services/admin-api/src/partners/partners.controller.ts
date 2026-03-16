@@ -128,8 +128,34 @@ export class PartnersController {
   }
 
   // ──────────────────────────────────────────────
-  // 슬롯 매핑
+  // platform-dashboard: 파트너 기준 동기화/매핑 조회
   // ──────────────────────────────────────────────
+
+  @Get(':id/sync-logs')
+  @ApiOperation({ summary: '파트너 동기화 이력 (partnerId)' })
+  async getPartnerSyncLogs(
+    @Param('id', ParseIntPipe) partnerId: number,
+    @Query() query: Record<string, unknown>,
+    @BearerToken() _token: string,
+  ) {
+    return this.partnersService.getSyncLogs({ ...query, partnerId });
+  }
+
+  @Post(':id/sync')
+  @ApiOperation({ summary: '파트너 수동 동기화 (partnerId)' })
+  async partnerManualSync(@Param('id', ParseIntPipe) partnerId: number, @BearerToken() _token: string) {
+    return this.partnersService.manualSyncByPartnerId(partnerId);
+  }
+
+  @Get(':id/booking-mappings')
+  @ApiOperation({ summary: '파트너 예약 매핑 목록 (partnerId)' })
+  async partnerBookingMappings(
+    @Param('id', ParseIntPipe) partnerId: number,
+    @Query() query: Record<string, unknown>,
+    @BearerToken() _token: string,
+  ) {
+    return this.partnersService.listBookingMappings({ ...query, partnerId });
+  }
 
   @Get(':id/slot-mappings')
   @ApiOperation({ summary: '슬롯 매핑 목록' })
@@ -139,6 +165,16 @@ export class PartnersController {
     @BearerToken() _token: string,
   ) {
     return this.partnersService.listSlotMappings({ ...query, partnerId });
+  }
+
+  @Post('booking-mappings/:bid/resolve')
+  @ApiOperation({ summary: '예약 매핑 충돌 해결 (platform)' })
+  async resolveConflictPlatform(
+    @Param('bid', ParseIntPipe) bid: number,
+    @Body() body: Record<string, unknown>,
+    @BearerToken() _token: string,
+  ) {
+    return this.partnersService.resolveConflict(bid, body);
   }
 
   // ──────────────────────────────────────────────

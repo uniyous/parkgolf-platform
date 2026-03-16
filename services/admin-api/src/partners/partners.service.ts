@@ -58,7 +58,11 @@ export class PartnersService {
 
   // ── Sync ──
 
-  async manualSync(partnerId: number) {
+  async manualSync(clubId: number) {
+    return this.natsClient.send('partner.sync.manual', { clubId }, NATS_TIMEOUTS.BULK_OPERATION);
+  }
+
+  async manualSyncByPartnerId(partnerId: number) {
     return this.natsClient.send('partner.sync.manual', { partnerId }, NATS_TIMEOUTS.BULK_OPERATION);
   }
 

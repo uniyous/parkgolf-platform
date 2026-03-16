@@ -47,7 +47,7 @@ export interface CreatePartnerConfigDto {
 }
 
 export interface UpdatePartnerConfigDto {
-  id: number;
+  id?: number;
   systemName?: string;
   specUrl?: string;
   apiKey?: string;
