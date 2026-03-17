@@ -21,7 +21,7 @@ export const partnerApi = {
   },
 
   // 동기화 이력 조회
-  async getSyncLogs(clubId: number, params?: Record<string, unknown>): Promise<SyncLog[]> {
+  async getSyncLogs(clubId: number, params?: Record<string, string | number | boolean | undefined>): Promise<SyncLog[]> {
     try {
       const response = await apiClient.get<unknown>(`/admin/partners/my/club/${clubId}/sync-logs`, params);
       return extractList<SyncLog>(response.data, 'syncLogs');
@@ -40,7 +40,7 @@ export const partnerApi = {
   },
 
   // 예약 매핑 목록
-  async getBookingMappings(clubId: number, params?: Record<string, unknown>): Promise<BookingMapping[]> {
+  async getBookingMappings(clubId: number, params?: Record<string, string | number | boolean | undefined>): Promise<BookingMapping[]> {
     try {
       const response = await apiClient.get<unknown>(`/admin/partners/my/club/${clubId}/booking-mappings`, params);
       return extractList<BookingMapping>(response.data, 'bookingMappings');
@@ -53,7 +53,7 @@ export const partnerApi = {
   },
 
   // 예약 매핑 충돌 해결
-  async resolveConflict(bookingMappingId: number, resolution: Record<string, unknown>): Promise<BookingMapping> {
+  async resolveConflict(bookingMappingId: number, resolution: Record<string, string | number | boolean | undefined>): Promise<BookingMapping> {
     const response = await apiClient.post<unknown>(`/admin/partners/my/booking-mappings/${bookingMappingId}/resolve`, resolution);
     const data = extractSingle<BookingMapping>(response.data, 'bookingMapping');
     if (!data) throw new Error('Failed to resolve conflict');
