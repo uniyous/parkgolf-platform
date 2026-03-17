@@ -17,7 +17,7 @@
 Park Golf Platform은 5개 보안 영역에 걸친 다층 방어(Defense-in-Depth) 전략을 적용합니다.
 
 ```mermaid
-flowchart TB
+graph TB
     subgraph NETWORK["1. 네트워크 보안"]
         VPC["VPC 격리<br/>환경별 서브넷"]
         FW["방화벽 규칙<br/>IAP SSH"]
@@ -52,6 +52,12 @@ flowchart TB
 
     NETWORK --> INFRA --> APP --> DATA
     CICD -.->|보안 파이프라인| NETWORK
+
+    style NETWORK fill:#4fc3f7,stroke:#0288d1,stroke-width:2px,color:#fff
+    style INFRA fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px,color:#fff
+    style APP fill:#ffb74d,stroke:#ef6c00,stroke-width:2px,color:#fff
+    style DATA fill:#f48fb1,stroke:#c2185b,stroke-width:2px,color:#fff
+    style CICD fill:#ef9a9a,stroke:#c62828,stroke-width:2px,color:#fff
 ```
 
 ---
@@ -208,25 +214,25 @@ private hashToken(token: string): string {
 
 ```mermaid
 sequenceDiagram
-    participant Client
-    participant Server
-    participant DB
+    participant Client as Client
+    participant Server as Server
+    participant DB as DB
 
     Client->>Server: POST /auth/refresh (refreshToken)
     Server->>Server: JWT 서명 검증
     Server->>DB: SHA-256 해시로 토큰 조회
 
-    alt 토큰 존재 (정상)
-        DB-->>Server: storedToken 반환
-        Server->>DB: 사용된 토큰 삭제 (Rotation)
-        Server->>Server: 새 Access + Refresh 토큰 생성
-        Server->>DB: 새 Refresh 토큰 해시 저장
-        Server-->>Client: 새 토큰 쌍 반환
-    else 토큰 미존재 (재사용 탐지)
-        DB-->>Server: null
-        Server->>DB: 해당 유저의 모든 Refresh 토큰 삭제
-        Server-->>Client: 401 Token reuse detected
-    end
+    Note over Client,DB: 토큰 존재 (정상)
+    DB-->>Server: storedToken 반환
+    Server->>DB: 사용된 토큰 삭제 (Rotation)
+    Server->>Server: 새 Access + Refresh 토큰 생성
+    Server->>DB: 새 Refresh 토큰 해시 저장
+    Server-->>Client: 새 토큰 쌍 반환
+
+    Note over Client,DB: 토큰 미존재 (재사용 탐지)
+    DB-->>Server: null (재사용 탐지)
+    Server->>DB: 해당 유저의 모든 Refresh 토큰 삭제
+    Server-->>Client: 401 Token reuse detected
 ```
 
 - **토큰 로테이션**: 갱신 시 기존 Refresh Token 삭제 + 새 토큰 발급
@@ -250,31 +256,27 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Client
-    participant ChatGateway
-    participant JwtService
+    participant Client as Client
+    participant ChatGateway as ChatGateway
+    participant JwtService as JwtService
 
     Client->>ChatGateway: Socket.IO 연결 (auth.token)
     ChatGateway->>ChatGateway: extractToken (auth > header > query)
     ChatGateway->>JwtService: verifyAsync(token)
 
-    alt 검증 성공
-        JwtService-->>ChatGateway: payload (sub, email, name, exp)
-        ChatGateway->>ChatGateway: user 정보 + tokenExp 저장
-        ChatGateway-->>Client: 연결 성공
-    else 검증 실패
-        JwtService-->>ChatGateway: Error
-        ChatGateway-->>Client: error 이벤트 + disconnect
-    end
+    Note over Client,JwtService: 검증 성공
+    JwtService-->>ChatGateway: payload (sub, email, name, exp)
+    ChatGateway->>ChatGateway: user 정보 + tokenExp 저장
+    ChatGateway-->>Client: 연결 성공
 
-    loop 매 60초
-        ChatGateway->>ChatGateway: checkExpiredTokens()
-        alt 만료 5분 전
-            ChatGateway-->>Client: token_expiring (남은 시간)
-        else 만료됨
-            ChatGateway-->>Client: token_refresh_needed
-        end
-    end
+    Note over Client,JwtService: 검증 실패
+    JwtService-->>ChatGateway: Error
+    ChatGateway-->>Client: error 이벤트 + disconnect
+
+    Note over Client,JwtService: 매 60초 토큰 만료 체크
+    ChatGateway->>ChatGateway: checkExpiredTokens() (매 60초)
+    ChatGateway-->>Client: token_expiring (만료 5분 전)
+    ChatGateway-->>Client: token_refresh_needed (만료됨)
 ```
 
 - **토큰 추출 우선순위**: `auth.token` > `Authorization` 헤더 > query 파라미터
@@ -501,7 +503,7 @@ resource "google_secret_manager_secret_iam_member" "accessors" {
 ### 배포 파이프라인 보안
 
 ```mermaid
-flowchart LR
+graph LR
     DEV["개발자"] -->|수동 트리거| WD["workflow_dispatch"]
     WD -->|환경 선택| ENV{"dev / prod"}
     ENV -->|dev| DEV_DEPLOY["Dev 배포"]
@@ -515,6 +517,14 @@ flowchart LR
     end
 
     CI --> WD
+
+    style DEV fill:#4fc3f7,stroke:#0288d1,color:#fff
+    style WD fill:#ffb74d,stroke:#ef6c00,color:#fff
+    style ENV fill:#ffb74d,stroke:#ef6c00,color:#fff
+    style DEV_DEPLOY fill:#81c784,stroke:#2e7d32,color:#fff
+    style PROD_GATE fill:#ef9a9a,stroke:#c62828,color:#fff
+    style PROD_DEPLOY fill:#f48fb1,stroke:#c2185b,color:#fff
+    style CI fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px,color:#fff
 ```
 
 ### 보안 스캔 (Trivy)

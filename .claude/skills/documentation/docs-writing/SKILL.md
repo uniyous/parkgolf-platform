@@ -98,7 +98,7 @@ docs/
 
 - **제목**: `# 문서 제목` → `## 섹션` → `### 서브섹션` (3단계까지)
 - **코드 블록**: 언어 태그 필수 (`typescript`, `bash`, `yaml`, `swift`, `kotlin`)
-- **mermaid 다이어그램**: 워크플로우 문서에 필수
+- **다이어그램**: mermaid 기본 사용 (GitHub 렌더링), ERD만 d2 사용
 - **테이블**: 비교/목록 데이터에 적극 사용
 - **문서 하단**: `**Last Updated**: YYYY-MM-DD` 한 줄만
 
@@ -115,38 +115,91 @@ docs/
 
 ---
 
-## 4. Mermaid 다이어그램 가이드
+## 4. 다이어그램 가이드
 
-### 4.1 다이어그램 타입 선택
+### 4.1 도구 선택 기준
+
+| 용도 | 도구 | 이유 |
+|------|------|------|
+| flowchart, sequence, state | **mermaid** | GitHub 기본 렌더링, 모바일 열람 가능 |
+| ERD (DB 스키마) | **d2** | `sql_table` shape으로 컬럼/제약조건 표현 우수 |
+
+### 4.2 mermaid 다이어그램
+
+#### 다이어그램 타입
 
 | 용도 | 타입 | 사용 위치 |
 |------|------|----------|
 | 시스템 구조 | `graph TB` / `graph LR` | architecture/ |
 | 요청/응답 흐름 | `sequenceDiagram` | workflow/ |
 | 상태 전이 | `stateDiagram-v2` | workflow/ |
-| DB 관계 | `erDiagram` | architecture/DATABASE.md |
 | CI/CD 파이프라인 | `graph LR` | architecture/INFRASTRUCTURE.md |
 
-### 4.2 컬러 팔레트 (프로젝트 표준)
+#### 컬러 팔레트 (프로젝트 표준)
 
 ```
-Frontend:  fill:#4fc3f7  (하늘색)
-BFF:       fill:#ffb74d  (주황색)
-Service:   fill:#ba68c8  (보라색)
-AI/Ext:    fill:#4db6ac  (청록색)
-Data:      fill:#81c784  (초록색)
-Message:   fill:#f06292  (분홍색)
-Ingress:   fill:#42a5f5  (파란색)
-External:  fill:#ffcc80  (연주황)
+Frontend:  fill:#4fc3f7,stroke:#0288d1,color:#fff  (하늘색)
+BFF:       fill:#ffb74d,stroke:#ef6c00,color:#fff  (주황색)
+Service:   fill:#ba68c8,stroke:#7b1fa2,color:#fff  (보라색)
+AI/Ext:    fill:#4db6ac,stroke:#00796b,color:#fff  (청록색)
+Data:      fill:#81c784,stroke:#2e7d32,color:#fff  (초록색)
+Message:   fill:#f06292,stroke:#c2185b,color:#fff  (분홍색)
+Ingress:   fill:#42a5f5,stroke:#1565c0,color:#fff  (파란색)
+External:  fill:#ffcc80,stroke:#e65100,color:#fff  (연주황)
 ```
 
-### 4.3 규칙
+> **중요**: 모든 노드에 `color:#fff` 필수 (다크모드 호환). Material 300 톤 fill 사용.
+
+#### 규칙
 
 - `subgraph`로 레이어/도메인 그룹화
 - 동기 통신: 실선 (`-->`, `->>`)
 - 비동기 통신: 점선 (`-.->`, `-->>`)
-- 노드 레이블: 서비스명 + 기술 (`IAM[IAM Service<br/>NestJS]`)
+- 노드 레이블: 서비스명 + 기술 (`IAM["IAM Service<br/>NestJS"]`)
 - `classDef`로 레이어별 색상 통일
+
+### 4.3 d2 ERD 다이어그램
+
+ERD만 d2로 작성한다. `sql_table` shape으로 테이블 정의, 서비스(DB)별 하나의 다이어그램으로 통합.
+
+#### ERD 클래스 정의
+
+```d2
+classes: {
+  db-title: {
+    style.font-size: 22
+    style.bold: true
+    style.stroke-width: 2
+    style.border-radius: 12
+    style.shadow: true
+  }
+  group: {
+    style.border-radius: 8
+    style.stroke-width: 1
+    style.shadow: true
+    style.font-size: 16
+    style.bold: true
+  }
+}
+```
+
+#### ERD 컬러 팔레트
+
+```
+iam_db:     fill "#FFF8E1" / stroke "#FFB300"
+course_db:  fill "#E8F5E9" / stroke "#4CAF50"
+booking_db: fill "#E3F2FD" / stroke "#1E88E5"
+saga_db:    fill "#FCE4EC" / stroke "#EC407A"
+payment_db: fill "#F3E5F5" / stroke "#AB47BC"
+partner_db: fill "#E0F2F1" / stroke "#26A69A"
+chat_db:    fill "#FFF3E0" / stroke "#FB8C00"
+notify_db:  fill "#ECEFF1" / stroke "#78909C"
+```
+
+#### ERD 주의사항
+
+- d2 예약어(`icon`, `label`, `direction`, `title`)를 컬럼명으로 쓸 때 따옴표 이스케이프
+- 세로 배치 필요 시 투명 연결선 사용 (`style.opacity: 0`)
 
 ---
 
@@ -211,7 +264,7 @@ External:  fill:#ffcc80  (연주황)
 문서 작성/업데이트 완료 후 확인:
 
 - [ ] 한 문서 = 한 관심사 원칙 준수
-- [ ] mermaid 다이어그램이 GitHub에서 렌더링 가능
+- [ ] mermaid 다이어그램이 GitHub에서 렌더링 가능 (ERD는 d2)
 - [ ] NATS 패턴이 실제 코드와 일치
 - [ ] 변경 로그/버전 섹션 없음
 - [ ] 500줄 이하

@@ -3,25 +3,27 @@
 ## 인프라 구성도
 
 ```mermaid
-flowchart TB
-    subgraph GCP["GCP Project: parkgolf-uniyous | Region: asia-northeast3 (Seoul)"]
-        subgraph SHARED["Shared Resources"]
-            AR[("Artifact Registry")]
-            FH[("Firebase Hosting")]
+graph TB
+    INTERNET(("Internet"))
+
+    subgraph GCP ["GCP Project: parkgolf-uniyous<br/>Region: asia-northeast3 (Seoul)"]
+        subgraph SHARED ["Shared Resources"]
+            AR["Artifact Registry"]
+            FH["Firebase Hosting"]
         end
 
-        subgraph GKE["GKE Autopilot Cluster: parkgolf-{env}-cluster"]
-            subgraph INGRESS["Ingress Layer"]
-                ING["GKE Ingress (Static IP)"]
+        subgraph GKE ["GKE Autopilot Cluster: parkgolf-env-cluster"]
+            subgraph INGRESS ["Ingress Layer"]
+                ING["GKE Ingress<br/>(Static IP)"]
             end
 
-            subgraph BFF["BFF Layer"]
+            subgraph BFF ["BFF Layer"]
                 ADMIN_API["admin-api"]
                 USER_API["user-api"]
                 CHAT_GW["chat-gateway"]
             end
 
-            subgraph CORE["Core Services"]
+            subgraph CORE ["Core Services"]
                 IAM["iam-service"]
                 COURSE["course-service"]
                 BOOKING["booking-service"]
@@ -32,27 +34,40 @@ flowchart TB
                 CHAT["chat-service"]
             end
 
-            subgraph EXT["AI & External"]
+            subgraph EXT ["AI & External"]
                 AGENT["agent-service"]
                 WEATHER["weather-service"]
                 LOCATION["location-service"]
             end
 
-            subgraph INFRA["Infrastructure"]
-                NATS["NATS (JetStream)"]
-                PG["PostgreSQL (StatefulSet)"]
+            subgraph INFRA ["Infrastructure"]
+                NATS[("NATS (JetStream)")]
+                PG[("PostgreSQL (StatefulSet)")]
             end
         end
     end
 
-    INTERNET((Internet)) --> FH
+    INTERNET --> FH
     INTERNET --> ING
     ING --> BFF
     BFF --> NATS
     NATS <--> CORE
     NATS <--> EXT
     CORE --> PG
-    AR --> GKE
+    AR -.-> GKE
+
+    classDef ingress fill:#42a5f5,stroke:#1565c0,color:#fff
+    classDef k8s fill:#81c784,stroke:#2e7d32,color:#fff
+    classDef service fill:#ba68c8,stroke:#7b1fa2,color:#fff
+    classDef database fill:#ffb74d,stroke:#ef6c00,color:#fff
+    classDef external fill:#ffcc80,stroke:#e65100,color:#fff
+    classDef cicd fill:#4db6ac,stroke:#00796b,color:#fff
+
+    class ING ingress
+    class ADMIN_API,USER_API,CHAT_GW,IAM,COURSE,BOOKING,SAGA,PAY,PARTNER,NOTIFY,CHAT service
+    class AGENT,WEATHER,LOCATION external
+    class NATS,PG database
+    class AR,FH cicd
 ```
 
 ## 환경별 비교
@@ -139,22 +154,34 @@ env:
 
 ```mermaid
 graph LR
-    CI[ci.yml] --> LINT[Lint + Type Check]
-    CI --> TEST[Test]
-    CI --> BUILD[Build]
-    CI --> SCAN[Security Scan]
+    CI["ci.yml"] --> LINT["Lint"]
+    CI --> TEST["Test"]
+    CI --> BUILD["Build"]
+    CI --> SCAN["Scan"]
 
-    INFRA[cd-infra.yml] --> NET[network-apply]
-    INFRA --> SETUP[gke-setup]
-    INFRA --> UPDATE[gke-update]
-    INFRA --> DESTROY[gke-destroy]
+    INFRA_WF["cd-infra"] --> NET["network"]
+    INFRA_WF --> SETUP["gke-setup"]
+    INFRA_WF --> UPDATE["gke-update"]
+    INFRA_WF --> DESTROY["gke-destroy"]
 
-    SERVICES[cd-services.yml] --> DOCKER[Docker Build]
-    DOCKER --> AR[Artifact Registry]
-    AR --> DEPLOY[K8s Deploy]
+    SERVICES["cd-services"] --> DOCKER["Docker"]
+    DOCKER --> AR2["AR Push"]
+    AR2 --> DEPLOY["K8s Deploy"]
 
-    APPS[cd-apps.yml] --> VITE[npm build]
-    VITE --> FH[Firebase Hosting]
+    APPS["cd-apps"] --> VITE["npm build"]
+    VITE --> FH2["Firebase"]
+
+    classDef cicd fill:#4db6ac,stroke:#00796b,color:#fff
+    classDef k8s fill:#81c784,stroke:#2e7d32,color:#fff
+    classDef service fill:#ba68c8,stroke:#7b1fa2,color:#fff
+    classDef ingress fill:#42a5f5,stroke:#1565c0,color:#fff
+
+    class CI,LINT,TEST,BUILD,SCAN cicd
+    class INFRA_WF,NET,SETUP,UPDATE,DESTROY k8s
+    class SERVICES,DOCKER service
+    class AR2,FH2 cicd
+    class DEPLOY k8s
+    class APPS,VITE ingress
 ```
 
 | Workflow | File | Trigger | Purpose |
