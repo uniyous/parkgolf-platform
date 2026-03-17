@@ -58,7 +58,7 @@ export const useResolveConflictMutation = () => {
   return useMutation({
     mutationFn: ({ bookingMappingId, resolution, clubId }: {
       bookingMappingId: number;
-      resolution: Record<string, unknown>;
+      resolution: Record<string, string | number | boolean | undefined>;
       clubId: number;
     }) => partnerApi.resolveConflict(bookingMappingId, resolution),
     onSuccess: (_, { clubId }) => {
