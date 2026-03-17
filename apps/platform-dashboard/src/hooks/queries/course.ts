@@ -7,6 +7,7 @@ export const useClubsByCompanyQuery = (companyId?: number) => {
     queryKey: clubKeys.byCompany(companyId!),
     queryFn: () => courseApi.getClubsByCompany(companyId!),
     enabled: !!companyId,
+    meta: { silent: true },
   });
 };
 
@@ -15,5 +16,6 @@ export const useGamesByCompanyQuery = (companyId?: number) => {
     queryKey: gameKeys.byCompany(companyId!),
     queryFn: () => courseApi.getGamesByCompany(companyId!),
     enabled: !!companyId,
+    meta: { silent: true },
   });
 };

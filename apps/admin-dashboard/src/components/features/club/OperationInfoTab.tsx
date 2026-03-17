@@ -37,7 +37,6 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
   const {
     data: operationData,
     isLoading,
-    refetch,
   } = useQuery({
     queryKey: ['club-operation-stats', club.id, dateRange],
     queryFn: () => bookingApi.getClubOperationStats(club.id, dateRange),
@@ -106,13 +105,6 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
               className="border border-white/15 rounded px-2 py-1"
             />
           </div>
-          <button
-            onClick={() => refetch()}
-            disabled={isLoading}
-            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors disabled:opacity-50"
-          >
-            새로고침
-          </button>
         </div>
       </div>
 

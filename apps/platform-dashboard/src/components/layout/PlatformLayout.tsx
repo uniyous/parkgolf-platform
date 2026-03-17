@@ -21,6 +21,7 @@ import {
   Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { BrandLogo } from '@/components/ui';
 import { useAuthStore } from '@/stores/auth.store';
 import { ADMIN_ROLE_LABELS, ADMIN_ROLE_COLORS } from '@/utils/admin-permissions';
 import type { Permission, AdminRole } from '@/types';
@@ -463,12 +464,7 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
         <div className="flex h-full flex-col border-r border-white/10 bg-[#053929]">
           {/* Logo */}
           <div className="flex h-16 items-center border-b border-white/10 px-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
-                <span className="text-sm font-bold text-white">P</span>
-              </div>
-              <span className="text-lg font-semibold text-white">Park Golf Platform</span>
-            </div>
+            <BrandLogo />
           </div>
 
           {/* Navigation */}
@@ -496,12 +492,7 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
       >
         <div className="flex h-full flex-col">
           <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
-                <span className="text-sm font-bold text-white">P</span>
-              </div>
-              <span className="text-lg font-semibold text-white">Park Golf Platform</span>
-            </div>
+            <BrandLogo />
             <button
               onClick={() => setSidebarOpen(false)}
               className="rounded-lg p-2 text-white/40 hover:bg-white/10"
@@ -526,12 +517,7 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
           >
             <Menu className="h-6 w-6" />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
-              <span className="text-sm font-bold text-white">P</span>
-            </div>
-            <span className="font-semibold text-white">Platform</span>
-          </div>
+          <BrandLogo />
           <div className="w-10" />
         </header>
 

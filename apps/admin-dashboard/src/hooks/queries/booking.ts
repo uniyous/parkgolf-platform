@@ -9,12 +9,12 @@ import type { CreateBookingDto, UpdateBookingDto } from '@/types';
 // Queries
 // ============================================
 
-export const useBookingsQuery = (filters?: BookingFilters, page = 1, limit = 20) => {
+export const useBookingsQuery = (filters?: BookingFilters, page = 1, limit = 20, options?: { silent?: boolean }) => {
   const companyId = useActiveCompanyId();
   return useQuery({
     queryKey: bookingKeys.list(companyId, { ...filters, page, limit } as BookingFilters),
     queryFn: () => bookingApi.getBookings(filters || {}, page, limit),
-    meta: { globalLoading: false },
+    meta: { globalLoading: false, ...(options?.silent && { silent: true }) },
   });
 };
 

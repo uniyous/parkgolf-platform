@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, AlertCircle } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { KpiCards } from './KpiCards';
 import { WeeklyTrendChart } from './WeeklyTrendChart';
@@ -16,18 +16,20 @@ import {
 export const DashboardContainer: React.FC = () => {
   const queryClient = useQueryClient();
 
-  const { data: overview, isLoading: overviewLoading } = useDashboardOverviewQuery();
-  const { data: realTime, isLoading: realTimeLoading } = useRealTimeStatsQuery();
-  const { data: trendData, isLoading: trendLoading } = useTrendAnalyticsQuery('7d');
+  const { data: overview, isLoading: overviewLoading, isError: overviewError } = useDashboardOverviewQuery();
+  const { data: realTime, isLoading: realTimeLoading, isError: realTimeError } = useRealTimeStatsQuery();
+  const { data: trendData, isLoading: trendLoading, isError: trendError } = useTrendAnalyticsQuery('7d');
 
   const today = new Date().toISOString().split('T')[0];
-  const { data: bookingsData, isLoading: bookingsLoading } = useBookingsQuery(
+  const { data: bookingsData, isLoading: bookingsLoading, isError: bookingsError } = useBookingsQuery(
     { startDate: today, endDate: today },
     1,
     5,
+    { silent: true },
   );
 
   const isRefreshing = overviewLoading || realTimeLoading || trendLoading;
+  const hasError = overviewError || realTimeError || trendError || bookingsError;
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
@@ -59,6 +61,24 @@ export const DashboardContainer: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Error Banner */}
+      {hasError && !isRefreshing && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm text-red-300">
+              일부 데이터를 불러오지 못했습니다. 서버 연결 상태를 확인해주세요.
+            </p>
+          </div>
+          <button
+            onClick={handleRefresh}
+            className="text-sm text-red-300 hover:text-red-200 underline flex-shrink-0"
+          >
+            다시 시도
+          </button>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <KpiCards

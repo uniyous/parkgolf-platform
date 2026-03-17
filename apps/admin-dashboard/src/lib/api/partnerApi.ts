@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient, ApiError } from './client';
 import { extractList, extractSingle } from './bffParser';
 import type {
   PartnerConfig,
@@ -9,14 +9,28 @@ import type {
 export const partnerApi = {
   // 내 골프장 파트너 설정 조회
   async getMyPartnerConfig(clubId: number): Promise<PartnerConfig | null> {
-    const response = await apiClient.get<unknown>(`/admin/partners/my/club/${clubId}`);
-    return extractSingle<PartnerConfig>(response.data, 'partner');
+    try {
+      const response = await apiClient.get<unknown>(`/admin/partners/my/club/${clubId}`);
+      return extractSingle<PartnerConfig>(response.data, 'partner');
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   // 동기화 이력 조회
   async getSyncLogs(clubId: number, params?: Record<string, unknown>): Promise<SyncLog[]> {
-    const response = await apiClient.get<unknown>(`/admin/partners/my/club/${clubId}/sync-logs`, params);
-    return extractList<SyncLog>(response.data, 'syncLogs');
+    try {
+      const response = await apiClient.get<unknown>(`/admin/partners/my/club/${clubId}/sync-logs`, params);
+      return extractList<SyncLog>(response.data, 'syncLogs');
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return [];
+      }
+      throw error;
+    }
   },
 
   // 수동 동기화 실행
@@ -27,8 +41,15 @@ export const partnerApi = {
 
   // 예약 매핑 목록
   async getBookingMappings(clubId: number, params?: Record<string, unknown>): Promise<BookingMapping[]> {
-    const response = await apiClient.get<unknown>(`/admin/partners/my/club/${clubId}/booking-mappings`, params);
-    return extractList<BookingMapping>(response.data, 'bookingMappings');
+    try {
+      const response = await apiClient.get<unknown>(`/admin/partners/my/club/${clubId}/booking-mappings`, params);
+      return extractList<BookingMapping>(response.data, 'bookingMappings');
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return [];
+      }
+      throw error;
+    }
   },
 
   // 예약 매핑 충돌 해결

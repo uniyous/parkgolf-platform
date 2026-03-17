@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, X } from 'lucide-react';
 import { cn } from '@/utils';
 
@@ -10,6 +10,8 @@ export interface FilterSearchProps
   label?: string;
   showLabel?: boolean;
   containerClassName?: string;
+  /** 디바운스 지연 시간 (ms). 0이면 즉시 호출. 기본값 300ms */
+  debounceMs?: number;
 }
 
 const FilterSearch = React.forwardRef<HTMLInputElement, FilterSearchProps>(
@@ -23,11 +25,39 @@ const FilterSearch = React.forwardRef<HTMLInputElement, FilterSearchProps>(
       placeholder = '검색어를 입력하세요',
       className,
       containerClassName,
+      debounceMs = 300,
       ...props
     },
     ref
   ) => {
+    const [localValue, setLocalValue] = useState(value);
+    const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+    // 외부 value가 변경되면 로컬 값 동기화 (초기화 등)
+    useEffect(() => {
+      setLocalValue(value);
+    }, [value]);
+
+    // 컴포넌트 언마운트 시 타이머 정리
+    useEffect(() => {
+      return () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+      };
+    }, []);
+
+    const handleChange = useCallback((newValue: string) => {
+      setLocalValue(newValue);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (debounceMs <= 0) {
+        onChange(newValue);
+      } else {
+        timerRef.current = setTimeout(() => onChange(newValue), debounceMs);
+      }
+    }, [onChange, debounceMs]);
+
     const handleClear = () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      setLocalValue('');
       onChange('');
       onClear?.();
     };
@@ -44,8 +74,8 @@ const FilterSearch = React.forwardRef<HTMLInputElement, FilterSearchProps>(
           <input
             ref={ref}
             type="text"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
+            value={localValue}
+            onChange={(e) => handleChange(e.target.value)}
             placeholder={placeholder}
             className={cn(
               'w-full pl-9 pr-9 py-2',
@@ -58,7 +88,7 @@ const FilterSearch = React.forwardRef<HTMLInputElement, FilterSearchProps>(
             )}
             {...props}
           />
-          {value && (
+          {localValue && (
             <button
               type="button"
               onClick={handleClear}

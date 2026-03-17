@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, RefreshCw, Edit2 } from 'lucide-react';
+import { Plus, Edit2 } from 'lucide-react';
 import {
   useUsersQuery,
   useCompanyMembersQuery,
@@ -36,7 +36,7 @@ const CompanyMemberView: React.FC = () => {
   const [editMemo, setEditMemo] = useState('');
   const [editIsActive, setEditIsActive] = useState(true);
 
-  const { data: membersResponse, refetch, isLoading } = useCompanyMembersQuery(
+  const { data: membersResponse, isLoading } = useCompanyMembersQuery(
     filters.search ? { search: filters.search } : undefined,
   );
   const createMember = useCreateCompanyMemberMutation();
@@ -171,13 +171,6 @@ const CompanyMemberView: React.FC = () => {
             />
           </div>
           <div className="flex items-end gap-2">
-            <button
-              onClick={() => refetch()}
-              className="inline-flex items-center px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              새로고침
-            </button>
             <FilterResetButton
               hasActiveFilters={!!filters.search}
               onClick={() => setFilters({ search: '' })}

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, RefreshCw, Pencil, Trash2, AlertTriangle, Wifi, WifiOff, Play, Settings2, Eye } from 'lucide-react';
+import { Plus, Pencil, Trash2, AlertTriangle, Wifi, WifiOff, Play, Settings2, Eye } from 'lucide-react';
 import {
   usePartnersQuery,
   useCreatePartnerMutation,
@@ -47,7 +47,7 @@ const SYNC_MODE_COLORS: Record<SyncMode, string> = {
 
 export const PartnersPage: React.FC = () => {
   // Queries & Mutations
-  const { data: partnersResponse, refetch, isLoading } = usePartnersQuery();
+  const { data: partnersResponse, isLoading } = usePartnersQuery();
   const deletePartner = useDeletePartnerMutation();
   const testConnection = useTestConnectionMutation();
   const updatePartner = useUpdatePartnerMutation();
@@ -207,18 +207,10 @@ export const PartnersPage: React.FC = () => {
           ]}
           placeholder="전체 상태"
         />
-        <div className="flex items-end gap-2">
-          <button
-            onClick={() => refetch()}
-            className="inline-flex items-center px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            새로고침
-          </button>
+        <div className="flex items-end justify-end">
           <FilterResetButton
             hasActiveFilters={!!(filters.search || filters.syncMode !== 'ALL' || filters.status !== 'ALL')}
             onClick={() => setFilters({ search: '', syncMode: 'ALL', status: 'ALL' })}
-            variant="text"
           />
         </div>
       </FilterContainer>

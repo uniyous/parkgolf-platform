@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, RefreshCw, Pencil, Trash2, AlertTriangle, Map } from 'lucide-react';
+import { Plus, Pencil, Trash2, AlertTriangle, Map } from 'lucide-react';
 import { useCompaniesQuery, useDeleteCompanyMutation, useUpdateCompanyStatusMutation } from '@/hooks/queries';
 import { useAuthStore, useCurrentAdmin } from '@/stores';
 import { Modal } from '@/components/ui';
@@ -42,7 +42,7 @@ const STATUS_META: Record<CompanyStatus, { icon: string; color: string }> = {
 
 export const CompaniesPage: React.FC = () => {
   // Queries & Mutations
-  const { data: companiesResponse, refetch, isLoading } = useCompaniesQuery();
+  const { data: companiesResponse, isLoading } = useCompaniesQuery();
   const deleteCompany = useDeleteCompanyMutation();
   const updateStatus = useUpdateCompanyStatusMutation();
 
@@ -216,7 +216,7 @@ export const CompaniesPage: React.FC = () => {
       </div>
 
       {/* 필터 */}
-      <FilterContainer columns={4}>
+      <FilterContainer columns={3}>
         <FilterSearch
           label="검색"
           showLabel
@@ -235,18 +235,10 @@ export const CompaniesPage: React.FC = () => {
           ]}
           placeholder="전체 상태"
         />
-        <div className="flex items-end gap-2">
-          <button
-            onClick={() => refetch()}
-            className="inline-flex items-center px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            새로고침
-          </button>
+        <div className="flex items-end justify-end">
           <FilterResetButton
             hasActiveFilters={!!(filters.search || filters.status !== 'ALL')}
             onClick={() => setFilters({ search: '', status: 'ALL' })}
-            variant="text"
           />
         </div>
       </FilterContainer>

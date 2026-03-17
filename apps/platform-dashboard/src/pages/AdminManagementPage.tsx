@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, RefreshCw, Pencil, Shield, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Shield, Trash2, AlertTriangle } from 'lucide-react';
 import { useAdminsQuery, useDeleteAdminMutation, useToggleAdminStatusMutation } from '@/hooks/queries';
 import { useCurrentAdmin } from '@/stores';
 import { Modal } from '@/components/ui';
@@ -41,7 +41,7 @@ const ROLE_META: Record<string, { icon: string; color: string }> = {
 
 export const AdminManagementPage: React.FC = () => {
   // Queries & Mutations
-  const { data: admins = [], refetch, isLoading } = useAdminsQuery();
+  const { data: admins = [], isLoading } = useAdminsQuery();
   const deleteAdmin = useDeleteAdminMutation();
   const toggleStatus = useToggleAdminStatusMutation();
   const currentAdmin = useCurrentAdmin();
@@ -248,7 +248,7 @@ export const AdminManagementPage: React.FC = () => {
       </div>
 
       {/* 필터 */}
-      <FilterContainer columns={5}>
+      <FilterContainer columns={4}>
         <FilterSearch
           label="검색"
           showLabel
@@ -276,18 +276,10 @@ export const AdminManagementPage: React.FC = () => {
           ]}
           placeholder="전체 상태"
         />
-        <div className="flex items-end gap-2">
-          <button
-            onClick={() => refetch()}
-            className="inline-flex items-center px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            새로고침
-          </button>
+        <div className="flex items-end justify-end">
           <FilterResetButton
             hasActiveFilters={!!(filters.search || filters.role !== 'ALL' || filters.status !== 'ALL')}
             onClick={() => setFilters({ search: '', role: 'ALL', scope: 'ALL', status: 'ALL' })}
-            variant="text"
           />
         </div>
       </FilterContainer>

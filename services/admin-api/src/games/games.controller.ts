@@ -46,9 +46,9 @@ export class GamesController {
     @BearerToken() token: string,
     @Query() filters: GameFilterDto,
   ) {
-    // AdminContext에서 companyId 주입
-    if (ctx?.companyId && !(filters as any).companyId) {
-      (filters as any).companyId = ctx.companyId;
+    // AdminContext에서 companyId 주입 (회사 스코프 관리자)
+    if (ctx?.companyId && !filters.companyId) {
+      filters.companyId = ctx.companyId;
     }
     this.logger.log('Fetching games');
     return this.gamesService.getGames(filters, token);

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Check, X, Zap, AlertTriangle } from 'lucide-react';
-import { Button, Input } from '@/components/ui';
+import { BrandLogo, Button, Input } from '@/components/ui';
 import type { AuthErrorType } from '@/stores/auth.store';
 
 // 서버 헬스 체크 설정
@@ -300,9 +300,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           <div className="w-full lg:w-1/2">
             <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-xl shadow-sm p-8">
               <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-white mb-2">
-                  ParkgolfMate 관리자
-                </h2>
+                <BrandLogo size="lg" className="justify-center mb-4" />
                 <p className="text-white/50">
                   관리자 계정으로 로그인하세요
                 </p>

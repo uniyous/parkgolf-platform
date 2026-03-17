@@ -8,11 +8,11 @@ import {
   ChevronRight,
   Users,
   Settings,
-  LayoutDashboard,
   Building2,
   AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { BrandLogo } from '@/components/ui';
 import { useMenuTreeQuery } from '@/hooks/queries/menu';
 import { getIcon } from '@/utils/icon-map';
 import { SupportBanner } from '@/components/layout/SupportBanner';
@@ -57,7 +57,19 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     if (path === '/dashboard') {
       return location.pathname === '/dashboard';
     }
-    return location.pathname === path || location.pathname.startsWith(path + '/');
+    // 정확히 일치하는 경우만 활성화
+    // 단, 같은 그룹 내 다른 메뉴가 하위 경로로 등록된 경우 중복 활성화 방지
+    if (location.pathname === path) return true;
+    // 하위 경로 매칭: 해당 path의 하위 경로이면서,
+    // 메뉴 트리에 더 정확히 매칭되는 다른 항목이 없을 때만 활성화
+    if (location.pathname.startsWith(path + '/')) {
+      const allPaths = menuTree?.flatMap(g => g.children.map(c => c.path).filter(Boolean)) || [];
+      const hasMoreSpecificMatch = allPaths.some(
+        p => p !== path && p !== null && location.pathname.startsWith(p!) && p!.length > path.length
+      );
+      return !hasMoreSpecificMatch;
+    }
+    return false;
   };
 
   const isGroupActive = (group: MenuTreeItem) => {
@@ -185,12 +197,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         <div className="flex flex-col h-full bg-[#053929] border-r border-white/10">
           {/* Logo */}
           <div className="flex items-center h-16 px-6 border-b border-white/10">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-                <span className="text-white font-bold text-sm">P</span>
-              </div>
-              <span className="text-lg font-semibold text-white">ParkgolfMate</span>
-            </div>
+            <BrandLogo />
           </div>
 
           {/* Navigation */}
@@ -307,12 +314,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       >
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between h-16 px-4 border-b border-white/10">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-                <span className="text-white font-bold text-sm">P</span>
-              </div>
-              <span className="text-lg font-semibold text-white">ParkgolfMate</span>
-            </div>
+            <BrandLogo />
             <button
               onClick={() => setSidebarOpen(false)}
               className="p-2 rounded-lg text-white/40 hover:bg-white/10"
@@ -371,12 +373,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           >
             <Menu className="w-6 h-6" />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-              <span className="text-white font-bold text-sm">P</span>
-            </div>
-            <span className="font-semibold text-white">ParkgolfMate</span>
-          </div>
+          <BrandLogo />
           <div className="w-10" />
         </header>
 
