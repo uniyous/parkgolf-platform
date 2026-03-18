@@ -100,7 +100,7 @@
 <div class="pg cover">
   <div class="bar t"></div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:20px">
-    <div style="width:88px;height:88px;background:linear-gradient(135deg,var(--gd),var(--gl));border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:44px;color:#fff">⛳</div>
+    <img src="ci/parkgolfmate_icon.svg" alt="파크골프메이트" style="width:140px;height:140px;border-radius:28px">
     <div style="font-size:48px;font-weight:900;color:var(--s9);letter-spacing:-2px">파크골프메이트</div>
     <div style="font-size:22px;color:var(--s5)">AI 기반 파크골프 통합 플랫폼 제안서</div>
     <div style="background:linear-gradient(135deg,var(--gd),var(--g));color:#fff;padding:12px 44px;border-radius:28px;font-size:20px;font-weight:600">"말 한마디로 예약 완료"</div>
@@ -110,7 +110,254 @@
   <div class="bar b"></div>
 </div>
 
-<!-- ══════ PAGE 2: 1.1 시장 성장 ══════ -->
+<!-- ══════ PAGE 2: 시장 배경 — 파크골프란 무엇인가? ══════ -->
+<div class="pg" style="background:var(--s9);color:#e2e8f0">
+  <div style="font-size:12px;color:var(--s4);margin-bottom:4px">시장 배경 &nbsp;›&nbsp; 파크골프 개요</div>
+  <div style="margin-bottom:4px"><h2 style="font-size:32px;font-weight:900;color:#fff;letter-spacing:-1px">파크골프란 무엇인가?</h2></div>
+  <div style="font-size:17px;color:var(--s4);margin-bottom:18px">공원(Park) + 골프(Golf) — 누구나, 어디서나, 저렴하게 즐기는 스포츠</div>
+  <div class="g2" style="flex:1;gap:20px">
+    <!-- 왼쪽: 4가지 특징 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:stretch">
+      <div style="background:rgba(22,163,74,0.12);border:1px solid rgba(22,163,74,0.25);border-radius:12px;padding:20px;display:flex;flex-direction:column;justify-content:center">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span class="bd bgs">접근</span><span style="font-size:16px;font-weight:700;color:var(--gl)">쉬운 접근성</span></div>
+        <div style="font-size:14px;color:#94a3b8;line-height:1.7">나무채 1개 + 공 1개<br>장비 전부 / 연령 무관</div>
+      </div>
+      <div style="background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.25);border-radius:12px;padding:20px;display:flex;flex-direction:column;justify-content:center">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span class="bd" style="background:#fef08a;color:#a16207">비용</span><span style="font-size:16px;font-weight:700;color:#fbbf24">저렴한 비용</span></div>
+        <div style="font-size:14px;color:#94a3b8;line-height:1.7">18홀 기준<br>5,000~15,000원</div>
+      </div>
+      <div style="background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:12px;padding:20px;display:flex;flex-direction:column;justify-content:center">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span class="bd bb2">건강</span><span style="font-size:16px;font-weight:700;color:var(--bl)">건강 효과</span></div>
+        <div style="font-size:14px;color:#94a3b8;line-height:1.7">시니어 최적 유산소<br>야외 활동</div>
+      </div>
+      <div style="background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.25);border-radius:12px;padding:20px;display:flex;flex-direction:column;justify-content:center">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span class="bd bp">소셜</span><span style="font-size:16px;font-weight:700;color:var(--pl)">소셜 활동</span></div>
+        <div style="font-size:14px;color:#94a3b8;line-height:1.7">동호회·모임 활발<br>3세대 교류</div>
+      </div>
+    </div>
+    <!-- 오른쪽: Park + Golf 개념도 (아이콘 시각화) -->
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
+      <div style="display:flex;align-items:center;gap:28px">
+        <div style="text-align:center">
+          <div style="width:100px;height:100px;background:linear-gradient(135deg,#166534,var(--gl));border-radius:24px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">
+            <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+              <!-- 나무 -->
+              <ellipse cx="22" cy="22" rx="12" ry="14" fill="#4ade80" opacity="0.7"/>
+              <ellipse cx="22" cy="20" rx="9" ry="11" fill="#86efac" opacity="0.5"/>
+              <rect x="20" y="32" width="4" height="8" rx="1" fill="#a3e635"/>
+              <!-- 벤치 -->
+              <rect x="38" y="30" width="14" height="2" rx="1" fill="#bbf7d0"/>
+              <rect x="39" y="32" width="2" height="6" rx="0.5" fill="#bbf7d0"/>
+              <rect x="49" y="32" width="2" height="6" rx="0.5" fill="#bbf7d0"/>
+              <rect x="38" y="27" width="14" height="2" rx="1" fill="#bbf7d0" opacity="0.6"/>
+              <!-- 산책로 -->
+              <path d="M8 48 Q20 40 30 44 Q40 48 52 42" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.5"/>
+              <!-- 잔디 -->
+              <path d="M4 50 Q30 46 56 50" stroke="#22c55e" stroke-width="3" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+          <div style="font-size:40px;font-weight:900;color:var(--gl)">Park</div>
+          <div style="font-size:16px;color:var(--s4)">공원</div>
+        </div>
+        <div style="font-size:40px;color:var(--s4);font-weight:300">+</div>
+        <div style="text-align:center">
+          <div style="width:100px;height:100px;background:linear-gradient(135deg,#1e40af,var(--bl));border-radius:24px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">
+            <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+              <!-- 깃발봉 -->
+              <line x1="38" y1="8" x2="38" y2="48" stroke="#93c5fd" stroke-width="2.5" stroke-linecap="round"/>
+              <!-- 깃발 -->
+              <path d="M38 8 L52 14 L38 20 Z" fill="#60a5fa"/>
+              <!-- 홀 (타원) -->
+              <ellipse cx="38" cy="49" rx="10" ry="4" fill="#1e3a5f" stroke="#93c5fd" stroke-width="1.5"/>
+              <!-- 골프공 -->
+              <circle cx="18" cy="44" r="6" fill="#e0f2fe"/>
+              <circle cx="16" cy="42.5" r="0.8" fill="#94a3b8"/>
+              <circle cx="19" cy="42" r="0.8" fill="#94a3b8"/>
+              <circle cx="17.5" cy="44.5" r="0.8" fill="#94a3b8"/>
+              <circle cx="20" cy="44" r="0.8" fill="#94a3b8"/>
+              <!-- 잔디 -->
+              <path d="M4 52 Q30 47 56 52" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.4"/>
+            </svg>
+          </div>
+          <div style="font-size:40px;font-weight:900;color:var(--bl)">Golf</div>
+          <div style="font-size:16px;color:var(--s4)">골프</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin:6px 0">
+        <div style="flex:1;height:2px;background:linear-gradient(90deg,transparent,var(--gl))"></div>
+        <div style="font-size:24px;color:var(--s4)">=</div>
+        <div style="flex:1;height:2px;background:linear-gradient(90deg,var(--bl),transparent)"></div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:42px;font-weight:900;color:#fff;letter-spacing:-1px">Park Golf</div>
+        <div style="font-size:16px;color:var(--gl);font-weight:600;margin-top:4px">커뮤니케이션 스포츠</div>
+        <div style="font-size:12px;color:var(--s5);margin-top:6px;line-height:1.6">1984년 일본 홋카이도 발상 &nbsp;|&nbsp; 한국 2004년 여의도 8홀로 도입</div>
+      </div>
+    </div>
+  </div>
+  <!-- 하단 핵심 수치 -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#334155;border-radius:12px;overflow:hidden;margin-top:16px;flex-shrink:0">
+    <div style="background:var(--s8);padding:16px;text-align:center"><div style="font-size:28px;font-weight:900;color:var(--gl)">150만+</div><div style="font-size:12px;color:var(--s4)">추정 이용자 (2024)</div></div>
+    <div style="background:var(--s8);padding:16px;text-align:center"><div style="font-size:28px;font-weight:900;color:var(--bl)">490+</div><div style="font-size:12px;color:var(--s4)">전국 파크골프장</div></div>
+    <div style="background:var(--s8);padding:16px;text-align:center"><div style="font-size:28px;font-weight:900;color:var(--pl)">853%</div><div style="font-size:12px;color:var(--s4)">10년 동호인 성장률</div></div>
+    <div style="background:var(--s8);padding:16px;text-align:center"><div style="font-size:28px;font-weight:900;color:#f97316">1만원 ↓</div><div style="font-size:12px;color:var(--s4)">18홀 평균 이용료</div></div>
+  </div>
+  <div class="pn" style="color:var(--s5)">2</div>
+</div>
+
+<!-- ══════ PAGE 3: 시장 배경 — 지금은 파크골프 전성시대 ══════ -->
+<div class="pg" style="background:var(--s9);color:#e2e8f0">
+  <div style="font-size:12px;color:var(--s4);margin-bottom:4px">시장 배경 &nbsp;›&nbsp; 폭발적 성장과 언론 보도</div>
+  <div style="margin-bottom:4px"><h2 style="font-size:32px;font-weight:900;color:#fff;letter-spacing:-1px">지금은 파크골프 전성시대</h2></div>
+  <div style="font-size:17px;color:var(--s4);margin-bottom:18px">주요 언론이 앞다퉈 보도하는 대한민국 최대 레저 트렌드</div>
+  <div class="g2" style="flex:1;gap:20px">
+    <!-- 왼쪽: 언론 보도 -->
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="background:rgba(22,163,74,0.1);border-left:4px solid var(--g);border-radius:0 10px 10px 0;padding:12px 16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-size:14px;font-weight:700;color:var(--gl)">중앙일보</span><span style="font-size:12px;color:var(--s5)">| 2024.04.05</span></div>
+        <div style="font-size:14px;color:#e2e8f0;line-height:1.5">18홀에 단돈 1만원… 동호인 213% 급증한 '파크골프' 뭐길래</div>
+      </div>
+      <div style="background:rgba(22,163,74,0.1);border-left:4px solid var(--g);border-radius:0 10px 10px 0;padding:12px 16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-size:14px;font-weight:700;color:var(--gl)">헤럴드경제</span><span style="font-size:12px;color:var(--s5)">| 2025.07</span></div>
+        <div style="font-size:14px;color:#e2e8f0;line-height:1.5">파크골프 열풍 전국 확산… 인프라만 갖추면 골프 시장만큼 성장</div>
+      </div>
+      <div style="background:rgba(22,163,74,0.1);border-left:4px solid var(--g);border-radius:0 10px 10px 0;padding:12px 16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-size:14px;font-weight:700;color:var(--gl)">스포츠경향</span><span style="font-size:12px;color:var(--s5)">| 2025.12.30</span></div>
+        <div style="font-size:14px;color:#e2e8f0;line-height:1.5">2025 파크골프 시장 결산… 생활체육 넘어 시니어 레저 산업 핵심축으로</div>
+      </div>
+      <div style="background:rgba(22,163,74,0.1);border-left:4px solid var(--g);border-radius:0 10px 10px 0;padding:12px 16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-size:14px;font-weight:700;color:var(--gl)">스포츠경향</span><span style="font-size:12px;color:var(--s5)">| 2025.12.09</span></div>
+        <div style="font-size:14px;color:#e2e8f0;line-height:1.5">파크골프 인기, 해외로 이어지나 — 일본·동남아 투어 급증, 필리핀·베트남 골프장 건설</div>
+      </div>
+      <div style="background:rgba(22,163,74,0.1);border-left:4px solid var(--g);border-radius:0 10px 10px 0;padding:12px 16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-size:14px;font-weight:700;color:var(--gl)">G이코노미</span><span style="font-size:12px;color:var(--s5)">| 2024.04.30</span></div>
+        <div style="font-size:14px;color:#e2e8f0;line-height:1.5">대한민국이 파크골프 사랑에 빠졌다 — 인구 100만·골프장 500곳 초읽기</div>
+      </div>
+    </div>
+    <!-- 오른쪽: 핵심 성장 수치 -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:16px;font-weight:700;color:var(--gl);margin-bottom:2px">핵심 성장 수치</div>
+      <div style="background:var(--s8);border-radius:12px;padding:18px;display:flex;align-items:center;gap:20px">
+        <div><div style="font-size:42px;font-weight:900;color:var(--gl)">1,277만 <span style="font-size:20px">명</span></div><div style="font-size:12px;color:var(--s5);margin-top:2px">출처: 대한파크골프협회</div></div>
+        <div style="font-size:13px;color:var(--s4);line-height:1.5;border-left:1px solid var(--s7);padding-left:16px">2023년 전국 파크골프장<br>연간 이용객 수</div>
+      </div>
+      <div style="background:var(--s8);border-radius:12px;padding:18px;display:flex;align-items:center;gap:20px">
+        <div><div style="font-size:42px;font-weight:900;color:var(--pl)">853 <span style="font-size:20px">%</span></div><div style="font-size:12px;color:var(--s5);margin-top:2px">출처: Weed & Turfgrass Science 2024</div></div>
+        <div style="font-size:13px;color:var(--s4);line-height:1.5;border-left:1px solid var(--s7);padding-left:16px">2017→2023<br>동호인 10년 성장률</div>
+      </div>
+      <div style="background:var(--s8);border-radius:12px;padding:18px;display:flex;align-items:center;gap:20px">
+        <div><div style="font-size:42px;font-weight:900;color:#fbbf24">42 <span style="font-size:20px">%↑</span></div><div style="font-size:12px;color:var(--s5);margin-top:2px">출처: 파크골프가이드</div></div>
+        <div style="font-size:13px;color:var(--s4);line-height:1.5;border-left:1px solid var(--s7);padding-left:16px">2022→2023<br>이용자 1년 증가율</div>
+      </div>
+    </div>
+  </div>
+  <div style="background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.25);border-radius:10px;padding:12px 20px;font-size:15px;color:#fbbf24;font-weight:600;text-align:center;flex-shrink:0;margin-top:12px">⚠ 150만 이용자가 여전히 전화·수기로 예약 — 디지털 예약 인프라 완전 부재</div>
+  <div class="pn" style="color:var(--s5)">3</div>
+</div>
+
+<!-- ══════ PAGE 4: 시장 배경 — 폭발적 성장, 데이터로 확인하다 ══════ -->
+<div class="pg" style="background:var(--s9);color:#e2e8f0">
+  <div style="font-size:12px;color:var(--s4);margin-bottom:4px">시장 배경 &nbsp;›&nbsp; 데이터로 보는 성장</div>
+  <div style="margin-bottom:4px"><h2 style="font-size:32px;font-weight:900;color:#fff;letter-spacing:-1px">폭발적 성장, 데이터로 확인하다</h2></div>
+  <div style="font-size:15px;color:var(--s5);margin-bottom:18px">대한파크골프협회 공식 통계 기준 (2017→2024)</div>
+  <div class="g2" style="flex:1;gap:24px">
+    <!-- 왼쪽: 등록 동호인 수 바 차트 -->
+    <div>
+      <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:14px">등록 동호인 수 추이 (명)</div>
+      <div style="display:flex;align-items:flex-end;gap:8px;height:320px;padding-bottom:30px;position:relative">
+        <!-- Y축 가이드 -->
+        <div style="position:absolute;left:0;right:0;bottom:30px;height:280px;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none">
+          <div style="border-bottom:1px solid rgba(255,255,255,0.06);font-size:10px;color:var(--s5);padding-bottom:2px">200,000</div>
+          <div style="border-bottom:1px solid rgba(255,255,255,0.06);font-size:10px;color:var(--s5);padding-bottom:2px">150,000</div>
+          <div style="border-bottom:1px solid rgba(255,255,255,0.06);font-size:10px;color:var(--s5);padding-bottom:2px">100,000</div>
+          <div style="border-bottom:1px solid rgba(255,255,255,0.06);font-size:10px;color:var(--s5);padding-bottom:2px">50,000</div>
+          <div style="font-size:10px;color:var(--s5)">0</div>
+        </div>
+        <!-- 바 -->
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;z-index:1">
+          <div style="font-size:10px;color:var(--s4);margin-bottom:2px">16,728</div>
+          <div style="width:80%;height:24px;background:linear-gradient(180deg,var(--gl),var(--gd));border-radius:4px 4px 0 0"></div>
+          <div style="font-size:11px;color:var(--s5);margin-top:4px">2017</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;z-index:1">
+          <div style="font-size:10px;color:var(--s4);margin-bottom:2px">30,000</div>
+          <div style="width:80%;height:43px;background:linear-gradient(180deg,var(--gl),var(--gd));border-radius:4px 4px 0 0"></div>
+          <div style="font-size:11px;color:var(--s5);margin-top:4px">2019</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;z-index:1">
+          <div style="font-size:10px;color:var(--s4);margin-bottom:2px">45,478</div>
+          <div style="width:80%;height:65px;background:linear-gradient(180deg,var(--gl),var(--gd));border-radius:4px 4px 0 0"></div>
+          <div style="font-size:11px;color:var(--s5);margin-top:4px">2020</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;z-index:1">
+          <div style="font-size:10px;color:var(--s4);margin-bottom:2px">70,000</div>
+          <div style="width:80%;height:100px;background:linear-gradient(180deg,var(--gl),var(--gd));border-radius:4px 4px 0 0"></div>
+          <div style="font-size:11px;color:var(--s5);margin-top:4px">2021</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;z-index:1">
+          <div style="font-size:10px;color:var(--s4);margin-bottom:2px">106,505</div>
+          <div style="width:80%;height:152px;background:linear-gradient(180deg,var(--gl),var(--gd));border-radius:4px 4px 0 0"></div>
+          <div style="font-size:11px;color:var(--s5);margin-top:4px">2022</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;z-index:1">
+          <div style="font-size:10px;color:var(--s4);margin-bottom:2px">142,664</div>
+          <div style="width:80%;height:204px;background:linear-gradient(180deg,var(--gl),var(--gd));border-radius:4px 4px 0 0"></div>
+          <div style="font-size:11px;color:var(--s5);margin-top:4px">2023</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;z-index:1">
+          <div style="font-size:10px;color:#fff;font-weight:700;margin-bottom:2px">183,788</div>
+          <div style="width:80%;height:264px;background:linear-gradient(180deg,#4ade80,var(--g));border-radius:4px 4px 0 0"></div>
+          <div style="font-size:11px;color:#fff;font-weight:600;margin-top:4px">2024</div>
+        </div>
+      </div>
+    </div>
+    <!-- 오른쪽: 전국 파크골프장 수 라인 차트 -->
+    <div>
+      <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:14px">전국 파크골프장 수 추이 (개)</div>
+      <svg viewBox="0 0 500 340" style="width:100%;height:320px">
+        <!-- 그리드 -->
+        <line x1="50" y1="30" x2="50" y2="280" stroke="#334155" stroke-width="1"/>
+        <line x1="50" y1="280" x2="470" y2="280" stroke="#334155" stroke-width="1"/>
+        <line x1="50" y1="218" x2="470" y2="218" stroke="#1e293b" stroke-width="1" stroke-dasharray="4"/>
+        <line x1="50" y1="156" x2="470" y2="156" stroke="#1e293b" stroke-width="1" stroke-dasharray="4"/>
+        <line x1="50" y1="94" x2="470" y2="94" stroke="#1e293b" stroke-width="1" stroke-dasharray="4"/>
+        <line x1="50" y1="32" x2="470" y2="32" stroke="#1e293b" stroke-width="1" stroke-dasharray="4"/>
+        <!-- Y축 레이블 -->
+        <text x="44" y="284" fill="#64748b" font-size="11" text-anchor="end">0</text>
+        <text x="44" y="222" fill="#64748b" font-size="11" text-anchor="end">150</text>
+        <text x="44" y="160" fill="#64748b" font-size="11" text-anchor="end">250</text>
+        <text x="44" y="98" fill="#64748b" font-size="11" text-anchor="end">350</text>
+        <text x="44" y="36" fill="#64748b" font-size="11" text-anchor="end">450</text>
+        <!-- 라인: 137,226,254,303,329,374,411,423 → scale: 0=280, 450=32 -->
+        <!-- y = 280 - (val/450)*248 -->
+        <!-- 137→204.6, 226→155.6, 254→140.2, 303→113.2, 329→99.0, 374→74.2, 411→53.8, 423→47.2 -->
+        <polyline points="74,205 131,156 189,140 246,113 303,99 360,74 417,54 460,47" fill="none" stroke="#3b82f6" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+        <!-- 데이터 포인트 + 레이블 -->
+        <circle cx="74" cy="205" r="5" fill="#3b82f6"/><text x="74" y="195" fill="#94a3b8" font-size="12" text-anchor="middle">137</text>
+        <circle cx="131" cy="156" r="5" fill="#3b82f6"/><text x="131" y="146" fill="#94a3b8" font-size="12" text-anchor="middle">226</text>
+        <circle cx="189" cy="140" r="5" fill="#3b82f6"/><text x="189" y="130" fill="#94a3b8" font-size="12" text-anchor="middle">254</text>
+        <circle cx="246" cy="113" r="5" fill="#3b82f6"/><text x="246" y="103" fill="#94a3b8" font-size="12" text-anchor="middle">303</text>
+        <circle cx="303" cy="99" r="5" fill="#3b82f6"/><text x="303" y="89" fill="#94a3b8" font-size="12" text-anchor="middle">329</text>
+        <circle cx="360" cy="74" r="5" fill="#3b82f6"/><text x="360" y="64" fill="#94a3b8" font-size="12" text-anchor="middle">374</text>
+        <circle cx="417" cy="54" r="5" fill="#60a5fa"/><text x="417" y="44" fill="#93c5fd" font-size="12" font-weight="700" text-anchor="middle">411</text>
+        <circle cx="460" cy="47" r="5" fill="#60a5fa"/><text x="460" y="37" fill="#93c5fd" font-size="12" font-weight="700" text-anchor="middle">423</text>
+        <!-- X축 레이블 -->
+        <text x="74" y="298" fill="#64748b" font-size="11" text-anchor="middle">2017</text>
+        <text x="131" y="298" fill="#64748b" font-size="11" text-anchor="middle">2019</text>
+        <text x="189" y="298" fill="#64748b" font-size="11" text-anchor="middle">2020</text>
+        <text x="246" y="298" fill="#64748b" font-size="11" text-anchor="middle">2021</text>
+        <text x="303" y="298" fill="#64748b" font-size="11" text-anchor="middle">2022</text>
+        <text x="360" y="298" fill="#64748b" font-size="11" text-anchor="middle">2023</text>
+        <text x="417" y="298" fill="#64748b" font-size="11" text-anchor="middle">2024</text>
+        <text x="460" y="298" fill="#93c5fd" font-size="11" font-weight="700" text-anchor="middle">2025</text>
+      </svg>
+    </div>
+  </div>
+  <div style="background:rgba(220,38,38,0.12);border:1px solid rgba(220,38,38,0.25);border-radius:10px;padding:12px 20px;font-size:15px;color:#f87171;font-weight:600;text-align:center;flex-shrink:0;margin-top:12px">⚠ 디지털 예약 시스템 전무 — 150만 이용자의 예약 경험을 혁신할 기회</div>
+  <div class="pn" style="color:var(--s5)">4</div>
+</div>
+
+<!-- ══════ PAGE 5: 1.1 시장 성장 ══════ -->
 <div class="pg">
   <div class="hd"><h2>1. 파크골프 시장 현황과 기회</h2><p>1.1 시장 성장</p></div>
   <div class="dk" style="margin-bottom:16px">
@@ -124,27 +371,38 @@
   <div class="g2" style="flex:1">
     <div>
       <div style="font-size:16px;font-weight:700;color:var(--s8);margin-bottom:8px">이용자 성별 비율</div>
-      <div style="display:flex;height:36px;border-radius:10px;overflow:hidden;margin-bottom:6px">
-        <div style="width:71.5%;background:linear-gradient(90deg,var(--b),var(--bl));display:flex;align-items:center;padding-left:16px;font-size:14px;color:#fff;font-weight:700">남성 71.5%</div>
-        <div style="width:28.5%;background:linear-gradient(90deg,var(--p),var(--pl));display:flex;align-items:center;padding-left:10px;font-size:14px;color:#fff;font-weight:700">여성 28.5%</div>
+      <div style="display:flex;align-items:center;gap:20px">
+        <svg width="320" height="320" viewBox="0 0 160 160">
+          <!-- 남성 71.5%: 257.4도, 여성 28.5%: 102.6도 -->
+          <!-- 남성 파란색 조각 -->
+          <path d="M80,80 L80,10 A70,70 0 1,1 12.8,111.5 Z" fill="#3b82f6"/>
+          <!-- 여성 보라색 조각 -->
+          <path d="M80,80 L12.8,111.5 A70,70 0 0,1 80,10 Z" fill="#8b5cf6"/>
+          <!-- 퍼센트 레이블 -->
+          <text x="95" y="68" fill="#fff" font-size="16" font-weight="800" text-anchor="middle">71.5%</text>
+          <text x="52" y="108" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">28.5%</text>
+        </svg>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:14px;height:14px;border-radius:3px;background:var(--bl);flex-shrink:0"></div><div><div style="font-size:15px;font-weight:700;color:var(--b)">남성 71.5%</div><div style="font-size:12px;color:var(--s5)">50~70대 핵심 이용층</div></div></div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:14px;height:14px;border-radius:3px;background:var(--pl);flex-shrink:0"></div><div><div style="font-size:15px;font-weight:700;color:var(--p)">여성 28.5%</div><div style="font-size:12px;color:var(--s5)">참여율 증가 추세</div></div></div>
+        </div>
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--s4)"><span>50~70대 핵심 이용층</span><span>여성 참여율 증가 추세</span></div>
     </div>
     <div>
       <div style="font-size:16px;font-weight:700;color:var(--s8);margin-bottom:8px">파크골프의 4가지 매력</div>
-      <div class="g2" style="gap:10px">
-        <div class="abox" style="background:var(--g50);text-align:center;padding:12px"><div style="font-size:24px">🌿</div><div style="font-size:15px;font-weight:700;color:var(--gd)">쉬운 접근성</div><div style="font-size:12px;color:var(--s5)">누구나 즐길 수 있음</div></div>
-        <div class="abox" style="background:var(--b50);text-align:center;padding:12px"><div style="font-size:24px">💰</div><div style="font-size:15px;font-weight:700;color:var(--b)">저렴한 비용</div><div style="font-size:12px;color:var(--s5)">1회 5,000~15,000원</div></div>
-        <div class="abox" style="background:var(--p50);text-align:center;padding:12px"><div style="font-size:24px">👥</div><div style="font-size:15px;font-weight:700;color:var(--p)">소셜 활동</div><div style="font-size:12px;color:var(--s5)">동호회·모임 활발</div></div>
-        <div class="abox" style="background:var(--o50);text-align:center;padding:12px"><div style="font-size:24px">🏃</div><div style="font-size:15px;font-weight:700;color:var(--o)">건강 효과</div><div style="font-size:12px;color:var(--s5)">시니어 건강 관리</div></div>
+      <div class="g2" style="gap:10px;flex:1">
+        <div class="abox" style="background:var(--g50);text-align:center;padding:18px 12px;display:flex;flex-direction:column;justify-content:center"><div style="font-size:28px">🌿</div><div style="font-size:15px;font-weight:700;color:var(--gd);margin-top:6px">쉬운 접근성</div><div style="font-size:12px;color:var(--s5);margin-top:4px">누구나 즐길 수 있음</div></div>
+        <div class="abox" style="background:var(--b50);text-align:center;padding:18px 12px;display:flex;flex-direction:column;justify-content:center"><div style="font-size:28px">💰</div><div style="font-size:15px;font-weight:700;color:var(--b);margin-top:6px">저렴한 비용</div><div style="font-size:12px;color:var(--s5);margin-top:4px">1회 5,000~15,000원</div></div>
+        <div class="abox" style="background:var(--p50);text-align:center;padding:18px 12px;display:flex;flex-direction:column;justify-content:center"><div style="font-size:28px">👥</div><div style="font-size:15px;font-weight:700;color:var(--p);margin-top:6px">소셜 활동</div><div style="font-size:12px;color:var(--s5);margin-top:4px">동호회·모임 활발</div></div>
+        <div class="abox" style="background:var(--o50);text-align:center;padding:18px 12px;display:flex;flex-direction:column;justify-content:center"><div style="font-size:28px">🏃</div><div style="font-size:15px;font-weight:700;color:var(--o);margin-top:6px">건강 효과</div><div style="font-size:12px;color:var(--s5);margin-top:4px">시니어 건강 관리</div></div>
       </div>
     </div>
   </div>
   <div class="co"><strong>급성장하는 시장, 그러나 디지털 인프라는 부재</strong> — 150만 이용자가 여전히 전화와 수기로 예약하고 있습니다.</div>
-  <div class="pn">2</div>
+  <div class="pn">5</div>
 </div>
 
-<!-- ══════ PAGE 3: 1.2 현재의 문제 ══════ -->
+<!-- ══════ PAGE 6: 1.2 현재의 문제 ══════ -->
 <div class="pg">
   <div class="hd"><h2>1. 파크골프 시장 현황과 기회</h2><p>1.2 현재의 문제</p></div>
   <div class="g2" style="flex:1">
@@ -186,10 +444,10 @@
     </div>
   </div>
   <div class="co"><strong>50~70대 주 이용층</strong>에게 복잡한 앱 UI와 다단계 입력은 큰 진입장벽. "그냥 전화하는 게 편해" — 이것이 현실입니다.</div>
-  <div class="pn">3</div>
+  <div class="pn">6</div>
 </div>
 
-<!-- ══════ PAGE 4: 2.1 한눈에 보는 비교 ══════ -->
+<!-- ══════ PAGE 7: 2.1 한눈에 보는 비교 ══════ -->
 <div class="pg">
   <div class="hd"><h2>2. 파크골프메이트의 해법</h2><p>2.1 한눈에 보는 비교</p></div>
   <div class="g3" style="margin-bottom:16px">
@@ -235,10 +493,10 @@
     <div class="vbar"><div class="vl">AI 예약</div><div class="vs" style="width:9%;min-width:60px;background:linear-gradient(90deg,var(--gd),var(--gl))">15초</div></div>
   </div>
   <div class="co"><strong>"천안 골프장 2명 예약해 줘"</strong> — 자연어 한마디로 장소 검색, 날씨 확인, 빈 시간 조회, 결제까지. 기존 대비 <strong>90% 이상 시간 단축</strong>.</div>
-  <div class="pn">4</div>
+  <div class="pn">7</div>
 </div>
 
-<!-- ══════ PAGE 5: 2.2 AI 예약 플로우 ══════ -->
+<!-- ══════ PAGE 8: 2.2 AI 예약 플로우 ══════ -->
 <div class="pg">
   <div class="hd"><h2>2. 파크골프메이트의 해법</h2><p>2.2 AI 예약 플로우 — 4단계</p></div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;flex:1">
@@ -323,10 +581,10 @@
     </div>
   </div>
   <div class="co"><strong>"천안 골프장 2명 예약해 줘"</strong> 한마디 → 장소·날씨·빈 시간 자동 검색 → 확인 → <strong>약 15초</strong> 만에 완료. 현장결제, 카드결제, 더치페이 지원.</div>
-  <div class="pn">5</div>
+  <div class="pn">8</div>
 </div>
 
-<!-- ══════ PAGE 6: 2.3 개인화 + 시나리오 ══════ -->
+<!-- ══════ PAGE 9: 2.3 개인화 + 시나리오 ══════ -->
 <div class="pg">
   <div class="hd"><h2>2. 파크골프메이트의 해법</h2><p>2.3 개인화 추천 &amp; AI 시나리오</p></div>
   <div class="dk" style="margin-bottom:14px;text-align:center">
@@ -363,10 +621,10 @@
     </div>
   </div>
   <div class="co">시나리오 1: <strong>3번의 대화</strong>로 예약 완료. 시나리오 2: <strong>날씨 기반 추천</strong>으로 최적의 날짜와 시간을 자동 선택.</div>
-  <div class="pn">6</div>
+  <div class="pn">9</div>
 </div>
 
-<!-- ══════ PAGE 7: 2.4 채팅방 단체 예약 ══════ -->
+<!-- ══════ PAGE 10: 2.4 채팅방 단체 예약 ══════ -->
 <div class="pg">
   <div class="hd"><h2>2. 파크골프메이트의 해법</h2><p>2.4 AI 시나리오 — 채팅방 단체 예약</p></div>
   <div style="display:flex;gap:24px;flex:1">
@@ -418,10 +676,10 @@
     </div>
   </div>
   <div class="co">그룹 채팅방에서 <strong>@AI 한번</strong>으로 참석 확인 → 골프장 검색 → 단체 예약까지. <strong>더치페이로 각자 결제</strong>도 지원합니다.</div>
-  <div class="pn">7</div>
+  <div class="pn">10</div>
 </div>
 
-<!-- ══════ PAGE 8: 3.1 사용자 앱 ══════ -->
+<!-- ══════ PAGE 11: 3.1 사용자 앱 ══════ -->
 <div class="pg">
   <div class="hd"><h2>3. 플랫폼 기능 구성</h2><p>3.1 사용자 앱</p></div>
   <div class="g4" style="margin-bottom:14px">
@@ -464,10 +722,10 @@
     </div>
   </div>
   <div class="co"><strong>50~70대 시니어</strong>도 쉽게 사용할 수 있는 직관적 UI. AI가 복잡한 과정을 대신 처리합니다.</div>
-  <div class="pn">8</div>
+  <div class="pn">11</div>
 </div>
 
-<!-- ══════ PAGE 9: 3.2 가맹점 관리 대시보드 (ENHANCED) ══════ -->
+<!-- ══════ PAGE 12: 3.2 가맹점 관리 대시보드 (ENHANCED) ══════ -->
 <div class="pg">
   <div class="hd"><h2>3. 플랫폼 기능 구성</h2><p>3.2 가맹점 관리 대시보드</p></div>
   <div class="g2" style="flex:1;gap:20px">
@@ -540,10 +798,10 @@
     </div>
   </div>
   <div class="co">수기 장부와 전화 응대에서 벗어나 <strong>디지털 관리 체계</strong>로 전환. 정책 설정만으로 <strong>자동 운영</strong>됩니다.</div>
-  <div class="pn">9</div>
+  <div class="pn">12</div>
 </div>
 
-<!-- ══════ PAGE 10: 3.3 협회 플랫폼 관리 (ENHANCED) ══════ -->
+<!-- ══════ PAGE 13: 3.3 협회 플랫폼 관리 (ENHANCED) ══════ -->
 <div class="pg">
   <div class="hd"><h2>3. 플랫폼 기능 구성</h2><p>3.3 협회 플랫폼 관리</p></div>
   <div class="g2" style="flex:1;gap:20px">
@@ -624,10 +882,10 @@
     </div>
   </div>
   <div class="co">협회 본부에서 <strong>전국 가맹점을 통합 관리</strong>. RBAC로 역할별 접근 권한을 세밀하게 제어합니다.</div>
-  <div class="pn">10</div>
+  <div class="pn">13</div>
 </div>
 
-<!-- ══════ PAGE 11: 4.1 정책 계층 구조 ══════ -->
+<!-- ══════ PAGE 14: 4.1 정책 계층 구조 ══════ -->
 <div class="pg">
   <div class="hd"><h2>4. 계층형 정책 시스템</h2><p>4.1 정책 계층 구조</p></div>
   <div class="g2" style="flex:1;gap:24px">
@@ -672,10 +930,10 @@
     </div>
   </div>
   <div class="co"><strong>설정 안 해도 자동 적용</strong>, 필요할 때만 Override. 간단하지만 강력한 정책 관리 체계입니다.</div>
-  <div class="pn">11</div>
+  <div class="pn">14</div>
 </div>
 
-<!-- ══════ PAGE 12: 4.2 정책 유형 ══════ -->
+<!-- ══════ PAGE 15: 4.2 정책 유형 ══════ -->
 <div class="pg">
   <div class="hd"><h2>4. 계층형 정책 시스템</h2><p>4.2 정책 유형</p></div>
   <div class="g2" style="margin-bottom:14px">
@@ -724,16 +982,16 @@
     </div>
   </div>
   <div class="co">4가지 정책 유형이 3계층(Platform → Company → Club)으로 관리. <strong>상속 중</strong>이면 설정 불필요, <strong>독립 설정</strong>으로 맞춤화, <strong>되돌리기</strong>로 간편 복원.</div>
-  <div class="pn">12</div>
+  <div class="pn">15</div>
 </div>
 
-<!-- ══════ PAGE 13: 5.1 AI 기술 ══════ -->
+<!-- ══════ PAGE 16: 5.1 AI 기술 ══════ -->
 <div class="pg">
-  <div class="hd"><h2>5. 기술 아키텍처</h2><p>5.1 AI 기술 — DeepSeek Function Calling</p></div>
+  <div class="hd"><h2>5. 기술 아키텍처</h2><p>5.1 AI 기술 — LLM Function Calling</p></div>
   <div class="dk" style="margin-bottom:14px">
     <div style="text-align:center;margin-bottom:8px">
       <div style="font-size:12px;color:#94a3b8">AI 엔진</div>
-      <div style="font-size:22px;font-weight:900;color:var(--gl)">DeepSeek Function Calling</div>
+      <div style="font-size:22px;font-weight:900;color:var(--gl)">LLM Function Calling</div>
       <div style="font-size:13px;color:#64748b">자연어 → 구조화된 API 호출 자동 변환</div>
     </div>
     <div class="g3">
@@ -766,11 +1024,11 @@
       </div>
     </div>
   </div>
-  <div class="co">DeepSeek이 사용자 의도를 파악하고 <strong>9가지 도구</strong>를 자동 조합. 요청당 <strong>0.1원</strong>의 초저비용으로 운영합니다.</div>
-  <div class="pn">13</div>
+  <div class="co">LLM이 사용자 의도를 파악하고 <strong>9가지 도구</strong>를 자동 조합. 요청당 <strong>0.1원</strong>의 초저비용으로 운영합니다.</div>
+  <div class="pn">16</div>
 </div>
 
-<!-- ══════ PAGE 14: 5.2 시스템 아키텍처 (ENHANCED) ══════ -->
+<!-- ══════ PAGE 17: 5.2 시스템 아키텍처 (ENHANCED) ══════ -->
 <div class="pg">
   <div class="hd"><h2>5. 기술 아키텍처</h2><p>5.2 시스템 아키텍처</p></div>
   <div class="dk" style="flex:1;padding:16px 20px;display:flex;flex-direction:column;gap:6px">
@@ -835,7 +1093,7 @@
       <div style="background:var(--s8);border:1px solid var(--s7);border-radius:8px;padding:6px 10px">
         <div style="font-size:13px;font-weight:700;color:#e2e8f0;margin-bottom:4px">🔗 외부 API 연동</div>
         <div style="font-size:12px;line-height:1.7;color:#94a3b8">
-          <span style="color:var(--gl)">●</span> Toss Payments (PCI DSS) · <span style="color:var(--bl)">●</span> 기상청 API · <span style="color:var(--pl)">●</span> 카카오 로컬 API · <span style="color:#f97316">●</span> DeepSeek AI
+          <span style="color:var(--gl)">●</span> Toss Payments (PCI DSS) · <span style="color:var(--bl)">●</span> 기상청 API · <span style="color:var(--pl)">●</span> 카카오 로컬 API · <span style="color:#f97316">●</span> LLM AI
         </div>
       </div>
     </div>
@@ -849,10 +1107,10 @@
     <div style="display:flex;align-items:center;gap:4px;background:var(--s1);border:1px solid var(--s2);border-radius:8px;padding:4px 10px"><span style="font-size:14px">💳</span><div><div style="font-size:12px;font-weight:700;color:var(--s8)">PCI DSS</div><div style="font-size:10px;color:var(--s5)">결제 보안 준수</div></div></div>
     <div style="display:flex;align-items:center;gap:4px;background:var(--s1);border:1px solid var(--s2);border-radius:8px;padding:4px 10px"><span style="font-size:14px">☁️</span><div><div style="font-size:12px;font-weight:700;color:var(--s8)">GKE Autopilot</div><div style="font-size:10px;color:var(--s5)">자동 스케일링</div></div></div>
   </div>
-  <div class="pn">14</div>
+  <div class="pn">17</div>
 </div>
 
-<!-- ══════ PAGE 15: 6. 도입 효과 ══════ -->
+<!-- ══════ PAGE 18: 6. 도입 효과 ══════ -->
 <div class="pg">
   <div class="hd"><h2>6. 도입 효과</h2><p>Before → After 비교</p></div>
   <div class="g3" style="flex:1;gap:16px">
@@ -906,10 +1164,10 @@
     </div>
   </div>
   <div class="co">사용자 · 가맹점 · 협회 <strong>모든 이해관계자</strong>에게 명확한 가치를 제공합니다.</div>
-  <div class="pn">15</div>
+  <div class="pn">18</div>
 </div>
 
-<!-- ══════ PAGE 16: 7. 도입 로드맵 ══════ -->
+<!-- ══════ PAGE 19: 7. 도입 로드맵 ══════ -->
 <div class="pg">
   <div class="hd"><h2>7. 도입 로드맵</h2><p>3단계 점진적 도입</p></div>
   <div class="g3" style="flex:1;gap:20px">
@@ -981,10 +1239,10 @@
     </div>
   </div>
   <div class="co"><strong>1개월 MVP</strong>로 빠르게 시장 검증 → <strong>2개월 확장</strong>으로 풀 기능 → <strong>지속 고도화</strong>로 경쟁 우위 확보.</div>
-  <div class="pn">16</div>
+  <div class="pn">19</div>
 </div>
 
-<!-- ══════ PAGE 17: 8. 요약 ══════ -->
+<!-- ══════ PAGE 20: 8. 요약 ══════ -->
 <div class="pg">
   <div class="hd"><h2>8. 요약</h2><p>파크골프메이트가 만드는 변화</p></div>
   <div class="g4" style="margin-bottom:20px">
@@ -1026,11 +1284,11 @@
     <div style="font-size:14px;color:var(--s4);margin-bottom:14px">AI 기반 파크골프 통합 플랫폼</div>
     <div class="ft">
       <div style="font-size:12px;color:var(--s4)">
-        &copy; 2026 파크골프메이트 · Powered by DeepSeek AI · Built with NestJS + React + SwiftUI + Kotlin
+        &copy; 2026 파크골프메이트 · Powered by LLM AI · Built with NestJS + React + SwiftUI + Kotlin
       </div>
     </div>
   </div>
-  <div class="pn">17</div>
+  <div class="pn">20</div>
 </div>
 
 </body>

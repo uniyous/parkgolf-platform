@@ -102,15 +102,15 @@ const PLATFORM_MENU: NavEntry[] = [
     icon: BarChart3,
     items: [
       {
-        label: '예약 현황',
-        path: '/analytics/bookings',
-        icon: CalendarCheck,
-        requiredPermissions: ['ANALYTICS', 'VIEW'],
-      },
-      {
         label: '골프장 현황',
         path: '/analytics/clubs',
         icon: MapPin,
+        requiredPermissions: ['ANALYTICS', 'VIEW'],
+      },
+      {
+        label: '예약 현황',
+        path: '/analytics/bookings',
+        icon: CalendarCheck,
         requiredPermissions: ['ANALYTICS', 'VIEW'],
       },
       {
