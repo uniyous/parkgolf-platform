@@ -107,7 +107,7 @@ export const RefundPolicySettings: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* 정책 개요 */}
-      <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-100">
+      <div className="bg-emerald-500/10 rounded-lg p-4 border border-emerald-500/20">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center text-xl">
             💰
