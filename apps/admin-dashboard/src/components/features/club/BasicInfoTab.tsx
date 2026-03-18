@@ -23,6 +23,11 @@ const clubTypeMap: Record<string, { label: string; className: string }> = {
   FREE: { label: '무료', className: 'bg-sky-500/20 text-sky-400' },
 };
 
+const bookingModeMap: Record<string, { label: string; className: string }> = {
+  PLATFORM: { label: '플랫폼', className: 'bg-blue-500/20 text-blue-400' },
+  PARTNER:  { label: '파트너 연동', className: 'bg-amber-500/20 text-amber-400' },
+};
+
 const facilityIcons: Record<string, string> = {
   '카트도로': '🛣️',
   '연습장': '🏌️',
@@ -65,6 +70,7 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
     facilities: club.facilities || [],
     status: club.status,
     clubType: club.clubType || 'PAID',
+    bookingMode: club.bookingMode || 'PLATFORM',
   });
 
   const handleSave = async () => {
@@ -98,6 +104,7 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
       facilities: club.facilities || [],
       status: club.status,
       clubType: club.clubType || 'PAID',
+      bookingMode: club.bookingMode || 'PLATFORM',
     });
     setIsEditing(false);
   };
@@ -112,6 +119,7 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
 
   const statusInfo = statusMap[club.status] || statusMap.INACTIVE;
   const clubTypeInfo = clubTypeMap[club.clubType || 'PAID'] || clubTypeMap.PAID;
+  const bookingModeInfo = bookingModeMap[club.bookingMode || 'PLATFORM'] || bookingModeMap.PLATFORM;
 
   const inputClass = 'w-full px-3 py-2 bg-white/5 border border-white/15 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent';
 
@@ -304,6 +312,28 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
                     ) : (
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${clubTypeInfo.className}`}>
                         {clubTypeInfo.label}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4 py-2.5 border-b border-white/5">
+                <div className="flex-1">
+                  <span className="text-sm text-white/50">예약 방식</span>
+                  <div className="mt-1">
+                    {isEditing ? (
+                      <select
+                        value={formData.bookingMode || 'PLATFORM'}
+                        onChange={(e) => setFormData(prev => ({ ...prev, bookingMode: e.target.value as 'PLATFORM' | 'PARTNER' }))}
+                        className={inputClass}
+                      >
+                        <option value="PLATFORM">플랫폼 (직접 사용)</option>
+                        <option value="PARTNER">파트너 연동 (외부 ERP)</option>
+                      </select>
+                    ) : (
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bookingModeInfo.className}`}>
+                        {bookingModeInfo.label}
                       </span>
                     )}
                   </div>

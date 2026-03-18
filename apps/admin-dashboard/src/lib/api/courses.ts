@@ -24,6 +24,7 @@ import type {
 // ============================================
 
 export type ClubType = 'PAID' | 'FREE';
+export type BookingMode = 'PLATFORM' | 'PARTNER';
 
 export interface Club {
   id: number;
@@ -41,6 +42,7 @@ export interface Club {
   facilities?: string[];
   status: 'ACTIVE' | 'MAINTENANCE' | 'SEASONAL_CLOSED' | 'INACTIVE';
   clubType: ClubType;
+  bookingMode: BookingMode;
   seasonInfo?: {
     type: 'peak' | 'regular' | 'off';
     startDate: string;
@@ -74,6 +76,7 @@ export interface CreateClubDto {
   facilities?: string[];
   status?: 'ACTIVE' | 'MAINTENANCE' | 'SEASONAL_CLOSED' | 'INACTIVE';
   clubType?: ClubType;
+  bookingMode?: BookingMode;
 }
 
 export interface UpdateClubDto {
@@ -90,6 +93,7 @@ export interface UpdateClubDto {
   facilities?: string[];
   status?: 'ACTIVE' | 'MAINTENANCE' | 'SEASONAL_CLOSED' | 'INACTIVE';
   clubType?: ClubType;
+  bookingMode?: BookingMode;
   seasonInfo?: {
     type: 'peak' | 'regular' | 'off';
     startDate: string;

@@ -33,6 +33,10 @@ export class ClubFiltersDto {
   status?: string;
 
   @IsOptional()
+  @IsString()
+  bookingMode?: 'PLATFORM' | 'PARTNER';
+
+  @IsOptional()
   @IsNumber()
   @Type(() => Number)
   @Min(1)
@@ -59,6 +63,7 @@ export interface CreateClubDto {
   };
   facilities?: string[];
   status: 'ACTIVE' | 'MAINTENANCE' | 'SEASONAL_CLOSED' | 'INACTIVE';
+  bookingMode?: 'PLATFORM' | 'PARTNER';
 }
 
 export interface UpdateClubDto {
@@ -74,6 +79,7 @@ export interface UpdateClubDto {
   };
   facilities?: string[];
   status?: 'ACTIVE' | 'MAINTENANCE' | 'SEASONAL_CLOSED' | 'INACTIVE';
+  bookingMode?: 'PLATFORM' | 'PARTNER';
   seasonInfo?: {
     type: 'peak' | 'regular' | 'off';
     startDate: string;

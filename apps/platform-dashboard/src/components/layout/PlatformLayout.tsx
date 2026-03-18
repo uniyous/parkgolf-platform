@@ -78,14 +78,26 @@ const PLATFORM_MENU: NavEntry[] = [
     icon: Building2,
     items: [
       {
+        label: '가맹점 현황',
+        path: '/franchise',
+        icon: LayoutDashboard,
+        requiredPermissions: ['COMPANIES'],
+      },
+      {
         label: '회사 관리',
-        path: '/companies',
+        path: '/franchise/companies',
         icon: Building2,
         requiredPermissions: ['COMPANIES'],
       },
       {
+        label: '골프장 현황',
+        path: '/franchise/clubs',
+        icon: MapPin,
+        requiredPermissions: ['COMPANIES'],
+      },
+      {
         label: '파트너 연동',
-        path: '/partners',
+        path: '/franchise/partners',
         icon: Link2,
         requiredPermissions: ['SYSTEM'],
         allowedRoles: ['PLATFORM_ADMIN'],

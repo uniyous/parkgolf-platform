@@ -7,6 +7,8 @@ import {
   useTestConnectionMutation,
   useUpdatePartnerMutation,
 } from '@/hooks/queries/partner';
+import { useAllClubsQuery } from '@/hooks/queries/course';
+import { useCompaniesQuery } from '@/hooks/queries/company';
 import type { CreatePartnerConfigDto, UpdatePartnerConfigDto } from '@/types/partner';
 import { Modal } from '@/components/ui';
 import { DataContainer } from '@/components/common';
@@ -21,6 +23,8 @@ import { PageLayout } from '@/components/layout';
 import { showSuccessToast } from '@/lib/errors';
 import { PartnerDetailModal } from '@/components/features/partner/PartnerDetailModal';
 import type { PartnerConfig, SyncMode } from '@/types/partner';
+import type { Club } from '@/types/club';
+import type { Company } from '@/types/company';
 
 type SortField = 'systemName' | 'syncMode' | 'isActive' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
@@ -48,11 +52,28 @@ const SYNC_MODE_COLORS: Record<SyncMode, string> = {
 export const PartnersPage: React.FC = () => {
   // Queries & Mutations
   const { data: partnersResponse, isLoading } = usePartnersQuery();
+  const { data: allClubs } = useAllClubsQuery();
+  const { data: companiesResponse } = useCompaniesQuery();
   const deletePartner = useDeletePartnerMutation();
   const testConnection = useTestConnectionMutation();
   const updatePartner = useUpdatePartnerMutation();
 
   const partners = partnersResponse?.data || [];
+  const clubs = allClubs || [];
+  const companies = companiesResponse?.data || [];
+
+  // ID → Name 매핑
+  const clubMap = useMemo(() => {
+    const map = new Map<number, Club>();
+    for (const c of clubs) map.set(c.id, c);
+    return map;
+  }, [clubs]);
+
+  const companyMap = useMemo(() => {
+    const map = new Map<number, Company>();
+    for (const c of companies) map.set(c.id, c);
+    return map;
+  }, [companies]);
 
   // Local UI State
   const [filters, setFilters] = useState<FilterState>({
@@ -299,8 +320,12 @@ export const PartnersPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <div className="text-sm text-white">회사 #{partner.companyId}</div>
-                      <div className="text-sm text-white/50">골프장 #{partner.clubId}</div>
+                      <div className="text-sm text-white">
+                        {companyMap.get(partner.companyId)?.name || `회사 #${partner.companyId}`}
+                      </div>
+                      <div className="text-sm text-white/50">
+                        {clubMap.get(partner.clubId)?.name || `골프장 #${partner.clubId}`}
+                      </div>
                     </td>
                     <td className="px-4 py-4">
                       <span className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full border ${SYNC_MODE_COLORS[partner.syncMode]}`}>
@@ -386,6 +411,8 @@ export const PartnersPage: React.FC = () => {
       >
         <PartnerFormContent
           partner={formModal.partner}
+          clubs={clubs}
+          companies={companies}
           onClose={() => setFormModal({ open: false })}
         />
       </Modal>
@@ -484,10 +511,12 @@ export const PartnersPage: React.FC = () => {
 
 interface PartnerFormContentProps {
   partner?: PartnerConfig;
+  clubs: Club[];
+  companies: Company[];
   onClose: () => void;
 }
 
-const PartnerFormContent: React.FC<PartnerFormContentProps> = ({ partner, onClose }) => {
+const PartnerFormContent: React.FC<PartnerFormContentProps> = ({ partner, clubs, companies, onClose }) => {
   const createMutation = useCreatePartnerMutation();
   const updateMutation = useUpdatePartnerMutation();
   const isEdit = !!partner;
@@ -612,24 +641,39 @@ const PartnerFormContent: React.FC<PartnerFormContentProps> = ({ partner, onClos
       {!isEdit && (
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-white/70 mb-1">회사 ID *</label>
-            <input
-              type="number"
+            <label className="block text-sm font-medium text-white/70 mb-1">회사 *</label>
+            <select
               value={form.companyId}
-              onChange={(e) => setForm((f) => ({ ...f, companyId: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, companyId: e.target.value, clubId: '' }))}
               required
-              className="w-full px-3 py-2 bg-white/5 border border-white/15 rounded-lg text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
+              className="w-full px-3 py-2 bg-white/5 border border-white/15 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="">회사 선택</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.id.toString()}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-white/70 mb-1">골프장(Club) ID *</label>
-            <input
-              type="number"
+            <label className="block text-sm font-medium text-white/70 mb-1">골프장 *</label>
+            <select
               value={form.clubId}
               onChange={(e) => setForm((f) => ({ ...f, clubId: e.target.value }))}
               required
-              className="w-full px-3 py-2 bg-white/5 border border-white/15 rounded-lg text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
+              disabled={!form.companyId}
+              className="w-full px-3 py-2 bg-white/5 border border-white/15 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
+            >
+              <option value="">골프장 선택</option>
+              {clubs
+                .filter((c) => !form.companyId || c.companyId === parseInt(form.companyId))
+                .map((c) => (
+                  <option key={c.id} value={c.id.toString()}>
+                    {c.name}
+                  </option>
+                ))}
+            </select>
           </div>
         </div>
       )}

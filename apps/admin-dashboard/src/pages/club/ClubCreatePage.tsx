@@ -7,7 +7,7 @@ import { courseApi } from '@/lib/api/courses';
 import { PageLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { KakaoMap } from '@/components/common/KakaoMap';
-import type { CreateClubDto, ClubStatus, ClubType } from '@/types/club';
+import type { CreateClubDto, ClubStatus, ClubType, BookingMode } from '@/types/club';
 
 const statusOptions: { value: ClubStatus; label: string }[] = [
   { value: 'ACTIVE', label: '운영중' },
@@ -19,6 +19,11 @@ const statusOptions: { value: ClubStatus; label: string }[] = [
 const clubTypeOptions: { value: ClubType; label: string }[] = [
   { value: 'PAID', label: '유료' },
   { value: 'FREE', label: '무료' },
+];
+
+const bookingModeOptions: { value: BookingMode; label: string }[] = [
+  { value: 'PLATFORM', label: '플랫폼 (직접 사용)' },
+  { value: 'PARTNER', label: '파트너 연동 (외부 ERP)' },
 ];
 
 const availableFacilities = [
@@ -64,6 +69,7 @@ export const ClubCreatePage: React.FC = () => {
     website: '',
     status: 'ACTIVE' as ClubStatus,
     clubType: 'PAID' as ClubType,
+    bookingMode: 'PLATFORM' as BookingMode,
     operatingHours: { open: '06:00', close: '18:00' },
     facilities: [] as string[],
   });
@@ -147,6 +153,7 @@ export const ClubCreatePage: React.FC = () => {
       website: formData.website.trim() || undefined,
       status: formData.status,
       clubType: formData.clubType,
+      bookingMode: formData.bookingMode,
       operatingHours: formData.operatingHours,
       facilities: formData.facilities.length > 0 ? formData.facilities : undefined,
     };
@@ -331,6 +338,23 @@ export const ClubCreatePage: React.FC = () => {
                         className={inputClass}
                       >
                         {clubTypeOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4 py-2.5 border-b border-white/5">
+                  <div className="flex-1">
+                    <span className="text-sm text-white/50">예약 방식</span>
+                    <div className="mt-1">
+                      <select
+                        value={formData.bookingMode}
+                        onChange={(e) => handleChange('bookingMode', e.target.value)}
+                        className={inputClass}
+                      >
+                        {bookingModeOptions.map(opt => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>

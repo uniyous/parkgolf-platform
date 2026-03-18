@@ -211,6 +211,13 @@ export const ClubListPage: React.FC = () => {
                         }`}>
                           {club.clubType === 'FREE' ? '무료' : '유료'}
                         </span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          club.bookingMode === 'PARTNER'
+                            ? 'bg-amber-500/20 text-amber-400'
+                            : 'bg-blue-500/20 text-blue-400'
+                        }`}>
+                          {club.bookingMode === 'PARTNER' ? '파트너' : '플랫폼'}
+                        </span>
                       </div>
                       <span className="text-xs text-white/40">
                         {club.operatingHours?.open?.slice(0, 5)}

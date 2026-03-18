@@ -108,6 +108,7 @@ export class ClubService {
       search,
       location,
       status,
+      bookingMode,
       minHoles,
       maxHoles,
       facilities,
@@ -134,6 +135,7 @@ export class ClubService {
       }),
       ...(location && { location: { contains: location, mode: 'insensitive' } }),
       ...(status && { status }),
+      ...(bookingMode && { bookingMode }),
       ...(minHoles && { totalHoles: { gte: minHoles } }),
       ...(maxHoles && { totalHoles: { lte: maxHoles } }),
       ...(facilities && facilities.length > 0 && {

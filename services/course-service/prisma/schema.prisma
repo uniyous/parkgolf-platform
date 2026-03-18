@@ -27,6 +27,7 @@ model Club {
   seasonInfo     Json?      @map("season_info")
   facilities     String[]   @default([])
   clubType       ClubType   @default(PAID) @map("club_type")
+  bookingMode    BookingMode  @default(PLATFORM) @map("booking_mode")
   latitude       Float?
   longitude      Float?
   isActive       Boolean    @default(true) @map("is_active")
@@ -290,4 +291,9 @@ enum SlotMode {
 enum ClubType {
   PAID
   FREE
+}
+
+enum BookingMode {
+  PLATFORM
+  PARTNER
 }
