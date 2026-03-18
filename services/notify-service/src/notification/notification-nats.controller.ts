@@ -552,6 +552,59 @@ export class NotificationNatsController {
     }
   }
 
+  // ===== Template CRUD Handlers =====
+
+  @MessagePattern('templates.list')
+  async listTemplates(@Payload() payload: { page?: number; limit?: number; token?: string }) {
+    const { page = 1, limit = 20 } = payload || {};
+    this.logger.log(`NATS: templates.list - page=${page}, limit=${limit}`);
+
+    const templates = await this.templateService.findAll();
+    const pageNum = Number(page) || 1;
+    const limitNum = Number(limit) || 20;
+    const start = (pageNum - 1) * limitNum;
+    const paged = templates.slice(start, start + limitNum);
+
+    return NatsResponse.paginated(paged, templates.length, pageNum, limitNum);
+  }
+
+  @MessagePattern('templates.get')
+  async getTemplate(@Payload() payload: { id: number; token?: string }) {
+    const { id } = extractPayload(payload);
+    this.logger.log(`NATS: templates.get - id=${id}`);
+
+    const template = await this.templateService.findOne(Number(id));
+    return NatsResponse.success(template);
+  }
+
+  @MessagePattern('templates.create')
+  async createTemplate(@Payload() payload: { token?: string; [key: string]: unknown }) {
+    const data = extractPayload(payload);
+    this.logger.log(`NATS: templates.create`);
+    const { token, ...dto } = data as Record<string, unknown>;
+
+    const template = await this.templateService.create(dto as any);
+    return NatsResponse.success(template);
+  }
+
+  @MessagePattern('templates.update')
+  async updateTemplate(@Payload() payload: { id: number; data: Record<string, unknown>; token?: string }) {
+    const { id, data } = extractPayload(payload);
+    this.logger.log(`NATS: templates.update - id=${id}`);
+
+    const template = await this.templateService.update(Number(id), data as any);
+    return NatsResponse.success(template);
+  }
+
+  @MessagePattern('templates.delete')
+  async deleteTemplate(@Payload() payload: { id: number; token?: string }) {
+    const { id } = extractPayload(payload);
+    this.logger.log(`NATS: templates.delete - id=${id}`);
+
+    await this.templateService.remove(Number(id));
+    return NatsResponse.deleted();
+  }
+
   @EventPattern('user.deletion.reminder')
   async handleDeletionReminder(@Payload() data: {
     userId: number;
