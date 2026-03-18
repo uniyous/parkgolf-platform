@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Building2, MapPin, Monitor, Link2, ArrowRight, Wifi, WifiOff, CheckCircle2, Circle, AlertTriangle } from 'lucide-react';
-import { useCompaniesQuery } from '@/hooks/queries/company';
-import { useAllClubsQuery } from '@/hooks/queries/course';
+import { useCompanyStatsQuery } from '@/hooks/queries/company';
+import { useAllClubsQuery, useClubStatsQuery } from '@/hooks/queries/course';
 import { usePartnersQuery } from '@/hooks/queries/partner';
 import { PageLayout } from '@/components/layout';
 import { DataContainer } from '@/components/common';
@@ -20,31 +20,29 @@ const BOOKING_MODE_COLORS: Record<string, string> = {
 };
 
 export const FranchiseDashboardPage: React.FC = () => {
-  const { data: companiesResponse, isLoading: companiesLoading } = useCompaniesQuery();
-  const { data: clubs, isLoading: clubsLoading } = useAllClubsQuery();
+  const { data: companyStats, isLoading: companiesLoading } = useCompanyStatsQuery();
+  const { data: clubStats, isLoading: clubStatsLoading } = useClubStatsQuery();
+  const { data: clubsResponse, isLoading: clubsLoading } = useAllClubsQuery({ page: 1, limit: 20 });
   const { data: partnersResponse, isLoading: partnersLoading } = usePartnersQuery();
 
-  const companies = companiesResponse?.data || [];
-  const allClubs = clubs || [];
+  const allClubs = clubsResponse?.data || [];
   const partners = partnersResponse?.data || [];
 
-  const isLoading = companiesLoading || clubsLoading || partnersLoading;
+  const isLoading = companiesLoading || clubStatsLoading || clubsLoading || partnersLoading;
 
   // Stats
   const stats = useMemo(() => {
-    const platformClubs = allClubs.filter((c) => c.bookingMode === 'PLATFORM');
-    const partnerClubs = allClubs.filter((c) => c.bookingMode === 'PARTNER');
     const activePartners = partners.filter((p) => p.isActive);
 
     return {
-      totalCompanies: companies.length,
-      totalClubs: allClubs.length,
-      platformClubs: platformClubs.length,
-      partnerClubs: partnerClubs.length,
+      totalCompanies: companyStats?.totalCompanies || 0,
+      totalClubs: clubStats?.total || 0,
+      platformClubs: clubStats?.byBookingMode?.platform || 0,
+      partnerClubs: clubStats?.byBookingMode?.partner || 0,
       activePartners: activePartners.length,
       inactivePartners: partners.length - activePartners.length,
     };
-  }, [companies, allClubs, partners]);
+  }, [companyStats, clubStats, partners]);
 
   // Recent clubs (sorted by createdAt desc, top 5)
   const recentClubs = useMemo(() => {

@@ -10,6 +10,13 @@ export class CourseService {
   // ============================================
   // Club Management
   // ============================================
+  async getClubStats(adminToken?: string): Promise<any> {
+    this.logger.log('Fetching club stats');
+    const params: any = {};
+    if (adminToken) params.token = adminToken;
+    return this.natsClient.send('club.stats', params, NATS_TIMEOUTS.QUICK);
+  }
+
   async getClubs(filters: any = {}, adminToken?: string): Promise<any> {
     this.logger.log('Fetching clubs');
     const params: any = { ...filters };

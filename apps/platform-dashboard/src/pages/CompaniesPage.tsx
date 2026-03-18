@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Pencil, Trash2, AlertTriangle, Map } from 'lucide-react';
+import { Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import { useCompaniesQuery, useDeleteCompanyMutation, useUpdateCompanyStatusMutation } from '@/hooks/queries';
 import { useAuthStore, useCurrentAdmin } from '@/stores';
 import { Modal } from '@/components/ui';
-import { DataContainer } from '@/components/common';
+import { DataContainer, Pagination } from '@/components/common';
 import {
   FilterContainer,
   FilterSearch,
@@ -11,11 +11,11 @@ import {
   FilterResetButton,
   ActiveFilterTags,
 } from '@/components/common/filters';
-import { CompanyFormModal, CompanyDetailModal } from '@/components/features/company';
+import { CompanyFormModal } from '@/components/features/company';
 import { PageLayout } from '@/components/layout';
-import type { Company, CompanyStatus } from '@/types/company';
+import type { Company, CompanyStatus, CompanyType } from '@/types/company';
 
-type SortField = 'name' | 'status' | 'coursesCount' | 'createdAt';
+type SortField = 'name' | 'status' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
 
 interface FilterState {
@@ -40,13 +40,24 @@ const STATUS_META: Record<CompanyStatus, { icon: string; color: string }> = {
   PENDING: { icon: '⏳', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
 };
 
+const COMPANY_TYPE_META: Record<CompanyType, { label: string; color: string }> = {
+  PLATFORM: { label: '본사', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+  ASSOCIATION: { label: '협회', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  FRANCHISE: { label: '가맹점', color: 'bg-green-500/20 text-green-400 border-green-500/30' },
+};
+
 export const CompaniesPage: React.FC = () => {
+  // Pagination
+  const [page, setPage] = useState(1);
+  const limit = 20;
+
   // Queries & Mutations
-  const { data: companiesResponse, isLoading } = useCompaniesQuery();
+  const { data: companiesResponse, isLoading } = useCompaniesQuery(undefined, page, limit);
   const deleteCompany = useDeleteCompanyMutation();
   const updateStatus = useUpdateCompanyStatusMutation();
 
   const companies = companiesResponse?.data || [];
+  const pagination = companiesResponse?.pagination ?? { total: 0, page: 1, limit, totalPages: 0 };
 
   // Auth
   const currentAdmin = useCurrentAdmin();
@@ -59,11 +70,9 @@ export const CompaniesPage: React.FC = () => {
   });
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   // Modal State
   const [formModal, setFormModal] = useState<{ open: boolean; company?: Company }>({ open: false });
-  const [detailModal, setDetailModal] = useState<{ open: boolean; company?: Company }>({ open: false });
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; company?: Company }>({ open: false });
 
   // Filtered & Sorted Data
@@ -86,13 +95,8 @@ export const CompaniesPage: React.FC = () => {
     }
 
     result.sort((a, b) => {
-      let aVal: any = a[sortField];
-      let bVal: any = b[sortField];
-
-      if (sortField === 'createdAt') {
-        aVal = aVal ? new Date(aVal).getTime() : 0;
-        bVal = bVal ? new Date(bVal).getTime() : 0;
-      }
+      const aVal = a[sortField] ?? '';
+      const bVal = b[sortField] ?? '';
 
       if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
       if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
@@ -101,14 +105,6 @@ export const CompaniesPage: React.FC = () => {
 
     return result;
   }, [companies, filters, sortField, sortDirection]);
-
-  // Stats
-  const stats = useMemo(() => ({
-    total: companies.length,
-    active: companies.filter((c) => c.status === 'ACTIVE').length,
-    maintenance: companies.filter((c) => c.status === 'MAINTENANCE').length,
-    inactive: companies.filter((c) => c.status === 'INACTIVE').length,
-  }), [companies]);
 
   // Handlers
   const handleSort = (field: SortField) => {
@@ -138,20 +134,6 @@ export const CompaniesPage: React.FC = () => {
     }
   };
 
-  const handleSelectAll = () => {
-    if (selectedIds.length === filteredCompanies.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(filteredCompanies.map((c) => c.id));
-    }
-  };
-
-  const handleSelect = (id: number) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
-  };
-
   return (
     <PageLayout>
       {/* 헤더 카드 */}
@@ -173,61 +155,15 @@ export const CompaniesPage: React.FC = () => {
             </button>
           )}
         </div>
-
-        {/* 통계 */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-emerald-500/10 p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-emerald-400">{stats.total}</div>
-                <div className="text-sm text-emerald-400">전체 회사</div>
-              </div>
-              <div className="text-3xl">🏢</div>
-            </div>
-          </div>
-          <div className="bg-green-500/10 p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-                <div className="text-sm text-green-600">운영 중</div>
-              </div>
-              <div className="text-3xl">✅</div>
-            </div>
-          </div>
-          <div className="bg-yellow-500/10 p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-yellow-600">{stats.maintenance}</div>
-                <div className="text-sm text-yellow-600">점검 중</div>
-              </div>
-              <div className="text-3xl">🔧</div>
-            </div>
-          </div>
-          <div className="bg-red-500/10 p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-red-600">{stats.inactive}</div>
-                <div className="text-sm text-red-600">비활성</div>
-              </div>
-              <div className="text-3xl">⏸️</div>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* 필터 */}
-      <FilterContainer columns={3}>
-        <FilterSearch
-          label="검색"
-          showLabel
-          value={filters.search}
-          onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
-          placeholder="회사명, 사업자번호, 주소, 연락처..."
-        />
+      <FilterContainer columns="flex">
         <FilterSelect
           label="상태"
+          showLabel
           value={filters.status === 'ALL' ? '' : filters.status}
-          onChange={(value) => setFilters((f) => ({ ...f, status: (value || 'ALL') as CompanyStatus | 'ALL' }))}
+          onChange={(value) => { setFilters((f) => ({ ...f, status: (value || 'ALL') as CompanyStatus | 'ALL' })); setPage(1); }}
           options={[
             { value: 'ACTIVE', label: '운영 중' },
             { value: 'MAINTENANCE', label: '점검 중' },
@@ -235,11 +171,18 @@ export const CompaniesPage: React.FC = () => {
           ]}
           placeholder="전체 상태"
         />
-        <div className="flex items-end justify-end">
-          <FilterResetButton
-            hasActiveFilters={!!(filters.search || filters.status !== 'ALL')}
-            onClick={() => setFilters({ search: '', status: 'ALL' })}
-          />
+        <FilterSearch
+          label="검색"
+          showLabel
+          value={filters.search}
+          onChange={(value) => { setFilters((f) => ({ ...f, search: value })); setPage(1); }}
+          placeholder="회사명, 사업자번호..."
+        />
+        <div className="ml-auto flex items-end">
+        <FilterResetButton
+          hasActiveFilters={!!(filters.search || filters.status !== 'ALL')}
+          onClick={() => { setFilters({ search: '', status: 'ALL' }); setPage(1); }}
+        />
         </div>
       </FilterContainer>
 
@@ -258,16 +201,13 @@ export const CompaniesPage: React.FC = () => {
 
       {/* 회사 목록 테이블 */}
       <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 overflow-hidden">
-        <div className="px-6 py-4 border-b border-white/15 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-white/15">
           <h3 className="text-lg font-medium text-white">
             회사 목록
             <span className="ml-2 text-sm font-normal text-white/50">
               ({filteredCompanies.length}개)
             </span>
           </h3>
-          {selectedIds.length > 0 && (
-            <span className="text-sm text-emerald-400">{selectedIds.length}개 선택됨</span>
-          )}
         </div>
         <DataContainer
           isLoading={isLoading}
@@ -292,14 +232,6 @@ export const CompaniesPage: React.FC = () => {
             <table className="min-w-full divide-y divide-white/15">
               <thead className="bg-white/5">
                 <tr>
-                  <th className="px-4 py-3 w-12">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.length === filteredCompanies.length && filteredCompanies.length > 0}
-                      onChange={handleSelectAll}
-                      className="rounded border-white/15 text-emerald-400 focus:ring-emerald-500"
-                    />
-                  </th>
                   <th
                     className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase cursor-pointer hover:bg-white/10 transition-colors"
                     onClick={() => handleSort('name')}
@@ -312,17 +244,7 @@ export const CompaniesPage: React.FC = () => {
                     </div>
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase">연락처</th>
-                  <th
-                    className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase cursor-pointer hover:bg-white/10 transition-colors"
-                    onClick={() => handleSort('coursesCount')}
-                  >
-                    <div className="flex items-center space-x-1">
-                      <span>코스</span>
-                      {sortField === 'coursesCount' && (
-                        <span className="text-emerald-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                      )}
-                    </div>
-                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase">유형</th>
                   <th
                     className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase cursor-pointer hover:bg-white/10 transition-colors"
                     onClick={() => handleSort('status')}
@@ -338,93 +260,91 @@ export const CompaniesPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/15">
-                {filteredCompanies.map((company) => (
-                  <tr
-                    key={company.id}
-                    className="hover:bg-white/5 transition-colors cursor-pointer"
-                    onClick={() => setDetailModal({ open: true, company })}
-                  >
-                    <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(company.id)}
-                        onChange={() => handleSelect(company.id)}
-                        className="rounded border-white/15 text-emerald-400 focus:ring-emerald-500"
-                      />
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold overflow-hidden">
-                          {company.logoUrl ? (
-                            <img src={company.logoUrl} alt={company.name} className="w-full h-full object-cover" />
-                          ) : (
-                            company.name?.charAt(0) || '?'
+                {filteredCompanies.map((company) => {
+                  const typeMeta = COMPANY_TYPE_META[company.companyType];
+                  return (
+                    <tr
+                      key={company.id}
+                      className="hover:bg-white/5 transition-colors"
+                    >
+                      <td className="px-4 py-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold overflow-hidden">
+                            {company.logoUrl ? (
+                              <img src={company.logoUrl} alt={company.name} className="w-full h-full object-cover" />
+                            ) : (
+                              company.name?.charAt(0) || '?'
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-medium text-white">{company.name}</div>
+                            <div className="text-sm text-white/50 max-w-xs truncate">{company.address || '-'}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="text-sm text-white">{company.phoneNumber || '-'}</div>
+                        <div className="text-sm text-white/50">{company.email || '-'}</div>
+                      </td>
+                      <td className="px-4 py-4">
+                        {typeMeta ? (
+                          <span className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full border ${typeMeta.color}`}>
+                            {typeMeta.label}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-white/50">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        {hasManageCompanies ? (
+                          <select
+                            value={company.status}
+                            onChange={(e) => handleStatusChange(company, e.target.value as CompanyStatus)}
+                            className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border cursor-pointer transition-colors ${STATUS_META[company.status]?.color}`}
+                          >
+                            <option value="ACTIVE">운영 중</option>
+                            <option value="MAINTENANCE">점검 중</option>
+                            <option value="INACTIVE">비활성</option>
+                          </select>
+                        ) : (
+                          <span className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border ${STATUS_META[company.status]?.color}`}>
+                            <span className="mr-1">{STATUS_META[company.status]?.icon}</span>
+                            {STATUS_LABELS[company.status]}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {hasManageCompanies && (
+                            <>
+                              <button
+                                onClick={() => setFormModal({ open: true, company })}
+                                className="inline-flex items-center px-3 py-1.5 text-sm text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
+                              >
+                                <Pencil className="w-4 h-4 mr-1" />
+                                수정
+                              </button>
+                              {currentAdmin?.primaryScope === 'PLATFORM' && (
+                                <button
+                                  onClick={() => setDeleteConfirm({ open: true, company })}
+                                  className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10 rounded-lg transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-1" />
+                                  삭제
+                                </button>
+                              )}
+                            </>
                           )}
                         </div>
-                        <div>
-                          <div className="font-medium text-white">{company.name}</div>
-                          <div className="text-sm text-white/50 max-w-xs truncate">{company.address || '-'}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="text-sm text-white">{company.phoneNumber || '-'}</div>
-                      <div className="text-sm text-white/50">{company.email || '-'}</div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className="inline-flex items-center px-2.5 py-1 text-sm font-medium text-white bg-white/10 rounded-lg">
-                        <Map className="w-4 h-4 mr-1 text-white/50" />
-                        {company.coursesCount || 0}개
-                      </span>
-                    </td>
-                    <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                      {hasManageCompanies ? (
-                        <select
-                          value={company.status}
-                          onChange={(e) => handleStatusChange(company, e.target.value as CompanyStatus)}
-                          className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border cursor-pointer transition-colors ${STATUS_META[company.status]?.color}`}
-                        >
-                          <option value="ACTIVE">운영 중</option>
-                          <option value="MAINTENANCE">점검 중</option>
-                          <option value="INACTIVE">비활성</option>
-                        </select>
-                      ) : (
-                        <span className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border ${STATUS_META[company.status]?.color}`}>
-                          <span className="mr-1">{STATUS_META[company.status]?.icon}</span>
-                          {STATUS_LABELS[company.status]}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-1">
-                        {hasManageCompanies && (
-                          <>
-                            <button
-                              onClick={() => setFormModal({ open: true, company })}
-                              className="inline-flex items-center px-3 py-1.5 text-sm text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
-                            >
-                              <Pencil className="w-4 h-4 mr-1" />
-                              수정
-                            </button>
-                            {currentAdmin?.primaryScope === 'PLATFORM' && (
-                              <button
-                                onClick={() => setDeleteConfirm({ open: true, company })}
-                                className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10 rounded-lg transition-colors"
-                              >
-                                <Trash2 className="w-4 h-4 mr-1" />
-                                삭제
-                              </button>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </DataContainer>
+        <Pagination pagination={pagination} onPageChange={setPage} />
       </div>
 
       {/* Form Modal */}
@@ -432,17 +352,6 @@ export const CompaniesPage: React.FC = () => {
         open={formModal.open}
         company={formModal.company}
         onClose={() => setFormModal({ open: false })}
-      />
-
-      {/* Detail Modal */}
-      <CompanyDetailModal
-        open={detailModal.open}
-        company={detailModal.company}
-        onClose={() => setDetailModal({ open: false })}
-        onEdit={(company) => {
-          setDetailModal({ open: false });
-          setFormModal({ open: true, company });
-        }}
       />
 
       {/* Delete Confirm Modal */}

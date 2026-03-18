@@ -3,6 +3,14 @@ import { courseApi } from '@/lib/api/courseApi';
 import { clubKeys, gameKeys } from './keys';
 import type { ClubFilters } from '@/types/club';
 
+export const useClubStatsQuery = () => {
+  return useQuery({
+    queryKey: clubKeys.stats(),
+    queryFn: () => courseApi.getClubStats(),
+    meta: { globalLoading: false },
+  });
+};
+
 export const useClubsByCompanyQuery = (companyId?: number) => {
   return useQuery({
     queryKey: clubKeys.byCompany(companyId!),

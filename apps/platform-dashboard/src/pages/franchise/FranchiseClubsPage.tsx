@@ -20,7 +20,7 @@ import {
 } from '@/hooks/queries/partner';
 import { useCompaniesQuery } from '@/hooks/queries/company';
 import { PageLayout } from '@/components/layout';
-import { DataContainer } from '@/components/common';
+import { DataContainer, Pagination } from '@/components/common';
 import { Modal } from '@/components/ui';
 import {
   FilterContainer,
@@ -80,9 +80,12 @@ const SYNC_MODE_LABELS: Record<SyncMode, string> = {
 };
 
 export const FranchiseClubsPage: React.FC = () => {
-  const { data: clubs, isLoading } = useAllClubsQuery();
+  const [page, setPage] = useState(1);
+  const limit = 20;
+  const { data: clubsResponse, isLoading } = useAllClubsQuery({ page, limit });
   const { data: partnersResponse } = usePartnersQuery();
-  const allClubs = clubs || [];
+  const allClubs = clubsResponse?.data || [];
+  const pagination = clubsResponse?.pagination ?? { total: 0, page: 1, limit, totalPages: 0 };
   const partners = partnersResponse?.data || [];
 
   // clubId → PartnerConfig 매핑
@@ -125,11 +128,11 @@ export const FranchiseClubsPage: React.FC = () => {
   // Stats
   const stats = useMemo(
     () => ({
-      total: allClubs.length,
+      total: pagination.total || allClubs.length,
       platform: allClubs.filter((c) => c.bookingMode === 'PLATFORM').length,
       partner: allClubs.filter((c) => c.bookingMode === 'PARTNER').length,
     }),
-    [allClubs],
+    [allClubs, pagination.total],
   );
 
   const TAB_OPTIONS: { value: BookingModeFilter; label: string; count: number }[] = [
@@ -177,20 +180,20 @@ export const FranchiseClubsPage: React.FC = () => {
           label="운영 방식"
           showLabel
           value={filters.bookingMode}
-          onChange={(value) => setFilters((f) => ({ ...f, bookingMode: value as BookingModeFilter }))}
+          onChange={(value) => { setFilters((f) => ({ ...f, bookingMode: value as BookingModeFilter })); setPage(1); }}
           options={TAB_OPTIONS.map((t) => ({ value: t.value, label: `${t.label} (${t.count})` }))}
         />
         <FilterSearch
           label="검색"
           showLabel
           value={filters.search}
-          onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
+          onChange={(value) => { setFilters((f) => ({ ...f, search: value })); setPage(1); }}
           placeholder="골프장명, 주소..."
         />
         <div className="ml-auto flex items-end">
           <FilterResetButton
             hasActiveFilters={!!(filters.search || filters.bookingMode !== 'ALL')}
-            onClick={() => setFilters({ search: '', bookingMode: 'ALL' })}
+            onClick={() => { setFilters({ search: '', bookingMode: 'ALL' }); setPage(1); }}
           />
         </div>
       </FilterContainer>
@@ -243,6 +246,7 @@ export const FranchiseClubsPage: React.FC = () => {
           ))}
         </div>
       </DataContainer>
+      <Pagination pagination={pagination} onPageChange={setPage} />
 
       {/* Detail Modal */}
       <ClubDetailModal
@@ -653,7 +657,7 @@ const ClubCoursesTab: React.FC<{ club: Club }> = ({ club }) => (
             <div className="p-4 border-b border-white/10">
               <div className="flex items-center space-x-4">
                 <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <span className="text-xl font-bold text-white">{course.code || course.name?.charAt(0)}</span>
+                  <span className="text-xl font-bold text-white">{course.name?.charAt(0) || '?'}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="text-xl font-bold text-white truncate">
@@ -662,6 +666,9 @@ const ClubCoursesTab: React.FC<{ club: Club }> = ({ club }) => (
                       <span className="ml-2 text-base font-normal text-white/50">({course.subtitle})</span>
                     )}
                   </h4>
+                  {course.code && (
+                    <p className="text-xs text-white/40 mt-0.5 truncate">{course.code}</p>
+                  )}
                   <div className="flex items-center flex-wrap gap-3 mt-2">
                     {course.par && (
                       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-emerald-500/20 text-emerald-300">

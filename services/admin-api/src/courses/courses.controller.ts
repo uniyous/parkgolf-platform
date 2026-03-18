@@ -98,6 +98,14 @@ export class CoursesController {
   // ============================================
   // Club Management
   // ============================================
+  @Get('clubs/stats')
+  @ApiOperation({ summary: 'Get club statistics' })
+  @ApiResponse({ status: 200, description: 'Club stats retrieved successfully' })
+  async getClubStats(@BearerToken() token: string) {
+    this.logger.log('Fetching club stats');
+    return this.courseService.getClubStats(token);
+  }
+
   @Get('clubs')
   @ApiOperation({ summary: 'Get clubs list' })
   @ApiQuery({ name: 'companyId', required: false, description: 'Filter by company ID' })

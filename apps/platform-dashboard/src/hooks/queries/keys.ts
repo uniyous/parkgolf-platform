@@ -51,6 +51,7 @@ export const clubKeys = {
   details: () => [...clubKeys.all, 'detail'] as const,
   detail: (id: number) => [...clubKeys.details(), id] as const,
   byCompany: (companyId: number) => [...clubKeys.all, 'byCompany', companyId] as const,
+  stats: () => [...clubKeys.all, 'stats'] as const,
 };
 
 // Booking Keys

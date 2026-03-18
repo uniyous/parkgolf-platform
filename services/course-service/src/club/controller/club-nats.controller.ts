@@ -66,6 +66,13 @@ export class ClubNatsController {
     return NatsResponse.success(clubs);
   }
 
+  @MessagePattern('club.stats')
+  async getClubStats() {
+    this.logger.log('Getting club stats');
+    const stats = await this.clubService.getStats();
+    return NatsResponse.success(stats);
+  }
+
   @MessagePattern('club.search')
   async searchGolfClubs(@Payload() data: ClubPayload) {
     this.logger.log(`Searching clubs with data: ${JSON.stringify(data)}`);
