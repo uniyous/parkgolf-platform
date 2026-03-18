@@ -2,8 +2,9 @@ import React, { useState, useMemo } from 'react';
 import {
   MapPin, Layers, Wifi, WifiOff, AlertTriangle, Plus, Pencil, Trash2,
   Play, RefreshCw, CheckCircle2, XCircle, Clock, Timer,
-  TrendingUp,
+  TrendingUp, Info, ExternalLink,
 } from 'lucide-react';
+import { KakaoMap } from '@/components/common/KakaoMap';
 import { useAllClubsQuery, useClubDetailQuery } from '@/hooks/queries/course';
 import {
   usePartnersQuery,
@@ -343,7 +344,7 @@ const ClubCard: React.FC<{
 
 // ── Club Detail Modal ──
 
-type ClubDetailTab = 'info' | 'config' | 'status';
+type ClubDetailTab = 'info' | 'courses' | 'config' | 'status';
 
 const ClubDetailModal: React.FC<{
   clubId?: number;
@@ -357,6 +358,7 @@ const ClubDetailModal: React.FC<{
 
   const tabs: { id: ClubDetailTab; label: string }[] = [
     { id: 'info', label: '기본 정보' },
+    { id: 'courses', label: '코스 정보' },
     ...(isPartnerMode ? [
       { id: 'config' as const, label: '연동 설정' },
       { id: 'status' as const, label: '연동 현황' },
@@ -373,8 +375,8 @@ const ClubDetailModal: React.FC<{
     <Modal
       isOpen={!!clubId}
       onClose={handleClose}
-      title="골프장 상세"
-      maxWidth={isPartnerMode ? '2xl' : 'lg'}
+      title=""
+      maxWidth={isPartnerMode ? '5xl' : '4xl'}
     >
       <DataContainer
         isLoading={isLoading}
@@ -383,28 +385,47 @@ const ClubDetailModal: React.FC<{
         loadingMessage="골프장 정보를 불러오는 중..."
       >
         {club && (
-          <div className="space-y-5">
-            {/* Tab Navigation (PARTNER mode only) */}
-            {isPartnerMode && (
-              <div className="flex gap-1 border-b border-white/10 pb-3">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
-                      activeTab === tab.id
-                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
-                        : 'text-white/50 hover:bg-white/8 hover:text-white/80'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+          <div className="flex flex-col" style={{ maxHeight: '80vh' }}>
+            {/* 골프장 헤더 (고정) */}
+            <div className="shrink-0">
+              <h1 className="text-2xl font-bold text-white">{club.name}</h1>
+              <div className="flex items-center flex-wrap gap-3 mt-2">
+                <span className="text-white/60 flex items-center text-sm">
+                  <MapPin className="w-4 h-4 mr-1" />
+                  {club.location || club.address || '-'}
+                </span>
+                <span className="text-white/60 text-sm">⛳ {club.totalHoles || 0}홀</span>
+                <span className="text-white/60 text-sm">🎯 {club.totalCourses || 0}코스</span>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[club.status]}`}>
+                  {STATUS_LABELS[club.status] || club.status}
+                </span>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${BOOKING_MODE_COLORS[club.bookingMode]}`}>
+                  {BOOKING_MODE_LABELS[club.bookingMode] || club.bookingMode}
+                </span>
               </div>
-            )}
+            </div>
 
-            {/* Tab Content */}
+            {/* Tab Navigation (고정) */}
+            <div className="shrink-0 flex gap-1 border-b border-white/10 pb-3 mt-5">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
+                    activeTab === tab.id
+                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
+                      : 'text-white/50 hover:bg-white/8 hover:text-white/80'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab Content (스크롤 영역) */}
+            <div className="flex-1 overflow-y-auto mt-5 pr-1">
             {activeTab === 'info' && <ClubInfoTab club={club} />}
+            {activeTab === 'courses' && <ClubCoursesTab club={club} />}
             {activeTab === 'config' && isPartnerMode && (
               <PartnerConfigTab club={club} partner={partner} />
             )}
@@ -421,8 +442,10 @@ const ClubDetailModal: React.FC<{
               </div>
             )}
 
-            {/* Close Button */}
-            <div className="flex justify-end pt-2 border-t border-white/15">
+            </div>
+
+            {/* Close Button (고정) */}
+            <div className="shrink-0 flex justify-end pt-3 border-t border-white/15 mt-3">
               <button
                 onClick={handleClose}
                 className="px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors text-white/70"
@@ -439,98 +462,270 @@ const ClubDetailModal: React.FC<{
 
 // ── Club Info Tab ──
 
+// InfoRow: admin-dashboard BasicInfoTab 스타일
+const InfoRow: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div className="flex items-start py-2.5 border-b border-white/5 last:border-b-0">
+    <span className="text-sm text-white/50 w-24 shrink-0">{label}</span>
+    <div className="text-sm text-white flex-1 min-w-0">{children}</div>
+  </div>
+);
+
+const FACILITY_ICONS: Record<string, string> = {
+  '카트도로': '🛣️', '연습장': '🏌️', '클럽하우스': '🏠', '레스토랑': '🍽️',
+  '프로샵': '🛍️', '라커룸': '🔐', '샤워실': '🚿', '주차장': '🅿️',
+  '캐디서비스': '🧑‍💼', '렌탈클럽': '🏑',
+};
+
 const ClubInfoTab: React.FC<{ club: Club }> = ({ club }) => (
   <div className="space-y-6">
-    {/* Basic Info */}
-    <div>
-      <h4 className="text-sm font-medium text-white/50 mb-3">기본 정보</h4>
-      <div className="grid grid-cols-2 gap-4">
-        <InfoItem label="골프장명" value={club.name} />
-        <InfoItem label="소속 회사" value={club.company?.name || `회사 #${club.companyId}`} />
-        <InfoItem label="주소" value={club.address || club.location || '-'} />
-        <InfoItem label="연락처" value={club.phone || '-'} />
-        <InfoItem label="코스 수" value={`${club.totalCourses}개`} />
-        <InfoItem label="홀 수" value={`${club.totalHoles}개`} />
-        <InfoItem label="클럽 유형" value={club.clubType === 'PAID' ? '유료' : '무료'} />
-        <InfoItem
-          label="운영 방식"
-          value={BOOKING_MODE_LABELS[club.bookingMode] || club.bookingMode}
-          badge
-          badgeColor={BOOKING_MODE_COLORS[club.bookingMode]}
-        />
-        <InfoItem
-          label="상태"
-          value={STATUS_LABELS[club.status] || club.status}
-          badge
-          badgeColor={STATUS_COLORS[club.status]}
-        />
-        <InfoItem
-          label="등록일"
-          value={new Date(club.createdAt).toLocaleDateString('ko-KR')}
-        />
+    {/* 기본 정보 + 운영 정보 (2 column, admin-dashboard 동일) */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* 기본 정보 카드 */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15">
+        <div className="px-4 py-3 border-b border-white/10">
+          <h4 className="flex items-center text-base font-medium text-white">
+            <Info className="w-5 h-5 mr-2 text-emerald-400" />
+            기본 정보
+          </h4>
+        </div>
+        <div className="p-4">
+          <InfoRow label="골프장명"><span className="font-medium">{club.name}</span></InfoRow>
+          <InfoRow label="소속 회사">{club.company?.name || `회사 #${club.companyId}`}</InfoRow>
+          <InfoRow label="지역">{club.location || '-'}</InfoRow>
+          <InfoRow label="주소">{club.address || '-'}</InfoRow>
+          <InfoRow label="연락처">{club.phone || '-'}</InfoRow>
+          <InfoRow label="이메일">
+            {club.email || <span className="text-white/30">없음</span>}
+          </InfoRow>
+          <InfoRow label="웹사이트">
+            {club.website ? (
+              <a
+                href={club.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-emerald-400 hover:underline inline-flex items-center gap-1"
+              >
+                {club.website}
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            ) : (
+              <span className="text-white/30">없음</span>
+            )}
+          </InfoRow>
+        </div>
+      </div>
+
+      {/* 운영 정보 카드 */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15">
+        <div className="px-4 py-3 border-b border-white/10">
+          <h4 className="flex items-center text-base font-medium text-white">
+            <Clock className="w-5 h-5 mr-2 text-blue-400" />
+            운영 정보
+          </h4>
+        </div>
+        <div className="p-4">
+          <div className="flex items-start gap-4 py-2.5 border-b border-white/5">
+            <div className="flex-1">
+              <span className="text-sm text-white/50">상태</span>
+              <div className="mt-1">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[club.status]}`}>
+                  {STATUS_LABELS[club.status] || club.status}
+                </span>
+              </div>
+            </div>
+            <div className="flex-1">
+              <span className="text-sm text-white/50">유형</span>
+              <div className="mt-1">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${club.clubType === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-sky-500/20 text-sky-400'}`}>
+                  {club.clubType === 'PAID' ? '유료' : '무료'}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-start gap-4 py-2.5 border-b border-white/5">
+            <div className="flex-1">
+              <span className="text-sm text-white/50">운영 방식</span>
+              <div className="mt-1">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${BOOKING_MODE_COLORS[club.bookingMode]}`}>
+                  {BOOKING_MODE_LABELS[club.bookingMode] || club.bookingMode}
+                </span>
+              </div>
+            </div>
+          </div>
+          <InfoRow label="운영시간">
+            {club.operatingHours?.open || '06:00'} ~ {club.operatingHours?.close || '18:00'}
+          </InfoRow>
+          <InfoRow label="등록일">
+            {new Date(club.createdAt).toLocaleDateString('ko-KR')}
+          </InfoRow>
+          <InfoRow label="최종수정">
+            {new Date(club.updatedAt).toLocaleDateString('ko-KR')}
+          </InfoRow>
+
+          {/* 부대시설 */}
+          <div className="mt-4 pt-4 border-t border-white/10">
+            <h4 className="text-sm font-medium text-white/70 mb-3">부대시설</h4>
+            <div className="flex flex-wrap gap-2">
+              {club.facilities && club.facilities.length > 0 ? (
+                club.facilities.map((facility) => (
+                  <span
+                    key={facility}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-white/5 text-white/70 border border-white/10"
+                  >
+                    {FACILITY_ICONS[facility] || '🏷️'} {facility}
+                  </span>
+                ))
+              ) : (
+                <span className="text-sm text-white/30">등록된 부대시설이 없습니다.</span>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    {/* Operating Hours */}
-    {club.operatingHours && (
-      <div>
-        <h4 className="text-sm font-medium text-white/50 mb-3">운영 시간</h4>
-        <div className="bg-white/5 rounded-lg p-3">
-          <span className="text-sm text-white">
-            {club.operatingHours.open} ~ {club.operatingHours.close}
-          </span>
-        </div>
-      </div>
-    )}
-
-    {/* Courses */}
-    {club.courses && club.courses.length > 0 && (
-      <div>
-        <h4 className="text-sm font-medium text-white/50 mb-3">
-          코스 목록 ({club.courses.length}개)
+    {/* 위치 정보 카드 (full-width, admin-dashboard 동일) */}
+    <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15">
+      <div className="px-4 py-3 border-b border-white/10">
+        <h4 className="flex items-center text-base font-medium text-white">
+          <MapPin className="w-5 h-5 mr-2 text-orange-400" />
+          위치 정보
         </h4>
-        <div className="space-y-2">
-          {club.courses.map((course) => (
-            <div
-              key={course.id}
-              className="flex items-center justify-between p-3 bg-white/5 rounded-lg"
-            >
-              <div>
-                <div className="text-sm font-medium text-white">{course.name}</div>
-                <div className="text-xs text-white/40">
-                  {course.holes?.length || 0}홀
-                  {course.description && ` | ${course.description}`}
+      </div>
+      <div className="p-4">
+        {club.latitude && club.longitude ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <KakaoMap
+              latitude={club.latitude}
+              longitude={club.longitude}
+              clubName={club.name}
+              height="280px"
+            />
+            <div>
+              <InfoRow label="주소">{club.address}</InfoRow>
+              <InfoRow label="위도">{club.latitude.toFixed(6)}</InfoRow>
+              <InfoRow label="경도">{club.longitude.toFixed(6)}</InfoRow>
+              <div className="mt-4">
+                <a
+                  href={`https://map.kakao.com/link/map/${encodeURIComponent(club.name)},${club.latitude},${club.longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
+                >
+                  카카오맵에서 보기
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <MapPin className="w-12 h-12 text-white/20 mb-3" />
+            <p className="text-sm text-white/40">좌표가 아직 설정되지 않았습니다.</p>
+            <p className="text-xs text-white/30 mt-1">admin-dashboard에서 주소를 저장하면 자동으로 계산됩니다.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+);
+
+// ── Club Courses Tab (admin-dashboard CourseManagementTab 스타일, 조회 전용) ──
+
+const getDifficultyStars = (difficulty: number) => {
+  return '★'.repeat(difficulty) + '☆'.repeat(5 - difficulty);
+};
+
+const ClubCoursesTab: React.FC<{ club: Club }> = ({ club }) => (
+  <div className="space-y-6">
+    {/* 헤더 */}
+    <div>
+      <h2 className="text-xl font-semibold text-white">코스 목록</h2>
+      <p className="text-white/60 mt-1">9홀 단위 코스 및 홀 정보를 확인합니다</p>
+    </div>
+
+    {/* 코스 목록 */}
+    {club.courses && club.courses.length > 0 ? (
+      <div className="space-y-4">
+        {club.courses.map((course) => (
+          <div key={course.id} className="border border-white/15 rounded-lg overflow-hidden bg-white/10 backdrop-blur-xl">
+            {/* 코스 헤더 */}
+            <div className="p-4 border-b border-white/10">
+              <div className="flex items-center space-x-4">
+                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <span className="text-xl font-bold text-white">{course.code || course.name?.charAt(0)}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-xl font-bold text-white truncate">
+                    {course.name}
+                    {course.subtitle && (
+                      <span className="ml-2 text-base font-normal text-white/50">({course.subtitle})</span>
+                    )}
+                  </h4>
+                  <div className="flex items-center flex-wrap gap-3 mt-2">
+                    {course.par && (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-emerald-500/20 text-emerald-300">
+                        Par {course.par}
+                      </span>
+                    )}
+                    {course.totalDistance && (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-green-500/20 text-green-400">
+                        {course.totalDistance}m
+                      </span>
+                    )}
+                    {course.difficulty && (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-orange-500/20 text-orange-400">
+                        난이도 {getDifficultyStars(course.difficulty)}
+                      </span>
+                    )}
+                    {course.scenicRating && (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-purple-500/20 text-purple-400">
+                        경치 {getDifficultyStars(course.scenicRating)}
+                      </span>
+                    )}
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-white/10 text-white">
+                      {course.holeCount || course.holes?.length || 0}홀
+                    </span>
+                  </div>
                 </div>
               </div>
-              <span
-                className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${
-                  course.status === 'ACTIVE'
-                    ? 'bg-green-500/20 text-green-400'
-                    : 'bg-red-500/20 text-red-400'
-                }`}
-              >
-                {course.status === 'ACTIVE' ? '운영 중' : course.status}
-              </span>
+              {course.description && (
+                <p className="text-white/60 mt-3 text-sm">{course.description}</p>
+              )}
             </div>
-          ))}
-        </div>
-      </div>
-    )}
 
-    {/* Facilities */}
-    {club.facilities && club.facilities.length > 0 && (
-      <div>
-        <h4 className="text-sm font-medium text-white/50 mb-3">시설</h4>
-        <div className="flex flex-wrap gap-2">
-          {club.facilities.map((facility) => (
-            <span
-              key={facility}
-              className="inline-flex items-center px-2.5 py-1 text-xs bg-white/10 text-white/70 rounded-full"
-            >
-              {facility}
-            </span>
-          ))}
-        </div>
+            {/* 홀별 정보 */}
+            <div className="p-4 bg-white/5">
+              <h5 className="text-sm font-medium text-white/70 mb-3">홀 정보</h5>
+              {course.holes && course.holes.length > 0 ? (
+                <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-2">
+                  {[...course.holes].sort((a, b) => a.holeNumber - b.holeNumber).map((hole) => (
+                    <div
+                      key={hole.id}
+                      className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-2 text-center"
+                    >
+                      <div className="text-xs text-white/50 font-medium">{hole.holeNumber}H</div>
+                      <div className="text-lg font-bold text-white">P{hole.par}</div>
+                      {hole.distance && (
+                        <div className="text-xs text-white/40">{hole.distance}m</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-white/40 py-4 text-center">
+                  등록된 홀 정보가 없습니다
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div className="text-center py-12 bg-white/5 rounded-lg">
+        <Layers className="w-12 h-12 text-white/20 mx-auto mb-3" />
+        <h3 className="text-lg font-medium text-white">코스가 없습니다</h3>
+        <p className="mt-1 text-sm text-white/50">admin-dashboard에서 코스를 등록해주세요</p>
       </div>
     )}
   </div>

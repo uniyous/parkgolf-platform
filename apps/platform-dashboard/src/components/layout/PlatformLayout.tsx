@@ -242,6 +242,10 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
     if (path === '/dashboard') {
       return location.pathname === '/dashboard' || location.pathname === '/';
     }
+    // /franchise는 정확 일치만 (하위 경로와 구분)
+    if (path === '/franchise') {
+      return location.pathname === '/franchise';
+    }
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
