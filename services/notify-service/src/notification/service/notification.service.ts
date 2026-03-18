@@ -89,6 +89,40 @@ export class NotificationService {
     };
   }
 
+  async findAllAdmin(query: { page?: number; limit?: number; type?: string; status?: string; userId?: string }): Promise<{
+    notifications: Notification[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
+    const { page = 1, limit = 20, type, status, userId } = query;
+    const pageNum = Number(page) || 1;
+    const limitNum = Number(limit) || 20;
+    const skip = (pageNum - 1) * limitNum;
+
+    const where: Record<string, unknown> = {};
+    if (type) where.type = type;
+    if (status) where.status = status;
+    if (userId) where.userId = userId;
+
+    const [notifications, total] = await Promise.all([
+      this.prisma.notification.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limitNum,
+      }),
+      this.prisma.notification.count({ where }),
+    ]);
+
+    return {
+      notifications,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+    };
+  }
+
   async findOne(id: number, userId: string): Promise<Notification> {
     const notification = await this.prisma.notification.findFirst({
       where: { id, userId },

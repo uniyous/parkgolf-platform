@@ -552,6 +552,17 @@ export class NotificationNatsController {
     }
   }
 
+  // ===== Admin Notification List =====
+
+  @MessagePattern('notifications.list')
+  async listNotifications(@Payload() payload: { filters?: Record<string, string>; page?: number; limit?: number; token?: string }) {
+    const { filters = {}, page = 1, limit = 20 } = payload || {};
+    this.logger.log(`NATS: notifications.list - page=${page}, limit=${limit}`);
+
+    const result = await this.notificationService.findAllAdmin({ ...filters, page: Number(page), limit: Number(limit) });
+    return NatsResponse.paginated(result.notifications, result.total, result.page, Number(limit));
+  }
+
   // ===== Template CRUD Handlers =====
 
   @MessagePattern('templates.list')
