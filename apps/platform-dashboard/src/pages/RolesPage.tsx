@@ -22,13 +22,13 @@ const permissionMeta: Record<string, { name: string; description: string; level:
 const roleMeta: Record<string, { label: string; description: string; scope: string; color: string; bgColor: string }> = {
   // 플랫폼 역할
   PLATFORM_ADMIN: { label: '플랫폼 관리자', description: '플랫폼 전체 시스템의 모든 기능에 접근할 수 있는 최고 권한', scope: '플랫폼', color: 'text-red-800', bgColor: 'bg-red-500/20 border-red-200' },
-  PLATFORM_SUPPORT: { label: '플랫폼 고객지원', description: '플랫폼 전체 데이터 조회 및 고객 지원 권한', scope: '플랫폼', color: 'text-purple-800', bgColor: 'bg-purple-500/20 border-purple-200' },
+  PLATFORM_SUPPORT: { label: '플랫폼 고객지원', description: '플랫폼 전체 데이터 조회 및 고객 지원 권한', scope: '플랫폼', color: 'text-purple-300', bgColor: 'bg-purple-500/20 border-purple-500/30' },
   PLATFORM_VIEWER: { label: '플랫폼 조회', description: '플랫폼 전체 데이터 조회 권한 (읽기 전용)', scope: '플랫폼', color: 'text-white', bgColor: 'bg-white/10 border-white/15' },
   // 회사 역할
   COMPANY_ADMIN: { label: '회사 대표', description: '소속 회사 내 전체 권한 (대표/총괄)', scope: '회사', color: 'text-emerald-300', bgColor: 'bg-emerald-500/20 border-emerald-500/30' },
-  COMPANY_MANAGER: { label: '회사 매니저', description: '소속 회사 운영 관리 권한', scope: '회사', color: 'text-cyan-800', bgColor: 'bg-cyan-100 border-cyan-200' },
-  COMPANY_STAFF: { label: '회사 직원', description: '소속 회사 현장 업무 권한', scope: '회사', color: 'text-green-800', bgColor: 'bg-green-500/20 border-green-200' },
-  COMPANY_VIEWER: { label: '회사 조회', description: '소속 회사 데이터 조회 권한 (읽기 전용)', scope: '회사', color: 'text-slate-800', bgColor: 'bg-slate-100 border-slate-200' },
+  COMPANY_MANAGER: { label: '회사 매니저', description: '소속 회사 운영 관리 권한', scope: '회사', color: 'text-cyan-300', bgColor: 'bg-cyan-500/20 border-cyan-500/30' },
+  COMPANY_STAFF: { label: '회사 직원', description: '소속 회사 현장 업무 권한', scope: '회사', color: 'text-green-300', bgColor: 'bg-green-500/20 border-green-500/30' },
+  COMPANY_VIEWER: { label: '회사 조회', description: '소속 회사 데이터 조회 권한 (읽기 전용)', scope: '회사', color: 'text-slate-300', bgColor: 'bg-slate-500/20 border-slate-500/30' },
 };
 
 // 역할 아이콘
