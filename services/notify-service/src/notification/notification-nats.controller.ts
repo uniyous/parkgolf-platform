@@ -601,9 +601,9 @@ export class NotificationNatsController {
 
   @MessagePattern('templates.update')
   async updateTemplate(@Payload() payload: { templateId?: string; id?: number; data: Record<string, unknown>; token?: string }) {
-    const raw = extractPayload(payload);
-    const id = (raw as any).templateId || (raw as any).id;
-    const data = (raw as any).data;
+    // extractPayload를 사용하지 않음 - payload.data가 updateData와 충돌하므로 직접 접근
+    const id = payload.templateId || payload.id;
+    const data = payload.data;
     this.logger.log(`NATS: templates.update - id=${id}`);
 
     const template = await this.templateService.update(Number(id), data as any);
@@ -622,9 +622,9 @@ export class NotificationNatsController {
 
   @MessagePattern('templates.test')
   async testTemplate(@Payload() payload: { templateId?: string; id?: number; data?: Record<string, unknown>; token?: string }) {
-    const raw = extractPayload(payload);
-    const id = (raw as any).templateId || (raw as any).id;
-    const testData = (raw as any).data || {};
+    // extractPayload를 사용하지 않음 - payload.data가 testData와 충돌하므로 직접 접근
+    const id = payload.templateId || payload.id;
+    const testData = payload.data || {};
     this.logger.log(`NATS: templates.test - id=${id}`);
 
     const template = await this.templateService.findOne(Number(id));
