@@ -580,8 +580,9 @@ export class NotificationNatsController {
   }
 
   @MessagePattern('templates.get')
-  async getTemplate(@Payload() payload: { id: number; token?: string }) {
-    const { id } = extractPayload(payload);
+  async getTemplate(@Payload() payload: { id?: number; templateId?: string; token?: string }) {
+    const data = extractPayload(payload);
+    const id = (data as any).templateId || (data as any).id;
     this.logger.log(`NATS: templates.get - id=${id}`);
 
     const template = await this.templateService.findOne(Number(id));
@@ -599,8 +600,10 @@ export class NotificationNatsController {
   }
 
   @MessagePattern('templates.update')
-  async updateTemplate(@Payload() payload: { id: number; data: Record<string, unknown>; token?: string }) {
-    const { id, data } = extractPayload(payload);
+  async updateTemplate(@Payload() payload: { templateId?: string; id?: number; data: Record<string, unknown>; token?: string }) {
+    const raw = extractPayload(payload);
+    const id = (raw as any).templateId || (raw as any).id;
+    const data = (raw as any).data;
     this.logger.log(`NATS: templates.update - id=${id}`);
 
     const template = await this.templateService.update(Number(id), data as any);
@@ -608,12 +611,25 @@ export class NotificationNatsController {
   }
 
   @MessagePattern('templates.delete')
-  async deleteTemplate(@Payload() payload: { id: number; token?: string }) {
-    const { id } = extractPayload(payload);
+  async deleteTemplate(@Payload() payload: { templateId?: string; id?: number; token?: string }) {
+    const data = extractPayload(payload);
+    const id = (data as any).templateId || (data as any).id;
     this.logger.log(`NATS: templates.delete - id=${id}`);
 
     await this.templateService.remove(Number(id));
     return NatsResponse.deleted();
+  }
+
+  @MessagePattern('templates.test')
+  async testTemplate(@Payload() payload: { templateId?: string; id?: number; data?: Record<string, unknown>; token?: string }) {
+    const raw = extractPayload(payload);
+    const id = (raw as any).templateId || (raw as any).id;
+    const testData = (raw as any).data || {};
+    this.logger.log(`NATS: templates.test - id=${id}`);
+
+    const template = await this.templateService.findOne(Number(id));
+    const processed = await this.templateService.processTemplate(template, testData);
+    return NatsResponse.success({ success: true, preview: processed.content });
   }
 
   @EventPattern('user.deletion.reminder')
