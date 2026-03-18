@@ -189,11 +189,20 @@ export class NotificationService {
     const endDate = new Date(dateRange.endDate);
     endDate.setHours(23, 59, 59, 999);
 
-    const statusGroups = await this.prisma.notification.groupBy({
-      by: ['status'],
-      where: { createdAt: { gte: startDate, lte: endDate } },
-      _count: true,
-    });
+    const dateFilter = { createdAt: { gte: startDate, lte: endDate } };
+
+    const [statusGroups, typeGroups] = await Promise.all([
+      this.prisma.notification.groupBy({
+        by: ['status'],
+        where: dateFilter,
+        _count: true,
+      }),
+      this.prisma.notification.groupBy({
+        by: ['type'],
+        where: dateFilter,
+        _count: true,
+      }),
+    ]);
 
     const statusMap = new Map(statusGroups.map((g) => [g.status, g._count]));
     const pending = statusMap.get(NotificationStatus.PENDING) ?? 0;
@@ -202,15 +211,20 @@ export class NotificationService {
     const read = statusMap.get(NotificationStatus.READ) ?? 0;
 
     const total = pending + sent + failed + read;
-    const totalSent = sent + read;
-    const deliveryRate = total > 0 ? Math.round((totalSent / total) * 100 * 10) / 10 : 0;
-    const readRate = totalSent > 0 ? Math.round((read / totalSent) * 100 * 10) / 10 : 0;
+    const delivered = sent + read;
+    const deliveryRate = total > 0 ? delivered / total : 0;
+    const readRate = delivered > 0 ? read / delivered : 0;
 
     return {
-      totalSent,
+      totalNotifications: total,
+      sentNotifications: sent,
+      deliveredNotifications: delivered,
+      failedNotifications: failed,
+      readNotifications: read,
+      notificationsByType: typeGroups.map((g) => ({ type: g.type, count: g._count })),
+      notificationsByStatus: statusGroups.map((g) => ({ status: g.status, count: g._count })),
       deliveryRate,
       readRate,
-      failedNotifications: failed,
     };
   }
 
