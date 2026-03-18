@@ -225,18 +225,6 @@ export class NotificationsController {
     return this.notificationService.markAllAsRead(userId, token);
   }
 
-  @Post('templates')
-  @ApiOperation({ summary: 'Create notification template' })
-  @ApiResponse({ status: 201, description: 'Template created successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async createTemplate(
-    @BearerToken() token: string,
-    @Body() templateData: Record<string, unknown>,
-  ) {
-    this.logger.log('Creating notification template');
-    return this.notificationService.createTemplate(templateData, token);
-  }
-
   @Post('templates/:templateId/test')
   @ApiOperation({ summary: 'Test notification template' })
   @ApiResponse({ status: 200, description: 'Template tested successfully' })
@@ -248,6 +236,18 @@ export class NotificationsController {
   ) {
     this.logger.log(`Testing template: ${templateId}`);
     return this.notificationService.testTemplate(templateId, testData, token);
+  }
+
+  @Post('templates')
+  @ApiOperation({ summary: 'Create notification template' })
+  @ApiResponse({ status: 201, description: 'Template created successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async createTemplate(
+    @BearerToken() token: string,
+    @Body() templateData: Record<string, unknown>,
+  ) {
+    this.logger.log('Creating notification template');
+    return this.notificationService.createTemplate(templateData, token);
   }
 
   @Post('campaigns')
