@@ -18,7 +18,6 @@ import {
   Settings,
   ClipboardList,
   Bell,
-  Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BrandLogo } from '@/components/ui';
@@ -90,17 +89,10 @@ const PLATFORM_MENU: NavEntry[] = [
         requiredPermissions: ['COMPANIES'],
       },
       {
-        label: '골프장 현황',
+        label: '골프장 관리',
         path: '/franchise/clubs',
         icon: MapPin,
         requiredPermissions: ['COMPANIES'],
-      },
-      {
-        label: '파트너 연동',
-        path: '/franchise/partners',
-        icon: Link2,
-        requiredPermissions: ['SYSTEM'],
-        allowedRoles: ['PLATFORM_ADMIN'],
       },
     ],
   },

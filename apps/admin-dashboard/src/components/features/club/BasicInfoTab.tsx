@@ -320,7 +320,7 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
 
               <div className="flex items-start gap-4 py-2.5 border-b border-white/5">
                 <div className="flex-1">
-                  <span className="text-sm text-white/50">예약 방식</span>
+                  <span className="text-sm text-white/50">운영 방식</span>
                   <div className="mt-1">
                     {isEditing ? (
                       <select

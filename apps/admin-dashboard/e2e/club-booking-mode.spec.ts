@@ -150,7 +150,7 @@ test.describe('골프장 목록 - bookingMode 배지', () => {
 test.describe('골프장 생성 - bookingMode 선택', () => {
   test.use({ storageState: 'e2e/.auth/admin.json' });
 
-  test('2.1 생성 페이지에 예약 방식 선택이 있다', async ({ page }) => {
+  test('2.1 생성 페이지에 운영 방식 선택이 있다', async ({ page }) => {
     await navigateToClubCreate(page);
 
     if (!await checkAccess(page)) {
@@ -161,10 +161,10 @@ test.describe('골프장 생성 - bookingMode 선택', () => {
     // 페이지 제목 확인
     await expect(page.getByRole('heading', { name: '골프장 추가' })).toBeVisible({ timeout: 10000 });
 
-    // 예약 방식 라벨 확인
-    await expect(page.getByText('예약 방식')).toBeVisible();
+    // 운영 방식 라벨 확인
+    await expect(page.getByText('운영 방식')).toBeVisible();
 
-    // 예약 방식 select 확인
+    // 운영 방식 select 확인
     const bookingModeSelect = page.locator('select').filter({ has: page.locator('option[value="PLATFORM"]') });
     await expect(bookingModeSelect).toBeVisible();
 
@@ -172,7 +172,7 @@ test.describe('골프장 생성 - bookingMode 선택', () => {
     await expect(bookingModeSelect).toHaveValue('PLATFORM');
   });
 
-  test('2.2 예약 방식을 PARTNER로 변경할 수 있다', async ({ page }) => {
+  test('2.2 운영 방식을 PARTNER로 변경할 수 있다', async ({ page }) => {
     await navigateToClubCreate(page);
 
     if (!await checkAccess(page)) {
@@ -180,7 +180,7 @@ test.describe('골프장 생성 - bookingMode 선택', () => {
       return;
     }
 
-    // 예약 방식 select 찾기
+    // 운영 방식 select 찾기
     const bookingModeSelect = page.locator('select').filter({ has: page.locator('option[value="PLATFORM"]') });
     await expect(bookingModeSelect).toBeVisible();
 
@@ -193,7 +193,7 @@ test.describe('골프장 생성 - bookingMode 선택', () => {
     await expect(bookingModeSelect).toHaveValue('PLATFORM');
   });
 
-  test('2.3 예약 방식 옵션에 플랫폼과 파트너가 모두 있다', async ({ page }) => {
+  test('2.3 운영 방식 옵션에 플랫폼과 파트너가 모두 있다', async ({ page }) => {
     await navigateToClubCreate(page);
 
     if (!await checkAccess(page)) {
@@ -215,7 +215,7 @@ test.describe('골프장 생성 - bookingMode 선택', () => {
 test.describe('골프장 상세 - bookingMode 표시', () => {
   test.use({ storageState: 'e2e/.auth/admin.json' });
 
-  test('3.1 상세 페이지에서 예약 방식 배지가 표시된다', async ({ page }) => {
+  test('3.1 상세 페이지에서 운영 방식 배지가 표시된다', async ({ page }) => {
     await navigateToClubs(page);
 
     if (!await checkAccess(page)) {
@@ -238,19 +238,19 @@ test.describe('골프장 상세 - bookingMode 표시', () => {
     // 상세 페이지 확인
     await expect(page).toHaveURL(/.*clubs\/\d+/);
 
-    // 기본정보 탭에서 예약 방식 확인
-    const modeLabel = page.getByText('예약 방식');
+    // 기본정보 탭에서 운영 방식 확인
+    const modeLabel = page.getByText('운영 방식');
     const hasLabel = await modeLabel.isVisible().catch(() => false);
 
     if (hasLabel) {
       // 배지 확인 (플랫폼 또는 파트너 연동)
       const modeBadge = page.getByText(/플랫폼|파트너 연동/).first();
       await expect(modeBadge).toBeVisible();
-      console.log('예약 방식 배지 확인 완료');
+      console.log('운영 방식 배지 확인 완료');
     }
   });
 
-  test('3.2 수정 모드에서 예약 방식을 변경할 수 있다', async ({ page }) => {
+  test('3.2 수정 모드에서 운영 방식을 변경할 수 있다', async ({ page }) => {
     await navigateToClubs(page);
 
     if (!await checkAccess(page)) {
@@ -283,13 +283,13 @@ test.describe('골프장 상세 - bookingMode 표시', () => {
     await editButton.click();
     await page.waitForTimeout(500);
 
-    // 수정 모드에서 예약 방식 select 확인
+    // 수정 모드에서 운영 방식 select 확인
     const bookingModeSelect = page.locator('select').filter({ has: page.locator('option[value="PLATFORM"]') });
     const hasSelect = await bookingModeSelect.isVisible().catch(() => false);
 
     if (hasSelect) {
       const currentValue = await bookingModeSelect.inputValue();
-      console.log(`현재 예약 방식: ${currentValue}`);
+      console.log(`현재 운영 방식: ${currentValue}`);
 
       // PARTNER로 변경
       await bookingModeSelect.selectOption('PARTNER');

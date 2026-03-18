@@ -10,7 +10,7 @@ import { RolesPage } from './pages/RolesPage';
 import { UserManagementPage } from './pages/UserManagementPage';
 import { PoliciesPage } from './pages/PoliciesPage';
 import { NotificationsPage } from './pages/NotificationsPage';
-import { PartnersPage } from './pages/PartnersPage';
+
 import { FranchiseDashboardPage } from './pages/franchise/FranchiseDashboardPage';
 import { FranchiseClubsPage } from './pages/franchise/FranchiseClubsPage';
 import { BookingAnalyticsPage } from './pages/analytics/BookingAnalyticsPage';
@@ -42,10 +42,10 @@ function App() {
             <Route path="/franchise" element={<FranchiseDashboardPage />} />
             <Route path="/franchise/companies" element={<CompaniesPage />} />
             <Route path="/franchise/clubs" element={<FranchiseClubsPage />} />
-            <Route path="/franchise/partners" element={<PartnersPage />} />
             {/* 기존 URL redirect */}
             <Route path="/companies" element={<Navigate to="/franchise/companies" replace />} />
-            <Route path="/partners" element={<Navigate to="/franchise/partners" replace />} />
+            <Route path="/partners" element={<Navigate to="/franchise/clubs" replace />} />
+            <Route path="/franchise/partners" element={<Navigate to="/franchise/clubs" replace />} />
             {/* 현황 분석 */}
             <Route path="/analytics/bookings" element={<BookingAnalyticsPage />} />
             <Route path="/analytics/clubs" element={<ClubAnalyticsPage />} />

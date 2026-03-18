@@ -77,8 +77,8 @@ export const FranchiseDashboardPage: React.FC = () => {
         const steps = [
           { label: '골프장 등록 완료', done: true }, // Club exists
           { label: '코스/게임 설정 완료', done: (club.totalCourses ?? 0) > 0, link: '/franchise/clubs' },
-          { label: '파트너 연동 설정 완료', done: !!partner, link: '/franchise/partners' },
-          { label: '동기화 활성', done: !!partner?.isActive, link: '/franchise/partners' },
+          { label: '파트너 연동 설정 완료', done: !!partner, link: '/franchise/clubs' },
+          { label: '동기화 활성', done: !!partner?.isActive, link: '/franchise/clubs' },
         ];
         return {
           club,
@@ -177,7 +177,7 @@ export const FranchiseDashboardPage: React.FC = () => {
           <div className="px-6 py-4 border-b border-white/15 flex items-center justify-between">
             <h3 className="text-lg font-medium text-white">파트너 동기화 현황</h3>
             <Link
-              to="/franchise/partners"
+              to="/franchise/clubs"
               className="flex items-center gap-1 text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
             >
               전체 보기
