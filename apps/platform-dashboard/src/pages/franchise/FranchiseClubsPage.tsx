@@ -20,7 +20,7 @@ import {
 } from '@/hooks/queries/partner';
 import { useCompaniesQuery } from '@/hooks/queries/company';
 import { PageLayout } from '@/components/layout';
-import { DataContainer, Pagination } from '@/components/common';
+import { DataContainer, Pagination, DeleteConfirmPopover } from '@/components/common';
 import { Modal } from '@/components/ui';
 import {
   FilterContainer,
@@ -746,7 +746,6 @@ const PartnerConfigTab: React.FC<{
 }> = ({ club, partner }) => {
   const [showForm, setShowForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const { data: companiesResponse } = useCompaniesQuery();
   const companies = companiesResponse?.data || [];
   const deletePartner = useDeletePartnerMutation();
@@ -754,7 +753,6 @@ const PartnerConfigTab: React.FC<{
   const handleDelete = async () => {
     if (!partner) return;
     await deletePartner.mutateAsync(partner.id);
-    setDeleteConfirm(false);
   };
 
   // No partner yet — show create form
@@ -799,13 +797,20 @@ const PartnerConfigTab: React.FC<{
               <Pencil className="w-3.5 h-3.5" />
               수정
             </button>
-            <button
-              onClick={() => setDeleteConfirm(true)}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+            <DeleteConfirmPopover
+              targetName={partner.systemName}
+              message={`"${partner.systemName}" 파트너 설정을 삭제하시겠습니까? 연동된 코스 매핑, 동기화 이력이 모두 삭제됩니다.`}
+              isDeleting={deletePartner.isPending}
+              onConfirm={handleDelete}
+              side="left"
             >
-              <Trash2 className="w-3.5 h-3.5" />
-              삭제
-            </button>
+              <button
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                삭제
+              </button>
+            </DeleteConfirmPopover>
           </div>
         </div>
         <div className="bg-white/5 rounded-lg p-4 space-y-2">
@@ -832,33 +837,6 @@ const PartnerConfigTab: React.FC<{
       {/* Game Mappings */}
       <GameMappingsSection partnerId={partner.id} club={club} />
 
-      {/* Delete Confirmation */}
-      {deleteConfirm && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-4 h-4 text-red-400" />
-            <span className="text-sm font-medium text-red-400">파트너 삭제 확인</span>
-          </div>
-          <p className="text-xs text-white/60 mb-3">
-            이 파트너 설정을 삭제하면 연동된 코스 매핑, 동기화 이력이 모두 삭제됩니다.
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleDelete}
-              disabled={deletePartner.isPending}
-              className="px-3 py-1.5 bg-red-600 text-white text-xs rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
-            >
-              {deletePartner.isPending ? '삭제 중...' : '삭제'}
-            </button>
-            <button
-              onClick={() => setDeleteConfirm(false)}
-              className="px-3 py-1.5 border border-white/15 text-white/70 text-xs rounded-lg hover:bg-white/5 transition-colors"
-            >
-              취소
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -1213,13 +1191,19 @@ const GameMappingsSection: React.FC<{ partnerId: number; club: Club }> = ({ part
                 <span className={`px-1.5 py-0.5 text-xs rounded ${mapping.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                   {mapping.isActive ? '활성' : '비활성'}
                 </span>
-                <button
-                  onClick={() => handleDeleteMapping(mapping)}
-                  disabled={deleteMapping.isPending}
-                  className="p-1 text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                <DeleteConfirmPopover
+                  targetName={mapping.externalCourseName}
+                  message={`"${mapping.externalCourseName}" 매핑을 삭제하시겠습니까?`}
+                  isDeleting={deleteMapping.isPending}
+                  onConfirm={() => handleDeleteMapping(mapping)}
+                  side="left"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                  <button
+                    className="p-1 text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </DeleteConfirmPopover>
               </div>
             </div>
           ))}

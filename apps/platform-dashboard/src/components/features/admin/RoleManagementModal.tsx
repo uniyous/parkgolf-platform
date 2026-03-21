@@ -69,15 +69,11 @@ export const RoleManagementModal: React.FC<RoleManagementModalProps> = ({ open, 
   const handleSave = async () => {
     if (!admin || !selectedRole) return;
 
-    try {
-      await updateAdmin.mutateAsync({
-        id: admin.id,
-        data: { roleCode: selectedRole as AdminRole },
-      });
-      onClose();
-    } catch (error) {
-      console.error('Role update failed:', error);
-    }
+    await updateAdmin.mutateAsync({
+      id: admin.id,
+      data: { roleCode: selectedRole as AdminRole },
+    });
+    onClose();
   };
 
   const getRoleMeta = (roleCode: string) =>

@@ -67,8 +67,7 @@ export const OperatingPolicySettings: React.FC = () => {
         });
       }
       setIsEditing(false);
-    } catch (error) {
-      console.error('Failed to save operating policy:', error);
+    } catch {
       toast.error('저장에 실패했습니다.');
     }
   };

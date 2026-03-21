@@ -144,56 +144,52 @@ export const CompanyFormModal: React.FC<CompanyFormModalProps> = ({ open, compan
 
     const combinedAddress = [formData.postalCode, formData.address1, formData.address2].filter(Boolean).join(' ');
 
-    try {
-      // 회사명에서 코드 자동 생성
-      const generateCode = (name: string): string => {
-        const timestamp = Date.now().toString(36).toUpperCase();
-        const nameCode = name
-          .replace(/[^\w\s가-힣]/g, '')
-          .split(/\s+/)
-          .map(w => w.charAt(0))
-          .join('')
-          .toUpperCase()
-          .slice(0, 4);
-        return `${nameCode}-${timestamp}`;
-      };
+    // 회사명에서 코드 자동 생성
+    const generateCode = (name: string): string => {
+      const timestamp = Date.now().toString(36).toUpperCase();
+      const nameCode = name
+        .replace(/[^\w\s가-힣]/g, '')
+        .split(/\s+/)
+        .map(w => w.charAt(0))
+        .join('')
+        .toUpperCase()
+        .slice(0, 4);
+      return `${nameCode}-${timestamp}`;
+    };
 
-      if (isEditing && company) {
-        const updateData: UpdateCompanyDto = {
-          name: formData.name,
-          companyType: formData.companyType,
-          businessNumber: formData.businessNumber,
-          address: combinedAddress,
-          phoneNumber: formData.phoneNumber,
-          email: formData.email,
-          website: formData.website || undefined,
-          description: formData.description || undefined,
-          establishedDate: formData.establishedDate,
-          logoUrl: formData.logoUrl || undefined,
-          status: formData.status,
-        };
-        await updateCompany.mutateAsync({ id: company.id, data: updateData });
-      } else {
-        const createData: CreateCompanyDto = {
-          name: formData.name,
-          code: generateCode(formData.name),
-          companyType: formData.companyType,
-          businessNumber: formData.businessNumber,
-          address: combinedAddress,
-          phoneNumber: formData.phoneNumber,
-          email: formData.email,
-          website: formData.website || undefined,
-          description: formData.description || undefined,
-          establishedDate: formData.establishedDate,
-          logoUrl: formData.logoUrl || undefined,
-          status: formData.status,
-        };
-        await createCompany.mutateAsync(createData);
-      }
-      onClose();
-    } catch (error) {
-      console.error('Submit failed:', error);
+    if (isEditing && company) {
+      const updateData: UpdateCompanyDto = {
+        name: formData.name,
+        companyType: formData.companyType,
+        businessNumber: formData.businessNumber,
+        address: combinedAddress,
+        phoneNumber: formData.phoneNumber,
+        email: formData.email,
+        website: formData.website || undefined,
+        description: formData.description || undefined,
+        establishedDate: formData.establishedDate,
+        logoUrl: formData.logoUrl || undefined,
+        status: formData.status,
+      };
+      await updateCompany.mutateAsync({ id: company.id, data: updateData });
+    } else {
+      const createData: CreateCompanyDto = {
+        name: formData.name,
+        code: generateCode(formData.name),
+        companyType: formData.companyType,
+        businessNumber: formData.businessNumber,
+        address: combinedAddress,
+        phoneNumber: formData.phoneNumber,
+        email: formData.email,
+        website: formData.website || undefined,
+        description: formData.description || undefined,
+        establishedDate: formData.establishedDate,
+        logoUrl: formData.logoUrl || undefined,
+        status: formData.status,
+      };
+      await createCompany.mutateAsync(createData);
     }
+    onClose();
   };
 
   const handleChange = (field: keyof FormData, value: string) => {

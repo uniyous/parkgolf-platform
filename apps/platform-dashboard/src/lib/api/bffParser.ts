@@ -5,8 +5,6 @@
  */
 
 import type { Pagination } from '@/types/common';
-import { getErrorMessage } from '@/types/common';
-import { ApiError } from '@/lib/errors';
 
 // ============================================
 // 타입 정의
@@ -29,32 +27,6 @@ export interface BffResponse<T = unknown> {
   message?: string;
   error?: { code?: string; message?: string; details?: Record<string, unknown> } | string;
   [key: string]: unknown;
-}
-
-// ============================================
-// BFF 응답 언래핑
-// ============================================
-
-/**
- * BFF API 응답에서 data를 추출하고 에러를 처리합니다.
- *
- * @param response API 응답 데이터
- * @returns 추출된 데이터
- * @throws ApiError 응답이 실패인 경우
- */
-export function unwrapResponse<T>(response: BffResponse<T>): T {
-  if (response.success === false) {
-    const error = response.error;
-    const errorCode = typeof error === 'object' ? error?.code : undefined;
-    const errorMessage = typeof error === 'object'
-      ? getErrorMessage(errorCode, error?.message)
-      : getErrorMessage(undefined, typeof error === 'string' ? error : '오류가 발생했습니다');
-    const errorDetails = typeof error === 'object' ? error?.details : undefined;
-
-    throw new ApiError(errorMessage, 400, errorCode, errorDetails);
-  }
-
-  return response.data as T;
 }
 
 // ============================================
@@ -224,66 +196,3 @@ export function extractSingle<T>(
   return null;
 }
 
-// ============================================
-// 성공 여부 확인
-// ============================================
-
-/**
- * BFF 응답이 성공인지 확인합니다.
- */
-export function isSuccess(response: unknown): boolean {
-  if (!response) return false;
-
-  const data = response as BffResponse;
-
-  // success 필드가 명시적으로 있는 경우
-  if (typeof data.success === 'boolean') {
-    return data.success;
-  }
-
-  // error 필드가 없고 data가 있으면 성공으로 간주
-  if (!data.error && (data.data !== undefined || Array.isArray(response))) {
-    return true;
-  }
-
-  return true; // 기본값은 성공
-}
-
-// ============================================
-// 에러 메시지 추출
-// ============================================
-
-/**
- * BFF 응답에서 에러 메시지를 추출합니다.
- */
-export function extractError(response: unknown): string | null {
-  if (!response) return null;
-
-  const data = response as BffResponse;
-
-  if (data.error) {
-    if (typeof data.error === 'string') {
-      return data.error;
-    }
-    return data.error.message || JSON.stringify(data.error);
-  }
-
-  if (data.message && data.success === false) {
-    return data.message;
-  }
-
-  return null;
-}
-
-// ============================================
-// 기본 내보내기
-// ============================================
-
-export const bffParser = {
-  extractList,
-  extractPaginatedList,
-  extractPagination,
-  extractSingle,
-};
-
-export default bffParser;

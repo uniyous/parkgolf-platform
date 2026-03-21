@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useCompaniesQuery, useDeleteCompanyMutation, useUpdateCompanyStatusMutation } from '@/hooks/queries';
 import { useAuthStore, useCurrentAdmin } from '@/stores';
-import { Modal } from '@/components/ui';
-import { DataContainer, Pagination } from '@/components/common';
+import { DataContainer, Pagination, DeleteConfirmPopover } from '@/components/common';
 import {
   FilterContainer,
   FilterSearch,
@@ -73,7 +72,6 @@ export const CompaniesPage: React.FC = () => {
 
   // Modal State
   const [formModal, setFormModal] = useState<{ open: boolean; company?: Company }>({ open: false });
-  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; company?: Company }>({ open: false });
 
   // Filtered & Sorted Data
   const filteredCompanies = useMemo(() => {
@@ -116,22 +114,12 @@ export const CompaniesPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteConfirm.company) return;
-    try {
-      await deleteCompany.mutateAsync(deleteConfirm.company.id);
-      setDeleteConfirm({ open: false });
-    } catch (error) {
-      console.error('Delete failed:', error);
-    }
+  const handleDelete = async (company: Company) => {
+    await deleteCompany.mutateAsync(company.id);
   };
 
   const handleStatusChange = async (company: Company, status: CompanyStatus) => {
-    try {
-      await updateStatus.mutateAsync({ id: company.id, status });
-    } catch (error) {
-      console.error('Status update failed:', error);
-    }
+    await updateStatus.mutateAsync({ id: company.id, status });
   };
 
   return (
@@ -325,13 +313,20 @@ export const CompaniesPage: React.FC = () => {
                                 수정
                               </button>
                               {currentAdmin?.primaryScope === 'PLATFORM' && (
-                                <button
-                                  onClick={() => setDeleteConfirm({ open: true, company })}
-                                  className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10 rounded-lg transition-colors"
+                                <DeleteConfirmPopover
+                                  targetName={company.name}
+                                  message={`"${company.name}" 회사를 삭제하시겠습니까? 회사와 관련된 모든 데이터가 영구적으로 삭제됩니다.`}
+                                  isDeleting={deleteCompany.isPending}
+                                  onConfirm={() => handleDelete(company)}
+                                  side="left"
                                 >
-                                  <Trash2 className="w-4 h-4 mr-1" />
-                                  삭제
-                                </button>
+                                  <button
+                                    className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10 rounded-lg transition-colors"
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-1" />
+                                    삭제
+                                  </button>
+                                </DeleteConfirmPopover>
                               )}
                             </>
                           )}
@@ -354,46 +349,6 @@ export const CompaniesPage: React.FC = () => {
         onClose={() => setFormModal({ open: false })}
       />
 
-      {/* Delete Confirm Modal */}
-      <Modal
-        isOpen={deleteConfirm.open && !!deleteConfirm.company}
-        onClose={() => setDeleteConfirm({ open: false })}
-        title="회사 삭제"
-        maxWidth="sm"
-      >
-        {deleteConfirm.company && (
-          <>
-            <div className="flex items-center space-x-4 p-4 bg-red-500/10 rounded-lg mb-6">
-              <div className="w-12 h-12 rounded-lg bg-red-500/20 flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
-              </div>
-              <div>
-                <div className="font-medium text-white">{deleteConfirm.company.name}</div>
-                <div className="text-sm text-white/50">{deleteConfirm.company.address || '-'}</div>
-              </div>
-            </div>
-            <p className="text-white/60 mb-2">이 회사를 삭제하시겠습니까?</p>
-            <p className="text-sm text-red-600 mb-6">
-              이 작업은 되돌릴 수 없습니다. 회사와 관련된 모든 데이터가 영구적으로 삭제됩니다.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setDeleteConfirm({ open: false })}
-                className="px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleteCompany.isPending}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
-              >
-                {deleteCompany.isPending ? '삭제 중...' : '삭제'}
-              </button>
-            </div>
-          </>
-        )}
-      </Modal>
     </PageLayout>
   );
 };

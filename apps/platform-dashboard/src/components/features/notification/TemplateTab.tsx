@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { cn } from '@/utils';
-import { AlertTriangle } from 'lucide-react';
 import {
   useTemplatesQuery,
   useDeleteTemplateMutation,
   useTestTemplateMutation,
 } from '@/hooks/queries/notification';
 import type { NotificationTemplate } from '@/lib/api/notificationApi';
-import { Modal } from '@/components/ui';
-import { Pagination } from '@/components/common';
+import { Pagination, DeleteConfirmPopover } from '@/components/common';
 import { TemplateFormModal } from './TemplateFormModal';
 
 const TYPE_CONFIG: Record<string, { label: string; color: string }> = {
@@ -28,7 +26,6 @@ export const TemplateTab: React.FC = () => {
   const [page, setPage] = useState(1);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<NotificationTemplate | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; template?: NotificationTemplate }>({ open: false });
 
   const { data, isLoading } = useTemplatesQuery(page);
   const deleteMutation = useDeleteTemplateMutation();
@@ -47,18 +44,8 @@ export const TemplateTab: React.FC = () => {
     setIsFormOpen(true);
   };
 
-  const handleDeleteClick = (template: NotificationTemplate) => {
-    setDeleteConfirm({ open: true, template });
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!deleteConfirm.template) return;
-    try {
-      await deleteMutation.mutateAsync(String(deleteConfirm.template.id));
-      setDeleteConfirm({ open: false });
-    } catch (error) {
-      console.error('Delete failed:', error);
-    }
+  const handleDelete = async (template: NotificationTemplate) => {
+    await deleteMutation.mutateAsync(String(template.id));
   };
 
   const handleTest = (template: NotificationTemplate) => {
@@ -150,13 +137,19 @@ export const TemplateTab: React.FC = () => {
                       >
                         수정
                       </button>
-                      <button
-                        onClick={() => handleDeleteClick(template)}
-                        disabled={deleteMutation.isPending}
-                        className="px-3 py-1.5 text-xs bg-red-500/20 text-red-300 rounded-md hover:bg-red-500/30 transition-colors disabled:opacity-40"
+                      <DeleteConfirmPopover
+                        targetName={template.name}
+                        message={`"${template.name}" 템플릿을 삭제하시겠습니까? 해당 템플릿을 사용하는 알림이 영향을 받을 수 있습니다.`}
+                        isDeleting={deleteMutation.isPending}
+                        onConfirm={() => handleDelete(template)}
+                        side="left"
                       >
-                        삭제
-                      </button>
+                        <button
+                          className="px-3 py-1.5 text-xs bg-red-500/20 text-red-300 rounded-md hover:bg-red-500/30 transition-colors disabled:opacity-40"
+                        >
+                          삭제
+                        </button>
+                      </DeleteConfirmPopover>
                     </div>
                   </div>
                 </div>
@@ -177,48 +170,6 @@ export const TemplateTab: React.FC = () => {
         }}
       />
 
-      {/* 삭제 확인 모달 */}
-      <Modal
-        isOpen={deleteConfirm.open && !!deleteConfirm.template}
-        onClose={() => setDeleteConfirm({ open: false })}
-        title="템플릿 삭제"
-        maxWidth="sm"
-      >
-        {deleteConfirm.template && (
-          <>
-            <div className="flex items-center space-x-4 p-4 bg-red-500/10 rounded-lg mb-6">
-              <div className="w-12 h-12 rounded-lg bg-red-500/20 flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-500" />
-              </div>
-              <div>
-                <div className="font-medium text-white">{deleteConfirm.template.name}</div>
-                <div className="text-sm text-white/50">
-                  {TYPE_CONFIG[deleteConfirm.template.type]?.label || deleteConfirm.template.type} 템플릿
-                </div>
-              </div>
-            </div>
-            <p className="text-white/60 mb-2">이 템플릿을 삭제하시겠습니까?</p>
-            <p className="text-sm text-red-500 mb-6">
-              삭제된 템플릿은 복구할 수 없으며, 해당 템플릿을 사용하는 알림이 영향을 받을 수 있습니다.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setDeleteConfirm({ open: false })}
-                className="px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors text-white/70"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleDeleteConfirm}
-                disabled={deleteMutation.isPending}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
-              >
-                {deleteMutation.isPending ? '삭제 중...' : '삭제'}
-              </button>
-            </div>
-          </>
-        )}
-      </Modal>
     </div>
   );
 };

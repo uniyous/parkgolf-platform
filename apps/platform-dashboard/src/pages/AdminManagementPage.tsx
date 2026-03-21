@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Pencil, Shield, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Shield, Trash2 } from 'lucide-react';
 import { useAdminsQuery, useDeleteAdminMutation, useToggleAdminStatusMutation } from '@/hooks/queries';
 import { useCurrentAdmin } from '@/stores';
-import { Modal } from '@/components/ui';
-import { DataContainer } from '@/components/common';
+import { DataContainer, DeleteConfirmPopover } from '@/components/common';
 import {
   FilterContainer,
   FilterSearch,
@@ -60,7 +59,6 @@ export const AdminManagementPage: React.FC = () => {
   // Modal State
   const [formModal, setFormModal] = useState<{ open: boolean; admin?: Admin }>({ open: false });
   const [roleModal, setRoleModal] = useState<{ open: boolean; admin?: Admin }>({ open: false });
-  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; admin?: Admin }>({ open: false });
 
   // Helper: 관리자의 주 역할 가져오기
   const getAdminRole = (admin: Admin): AdminRole | undefined => {
@@ -142,22 +140,12 @@ export const AdminManagementPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteConfirm.admin) return;
-    try {
-      await deleteAdmin.mutateAsync(deleteConfirm.admin.id);
-      setDeleteConfirm({ open: false });
-    } catch (error) {
-      console.error('Delete failed:', error);
-    }
+  const handleDelete = async (admin: Admin) => {
+    await deleteAdmin.mutateAsync(admin.id);
   };
 
   const handleToggleStatus = async (admin: Admin) => {
-    try {
-      await toggleStatus.mutateAsync(admin.id);
-    } catch (error) {
-      console.error('Toggle status failed:', error);
-    }
+    await toggleStatus.mutateAsync(admin.id);
   };
 
   const handleSelectAll = () => {
@@ -467,14 +455,21 @@ export const AdminManagementPage: React.FC = () => {
                           <Shield className="w-4 h-4 mr-1" />
                           권한
                         </button>
-                        <button
-                          onClick={() => setDeleteConfirm({ open: true, admin })}
-                          disabled={!canManage(admin)}
-                          className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        <DeleteConfirmPopover
+                          targetName={admin.name}
+                          message={`"${admin.name}" 관리자를 삭제하시겠습니까? 관리자의 모든 데이터가 영구적으로 삭제됩니다.`}
+                          isDeleting={deleteAdmin.isPending}
+                          onConfirm={() => handleDelete(admin)}
+                          side="left"
                         >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          삭제
-                        </button>
+                          <button
+                            disabled={!canManage(admin)}
+                            className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            삭제
+                          </button>
+                        </DeleteConfirmPopover>
                       </div>
                     </td>
                   </tr>
@@ -499,48 +494,6 @@ export const AdminManagementPage: React.FC = () => {
         onClose={() => setRoleModal({ open: false })}
       />
 
-      {/* Delete Confirm Modal */}
-      <Modal
-        isOpen={deleteConfirm.open && !!deleteConfirm.admin}
-        onClose={() => setDeleteConfirm({ open: false })}
-        title="관리자 삭제"
-        maxWidth="sm"
-      >
-        {deleteConfirm.admin && (
-          <>
-            <div className="flex items-center space-x-4 p-4 bg-red-500/10 rounded-lg mb-6">
-              <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
-              </div>
-              <div>
-                <div className="font-medium text-white">{deleteConfirm.admin.name}</div>
-                <div className="text-sm text-white/50">{deleteConfirm.admin.email}</div>
-              </div>
-            </div>
-            <p className="text-white/60 mb-2">
-              이 관리자를 삭제하시겠습니까?
-            </p>
-            <p className="text-sm text-red-600 mb-6">
-              이 작업은 되돌릴 수 없습니다. 관리자의 모든 데이터가 영구적으로 삭제됩니다.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setDeleteConfirm({ open: false })}
-                className="px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleteAdmin.isPending}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
-              >
-                {deleteAdmin.isPending ? '삭제 중...' : '삭제'}
-              </button>
-            </div>
-          </>
-        )}
-      </Modal>
     </PageLayout>
   );
 };

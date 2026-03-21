@@ -70,8 +70,6 @@ export const useGetCurrentUserMutation = () => {
       hydrateFromProfile(data.user, data.token);
     },
     onError: (error: Error) => {
-      console.error('Failed to get current user:', error);
-
       const cachedUser = localStorage.getItem('currentUser');
       const token = localStorage.getItem('accessToken');
 
@@ -80,8 +78,8 @@ export const useGetCurrentUserMutation = () => {
           const user = JSON.parse(cachedUser);
           hydrateFromProfile(user, token);
           return;
-        } catch (parseError) {
-          console.error('Failed to parse cached user data:', parseError);
+        } catch {
+          // Failed to parse cached user data, fall through to setError
         }
       }
 

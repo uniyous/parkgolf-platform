@@ -338,10 +338,3 @@ export const companyApi = {
     return extractList<{ id: number; name: string; email: string }>(response.data, 'admins');
   }
 } as const;
-
-// Legacy exports for backward compatibility
-export const fetchCompanies = companyApi.getCompanies;
-export const fetchCompanyById = companyApi.getCompanyById;
-export const createCompany = companyApi.createCompany;
-export const updateCompany = companyApi.updateCompany;
-export const deleteCompany = companyApi.deleteCompany;
