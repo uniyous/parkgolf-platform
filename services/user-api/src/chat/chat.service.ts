@@ -160,7 +160,7 @@ export class ChatService {
       senderId: userId,
       senderName: userName,
       content,
-      type: messageType,
+      messageType,
       createdAt: new Date().toISOString(),
     };
 
@@ -170,11 +170,11 @@ export class ChatService {
   /**
    * 메시지 읽음 처리
    */
-  async markAsRead(roomId: string, userId: number, messageId: string): Promise<ApiResponse<void>> {
-    this.logger.log(`Mark as read: roomId=${roomId}, userId=${userId}, messageId=${messageId}`);
+  async markAsRead(roomId: string, userId: number, messageId?: string): Promise<ApiResponse<void>> {
+    this.logger.log(`Mark as read: roomId=${roomId}, userId=${userId}, messageId=${messageId ?? '(latest)'}`);
     return this.natsClient.send(
       'chat.messages.markRead',
-      { roomId, userId, messageId },
+      { roomId, userId, ...(messageId && { messageId }) },
       NATS_TIMEOUTS.QUICK,
     );
   }
@@ -219,14 +219,14 @@ export class ChatService {
   ) {
     this.logger.log(`Send AI message: roomId=${roomId}, userId=${userId}`);
 
-    // 1. 사용자 메시지를 chat-service에 TEXT로 저장 (fire-and-forget — AI 흐름 차단 방지)
+    // 1. 사용자 메시지를 chat-service에 AI_USER로 저장 (fire-and-forget — AI 흐름 차단 방지)
     const userMessageData = {
       id: randomUUID(),
       roomId,
       senderId: userId,
       senderName: userName,
       content: dto.message,
-      type: 'TEXT',
+      messageType: 'AI_USER',
       createdAt: new Date().toISOString(),
     };
     this.natsClient.send('chat.messages.save', userMessageData, NATS_TIMEOUTS.QUICK).catch((err) => {
@@ -250,15 +250,18 @@ export class ChatService {
         selectedSlotId: dto.selectedSlotId,
         selectedSlotTime: dto.selectedSlotTime,
         selectedSlotPrice: dto.selectedSlotPrice,
+        selectedGameName: dto.selectedGameName,
         confirmBooking: dto.confirmBooking,
         cancelBooking: dto.cancelBooking,
         paymentMethod: dto.paymentMethod,
         paymentComplete: dto.paymentComplete,
         paymentSuccess: dto.paymentSuccess,
-        // 그룹 예약 필드
-        selectedSlots: dto.selectedSlots,
-        teams: dto.teams,
+        // 그룹 예약 필드 (팀 단위 순차)
         confirmGroupBooking: dto.confirmGroupBooking,
+        teamMembers: dto.teamMembers,
+        nextTeam: dto.nextTeam,
+        finishGroup: dto.finishGroup,
+        sendReminder: dto.sendReminder,
         // 분할결제 완료 필드
         splitPaymentComplete: dto.splitPaymentComplete,
         splitOrderId: dto.splitOrderId,
@@ -281,7 +284,7 @@ export class ChatService {
         senderId: userId,
         senderName: 'AI 예약 도우미',
         content: aiData.message || '',
-        type: 'AI_ASSISTANT',
+        messageType: 'AI_ASSISTANT',
         metadata,
         createdAt: new Date().toISOString(),
       }, NATS_TIMEOUTS.QUICK).catch((err) => {

@@ -1,7 +1,10 @@
 import React, { useState, useMemo } from 'react';
+import { Pagination } from '@/components/common';
+import { useClientPagination } from '@/hooks/useClientPagination';
 import { toast } from 'sonner';
 import {
   useBookingsQuery,
+  useBookingQuery,
   useCancelBookingMutation,
   useCompleteBookingMutation,
   useNoShowBookingMutation,
@@ -43,27 +46,30 @@ export const BookingManagementPage: React.FC = () => {
   const [dateTo, setDateTo] = useState(formatDate(weekLater));
   const [statusFilter, setStatusFilter] = useState<BookingStatusKey>('ALL');
   const [clubFilter, setClubFilter] = useState<number | null>(null);
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
 
   // 모달 상태
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // API 필터 객체
   const filters: ApiBookingFilters = useMemo(
     () => ({
-      dateFrom,
-      dateTo,
+      startDate: dateFrom,
+      endDate: dateTo,
       status: statusFilter === 'ALL' ? undefined : statusFilter,
-      courseId: clubFilter || undefined,
+      clubId: clubFilter || undefined,
+      paymentMethod: paymentMethodFilter || undefined,
       search: searchKeyword || undefined,
     }),
-    [dateFrom, dateTo, statusFilter, clubFilter, searchKeyword]
+    [dateFrom, dateTo, statusFilter, clubFilter, paymentMethodFilter, searchKeyword]
   );
 
   // API Queries
   const { data: bookingsData, isLoading } = useBookingsQuery(filters);
   const { data: clubsData } = useClubsQuery();
+  const { data: detailBooking } = useBookingQuery(selectedBookingId || 0);
 
   // Mutations
   const cancelMutation = useCancelBookingMutation();
@@ -73,9 +79,10 @@ export const BookingManagementPage: React.FC = () => {
   const bookings = bookingsData?.data || [];
   const clubs = clubsData?.data || [];
 
-  // 클라이언트 사이드 검색 필터링
+  // 클라이언트 사이드 필터링 (검색)
   const filteredBookings = useMemo(() => {
     if (!searchKeyword.trim()) return bookings;
+
     const keyword = searchKeyword.toLowerCase();
     return bookings.filter(
       (booking) =>
@@ -88,6 +95,8 @@ export const BookingManagementPage: React.FC = () => {
         booking.bookingNumber?.toLowerCase().includes(keyword)
     );
   }, [bookings, searchKeyword]);
+
+  const { paginatedData: paginatedBookings, pagination, setPage } = useClientPagination(filteredBookings, 20);
 
   // 상태별 카운트
   const statusCounts = useMemo(() => {
@@ -112,20 +121,29 @@ export const BookingManagementPage: React.FC = () => {
     return bookings.filter((b) => isToday(b.bookingDate)).length;
   }, [bookings]);
 
+  const selectedBooking = detailBooking || bookings.find((b) => b.id === selectedBookingId) || null;
+
   // 액션 핸들러
   const handleViewDetail = (booking: Booking) => {
-    setSelectedBooking(booking);
+    setSelectedBookingId(booking.id);
     setIsDetailModalOpen(true);
   };
 
   const handleCloseDetailModal = () => {
     setIsDetailModalOpen(false);
-    setSelectedBooking(null);
+    setSelectedBookingId(null);
   };
 
   const handleCancel = async (booking: Booking) => {
+    const paymentInfo =
+      booking.paymentMethod === 'card'
+        ? '\n⚠️ 카드결제 예약입니다. 취소 시 자동 환불 처리됩니다.'
+        : booking.paymentMethod === 'dutchpay'
+          ? '\n⚠️ 더치페이 예약입니다. 결제 완료된 참가자에게 자동 환불됩니다.'
+          : '\n현장결제 예약입니다. 별도 환불은 없습니다.';
+
     const reason = window.prompt(
-      `${booking.userName || booking.customerName || '고객'}님의 예약을 취소하시겠습니까?\n취소 사유를 입력해주세요:`
+      `${booking.userName || booking.customerName || '고객'}님의 예약을 취소하시겠습니까?${paymentInfo}\n\n취소 사유를 입력해주세요:`
     );
     if (reason !== null) {
       try {
@@ -133,7 +151,6 @@ export const BookingManagementPage: React.FC = () => {
         toast.success('예약이 취소되었습니다.');
         handleCloseDetailModal();
       } catch (error) {
-        console.error('Failed to cancel booking:', error);
         toast.error('예약 취소에 실패했습니다.');
       }
     }
@@ -150,7 +167,6 @@ export const BookingManagementPage: React.FC = () => {
         toast.success('예약이 완료 처리되었습니다.');
         handleCloseDetailModal();
       } catch (error) {
-        console.error('Failed to complete booking:', error);
         toast.error('예약 완료 처리에 실패했습니다.');
       }
     }
@@ -167,7 +183,6 @@ export const BookingManagementPage: React.FC = () => {
         toast.success('노쇼 처리되었습니다.');
         handleCloseDetailModal();
       } catch (error) {
-        console.error('Failed to mark as no-show:', error);
         toast.error('노쇼 처리에 실패했습니다.');
       }
     }
@@ -182,11 +197,12 @@ export const BookingManagementPage: React.FC = () => {
     setDateTo(formatDate(newWeekLater));
     setStatusFilter('ALL');
     setClubFilter(null);
+    setPaymentMethodFilter('');
     setSearchKeyword('');
   };
 
   const hasActiveFilters =
-    searchKeyword !== '' || clubFilter !== null || statusFilter !== 'ALL';
+    searchKeyword !== '' || clubFilter !== null || paymentMethodFilter !== '' || statusFilter !== 'ALL';
 
   const isActionPending =
     cancelMutation.isPending || completeMutation.isPending || noShowMutation.isPending;
@@ -206,11 +222,13 @@ export const BookingManagementPage: React.FC = () => {
         dateFrom={dateFrom}
         dateTo={dateTo}
         clubFilter={clubFilter}
+        paymentMethodFilter={paymentMethodFilter}
         searchKeyword={searchKeyword}
         clubs={clubs.map((club) => ({ id: club.id, name: club.name }))}
         onDateFromChange={setDateFrom}
         onDateToChange={setDateTo}
         onClubFilterChange={setClubFilter}
+        onPaymentMethodFilterChange={setPaymentMethodFilter}
         onSearchKeywordChange={setSearchKeyword}
         onReset={handleResetFilters}
         hasActiveFilters={hasActiveFilters}
@@ -226,7 +244,7 @@ export const BookingManagementPage: React.FC = () => {
         </div>
       ) : (
         <BookingTable
-          bookings={filteredBookings}
+          bookings={paginatedBookings}
           onViewDetail={handleViewDetail}
           onCancel={handleCancel}
           onComplete={handleComplete}
@@ -235,13 +253,7 @@ export const BookingManagementPage: React.FC = () => {
         />
       )}
 
-      {/* 하단 정보 */}
-      <div className="bg-white/5 rounded-lg p-4">
-        <p className="text-sm text-white/60 text-center">
-          총 {filteredBookings.length}건의 예약
-          {searchKeyword && ` (검색: "${searchKeyword}")`}
-        </p>
-      </div>
+      <Pagination pagination={pagination} onPageChange={setPage} />
 
       {/* 상세 모달 */}
       <BookingDetailModal

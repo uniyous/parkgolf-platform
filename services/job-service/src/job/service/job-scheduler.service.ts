@@ -46,6 +46,22 @@ export class JobSchedulerService {
   }
 
   /**
+   * 외부 부킹 API 파트너 동기화
+   * 10분마다 — 활성 파트너의 슬롯/예약 데이터 동기화
+   */
+  @Cron('*/10 * * * *', { name: 'partner-sync', timeZone: 'Asia/Seoul' })
+  async handlePartnerSync() {
+    this.logger.log('[partner-sync] Starting...');
+
+    const result = await this.sendNatsRequest(
+      'partner.sync.execute',
+      {},
+    );
+
+    this.logger.log(`[partner-sync] Result: ${JSON.stringify(result)}`);
+  }
+
+  /**
    * 수동 실행용 메서드
    */
   async runJob(jobName: string): Promise<any> {
@@ -54,6 +70,8 @@ export class JobSchedulerService {
         return this.sendNatsRequest('iam.deletion.processReminders', {});
       case 'deletion-executor':
         return this.sendNatsRequest('iam.deletion.execute', {});
+      case 'partner-sync':
+        return this.sendNatsRequest('partner.sync.execute', {});
       default:
         return { success: false, error: `Unknown job: ${jobName}` };
     }
@@ -75,6 +93,12 @@ export class JobSchedulerService {
         schedule: '0 3 * * * (03:00 KST)',
         pattern: 'iam.deletion.execute',
         description: '유예 기간 만료 사용자 삭제 실행',
+      },
+      {
+        name: 'partner-sync',
+        schedule: '*/10 * * * * (매 10분)',
+        pattern: 'partner.sync.execute',
+        description: '외부 부킹 API 파트너 슬롯/예약 동기화',
       },
     ];
   }

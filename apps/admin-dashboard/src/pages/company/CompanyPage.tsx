@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, RefreshCw, Pencil, Trash2, AlertTriangle, Map } from 'lucide-react';
+import { Plus, Pencil, Trash2, AlertTriangle, Map } from 'lucide-react';
 import { useCompaniesQuery, useDeleteCompanyMutation, useUpdateCompanyStatusMutation } from '@/hooks/queries';
 import { useAuthStore, useCurrentAdmin } from '@/stores';
 import { Modal } from '@/components/ui';
@@ -42,7 +42,7 @@ const STATUS_META: Record<CompanyStatus, { icon: string; color: string }> = {
 
 export const CompanyPage: React.FC = () => {
   // Queries & Mutations
-  const { data: companiesResponse, refetch, isLoading } = useCompaniesQuery();
+  const { data: companiesResponse, isLoading } = useCompaniesQuery();
   const deleteCompany = useDeleteCompanyMutation();
   const updateStatus = useUpdateCompanyStatusMutation();
 
@@ -125,20 +125,12 @@ export const CompanyPage: React.FC = () => {
 
   const handleDelete = async () => {
     if (!deleteConfirm.company) return;
-    try {
-      await deleteCompany.mutateAsync(deleteConfirm.company.id);
-      setDeleteConfirm({ open: false });
-    } catch (error) {
-      console.error('Delete failed:', error);
-    }
+    await deleteCompany.mutateAsync(deleteConfirm.company.id);
+    setDeleteConfirm({ open: false });
   };
 
   const handleStatusChange = async (company: Company, status: CompanyStatus) => {
-    try {
-      await updateStatus.mutateAsync({ id: company.id, status });
-    } catch (error) {
-      console.error('Status update failed:', error);
-    }
+    await updateStatus.mutateAsync({ id: company.id, status });
   };
 
   const handleSelectAll = () => {
@@ -242,13 +234,6 @@ export const CompanyPage: React.FC = () => {
             />
           </div>
           <div className="flex items-end gap-2">
-            <button
-              onClick={() => refetch()}
-              className="inline-flex items-center px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              새로고침
-            </button>
             <FilterResetButton
               hasActiveFilters={!!(filters.search || filters.status !== 'ALL')}
               onClick={() => setFilters({ search: '', status: 'ALL' })}

@@ -18,12 +18,12 @@ import type {
 
 export const cancellationPolicyApi = {
   async getAll(): Promise<CancellationPolicy[]> {
-    const response = await apiClient.get<unknown>('/admin/policies/cancellation', { scopeLevel: 'PLATFORM' });
+    const response = await apiClient.get<unknown>('/admin/policies/cancellation', {});
     return extractList<CancellationPolicy>(response.data);
   },
 
   async resolve(): Promise<CancellationPolicy | null> {
-    const response = await apiClient.get<unknown>('/admin/policies/cancellation/resolve', { scopeLevel: 'PLATFORM' });
+    const response = await apiClient.get<unknown>('/admin/policies/cancellation/resolve', {});
     return extractSingle<CancellationPolicy>(response.data);
   },
 
@@ -60,12 +60,12 @@ export const cancellationPolicyApi = {
 
 export const refundPolicyApi = {
   async getAll(): Promise<RefundPolicy[]> {
-    const response = await apiClient.get<unknown>('/admin/policies/refund', { scopeLevel: 'PLATFORM' });
+    const response = await apiClient.get<unknown>('/admin/policies/refund', {});
     return extractList<RefundPolicy>(response.data);
   },
 
   async resolve(): Promise<RefundPolicy | null> {
-    const response = await apiClient.get<unknown>('/admin/policies/refund/resolve', { scopeLevel: 'PLATFORM' });
+    const response = await apiClient.get<unknown>('/admin/policies/refund/resolve', {});
     return extractSingle<RefundPolicy>(response.data);
   },
 
@@ -117,12 +117,12 @@ export const refundPolicyApi = {
 
 export const noShowPolicyApi = {
   async getAll(): Promise<NoShowPolicy[]> {
-    const response = await apiClient.get<unknown>('/admin/policies/noshow', { scopeLevel: 'PLATFORM' });
+    const response = await apiClient.get<unknown>('/admin/policies/noshow', {});
     return extractList<NoShowPolicy>(response.data);
   },
 
   async resolve(): Promise<NoShowPolicy | null> {
-    const response = await apiClient.get<unknown>('/admin/policies/noshow/resolve', { scopeLevel: 'PLATFORM' });
+    const response = await apiClient.get<unknown>('/admin/policies/noshow/resolve', {});
     return extractSingle<NoShowPolicy>(response.data);
   },
 
@@ -171,12 +171,12 @@ export const noShowPolicyApi = {
 
 export const operatingPolicyApi = {
   async getAll(): Promise<OperatingPolicy[]> {
-    const response = await apiClient.get<unknown>('/admin/policies/operating', { scopeLevel: 'PLATFORM' });
+    const response = await apiClient.get<unknown>('/admin/policies/operating', {});
     return extractList<OperatingPolicy>(response.data);
   },
 
   async resolve(): Promise<OperatingPolicy | null> {
-    const response = await apiClient.get<unknown>('/admin/policies/operating/resolve', { scopeLevel: 'PLATFORM' });
+    const response = await apiClient.get<unknown>('/admin/policies/operating/resolve', {});
     return extractSingle<OperatingPolicy>(response.data);
   },
 

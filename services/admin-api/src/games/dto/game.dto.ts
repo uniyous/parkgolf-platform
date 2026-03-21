@@ -149,6 +149,12 @@ export class UpdateGameDto {
 }
 
 export class GameFilterDto {
+  @ApiPropertyOptional({ description: '회사 ID' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  companyId?: number;
+
   @ApiPropertyOptional({ description: '클럽 ID' })
   @IsOptional()
   @Type(() => Number)

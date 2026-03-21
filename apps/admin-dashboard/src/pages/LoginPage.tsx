@@ -22,13 +22,8 @@ export const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    try {
-      await loginMutation.mutateAsync({ email, password });
-      navigate('/dashboard', { replace: true });
-    } catch (error) {
-      // Error is handled by the mutation's onError
-      console.error('Login failed:', error);
-    }
+    await loginMutation.mutateAsync({ email, password });
+    navigate('/dashboard', { replace: true });
   };
 
   return (

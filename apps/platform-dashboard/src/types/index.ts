@@ -689,3 +689,20 @@ export type {
 } from './settings';
 
 export { DEFAULT_REFUND_TIERS, DEFAULT_NOSHOW_PENALTIES } from './settings';
+
+// Partner types re-export
+export type {
+  SyncMode,
+  PartnerConfig,
+  CreatePartnerConfigDto,
+  UpdatePartnerConfigDto,
+  PartnerConfigFilters,
+  GameMapping,
+  CreateGameMappingDto,
+  UpdateGameMappingDto,
+  SyncLog,
+  SyncResult,
+  BookingMapping,
+  BookingSyncStatus,
+  PartnerListResponse,
+} from './partner';

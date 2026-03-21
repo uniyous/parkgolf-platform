@@ -2,6 +2,12 @@ import React from 'react';
 import { Eye, DollarSign } from 'lucide-react';
 import type { Booking } from '@/types';
 
+const PAYMENT_METHODS: Record<string, { label: string; color: string }> = {
+  onsite: { label: '현장결제', color: 'text-blue-400' },
+  card: { label: '카드결제', color: 'text-emerald-400' },
+  dutchpay: { label: '더치페이', color: 'text-purple-400' },
+};
+
 const CANCELLATION_TYPES: Record<string, { label: string; color: string }> = {
   USER_NORMAL: { label: '정상 취소', color: 'bg-emerald-500/20 text-emerald-400' },
   USER_LATE: { label: '지연 취소', color: 'bg-yellow-500/20 text-yellow-400' },
@@ -118,6 +124,9 @@ export const CancellationTable: React.FC<CancellationTableProps> = ({
               <th className="px-4 py-3 text-left text-xs font-medium text-white/50 uppercase tracking-wider">
                 취소 일시
               </th>
+              <th className="px-4 py-3 text-center text-xs font-medium text-white/50 uppercase tracking-wider">
+                결제수단
+              </th>
               <th className="px-4 py-3 text-right text-xs font-medium text-white/50 uppercase tracking-wider">
                 결제 금액
               </th>
@@ -184,6 +193,19 @@ export const CancellationTable: React.FC<CancellationTableProps> = ({
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="text-sm text-white">{formatDateTime(record.cancelledAt)}</div>
                     <div className="text-xs text-white/50">{record.cancelledBy}</div>
+                  </td>
+
+                  {/* 결제수단 */}
+                  <td className="px-4 py-3 whitespace-nowrap text-center">
+                    {record.booking.paymentMethod && PAYMENT_METHODS[record.booking.paymentMethod] ? (
+                      <span className={`text-sm font-medium ${PAYMENT_METHODS[record.booking.paymentMethod].color}`}>
+                        {PAYMENT_METHODS[record.booking.paymentMethod].label}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-white/60">
+                        {record.booking.paymentMethod || '-'}
+                      </span>
+                    )}
                   </td>
 
                   {/* 결제 금액 */}

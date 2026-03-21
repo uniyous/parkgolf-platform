@@ -45,20 +45,31 @@ async function bootstrap() {
   logger.log(`   - JWT_SECRET: ${process.env.JWT_SECRET ? '***' : 'NOT SET'}`);
 
   // 1. Adapter용 NATS 연결 (NatsService와 별도 — Socket.IO adapter 전용)
+  //    NATS가 아직 준비되지 않았을 수 있으므로 재시도 로직 포함
   let adapterNc: NatsConnection | null = null;
   const natsUrl = process.env.NATS_URL;
   if (natsUrl) {
-    try {
-      adapterNc = await connect({
-        servers: [natsUrl],
-        reconnect: true,
-        maxReconnectAttempts: -1,
-        reconnectTimeWait: 2000,
-        name: 'chat-gateway-adapter',
-      });
-      logger.log(`NATS adapter connection established: ${natsUrl}`);
-    } catch (error) {
-      logger.warn(`Failed to connect NATS for adapter: ${error}. Running single-instance mode.`);
+    const maxRetries = 10;
+    const retryDelay = 3000; // 3초
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        adapterNc = await connect({
+          servers: [natsUrl],
+          reconnect: true,
+          maxReconnectAttempts: -1,
+          reconnectTimeWait: 2000,
+          name: 'chat-gateway-adapter',
+        });
+        logger.log(`NATS adapter connection established: ${natsUrl}`);
+        break;
+      } catch (error) {
+        if (attempt < maxRetries) {
+          logger.warn(`NATS adapter connection attempt ${attempt}/${maxRetries} failed: ${error}. Retrying in ${retryDelay / 1000}s...`);
+          await new Promise((r) => setTimeout(r, retryDelay));
+        } else {
+          logger.error(`NATS adapter connection failed after ${maxRetries} attempts. Running single-instance mode (no cross-pod broadcast).`);
+        }
+      }
     }
   } else {
     logger.warn('NATS_URL not set. Running single-instance mode (no cross-pod broadcast).');

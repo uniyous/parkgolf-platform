@@ -120,9 +120,9 @@ export class BookingService {
   }
 
   async createBooking(bookingData: CreateBookingDto, adminToken: string): Promise<ApiResponse<BookingResponseDto>> {
-    this.logger.log('Creating booking');
-    return this.natsClient.send('bookings.create', {
-      data: bookingData,
+    this.logger.log('Creating booking via saga');
+    return this.natsClient.send('saga.booking.create', {
+      ...bookingData,
       token: adminToken,
     });
   }
@@ -149,7 +149,7 @@ export class BookingService {
     const params: { bookingId: string; reason?: string; token?: string } = { bookingId };
     if (reason) params.reason = reason;
     if (adminToken) params.token = adminToken;
-    return this.natsClient.send('bookings.cancel', params);
+    return this.natsClient.send('saga.booking.cancel', params);
   }
 
   async confirmBooking(bookingId: string, adminToken: string): Promise<ApiResponse<BookingResponseDto>> {
@@ -174,6 +174,20 @@ export class BookingService {
       bookingId,
       token: adminToken,
     });
+  }
+
+  // Club Operation Stats
+  async getClubOperationStats(
+    clubId: number,
+    dateRange: { startDate: string; endDate: string },
+    adminToken: string,
+  ): Promise<ApiResponse<unknown>> {
+    this.logger.log(`Fetching club operation stats for clubId: ${clubId}`);
+    return this.natsClient.send('bookings.clubOperationStats', {
+      clubId,
+      dateRange,
+      token: adminToken,
+    }, NATS_TIMEOUTS.ANALYTICS);
   }
 
   // Payment Management
@@ -206,7 +220,7 @@ export class BookingService {
     adminToken: string,
   ): Promise<ApiResponse<PaymentResponseDto>> {
     this.logger.log(`Processing refund for booking: ${bookingId}`);
-    return this.natsClient.send('payments.refund', {
+    return this.natsClient.send('saga.booking.adminRefund', {
       bookingId: parseInt(bookingId, 10),
       cancelAmount: refundData.cancelAmount,
       cancelReason: refundData.cancelReason,

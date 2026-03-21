@@ -20,7 +20,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
@@ -92,9 +91,9 @@ fun ProfileScreen(
     val profileState by profileViewModel.uiState.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
 
-    // 로그아웃 완료 시 화면 전환
-    LaunchedEffect(authState.isLoggedIn) {
-        if (!authState.isLoggedIn && authState.user == null) {
+    // 로그아웃 완료 시 화면 전환 (초기화 전 false 상태에서 오동작 방지)
+    LaunchedEffect(authState.isInitialized, authState.isLoggedIn) {
+        if (authState.isInitialized && !authState.isLoggedIn && authState.user == null) {
             onLogout()
         }
     }
@@ -363,13 +362,6 @@ private fun AccountSection(onNavigate: (String) -> Unit) {
             iconColor = ParkPrimary,
             title = "예약 내역",
             onClick = { onNavigate("my_bookings") }
-        )
-
-        ProfileMenuItem(
-            icon = Icons.Default.CreditCard,
-            iconColor = ParkAccent,
-            title = "결제 수단",
-            onClick = { onNavigate("settings/payment") }
         )
 
         ProfileMenuItem(

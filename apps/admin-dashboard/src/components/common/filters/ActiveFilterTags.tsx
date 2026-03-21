@@ -6,7 +6,7 @@ export interface FilterTag {
   id: string;
   label: string;
   value?: string;
-  color?: 'gray' | 'violet' | 'green' | 'yellow' | 'red' | 'purple';
+  color?: 'gray' | 'violet' | 'green' | 'yellow' | 'red' | 'purple' | 'blue';
 }
 
 export interface ActiveFilterTagsProps {
@@ -25,6 +25,7 @@ const colorStyles: Record<NonNullable<FilterTag['color']>, string> = {
   yellow: 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30',
   red: 'bg-red-500/20 text-red-400 hover:bg-red-500/30',
   purple: 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30',
+  blue: 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30',
 };
 
 const ActiveFilterTags: React.FC<ActiveFilterTagsProps> = ({

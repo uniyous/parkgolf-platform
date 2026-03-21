@@ -105,7 +105,7 @@ test.describe('채팅 메시지 DB 저장 검증', () => {
     const messages = listResult.body.data?.messages ?? listResult.body.data ?? [];
     const found = messages.find((m: any) => m.content === uniqueMsg);
     expect(found).toBeTruthy();
-    expect(found.messageType || found.type).toBe('TEXT');
+    expect(found.messageType).toBe('TEXT');
   });
 
   test('연속 메시지 3건 전송 → 모두 저장 확인', async () => {

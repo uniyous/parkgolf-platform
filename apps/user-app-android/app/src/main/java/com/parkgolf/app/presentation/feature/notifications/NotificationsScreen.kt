@@ -503,21 +503,24 @@ private val NotificationType.icon: ImageVector
     get() = when (this) {
         NotificationType.BOOKING_CONFIRMED -> Icons.Default.CheckCircle
         NotificationType.BOOKING_CANCELLED -> Icons.Default.Cancel
+        NotificationType.REFUND_COMPLETED -> Icons.Default.CheckCircle
         NotificationType.PAYMENT_SUCCESS -> Icons.Default.CreditCard
         NotificationType.PAYMENT_FAILED -> Icons.Default.Error
         NotificationType.FRIEND_REQUEST -> Icons.Default.PersonAdd
         NotificationType.FRIEND_ACCEPTED -> Icons.Default.People
         NotificationType.CHAT_MESSAGE -> Icons.AutoMirrored.Filled.Chat
         NotificationType.SYSTEM_ALERT -> Icons.Default.Notifications
+        NotificationType.SPLIT_PAYMENT_REQUEST -> Icons.Default.CreditCard
     }
 
 private val NotificationType.iconColor: Color
     get() = when (this) {
-        NotificationType.BOOKING_CONFIRMED, NotificationType.PAYMENT_SUCCESS, NotificationType.FRIEND_ACCEPTED -> ParkPrimary
+        NotificationType.BOOKING_CONFIRMED, NotificationType.PAYMENT_SUCCESS, NotificationType.FRIEND_ACCEPTED, NotificationType.REFUND_COMPLETED -> ParkPrimary
         NotificationType.BOOKING_CANCELLED, NotificationType.PAYMENT_FAILED -> ParkError
         NotificationType.FRIEND_REQUEST -> ParkAccent
         NotificationType.CHAT_MESSAGE -> ParkInfo
         NotificationType.SYSTEM_ALERT -> ParkWarning
+        NotificationType.SPLIT_PAYMENT_REQUEST -> ParkInfo
     }
 
 private fun formatRelativeTime(dateTime: LocalDateTime): String {
@@ -540,8 +543,11 @@ private fun handleNotificationTap(notification: AppNotification, onNavigate: (St
         NotificationType.BOOKING_CONFIRMED, NotificationType.BOOKING_CANCELLED -> {
             notification.data?.bookingId?.let { onNavigate("booking/detail/$it") }
         }
-        NotificationType.PAYMENT_SUCCESS, NotificationType.PAYMENT_FAILED -> {
+        NotificationType.REFUND_COMPLETED, NotificationType.PAYMENT_SUCCESS, NotificationType.PAYMENT_FAILED -> {
             notification.data?.bookingId?.let { onNavigate("booking/detail/$it") }
+        }
+        NotificationType.SPLIT_PAYMENT_REQUEST -> {
+            notification.data?.chatRoomId?.let { onNavigate("chat/$it") }
         }
         NotificationType.FRIEND_REQUEST, NotificationType.FRIEND_ACCEPTED -> {
             onNavigate("social")

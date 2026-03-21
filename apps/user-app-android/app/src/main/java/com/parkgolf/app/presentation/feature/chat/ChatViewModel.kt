@@ -7,13 +7,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.parkgolf.app.data.remote.dto.chat.AiChatRequest
 import com.parkgolf.app.domain.model.AiChatResponse
+import com.parkgolf.app.domain.model.ActionType
 import com.parkgolf.app.domain.model.ChatAction
 import com.parkgolf.app.domain.model.ChatMessage
 import com.parkgolf.app.domain.model.ChatRoom
 import com.parkgolf.app.domain.model.ConversationState
 import com.parkgolf.app.domain.model.MessageType
+import com.parkgolf.app.data.local.datastore.AuthPreferences
 import com.parkgolf.app.domain.repository.AuthRepository
 import com.parkgolf.app.domain.repository.ChatRepository
+import com.parkgolf.app.domain.repository.PaymentRepository
 import com.parkgolf.app.util.LocationManager
 import java.time.LocalDateTime
 import java.util.UUID
@@ -30,6 +33,13 @@ private const val TYPING_CLEAR_DELAY_MS = 3000L
 private const val SOCKET_CONNECT_RETRIES = 50
 private const val SOCKET_RETRY_DELAY_MS = 100L
 private const val MESSAGES_PAGE_LIMIT = 30
+
+data class PendingPayment(
+    val orderId: String,
+    val orderName: String,
+    val amount: Int,
+    val type: String  // "single" | "split"
+)
 
 data class ChatUiState(
     val isLoading: Boolean = false,
@@ -52,15 +62,17 @@ data class ChatUiState(
     val showWelcome: Boolean = false,
     val selectedClubId: String? = null,
     val selectedSlotId: String? = null,
-    val aiMessageActions: Map<String, List<ChatAction>> = emptyMap()
+    val aiMessageActions: Map<String, List<ChatAction>> = emptyMap(),
+    val pendingPayment: PendingPayment? = null
 ) {
     val aiLoadingText: String
         get() = when (aiConversationState) {
             ConversationState.COLLECTING -> "검색 중..."
             ConversationState.CONFIRMING -> "예약 확인 중..."
             ConversationState.BOOKING -> "예약 처리 중..."
-            ConversationState.SELECTING_PARTICIPANTS -> "팀 편성 중..."
+            ConversationState.SELECTING_MEMBERS -> "팀 편성 중..."
             ConversationState.SETTLING -> "정산 처리 중..."
+            ConversationState.TEAM_COMPLETE -> "팀 예약 완료..."
             else -> "생각 중..."
         }
 }
@@ -69,7 +81,9 @@ data class ChatUiState(
 class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val authRepository: AuthRepository,
-    private val locationManager: LocationManager
+    private val paymentRepository: PaymentRepository,
+    private val locationManager: LocationManager,
+    private val authPreferences: AuthPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatUiState())
@@ -91,6 +105,23 @@ class ChatViewModel @Inject constructor(
         observeTokenRefresh()
         observeReconnectSignal()
         loadCurrentUser()
+        recoverPendingPayment()
+    }
+
+    private fun recoverPendingPayment() {
+        viewModelScope.launch {
+            val saved = authPreferences.getPendingPayment()
+            if (saved != null && _uiState.value.pendingPayment == null) {
+                _uiState.value = _uiState.value.copy(
+                    pendingPayment = PendingPayment(
+                        orderId = saved.orderId,
+                        orderName = saved.orderName,
+                        amount = saved.amount,
+                        type = saved.type
+                    )
+                )
+            }
+        }
     }
 
     private fun loadCurrentUser() {
@@ -106,7 +137,15 @@ class ChatViewModel @Inject constructor(
     private fun observeConnectionState() {
         viewModelScope.launch {
             chatRepository.connectionState.collect { isConnected ->
+                val wasDisconnected = !_uiState.value.isConnected
                 _uiState.value = _uiState.value.copy(isConnected = isConnected)
+                // 연결 성공 시 방 참여 (Web의 onConnect 콜백과 동일 패턴)
+                if (isConnected && wasDisconnected) {
+                    currentRoomId?.let { roomId ->
+                        chatRepository.joinRoom(roomId)
+                        Log.d(TAG, "Joined room on socket connected: $roomId")
+                    }
+                }
             }
         }
     }
@@ -150,24 +189,16 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             chatRepository.reconnectWithNewToken.collect {
                 Log.d(TAG, "Reconnect signal received, refreshing token then reconnecting")
-                // 1. 토큰 갱신
+                // 1. 토큰 갱신 (만료된 토큰으로 재연결 방지)
                 authRepository.refreshToken()
                     .onFailure { Log.w(TAG, "Token refresh failed, using cached token") }
 
                 // 2. 최신 토큰으로 재연결
+                // joinRoom은 observeConnectionState()에서 처리 (중복 호출 방지)
                 val freshToken = authRepository.getAccessToken()
                 if (freshToken != null) {
                     savedToken = freshToken
                     chatRepository.forceReconnect(freshToken)
-
-                    // 3. 연결 대기 후 방 재참여
-                    delay(2000)
-                    if (chatRepository.isConnected) {
-                        currentRoomId?.let { roomId ->
-                            chatRepository.joinRoom(roomId)
-                            loadMessages(roomId)
-                        }
-                    }
                 } else {
                     Log.e(TAG, "No token available for reconnect")
                 }
@@ -200,6 +231,22 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             chatRepository.messageFlow.collect { message ->
                 if (message.roomId == currentRoomId) {
+                    // metadata에서 actions 파싱 → aiMessageActions 맵에 등록
+                    if (!message.metadata.isNullOrEmpty()) {
+                        try {
+                            val meta = org.json.JSONObject(message.metadata)
+                            val actionsArray = meta.optJSONArray("actions")
+                            if (actionsArray != null) {
+                                val actions = parseActionsFromJson(actionsArray)
+                                if (actions.isNotEmpty()) {
+                                    val updated = _uiState.value.aiMessageActions.toMutableMap()
+                                    updated[message.id] = actions
+                                    _uiState.value = _uiState.value.copy(aiMessageActions = updated)
+                                }
+                            }
+                        } catch (_: Exception) { /* metadata 파싱 실패 시 그냥 표시 */ }
+                    }
+
                     val currentMessages = _uiState.value.messages
                     // Avoid duplicates (like iOS)
                     if (!currentMessages.any { it.id == message.id }) {
@@ -209,6 +256,38 @@ class ChatViewModel @Inject constructor(
                     }
                 }
             }
+        }
+    }
+
+    /** metadata JSON의 actions 배열을 ChatAction 리스트로 변환 */
+    private fun parseActionsFromJson(actionsArray: org.json.JSONArray): List<ChatAction> {
+        val result = mutableListOf<ChatAction>()
+        for (i in 0 until actionsArray.length()) {
+            val actionObj = actionsArray.optJSONObject(i) ?: continue
+            val typeStr = actionObj.optString("type") ?: continue
+            val actionType = ActionType.fromValue(typeStr) ?: continue
+            val dataObj = actionObj.optJSONObject("data")
+            val dataMap = if (dataObj != null) jsonObjectToMap(dataObj) else emptyMap()
+            result.add(ChatAction(type = actionType, data = dataMap))
+        }
+        return result
+    }
+
+    /** org.json.JSONObject → Map<String, Any?> 재귀 변환 */
+    private fun jsonObjectToMap(obj: org.json.JSONObject): Map<String, Any?> {
+        val map = mutableMapOf<String, Any?>()
+        for (key in obj.keys()) {
+            map[key] = jsonValueToAny(obj.get(key))
+        }
+        return map
+    }
+
+    private fun jsonValueToAny(value: Any?): Any? {
+        return when (value) {
+            is org.json.JSONObject -> jsonObjectToMap(value)
+            is org.json.JSONArray -> (0 until value.length()).map { jsonValueToAny(value.get(it)) }
+            org.json.JSONObject.NULL -> null
+            else -> value
         }
     }
 
@@ -231,15 +310,18 @@ class ChatViewModel @Inject constructor(
      */
     fun forceReconnect() {
         viewModelScope.launch {
-            // Get token from cache or fetch new one (like iOS)
-            val token = savedToken ?: authRepository.getAccessToken()
+            // 토큰 갱신 후 재연결 (만료된 토큰으로 연결 시도 방지)
+            authRepository.refreshToken()
+                .onFailure { Log.w(TAG, "Token refresh failed on force reconnect: ${it.message}") }
+
+            val token = authRepository.getAccessToken()
             if (token == null) {
                 Log.w(TAG, "No token available for force reconnect")
                 return@launch
             }
 
             savedToken = token
-            Log.d(TAG, "Force reconnect initiated")
+            Log.d(TAG, "Force reconnect initiated with fresh token")
             chatRepository.forceReconnect(token)
 
             // Wait for connection (max 5 seconds, like iOS)
@@ -302,11 +384,7 @@ class ChatViewModel @Inject constructor(
             // 3. Load messages
             loadMessages(roomId)
 
-            // 4. Join room via socket (if connected)
-            if (chatRepository.isConnected) {
-                chatRepository.joinRoom(roomId)
-                Log.d(TAG, "Joined room: $roomId")
-            }
+            // 4. joinRoom은 observeConnectionState()에서 연결 성공 시 자동 호출 (중복 방지)
 
             // 5. Mark as read
             chatRepository.markAsRead(roomId)
@@ -519,6 +597,7 @@ class ChatViewModel @Inject constructor(
             val location = locationManager.getCurrentLocation()
             val fullRequest = request.copy(
                 conversationId = request.conversationId ?: _uiState.value.aiConversationId,
+                chatRoomId = request.chatRoomId ?: currentRoomId,
                 latitude = request.latitude ?: location?.latitude,
                 longitude = request.longitude ?: location?.longitude
             )
@@ -542,7 +621,7 @@ class ChatViewModel @Inject constructor(
             senderId = _uiState.value.currentUserId ?: "",
             senderName = "나",
             content = content,
-            messageType = MessageType.TEXT,
+            messageType = MessageType.AI_USER,
             createdAt = LocalDateTime.now()
         )
         _uiState.value = _uiState.value.copy(
@@ -576,7 +655,122 @@ class ChatViewModel @Inject constructor(
     }
 
     fun getActionsForMessage(messageId: String): List<ChatAction> {
-        return _uiState.value.aiMessageActions[messageId] ?: emptyList()
+        // 1. AI 응답 캐시에서 조회
+        _uiState.value.aiMessageActions[messageId]?.let { return it }
+
+        // 2. 캐시에 없으면 메시지 metadata에서 파싱 (브로드캐스트/DB 메시지용)
+        val message = _uiState.value.messages.find { it.id == messageId }
+        if (!message?.metadata.isNullOrEmpty()) {
+            try {
+                val meta = org.json.JSONObject(message!!.metadata!!)
+                val actionsArray = meta.optJSONArray("actions")
+                if (actionsArray != null) {
+                    val actions = parseActionsFromJson(actionsArray)
+                    if (actions.isNotEmpty()) {
+                        // 캐시에 등록하여 재파싱 방지
+                        val updated = _uiState.value.aiMessageActions.toMutableMap()
+                        updated[messageId] = actions
+                        _uiState.value = _uiState.value.copy(aiMessageActions = updated)
+                        return actions
+                    }
+                }
+            } catch (_: Exception) { /* 파싱 실패 시 빈 리스트 */ }
+        }
+        return emptyList()
+    }
+
+    // Payment
+
+    fun requestPayment(orderId: String, orderName: String, amount: Int, type: String = "single") {
+        _uiState.value = _uiState.value.copy(
+            pendingPayment = PendingPayment(orderId, orderName, amount, type)
+        )
+        // DataStore에 영속화 (프로세스 kill 대비)
+        viewModelScope.launch {
+            authPreferences.savePendingPayment(orderId, orderName, amount, type)
+        }
+    }
+
+    fun handlePaymentResult(paymentKey: String, orderId: String, amount: Int) {
+        val type = _uiState.value.pendingPayment?.type ?: "single"
+        _uiState.value = _uiState.value.copy(pendingPayment = null)
+        viewModelScope.launch { authPreferences.clearPendingPayment() }
+
+        viewModelScope.launch {
+            val confirmResult = if (type == "split") {
+                paymentRepository.confirmSplitPayment(paymentKey, orderId, amount)
+            } else {
+                paymentRepository.confirmPayment(paymentKey, orderId, amount)
+            }
+
+            confirmResult
+                .onSuccess {
+                    if (type == "split") {
+                        sendAiFollowUp(AiChatRequest(
+                            message = "결제 완료",
+                            splitPaymentComplete = true,
+                            splitOrderId = orderId
+                        ))
+                    } else {
+                        sendAiFollowUp(AiChatRequest(
+                            message = "결제 완료",
+                            paymentComplete = true,
+                            paymentSuccess = true
+                        ))
+                    }
+                }
+                .onFailure { error ->
+                    Log.e(TAG, "Payment confirm failed: ${error.message}, checking status...")
+                    // Fallback: 서버 상태 확인
+                    paymentRepository.getPaymentByOrderId(orderId)
+                        .onSuccess { status ->
+                            if (status.status == "DONE" || status.status == "PAID") {
+                                if (type == "split") {
+                                    sendAiFollowUp(AiChatRequest(
+                                        message = "결제 완료",
+                                        splitPaymentComplete = true,
+                                        splitOrderId = orderId
+                                    ))
+                                } else {
+                                    sendAiFollowUp(AiChatRequest(
+                                        message = "결제 완료",
+                                        paymentComplete = true,
+                                        paymentSuccess = true
+                                    ))
+                                }
+                            } else {
+                                notifyPaymentFailed(type, orderId)
+                            }
+                        }
+                        .onFailure {
+                            notifyPaymentFailed(type, orderId)
+                        }
+                }
+        }
+    }
+
+    fun handlePaymentCancelled() {
+        val type = _uiState.value.pendingPayment?.type ?: "single"
+        val orderId = _uiState.value.pendingPayment?.orderId ?: ""
+        _uiState.value = _uiState.value.copy(pendingPayment = null)
+        viewModelScope.launch { authPreferences.clearPendingPayment() }
+        notifyPaymentFailed(type, orderId)
+    }
+
+    private fun notifyPaymentFailed(type: String, orderId: String) {
+        if (type == "split") {
+            sendAiFollowUp(AiChatRequest(
+                message = "결제 실패",
+                splitPaymentComplete = true,
+                splitOrderId = orderId
+            ))
+        } else {
+            sendAiFollowUp(AiChatRequest(
+                message = "결제 취소",
+                paymentComplete = true,
+                paymentSuccess = false
+            ))
+        }
     }
 
     /**
@@ -600,7 +794,6 @@ class ChatViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        chatRepository.stopConnectionCheck()
-        leaveRoom()
+        disconnectSocket()  // 소켓 완전 정리 (isConnecting 리셋 포함)
     }
 }

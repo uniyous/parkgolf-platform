@@ -19,7 +19,8 @@ export interface ChatMessage {
   senderId: number;
   senderName: string;
   content: string;
-  type: 'text' | 'image' | 'system';
+  messageType: string;
+  metadata?: string;
   createdAt: string;
 }
 
@@ -46,6 +47,20 @@ export interface NotificationEvent {
   data?: Record<string, any>;
   isRead: boolean;
   createdAt: string;
+}
+
+export interface RoomMessageEvent {
+  roomId: string;
+  message: {
+    id: string;
+    roomId: string;
+    senderId: number;
+    senderName: string;
+    content: string;
+    messageType: string;
+    metadata?: string;
+    createdAt: string;
+  };
 }
 
 @Injectable()
@@ -151,13 +166,27 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
             break;
 
           case 'reconnect':
-            this.logger.log('NATS reconnected, reinitializing JetStream');
-            // Reinitialize JetStream client after reconnect
+            this.logger.log('NATS reconnected, reinitializing JetStream and ClientProxies');
+            // Reinitialize JetStream client + recreate streams (NATS 파드 재시작 시 스트림 소실 대응)
             try {
               this.js = this.nc!.jetstream();
               this.jsm = await this.nc!.jetstreamManager();
+              await this.setupStreams();
             } catch (error) {
               this.logger.error('Failed to reinitialize JetStream after reconnect', error);
+            }
+            // Reconnect NestJS ClientProxies
+            try {
+              await this.chatServiceClient.connect();
+              this.logger.log('Reconnected chat-service ClientProxy');
+            } catch (error: any) {
+              this.logger.warn(`Failed to reconnect chat-service ClientProxy: ${error.message}`);
+            }
+            try {
+              await this.notifyClient.connect();
+              this.logger.log('Reconnected notify-service ClientProxy');
+            } catch (error: any) {
+              this.logger.warn(`Failed to reconnect notify-service ClientProxy: ${error.message}`);
             }
             this.natsStatusSubject.next(true);
             break;
@@ -220,7 +249,7 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
     }
 
     const subject = `chat.room.${roomId}.message`;
-    const payload = { ...message, type: message.type.toUpperCase() };
+    const payload = { ...message, messageType: message.messageType.toUpperCase() };
     const data = this.sc.encode(JSON.stringify(payload));
 
     try {
@@ -228,7 +257,19 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
         msgID: message.id,
       });
       this.logger.debug(`Published message to ${subject}`);
-    } catch (error) {
+    } catch (error: any) {
+      // 503 = 스트림 없음 (NATS 파드 재배치 후) → 스트림 재생성 후 재시도
+      if (error?.code === '503') {
+        this.logger.warn('JetStream 503 — recreating streams and retrying');
+        try {
+          await this.setupStreams();
+          await this.js.publish(subject, data, { msgID: message.id });
+          this.logger.log('Retry publish succeeded after stream recreation');
+          return;
+        } catch (retryError) {
+          this.logger.error('Retry publish failed after stream recreation', retryError);
+        }
+      }
       this.logger.error(`Failed to publish message to ${subject}`, error);
       throw error;
     }
@@ -243,7 +284,14 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
 
     try {
       await this.js.publish(subject, data);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.code === '503') {
+        try {
+          await this.setupStreams();
+          await this.js.publish(subject, data);
+          return;
+        } catch { /* ignore retry failure for presence */ }
+      }
       this.logger.error(`Failed to publish presence for user ${userId}`, error);
     }
   }
@@ -307,6 +355,38 @@ export class NatsService implements OnModuleInit, OnModuleDestroy {
     })();
 
     // Return cleanup function
+    return () => {
+      sub.unsubscribe();
+      this.logger.log(`Unsubscribed from ${subject}`);
+    };
+  }
+
+  // Subscribe to room message broadcast events from agent-service
+  async subscribeToRoomMessages(
+    handler: (event: RoomMessageEvent) => void,
+  ): Promise<() => void> {
+    if (!this.nc) {
+      this.logger.warn('NATS not connected, cannot subscribe to room messages');
+      return () => {};
+    }
+
+    const subject = 'chat.message.room';
+    const sub = this.nc.subscribe(subject);
+    this.logger.log(`Subscribed to ${subject} for room message broadcasts`);
+
+    (async () => {
+      for await (const msg of sub) {
+        try {
+          const raw = JSON.parse(this.sc.decode(msg.data));
+          // NestJS ClientProxy emit() wraps data in { pattern, data } envelope
+          const event = (raw.data !== undefined && raw.pattern) ? raw.data : raw;
+          handler(event as RoomMessageEvent);
+        } catch (error) {
+          this.logger.error('Failed to process room message event', error);
+        }
+      }
+    })();
+
     return () => {
       sub.unsubscribe();
       this.logger.log(`Unsubscribed from ${subject}`);

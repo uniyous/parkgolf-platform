@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { Pagination } from '@/components/common';
+import { useClientPagination } from '@/hooks/useClientPagination';
 import { toast } from 'sonner';
 import { useBookingsQuery } from '@/hooks/queries/booking';
 import { useClubsQuery } from '@/hooks/queries';
@@ -18,16 +20,15 @@ const formatDate = (date: Date): string => {
 
 // 취소 예약을 CancellationRecord로 변환
 const convertToCancellationRecord = (booking: Booking): CancellationRecord => {
-  // 예약일과 취소일 사이의 시간차로 취소 유형 결정
   const bookingDate = new Date(booking.bookingDate);
   const cancelledAt = booking.updatedAt ? new Date(booking.updatedAt) : new Date();
   const hoursBeforeBooking = (bookingDate.getTime() - cancelledAt.getTime()) / (1000 * 60 * 60);
 
+  // 취소 유형 결정
   let cancellationType = 'USER_NORMAL';
   let refundRate = 100;
 
   if (hoursBeforeBooking < 0) {
-    // 예약일 이후 취소
     cancellationType = 'ADMIN';
     refundRate = 0;
   } else if (hoursBeforeBooking < 24) {
@@ -44,28 +45,41 @@ const convertToCancellationRecord = (booking: Booking): CancellationRecord => {
     refundRate = 100;
   }
 
+  // 현장결제는 환불 대상 아님
+  const isOnsite = !booking.paymentMethod || booking.paymentMethod === 'onsite';
   const totalPrice = booking.totalPrice || 0;
-  const refundAmount = Math.floor(totalPrice * (refundRate / 100));
-  const refundFee = totalPrice - refundAmount;
 
-  // 환불 상태 결정 (실제로는 API에서 가져와야 함)
-  let refundStatus = 'PENDING';
-  const paymentStatus = booking.paymentStatus as string | undefined;
-  if (paymentStatus === 'REFUNDED' || paymentStatus === 'PARTIALLY_REFUNDED') {
-    refundStatus = 'COMPLETED';
-  } else if (refundRate === 0) {
+  let refundAmount: number;
+  let refundFee: number;
+  let refundStatus: string;
+
+  if (isOnsite) {
+    refundAmount = 0;
+    refundFee = 0;
     refundStatus = 'NO_REFUND';
+  } else {
+    refundAmount = Math.floor(totalPrice * (refundRate / 100));
+    refundFee = totalPrice - refundAmount;
+
+    const paymentStatus = booking.paymentStatus as string | undefined;
+    if (paymentStatus === 'REFUNDED' || paymentStatus === 'PARTIALLY_REFUNDED') {
+      refundStatus = 'COMPLETED';
+    } else if (refundRate === 0) {
+      refundStatus = 'NO_REFUND';
+    } else {
+      refundStatus = 'PENDING';
+    }
   }
 
   return {
     booking,
     cancellationType,
     cancelledAt: booking.updatedAt || booking.createdAt,
-    cancelledBy: '관리자', // 실제로는 취소 요청자 정보 필요
+    cancelledBy: booking.notes?.includes('관리자') ? '관리자' : '사용자',
     cancelReason: booking.notes || undefined,
     refundStatus,
     refundAmount,
-    refundRate,
+    refundRate: isOnsite ? 0 : refundRate,
     refundFee,
     processedAt: refundStatus === 'COMPLETED' ? booking.updatedAt : undefined,
   };
@@ -93,10 +107,10 @@ export const CancellationManagementPage: React.FC = () => {
 
   // API Queries - 취소된 예약만 조회
   const { data: bookingsData, isLoading, refetch } = useBookingsQuery({
-    dateFrom,
-    dateTo,
+    startDate: dateFrom,
+    endDate: dateTo,
     status: 'CANCELLED',
-    courseId: clubFilter || undefined,
+    clubId: clubFilter || undefined,
     search: searchKeyword || undefined,
   });
   const { data: clubsData } = useClubsQuery();
@@ -144,6 +158,8 @@ export const CancellationManagementPage: React.FC = () => {
 
     return filtered;
   }, [cancellationRecords, refundStatusFilter, cancellationType, searchKeyword]);
+
+  const { paginatedData: paginatedRecords, pagination, setPage } = useClientPagination(filteredRecords, 20);
 
   // 통계 계산
   const stats = useMemo(() => {
@@ -198,7 +214,6 @@ export const CancellationManagementPage: React.FC = () => {
       handleCloseRefundModal();
       refetch();
     } catch (error) {
-      console.error('Failed to process refund:', error);
       const message = error instanceof Error ? error.message : '환불 처리에 실패했습니다.';
       toast.error(message);
     } finally {
@@ -258,20 +273,14 @@ export const CancellationManagementPage: React.FC = () => {
         </div>
       ) : (
         <CancellationTable
-          records={filteredRecords}
+          records={paginatedRecords}
           onViewDetail={handleViewDetail}
           onProcessRefund={handleOpenRefundModal}
           isActionPending={isProcessing}
         />
       )}
 
-      {/* 하단 정보 */}
-      <div className="bg-white/5 rounded-lg p-4">
-        <p className="text-sm text-white/60 text-center">
-          총 {filteredRecords.length}건의 취소 내역
-          {searchKeyword && ` (검색: "${searchKeyword}")`}
-        </p>
-      </div>
+      <Pagination pagination={pagination} onPageChange={setPage} />
 
       {/* 상세 모달 */}
       <CancellationDetailModal

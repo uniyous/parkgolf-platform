@@ -22,7 +22,7 @@ data class ChatRoom(
             return others.firstOrNull()?.userName ?: name.ifEmpty { "채팅" }
         }
 
-        // GROUP/BOOKING: 방 이름이 있으면 우선 사용
+        // CHANNEL/BOOKING: 방 이름이 있으면 우선 사용
         if (name.isNotEmpty()) {
             return name
         }
@@ -62,6 +62,7 @@ data class ChatMessage(
     val senderName: String,
     val content: String,
     val messageType: MessageType = MessageType.TEXT,
+    val metadata: String? = null,
     val createdAt: LocalDateTime,
     val readBy: List<String>? = null
 ) {
@@ -95,7 +96,7 @@ data class ChatMessage(
 
 enum class ChatRoomType(val value: String) {
     DIRECT("DIRECT"),
-    GROUP("GROUP"),
+    CHANNEL("CHANNEL"),
     BOOKING("BOOKING");
 
     companion object {
@@ -109,6 +110,7 @@ enum class MessageType(val value: String) {
     IMAGE("IMAGE"),
     SYSTEM("SYSTEM"),
     BOOKING_INVITE("BOOKING_INVITE"),
+    AI_USER("AI_USER"),
     AI_ASSISTANT("AI_ASSISTANT");
 
     companion object {
@@ -120,14 +122,15 @@ enum class MessageType(val value: String) {
 // AI Chat Models
 
 enum class ConversationState(val value: String) {
-    IDLE("idle"),
-    COLLECTING("collecting"),
-    CONFIRMING("confirming"),
-    BOOKING("booking"),
-    SELECTING_PARTICIPANTS("selecting_participants"),
-    SETTLING("settling"),
-    COMPLETED("completed"),
-    CANCELLED("cancelled");
+    IDLE("IDLE"),
+    COLLECTING("COLLECTING"),
+    CONFIRMING("CONFIRMING"),
+    BOOKING("BOOKING"),
+    SELECTING_MEMBERS("SELECTING_MEMBERS"),
+    SETTLING("SETTLING"),
+    TEAM_COMPLETE("TEAM_COMPLETE"),
+    COMPLETED("COMPLETED"),
+    CANCELLED("CANCELLED");
 
     companion object {
         fun fromValue(value: String): ConversationState =
@@ -143,9 +146,10 @@ enum class ActionType(val value: String) {
     SHOW_PAYMENT("SHOW_PAYMENT"),
     BOOKING_COMPLETE("BOOKING_COMPLETE"),
     CONFIRM_GROUP("CONFIRM_GROUP"),
-    SELECT_PARTICIPANTS("SELECT_PARTICIPANTS"),
+    SELECT_MEMBERS("SELECT_MEMBERS"),
     SPLIT_PAYMENT("SPLIT_PAYMENT"),
-    SETTLEMENT_STATUS("SETTLEMENT_STATUS");
+    SETTLEMENT_STATUS("SETTLEMENT_STATUS"),
+    TEAM_COMPLETE("TEAM_COMPLETE");
 
     companion object {
         fun fromValue(value: String): ActionType? =

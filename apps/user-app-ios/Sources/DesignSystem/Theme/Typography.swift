@@ -14,17 +14,17 @@ extension Font {
     static let parkHeadlineSmall = Font.system(size: 16, weight: .semibold, design: .rounded)
 
     // MARK: - Body
-    static let parkBodyLarge = Font.system(size: 16, weight: .regular, design: .rounded)
-    static let parkBodyMedium = Font.system(size: 14, weight: .regular, design: .rounded)
-    static let parkBodySmall = Font.system(size: 12, weight: .regular, design: .rounded)
+    static let parkBodyLarge = Font.system(size: 18, weight: .regular, design: .rounded)
+    static let parkBodyMedium = Font.system(size: 16, weight: .regular, design: .rounded)
+    static let parkBodySmall = Font.system(size: 14, weight: .regular, design: .rounded)
 
     // MARK: - Label
-    static let parkLabelLarge = Font.system(size: 14, weight: .medium, design: .rounded)
-    static let parkLabelMedium = Font.system(size: 12, weight: .medium, design: .rounded)
-    static let parkLabelSmall = Font.system(size: 10, weight: .medium, design: .rounded)
+    static let parkLabelLarge = Font.system(size: 16, weight: .medium, design: .rounded)
+    static let parkLabelMedium = Font.system(size: 14, weight: .medium, design: .rounded)
+    static let parkLabelSmall = Font.system(size: 12, weight: .medium, design: .rounded)
 
     // MARK: - Caption
-    static let parkCaption = Font.system(size: 11, weight: .regular, design: .rounded)
+    static let parkCaption = Font.system(size: 13, weight: .regular, design: .rounded)
 }
 
 // MARK: - Text Style Modifiers

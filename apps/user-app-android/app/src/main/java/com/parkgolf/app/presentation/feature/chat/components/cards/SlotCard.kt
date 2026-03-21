@@ -27,7 +27,7 @@ import java.util.Locale
 @Composable
 fun SlotCard(
     data: Map<String, Any?>,
-    onSelect: ((String, String, Int) -> Unit)? = null,
+    onSelect: ((String, String, Int, String?) -> Unit)? = null,
     selectedSlotId: String? = null
 ) {
     val clubName = data["clubName"]?.toString() ?: ""
@@ -63,7 +63,7 @@ fun SlotCard(
                             )
                             Text(
                                 text = clubName,
-                                style = MaterialTheme.typography.titleSmall,
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = ParkOnPrimary
                             )
@@ -81,7 +81,7 @@ fun SlotCard(
                                 )
                                 Text(
                                     text = clubAddress,
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = ParkOnPrimary.copy(alpha = 0.5f),
                                     maxLines = 1
                                 )
@@ -100,7 +100,7 @@ fun SlotCard(
                                 )
                                 Text(
                                     text = formatDateKorean(date),
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = ParkOnPrimary.copy(alpha = 0.5f)
                                 )
                             }
@@ -129,13 +129,13 @@ fun SlotCard(
                         ) {
                             Text(
                                 text = roundName,
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.SemiBold,
                                 color = ParkOnPrimary
                             )
                             Text(
                                 text = "₩${numberFormat.format(roundPrice)}",
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = ParkPrimary
                             )
@@ -158,7 +158,7 @@ fun SlotCard(
                                     availableSpots = availableSpots,
                                     isSelected = isSelected,
                                     isDisabled = isDisabled,
-                                    onClick = { onSelect?.invoke(slotId, time, roundPrice) }
+                                    onClick = { onSelect?.invoke(slotId, time, roundPrice, roundName) }
                                 )
                             }
                         }
@@ -190,13 +190,13 @@ fun SlotCard(
                 rowSlots.forEach { slot ->
                     val id = slot["id"]?.toString() ?: ""
                     val time = slot["time"]?.toString() ?: ""
-                    val courseName = slot["courseName"]?.toString() ?: ""
+                    val gameName = slot["gameName"]?.toString() ?: ""
                     val price = (slot["price"] as? Number)?.toInt() ?: 0
                     val isSelected = selectedSlotId == id
                     val isDisabled = hasSelection && !isSelected
 
                     Surface(
-                        onClick = { if (!isDisabled) onSelect?.invoke(id, time, price) },
+                        onClick = { if (!isDisabled) onSelect?.invoke(id, time, price, gameName) },
                         enabled = onSelect != null && !isDisabled,
                         shape = RoundedCornerShape(12.dp),
                         color = GlassCard,
@@ -221,19 +221,19 @@ fun SlotCard(
                                     )
                                     Text(
                                         text = time,
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.SemiBold,
                                         color = ParkOnPrimary
                                     )
                                 }
                                 Text(
-                                    text = courseName,
-                                    style = MaterialTheme.typography.bodySmall,
+                                    text = gameName,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = ParkOnPrimary.copy(alpha = 0.6f)
                                 )
                                 Text(
                                     text = "₩${numberFormat.format(price)}",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = ParkPrimary
                                 )
                             }
@@ -293,14 +293,14 @@ private fun TimeSlotChip(
             }
             Text(
                 text = time,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                 color = if (isSelected) ParkPrimary else ParkOnPrimary
             )
             if (availableSpots != null) {
                 Text(
                     text = "${availableSpots}명",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = if (isSelected) ParkPrimary.copy(alpha = 0.7f)
                     else ParkOnPrimary.copy(alpha = 0.5f)
                 )

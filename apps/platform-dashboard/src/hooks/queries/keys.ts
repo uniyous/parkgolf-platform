@@ -51,6 +51,7 @@ export const clubKeys = {
   details: () => [...clubKeys.all, 'detail'] as const,
   detail: (id: number) => [...clubKeys.details(), id] as const,
   byCompany: (companyId: number) => [...clubKeys.all, 'byCompany', companyId] as const,
+  stats: () => [...clubKeys.all, 'stats'] as const,
 };
 
 // Booking Keys
@@ -94,6 +95,32 @@ export const policyKeys = {
   operating: () => [...policyKeys.all(), 'operating'] as const,
   operatingResolve: () => [...policyKeys.operating(), 'resolve'] as const,
   operatingDetail: (id?: number) => [...policyKeys.operating(), 'detail', id] as const,
+};
+
+// Partner Keys
+export const partnerKeys = {
+  all: ['partners'] as const,
+  lists: () => [...partnerKeys.all, 'list'] as const,
+  list: (filters?: Record<string, unknown>) => [...partnerKeys.lists(), filters] as const,
+  details: () => [...partnerKeys.all, 'detail'] as const,
+  detail: (id: number) => [...partnerKeys.details(), id] as const,
+  gameMappings: (partnerId: number) => [...partnerKeys.all, 'gameMappings', partnerId] as const,
+  slotMappings: (partnerId: number, filters?: Record<string, unknown>) => [...partnerKeys.all, 'slotMappings', partnerId, filters] as const,
+  bookingMappings: (partnerId: number) => [...partnerKeys.all, 'bookingMappings', partnerId] as const,
+  syncLogs: (partnerId: number) => [...partnerKeys.all, 'syncLogs', partnerId] as const,
+};
+
+// Notification Keys
+export const notificationKeys = {
+  all: ['notifications'] as const,
+  lists: () => [...notificationKeys.all, 'list'] as const,
+  list: (filters?: Record<string, unknown>) => [...notificationKeys.lists(), filters] as const,
+  details: () => [...notificationKeys.all, 'detail'] as const,
+  detail: (id?: string) => [...notificationKeys.details(), id] as const,
+  stats: (dateRange?: Record<string, string>) => [...notificationKeys.all, 'stats', dateRange] as const,
+  templates: () => [...notificationKeys.all, 'templates'] as const,
+  templateList: (filters?: Record<string, unknown>) => [...notificationKeys.templates(), 'list', filters] as const,
+  templateDetail: (id?: string) => [...notificationKeys.templates(), 'detail', id] as const,
 };
 
 // Analytics Keys

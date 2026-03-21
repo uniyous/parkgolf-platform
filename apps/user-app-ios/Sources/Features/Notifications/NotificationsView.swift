@@ -228,7 +228,7 @@ struct NotificationsView: View {
                     userInfo: ["bookingId": bookingId]
                 )
             }
-        case .paymentSuccess, .paymentFailed:
+        case .refundCompleted, .paymentSuccess, .paymentFailed:
             if let bookingIdStr = notification.data?.bookingId,
                let bookingId = Int(bookingIdStr) {
                 dismiss()
@@ -236,6 +236,15 @@ struct NotificationsView: View {
                     name: .navigateToBookingDetail,
                     object: nil,
                     userInfo: ["bookingId": bookingId]
+                )
+            }
+        case .splitPaymentRequest:
+            if let chatRoomId = notification.data?.chatRoomId {
+                dismiss()
+                NotificationCenter.default.post(
+                    name: .navigateToChatRoom,
+                    object: nil,
+                    userInfo: ["chatRoomId": chatRoomId]
                 )
             }
         case .friendRequest, .friendAccepted:
@@ -397,13 +406,13 @@ struct NotificationRow: View {
 
     private var iconColor: Color {
         switch notification.type {
-        case .bookingConfirmed, .paymentSuccess, .friendAccepted:
+        case .bookingConfirmed, .paymentSuccess, .friendAccepted, .refundCompleted:
             return .parkPrimary
         case .bookingCancelled, .paymentFailed:
             return .parkError
         case .friendRequest:
             return .parkAccent
-        case .chatMessage:
+        case .chatMessage, .splitPaymentRequest:
             return .parkInfo
         case .systemAlert:
             return .parkWarning

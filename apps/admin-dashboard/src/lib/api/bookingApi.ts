@@ -4,7 +4,10 @@ import type {
   Booking,
   CreateBookingDto,
   UpdateBookingDto,
-  TimeSlotAvailability
+  TimeSlotAvailability,
+  Payment,
+  PaymentFilters as PaymentFilterType,
+  RevenueStats,
 } from '@/types';
 
 // BFF API 응답 타입
@@ -13,10 +16,12 @@ export type BookingListResponse = PaginatedResult<Booking>;
 export interface BookingFilters extends Record<string, string | number | boolean | undefined> {
   search?: string;
   status?: string;
-  courseId?: number;
+  clubId?: number;
+  gameId?: number;
   userId?: number;
-  dateFrom?: string; // YYYY-MM-DD
-  dateTo?: string;   // YYYY-MM-DD
+  paymentMethod?: string;
+  startDate?: string; // YYYY-MM-DD
+  endDate?: string;   // YYYY-MM-DD
 }
 
 export interface BookingStats {
@@ -32,6 +37,31 @@ export interface DailyBookingData {
   date: string; // YYYY-MM-DD
   bookings: Booking[];
   availability: TimeSlotAvailability[];
+}
+
+export interface ClubOperationStats {
+  stats: {
+    totalBookings: number;
+    totalRevenue: number;
+    averageUtilization: number;
+    monthlyRevenue: number;
+    topCourses: string[];
+    peakTimes: string[];
+  };
+  analytics: Array<{
+    gameId: number;
+    gameName: string;
+    totalBookings: number;
+    totalRevenue: number;
+    averagePrice: number;
+    bookedSlots: number;
+    weekdayBookings: number;
+    weekendBookings: number;
+    peakHours: string[];
+  }>;
+  availability: {
+    bookedToday: number;
+  };
 }
 
 export const bookingApi = {
@@ -147,8 +177,8 @@ export const bookingApi = {
   /**
    * 코스별 예약 목록 조회
    */
-  async getBookingsByCourse(courseId: number, filters: BookingFilters = {}): Promise<Booking[]> {
-    const response = await this.getBookings({ ...filters, courseId });
+  async getBookingsByCourse(clubId: number, filters: BookingFilters = {}): Promise<Booking[]> {
+    const response = await this.getBookings({ ...filters, clubId });
     return response.data;
   },
 
@@ -167,8 +197,8 @@ export const bookingApi = {
    */
   async getDailyBookings(courseId: number, date: string): Promise<DailyBookingData> {
     const bookingsResponse = await this.getBookingsByCourse(courseId, {
-      dateFrom: date,
-      dateTo: date
+      startDate: date,
+      endDate: date
     });
 
     return {
@@ -204,8 +234,8 @@ export const bookingApi = {
     const endDate = new Date(parseInt(year), parseInt(monthNum), 0).toISOString().split('T')[0];
 
     const response = await this.getBookingsByCourse(courseId, {
-      dateFrom: startDate,
-      dateTo: endDate
+      startDate,
+      endDate,
     });
 
     // Group bookings by date
@@ -248,6 +278,37 @@ export const bookingApi = {
     return stats;
   },
 
+  // ===== 클럽 운영 통계 =====
+
+  /**
+   * 클럽 운영 통계 조회 (OperationInfoTab용)
+   */
+  async getClubOperationStats(
+    clubId: number,
+    dateRange: { startDate: string; endDate: string },
+  ): Promise<ClubOperationStats> {
+    const response = await apiClient.get<unknown>(
+      `/admin/bookings/stats/clubs/${clubId}`,
+      dateRange,
+    );
+    const data = extractSingle<ClubOperationStats>(response.data);
+    if (!data) {
+      return {
+        stats: {
+          totalBookings: 0,
+          totalRevenue: 0,
+          averageUtilization: 0,
+          monthlyRevenue: 0,
+          topCourses: [],
+          peakTimes: [],
+        },
+        analytics: [],
+        availability: { bookedToday: 0 },
+      };
+    }
+    return data;
+  },
+
   // ===== 예약 가능 여부 확인 =====
 
   /**
@@ -258,4 +319,51 @@ export const bookingApi = {
     return true;
   },
 
+  // ===== 결제 관리 =====
+
+  /**
+   * 결제 목록 조회
+   */
+  async getPayments(
+    filters: PaymentFilterType = {},
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedResult<Payment>> {
+    const params: Record<string, string | number | boolean | undefined> = { page, limit };
+    if (filters.status) params.status = filters.status;
+    if (filters.startDate) params.startDate = filters.startDate;
+    if (filters.endDate) params.endDate = filters.endDate;
+    if (filters.search) params.search = filters.search;
+    const response = await apiClient.get<unknown>('/admin/bookings/payments/list', params);
+    return extractPaginatedList<Payment>(response.data, 'payments', { page, limit });
+  },
+
+  /**
+   * 결제 상세 조회
+   */
+  async getPaymentById(paymentId: number): Promise<Payment> {
+    const response = await apiClient.get<unknown>(`/admin/bookings/payments/${paymentId}`);
+    const payment = extractSingle<Payment>(response.data);
+    if (!payment) {
+      throw new Error(`Payment ${paymentId} not found`);
+    }
+    return payment;
+  },
+
+  /**
+   * 매출 통계 조회
+   */
+  async getRevenueStats(dateRange: { startDate: string; endDate: string }): Promise<RevenueStats> {
+    const response = await apiClient.get<unknown>('/admin/bookings/stats/revenue', dateRange);
+    const stats = extractSingle<RevenueStats>(response.data);
+    if (!stats) {
+      return {
+        totalRevenue: 0,
+        revenueGrowthRate: 0,
+        averageRevenuePerBooking: 0,
+        refundTotal: 0,
+      };
+    }
+    return stats;
+  },
 } as const;

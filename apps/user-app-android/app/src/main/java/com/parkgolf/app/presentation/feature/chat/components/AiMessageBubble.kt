@@ -26,6 +26,7 @@ import com.parkgolf.app.presentation.feature.chat.components.cards.PaymentCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.SelectParticipantsCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.SettlementStatusCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.SlotCard
+import com.parkgolf.app.presentation.feature.chat.components.cards.TeamCompleteCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.TeamConfirmData
 import com.parkgolf.app.presentation.feature.chat.components.cards.WeatherCard
 import com.parkgolf.app.presentation.theme.ParkOnPrimary
@@ -41,14 +42,20 @@ fun AiMessageBubble(
     showLabel: Boolean = true,
     currentUserId: Int? = null,
     onClubSelect: ((String, String) -> Unit)? = null,
-    onSlotSelect: ((slotId: String, time: String, price: Int, clubId: String?, clubName: String?) -> Unit)? = null,
+    onSlotSelect: ((slotId: String, time: String, price: Int, clubId: String?, clubName: String?, gameName: String?) -> Unit)? = null,
     onConfirmBooking: ((String) -> Unit)? = null,
     onCancelBooking: (() -> Unit)? = null,
     onPaymentComplete: ((Boolean) -> Unit)? = null,
+    onRequestPayment: ((orderId: String, orderName: String, amount: Int) -> Unit)? = null,
     onConfirmGroup: ((String) -> Unit)? = null,
     onCancelGroup: (() -> Unit)? = null,
     onTeamConfirm: ((List<TeamConfirmData>) -> Unit)? = null,
     onSplitPaymentComplete: ((Boolean, String) -> Unit)? = null,
+    onRequestSplitPayment: ((orderId: String, amount: Int) -> Unit)? = null,
+    onNextTeam: (() -> Unit)? = null,
+    onFinish: (() -> Unit)? = null,
+    onSendReminder: (() -> Unit)? = null,
+    onRefresh: (() -> Unit)? = null,
     selectedClubId: String? = null,
     selectedSlotId: String? = null
 ) {
@@ -100,7 +107,7 @@ fun AiMessageBubble(
                 bottomStart = 4.dp,
                 bottomEnd = 16.dp
             ),
-            color = ParkPrimary.copy(alpha = 0.05f)
+            color = ParkPrimary.copy(alpha = 0.10f)
         ) {
             Row(modifier = Modifier.height(IntrinsicSize.Min)) {
                 // Left accent border
@@ -108,7 +115,7 @@ fun AiMessageBubble(
                     modifier = Modifier
                         .width(3.dp)
                         .fillMaxHeight()
-                        .background(ParkPrimary.copy(alpha = 0.4f))
+                        .background(ParkPrimary)
                 )
 
                 Column(
@@ -133,10 +140,10 @@ fun AiMessageBubble(
                             )
                             ActionType.SHOW_SLOTS -> SlotCard(
                                 data = action.data,
-                                onSelect = { slotId, time, price ->
+                                onSelect = { slotId, time, price, gameName ->
                                     val clubId = action.data["clubId"]?.toString()
                                     val clubName = action.data["clubName"]?.toString()
-                                    onSlotSelect?.invoke(slotId, time, price, clubId, clubName)
+                                    onSlotSelect?.invoke(slotId, time, price, clubId, clubName, gameName)
                                 },
                                 selectedSlotId = selectedSlotId
                             )
@@ -148,7 +155,8 @@ fun AiMessageBubble(
                             )
                             ActionType.SHOW_PAYMENT -> PaymentCard(
                                 data = action.data,
-                                onPaymentComplete = onPaymentComplete
+                                onPaymentComplete = onPaymentComplete,
+                                onRequestPayment = onRequestPayment
                             )
                             ActionType.BOOKING_COMPLETE -> BookingCompleteCard(data = action.data)
                             ActionType.CONFIRM_GROUP -> ConfirmGroupCard(
@@ -156,7 +164,7 @@ fun AiMessageBubble(
                                 onConfirm = onConfirmGroup,
                                 onCancel = onCancelGroup
                             )
-                            ActionType.SELECT_PARTICIPANTS -> SelectParticipantsCard(
+                            ActionType.SELECT_MEMBERS -> SelectParticipantsCard(
                                 data = action.data,
                                 onConfirm = onTeamConfirm,
                                 onCancel = onCancelGroup
@@ -164,7 +172,15 @@ fun AiMessageBubble(
                             ActionType.SETTLEMENT_STATUS -> SettlementStatusCard(
                                 data = action.data,
                                 currentUserId = currentUserId,
-                                onSplitPaymentComplete = onSplitPaymentComplete
+                                onSplitPaymentComplete = onSplitPaymentComplete,
+                                onRequestSplitPayment = onRequestSplitPayment,
+                                onSendReminder = onSendReminder,
+                                onRefresh = onRefresh
+                            )
+                            ActionType.TEAM_COMPLETE -> TeamCompleteCard(
+                                data = action.data,
+                                onNextTeam = onNextTeam,
+                                onFinish = onFinish
                             )
                             ActionType.SPLIT_PAYMENT -> { /* handled by settlement status */ }
                         }
@@ -180,5 +196,64 @@ fun AiMessageBubble(
             color = ParkOnPrimary.copy(alpha = 0.5f),
             modifier = Modifier.padding(start = 8.dp, top = 2.dp)
         )
+    }
+}
+
+/**
+ * AI_USER 메시지 버블: 사용자가 AI 모드에서 보낸 메시지
+ * 우측 정렬, ParkPrimary 테마, 우측 보더
+ */
+@Composable
+fun AiUserMessageBubble(
+    content: String,
+    createdAt: LocalDateTime
+) {
+    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End
+    ) {
+        Column(
+            horizontalAlignment = Alignment.End
+        ) {
+            Surface(
+                shape = RoundedCornerShape(
+                    topStart = 16.dp,
+                    topEnd = 16.dp,
+                    bottomStart = 16.dp,
+                    bottomEnd = 4.dp
+                ),
+                color = ParkPrimary.copy(alpha = 0.15f)
+            ) {
+                Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(12.dp)
+                    ) {
+                        Text(
+                            text = content,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = ParkOnPrimary
+                        )
+                    }
+                    // Right accent border
+                    Box(
+                        modifier = Modifier
+                            .width(3.dp)
+                            .fillMaxHeight()
+                            .background(ParkPrimary)
+                    )
+                }
+            }
+
+            Text(
+                text = createdAt.format(timeFormatter),
+                style = MaterialTheme.typography.labelSmall,
+                color = ParkOnPrimary.copy(alpha = 0.5f),
+                modifier = Modifier.padding(end = 8.dp, top = 2.dp)
+            )
+        }
     }
 }

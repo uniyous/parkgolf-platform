@@ -122,7 +122,6 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
       refetch();
       toast.success('타임슬롯이 삭제되었습니다.');
     } catch (error) {
-      console.error('Failed to delete time slot:', error);
       toast.error('타임슬롯 삭제에 실패했습니다.');
     }
   };
@@ -138,7 +137,6 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
       refetch();
       toast.success('상태가 변경되었습니다.');
     } catch (error) {
-      console.error('Failed to update time slot:', error);
       toast.error('상태 변경에 실패했습니다.');
     }
   };
@@ -224,23 +222,6 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
                 이번 주
               </button>
             )}
-            <button
-              onClick={() => refetch()}
-              disabled={isFetching}
-              className="px-3 py-1.5 text-sm bg-white/10 text-white/70 rounded-lg hover:bg-white/10 transition-colors flex items-center space-x-1"
-            >
-              {isFetching ? (
-                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              )}
-              <span>새로고침</span>
-            </button>
           </div>
         </div>
       </div>

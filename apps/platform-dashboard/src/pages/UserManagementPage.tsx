@@ -1,7 +1,12 @@
-import React from 'react';
-import { Search, MoreVertical } from 'lucide-react';
-import { Card } from '@/components/ui';
+import React, { useState, useMemo } from 'react';
+import { MoreVertical } from 'lucide-react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/Table';
+import {
+  FilterContainer,
+  FilterSearch,
+  FilterSelect,
+  FilterResetButton,
+} from '@/components/common/filters';
 
 // ===== Mock Data =====
 
@@ -87,6 +92,37 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
 // ===== Component =====
 
 export const UserManagementPage: React.FC = () => {
+  const [filters, setFilters] = useState({
+    search: '',
+    membership: 'ALL' as string,
+    status: 'ALL' as string,
+  });
+
+  const filteredUsers = useMemo(() => {
+    let result = [...MOCK_USERS];
+
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      result = result.filter(
+        (u) =>
+          u.name.toLowerCase().includes(searchLower) ||
+          u.email.toLowerCase().includes(searchLower)
+      );
+    }
+
+    if (filters.membership !== 'ALL') {
+      result = result.filter((u) => u.membership === filters.membership);
+    }
+
+    if (filters.status !== 'ALL') {
+      result = result.filter((u) => u.status === filters.status);
+    }
+
+    return result;
+  }, [filters]);
+
+  const hasActiveFilters = !!(filters.search || filters.membership !== 'ALL' || filters.status !== 'ALL');
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -98,18 +134,44 @@ export const UserManagementPage: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <Card variant="default" padding="sm">
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
-            <input
-              type="text"
-              placeholder="이름, 이메일로 검색"
-              className="h-10 w-full rounded-lg border border-white/15 bg-white/10 pl-10 pr-4 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
+      <FilterContainer columns={4}>
+        <FilterSearch
+          label="검색"
+          showLabel
+          value={filters.search}
+          onChange={(value) => setFilters((f) => ({ ...f, search: value }))}
+          placeholder="이름, 이메일로 검색"
+        />
+        <FilterSelect
+          label="멤버십"
+          value={filters.membership === 'ALL' ? '' : filters.membership}
+          onChange={(value) => setFilters((f) => ({ ...f, membership: value || 'ALL' }))}
+          options={[
+            { value: 'PREMIUM', label: 'Premium' },
+            { value: 'GOLD', label: 'Gold' },
+            { value: 'REGULAR', label: 'Regular' },
+            { value: 'GUEST', label: 'Guest' },
+          ]}
+          placeholder="전체 멤버십"
+        />
+        <FilterSelect
+          label="상태"
+          value={filters.status === 'ALL' ? '' : filters.status}
+          onChange={(value) => setFilters((f) => ({ ...f, status: value || 'ALL' }))}
+          options={[
+            { value: 'ACTIVE', label: '활성' },
+            { value: 'INACTIVE', label: '비활성' },
+            { value: 'SUSPENDED', label: '정지' },
+          ]}
+          placeholder="전체 상태"
+        />
+        <div className="flex items-end justify-end">
+          <FilterResetButton
+            hasActiveFilters={hasActiveFilters}
+            onClick={() => setFilters({ search: '', membership: 'ALL', status: 'ALL' })}
+          />
         </div>
-      </Card>
+      </FilterContainer>
 
       {/* Table */}
       <Table>
@@ -125,7 +187,7 @@ export const UserManagementPage: React.FC = () => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {MOCK_USERS.map((user) => {
+          {filteredUsers.map((user) => {
             const membershipInfo = MEMBERSHIP_CONFIG[user.membership] || MEMBERSHIP_CONFIG.REGULAR;
             const statusInfo = STATUS_CONFIG[user.status] || STATUS_CONFIG.ACTIVE;
 

@@ -29,7 +29,16 @@ fun ConfirmBookingCard(
     val price = (data["price"] as? Number)?.toInt() ?: 0
     val isFree = price == 0
     val numberFormat = NumberFormat.getNumberInstance(Locale.KOREA)
-    var paymentMethod by remember { mutableStateOf("onsite") }
+
+    // 그룹 모드 관련
+    val groupMode = data["groupMode"] as? Boolean ?: false
+    val teamNumber = (data["teamNumber"] as? Number)?.toInt()
+    val pricePerPerson = (data["pricePerPerson"] as? Number)?.toInt()
+    @Suppress("UNCHECKED_CAST")
+    val members = (data["members"] as? List<Map<String, Any?>>) ?: emptyList()
+    val memberNames = members.mapNotNull { it["userName"]?.toString() }
+
+    var paymentMethod by remember { mutableStateOf(if (groupMode) "dutchpay" else "onsite") }
 
     Surface(
         shape = RoundedCornerShape(12.dp),
@@ -43,8 +52,8 @@ fun ConfirmBookingCard(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "예약 정보 확인",
-                style = MaterialTheme.typography.bodyMedium,
+                text = if (teamNumber != null) "팀${teamNumber} 예약 정보 확인" else "예약 정보 확인",
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = ParkOnPrimary
             )
@@ -54,11 +63,18 @@ fun ConfirmBookingCard(
                 InfoRow(icon = Icons.Default.LocationOn, value = clubName)
                 InfoRow(icon = Icons.Default.CalendarToday, value = formatDateKorean(date))
                 InfoRow(icon = Icons.Default.AccessTime, value = time)
-                InfoRow(icon = Icons.Default.Group, value = "${playerCount}명")
-                InfoRow(
-                    icon = Icons.Default.Payment,
-                    value = if (isFree) "무료" else "₩${numberFormat.format(price)}"
-                )
+                if (memberNames.isNotEmpty()) {
+                    InfoRow(icon = Icons.Default.Group, value = memberNames.joinToString(", "))
+                } else {
+                    InfoRow(icon = Icons.Default.Group, value = "${playerCount}명")
+                }
+                val priceText = if (isFree) "무료" else {
+                    val base = "₩${numberFormat.format(price)}"
+                    if (pricePerPerson != null && pricePerPerson > 0) {
+                        "$base (1인 ${numberFormat.format(pricePerPerson)}원)"
+                    } else base
+                }
+                InfoRow(icon = Icons.Default.Payment, value = priceText)
             }
 
             // 결제방법 선택
@@ -66,26 +82,57 @@ fun ConfirmBookingCard(
                 Column {
                     Text(
                         text = "결제방법",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         color = ParkOnPrimary.copy(alpha = 0.5f)
                     )
                     Spacer(modifier = Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        PaymentMethodButton(
-                            icon = Icons.Default.Store,
-                            label = "현장결제",
-                            isSelected = paymentMethod == "onsite",
-                            onClick = { paymentMethod = "onsite" },
-                            modifier = Modifier.weight(1f)
-                        )
-                        PaymentMethodButton(
-                            icon = Icons.Default.CreditCard,
-                            label = "카드결제",
-                            isSelected = paymentMethod == "card",
-                            selectedColor = ParkInfo,
-                            onClick = { paymentMethod = "card" },
-                            modifier = Modifier.weight(1f)
-                        )
+                    if (groupMode) {
+                        // 그룹모드: 3옵션 (더치페이 기본)
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                PaymentMethodButton(
+                                    icon = Icons.Default.GroupWork,
+                                    label = "더치페이",
+                                    isSelected = paymentMethod == "dutchpay",
+                                    selectedColor = ParkPrimary,
+                                    onClick = { paymentMethod = "dutchpay" },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                PaymentMethodButton(
+                                    icon = Icons.Default.Store,
+                                    label = "현장결제",
+                                    isSelected = paymentMethod == "onsite",
+                                    onClick = { paymentMethod = "onsite" },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            PaymentMethodButton(
+                                icon = Icons.Default.CreditCard,
+                                label = "카드결제",
+                                isSelected = paymentMethod == "card",
+                                selectedColor = ParkInfo,
+                                onClick = { paymentMethod = "card" },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    } else {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            PaymentMethodButton(
+                                icon = Icons.Default.Store,
+                                label = "현장결제",
+                                isSelected = paymentMethod == "onsite",
+                                onClick = { paymentMethod = "onsite" },
+                                modifier = Modifier.weight(1f)
+                            )
+                            PaymentMethodButton(
+                                icon = Icons.Default.CreditCard,
+                                label = "카드결제",
+                                isSelected = paymentMethod == "card",
+                                selectedColor = ParkInfo,
+                                onClick = { paymentMethod = "card" },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
             }
@@ -102,7 +149,7 @@ fun ConfirmBookingCard(
                             ),
                             border = BorderStroke(1.dp, ParkOnPrimary.copy(alpha = 0.2f))
                         ) {
-                            Text("취소", style = MaterialTheme.typography.bodySmall)
+                            Text("취소", style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                     if (onConfirm != null) {
@@ -111,7 +158,7 @@ fun ConfirmBookingCard(
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(containerColor = ParkPrimary)
                         ) {
-                            Text("예약 확인", style = MaterialTheme.typography.bodySmall)
+                            Text("예약 확인", style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
@@ -155,7 +202,7 @@ private fun PaymentMethodButton(
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Medium,
                 color = if (isSelected) selectedColor else ParkOnPrimary.copy(alpha = 0.5f)
             )
@@ -180,7 +227,7 @@ private fun InfoRow(
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = ParkOnPrimary.copy(alpha = 0.7f)
         )
     }

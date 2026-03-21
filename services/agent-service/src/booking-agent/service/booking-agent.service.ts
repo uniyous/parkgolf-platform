@@ -38,21 +38,24 @@ export class BookingAgentService {
       this.conversationService.updateSlots(context, { latitude, longitude });
     }
 
-    // chatRoomId 저장 (그룹 예약용)
+    // chatRoomId 저장 (멤버 조회용)
     if (request.chatRoomId && !context.slots.chatRoomId) {
       this.conversationService.updateSlots(context, { chatRoomId: request.chatRoomId });
     }
 
     // ── Direct Handling (LLM 없음) ──
+    // 그룹 예약 핸들러 (우선)
+    if (request.sendReminder) return this.handleSendReminder(context, request);
+    if (request.finishGroup) return this.handleFinishGroup(context, request);
+    if (request.nextTeam) return this.handleNextTeam(context, request);
+    if (request.teamMembers) return this.handleTeamMemberSelect(context, request);
+    // 기존 핸들러
     if (request.splitPaymentComplete) return this.handleSplitPaymentComplete(context, request);
     if (request.paymentComplete) return this.handlePaymentComplete(context, request);
-    if (request.confirmGroupBooking) return this.handleGroupBookingConfirm(context, request);
     if (request.confirmBooking) return this.handleDirectBooking(context, request);
     if (request.cancelBooking) return this.handleCancelBooking(context);
-    if (request.selectedSlots && request.selectedSlots.length > 1) return this.handleMultiSlotSelect(context, request);
     if (request.selectedSlotId) return this.handleDirectSlotSelect(context, request);
     if (request.selectedClubId) return this.handleDirectClubSelect(context, request);
-    if (request.teams) return this.handleTeamConfirm(context, request);
 
     // ── LLM Processing (기존 방식) ──
     // 사용자 메시지 추가
@@ -105,21 +108,27 @@ export class BookingAgentService {
   // ── Direct Handlers (LLM 없이 직접 처리) ──
 
   /**
-   * 골프장 카드 클릭 → 해당 골프장의 슬롯 조회
+   * 골프장 카드 클릭 → 채팅방 멤버 조회 → SELECT_MEMBERS 카드
    */
   private async handleDirectClubSelect(
     context: ConversationContext,
     request: ChatRequestDto,
   ): Promise<ChatResponseDto> {
     const { selectedClubId, selectedClubName } = request;
-    const date = context.slots.date || this.getTomorrowDate();
 
     this.conversationService.updateSlots(context, {
       clubId: selectedClubId,
       clubName: selectedClubName,
     });
 
-    // get_available_slots 직접 호출
+    const result = await this.showSelectMembers(
+      context,
+      `${selectedClubName}이(가) 선택되었어요! 함께 플레이할 멤버를 선택해 주세요.`,
+    );
+    if (result) return result;
+
+    // chatRoomId 없거나 멤버 조회 실패 → 슬롯 바로 표시 (폴백)
+    const date = context.slots.date || this.getTomorrowDate();
     const toolResult = await this.toolExecutor.execute({
       name: 'get_available_slots',
       args: { clubId: selectedClubId, date },
@@ -147,12 +156,12 @@ export class BookingAgentService {
   }
 
   /**
-   * 슬롯 카드 클릭 → 예약 확인 카드 표시
+   * 슬롯 카드 클릭 → 멤버 미선택 시 SELECT_MEMBERS, 선택 완료 시 CONFIRM_BOOKING
    */
-  private handleDirectSlotSelect(
+  private async handleDirectSlotSelect(
     context: ConversationContext,
     request: ChatRequestDto,
-  ): ChatResponseDto {
+  ): Promise<ChatResponseDto> {
     const { selectedSlotId, selectedSlotTime, selectedSlotPrice } = request;
 
     // 검색 결과에서 바로 슬롯 선택한 경우 — clubId도 설정
@@ -166,17 +175,38 @@ export class BookingAgentService {
     this.conversationService.updateSlots(context, {
       slotId: selectedSlotId,
       time: selectedSlotTime,
+      slotPrice: selectedSlotPrice,
+      ...(request.selectedGameName && { gameName: request.selectedGameName }),
     });
 
-    const playerCount = context.slots.playerCount || 4;
-    const price = (selectedSlotPrice || 0) * playerCount;
+    // 멤버 선택이 아직 안 된 경우 → SELECT_MEMBERS로 리다이렉트
+    if (!context.slots.groupMode) {
+      const result = await this.showSelectMembers(
+        context,
+        '멤버를 선택해 주세요!',
+      );
+      if (result) return result;
+      // 폴백: 멤버 조회 실패 시 1인 예약으로 진행
+    }
 
-    const confirmData = {
+    // CONFIRM_BOOKING 카드 표시
+    const playerCount = context.slots.currentTeamMembers?.length || context.slots.playerCount || 4;
+    const slotPrice = selectedSlotPrice || context.slots.slotPrice || 0;
+    const price = slotPrice * playerCount;
+
+    const confirmData: Record<string, unknown> = {
       clubName: context.slots.clubName || '',
       date: context.slots.date || this.getTomorrowDate(),
-      time: selectedSlotTime || '',
+      time: selectedSlotTime || context.slots.time || '',
       playerCount,
       price,
+      groupMode: true,
+      teamNumber: context.slots.currentTeamNumber || 1,
+      members: (context.slots.currentTeamMembers || []).map((m) => ({
+        userId: m.userId,
+        userName: m.userName,
+      })),
+      pricePerPerson: slotPrice,
     };
 
     const message = '예약 정보를 확인해 주세요!';
@@ -199,7 +229,10 @@ export class BookingAgentService {
     context: ConversationContext,
     request: ChatRequestDto,
   ): Promise<ChatResponseDto> {
-    const { clubId, slotId, playerCount } = context.slots;
+    const { clubId, slotId } = context.slots;
+    const playerCount = context.slots.groupMode
+      ? (context.slots.currentTeamMembers?.length || context.slots.playerCount || 4)
+      : (context.slots.playerCount || 4);
 
     if (!clubId || !slotId) {
       const message = '예약에 필요한 정보가 부족해요. 골프장과 시간을 다시 선택해 주세요.';
@@ -212,6 +245,7 @@ export class BookingAgentService {
     }
 
     const paymentMethod = request.paymentMethod || 'onsite';
+    this.conversationService.updateSlots(context, { paymentMethod });
     this.conversationService.setState(context, 'BOOKING');
 
     const toolResult = await this.toolExecutor.execute({
@@ -221,7 +255,7 @@ export class BookingAgentService {
         userName: request.userName,
         userEmail: request.userEmail,
         gameTimeSlotId: Number(slotId),
-        playerCount: playerCount || 4,
+        playerCount,
         paymentMethod,
       },
     });
@@ -233,15 +267,112 @@ export class BookingAgentService {
     if (toolResult.success && result?.success) {
       const status = result.status; // CONFIRMED | SLOT_RESERVED | PENDING
 
-      if (status === 'CONFIRMED') {
+      // 더치페이 분기
+      if (paymentMethod === 'dutchpay' && (status === 'SLOT_RESERVED' || status === 'CONFIRMED')) {
+        this.conversationService.updateSlots(context, {
+          bookingId: result.bookingId,
+          bookingNumber: result.bookingNumber,
+          totalPrice: result.details?.totalPrice,
+          bookerId: request.userId,
+        });
+
+        const teamMembers = context.slots.currentTeamMembers || [];
+        const pricePerPerson = (result.details?.totalPrice || 0) / (teamMembers.length || 1);
+
+        // 분할결제 준비
+        const splitResult = await this.toolExecutor.prepareSplitPayment({
+          bookingId: result.bookingId,
+          participants: teamMembers.map((m) => ({
+            userId: m.userId,
+            userName: m.userName,
+            userEmail: m.userEmail,
+            amount: Math.round(pricePerPerson),
+          })),
+        });
+
+        const splits = splitResult?.splits || teamMembers.map((m) => ({
+          userId: m.userId,
+          userName: m.userName,
+          orderId: '',
+          amount: Math.round(pricePerPerson),
+          status: 'PENDING',
+          expiredAt: '',
+        }));
+
+        const teamNumber = context.slots.currentTeamNumber || 1;
+
+        const settlementData = {
+          bookingId: result.bookingId,
+          bookerId: request.userId,
+          teamNumber,
+          clubName: context.slots.clubName || '',
+          gameName: context.slots.gameName || '',
+          date: context.slots.date || '',
+          slotTime: context.slots.time || '',
+          totalParticipants: teamMembers.length,
+          pricePerPerson: Math.round(pricePerPerson),
+          totalPrice: result.details?.totalPrice || 0,
+          paidCount: 0,
+          expiredAt: splits[0]?.expiredAt || '',
+          participants: splits.map((s: any) => ({
+            userId: s.userId,
+            userName: s.userName || '',
+            orderId: s.orderId || '',
+            amount: s.amount || Math.round(pricePerPerson),
+            status: s.status || 'PENDING',
+            expiredAt: s.expiredAt || '',
+          })),
+        };
+
+        // 진행자 제외 참여자에게 push 알림
+        const otherParticipants = splits.filter((s: any) => s.userId !== request.userId);
+        if (otherParticipants.length > 0) {
+          this.toolExecutor.emitSplitPaymentNotification({
+            bookerId: request.userId,
+            bookerName: request.userName || '',
+            bookingGroupId: 0,
+            chatRoomId: context.slots.chatRoomId || '',
+            participants: otherParticipants.map((s: any) => ({
+              userId: s.userId,
+              userName: s.userName || '',
+              amount: s.amount || Math.round(pricePerPerson),
+            })),
+          });
+        }
+
+        // 예약자 제외 참여자에게만 정산 카드 브로드캐스트 (예약자에게는 최초 정산카드 미전송)
+        const nonBookerSplits = splits.filter((s: any) => s.userId !== request.userId);
+        if (context.slots.chatRoomId && nonBookerSplits.length > 0) {
+          this.toolExecutor.broadcastSettlementCard(
+            context.slots.chatRoomId,
+            nonBookerSplits.map((s: any) => s.userId),
+            settlementData,
+            undefined,
+            request.userId,
+          );
+        }
+
+        // 정산 카드는 브로드캐스트로만 전달 (API 응답에서 제외하여 중복 방지)
+
+        message = `팀${teamNumber} 예약이 생성되었어요! 참여자들에게 결제 요청이 전송됩니다.`;
+        this.conversationService.setState(context, 'SETTLING');
+      } else if (status === 'CONFIRMED') {
         // 현장결제 — Saga 완료, 바로 예약 확정
+        if (context.slots.groupMode) {
+          // 그룹 모드: TEAM_COMPLETE
+          return this.completeTeam(context, request, result);
+        }
         actions.push({ type: 'BOOKING_COMPLETE', data: result });
         message = '예약이 완료되었습니다!';
         this.conversationService.updateSlots(context, { confirmed: true });
         this.conversationService.setState(context, 'COMPLETED');
       } else if (status === 'SLOT_RESERVED') {
         // 카드결제 — 슬롯 확보 완료, payment.prepare 원샷 처리
-        this.conversationService.updateSlots(context, { bookingId: result.bookingId });
+        this.conversationService.updateSlots(context, {
+          bookingId: result.bookingId,
+          bookingNumber: result.bookingNumber,
+          totalPrice: result.details?.totalPrice,
+        });
 
         const amount = result.details?.totalPrice || 0;
         const orderName = `ParkGolf #${result.bookingNumber || result.bookingId}`;
@@ -295,30 +426,28 @@ export class BookingAgentService {
   /**
    * 결제 완료/실패 후 결과 처리
    */
-  private handlePaymentComplete(
+  private async handlePaymentComplete(
     context: ConversationContext,
     request: ChatRequestDto,
-  ): ChatResponseDto {
+  ): Promise<ChatResponseDto> {
     const actions: ChatAction[] = [];
     let message: string;
 
     if (request.paymentSuccess) {
-      // 결제 성공 — BOOKING_COMPLETE 카드 표시
-      actions.push({
-        type: 'BOOKING_COMPLETE',
-        data: {
-          success: true,
+      // 결제 성공 → booking 상태 확인 후 TEAM_COMPLETE
+      const bookingId = context.slots.bookingId;
+      const detail = bookingId ? await this.toolExecutor.getBookingDetail(bookingId) : null;
+      if (detail?.status === 'CONFIRMED') {
+        const result = {
           bookingId: context.slots.bookingId,
-          details: {
-            date: context.slots.date,
-            time: context.slots.time,
-            playerCount: context.slots.playerCount,
-          },
-        },
-      });
-      message = '결제가 완료되었습니다! 예약이 확정되었어요!';
-      this.conversationService.updateSlots(context, { confirmed: true });
-      this.conversationService.setState(context, 'COMPLETED');
+          bookingNumber: context.slots.bookingNumber,
+          details: { totalPrice: context.slots.totalPrice },
+        };
+        return this.completeTeam(context, request, result);
+      }
+      // 아직 Saga 미완료 → 안내 메시지
+      message = '결제가 완료되었어요! 예약 확정 처리 중입니다.';
+      this.conversationService.setState(context, 'CONFIRMING');
     } else {
       // 결제 실패/취소 — 재시도 안내
       message = '결제가 취소되었어요. 다시 시도하거나 다른 결제방법을 선택해 주세요.';
@@ -337,14 +466,26 @@ export class BookingAgentService {
 
   /**
    * 분할결제 완료 → 갱신된 정산 카드 반환
+   * bookingId 기반 또는 bookingGroupId 기반
    */
   private async handleSplitPaymentComplete(
     context: ConversationContext,
     request: ChatRequestDto,
   ): Promise<ChatResponseDto> {
-    const { bookingGroupId, bookerId } = context.slots;
+    let { bookingId } = context.slots;
+    let bookerId = context.slots.bookerId;
 
-    if (!bookingGroupId) {
+    // 비예약자: context에 bookingId 없으면 splitOrderId로 역추적
+    let splitStatus: any = null;
+    if (!bookingId && request.splitOrderId) {
+      splitStatus = await this.toolExecutor.getSplitStatusByOrderId(request.splitOrderId);
+      if (splitStatus?.bookingId) {
+        bookingId = splitStatus.bookingId;
+        this.conversationService.updateSlots(context, { bookingId });
+      }
+    }
+
+    if (!bookingId) {
       const message = '정산 정보를 찾을 수 없어요. 다시 시도해 주세요.';
       this.conversationService.addAssistantMessage(context, message);
       return {
@@ -354,8 +495,10 @@ export class BookingAgentService {
       };
     }
 
-    // 최신 분할결제 상태 조회
-    const splitStatus = await this.toolExecutor.getSplitStatus(bookingGroupId);
+    // 최신 분할결제 상태 조회 (bookingId 기반)
+    if (!splitStatus) {
+      splitStatus = await this.toolExecutor.getSplitStatus(bookingId);
+    }
 
     if (!splitStatus) {
       const message = '정산 상태를 조회할 수 없어요.';
@@ -367,22 +510,38 @@ export class BookingAgentService {
       };
     }
 
+    // 비예약자 context에는 bookerId가 없으므로 booking에서 조회
+    if (!bookerId && bookingId) {
+      bookerId = await this.toolExecutor.getBookingBookerId(bookingId);
+    }
+
     const participants = splitStatus.splits || [];
     const totalParticipants = participants.length;
-    const paidCount = participants.filter((s: any) => s.status === 'PAID').length;
     const pricePerPerson = participants[0]?.amount || 0;
-    const allPaid = paidCount === totalParticipants;
+
+    // allPaid를 booking-service에 위임 (단일 진실 공급원)
+    const settlement = await this.toolExecutor.getSettlementStatus(bookingId);
+    const paidCount = settlement?.paidCount
+      ?? participants.filter((s: any) => s.status === 'PAID').length;
+    const allPaid = settlement?.allPaid
+      ?? (paidCount === totalParticipants && totalParticipants > 0);
+    const teamNumber = context.slots.currentTeamNumber || 1;
 
     const actions: ChatAction[] = [{
       type: 'SETTLEMENT_STATUS',
       data: {
-        groupNumber: splitStatus.groupNumber || '',
-        bookingGroupId,
+        bookingId,
         bookerId: bookerId || 0,
+        teamNumber,
+        clubName: context.slots.clubName || '',
+        gameName: context.slots.gameName || '',
+        date: context.slots.date || '',
+        slotTime: context.slots.time || '',
         totalParticipants,
         pricePerPerson,
         totalPrice: totalParticipants * pricePerPerson,
         paidCount,
+        expiredAt: participants[0]?.expiredAt || '',
         participants: participants.map((s: any) => ({
           userId: s.userId,
           userName: s.userName,
@@ -394,12 +553,94 @@ export class BookingAgentService {
       },
     }];
 
+    const roomId = context.slots.chatRoomId || request.chatRoomId;
+    const bid = bookerId || context.slots.bookerId;
+    const isBooker = request.userId === bid;
+
     let message: string;
     if (allPaid) {
-      message = '모든 참여자의 결제가 완료되었어요!';
+      // 전원 결제 완료 → 예약자에게 정산카드 + 채팅방 전체에 예약완료카드
+
+      // 1) 예약자에게 정산현황 카드 (senderId=bookerId → 예약자만 조회 가능)
+      if (roomId) {
+        const settleMessage = `모든 결제가 완료되었습니다! (${paidCount}/${totalParticipants})`;
+        const bookerOnly = bid ? [bid] : participants.map((s: any) => s.userId);
+        this.toolExecutor.broadcastSettlementCard(
+          roomId,
+          bookerOnly,
+          actions[0].data as Record<string, unknown>,
+          settleMessage,
+          bid || undefined,
+          bid || 0,
+        );
+      }
+
+      // 2) 채팅방 전체에 TEAM_COMPLETE 브로드캐스트 (senderId=0 → 전체 조회 가능)
+      if (context.slots.groupMode) {
+        // 예약자 context: completeTeam()이 TEAM_COMPLETE 브로드캐스트 + completedTeams 관리
+        const result = {
+          bookingId,
+          bookingNumber: context.slots.bookingNumber || '',
+          details: {
+            totalPrice: totalParticipants * pricePerPerson,
+          },
+        };
+        return this.completeTeam(context, request, result);
+      }
+
+      // 비예약자 context → 직접 TEAM_COMPLETE 브로드캐스트
+      // (비예약자 context에는 groupMode/clubName 등이 없으므로 booking 조회로 보완)
+      if (roomId) {
+        const bookingDetail = await this.toolExecutor.getBookingDetail(bookingId);
+        const teamCompleteData: Record<string, unknown> = {
+          teamNumber: context.slots.currentTeamNumber || 1,
+          bookingId,
+          bookingNumber: context.slots.bookingNumber || bookingDetail?.bookingNumber || '',
+          clubName: context.slots.clubName || bookingDetail?.clubName || '',
+          date: context.slots.date || bookingDetail?.bookingDate || '',
+          slotTime: context.slots.time || bookingDetail?.startTime || '',
+          gameName: context.slots.gameName || bookingDetail?.gameName || '',
+          participants: participants.map((s: any) => ({ userId: s.userId, userName: s.userName })),
+          totalPrice: totalParticipants * pricePerPerson,
+          paymentMethod: context.slots.paymentMethod || bookingDetail?.paymentMethod || 'dutchpay',
+          hasMoreTeams: true,
+        };
+        this.toolExecutor.broadcastTeamCompleteCard(roomId, teamCompleteData);
+      }
+
+      message = '결제가 완료되었습니다!';
       this.conversationService.setState(context, 'COMPLETED');
-    } else {
+    } else if (isBooker) {
       message = `결제가 확인되었어요. (${paidCount}/${totalParticipants})`;
+
+      // 예약자에게만 정산현황 카드 (진행중 상태)
+      if (roomId) {
+        const bookerOnly = bid ? [bid] : participants.map((s: any) => s.userId);
+        this.toolExecutor.broadcastSettlementCard(
+          roomId,
+          bookerOnly,
+          actions[0].data as Record<string, unknown>,
+          message,
+          bid || undefined,
+          bid || 0,
+        );
+      }
+    } else {
+      // 비예약자 결제 완료 → 예약자에게 갱신된 정산카드 브로드캐스트
+      message = '결제가 완료되었습니다!';
+
+      if (roomId && bid) {
+        const bookerOnly = [bid];
+        const bookerMessage = `결제가 확인되었어요. (${paidCount}/${totalParticipants})`;
+        this.toolExecutor.broadcastSettlementCard(
+          roomId,
+          bookerOnly,
+          actions[0].data as Record<string, unknown>,
+          bookerMessage,
+          bid,
+          bid,
+        );
+      }
     }
 
     this.conversationService.addAssistantMessage(context, message);
@@ -408,347 +649,72 @@ export class BookingAgentService {
       conversationId: context.conversationId,
       message,
       state: context.state,
-      actions,
+      actions: !isBooker || allPaid ? actions : undefined,
     };
   }
 
+  // ── 팀 예약 핸들러 (팀 단위 순차) ──
+
   /**
-   * 복수 슬롯 선택 → 결제방법 선택 카드(CONFIRM_GROUP) 표시
+   * 팀 멤버 선택 → 슬롯 조회 (SHOW_SLOTS)
    */
-  private handleMultiSlotSelect(
+  private async handleTeamMemberSelect(
     context: ConversationContext,
     request: ChatRequestDto,
-  ): ChatResponseDto {
-    const { selectedSlots } = request;
-    if (!selectedSlots || selectedSlots.length < 2) {
-      return this.handleDirectSlotSelect(context, request);
+  ): Promise<ChatResponseDto> {
+    const { teamMembers } = request;
+    if (!teamMembers || teamMembers.length === 0) {
+      const message = '멤버를 선택해 주세요.';
+      this.conversationService.addAssistantMessage(context, message);
+      return { conversationId: context.conversationId, message, state: context.state };
     }
 
-    // 선택된 슬롯 저장
+    // 팀 모드 활성화
     this.conversationService.updateSlots(context, {
-      selectedSlots,
-      clubId: request.selectedClubId || context.slots.clubId,
-      clubName: request.selectedClubName || context.slots.clubName,
+      groupMode: true,
+      currentTeamNumber: context.slots.currentTeamNumber || 1,
+      currentTeamMembers: teamMembers,
+      playerCount: teamMembers.length,
     });
 
-    const teamCount = selectedSlots.length;
-    const maxPlayers = 4;
-    const totalParticipants = teamCount * maxPlayers;
-    const pricePerSlot = selectedSlots[0]?.price || 0;
+    // 슬롯이 이미 선택되어 있으면 (검색 결과에서 바로 선택한 경우) → CONFIRM_BOOKING 직행
+    if (context.slots.slotId && context.slots.time) {
+      return this.handleDirectSlotSelect(context, {
+        ...request,
+        selectedSlotId: context.slots.slotId,
+        selectedSlotTime: context.slots.time,
+        selectedSlotPrice: context.slots.slotPrice,
+      } as ChatRequestDto);
+    }
 
-    const confirmData = {
-      clubName: context.slots.clubName || '',
-      date: context.slots.date || this.getTomorrowDate(),
-      teamCount,
-      slots: selectedSlots,
-      maxParticipants: totalParticipants,
-      pricePerPerson: pricePerSlot,
-      totalPrice: totalParticipants * pricePerSlot,
-    };
+    const date = context.slots.date || this.getTomorrowDate();
+    const clubId = context.slots.clubId;
 
-    const message = `${teamCount}개 팀 예약을 준비했어요! 결제 방법을 선택해 주세요.`;
-    this.conversationService.addAssistantMessage(context, message);
-    this.conversationService.setState(context, 'CONFIRMING');
-
-    return {
-      conversationId: context.conversationId,
-      message,
-      state: context.state,
-      actions: [{ type: 'CONFIRM_GROUP', data: confirmData }],
-    };
-  }
-
-  /**
-   * 팀 편성 확인 → 그룹 예약 생성
-   */
-  private async handleTeamConfirm(
-    context: ConversationContext,
-    request: ChatRequestDto,
-  ): Promise<ChatResponseDto> {
-    const { teams } = request;
-    if (!teams || teams.length === 0) {
-      const message = '팀 편성 정보가 없어요. 다시 시도해 주세요.';
+    if (!clubId) {
+      const message = '골프장이 선택되지 않았어요. 골프장을 먼저 선택해 주세요.';
       this.conversationService.addAssistantMessage(context, message);
-      return {
-        conversationId: context.conversationId,
-        message,
-        state: context.state,
-      };
+      return { conversationId: context.conversationId, message, state: context.state };
     }
 
-    // 팀 정보 저장
-    this.conversationService.updateSlots(context, { teams });
-
-    // paymentMethod가 dutchpay가 아니면 현장결제 그룹 예약
-    const paymentMethod = context.slots.paymentMethod || 'dutchpay';
-
-    if (paymentMethod === 'onsite') {
-      // 현장결제 → 바로 그룹 예약 생성
-      return this.executeGroupBooking(context, request, 'onsite');
-    }
-
-    // 더치페이 → 최종 확인 카드 표시
-    const confirmData = {
-      clubName: context.slots.clubName || '',
-      date: context.slots.date || this.getTomorrowDate(),
-      teams: teams.map((t) => ({
-        teamNumber: t.teamNumber,
-        slotTime: context.slots.selectedSlots?.find((s) => s.slotId === t.slotId)?.slotTime || '',
-        courseName: context.slots.selectedSlots?.find((s) => s.slotId === t.slotId)?.courseName || '',
-        memberCount: t.members.length,
-        members: t.members.map((m) => m.userName),
-      })),
-      pricePerPerson: context.slots.selectedSlots?.[0]?.price || 0,
-      totalParticipants: teams.reduce((sum, t) => sum + t.members.length, 0),
-      paymentMethod,
-    };
-
-    const message = '팀 편성이 완료되었어요! 최종 확인 후 예약을 진행해 주세요.';
-    this.conversationService.addAssistantMessage(context, message);
-    this.conversationService.setState(context, 'CONFIRMING');
-
-    return {
-      conversationId: context.conversationId,
-      message,
-      state: context.state,
-      actions: [{ type: 'CONFIRM_GROUP', data: confirmData }],
-    };
-  }
-
-  /**
-   * 그룹 예약 확인 → 그룹 예약 생성 + 더치페이 준비
-   */
-  private async handleGroupBookingConfirm(
-    context: ConversationContext,
-    request: ChatRequestDto,
-  ): Promise<ChatResponseDto> {
-    const paymentMethod = request.paymentMethod || context.slots.paymentMethod || 'dutchpay';
-
-    // 결제방법 저장
-    this.conversationService.updateSlots(context, { paymentMethod });
-
-    if (paymentMethod === 'onsite') {
-      // 현장결제 → 바로 그룹 예약 생성
-      return this.executeGroupBooking(context, request, 'onsite');
-    }
-
-    // 더치페이 → 팀 편성 단계로
-    if (!context.slots.chatRoomId) {
-      const message = '채팅방 정보가 없어요. 채팅방에서 다시 시도해 주세요.';
-      this.conversationService.addAssistantMessage(context, message);
-      return {
-        conversationId: context.conversationId,
-        message,
-        state: context.state,
-      };
-    }
-
-    // 채팅방 멤버 조회
-    const members = await this.toolExecutor.getChatRoomMembers(context.slots.chatRoomId);
-
-    if (!members || members.length === 0) {
-      const message = '채팅방 멤버를 조회할 수 없어요. 다시 시도해 주세요.';
-      this.conversationService.addAssistantMessage(context, message);
-      return {
-        conversationId: context.conversationId,
-        message,
-        state: context.state,
-      };
-    }
-
-    const selectedSlots = context.slots.selectedSlots || [];
-    const teamCount = selectedSlots.length;
-    const maxPlayersPerTeam = 4;
-
-    // 자동 팀 편성
-    const autoTeams = this.autoAssignTeams(members, selectedSlots, request.userId, maxPlayersPerTeam);
-
-    const selectData = {
-      clubId: context.slots.clubId,
-      clubName: context.slots.clubName || '',
-      date: context.slots.date || this.getTomorrowDate(),
-      pricePerPerson: selectedSlots[0]?.price || 0,
-      teams: autoTeams.teams,
-      unassigned: autoTeams.unassigned,
-      availableSlots: [], // 미사용 슬롯 (현재는 모두 사용)
-    };
-
-    const message = `${teamCount}개 팀으로 자동 편성했어요! 드래그로 멤버를 이동할 수 있어요.`;
-    this.conversationService.addAssistantMessage(context, message);
-    this.conversationService.setState(context, 'SELECTING_PARTICIPANTS');
-
-    return {
-      conversationId: context.conversationId,
-      message,
-      state: context.state,
-      actions: [{ type: 'SELECT_PARTICIPANTS', data: selectData }],
-    };
-  }
-
-  /**
-   * 그룹 예약 실행 (Saga)
-   */
-  private async executeGroupBooking(
-    context: ConversationContext,
-    request: ChatRequestDto,
-    paymentMethod: string,
-  ): Promise<ChatResponseDto> {
-    const { teams, selectedSlots, clubId, clubName, date, chatRoomId } = context.slots;
-
-    if (!teams || !selectedSlots || !clubId) {
-      const message = '예약에 필요한 정보가 부족해요. 다시 시도해 주세요.';
-      this.conversationService.addAssistantMessage(context, message);
-      return {
-        conversationId: context.conversationId,
-        message,
-        state: context.state,
-      };
-    }
-
-    this.conversationService.setState(context, 'BOOKING');
-    const pricePerPerson = selectedSlots[0]?.price || 0;
-
-    const groupResult = await this.toolExecutor.createBookingGroup({
-      chatRoomId: chatRoomId || '',
-      bookerId: request.userId,
-      bookerName: request.userName || '',
-      bookerEmail: request.userEmail || '',
-      clubId: Number(clubId),
-      clubName: clubName || '',
-      date: date || this.getTomorrowDate(),
-      teams: teams.map((t) => ({
-        gameTimeSlotId: Number(t.slotId),
-        participants: t.members.map((m) => ({
-          userId: m.userId,
-          userName: m.userName,
-          userEmail: m.userEmail,
-          role: m.userId === request.userId ? 'BOOKER' : 'MEMBER',
-        })),
-      })),
-      pricePerPerson,
-      paymentMethod,
-    });
-
-    if (!groupResult) {
-      const message = '그룹 예약에 실패했어요. 다시 시도해 주세요.';
-      this.conversationService.addAssistantMessage(context, message);
-      this.conversationService.setState(context, 'COLLECTING');
-      return {
-        conversationId: context.conversationId,
-        message,
-        state: context.state,
-      };
-    }
-
-    this.conversationService.updateSlots(context, {
-      bookingGroupId: groupResult.group.id,
+    // 슬롯 조회
+    const toolResult = await this.toolExecutor.execute({
+      name: 'get_available_slots',
+      args: { clubId, date },
     });
 
     const actions: ChatAction[] = [];
     let message: string;
 
-    if (paymentMethod === 'onsite') {
-      // 현장결제 → 예약 완료
-      actions.push({ type: 'BOOKING_COMPLETE', data: groupResult });
-      message = `${teams.length}개 팀 예약이 완료되었습니다!`;
-      this.conversationService.setState(context, 'COMPLETED');
+    if (toolResult.success && (toolResult.result as any)?.availableCount > 0) {
+      actions.push({ type: 'SHOW_SLOTS', data: toolResult.result });
+      const teamNumber = context.slots.currentTeamNumber || 1;
+      message = `팀${teamNumber} (${teamMembers.length}명) — 시간을 선택해 주세요!`;
+      this.conversationService.setState(context, 'CONFIRMING');
     } else {
-      // 더치페이 → 분할결제 준비
-      const totalParticipants = teams.reduce((sum, t) => sum + t.members.length, 0);
-
-      // 각 Booking별로 분할결제 준비 + 결과 수집
-      const allSplits: Array<{
-        userId: number;
-        userName: string;
-        orderId: string;
-        amount: number;
-        status: string;
-        expiredAt: string;
-      }> = [];
-
-      for (const booking of groupResult.bookings) {
-        const teamMembers = teams.find((t) => Number(t.slotId) === booking.gameTimeSlotId)?.members || [];
-        const splitResult = await this.toolExecutor.prepareSplitPayment({
-          bookingGroupId: groupResult.group.id,
-          bookingId: booking.id,
-          participants: teamMembers.map((m) => ({
-            userId: m.userId,
-            userName: m.userName,
-            userEmail: m.userEmail,
-            amount: pricePerPerson,
-          })),
-        });
-
-        if (splitResult?.splits) {
-          allSplits.push(...splitResult.splits.map((s: any) => ({
-            userId: s.userId,
-            userName: s.userName || teamMembers.find((m) => m.userId === s.userId)?.userName || '',
-            orderId: s.orderId,
-            amount: s.amount || pricePerPerson,
-            status: s.status || 'PENDING',
-            expiredAt: s.expiredAt || '',
-          })));
-        } else {
-          // splitPrepare가 splits를 반환하지 않은 경우 폴백
-          for (const m of teamMembers) {
-            allSplits.push({
-              userId: m.userId,
-              userName: m.userName,
-              orderId: '',
-              amount: pricePerPerson,
-              status: 'PENDING',
-              expiredAt: '',
-            });
-          }
-        }
-      }
-
-      // bookerId 저장
-      this.conversationService.updateSlots(context, { bookerId: request.userId });
-
-      actions.push({
-        type: 'SETTLEMENT_STATUS',
-        data: {
-          groupNumber: groupResult.group.groupNumber,
-          bookingGroupId: groupResult.group.id,
-          bookerId: request.userId,
-          totalParticipants,
-          pricePerPerson,
-          totalPrice: totalParticipants * pricePerPerson,
-          paidCount: 0,
-          participants: allSplits.map((s) => ({
-            userId: s.userId,
-            userName: s.userName,
-            orderId: s.orderId,
-            amount: s.amount,
-            status: s.status,
-            expiredAt: s.expiredAt,
-          })),
-        },
-      });
-
-      // 부커 제외 참여자에게 푸시 알림 발송
-      const otherParticipants = allSplits.filter((s) => s.userId !== request.userId);
-      if (otherParticipants.length > 0) {
-        this.toolExecutor.emitSplitPaymentNotification({
-          bookerId: request.userId,
-          bookerName: request.userName || '',
-          bookingGroupId: groupResult.group.id,
-          chatRoomId: chatRoomId || '',
-          participants: otherParticipants.map((s) => ({
-            userId: s.userId,
-            userName: s.userName,
-            amount: s.amount,
-          })),
-        });
-      }
-
-      message = `그룹 예약이 생성되었어요! 참여자들에게 개별 결제 요청이 전송됩니다.`;
-      this.conversationService.setState(context, 'SETTLING');
+      message = `${date}에 예약 가능한 시간이 없어요.`;
     }
 
     this.conversationService.addAssistantMessage(context, message);
-
     return {
       conversationId: context.conversationId,
       message,
@@ -758,59 +724,188 @@ export class BookingAgentService {
   }
 
   /**
-   * 자동 팀 편성 알고리즘
-   * - Booker는 팀 1에 고정
-   * - 나머지 멤버를 순서대로 배분
-   * - 초과 인원 → unassigned
+   * "다음 팀" 버튼 → SELECT_MEMBERS 카드 (이전 팀 표시 + 가용 멤버)
    */
-  private autoAssignTeams(
-    members: Array<{ userId: number; userName: string; userEmail: string }>,
-    slots: Array<{ slotId: string; slotTime: string; courseName: string; price: number }>,
-    bookerId: number,
-    maxPlayersPerTeam: number,
-  ) {
-    const teams: Array<{
-      teamNumber: number;
-      slotId: string;
-      slotTime: string;
-      courseName: string;
-      maxPlayers: number;
-      members: Array<{ userId: number; userName: string; userEmail: string }>;
-    }> = slots.map((slot, i) => ({
-      teamNumber: i + 1,
-      slotId: slot.slotId,
-      slotTime: slot.slotTime,
-      courseName: slot.courseName,
-      maxPlayers: maxPlayersPerTeam,
-      members: [],
-    }));
+  private async handleNextTeam(
+    context: ConversationContext,
+    _request: ChatRequestDto,
+  ): Promise<ChatResponseDto> {
+    const nextTeamNumber = (context.slots.currentTeamNumber || 1) + 1;
+    this.conversationService.updateSlots(context, {
+      currentTeamNumber: nextTeamNumber,
+      currentTeamMembers: undefined,
+      groupMode: false, // 다음 팀은 멤버 선택부터 다시
+      slotId: undefined,
+      time: undefined,
+      slotPrice: undefined,
+    });
 
-    // Booker를 팀 1에 고정
-    const booker = members.find((m) => m.userId === bookerId);
-    const others = members.filter((m) => m.userId !== bookerId);
+    const result = await this.showSelectMembers(
+      context,
+      `팀${nextTeamNumber} 멤버를 선택해 주세요!`,
+    );
+    if (result) return result;
 
-    if (booker && teams.length > 0) {
-      teams[0].members.push(booker);
+    const message = '채팅방 멤버를 조회할 수 없어요.';
+    this.conversationService.addAssistantMessage(context, message);
+    return { conversationId: context.conversationId, message, state: context.state };
+  }
+
+  /**
+   * "종료" 버튼 → 전체 completedTeams 요약 (BOOKING_COMPLETE)
+   */
+  private async handleFinishGroup(
+    context: ConversationContext,
+    _request: ChatRequestDto,
+  ): Promise<ChatResponseDto> {
+    const completedTeams = context.slots.completedTeams || [];
+
+    const totalPrice = completedTeams.reduce((sum, t) => sum + t.totalPrice, 0);
+    const totalMembers = completedTeams.reduce((sum, t) => sum + t.members.length, 0);
+
+    const summaryData = {
+      success: true,
+      groupSummary: true,
+      teamCount: completedTeams.length,
+      totalMembers,
+      totalPrice,
+      teams: completedTeams.map((t) => ({
+        teamNumber: t.teamNumber,
+        bookingNumber: t.bookingNumber,
+        slotTime: t.slotTime,
+        gameName: t.gameName,
+        members: t.members.map((m) => m.userName),
+        totalPrice: t.totalPrice,
+        paymentMethod: t.paymentMethod,
+      })),
+    };
+
+    const message = `${completedTeams.length}개 팀 예약이 모두 완료되었어요!`;
+    this.conversationService.addAssistantMessage(context, message);
+    this.conversationService.setState(context, 'COMPLETED');
+
+    // 채팅방에 SYSTEM 메시지 전송
+    if (context.slots.chatRoomId) {
+      const systemMsg = `[그룹 예약 완료] ${completedTeams.length}팀, 총 ${totalMembers}명 — ${context.slots.clubName} (${context.slots.date})`;
+      this.toolExecutor.sendSystemMessage(context.slots.chatRoomId, systemMsg);
     }
 
-    // 나머지 멤버를 순서대로 배분
-    const unassigned: Array<{ userId: number; userName: string; userEmail: string }> = [];
-    let teamIdx = 0;
+    return {
+      conversationId: context.conversationId,
+      message,
+      state: context.state,
+      actions: [{ type: 'BOOKING_COMPLETE', data: summaryData }],
+    };
+  }
 
-    for (const member of others) {
-      // 현재 팀이 꽉 찼으면 다음 팀으로
-      while (teamIdx < teams.length && teams[teamIdx].members.length >= maxPlayersPerTeam) {
-        teamIdx++;
-      }
+  /**
+   * 리마인더 전송
+   */
+  private async handleSendReminder(
+    context: ConversationContext,
+    _request: ChatRequestDto,
+  ): Promise<ChatResponseDto> {
+    const chatRoomId = context.slots.chatRoomId;
+    const currentTeamMembers = context.slots.currentTeamMembers || [];
+    const bookerId = context.slots.bookerId;
 
-      if (teamIdx < teams.length) {
-        teams[teamIdx].members.push(member);
-      } else {
-        unassigned.push(member);
-      }
+    // 미결제 참여자에게 push 알림 재발송
+    const unpaidMembers = currentTeamMembers.filter((m) => m.userId !== bookerId);
+
+    if (unpaidMembers.length > 0 && chatRoomId) {
+      this.toolExecutor.emitSplitPaymentNotification({
+        bookerId: bookerId || 0,
+        bookerName: '',
+        bookingGroupId: 0,
+        chatRoomId,
+        participants: unpaidMembers.map((m) => ({
+          userId: m.userId,
+          userName: m.userName,
+          amount: 0,
+        })),
+      });
     }
 
-    return { teams, unassigned };
+    const message = '리마인더를 보냈어요! 미결제 참여자들에게 알림이 전송됩니다.';
+    this.conversationService.addAssistantMessage(context, message);
+
+    return {
+      conversationId: context.conversationId,
+      message,
+      state: context.state,
+    };
+  }
+
+  /**
+   * 팀 완료 헬퍼 — completedTeams에 추가 + TEAM_COMPLETE 카드 반환
+   */
+  private completeTeam(
+    context: ConversationContext,
+    request: ChatRequestDto,
+    result: any,
+  ): ChatResponseDto {
+    const teamNumber = context.slots.currentTeamNumber || 1;
+    const teamMembers = context.slots.currentTeamMembers || [];
+    const paymentMethod = context.slots.paymentMethod || 'onsite';
+
+    const completedTeam = {
+      teamNumber,
+      bookingId: result.bookingId || context.slots.bookingId || 0,
+      bookingNumber: result.bookingNumber || context.slots.bookingNumber || '',
+      slotId: context.slots.slotId || '',
+      slotTime: context.slots.time || '',
+      gameName: context.slots.gameName || '',
+      members: teamMembers.map((m) => ({ userId: m.userId, userName: m.userName })),
+      totalPrice: result.details?.totalPrice || context.slots.totalPrice || 0,
+      paymentMethod,
+    };
+
+    const completedTeams = [...(context.slots.completedTeams || []), completedTeam];
+    this.conversationService.updateSlots(context, { completedTeams });
+
+    // 채팅방 멤버 수로 hasMoreTeams 판단
+    const allMemberCount = teamMembers.length; // 현재 팀 멤버 수 (간이 판단)
+    const totalAssigned = completedTeams.reduce((sum, t) => sum + t.members.length, 0);
+    // 채팅방 전체 멤버 수를 모르므로, 항상 true로 설정하고 UI에서 판단 가능
+    const hasMoreTeams = true;
+
+    const teamCompleteData = {
+      teamNumber,
+      bookingId: completedTeam.bookingId,
+      bookingNumber: completedTeam.bookingNumber,
+      clubName: context.slots.clubName || '',
+      date: context.slots.date || '',
+      slotTime: context.slots.time || '',
+      gameName: completedTeam.gameName,
+      participants: completedTeam.members,
+      totalPrice: completedTeam.totalPrice,
+      paymentMethod,
+      hasMoreTeams,
+    };
+
+    const message = `팀${teamNumber} 예약이 완료되었어요!`;
+    this.conversationService.addAssistantMessage(context, message);
+    this.conversationService.setState(context, 'TEAM_COMPLETE');
+
+    // TEAM_COMPLETE 카드를 senderId=0으로 채팅방 전체 브로드캐스트
+    // 브로드캐스트 시 API 응답에서 actions 제외 (user-api가 senderId=payer로 중복 저장 방지)
+    const roomId = context.slots.chatRoomId;
+    if (roomId) {
+      this.toolExecutor.broadcastTeamCompleteCard(roomId, teamCompleteData);
+      return {
+        conversationId: context.conversationId,
+        message,
+        state: context.state,
+      };
+    }
+
+    // chatRoomId 없는 경우 (폴백): API 응답으로 직접 전달
+    return {
+      conversationId: context.conversationId,
+      message,
+      state: context.state,
+      actions: [{ type: 'TEAM_COMPLETE', data: teamCompleteData }],
+    };
   }
 
   /**
@@ -830,6 +925,57 @@ export class BookingAgentService {
       conversationId: context.conversationId,
       message,
       state: context.state,
+    };
+  }
+
+  /**
+   * SELECT_MEMBERS 카드 표시 헬퍼
+   * handleDirectClubSelect, handleDirectSlotSelect, handleNextTeam에서 공유
+   */
+  private async showSelectMembers(
+    context: ConversationContext,
+    messageText: string,
+  ): Promise<ChatResponseDto | null> {
+    const chatRoomId = context.slots.chatRoomId;
+    if (!chatRoomId) return null;
+
+    const allMembers = await this.toolExecutor.getChatRoomMembers(chatRoomId);
+    if (!allMembers || allMembers.length === 0) return null;
+
+    const teamNumber = context.slots.currentTeamNumber || 1;
+    const completedTeams = context.slots.completedTeams || [];
+
+    // 이미 배정된 멤버 제외
+    const assignedUserIds = new Set<number>();
+    for (const team of completedTeams) {
+      for (const m of team.members) {
+        assignedUserIds.add(m.userId);
+      }
+    }
+    const availableMembers = allMembers.filter((m) => !assignedUserIds.has(m.userId));
+
+    const selectData = {
+      teamNumber,
+      clubName: context.slots.clubName || '',
+      date: context.slots.date || this.getTomorrowDate(),
+      maxPlayers: 4,
+      assignedTeams: completedTeams.map((t) => ({
+        teamNumber: t.teamNumber,
+        slotTime: t.slotTime,
+        gameName: t.gameName,
+        members: t.members,
+      })),
+      availableMembers,
+    };
+
+    this.conversationService.addAssistantMessage(context, messageText);
+    this.conversationService.setState(context, 'SELECTING_MEMBERS');
+
+    return {
+      conversationId: context.conversationId,
+      message: messageText,
+      state: context.state,
+      actions: [{ type: 'SELECT_MEMBERS', data: selectData }],
     };
   }
 
@@ -877,6 +1023,10 @@ export class BookingAgentService {
     let llmResponse: DeepSeekResponse;
     let iterations = 0;
     let allActions: ChatAction[] = [];
+    const toolHistory: Array<{
+      toolCalls: ToolCall[];
+      results: Array<{ name: string; result: unknown }>;
+    }> = [];
 
     // 초기 DeepSeek 호출
     llmResponse = await this.deepseekService.chat(messages);
@@ -898,11 +1048,16 @@ export class BookingAgentService {
       // 슬롯 업데이트
       this.updateSlotsFromToolResults(context, llmResponse.toolCalls, toolResults);
 
-      // DeepSeek 계속 호출
+      // 도구 호출/결과 누적
+      toolHistory.push({
+        toolCalls: llmResponse.toolCalls,
+        results: toolResults.map((tr) => ({ name: tr.name, result: tr.result })),
+      });
+
+      // DeepSeek 계속 호출 (전체 도구 히스토리 전달)
       llmResponse = await this.deepseekService.continueWithToolResults(
         messages,
-        llmResponse.toolCalls,
-        toolResults.map((tr) => ({ name: tr.name, result: tr.result })),
+        toolHistory,
       );
 
       iterations++;
@@ -930,19 +1085,20 @@ export class BookingAgentService {
 
     // create_booking에 사용자 정보 서버사이드 주입
     if (request?.userId) {
-      toolCalls = toolCalls.map((tc) =>
-        tc.name === 'create_booking'
-          ? {
-              ...tc,
-              args: {
-                ...tc.args,
-                userId: request.userId,
-                userName: request.userName,
-                userEmail: request.userEmail,
-              },
-            }
-          : tc,
-      );
+      toolCalls = toolCalls.map((tc) => {
+        if (tc.name === 'create_booking') {
+          return {
+            ...tc,
+            args: {
+              ...tc.args,
+              userId: request.userId,
+              userName: request.userName,
+              userEmail: request.userEmail,
+            },
+          };
+        }
+        return tc;
+      });
     }
 
     return this.toolExecutor.executeAll(toolCalls);
@@ -988,7 +1144,7 @@ export class BookingAgentService {
                     availableCount: club.availableSlotCount,
                     rounds: club.rounds,
                     slots: club.rounds
-                      .flatMap((r: any) => r.slots.map((s: any) => ({ ...s, courseName: r.name })))
+                      .flatMap((r: any) => r.slots.map((s: any) => ({ ...s, gameName: r.name })))
                       .slice(0, 10),
                   },
                 });
@@ -1025,6 +1181,7 @@ export class BookingAgentService {
             }
           }
           break;
+
       }
     }
 
@@ -1054,7 +1211,7 @@ export class BookingAgentService {
           }
           break;
 
-        case 'search_clubs_with_slots':
+        case 'search_clubs_with_slots': {
           if (call.args.location) {
             this.conversationService.updateSlots(context, {
               location: call.args.location as string,
@@ -1070,7 +1227,17 @@ export class BookingAgentService {
               playerCount: call.args.playerCount as number,
             });
           }
+          // 검색 결과가 단일 클럽이면 clubId 자동 설정
+          const searchResult = result.result as any;
+          if (searchResult?.found === 1 && searchResult.clubs?.[0]) {
+            const club = searchResult.clubs[0];
+            this.conversationService.updateSlots(context, {
+              clubId: String(club.id),
+              clubName: club.name,
+            });
+          }
           break;
+        }
 
         case 'get_club_info':
           if (call.args.clubId) {
@@ -1111,6 +1278,13 @@ export class BookingAgentService {
     const bookingComplete = actions.some((a) => a.type === 'BOOKING_COMPLETE');
     if (bookingComplete) {
       this.conversationService.setState(context, 'COMPLETED');
+      return;
+    }
+
+    // 멤버 선택 표시 = 멤버 선택 중
+    const selectingMembers = actions.some((a) => a.type === 'SELECT_MEMBERS');
+    if (selectingMembers) {
+      this.conversationService.setState(context, 'SELECTING_MEMBERS');
       return;
     }
 

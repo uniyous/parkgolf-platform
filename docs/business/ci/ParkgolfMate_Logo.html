@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ParkgolfMate Logo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@300;400;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,700&display=swap');
+
+  :root {
+    --forest: #1a5c2e;
+    --forest-deep: #0d3318;
+    --forest-mid: #2e8b47;
+    --forest-light: #3da35d;
+    --sunny: #f5c842;
+    --sunny-warm: #e8b830;
+    --sunny-pale: #fde68a;
+    --cream: #faf7f0;
+    --sand: #f0ebe0;
+    --bark: #5c4a32;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--cream);
+    font-family: 'Noto Sans KR', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Subtle grass texture background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 80%, rgba(26,92,46,0.03) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(245,200,66,0.04) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 50px 30px 80px;
+  }
+
+  /* Top badge */
+  .top-badge {
+    text-align: center;
+    margin-bottom: 50px;
+    animation: fadeDown 0.8s ease both;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .top-badge span {
+    display: inline-block;
+    font-family: 'Outfit', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: var(--forest);
+    background: rgba(26,92,46,0.06);
+    padding: 8px 24px;
+    border-radius: 100px;
+    border: 1px solid rgba(26,92,46,0.1);
+  }
+
+  /* Main hero logo */
+  .hero-logo {
+    text-align: center;
+    margin-bottom: 70px;
+    animation: fadeUp 1s ease 0.2s both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Grid layout */
+  .concepts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 36px;
+    margin-bottom: 60px;
+  }
+
+  .concept-card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 44px 32px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(26,92,46,0.06);
+    transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+    animation: fadeUp 0.8s ease both;
+  }
+
+  .concept-card:nth-child(1) { animation-delay: 0.3s; }
+  .concept-card:nth-child(2) { animation-delay: 0.45s; }
+  .concept-card:nth-child(3) { animation-delay: 0.6s; }
+  .concept-card:nth-child(4) { animation-delay: 0.75s; }
+
+  .concept-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 60px rgba(26,92,46,0.1);
+    border-color: rgba(26,92,46,0.12);
+  }
+
+  .concept-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--forest), var(--forest-light), var(--sunny));
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+
+  .concept-card:hover::after { opacity: 1; }
+
+  .card-tag {
+    display: inline-block;
+    font-family: 'Outfit', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--forest-mid);
+    margin-bottom: 28px;
+    opacity: 0.6;
+  }
+
+  .card-note {
+    margin-top: 24px;
+    font-size: 12.5px;
+    color: #8a9a8a;
+    line-height: 1.7;
+    font-weight: 300;
+  }
+
+  /* Full width card */
+  .full-width {
+    grid-column: 1 / -1;
+  }
+
+  /* Color palette section */
+  .palette-section {
+    margin-top: 60px;
+    animation: fadeUp 0.8s ease 0.9s both;
+  }
+
+  .palette-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--forest);
+    text-align: center;
+    margin-bottom: 30px;
+  }
+
+  .palette-row {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .palette-chip {
+    width: 260px;
+    border-radius: 16px;
+    padding: 36px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease;
+  }
+
+  .palette-chip:hover { transform: scale(1.03); }
+
+  .chip-dark { background: #111e14; }
+  .chip-green { background: var(--forest); }
+  .chip-light { background: #fff; border: 1px solid #e4e8e4; }
+  .chip-sunny { background: var(--sunny); }
+
+  @media (max-width: 768px) {
+    .concepts-grid { grid-template-columns: 1fr; }
+    .page { padding: 30px 16px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="top-badge">
+    <span>Logo Design System</span>
+  </div>
+
+  <!-- ======================== HERO: Main Logo ======================== -->
+  <div class="hero-logo">
+    <svg width="520" height="320" viewBox="0 0 520 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="heroG1" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#1a5c2e"/>
+          <stop offset="100%" stop-color="#2e8b47"/>
+        </linearGradient>
+        <linearGradient id="heroG2" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#f7d24a"/>
+          <stop offset="100%" stop-color="#e8b830"/>
+        </linearGradient>
+        <filter id="heroShadow">
+          <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#1a5c2e" flood-opacity="0.12"/>
+        </filter>
+        <filter id="heroGlow">
+          <feGaussianBlur stdDeviation="8" result="blur"/>
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+
+      <!-- Background decorative circle -->
+      <circle cx="260" cy="120" r="105" fill="#1a5c2e" opacity="0.03"/>
+
+      <!-- Left Ball (Forest Green) -->
+      <g filter="url(#heroShadow)">
+        <circle cx="222" cy="110" r="62" fill="url(#heroG1)"/>
+        <!-- Highlight -->
+        <ellipse cx="205" cy="90" rx="18" ry="14" fill="#fff" opacity="0.08" transform="rotate(-20, 205, 90)"/>
+        <!-- Dimples -->
+        <circle cx="208" cy="88" r="3.5" fill="#fff" opacity="0.1"/>
+        <circle cx="225" cy="82" r="3" fill="#fff" opacity="0.08"/>
+        <circle cx="240" cy="95" r="3.5" fill="#fff" opacity="0.1"/>
+        <circle cx="212" cy="108" r="3" fill="#fff" opacity="0.07"/>
+        <circle cx="235" cy="115" r="2.5" fill="#fff" opacity="0.06"/>
+        <circle cx="198" cy="120" r="2.5" fill="#fff" opacity="0.06"/>
+        <circle cx="220" cy="135" r="3" fill="#fff" opacity="0.05"/>
+
+        <!-- Left Eye -->
+        <ellipse cx="207" cy="104" rx="5.5" ry="6.5" fill="#fff" opacity="0.92"/>
+        <ellipse cx="207" cy="105.5" rx="2.8" ry="3.2" fill="#0d3318"/>
+        <circle cx="205.5" cy="104" r="1.2" fill="#fff" opacity="0.7"/>
+      </g>
+
+      <!-- Right Ball (Sunny Yellow) -->
+      <g filter="url(#heroShadow)">
+        <circle cx="298" cy="110" r="62" fill="url(#heroG2)"/>
+        <!-- Highlight -->
+        <ellipse cx="280" cy="88" rx="16" ry="12" fill="#fff" opacity="0.15" transform="rotate(-15, 280, 88)"/>
+        <!-- Dimples -->
+        <circle cx="282" cy="88" r="3.5" fill="#fff" opacity="0.15"/>
+        <circle cx="308" cy="85" r="3" fill="#fff" opacity="0.12"/>
+        <circle cx="318" cy="100" r="3.5" fill="#fff" opacity="0.12"/>
+        <circle cx="290" cy="118" r="3" fill="#fff" opacity="0.1"/>
+        <circle cx="310" cy="120" r="2.5" fill="#fff" opacity="0.08"/>
+        <circle cx="325" cy="112" r="2.5" fill="#fff" opacity="0.08"/>
+
+        <!-- Right Eye -->
+        <ellipse cx="313" cy="104" rx="5.5" ry="6.5" fill="#fff" opacity="0.92"/>
+        <ellipse cx="313" cy="105.5" rx="2.8" ry="3.2" fill="#7a5800"/>
+        <circle cx="311.5" cy="104" r="1.2" fill="#fff" opacity="0.7"/>
+      </g>
+
+      <!-- Heart in overlap zone -->
+      <g filter="url(#heroGlow)">
+        <path d="M260 82 C256 74, 247 74, 247 83 C247 93, 260 102, 260 102 C260 102, 273 93, 273 83 C273 74, 264 74, 260 82Z"
+              fill="#e85454" opacity="0.85"/>
+        <path d="M260 84 C258 80, 253 80, 253 84.5 C253 89, 260 94, 260 94 C260 94, 267 89, 267 84.5 C267 80, 262 80, 260 84Z"
+              fill="#ff6b6b" opacity="0.4"/>
+      </g>
+
+      <!-- Shared Smile -->
+      <path d="M232 124 Q260 148 288 124" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.92"/>
+
+      <!-- Cheek blush -->
+      <circle cx="198" cy="118" r="7" fill="#ff9999" opacity="0.15"/>
+      <circle cx="322" cy="118" r="7" fill="#ff9999" opacity="0.15"/>
+
+      <!-- Brand Name: ParkgolfMate -->
+      <text x="260" y="210" text-anchor="middle" font-family="'Outfit', sans-serif" font-weight="800" font-size="42" fill="#1a5c2e" letter-spacing="-1">
+        Parkgolf<tspan fill="#f5c842">Mate</tspan>
+      </text>
+
+      <!-- Tagline -->
+      <text x="260" y="240" text-anchor="middle" font-family="'Noto Sans KR', sans-serif" font-weight="400" font-size="15" fill="#6a8a6a" letter-spacing="1">
+        친구들과 함께하는 파크골프
+      </text>
+
+      <!-- Subtle decorative line -->
+      <line x1="185" y1="255" x2="335" y2="255" stroke="url(#heroG2)" stroke-width="2" stroke-linecap="round" opacity="0.35"/>
+
+      <!-- Tiny leaf accents -->
+      <g opacity="0.25">
+        <path d="M172 252 C175 244, 180 248, 177 254 C174 250, 172 252, 172 252Z" fill="#2e8b47"/>
+        <path d="M348 252 C345 244, 340 248, 343 254 C346 250, 348 252, 348 252Z" fill="#2e8b47"/>
+      </g>
+    </svg>
+  </div>
+
+  <!-- ======================== CONCEPTS GRID ======================== -->
+  <div class="concepts-grid">
+
+    <!-- A: Icon Only -->
+    <div class="concept-card">
+      <div class="card-tag">Icon Only</div>
+      <svg width="180" height="160" viewBox="0 0 180 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="icoG1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a5c2e"/><stop offset="100%" stop-color="#2e8b47"/></linearGradient>
+          <linearGradient id="icoG2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7d24a"/><stop offset="100%" stop-color="#e8b830"/></linearGradient>
+          <filter id="icoS"><feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#1a5c2e" flood-opacity="0.12"/></filter>
+        </defs>
+        <g filter="url(#icoS)">
+          <circle cx="70" cy="70" r="44" fill="url(#icoG1)"/>
+          <ellipse cx="57" cy="55" rx="12" ry="9" fill="#fff" opacity="0.07" transform="rotate(-20,57,55)"/>
+          <circle cx="57" cy="58" r="2.5" fill="#fff" opacity="0.1"/>
+          <circle cx="72" cy="54" r="2" fill="#fff" opacity="0.08"/>
+          <circle cx="82" cy="64" r="2.5" fill="#fff" opacity="0.08"/>
+          <ellipse cx="59" cy="66" rx="4" ry="4.5" fill="#fff" opacity="0.9"/>
+          <ellipse cx="59" cy="67" rx="2" ry="2.3" fill="#0d3318"/>
+          <circle cx="57.5" cy="65.5" r="0.9" fill="#fff" opacity="0.6"/>
+        </g>
+        <g filter="url(#icoS)">
+          <circle cx="110" cy="70" r="44" fill="url(#icoG2)"/>
+          <ellipse cx="97" cy="54" rx="10" ry="8" fill="#fff" opacity="0.13" transform="rotate(-15,97,54)"/>
+          <circle cx="100" cy="55" r="2.5" fill="#fff" opacity="0.13"/>
+          <circle cx="118" cy="56" r="2" fill="#fff" opacity="0.1"/>
+          <circle cx="124" cy="68" r="2.5" fill="#fff" opacity="0.1"/>
+          <ellipse cx="121" cy="66" rx="4" ry="4.5" fill="#fff" opacity="0.9"/>
+          <ellipse cx="121" cy="67" rx="2" ry="2.3" fill="#7a5800"/>
+          <circle cx="119.5" cy="65.5" r="0.9" fill="#fff" opacity="0.6"/>
+        </g>
+        <path d="M90 52 C87.5 46, 81 46, 81 53 C81 60, 90 66, 90 66 C90 66, 99 60, 99 53 C99 46, 92.5 46, 90 52Z" fill="#e85454" opacity="0.82"/>
+        <path d="M76 80 Q90 96 104 80" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.9"/>
+        <circle cx="53" cy="77" r="5" fill="#ff9999" opacity="0.12"/>
+        <circle cx="127" cy="77" r="5" fill="#ff9999" opacity="0.12"/>
+        <text x="90" y="140" text-anchor="middle" font-family="'Outfit', sans-serif" font-weight="700" font-size="11" fill="#1a5c2e" letter-spacing="3">SYMBOL MARK</text>
+      </svg>
+      <p class="card-note">앱 아이콘, 파비콘, SNS 프로필에 사용하는 심볼 마크</p>
+    </div>
+
+    <!-- B: Badge / Emblem -->
+    <div class="concept-card">
+      <div class="card-tag">Badge Emblem</div>
+      <svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="bdgG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a5c2e"/><stop offset="100%" stop-color="#0d3318"/></linearGradient>
+        </defs>
+        <!-- Outer -->
+        <circle cx="90" cy="85" r="78" fill="url(#bdgG)"/>
+        <circle cx="90" cy="85" r="72" fill="none" stroke="#f5c842" stroke-width="0.8" opacity="0.35"/>
+        <circle cx="90" cy="85" r="67" fill="none" stroke="#f5c842" stroke-width="0.4" opacity="0.18"/>
+
+        <!-- Inner balls -->
+        <circle cx="73" cy="75" r="25" fill="#2e8b47" stroke="#3a9d57" stroke-width="0.5" opacity="0.9"/>
+        <circle cx="66" cy="68" r="2" fill="#fff" opacity="0.1"/>
+        <circle cx="76" cy="65" r="1.5" fill="#fff" opacity="0.08"/>
+
+        <circle cx="107" cy="75" r="25" fill="#f5c842" stroke="#e8b830" stroke-width="0.5"/>
+        <circle cx="102" cy="67" r="2" fill="#fff" opacity="0.15"/>
+        <circle cx="112" cy="69" r="1.5" fill="#fff" opacity="0.12"/>
+
+        <!-- Eyes -->
+        <ellipse cx="67" cy="72" rx="3" ry="3.5" fill="#fff" opacity="0.88"/>
+        <ellipse cx="67" cy="73" rx="1.5" ry="1.8" fill="#0a2a14"/>
+        <ellipse cx="113" cy="72" rx="3" ry="3.5" fill="#fff" opacity="0.88"/>
+        <ellipse cx="113" cy="73" rx="1.5" ry="1.8" fill="#6b4e00"/>
+
+        <!-- Smile -->
+        <path d="M79 83 Q90 93 101 83" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+
+        <!-- Heart -->
+        <path d="M90 61 C88 57, 84 57, 84 62 C84 66, 90 70, 90 70 C90 70, 96 66, 96 62 C96 57, 92 57, 90 61Z" fill="#e85454" opacity="0.75"/>
+
+        <!-- Arc text top -->
+        <path id="badgeTop" d="M28 85 A62 62 0 0 1 152 85" fill="none"/>
+        <text font-family="'Outfit', sans-serif" font-weight="700" font-size="11" fill="#f5c842" letter-spacing="3">
+          <textPath href="#badgeTop" startOffset="50%" text-anchor="middle">PARKGOLF MATE</textPath>
+        </text>
+
+        <!-- Arc text bottom -->
+        <path id="badgeBot" d="M34 100 A62 62 0 0 0 146 100" fill="none"/>
+        <text font-family="'Noto Sans KR', sans-serif" font-weight="400" font-size="9" fill="#a0c8a0" letter-spacing="1.5">
+          <textPath href="#badgeBot" startOffset="50%" text-anchor="middle">친구들과 함께하는 파크골프</textPath>
+        </text>
+
+        <!-- Stars -->
+        <circle cx="42" cy="42" r="1.8" fill="#f5c842" opacity="0.5"/>
+        <circle cx="138" cy="42" r="1.8" fill="#f5c842" opacity="0.5"/>
+        <circle cx="90" cy="22" r="1.5" fill="#f5c842" opacity="0.35"/>
+      </svg>
+      <p class="card-note">모자, 유니폼, 깃발 등에 적합한 뱃지 엠블럼</p>
+    </div>
+
+    <!-- C: Horizontal Lockup (Full Width) -->
+    <div class="concept-card full-width">
+      <div class="card-tag">Horizontal Lockup</div>
+      <svg width="520" height="120" viewBox="0 0 520 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="hG1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a5c2e"/><stop offset="100%" stop-color="#2e8b47"/></linearGradient>
+          <linearGradient id="hG2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7d24a"/><stop offset="100%" stop-color="#e8b830"/></linearGradient>
+          <filter id="hS"><feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#1a5c2e" flood-opacity="0.1"/></filter>
+        </defs>
+
+        <!-- Symbol -->
+        <g filter="url(#hS)" transform="translate(20, 10)">
+          <circle cx="35" cy="45" r="34" fill="url(#hG1)"/>
+          <ellipse cx="24" cy="33" rx="10" ry="7" fill="#fff" opacity="0.07" transform="rotate(-20,24,33)"/>
+          <circle cx="24" cy="36" r="2" fill="#fff" opacity="0.09"/>
+          <circle cx="38" cy="32" r="1.5" fill="#fff" opacity="0.07"/>
+
+          <circle cx="70" cy="45" r="34" fill="url(#hG2)"/>
+          <ellipse cx="58" cy="32" rx="9" ry="7" fill="#fff" opacity="0.12" transform="rotate(-15,58,32)"/>
+          <circle cx="62" cy="33" r="2" fill="#fff" opacity="0.12"/>
+          <circle cx="78" cy="35" r="1.5" fill="#fff" opacity="0.09"/>
+
+          <!-- Eyes -->
+          <ellipse cx="27" cy="41" rx="3.5" ry="4" fill="#fff" opacity="0.9"/>
+          <ellipse cx="27" cy="42" rx="1.8" ry="2" fill="#0d3318"/>
+          <circle cx="25.8" cy="40.5" r="0.8" fill="#fff" opacity="0.5"/>
+
+          <ellipse cx="78" cy="41" rx="3.5" ry="4" fill="#fff" opacity="0.9"/>
+          <ellipse cx="78" cy="42" rx="1.8" ry="2" fill="#7a5800"/>
+          <circle cx="76.8" cy="40.5" r="0.8" fill="#fff" opacity="0.5"/>
+
+          <!-- Heart -->
+          <path d="M52.5 30 C50.5 26, 46 26, 46 31 C46 36, 52.5 40, 52.5 40 C52.5 40, 59 36, 59 31 C59 26, 54.5 26, 52.5 30Z" fill="#e85454" opacity="0.8"/>
+
+          <!-- Smile -->
+          <path d="M38 54 Q52.5 66 67 54" stroke="#fff" stroke-width="2.8" fill="none" stroke-linecap="round" opacity="0.9"/>
+
+          <!-- Blush -->
+          <circle cx="22" cy="50" r="4" fill="#ff9999" opacity="0.1"/>
+          <circle cx="83" cy="50" r="4" fill="#ff9999" opacity="0.1"/>
+        </g>
+
+        <!-- Divider -->
+        <line x1="138" y1="25" x2="138" y2="95" stroke="#1a5c2e" stroke-width="1" opacity="0.1"/>
+
+        <!-- Text -->
+        <text x="158" y="54" font-family="'Outfit', sans-serif" font-weight="800" font-size="38" fill="#1a5c2e" letter-spacing="-0.5">
+          Parkgolf<tspan fill="#e8b830">Mate</tspan>
+        </text>
+        <text x="158" y="78" font-family="'Noto Sans KR', sans-serif" font-weight="400" font-size="14" fill="#7a9a7a" letter-spacing="0.5">
+          친구들과 함께하는 파크골프
+        </text>
+
+        <!-- Accent underline under tagline -->
+        <rect x="158" y="86" width="45" height="2.5" rx="1.25" fill="#f5c842" opacity="0.5"/>
+      </svg>
+      <p class="card-note">웹사이트 헤더, 명함, 현수막, 배너에 적합한 가로형 조합 로고</p>
+    </div>
+
+    <!-- D: Stacked Compact -->
+    <div class="concept-card">
+      <div class="card-tag">Stacked Compact</div>
+      <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="scG1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a5c2e"/><stop offset="100%" stop-color="#2e8b47"/></linearGradient>
+          <linearGradient id="scG2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f7d24a"/><stop offset="100%" stop-color="#e8b830"/></linearGradient>
+          <filter id="scS"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1a5c2e" flood-opacity="0.1"/></filter>
+        </defs>
+
+        <g filter="url(#scS)">
+          <circle cx="82" cy="62" r="32" fill="url(#scG1)"/>
+          <circle cx="73" cy="52" r="2" fill="#fff" opacity="0.09"/>
+          <circle cx="86" cy="49" r="1.5" fill="#fff" opacity="0.07"/>
+          <ellipse cx="75" cy="59" rx="3" ry="3.5" fill="#fff" opacity="0.88"/>
+          <ellipse cx="75" cy="60" rx="1.5" ry="1.8" fill="#0d3318"/>
+        </g>
+
+        <g filter="url(#scS)">
+          <circle cx="118" cy="62" r="32" fill="url(#scG2)"/>
+          <circle cx="112" cy="51" r="2" fill="#fff" opacity="0.13"/>
+          <circle cx="125" cy="53" r="1.5" fill="#fff" opacity="0.1"/>
+          <ellipse cx="125" cy="59" rx="3" ry="3.5" fill="#fff" opacity="0.88"/>
+          <ellipse cx="125" cy="60" rx="1.5" ry="1.8" fill="#7a5800"/>
+        </g>
+
+        <path d="M100 48 C98 44, 93 44, 93 49 C93 54, 100 58, 100 58 C100 58, 107 54, 107 49 C107 44, 102 44, 100 48Z" fill="#e85454" opacity="0.8"/>
+        <path d="M88 71 Q100 82 112 71" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.9"/>
+
+        <text x="100" y="118" text-anchor="middle" font-family="'Outfit', sans-serif" font-weight="800" font-size="22" fill="#1a5c2e" letter-spacing="-0.5">
+          Parkgolf<tspan fill="#e8b830">Mate</tspan>
+        </text>
+
+        <text x="100" y="140" text-anchor="middle" font-family="'Noto Sans KR', sans-serif" font-weight="400" font-size="10.5" fill="#8a9a8a" letter-spacing="0.3">
+          친구들과 함께하는 파크골프
+        </text>
+      </svg>
+      <p class="card-note">세로 배치가 필요한 소셜미디어 프로필, 카드 인쇄물 등에 활용</p>
+    </div>
+
+    <!-- E: Minimal / Monochrome -->
+    <div class="concept-card">
+      <div class="card-tag">Mono / Minimal</div>
+      <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="82" cy="62" r="32" fill="none" stroke="#1a5c2e" stroke-width="2.5"/>
+        <circle cx="118" cy="62" r="32" fill="none" stroke="#1a5c2e" stroke-width="2.5"/>
+
+        <!-- Eyes -->
+        <circle cx="73" cy="58" r="3" fill="#1a5c2e"/>
+        <circle cx="127" cy="58" r="3" fill="#1a5c2e"/>
+
+        <!-- Heart outline -->
+        <path d="M100 48 C98 44, 93 44, 93 49 C93 54, 100 58, 100 58 C100 58, 107 54, 107 49 C107 44, 102 44, 100 48Z"
+              fill="none" stroke="#1a5c2e" stroke-width="2"/>
+
+        <!-- Smile -->
+        <path d="M88 71 Q100 82 112 71" stroke="#1a5c2e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+        <text x="100" y="118" text-anchor="middle" font-family="'Outfit', sans-serif" font-weight="800" font-size="22" fill="#1a5c2e" letter-spacing="-0.5">
+          ParkgolfMate
+        </text>
+
+        <text x="100" y="140" text-anchor="middle" font-family="'Noto Sans KR', sans-serif" font-weight="400" font-size="10.5" fill="#1a5c2e" letter-spacing="0.3" opacity="0.5">
+          친구들과 함께하는 파크골프
+        </text>
+      </svg>
+      <p class="card-note">단색 인쇄, 스탬프, 팩스 등 1도 인쇄가 필요한 경우 활용</p>
+    </div>
+
+  </div>
+
+  <!-- ======================== COLOR VARIATIONS ======================== -->
+  <div class="palette-section">
+    <div class="palette-title">Color Variations</div>
+    <div class="palette-row">
+
+      <!-- Dark -->
+      <div class="palette-chip chip-dark">
+        <svg width="180" height="70" viewBox="0 0 180 70" fill="none">
+          <circle cx="28" cy="30" r="20" fill="#2e8b47"/>
+          <circle cx="52" cy="30" r="20" fill="#f5c842"/>
+          <ellipse cx="23" cy="27" rx="2.5" ry="3" fill="#fff" opacity="0.85"/>
+          <ellipse cx="23" cy="28" rx="1.2" ry="1.5" fill="#0d3318"/>
+          <ellipse cx="57" cy="27" rx="2.5" ry="3" fill="#fff" opacity="0.85"/>
+          <ellipse cx="57" cy="28" rx="1.2" ry="1.5" fill="#6b4e00"/>
+          <path d="M40 22 C38.5 19, 35.5 19, 35.5 22.5 C35.5 26, 40 28.5, 40 28.5 C40 28.5, 44.5 26, 44.5 22.5 C44.5 19, 41.5 19, 40 22Z" fill="#e85454" opacity="0.8"/>
+          <path d="M32 36 Q40 43 48 36" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+          <text x="80" y="28" font-family="'Outfit', sans-serif" font-weight="700" font-size="14" fill="#e8e0d0" letter-spacing="-0.3">Parkgolf<tspan fill="#f5c842">Mate</tspan></text>
+          <text x="80" y="44" font-family="'Noto Sans KR', sans-serif" font-weight="300" font-size="8" fill="#8a9a8a">친구들과 함께하는 파크골프</text>
+        </svg>
+      </div>
+
+      <!-- Green -->
+      <div class="palette-chip chip-green">
+        <svg width="180" height="70" viewBox="0 0 180 70" fill="none">
+          <circle cx="28" cy="30" r="20" fill="#fff" opacity="0.2"/>
+          <circle cx="52" cy="30" r="20" fill="#f5c842"/>
+          <ellipse cx="23" cy="27" rx="2.5" ry="3" fill="#fff" opacity="0.85"/>
+          <ellipse cx="23" cy="28" rx="1.2" ry="1.5" fill="#1a5c2e"/>
+          <ellipse cx="57" cy="27" rx="2.5" ry="3" fill="#fff" opacity="0.85"/>
+          <ellipse cx="57" cy="28" rx="1.2" ry="1.5" fill="#6b4e00"/>
+          <path d="M40 22 C38.5 19, 35.5 19, 35.5 22.5 C35.5 26, 40 28.5, 40 28.5 C40 28.5, 44.5 26, 44.5 22.5 C44.5 19, 41.5 19, 40 22Z" fill="#fff" opacity="0.65"/>
+          <path d="M32 36 Q40 43 48 36" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+          <text x="80" y="28" font-family="'Outfit', sans-serif" font-weight="700" font-size="14" fill="#fff" letter-spacing="-0.3">Parkgolf<tspan fill="#fde68a">Mate</tspan></text>
+          <text x="80" y="44" font-family="'Noto Sans KR', sans-serif" font-weight="300" font-size="8" fill="#a0c8a0">친구들과 함께하는 파크골프</text>
+        </svg>
+      </div>
+
+      <!-- Light -->
+      <div class="palette-chip chip-light">
+        <svg width="180" height="70" viewBox="0 0 180 70" fill="none">
+          <circle cx="28" cy="30" r="20" fill="#1a5c2e"/>
+          <circle cx="52" cy="30" r="20" fill="#e8b830"/>
+          <ellipse cx="23" cy="27" rx="2.5" ry="3" fill="#fff" opacity="0.85"/>
+          <ellipse cx="23" cy="28" rx="1.2" ry="1.5" fill="#0d3318"/>
+          <ellipse cx="57" cy="27" rx="2.5" ry="3" fill="#fff" opacity="0.85"/>
+          <ellipse cx="57" cy="28" rx="1.2" ry="1.5" fill="#6b4e00"/>
+          <path d="M40 22 C38.5 19, 35.5 19, 35.5 22.5 C35.5 26, 40 28.5, 40 28.5 C40 28.5, 44.5 26, 44.5 22.5 C44.5 19, 41.5 19, 40 22Z" fill="#e85454" opacity="0.8"/>
+          <path d="M32 36 Q40 43 48 36" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+          <text x="80" y="28" font-family="'Outfit', sans-serif" font-weight="700" font-size="14" fill="#1a5c2e" letter-spacing="-0.3">Parkgolf<tspan fill="#d4a020">Mate</tspan></text>
+          <text x="80" y="44" font-family="'Noto Sans KR', sans-serif" font-weight="300" font-size="8" fill="#7a9a7a">친구들과 함께하는 파크골프</text>
+        </svg>
+      </div>
+
+      <!-- Yellow -->
+      <div class="palette-chip chip-sunny">
+        <svg width="180" height="70" viewBox="0 0 180 70" fill="none">
+          <circle cx="28" cy="30" r="20" fill="#1a5c2e"/>
+          <circle cx="52" cy="30" r="20" fill="#fff" opacity="0.5"/>
+          <ellipse cx="23" cy="27" rx="2.5" ry="3" fill="#fff" opacity="0.85"/>
+          <ellipse cx="23" cy="28" rx="1.2" ry="1.5" fill="#0d3318"/>
+          <ellipse cx="57" cy="27" rx="2.5" ry="3" fill="#1a5c2e" opacity="0.6"/>
+          <ellipse cx="57" cy="28" rx="1.2" ry="1.5" fill="#1a5c2e"/>
+          <path d="M40 22 C38.5 19, 35.5 19, 35.5 22.5 C35.5 26, 40 28.5, 40 28.5 C40 28.5, 44.5 26, 44.5 22.5 C44.5 19, 41.5 19, 40 22Z" fill="#e85454" opacity="0.75"/>
+          <path d="M32 36 Q40 43 48 36" stroke="#1a5c2e" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.7"/>
+          <text x="80" y="28" font-family="'Outfit', sans-serif" font-weight="700" font-size="14" fill="#1a5c2e" letter-spacing="-0.3">Parkgolf<tspan fill="#0d3318">Mate</tspan></text>
+          <text x="80" y="44" font-family="'Noto Sans KR', sans-serif" font-weight="300" font-size="8" fill="#2e5a20">친구들과 함께하는 파크골프</text>
+        </svg>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

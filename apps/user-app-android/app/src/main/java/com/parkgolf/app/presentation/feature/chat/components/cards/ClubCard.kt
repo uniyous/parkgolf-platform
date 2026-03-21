@@ -50,7 +50,7 @@ fun ClubCard(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = name,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.SemiBold,
                             color = ParkOnPrimary
                         )
@@ -66,7 +66,7 @@ fun ClubCard(
                             )
                             Text(
                                 text = address,
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = ParkOnPrimary.copy(alpha = 0.5f),
                                 maxLines = 1
                             )
@@ -92,7 +92,7 @@ fun ClubCard(
                         ) {
                             Text(
                                 text = "선택",
-                                style = MaterialTheme.typography.labelMedium,
+                                style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Medium
                             )
                         }

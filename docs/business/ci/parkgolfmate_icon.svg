@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 400" width="100%" height="100%">
+  <defs>
+    <!-- Soft, deep drop shadows to create a 3D clay/papercut effect -->
+    <filter id="shadowStr" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="3" dy="8" stdDeviation="6" flood-color="#001a12" flood-opacity="0.35" />
+    </filter>
+    <filter id="shadowMid" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="1" dy="4" stdDeviation="4" flood-color="#002a1c" flood-opacity="0.25" />
+    </filter>
+    <filter id="shadowLight" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="1" dy="2" stdDeviation="2" flood-color="#002a1c" flood-opacity="0.2" />
+    </filter>
+    
+    <!-- Mask for Left Circle Inner Disc -->
+    <clipPath id="innerCircleClip">
+      <circle cx="190" cy="230" r="56" />
+    </clipPath>
+  </defs>
+
+  <!-- 1. Chat Box Base -->
+  <g filter="url(#shadowStr)">
+    <!-- Base silhouette that casts the main Chat Box shadow -->
+    <!-- The thick stroke merges outward by 12px, forming a thick rim -->
+    <path d="M 160 150 L 370 150 A 30 30 0 0 1 400 180 L 400 250 A 30 30 0 0 1 370 280 L 360 280 L 360 325 L 310 280 L 160 280 Z" 
+          fill="#83c658" stroke="#004b36" stroke-width="24" stroke-linejoin="round" />
+  </g>
+
+  <!-- 2. Flag (Moved to draw before the flagpole) -->
+  <g filter="url(#shadowLight)">
+    <!-- Tied to the center of the flagpole so it doesn't stick out to the left -->
+    <path d="M 144 76 L 214 96 L 144 116 Z" fill="#83c658" stroke="#83c658" stroke-width="8" stroke-linejoin="round" />
+  </g>
+
+  <!-- 3. Left Base & Flagpole -->
+  <!-- This combines perfectly and casts a common strong shadow overlapping the Chat Box -->
+  <g filter="url(#shadowStr)">
+    <!-- Base solid dark green disk -->
+    <circle cx="190" cy="230" r="80" fill="#004b36" />
+    <!-- Flagpole: draws over the flag, forcing the flag to be pushed "behind" -->
+    <rect x="134" y="60" width="20" height="130" rx="4" fill="#004b36" />
+  </g>
+
+  <!-- 4. Left Inner Raised Disc -->
+  <!-- Contains Cream top and Light Green crescent mask, elevated above the dark green rim -->
+  <g filter="url(#shadowMid)">
+    <!-- We clip to r=56 to ensure perfect circular boundaries matching the 24px rim -->
+    <g clip-path="url(#innerCircleClip)">
+      <circle cx="190" cy="230" r="56" fill="#e9ebd4" />
+      <!-- The inner light green crescent/smile shape -->
+      <!-- Q point computed to make a perfect 16px bottom thickness -->
+      <path d="M 130 245 Q 190 295 250 245 L 250 300 L 130 300 Z" fill="#83c658" />
+    </g>
+  </g>
+
+</svg>

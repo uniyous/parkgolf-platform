@@ -72,7 +72,17 @@ export const BookingErrors = defineErrors({
 });
 
 // ============================================
-// 그룹 예약 에러 (GROUP_xxx)
+// 팀 선정 에러 (TEAM_xxx)
+// ============================================
+export const TeamSelectionErrors = defineErrors({
+  NOT_FOUND: { code: 'TEAM_001', message: '팀 선정을 찾을 수 없습니다', httpStatus: 404 },
+  INVALID_STATUS: { code: 'TEAM_002', message: '현재 상태에서는 해당 작업을 수행할 수 없습니다', httpStatus: 400 },
+  ALREADY_READY: { code: 'TEAM_003', message: '이미 팀 구성이 완료되었습니다', httpStatus: 400 },
+  NO_MEMBERS: { code: 'TEAM_004', message: '팀에 멤버가 없습니다', httpStatus: 400 },
+});
+
+// ============================================
+// 그룹 예약 에러 (GROUP_xxx) - 하위 호환
 // ============================================
 export const GroupErrors = defineErrors({
   NOT_FOUND: { code: 'GROUP_001', message: '그룹 예약을 찾을 수 없습니다', httpStatus: 404 },
@@ -146,6 +156,7 @@ export const Errors = {
   User: UserErrors,
   Admin: AdminErrors,
   Booking: BookingErrors,
+  TeamSelection: TeamSelectionErrors,
   Group: GroupErrors,
   Course: CourseErrors,
   Validation: ValidationErrors,

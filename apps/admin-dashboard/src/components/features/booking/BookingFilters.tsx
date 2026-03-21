@@ -16,25 +16,36 @@ interface BookingFiltersProps {
   dateFrom: string;
   dateTo: string;
   clubFilter: number | null;
+  paymentMethodFilter: string;
   searchKeyword: string;
   clubs: Club[];
   onDateFromChange: (value: string) => void;
   onDateToChange: (value: string) => void;
   onClubFilterChange: (value: number | null) => void;
+  onPaymentMethodFilterChange: (value: string) => void;
   onSearchKeywordChange: (value: string) => void;
   onReset: () => void;
   hasActiveFilters: boolean;
 }
 
+const PAYMENT_METHOD_OPTIONS = [
+  { value: '', label: '전체' },
+  { value: 'onsite', label: '현장결제' },
+  { value: 'card', label: '카드결제' },
+  { value: 'dutchpay', label: '더치페이' },
+];
+
 export const BookingFilters: React.FC<BookingFiltersProps> = ({
   dateFrom,
   dateTo,
   clubFilter,
+  paymentMethodFilter,
   searchKeyword,
   clubs,
   onDateFromChange,
   onDateToChange,
   onClubFilterChange,
+  onPaymentMethodFilterChange,
   onSearchKeywordChange,
   onReset,
   hasActiveFilters,
@@ -63,6 +74,15 @@ export const BookingFilters: React.FC<BookingFiltersProps> = ({
             value={clubFilter}
             onChange={(value) => onClubFilterChange(value ? Number(value) : null)}
             options={clubOptions}
+            placeholder="전체"
+          />
+
+          {/* 결제수단 필터 */}
+          <FilterSelect
+            label="결제수단"
+            value={paymentMethodFilter || null}
+            onChange={(value) => onPaymentMethodFilterChange(value ? String(value) : '')}
+            options={PAYMENT_METHOD_OPTIONS}
             placeholder="전체"
           />
 

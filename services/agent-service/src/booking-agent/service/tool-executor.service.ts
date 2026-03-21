@@ -1,6 +1,6 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout, catchError } from 'rxjs';
+import { firstValueFrom, timeout, catchError, of } from 'rxjs';
 import { ToolCall } from './deepseek.service';
 
 /**
@@ -90,7 +90,7 @@ export class ToolExecutorService {
 
   /**
    * 결제 준비 (payment.prepare 호출)
-   * 원샷 처리: booking.create → Saga 폴링 → payment.prepare
+   * 원샷 처리: saga.booking.create → Saga 폴링 → payment.prepare
    */
   async preparePayment(params: {
     bookingId: number;
@@ -311,7 +311,7 @@ export class ToolExecutorService {
     const { clubId } = args as { clubId: string };
 
     const response = await firstValueFrom(
-      this.courseClient.send('clubs.get', { id: clubId }).pipe(
+      this.courseClient.send('club.findOne', { id: Number(clubId) }).pipe(
         timeout(this.REQUEST_TIMEOUT),
         catchError((err) => {
           throw new Error(`Failed to get club info: ${err.message}`);
@@ -347,7 +347,7 @@ export class ToolExecutorService {
 
     // 먼저 골프장 위치 조회
     const clubResponse = await firstValueFrom(
-      this.courseClient.send('clubs.get', { id: clubId }).pipe(
+      this.courseClient.send('club.findOne', { id: Number(clubId) }).pipe(
         timeout(this.REQUEST_TIMEOUT),
         catchError((err) => {
           throw new Error(`Failed to get club location: ${err.message}`);
@@ -580,7 +580,7 @@ export class ToolExecutorService {
 
         // 하위 호환용 flat 목록
         for (const slot of roundSlots) {
-          allSlots.push({ ...slot, courseName: game.name });
+          allSlots.push({ ...slot, gameName: game.name });
         }
       }
 
@@ -601,7 +601,7 @@ export class ToolExecutorService {
 
   /**
    * 예약 생성
-   * booking.create 후 Saga 완료를 폴링하여 최종 상태를 반환
+   * saga.booking.create 후 Saga 완료를 폴링하여 최종 상태를 반환
    */
   private async createBooking(args: Record<string, unknown>): Promise<unknown> {
     const { gameTimeSlotId, playerCount, userId, userName, userEmail, paymentMethod } = args as {
@@ -615,7 +615,7 @@ export class ToolExecutorService {
 
     const response = await firstValueFrom(
       this.bookingClient
-        .send('booking.create', {
+        .send('saga.booking.create', {
           idempotencyKey: crypto.randomUUID(),
           userId,
           userName: userName || '',
@@ -633,11 +633,31 @@ export class ToolExecutorService {
     );
 
     if (response?.success && response?.data) {
-      const booking = response.data;
-      const bookingId = booking.id;
+      const sagaResult = response.data;
+      const sagaPayload = sagaResult.payload || {};
 
-      // Saga 완료 대기 (polling)
-      const finalStatus = await this.waitForSagaCompletion(bookingId, paymentMethod);
+      // saga 응답에서 bookingId 추출 (saga payload 또는 직접 응답)
+      const bookingId = sagaPayload.bookingId || sagaResult.bookingId || sagaResult.id;
+
+      if (!bookingId) {
+        this.logger.error(`[createBooking] No bookingId in saga response: ${JSON.stringify(sagaResult).slice(0, 300)}`);
+        return {
+          success: false,
+          message: '예약 생성에 실패했습니다. 다시 시도해 주세요.',
+        };
+      }
+
+      // Saga가 이미 COMPLETED이면 바로 booking 상태 확인
+      const sagaStatus = sagaResult.status;
+      let finalStatus: string;
+
+      if (sagaStatus === 'COMPLETED') {
+        // Saga 완료 → booking 상태 직접 조회
+        finalStatus = await this.waitForSagaCompletion(bookingId, paymentMethod);
+      } else {
+        // Saga 진행 중 → polling
+        finalStatus = await this.waitForSagaCompletion(bookingId, paymentMethod);
+      }
 
       if (finalStatus === 'FAILED') {
         return {
@@ -649,29 +669,30 @@ export class ToolExecutorService {
       return {
         success: true,
         bookingId,
-        bookingNumber: booking.bookingNumber,
+        bookingNumber: sagaPayload.bookingNumber,
+        confirmationNumber: sagaPayload.bookingNumber,
         status: finalStatus, // 'CONFIRMED' | 'SLOT_RESERVED' | 'PENDING'
         message: finalStatus === 'CONFIRMED'
           ? '예약이 완료되었습니다!'
           : '결제를 진행해 주세요.',
         details: {
-          date: booking.bookingDate || booking.date,
-          time: booking.startTime,
-          playerCount: booking.playerCount,
-          totalPrice: booking.totalPrice,
+          date: sagaPayload.bookingDate,
+          time: sagaPayload.startTime,
+          playerCount: sagaPayload.playerCount,
+          totalPrice: sagaPayload.totalPrice,
         },
       };
     }
 
     return {
       success: false,
-      message: response?.error?.message || '예약에 실패했습니다',
+      message: response?.error?.message || response?.data?.failReason || '예약에 실패했습니다',
     };
   }
 
   /**
    * Saga 완료 대기 (폴링)
-   * booking.create 직후 PENDING 상태에서 CONFIRMED/SLOT_RESERVED/FAILED까지 폴링
+   * saga.booking.create 직후 PENDING 상태에서 CONFIRMED/SLOT_RESERVED/FAILED까지 폴링
    */
   private async waitForSagaCompletion(
     bookingId: number,
@@ -797,7 +818,7 @@ export class ToolExecutorService {
 
     // 클럽의 companyId 조회
     const clubResponse = await firstValueFrom(
-      this.courseClient.send('clubs.get', { id: clubId }).pipe(
+      this.courseClient.send('club.findOne', { id: Number(clubId) }).pipe(
         timeout(this.REQUEST_TIMEOUT),
         catchError((err) => {
           throw new Error(`Failed to get club info: ${err.message}`);
@@ -858,7 +879,7 @@ export class ToolExecutorService {
     };
   }
 
-  // ── 그룹 예약 관련 메서드 ──
+  // ── 팀 예약 관련 메서드 ──
 
   /**
    * 채팅방 멤버 목록 조회
@@ -885,50 +906,6 @@ export class ToolExecutorService {
       }
       return null;
     } catch {
-      return null;
-    }
-  }
-
-  /**
-   * 그룹 예약 생성
-   */
-  async createBookingGroup(params: {
-    chatRoomId: string;
-    bookerId: number;
-    bookerName: string;
-    bookerEmail: string;
-    clubId: number;
-    clubName: string;
-    date: string;
-    teams: Array<{
-      gameTimeSlotId: number;
-      participants: Array<{
-        userId: number;
-        userName: string;
-        userEmail: string;
-        role: string;
-      }>;
-    }>;
-    pricePerPerson: number;
-    paymentMethod: string;
-  }): Promise<any> {
-    try {
-      const response = await firstValueFrom(
-        this.bookingClient.send('bookingGroup.create', params).pipe(
-          timeout(30000), // 그룹 예약은 복수 Booking 생성 → 긴 타임아웃
-          catchError((err) => {
-            this.logger.error(`bookingGroup.create failed: ${err.message}`);
-            return [null];
-          }),
-        ),
-      );
-
-      if (response?.success && response?.data) {
-        return response.data;
-      }
-      return null;
-    } catch (error) {
-      this.logger.error('createBookingGroup unexpected error', error);
       return null;
     }
   }
@@ -968,12 +945,12 @@ export class ToolExecutorService {
   }
 
   /**
-   * 분할결제 상태 조회
+   * 분할결제 상태 조회 (bookingId 기반)
    */
-  async getSplitStatus(bookingGroupId: number): Promise<any> {
+  async getSplitStatus(bookingId: number): Promise<any> {
     try {
       const response = await firstValueFrom(
-        this.paymentClient.send('payment.splitGet', { bookingGroupId }).pipe(
+        this.paymentClient.send('payment.splitGet', { bookingId }).pipe(
           timeout(this.REQUEST_TIMEOUT),
           catchError((err) => {
             this.logger.error(`payment.splitGet failed: ${err.message}`);
@@ -988,6 +965,116 @@ export class ToolExecutorService {
       return null;
     } catch (error) {
       this.logger.error('getSplitStatus unexpected error', error);
+      return null;
+    }
+  }
+
+  /**
+   * 분할결제 상태 조회 (orderId 기반 → bookingId 역추적)
+   */
+  async getSplitStatusByOrderId(orderId: string): Promise<any> {
+    try {
+      const response = await firstValueFrom(
+        this.paymentClient.send('payment.splitGet', { orderId }).pipe(
+          timeout(this.REQUEST_TIMEOUT),
+          catchError((err) => {
+            this.logger.error(`payment.splitGet (orderId) failed: ${err.message}`);
+            return [null];
+          }),
+        ),
+      );
+
+      if (response?.success && response?.data) {
+        return response.data;
+      }
+      return null;
+    } catch (error) {
+      this.logger.error('getSplitStatusByOrderId unexpected error', error);
+      return null;
+    }
+  }
+
+  /**
+   * 예약의 진행자(booker) userId 조회
+   */
+  async getBookingBookerId(bookingId: number): Promise<number | undefined> {
+    const detail = await this.getBookingDetail(bookingId);
+    return detail?.userId || undefined;
+  }
+
+  /**
+   * 예약 상세 조회 (TEAM_COMPLETE 브로드캐스트용)
+   */
+  async getBookingDetail(bookingId: number): Promise<{
+    userId: number;
+    status: string;
+    bookingNumber: string;
+    gameName: string;
+    clubName: string;
+    bookingDate: string;
+    startTime: string;
+    totalPrice: number;
+    paymentMethod: string;
+  } | null> {
+    try {
+      const response = await firstValueFrom(
+        this.bookingClient
+          .send('booking.findById', { id: bookingId })
+          .pipe(
+            timeout(5000),
+            catchError(() => [null]),
+          ),
+      );
+      if (!response?.data) return null;
+      const d = response.data;
+      return {
+        userId: d.userId,
+        status: d.status || '',
+        bookingNumber: d.bookingNumber || '',
+        gameName: d.gameName || '',
+        clubName: d.clubName || '',
+        bookingDate: d.bookingDate || '',
+        startTime: d.startTime || '',
+        totalPrice: Number(d.totalPrice) || 0,
+        paymentMethod: d.paymentMethod || '',
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * 정산 상태 조회 (booking-service 위임)
+   * allPaid 판단의 단일 진실 공급원
+   */
+  async getSettlementStatus(bookingId: number): Promise<{
+    allPaid: boolean;
+    paidCount: number;
+    totalCount: number;
+    bookingStatus: string;
+    settlementStatus: string;
+  } | null> {
+    try {
+      const response = await firstValueFrom(
+        this.bookingClient
+          .send('booking.settlementStatus', { bookingId })
+          .pipe(
+            timeout(this.REQUEST_TIMEOUT),
+            catchError(() => [null]),
+          ),
+      );
+
+      if (response?.success && response?.data) {
+        return {
+          allPaid: response.data.allPaid,
+          paidCount: response.data.paidCount,
+          totalCount: response.data.totalCount,
+          bookingStatus: response.data.bookingStatus,
+          settlementStatus: response.data.settlementStatus,
+        };
+      }
+      return null;
+    } catch {
       return null;
     }
   }
@@ -1010,6 +1097,101 @@ export class ToolExecutorService {
       this.notifyClient.emit('payment.splitRequested', data);
     } catch (error) {
       this.logger.error('emitSplitPaymentNotification failed', error);
+    }
+  }
+
+  /**
+   * 정산 카드 브로드캐스트 (fire-and-forget)
+   * 1개 AI_ASSISTANT 메시지(senderId=0)를 DB에 저장하고,
+   * NATS 이벤트로 chat-gateway에 전달하여 Socket.IO 룸 브로드캐스트.
+   * 클라이언트는 metadata.targetUserIds로 본인 해당 여부를 판단.
+   */
+  broadcastSettlementCard(
+    roomId: string,
+    targetUserIds: number[],
+    settlementData: Record<string, unknown>,
+    content?: string,
+    bookerUserId?: number,
+    senderId?: number,
+  ): void {
+    const metadata = JSON.stringify({
+      conversationId: null,
+      state: 'SETTLING',
+      actions: [{ type: 'SETTLEMENT_STATUS', data: settlementData }],
+      targetUserIds,
+      bookerUserId: bookerUserId || null,
+    });
+
+    const message = {
+      id: crypto.randomUUID(),
+      roomId,
+      senderId: senderId ?? 0,
+      senderName: 'AI 예약 도우미',
+      content: content || '더치페이 결제 요청이 도착했습니다.',
+      messageType: 'AI_ASSISTANT',
+      metadata,
+      createdAt: new Date().toISOString(),
+    };
+
+    // NATS 이벤트 발행 → chat-gateway가 Socket.IO 전달 + JetStream DB 저장
+    try {
+      this.notifyClient.emit('chat.message.room', { roomId, message });
+      this.logger.log(`broadcastSettlementCard emitted - roomId=${roomId}, msgId=${message.id}, targetUserIds=${JSON.stringify(targetUserIds)}`);
+    } catch (error) {
+      this.logger.error('broadcastSettlementCard NATS emit failed', error);
+    }
+  }
+
+  /**
+   * 팀 완료 카드 브로드캐스트 (senderId=0 → 채팅방 전체 조회 가능)
+   */
+  broadcastTeamCompleteCard(
+    roomId: string,
+    teamCompleteData: Record<string, unknown>,
+  ): void {
+    const metadata = JSON.stringify({
+      conversationId: null,
+      state: 'TEAM_COMPLETE',
+      actions: [{ type: 'TEAM_COMPLETE', data: teamCompleteData }],
+    });
+
+    const message = {
+      id: crypto.randomUUID(),
+      roomId,
+      senderId: 0,
+      senderName: 'AI 예약 도우미',
+      content: `팀${teamCompleteData['teamNumber'] || ''} 예약이 완료되었어요!`,
+      messageType: 'AI_ASSISTANT',
+      metadata,
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      this.notifyClient.emit('chat.message.room', { roomId, message });
+      this.logger.log(`broadcastTeamCompleteCard emitted - roomId=${roomId}, msgId=${message.id}`);
+    } catch (error) {
+      this.logger.error('broadcastTeamCompleteCard NATS emit failed', error);
+    }
+  }
+
+  /**
+   * 채팅방에 SYSTEM 메시지 전송 (chat-gateway → JetStream → DB)
+   */
+  sendSystemMessage(roomId: string, content: string): void {
+    const message = {
+      id: crypto.randomUUID(),
+      roomId,
+      senderId: 0,
+      senderName: 'SYSTEM',
+      content,
+      messageType: 'SYSTEM',
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      this.notifyClient.emit('chat.message.room', { roomId, message });
+    } catch (error) {
+      this.logger.error('sendSystemMessage NATS emit failed', error);
     }
   }
 }

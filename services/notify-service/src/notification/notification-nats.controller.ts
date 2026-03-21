@@ -552,6 +552,86 @@ export class NotificationNatsController {
     }
   }
 
+  // ===== Admin Notification List =====
+
+  @MessagePattern('notifications.list')
+  async listNotifications(@Payload() payload: { filters?: Record<string, string>; page?: number; limit?: number; token?: string }) {
+    const { filters = {}, page = 1, limit = 20 } = payload || {};
+    this.logger.log(`NATS: notifications.list - page=${page}, limit=${limit}`);
+
+    const result = await this.notificationService.findAllAdmin({ ...filters, page: Number(page), limit: Number(limit) });
+    return NatsResponse.paginated(result.notifications, result.total, result.page, Number(limit));
+  }
+
+  // ===== Template CRUD Handlers =====
+
+  @MessagePattern('templates.list')
+  async listTemplates(@Payload() payload: { page?: number; limit?: number; token?: string }) {
+    const { page = 1, limit = 20 } = payload || {};
+    this.logger.log(`NATS: templates.list - page=${page}, limit=${limit}`);
+
+    const templates = await this.templateService.findAll();
+    const pageNum = Number(page) || 1;
+    const limitNum = Number(limit) || 20;
+    const start = (pageNum - 1) * limitNum;
+    const paged = templates.slice(start, start + limitNum);
+
+    return NatsResponse.paginated(paged, templates.length, pageNum, limitNum);
+  }
+
+  @MessagePattern('templates.get')
+  async getTemplate(@Payload() payload: { id?: number; templateId?: string; token?: string }) {
+    const data = extractPayload(payload);
+    const id = (data as any).templateId || (data as any).id;
+    this.logger.log(`NATS: templates.get - id=${id}`);
+
+    const template = await this.templateService.findOne(Number(id));
+    return NatsResponse.success(template);
+  }
+
+  @MessagePattern('templates.create')
+  async createTemplate(@Payload() payload: { token?: string; [key: string]: unknown }) {
+    const data = extractPayload(payload);
+    this.logger.log(`NATS: templates.create`);
+    const { token, ...dto } = data as Record<string, unknown>;
+
+    const template = await this.templateService.create(dto as any);
+    return NatsResponse.success(template);
+  }
+
+  @MessagePattern('templates.update')
+  async updateTemplate(@Payload() payload: { templateId?: string; id?: number; data: Record<string, unknown>; token?: string }) {
+    // extractPayload를 사용하지 않음 - payload.data가 updateData와 충돌하므로 직접 접근
+    const id = payload.templateId || payload.id;
+    const data = payload.data;
+    this.logger.log(`NATS: templates.update - id=${id}`);
+
+    const template = await this.templateService.update(Number(id), data as any);
+    return NatsResponse.success(template);
+  }
+
+  @MessagePattern('templates.delete')
+  async deleteTemplate(@Payload() payload: { templateId?: string; id?: number; token?: string }) {
+    const data = extractPayload(payload);
+    const id = (data as any).templateId || (data as any).id;
+    this.logger.log(`NATS: templates.delete - id=${id}`);
+
+    await this.templateService.remove(Number(id));
+    return NatsResponse.deleted();
+  }
+
+  @MessagePattern('templates.test')
+  async testTemplate(@Payload() payload: { templateId?: string; id?: number; data?: Record<string, unknown>; token?: string }) {
+    // extractPayload를 사용하지 않음 - payload.data가 testData와 충돌하므로 직접 접근
+    const id = payload.templateId || payload.id;
+    const testData = payload.data || {};
+    this.logger.log(`NATS: templates.test - id=${id}`);
+
+    const template = await this.templateService.findOne(Number(id));
+    const processed = await this.templateService.processTemplate(template, testData);
+    return NatsResponse.success({ success: true, preview: processed.content });
+  }
+
   @EventPattern('user.deletion.reminder')
   async handleDeletionReminder(@Payload() data: {
     userId: number;

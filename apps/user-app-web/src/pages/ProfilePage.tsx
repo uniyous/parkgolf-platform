@@ -12,7 +12,6 @@ import {
   HelpCircle,
   Settings,
   CalendarCheck,
-  CreditCard,
   KeyRound,
   UserX,
   Megaphone,
@@ -165,11 +164,6 @@ export function ProfilePage() {
                 icon={<CalendarCheck className="w-5 h-5" />}
                 label="예약 내역"
                 onClick={() => navigate('/my-bookings')}
-              />
-              <MenuItem
-                icon={<CreditCard className="w-5 h-5" />}
-                label="결제 수단"
-                onClick={() => navigate('/payment-methods')}
               />
               <MenuItem
                 icon={<KeyRound className="w-5 h-5" />}

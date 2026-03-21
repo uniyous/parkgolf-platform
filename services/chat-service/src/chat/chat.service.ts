@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { MessageType } from '@prisma/client';
+import { MessageType, Prisma } from '@prisma/client';
 import { AppException, Errors } from '../common/exceptions';
 
 export interface SaveMessageDto {
@@ -9,12 +9,14 @@ export interface SaveMessageDto {
   senderId: number;
   senderName: string;
   content: string;
-  type: MessageType;
+  messageType: MessageType;
+  metadata?: string;
   createdAt: string;
 }
 
 export interface GetMessagesDto {
   roomId: string;
+  userId?: number;
   cursor?: string;
   limit?: number;
 }
@@ -22,7 +24,7 @@ export interface GetMessagesDto {
 export interface MarkReadDto {
   roomId: string;
   userId: number;
-  messageId: string;
+  messageId?: string;
 }
 
 const DEFAULT_PAGE_SIZE = 50;
@@ -35,28 +37,31 @@ export class ChatService {
 
   // 메시지 저장
   async saveMessage(dto: SaveMessageDto) {
-    const { id, roomId, senderId, senderName, content, type, createdAt } = dto;
+    const { id, roomId, senderId, senderName, content, messageType, metadata, createdAt } = dto;
 
-    // 중복 체크 (idempotency)
-    const existing = await this.prisma.chatMessage.findUnique({
-      where: { id },
-    });
-
-    if (existing) {
-      return existing;
+    // upsert 패턴: create 시도 → P2002 unique constraint 시 기존 레코드 반환
+    // NATS RPC + JetStream 동시 저장으로 인한 race condition 방지
+    let message;
+    try {
+      message = await this.prisma.chatMessage.create({
+        data: {
+          id,
+          roomId,
+          senderId,
+          senderName,
+          content,
+          type: messageType,
+          metadata,
+          createdAt: new Date(createdAt),
+        },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        const existing = await this.prisma.chatMessage.findUnique({ where: { id } });
+        if (existing) return this.toMessageResponse(existing);
+      }
+      throw error;
     }
-
-    const message = await this.prisma.chatMessage.create({
-      data: {
-        id,
-        roomId,
-        senderId,
-        senderName,
-        content,
-        type,
-        createdAt: new Date(createdAt),
-      },
-    });
 
     // 채팅방 updatedAt 갱신
     await this.prisma.chatRoom.update({
@@ -65,12 +70,24 @@ export class ChatService {
     });
 
     this.logger.debug(`Saved message: ${id} in room ${roomId}`);
-    return message;
+    return this.toMessageResponse(message);
   }
 
   // 메시지 목록 조회 (cursor pagination)
   async getMessages(dto: GetMessagesDto) {
-    const { roomId, cursor, limit = DEFAULT_PAGE_SIZE } = dto;
+    const { roomId, userId, cursor, limit = DEFAULT_PAGE_SIZE } = dto;
+
+    // AI 메시지(AI_USER, AI_ASSISTANT)는 본인만 볼 수 있도록 필터링
+    // senderId=0인 AI_ASSISTANT는 브로드캐스트 메시지 (클라이언트에서 targetUserIds 필터링)
+    const aiFilter = userId
+      ? {
+          OR: [
+            { type: { notIn: [MessageType.AI_USER, MessageType.AI_ASSISTANT] } },
+            { type: { in: [MessageType.AI_USER, MessageType.AI_ASSISTANT] }, senderId: userId },
+            { type: MessageType.AI_ASSISTANT, senderId: 0 },
+          ],
+        }
+      : {};
 
     const messages = await this.prisma.chatMessage.findMany({
       where: {
@@ -79,6 +96,7 @@ export class ChatService {
         ...(cursor && {
           createdAt: { lt: new Date(cursor) },
         }),
+        ...aiFilter,
       },
       orderBy: { createdAt: 'desc' },
       take: limit + 1, // 다음 페이지 여부 확인용
@@ -89,7 +107,7 @@ export class ChatService {
     const nextCursor = hasMore ? data[data.length - 1].createdAt.toISOString() : null;
 
     return {
-      messages: data.reverse(), // 오래된 순으로 반환
+      messages: data.reverse().map((m) => this.toMessageResponse(m)), // 오래된 순으로 반환
       hasMore,
       nextCursor,
     };
@@ -99,23 +117,34 @@ export class ChatService {
   async markRead(dto: MarkReadDto) {
     const { roomId, userId, messageId } = dto;
 
-    // 멤버의 마지막 읽은 메시지 업데이트
+    // messageId가 없으면 최신 메시지 조회
+    const resolvedMessageId = messageId ?? (
+      await this.prisma.chatMessage.findFirst({
+        where: { roomId, deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true },
+      })
+    )?.id;
+
+    // 멤버의 마지막 읽은 시각 업데이트
     await this.prisma.chatRoomMember.updateMany({
       where: { roomId, userId },
       data: {
-        lastReadMessageId: messageId,
+        ...(resolvedMessageId && { lastReadMessageId: resolvedMessageId }),
         lastReadAt: new Date(),
       },
     });
 
-    // 상세 읽음 기록 (선택적)
-    await this.prisma.messageRead.upsert({
-      where: {
-        messageId_userId: { messageId, userId },
-      },
-      create: { messageId, userId },
-      update: { readAt: new Date() },
-    });
+    // 상세 읽음 기록 (messageId가 있는 경우만)
+    if (resolvedMessageId) {
+      await this.prisma.messageRead.upsert({
+        where: {
+          messageId_userId: { messageId: resolvedMessageId, userId },
+        },
+        create: { messageId: resolvedMessageId, userId },
+        update: { readAt: new Date() },
+      });
+    }
 
     return { success: true };
   }
@@ -185,5 +214,11 @@ export class ChatService {
     ]);
 
     return memberResult.count + messageResult.count;
+  }
+
+  /** Prisma ChatMessage → 외부 응답 변환 (type → messageType) */
+  private toMessageResponse(msg: { type: MessageType; [key: string]: unknown }) {
+    const { type, ...rest } = msg;
+    return { ...rest, messageType: type };
   }
 }

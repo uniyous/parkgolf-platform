@@ -70,6 +70,27 @@ export const menuConfig: MenuGroup[] = [
         description: '예약 취소 및 환불 처리',
         permission: 'MANAGE_PAYMENTS'
       },
+      {
+        name: '결제 관리',
+        href: '/payments',
+        icon: '💳',
+        description: '결제 현황 및 매출 분석',
+        permission: 'MANAGE_PAYMENTS'
+      },
+    ],
+    collapsible: true,
+    defaultOpen: true
+  },
+  {
+    name: '알림',
+    items: [
+      {
+        name: '알림 관리',
+        href: '/notifications',
+        icon: '🔔',
+        description: '알림 발송 이력, 템플릿, 통계 관리',
+        permission: 'SYSTEM'
+      },
     ],
     collapsible: true,
     defaultOpen: true

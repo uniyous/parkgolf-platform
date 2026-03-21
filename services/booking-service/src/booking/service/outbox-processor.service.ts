@@ -9,7 +9,6 @@ import { NATS_TIMEOUTS } from '../../common/constants';
 const POLL_INTERVAL_MS = 3000;       // 3초 안전망 폴링 (GKE 복수 Pod 환경 대비)
 const BATCH_SIZE = 10;               // 한 번에 처리할 이벤트 수
 const MAX_RETRY_COUNT = 5;           // 최대 재시도 횟수
-const PROCESSING_LOCK_MS = 30000;    // 처리 중 락 시간 (30초)
 
 @Injectable()
 export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
@@ -68,7 +67,7 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
     this.isProcessing = true;
 
     try {
-      // 1. PENDING 상태의 이벤트 조회 (FOR UPDATE SKIP LOCKED로 동시성 제어)
+      // PENDING 상태의 이벤트 조회 (FOR UPDATE SKIP LOCKED로 동시성 제어)
       const events = await this.prisma.$queryRaw<Array<{
         id: number;
         event_type: string;
@@ -90,7 +89,6 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
 
       this.logger.debug(`Processing ${events.length} outbox events`);
 
-      // 2. 각 이벤트 처리
       for (const event of events) {
         await this.processEvent(event);
       }
@@ -120,9 +118,7 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
         where: { id: event.id },
         data: { status: OutboxStatus.PROCESSING },
       });
-      this.logger.log(`[Outbox] Event ${event.id} marked as PROCESSING`);
 
-      // 이벤트 타입에 따라 적절한 클라이언트로 발행
       const client = this.getClientForEventType(event.event_type);
       const isRequestReply = this.isRequestReplyEvent(event.event_type);
 
@@ -174,7 +170,6 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
     if (eventType.startsWith('booking.') || eventType.startsWith('notification.')) {
       return this.notificationClient;
     }
-    // 기본값은 course-service
     return this.courseServiceClient;
   }
 
@@ -228,7 +223,6 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(
         `Outbox event ${event.id} (${event.event_type}) failed permanently after ${MAX_RETRY_COUNT} retries: ${errorMessage}`
       );
-      // TODO: 알림 발송 또는 Dead Letter Queue로 이동
     } else {
       this.logger.warn(
         `Outbox event ${event.id} (${event.event_type}) failed, retry ${newRetryCount}/${MAX_RETRY_COUNT}: ${errorMessage}`
@@ -237,7 +231,7 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * 만료된 SENT 이벤트 정리 (선택적)
+   * 만료된 SENT 이벤트 정리
    */
   async cleanupOldEvents(retentionDays: number = 7): Promise<number> {
     const cutoffDate = new Date();

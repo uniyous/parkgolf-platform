@@ -170,29 +170,12 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
       return;
     }
 
-    try {
-      if (isEditing && admin) {
-        await updateAdmin.mutateAsync({
-          id: admin.id,
-          data: {
-            email: formData.email,
-            name: formData.name,
-            companyAssignments: [{
-              companyId: targetCompanyId,
-              companyRoleCode: formData.role,
-              isPrimary: true,
-            }],
-            isActive: formData.isActive,
-            phone: formData.phone || undefined,
-            department: formData.department || undefined,
-            ...(formData.password ? { password: formData.password } : {}),
-          },
-        });
-      } else {
-        await createAdmin.mutateAsync({
+    if (isEditing && admin) {
+      await updateAdmin.mutateAsync({
+        id: admin.id,
+        data: {
           email: formData.email,
           name: formData.name,
-          password: formData.password,
           companyAssignments: [{
             companyId: targetCompanyId,
             companyRoleCode: formData.role,
@@ -201,12 +184,25 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
           isActive: formData.isActive,
           phone: formData.phone || undefined,
           department: formData.department || undefined,
-        });
-      }
-      onClose();
-    } catch (error) {
-      console.error('Submit failed:', error);
+          ...(formData.password ? { password: formData.password } : {}),
+        },
+      });
+    } else {
+      await createAdmin.mutateAsync({
+        email: formData.email,
+        name: formData.name,
+        password: formData.password,
+        companyAssignments: [{
+          companyId: targetCompanyId,
+          companyRoleCode: formData.role,
+          isPrimary: true,
+        }],
+        isActive: formData.isActive,
+        phone: formData.phone || undefined,
+        department: formData.department || undefined,
+      });
     }
+    onClose();
   };
 
   const handleChange = (field: keyof FormData, value: string | boolean) => {

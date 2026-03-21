@@ -1,10 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsEnum } from 'class-validator';
-import { Booking, BookingStatus, Payment, BookingHistory, GameTimeSlotCache } from '@prisma/client';
+import { Booking, BookingStatus, Payment, BookingHistory, BookingParticipant, GameTimeSlotCache } from '@prisma/client';
 
 /** Booking 엔티티 타입 (관계 포함) */
 export type BookingWithRelations = Booking & {
   payments?: Payment[];
+  participants?: BookingParticipant[];
   histories?: BookingHistory[];
 };
 
@@ -62,6 +63,21 @@ export class CreateBookingRequestDto {
   @IsString()
   @IsOptional()
   userPhone?: string;
+
+  @ApiProperty({ description: '그룹 예약 ID (GRP-xxx)', required: false })
+  @IsString()
+  @IsOptional()
+  groupId?: string;
+
+  @ApiProperty({ description: '팀 번호', required: false })
+  @IsNumber()
+  @IsOptional()
+  teamNumber?: number;
+
+  @ApiProperty({ description: '팀 선정 ID', required: false })
+  @IsNumber()
+  @IsOptional()
+  teamSelectionId?: number;
 }
 
 export class UpdateBookingDto {
@@ -126,6 +142,11 @@ export class SearchBookingDto {
   @IsDateString()
   @IsOptional()
   endDate?: string;
+
+  @ApiProperty({ description: '결제수단 필터', example: 'card', required: false })
+  @IsString()
+  @IsOptional()
+  paymentMethod?: string;
 
   @ApiProperty({ description: '정렬 기준', example: 'bookingDate', required: false })
   @IsString()
@@ -336,8 +357,20 @@ export class BookingResponseDto {
   @ApiProperty({ description: 'Saga 실패 사유 (status가 FAILED일 때)' })
   sagaFailReason?: string;
 
+  @ApiProperty({ description: '그룹 예약 ID' })
+  groupId?: string;
+
+  @ApiProperty({ description: '팀 번호' })
+  teamNumber?: number;
+
+  @ApiProperty({ description: '팀 선정 ID' })
+  teamSelectionId?: number;
+
   @ApiProperty({ description: '결제 목록' })
   payments: any[];
+
+  @ApiProperty({ description: '더치페이 참가자 목록' })
+  participants: any[];
 
   @ApiProperty({ description: '예약 히스토리' })
   histories: any[];
@@ -391,8 +424,21 @@ export class BookingResponseDto {
     // Saga 관련
     dto.idempotencyKey = entity.idempotencyKey ?? undefined;
     dto.sagaFailReason = entity.sagaFailReason ?? undefined;
+    // 그룹 예약 필드
+    dto.groupId = entity.groupId ?? undefined;
+    dto.teamNumber = entity.teamNumber ?? undefined;
+    dto.teamSelectionId = entity.teamSelectionId ?? undefined;
     // 관계 데이터
     dto.payments = entity.payments || [];
+    dto.participants = (entity.participants || []).map((p) => ({
+      userId: p.userId,
+      userName: p.userName,
+      userEmail: p.userEmail,
+      role: p.role,
+      status: p.status,
+      amount: Number(p.amount),
+      paidAt: p.paidAt?.toISOString() || null,
+    }));
     dto.histories = entity.histories || [];
     // 타임스탬프
     dto.createdAt = entity.createdAt.toISOString();

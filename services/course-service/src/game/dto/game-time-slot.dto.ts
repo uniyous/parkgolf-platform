@@ -95,6 +95,12 @@ export class UpdateGameTimeSlotDto {
   @IsOptional()
   @Type(() => Number)
   @Min(0)
+  externalBooked?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
   price?: number;
 
   @IsBoolean()

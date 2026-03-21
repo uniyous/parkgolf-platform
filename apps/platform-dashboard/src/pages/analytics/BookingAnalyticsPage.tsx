@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CalendarDays, CheckCircle2, CircleCheck, XCircle, TrendingUp, TrendingDown } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui';
+import { FilterContainer, FilterSelect, FilterResetButton } from '@/components/common/filters';
 import {
   LineChart,
   Line,
@@ -78,6 +79,7 @@ const CustomTooltipStyle = {
 
 export const BookingAnalyticsPage: React.FC = () => {
   const [dateRange, setDateRange] = useState({ from: '2025-01-01', to: '2025-01-14' });
+  const [selectedCompany, setSelectedCompany] = useState('');
 
   return (
     <div className="space-y-6">
@@ -88,32 +90,46 @@ export const BookingAnalyticsPage: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <Card variant="default" padding="sm">
-        <div className="flex flex-wrap items-center gap-3">
+      <FilterContainer columns={3}>
+        <div className="min-w-0">
+          <label className="block text-xs font-medium text-white/50 mb-1.5">기간</label>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-white/50">기간</label>
             <input
               type="date"
               value={dateRange.from}
               onChange={(e) => setDateRange((prev) => ({ ...prev, from: e.target.value }))}
-              className="h-9 rounded-lg border border-white/15 bg-white/10 px-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-3 py-2 border border-white/15 rounded-lg text-sm text-white bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
             />
-            <span className="text-white/30">~</span>
+            <span className="text-white/30 shrink-0">~</span>
             <input
               type="date"
               value={dateRange.to}
               onChange={(e) => setDateRange((prev) => ({ ...prev, to: e.target.value }))}
-              className="h-9 rounded-lg border border-white/15 bg-white/10 px-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-3 py-2 border border-white/15 rounded-lg text-sm text-white bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
             />
           </div>
-          <select className="h-9 rounded-lg border border-white/15 bg-white/10 px-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
-            <option value="">전체 가맹점</option>
-            <option value="1">강남 파크골프장</option>
-            <option value="2">서초 그린파크</option>
-            <option value="3">분당 레이크CC</option>
-          </select>
         </div>
-      </Card>
+        <FilterSelect
+          label="가맹점"
+          value={selectedCompany}
+          onChange={setSelectedCompany}
+          options={[
+            { value: '1', label: '강남 파크골프장' },
+            { value: '2', label: '서초 그린파크' },
+            { value: '3', label: '분당 레이크CC' },
+          ]}
+          placeholder="전체 가맹점"
+        />
+        <div className="flex items-end justify-end">
+          <FilterResetButton
+            hasActiveFilters={!!(selectedCompany || dateRange.from !== '2025-01-01' || dateRange.to !== '2025-01-14')}
+            onClick={() => {
+              setDateRange({ from: '2025-01-01', to: '2025-01-14' });
+              setSelectedCompany('');
+            }}
+          />
+        </div>
+      </FilterContainer>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

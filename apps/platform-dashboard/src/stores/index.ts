@@ -10,5 +10,5 @@ export {
 export type { ApiUserResponse, AuthErrorType } from './auth.store';
 
 // Breadcrumb store
-export { useBreadcrumbStore, useBreadcrumbs, useBreadcrumb, useSetBreadcrumb } from './breadcrumb.store';
+export { useBreadcrumbStore, useBreadcrumbs, useBreadcrumb } from './breadcrumb.store';
 export type { BreadcrumbItem } from './breadcrumb.store';

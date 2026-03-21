@@ -23,6 +23,7 @@ export type { Course, Hole, TeeBox, CourseStatus, CreateCourseDto, UpdateCourseD
 // 상태 타입 정의
 export type ClubStatus = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE' | 'SEASONAL_CLOSED';
 export type ClubType = 'PAID' | 'FREE';
+export type BookingMode = 'PLATFORM' | 'PARTNER';
 export type SeasonType = 'peak' | 'regular' | 'off';
 
 // 기본 엔티티 타입
@@ -39,6 +40,7 @@ export interface Club {
   totalCourses: number;
   status: ClubStatus;
   clubType: ClubType;
+  bookingMode: BookingMode;
   operatingHours?: {
     open: string;
     close: string;
@@ -108,6 +110,7 @@ export interface CreateClubDto {
   website?: string;
   status?: ClubStatus;
   clubType?: ClubType;
+  bookingMode?: BookingMode;
   operatingHours?: {
     open: string;
     close: string;
@@ -125,6 +128,7 @@ export interface UpdateClubDto {
   website?: string;
   status?: ClubStatus;
   clubType?: ClubType;
+  bookingMode?: BookingMode;
   operatingHours?: {
     open: string;
     close: string;

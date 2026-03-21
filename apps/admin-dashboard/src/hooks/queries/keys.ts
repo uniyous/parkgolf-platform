@@ -104,6 +104,29 @@ export const companyMemberKeys = {
   list: (companyId?: number | null, filters?: Record<string, unknown>) => [...companyMemberKeys.lists(companyId), filters] as const,
 };
 
+// Payment Keys (company-scoped)
+export const paymentKeys = {
+  all: (companyId?: number | null) => ['payments', companyId] as const,
+  lists: (companyId?: number | null) => [...paymentKeys.all(companyId), 'list'] as const,
+  list: (companyId?: number | null, filters?: Record<string, unknown>) => [...paymentKeys.lists(companyId), filters] as const,
+  details: (companyId?: number | null) => [...paymentKeys.all(companyId), 'detail'] as const,
+  detail: (companyId?: number | null, id?: number) => [...paymentKeys.details(companyId), id] as const,
+  revenue: (companyId?: number | null, dateRange?: Record<string, string>) => [...paymentKeys.all(companyId), 'revenue', dateRange] as const,
+};
+
+// Notification Keys
+export const notificationKeys = {
+  all: ['notifications'] as const,
+  lists: () => [...notificationKeys.all, 'list'] as const,
+  list: (filters?: Record<string, unknown>) => [...notificationKeys.lists(), filters] as const,
+  details: () => [...notificationKeys.all, 'detail'] as const,
+  detail: (id?: string) => [...notificationKeys.details(), id] as const,
+  stats: (dateRange?: Record<string, string>) => [...notificationKeys.all, 'stats', dateRange] as const,
+  templates: () => [...notificationKeys.all, 'templates'] as const,
+  templateList: (filters?: Record<string, unknown>) => [...notificationKeys.templates(), 'list', filters] as const,
+  templateDetail: (id?: string) => [...notificationKeys.templates(), 'detail', id] as const,
+};
+
 // Dashboard Keys
 export const dashboardKeys = {
   all: ['dashboard'] as const,
@@ -116,6 +139,14 @@ export const dashboardKeys = {
 export const menuKeys = {
   all: ['menus'] as const,
   tree: (companyType: string, scope: string) => [...menuKeys.all, 'tree', companyType, scope] as const,
+};
+
+// Partner Keys (company-scoped, clubId-based)
+export const partnerKeys = {
+  all: (companyId?: number | null) => ['partners', companyId] as const,
+  config: (companyId?: number | null, clubId?: number) => [...partnerKeys.all(companyId), 'config', clubId] as const,
+  syncLogs: (companyId?: number | null, clubId?: number) => [...partnerKeys.all(companyId), 'syncLogs', clubId] as const,
+  bookingMappings: (companyId?: number | null, clubId?: number) => [...partnerKeys.all(companyId), 'bookingMappings', clubId] as const,
 };
 
 // Policy Keys (company-scoped)

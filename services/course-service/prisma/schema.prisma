@@ -27,6 +27,7 @@ model Club {
   seasonInfo     Json?      @map("season_info")
   facilities     String[]   @default([])
   clubType       ClubType   @default(PAID) @map("club_type")
+  bookingMode    BookingMode  @default(PLATFORM) @map("booking_mode")
   latitude       Float?
   longitude      Float?
   isActive       Boolean    @default(true) @map("is_active")
@@ -179,8 +180,9 @@ model GameTimeSlot {
   endTime       String         @map("end_time")   // "11:00"
 
   // 가용성
-  maxPlayers    Int            @default(4) @map("max_players")
-  bookedPlayers Int            @default(0) @map("booked_players")
+  maxPlayers      Int            @default(4) @map("max_players")
+  bookedPlayers   Int            @default(0) @map("booked_players")
+  externalBooked  Int            @default(0) @map("external_booked") // 외부 시스템 예약 인원
 
   // 가격 (Game 기본가 override 가능)
   price         Decimal        @db.Decimal(10, 2)
@@ -289,4 +291,9 @@ enum SlotMode {
 enum ClubType {
   PAID
   FREE
+}
+
+enum BookingMode {
+  PLATFORM
+  PARTNER
 }

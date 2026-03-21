@@ -47,7 +47,7 @@
 - 대화 상태 관리 (IDLE → COLLECTING → CONFIRMING → BOOKING → COMPLETED)
 
 ## Milestone 7: Social (Chat + Notification) ✅
-- 실시간 채팅 (Socket.IO + NATS, DIRECT/GROUP/BOOKING)
+- 실시간 채팅 (Socket.IO + NATS, DIRECT/CHANNEL/BOOKING)
 - Chat Gateway (WebSocket → NATS bridge)
 - Multi-channel 알림 (Email/SMS/Push), 템플릿 관리, 재시도
 

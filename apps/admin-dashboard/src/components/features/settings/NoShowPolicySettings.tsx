@@ -81,7 +81,6 @@ export const NoShowPolicySettings: React.FC = () => {
       }
       setIsEditing(false);
     } catch (error) {
-      console.error('Failed to save no-show policy:', error);
       toast.error('저장에 실패했습니다.');
     }
   };
@@ -95,7 +94,6 @@ export const NoShowPolicySettings: React.FC = () => {
     try {
       await deleteMutation.mutateAsync(policy.id);
     } catch (error) {
-      console.error('Failed to revert policy:', error);
       toast.error('되돌리기에 실패했습니다.');
     }
   };

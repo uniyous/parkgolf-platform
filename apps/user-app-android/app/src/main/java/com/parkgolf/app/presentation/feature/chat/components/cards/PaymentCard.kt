@@ -22,7 +22,8 @@ private const val PAYMENT_TIMEOUT_SECONDS = 10 * 60 // 10분
 @Composable
 fun PaymentCard(
     data: Map<String, Any?>,
-    onPaymentComplete: ((Boolean) -> Unit)? = null
+    onPaymentComplete: ((Boolean) -> Unit)? = null,
+    onRequestPayment: ((orderId: String, orderName: String, amount: Int) -> Unit)? = null
 ) {
     val clubName = data["clubName"]?.toString() ?: ""
     val date = data["date"]?.toString() ?: ""
@@ -79,7 +80,7 @@ fun PaymentCard(
                 )
                 Text(
                     text = "카드결제",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = ParkOnPrimary
                 )
@@ -105,7 +106,7 @@ fun PaymentCard(
                     )
                     Text(
                         text = "₩${numberFormat.format(amount)}",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = ParkOnPrimary
                     )
@@ -141,7 +142,7 @@ fun PaymentCard(
                     Text(
                         text = if (isExpired) "결제 시간이 만료되었습니다"
                         else "결제 제한시간: $timerText 남음",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         color = when {
                             isExpired -> ParkError
                             isUrgent -> ParkWarning
@@ -163,13 +164,19 @@ fun PaymentCard(
                         ),
                         border = BorderStroke(1.dp, ParkOnPrimary.copy(alpha = 0.2f))
                     ) {
-                        Text("예약 취소", style = MaterialTheme.typography.bodySmall)
+                        Text("예약 취소", style = MaterialTheme.typography.bodyMedium)
                     }
                     Button(
                         onClick = {
-                            isPaying = true
-                            // TODO: Toss SDK requestPayment(orderId)
-                            onPaymentComplete?.invoke(true)
+                            val orderId = data["orderId"]?.toString()
+                            if (orderId != null && onRequestPayment != null) {
+                                isPaying = true
+                                val orderName = "${clubName} 파크골프 예약"
+                                onRequestPayment(orderId, orderName, amount)
+                            } else {
+                                // orderId 없거나 콜백 없으면 fallback
+                                onPaymentComplete?.invoke(false)
+                            }
                         },
                         enabled = !isPaying,
                         modifier = Modifier.weight(1f),
@@ -185,10 +192,10 @@ fun PaymentCard(
                                     strokeWidth = 2.dp,
                                     color = ParkOnPrimary
                                 )
-                                Text("결제 중...", style = MaterialTheme.typography.bodySmall)
+                                Text("결제 중...", style = MaterialTheme.typography.bodyMedium)
                             }
                         } else {
-                            Text("결제하기", style = MaterialTheme.typography.bodySmall)
+                            Text("결제하기", style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
@@ -214,7 +221,7 @@ private fun PaymentInfoRow(
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = ParkOnPrimary.copy(alpha = 0.7f)
         )
     }

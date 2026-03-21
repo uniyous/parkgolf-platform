@@ -24,7 +24,6 @@ const queryCache = new QueryCache({
 
     // 이미 데이터가 있는 상태에서 refetch 실패 시 조용히 처리
     if (query.state.data !== undefined) {
-      console.warn('Background refetch failed:', error);
       return;
     }
 

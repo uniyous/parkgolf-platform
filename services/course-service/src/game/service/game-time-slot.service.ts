@@ -123,6 +123,7 @@ export class GameTimeSlotService {
           endTime: true,
           maxPlayers: true,
           bookedPlayers: true,
+          externalBooked: true,
           price: true,
           isPremium: true,
           status: true,
@@ -182,6 +183,7 @@ export class GameTimeSlotService {
         endTime: true,
         maxPlayers: true,
         bookedPlayers: true,
+        externalBooked: true,
         price: true,
         isPremium: true,
         status: true,
@@ -202,6 +204,7 @@ export class GameTimeSlotService {
         endTime: updateDto.endTime,
         maxPlayers: updateDto.maxPlayers,
         bookedPlayers: updateDto.bookedPlayers,
+        externalBooked: updateDto.externalBooked,
         price: updateDto.price,
         isPremium: updateDto.isPremium,
         status: updateDto.status,
@@ -367,7 +370,8 @@ export class GameTimeSlotService {
       }
 
       const newBookedPlayers = Math.max(0, slot.bookedPlayers - playerCount);
-      const newStatus = newBookedPlayers < slot.maxPlayers ? 'AVAILABLE' : 'FULLY_BOOKED';
+      const newTotalOccupied = newBookedPlayers + slot.externalBooked;
+      const newStatus = newTotalOccupied < slot.maxPlayers ? 'AVAILABLE' : 'FULLY_BOOKED';
 
       return tx.gameTimeSlot.update({
         where: { id },
@@ -379,7 +383,7 @@ export class GameTimeSlotService {
     });
   }
 
-  async getStats(query: { gameId?: number; startDate?: string; endDate?: string }): Promise<{
+  async getStats(query: { gameId?: number; clubId?: number; startDate?: string; endDate?: string }): Promise<{
     totalSlots: number;
     availableSlots: number;
     bookedSlots: number;
@@ -390,6 +394,7 @@ export class GameTimeSlotService {
     const where: Prisma.GameTimeSlotWhereInput = { isActive: true };
 
     if (query.gameId) where.gameId = query.gameId;
+    if (query.clubId) where.game = { clubId: query.clubId };
     if (query.startDate || query.endDate) {
       where.date = {};
       if (query.startDate) where.date.gte = new Date(query.startDate);
@@ -401,6 +406,7 @@ export class GameTimeSlotService {
       select: {
         status: true,
         bookedPlayers: true,
+        externalBooked: true,
         maxPlayers: true,
         price: true,
       },
@@ -411,7 +417,7 @@ export class GameTimeSlotService {
     const bookedSlots = slots.filter(s => s.status === 'FULLY_BOOKED').length;
     const closedSlots = slots.filter(s => s.status === 'CLOSED' || s.status === 'MAINTENANCE').length;
 
-    const totalBooked = slots.reduce((sum, s) => sum + s.bookedPlayers, 0);
+    const totalBooked = slots.reduce((sum, s) => sum + s.bookedPlayers + s.externalBooked, 0);
     const totalCapacity = slots.reduce((sum, s) => sum + s.maxPlayers, 0);
     const utilizationRate = totalCapacity > 0 ? Math.round((totalBooked / totalCapacity) * 100) : 0;
 
@@ -428,6 +434,187 @@ export class GameTimeSlotService {
       utilizationRate,
       totalRevenue,
     };
+  }
+
+  // =====================================================
+  // 외부 파트너 연동 메서드
+  // =====================================================
+
+  /**
+   * 외부 시스템 예약 인원 업데이트 (partner-service에서 호출)
+   */
+  async updateExternalBooked(
+    timeSlotId: number,
+    externalBooked: number,
+  ): Promise<GameTimeSlot> {
+    this.logger.log(`[Partner] Updating externalBooked for slot ${timeSlotId}: ${externalBooked}`);
+
+    const MAX_RETRIES = 3;
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      const slot = await this.prisma.gameTimeSlot.findUnique({
+        where: { id: timeSlotId },
+        include: {
+          game: {
+            include: {
+              frontNineCourse: true,
+              backNineCourse: true,
+              club: true,
+            },
+          },
+        },
+      });
+
+      if (!slot) {
+        throw new NotFoundException(`GameTimeSlot with ID ${timeSlotId} not found`);
+      }
+
+      // 변경 없으면 스킵
+      if (slot.externalBooked === externalBooked) return slot;
+
+      const totalOccupied = slot.bookedPlayers + externalBooked;
+      const newStatus: TimeSlotStatus = totalOccupied >= slot.maxPlayers
+        ? TimeSlotStatus.FULLY_BOOKED
+        : slot.status === 'CLOSED' || slot.status === 'MAINTENANCE'
+          ? slot.status
+          : TimeSlotStatus.AVAILABLE;
+
+      // Optimistic Lock: version 체크 후 갱신
+      const updated = await this.prisma.gameTimeSlot.updateMany({
+        where: { id: timeSlotId, version: slot.version },
+        data: {
+          externalBooked,
+          status: newStatus,
+          version: slot.version + 1,
+        },
+      });
+
+      if (updated.count > 0) {
+        // 성공 — 갱신된 슬롯 반환
+        return this.prisma.gameTimeSlot.findUniqueOrThrow({
+          where: { id: timeSlotId },
+          include: {
+            game: {
+              include: {
+                frontNineCourse: true,
+                backNineCourse: true,
+                club: true,
+              },
+            },
+          },
+        });
+      }
+
+      // version 충돌 → 재시도
+      this.logger.warn(
+        `[Partner] externalBooked 갱신 재시도 (${attempt}/${MAX_RETRIES}): slotId=${timeSlotId}, version=${slot.version}`,
+      );
+    }
+
+    throw new ConflictException(
+      `externalBooked 갱신 실패 (${MAX_RETRIES}회 재시도 초과): slotId=${timeSlotId}`,
+    );
+  }
+
+  /**
+   * gameId + date + startTime으로 슬롯 조회 (partner-service 매칭용)
+   */
+  async findByGameDateTime(
+    gameId: number,
+    date: string,
+    startTime: string,
+  ): Promise<GameTimeSlot | null> {
+    return this.prisma.gameTimeSlot.findUnique({
+      where: {
+        gameId_date_startTime: {
+          gameId,
+          date: new Date(date),
+          startTime,
+        },
+      },
+      include: {
+        game: {
+          include: {
+            frontNineCourse: true,
+            backNineCourse: true,
+            club: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * 파트너 슬롯 → 내부 GameTimeSlot 자동 생성 (partner-service 연동)
+   * 외부 슬롯에 매칭되는 내부 슬롯이 없을 때 신규 생성
+   */
+  async createFromPartner(data: {
+    gameId: number;
+    date: string;
+    startTime: string;
+    endTime: string;
+    maxPlayers: number;
+    price: number;
+    externalBooked: number;
+  }): Promise<GameTimeSlot> {
+    const game = await this.prisma.game.findUnique({
+      where: { id: data.gameId },
+    });
+
+    if (!game) {
+      throw new NotFoundException(`Game with ID ${data.gameId} not found`);
+    }
+
+    const dateObj = new Date(data.date);
+    const isWeekend = [0, 6].includes(dateObj.getDay());
+    const price = isWeekend && game.weekendPrice
+      ? game.weekendPrice
+      : new Prisma.Decimal(data.price || Number(game.basePrice));
+
+    const totalOccupied = data.externalBooked;
+    const status = totalOccupied >= data.maxPlayers ? 'FULLY_BOOKED' : 'AVAILABLE';
+
+    const slot = await this.prisma.gameTimeSlot.create({
+      data: {
+        gameId: data.gameId,
+        date: dateObj,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        maxPlayers: data.maxPlayers,
+        bookedPlayers: 0,
+        externalBooked: data.externalBooked,
+        price,
+        isPremium: isWeekend,
+        status,
+      },
+    });
+
+    this.logger.log(`[Partner] Created GameTimeSlot ${slot.id} from partner: game=${data.gameId}, date=${data.date}, time=${data.startTime}`);
+    return slot;
+  }
+
+  /**
+   * 외부에서 삭제된 슬롯 CLOSED 처리 (partner-service 연동)
+   */
+  async closeExternal(gameTimeSlotId: number): Promise<GameTimeSlot> {
+    const slot = await this.prisma.gameTimeSlot.findUnique({
+      where: { id: gameTimeSlotId },
+    });
+
+    if (!slot) {
+      throw new NotFoundException(`GameTimeSlot with ID ${gameTimeSlotId} not found`);
+    }
+
+    const updated = await this.prisma.gameTimeSlot.update({
+      where: { id: gameTimeSlotId },
+      data: {
+        status: 'CLOSED',
+        externalBooked: 0,
+      },
+    });
+
+    this.logger.log(`[Partner] Closed GameTimeSlot ${gameTimeSlotId}: external slot removed`);
+    return updated;
   }
 
   // =====================================================
@@ -500,7 +687,7 @@ export class GameTimeSlotService {
             throw new NotFoundException(`GameTimeSlot with ID ${timeSlotId} not found`);
           }
 
-          this.logger.log(`[Saga] Current slot state: status=${slot.status}, isActive=${slot.isActive}, bookedPlayers=${slot.bookedPlayers}, maxPlayers=${slot.maxPlayers}, version=${slot.version}`);
+          this.logger.log(`[Saga] Current slot state: status=${slot.status}, isActive=${slot.isActive}, bookedPlayers=${slot.bookedPlayers}, externalBooked=${slot.externalBooked}, maxPlayers=${slot.maxPlayers}, version=${slot.version}`);
 
           // 2. 가용성 검증
           if (slot.status !== 'AVAILABLE') {
@@ -513,17 +700,19 @@ export class GameTimeSlotService {
             throw new ConflictException(`Time slot is not active`);
           }
 
+          const totalOccupied = slot.bookedPlayers + slot.externalBooked;
           const newBookedPlayers = slot.bookedPlayers + playerCount;
-          if (newBookedPlayers > slot.maxPlayers) {
-            this.logger.warn(`[Saga] Slot ${timeSlotId} NOT ENOUGH CAPACITY: available=${slot.maxPlayers - slot.bookedPlayers}, requested=${playerCount}`);
+          const newTotalOccupied = newBookedPlayers + slot.externalBooked;
+          if (newTotalOccupied > slot.maxPlayers) {
+            this.logger.warn(`[Saga] Slot ${timeSlotId} NOT ENOUGH CAPACITY: available=${slot.maxPlayers - totalOccupied}, requested=${playerCount}`);
             throw new ConflictException(
-              `Not enough capacity. Available: ${slot.maxPlayers - slot.bookedPlayers}, Requested: ${playerCount}`
+              `Not enough capacity. Available: ${slot.maxPlayers - totalOccupied}, Requested: ${playerCount}`
             );
           }
 
           // 3. Optimistic Locking: version 체크하며 업데이트
           const currentVersion = slot.version;
-          const newStatus: TimeSlotStatus = newBookedPlayers >= slot.maxPlayers
+          const newStatus: TimeSlotStatus = newTotalOccupied >= slot.maxPlayers
             ? TimeSlotStatus.FULLY_BOOKED
             : TimeSlotStatus.AVAILABLE;
 
@@ -621,7 +810,8 @@ export class GameTimeSlotService {
         }
 
         const newBookedPlayers = Math.max(0, slot.bookedPlayers - playerCount);
-        const newStatus = newBookedPlayers < slot.maxPlayers ? 'AVAILABLE' : 'FULLY_BOOKED';
+        const newTotalOccupied = newBookedPlayers + slot.externalBooked;
+        const newStatus = newTotalOccupied < slot.maxPlayers ? 'AVAILABLE' : 'FULLY_BOOKED';
 
         return await tx.gameTimeSlot.update({
           where: { id: timeSlotId },

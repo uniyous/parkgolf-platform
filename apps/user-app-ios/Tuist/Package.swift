@@ -18,7 +18,7 @@ let package = Package(
     name: "ParkGolf",
     dependencies: [
         // Networking
-        .package(url: "https://github.com/Alamofire/Alamofire.git", from: "5.9.0"),
+        .package(url: "https://github.com/Alamofire/Alamofire.git", from: "5.11.1"),
         // Keychain
         .package(url: "https://github.com/kishikawakatsumi/KeychainAccess.git", from: "4.2.2"),
         // Socket.IO

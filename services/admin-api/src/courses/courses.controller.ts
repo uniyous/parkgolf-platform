@@ -33,6 +33,10 @@ export class ClubFiltersDto {
   status?: string;
 
   @IsOptional()
+  @IsString()
+  bookingMode?: 'PLATFORM' | 'PARTNER';
+
+  @IsOptional()
   @IsNumber()
   @Type(() => Number)
   @Min(1)
@@ -59,6 +63,7 @@ export interface CreateClubDto {
   };
   facilities?: string[];
   status: 'ACTIVE' | 'MAINTENANCE' | 'SEASONAL_CLOSED' | 'INACTIVE';
+  bookingMode?: 'PLATFORM' | 'PARTNER';
 }
 
 export interface UpdateClubDto {
@@ -74,6 +79,7 @@ export interface UpdateClubDto {
   };
   facilities?: string[];
   status?: 'ACTIVE' | 'MAINTENANCE' | 'SEASONAL_CLOSED' | 'INACTIVE';
+  bookingMode?: 'PLATFORM' | 'PARTNER';
   seasonInfo?: {
     type: 'peak' | 'regular' | 'off';
     startDate: string;
@@ -92,6 +98,14 @@ export class CoursesController {
   // ============================================
   // Club Management
   // ============================================
+  @Get('clubs/stats')
+  @ApiOperation({ summary: 'Get club statistics' })
+  @ApiResponse({ status: 200, description: 'Club stats retrieved successfully' })
+  async getClubStats(@BearerToken() token: string) {
+    this.logger.log('Fetching club stats');
+    return this.courseService.getClubStats(token);
+  }
+
   @Get('clubs')
   @ApiOperation({ summary: 'Get clubs list' })
   @ApiQuery({ name: 'companyId', required: false, description: 'Filter by company ID' })

@@ -241,11 +241,21 @@ class ChatSocketManager {
 
     this.socket.on('error', (data: { message: string }) => {
       console.error('❌ Chat socket error:', data.message);
+      // 서버 handleConnection에서 JWT 만료 시 error('Unauthorized') + disconnect 발송
+      // connect_error는 transport 레벨 에러만 발생하므로 여기서도 인증 에러 처리 필요
+      if (data.message?.includes('Unauthorized') || data.message?.includes('Authentication') || data.message?.includes('expired')) {
+        this.handleAuthError();
+      }
       this.errorHandlers.forEach(handler => handler(data.message));
     });
 
-    this.socket.on('new_message', (data: ChatMessage) => {
-      this.messageHandlers.forEach(handler => handler(data));
+    this.socket.on('new_message', (data: Record<string, unknown>) => {
+      // senderId 정규화 (백엔드는 number, 프론트엔드는 string)
+      const normalized: ChatMessage = {
+        ...(data as unknown as ChatMessage),
+        senderId: String(data.senderId ?? ''),
+      };
+      this.messageHandlers.forEach(handler => handler(normalized));
     });
 
     this.socket.on('typing', (data: TypingEvent) => {

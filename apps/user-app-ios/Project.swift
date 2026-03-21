@@ -30,7 +30,7 @@ let project = Project(
             bundleId: "com.parkgolf.app",
             deploymentTargets: .iOS("17.0"),
             infoPlist: .extendingDefault(with: [
-                "CFBundleDisplayName": "ParkMate",
+                "CFBundleDisplayName": "ParkgolfMate",
                 "CFBundleShortVersionString": "1.0.0",
                 "CFBundleVersion": "1",
                 "UILaunchScreen": [:],

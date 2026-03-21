@@ -80,18 +80,17 @@ export class BookingService {
   constructor(private readonly natsClient: NatsClientService) {}
 
   /**
-   * 예약 생성 (Saga 패턴)
+   * 예약 생성 (Saga Orchestrator)
    *
-   * 멱등성 키를 생성하여 booking-service로 전달
-   * booking-service에서 PENDING 상태로 예약이 생성되고,
-   * 백그라운드에서 course-service와의 Saga가 진행됨
+   * 멱등성 키를 생성하여 saga-service로 전달
+   * saga-service에서 예약 생성 → 슬롯 예약 → 상태 업데이트 → 알림 Saga를 오케스트레이션
    */
   async createBooking(userId: number, dto: CreateBookingDto): Promise<ApiResponse<BookingResponseDto>> {
     // 멱등성 키 생성 (클라이언트가 제공하지 않은 경우 서버에서 생성)
     const idempotencyKey = dto.idempotencyKey || randomUUID();
     this.logger.log(`Creating booking for user ${userId} with idempotencyKey: ${idempotencyKey}`);
 
-    const result = await this.natsClient.send<ApiResponse<BookingResponseDto>>('booking.create', {
+    const result = await this.natsClient.send<ApiResponse<BookingResponseDto>>('saga.booking.create', {
       idempotencyKey,
       userId,
       gameId: dto.gameId,
@@ -132,7 +131,7 @@ export class BookingService {
   }
 
   async cancelBooking(id: number, userId: number, reason?: string): Promise<ApiResponse<BookingResponseDto>> {
-    return this.natsClient.send('booking.cancel', { id, userId, reason }, NATS_TIMEOUTS.QUICK);
+    return this.natsClient.send('saga.booking.cancel', { id, userId, reason }, NATS_TIMEOUTS.QUICK);
   }
 
   async getTimeSlotAvailability(gameId: number, date: string): Promise<ApiResponse<TimeSlotAvailabilityDto[]>> {

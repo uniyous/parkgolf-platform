@@ -198,6 +198,14 @@ enum ChatEndpoints {
             body: AiChatRequest(message: message, conversationId: conversationId, latitude: latitude, longitude: longitude)
         )
     }
+
+    static func sendAiRequest(roomId: String, request: AiChatRequest) -> Endpoint {
+        Endpoint(
+            path: "/api/user/chat/rooms/\(roomId)/agent",
+            method: .post,
+            body: request
+        )
+    }
 }
 
 // MARK: - Request DTOs

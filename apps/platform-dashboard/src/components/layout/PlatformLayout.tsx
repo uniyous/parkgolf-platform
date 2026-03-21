@@ -20,6 +20,7 @@ import {
   Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { BrandLogo } from '@/components/ui';
 import { useAuthStore } from '@/stores/auth.store';
 import { ADMIN_ROLE_LABELS, ADMIN_ROLE_COLORS } from '@/utils/admin-permissions';
 import type { Permission, AdminRole } from '@/types';
@@ -70,12 +71,30 @@ const PLATFORM_MENU: NavEntry[] = [
     path: '/dashboard',
     icon: LayoutDashboard,
   },
-  // 가맹점 관리 (requires COMPANIES permission)
+  // 가맹점 관리 group
   {
     label: '가맹점 관리',
-    path: '/companies',
     icon: Building2,
-    requiredPermissions: ['COMPANIES'],
+    items: [
+      {
+        label: '가맹점 현황',
+        path: '/franchise',
+        icon: LayoutDashboard,
+        requiredPermissions: ['COMPANIES'],
+      },
+      {
+        label: '회사 관리',
+        path: '/franchise/companies',
+        icon: Building2,
+        requiredPermissions: ['COMPANIES'],
+      },
+      {
+        label: '골프장 관리',
+        path: '/franchise/clubs',
+        icon: MapPin,
+        requiredPermissions: ['COMPANIES'],
+      },
+    ],
   },
   // 현황 분석 group
   {
@@ -83,15 +102,15 @@ const PLATFORM_MENU: NavEntry[] = [
     icon: BarChart3,
     items: [
       {
-        label: '예약 현황',
-        path: '/analytics/bookings',
-        icon: CalendarCheck,
-        requiredPermissions: ['ANALYTICS', 'VIEW'],
-      },
-      {
         label: '골프장 현황',
         path: '/analytics/clubs',
         icon: MapPin,
+        requiredPermissions: ['ANALYTICS', 'VIEW'],
+      },
+      {
+        label: '예약 현황',
+        path: '/analytics/bookings',
+        icon: CalendarCheck,
         requiredPermissions: ['ANALYTICS', 'VIEW'],
       },
       {
@@ -222,6 +241,10 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
   const isActive = (path: string) => {
     if (path === '/dashboard') {
       return location.pathname === '/dashboard' || location.pathname === '/';
+    }
+    // /franchise는 정확 일치만 (하위 경로와 구분)
+    if (path === '/franchise') {
+      return location.pathname === '/franchise';
     }
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
@@ -449,12 +472,7 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
         <div className="flex h-full flex-col border-r border-white/10 bg-[#053929]">
           {/* Logo */}
           <div className="flex h-16 items-center border-b border-white/10 px-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
-                <span className="text-sm font-bold text-white">P</span>
-              </div>
-              <span className="text-lg font-semibold text-white">Park Golf Platform</span>
-            </div>
+            <BrandLogo />
           </div>
 
           {/* Navigation */}
@@ -482,12 +500,7 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
       >
         <div className="flex h-full flex-col">
           <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
-                <span className="text-sm font-bold text-white">P</span>
-              </div>
-              <span className="text-lg font-semibold text-white">Park Golf Platform</span>
-            </div>
+            <BrandLogo />
             <button
               onClick={() => setSidebarOpen(false)}
               className="rounded-lg p-2 text-white/40 hover:bg-white/10"
@@ -512,12 +525,7 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
           >
             <Menu className="h-6 w-6" />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
-              <span className="text-sm font-bold text-white">P</span>
-            </div>
-            <span className="font-semibold text-white">Platform</span>
-          </div>
+          <BrandLogo />
           <div className="w-10" />
         </header>
 

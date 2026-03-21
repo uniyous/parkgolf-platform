@@ -25,7 +25,7 @@ enum NotificationFilter: String, CaseIterable, Identifiable {
         case .all:
             return nil
         case .booking:
-            return [.bookingConfirmed, .bookingCancelled, .paymentSuccess, .paymentFailed]
+            return [.bookingConfirmed, .bookingCancelled, .refundCompleted, .paymentSuccess, .paymentFailed, .splitPaymentRequest]
         case .social:
             return [.friendRequest, .friendAccepted, .chatMessage]
         case .system:

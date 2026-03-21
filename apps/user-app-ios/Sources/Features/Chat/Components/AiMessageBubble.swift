@@ -6,7 +6,21 @@ struct AiMessageBubble: View {
     let createdAt: Date
     var showLabel: Bool = true
     var onClubSelect: ((String, String) -> Void)?
-    var onSlotSelect: ((String, String) -> Void)?
+    var onSlotSelect: ((String, String, Int, String?, String?, String?) -> Void)?
+    var onConfirmBooking: ((String) -> Void)?
+    var onCancelBooking: (() -> Void)?
+    var onPaymentComplete: ((Bool) -> Void)?
+    var onRequestPayment: ((String, String, Int) -> Void)?
+    var onConfirmGroup: ((String) -> Void)?
+    var onCancelGroup: (() -> Void)?
+    var onTeamConfirm: (([TeamConfirmData]) -> Void)?
+    var onSplitPaymentComplete: ((Bool, String) -> Void)?
+    var onRequestSplitPayment: ((String, Int) -> Void)?
+    var onNextTeam: (() -> Void)?
+    var onFinish: (() -> Void)?
+    var onSendReminder: (() -> Void)?
+    var onRefresh: (() -> Void)?
+    var currentUserId: Int?
     var selectedClubId: String?
     var selectedSlotId: String?
 
@@ -31,7 +45,7 @@ struct AiMessageBubble: View {
                             .shadow(color: Color.parkPrimary.opacity(0.3), radius: 3)
 
                         Text("AI 예약 도우미")
-                            .font(.caption2)
+                            .font(.caption)
                             .fontWeight(.semibold)
                             .foregroundColor(Color.parkPrimary)
                     }
@@ -40,7 +54,7 @@ struct AiMessageBubble: View {
                 HStack(alignment: .bottom, spacing: 6) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(content)
-                            .font(.subheadline)
+                            .font(.body)
                             .foregroundColor(.white)
 
                         if let actions = actions {
@@ -51,17 +65,17 @@ struct AiMessageBubble: View {
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(Color.parkPrimary.opacity(0.05))
+                    .background(Color.parkPrimary.opacity(0.10))
                     .overlay(
                         Rectangle()
-                            .fill(Color.parkPrimary.opacity(0.4))
+                            .fill(Color.parkPrimary)
                             .frame(width: 3),
                         alignment: .leading
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 16))
 
                     Text(DateHelper.toKoreanTime(createdAt))
-                        .font(.system(size: 10))
+                        .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.4))
                 }
             }
@@ -90,6 +104,45 @@ struct AiMessageBubble: View {
         case .bookingComplete:
             BookingCompleteCardView(data: action.data.value)
         case .confirmBooking:
+            ConfirmBookingCardView(
+                data: action.data.value,
+                onConfirm: onConfirmBooking,
+                onCancel: onCancelBooking
+            )
+        case .showPayment:
+            PaymentCardView(
+                data: action.data.value,
+                onPaymentComplete: onPaymentComplete,
+                onRequestPayment: onRequestPayment
+            )
+        case .confirmGroup:
+            ConfirmGroupCardView(
+                data: action.data.value,
+                onConfirm: onConfirmGroup,
+                onCancel: onCancelGroup
+            )
+        case .selectMembers:
+            SelectParticipantsCardView(
+                data: action.data.value,
+                onConfirm: onTeamConfirm,
+                onCancel: onCancelGroup
+            )
+        case .settlementStatus:
+            SettlementStatusCardView(
+                data: action.data.value,
+                currentUserId: currentUserId,
+                onSplitPaymentComplete: onSplitPaymentComplete,
+                onRequestSplitPayment: onRequestSplitPayment,
+                onSendReminder: onSendReminder,
+                onRefresh: onRefresh
+            )
+        case .teamComplete:
+            TeamCompleteCardView(
+                data: action.data.value,
+                onNextTeam: onNextTeam,
+                onFinish: onFinish
+            )
+        case .splitPayment:
             EmptyView()
         }
     }

@@ -25,6 +25,10 @@ class AuthPreferences @Inject constructor(
         private val USER_NAME_KEY = stringPreferencesKey("user_name")
         private val USER_PHONE_KEY = stringPreferencesKey("user_phone")
         private val PASSWORD_CHANGE_SKIPPED_AT_KEY = longPreferencesKey("password_change_skipped_at")
+        private val PENDING_PAYMENT_ORDER_ID_KEY = stringPreferencesKey("pending_payment_order_id")
+        private val PENDING_PAYMENT_ORDER_NAME_KEY = stringPreferencesKey("pending_payment_order_name")
+        private val PENDING_PAYMENT_AMOUNT_KEY = stringPreferencesKey("pending_payment_amount")
+        private val PENDING_PAYMENT_TYPE_KEY = stringPreferencesKey("pending_payment_type")
 
         private const val SKIP_DURATION_DAYS = 7L
         private const val MILLIS_PER_DAY = 24 * 60 * 60 * 1000L
@@ -148,5 +152,43 @@ class AuthPreferences @Inject constructor(
         val skippedAt = dataStore.data.first()[PASSWORD_CHANGE_SKIPPED_AT_KEY] ?: return false
         val daysSinceSkip = (System.currentTimeMillis() - skippedAt) / MILLIS_PER_DAY
         return daysSinceSkip < SKIP_DURATION_DAYS
+    }
+
+    // ============================================
+    // Pending Payment (프로세스 kill 대비 영속화)
+    // ============================================
+
+    data class PendingPaymentData(
+        val orderId: String,
+        val orderName: String,
+        val amount: Int,
+        val type: String
+    )
+
+    suspend fun savePendingPayment(orderId: String, orderName: String, amount: Int, type: String) {
+        dataStore.edit { preferences ->
+            preferences[PENDING_PAYMENT_ORDER_ID_KEY] = orderId
+            preferences[PENDING_PAYMENT_ORDER_NAME_KEY] = orderName
+            preferences[PENDING_PAYMENT_AMOUNT_KEY] = amount.toString()
+            preferences[PENDING_PAYMENT_TYPE_KEY] = type
+        }
+    }
+
+    suspend fun getPendingPayment(): PendingPaymentData? {
+        val prefs = dataStore.data.first()
+        val orderId = prefs[PENDING_PAYMENT_ORDER_ID_KEY] ?: return null
+        val orderName = prefs[PENDING_PAYMENT_ORDER_NAME_KEY] ?: return null
+        val amount = prefs[PENDING_PAYMENT_AMOUNT_KEY]?.toIntOrNull() ?: return null
+        val type = prefs[PENDING_PAYMENT_TYPE_KEY] ?: "single"
+        return PendingPaymentData(orderId, orderName, amount, type)
+    }
+
+    suspend fun clearPendingPayment() {
+        dataStore.edit { preferences ->
+            preferences.remove(PENDING_PAYMENT_ORDER_ID_KEY)
+            preferences.remove(PENDING_PAYMENT_ORDER_NAME_KEY)
+            preferences.remove(PENDING_PAYMENT_AMOUNT_KEY)
+            preferences.remove(PENDING_PAYMENT_TYPE_KEY)
+        }
     }
 }

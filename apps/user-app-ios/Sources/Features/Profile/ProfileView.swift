@@ -173,14 +173,6 @@ struct ProfileView: View {
                 }
 
                 ProfileMenuRow(
-                    icon: "creditcard.fill",
-                    iconColor: .parkAccent,
-                    title: "결제 수단"
-                ) {
-                    PaymentMethodsView()
-                }
-
-                ProfileMenuRow(
                     icon: "key.fill",
                     iconColor: .parkWarning,
                     title: "비밀번호 변경"

@@ -63,11 +63,18 @@ struct HomeView: View {
     private var homeHeader: some View {
         HStack {
             HStack(spacing: ParkSpacing.xs) {
-                Image(systemName: "leaf.fill")
-                    .foregroundStyle(Color.parkPrimary)
-                Text("ParkMate")
-                    .font(.parkHeadlineMedium)
-                    .foregroundStyle(.white)
+                Image("ParkgolfMateLogo")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 32, height: 32)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                HStack(spacing: 0) {
+                    Text("Parkgolf")
+                        .foregroundStyle(.white)
+                    Text("Mate")
+                        .foregroundStyle(Color(hex: "f5c842"))
+                }
+                .font(.system(size: 20, weight: .bold, design: .rounded))
             }
 
             Spacer()
@@ -745,7 +752,7 @@ struct HomeUnreadChatRowLabel: View {
                     .fill(Color.parkInfo.opacity(0.3))
                     .frame(width: 50, height: 50)
                     .overlay(
-                        Image(systemName: room.type == .group ? "person.3.fill" : "person.fill")
+                        Image(systemName: room.type == .channel ? "person.3.fill" : "person.fill")
                             .foregroundStyle(.white)
                     )
 

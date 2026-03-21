@@ -53,6 +53,7 @@ data class ChatMessageDto(
     // API may return 'type' or 'messageType'
     val messageType: String? = null,
     val type: String? = null, // Fallback field for API compatibility
+    val metadata: String? = null,
     val createdAt: String,
     val readBy: List<String>? = null
 ) {
@@ -97,7 +98,7 @@ data class MessagesData(
 
 enum class ChatRoomType(val value: String) {
     DIRECT("DIRECT"),
-    GROUP("GROUP"),
+    CHANNEL("CHANNEL"),
     BOOKING("BOOKING")
 }
 
@@ -106,6 +107,7 @@ enum class MessageType(val value: String) {
     IMAGE("IMAGE"),
     SYSTEM("SYSTEM"),
     BOOKING_INVITE("BOOKING_INVITE"),
+    AI_USER("AI_USER"),
     AI_ASSISTANT("AI_ASSISTANT")
 }
 
@@ -122,6 +124,7 @@ data class AiChatRequest(
     val selectedSlotId: String? = null,
     val selectedSlotTime: String? = null,
     val selectedSlotPrice: Int? = null,
+    val selectedGameName: String? = null,
     val confirmBooking: Boolean? = null,
     val cancelBooking: Boolean? = null,
     val paymentMethod: String? = null,
@@ -133,14 +136,20 @@ data class AiChatRequest(
     val confirmGroupBooking: Boolean? = null,
     // 분할결제 완료
     val splitPaymentComplete: Boolean? = null,
-    val splitOrderId: String? = null
+    val splitOrderId: String? = null,
+    // 그룹 예약 후속 액션
+    val chatRoomId: String? = null,
+    val teamMembers: List<TeamMemberDto>? = null,
+    val nextTeam: Boolean? = null,
+    val finishGroup: Boolean? = null,
+    val sendReminder: Boolean? = null
 )
 
 @Serializable
 data class SelectedSlotDto(
     val slotId: String,
     val slotTime: String,
-    val courseName: String,
+    val gameName: String,
     val price: Int
 )
 

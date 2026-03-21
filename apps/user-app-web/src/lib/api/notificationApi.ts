@@ -7,12 +7,14 @@ import { apiClient } from './client';
 export type NotificationType =
   | 'BOOKING_CONFIRMED'
   | 'BOOKING_CANCELLED'
+  | 'REFUND_COMPLETED'
   | 'PAYMENT_SUCCESS'
   | 'PAYMENT_FAILED'
   | 'FRIEND_REQUEST'
   | 'FRIEND_ACCEPTED'
   | 'CHAT_MESSAGE'
-  | 'SYSTEM_ALERT';
+  | 'SYSTEM_ALERT'
+  | 'SPLIT_PAYMENT_REQUEST';
 
 export type NotificationStatus = 'PENDING' | 'SENT' | 'FAILED' | 'READ';
 
@@ -156,12 +158,14 @@ export const getNotificationTypeDisplayName = (type: NotificationType): string =
   const displayNames: Record<NotificationType, string> = {
     BOOKING_CONFIRMED: '예약 확정',
     BOOKING_CANCELLED: '예약 취소',
+    REFUND_COMPLETED: '환불 완료',
     PAYMENT_SUCCESS: '결제 완료',
     PAYMENT_FAILED: '결제 실패',
     FRIEND_REQUEST: '친구 요청',
     FRIEND_ACCEPTED: '친구 수락',
     CHAT_MESSAGE: '새 메시지',
     SYSTEM_ALERT: '시스템 알림',
+    SPLIT_PAYMENT_REQUEST: '정산 요청',
   };
   return displayNames[type];
 };

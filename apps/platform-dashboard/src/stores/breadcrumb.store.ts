@@ -50,11 +50,3 @@ export const useBreadcrumb = () => {
   };
 };
 
-// Hook to set breadcrumb items - usage: useSetBreadcrumb(items)
-export const useSetBreadcrumb = (items: BreadcrumbItem[]) => {
-  const setItems = useBreadcrumbStore((state) => state.setItems);
-  // Set items on mount
-  if (typeof window !== 'undefined' && items.length > 0) {
-    setItems(items);
-  }
-};

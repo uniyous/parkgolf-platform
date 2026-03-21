@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Lightbulb } from 'lucide-react';
 import { useGamesQuery, useClubsQuery } from '@/hooks/queries';
-import { DataContainer } from '@/components/common';
+import { DataContainer, Pagination } from '@/components/common';
+import { useClientPagination } from '@/hooks/useClientPagination';
 import { FilterContainer, FilterSearch, FilterResetButton } from '@/components/common/filters';
 import { CanManageCourses } from '@/components/auth';
 import { PageLayout } from '@/components/layout';
@@ -43,6 +44,8 @@ export const GameListPage: React.FC = () => {
         game.description?.toLowerCase().includes(keyword)
     );
   }, [games, searchKeyword]);
+
+  const { paginatedData: paginatedGames, pagination, setPage } = useClientPagination(filteredGames, 20);
 
   // Stats
   const stats = useMemo(() => ({
@@ -188,7 +191,7 @@ export const GameListPage: React.FC = () => {
           loadingMessage="라운드 목록을 불러오는 중..."
         >
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filteredGames.map((game) => (
+            {paginatedGames.map((game) => (
               <div
                 key={game.id}
                 onClick={() => handleGameSelect(game)}
@@ -260,13 +263,7 @@ export const GameListPage: React.FC = () => {
         </DataContainer>
       </div>
 
-      {/* 하단 정보 */}
-      <div className="bg-white/5 rounded-lg p-4">
-        <p className="text-sm text-white/60 text-center">
-          총 {filteredGames.length}개의 라운드가 있습니다.
-          {searchKeyword && ` '${searchKeyword}' 검색 결과입니다.`}
-        </p>
-      </div>
+      <Pagination pagination={pagination} onPageChange={setPage} />
 
       {/* 새 라운드 추가 모달 */}
       <GameFormModal

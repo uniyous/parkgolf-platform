@@ -1,5 +1,8 @@
 package com.parkgolf.app.presentation.feature.chat
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -24,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.LifecycleOwner
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.parkgolf.app.presentation.feature.payment.PaymentActivity
 import com.parkgolf.app.data.remote.dto.chat.AiChatRequest
 import com.parkgolf.app.data.remote.dto.chat.TeamDto
 import com.parkgolf.app.presentation.feature.chat.components.cards.TeamConfirmData
@@ -34,6 +39,7 @@ import com.parkgolf.app.presentation.components.GlassCard
 import com.parkgolf.app.presentation.components.GlassTextField
 import com.parkgolf.app.presentation.feature.chat.components.AiButton
 import com.parkgolf.app.presentation.feature.chat.components.AiMessageBubble
+import com.parkgolf.app.presentation.feature.chat.components.AiUserMessageBubble
 import com.parkgolf.app.presentation.feature.chat.components.AiWelcomeCard
 import com.parkgolf.app.presentation.theme.*
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -52,8 +58,40 @@ fun ChatRoomScreen(
     var showMenu by remember { mutableStateOf(false) }
     var showInviteDialog by remember { mutableStateOf(false) }
     var showParticipantsDialog by remember { mutableStateOf(false) }
+    var showLeaveDialog by remember { mutableStateOf(false) }
 
-    val lifecycleOwner = LocalContext.current as LifecycleOwner
+    val context = LocalContext.current
+    val lifecycleOwner = context as LifecycleOwner
+
+    // Toss Payment Activity Result launcher
+    val paymentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        when (result.resultCode) {
+            Activity.RESULT_OK -> {
+                val data = result.data
+                val paymentKey = data?.getStringExtra(PaymentActivity.EXTRA_PAYMENT_KEY) ?: ""
+                val resultOrderId = data?.getStringExtra(PaymentActivity.EXTRA_ORDER_ID) ?: ""
+                val resultAmount = data?.getIntExtra(PaymentActivity.EXTRA_AMOUNT, 0) ?: 0
+                viewModel.handlePaymentResult(paymentKey, resultOrderId, resultAmount)
+            }
+            else -> {
+                viewModel.handlePaymentCancelled()
+            }
+        }
+    }
+
+    // pendingPayment 감시 → PaymentActivity 실행
+    LaunchedEffect(uiState.pendingPayment) {
+        val pending = uiState.pendingPayment ?: return@LaunchedEffect
+        val intent = PaymentActivity.createIntent(
+            context = context,
+            orderId = pending.orderId,
+            orderName = pending.orderName,
+            amount = pending.amount
+        )
+        paymentLauncher.launch(intent)
+    }
 
     LaunchedEffect(roomId) {
         viewModel.loadRoom(roomId)
@@ -77,30 +115,10 @@ fun ChatRoomScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = uiState.room?.displayName(uiState.currentUserId ?: "") ?: "채팅",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (uiState.isConnected) Color(0xFF10B981) else Color(0xFFEF4444)
-                                    )
-                            )
-                            Text(
-                                text = if (uiState.isConnected) "연결됨" else "연결 끊김",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = ParkOnPrimary.copy(alpha = 0.7f)
-                            )
-                        }
-                    }
+                    Text(
+                        text = uiState.room?.displayName(uiState.currentUserId ?: "") ?: "채팅",
+                        style = MaterialTheme.typography.titleMedium
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -139,8 +157,7 @@ fun ChatRoomScreen(
                             DropdownMenuItem(
                                 text = { Text("나가기", color = ParkError) },
                                 onClick = {
-                                    viewModel.leaveChatRoom()
-                                    onNavigateBack()
+                                    showLeaveDialog = true
                                     showMenu = false
                                 },
                                 leadingIcon = {
@@ -206,20 +223,40 @@ fun ChatRoomScreen(
                     .fillMaxSize()
                     .weight(1f)
             ) {
+                // Deduplicate messages by ID
+                val dedupedMessages = remember(uiState.messages) {
+                    uiState.messages
+                        .distinctBy { it.id }
+                        .sortedBy { it.createdAt }
+                }
+
                 if (uiState.isLoading && uiState.messages.isEmpty()) {
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center),
                         color = ParkOnPrimary
                     )
                 } else {
+                    // 스크롤 상단 도달 시 이전 메시지 자동 로드
+                    val shouldLoadMore by remember {
+                        derivedStateOf {
+                            val firstVisibleItem = listState.firstVisibleItemIndex
+                            firstVisibleItem <= 1 && uiState.hasMore && !uiState.isLoading
+                        }
+                    }
+                    LaunchedEffect(shouldLoadMore) {
+                        if (shouldLoadMore) {
+                            viewModel.loadMoreMessages()
+                        }
+                    }
+
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Load more button at top (older messages)
-                        if (uiState.hasMore) {
+                        // Loading indicator at top
+                        if (uiState.hasMore && uiState.isLoading) {
                             item {
                                 Box(
                                     modifier = Modifier
@@ -227,16 +264,10 @@ fun ChatRoomScreen(
                                         .padding(8.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    if (uiState.isLoading) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(24.dp),
-                                            color = ParkOnPrimary
-                                        )
-                                    } else {
-                                        TextButton(onClick = { viewModel.loadMoreMessages() }) {
-                                            Text("이전 메시지 보기", color = ParkOnPrimary)
-                                        }
-                                    }
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        color = ParkOnPrimary
+                                    )
                                 }
                             }
                         }
@@ -252,102 +283,180 @@ fun ChatRoomScreen(
                             }
                         }
 
-                        // Messages (oldest first, newest at bottom)
-                        items(uiState.messages.size) { index ->
-                            val message = uiState.messages[index]
-                            if (message.messageType == MessageType.AI_ASSISTANT) {
-                                // 연속 AI 메시지 그룹핑: 이전 메시지도 AI면 라벨 숨김
-                                val prevIsAi = index > 0 && uiState.messages[index - 1].messageType == MessageType.AI_ASSISTANT
+                        // Empty state (non-AI mode)
+                        if (uiState.messages.isEmpty() && !uiState.isAiMode && !uiState.isLoading) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 48.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "대화를 시작해보세요!",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = ParkOnPrimary.copy(alpha = 0.5f)
+                                    )
+                                }
+                            }
+                        }
 
-                                AiMessageBubble(
-                                    content = message.content,
-                                    actions = viewModel.getActionsForMessage(message.id),
-                                    createdAt = message.createdAt,
-                                    showLabel = !prevIsAi,
-                                    currentUserId = uiState.currentUserId?.toIntOrNull(),
-                                    onClubSelect = { clubId, clubName ->
-                                        viewModel.selectClub(clubId)
-                                        viewModel.sendAiFollowUp(AiChatRequest(
-                                            message = "$clubName 선택",
-                                            selectedClubId = clubId,
-                                            selectedClubName = clubName
-                                        ))
-                                    },
-                                    onSlotSelect = { slotId, time, price, clubId, clubName ->
-                                        viewModel.selectSlot(slotId)
-                                        viewModel.sendAiFollowUp(AiChatRequest(
-                                            message = "$time 선택",
-                                            selectedSlotId = slotId,
-                                            selectedSlotTime = time,
-                                            selectedSlotPrice = price,
-                                            selectedClubId = clubId,
-                                            selectedClubName = clubName
-                                        ))
-                                    },
-                                    onConfirmBooking = { paymentMethod ->
-                                        viewModel.sendAiFollowUp(AiChatRequest(
-                                            message = if (paymentMethod == "card") "카드결제로 예약 확인" else "예약 확인",
-                                            confirmBooking = true,
-                                            paymentMethod = paymentMethod
-                                        ))
-                                    },
-                                    onCancelBooking = {
-                                        viewModel.selectSlot("")
-                                        viewModel.sendAiFollowUp(AiChatRequest(
-                                            message = "취소",
-                                            cancelBooking = true
-                                        ))
-                                    },
-                                    onPaymentComplete = { success ->
-                                        viewModel.sendAiFollowUp(AiChatRequest(
-                                            message = if (success) "결제 완료" else "결제 취소",
-                                            paymentComplete = true,
-                                            paymentSuccess = success
-                                        ))
-                                    },
-                                    onConfirmGroup = { paymentMethod ->
-                                        viewModel.sendAiFollowUp(AiChatRequest(
-                                            message = if (paymentMethod == "dutchpay") "더치페이로 예약" else "현장결제로 예약",
-                                            confirmGroupBooking = true,
-                                            paymentMethod = paymentMethod
-                                        ))
-                                    },
-                                    onCancelGroup = {
-                                        viewModel.selectSlot("")
-                                        viewModel.sendAiFollowUp(AiChatRequest(
-                                            message = "그룹 예약 취소",
-                                            cancelBooking = true
-                                        ))
-                                    },
-                                    onTeamConfirm = { teamConfirmData: List<TeamConfirmData> ->
-                                        viewModel.sendAiFollowUp(AiChatRequest(
-                                            message = "팀 편성 확정",
-                                            teams = teamConfirmData.map { t ->
-                                                TeamDto(
-                                                    teamNumber = t.teamNumber,
-                                                    slotId = t.slotId,
-                                                    members = t.members
-                                                )
-                                            },
-                                            confirmGroupBooking = true
-                                        ))
-                                    },
-                                    onSplitPaymentComplete = { success, orderId ->
-                                        viewModel.sendAiFollowUp(AiChatRequest(
-                                            message = if (success) "결제 완료" else "결제 실패",
-                                            splitPaymentComplete = true,
-                                            splitOrderId = orderId
-                                        ))
-                                    },
-                                    selectedClubId = uiState.selectedClubId,
-                                    selectedSlotId = uiState.selectedSlotId
-                                )
-                            } else {
-                                val isOwnMessage = message.senderId == uiState.currentUserId
-                                ChatMessageBubble(
-                                    message = message,
-                                    isOwnMessage = isOwnMessage
-                                )
+                        // Messages (oldest first, newest at bottom) — deduplicated by ID
+                        items(dedupedMessages.size) { index ->
+                            val message = dedupedMessages[index]
+                            when (message.messageType) {
+                                MessageType.AI_ASSISTANT -> {
+                                    // 브로드캐스트 AI 메시지: targetUserIds + bookerUserId 필터링
+                                    if (!message.metadata.isNullOrEmpty()) {
+                                        try {
+                                            val meta = org.json.JSONObject(message.metadata)
+                                            val targetIds = meta.optJSONArray("targetUserIds")
+                                            if (targetIds != null) {
+                                                val myId = uiState.currentUserId?.toIntOrNull() ?: -1
+                                                var isTarget = false
+                                                for (i in 0 until targetIds.length()) {
+                                                    if (targetIds.optInt(i) == myId) { isTarget = true; break }
+                                                }
+                                                // 진행자(bookerUserId)도 대상에 포함
+                                                if (!isTarget) {
+                                                    val bookerUserId = meta.optInt("bookerUserId", -1)
+                                                    if (bookerUserId == myId) isTarget = true
+                                                }
+                                                if (!isTarget) return@items // 내가 대상이 아니면 렌더링하지 않음
+                                            }
+                                        } catch (_: Exception) { /* metadata 파싱 실패 시 그냥 표시 */ }
+                                    }
+
+                                    // 연속 AI 메시지 그룹핑: 이전 메시지도 AI면 라벨 숨김
+                                    val prevIsAi = index > 0 && dedupedMessages[index - 1].messageType == MessageType.AI_ASSISTANT
+
+                                    AiMessageBubble(
+                                        content = message.content,
+                                        actions = viewModel.getActionsForMessage(message.id),
+                                        createdAt = message.createdAt,
+                                        showLabel = !prevIsAi,
+                                        currentUserId = uiState.currentUserId?.toIntOrNull(),
+                                        onClubSelect = { clubId, clubName ->
+                                            viewModel.selectClub(clubId)
+                                            viewModel.sendAiFollowUp(AiChatRequest(
+                                                message = "$clubName 선택",
+                                                selectedClubId = clubId,
+                                                selectedClubName = clubName
+                                            ))
+                                        },
+                                        onSlotSelect = { slotId, time, price, clubId, clubName, gameName ->
+                                            viewModel.selectSlot(slotId)
+                                            viewModel.sendAiFollowUp(AiChatRequest(
+                                                message = "$time 선택",
+                                                selectedSlotId = slotId,
+                                                selectedSlotTime = time,
+                                                selectedSlotPrice = price,
+                                                selectedClubId = clubId,
+                                                selectedClubName = clubName,
+                                                selectedGameName = gameName
+                                            ))
+                                        },
+                                        onConfirmBooking = { paymentMethod ->
+                                            viewModel.sendAiFollowUp(AiChatRequest(
+                                                message = if (paymentMethod == "card") "카드결제로 예약 확인" else "예약 확인",
+                                                confirmBooking = true,
+                                                paymentMethod = paymentMethod
+                                            ))
+                                        },
+                                        onCancelBooking = {
+                                            viewModel.selectSlot("")
+                                            viewModel.sendAiFollowUp(AiChatRequest(
+                                                message = "취소",
+                                                cancelBooking = true
+                                            ))
+                                        },
+                                        onPaymentComplete = { success ->
+                                            viewModel.sendAiFollowUp(AiChatRequest(
+                                                message = if (success) "결제 완료" else "결제 취소",
+                                                paymentComplete = true,
+                                                paymentSuccess = success
+                                            ))
+                                        },
+                                        onRequestPayment = { orderId, orderName, amount ->
+                                            viewModel.requestPayment(orderId, orderName, amount, "single")
+                                        },
+                                        onConfirmGroup = { paymentMethod ->
+                                            viewModel.sendAiFollowUp(AiChatRequest(
+                                                message = if (paymentMethod == "dutchpay") "더치페이로 예약" else "현장결제로 예약",
+                                                confirmGroupBooking = true,
+                                                paymentMethod = paymentMethod
+                                            ))
+                                        },
+                                        onCancelGroup = {
+                                            viewModel.selectSlot("")
+                                            viewModel.sendAiFollowUp(AiChatRequest(
+                                                message = "그룹 예약 취소",
+                                                cancelBooking = true
+                                            ))
+                                        },
+                                        onTeamConfirm = { teamConfirmData: List<TeamConfirmData> ->
+                                            viewModel.sendAiFollowUp(AiChatRequest(
+                                                message = "팀 편성 확정",
+                                                teams = teamConfirmData.map { t ->
+                                                    TeamDto(
+                                                        teamNumber = t.teamNumber,
+                                                        slotId = t.slotId,
+                                                        members = t.members
+                                                    )
+                                                },
+                                                confirmGroupBooking = true
+                                            ))
+                                        },
+                                        onSplitPaymentComplete = { success, orderId ->
+                                            viewModel.sendAiFollowUp(AiChatRequest(
+                                                message = if (success) "결제 완료" else "결제 실패",
+                                                splitPaymentComplete = true,
+                                                splitOrderId = orderId
+                                            ))
+                                        },
+                                        onRequestSplitPayment = { orderId, amount ->
+                                            viewModel.requestPayment(orderId, "더치페이 결제", amount, "split")
+                                        },
+                                        onNextTeam = {
+                                            viewModel.sendAiFollowUp(AiChatRequest(
+                                                message = "다음 팀 예약",
+                                                nextTeam = true
+                                            ))
+                                        },
+                                        onFinish = {
+                                            viewModel.sendAiFollowUp(AiChatRequest(
+                                                message = "예약 종료",
+                                                finishGroup = true
+                                            ))
+                                        },
+                                        onSendReminder = {
+                                            viewModel.sendAiFollowUp(AiChatRequest(
+                                                message = "리마인더 전송",
+                                                sendReminder = true
+                                            ))
+                                        },
+                                        onRefresh = {
+                                            viewModel.sendAiFollowUp(AiChatRequest(
+                                                message = "정산 현황 확인"
+                                            ))
+                                        },
+                                        selectedClubId = uiState.selectedClubId,
+                                        selectedSlotId = uiState.selectedSlotId
+                                    )
+                                }
+                                MessageType.AI_USER -> {
+                                    AiUserMessageBubble(
+                                        content = message.content,
+                                        createdAt = message.createdAt
+                                    )
+                                }
+                                else -> {
+                                    val isOwnMessage = message.senderId == uiState.currentUserId
+                                    ChatMessageBubble(
+                                        message = message,
+                                        isOwnMessage = isOwnMessage
+                                    )
+                                }
                             }
                         }
 
@@ -396,6 +505,40 @@ fun ChatRoomScreen(
         )
     }
 
+    // Leave confirmation dialog
+    if (showLeaveDialog) {
+        AlertDialog(
+            onDismissRequest = { showLeaveDialog = false },
+            containerColor = GradientStart,
+            title = {
+                Text("채팅방 나가기", color = ParkOnPrimary, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text(
+                    "채팅방을 나가시겠습니까?",
+                    color = ParkOnPrimary.copy(alpha = 0.7f)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLeaveDialog = false
+                        viewModel.leaveChatRoom()
+                        onNavigateBack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ParkError)
+                ) {
+                    Text("나가기")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLeaveDialog = false }) {
+                    Text("취소", color = ParkOnPrimary.copy(alpha = 0.7f))
+                }
+            }
+        )
+    }
+
     // Invite Friends Dialog
     if (showInviteDialog) {
         InviteFriendsDialog(
@@ -410,7 +553,7 @@ fun ChatRoomScreen(
 }
 
 /**
- * 연결 상태 배너 (iOS와 동일한 UI)
+ * 연결 상태 배너 (크로스 플랫폼 통일 디자인)
  */
 @Composable
 private fun ConnectionStatusBanner(
@@ -418,7 +561,7 @@ private fun ConnectionStatusBanner(
     onReconnect: () -> Unit
 ) {
     Surface(
-        color = Color(0xFFEF4444).copy(alpha = 0.9f),
+        color = Color(0xFFF59E0B).copy(alpha = 0.9f),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -436,11 +579,11 @@ private fun ConnectionStatusBanner(
                     imageVector = Icons.Default.WifiOff,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(16.dp)
                 )
                 Text(
                     text = "연결 끊김",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = Color.White
                 )
             }
@@ -455,17 +598,14 @@ private fun ConnectionStatusBanner(
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("재연결")
+                    Text(
+                        text = "재연결",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
-            } else {
-                Text(
-                    text = "재연결 불가",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.7f)
-                )
             }
         }
     }
@@ -603,15 +743,12 @@ private fun ChatInputBar(
     enabled: Boolean,
     onToggleAi: () -> Unit = {}
 ) {
-    Surface(
-        color = GradientStart.copy(alpha = 0.95f),
-        shadowElevation = 8.dp,
-        modifier = Modifier.navigationBarsPadding()
-    ) {
+    Column(modifier = Modifier.navigationBarsPadding()) {
+        HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
                 .imePadding(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -624,17 +761,17 @@ private fun ChatInputBar(
                     Text(
                         text = when {
                             isAiMode -> "AI에게 예약 요청하기..."
-                            enabled -> "메시지를 입력하세요"
+                            enabled -> "메시지 입력..."
                             else -> "연결 중..."
                         },
-                        color = ParkOnPrimary.copy(alpha = 0.5f)
+                        color = ParkOnPrimary.copy(alpha = 0.4f)
                     )
                 },
                 enabled = enabled,
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = if (isAiMode) ParkPrimary.copy(alpha = 0.15f) else GlassCard,
-                    unfocusedContainerColor = if (isAiMode) ParkPrimary.copy(alpha = 0.15f) else GlassCard,
-                    disabledContainerColor = GlassCard.copy(alpha = 0.5f),
+                    focusedContainerColor = if (isAiMode) ParkPrimary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.1f),
+                    unfocusedContainerColor = if (isAiMode) ParkPrimary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.1f),
+                    disabledContainerColor = Color.White.copy(alpha = 0.05f),
                     focusedTextColor = ParkOnPrimary,
                     unfocusedTextColor = ParkOnPrimary,
                     cursorColor = ParkPrimary,
@@ -654,15 +791,15 @@ private fun ChatInputBar(
                 onClick = onSend,
                 enabled = enabled && value.isNotBlank() && !isSending && !isAiLoading,
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
                     .background(
-                        if (enabled && value.isNotBlank()) ParkPrimary else ParkPrimary.copy(alpha = 0.3f)
+                        if (enabled && value.isNotBlank()) ParkPrimary else Color.White.copy(alpha = 0.1f)
                     )
             ) {
                 if (isSending || isAiLoading) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(16.dp),
                         color = ParkOnPrimary,
                         strokeWidth = 2.dp
                     )
@@ -670,7 +807,10 @@ private fun ChatInputBar(
                     Icon(
                         Icons.AutoMirrored.Filled.Send,
                         contentDescription = "보내기",
-                        tint = ParkOnPrimary
+                        tint = ParkOnPrimary,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .rotate(-45f)
                     )
                 }
             }

@@ -28,6 +28,15 @@ struct ConfirmPaymentResponse: Codable, Sendable {
     let status: String
 }
 
+struct ConfirmSplitPaymentResponse: Codable, Sendable {
+    let id: Int
+    let orderId: String
+    let userId: Int
+    let amount: Int
+    let status: String
+    let paidAt: String?
+}
+
 struct PaymentStatusResponse: Codable, Sendable {
     let id: Int
     let orderId: String
@@ -68,6 +77,18 @@ actor PaymentService {
         )
 
         return try await apiClient.request(endpoint, responseType: ConfirmPaymentResponse.self)
+    }
+
+    // MARK: - Confirm Split Payment
+
+    func confirmSplitPayment(request: ConfirmPaymentRequest) async throws -> ConfirmSplitPaymentResponse {
+        let endpoint = Endpoint(
+            path: "/api/user/payments/split/confirm",
+            method: .post,
+            body: request
+        )
+
+        return try await apiClient.request(endpoint, responseType: ConfirmSplitPaymentResponse.self)
     }
 
     // MARK: - Get Payment by Order ID

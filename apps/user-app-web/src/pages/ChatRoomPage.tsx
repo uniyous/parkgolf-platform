@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Send, MoreVertical, Users, LogOut, Wifi, WifiOff, RefreshCw, Loader2, UserPlus, Search, X, Check, Sparkles, AlertTriangle } from 'lucide-react';
+import { Send, MoreVertical, Users, LogOut, WifiOff, RefreshCw, Loader2, UserPlus, Search, X, Check, Sparkles, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SubPageHeader } from '@/components/layout';
 import { Button, LoadingView } from '@/components/ui';
@@ -12,11 +12,14 @@ import { authStorage } from '@/lib/storage';
 import { showErrorToast, showSuccessToast } from '@/lib/toast';
 import { useAuthStore } from '@/stores/authStore';
 import { useConfirm } from '@/contexts/ConfirmContext';
-import { chatApi, getChatRoomDisplayName, type ChatMessage, type ChatAction, type AiChatRequest, type TeamMember } from '@/lib/api/chatApi';
+import { chatApi, getChatRoomDisplayName, type ChatMessage, type ChatAction, type AiChatRequest } from '@/lib/api/chatApi';
 import { useAiChat } from '@/hooks/useAiChat';
 import { AiButton } from '@/components/features/chat/AiButton';
 import { AiMessageBubble } from '@/components/features/chat/AiMessageBubble';
+import { AiUserMessageBubble } from '@/components/features/chat/AiUserMessageBubble';
 import { AiWelcomeCard } from '@/components/features/chat/AiWelcomeCard';
+import { paymentApi } from '@/lib/api/paymentApi';
+import { CHAT_PAYMENT_CONTEXT_KEY, type ChatPaymentContext } from '@/lib/constants';
 
 export const ChatRoomPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -54,7 +57,123 @@ export const ChatRoomPage: React.FC = () => {
   } = useMessagesInfiniteQuery(roomId ?? '');
   const sendMessageMutation = useSendMessageMutation();
   const leaveMutation = useLeaveChatRoomMutation();
-  const { isAiMode, toggleAiMode, sendAiMessage, isAiLoading, conversationState } = useAiChat(roomId ?? '');
+  const { isAiMode, toggleAiMode, sendAiMessage, isAiLoading, conversationState, conversationId } = useAiChat(roomId ?? '');
+  const [searchParams] = useSearchParams();
+
+  // ── Toss 결제 복귀 처리 ──
+  const paymentHandledRef = useRef(false);
+
+  useEffect(() => {
+    if (paymentHandledRef.current || !roomId) return;
+
+    const paymentKey = searchParams.get('paymentKey');
+    const paymentOrderId = searchParams.get('orderId');
+    const paymentAmount = searchParams.get('amount');
+    const paymentFail = searchParams.get('payment') === 'fail';
+
+    if (paymentKey && paymentOrderId && paymentAmount) {
+      paymentHandledRef.current = true;
+      handlePaymentReturn(paymentKey, paymentOrderId, Number(paymentAmount));
+    } else if (paymentFail) {
+      paymentHandledRef.current = true;
+      handlePaymentFailure();
+    }
+  }, [roomId, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handlePaymentReturn = async (paymentKey: string, orderId: string, amount: number) => {
+    // sessionStorage에서 결제 컨텍스트 읽기
+    const raw = sessionStorage.getItem(CHAT_PAYMENT_CONTEXT_KEY);
+    const ctx: ChatPaymentContext | null = raw ? JSON.parse(raw) : null;
+    const paymentType = ctx?.type || 'single';
+
+    try {
+      if (paymentType === 'split') {
+        await paymentApi.confirmSplitPayment({ paymentKey, orderId, amount });
+        // 에이전트에 분할결제 완료 통지 (페이지 리다이렉트로 React state 유실 → sessionStorage에서 복원)
+        const response = await sendAiMessage({
+          message: '결제 완료',
+          splitPaymentComplete: true,
+          splitOrderId: orderId,
+          conversationId: ctx?.conversationId || undefined,
+        });
+        if (response.actions) {
+          const aiMsg: ChatMessage = {
+            id: `ai-${Date.now()}`,
+            roomId: roomId!,
+            senderId: 'ai',
+            senderName: 'AI 예약 도우미',
+            content: response.message,
+            messageType: 'AI_ASSISTANT',
+            createdAt: new Date().toISOString(),
+            readBy: null,
+          };
+          setAiMessageActions((prev) => new Map(prev).set(aiMsg.id, response.actions!));
+          setRealtimeMessages((prev) => [...prev, aiMsg]);
+        }
+      } else {
+        await paymentApi.confirmPayment({ paymentKey, orderId, amount });
+        // 에이전트에 결제 완료 통지 (페이지 리다이렉트로 React state 유실 → sessionStorage에서 복원)
+        const response = await sendAiMessage({
+          message: '결제 완료',
+          paymentComplete: true,
+          paymentSuccess: true,
+          conversationId: ctx?.conversationId || undefined,
+        });
+        if (response.actions) {
+          const aiMsg: ChatMessage = {
+            id: `ai-${Date.now()}`,
+            roomId: roomId!,
+            senderId: 'ai',
+            senderName: 'AI 예약 도우미',
+            content: response.message,
+            messageType: 'AI_ASSISTANT',
+            createdAt: new Date().toISOString(),
+            readBy: null,
+          };
+          setAiMessageActions((prev) => new Map(prev).set(aiMsg.id, response.actions!));
+          setRealtimeMessages((prev) => [...prev, aiMsg]);
+        }
+      }
+    } catch (err) {
+      console.error('결제 승인 실패:', err);
+      // fallback: 서버에서 이미 승인된 경우 확인
+      try {
+        const status = await paymentApi.getPaymentByOrderId(orderId);
+        if (status.status === 'DONE' || status.status === 'PAID') {
+          const notifyReq = paymentType === 'split'
+            ? { message: '결제 완료', splitPaymentComplete: true, splitOrderId: orderId, conversationId: ctx?.conversationId || undefined }
+            : { message: '결제 완료', paymentComplete: true, paymentSuccess: true, conversationId: ctx?.conversationId || undefined };
+          await sendAiMessage(notifyReq);
+        } else {
+          showErrorToast('결제 승인에 실패했습니다. 다시 시도해주세요.');
+        }
+      } catch {
+        showErrorToast('결제 승인에 실패했습니다.');
+      }
+    } finally {
+      sessionStorage.removeItem(CHAT_PAYMENT_CONTEXT_KEY);
+      window.history.replaceState({}, '', `/chat/${roomId}`);
+    }
+  };
+
+  const handlePaymentFailure = async () => {
+    // sessionStorage에서 conversationId 복원 후 삭제
+    const raw = sessionStorage.getItem(CHAT_PAYMENT_CONTEXT_KEY);
+    const ctx: ChatPaymentContext | null = raw ? JSON.parse(raw) : null;
+    sessionStorage.removeItem(CHAT_PAYMENT_CONTEXT_KEY);
+    window.history.replaceState({}, '', `/chat/${roomId}`);
+    // 에이전트에 실패 통지
+    try {
+      await sendAiMessage({
+        message: '결제 취소',
+        paymentComplete: true,
+        paymentSuccess: false,
+        conversationId: ctx?.conversationId || undefined,
+      });
+    } catch {
+      // 실패 통지가 안 되어도 무시
+    }
+  };
 
   // Merge DB messages from infinite query with realtime messages
   const messages = useMemo(() => {
@@ -190,10 +309,11 @@ export const ChatRoomPage: React.FC = () => {
   const aiLoadingText = useMemo(() => {
     switch (conversationState) {
       case 'COLLECTING': return '검색 중...';
+      case 'SELECTING_MEMBERS': return '멤버 선택 중...';
       case 'CONFIRMING': return '예약 확인 중...';
       case 'BOOKING': return '예약 처리 중...';
-      case 'SELECTING_PARTICIPANTS': return '팀 편성 중...';
       case 'SETTLING': return '정산 처리 중...';
+      case 'TEAM_COMPLETE': return '다음 팀 준비 중...';
       default: return '생각 중...';
     }
   }, [conversationState]);
@@ -216,14 +336,14 @@ export const ChatRoomPage: React.FC = () => {
     if (!roomId) return;
     setShowWelcome(false);
 
-    // Add user message locally
+    // Add user message locally (AI_USER type for violet styling)
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       roomId,
       senderId: currentUserId,
       senderName: user?.name || '',
       content: message,
-      messageType: 'TEXT',
+      messageType: 'AI_USER' as ChatMessage['messageType'],
       createdAt: new Date().toISOString(),
       readBy: null,
     };
@@ -292,14 +412,14 @@ export const ChatRoomPage: React.FC = () => {
     if (isAiMode) {
       setShowWelcome(false);
 
-      // Add user message locally
+      // Add user message locally (AI_USER type for violet styling)
       const userMsg: ChatMessage = {
         id: `user-${Date.now()}`,
         roomId,
         senderId: currentUserId,
         senderName: user?.name || '',
         content: text,
-        messageType: 'TEXT',
+        messageType: 'AI_USER' as ChatMessage['messageType'],
         createdAt: new Date().toISOString(),
         readBy: null,
       };
@@ -430,26 +550,7 @@ export const ChatRoomPage: React.FC = () => {
         onBack={() => navigate('/social?tab=chat')}
         rightContent={
           <>
-            <div className="flex items-center gap-2 text-xs">
-              {isConnected ? (
-                <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-              ) : (
-                <>
-                  <WifiOff className="w-3.5 h-3.5 text-yellow-400" />
-                  <button
-                    onClick={() => {
-                      const token = authStorage.getToken();
-                      if (token) {
-                        chatSocket.forceReconnect(token);
-                      }
-                    }}
-                    className="p-1 rounded hover:bg-white/10 transition-colors"
-                    title="재연결"
-                  >
-                    <RefreshCw className="w-3 h-3 text-yellow-400" />
-                  </button>
-                </>
-              )}
+            <div className="flex items-center gap-2 text-sm">
               {(room.participants?.length ?? 0) > 0 && (
                 <button
                   onClick={() => setShowParticipants(true)}
@@ -478,7 +579,7 @@ export const ChatRoomPage: React.FC = () => {
                         setShowMenu(false);
                         setShowInviteModal(true);
                       }}
-                      className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2"
+                      className="w-full px-4 py-3 text-left text-base text-white hover:bg-white/10 flex items-center gap-2"
                     >
                       <UserPlus className="w-4 h-4" />
                       친구 초대
@@ -501,7 +602,7 @@ export const ChatRoomPage: React.FC = () => {
                         }
                       }}
                       disabled={leaveMutation.isPending}
-                      className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-white/10 flex items-center gap-2 disabled:opacity-50"
+                      className="w-full px-4 py-3 text-left text-base text-red-400 hover:bg-white/10 flex items-center gap-2 disabled:opacity-50"
                     >
                       <LogOut className="w-4 h-4" />
                       {leaveMutation.isPending ? '나가는 중...' : '나가기'}
@@ -514,9 +615,31 @@ export const ChatRoomPage: React.FC = () => {
         }
       />
 
+      {/* Socket disconnected banner */}
+      {!isConnected && (
+        <div className="flex items-center justify-between px-4 py-2 bg-amber-500/90 text-white text-base">
+          <div className="flex items-center gap-2">
+            <WifiOff className="w-4 h-4 flex-shrink-0" />
+            <span>연결 끊김</span>
+          </div>
+          <button
+            onClick={() => {
+              const token = authStorage.getToken();
+              if (token) {
+                chatSocket.forceReconnect(token);
+              }
+            }}
+            className="flex items-center gap-1 px-2 py-1 rounded hover:bg-white/20 transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>재연결</span>
+          </button>
+        </div>
+      )}
+
       {/* NATS disconnected warning banner */}
       {isConnected && !isNatsConnected && (
-        <div className="flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500/90 text-white text-sm">
+        <div className="flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500/90 text-white text-base">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
           <span>서버 내부 연결 불안정 — 메시지 전송이 지연될 수 있습니다</span>
         </div>
@@ -533,18 +656,8 @@ export const ChatRoomPage: React.FC = () => {
           {isFetchingNextPage && (
             <div className="flex items-center justify-center py-3 mb-2">
               <Loader2 className="w-5 h-5 text-white/50 animate-spin" />
-              <span className="ml-2 text-sm text-white/50">이전 메시지 불러오는 중...</span>
+              <span className="ml-2 text-base text-white/50">이전 메시지 불러오는 중...</span>
             </div>
-          )}
-
-          {/* Load more button (when there are more messages) */}
-          {hasNextPage && !isFetchingNextPage && (
-            <button
-              onClick={() => fetchNextPage()}
-              className="w-full py-2 mb-3 text-sm text-white/50 hover:text-white/70 transition-colors"
-            >
-              ↑ 이전 메시지 더 보기
-            </button>
           )}
 
           {isLoadingMessages && (
@@ -561,10 +674,35 @@ export const ChatRoomPage: React.FC = () => {
 
           <div className="space-y-3">
             {messages.map((message, index) => {
+              // 최신 AI 메시지 판별: 이후에 다른 AI_ASSISTANT 메시지가 없으면 최신
+              const isLatestAiMessage = message.messageType === 'AI_ASSISTANT' &&
+                !messages.slice(index + 1).some((m) => m.messageType === 'AI_ASSISTANT');
+
               // AI 메시지는 AiMessageBubble로 렌더링
               if (message.messageType === 'AI_ASSISTANT') {
-                const actions = aiMessageActions.get(message.id) ||
-                  (message as any).metadata?.actions;
+                // realtime actions 우선, 없으면 DB metadata에서 파싱
+                let actions = aiMessageActions.get(message.id);
+                let parsedMeta: Record<string, unknown> | null = null;
+                if (message.metadata) {
+                  try {
+                    parsedMeta = typeof message.metadata === 'string'
+                      ? JSON.parse(message.metadata)
+                      : message.metadata;
+                    if (!actions) actions = parsedMeta?.actions as ChatAction[] | undefined;
+                  } catch {
+                    // metadata 파싱 실패 시 무시
+                  }
+                }
+
+                // 브로드캐스트 AI 메시지: targetUserIds + bookerUserId 필터링
+                if (parsedMeta?.targetUserIds) {
+                  const targetIds = parsedMeta.targetUserIds as number[];
+                  const bookerUserId = parsedMeta.bookerUserId as number | undefined;
+                  const myId = Number(currentUserId);
+                  if (!targetIds.includes(myId) && bookerUserId !== myId) {
+                    return null; // 내가 대상이 아니면 렌더링하지 않음
+                  }
+                }
 
                 // 연속 AI 메시지 그룹핑: 이전 메시지도 AI면 라벨 숨김
                 const prevIsAi = index > 0 && messages[index - 1]?.messageType === 'AI_ASSISTANT';
@@ -577,8 +715,11 @@ export const ChatRoomPage: React.FC = () => {
                     createdAt={message.createdAt}
                     showLabel={!prevIsAi}
                     currentUserId={user?.id ? Number(user.id) : undefined}
+                    roomId={roomId}
+                    conversationId={conversationId}
                     selectedClubId={selectedClubId}
                     selectedSlotId={selectedSlotId}
+                    isLatestAiMessage={isLatestAiMessage}
                     onClubSelect={(clubId, clubName) => {
                       setSelectedClubId(clubId);
                       setSelectedSlotId(null);
@@ -588,7 +729,7 @@ export const ChatRoomPage: React.FC = () => {
                         selectedClubName: clubName,
                       });
                     }}
-                    onSlotSelect={(slotId, time, price, clubId, clubName) => {
+                    onSlotSelect={(slotId, time, price, clubId, clubName, gameName) => {
                       setSelectedSlotId(slotId);
                       handleAiFollowUp({
                         message: `${time} 선택`,
@@ -596,11 +737,17 @@ export const ChatRoomPage: React.FC = () => {
                         selectedSlotTime: time,
                         selectedSlotPrice: price,
                         ...(clubId ? { selectedClubId: clubId, selectedClubName: clubName } : {}),
+                        ...(gameName ? { selectedGameName: gameName } : {}),
                       });
                     }}
-                    onConfirmBooking={(paymentMethod: 'onsite' | 'card') => {
+                    onConfirmBooking={(paymentMethod: 'onsite' | 'card' | 'dutchpay') => {
+                      const labels: Record<string, string> = {
+                        card: '카드결제로 예약 확인',
+                        dutchpay: '더치페이로 예약 확인',
+                        onsite: '예약 확인',
+                      };
                       handleAiFollowUp({
-                        message: paymentMethod === 'card' ? '카드결제로 예약 확인' : '예약 확인',
+                        message: labels[paymentMethod] || '예약 확인',
                         confirmBooking: true,
                         paymentMethod,
                       });
@@ -619,25 +766,34 @@ export const ChatRoomPage: React.FC = () => {
                         paymentSuccess: success,
                       });
                     }}
-                    onConfirmGroup={(paymentMethod: string) => {
+                    onTeamMemberSelect={(members) => {
                       handleAiFollowUp({
-                        message: paymentMethod === 'dutchpay' ? '더치페이로 예약' : '현장결제로 예약',
-                        confirmGroupBooking: true,
-                        paymentMethod,
+                        message: '멤버 확정',
+                        teamMembers: members,
                       });
                     }}
-                    onCancelGroup={() => {
-                      setSelectedSlotId(null);
+                    onNextTeam={() => {
                       handleAiFollowUp({
-                        message: '그룹 예약 취소',
-                        cancelBooking: true,
+                        message: '다음 팀',
+                        nextTeam: true,
                       });
                     }}
-                    onTeamConfirm={(teams: Array<{ teamNumber: number; slotId: string; members: TeamMember[] }>) => {
+                    onFinishGroup={() => {
                       handleAiFollowUp({
-                        message: '팀 편성 확정',
-                        teams,
-                        confirmGroupBooking: true,
+                        message: '종료',
+                        finishGroup: true,
+                      });
+                    }}
+                    onSendReminder={() => {
+                      handleAiFollowUp({
+                        message: '리마인더',
+                        sendReminder: true,
+                      });
+                    }}
+                    onRefreshSettlement={() => {
+                      handleAiFollowUp({
+                        message: '정산 현황',
+                        splitPaymentComplete: true,
                       });
                     }}
                     onSplitPaymentComplete={(success: boolean, orderId: string) => {
@@ -647,6 +803,17 @@ export const ChatRoomPage: React.FC = () => {
                         splitOrderId: orderId,
                       });
                     }}
+                  />
+                );
+              }
+
+              // AI 모드 사용자 메시지는 AiUserMessageBubble로 렌더링
+              if (message.messageType === 'AI_USER') {
+                return (
+                  <AiUserMessageBubble
+                    key={message.id}
+                    content={message.content}
+                    createdAt={message.createdAt}
                   />
                 );
               }
@@ -676,19 +843,19 @@ export const ChatRoomPage: React.FC = () => {
               <div className="flex justify-start animate-fade-in">
                 <div className="max-w-[85%]">
                   <div className="flex items-center gap-2 mb-1.5">
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
                       <Sparkles className="w-3.5 h-3.5 text-white" />
                     </div>
-                    <span className="text-xs text-emerald-400 font-semibold">AI 예약 도우미</span>
+                    <span className="text-sm text-violet-400 font-semibold">AI 예약 도우미</span>
                   </div>
-                  <div className="bg-emerald-500/5 border-l-[3px] border-l-emerald-500/40 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
+                  <div className="bg-violet-500/5 border-l-[3px] border-l-violet-500/40 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1">
-                        <div className="w-1.5 h-1.5 bg-emerald-400/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-1.5 h-1.5 bg-emerald-400/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="w-1.5 h-1.5 bg-emerald-400/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <div className="w-1.5 h-1.5 bg-violet-400/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-1.5 h-1.5 bg-violet-400/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-1.5 h-1.5 bg-violet-400/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                       </div>
-                      <span className="text-xs text-white/50">{aiLoadingText}</span>
+                      <span className="text-sm text-white/50">{aiLoadingText}</span>
                     </div>
                   </div>
                 </div>
@@ -716,7 +883,7 @@ export const ChatRoomPage: React.FC = () => {
                 'bg-white/10 text-white placeholder:text-white/40',
                 'outline-none transition-colors',
                 isAiMode
-                  ? 'border border-emerald-500/50 focus:border-emerald-500'
+                  ? 'border border-violet-500/50 focus:border-violet-500'
                   : 'border border-white/10 focus:border-emerald-500/50'
               )}
             />
@@ -727,7 +894,9 @@ export const ChatRoomPage: React.FC = () => {
               className={cn(
                 'p-2.5 rounded-full transition-colors',
                 inputText.trim()
-                  ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                  ? isAiMode
+                    ? 'bg-violet-500 text-white hover:bg-violet-600'
+                    : 'bg-emerald-500 text-white hover:bg-emerald-600'
                   : 'bg-white/10 text-white/40'
               )}
             >
@@ -795,7 +964,7 @@ function ParticipantsModal({ participants, currentUserId, onClose }: Participant
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md bg-gray-800 rounded-2xl p-6 animate-slide-up">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-white">
+          <h3 className="text-xl font-semibold text-white">
             참여자 ({participants.length}명)
           </h3>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 transition-colors">
@@ -837,7 +1006,7 @@ function ParticipantsModal({ participants, currentUserId, onClose }: Participant
                 className="flex items-center gap-3 p-3 rounded-xl bg-white/5"
               >
                 <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-semibold text-white">
+                  <span className="text-base font-semibold text-white">
                     {p.userName.charAt(0).toUpperCase()}
                   </span>
                 </div>
@@ -845,11 +1014,11 @@ function ParticipantsModal({ participants, currentUserId, onClose }: Participant
                   <h4 className="text-white font-medium truncate">
                     {p.userName}
                     {isMe && (
-                      <span className="ml-1.5 text-xs text-emerald-400 font-normal">(나)</span>
+                      <span className="ml-1.5 text-sm text-emerald-400 font-normal">(나)</span>
                     )}
                   </h4>
                   {p.userEmail && (
-                    <p className="text-white/40 text-xs truncate">{p.userEmail}</p>
+                    <p className="text-white/40 text-sm truncate">{p.userEmail}</p>
                   )}
                 </div>
               </div>
@@ -860,7 +1029,7 @@ function ParticipantsModal({ participants, currentUserId, onClose }: Participant
         <div className="mt-4">
           <button
             onClick={onClose}
-            className="w-full px-4 py-2.5 rounded-xl bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors"
+            className="w-full px-4 py-2.5 rounded-xl bg-white/10 text-white text-base font-medium hover:bg-white/20 transition-colors"
           >
             닫기
           </button>
@@ -924,7 +1093,7 @@ function InviteFriendsModal({ roomId, participants, onClose }: InviteFriendsModa
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md bg-gray-800 rounded-2xl p-6 animate-slide-up">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-white">친구 초대</h3>
+          <h3 className="text-xl font-semibold text-white">친구 초대</h3>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 transition-colors">
             <X className="w-5 h-5 text-white/60" />
           </button>
@@ -987,14 +1156,14 @@ function InviteFriendsModal({ roomId, participants, onClose }: InviteFriendsModa
                   </div>
 
                   <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                    <span className="text-sm font-semibold text-white">
+                    <span className="text-base font-semibold text-white">
                       {friend.friendName.charAt(0).toUpperCase()}
                     </span>
                   </div>
 
                   <div className="flex-1 min-w-0 text-left">
                     <h4 className="text-white font-medium truncate">{friend.friendName}</h4>
-                    <p className="text-white/50 text-xs truncate">{friend.friendEmail}</p>
+                    <p className="text-white/50 text-sm truncate">{friend.friendEmail}</p>
                   </div>
                 </button>
               );
@@ -1005,7 +1174,7 @@ function InviteFriendsModal({ roomId, participants, onClose }: InviteFriendsModa
         <div className="flex gap-2 mt-4">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors"
+            className="flex-1 px-4 py-2.5 rounded-xl bg-white/10 text-white text-base font-medium hover:bg-white/20 transition-colors"
           >
             취소
           </button>
@@ -1013,7 +1182,7 @@ function InviteFriendsModal({ roomId, participants, onClose }: InviteFriendsModa
             onClick={handleInvite}
             disabled={selectedIds.length === 0 || inviteMutation.isPending}
             className={cn(
-              'flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors',
+              'flex-1 px-4 py-2.5 rounded-xl text-base font-medium transition-colors',
               selectedIds.length > 0
                 ? 'bg-emerald-500 text-white hover:bg-emerald-600'
                 : 'bg-white/10 text-white/40 cursor-not-allowed'
@@ -1055,7 +1224,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     <div className={cn('flex', isCurrentUser ? 'justify-end' : 'justify-start')}>
       <div className={cn('max-w-[75%]', isCurrentUser ? 'items-end' : 'items-start')}>
         {showSender && (
-          <span className="text-xs text-white/50 mb-1 ml-1">{message.senderName}</span>
+          <span className="text-sm text-white/50 mb-1 ml-1">{message.senderName}</span>
         )}
         <div className={cn('flex items-end gap-1.5', isCurrentUser && 'flex-row-reverse')}>
           <div
@@ -1066,9 +1235,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 : 'bg-white/10 text-white rounded-bl-sm'
             )}
           >
-            <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+            <p className="text-base whitespace-pre-wrap break-words">{message.content}</p>
           </div>
-          <span className="text-[10px] text-white/40 shrink-0">
+          <span className="text-xs text-white/40 shrink-0">
             {formatTime(message.createdAt)}
           </span>
         </div>

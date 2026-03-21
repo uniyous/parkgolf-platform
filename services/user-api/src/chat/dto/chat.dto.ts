@@ -1,9 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsArray, IsEnum, IsOptional, IsNumber, IsBoolean } from 'class-validator';
+import { IsString, IsArray, IsEnum, IsOptional, IsNumber, IsBoolean, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export enum ChatRoomType {
   DIRECT = 'DIRECT',
-  GROUP = 'GROUP',
+  CHANNEL = 'CHANNEL',
   BOOKING = 'BOOKING',
 }
 
@@ -12,6 +13,7 @@ export enum MessageType {
   IMAGE = 'IMAGE',
   SYSTEM = 'SYSTEM',
   BOOKING_INVITE = 'BOOKING_INVITE',
+  AI_USER = 'AI_USER',
   AI_ASSISTANT = 'AI_ASSISTANT',
 }
 
@@ -72,6 +74,17 @@ export class AddMembersDto {
   user_ids: string[];
 }
 
+export class TeamMemberDto {
+  @IsNumber()
+  userId: number;
+
+  @IsString()
+  userName: string;
+
+  @IsString()
+  userEmail: string;
+}
+
 export class AiChatRequestDto {
   @ApiProperty({ description: 'AI에게 보낼 메시지' })
   @IsString()
@@ -119,6 +132,11 @@ export class AiChatRequestDto {
   @IsNumber()
   selectedSlotPrice?: number;
 
+  @ApiPropertyOptional({ description: '선택한 게임(라운드)명' })
+  @IsOptional()
+  @IsString()
+  selectedGameName?: string;
+
   @ApiPropertyOptional({ description: '예약 확인 버튼 클릭' })
   @IsOptional()
   @IsBoolean()
@@ -146,34 +164,41 @@ export class AiChatRequestDto {
   @IsBoolean()
   paymentSuccess?: boolean;
 
-  // ── 그룹 예약 필드 ──
+  // ── 그룹 예약 필드 (팀 단위 순차) ──
 
-  @ApiPropertyOptional({ description: '복수 슬롯 선택 (멀티팀)' })
-  @IsOptional()
-  @IsArray()
-  selectedSlots?: Array<{
-    slotId: string;
-    slotTime: string;
-    courseName: string;
-    price: number;
-  }>;
-
-  @ApiPropertyOptional({ description: '팀 편성 데이터' })
-  @IsOptional()
-  teams?: Array<{
-    teamNumber: number;
-    slotId: string;
-    members: Array<{
-      userId: number;
-      userName: string;
-      userEmail: string;
-    }>;
-  }>;
-
-  @ApiPropertyOptional({ description: '그룹 예약 확인' })
+  @ApiPropertyOptional({ description: '그룹 예약 확인 버튼 클릭' })
   @IsOptional()
   @IsBoolean()
   confirmGroupBooking?: boolean;
+
+  @ApiPropertyOptional({ description: '팀 멤버 선택' })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TeamMemberDto)
+  teamMembers?: TeamMemberDto[];
+
+  @ApiPropertyOptional({ description: '다음 팀 버튼' })
+  @IsOptional()
+  @IsBoolean()
+  nextTeam?: boolean;
+
+  @ApiPropertyOptional({ description: '그룹 예약 종료 버튼' })
+  @IsOptional()
+  @IsBoolean()
+  finishGroup?: boolean;
+
+  @ApiPropertyOptional({ description: '리마인더 발송 버튼' })
+  @IsOptional()
+  @IsBoolean()
+  sendReminder?: boolean;
+
+  // ── 채팅방 ID (클라이언트에서 전송, URL param으로도 전달됨) ──
+
+  @ApiPropertyOptional({ description: '채팅방 ID' })
+  @IsOptional()
+  @IsString()
+  chatRoomId?: string;
 
   // ── 분할결제 완료 필드 ──
 

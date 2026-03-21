@@ -30,6 +30,8 @@ class ChatSocketManager: ObservableObject {
     private var socket: SocketIOClient?
     private var currentToken: String?
     private var isRefreshingToken = false
+    private var hasEverConnected = false
+    private var isIntentionalDisconnect = false
 
     // Heartbeat — Cloud Run / proxy idle timeout 방지
     private var heartbeatTimer: Timer?
@@ -37,9 +39,10 @@ class ChatSocketManager: ObservableObject {
     private let heartbeatInterval: TimeInterval = 30
     private let maxMissedHeartbeats = 2
 
-    // Periodic connection check — 30초마다 연결 상태 확인
-    private var connectionCheckTimer: Timer?
-    private let connectionCheckInterval: TimeInterval = 30
+    // Reconnection — 자체 관리 (fresh token + 지수 백오프)
+    private var reconnectTimer: Timer?
+    private var reconnectAttempts = 0
+    private let maxReconnectDelay: TimeInterval = 30
 
     // MARK: - Configuration
 
@@ -83,12 +86,13 @@ class ChatSocketManager: ObservableObject {
         print("📱 App entered foreground, socket state: \(isConnected ? "connected" : "disconnected")")
         #endif
 
-        if !isConnected, let token = currentToken {
-            // Reconnect socket if disconnected during background
+        if !isConnected, currentToken != nil {
+            // 백그라운드에서 대기 중이던 reconnect 타이머 취소 후 즉시 재연결
+            stopReconnectTimer()
+            reconnectAttempts = 0
             Task {
-                if let freshToken = await APIClient.shared.getAccessToken() {
-                    forceReconnect(token: freshToken)
-                } else {
+                let freshToken = await APIClient.shared.getAccessToken() ?? currentToken
+                if let token = freshToken {
                     forceReconnect(token: token)
                 }
             }
@@ -111,16 +115,14 @@ class ChatSocketManager: ObservableObject {
         guard !isConnected else { return }
 
         currentToken = token
+        isIntentionalDisconnect = false
 
-        // Configure Socket.IO with built-in reconnection
+        // Auto-reconnect 비활성화: 재연결 시 항상 fresh token을 사용하기 위해 자체 관리
         manager = SocketManager(socketURL: socketURL, config: [
             .log(false),
             .compress,
             .forceWebsockets(false),
-            .reconnects(true),
-            .reconnectAttempts(-1),  // unlimited reconnection
-            .reconnectWait(1),
-            .reconnectWaitMax(30),
+            .reconnects(false),
             .connectParams(["token": token])
         ])
 
@@ -133,13 +135,14 @@ class ChatSocketManager: ObservableObject {
 
     /// 강제 재연결 (UI에서 호출)
     func forceReconnect(token: String) {
+        stopReconnectTimer()
+        reconnectAttempts = 0
         cleanupSocket()
         connect(token: token)
     }
 
     private func cleanupSocket() {
         stopHeartbeat()
-        stopConnectionCheck()
         socket?.removeAllHandlers()
         socket?.disconnect()
         socket = nil
@@ -147,9 +150,12 @@ class ChatSocketManager: ObservableObject {
     }
 
     func disconnect() {
+        isIntentionalDisconnect = true
+        stopReconnectTimer()
         cleanupSocket()
         currentToken = nil
         isConnected = false
+        hasEverConnected = false
     }
 
     // MARK: - Heartbeat
@@ -186,26 +192,34 @@ class ChatSocketManager: ObservableObject {
         }
     }
 
-    // MARK: - Connection Check
+    // MARK: - Reconnection (자체 관리, fresh token + 지수 백오프)
 
-    private func startConnectionCheck() {
-        stopConnectionCheck()
-        connectionCheckTimer = Timer.scheduledTimer(withTimeInterval: connectionCheckInterval, repeats: true) { [weak self] _ in
+    private func scheduleReconnect() {
+        stopReconnectTimer()
+        guard !isIntentionalDisconnect, currentToken != nil else { return }
+
+        let delay = min(pow(2.0, Double(reconnectAttempts)), maxReconnectDelay)
+        reconnectAttempts += 1
+
+        #if DEBUG
+        print("[ChatSocket] Scheduling reconnect in \(String(format: "%.1f", delay))s (attempt \(reconnectAttempts))")
+        #endif
+
+        reconnectTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
             Task { @MainActor in
-                guard let self = self else { return }
-                if !self.isConnected, let token = self.currentToken {
-                    #if DEBUG
-                    print("[ChatSocket] Connection check: disconnected, attempting reconnect")
-                    #endif
-                    self.forceReconnect(token: token)
-                }
+                guard let self = self, !self.isConnected, !self.isIntentionalDisconnect else { return }
+                // 항상 APIClient에서 fresh token 획득 (Keychain fallback 포함)
+                let token = await APIClient.shared.getAccessToken() ?? self.currentToken
+                guard let token = token else { return }
+                self.currentToken = token
+                self.forceReconnect(token: token)
             }
         }
     }
 
-    private func stopConnectionCheck() {
-        connectionCheckTimer?.invalidate()
-        connectionCheckTimer = nil
+    private func stopReconnectTimer() {
+        reconnectTimer?.invalidate()
+        reconnectTimer = nil
     }
 
     // MARK: - Event Handlers
@@ -216,70 +230,83 @@ class ChatSocketManager: ObservableObject {
         // Connection events
         socket.on(clientEvent: .connect) { [weak self] _, _ in
             Task { @MainActor in
-                self?.isConnected = true
-                self?.isNatsConnected = true
-                self?.connectionError = nil
-                self?.startHeartbeat()
-                self?.startConnectionCheck()
+                guard let self = self else { return }
+                let isReconnection = self.hasEverConnected
+                self.hasEverConnected = true
+                self.reconnectAttempts = 0
+                self.isConnected = true
+                self.isNatsConnected = true
+                self.connectionError = nil
+                self.startHeartbeat()
+                if isReconnection {
+                    // forceReconnect 후에도 방 재참여 + 메시지 갱신 트리거
+                    self.reconnected.send()
+                }
                 #if DEBUG
-                print("✅ Socket.IO connected")
+                print(isReconnection ? "🔄 Socket.IO reconnected" : "✅ Socket.IO connected")
                 #endif
             }
         }
 
         socket.on(clientEvent: .disconnect) { [weak self] _, _ in
             Task { @MainActor in
-                self?.isConnected = false
-                self?.stopHeartbeat()
-                self?.stopConnectionCheck()
+                guard let self = self else { return }
+                self.isConnected = false
+                self.stopHeartbeat()
+                if !self.isIntentionalDisconnect {
+                    self.scheduleReconnect()
+                }
                 #if DEBUG
                 print("🔌 Socket.IO disconnected")
                 #endif
             }
         }
 
-        socket.on(clientEvent: .reconnect) { [weak self] _, _ in
-            Task { @MainActor in
-                self?.isConnected = true
-                self?.connectionError = nil
-                self?.reconnected.send()
-                #if DEBUG
-                print("🔄 Socket.IO reconnected")
-                #endif
-            }
+        socket.on(clientEvent: .reconnect) { _, _ in
+            // Auto-reconnection disabled; reconnection managed by scheduleReconnect
         }
 
         socket.on(clientEvent: .error) { [weak self] data, _ in
             Task { @MainActor in
+                guard let self = self else { return }
                 if let error = data.first as? [String: Any],
                    let message = error["message"] as? String {
-                    self?.connectionError = message
+                    self.connectionError = message
                     #if DEBUG
                     print("❌ Socket.IO error: \(message)")
                     #endif
                     if message.contains("Unauthorized") || message.contains("Authentication") {
-                        await self?.handleAuthError()
+                        await self.handleAuthError()
+                    } else if !self.isConnected {
+                        // 비인증 연결 오류 시 지수 백오프로 재연결
+                        self.scheduleReconnect()
                     }
                 }
             }
         }
 
         // Token lifecycle events — server session stays alive, just refresh REST API token
-        socket.on("token_expiring") { _, _ in
+        socket.on("token_expiring") { [weak self] _, _ in
             Task {
                 #if DEBUG
                 print("⚠️ Token expiring soon, refreshing REST API token...")
                 #endif
-                _ = await APIClient.shared.refreshAccessToken()
+                let refreshed = await APIClient.shared.refreshAccessToken()
+                if refreshed, let newToken = await APIClient.shared.getAccessToken() {
+                    await MainActor.run { self?.currentToken = newToken }
+                }
             }
         }
 
-        socket.on("token_refresh_needed") { _, _ in
+        socket.on("token_refresh_needed") { [weak self] _, _ in
             Task {
                 #if DEBUG
                 print("⚠️ Token expired, refreshing REST API token...")
                 #endif
-                _ = await APIClient.shared.refreshAccessToken()
+                let refreshed = await APIClient.shared.refreshAccessToken()
+                if refreshed, let newToken = await APIClient.shared.getAccessToken() {
+                    await MainActor.run { self?.currentToken = newToken }
+                }
             }
         }
 
@@ -403,6 +430,7 @@ class ChatSocketManager: ObservableObject {
 
         let refreshed = await APIClient.shared.refreshAccessToken()
         if refreshed, let newToken = await APIClient.shared.getAccessToken() {
+            currentToken = newToken
             forceReconnect(token: newToken)
         }
     }
@@ -418,8 +446,10 @@ class ChatSocketManager: ObservableObject {
 
         let senderId = "\(dict["senderId"] ?? "")"
         let senderName = dict["senderName"] as? String ?? "Unknown"
-        let typeString = dict["type"] as? String ?? "TEXT"
+        // Socket.IO broadcast may send "messageType" or "type"
+        let typeString = dict["messageType"] as? String ?? dict["type"] as? String ?? "TEXT"
         let messageType = MessageType(rawValue: typeString.uppercased()) ?? .text
+        let metadata = dict["metadata"] as? String
         let createdAtString = dict["createdAt"] as? String
         let createdAt = createdAtString.flatMap { ISO8601DateFormatter().date(from: $0) } ?? Date()
 
@@ -430,6 +460,7 @@ class ChatSocketManager: ObservableObject {
             senderName: senderName,
             content: content,
             messageType: messageType,
+            metadata: metadata,
             createdAt: createdAt,
             readBy: nil
         )

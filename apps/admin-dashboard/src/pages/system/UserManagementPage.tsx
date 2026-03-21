@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, RefreshCw, Edit2 } from 'lucide-react';
+import { Plus, Edit2 } from 'lucide-react';
 import {
   useUsersQuery,
   useCompanyMembersQuery,
@@ -7,7 +7,8 @@ import {
   useUpdateCompanyMemberMutation,
 } from '@/hooks/queries';
 import { Modal } from '@/components/ui';
-import { DataContainer } from '@/components/common';
+import { DataContainer, Pagination } from '@/components/common';
+import { useClientPagination } from '@/hooks/useClientPagination';
 import {
   FilterContainer,
   FilterSearch,
@@ -36,7 +37,7 @@ const CompanyMemberView: React.FC = () => {
   const [editMemo, setEditMemo] = useState('');
   const [editIsActive, setEditIsActive] = useState(true);
 
-  const { data: membersResponse, refetch, isLoading } = useCompanyMembersQuery(
+  const { data: membersResponse, isLoading } = useCompanyMembersQuery(
     filters.search ? { search: filters.search } : undefined,
   );
   const createMember = useCreateCompanyMemberMutation();
@@ -50,13 +51,14 @@ const CompanyMemberView: React.FC = () => {
   );
   const searchedUsers = usersResponse?.users || [];
 
-  const members = membersResponse?.members || [];
+  const allMembers = membersResponse?.members || [];
+  const { paginatedData: members, pagination, setPage } = useClientPagination(allMembers, 20);
 
   const stats = useMemo(() => ({
     total: membersResponse?.total || 0,
-    active: members.filter((m) => m.isActive).length,
-    inactive: members.filter((m) => !m.isActive).length,
-  }), [members, membersResponse]);
+    active: allMembers.filter((m) => m.isActive).length,
+    inactive: allMembers.filter((m) => !m.isActive).length,
+  }), [allMembers, membersResponse]);
 
   const handleAddMember = async (userId: number) => {
     try {
@@ -171,13 +173,6 @@ const CompanyMemberView: React.FC = () => {
             />
           </div>
           <div className="flex items-end gap-2">
-            <button
-              onClick={() => refetch()}
-              className="inline-flex items-center px-4 py-2 border border-white/15 rounded-lg hover:bg-white/5 transition-colors"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              새로고침
-            </button>
             <FilterResetButton
               hasActiveFilters={!!filters.search}
               onClick={() => setFilters({ search: '' })}
@@ -332,6 +327,7 @@ const CompanyMemberView: React.FC = () => {
             </table>
           </div>
         </DataContainer>
+        <Pagination pagination={pagination} onPageChange={setPage} />
       </div>
 
       {/* Add Member Modal */}

@@ -163,12 +163,16 @@ export class PaymentNatsController {
   }
 
   /**
-   * 분할결제 상태 조회 (그룹)
+   * 분할결제 상태 조회 (그룹 / 예약 / orderId)
    */
   @MessagePattern('payment.splitGet')
-  async getSplits(@Payload() data: { bookingGroupId?: number; bookingId?: number }) {
+  async getSplits(@Payload() data: { bookingGroupId?: number; bookingId?: number; orderId?: string }) {
     if (data.bookingGroupId) {
       const result = await this.splitService.getSplitsByBookingGroup(data.bookingGroupId);
+      return NatsResponse.success(result);
+    }
+    if (data.orderId) {
+      const result = await this.splitService.getSplitsByOrderId(data.orderId);
       return NatsResponse.success(result);
     }
     const result = await this.splitService.getSplitsByBooking(data.bookingId!);

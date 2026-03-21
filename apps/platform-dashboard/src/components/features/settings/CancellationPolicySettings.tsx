@@ -59,8 +59,7 @@ export const CancellationPolicySettings: React.FC = () => {
         });
       }
       setIsEditing(false);
-    } catch (error) {
-      console.error('Failed to save cancellation policy:', error);
+    } catch {
       toast.error('저장에 실패했습니다.');
     }
   };
@@ -94,7 +93,7 @@ export const CancellationPolicySettings: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* 정책 개요 */}
-      <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-4 border border-red-100">
+      <div className="bg-red-500/10 rounded-lg p-4 border border-red-500/20">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center text-xl">
             🚫

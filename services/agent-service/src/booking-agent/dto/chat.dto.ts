@@ -1,4 +1,19 @@
-import { IsString, IsOptional, IsNumber, IsBoolean, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsBoolean, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+
+/**
+ * 팀 멤버 DTO (중첩 객체 — whitelist 호환)
+ */
+export class TeamMemberDto {
+  @IsNumber()
+  userId: number;
+
+  @IsString()
+  userName: string;
+
+  @IsString()
+  userEmail: string;
+}
 
 /**
  * 채팅 요청 DTO
@@ -53,6 +68,10 @@ export class ChatRequestDto {
   selectedSlotPrice?: number;
 
   @IsOptional()
+  @IsString()
+  selectedGameName?: string;
+
+  @IsOptional()
   @IsBoolean()
   confirmBooking?: boolean;
 
@@ -82,31 +101,21 @@ export class ChatRequestDto {
 
   @IsOptional()
   @IsArray()
-  selectedSlotIds?: string[]; // 복수 슬롯 선택 (멀티팀)
-
-  @IsOptional()
-  @IsArray()
-  selectedSlots?: Array<{
-    slotId: string;
-    slotTime: string;
-    courseName: string;
-    price: number;
-  }>;
-
-  @IsOptional()
-  teams?: Array<{
-    teamNumber: number;
-    slotId: string;
-    members: Array<{
-      userId: number;
-      userName: string;
-      userEmail: string;
-    }>;
-  }>;
+  @ValidateNested({ each: true })
+  @Type(() => TeamMemberDto)
+  teamMembers?: TeamMemberDto[];
 
   @IsOptional()
   @IsBoolean()
-  confirmGroupBooking?: boolean;
+  nextTeam?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  finishGroup?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  sendReminder?: boolean;
 
   // ── 분할결제 완료 필드 ──
 
@@ -125,10 +134,11 @@ export class ChatRequestDto {
 export type ConversationState =
   | 'IDLE'                    // 초기 상태
   | 'COLLECTING'              // 정보 수집 중
+  | 'SELECTING_MEMBERS'       // 팀 멤버 선택 중
   | 'CONFIRMING'              // 예약 확인 중
-  | 'SELECTING_PARTICIPANTS'  // 그룹: 팀 편성 중
   | 'BOOKING'                 // 예약 진행 중
   | 'SETTLING'                // 더치페이 정산 중
+  | 'TEAM_COMPLETE'           // 1팀 완료, 다음 팀/종료 대기
   | 'COMPLETED'               // 완료
   | 'CANCELLED';              // 취소
 
@@ -140,11 +150,11 @@ export type ActionType =
   | 'SHOW_SLOTS'              // 타임슬롯 표시
   | 'SHOW_WEATHER'            // 날씨 정보 표시
   | 'CONFIRM_BOOKING'         // 예약 확인 UI
-  | 'CONFIRM_GROUP'           // 그룹 예약 확인 (결제방법 선택)
-  | 'SELECT_PARTICIPANTS'     // 팀 편성 UI
+  | 'SELECT_MEMBERS'          // 팀 멤버 선택 카드
   | 'SHOW_PAYMENT'            // 결제 카드 표시 (카드결제)
   | 'SPLIT_PAYMENT'           // 더치페이 결제 상태
   | 'SETTLEMENT_STATUS'       // 정산 현황
+  | 'TEAM_COMPLETE'           // 팀 완료 카드
   | 'BOOKING_COMPLETE';       // 예약 완료
 
 /**
@@ -202,6 +212,7 @@ export interface BookingSlots {
   location?: string;
   clubName?: string;
   clubId?: string;
+  gameName?: string;
   date?: string;
   time?: string;
   slotId?: string;
@@ -211,25 +222,26 @@ export interface BookingSlots {
   longitude?: number;
   regionName?: string;
   bookingId?: number;
+  bookingNumber?: string;
+  totalPrice?: number;
+  slotPrice?: number;
 
-  // 그룹 예약
+  // 팀 예약 (모든 예약에 적용)
   chatRoomId?: string;
-  bookingGroupId?: number;
   bookerId?: number;
-  selectedSlots?: Array<{
+  paymentMethod?: string;
+  groupMode?: boolean;
+  currentTeamNumber?: number;
+  currentTeamMembers?: Array<{ userId: number; userName: string; userEmail: string }>;
+  completedTeams?: Array<{
+    teamNumber: number;
+    bookingId: number;
+    bookingNumber: string;
     slotId: string;
     slotTime: string;
-    courseName: string;
-    price: number;
+    gameName: string;
+    members: Array<{ userId: number; userName: string }>;
+    totalPrice: number;
+    paymentMethod: string;
   }>;
-  teams?: Array<{
-    teamNumber: number;
-    slotId: string;
-    members: Array<{
-      userId: number;
-      userName: string;
-      userEmail: string;
-    }>;
-  }>;
-  paymentMethod?: string;
 }

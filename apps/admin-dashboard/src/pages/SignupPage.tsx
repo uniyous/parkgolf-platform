@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check } from 'lucide-react';
-import { Button, Input } from '@/components/ui';
+import { BrandLogo, Button, Input } from '@/components/ui';
 import type { AdminRole } from '../types';
 
 interface SignupFormData {
@@ -138,11 +138,9 @@ export const SignupPage: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-white/5 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
-            ParkMate 관리자
-          </h2>
-          <p className="mt-2 text-center text-sm text-white/60">
+        <div className="text-center">
+          <BrandLogo size="lg" className="justify-center mb-4" />
+          <p className="text-sm text-white/60">
             새 관리자 계정을 생성하세요
           </p>
         </div>

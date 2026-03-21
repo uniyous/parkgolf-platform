@@ -114,7 +114,6 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
       toast.info('코스 생성 기능은 향후 구현 예정입니다.');
       setShowAddCourse(false);
     } catch (error) {
-      console.error('Failed to create course:', error);
       toast.error('코스 생성에 실패했습니다.');
     }
   };
@@ -138,7 +137,6 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
       setSelectedCourse(null);
       toast.success('코스가 성공적으로 수정되었습니다.');
     } catch (error) {
-      console.error('Failed to update course:', error);
       toast.error('코스 수정에 실패했습니다.');
     }
   };
@@ -153,7 +151,6 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
 
       toast.success('코스가 성공적으로 삭제되었습니다.');
     } catch (error) {
-      console.error('Failed to delete course:', error);
       toast.error('코스 삭제에 실패했습니다.');
     }
   };
@@ -182,7 +179,6 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
       setShowAddHole(null);
       toast.success('홀이 성공적으로 추가되었습니다.');
     } catch (error) {
-      console.error('Failed to create hole:', error);
       toast.error('홀 추가에 실패했습니다.');
     }
   };
@@ -209,7 +205,6 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
       setSelectedHole(null);
       toast.success('홀이 성공적으로 수정되었습니다.');
     } catch (error) {
-      console.error('Failed to update hole:', error);
       toast.error('홀 수정에 실패했습니다.');
     }
   };
@@ -224,7 +219,6 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
 
       toast.success('홀이 성공적으로 삭제되었습니다.');
     } catch (error) {
-      console.error('Failed to delete hole:', error);
       toast.error('홀 삭제에 실패했습니다.');
     }
   };
@@ -273,7 +267,7 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4 flex-1 min-w-0">
                       <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <span className="text-xl font-bold text-white">{course.code}</span>
+                        <span className="text-xl font-bold text-white">{course.name?.charAt(0) || '?'}</span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="text-xl font-bold text-white truncate">
@@ -282,6 +276,9 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
                             <span className="ml-2 text-base font-normal text-white/50">({course.subtitle})</span>
                           )}
                         </h4>
+                        {course.code && (
+                          <p className="text-xs text-white/40 mt-0.5 truncate">{course.code}</p>
+                        )}
                         <div className="flex items-center flex-wrap gap-3 mt-2">
                           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-emerald-500/20 text-emerald-300">
                             Par {course.par}

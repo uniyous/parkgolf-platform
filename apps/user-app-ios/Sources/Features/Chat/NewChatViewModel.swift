@@ -128,7 +128,7 @@ final class NewChatViewModel: ObservableObject {
             do {
                 let request = CreateChatRoomRequest(
                     name: name,
-                    type: ChatRoomType.group.rawValue,
+                    type: ChatRoomType.channel.rawValue,
                     participantIds: selectedFriends.map { String($0.friendId) }
                 )
 

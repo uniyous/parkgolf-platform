@@ -29,7 +29,9 @@ export class BookingsController {
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page', example: 20 })
   @ApiQuery({ name: 'status', required: false, description: 'Filter by status' })
   @ApiQuery({ name: 'gameId', required: false, description: 'Filter by game ID' })
+  @ApiQuery({ name: 'clubId', required: false, description: 'Filter by club ID' })
   @ApiQuery({ name: 'userId', required: false, description: 'Filter by user ID' })
+  @ApiQuery({ name: 'paymentMethod', required: false, description: 'Filter by payment method (onsite/card/dutchpay)' })
   @ApiQuery({ name: 'startDate', required: false, description: 'Filter from date (YYYY-MM-DD)' })
   @ApiQuery({ name: 'endDate', required: false, description: 'Filter to date (YYYY-MM-DD)' })
   @ApiResponse({ status: 200, description: 'Bookings list retrieved successfully' })
@@ -41,14 +43,18 @@ export class BookingsController {
     @Query('limit') limit = 20,
     @Query('status') status?: string,
     @Query('gameId') gameId?: string,
+    @Query('clubId') clubId?: string,
     @Query('userId') userId?: string,
+    @Query('paymentMethod') paymentMethod?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
     const filters: Record<string, string | number | undefined> = {};
     if (status) filters.status = status;
     if (gameId) filters.gameId = gameId;
+    if (clubId) filters.clubId = clubId;
     if (userId) filters.userId = userId;
+    if (paymentMethod) filters.paymentMethod = paymentMethod;
     if (startDate) filters.startDate = startDate;
     if (endDate) filters.endDate = endDate;
     // AdminContext에서 companyId 주입
@@ -102,6 +108,30 @@ export class BookingsController {
 
     this.logger.log(`Fetching revenue statistics for range: ${dateRange.startDate} to ${dateRange.endDate}`);
     return this.bookingService.getRevenueStats(dateRange, token);
+  }
+
+  @Get('stats/clubs/:clubId')
+  @ApiOperation({ summary: 'Get club operation statistics' })
+  @ApiQuery({ name: 'startDate', required: false, description: 'Start date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'endDate', required: false, description: 'End date (YYYY-MM-DD)' })
+  @ApiResponse({ status: 200, description: 'Club operation statistics retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getClubOperationStats(
+    @BearerToken() token: string,
+    @Param('clubId') clubId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const defaultEndDate = new Date().toISOString().split('T')[0];
+    const defaultStartDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    const dateRange = {
+      startDate: startDate || defaultStartDate,
+      endDate: endDate || defaultEndDate,
+    };
+
+    this.logger.log(`Fetching club operation stats for clubId: ${clubId}, range: ${dateRange.startDate} to ${dateRange.endDate}`);
+    return this.bookingService.getClubOperationStats(parseInt(clubId, 10), dateRange, token);
   }
 
   @Get('payments/list')

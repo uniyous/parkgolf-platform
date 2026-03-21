@@ -58,7 +58,6 @@ export const GameBasicInfoTab: React.FC<GameBasicInfoTabProps> = ({ game, onUpda
       onUpdate();
       toast.success('라운드 정보가 수정되었습니다.');
     } catch (error) {
-      console.error('Failed to update game:', error);
       toast.error('라운드 정보 수정에 실패했습니다.');
     }
   };

@@ -14,6 +14,8 @@ import {
   Check,
   Calendar,
   Shield,
+  Undo2,
+  Split,
 } from 'lucide-react';
 import { AppLayout, Container } from '@/components/layout';
 import { GlassCard, LoadingView, EmptyState, Button } from '@/components/ui';
@@ -51,7 +53,7 @@ const FILTER_CONFIG: Record<NotificationFilter, {
   booking: {
     label: '예약',
     icon: Calendar,
-    types: ['BOOKING_CONFIRMED', 'BOOKING_CANCELLED', 'PAYMENT_SUCCESS', 'PAYMENT_FAILED'],
+    types: ['BOOKING_CONFIRMED', 'BOOKING_CANCELLED', 'REFUND_COMPLETED', 'PAYMENT_SUCCESS', 'PAYMENT_FAILED', 'SPLIT_PAYMENT_REQUEST'],
   },
   social: {
     label: '소셜',
@@ -389,12 +391,14 @@ function getNotificationIcon(type: NotificationType) {
   const icons: Record<NotificationType, typeof Bell> = {
     BOOKING_CONFIRMED: CheckCircle,
     BOOKING_CANCELLED: XCircle,
+    REFUND_COMPLETED: Undo2,
     PAYMENT_SUCCESS: CreditCard,
     PAYMENT_FAILED: AlertTriangle,
     FRIEND_REQUEST: UserPlus,
     FRIEND_ACCEPTED: Users,
     CHAT_MESSAGE: MessageCircle,
     SYSTEM_ALERT: Bell,
+    SPLIT_PAYMENT_REQUEST: Split,
   };
   return icons[type];
 }
@@ -403,12 +407,14 @@ function getNotificationIconColor(type: NotificationType): string {
   const colors: Record<NotificationType, string> = {
     BOOKING_CONFIRMED: '#10b981', // emerald
     BOOKING_CANCELLED: '#ef4444', // red
+    REFUND_COMPLETED: '#10b981', // emerald
     PAYMENT_SUCCESS: '#10b981', // emerald
     PAYMENT_FAILED: '#ef4444', // red
     FRIEND_REQUEST: '#f59e0b', // amber
     FRIEND_ACCEPTED: '#10b981', // emerald
     CHAT_MESSAGE: '#3b82f6', // blue
     SYSTEM_ALERT: '#f59e0b', // amber
+    SPLIT_PAYMENT_REQUEST: '#8b5cf6', // violet
   };
   return colors[type];
 }

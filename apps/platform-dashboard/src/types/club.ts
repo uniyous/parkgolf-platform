@@ -24,6 +24,7 @@ export type { Course, Hole, TeeBox, CourseStatus, CreateCourseDto, UpdateCourseD
 export type ClubStatus = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE' | 'SEASONAL_CLOSED';
 export type ClubType = 'PAID' | 'FREE';
 export type SeasonType = 'peak' | 'regular' | 'off';
+export type BookingMode = 'PLATFORM' | 'PARTNER';
 
 // 기본 엔티티 타입
 export interface Club {
@@ -51,6 +52,7 @@ export interface Club {
   facilities?: string[];
   latitude?: number;
   longitude?: number;
+  bookingMode: BookingMode;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

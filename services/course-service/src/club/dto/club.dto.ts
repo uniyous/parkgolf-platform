@@ -13,7 +13,7 @@ import {
   Max,
   ValidateNested,
 } from 'class-validator';
-import { Club, Course, ClubType } from '@prisma/client';
+import { Club, Course, ClubType, BookingMode } from '@prisma/client';
 import { CourseResponseDto } from '../../course/dto/course.dto';
 
 export enum ClubStatus {
@@ -88,6 +88,10 @@ export class CreateClubDto {
   @IsOptional()
   @IsEnum(ClubType)
   clubType?: ClubType;
+
+  @IsOptional()
+  @IsEnum(BookingMode)
+  bookingMode?: BookingMode;
 
   @IsOptional()
   @IsNumber()
@@ -169,6 +173,10 @@ export class UpdateClubDto {
   clubType?: ClubType;
 
   @IsOptional()
+  @IsEnum(BookingMode)
+  bookingMode?: BookingMode;
+
+  @IsOptional()
   @IsNumber()
   @Min(33)
   @Max(43)
@@ -232,6 +240,10 @@ export class ClubFilterDto {
   clubType?: ClubType;
 
   @IsOptional()
+  @IsEnum(BookingMode)
+  bookingMode?: BookingMode;
+
+  @IsOptional()
   @IsInt()
   @Min(9)
   minHoles?: number;
@@ -286,6 +298,7 @@ export class ClubResponseDto {
   totalCourses: number;
   status: ClubStatus;
   clubType: string;
+  bookingMode: string;
   latitude: number | null;
   longitude: number | null;
   operatingHours: Record<string, unknown> | null;
@@ -314,6 +327,7 @@ export class ClubResponseDto {
     dto.totalCourses = entity.totalCourses;
     dto.status = entity.status as ClubStatus;
     dto.clubType = entity.clubType;
+    dto.bookingMode = entity.bookingMode;
     dto.latitude = entity.latitude;
     dto.longitude = entity.longitude;
     dto.operatingHours = entity.operatingHours as Record<string, unknown> | null;

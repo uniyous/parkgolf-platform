@@ -351,7 +351,6 @@ export const initializeAuthFromStorage = () => {
       useAuthStore.getState().hydrateFromLogin(user, token);
       return true;
     } catch (error) {
-      console.error('Failed to parse cached user data:', error);
       useAuthStore.getState().logout();
       return false;
     }

@@ -51,14 +51,22 @@ private fun parseParticipants(data: Map<String, Any?>): List<ParticipantInfo> {
 fun SettlementStatusCard(
     data: Map<String, Any?>,
     currentUserId: Int? = null,
-    onSplitPaymentComplete: ((Boolean, String) -> Unit)? = null
+    onSplitPaymentComplete: ((Boolean, String) -> Unit)? = null,
+    onRequestSplitPayment: ((orderId: String, amount: Int) -> Unit)? = null,
+    onSendReminder: (() -> Unit)? = null,
+    onRefresh: (() -> Unit)? = null
 ) {
     val bookerId = (data["bookerId"] as? Number)?.toInt()
     val participants = remember(data) { parseParticipants(data) }
 
     // 부커이거나 currentUserId가 없으면 대시보드
     if (currentUserId == null || currentUserId == bookerId) {
-        BookerDashboardView(data = data, participants = participants)
+        BookerDashboardView(
+            data = data,
+            participants = participants,
+            onSendReminder = onSendReminder,
+            onRefresh = onRefresh
+        )
         return
     }
 
@@ -66,7 +74,12 @@ fun SettlementStatusCard(
     val myParticipant = participants.find { it.userId == currentUserId }
 
     if (myParticipant == null) {
-        BookerDashboardView(data = data, participants = participants)
+        BookerDashboardView(
+            data = data,
+            participants = participants,
+            onSendReminder = onSendReminder,
+            onRefresh = onRefresh
+        )
         return
     }
 
@@ -74,7 +87,17 @@ fun SettlementStatusCard(
         "PAID" -> ParticipantPaidView(participant = myParticipant)
         else -> ParticipantPaymentView(
             participant = myParticipant,
-            onPay = { orderId -> onSplitPaymentComplete?.invoke(true, orderId) }
+            clubName = data["clubName"]?.toString() ?: "",
+            gameName = data["gameName"]?.toString() ?: "",
+            date = data["date"]?.toString() ?: "",
+            slotTime = data["slotTime"]?.toString() ?: "",
+            onPay = { orderId ->
+                if (onRequestSplitPayment != null) {
+                    onRequestSplitPayment(orderId, myParticipant.amount)
+                } else {
+                    onSplitPaymentComplete?.invoke(true, orderId)
+                }
+            }
         )
     }
 }
@@ -82,13 +105,16 @@ fun SettlementStatusCard(
 @Composable
 private fun BookerDashboardView(
     data: Map<String, Any?>,
-    participants: List<ParticipantInfo>
+    participants: List<ParticipantInfo>,
+    onSendReminder: (() -> Unit)? = null,
+    onRefresh: (() -> Unit)? = null
 ) {
     val groupNumber = data["groupNumber"]?.toString() ?: ""
     val totalParticipants = (data["totalParticipants"] as? Number)?.toInt() ?: 0
     val paidCount = (data["paidCount"] as? Number)?.toInt() ?: 0
     val pricePerPerson = (data["pricePerPerson"] as? Number)?.toInt() ?: 0
     val totalPrice = (data["totalPrice"] as? Number)?.toInt() ?: 0
+    val expiredAt = data["expiredAt"]?.toString() ?: ""
     val allPaid = paidCount == totalParticipants
     val numberFormat = NumberFormat.getNumberInstance(Locale.KOREA)
 
@@ -98,6 +124,27 @@ private fun BookerDashboardView(
         animationSpec = tween(500),
         label = "progress"
     )
+
+    // Countdown timer
+    var remainingSeconds by remember { mutableIntStateOf(-1) }
+    var isExpired by remember { mutableStateOf(false) }
+
+    LaunchedEffect(expiredAt) {
+        if (expiredAt.isBlank() || allPaid) return@LaunchedEffect
+        try {
+            val expiry = Instant.parse(expiredAt)
+            while (true) {
+                val diff = ChronoUnit.SECONDS.between(Instant.now(), expiry).toInt()
+                if (diff <= 0) {
+                    isExpired = true
+                    remainingSeconds = 0
+                    break
+                }
+                remainingSeconds = diff
+                delay(1000)
+            }
+        } catch (_: Exception) { }
+    }
 
     Surface(
         shape = RoundedCornerShape(12.dp),
@@ -128,7 +175,7 @@ private fun BookerDashboardView(
                     )
                     Text(
                         text = "정산 현황",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = ParkOnPrimary
                     )
@@ -140,10 +187,33 @@ private fun BookerDashboardView(
                 ) {
                     Text(
                         text = if (allPaid) "완료" else "$paidCount/$totalParticipants",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Medium,
                         color = if (allPaid) ParkPrimary else ParkWarning,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            // Countdown timer (booker only)
+            if (!allPaid && remainingSeconds >= 0 && !isExpired) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Timer,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = ParkWarning
+                    )
+                    val m = remainingSeconds / 60
+                    val s = remainingSeconds % 60
+                    Text(
+                        text = "${"%02d".format(m)}:${"%02d".format(s)} 남음",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = ParkWarning
                     )
                 }
             }
@@ -172,12 +242,12 @@ private fun BookerDashboardView(
             ) {
                 Text(
                     text = "1인당 ${numberFormat.format(pricePerPerson)}원",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = ParkOnPrimary.copy(alpha = 0.6f)
                 )
                 Text(
                     text = "총 ${numberFormat.format(totalPrice)}원",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Medium,
                     color = ParkPrimary
                 )
@@ -195,7 +265,7 @@ private fun BookerDashboardView(
                     ) {
                         Text(
                             text = p.userName,
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.labelLarge,
                             color = ParkOnPrimary.copy(alpha = 0.7f)
                         )
                         when (p.status) {
@@ -209,7 +279,7 @@ private fun BookerDashboardView(
                                     modifier = Modifier.size(12.dp),
                                     tint = ParkPrimary
                                 )
-                                Text("완료", style = MaterialTheme.typography.labelSmall, color = ParkPrimary)
+                                Text("완료", style = MaterialTheme.typography.labelMedium, color = ParkPrimary)
                             }
                             "CANCELLED" -> Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -221,7 +291,7 @@ private fun BookerDashboardView(
                                     modifier = Modifier.size(12.dp),
                                     tint = ParkError
                                 )
-                                Text("취소", style = MaterialTheme.typography.labelSmall, color = ParkError)
+                                Text("취소", style = MaterialTheme.typography.labelMedium, color = ParkError)
                             }
                             else -> Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -233,7 +303,7 @@ private fun BookerDashboardView(
                                     modifier = Modifier.size(12.dp),
                                     tint = ParkWarning
                                 )
-                                Text("대기", style = MaterialTheme.typography.labelSmall, color = ParkWarning)
+                                Text("대기", style = MaterialTheme.typography.labelMedium, color = ParkWarning)
                             }
                         }
                     }
@@ -244,10 +314,52 @@ private fun BookerDashboardView(
             HorizontalDivider(color = ParkOnPrimary.copy(alpha = 0.05f))
             Text(
                 text = groupNumber,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
                 color = ParkOnPrimary.copy(alpha = 0.3f),
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
+
+            // Reminder + Refresh buttons (booker only, when not all paid)
+            if (!allPaid && (onSendReminder != null || onRefresh != null)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (onSendReminder != null) {
+                        OutlinedButton(
+                            onClick = onSendReminder,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = ParkWarning
+                            ),
+                            border = BorderStroke(1.dp, ParkWarning.copy(alpha = 0.3f))
+                        ) {
+                            Icon(
+                                Icons.Default.Notifications,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("리마인더", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                    if (onRefresh != null) {
+                        OutlinedButton(
+                            onClick = onRefresh,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = ParkOnPrimary.copy(alpha = 0.7f)
+                            ),
+                            border = BorderStroke(1.dp, ParkOnPrimary.copy(alpha = 0.2f))
+                        ) {
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("새로고침", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -255,6 +367,10 @@ private fun BookerDashboardView(
 @Composable
 private fun ParticipantPaymentView(
     participant: ParticipantInfo,
+    clubName: String = "",
+    gameName: String = "",
+    date: String = "",
+    slotTime: String = "",
     onPay: (String) -> Unit
 ) {
     var isPaying by remember { mutableStateOf(false) }
@@ -306,10 +422,71 @@ private fun ParticipantPaymentView(
                 )
                 Text(
                     text = "결제 요청",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = ParkOnPrimary
                 )
+            }
+
+            // 골프장/코스/날짜/시간 정보
+            if (clubName.isNotBlank() || gameName.isNotBlank() || date.isNotBlank() || slotTime.isNotBlank()) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (clubName.isNotBlank()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Place,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = ParkOnPrimary.copy(alpha = 0.4f)
+                            )
+                            Text(
+                                text = clubName,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = ParkOnPrimary.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                    if (gameName.isNotBlank()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Flag,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = ParkOnPrimary.copy(alpha = 0.4f)
+                            )
+                            Text(
+                                text = gameName,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = ParkOnPrimary.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                    val dateTime = listOf(date, slotTime).filter { it.isNotBlank() }.joinToString(" ")
+                    if (dateTime.isNotBlank()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Schedule,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = ParkOnPrimary.copy(alpha = 0.4f)
+                            )
+                            Text(
+                                text = dateTime,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = ParkOnPrimary.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                }
             }
 
             Text(
@@ -320,7 +497,7 @@ private fun ParticipantPaymentView(
             )
             Text(
                 text = "더치페이 결제 금액",
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
                 color = ParkOnPrimary.copy(alpha = 0.5f)
             )
 
@@ -340,7 +517,7 @@ private fun ParticipantPaymentView(
                     val s = remainingSeconds % 60
                     Text(
                         text = "${"%02d".format(m)}:${"%02d".format(s)} 남음",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Medium,
                         color = ParkWarning
                     )
@@ -350,7 +527,7 @@ private fun ParticipantPaymentView(
             if (isExpired) {
                 Text(
                     text = "결제 시간이 만료되었습니다",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = ParkError,
                     textAlign = TextAlign.Center
                 )
@@ -412,7 +589,7 @@ private fun ParticipantPaidView(participant: ParticipantInfo) {
                 )
                 Text(
                     text = "결제 완료",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = ParkPrimary
                 )

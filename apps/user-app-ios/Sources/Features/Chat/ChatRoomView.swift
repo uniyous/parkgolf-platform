@@ -9,6 +9,8 @@ struct ChatRoomView: View {
     @FocusState private var isInputFocused: Bool
     @State private var showInviteSheet = false
     @State private var showParticipantsSheet = false
+    @State private var showLeaveAlert = false
+    @State private var showPaymentSheet = false
 
     init(room: ChatRoom, currentUserId: String) {
         self.room = room
@@ -75,15 +77,13 @@ struct ChatRoomView: View {
                     Divider()
 
                     Button(role: .destructive) {
-                        Task {
-                            await viewModel.leaveChatRoom()
-                            dismiss()
-                        }
+                        showLeaveAlert = true
                     } label: {
                         Label("채팅방 나가기", systemImage: "rectangle.portrait.and.arrow.right")
                     }
                 } label: {
-                    Image(systemName: "ellipsis.vertical")
+                    Image(systemName: "ellipsis")
+                        .rotationEffect(.degrees(90))
                         .foregroundStyle(.white)
                 }
             }
@@ -106,9 +106,39 @@ struct ChatRoomView: View {
                 }
             )
         }
+        .alert("채팅방 나가기", isPresented: $showLeaveAlert) {
+            Button("취소", role: .cancel) { }
+            Button("나가기", role: .destructive) {
+                Task {
+                    await viewModel.leaveChatRoom()
+                    dismiss()
+                }
+            }
+        } message: {
+            Text("채팅방을 나가시겠습니까?")
+        }
+        .sheet(isPresented: $showPaymentSheet) {
+            if let payment = aiViewModel.pendingPayment {
+                TossPaymentView(
+                    clientKey: Configuration.Payment.tossClientKey,
+                    orderId: payment.orderId,
+                    orderName: payment.orderName,
+                    amount: payment.amount,
+                    onResult: { outcome in
+                        showPaymentSheet = false
+                        handlePaymentResult(outcome)
+                    },
+                    isPresented: $showPaymentSheet
+                )
+            }
+        }
         .task {
             await viewModel.loadMessages()
             await viewModel.connectSocket()
+            // 결제 복구: pendingPayment만 복원하고 sheet는 사용자가 직접 열도록 함
+            if let saved = aiViewModel.loadPendingPayment() {
+                aiViewModel.pendingPayment = saved
+            }
         }
         .onDisappear {
             viewModel.disconnectSocket()
@@ -138,30 +168,40 @@ struct ChatRoomView: View {
     // MARK: - Connection Status Banner
 
     private var connectionStatusBanner: some View {
-        HStack(spacing: ParkSpacing.xs) {
-            Image(systemName: "wifi.slash")
-                .font(.caption)
-                .foregroundStyle(.white.opacity(0.8))
+        HStack {
+            HStack(spacing: ParkSpacing.xs) {
+                Image(systemName: "wifi.slash")
+                    .font(.caption)
+                    .foregroundStyle(.white)
 
-            Text("연결 끊김")
-                .font(.parkCaption)
-                .foregroundStyle(.white.opacity(0.8))
+                Text("연결 끊김")
+                    .font(.parkCaption)
+                    .foregroundStyle(.white)
+            }
+
+            Spacer()
 
             Button {
                 Task {
                     await viewModel.forceReconnect()
                 }
             } label: {
-                Image(systemName: "arrow.clockwise")
-                    .font(.caption)
-                    .foregroundStyle(.white)
+                HStack(spacing: ParkSpacing.xxs) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.caption)
+                        .foregroundStyle(.white)
+                    Text("재연결")
+                        .font(.parkCaption)
+                        .foregroundStyle(.white)
+                }
+                .padding(.horizontal, ParkSpacing.xs)
+                .padding(.vertical, ParkSpacing.xxs)
             }
         }
         .padding(.vertical, ParkSpacing.xxs)
         .padding(.horizontal, ParkSpacing.sm)
-        .background(Color.parkWarning.opacity(0.8))
-        .clipShape(Capsule())
-        .padding(.top, ParkSpacing.xs)
+        .frame(maxWidth: .infinity)
+        .background(Color.parkWarning.opacity(0.9))
     }
 
     // MARK: - NATS Warning Banner
@@ -203,26 +243,108 @@ struct ChatRoomView: View {
                         }
                     }
 
+                    // 빈 상태 메시지
+                    if viewModel.messages.isEmpty && !aiViewModel.isAiMode {
+                        VStack(spacing: 12) {
+                            Image(systemName: "bubble.left.and.bubble.right")
+                                .font(.system(size: 40))
+                                .foregroundColor(.white.opacity(0.2))
+                            Text("대화를 시작해보세요!")
+                                .font(.body)
+                                .foregroundColor(.white.opacity(0.4))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 60)
+                    }
+
                     ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
-                        if message.messageType == .aiAssistant {
+                        if message.messageType == .aiAssistant && !isFilteredByTargetUserIds(message) {
                             // 연속 AI 메시지 그룹핑: 이전 메시지도 AI면 라벨 숨김
                             let prevIsAi = index > 0 && viewModel.messages[index - 1].messageType == .aiAssistant
 
                             AiMessageBubble(
                                 content: message.content,
-                                actions: aiViewModel.getActions(for: message.id),
+                                actions: aiViewModel.getActions(for: message.id, message: message),
                                 createdAt: message.createdAt,
                                 showLabel: !prevIsAi,
                                 onClubSelect: { clubId, clubName in
                                     aiViewModel.selectedClubId = clubId
-                                    sendAiFollowUp("\(clubName)(으)로 선택할게요")
+                                    sendAiFollowUp("\(clubName) 선택", request: AiChatRequest(
+                                        message: "\(clubName) 선택",
+                                        selectedClubId: clubId,
+                                        selectedClubName: clubName
+                                    ))
                                 },
-                                onSlotSelect: { slotId, time in
+                                onSlotSelect: { slotId, time, price, clubId, clubName, gameName in
                                     aiViewModel.selectedSlotId = slotId
-                                    sendAiFollowUp("\(time) 시간으로 예약해주세요")
+                                    var request = AiChatRequest(
+                                        message: "\(time) 선택",
+                                        selectedSlotId: slotId,
+                                        selectedSlotTime: time,
+                                        selectedSlotPrice: price
+                                    )
+                                    if let clubId = clubId {
+                                        request.selectedClubId = clubId
+                                        request.selectedClubName = clubName
+                                    }
+                                    request.selectedGameName = gameName
+                                    sendAiFollowUp("\(time) 선택", request: request)
                                 },
+                                onConfirmBooking: { paymentMethod in
+                                    sendAiFollowUp("예약 확인", request: AiChatRequest(message: "예약 확인", confirmBooking: true, paymentMethod: paymentMethod))
+                                },
+                                onCancelBooking: {
+                                    sendAiFollowUp("예약 취소", request: AiChatRequest(message: "예약 취소", cancelBooking: true))
+                                },
+                                onPaymentComplete: { success in
+                                    sendAiFollowUp(success ? "결제 완료" : "결제 취소", request: AiChatRequest(message: success ? "결제 완료" : "결제 취소", paymentComplete: true, paymentSuccess: success))
+                                },
+                                onRequestPayment: { orderId, orderName, amount in
+                                    let payment = AiChatViewModel.PendingPayment(orderId: orderId, orderName: orderName, amount: amount, type: "single")
+                                    aiViewModel.pendingPayment = payment
+                                    aiViewModel.savePendingPayment(payment)
+                                    showPaymentSheet = true
+                                },
+                                onConfirmGroup: { paymentMethod in
+                                    sendAiFollowUp("그룹 예약 확인", request: AiChatRequest(message: "그룹 예약 확인", paymentMethod: paymentMethod, confirmGroupBooking: true))
+                                },
+                                onCancelGroup: {
+                                    sendAiFollowUp("예약 취소", request: AiChatRequest(message: "예약 취소", cancelBooking: true))
+                                },
+                                onTeamConfirm: { teamsData in
+                                    let members = teamsData.flatMap { $0.members }
+                                    sendAiFollowUp("팀 편성 확인", request: AiChatRequest(message: "팀 편성 확인", teamMembers: members))
+                                },
+                                onSplitPaymentComplete: { success, orderId in
+                                    sendAiFollowUp(success ? "결제 완료" : "결제 실패", request: AiChatRequest(message: "분할결제 완료", splitPaymentComplete: true, splitOrderId: orderId))
+                                },
+                                onRequestSplitPayment: { orderId, amount in
+                                    let payment = AiChatViewModel.PendingPayment(orderId: orderId, orderName: "더치페이", amount: amount, type: "split")
+                                    aiViewModel.pendingPayment = payment
+                                    aiViewModel.savePendingPayment(payment)
+                                    showPaymentSheet = true
+                                },
+                                onNextTeam: {
+                                    sendAiFollowUp("다음 팀 예약", request: AiChatRequest(message: "다음 팀 예약", nextTeam: true))
+                                },
+                                onFinish: {
+                                    sendAiFollowUp("예약 종료", request: AiChatRequest(message: "예약 종료", finishGroup: true))
+                                },
+                                onSendReminder: {
+                                    sendAiFollowUp("리마인더 전송", request: AiChatRequest(message: "리마인더 전송", sendReminder: true))
+                                },
+                                onRefresh: {
+                                    sendAiFollowUp("정산 현황 확인")
+                                },
+                                currentUserId: Int(viewModel.currentUserId),
                                 selectedClubId: aiViewModel.selectedClubId,
                                 selectedSlotId: aiViewModel.selectedSlotId
+                            )
+                            .id(message.id)
+                        } else if message.messageType == .aiUser {
+                            AiUserMessageBubble(
+                                content: message.content,
+                                createdAt: message.createdAt
                             )
                             .id(message.id)
                         } else {
@@ -272,7 +394,7 @@ struct ChatRoomView: View {
         }
     }
 
-    // MARK: - Load More Button
+    // MARK: - Load More Indicator
 
     private var loadMoreButton: some View {
         Group {
@@ -280,20 +402,6 @@ struct ChatRoomView: View {
                 ProgressView()
                     .tint(.white)
                     .padding(.vertical, ParkSpacing.sm)
-            } else {
-                Button {
-                    Task {
-                        await viewModel.loadMoreMessages()
-                    }
-                } label: {
-                    HStack(spacing: ParkSpacing.xs) {
-                        Image(systemName: "arrow.up.circle")
-                        Text("이전 메시지 보기")
-                    }
-                    .font(.parkCaption)
-                    .foregroundStyle(.white.opacity(0.7))
-                    .padding(.vertical, ParkSpacing.sm)
-                }
             }
         }
     }
@@ -334,7 +442,7 @@ struct ChatRoomView: View {
                         .shadow(color: Color.parkPrimary.opacity(0.3), radius: 3)
 
                     Text("AI 예약 도우미")
-                        .font(.caption2)
+                        .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundColor(Color.parkPrimary)
                 }
@@ -356,7 +464,7 @@ struct ChatRoomView: View {
                     }
 
                     Text(aiViewModel.aiLoadingText)
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundColor(.white.opacity(0.5))
                 }
                 .padding(.horizontal, 14)
@@ -375,25 +483,55 @@ struct ChatRoomView: View {
         }
     }
 
+    // MARK: - Helpers
+
+    /// targetUserIds + bookerUserId가 있는 브로드캐스트 메시지가 현재 사용자에게 해당하지 않으면 true 반환
+    private func isFilteredByTargetUserIds(_ message: ChatMessage) -> Bool {
+        guard let metadata = message.metadata,
+              let data = metadata.data(using: .utf8),
+              let meta = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let targetUserIds = meta["targetUserIds"] as? [Any] else {
+            return false
+        }
+        let targetIds = targetUserIds.compactMap { id -> Int? in
+            if let intId = id as? Int { return intId }
+            if let strId = id as? String { return Int(strId) }
+            return nil
+        }
+        guard !targetIds.isEmpty, let myId = Int(viewModel.currentUserId) else {
+            return false
+        }
+        if targetIds.contains(myId) { return false }
+        // 진행자(bookerUserId)도 대상에 포함
+        if let bookerUserId = meta["bookerUserId"] as? Int, bookerUserId == myId {
+            return false
+        }
+        return true
+    }
+
     // MARK: - AI Follow-up
 
-    private func sendAiFollowUp(_ message: String) {
+    private func sendAiFollowUp(_ message: String, request: AiChatRequest? = nil) {
         Task {
-            // 사용자 후속 메시지를 로컬에 추가
+            // 사용자 후속 메시지를 로컬에 추가 (AI_USER 타입)
             let userMsg = ChatMessage(
                 id: UUID().uuidString,
                 roomId: room.id,
                 senderId: viewModel.currentUserId,
                 senderName: "나",
                 content: message,
-                messageType: .text,
+                messageType: .aiUser,
                 createdAt: Date(),
                 readBy: nil
             )
             viewModel.messages.append(userMsg)
 
-            // AI에 메시지 전송
-            await aiViewModel.sendAiMessage(roomId: room.id, message: message)
+            // AI에 메시지 전송 (구조화된 요청 또는 텍스트)
+            if let request = request {
+                await aiViewModel.sendAiRequest(roomId: room.id, request: request)
+            } else {
+                await aiViewModel.sendAiMessage(roomId: room.id, message: message)
+            }
 
             // 에러 발생 시 입력 복원
             if aiViewModel.lastError != nil {
@@ -425,87 +563,148 @@ struct ChatRoomView: View {
         }
     }
 
+    // MARK: - Payment Result Handler
+
+    private func handlePaymentResult(_ outcome: TossPaymentOutcome) {
+        guard let payment = aiViewModel.pendingPayment else { return }
+
+        switch outcome {
+        case .success(let paymentKey, let orderId, let amount):
+            Task {
+                let paymentService = PaymentService()
+                let confirmRequest = ConfirmPaymentRequest(paymentKey: paymentKey, orderId: orderId, amount: amount)
+                do {
+                    if payment.type == "split" {
+                        _ = try await paymentService.confirmSplitPayment(request: confirmRequest)
+                        aiViewModel.clearPendingPayment()
+                        sendAiFollowUp("결제 완료", request: AiChatRequest(message: "분할결제 완료", splitPaymentComplete: true, splitOrderId: orderId))
+                    } else {
+                        _ = try await paymentService.confirmPayment(request: confirmRequest)
+                        aiViewModel.clearPendingPayment()
+                        sendAiFollowUp("결제 완료", request: AiChatRequest(message: "결제 완료", paymentComplete: true, paymentSuccess: true))
+                    }
+                } catch {
+                    #if DEBUG
+                    print("Payment confirm failed: \(error), checking status...")
+                    #endif
+                    // Fallback: 서버 상태 확인
+                    do {
+                        let status = try await paymentService.getPaymentByOrderId(orderId: orderId)
+                        if status.status == "DONE" || status.status == "PAID" {
+                            aiViewModel.clearPendingPayment()
+                            if payment.type == "split" {
+                                sendAiFollowUp("결제 완료", request: AiChatRequest(message: "분할결제 완료", splitPaymentComplete: true, splitOrderId: orderId))
+                            } else {
+                                sendAiFollowUp("결제 완료", request: AiChatRequest(message: "결제 완료", paymentComplete: true, paymentSuccess: true))
+                            }
+                        } else {
+                            notifyPaymentFailed(payment)
+                        }
+                    } catch {
+                        notifyPaymentFailed(payment)
+                    }
+                }
+            }
+        case .failure, .cancelled:
+            notifyPaymentFailed(payment)
+        }
+    }
+
+    private func notifyPaymentFailed(_ payment: AiChatViewModel.PendingPayment) {
+        aiViewModel.clearPendingPayment()
+        if payment.type == "split" {
+            sendAiFollowUp("결제 실패", request: AiChatRequest(message: "결제 실패", splitPaymentComplete: true, splitOrderId: payment.orderId))
+        } else {
+            sendAiFollowUp("결제 취소", request: AiChatRequest(message: "결제 취소", paymentComplete: true, paymentSuccess: false))
+        }
+    }
+
     // MARK: - Message Input
 
     private var messageInput: some View {
-        HStack(spacing: ParkSpacing.sm) {
-            Button {
-                // Add attachment
-            } label: {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(.white.opacity(0.6))
-            }
+        VStack(spacing: 0) {
+            Divider()
+                .background(Color.white.opacity(0.1))
 
-            TextField(
-                aiViewModel.isAiMode ? "AI에게 예약 요청하기..." : "메시지 입력",
-                text: $viewModel.inputText,
-                axis: .vertical
-            )
-                .textFieldStyle(.plain)
-                .padding(.horizontal, ParkSpacing.sm)
-                .padding(.vertical, ParkSpacing.xs)
-                .background(
-                    aiViewModel.isAiMode
-                        ? Color.parkPrimary.opacity(0.15)
-                        : Color.white.opacity(0.15)
+            HStack(spacing: ParkSpacing.xs) {
+                TextField(
+                    aiViewModel.isAiMode ? "AI에게 예약 요청하기..." : "메시지 입력...",
+                    text: $viewModel.inputText,
+                    axis: .vertical
                 )
-                .clipShape(RoundedRectangle(cornerRadius: ParkRadius.full))
-                .overlay(
-                    RoundedRectangle(cornerRadius: ParkRadius.full)
-                        .stroke(
-                            aiViewModel.isAiMode ? Color.parkPrimary.opacity(0.4) : Color.clear,
-                            lineWidth: 1
-                        )
-                )
-                .foregroundStyle(.white)
-                .focused($isInputFocused)
-                .lineLimit(1...5)
-                .onSubmit {
-                    // 키보드 엔터키로 전송하지 않음 (멀티라인)
-                }
-                .task(id: viewModel.inputText) {
-                    // Debounce typing indicator (300ms)
-                    try? await Task.sleep(nanoseconds: 300_000_000)
-                    if !aiViewModel.isAiMode {
-                        viewModel.sendTypingIndicator(!viewModel.inputText.isEmpty)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, ParkSpacing.sm)
+                    .padding(.vertical, 10)
+                    .background(
+                        aiViewModel.isAiMode
+                            ? Color.parkPrimary.opacity(0.15)
+                            : Color.white.opacity(0.1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: ParkRadius.full))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: ParkRadius.full)
+                            .stroke(
+                                aiViewModel.isAiMode
+                                    ? Color.parkPrimary.opacity(0.4)
+                                    : Color.white.opacity(0.1),
+                                lineWidth: 1
+                            )
+                    )
+                    .foregroundStyle(.white)
+                    .focused($isInputFocused)
+                    .lineLimit(1...5)
+                    .onSubmit {
+                        // 키보드 엔터키로 전송하지 않음 (멀티라인)
+                    }
+                    .task(id: viewModel.inputText) {
+                        // Debounce typing indicator (300ms)
+                        try? await Task.sleep(nanoseconds: 300_000_000)
+                        if !aiViewModel.isAiMode {
+                            viewModel.sendTypingIndicator(!viewModel.inputText.isEmpty)
+                        }
+                    }
+
+                AiButton(isActive: aiViewModel.isAiMode) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        aiViewModel.toggleAiMode()
                     }
                 }
 
-            AiButton(isActive: aiViewModel.isAiMode) {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    aiViewModel.toggleAiMode()
-                }
-            }
-
-            Button {
-                if aiViewModel.isAiMode {
-                    let text = viewModel.inputText
-                    viewModel.inputText = ""
-                    sendAiFollowUp(text)
-                } else {
-                    Task {
-                        await viewModel.sendMessage()
-                    }
-                }
-            } label: {
-                Group {
-                    if aiViewModel.isAiLoading {
-                        ProgressView()
-                            .tint(Color.parkPrimary)
-                            .frame(width: 28, height: 28)
+                Button {
+                    if aiViewModel.isAiMode {
+                        let text = viewModel.inputText
+                        viewModel.inputText = ""
+                        sendAiFollowUp(text)
                     } else {
-                        Image(systemName: viewModel.isSending ? "arrow.up.circle" : "arrow.up.circle.fill")
-                            .font(.title)
-                            .foregroundStyle(viewModel.inputText.isEmpty ? .white.opacity(0.4) : Color.parkPrimary)
+                        Task {
+                            await viewModel.sendMessage()
+                        }
                     }
+                } label: {
+                    Group {
+                        if aiViewModel.isAiLoading {
+                            ProgressView()
+                                .tint(.white)
+                                .frame(width: 20, height: 20)
+                        } else {
+                            Image(systemName: "paperplane.fill")
+                                .font(.system(size: 16))
+                                .foregroundStyle(.white)
+                        }
+                    }
+                    .frame(width: 40, height: 40)
+                    .background(
+                        viewModel.inputText.isEmpty
+                            ? Color.white.opacity(0.1)
+                            : Color.parkPrimary
+                    )
+                    .clipShape(Circle())
                 }
+                .disabled(viewModel.inputText.isEmpty || viewModel.isSending || aiViewModel.isAiLoading)
             }
-            .disabled(viewModel.inputText.isEmpty || viewModel.isSending || aiViewModel.isAiLoading)
+            .padding(.horizontal, ParkSpacing.md)
+            .padding(.vertical, ParkSpacing.sm)
         }
-        .padding(.horizontal, ParkSpacing.md)
-        .padding(.vertical, ParkSpacing.sm)
-        .background(Color.black.opacity(0.6))
     }
 }
 
@@ -555,11 +754,11 @@ struct MessageBubble: View {
         VStack(alignment: isCurrentUser ? .trailing : .leading, spacing: 2) {
             if isCurrentUser, let readBy = message.readBy, readBy.count > 1 {
                 Text("읽음")
-                    .font(.system(size: 10))
+                    .font(.system(size: 12))
                     .foregroundStyle(Color.parkPrimary.opacity(0.8))
             }
             Text(formatTime(message.createdAt))
-                .font(.system(size: 10))
+                .font(.system(size: 12))
                 .foregroundStyle(.white.opacity(0.5))
         }
     }
@@ -848,7 +1047,7 @@ struct ChatRoomViewWrapper: View {
             room: ChatRoom(
                 id: "1",
                 name: "주말 라운딩",
-                type: .group,
+                type: .channel,
                 participants: [],
                 lastMessage: nil,
                 unreadCount: 0,

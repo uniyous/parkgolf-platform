@@ -79,12 +79,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Google Auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
         with:
           install_components: 'gke-gcloud-auth-plugin'
 
@@ -164,7 +164,7 @@ jobs:
         working-directory: ${{ needs.setup.outputs.tf_dir }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -172,7 +172,7 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
 
       - name: Google Auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
@@ -222,12 +222,12 @@ jobs:
     environment: ${{ needs.setup.outputs.environment }}
     steps:
       - name: Google Auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
         with:
           install_components: 'gke-gcloud-auth-plugin'
 
@@ -316,6 +316,7 @@ jobs:
             --from-literal=TOSS_SECRET_KEY='${{ secrets.TOSS_SECRET_KEY }}' \
             --from-literal=TOSS_SECURITY_KEY='${{ secrets.TOSS_SECURITY_KEY }}' \
             --from-literal=DEEPSEEK_API_KEY='${{ secrets.DEEPSEEK_API_KEY }}' \
+            --from-literal=PARTNER_ENCRYPTION_KEY='${{ secrets.PARTNER_ENCRYPTION_KEY }}' \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Create ConfigMap
@@ -465,12 +466,14 @@ jobs:
             --env="PGPASSWORD=${{ secrets.DB_PASSWORD }}" \
             -- sh -c "
               until pg_isready -h postgres; do sleep 2; done
-              psql -h postgres -c 'CREATE DATABASE iam_db;' 2>/dev/null || echo 'iam_db exists'
-              psql -h postgres -c 'CREATE DATABASE course_db;' 2>/dev/null || echo 'course_db exists'
-              psql -h postgres -c 'CREATE DATABASE booking_db;' 2>/dev/null || echo 'booking_db exists'
-              psql -h postgres -c 'CREATE DATABASE chat_db;' 2>/dev/null || echo 'chat_db exists'
-              psql -h postgres -c 'CREATE DATABASE notify_db;' 2>/dev/null || echo 'notify_db exists'
-              psql -h postgres -c 'CREATE DATABASE payment_db;' 2>/dev/null || echo 'payment_db exists'
+              for db in iam_db course_db booking_db chat_db notify_db payment_db partner_db; do
+                if psql -h postgres -tAc \"SELECT 1 FROM pg_database WHERE datname='\$db'\" | grep -q 1; then
+                  echo \"\$db already exists, skipping\"
+                else
+                  psql -h postgres -c \"CREATE DATABASE \$db;\"
+                  echo \"\$db created\"
+                fi
+              done
               echo 'Databases initialized'
             "
 
@@ -650,12 +653,12 @@ jobs:
     environment: ${{ needs.setup.outputs.environment }}
     steps:
       - name: Google Auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
         with:
           install_components: 'gke-gcloud-auth-plugin'
 
@@ -677,8 +680,32 @@ jobs:
             --from-literal=TOSS_SECRET_KEY='${{ secrets.TOSS_SECRET_KEY }}' \
             --from-literal=TOSS_SECURITY_KEY='${{ secrets.TOSS_SECURITY_KEY }}' \
             --from-literal=DEEPSEEK_API_KEY='${{ secrets.DEEPSEEK_API_KEY }}' \
+            --from-literal=PARTNER_ENCRYPTION_KEY='${{ secrets.PARTNER_ENCRYPTION_KEY }}' \
             --dry-run=client -o yaml | kubectl apply -f -
           echo "Secrets updated"
+
+      - name: Initialize Databases
+        run: |
+          echo "Ensuring all databases exist..."
+          kubectl run postgres-init-${{ github.run_id }} \
+            --rm -i --restart=Never \
+            --namespace=${{ needs.setup.outputs.namespace }} \
+            --image=postgres:15-alpine \
+            --env="PGHOST=postgres" \
+            --env="PGUSER=parkgolf" \
+            --env="PGPASSWORD=${{ secrets.DB_PASSWORD }}" \
+            -- sh -c "
+              until pg_isready -h postgres; do sleep 2; done
+              for db in iam_db course_db booking_db chat_db notify_db payment_db partner_db; do
+                if psql -h postgres -tAc \"SELECT 1 FROM pg_database WHERE datname='\$db'\" | grep -q 1; then
+                  echo \"\$db already exists, skipping\"
+                else
+                  psql -h postgres -c \"CREATE DATABASE \$db;\"
+                  echo \"\$db created\"
+                fi
+              done
+              echo 'Databases initialized'
+            "
 
       - name: Update ConfigMap
         run: |
@@ -731,12 +758,12 @@ jobs:
           exit 1
 
       - name: Google Auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
 
       - name: Delete GKE Cluster
         run: |
@@ -820,7 +847,7 @@ jobs:
           exit 1
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -828,7 +855,7 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
 
       - name: Google Auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 

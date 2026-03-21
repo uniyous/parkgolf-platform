@@ -2,13 +2,25 @@ import SwiftUI
 
 struct SlotCardView: View {
     let data: Any
-    var onSelect: ((String, String) -> Void)?
+    var onSelect: ((String, String, Int, String?, String?, String?) -> Void)?
     var selectedSlotId: String?
 
+    private var dataDict: [String: Any]? {
+        data as? [String: Any]
+    }
+
     private var slots: [[String: Any]] {
-        guard let dict = data as? [String: Any],
+        guard let dict = dataDict,
               let slots = dict["slots"] as? [[String: Any]] else { return [] }
         return slots
+    }
+
+    private var clubId: String? {
+        dataDict?["clubId"] as? String
+    }
+
+    private var clubName: String? {
+        dataDict?["clubName"] as? String
     }
 
     private var hasSelection: Bool { selectedSlotId != nil }
@@ -18,14 +30,14 @@ struct SlotCardView: View {
             ForEach(Array(slots.enumerated()), id: \.offset) { _, slot in
                 let id = slot["id"] as? String ?? ""
                 let time = slot["time"] as? String ?? ""
-                let courseName = slot["courseName"] as? String ?? ""
+                let gameName = slot["gameName"] as? String ?? ""
                 let price = slot["price"] as? Int ?? 0
                 let isSelected = selectedSlotId == id
                 let isDisabled = hasSelection && !isSelected
 
                 Button {
                     if !isDisabled {
-                        onSelect?(id, time)
+                        onSelect?(id, time, price, clubId, clubName, gameName)
                     }
                 } label: {
                     ZStack(alignment: .topTrailing) {
@@ -35,17 +47,17 @@ struct SlotCardView: View {
                                     .font(.system(size: 10))
                                     .foregroundColor(isSelected ? Color.parkPrimary : Color.parkPrimary)
                                 Text(time)
-                                    .font(.subheadline)
+                                    .font(.title3)
                                     .fontWeight(.semibold)
                                     .foregroundColor(.white)
                             }
 
-                            Text(courseName)
-                                .font(.caption)
+                            Text(gameName)
+                                .font(.body)
                                 .foregroundColor(.white.opacity(0.6))
 
                             Text("₩\(price.formatted())")
-                                .font(.caption)
+                                .font(.body)
                                 .foregroundColor(Color.parkPrimary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)

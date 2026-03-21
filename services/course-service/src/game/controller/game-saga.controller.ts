@@ -1,14 +1,16 @@
-import { Controller, Logger, Inject } from '@nestjs/common';
+import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { ClientProxy } from '@nestjs/microservices';
 import { GameTimeSlotService } from '../service/game-time-slot.service';
 
 /**
  * Saga NATS 컨트롤러
  *
- * booking-service로부터 수신하는 Saga 요청 처리:
- * - slot.reserve: 슬롯 예약 요청 → slot.reserved 또는 slot.reserve.failed 발행
- * - slot.release: 슬롯 해제 요청 → slot.released 발행
+ * booking-service로부터 수신하는 Saga 요청 처리 (Request-Reply):
+ * - slot.reserve: 슬롯 예약 요청 → { success: true/false } 응답
+ * - slot.release: 슬롯 해제 요청 → { success: true/false } 응답
+ *
+ * Note: Saga 후속 처리(handleSlotReserved/handleSlotReserveFailed)는
+ * booking-service OutboxProcessor가 응답 수신 후 직접 호출합니다.
  */
 @Controller()
 export class GameSagaController {
@@ -16,14 +18,13 @@ export class GameSagaController {
 
   constructor(
     private readonly gameTimeSlotService: GameTimeSlotService,
-    @Inject('BOOKING_SERVICE') private readonly bookingServiceClient: ClientProxy,
   ) {}
 
   /**
    * 슬롯 예약 요청 핸들러 (Request-Reply 패턴)
    *
    * booking-service의 OutboxProcessor가 발행한 slot.reserve 메시지 처리
-   * 성공/실패에 따라 slot.reserved 또는 slot.reserve.failed 이벤트 발행
+   * 성공/실패를 응답으로 반환 (booking-service가 직접 후속 처리)
    */
   @MessagePattern('slot.reserve')
   async handleSlotReserve(@Payload() data: {
@@ -46,48 +47,18 @@ export class GameSagaController {
 
       const elapsed = Date.now() - startTime;
       if (result.success) {
-        // 성공: slot.reserved 이벤트 발행
-        const reservedEvent = {
-          bookingId: data.bookingId,
-          gameTimeSlotId: data.gameTimeSlotId,
-          playerCount: data.playerCount,
-          reservedAt: new Date().toISOString(),
-        };
-
-        this.bookingServiceClient.emit('slot.reserved', reservedEvent);
-        this.logger.log(`[Saga] SLOT_RESERVE SUCCESS in ${elapsed}ms - bookingId=${data.bookingId}, emitting slot.reserved`);
+        this.logger.log(`[Saga] SLOT_RESERVE SUCCESS in ${elapsed}ms - bookingId=${data.bookingId}`);
         this.logger.log(`[Saga] ========== SLOT_RESERVE COMPLETED (SUCCESS) ==========`);
-
         return { success: true, message: 'Slot reserved successfully' };
       } else {
-        // 실패: slot.reserve.failed 이벤트 발행
-        const failedEvent = {
-          bookingId: data.bookingId,
-          gameTimeSlotId: data.gameTimeSlotId,
-          reason: result.error || 'Unknown error',
-          failedAt: new Date().toISOString(),
-        };
-
-        this.bookingServiceClient.emit('slot.reserve.failed', failedEvent);
-        this.logger.warn(`[Saga] SLOT_RESERVE FAILED in ${elapsed}ms - bookingId=${data.bookingId}, reason="${result.error}", emitting slot.reserve.failed`);
+        this.logger.warn(`[Saga] SLOT_RESERVE FAILED in ${elapsed}ms - bookingId=${data.bookingId}, reason="${result.error}"`);
         this.logger.log(`[Saga] ========== SLOT_RESERVE COMPLETED (FAILED) ==========`);
-
         return { success: false, error: result.error };
       }
     } catch (error) {
       const elapsed = Date.now() - startTime;
-      // 예외 발생: slot.reserve.failed 이벤트 발행
-      const failedEvent = {
-        bookingId: data.bookingId,
-        gameTimeSlotId: data.gameTimeSlotId,
-        reason: error.message || 'Internal error',
-        failedAt: new Date().toISOString(),
-      };
-
-      this.bookingServiceClient.emit('slot.reserve.failed', failedEvent);
-      this.logger.error(`[Saga] SLOT_RESERVE EXCEPTION in ${elapsed}ms - bookingId=${data.bookingId}, error="${error.message}", emitting slot.reserve.failed`);
+      this.logger.error(`[Saga] SLOT_RESERVE EXCEPTION in ${elapsed}ms - bookingId=${data.bookingId}, error="${error.message}"`);
       this.logger.log(`[Saga] ========== SLOT_RESERVE COMPLETED (EXCEPTION) ==========`);
-
       return { success: false, error: error.message };
     }
   }
@@ -116,17 +87,7 @@ export class GameSagaController {
       );
 
       if (result.success) {
-        // 성공: slot.released 이벤트 발행
-        const releasedEvent = {
-          bookingId: data.bookingId,
-          gameTimeSlotId: data.gameTimeSlotId,
-          playerCount: data.playerCount,
-          releasedAt: new Date().toISOString(),
-        };
-
-        this.bookingServiceClient.emit('slot.released', releasedEvent);
-        this.logger.log(`[Saga] Emitted slot.released for booking ${data.bookingId}`);
-
+        this.logger.log(`[Saga] Slot released for booking ${data.bookingId}`);
         return { success: true, message: 'Slot released successfully' };
       } else {
         this.logger.error(`[Saga] Failed to release slot for booking ${data.bookingId}: ${result.error}`);

@@ -5,8 +5,8 @@ import { unwrapResponse, extractPaginatedList, type BffResponse, type PaginatedR
 // 타입 정의
 // ============================================
 
-export type ChatRoomType = 'DIRECT' | 'GROUP' | 'BOOKING';
-export type MessageType = 'TEXT' | 'IMAGE' | 'SYSTEM' | 'BOOKING_INVITE' | 'AI_ASSISTANT';
+export type ChatRoomType = 'DIRECT' | 'CHANNEL' | 'BOOKING';
+export type MessageType = 'TEXT' | 'IMAGE' | 'SYSTEM' | 'BOOKING_INVITE' | 'AI_USER' | 'AI_ASSISTANT';
 
 export interface ChatParticipant {
   id: string;
@@ -25,6 +25,7 @@ export interface ChatMessage {
   senderName: string;
   content: string;
   messageType: MessageType;
+  metadata?: string;
   createdAt: string;
   readBy: string[] | null;
 }
@@ -61,8 +62,8 @@ export interface MessagesResponse {
 // AI Chat Types
 // ============================================
 
-export type ConversationState = 'IDLE' | 'COLLECTING' | 'CONFIRMING' | 'SELECTING_PARTICIPANTS' | 'BOOKING' | 'SETTLING' | 'COMPLETED' | 'CANCELLED';
-export type ActionType = 'SHOW_CLUBS' | 'SHOW_SLOTS' | 'SHOW_WEATHER' | 'CONFIRM_BOOKING' | 'CONFIRM_GROUP' | 'SELECT_PARTICIPANTS' | 'SHOW_PAYMENT' | 'SPLIT_PAYMENT' | 'SETTLEMENT_STATUS' | 'BOOKING_COMPLETE';
+export type ConversationState = 'IDLE' | 'COLLECTING' | 'SELECTING_MEMBERS' | 'CONFIRMING' | 'BOOKING' | 'SETTLING' | 'TEAM_COMPLETE' | 'COMPLETED' | 'CANCELLED';
+export type ActionType = 'SHOW_CLUBS' | 'SHOW_SLOTS' | 'SHOW_WEATHER' | 'CONFIRM_BOOKING' | 'SELECT_MEMBERS' | 'SHOW_PAYMENT' | 'SPLIT_PAYMENT' | 'SETTLEMENT_STATUS' | 'TEAM_COMPLETE' | 'BOOKING_COMPLETE';
 
 export interface ChatAction {
   type: ActionType;
@@ -110,7 +111,7 @@ export interface SlotCardData {
     endTime: string;
     availableSpots: number;
     price: number;
-    courseName: string;
+    gameName: string;
   }>;
 }
 
@@ -144,7 +145,12 @@ export interface ConfirmBookingData {
   time: string;
   playerCount: number;
   price: number;
-  courseName?: string;
+  gameName?: string;
+  // 그룹 예약 시
+  teamNumber?: number;
+  members?: Array<{ userId: number; userName: string }>;
+  pricePerPerson?: number;
+  groupMode?: boolean;
 }
 
 export interface PaymentCardData {
@@ -158,57 +164,59 @@ export interface PaymentCardData {
   playerCount: number;
 }
 
-export interface ConfirmGroupData {
-  clubName: string;
-  date: string;
-  teamCount: number;
-  slots: Array<{
-    slotId: string;
-    slotTime: string;
-    courseName: string;
-    price: number;
-  }>;
-  maxParticipants: number;
-  pricePerPerson: number;
-  totalPrice: number;
-}
-
 export interface TeamMember {
   userId: number;
   userName: string;
   userEmail: string;
 }
 
-export interface SelectParticipantsData {
-  clubId?: string;
+export interface SelectMembersData {
+  teamNumber: number;
   clubName: string;
   date: string;
-  pricePerPerson: number;
-  teams: Array<{
+  maxPlayers: number;
+  assignedTeams: Array<{
     teamNumber: number;
-    slotId: string;
     slotTime: string;
-    courseName: string;
-    maxPlayers: number;
-    members: TeamMember[];
+    gameName: string;
+    members: Array<{ userId: number; userName: string }>;
   }>;
-  unassigned: TeamMember[];
-  availableSlots: Array<{
-    slotId: string;
-    slotTime: string;
-    courseName: string;
-    maxPlayers: number;
+  availableMembers: Array<{
+    userId: number;
+    userName: string;
+    userEmail: string;
   }>;
 }
 
+export interface TeamCompleteData {
+  teamNumber: number;
+  bookingId: number;
+  bookingNumber: string;
+  clubName: string;
+  date: string;
+  slotTime: string;
+  gameName: string;
+  participants: Array<{ userId: number; userName: string }>;
+  totalPrice: number;
+  paymentMethod: string;
+  hasMoreTeams: boolean;
+}
+
 export interface SettlementStatusData {
-  groupNumber: string;
-  bookingGroupId: number;
+  groupNumber?: string;
+  bookingGroupId?: number;
+  bookingId?: number;
   bookerId?: number;
+  teamNumber?: number;
+  clubName?: string;
+  gameName?: string;
+  date?: string;
+  slotTime?: string;
   totalParticipants: number;
   pricePerPerson: number;
   totalPrice: number;
   paidCount: number;
+  expiredAt?: string;
   participants: Array<{
     userId: number;
     userName: string;
@@ -229,24 +237,17 @@ export interface AiChatRequest {
   selectedSlotId?: string;
   selectedSlotTime?: string;
   selectedSlotPrice?: number;
+  selectedGameName?: string;
   confirmBooking?: boolean;
   cancelBooking?: boolean;
   paymentMethod?: string;
   paymentComplete?: boolean;
   paymentSuccess?: boolean;
-  // 그룹 예약
-  selectedSlots?: Array<{
-    slotId: string;
-    slotTime: string;
-    courseName: string;
-    price: number;
-  }>;
-  teams?: Array<{
-    teamNumber: number;
-    slotId: string;
-    members: TeamMember[];
-  }>;
-  confirmGroupBooking?: boolean;
+  // 그룹 예약 (팀 단위)
+  teamMembers?: Array<{ userId: number; userName: string; userEmail: string }>;
+  nextTeam?: boolean;
+  finishGroup?: boolean;
+  sendReminder?: boolean;
   // 분할결제 완료
   splitPaymentComplete?: boolean;
   splitOrderId?: string;
@@ -315,7 +316,7 @@ function transformRoomResponse(room: ApiRoomResponse): ChatRoom {
 /**
  * 채팅방 표시 이름 생성
  * - DIRECT: 상대방 이름
- * - GROUP/BOOKING: 방 이름 우선, 없으면 참여자 이름 폴백
+ * - CHANNEL/BOOKING: 방 이름 우선, 없으면 참여자 이름 폴백
  */
 export function getChatRoomDisplayName(room: ChatRoom, currentUserId: string): string {
   const others = (room.participants ?? []).filter((p) => p.userId !== currentUserId);
@@ -325,7 +326,7 @@ export function getChatRoomDisplayName(room: ChatRoom, currentUserId: string): s
     return others.length > 0 ? others[0].userName : (room.name || '채팅');
   }
 
-  // GROUP/BOOKING: 방 이름이 있으면 우선 사용
+  // CHANNEL/BOOKING: 방 이름이 있으면 우선 사용
   if (room.name) {
     return room.name;
   }
@@ -417,7 +418,13 @@ export const chatApi = {
       `/api/user/chat/rooms/${roomId}/messages`,
       params
     );
-    return unwrapResponse(response.data);
+    const result = unwrapResponse(response.data);
+    // senderId를 문자열로 정규화
+    result.messages = result.messages.map((msg) => ({
+      ...msg,
+      senderId: String((msg as unknown as Record<string, unknown>).senderId ?? msg.senderId),
+    }));
+    return result;
   },
 
   /**

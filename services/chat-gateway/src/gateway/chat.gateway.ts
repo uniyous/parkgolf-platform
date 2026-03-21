@@ -11,7 +11,7 @@ import { Server } from 'socket.io';
 import { Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Subscription } from 'rxjs';
 import { JwtService } from '@nestjs/jwt';
-import { NatsService, ChatMessage, TypingEvent } from '../nats/nats.service';
+import { NatsService, ChatMessage, TypingEvent, RoomMessageEvent } from '../nats/nats.service';
 import { AuthenticatedSocket, WsUser } from '../common/ws.types';
 import { authenticateSocket } from '../common/ws.utils';
 import { getCorsConfig } from '../common/cors.config';
@@ -51,12 +51,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   // NATS status subscription
   private natsStatusSubscription: Subscription | null = null;
 
+  // Room message subscription cleanup
+  private roomMessageSubscription: (() => void) | null = null;
+
   constructor(
     private readonly natsService: NatsService,
     private readonly jwtService: JwtService,
   ) {}
 
-  onModuleInit() {
+  async onModuleInit() {
     // Check for expired tokens every 60 seconds
     this.tokenCheckInterval = setInterval(() => {
       this.checkExpiredTokens();
@@ -67,6 +70,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       this.logger.log(`NATS status changed: ${connected ? 'connected' : 'disconnected'}, broadcasting to clients`);
       this.server?.emit('system:nats_status', { connected });
     });
+
+    // Subscribe to room message broadcasts (agent-service → chat-gateway → Socket.IO)
+    this.roomMessageSubscription = await this.natsService.subscribeToRoomMessages(
+      (event: RoomMessageEvent) => {
+        this.deliverRoomMessage(event);
+      },
+    );
   }
 
   onModuleDestroy() {
@@ -77,6 +87,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     if (this.natsStatusSubscription) {
       this.natsStatusSubscription.unsubscribe();
       this.natsStatusSubscription = null;
+    }
+    if (this.roomMessageSubscription) {
+      this.roomMessageSubscription();
+      this.roomMessageSubscription = null;
     }
   }
 
@@ -270,7 +284,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       senderId: user.id,
       senderName: user.name,
       content,
-      type,
+      messageType: type,
       createdAt: new Date().toISOString(),
     };
 
@@ -325,6 +339,83 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     }));
 
     return { success: true, data: users };
+  }
+
+  /**
+   * NATS에서 수신한 메시지를 Socket.IO 룸으로 브로드캐스트하고
+   * JetStream으로 발행하여 DB에 순차 저장
+   */
+  private deliverRoomMessage(event: RoomMessageEvent) {
+    const { roomId, message } = event;
+    if (!roomId || !message) {
+      this.logger.warn('Invalid room message event received');
+      return;
+    }
+
+    // 1. Socket.IO 실시간 전달
+    const targetUserIds = this.extractTargetUserIds(message.metadata);
+    const bookerUserId = this.extractBookerUserId(message.metadata);
+    if (targetUserIds && targetUserIds.length > 0) {
+      for (const userId of targetUserIds) {
+        this.server.to(`user:${userId}`).emit('new_message', message);
+      }
+      // 진행자에게도 별도 전송 (targetUserIds에 포함되지 않은 경우)
+      if (bookerUserId && !targetUserIds.includes(bookerUserId)) {
+        this.server.to(`user:${bookerUserId}`).emit('new_message', message);
+      }
+      const allTargets = bookerUserId && !targetUserIds.includes(bookerUserId)
+        ? [...targetUserIds, bookerUserId]
+        : targetUserIds;
+      this.logger.log(
+        `Targeted AI message to users [${allTargets.join(',')}] in room ${roomId} (id=${message.id})`,
+      );
+    } else {
+      this.server.to(roomId).emit('new_message', message);
+      this.logger.log(`Broadcast AI message to room ${roomId} (id=${message.id})`);
+    }
+
+    // 2. DB 직접 저장 (NATS RPC) — JetStream 소실 시에도 메시지 보존 보장
+    const chatMessage: ChatMessage = {
+      id: message.id,
+      roomId: message.roomId,
+      senderId: message.senderId,
+      senderName: message.senderName,
+      content: message.content,
+      messageType: message.messageType,
+      metadata: message.metadata,
+      createdAt: message.createdAt,
+    };
+    this.natsService.requestChatService('messages.save', chatMessage).catch((error) => {
+      const msg = error instanceof Error ? error.message : JSON.stringify(error);
+      this.logger.error(`Failed to save AI message to DB via NATS RPC: ${msg}`);
+    });
+
+    // 3. JetStream 발행 (백업 경로 — saveMessage는 idempotent)
+    this.natsService.publishMessage(roomId, chatMessage).catch((error) => {
+      this.logger.error(`Failed to publish AI message to JetStream: ${error}`);
+    });
+  }
+
+  private extractTargetUserIds(metadata?: string): number[] | null {
+    if (!metadata) return null;
+    try {
+      const meta = JSON.parse(metadata);
+      if (Array.isArray(meta?.targetUserIds) && meta.targetUserIds.length > 0) {
+        return meta.targetUserIds;
+      }
+    } catch { /* ignore */ }
+    return null;
+  }
+
+  private extractBookerUserId(metadata?: string): number | null {
+    if (!metadata) return null;
+    try {
+      const meta = JSON.parse(metadata);
+      if (typeof meta?.bookerUserId === 'number' && meta.bookerUserId > 0) {
+        return meta.bookerUserId;
+      }
+    } catch { /* ignore */ }
+    return null;
   }
 
   private async sendChatNotifications(roomId: string, sender: WsUser, content: string): Promise<void> {

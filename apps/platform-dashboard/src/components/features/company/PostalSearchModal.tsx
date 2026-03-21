@@ -79,12 +79,8 @@ const PostalSearchModal: React.FC<PostalSearchModalProps> = ({ isOpen, onClose, 
         setSearchResults(responseData.data);
       } else {
         setSearchResults([]);
-        if (responseData.message) {
-          console.log('검색 메시지:', responseData.message);
-        }
       }
-    } catch (error) {
-      console.error('우편번호 검색 중 오류 발생:', error);
+    } catch {
       toast.error('우편번호 검색 중 오류가 발생했습니다. 다시 시도해주세요.');
       setSearchResults([]);
     } finally {

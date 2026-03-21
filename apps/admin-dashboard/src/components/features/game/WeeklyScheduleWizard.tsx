@@ -147,7 +147,6 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
           setDayStatuses(prev => ({ ...prev, [day]: 'completed' }));
           created++;
         } catch (err) {
-          console.error(`Failed to create schedule for day ${day}:`, err);
           setDayStatuses(prev => ({ ...prev, [day]: 'error' }));
         }
 
@@ -163,8 +162,6 @@ export const WeeklyScheduleWizard: React.FC<WeeklyScheduleWizardProps> = ({
           handleClose();
         }, 1500);
       }
-    } catch (error) {
-      console.error('Failed to create schedules:', error);
     } finally {
       setIsCreating(false);
     }

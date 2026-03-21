@@ -1,58 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { SagaHandlerService } from './saga-handler.service';
 import { OutboxProcessorService } from './outbox-processor.service';
 
 /**
- * Saga 스케줄러 서비스
+ * Booking 스케줄러 서비스
  *
- * 주기적으로 실행되는 Saga 관련 작업:
+ * - Outbox 이벤트 정리 (7일 이상 된 SENT 이벤트)
+ *
+ * [DEPRECATED → saga-service 스케줄러로 이관]
  * - 타임아웃된 PENDING 예약 정리
- * - 오래된 SENT 이벤트 정리
+ * - 결제 타임아웃 SLOT_RESERVED 예약 정리
  */
 @Injectable()
 export class SagaSchedulerService {
   private readonly logger = new Logger(SagaSchedulerService.name);
 
   constructor(
-    private readonly sagaHandler: SagaHandlerService,
     private readonly outboxProcessor: OutboxProcessorService,
   ) {}
-
-  /**
-   * 매 분마다 타임아웃된 PENDING 예약 정리
-   */
-  @Cron(CronExpression.EVERY_MINUTE)
-  async cleanupTimedOutBookings() {
-    this.logger.debug('Running timed-out bookings cleanup...');
-
-    try {
-      const cleanedCount = await this.sagaHandler.cleanupTimedOutBookings();
-      if (cleanedCount > 0) {
-        this.logger.log(`Cleaned up ${cleanedCount} timed-out bookings`);
-      }
-    } catch (error) {
-      this.logger.error(`Failed to cleanup timed-out bookings: ${error.message}`);
-    }
-  }
-
-  /**
-   * 매 분마다 결제 타임아웃된 SLOT_RESERVED 예약 정리
-   * 10분 이상 결제되지 않은 예약을 FAILED 처리하고 슬롯 해제
-   */
-  @Cron(CronExpression.EVERY_MINUTE)
-  async cleanupPaymentTimedOutBookings() {
-    this.logger.debug('Running payment-timed-out bookings cleanup...');
-
-    try {
-      const cleanedCount = await this.sagaHandler.cleanupPaymentTimedOutBookings();
-      if (cleanedCount > 0) {
-        this.logger.log(`Cleaned up ${cleanedCount} payment-timed-out bookings`);
-      }
-    } catch (error) {
-      this.logger.error(`Failed to cleanup payment-timed-out bookings: ${error.message}`);
-    }
-  }
 
   /**
    * 매일 자정에 오래된 SENT 이벤트 정리 (7일 이상 된 것)

@@ -67,8 +67,7 @@ export const OperatingPolicySettings: React.FC = () => {
         });
       }
       setIsEditing(false);
-    } catch (error) {
-      console.error('Failed to save operating policy:', error);
+    } catch {
       toast.error('저장에 실패했습니다.');
     }
   };
@@ -90,7 +89,7 @@ export const OperatingPolicySettings: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* 정책 개요 */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100">
+      <div className="bg-blue-500/10 rounded-lg p-4 border border-blue-500/20">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center text-xl">
             ⚙️

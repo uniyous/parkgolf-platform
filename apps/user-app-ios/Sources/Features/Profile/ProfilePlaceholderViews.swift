@@ -1,43 +1,5 @@
 import SwiftUI
 
-// MARK: - Payment Methods View
-
-struct PaymentMethodsView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        ZStack {
-            LinearGradient.parkBackground
-                .ignoresSafeArea()
-
-            ParkEmptyStateView(
-                icon: "creditcard.fill",
-                title: "결제 수단",
-                description: "준비중입니다"
-            )
-        }
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text("결제 수단")
-                    .font(.parkHeadlineMedium)
-                    .foregroundStyle(.white)
-            }
-
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .foregroundStyle(.white)
-                }
-            }
-        }
-        .toolbarBackground(.hidden, for: .navigationBar)
-    }
-}
-
 // MARK: - My Stats View
 
 struct MyStatsView: View {
@@ -492,12 +454,6 @@ struct ContactUsView: View {
 }
 
 // MARK: - Previews
-
-#Preview("Payment Methods") {
-    NavigationStack {
-        PaymentMethodsView()
-    }
-}
 
 #Preview("My Stats") {
     NavigationStack {

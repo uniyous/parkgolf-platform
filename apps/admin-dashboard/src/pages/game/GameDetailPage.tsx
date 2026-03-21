@@ -43,7 +43,6 @@ export const GameDetailPage: React.FC = () => {
       toast.success('라운드가 성공적으로 삭제되었습니다.');
       navigate('/games');
     } catch (error) {
-      console.error('Failed to delete game:', error);
       toast.error('라운드 삭제 중 오류가 발생했습니다.');
     } finally {
       setIsDeleting(false);

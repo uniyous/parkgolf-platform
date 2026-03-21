@@ -49,6 +49,10 @@ model Booking {
   totalPrice            Decimal       @db.Decimal(10, 2) @map("total_price")
   status                BookingStatus @default(PENDING)
 
+  // 외부 파트너 연동
+  source                BookingSource @default(INTERNAL)
+  externalBookingId     String?       @unique @map("external_booking_id") // 외부 시스템 예약 ID
+
   // 결제 정보
   paymentMethod         String?       @map("payment_method") // card, kakaopay, naverpay, tosspay, bank
 
@@ -70,11 +74,11 @@ model Booking {
   updatedAt             DateTime      @updatedAt @map("updated_at")
 
   // 그룹 예약 (멀티팀)
-  bookingGroupId        Int?          @map("booking_group_id")
-  teamNumber            Int?          @map("team_number") // 팀 번호 (1, 2, 3...)
+  groupId               String?       @map("group_id")        // GRP-xxx (같은 그룹끼리 공유)
+  teamNumber            Int?          @map("team_number")     // 팀 번호 (1, 2, 3...)
+  teamSelectionId       Int?          @map("team_selection_id") // TeamSelection 참조
 
   // Relations
-  bookingGroup          BookingGroup? @relation(fields: [bookingGroupId], references: [id])
   payments              Payment[]
   histories             BookingHistory[]
   participants          BookingParticipant[]
@@ -90,48 +94,58 @@ model Booking {
   @@index([status, createdAt])
   @@index([userId, bookingDate])
   @@index([bookingDate, status])
-  @@index([bookingGroupId])
+  @@index([groupId])
   @@map("bookings")
 }
 
 // =====================================================
-// 그룹 예약 (멀티팀 묶음)
+// 팀 선정 (멤버 선택 → 팀 구성)
 // =====================================================
 
-model BookingGroup {
-  id                Int              @id @default(autoincrement())
-  groupNumber       String           @unique @map("group_number") // GRP-20260227-001
-  chatRoomId        String           @map("chat_room_id")
-  bookerId          Int              @map("booker_id")
-  bookerName        String           @map("booker_name")
-  bookerEmail       String           @map("booker_email")
-  clubId            Int              @map("club_id")
-  clubName          String           @map("club_name")
-  date              String                                        // YYYY-MM-DD
-  teamCount         Int              @map("team_count")
-  totalParticipants Int              @map("total_participants")
-  totalPrice        Int              @map("total_price")          // 전체 금액 (원)
-  pricePerPerson    Int              @map("price_per_person")     // 1인당 금액
-  settlementStatus  SettlementStatus @default(PENDING) @map("settlement_status")
-  expiredAt         DateTime         @map("expired_at")           // 결제 기한
+model TeamSelection {
+  id            Int                   @id @default(autoincrement())
+  chatRoomId    String                @map("chat_room_id")
+  groupId       String                @unique @map("group_id")   // GRP-YYYYMMDD-XXXXXX
+  bookerId      Int                   @map("booker_id")
+  bookerName    String                @map("booker_name")
+  clubId        Int                   @map("club_id")
+  clubName      String                @map("club_name")
+  date          String                                            // YYYY-MM-DD
+  teamCount     Int                   @default(0) @map("team_count")
+  status        TeamSelectionStatus   @default(SELECTING)
+  createdAt     DateTime              @default(now()) @map("created_at")
+  updatedAt     DateTime              @updatedAt @map("updated_at")
 
-  createdAt         DateTime         @default(now()) @map("created_at")
-  updatedAt         DateTime         @updatedAt @map("updated_at")
+  members       TeamSelectionMember[]
 
-  // Relations
-  bookings          Booking[]
-
-  @@index([bookerId])
   @@index([chatRoomId])
-  @@index([settlementStatus])
-  @@map("booking_groups")
+  @@index([bookerId])
+  @@map("team_selections")
 }
 
-enum SettlementStatus {
-  PENDING       // 정산 대기 (일부 미결제)
-  PARTIAL       // 부분 결제 완료
-  COMPLETED     // 전원 결제 완료
-  CANCELLED     // 정산 취소
+model TeamSelectionMember {
+  id               Int             @id @default(autoincrement())
+  teamSelectionId  Int             @map("team_selection_id")
+  teamNumber       Int             @map("team_number")       // 1, 2, 3...
+  userId           Int             @map("user_id")
+  userName         String          @map("user_name")
+  userEmail        String          @map("user_email")
+  role             ParticipantRole @default(MEMBER)
+  createdAt        DateTime        @default(now()) @map("created_at")
+
+  teamSelection    TeamSelection   @relation(fields: [teamSelectionId], references: [id], onDelete: Cascade)
+
+  @@unique([teamSelectionId, teamNumber, userId])
+  @@index([teamSelectionId, teamNumber])
+  @@map("team_selection_members")
+}
+
+enum TeamSelectionStatus {
+  SELECTING    // 멤버 선택 진행 중
+  READY        // 모든 팀 구성 완료
+  BOOKING      // 예약 진행 중
+  COMPLETED    // 모든 팀 예약 완료
+  CANCELLED    // 취소
 }
 
 // =====================================================
@@ -296,6 +310,11 @@ enum BookingStatus {
   COMPLETED         // 완료됨
   NO_SHOW           // 노쇼
   FAILED            // Saga 실패 (슬롯 예약 실패 등)
+}
+
+enum BookingSource {
+  INTERNAL          // 파크골프메이트 내부 예약
+  PARTNER           // 외부 파트너 시스템 예약
 }
 
 enum TimeSlotCacheStatus {

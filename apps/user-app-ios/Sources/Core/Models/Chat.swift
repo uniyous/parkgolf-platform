@@ -86,7 +86,7 @@ struct ChatRoom: Identifiable, Codable, Sendable, Hashable {
             return others.first?.userName ?? (name.isEmpty ? "채팅" : name)
         }
 
-        // GROUP/BOOKING: 방 이름이 있으면 우선 사용
+        // CHANNEL/BOOKING: 방 이름이 있으면 우선 사용
         if !name.isEmpty {
             return name
         }
@@ -125,7 +125,7 @@ struct ChatRoomMember: Codable, Sendable {
 
 enum ChatRoomType: String, Codable, Sendable {
     case direct = "DIRECT"
-    case group = "GROUP"
+    case channel = "CHANNEL"
     case booking = "BOOKING"
 }
 
@@ -138,6 +138,7 @@ struct ChatMessage: Identifiable, Codable, Sendable {
     let senderName: String
     let content: String
     let messageType: MessageType
+    let metadata: String?
     let createdAt: Date
     let readBy: [String]?
 
@@ -150,6 +151,7 @@ struct ChatMessage: Identifiable, Codable, Sendable {
         case content
         case messageType
         case type  // API returns "type" for message type
+        case metadata
         case createdAt
         case readBy
     }
@@ -172,6 +174,7 @@ struct ChatMessage: Identifiable, Codable, Sendable {
         } else {
             messageType = try container.decode(MessageType.self, forKey: .messageType)
         }
+        metadata = try container.decodeIfPresent(String.self, forKey: .metadata)
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         readBy = try container.decodeIfPresent([String].self, forKey: .readBy)
     }
@@ -184,17 +187,19 @@ struct ChatMessage: Identifiable, Codable, Sendable {
         try container.encode(senderName, forKey: .senderName)
         try container.encode(content, forKey: .content)
         try container.encode(messageType, forKey: .type)
+        try container.encodeIfPresent(metadata, forKey: .metadata)
         try container.encode(createdAt, forKey: .createdAt)
         try container.encodeIfPresent(readBy, forKey: .readBy)
     }
 
-    init(id: String, roomId: String, senderId: String, senderName: String, content: String, messageType: MessageType, createdAt: Date, readBy: [String]?) {
+    init(id: String, roomId: String, senderId: String, senderName: String, content: String, messageType: MessageType, metadata: String? = nil, createdAt: Date, readBy: [String]?) {
         self.id = id
         self.roomId = roomId
         self.senderId = senderId
         self.senderName = senderName
         self.content = content
         self.messageType = messageType
+        self.metadata = metadata
         self.createdAt = createdAt
         self.readBy = readBy
     }
@@ -205,6 +210,7 @@ enum MessageType: String, Codable, Sendable {
     case image = "IMAGE"
     case system = "SYSTEM"
     case bookingInvite = "BOOKING_INVITE"
+    case aiUser = "AI_USER"
     case aiAssistant = "AI_ASSISTANT"
 }
 
@@ -282,6 +288,9 @@ enum ConversationState: String, Codable, Sendable {
     case collecting = "COLLECTING"
     case confirming = "CONFIRMING"
     case booking = "BOOKING"
+    case selectingMembers = "SELECTING_MEMBERS"
+    case settling = "SETTLING"
+    case teamComplete = "TEAM_COMPLETE"
     case completed = "COMPLETED"
     case cancelled = "CANCELLED"
 }
@@ -292,6 +301,12 @@ enum ActionType: String, Codable, Sendable {
     case showWeather = "SHOW_WEATHER"
     case confirmBooking = "CONFIRM_BOOKING"
     case bookingComplete = "BOOKING_COMPLETE"
+    case showPayment = "SHOW_PAYMENT"
+    case confirmGroup = "CONFIRM_GROUP"
+    case selectMembers = "SELECT_MEMBERS"
+    case splitPayment = "SPLIT_PAYMENT"
+    case settlementStatus = "SETTLEMENT_STATUS"
+    case teamComplete = "TEAM_COMPLETE"
 }
 
 struct ChatAction: Codable, Sendable {
@@ -349,10 +364,60 @@ struct AiChatResponse: Codable, Sendable {
 }
 
 struct AiChatRequest: Codable, Sendable {
-    let message: String
-    let conversationId: String?
-    let latitude: Double?
-    let longitude: Double?
+    var message: String
+    var conversationId: String?
+    var latitude: Double?
+    var longitude: Double?
+    // 카드 상호작용
+    var selectedClubId: String?
+    var selectedClubName: String?
+    var selectedSlotId: String?
+    var selectedSlotTime: String?
+    var selectedSlotPrice: Int?
+    var selectedGameName: String?
+    var confirmBooking: Bool?
+    var cancelBooking: Bool?
+    var paymentMethod: String?
+    var paymentComplete: Bool?
+    var paymentSuccess: Bool?
+    // 그룹 예약
+    var selectedSlots: [SelectedSlotDto]?
+    var teams: [TeamDto]?
+    var confirmGroupBooking: Bool?
+    // 분할결제
+    var splitPaymentComplete: Bool?
+    var splitOrderId: String?
+    // 그룹 후속 액션
+    var chatRoomId: String?
+    var teamMembers: [TeamMemberDto]?
+    var nextTeam: Bool?
+    var finishGroup: Bool?
+    var sendReminder: Bool?
+}
+
+struct SelectedSlotDto: Codable, Sendable {
+    let slotId: String
+    let slotTime: String
+    let gameName: String
+    let price: Int
+}
+
+struct TeamDto: Codable, Sendable {
+    let teamNumber: Int
+    let slotId: String
+    let members: [TeamMemberDto]
+}
+
+struct TeamMemberDto: Codable, Sendable {
+    let userId: Int
+    let userName: String
+    let userEmail: String
+}
+
+struct TeamConfirmData: Sendable {
+    let teamNumber: Int
+    let slotId: String
+    let members: [TeamMemberDto]
 }
 
 struct ClubCardData: Sendable {
@@ -378,7 +443,7 @@ struct SlotCardData: Sendable {
         let endTime: String
         let availableSpots: Int
         let price: Int
-        let courseName: String
+        let gameName: String
     }
 }
 

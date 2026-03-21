@@ -64,7 +64,6 @@ import com.parkgolf.app.presentation.feature.profile.PrivacyScreen
 import com.parkgolf.app.presentation.feature.profile.TermsScreen
 import com.parkgolf.app.presentation.feature.profile.ThemeSettingsScreen
 import com.parkgolf.app.presentation.feature.profile.NotificationSettingsScreen
-import com.parkgolf.app.presentation.feature.profile.PaymentMethodsScreen
 import com.parkgolf.app.presentation.feature.profile.ProfileScreen
 import com.parkgolf.app.presentation.feature.profile.SettingsScreen
 import com.parkgolf.app.presentation.feature.booking.RoundBookingScreen
@@ -270,12 +269,6 @@ fun ParkGolfNavHost(
 
         composable(Screen.ChangePassword.route) {
             ChangePasswordScreen(
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-
-        composable(Screen.PaymentMethods.route) {
-            PaymentMethodsScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

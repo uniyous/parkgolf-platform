@@ -49,11 +49,7 @@ export function useConfirmation(): UseConfirmationReturn {
 
   const handleConfirm = useCallback(async () => {
     if (config?.onConfirm) {
-      try {
-        await config.onConfirm();
-      } catch (error) {
-        console.error('Confirmation action failed:', error);
-      }
+      await config.onConfirm();
     }
     
     if (resolvePromise) {

@@ -8,35 +8,41 @@ import java.time.LocalDateTime
 enum class NotificationType {
     BOOKING_CONFIRMED,
     BOOKING_CANCELLED,
+    REFUND_COMPLETED,
     PAYMENT_SUCCESS,
     PAYMENT_FAILED,
     FRIEND_REQUEST,
     FRIEND_ACCEPTED,
     CHAT_MESSAGE,
-    SYSTEM_ALERT;
+    SYSTEM_ALERT,
+    SPLIT_PAYMENT_REQUEST;
 
     val displayName: String
         get() = when (this) {
             BOOKING_CONFIRMED -> "예약 확정"
             BOOKING_CANCELLED -> "예약 취소"
+            REFUND_COMPLETED -> "환불 완료"
             PAYMENT_SUCCESS -> "결제 완료"
             PAYMENT_FAILED -> "결제 실패"
             FRIEND_REQUEST -> "친구 요청"
             FRIEND_ACCEPTED -> "친구 수락"
             CHAT_MESSAGE -> "새 메시지"
             SYSTEM_ALERT -> "시스템 알림"
+            SPLIT_PAYMENT_REQUEST -> "정산 요청"
         }
 
     val iconName: String
         get() = when (this) {
             BOOKING_CONFIRMED -> "check_circle"
             BOOKING_CANCELLED -> "cancel"
+            REFUND_COMPLETED -> "undo"
             PAYMENT_SUCCESS -> "credit_card"
             PAYMENT_FAILED -> "error"
             FRIEND_REQUEST -> "person_add"
             FRIEND_ACCEPTED -> "people"
             CHAT_MESSAGE -> "chat"
             SYSTEM_ALERT -> "notifications"
+            SPLIT_PAYMENT_REQUEST -> "call_split"
         }
 }
 

@@ -42,20 +42,20 @@ struct WeatherCardView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
                     Image(systemName: "thermometer.medium")
-                        .font(.system(size: 12))
+                        .font(.system(size: 14))
                         .foregroundColor(.white.opacity(0.5))
                     Text("\(Int(temperature))°C")
-                        .font(.subheadline)
+                        .font(.title3)
                         .fontWeight(.medium)
                         .foregroundColor(.white)
                     Text(sky)
-                        .font(.caption)
+                        .font(.body)
                         .foregroundColor(.white.opacity(0.5))
                 }
 
                 if !recommendation.isEmpty {
                     Text(recommendation)
-                        .font(.caption)
+                        .font(.body)
                         .foregroundColor(.white.opacity(0.6))
                 }
             }

@@ -129,7 +129,7 @@ private fun UnreadChatRow(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = if (room.type == ChatRoomType.GROUP) Icons.Default.Groups else Icons.Default.Person,
+                        imageVector = if (room.type == ChatRoomType.CHANNEL) Icons.Default.Groups else Icons.Default.Person,
                         contentDescription = null,
                         tint = ParkInfo,
                         modifier = Modifier.size(24.dp)

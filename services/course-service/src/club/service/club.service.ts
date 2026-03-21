@@ -108,6 +108,7 @@ export class ClubService {
       search,
       location,
       status,
+      bookingMode,
       minHoles,
       maxHoles,
       facilities,
@@ -134,6 +135,7 @@ export class ClubService {
       }),
       ...(location && { location: { contains: location, mode: 'insensitive' } }),
       ...(status && { status }),
+      ...(bookingMode && { bookingMode }),
       ...(minHoles && { totalHoles: { gte: minHoles } }),
       ...(maxHoles && { totalHoles: { lte: maxHoles } }),
       ...(facilities && facilities.length > 0 && {
@@ -297,6 +299,39 @@ export class ClubService {
       },
       orderBy: { name: 'asc' },
     });
+  }
+
+  /**
+   * 골프클럽 통계
+   */
+  async getStats(): Promise<{
+    total: number;
+    active: number;
+    inactive: number;
+    maintenance: number;
+    byBookingMode: { platform: number; partner: number };
+    byClubType: { paid: number; free: number };
+  }> {
+    const [total, active, inactive, maintenance, platform, partner, paid, free] =
+      await Promise.all([
+        this.prisma.club.count({ where: { isActive: true } }),
+        this.prisma.club.count({ where: { isActive: true, status: 'ACTIVE' } }),
+        this.prisma.club.count({ where: { isActive: true, status: 'INACTIVE' } }),
+        this.prisma.club.count({ where: { isActive: true, status: 'MAINTENANCE' } }),
+        this.prisma.club.count({ where: { isActive: true, bookingMode: 'PLATFORM' } }),
+        this.prisma.club.count({ where: { isActive: true, bookingMode: 'PARTNER' } }),
+        this.prisma.club.count({ where: { isActive: true, clubType: 'PAID' } }),
+        this.prisma.club.count({ where: { isActive: true, clubType: 'FREE' } }),
+      ]);
+
+    return {
+      total,
+      active,
+      inactive,
+      maintenance,
+      byBookingMode: { platform, partner },
+      byClubType: { paid, free },
+    };
   }
 
   /**

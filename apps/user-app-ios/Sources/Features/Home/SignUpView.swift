@@ -20,7 +20,7 @@ struct SignUpView: View {
                             .font(.parkDisplaySmall)
                             .foregroundStyle(.white)
 
-                        Text("ParkMate와 함께 시작하세요")
+                        Text("ParkgolfMate와 함께 시작하세요")
                             .font(.parkBodyMedium)
                             .foregroundStyle(.white.opacity(0.7))
                     }

@@ -20,7 +20,7 @@ data class TeamState(
     val teamNumber: Int,
     val slotId: String,
     val slotTime: String,
-    val courseName: String,
+    val gameName: String,
     val maxPlayers: Int,
     val members: List<MemberState>
 )
@@ -56,7 +56,7 @@ fun SelectParticipantsCard(
                 teamNumber = (team["teamNumber"] as? Number)?.toInt() ?: 0,
                 slotId = team["slotId"]?.toString() ?: "",
                 slotTime = team["slotTime"]?.toString() ?: "",
-                courseName = team["courseName"]?.toString() ?: "",
+                gameName = team["gameName"]?.toString() ?: "",
                 maxPlayers = (team["maxPlayers"] as? Number)?.toInt() ?: 4,
                 members = members
             )
@@ -108,14 +108,14 @@ fun SelectParticipantsCard(
                     )
                     Text(
                         text = "팀 편성",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = ParkOnPrimary
                     )
                 }
                 Text(
                     text = "${totalAssigned}명 배정 · ${unassigned.size}명 미배정",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = ParkOnPrimary.copy(alpha = 0.5f)
                 )
             }
@@ -142,7 +142,7 @@ fun SelectParticipantsCard(
                             ) {
                                 Text(
                                     text = "팀${team.teamNumber}",
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.SemiBold,
                                     color = ParkPrimary
                                 )
@@ -154,18 +154,18 @@ fun SelectParticipantsCard(
                                 )
                                 Text(
                                     text = team.slotTime,
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.labelMedium,
                                     color = ParkOnPrimary.copy(alpha = 0.6f)
                                 )
                                 Text(
-                                    text = " · ${team.courseName}",
-                                    style = MaterialTheme.typography.labelSmall,
+                                    text = " · ${team.gameName}",
+                                    style = MaterialTheme.typography.labelMedium,
                                     color = ParkOnPrimary.copy(alpha = 0.4f)
                                 )
                             }
                             Text(
                                 text = "${team.members.size}/${team.maxPlayers}",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = ParkOnPrimary.copy(alpha = 0.4f)
                             )
                         }
@@ -180,7 +180,7 @@ fun SelectParticipantsCard(
                             if (team.members.isEmpty()) {
                                 Text(
                                     text = "미배정 멤버를 추가해주세요",
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.labelMedium,
                                     color = ParkOnPrimary.copy(alpha = 0.2f),
                                     modifier = Modifier.padding(vertical = 8.dp, horizontal = 8.dp)
                                 )
@@ -195,7 +195,7 @@ fun SelectParticipantsCard(
                                 ) {
                                     Text(
                                         text = member.userName,
-                                        style = MaterialTheme.typography.labelMedium,
+                                        style = MaterialTheme.typography.labelLarge,
                                         color = ParkOnPrimary.copy(alpha = 0.8f)
                                     )
                                     // Move to unassigned button
@@ -239,7 +239,7 @@ fun SelectParticipantsCard(
                     ) {
                         Text(
                             text = "미배정 (${unassigned.size}명)",
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.labelMedium,
                             color = ParkOnPrimary.copy(alpha = 0.4f)
                         )
                         unassigned.forEach { member ->
@@ -250,7 +250,7 @@ fun SelectParticipantsCard(
                             ) {
                                 Text(
                                     text = member.userName,
-                                    style = MaterialTheme.typography.labelMedium,
+                                    style = MaterialTheme.typography.labelLarge,
                                     color = ParkOnPrimary.copy(alpha = 0.6f)
                                 )
                                 // Assign to first available team
@@ -270,7 +270,7 @@ fun SelectParticipantsCard(
                                     ) {
                                         Text(
                                             text = "팀${availableTeam.teamNumber}에 추가",
-                                            style = MaterialTheme.typography.labelSmall,
+                                            style = MaterialTheme.typography.labelMedium,
                                             color = ParkPrimary
                                         )
                                     }
@@ -289,12 +289,12 @@ fun SelectParticipantsCard(
             ) {
                 Text(
                     text = "1인당 ${numberFormat.format(pricePerPerson)}원",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = ParkOnPrimary.copy(alpha = 0.5f)
                 )
                 Text(
                     text = "총 ${numberFormat.format(totalAssigned * pricePerPerson)}원",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = ParkPrimary
                 )
@@ -311,7 +311,7 @@ fun SelectParticipantsCard(
                         ),
                         border = BorderStroke(1.dp, ParkOnPrimary.copy(alpha = 0.2f))
                     ) {
-                        Text("취소", style = MaterialTheme.typography.bodySmall)
+                        Text("취소", style = MaterialTheme.typography.bodyMedium)
                     }
                 }
                 if (onConfirm != null) {
@@ -343,7 +343,7 @@ fun SelectParticipantsCard(
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             "확정 (${totalAssigned}명)",
-                            style = MaterialTheme.typography.bodySmall
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }

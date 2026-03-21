@@ -3,6 +3,7 @@ package com.parkgolf.app.data.repository
 import com.parkgolf.app.data.remote.api.PaymentApi
 import com.parkgolf.app.data.remote.dto.payment.ConfirmPaymentRequest
 import com.parkgolf.app.data.remote.dto.payment.ConfirmPaymentResponse
+import com.parkgolf.app.data.remote.dto.payment.ConfirmSplitPaymentResponse
 import com.parkgolf.app.data.remote.dto.payment.PaymentStatusResponse
 import com.parkgolf.app.data.remote.dto.payment.PreparePaymentRequest
 import com.parkgolf.app.data.remote.dto.payment.PreparePaymentResponse
@@ -41,6 +42,19 @@ class PaymentRepositoryImpl @Inject constructor(
             amount = amount
         )
         paymentApi.confirmPayment(request).toResult("결제 승인에 실패했습니다")
+    }
+
+    override suspend fun confirmSplitPayment(
+        paymentKey: String,
+        orderId: String,
+        amount: Int
+    ): Result<ConfirmSplitPaymentResponse> = safeApiCall {
+        val request = ConfirmPaymentRequest(
+            paymentKey = paymentKey,
+            orderId = orderId,
+            amount = amount
+        )
+        paymentApi.confirmSplitPayment(request).toResult("분할결제 승인에 실패했습니다")
     }
 
     override suspend fun getPaymentByOrderId(orderId: String): Result<PaymentStatusResponse> = safeApiCall {

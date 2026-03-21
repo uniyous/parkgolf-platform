@@ -28,5 +28,11 @@ export * from './game';
 // Policy Queries & Mutations
 export * from './policy';
 
+// Payment Queries & Mutations
+export * from './payment';
+
+// Notification Queries & Mutations
+export * from './notification';
+
 // Dashboard Queries
 export * from './dashboard';

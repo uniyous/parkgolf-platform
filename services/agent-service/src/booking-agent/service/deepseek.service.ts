@@ -29,8 +29,9 @@ export class DeepSeekService implements OnModuleInit {
   private readonly logger = new Logger(DeepSeekService.name);
   private client: OpenAI;
   private model: string;
+  private readonly REQUEST_TIMEOUT = 25000; // 25초 (NATS 60초 타임아웃 내 2회 호출 + 도구 실행 가능)
 
-  private readonly systemPrompt = `당신은 파크골프장 예약을 도와주는 친절한 AI 어시스턴트입니다.
+  private readonly systemPromptTemplate = `당신은 파크골프장 예약을 도와주는 친절한 AI 어시스턴트입니다.
 
 역할:
 - 사용자의 자연어 요청을 이해하고 예약을 도와줍니다
@@ -58,7 +59,29 @@ export class DeepSeekService implements OnModuleInit {
 - "이번 주말" → 가장 가까운 토요일/일요일
 - "다음 주" → 다음 주 월요일부터
 
-오늘 날짜: ${new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}`;
+오늘 날짜: {{TODAY_DATE}}
+
+원샷 예약:
+- 사용자가 날짜+지역+인원을 한 번에 제공하면 search_clubs_with_slots 호출 후 가장 적합한 1개를 자동 선택하여 "추천합니다" 형태로 확인 요청
+- 선택 기준: 여유 슬롯 > 가격 > 시간대
+- 사용자가 다른 옵션 원하면 전체 목록 표시
+
+예약 안내:
+- 골프장 검색 후 사용자가 골프장을 선택하면, 자동으로 팀 멤버 선택 → 슬롯 선택 → 결제 순서로 진행됩니다
+- 그룹 예약/더치페이는 별도 판단 없이 통합 플로우에서 자동 처리됩니다`;
+
+  /**
+   * 매 요청마다 오늘 날짜를 주입한 시스템 프롬프트 생성
+   */
+  private getSystemPrompt(): string {
+    const today = new Date().toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'long',
+    });
+    return this.systemPromptTemplate.replace('{{TODAY_DATE}}', today);
+  }
 
   private readonly tools: ChatCompletionTool[] = [
     {
@@ -257,7 +280,7 @@ export class DeepSeekService implements OnModuleInit {
   ): Promise<DeepSeekResponse> {
     try {
       const chatMessages: ChatCompletionMessageParam[] = [
-        { role: 'system', content: this.systemPrompt },
+        { role: 'system', content: this.getSystemPrompt() },
         ...messages.map((msg) => ({
           role: msg.role as 'user' | 'assistant',
           content: msg.content,
@@ -269,7 +292,7 @@ export class DeepSeekService implements OnModuleInit {
         messages: chatMessages,
         tools: this.tools,
         tool_choice: 'auto',
-      });
+      }, { timeout: this.REQUEST_TIMEOUT });
 
       const choice = response.choices[0];
       if (!choice) {
@@ -288,50 +311,57 @@ export class DeepSeekService implements OnModuleInit {
 
   /**
    * 도구 결과와 함께 대화 계속
+   * toolHistory: 모든 이전 반복의 도구 호출/결과를 누적하여 전달
    */
   async continueWithToolResults(
     messages: Array<{ role: 'user' | 'assistant'; content: string }>,
-    toolCalls: ToolCall[],
-    toolResults: Array<{ name: string; result: unknown }>,
+    toolHistory: Array<{
+      toolCalls: ToolCall[];
+      results: Array<{ name: string; result: unknown }>;
+    }>,
   ): Promise<DeepSeekResponse> {
     try {
       const chatMessages: ChatCompletionMessageParam[] = [
-        { role: 'system', content: this.systemPrompt },
+        { role: 'system', content: this.getSystemPrompt() },
         ...messages.map((msg) => ({
           role: msg.role as 'user' | 'assistant',
           content: msg.content,
         })),
       ];
 
-      // 도구 호출 메시지 추가 (assistant)
-      chatMessages.push({
-        role: 'assistant',
-        content: null,
-        tool_calls: toolCalls.map((tc, i) => ({
-          id: `call_${i}`,
-          type: 'function' as const,
-          function: {
-            name: tc.name,
-            arguments: JSON.stringify(tc.args),
-          },
-        })),
-      });
-
-      // 도구 결과 메시지 추가 (tool)
-      toolResults.forEach((tr, i) => {
+      // 모든 반복의 도구 호출/결과를 순서대로 추가
+      let callIndex = 0;
+      for (const { toolCalls, results } of toolHistory) {
         chatMessages.push({
-          role: 'tool',
-          tool_call_id: `call_${i}`,
-          content: JSON.stringify(tr.result),
+          role: 'assistant',
+          content: null,
+          tool_calls: toolCalls.map((tc, i) => ({
+            id: `call_${callIndex + i}`,
+            type: 'function' as const,
+            function: {
+              name: tc.name,
+              arguments: JSON.stringify(tc.args),
+            },
+          })),
         });
-      });
+
+        results.forEach((tr, i) => {
+          chatMessages.push({
+            role: 'tool',
+            tool_call_id: `call_${callIndex + i}`,
+            content: JSON.stringify(tr.result),
+          });
+        });
+
+        callIndex += toolCalls.length;
+      }
 
       const response = await this.client.chat.completions.create({
         model: this.model,
         messages: chatMessages,
         tools: this.tools,
         tool_choice: 'auto',
-      });
+      }, { timeout: this.REQUEST_TIMEOUT });
 
       const choice = response.choices[0];
       if (!choice) {
