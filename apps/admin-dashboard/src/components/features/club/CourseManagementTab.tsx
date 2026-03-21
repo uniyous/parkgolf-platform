@@ -273,7 +273,7 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4 flex-1 min-w-0">
                       <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <span className="text-xl font-bold text-white">{course.code}</span>
+                        <span className="text-xl font-bold text-white">{course.name?.charAt(0) || '?'}</span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="text-xl font-bold text-white truncate">
@@ -282,6 +282,9 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
                             <span className="ml-2 text-base font-normal text-white/50">({course.subtitle})</span>
                           )}
                         </h4>
+                        {course.code && (
+                          <p className="text-xs text-white/40 mt-0.5 truncate">{course.code}</p>
+                        )}
                         <div className="flex items-center flex-wrap gap-3 mt-2">
                           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-emerald-500/20 text-emerald-300">
                             Par {course.par}
