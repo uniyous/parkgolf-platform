@@ -144,20 +144,12 @@ export const AdminManagementPage: React.FC = () => {
 
   const handleDelete = async () => {
     if (!deleteConfirm.admin) return;
-    try {
-      await deleteAdmin.mutateAsync(deleteConfirm.admin.id);
-      setDeleteConfirm({ open: false });
-    } catch (error) {
-      console.error('Delete failed:', error);
-    }
+    await deleteAdmin.mutateAsync(deleteConfirm.admin.id);
+    setDeleteConfirm({ open: false });
   };
 
   const handleToggleStatus = async (admin: Admin) => {
-    try {
-      await toggleStatus.mutateAsync(admin.id);
-    } catch (error) {
-      console.error('Toggle status failed:', error);
-    }
+    await toggleStatus.mutateAsync(admin.id);
   };
 
   const handleSelectAll = () => {

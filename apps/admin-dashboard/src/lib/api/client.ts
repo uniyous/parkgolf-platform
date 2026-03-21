@@ -161,7 +161,6 @@ class ApiClient {
       if (error instanceof ApiError) {
         throw error;
       }
-      console.error(`API call failed: ${endpoint}`, error);
       throw new ApiError('네트워크에 연결할 수 없습니다. 인터넷 연결을 확인해주세요.', 0, 'SYS_002');
     }
   }

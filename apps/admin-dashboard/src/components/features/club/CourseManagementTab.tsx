@@ -114,7 +114,6 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
       toast.info('코스 생성 기능은 향후 구현 예정입니다.');
       setShowAddCourse(false);
     } catch (error) {
-      console.error('Failed to create course:', error);
       toast.error('코스 생성에 실패했습니다.');
     }
   };
@@ -138,7 +137,6 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
       setSelectedCourse(null);
       toast.success('코스가 성공적으로 수정되었습니다.');
     } catch (error) {
-      console.error('Failed to update course:', error);
       toast.error('코스 수정에 실패했습니다.');
     }
   };
@@ -153,7 +151,6 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
 
       toast.success('코스가 성공적으로 삭제되었습니다.');
     } catch (error) {
-      console.error('Failed to delete course:', error);
       toast.error('코스 삭제에 실패했습니다.');
     }
   };
@@ -182,7 +179,6 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
       setShowAddHole(null);
       toast.success('홀이 성공적으로 추가되었습니다.');
     } catch (error) {
-      console.error('Failed to create hole:', error);
       toast.error('홀 추가에 실패했습니다.');
     }
   };
@@ -209,7 +205,6 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
       setSelectedHole(null);
       toast.success('홀이 성공적으로 수정되었습니다.');
     } catch (error) {
-      console.error('Failed to update hole:', error);
       toast.error('홀 수정에 실패했습니다.');
     }
   };
@@ -224,7 +219,6 @@ export const CourseManagementTab: React.FC<CourseManagementTabProps> = ({
 
       toast.success('홀이 성공적으로 삭제되었습니다.');
     } catch (error) {
-      console.error('Failed to delete hole:', error);
       toast.error('홀 삭제에 실패했습니다.');
     }
   };

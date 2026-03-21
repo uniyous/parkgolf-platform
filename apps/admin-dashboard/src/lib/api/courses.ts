@@ -355,13 +355,3 @@ export const courseApi = {
     return extractList<Company>(response.data, 'companies');
   },
 } as const;
-
-// ============================================
-// Legacy Exports (하위 호환)
-// ============================================
-
-export const fetchCoursesByCompany = courseApi.getCoursesByCompany.bind(courseApi);
-export const fetchCourseById = courseApi.getCourseById.bind(courseApi);
-export const createCourse = courseApi.createCourse.bind(courseApi);
-export const updateCourse = courseApi.updateCourse.bind(courseApi);
-export const deleteCourse = courseApi.deleteCourse.bind(courseApi);

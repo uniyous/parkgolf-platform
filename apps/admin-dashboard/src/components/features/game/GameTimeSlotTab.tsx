@@ -122,7 +122,6 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
       refetch();
       toast.success('타임슬롯이 삭제되었습니다.');
     } catch (error) {
-      console.error('Failed to delete time slot:', error);
       toast.error('타임슬롯 삭제에 실패했습니다.');
     }
   };
@@ -138,7 +137,6 @@ export const GameTimeSlotTab: React.FC<GameTimeSlotTabProps> = ({ gameId }) => {
       refetch();
       toast.success('상태가 변경되었습니다.');
     } catch (error) {
-      console.error('Failed to update time slot:', error);
       toast.error('상태 변경에 실패했습니다.');
     }
   };

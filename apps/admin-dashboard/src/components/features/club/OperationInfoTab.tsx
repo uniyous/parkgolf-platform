@@ -49,18 +49,14 @@ export const OperationInfoTab: React.FC<OperationInfoTabProps> = ({ club, onUpda
 
   // 시즌 정보 업데이트
   const updateSeasonInfo = async (seasonData: SeasonFormData) => {
-    try {
-      const result = await updateClubMutation.mutateAsync({
-        id: club.id,
-        data: { seasonInfo: seasonData },
-      });
-      if (result) {
-        onUpdate(result);
-      }
-      setShowSeasonModal(false);
-    } catch (error) {
-      console.error('Failed to update season info:', error);
+    const result = await updateClubMutation.mutateAsync({
+      id: club.id,
+      data: { seasonInfo: seasonData },
+    });
+    if (result) {
+      onUpdate(result);
     }
+    setShowSeasonModal(false);
   };
 
   const openSeasonModal = () => {

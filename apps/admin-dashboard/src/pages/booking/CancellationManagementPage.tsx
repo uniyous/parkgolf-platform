@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { Pagination } from '@/components/common';
+import { useClientPagination } from '@/hooks/useClientPagination';
 import { toast } from 'sonner';
 import { useBookingsQuery } from '@/hooks/queries/booking';
 import { useClubsQuery } from '@/hooks/queries';
@@ -157,6 +159,8 @@ export const CancellationManagementPage: React.FC = () => {
     return filtered;
   }, [cancellationRecords, refundStatusFilter, cancellationType, searchKeyword]);
 
+  const { paginatedData: paginatedRecords, pagination, setPage } = useClientPagination(filteredRecords, 20);
+
   // 통계 계산
   const stats = useMemo(() => {
     const total = cancellationRecords.length;
@@ -210,7 +214,6 @@ export const CancellationManagementPage: React.FC = () => {
       handleCloseRefundModal();
       refetch();
     } catch (error) {
-      console.error('Failed to process refund:', error);
       const message = error instanceof Error ? error.message : '환불 처리에 실패했습니다.';
       toast.error(message);
     } finally {
@@ -270,20 +273,14 @@ export const CancellationManagementPage: React.FC = () => {
         </div>
       ) : (
         <CancellationTable
-          records={filteredRecords}
+          records={paginatedRecords}
           onViewDetail={handleViewDetail}
           onProcessRefund={handleOpenRefundModal}
           isActionPending={isProcessing}
         />
       )}
 
-      {/* 하단 정보 */}
-      <div className="bg-white/5 rounded-lg p-4">
-        <p className="text-sm text-white/60 text-center">
-          총 {filteredRecords.length}건의 취소 내역
-          {searchKeyword && ` (검색: "${searchKeyword}")`}
-        </p>
-      </div>
+      <Pagination pagination={pagination} onPageChange={setPage} />
 
       {/* 상세 모달 */}
       <CancellationDetailModal

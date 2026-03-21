@@ -103,25 +103,21 @@ export const GameFormModal: React.FC<GameFormModalProps> = ({ open, onClose, onS
     e.preventDefault();
     if (!validate()) return;
 
-    try {
-      const dto: CreateGameDto = {
-        clubId: formData.clubId!,
-        name: formData.name.trim(),
-        description: formData.description.trim() || undefined,
-        courseIds: formData.courseIds,
-        slotMode: formData.slotMode,
-        maxPlayers: formData.maxPlayers,
-        duration: formData.duration,
-        price: formData.price,
-        status: formData.status,
-      };
+    const dto: CreateGameDto = {
+      clubId: formData.clubId!,
+      name: formData.name.trim(),
+      description: formData.description.trim() || undefined,
+      courseIds: formData.courseIds,
+      slotMode: formData.slotMode,
+      maxPlayers: formData.maxPlayers,
+      duration: formData.duration,
+      price: formData.price,
+      status: formData.status,
+    };
 
-      const result = await createGame.mutateAsync(dto);
-      onSuccess?.(result);
-      onClose();
-    } catch (error) {
-      console.error('Failed to create game:', error);
-    }
+    const result = await createGame.mutateAsync(dto);
+    onSuccess?.(result);
+    onClose();
   };
 
   const handleChange = (field: keyof FormData, value: unknown) => {

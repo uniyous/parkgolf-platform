@@ -80,11 +80,9 @@ export const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ club, onUpdate, init
         onUpdate(result as Club);
         setIsEditing(false);
       } else {
-        console.error('Update failed: no result received');
         toast.error('골프장 정보 수정에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Failed to update golf club:', error);
       toast.error('골프장 정보 수정에 실패했습니다.');
     }
   };

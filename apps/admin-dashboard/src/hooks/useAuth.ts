@@ -116,14 +116,11 @@ export const useAuthInitialize = () => {
 
       if (hasStoredAuth) {
         // If we have stored auth, fetch fresh data from API
-        console.log('Token found, fetching current user from API');
         try {
           await getCurrentUserMutation.mutateAsync();
-        } catch (error) {
-          console.log('Failed to refresh user from API, using cached data');
+        } catch {
+          // Failed to refresh from API, using cached data
         }
-      } else {
-        console.log('No stored auth found, user needs to login');
       }
 
       setIsInitialized(true);

@@ -101,7 +101,6 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
       refetch();
       toast.success('스케줄이 저장되었습니다.');
     } catch (error) {
-      console.error('Failed to save schedule:', error);
       toast.error('스케줄 저장에 실패했습니다.');
     }
   };
@@ -112,7 +111,6 @@ export const GameWeeklyScheduleTab: React.FC<GameWeeklyScheduleTabProps> = ({ ga
       refetch();
       toast.success('스케줄이 삭제되었습니다.');
     } catch (error) {
-      console.error('Failed to delete schedule:', error);
       toast.error('스케줄 삭제에 실패했습니다.');
     }
   };

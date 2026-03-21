@@ -125,20 +125,12 @@ export const CompanyPage: React.FC = () => {
 
   const handleDelete = async () => {
     if (!deleteConfirm.company) return;
-    try {
-      await deleteCompany.mutateAsync(deleteConfirm.company.id);
-      setDeleteConfirm({ open: false });
-    } catch (error) {
-      console.error('Delete failed:', error);
-    }
+    await deleteCompany.mutateAsync(deleteConfirm.company.id);
+    setDeleteConfirm({ open: false });
   };
 
   const handleStatusChange = async (company: Company, status: CompanyStatus) => {
-    try {
-      await updateStatus.mutateAsync({ id: company.id, status });
-    } catch (error) {
-      console.error('Status update failed:', error);
-    }
+    await updateStatus.mutateAsync({ id: company.id, status });
   };
 
   const handleSelectAll = () => {

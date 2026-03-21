@@ -63,7 +63,6 @@ export const ClubDetailPage: React.FC = () => {
       await deleteClub();
       toast.success('골프장이 성공적으로 삭제되었습니다.');
     } catch (error) {
-      console.error('Failed to delete club:', error);
       toast.error('골프장 삭제 중 오류가 발생했습니다.');
     }
   };

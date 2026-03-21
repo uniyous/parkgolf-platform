@@ -91,31 +91,27 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ open, user, onClos
     e.preventDefault();
     if (!validate()) return;
 
-    try {
-      if (isEditing && user) {
-        await updateUser.mutateAsync({
-          id: user.id,
-          data: {
-            email: formData.email,
-            name: formData.name,
-            phone: formData.phone || undefined,
-            status: formData.status,
-            ...(formData.password ? { password: formData.password } : {}),
-          },
-        });
-      } else {
-        await createUser.mutateAsync({
+    if (isEditing && user) {
+      await updateUser.mutateAsync({
+        id: user.id,
+        data: {
           email: formData.email,
           name: formData.name,
-          password: formData.password,
           phone: formData.phone || undefined,
           status: formData.status,
-        });
-      }
-      onClose();
-    } catch (error) {
-      console.error('Submit failed:', error);
+          ...(formData.password ? { password: formData.password } : {}),
+        },
+      });
+    } else {
+      await createUser.mutateAsync({
+        email: formData.email,
+        name: formData.name,
+        password: formData.password,
+        phone: formData.phone || undefined,
+        status: formData.status,
+      });
     }
+    onClose();
   };
 
   const handleChange = (field: keyof FormData, value: string) => {

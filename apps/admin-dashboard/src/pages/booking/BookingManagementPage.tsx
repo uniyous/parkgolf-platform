@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { Pagination } from '@/components/common';
+import { useClientPagination } from '@/hooks/useClientPagination';
 import { toast } from 'sonner';
 import {
   useBookingsQuery,
@@ -94,6 +96,8 @@ export const BookingManagementPage: React.FC = () => {
     );
   }, [bookings, searchKeyword]);
 
+  const { paginatedData: paginatedBookings, pagination, setPage } = useClientPagination(filteredBookings, 20);
+
   // 상태별 카운트
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {
@@ -147,7 +151,6 @@ export const BookingManagementPage: React.FC = () => {
         toast.success('예약이 취소되었습니다.');
         handleCloseDetailModal();
       } catch (error) {
-        console.error('Failed to cancel booking:', error);
         toast.error('예약 취소에 실패했습니다.');
       }
     }
@@ -164,7 +167,6 @@ export const BookingManagementPage: React.FC = () => {
         toast.success('예약이 완료 처리되었습니다.');
         handleCloseDetailModal();
       } catch (error) {
-        console.error('Failed to complete booking:', error);
         toast.error('예약 완료 처리에 실패했습니다.');
       }
     }
@@ -181,7 +183,6 @@ export const BookingManagementPage: React.FC = () => {
         toast.success('노쇼 처리되었습니다.');
         handleCloseDetailModal();
       } catch (error) {
-        console.error('Failed to mark as no-show:', error);
         toast.error('노쇼 처리에 실패했습니다.');
       }
     }
@@ -243,7 +244,7 @@ export const BookingManagementPage: React.FC = () => {
         </div>
       ) : (
         <BookingTable
-          bookings={filteredBookings}
+          bookings={paginatedBookings}
           onViewDetail={handleViewDetail}
           onCancel={handleCancel}
           onComplete={handleComplete}
@@ -252,13 +253,7 @@ export const BookingManagementPage: React.FC = () => {
         />
       )}
 
-      {/* 하단 정보 */}
-      <div className="bg-white/5 rounded-lg p-4">
-        <p className="text-sm text-white/60 text-center">
-          총 {filteredBookings.length}건의 예약
-          {searchKeyword && ` (검색: "${searchKeyword}")`}
-        </p>
-      </div>
+      <Pagination pagination={pagination} onPageChange={setPage} />
 
       {/* 상세 모달 */}
       <BookingDetailModal

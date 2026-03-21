@@ -9,7 +9,7 @@
 export { apiClient, ApiError, type ApiResponse, type PaginatedResponse, type ClientResponse } from './client';
 
 // Domain APIs
-export { authApi } from './authApi';
+export { iamApi } from './authApi';
 export { adminApi } from './adminApi';
 export { bookingApi } from './bookingApi';
 export { companyApi } from './companyApi';

@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Flag } from 'lucide-react';
 import { useClubsQuery, useSearchClubsQuery } from '@/hooks/queries';
-import { DataContainer } from '@/components/common';
+import { DataContainer, Pagination } from '@/components/common';
+import { useClientPagination } from '@/hooks/useClientPagination';
 import {
   FilterContainer,
   FilterSearch,
@@ -22,8 +23,9 @@ export const ClubListPage: React.FC = () => {
   const { data: searchData, isLoading: isSearching } = useSearchClubsQuery(searchKeyword);
 
   // 검색어가 있으면 검색 결과, 없으면 전체 목록 사용
-  const clubs = searchKeyword ? (searchData ?? []) : (clubsData?.data ?? []);
+  const allClubs = searchKeyword ? (searchData ?? []) : (clubsData?.data ?? []);
   const isLoading = isLoadingClubs || isSearching;
+  const { paginatedData: clubs, pagination, setPage } = useClientPagination(allClubs, 24);
 
   // 골프장 선택
   const handleClubSelect = (club: Club) => {
@@ -231,13 +233,7 @@ export const ClubListPage: React.FC = () => {
         </DataContainer>
       </div>
 
-      {/* 하단 정보 */}
-      <div className="bg-white/5 rounded-lg p-4">
-        <p className="text-sm text-white/60 text-center">
-          총 {clubs.length}개의 골프장이 등록되어 있습니다.
-          {searchKeyword && ` '${searchKeyword}' 검색 결과입니다.`}
-        </p>
-      </div>
+      <Pagination pagination={pagination} onPageChange={setPage} />
     </PageLayout>
     </CanManageCourses>
   );

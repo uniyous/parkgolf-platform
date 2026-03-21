@@ -7,7 +7,8 @@ import {
   useUpdateCompanyMemberMutation,
 } from '@/hooks/queries';
 import { Modal } from '@/components/ui';
-import { DataContainer } from '@/components/common';
+import { DataContainer, Pagination } from '@/components/common';
+import { useClientPagination } from '@/hooks/useClientPagination';
 import {
   FilterContainer,
   FilterSearch,
@@ -50,13 +51,14 @@ const CompanyMemberView: React.FC = () => {
   );
   const searchedUsers = usersResponse?.users || [];
 
-  const members = membersResponse?.members || [];
+  const allMembers = membersResponse?.members || [];
+  const { paginatedData: members, pagination, setPage } = useClientPagination(allMembers, 20);
 
   const stats = useMemo(() => ({
     total: membersResponse?.total || 0,
-    active: members.filter((m) => m.isActive).length,
-    inactive: members.filter((m) => !m.isActive).length,
-  }), [members, membersResponse]);
+    active: allMembers.filter((m) => m.isActive).length,
+    inactive: allMembers.filter((m) => !m.isActive).length,
+  }), [allMembers, membersResponse]);
 
   const handleAddMember = async (userId: number) => {
     try {
@@ -325,6 +327,7 @@ const CompanyMemberView: React.FC = () => {
             </table>
           </div>
         </DataContainer>
+        <Pagination pagination={pagination} onPageChange={setPage} />
       </div>
 
       {/* Add Member Modal */}

@@ -87,7 +87,3 @@ export const iamApi = {
     }
   },
 } as const;
-
-// Legacy exports for backward compatibility
-export const authApi = iamApi;
-export const login = iamApi.login;

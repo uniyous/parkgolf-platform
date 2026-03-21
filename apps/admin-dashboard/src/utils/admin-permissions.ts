@@ -45,24 +45,6 @@ export const ADMIN_PERMISSION_LABELS: Record<string, string> = {
   VIEW: '조회',
 };
 
-// User Permission Labels (8개)
-export const USER_PERMISSION_LABELS: Record<string, string> = {
-  PROFILE: '프로필 관리',
-  COURSE_VIEW: '코스 조회',
-  BOOKING_VIEW: '예약 조회',
-  BOOKING_MANAGE: '예약 관리',
-  PAYMENT: '결제/환불',
-  PREMIUM_BOOKING: '프리미엄 예약',
-  PRIORITY_BOOKING: '우선 예약',
-  ADVANCED_SEARCH: '고급 검색',
-};
-
-// All Permission Labels
-export const PERMISSION_LABELS: Record<string, string> = {
-  ...ADMIN_PERMISSION_LABELS,
-  ...USER_PERMISSION_LABELS,
-};
-
 // Admin hierarchy (higher number = higher authority)
 export const ADMIN_HIERARCHY: Record<AdminRole, number> = {
   // 플랫폼 역할
@@ -87,13 +69,6 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   COMPANY_MANAGER: ['COURSES', 'TIMESLOTS', 'BOOKINGS', 'USERS', 'ANALYTICS', 'VIEW'],
   COMPANY_STAFF: ['TIMESLOTS', 'BOOKINGS', 'SUPPORT', 'VIEW'],
   COMPANY_VIEWER: ['VIEW'],
-};
-
-// User role permissions (사용자 역할)
-export const USER_ROLE_PERMISSIONS: Record<string, Permission[]> = {
-  PREMIUM: ['PROFILE', 'COURSE_VIEW', 'BOOKING_VIEW', 'BOOKING_MANAGE', 'PAYMENT', 'PREMIUM_BOOKING', 'PRIORITY_BOOKING', 'ADVANCED_SEARCH'],
-  USER: ['PROFILE', 'COURSE_VIEW', 'BOOKING_VIEW', 'BOOKING_MANAGE', 'PAYMENT'],
-  GUEST: ['COURSE_VIEW'],
 };
 
 // 플랫폼 역할 목록
@@ -121,17 +96,6 @@ export const isCompanyRole = (role: AdminRole): boolean => {
 // Check if role has admin-level authority (can manage other admins)
 export const hasAdminAuthority = (role: AdminRole): boolean => {
   return role === 'PLATFORM_ADMIN' || role === 'COMPANY_ADMIN';
-};
-
-// Legacy compatibility functions
-export const isPlatformAdmin = isPlatformRole;
-export const isSystemAdmin = (role: AdminRole): boolean => role === 'PLATFORM_ADMIN';
-export const isCompanyAdmin = (role: AdminRole): boolean => role === 'COMPANY_ADMIN';
-export const isOperationAdmin = (role: AdminRole): boolean => {
-  return role === 'COMPANY_MANAGER' || role === 'COMPANY_STAFF';
-};
-export const isCourseAdmin = (role: AdminRole): boolean => {
-  return role === 'COMPANY_STAFF' || role === 'COMPANY_VIEWER';
 };
 
 // Check if user has a specific permission

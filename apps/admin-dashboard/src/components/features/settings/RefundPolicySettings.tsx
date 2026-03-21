@@ -74,7 +74,6 @@ export const RefundPolicySettings: React.FC = () => {
       }
       setIsEditing(false);
     } catch (error) {
-      console.error('Failed to save refund policy:', error);
       toast.error('저장에 실패했습니다.');
     }
   };
@@ -88,7 +87,6 @@ export const RefundPolicySettings: React.FC = () => {
     try {
       await deleteMutation.mutateAsync(policy.id);
     } catch (error) {
-      console.error('Failed to revert policy:', error);
       toast.error('되돌리기에 실패했습니다.');
     }
   };
