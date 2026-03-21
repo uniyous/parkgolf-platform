@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@/utils';
 import type { Notification } from '@/lib/api/notificationApi';
 import type { Pagination } from '@/types/common';
 import { Pagination as PaginationUI } from '@/components/common';
