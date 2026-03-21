@@ -66,39 +66,6 @@ const ADMIN_ACCOUNT_GROUPS: AdminAccountGroup[] = [
       },
     ]
   },
-  {
-    title: '회사 관리 (가맹점)',
-    accounts: [
-      {
-        email: 'admin@gangnam.com',
-        password: 'admin123!@#',
-        name: '강남대표',
-        role: 'COMPANY_ADMIN',
-        description: '강남 파크골프장 대표 관리자'
-      },
-      {
-        email: 'manager@gangnam.com',
-        password: 'admin123!@#',
-        name: '강남매니저',
-        role: 'COMPANY_MANAGER',
-        description: '운영 매니저'
-      },
-      {
-        email: 'staff@gangnam.com',
-        password: 'admin123!@#',
-        name: '강남직원',
-        role: 'COMPANY_STAFF',
-        description: '현장 직원'
-      },
-      {
-        email: 'viewer@gangnam.com',
-        password: 'admin123!@#',
-        name: '강남조회자',
-        role: 'COMPANY_VIEWER',
-        description: '회사 데이터 조회 전용'
-      },
-    ]
-  },
 ];
 
 const ADMIN_ACCOUNTS: AdminAccount[] = ADMIN_ACCOUNT_GROUPS.flatMap(group => group.accounts);
@@ -269,11 +236,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       case 'PLATFORM_ADMIN': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
       case 'PLATFORM_SUPPORT': return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
       case 'PLATFORM_VIEWER': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-      // 회사 역할
-      case 'COMPANY_ADMIN': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'COMPANY_MANAGER': return 'bg-teal-500/20 text-teal-400 border-teal-500/30';
-      case 'COMPANY_STAFF': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      case 'COMPANY_VIEWER': return 'bg-white/10 text-white/60 border-white/15';
       default: return 'bg-white/10 text-white/60 border-white/15';
     }
   };
