@@ -57,24 +57,38 @@ export class BookingAgentService {
     if (request.selectedSlotId) return this.handleDirectSlotSelect(context, request);
     if (request.selectedClubId) return this.handleDirectClubSelect(context, request);
 
-    // ── LLM Processing (기존 방식) ──
+    // ── LLM Processing ──
     // 사용자 메시지 추가
     this.conversationService.addUserMessage(context, message);
 
+    // 컨텍스트 추출 → TASK_PREVIEW 카드 생성
+    const preview = this.extractContextPreview(message, context, request);
+
     try {
+      // 상태: ANALYZING
+      context.state = 'ANALYZING';
+
       // DeepSeek 대화 처리 (도구 호출 포함)
       const response = await this.processWithLLM(context, request);
+
+      // TASK_PREVIEW + LLM 결과 액션 병합
+      const actions: ChatAction[] = [];
+      if (preview) {
+        actions.push({ type: 'TASK_PREVIEW', data: preview });
+      }
+      if (response.actions) {
+        actions.push(...response.actions);
+      }
 
       return {
         conversationId: context.conversationId,
         message: response.text || '',
         state: context.state,
-        actions: response.actions,
+        actions: actions.length > 0 ? actions : undefined,
       };
     } catch (error) {
       this.logger.error('Chat processing failed', error);
 
-      // 에러 응답
       const errorMessage = '죄송해요, 잠시 문제가 발생했어요. 다시 시도해 주세요.';
       this.conversationService.addAssistantMessage(context, errorMessage);
 
@@ -82,6 +96,7 @@ export class BookingAgentService {
         conversationId: context.conversationId,
         message: errorMessage,
         state: context.state,
+        actions: [{ type: 'BOOKING_FAILED', data: { reason: errorMessage } }],
       };
     }
   }
@@ -362,7 +377,7 @@ export class BookingAgentService {
           // 그룹 모드: TEAM_COMPLETE
           return this.completeTeam(context, request, result);
         }
-        actions.push({ type: 'BOOKING_COMPLETE', data: result });
+        actions.push({ type: 'TEAM_COMPLETE', data: result });
         message = '예약이 완료되었습니다!';
         this.conversationService.updateSlots(context, { confirmed: true });
         this.conversationService.setState(context, 'COMPLETED');
@@ -402,14 +417,15 @@ export class BookingAgentService {
         // state stays BOOKING
       } else {
         // PENDING — 폴링 타임아웃 (graceful degradation)
-        actions.push({ type: 'BOOKING_COMPLETE', data: result });
+        actions.push({ type: 'TEAM_COMPLETE', data: result });
         message = '예약이 처리 중이에요. 잠시 후 예약 내역에서 확인해 주세요.';
         this.conversationService.updateSlots(context, { confirmed: true });
         this.conversationService.setState(context, 'COMPLETED');
       }
     } else {
       const errorMsg = result?.message || toolResult.error || '예약에 실패했습니다';
-      message = `예약에 실패했어요: ${errorMsg}. 다른 시간을 선택해 주세요.`;
+      message = `예약에 실패했어요: ${errorMsg}`;
+      actions.push({ type: 'BOOKING_FAILED', data: { reason: errorMsg } });
       this.conversationService.setState(context, 'COLLECTING');
     }
 
@@ -752,7 +768,7 @@ export class BookingAgentService {
   }
 
   /**
-   * "종료" 버튼 → 전체 completedTeams 요약 (BOOKING_COMPLETE)
+   * "종료" 버튼 → 대화 종료
    */
   private async handleFinishGroup(
     context: ConversationContext,
@@ -794,7 +810,7 @@ export class BookingAgentService {
       conversationId: context.conversationId,
       message,
       state: context.state,
-      actions: [{ type: 'BOOKING_COMPLETE', data: summaryData }],
+      actions: [{ type: 'TEAM_COMPLETE', data: summaryData }],
     };
   }
 
@@ -1177,7 +1193,7 @@ export class BookingAgentService {
             if (status === 'SLOT_RESERVED') {
               actions.push({ type: 'SHOW_PAYMENT', data: result.result });
             } else {
-              actions.push({ type: 'BOOKING_COMPLETE', data: result.result });
+              actions.push({ type: 'TEAM_COMPLETE', data: result.result });
             }
           }
           break;
@@ -1275,7 +1291,7 @@ export class BookingAgentService {
     actions: ChatAction[],
   ): void {
     // 예약 완료 확인
-    const bookingComplete = actions.some((a) => a.type === 'BOOKING_COMPLETE');
+    const bookingComplete = actions.some((a) => a.type === 'TEAM_COMPLETE');
     if (bookingComplete) {
       this.conversationService.setState(context, 'COMPLETED');
       return;
@@ -1306,5 +1322,54 @@ export class BookingAgentService {
     if (context.state === 'IDLE') {
       this.conversationService.setState(context, 'COLLECTING');
     }
+  }
+
+  /**
+   * 사용자 메시지에서 컨텍스트를 추출하여 TASK_PREVIEW 데이터 생성
+   * 예약 의도가 감지되지 않으면 null 반환 (일반 대화에는 프리뷰 불필요)
+   */
+  private extractContextPreview(
+    message: string,
+    context: ConversationContext,
+    request?: ChatRequestDto,
+  ): Record<string, unknown> | null {
+    const msg = message.toLowerCase();
+
+    // 예약/검색 의도 키워드 감지
+    const bookingKeywords = ['예약', '부킹', '치자', '치고', '라운딩', '골프장', '파크골프', '검색', '찾아', '추천'];
+    const hasBookingIntent = bookingKeywords.some((kw) => msg.includes(kw));
+    if (!hasBookingIntent) return null;
+
+    // 인원 추출
+    const playerMatch = msg.match(/(\d+)\s*명/);
+    const playerCount = playerMatch ? parseInt(playerMatch[1]) : context.slots.playerCount || null;
+
+    // 날짜 추출
+    let date: string | null = null;
+    if (msg.includes('오늘')) date = '오늘';
+    else if (msg.includes('내일')) date = '내일';
+    else if (msg.includes('모레') || msg.includes('모래')) date = '모레';
+    else if (msg.includes('주말')) date = '이번 주말';
+    else {
+      const dateMatch = msg.match(/(\d{1,2})[\/\-.](\d{1,2})/);
+      if (dateMatch) date = `${dateMatch[1]}/${dateMatch[2]}`;
+      const dayMatch = msg.match(/(월|화|수|목|금|토|일)요일/);
+      if (dayMatch) date = `${dayMatch[1]}요일`;
+    }
+
+    // 위치 추출 (시/군/구 + 골프장명)
+    const locationMatch = msg.match(/([\uAC00-\uD7AF]+(?:시|군|구|동|읍|면))/);
+    const location = locationMatch ? locationMatch[1] : (context.slots.regionName || null);
+
+    // GPS 위치 (요청에 포함된 경우)
+    const latitude = request?.latitude || context.slots.latitude;
+    const longitude = request?.longitude || context.slots.longitude;
+
+    return {
+      location: location || (latitude ? '현재 위치' : null),
+      date: date || '오늘',
+      playerCount,
+      intent: 'booking',
+    };
   }
 }

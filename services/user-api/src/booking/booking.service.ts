@@ -131,7 +131,7 @@ export class BookingService {
   }
 
   async cancelBooking(id: number, userId: number, reason?: string): Promise<ApiResponse<BookingResponseDto>> {
-    return this.natsClient.send('saga.booking.cancel', { id, userId, reason }, NATS_TIMEOUTS.QUICK);
+    return this.natsClient.send('saga.booking.cancel', { id, userId, reason }, NATS_TIMEOUTS.DEFAULT);
   }
 
   async getTimeSlotAvailability(gameId: number, date: string): Promise<ApiResponse<TimeSlotAvailabilityDto[]>> {

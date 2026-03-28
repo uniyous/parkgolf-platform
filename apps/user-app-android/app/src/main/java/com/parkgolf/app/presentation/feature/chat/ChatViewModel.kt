@@ -67,6 +67,7 @@ data class ChatUiState(
 ) {
     val aiLoadingText: String
         get() = when (aiConversationState) {
+            ConversationState.ANALYZING -> "분석 중..."
             ConversationState.COLLECTING -> "검색 중..."
             ConversationState.CONFIRMING -> "예약 확인 중..."
             ConversationState.BOOKING -> "예약 처리 중..."

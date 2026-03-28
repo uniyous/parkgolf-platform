@@ -128,6 +128,18 @@ export class BookingSagaStepController {
     return NatsResponse.success(result);
   }
 
+  /**
+   * 만료된 SLOT_RESERVED 예약 일괄 타임아웃 처리
+   * job-service에서 5분 주기로 호출
+   */
+  @MessagePattern('booking.expireSlotReserved')
+  async expireSlotReserved(@Payload() data: { timeoutMinutes?: number }) {
+    const timeoutMinutes = data?.timeoutMinutes || 10;
+    this.logger.log(`NATS: booking.expireSlotReserved (timeout: ${timeoutMinutes}min)`);
+    const result = await this.sagaStepService.expireSlotReservedBookings(timeoutMinutes);
+    return NatsResponse.success(result);
+  }
+
   // =====================================================
   // 외부 파트너 연동 핸들러
   // =====================================================

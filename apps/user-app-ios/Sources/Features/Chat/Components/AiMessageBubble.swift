@@ -101,8 +101,6 @@ struct AiMessageBubble: View {
             )
         case .showWeather:
             WeatherCardView(data: action.data.value)
-        case .bookingComplete:
-            BookingCompleteCardView(data: action.data.value)
         case .confirmBooking:
             ConfirmBookingCardView(
                 data: action.data.value,
@@ -144,6 +142,12 @@ struct AiMessageBubble: View {
             )
         case .splitPayment:
             EmptyView()
+        case .taskPreview:
+            TaskPreviewCardView(data: action.data.value)
+        case .bookingFailed:
+            BookingFailedCardView(data: action.data.value)
+        case .bookingExpired:
+            BookingExpiredCardView(data: action.data.value)
         }
     }
 }

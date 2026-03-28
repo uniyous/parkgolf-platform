@@ -133,6 +133,7 @@ export class ChatRequestDto {
  */
 export type ConversationState =
   | 'IDLE'                    // 초기 상태
+  | 'ANALYZING'               // 의도 분석 중
   | 'COLLECTING'              // 정보 수집 중
   | 'SELECTING_MEMBERS'       // 팀 멤버 선택 중
   | 'CONFIRMING'              // 예약 확인 중
@@ -146,6 +147,7 @@ export type ConversationState =
  * UI 액션 타입
  */
 export type ActionType =
+  | 'TASK_PREVIEW'            // 작업 안내 카드 (컨텍스트 프리뷰)
   | 'SHOW_CLUBS'              // 골프장 목록 표시
   | 'SHOW_SLOTS'              // 타임슬롯 표시
   | 'SHOW_WEATHER'            // 날씨 정보 표시
@@ -154,8 +156,9 @@ export type ActionType =
   | 'SHOW_PAYMENT'            // 결제 카드 표시 (카드결제)
   | 'SPLIT_PAYMENT'           // 더치페이 결제 상태
   | 'SETTLEMENT_STATUS'       // 정산 현황
-  | 'TEAM_COMPLETE'           // 팀 완료 카드
-  | 'BOOKING_COMPLETE';       // 예약 완료
+  | 'TEAM_COMPLETE'           // 팀 완료 카드 (부킹 현황)
+  | 'BOOKING_FAILED'          // 예약 실패 (대안 제시)
+  | 'BOOKING_EXPIRED';        // 결제 타임아웃
 
 /**
  * UI 액션

@@ -18,7 +18,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.parkgolf.app.domain.model.ActionType
 import com.parkgolf.app.domain.model.ChatAction
-import com.parkgolf.app.presentation.feature.chat.components.cards.BookingCompleteCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.ClubCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.ConfirmBookingCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.ConfirmGroupCard
@@ -28,6 +27,9 @@ import com.parkgolf.app.presentation.feature.chat.components.cards.SettlementSta
 import com.parkgolf.app.presentation.feature.chat.components.cards.SlotCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.TeamCompleteCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.TeamConfirmData
+import com.parkgolf.app.presentation.feature.chat.components.cards.TaskPreviewCard
+import com.parkgolf.app.presentation.feature.chat.components.cards.BookingFailedCard
+import com.parkgolf.app.presentation.feature.chat.components.cards.BookingExpiredCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.WeatherCard
 import com.parkgolf.app.presentation.theme.ParkOnPrimary
 import com.parkgolf.app.presentation.theme.ParkPrimary
@@ -158,7 +160,6 @@ fun AiMessageBubble(
                                 onPaymentComplete = onPaymentComplete,
                                 onRequestPayment = onRequestPayment
                             )
-                            ActionType.BOOKING_COMPLETE -> BookingCompleteCard(data = action.data)
                             ActionType.CONFIRM_GROUP -> ConfirmGroupCard(
                                 data = action.data,
                                 onConfirm = onConfirmGroup,
@@ -183,6 +184,9 @@ fun AiMessageBubble(
                                 onFinish = onFinish
                             )
                             ActionType.SPLIT_PAYMENT -> { /* handled by settlement status */ }
+                            ActionType.TASK_PREVIEW -> TaskPreviewCard(data = action.data)
+                            ActionType.BOOKING_FAILED -> BookingFailedCard(data = action.data)
+                            ActionType.BOOKING_EXPIRED -> BookingExpiredCard(data = action.data)
                         }
                     }
                 }

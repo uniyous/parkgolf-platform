@@ -62,8 +62,8 @@ export interface MessagesResponse {
 // AI Chat Types
 // ============================================
 
-export type ConversationState = 'IDLE' | 'COLLECTING' | 'SELECTING_MEMBERS' | 'CONFIRMING' | 'BOOKING' | 'SETTLING' | 'TEAM_COMPLETE' | 'COMPLETED' | 'CANCELLED';
-export type ActionType = 'SHOW_CLUBS' | 'SHOW_SLOTS' | 'SHOW_WEATHER' | 'CONFIRM_BOOKING' | 'SELECT_MEMBERS' | 'SHOW_PAYMENT' | 'SPLIT_PAYMENT' | 'SETTLEMENT_STATUS' | 'TEAM_COMPLETE' | 'BOOKING_COMPLETE';
+export type ConversationState = 'IDLE' | 'ANALYZING' | 'COLLECTING' | 'SELECTING_MEMBERS' | 'CONFIRMING' | 'BOOKING' | 'SETTLING' | 'TEAM_COMPLETE' | 'COMPLETED' | 'CANCELLED';
+export type ActionType = 'TASK_PREVIEW' | 'SHOW_CLUBS' | 'SHOW_SLOTS' | 'SHOW_WEATHER' | 'CONFIRM_BOOKING' | 'SELECT_MEMBERS' | 'SHOW_PAYMENT' | 'SPLIT_PAYMENT' | 'SETTLEMENT_STATUS' | 'TEAM_COMPLETE' | 'BOOKING_FAILED' | 'BOOKING_EXPIRED';
 
 export interface ChatAction {
   type: ActionType;

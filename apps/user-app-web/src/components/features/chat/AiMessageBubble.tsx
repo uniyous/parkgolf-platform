@@ -1,10 +1,12 @@
 import React from 'react';
 import { Sparkles } from 'lucide-react';
-import type { ChatAction, ClubCardData, SlotCardData, WeatherCardData, BookingCompleteData, ConfirmBookingData, PaymentCardData, SelectMembersData, TeamCompleteData, SettlementStatusData } from '@/lib/api/chatApi';
+import type { ChatAction, ClubCardData, SlotCardData, WeatherCardData, ConfirmBookingData, PaymentCardData, SelectMembersData, TeamCompleteData, SettlementStatusData } from '@/lib/api/chatApi';
+import { TaskPreviewCard } from './cards/TaskPreviewCard';
 import { ClubCard } from './cards/ClubCard';
 import { SlotCard } from './cards/SlotCard';
 import { WeatherCard } from './cards/WeatherCard';
-import { BookingCompleteCard } from './cards/BookingCompleteCard';
+import { BookingFailedCard } from './cards/BookingFailedCard';
+import { BookingExpiredCard } from './cards/BookingExpiredCard';
 import { ConfirmBookingCard } from './cards/ConfirmBookingCard';
 import { PaymentCard } from './cards/PaymentCard';
 import { SelectMembersCard } from './cards/SelectMembersCard';
@@ -82,6 +84,9 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
 
             {actions?.map((action, index) => (
               <div key={index}>
+                {action.type === 'TASK_PREVIEW' && (
+                  <TaskPreviewCard data={action.data as Record<string, unknown>} />
+                )}
                 {action.type === 'SHOW_CLUBS' && (
                   <ClubCard
                     data={action.data as ClubCardData}
@@ -119,9 +124,6 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                     completed={!isLatestAiMessage}
                   />
                 )}
-                {action.type === 'BOOKING_COMPLETE' && (
-                  <BookingCompleteCard data={action.data as BookingCompleteData} />
-                )}
                 {action.type === 'SELECT_MEMBERS' && (
                   <SelectMembersCard
                     data={action.data as SelectMembersData}
@@ -137,6 +139,12 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                     onFinish={onFinishGroup}
                     completed={!isLatestAiMessage}
                   />
+                )}
+                {action.type === 'BOOKING_FAILED' && (
+                  <BookingFailedCard data={action.data as Record<string, unknown>} />
+                )}
+                {action.type === 'BOOKING_EXPIRED' && (
+                  <BookingExpiredCard data={action.data as Record<string, unknown>} />
                 )}
                 {action.type === 'SETTLEMENT_STATUS' && (
                   <SettlementStatusCard

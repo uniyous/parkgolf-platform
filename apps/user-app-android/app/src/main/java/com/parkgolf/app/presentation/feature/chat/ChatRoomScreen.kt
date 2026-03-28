@@ -477,19 +477,28 @@ fun ChatRoomScreen(
                     )
                 }
 
-                // Error Snackbar
+                // Error Snackbar (복사 가능)
                 uiState.error?.let { error ->
+                    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
                     Snackbar(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(16.dp),
                         action = {
-                            TextButton(onClick = { viewModel.clearError() }) {
-                                Text("확인")
+                            Row {
+                                TextButton(onClick = {
+                                    clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(error))
+                                    android.widget.Toast.makeText(context, "에러 메시지 복사됨", android.widget.Toast.LENGTH_SHORT).show()
+                                }) {
+                                    Text("복사")
+                                }
+                                TextButton(onClick = { viewModel.clearError() }) {
+                                    Text("확인")
+                                }
                             }
                         }
                     ) {
-                        Text(error)
+                        Text(error, maxLines = 5)
                     }
                 }
             }

@@ -201,14 +201,26 @@ fun BookingFormScreen(
                         }
                     }
 
-                    // Error message
+                    // Error message (복사 가능)
                     uiState.error?.let { error ->
-                        Text(
-                            text = error,
-                            color = ParkError,
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
+                        val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+                        androidx.compose.foundation.layout.Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = error,
+                                color = ParkError,
+                                fontSize = 14.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            TextButton(onClick = {
+                                clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(error))
+                                android.widget.Toast.makeText(context, "에러 메시지 복사됨", android.widget.Toast.LENGTH_SHORT).show()
+                            }) {
+                                Text("복사", fontSize = 12.sp)
+                            }
+                        }
                     }
 
                     // Bottom Button (시니어 UI: 큰 버튼)
