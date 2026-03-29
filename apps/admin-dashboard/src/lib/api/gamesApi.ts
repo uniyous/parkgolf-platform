@@ -367,12 +367,12 @@ export const gamesApi = {
   /**
    * 주간 스케줄 기반 타임슬롯 자동 생성
    */
-  async generateTimeSlots(gameId: number, startDate: string, endDate: string): Promise<GameTimeSlot[]> {
+  async generateTimeSlots(gameId: number, startDate: string, endDate: string): Promise<{ created: number; skipped: number }> {
     const response = await apiClient.post<unknown>(
       `/admin/games/${gameId}/time-slots/generate`,
       { startDate, endDate }
     );
-    return extractList<GameTimeSlot>(response.data);
+    return extractSingle<{ created: number; skipped: number }>(response.data) ?? { created: 0, skipped: 0 };
   },
 
   /**
