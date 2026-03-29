@@ -1363,8 +1363,15 @@ export class BookingAgentService {
       msg.match(/([\uAC00-\uD7AF]{2,})\s*(?:파크골프|골프장)/);
     let location = locationMatch ? locationMatch[1] : (context.slots.regionName || null);
 
-    // GPS → 지역명 변환 (캐시 미스 시만 호출, processWithLLM에서 재사용)
-    if (!location) {
+    // 메시지에서 추출한 지역명 → location-service로 정규화 ("천안" → "충청남도 천안시")
+    if (location && !context.slots.regionName) {
+      const normalized = await this.toolExecutor.resolveLocationName(location);
+      if (normalized) {
+        this.conversationService.updateSlots(context, { regionName: normalized });
+        location = normalized;
+      }
+    } else if (!location) {
+      // GPS → 지역명 변환 (캐시 미스 시만 호출, processWithLLM에서 재사용)
       const latitude = request?.latitude || context.slots.latitude;
       const longitude = request?.longitude || context.slots.longitude;
       if (latitude && longitude && !context.slots.regionName) {

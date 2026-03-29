@@ -58,6 +58,31 @@ export class ToolExecutorService {
   }
 
   /**
+   * 지역명 → 정규화된 지역명 변환 (location.search.address)
+   * "천안" → "충청남도 천안시", "아산" → "충청남도 아산시"
+   */
+  async resolveLocationName(query: string): Promise<string | null> {
+    try {
+      const response = await firstValueFrom(
+        this.locationClient.send('location.search.address', { query }).pipe(
+          timeout(this.REQUEST_TIMEOUT),
+          catchError(() => [null]),
+        ),
+      );
+
+      if (response?.success && response?.data?.addresses?.length > 0) {
+        const addr = response.data.addresses[0];
+        return addr.region1
+          ? `${addr.region1} ${addr.region2 || ''}`.trim()
+          : null;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * 도구 호출 실행
    */
   async execute(toolCall: ToolCall): Promise<ToolResult> {
