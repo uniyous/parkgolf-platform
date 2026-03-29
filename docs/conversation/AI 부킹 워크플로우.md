@@ -1,7 +1,7 @@
 # AI 부킹 워크플로우
 
 > 채팅 대화 기반 AI 예약 — 팀(최대 4명) 단위 처리
-> 작성일: 2026-03-21 / 수정일: 2026-03-28
+> 작성일: 2026-03-21 / 수정일: 2026-03-30
 
 ---
 
@@ -82,7 +82,31 @@ flowchart LR
 
 ---
 
-## 5. 개인 예약
+## 5. TASK_PREVIEW + LLM 처리 흐름
+
+```
+chat() 요청
+│
+├─ extractContextPreview() [ASYNC, LLM 전 실행]
+│  ├─ 예약 의도 감지 (키워드 매칭)
+│  ├─ 인원/날짜/위치 추출 (정규식)
+│  ├─ 위치 미추출 + GPS 있음 → resolveRegionName() → 캐싱
+│  └─ TASK_PREVIEW 데이터 반환
+│
+├─ processWithLLM() [ASYNC]
+│  ├─ regionName 캐시 히트 → resolveRegionName() SKIP
+│  ├─ DeepSeek LLM 호출
+│  └─ Tool 실행 (search_clubs_with_slots 등)
+│
+└─ 응답: TASK_PREVIEW + LLM 결과 카드 병합
+```
+
+### 5.1 AI 응답 규칙
+
+- 텍스트 응답은 **1~2문장**으로 간결하게
+- 상세 정보는 카드 UI가 표시 → 텍스트로 중복 설명하지 않음
+
+### 5.2 개인 예약 예시
 
 ```
 사용자: "내일 천안 2명 예약해 줘"
@@ -92,6 +116,14 @@ flowchart LR
 [CONFIRM]        10:30 · 2명 · ₩20,000 [현장] [카드] [더치페이]
 [결제]
 [BOOKING_STATUS] ✅ 10:30 · 2명 · ₩20,000
+```
+
+```
+사용자: "내 근처 골프장 예약해 줘" (GPS 전송됨)
+
+[TASK_PREVIEW]   📍 천안시 서북구 📅 오늘    ← GPS → 지역명 변환
+[SHOW_CLUBS]     ☀️ 20°C · 유관순 PG [09:00] [09:30]
+...
 ```
 
 ---
@@ -164,13 +196,28 @@ flowchart TB
 
 | 카드 | 용도 | 표시 |
 |------|------|------|
-| TASK_PREVIEW | 컨텍스트 확인 | `📍 천안 👥 2명 📅 오늘` |
+| TASK_PREVIEW | 컨텍스트 확인 | `📍 천안 👥 2명 📅 내일` |
 | SHOW_CLUBS | 검색 결과 | 날씨 + 골프장 + 슬롯 칩 |
 | CONFIRM_BOOKING | 예약 확인 | 정보 + [현장] [카드] [더치페이] + [예약하기] |
 | SETTLEMENT_STATUS | 더치페이 진행 | `✅ A ₩15,000` / `⏳ B ₩15,000` |
 | TEAM_COMPLETE | 팀 부킹 완료 | `✅ 1팀 09:00 A코스` + [다음 팀] [끝] |
 | BOOKING_FAILED | 예약 실패 | `❌ 마감` + [다른 시간] |
 | BOOKING_EXPIRED | 결제 타임아웃 | `⏰ 시간 초과 · 자동 취소` |
+
+### 7.1 TASK_PREVIEW 위치 표시 로직
+
+```
+사용자 메시지에서 지역명 추출 가능?
+├─ YES → "천안", "아산" 등 메시지 내 지역명 표시
+└─ NO
+   ├─ GPS 좌표 있음?
+   │  ├─ regionName 캐시 있음 → 캐시된 지역명 표시 (API 호출 없음)
+   │  └─ 캐시 없음 → location.coord2region 호출 → "천안시 서북구" 표시 + 캐싱
+   └─ GPS도 없음 → 위치 태그 미표시
+```
+
+- `resolveRegionName()` 결과를 `context.slots.regionName`에 캐싱
+- 이후 `processWithLLM()`에서 동일 호출 시 캐시 히트 → **중복 API 호출 방지**
 
 ---
 

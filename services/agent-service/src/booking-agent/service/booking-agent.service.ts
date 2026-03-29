@@ -61,8 +61,8 @@ export class BookingAgentService {
     // 사용자 메시지 추가
     this.conversationService.addUserMessage(context, message);
 
-    // 컨텍스트 추출 → TASK_PREVIEW 카드 생성
-    const preview = this.extractContextPreview(message, context, request);
+    // 컨텍스트 추출 → TASK_PREVIEW 카드 생성 (GPS → 지역명 변환 포함)
+    const preview = await this.extractContextPreview(message, context, request);
 
     try {
       // 상태: ANALYZING
@@ -1327,12 +1327,13 @@ export class BookingAgentService {
   /**
    * 사용자 메시지에서 컨텍스트를 추출하여 TASK_PREVIEW 데이터 생성
    * 예약 의도가 감지되지 않으면 null 반환 (일반 대화에는 프리뷰 불필요)
+   * GPS → 지역명 변환을 여기서 수행하면 processWithLLM()에서 캐시 히트로 중복 호출 방지
    */
-  private extractContextPreview(
+  private async extractContextPreview(
     message: string,
     context: ConversationContext,
     request?: ChatRequestDto,
-  ): Record<string, unknown> | null {
+  ): Promise<Record<string, unknown> | null> {
     const msg = message.toLowerCase();
 
     // 예약/검색 의도 키워드 감지
@@ -1357,16 +1358,28 @@ export class BookingAgentService {
       if (dayMatch) date = `${dayMatch[1]}요일`;
     }
 
-    // 위치 추출 (시/군/구 + 골프장명)
-    const locationMatch = msg.match(/([\uAC00-\uD7AF]+(?:시|군|구|동|읍|면))/);
-    const location = locationMatch ? locationMatch[1] : (context.slots.regionName || null);
+    // 위치 추출 (행정구역 접미사 포함 또는 "X 파크골프장/골프장" 패턴)
+    const locationMatch = msg.match(/([\uAC00-\uD7AF]+(?:시|군|구|동|읍|면))/) ||
+      msg.match(/([\uAC00-\uD7AF]{2,})\s*(?:파크골프|골프장)/);
+    let location = locationMatch ? locationMatch[1] : (context.slots.regionName || null);
 
-    // GPS 위치 (요청에 포함된 경우)
-    const latitude = request?.latitude || context.slots.latitude;
-    const longitude = request?.longitude || context.slots.longitude;
+    // GPS → 지역명 변환 (캐시 미스 시만 호출, processWithLLM에서 재사용)
+    if (!location) {
+      const latitude = request?.latitude || context.slots.latitude;
+      const longitude = request?.longitude || context.slots.longitude;
+      if (latitude && longitude && !context.slots.regionName) {
+        const regionName = await this.toolExecutor.resolveRegionName(latitude, longitude);
+        if (regionName) {
+          this.conversationService.updateSlots(context, { regionName });
+          location = regionName;
+        }
+      } else if (context.slots.regionName) {
+        location = context.slots.regionName;
+      }
+    }
 
     return {
-      location: location || (latitude ? '현재 위치' : null),
+      location: location || null,
       date: date || '오늘',
       playerCount,
       intent: 'booking',
