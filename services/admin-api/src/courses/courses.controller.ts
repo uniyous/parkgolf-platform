@@ -20,6 +20,10 @@ import { BearerToken, AdminContext, AdminContextData } from '../common';
 // Club DTOs
 export class ClubFiltersDto {
   @IsOptional()
+  @IsString()
+  search?: string;
+
+  @IsOptional()
   @IsNumber()
   @Type(() => Number)
   companyId?: number;
