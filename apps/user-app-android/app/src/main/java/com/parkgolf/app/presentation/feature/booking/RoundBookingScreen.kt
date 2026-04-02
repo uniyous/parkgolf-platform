@@ -27,6 +27,8 @@ import java.text.NumberFormat
 import java.util.Locale
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
@@ -34,8 +36,10 @@ import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -556,15 +560,21 @@ private fun SeniorRoundCardView(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                "◀ 이전",
-                                fontSize = 12.sp,
-                                color = if (currentPage == 0) TextOnGradientSecondary.copy(alpha = 0.3f)
-                                    else TextOnGradientSecondary,
-                                modifier = Modifier
-                                    .clickable(enabled = currentPage > 0) { currentPage-- }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
+                            TextButton(
+                                onClick = { currentPage-- },
+                                enabled = currentPage > 0,
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                val color = if (currentPage == 0) TextOnGradientSecondary.copy(alpha = 0.3f)
+                                    else TextOnGradientSecondary
+                                Icon(
+                                    Icons.Default.ChevronLeft,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = color
+                                )
+                                Text("이전", fontSize = 12.sp, color = color)
+                            }
 
                             Text(
                                 "${currentPage + 1} / $totalPages",
@@ -572,15 +582,21 @@ private fun SeniorRoundCardView(
                                 color = TextOnGradientSecondary.copy(alpha = 0.6f)
                             )
 
-                            Text(
-                                "다음 ▶",
-                                fontSize = 12.sp,
-                                color = if (currentPage >= totalPages - 1) TextOnGradientSecondary.copy(alpha = 0.3f)
-                                    else TextOnGradientSecondary,
-                                modifier = Modifier
-                                    .clickable(enabled = currentPage < totalPages - 1) { currentPage++ }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
+                            TextButton(
+                                onClick = { currentPage++ },
+                                enabled = currentPage < totalPages - 1,
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                val color = if (currentPage >= totalPages - 1) TextOnGradientSecondary.copy(alpha = 0.3f)
+                                    else TextOnGradientSecondary
+                                Text("다음", fontSize = 12.sp, color = color)
+                                Icon(
+                                    Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = color
+                                )
+                            }
                         }
                     }
                 }
