@@ -15,7 +15,7 @@ export const TeamCompleteCard: React.FC<TeamCompleteCardProps> = ({
   completed,
 }) => {
   return (
-    <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-3 w-full min-w-[260px] max-w-[400px]">
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-3 w-full min-w-[260px] max-w-[420px]">
       {/* Header */}
       <div className="flex items-center gap-2">
         <CheckCircle2 className="w-5 h-5 text-violet-400" />

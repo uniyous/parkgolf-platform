@@ -36,7 +36,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
   // ── 라운드 그룹 레이아웃 ──
   if (data.rounds && data.rounds.length > 0) {
     return (
-      <div className="mt-2 w-full min-w-[260px] max-w-[480px] rounded-2xl bg-violet-500/10 border border-violet-500/20 overflow-hidden">
+      <div className="mt-2 w-full min-w-[260px] max-w-[420px] rounded-2xl bg-violet-500/10 border border-violet-500/20 overflow-hidden">
         {/* 골프장 헤더 */}
         {data.clubName && (
           <>
@@ -92,7 +92,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
                 </div>
 
                 {/* 타임슬롯 칩 */}
-                <div className="flex flex-wrap gap-1.5">
+                <div className="grid grid-cols-2 gap-1.5">
                   {visibleSlots.map((slot) => {
                     const isSelected = selectedSlotId === String(slot.id);
                     const isDisabled = hasSelection && !isSelected;
@@ -103,7 +103,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
                         onClick={() => !isDisabled && onSelect?.(String(slot.id), slot.time, slot.price, round.name)}
                         disabled={!onSelect || isDisabled}
                         className={cn(
-                          'rounded-lg px-2.5 py-1.5 border text-left transition-all inline-flex items-center gap-1',
+                          'rounded-lg px-2.5 py-1.5 border transition-all flex items-center justify-center gap-1',
                           isSelected
                             ? 'bg-violet-500/15 border-violet-500'
                             : isDisabled
@@ -182,7 +182,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({ data, onSelect, selectedSlot
 
   // ── 하위 호환: flat slots 그리드 ──
   return (
-    <div className="mt-2 w-full min-w-[260px] max-w-[480px] rounded-2xl bg-violet-500/10 border border-violet-500/20 p-3">
+    <div className="mt-2 w-full min-w-[260px] max-w-[420px] rounded-2xl bg-violet-500/10 border border-violet-500/20 p-3">
         <div className="grid grid-cols-2 gap-2">
           {data.slots.map((slot) => {
             const isSelected = selectedSlotId === slot.id;

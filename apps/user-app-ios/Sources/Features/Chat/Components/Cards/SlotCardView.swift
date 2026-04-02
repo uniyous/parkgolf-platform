@@ -222,8 +222,9 @@ private struct RoundSectionView: View {
                     .foregroundColor(Color.parkPrimary)
             }
 
-            // 타임슬롯 칩
-            FlowLayout(spacing: 6) {
+            // 타임슬롯 칩 (2열 균등 그리드)
+            let columns = [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)]
+            LazyVGrid(columns: columns, spacing: 6) {
                 ForEach(Array(visibleSlots.enumerated()), id: \.offset) { _, slot in
                     let slotId = SlotCardView.stringValue(slot["id"])
                     let time = slot["time"] as? String ?? ""
@@ -317,6 +318,7 @@ private struct TimeSlotChipView: View {
                         .foregroundColor(isSelected ? Color.parkPrimary.opacity(0.7) : .white.opacity(0.4))
                 }
             }
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
             .background(

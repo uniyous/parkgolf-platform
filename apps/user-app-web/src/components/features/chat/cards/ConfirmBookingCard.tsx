@@ -27,7 +27,7 @@ export const ConfirmBookingCard: React.FC<ConfirmBookingCardProps> = ({ data, on
   };
 
   return (
-    <div className="mt-2 w-full min-w-[260px] max-w-[400px] bg-violet-500/10 rounded-xl p-4 border border-violet-500/20">
+    <div className="mt-2 w-full min-w-[260px] max-w-[420px] bg-violet-500/10 rounded-xl p-4 border border-violet-500/20">
         <div className="text-lg font-semibold text-white mb-3">
           {data.groupMode ? `팀${data.teamNumber} 예약 정보 확인` : '예약 정보 확인'}
         </div>

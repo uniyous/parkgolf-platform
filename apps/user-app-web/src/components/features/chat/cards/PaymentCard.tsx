@@ -129,7 +129,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversa
   const isUrgent = remainingSeconds < 60;
 
   return (
-    <div className="mt-2 w-full min-w-[260px] max-w-[400px] bg-violet-500/10 rounded-xl p-4 border border-violet-500/20">
+    <div className="mt-2 w-full min-w-[260px] max-w-[420px] bg-violet-500/10 rounded-xl p-4 border border-violet-500/20">
         <div className="flex items-center gap-2 mb-3">
           <CreditCard className="w-4 h-4 text-blue-400" />
           <span className="text-lg font-semibold text-white">카드결제</span>

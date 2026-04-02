@@ -27,6 +27,8 @@ import java.text.NumberFormat
 import java.util.Locale
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
@@ -40,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -489,10 +492,12 @@ private fun SeniorRoundCardView(
     round: Round,
     onSelectTimeSlot: (TimeSlot) -> Unit
 ) {
-    var showAllSlots by remember { mutableStateOf(false) }
+    val slotsPerPage = 4
+    var currentPage by remember { mutableIntStateOf(0) }
     val slots = round.timeSlots ?: emptyList()
-    val displayedSlots = if (showAllSlots) slots else slots.take(4)
-    val hasMoreSlots = slots.size > 4
+    val totalPages = maxOf(1, kotlin.math.ceil(slots.size.toDouble() / slotsPerPage).toInt())
+    val visibleSlots = slots.drop(currentPage * slotsPerPage).take(slotsPerPage)
+    val needsPagination = totalPages > 1
     val pricePerPerson = round.pricePerPerson ?: round.basePrice
 
     GlassCard(
@@ -527,7 +532,7 @@ private fun SeniorRoundCardView(
             }
 
             // Time Slots (그리드: 모바일 2열, 태블릿 4열)
-            if (displayedSlots.isNotEmpty()) {
+            if (visibleSlots.isNotEmpty()) {
                 HorizontalDivider(color = GlassBorder)
 
                 Column(
@@ -542,20 +547,63 @@ private fun SeniorRoundCardView(
                     )
 
                     TimeSlotGrid(
-                        slots = displayedSlots,
+                        slots = visibleSlots,
                         onSelectTimeSlot = onSelectTimeSlot
                     )
 
-                    // Show more button
-                    if (hasMoreSlots && !showAllSlots) {
-                        Text(
-                            text = "전체 ${slots.size}개 시간 보기 ▼",
-                            fontSize = 12.sp,
-                            color = TextOnGradientSecondary,
-                            modifier = Modifier
-                                .clickable { showAllSlots = true }
-                                .padding(vertical = 8.dp)
-                        )
+                    // 페이지네이션
+                    if (needsPagination) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(
+                                onClick = { currentPage-- },
+                                enabled = currentPage > 0,
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.ChevronLeft,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = if (currentPage == 0) TextOnGradientSecondary.copy(alpha = 0.3f)
+                                    else TextOnGradientSecondary
+                                )
+                                Text(
+                                    "이전",
+                                    fontSize = 12.sp,
+                                    color = if (currentPage == 0) TextOnGradientSecondary.copy(alpha = 0.3f)
+                                    else TextOnGradientSecondary
+                                )
+                            }
+
+                            Text(
+                                "${currentPage + 1} / $totalPages",
+                                fontSize = 12.sp,
+                                color = TextOnGradientSecondary.copy(alpha = 0.6f)
+                            )
+
+                            TextButton(
+                                onClick = { currentPage++ },
+                                enabled = currentPage < totalPages - 1,
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    "다음",
+                                    fontSize = 12.sp,
+                                    color = if (currentPage >= totalPages - 1) TextOnGradientSecondary.copy(alpha = 0.3f)
+                                    else TextOnGradientSecondary
+                                )
+                                Icon(
+                                    Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = if (currentPage >= totalPages - 1) TextOnGradientSecondary.copy(alpha = 0.3f)
+                                    else TextOnGradientSecondary
+                                )
+                            }
+                        }
                     }
                 }
             }

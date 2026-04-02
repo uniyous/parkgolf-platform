@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import { Button } from './ui';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Game, GameTimeSlot } from '@/lib/api/gameApi';
 
 const getAvailabilityText = (remaining: number) => {
@@ -17,7 +16,7 @@ export interface GameCardProps {
 const SLOTS_VISIBLE = 4;
 
 export const GameCard: React.FC<GameCardProps> = ({ game, onTimeSlotSelect }) => {
-  const [showAllSlots, setShowAllSlots] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
 
   const timeSlots = game.timeSlots || [];
 
@@ -33,6 +32,13 @@ export const GameCard: React.FC<GameCardProps> = ({ game, onTimeSlotSelect }) =>
       return isAvailable;
     });
   }, [timeSlots]);
+
+  const totalPages = Math.ceil(filteredSlots.length / SLOTS_VISIBLE);
+  const visibleSlots = filteredSlots.slice(
+    currentPage * SLOTS_VISIBLE,
+    (currentPage + 1) * SLOTS_VISIBLE
+  );
+  const needsPagination = totalPages > 1;
 
   const pricePerPerson = game.pricePerPerson || game.basePrice || 0;
 
@@ -61,8 +67,8 @@ export const GameCard: React.FC<GameCardProps> = ({ game, onTimeSlotSelect }) =>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {(showAllSlots ? filteredSlots : filteredSlots.slice(0, SLOTS_VISIBLE)).map((slot) => {
+            <div className="grid grid-cols-2 gap-2">
+              {visibleSlots.map((slot) => {
                 const maxCapacity = slot.maxPlayers ?? slot.maxCapacity ?? 4;
                 const currentBookings = slot.bookedPlayers ?? slot.currentBookings ?? 0;
                 const remaining = slot.availablePlayers ?? (maxCapacity - currentBookings);
@@ -92,20 +98,35 @@ export const GameCard: React.FC<GameCardProps> = ({ game, onTimeSlotSelect }) =>
                 );
               })}
             </div>
-            {filteredSlots.length > SLOTS_VISIBLE && (
-              <div className="mt-4 text-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowAllSlots(!showAllSlots)}
-                  className="text-white/70 hover:text-white text-base"
+            {needsPagination && (
+              <div className="flex items-center justify-between mt-3">
+                <button
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                  disabled={currentPage === 0}
+                  className={`inline-flex items-center gap-0.5 text-xs px-2 py-1 rounded-md transition-colors ${
+                    currentPage === 0
+                      ? 'text-white/20 cursor-default'
+                      : 'text-white/60 hover:text-white hover:bg-white/10'
+                  }`}
                 >
-                  {showAllSlots
-                    ? '접기'
-                    : `전체 ${filteredSlots.length}개 시간 보기`
-                  }
-                  {showAllSlots ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
-                </Button>
+                  <ChevronLeft className="w-3 h-3" />
+                  이전
+                </button>
+                <span className="text-xs text-white/40">
+                  {currentPage + 1} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  disabled={currentPage >= totalPages - 1}
+                  className={`inline-flex items-center gap-0.5 text-xs px-2 py-1 rounded-md transition-colors ${
+                    currentPage >= totalPages - 1
+                      ? 'text-white/20 cursor-default'
+                      : 'text-white/60 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  다음
+                  <ChevronRight className="w-3 h-3" />
+                </button>
               </div>
             )}
           </>

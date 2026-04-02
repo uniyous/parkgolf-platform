@@ -64,7 +64,7 @@ const BookerDashboardView: React.FC<{
   };
 
   return (
-    <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-3 w-full min-w-[260px] max-w-[480px]">
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-3 w-full min-w-[260px] max-w-[420px]">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h4 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -277,7 +277,7 @@ const ParticipantPaymentView: React.FC<{
   const amount = participant.amount || 0;
 
   return (
-    <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-3 w-full min-w-[260px] max-w-[480px]">
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-4 mt-2 space-y-3 w-full min-w-[260px] max-w-[420px]">
       <div className="flex items-center gap-2">
         <CreditCard className="w-4 h-4 text-violet-400" />
         <h4 className="text-lg font-semibold text-white">결제 요청</h4>

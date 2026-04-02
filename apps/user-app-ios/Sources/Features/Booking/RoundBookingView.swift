@@ -345,16 +345,27 @@ struct RoundCardView: View {
     let round: Round
     let onSelectTimeSlot: (TimeSlot) -> Void
 
-    @Environment(\.horizontalSizeClass) private var sizeClass
-    @State private var showAllSlots = false
+    @State private var currentPage = 0
 
-    private var displayedSlots: [TimeSlot] {
-        guard let slots = round.timeSlots else { return [] }
-        return showAllSlots ? slots : Array(slots.prefix(4))
+    private static let slotsPerPage = 4
+
+    private var allSlots: [TimeSlot] {
+        round.timeSlots ?? []
     }
 
-    private var hasMoreSlots: Bool {
-        (round.timeSlots?.count ?? 0) > 4
+    private var totalPages: Int {
+        max(1, Int(ceil(Double(allSlots.count) / Double(Self.slotsPerPage))))
+    }
+
+    private var visibleSlots: [TimeSlot] {
+        let start = currentPage * Self.slotsPerPage
+        let end = min(start + Self.slotsPerPage, allSlots.count)
+        guard start < allSlots.count else { return [] }
+        return Array(allSlots[start..<end])
+    }
+
+    private var needsPagination: Bool {
+        totalPages > 1
     }
 
     private var pricePerPerson: Int {
@@ -362,8 +373,7 @@ struct RoundCardView: View {
     }
 
     private var gridColumns: [GridItem] {
-        let count = sizeClass == .regular ? 4 : 2
-        return Array(repeating: GridItem(.flexible(), spacing: ParkSpacing.xs), count: count)
+        return [GridItem(.flexible(), spacing: ParkSpacing.xs), GridItem(.flexible(), spacing: ParkSpacing.xs)]
     }
 
     var body: some View {
@@ -387,7 +397,7 @@ struct RoundCardView: View {
                 .padding(ParkSpacing.md)
 
                 // Time Slots Grid
-                if !displayedSlots.isEmpty {
+                if !visibleSlots.isEmpty {
                     Divider()
                         .background(Color.white.opacity(0.2))
 
@@ -399,24 +409,50 @@ struct RoundCardView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
 
                         LazyVGrid(columns: gridColumns, spacing: ParkSpacing.xs) {
-                            ForEach(displayedSlots, id: \.id) { slot in
+                            ForEach(visibleSlots, id: \.id) { slot in
                                 TimeSlotGridCell(slot: slot) {
                                     onSelectTimeSlot(slot)
                                 }
                             }
                         }
 
-                        if hasMoreSlots && !showAllSlots {
-                            Button {
-                                withAnimation(.spring(response: 0.3)) {
-                                    showAllSlots = true
+                        if needsPagination {
+                            HStack {
+                                Button {
+                                    if currentPage > 0 { currentPage -= 1 }
+                                } label: {
+                                    HStack(spacing: 2) {
+                                        Image(systemName: "chevron.left")
+                                            .font(.system(size: 10))
+                                        Text("이전")
+                                            .font(.caption)
+                                    }
+                                    .foregroundColor(currentPage == 0 ? .white.opacity(0.2) : .white.opacity(0.6))
                                 }
-                            } label: {
-                                Text("전체 \(round.timeSlots?.count ?? 0)개 시간 보기 ▼")
-                                    .font(.parkBodySmall)
-                                    .foregroundStyle(.white.opacity(0.7))
-                                    .padding(.top, ParkSpacing.xxs)
+                                .disabled(currentPage == 0)
+
+                                Spacer()
+
+                                Text("\(currentPage + 1) / \(totalPages)")
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.4))
+
+                                Spacer()
+
+                                Button {
+                                    if currentPage < totalPages - 1 { currentPage += 1 }
+                                } label: {
+                                    HStack(spacing: 2) {
+                                        Text("다음")
+                                            .font(.caption)
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 10))
+                                    }
+                                    .foregroundColor(currentPage >= totalPages - 1 ? .white.opacity(0.2) : .white.opacity(0.6))
+                                }
+                                .disabled(currentPage >= totalPages - 1)
                             }
+                            .padding(.top, 4)
                         }
                     }
                     .padding(ParkSpacing.md)

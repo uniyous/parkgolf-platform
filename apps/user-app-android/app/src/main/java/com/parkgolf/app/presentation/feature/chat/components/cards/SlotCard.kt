@@ -165,25 +165,36 @@ fun SlotCard(
                             )
                         }
 
-                        // 타임슬롯 칩
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            visibleSlots.forEach { slot ->
-                                val slotId = slot["id"]?.toString() ?: ""
-                                val time = slot["time"]?.toString() ?: ""
-                                val availableSpots = (slot["availableSpots"] as? Number)?.toInt()
-                                val isSelected = selectedSlotId == slotId
-                                val isDisabled = hasSelection && !isSelected
+                        // 타임슬롯 칩 (2열 균등 그리드)
+                        val rows = visibleSlots.chunked(2)
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            rows.forEach { rowSlots ->
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    rowSlots.forEach { slot ->
+                                        val slotId = slot["id"]?.toString() ?: ""
+                                        val time = slot["time"]?.toString() ?: ""
+                                        val availableSpots = (slot["availableSpots"] as? Number)?.toInt()
+                                        val isSelected = selectedSlotId == slotId
+                                        val isDisabled = hasSelection && !isSelected
 
-                                TimeSlotChip(
-                                    time = time,
-                                    availableSpots = availableSpots,
-                                    isSelected = isSelected,
-                                    isDisabled = isDisabled,
-                                    onClick = { onSelect?.invoke(slotId, time, roundPrice, roundName) }
-                                )
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            TimeSlotChip(
+                                                time = time,
+                                                availableSpots = availableSpots,
+                                                isSelected = isSelected,
+                                                isDisabled = isDisabled,
+                                                onClick = { onSelect?.invoke(slotId, time, roundPrice, roundName) },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                    }
+                                    if (rowSlots.size == 1) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                    }
+                                }
                             }
                         }
 
@@ -345,7 +356,8 @@ private fun TimeSlotChip(
     availableSpots: Int? = null,
     isSelected: Boolean,
     isDisabled: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
         onClick = onClick,
@@ -355,12 +367,14 @@ private fun TimeSlotChip(
         else ParkOnPrimary.copy(alpha = 0.08f),
         border = if (isSelected) BorderStroke(1.5.dp, ParkPrimary)
         else BorderStroke(1.dp, ParkOnPrimary.copy(alpha = 0.15f)),
-        modifier = Modifier.alpha(if (isDisabled) 0.4f else 1f)
+        modifier = modifier.alpha(if (isDisabled) 0.4f else 1f)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
         ) {
             if (isSelected) {
                 Icon(
