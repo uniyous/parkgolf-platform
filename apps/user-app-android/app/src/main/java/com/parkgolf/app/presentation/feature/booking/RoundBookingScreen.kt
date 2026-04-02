@@ -341,8 +341,7 @@ private fun DateChip(
 
     Column(
         modifier = Modifier
-            .width(56.dp)
-            .height(60.dp)
+            .size(52.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(
                 if (isSelected) ParkPrimary else GlassBackground
@@ -353,16 +352,17 @@ private fun DateChip(
     ) {
         Text(
             text = weekday,
-            fontSize = 14.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            color = weekdayColor
+            color = weekdayColor,
+            lineHeight = 12.sp
         )
-        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = shortDate,
-            fontSize = 16.sp,
+            fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
-            color = if (isSelected) Color.White else TextOnGradient
+            color = if (isSelected) Color.White else TextOnGradient,
+            lineHeight = 15.sp
         )
     }
 }
@@ -663,9 +663,9 @@ private fun TimeSlotGridCell(
             .then(
                 if (slot.availablePlayers == 0) Modifier.alpha(0.4f) else Modifier
             )
-            .padding(vertical = 12.dp),
+            .padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+        verticalArrangement = Arrangement.Center
     ) {
         // 시간
         Text(
@@ -673,16 +673,17 @@ private fun TimeSlotGridCell(
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            lineHeight = 15.sp
         )
-
         // 잔여 자리
         Text(
             text = availabilityText,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
             color = availabilityColor,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            lineHeight = 12.sp
         )
     }
 }
