@@ -11,13 +11,10 @@ struct AiMessageBubble: View {
     var onCancelBooking: (() -> Void)?
     var onPaymentComplete: ((Bool) -> Void)?
     var onRequestPayment: ((String, String, Int) -> Void)?
-    var onConfirmGroup: ((String) -> Void)?
     var onCancelGroup: (() -> Void)?
     var onTeamConfirm: (([TeamConfirmData]) -> Void)?
     var onSplitPaymentComplete: ((Bool, String) -> Void)?
     var onRequestSplitPayment: ((String, Int) -> Void)?
-    var onNextTeam: (() -> Void)?
-    var onFinish: (() -> Void)?
     var onSendReminder: (() -> Void)?
     var onRefresh: (() -> Void)?
     var currentUserId: Int?
@@ -114,11 +111,7 @@ struct AiMessageBubble: View {
                 onRequestPayment: onRequestPayment
             )
         case .confirmGroup:
-            ConfirmGroupCardView(
-                data: action.data.value,
-                onConfirm: onConfirmGroup,
-                onCancel: onCancelGroup
-            )
+            EmptyView()
         case .selectMembers:
             SelectParticipantsCardView(
                 data: action.data.value,
@@ -136,9 +129,7 @@ struct AiMessageBubble: View {
             )
         case .teamComplete:
             TeamCompleteCardView(
-                data: action.data.value,
-                onNextTeam: onNextTeam,
-                onFinish: onFinish
+                data: action.data.value
             )
         case .splitPayment:
             EmptyView()

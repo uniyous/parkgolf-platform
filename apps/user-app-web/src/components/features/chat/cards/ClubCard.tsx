@@ -13,7 +13,7 @@ export const ClubCard: React.FC<ClubCardProps> = ({ data, onSelect, selectedClub
   const hasSelection = !!selectedClubId;
 
   return (
-    <div className="space-y-2 mt-2">
+    <div className="space-y-2 mt-2 w-full min-w-[260px] max-w-[400px]">
       {data.clubs.map((club) => {
         const isSelected = selectedClubId === club.id;
         const isDisabled = hasSelection && !isSelected;

@@ -27,8 +27,6 @@ interface AiMessageBubbleProps {
   onCancelBooking?: () => void;
   onPaymentComplete?: (success: boolean) => void;
   onTeamMemberSelect?: (members: Array<{ userId: number; userName: string; userEmail: string }>) => void;
-  onNextTeam?: () => void;
-  onFinishGroup?: () => void;
   onSendReminder?: () => void;
   onRefreshSettlement?: () => void;
   onSplitPaymentComplete?: (success: boolean, orderId: string) => void;
@@ -52,8 +50,6 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   onCancelBooking,
   onPaymentComplete,
   onTeamMemberSelect,
-  onNextTeam,
-  onFinishGroup,
   onSendReminder,
   onRefreshSettlement,
   onSplitPaymentComplete,
@@ -135,8 +131,6 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                 {action.type === 'TEAM_COMPLETE' && (
                   <TeamCompleteCard
                     data={action.data as TeamCompleteData}
-                    onNextTeam={onNextTeam}
-                    onFinish={onFinishGroup}
                     completed={!isLatestAiMessage}
                   />
                 )}
@@ -152,9 +146,10 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
                     currentUserId={currentUserId}
                     roomId={roomId}
                     conversationId={conversationId}
-                    onSplitPaymentComplete={onSplitPaymentComplete}
-                    onSendReminder={onSendReminder}
-                    onRefresh={onRefreshSettlement}
+                    onSplitPaymentComplete={isLatestAiMessage ? onSplitPaymentComplete : undefined}
+                    onSendReminder={isLatestAiMessage ? onSendReminder : undefined}
+                    onRefresh={isLatestAiMessage ? onRefreshSettlement : undefined}
+                    completed={!isLatestAiMessage}
                   />
                 )}
               </div>

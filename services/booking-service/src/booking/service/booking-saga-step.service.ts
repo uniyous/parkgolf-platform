@@ -78,6 +78,24 @@ export class BookingSagaStepService {
         `예약 가능 인원이 부족합니다. 가능: ${slotCache.availablePlayers}, 요청: ${dto.playerCount}`);
     }
 
+    // 동일 유저 + 동일 날짜 + 시간 중복 체크
+    if (dto.userId) {
+      const overlapping = await this.prisma.booking.findFirst({
+        where: {
+          userId: dto.userId,
+          bookingDate: slotCache.date,
+          status: { in: [BookingStatus.PENDING, BookingStatus.SLOT_RESERVED, BookingStatus.CONFIRMED] },
+          startTime: { lt: slotCache.endTime },
+          endTime: { gt: slotCache.startTime },
+        },
+      });
+
+      if (overlapping) {
+        throw new AppException(Errors.Booking.TIME_OVERLAP,
+          `${slotCache.startTime}~${slotCache.endTime} 시간대에 이미 예약(${overlapping.bookingNumber})이 있습니다`);
+      }
+    }
+
     let gameInfo = await this.prisma.gameCache.findUnique({
       where: { gameId: slotCache.gameId },
     });

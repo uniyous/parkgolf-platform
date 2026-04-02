@@ -11,7 +11,7 @@ interface BookingFailedCardProps {
 
 export const BookingFailedCard: React.FC<BookingFailedCardProps> = ({ data, onRetry }) => {
   return (
-    <div className="mt-2 bg-red-500/10 rounded-xl p-3 border border-red-500/20 min-w-[280px] max-w-[320px]">
+    <div className="mt-2 w-full min-w-[260px] max-w-[320px] bg-red-500/10 rounded-xl p-3 border border-red-500/20">
       <div className="text-sm text-red-400 mb-2">❌ {data.reason || '예약에 실패했습니다'}</div>
       {onRetry && (
         <button

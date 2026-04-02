@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -23,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
@@ -380,13 +382,6 @@ fun ChatRoomScreen(
                                         onRequestPayment = { orderId, orderName, amount ->
                                             viewModel.requestPayment(orderId, orderName, amount, "single")
                                         },
-                                        onConfirmGroup = { paymentMethod ->
-                                            viewModel.sendAiFollowUp(AiChatRequest(
-                                                message = if (paymentMethod == "dutchpay") "더치페이로 예약" else "현장결제로 예약",
-                                                confirmGroupBooking = true,
-                                                paymentMethod = paymentMethod
-                                            ))
-                                        },
                                         onCancelGroup = {
                                             viewModel.selectSlot("")
                                             viewModel.sendAiFollowUp(AiChatRequest(
@@ -416,18 +411,6 @@ fun ChatRoomScreen(
                                         },
                                         onRequestSplitPayment = { orderId, amount ->
                                             viewModel.requestPayment(orderId, "더치페이 결제", amount, "split")
-                                        },
-                                        onNextTeam = {
-                                            viewModel.sendAiFollowUp(AiChatRequest(
-                                                message = "다음 팀 예약",
-                                                nextTeam = true
-                                            ))
-                                        },
-                                        onFinish = {
-                                            viewModel.sendAiFollowUp(AiChatRequest(
-                                                message = "예약 종료",
-                                                finishGroup = true
-                                            ))
                                         },
                                         onSendReminder = {
                                             viewModel.sendAiFollowUp(AiChatRequest(
@@ -677,9 +660,37 @@ private fun ChatMessageBubble(
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isOwnMessage) Arrangement.End else Arrangement.Start
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start = if (isOwnMessage) 60.dp else 0.dp,
+                end = if (isOwnMessage) 0.dp else 60.dp
+            ),
+        horizontalArrangement = if (isOwnMessage) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Bottom
     ) {
+        if (isOwnMessage) {
+            // Time + read status (left of bubble for own messages)
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                modifier = Modifier.padding(end = 6.dp)
+            ) {
+                if (!message.readBy.isNullOrEmpty() && message.readBy.size > 1) {
+                    Text(
+                        text = "읽음",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ParkPrimary.copy(alpha = 0.8f)
+                    )
+                }
+                Text(
+                    text = message.createdAt.format(timeFormatter),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = ParkOnPrimary.copy(alpha = 0.5f)
+                )
+            }
+        }
+
         Column(
             horizontalAlignment = if (isOwnMessage) Alignment.End else Alignment.Start
         ) {
@@ -711,32 +722,16 @@ private fun ChatMessageBubble(
                     )
                 }
             }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.padding(
-                    start = if (isOwnMessage) 0.dp else 8.dp,
-                    end = if (isOwnMessage) 8.dp else 0.dp,
-                    top = 2.dp
-                )
-            ) {
-                if (isOwnMessage && !message.readBy.isNullOrEmpty() && message.readBy.size > 1) {
-                    Text(
-                        text = "읽음",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = ParkPrimary.copy(alpha = 0.8f)
-                    )
-                }
-                Text(
-                    text = message.createdAt.format(timeFormatter),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = ParkOnPrimary.copy(alpha = 0.5f)
-                )
-            }
         }
 
-        if (isOwnMessage) {
-            Spacer(modifier = Modifier.width(8.dp))
+        if (!isOwnMessage) {
+            // Time (right of bubble for other's messages)
+            Text(
+                text = message.createdAt.format(timeFormatter),
+                style = MaterialTheme.typography.labelSmall,
+                color = ParkOnPrimary.copy(alpha = 0.5f),
+                modifier = Modifier.padding(start = 6.dp)
+            )
         }
     }
 }
@@ -762,34 +757,46 @@ private fun ChatInputBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            TextField(
-                value = value,
-                onValueChange = onValueChange,
-                modifier = Modifier.weight(1f),
-                placeholder = {
-                    Text(
-                        text = when {
-                            isAiMode -> "AI에게 예약 요청하기..."
-                            enabled -> "메시지 입력..."
-                            else -> "연결 중..."
-                        },
-                        color = ParkOnPrimary.copy(alpha = 0.4f)
-                    )
-                },
-                enabled = enabled,
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = if (isAiMode) ParkPrimary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.1f),
-                    unfocusedContainerColor = if (isAiMode) ParkPrimary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.1f),
-                    disabledContainerColor = Color.White.copy(alpha = 0.05f),
-                    focusedTextColor = ParkOnPrimary,
-                    unfocusedTextColor = ParkOnPrimary,
-                    cursorColor = ParkPrimary,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
-                ),
-                shape = RoundedCornerShape(24.dp),
-                maxLines = 4
-            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(
+                        when {
+                            !enabled -> Color.White.copy(alpha = 0.05f)
+                            isAiMode -> ParkPrimary.copy(alpha = 0.15f)
+                            else -> Color.White.copy(alpha = 0.1f)
+                        }
+                    ),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                BasicTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    enabled = enabled,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = ParkOnPrimary),
+                    singleLine = true,
+                    cursorBrush = SolidColor(ParkPrimary),
+                    decorationBox = { innerTextField ->
+                        if (value.isEmpty()) {
+                            Text(
+                                text = when {
+                                    isAiMode -> "AI에게 예약 요청하기..."
+                                    enabled -> "메시지 입력..."
+                                    else -> "연결 중..."
+                                },
+                                color = ParkOnPrimary.copy(alpha = 0.4f),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        innerTextField()
+                    }
+                )
+            }
 
             AiButton(
                 isActive = isAiMode,

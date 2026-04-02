@@ -219,6 +219,83 @@ flowchart TB
 - `resolveRegionName()` 결과를 `context.slots.regionName`에 캐싱
 - 이후 `processWithLLM()`에서 동일 호출 시 캐시 히트 → **중복 API 호출 방지**
 
+### 7.2 이전 카드 비활성화 (`isLatestAiMessage`)
+
+채팅 메시지마다 `isLatestAiMessage` 플래그가 있다. 가장 최근 AI 메시지만 `true`, 이전 메시지는 모두 `false`.
+
+```
+isLatestAiMessage = true  → 콜백 전달, 버튼 활성화
+isLatestAiMessage = false → 콜백 undefined, completed=true → 읽기 전용
+```
+
+| 카드 | `completed=true` 시 동작 |
+|------|-------------------------|
+| CONFIRM_BOOKING | 버튼 숨김, 정보만 표시 |
+| SHOW_PAYMENT | "결제 처리됨" (중립) 표시, 타이머/버튼 숨김 |
+| SELECT_MEMBERS | 버튼 숨김, 선택 불가 |
+| TEAM_COMPLETE | [다음 팀] [끝] 버튼 숨김 |
+| SETTLEMENT_STATUS | 결제 버튼 숨김, 리마인더/새로고침 숨김, 완료 상태만 표시 |
+
+> 새 AI 메시지가 오면 이전 메시지의 **모든 액션 카드가 읽기 전용**으로 전환된다.
+> 이를 통해 더치페이 결제 성공 후 이전 카드에서 중복 결제하는 것을 방지한다.
+
+### 7.3 Toss 결제 흐름 (redirect 방식)
+
+Toss 결제는 페이지 redirect 방식이라 React state가 유실된다.
+`sessionStorage`에 결제 컨텍스트를 저장하여 복귀 시 복원한다.
+
+#### 성공 흐름
+
+```
+1. [결제하기] 클릭
+   → sessionStorage에 { roomId, conversationId, orderId, type } 저장
+   → tossPayments.requestPayment() → Toss 결제 페이지 redirect
+
+2. 결제 성공 → successUrl redirect
+   → /chat/{roomId}?paymentKey=xxx&orderId=xxx&amount=xxx
+
+3. ChatRoomPage useEffect가 URL 파라미터 감지
+   → paymentApi.confirmPayment() (서버 승인)
+   → sendAiMessage({ paymentComplete: true, paymentSuccess: true })
+   → TEAM_COMPLETE 카드 표시
+   → URL 파라미터 제거, sessionStorage 정리
+```
+
+#### 실패/취소 흐름
+
+```
+1. Toss 결제 페이지에서 취소 또는 실패
+   → failUrl redirect
+   → /chat/{roomId}?payment=fail
+
+2. ChatRoomPage useEffect가 payment=fail 감지
+   → handlePaymentFailure()
+   → sessionStorage에서 conversationId 복원
+   → sendAiMessage({ paymentComplete: true, paymentSuccess: false })
+   → 실패 안내 표시
+   → URL 파라미터 제거, sessionStorage 정리
+```
+
+#### 결제 위젯 열기 전 취소
+
+```
+1. PaymentCard에서 [예약 취소] 클릭
+   → paymentResult = 'failed' (로컬 state)
+   → onPaymentComplete(false)
+   → 카드에 "결제 취소됨" (빨간색) 표시
+```
+
+#### 이전 카드 상태 표시
+
+| 상황 | 표시 |
+|------|------|
+| `paymentResult === 'failed'` | "결제 취소됨" (빨간색) |
+| `completed=true` (redirect 복귀) | "결제 처리됨" (중립 회색) |
+| 결과 확인 | 후속 카드에서 표시: TEAM_COMPLETE(성공) / BOOKING_FAILED(실패) |
+
+> Toss redirect 후 React state가 유실되므로, 이전 PaymentCard는 "결제 처리됨"으로 중립 표시하고
+> 성공/실패는 후속 카드가 명확히 보여준다.
+
 ---
 
 ## 8. 시나리오: 8명 더치페이 그룹

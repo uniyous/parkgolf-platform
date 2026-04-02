@@ -7,10 +7,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.GolfCourse
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -22,6 +26,9 @@ import com.parkgolf.app.presentation.theme.ParkPrimary
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.util.Locale
+import kotlin.math.ceil
+
+private const val SLOTS_PER_PAGE = 4
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -37,6 +44,9 @@ fun SlotCard(
     val rounds = (data["rounds"] as? List<*>)?.filterIsInstance<Map<String, Any?>>()
     val numberFormat = NumberFormat.getNumberInstance(Locale.KOREA)
     val hasSelection = selectedSlotId != null
+
+    // 라운드별 페이지 상태
+    val pages = remember { mutableStateMapOf<String, Int>() }
 
     // ── 라운드 그룹 레이아웃 ──
     if (!rounds.isNullOrEmpty()) {
@@ -111,11 +121,25 @@ fun SlotCard(
 
                 // 게임 라운드 목록
                 rounds.forEachIndexed { index, round ->
+                    val gameId = round["gameId"]?.toString() ?: "$index"
                     val roundName = round["name"]?.toString() ?: ""
                     val roundPrice = (round["price"] as? Number)?.toInt() ?: 0
                     @Suppress("UNCHECKED_CAST")
                     val slots = (round["slots"] as? List<*>)
                         ?.filterIsInstance<Map<String, Any?>>() ?: emptyList()
+
+                    val totalPages = maxOf(1, ceil(slots.size.toDouble() / SLOTS_PER_PAGE).toInt())
+                    val currentPage = pages[gameId] ?: 0
+
+                    // 선택된 슬롯이 이 라운드에 있으면 해당 페이지로 자동 이동
+                    val selectedIdx = if (selectedSlotId != null) {
+                        slots.indexOfFirst { it["id"]?.toString() == selectedSlotId }
+                    } else -1
+                    val effectivePage = if (selectedIdx >= 0) selectedIdx / SLOTS_PER_PAGE else currentPage
+
+                    val start = effectivePage * SLOTS_PER_PAGE
+                    val visibleSlots = slots.subList(start, minOf(start + SLOTS_PER_PAGE, slots.size))
+                    val needsPagination = totalPages > 1
 
                     Column(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -146,7 +170,7 @@ fun SlotCard(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            slots.forEach { slot ->
+                            visibleSlots.forEach { slot ->
                                 val slotId = slot["id"]?.toString() ?: ""
                                 val time = slot["time"]?.toString() ?: ""
                                 val availableSpots = (slot["availableSpots"] as? Number)?.toInt()
@@ -160,6 +184,61 @@ fun SlotCard(
                                     isDisabled = isDisabled,
                                     onClick = { onSelect?.invoke(slotId, time, roundPrice, roundName) }
                                 )
+                            }
+                        }
+
+                        // 페이지네이션
+                        if (needsPagination) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                TextButton(
+                                    onClick = { pages[gameId] = effectivePage - 1 },
+                                    enabled = effectivePage > 0,
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.ChevronLeft,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = if (effectivePage == 0) ParkOnPrimary.copy(alpha = 0.2f)
+                                        else ParkOnPrimary.copy(alpha = 0.6f)
+                                    )
+                                    Text(
+                                        "이전",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (effectivePage == 0) ParkOnPrimary.copy(alpha = 0.2f)
+                                        else ParkOnPrimary.copy(alpha = 0.6f)
+                                    )
+                                }
+
+                                Text(
+                                    "${effectivePage + 1} / $totalPages",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = ParkOnPrimary.copy(alpha = 0.4f)
+                                )
+
+                                TextButton(
+                                    onClick = { pages[gameId] = effectivePage + 1 },
+                                    enabled = effectivePage < totalPages - 1,
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        "다음",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (effectivePage >= totalPages - 1) ParkOnPrimary.copy(alpha = 0.2f)
+                                        else ParkOnPrimary.copy(alpha = 0.6f)
+                                    )
+                                    Icon(
+                                        Icons.Default.ChevronRight,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = if (effectivePage >= totalPages - 1) ParkOnPrimary.copy(alpha = 0.2f)
+                                        else ParkOnPrimary.copy(alpha = 0.6f)
+                                    )
+                                }
                             }
                         }
                     }

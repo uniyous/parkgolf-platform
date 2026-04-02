@@ -305,9 +305,6 @@ struct ChatRoomView: View {
                                     aiViewModel.savePendingPayment(payment)
                                     showPaymentSheet = true
                                 },
-                                onConfirmGroup: { paymentMethod in
-                                    sendAiFollowUp("그룹 예약 확인", request: AiChatRequest(message: "그룹 예약 확인", paymentMethod: paymentMethod, confirmGroupBooking: true))
-                                },
                                 onCancelGroup: {
                                     sendAiFollowUp("예약 취소", request: AiChatRequest(message: "예약 취소", cancelBooking: true))
                                 },
@@ -323,12 +320,6 @@ struct ChatRoomView: View {
                                     aiViewModel.pendingPayment = payment
                                     aiViewModel.savePendingPayment(payment)
                                     showPaymentSheet = true
-                                },
-                                onNextTeam: {
-                                    sendAiFollowUp("다음 팀 예약", request: AiChatRequest(message: "다음 팀 예약", nextTeam: true))
-                                },
-                                onFinish: {
-                                    sendAiFollowUp("예약 종료", request: AiChatRequest(message: "예약 종료", finishGroup: true))
                                 },
                                 onSendReminder: {
                                     sendAiFollowUp("리마인더 전송", request: AiChatRequest(message: "리마인더 전송", sendReminder: true))

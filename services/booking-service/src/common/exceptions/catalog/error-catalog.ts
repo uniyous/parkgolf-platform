@@ -69,6 +69,7 @@ export const BookingErrors = defineErrors({
   INSUFFICIENT_CAPACITY: { code: 'BOOK_009', message: '예약 가능 인원이 부족합니다', httpStatus: 400 },
   INVALID_STATUS: { code: 'BOOK_010', message: '현재 상태에서는 해당 작업을 수행할 수 없습니다', httpStatus: 400 },
   UNAUTHORIZED_CANCEL: { code: 'BOOK_011', message: '예약 취소 권한이 없습니다', httpStatus: 403 },
+  TIME_OVERLAP: { code: 'BOOK_012', message: '동일 시간대에 이미 예약이 있습니다', httpStatus: 409 },
 });
 
 // ============================================

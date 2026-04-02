@@ -30,7 +30,7 @@ export const WeatherCard: React.FC<WeatherCardProps> = ({ data }) => {
     : `${data.temperature}°C`;
 
   return (
-    <div className="mt-2 bg-violet-500/10 rounded-xl p-3 border border-violet-500/20">
+    <div className="mt-2 w-full min-w-[260px] max-w-[320px] bg-violet-500/10 rounded-xl p-3 border border-violet-500/20">
       {locationName && (
         <p className="text-base text-white/50 mb-1.5">{locationName} · {data.date}</p>
       )}

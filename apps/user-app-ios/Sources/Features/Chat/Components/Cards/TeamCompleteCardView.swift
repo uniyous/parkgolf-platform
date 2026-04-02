@@ -2,8 +2,6 @@ import SwiftUI
 
 struct TeamCompleteCardView: View {
     let data: Any
-    var onNextTeam: (() -> Void)?
-    var onFinish: (() -> Void)?
 
     private var dict: [String: Any] {
         data as? [String: Any] ?? [:]
@@ -17,7 +15,6 @@ struct TeamCompleteCardView: View {
     private var gameName: String { dict["gameName"] as? String ?? "" }
     private var totalPrice: Int { dict["totalPrice"] as? Int ?? 0 }
     private var paymentMethod: String { dict["paymentMethod"] as? String ?? "onsite" }
-    private var hasMoreTeams: Bool { dict["hasMoreTeams"] as? Bool ?? false }
 
     private var participants: [[String: Any]] {
         dict["participants"] as? [[String: Any]] ?? []
@@ -73,41 +70,6 @@ struct TeamCompleteCardView: View {
                     .font(.subheadline)
                     .foregroundColor(.white.opacity(0.3))
                     .frame(maxWidth: .infinity, alignment: .center)
-            }
-
-            // Buttons
-            HStack(spacing: 10) {
-                Button {
-                    onFinish?()
-                } label: {
-                    Text("종료")
-                        .font(.body)
-                        .fontWeight(.medium)
-                        .foregroundColor(hasMoreTeams ? .white.opacity(0.7) : Color.parkPrimary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(hasMoreTeams ? Color.white.opacity(0.1) : Color.parkPrimary.opacity(0.2))
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                }
-
-                if hasMoreTeams {
-                    Button {
-                        onNextTeam?()
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text("다음 팀 예약")
-                                .font(.body)
-                                .fontWeight(.semibold)
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 10))
-                        }
-                        .foregroundColor(Color.parkPrimary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(Color.parkPrimary.opacity(0.2))
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                    }
-                }
             }
         }
         .padding(16)

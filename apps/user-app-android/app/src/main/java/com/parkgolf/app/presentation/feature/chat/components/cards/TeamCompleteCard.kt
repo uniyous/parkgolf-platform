@@ -4,7 +4,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -18,9 +21,7 @@ import java.util.Locale
 
 @Composable
 fun TeamCompleteCard(
-    data: Map<String, Any?>,
-    onNextTeam: (() -> Unit)? = null,
-    onFinish: (() -> Unit)? = null
+    data: Map<String, Any?>
 ) {
     val teamNumber = (data["teamNumber"] as? Number)?.toInt() ?: 1
     val bookingNumber = data["bookingNumber"]?.toString() ?: ""
@@ -30,7 +31,6 @@ fun TeamCompleteCard(
     val gameName = data["gameName"]?.toString() ?: ""
     val totalPrice = (data["totalPrice"] as? Number)?.toInt() ?: 0
     val paymentMethod = data["paymentMethod"]?.toString() ?: "onsite"
-    val hasMoreTeams = data["hasMoreTeams"] as? Boolean ?: false
     val numberFormat = NumberFormat.getNumberInstance(Locale.KOREA)
 
     @Suppress("UNCHECKED_CAST")
@@ -153,48 +153,6 @@ fun TeamCompleteCard(
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
 
-            // Action buttons
-            if (onNextTeam != null || onFinish != null) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (onFinish != null) {
-                        if (hasMoreTeams) {
-                            OutlinedButton(
-                                onClick = onFinish,
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = ParkOnPrimary.copy(alpha = 0.7f)
-                                ),
-                                border = BorderStroke(1.dp, ParkOnPrimary.copy(alpha = 0.2f))
-                            ) {
-                                Text("종료", style = MaterialTheme.typography.bodyMedium)
-                            }
-                        } else {
-                            Button(
-                                onClick = onFinish,
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = ParkPrimary)
-                            ) {
-                                Text("종료", style = MaterialTheme.typography.bodyMedium)
-                            }
-                        }
-                    }
-                    if (hasMoreTeams && onNextTeam != null) {
-                        Button(
-                            onClick = onNextTeam,
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = ParkPrimary)
-                        ) {
-                            Text("다음 팀 예약", style = MaterialTheme.typography.bodyMedium)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                Icons.Default.ArrowForward,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }

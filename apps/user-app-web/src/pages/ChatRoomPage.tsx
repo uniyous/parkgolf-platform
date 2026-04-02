@@ -772,18 +772,6 @@ export const ChatRoomPage: React.FC = () => {
                         teamMembers: members,
                       });
                     }}
-                    onNextTeam={() => {
-                      handleAiFollowUp({
-                        message: '다음 팀',
-                        nextTeam: true,
-                      });
-                    }}
-                    onFinishGroup={() => {
-                      handleAiFollowUp({
-                        message: '종료',
-                        finishGroup: true,
-                      });
-                    }}
                     onSendReminder={() => {
                       handleAiFollowUp({
                         message: '리마인더',
