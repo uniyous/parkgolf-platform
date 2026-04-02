@@ -25,21 +25,20 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import java.text.NumberFormat
 import java.util.Locale
-import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -74,7 +73,7 @@ import com.parkgolf.app.presentation.theme.TextOnGradient
 import com.parkgolf.app.presentation.theme.TextOnGradientSecondary
 import java.time.LocalDate
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoundBookingScreen(
     onNavigate: (String) -> Unit,
@@ -84,13 +83,7 @@ fun RoundBookingScreen(
     val dateOptions by viewModel.dateOptions.collectAsState()
 
     var isRefreshing by remember { mutableStateOf(false) }
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = isRefreshing,
-        onRefresh = {
-            isRefreshing = true
-            viewModel.search()
-        }
-    )
+    val pullToRefreshState = rememberPullToRefreshState()
 
     // isLoading이 false로 바뀌면 pull-to-refresh 종료
     LaunchedEffect(uiState.isLoading) {
@@ -129,10 +122,14 @@ fun RoundBookingScreen(
             )
 
             // Content with pull-to-refresh
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pullRefresh(pullRefreshState)
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = {
+                    isRefreshing = true
+                    viewModel.search()
+                },
+                state = pullToRefreshState,
+                modifier = Modifier.fillMaxSize()
             ) {
                 when {
                     uiState.isLoading && uiState.rounds.isEmpty() && !isRefreshing -> {
@@ -212,14 +209,6 @@ fun RoundBookingScreen(
                     }
                 }
 
-                // Pull-to-refresh 인디케이터 (제스처 시에만 표시)
-                PullRefreshIndicator(
-                    refreshing = isRefreshing,
-                    state = pullRefreshState,
-                    modifier = Modifier.align(Alignment.TopCenter),
-                    backgroundColor = Color.White,
-                    contentColor = ParkPrimary
-                )
             }
         }
 
