@@ -3,6 +3,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { SplitStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AppException, Errors } from '../../common/exceptions';
+import { TossApiService } from './toss-api.service';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface SplitPrepareDto {
@@ -29,6 +30,7 @@ export class PaymentSplitService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly tossApi: TossApiService,
     @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
   ) {}
 
@@ -106,6 +108,23 @@ export class PaymentSplitService {
       throw new AppException(
         Errors.Payment.AMOUNT_MISMATCH,
         `예상 금액: ${split.amount}원, 요청 금액: ${dto.amount}원`,
+      );
+    }
+
+    // Toss 결제 승인 API 호출 — 실제 결제가 완료되었는지 검증
+    const tossResult = await this.tossApi.confirmPayment(
+      dto.paymentKey,
+      dto.orderId,
+      dto.amount,
+    );
+
+    if (tossResult.status !== 'DONE') {
+      this.logger.warn(
+        `Split payment not confirmed by Toss: orderId=${dto.orderId}, status=${tossResult.status}`,
+      );
+      throw new AppException(
+        Errors.Payment.INVALID_STATUS,
+        `토스 결제 상태가 유효하지 않습니다: ${tossResult.status}`,
       );
     }
 

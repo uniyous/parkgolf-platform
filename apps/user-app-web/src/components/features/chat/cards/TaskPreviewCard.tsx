@@ -19,7 +19,7 @@ export const TaskPreviewCard: React.FC<TaskPreviewCardProps> = ({ data }) => {
   ].filter(Boolean);
 
   return (
-    <div className="mt-2 w-full min-w-[260px] max-w-[320px] bg-emerald-500/10 rounded-xl p-3 border border-emerald-500/20">
+    <div className="mt-2 w-full min-w-[260px] max-w-[420px] md:max-w-[320px] bg-emerald-500/10 rounded-xl p-3 border border-emerald-500/20">
       <div className="text-sm text-white/90 mb-2">네! 검색할게요 🏌️</div>
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-2">

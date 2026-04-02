@@ -604,7 +604,7 @@ struct ChatRoomView: View {
     private func notifyPaymentFailed(_ payment: AiChatViewModel.PendingPayment) {
         aiViewModel.clearPendingPayment()
         if payment.type == "split" {
-            sendAiFollowUp("결제 실패", request: AiChatRequest(message: "결제 실패", splitPaymentComplete: true, splitOrderId: payment.orderId))
+            sendAiFollowUp("결제 실패", request: AiChatRequest(message: "결제 실패", splitPaymentComplete: false, splitOrderId: payment.orderId))
         } else {
             sendAiFollowUp("결제 취소", request: AiChatRequest(message: "결제 취소", paymentComplete: true, paymentSuccess: false))
         }

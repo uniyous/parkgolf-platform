@@ -787,7 +787,7 @@ export const ChatRoomPage: React.FC = () => {
                     onSplitPaymentComplete={(success: boolean, orderId: string) => {
                       handleAiFollowUp({
                         message: success ? '결제 완료' : '결제 실패',
-                        splitPaymentComplete: true,
+                        splitPaymentComplete: success,
                         splitOrderId: orderId,
                       });
                     }}

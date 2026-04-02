@@ -762,7 +762,7 @@ class ChatViewModel @Inject constructor(
         if (type == "split") {
             sendAiFollowUp(AiChatRequest(
                 message = "결제 실패",
-                splitPaymentComplete = true,
+                splitPaymentComplete = false,
                 splitOrderId = orderId
             ))
         } else {
