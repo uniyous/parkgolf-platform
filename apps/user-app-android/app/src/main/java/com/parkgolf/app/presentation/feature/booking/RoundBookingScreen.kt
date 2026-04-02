@@ -558,24 +558,21 @@ private fun SeniorRoundCardView(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            TextButton(
-                                onClick = { currentPage-- },
-                                enabled = currentPage > 0,
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clickable(enabled = currentPage > 0) { currentPage-- }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
+                                val prevColor = if (currentPage == 0) TextOnGradientSecondary.copy(alpha = 0.3f)
+                                    else TextOnGradientSecondary
                                 Icon(
                                     Icons.Default.ChevronLeft,
                                     contentDescription = null,
                                     modifier = Modifier.size(14.dp),
-                                    tint = if (currentPage == 0) TextOnGradientSecondary.copy(alpha = 0.3f)
-                                    else TextOnGradientSecondary
+                                    tint = prevColor
                                 )
-                                Text(
-                                    "이전",
-                                    fontSize = 12.sp,
-                                    color = if (currentPage == 0) TextOnGradientSecondary.copy(alpha = 0.3f)
-                                    else TextOnGradientSecondary
-                                )
+                                Text("이전", fontSize = 12.sp, color = prevColor)
                             }
 
                             Text(
@@ -584,23 +581,20 @@ private fun SeniorRoundCardView(
                                 color = TextOnGradientSecondary.copy(alpha = 0.6f)
                             )
 
-                            TextButton(
-                                onClick = { currentPage++ },
-                                enabled = currentPage < totalPages - 1,
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clickable(enabled = currentPage < totalPages - 1) { currentPage++ }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
-                                Text(
-                                    "다음",
-                                    fontSize = 12.sp,
-                                    color = if (currentPage >= totalPages - 1) TextOnGradientSecondary.copy(alpha = 0.3f)
+                                val nextColor = if (currentPage >= totalPages - 1) TextOnGradientSecondary.copy(alpha = 0.3f)
                                     else TextOnGradientSecondary
-                                )
+                                Text("다음", fontSize = 12.sp, color = nextColor)
                                 Icon(
                                     Icons.Default.ChevronRight,
                                     contentDescription = null,
                                     modifier = Modifier.size(14.dp),
-                                    tint = if (currentPage >= totalPages - 1) TextOnGradientSecondary.copy(alpha = 0.3f)
-                                    else TextOnGradientSecondary
+                                    tint = nextColor
                                 )
                             }
                         }
