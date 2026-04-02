@@ -489,7 +489,7 @@ struct TimeSlotGridCell: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: ParkSpacing.xxs) {
+            VStack(spacing: 0) {
                 // Time
                 Text(slot.startTime)
                     .font(.system(size: 15, weight: .bold, design: .rounded))
@@ -502,7 +502,7 @@ struct TimeSlotGridCell: View {
                     .foregroundStyle(availabilityColor)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, ParkSpacing.sm)
+            .padding(.vertical, 6)
             .background(
                 RoundedRectangle(cornerRadius: ParkRadius.md)
                     .fill(slot.isPremium ? Color.parkAccent.opacity(0.15) : Color.white.opacity(0.08))
