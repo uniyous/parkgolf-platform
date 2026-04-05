@@ -1,13 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X } from 'lucide-react';
+import { X, Search } from 'lucide-react';
 import { AppLayout, Container } from '@/components/layout';
 import { GlassCard } from '@/components/ui';
 import { Pagination, GameCard, GameCardSkeleton } from '@/components';
 import { useSearchGamesQuery } from '@/hooks/queries';
 import { useGameSearchParams } from '@/hooks/useSearchParams';
 import { useDebounce } from '@/hooks/useDebounce';
-import { DATE_FILTER_MAX_MONTHS, SIMPLE_TIME_PERIODS, DEFAULT_PAGE_SIZE, DEBOUNCE_DELAY_MS } from '@/lib/constants';
+import { SIMPLE_TIME_PERIODS, DEFAULT_PAGE_SIZE, DEBOUNCE_DELAY_MS } from '@/lib/constants';
 import type { Game, GameTimeSlot, GameSearchParams } from '@/lib/api/gameApi';
 
 export function BookingsPage() {
@@ -52,16 +52,35 @@ export function BookingsPage() {
       }
     : undefined;
 
-  const getMinDate = () => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
-  };
-  const getMaxDate = () => {
-    const date = new Date();
-    date.setMonth(date.getMonth() + DATE_FILTER_MAX_MONTHS);
-    return date.toISOString().split('T')[0];
-  };
+  // 날짜 칩 옵션 (내일부터 30일)
+  const dateOptions = useMemo(() => {
+    const dates: { date: string; weekday: string; shortDate: string; isWeekend: boolean }[] = [];
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    for (let i = 1; i <= 30; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
+      const dayOfWeek = d.getDay();
+      dates.push({
+        date: dateStr,
+        weekday: days[dayOfWeek],
+        shortDate: `${d.getMonth() + 1}/${d.getDate()}`,
+        isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
+      });
+    }
+    return dates;
+  }, []);
+
+  // 선택된 날짜 칩으로 자동 스크롤
+  const dateScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (dateScrollRef.current) {
+      const selectedEl = dateScrollRef.current.querySelector('[data-selected="true"]');
+      if (selectedEl) {
+        selectedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, [filters.date]);
 
   const handleTimeSlotSelect = (game: Game, timeSlot: GameTimeSlot) => {
     navigate('/booking-detail', {
@@ -72,71 +91,85 @@ export function BookingsPage() {
   return (
     <AppLayout title="예약">
       <Container className="py-4 md:py-6 space-y-6">
-        {/* Search Filters */}
-        <GlassCard>
-          <h2 className="text-xl font-semibold text-white mb-6">언제 치러 가세요?</h2>
+        {/* 검색어 */}
+        <div className="relative px-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="골프장, 지역 검색..."
+            className="w-full h-12 pl-11 pr-10 text-base bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+          />
+          {searchInput && (
+            <button
+              onClick={() => {
+                setSearchInput('');
+                updateFilters({ search: '' });
+              }}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
 
-          <div className="space-y-5">
-            {/* 날짜 선택 */}
-            <div>
-              <label className="block text-base font-semibold text-white/90 mb-2">예약 날짜</label>
-              <input
-                type="date"
-                value={filters.date}
-                onChange={(e) => updateFilters({ date: e.target.value })}
-                min={getMinDate()}
-                max={getMaxDate()}
-                className="w-full h-14 px-4 text-lg bg-white/10 border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/30 appearance-none"
-              />
-            </div>
+        {/* 날짜 칩 가로 스크롤 */}
+        <div
+          ref={dateScrollRef}
+          className="flex gap-2 overflow-x-auto pb-1 px-1"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {dateOptions.map((opt) => {
+            const isSelected = filters.date === opt.date;
+            return (
+              <button
+                key={opt.date}
+                data-selected={isSelected}
+                onClick={() => updateFilters({ date: opt.date })}
+                className={`flex-shrink-0 w-[52px] h-[52px] flex flex-col items-center justify-center rounded-xl transition-all ${
+                  isSelected
+                    ? 'bg-green-500/30 border border-green-500/50'
+                    : 'bg-white/10 border border-white/20 hover:bg-white/20'
+                }`}
+              >
+                <span className={`text-xs font-medium leading-none ${
+                  isSelected ? 'text-green-300' : opt.isWeekend ? 'text-amber-400' : 'text-white/60'
+                }`}>
+                  {opt.weekday}
+                </span>
+                <span className={`text-sm font-semibold leading-none mt-0.5 ${
+                  isSelected ? 'text-white' : 'text-white/90'
+                }`}>
+                  {opt.shortDate}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
-            {/* 검색어 */}
-            <div>
-              <label className="block text-base font-semibold text-white/90 mb-2">골프장 검색</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="골프장, 지역 검색..."
-                  className="w-full h-14 px-4 text-lg bg-white/10 border border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30"
-                />
-                {searchInput && (
-                  <button
-                    onClick={() => {
-                      setSearchInput('');
-                      updateFilters({ search: '' });
-                    }}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* 시간대 (3개 단일선택) */}
-            <div>
-              <label className="block text-base font-semibold text-white/90 mb-2">시간대</label>
-              <div className="grid grid-cols-3 gap-3">
-                {SIMPLE_TIME_PERIODS.map((period) => (
-                  <button
-                    key={period.label}
-                    type="button"
-                    onClick={() => updateFilters({ timeOfDay: period.value })}
-                    className={`py-3 text-lg font-medium rounded-xl transition-all border ${
-                      (filters.timeOfDay || '') === period.value
-                        ? 'bg-green-500/30 text-green-300 border-green-500/50'
-                        : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
-                    }`}
-                  >
-                    {period.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+        {/* 시간대 필터 + 검색 건수 */}
+        <div className="flex items-center justify-between px-1">
+          <div className="flex gap-2">
+            {SIMPLE_TIME_PERIODS.map((period) => (
+              <button
+                key={period.label}
+                type="button"
+                onClick={() => updateFilters({ timeOfDay: period.value })}
+                className={`px-4 py-2 text-sm font-medium rounded-xl transition-all border ${
+                  (filters.timeOfDay || '') === period.value
+                    ? 'bg-green-500/30 text-green-300 border-green-500/50'
+                    : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
+                }`}
+              >
+                {period.label}
+              </button>
+            ))}
           </div>
-        </GlassCard>
+          {(pagination?.total ?? 0) > 0 && (
+            <span className="text-sm text-white/50">{pagination?.total}건</span>
+          )}
+        </div>
 
         {/* Error */}
         {gamesError && (
