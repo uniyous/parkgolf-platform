@@ -1,11 +1,14 @@
 import { useSearchParams as useRouterSearchParams } from 'react-router-dom';
 import { useCallback, useMemo } from 'react';
 
-// 내일 날짜를 YYYY-MM-DD 형식으로 반환 (당일 예약 불가)
+// 내일 날짜를 YYYY-MM-DD 형식으로 반환 (로컬 시간대 기준, 당일 예약 불가)
 const getTomorrowDateString = () => {
   const d = new Date();
   d.setDate(d.getDate() + 1);
-  return d.toISOString().split('T')[0];
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 export interface GameSearchFilters {

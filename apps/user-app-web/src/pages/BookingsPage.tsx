@@ -52,19 +52,22 @@ export function BookingsPage() {
       }
     : undefined;
 
-  // 날짜 칩 옵션 (내일부터 30일)
+  // 날짜 칩 옵션 (내일부터 30일, 로컬 시간대 기준)
   const dateOptions = useMemo(() => {
     const dates: { date: string; weekday: string; shortDate: string; isWeekend: boolean }[] = [];
     const days = ['일', '월', '화', '수', '목', '금', '토'];
     for (let i = 1; i <= 30; i++) {
       const d = new Date();
       d.setDate(d.getDate() + i);
-      const dateStr = d.toISOString().split('T')[0];
+      const year = d.getFullYear();
+      const month = d.getMonth() + 1;
+      const day = d.getDate();
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const dayOfWeek = d.getDay();
       dates.push({
         date: dateStr,
         weekday: days[dayOfWeek],
-        shortDate: `${d.getMonth() + 1}/${d.getDate()}`,
+        shortDate: `${month}/${day}`,
         isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
       });
     }
