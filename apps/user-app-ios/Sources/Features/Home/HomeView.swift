@@ -396,7 +396,7 @@ struct HomeUpcomingBookingCard: View {
         GlassCard {
             VStack(alignment: .leading, spacing: ParkSpacing.sm) {
                 HStack {
-                    StatusBadge(status: .init(from: booking.status), size: .small)
+                    StatusBadge(status: .init(from: booking.status ?? "PENDING"), size: .small)
                     Spacer()
                     Text(daysUntilBooking)
                         .font(.parkLabelSmall)
@@ -411,8 +411,8 @@ struct HomeUpcomingBookingCard: View {
 
                 HStack(spacing: ParkSpacing.md) {
                     Label(booking.formattedDate, systemImage: "calendar")
-                    Label(booking.startTime, systemImage: "clock")
-                    Label("\(booking.playerCount)명", systemImage: "person.2")
+                    Label(booking.startTime ?? "", systemImage: "clock")
+                    Label("\(booking.playerCount ?? 0)명", systemImage: "person.2")
                 }
                 .font(.parkBodySmall)
                 .foregroundStyle(.white.opacity(0.7))
@@ -421,7 +421,7 @@ struct HomeUpcomingBookingCard: View {
     }
 
     private var daysUntilBooking: String {
-        guard let bookingDate = DateHelper.fromISODateString(booking.bookingDate) else {
+        guard let dateStr = booking.bookingDate, let bookingDate = DateHelper.fromISODateString(dateStr) else {
             return ""
         }
 
