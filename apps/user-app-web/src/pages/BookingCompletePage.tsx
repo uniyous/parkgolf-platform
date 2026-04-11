@@ -382,12 +382,14 @@ export const BookingCompletePage: React.FC = () => {
           <div className="p-6 bg-green-400/20 border-2 border-green-400/40 rounded-xl backdrop-blur-sm">
             <div className="text-base text-green-200 mb-2 font-semibold">결제 완료 금액</div>
             <div className="text-3xl font-bold text-white">
-              {new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(booking.totalPrice)}
+              {new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(
+                Number(booking.totalPrice) || (Number(booking.pricePerPerson || timeSlot.price || game.pricePerPerson || 0) * playerCount)
+              )}
             </div>
             {playerCount > 0 && (timeSlot.price || game.pricePerPerson) && (
               <div className="text-xs text-green-200 mt-2">
-                (기본요금: {((timeSlot.price || game.pricePerPerson || 0) * playerCount).toLocaleString()}원
-                {booking.serviceFee ? ` + 수수료: ${booking.serviceFee}원` : ''})
+                (기본요금: {((Number(timeSlot.price) || Number(game.pricePerPerson) || 0) * playerCount).toLocaleString()}원
+                {booking.serviceFee ? ` + 수수료: ${Number(booking.serviceFee).toLocaleString()}원` : ''})
               </div>
             )}
           </div>

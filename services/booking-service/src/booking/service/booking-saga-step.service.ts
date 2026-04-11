@@ -919,8 +919,8 @@ export class BookingSagaStepService {
       startTime: booking.startTime,
       userEmail: booking.userEmail,
       userName: booking.userName,
-      totalPrice: booking.totalPrice != null ? Number(booking.totalPrice) : undefined,
-      pricePerPerson: booking.pricePerPerson != null ? Number(booking.pricePerPerson) : undefined,
+      totalPrice: booking.totalPrice != null ? Number(String(booking.totalPrice)) : 0,
+      pricePerPerson: booking.pricePerPerson != null ? Number(String(booking.pricePerPerson)) : 0,
     };
   }
 
