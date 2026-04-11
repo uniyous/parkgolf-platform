@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Search } from 'lucide-react';
+import { X, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AppLayout, Container } from '@/components/layout';
 import { GlassCard } from '@/components/ui';
 import { Pagination, GameCard, GameCardSkeleton } from '@/components';
@@ -74,8 +74,19 @@ export function BookingsPage() {
     return dates;
   }, []);
 
-  // 선택된 날짜 칩으로 자동 스크롤
+  // 날짜 스크롤 상태
   const dateScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const updateScrollState = useCallback(() => {
+    const el = dateScrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 0);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  }, []);
+
+  // 선택된 날짜 칩으로 자동 스크롤
   useEffect(() => {
     if (dateScrollRef.current) {
       const selectedEl = dateScrollRef.current.querySelector('[data-selected="true"]');
@@ -83,7 +94,25 @@ export function BookingsPage() {
         selectedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
       }
     }
-  }, [filters.date]);
+    // 초기 스크롤 상태 업데이트
+    setTimeout(updateScrollState, 300);
+  }, [filters.date, updateScrollState]);
+
+  // 스크롤 이벤트로 버튼 상태 업데이트
+  useEffect(() => {
+    const el = dateScrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', updateScrollState, { passive: true });
+    updateScrollState();
+    return () => el.removeEventListener('scroll', updateScrollState);
+  }, [updateScrollState]);
+
+  const scrollDates = (direction: 'left' | 'right') => {
+    dateScrollRef.current?.scrollBy({
+      left: direction === 'left' ? -216 : 216,
+      behavior: 'smooth',
+    });
+  };
 
   const handleTimeSlotSelect = (game: Game, timeSlot: GameTimeSlot) => {
     navigate('/booking-detail', {
@@ -117,38 +146,60 @@ export function BookingsPage() {
           )}
         </div>
 
-        {/* 날짜 칩 가로 스크롤 */}
-        <div
-          ref={dateScrollRef}
-          className="flex gap-2 overflow-x-auto pb-1 px-1"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-          {dateOptions.map((opt) => {
-            const isSelected = filters.date === opt.date;
-            return (
-              <button
-                key={opt.date}
-                data-selected={isSelected}
-                onClick={() => updateFilters({ date: opt.date })}
-                className={`flex-shrink-0 w-[52px] h-[52px] flex flex-col items-center justify-center rounded-xl transition-all ${
-                  isSelected
-                    ? 'bg-green-500/30 border border-green-500/50'
-                    : 'bg-white/10 border border-white/20 hover:bg-white/20'
-                }`}
-              >
-                <span className={`text-xs font-medium leading-none ${
-                  isSelected ? 'text-green-300' : opt.isWeekend ? 'text-amber-400' : 'text-white/60'
-                }`}>
-                  {opt.weekday}
-                </span>
-                <span className={`text-sm font-semibold leading-none mt-0.5 ${
-                  isSelected ? 'text-white' : 'text-white/90'
-                }`}>
-                  {opt.shortDate}
-                </span>
-              </button>
-            );
-          })}
+        {/* 날짜 칩 가로 스크롤 + 데스크탑 좌우 버튼 */}
+        <div className="relative group">
+          {/* 좌 버튼 (데스크탑만) */}
+          {canScrollLeft && (
+            <button
+              onClick={() => scrollDates('left')}
+              className="hidden md:flex absolute left-0 top-0 bottom-0 z-10 items-center pl-1 pr-3 bg-gradient-to-r from-[var(--color-bg-primary)] via-[var(--color-bg-primary)]/80 to-transparent"
+            >
+              <ChevronLeft className="w-5 h-5 text-white/70 hover:text-white transition-colors" />
+            </button>
+          )}
+
+          <div
+            ref={dateScrollRef}
+            className="flex gap-2 overflow-x-auto pb-1 px-1 md:px-8"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {dateOptions.map((opt) => {
+              const isSelected = filters.date === opt.date;
+              return (
+                <button
+                  key={opt.date}
+                  data-selected={isSelected}
+                  onClick={() => updateFilters({ date: opt.date })}
+                  className={`flex-shrink-0 w-[52px] h-[52px] flex flex-col items-center justify-center rounded-xl transition-all ${
+                    isSelected
+                      ? 'bg-green-500/30 border border-green-500/50'
+                      : 'bg-white/10 border border-white/20 hover:bg-white/20'
+                  }`}
+                >
+                  <span className={`text-xs font-medium leading-none ${
+                    isSelected ? 'text-green-300' : opt.isWeekend ? 'text-amber-400' : 'text-white/60'
+                  }`}>
+                    {opt.weekday}
+                  </span>
+                  <span className={`text-sm font-semibold leading-none mt-0.5 ${
+                    isSelected ? 'text-white' : 'text-white/90'
+                  }`}>
+                    {opt.shortDate}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 우 버튼 (데스크탑만) */}
+          {canScrollRight && (
+            <button
+              onClick={() => scrollDates('right')}
+              className="hidden md:flex absolute right-0 top-0 bottom-0 z-10 items-center pr-1 pl-3 bg-gradient-to-l from-[var(--color-bg-primary)] via-[var(--color-bg-primary)]/80 to-transparent"
+            >
+              <ChevronRight className="w-5 h-5 text-white/70 hover:text-white transition-colors" />
+            </button>
+          )}
         </div>
 
         {/* 시간대 필터 + 검색 건수 */}
