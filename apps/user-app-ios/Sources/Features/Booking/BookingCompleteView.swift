@@ -182,7 +182,7 @@ struct BookingCompleteView: View {
 
                 // Tags
                 HStack(spacing: ParkSpacing.xs) {
-                    InfoTag(text: "\(booking.playerCount)명")
+                    InfoTag(text: "\(booking.playerCount ?? 0)명")
 
                     if let courseNames = booking.courseNames {
                         InfoTag(text: courseNames, isAccent: true)
@@ -209,8 +209,8 @@ struct BookingCompleteView: View {
     private var infoGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: ParkSpacing.sm) {
             InfoGridItem(label: "예약 날짜", value: booking.formattedDate)
-            InfoGridItem(label: "예약 시간", value: booking.startTime)
-            InfoGridItem(label: "플레이어 수", value: "\(booking.playerCount)명")
+            InfoGridItem(label: "예약 시간", value: booking.startTime ?? "")
+            InfoGridItem(label: "플레이어 수", value: "\(booking.playerCount ?? 0)명")
             InfoGridItem(label: "결제 방법", value: paymentMethodDisplay)
         }
     }
@@ -257,12 +257,14 @@ struct BookingCompleteView: View {
                 .fontWeight(.semibold)
                 .foregroundStyle(Color.parkSuccess.opacity(0.9))
 
-            Text(formatPrice(booking.totalPrice))
+            Text(formatPrice(Int(booking.totalPrice ?? 0)))
                 .font(.system(size: 30, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
 
-            if booking.pricePerPerson > 0 {
-                Text("(기본요금: \(formatPrice(booking.pricePerPerson * booking.playerCount))원\(booking.serviceFee > 0 ? " + 수수료: \(formatPrice(booking.serviceFee))원" : ""))")
+            if (booking.pricePerPerson ?? 0) > 0 {
+                let base = Int(booking.pricePerPerson ?? 0) * (booking.playerCount ?? 0)
+                let fee = Int(booking.serviceFee ?? 0)
+                Text("(기본요금: \(formatPrice(base))원\(fee > 0 ? " + 수수료: \(formatPrice(fee))원" : ""))")
                     .font(.parkLabelMedium)
                     .foregroundStyle(Color.parkSuccess.opacity(0.7))
             }
