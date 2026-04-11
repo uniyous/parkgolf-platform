@@ -108,7 +108,7 @@ export class SagaEngineService {
     sagaExecutionId: number,
     definition: SagaDefinition,
     initialPayload: Record<string, unknown>,
-  ): Promise<{ status: string; payload: Record<string, unknown>; failReason?: string }> {
+  ): Promise<Record<string, unknown>> {
     let currentPayload = { ...initialPayload };
 
     for (let i = 0; i < definition.steps.length; i++) {
