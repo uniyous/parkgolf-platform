@@ -165,7 +165,7 @@ struct BookingListCard: View {
                 VStack(alignment: .leading, spacing: 0) {
                     // Header
                     HStack {
-                        StatusBadge(status: .init(from: booking.status), size: .small)
+                        StatusBadge(status: .init(from: booking.status ?? "PENDING"), size: .small)
 
                         Spacer()
 
@@ -200,8 +200,8 @@ struct BookingListCard: View {
 
                         HStack(spacing: ParkSpacing.lg) {
                             Label(booking.formattedDate, systemImage: "calendar")
-                            Label(booking.startTime, systemImage: "clock")
-                            Label("\(booking.playerCount)명", systemImage: "person.2")
+                            Label(booking.startTime ?? "", systemImage: "clock")
+                            Label("\(booking.playerCount ?? 0)명", systemImage: "person.2")
                         }
                         .font(.parkCaption)
                         .foregroundStyle(.white.opacity(0.6))
@@ -213,7 +213,7 @@ struct BookingListCard: View {
                         .background(Color.white.opacity(0.1))
 
                     HStack {
-                        PriceDisplay(amount: booking.totalPrice, size: .medium, color: .parkPrimary)
+                        PriceDisplay(amount: Int(booking.totalPrice ?? 0), size: .medium, color: .parkPrimary)
 
                         Spacer()
 
@@ -290,15 +290,17 @@ class MyBookingsViewModel: ObservableObject {
             let now = Date()
             if selectedTab == .upcoming {
                 bookings = allBookings.filter { booking in
-                    guard let date = DateHelper.fromISODateString(booking.bookingDate) else { return false }
+                    guard let dateStr = booking.bookingDate, let date = DateHelper.fromISODateString(dateStr) else { return false }
+                    let status = booking.status ?? ""
                     return date >= Calendar.current.startOfDay(for: now) &&
-                           (booking.status == "PENDING" || booking.status == "SLOT_RESERVED" || booking.status == "CONFIRMED")
+                           (status == "PENDING" || status == "SLOT_RESERVED" || status == "CONFIRMED")
                 }
             } else {
                 bookings = allBookings.filter { booking in
-                    guard let date = DateHelper.fromISODateString(booking.bookingDate) else { return true }
+                    guard let dateStr = booking.bookingDate, let date = DateHelper.fromISODateString(dateStr) else { return true }
+                    let status = booking.status ?? ""
                     return date < Calendar.current.startOfDay(for: now) ||
-                           booking.status == "COMPLETED" || booking.status == "CANCELLED" || booking.status == "NO_SHOW"
+                           status == "COMPLETED" || status == "CANCELLED" || status == "NO_SHOW"
                 }
             }
         } catch {
@@ -369,7 +371,7 @@ struct CancelBookingSheet: View {
                                     .font(.parkBodyMedium)
                                     .foregroundStyle(.white.opacity(0.7))
 
-                                Text("\(booking.startTime) - \(booking.endTime)")
+                                Text("\(booking.startTime ?? "") - \(booking.endTime ?? "")")
                                     .font(.parkBodySmall)
                                     .foregroundStyle(.white.opacity(0.6))
                             }
@@ -491,7 +493,7 @@ struct BookingDetailSheet: View {
                     VStack(spacing: ParkSpacing.md) {
                         // Status
                         HStack {
-                            StatusBadge(status: .init(from: booking.status), size: .large)
+                            StatusBadge(status: .init(from: booking.status ?? "PENDING"), size: .large)
                             Spacer()
                             Text(booking.bookingNumber)
                                 .font(.parkLabelMedium)
@@ -519,7 +521,7 @@ struct BookingDetailSheet: View {
                                     }
                                     DetailRow(icon: "calendar", label: "날짜", value: booking.formattedDate)
                                     DetailRow(icon: "clock", label: "시간", value: booking.timeRange)
-                                    DetailRow(icon: "person.2", label: "인원", value: "\(booking.playerCount)명")
+                                    DetailRow(icon: "person.2", label: "인원", value: "\(booking.playerCount ?? 0)명")
                                 }
                             }
                         }
@@ -549,12 +551,12 @@ struct BookingDetailSheet: View {
 
                                 VStack(spacing: ParkSpacing.xs) {
                                     PriceSummaryRow(
-                                        label: "기본 요금 (\(booking.playerCount)명)",
-                                        amount: booking.totalPrice - booking.serviceFee
+                                        label: "기본 요금 (\(booking.playerCount ?? 0)명)",
+                                        amount: Int(booking.totalPrice ?? 0) - Int(booking.serviceFee ?? 0)
                                     )
                                     PriceSummaryRow(
                                         label: "서비스 수수료",
-                                        amount: booking.serviceFee
+                                        amount: Int(booking.serviceFee ?? 0)
                                     )
 
                                     Divider()
@@ -562,7 +564,7 @@ struct BookingDetailSheet: View {
 
                                     PriceSummaryRow(
                                         label: "총 결제 금액",
-                                        amount: booking.totalPrice,
+                                        amount: Int(booking.totalPrice ?? 0),
                                         isTotal: true,
                                         color: .parkPrimary
                                     )
