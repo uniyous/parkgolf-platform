@@ -457,38 +457,35 @@ struct NoticeItem: View {
 // MARK: - Preview
 
 #Preview {
-    BookingCompleteView(
-        booking: BookingResponse(
-            id: 1,
-            bookingNumber: "BK-20240125-001",
-            userId: 1,
-            gameId: 1,
-            gameTimeSlotId: 1,
-            gameName: "주말 특가 라운드",
-            gameCode: "AB",
-            frontNineCourseId: 1,
-            frontNineCourseName: "A코스",
-            backNineCourseId: 2,
-            backNineCourseName: "B코스",
-            clubId: 1,
-            clubName: "서울파크골프장",
-            bookingDate: "2024-01-25",
-            startTime: "09:00",
-            endTime: "11:00",
-            playerCount: 4,
-            pricePerPerson: 25000,
-            serviceFee: 3000,
-            totalPrice: 103000,
-            status: "CONFIRMED",
-            paymentMethod: "card",
-            specialRequests: "카트 요청드립니다",
-            notes: nil,
-            userEmail: nil,
-            userName: nil,
-            userPhone: nil,
-            canCancel: true,
-            createdAt: "2024-01-20T10:00:00Z",
-            updatedAt: nil
-        )
-    )
+    let json = """
+    {
+        "id": 1,
+        "bookingNumber": "BK-20240125-001",
+        "userId": 1,
+        "gameId": 1,
+        "gameTimeSlotId": 1,
+        "gameName": "주말 특가 라운드",
+        "gameCode": "AB",
+        "frontNineCourseId": 1,
+        "frontNineCourseName": "A코스",
+        "backNineCourseId": 2,
+        "backNineCourseName": "B코스",
+        "clubId": 1,
+        "clubName": "서울파크골프장",
+        "bookingDate": "2024-01-25",
+        "startTime": "09:00",
+        "endTime": "11:00",
+        "playerCount": 4,
+        "pricePerPerson": 25000,
+        "serviceFee": 3000,
+        "totalPrice": 103000,
+        "status": "CONFIRMED",
+        "paymentMethod": "card",
+        "specialRequests": "카트 요청드립니다",
+        "canCancel": true,
+        "createdAt": "2024-01-20T10:00:00Z"
+    }
+    """.data(using: .utf8)!
+    let booking = try! JSONDecoder().decode(BookingResponse.self, from: json)
+    BookingCompleteView(booking: booking)
 }
