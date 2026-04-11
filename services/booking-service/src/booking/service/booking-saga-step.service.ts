@@ -905,22 +905,41 @@ export class BookingSagaStepService {
 
   private toSagaResponse(booking: Record<string, unknown>) {
     return {
+      id: booking.id,
       bookingId: booking.id,
       bookingNumber: booking.bookingNumber,
+      gameId: booking.gameId,
       gameTimeSlotId: booking.gameTimeSlotId,
-      playerCount: booking.playerCount,
-      paymentMethod: booking.paymentMethod,
-      clubId: booking.clubId,
-      userId: booking.userId,
       gameName: booking.gameName,
+      gameCode: booking.gameCode,
+      frontNineCourseId: booking.frontNineCourseId,
+      frontNineCourseName: booking.frontNineCourseName,
+      backNineCourseId: booking.backNineCourseId,
+      backNineCourseName: booking.backNineCourseName,
+      clubId: booking.clubId,
+      clubName: booking.clubName,
       bookingDate: booking.bookingDate instanceof Date
-        ? booking.bookingDate.toISOString()
+        ? booking.bookingDate.toISOString().split('T')[0]
         : booking.bookingDate,
       startTime: booking.startTime,
+      endTime: booking.endTime || '',
+      playerCount: booking.playerCount,
+      pricePerPerson: booking.pricePerPerson != null ? Math.round(Number(String(booking.pricePerPerson))) : 0,
+      serviceFee: booking.serviceFee != null ? Math.round(Number(String(booking.serviceFee))) : 0,
+      totalPrice: booking.totalPrice != null ? Math.round(Number(String(booking.totalPrice))) : 0,
+      status: booking.status,
+      paymentMethod: booking.paymentMethod,
+      specialRequests: booking.specialRequests,
+      userId: booking.userId,
       userEmail: booking.userEmail,
       userName: booking.userName,
-      totalPrice: booking.totalPrice != null ? Number(String(booking.totalPrice)) : 0,
-      pricePerPerson: booking.pricePerPerson != null ? Number(String(booking.pricePerPerson)) : 0,
+      userPhone: booking.userPhone,
+      createdAt: booking.createdAt instanceof Date
+        ? (booking.createdAt as Date).toISOString()
+        : booking.createdAt,
+      updatedAt: booking.updatedAt instanceof Date
+        ? (booking.updatedAt as Date).toISOString()
+        : booking.updatedAt,
     };
   }
 

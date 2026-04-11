@@ -86,11 +86,14 @@ struct CreateBookingRequest: Codable, Sendable {
 // MARK: - Booking Response
 
 struct BookingResponse: Codable, Sendable, Identifiable {
-    let id: Int
+    // saga 응답에서는 bookingId로 반환될 수 있음
+    var id: Int { bookingId ?? _id ?? 0 }
+    private let _id: Int?
+    let bookingId: Int?
     let bookingNumber: String
     let userId: Int?
-    let gameId: Int
-    let gameTimeSlotId: Int
+    let gameId: Int?
+    let gameTimeSlotId: Int?
     let gameName: String?
     let gameCode: String?
     let frontNineCourseId: Int?
@@ -99,14 +102,15 @@ struct BookingResponse: Codable, Sendable, Identifiable {
     let backNineCourseName: String?
     let clubId: Int?
     let clubName: String?
-    let bookingDate: String
-    let startTime: String
-    let endTime: String
-    let playerCount: Int
-    let pricePerPerson: Int
-    let serviceFee: Int
-    let totalPrice: Int
-    let status: String
+    let bookingDate: String?
+    let startTime: String?
+    let endTime: String?
+    let playerCount: Int?
+    let pricePerPerson: Double?
+    let serviceFee: Double?
+    let totalPrice: Double?
+    let status: String?
+    let bookingStatus: String?
     let paymentMethod: String?
     let specialRequests: String?
     let notes: String?
@@ -114,22 +118,43 @@ struct BookingResponse: Codable, Sendable, Identifiable {
     let userName: String?
     let userPhone: String?
     let canCancel: Bool?
-    let createdAt: String
+    let createdAt: String?
     let updatedAt: String?
 
+    enum CodingKeys: String, CodingKey {
+        case _id = "id"
+        case bookingId
+        case bookingNumber
+        case userId, gameId, gameTimeSlotId
+        case gameName, gameCode
+        case frontNineCourseId, frontNineCourseName
+        case backNineCourseId, backNineCourseName
+        case clubId, clubName
+        case bookingDate, startTime, endTime
+        case playerCount, pricePerPerson, serviceFee, totalPrice
+        case status, bookingStatus, paymentMethod
+        case specialRequests, notes
+        case userEmail, userName, userPhone
+        case canCancel, createdAt, updatedAt
+    }
+
     var statusEnum: BookingStatus {
-        BookingStatus(rawValue: status) ?? .pending
+        BookingStatus(rawValue: status ?? bookingStatus ?? "PENDING") ?? .pending
     }
 
     var formattedDate: String {
-        guard let date = DateHelper.fromISODateString(bookingDate) else {
-            return bookingDate
+        guard let bookingDate, let date = DateHelper.fromISODateString(bookingDate) else {
+            return bookingDate ?? ""
         }
         return DateHelper.toKoreanFullDate(date)
     }
 
     var timeRange: String {
-        "\(startTime) - \(endTime)"
+        "\(startTime ?? "") - \(endTime ?? "")"
+    }
+
+    var totalPriceInt: Int {
+        Int(totalPrice ?? 0)
     }
 
     var courseNames: String? {
