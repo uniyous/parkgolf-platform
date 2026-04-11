@@ -105,6 +105,13 @@ export class BookingService {
     });
 
     if (result.success && result.data) {
+      const sagaData = result.data as Record<string, unknown>;
+      // saga 실패 시 에러를 클라이언트에 전달
+      if (sagaData.sagaStatus === 'FAILED' || sagaData.sagaStatus === 'COMPENSATED' || sagaData.sagaStatus === 'REQUIRES_MANUAL') {
+        const failReason = (sagaData.failReason as string) || '예약 처리에 실패했습니다';
+        this.logger.warn(`Booking saga failed: ${failReason}`);
+        return { success: false, error: { code: 'SAGA_FAILED', message: failReason } } as unknown as ApiResponse<BookingResponseDto>;
+      }
       this.logger.log(`Booking request submitted: ${result.data.bookingNumber} (status: ${result.data.status})`);
     }
     return result;

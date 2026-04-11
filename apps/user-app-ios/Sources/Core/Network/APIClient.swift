@@ -145,6 +145,11 @@ actor APIClient {
         } catch let error as APIError {
             throw error
         } catch {
+            #if DEBUG
+            let rawJson = String(data: data, encoding: .utf8) ?? "nil"
+            print("❌ [APIClient] Decoding failed for \(T.self): \(error)")
+            print("❌ [APIClient] Raw JSON: \(rawJson.prefix(1000))")
+            #endif
             throw APIError.decodingError
         }
     }
