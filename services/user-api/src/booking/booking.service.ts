@@ -105,7 +105,7 @@ export class BookingService {
     });
 
     if (result.success && result.data) {
-      const sagaData = result.data as Record<string, unknown>;
+      const sagaData = result.data as unknown as Record<string, unknown>;
       // saga 실패 시 에러를 클라이언트에 전달
       if (sagaData.sagaStatus === 'FAILED' || sagaData.sagaStatus === 'COMPENSATED' || sagaData.sagaStatus === 'REQUIRES_MANUAL') {
         const failReason = (sagaData.failReason as string) || '예약 처리에 실패했습니다';
