@@ -92,8 +92,8 @@ export class SagaEngineService {
     const result = await this.executeSteps(sagaExecution.id, definition, payload);
     const elapsed = Date.now() - startTime;
 
-    this.logger.log(`[SagaEngine] Saga ${sagaType} ${result.status} in ${elapsed}ms: executionId=${sagaExecution.id}`);
-    this.logger.log(`[SagaEngine] ========== SAGA ${sagaType} ${result.status} ==========`);
+    this.logger.log(`[SagaEngine] Saga ${sagaType} ${result.sagaStatus} in ${elapsed}ms: executionId=${sagaExecution.id}`);
+    this.logger.log(`[SagaEngine] ========== SAGA ${sagaType} ${result.sagaStatus} ==========`);
 
     return NatsResponse.success({
       sagaExecutionId: sagaExecution.id,
@@ -208,7 +208,7 @@ export class SagaEngineService {
           },
         });
 
-        return { status: finalStatus, payload: currentPayload, failReason: result.error };
+        return { sagaStatus: finalStatus, ...currentPayload, failReason: result.error };
       }
     }
 
@@ -222,7 +222,7 @@ export class SagaEngineService {
       },
     });
 
-    return { status: 'COMPLETED', payload: currentPayload };
+    return { sagaStatus: 'COMPLETED', ...currentPayload };
   }
 
   /**
@@ -348,7 +348,7 @@ export class SagaEngineService {
   }
 
   /**
-   * Saga 수동 완료 처리
+   * Saga 수동 완료 처리 (sagaStatus는 이미 result에 포함)
    */
   async resolveSaga(sagaExecutionId: number, adminNote?: string) {
     const execution = await this.prisma.sagaExecution.findUnique({
@@ -377,7 +377,7 @@ export class SagaEngineService {
     });
 
     this.logger.log(`[SagaEngine] Saga ${sagaExecutionId} manually resolved`);
-    return NatsResponse.success({ sagaExecutionId, status: 'COMPLETED', resolvedManually: true });
+    return NatsResponse.success({ sagaExecutionId, sagaStatus: 'COMPLETED', resolvedManually: true });
   }
 
   /**

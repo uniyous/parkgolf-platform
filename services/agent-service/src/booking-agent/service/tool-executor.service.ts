@@ -659,10 +659,9 @@ export class ToolExecutorService {
 
     if (response?.success && response?.data) {
       const sagaResult = response.data;
-      const sagaPayload = sagaResult.payload || {};
 
-      // saga 응답에서 bookingId 추출 (saga payload 또는 직접 응답)
-      const bookingId = sagaPayload.bookingId || sagaResult.bookingId || sagaResult.id;
+      // saga 응답에서 bookingId 추출 (flat 구조)
+      const bookingId = sagaResult.bookingId || sagaResult.id;
 
       if (!bookingId) {
         this.logger.error(`[createBooking] No bookingId in saga response: ${JSON.stringify(sagaResult).slice(0, 300)}`);
@@ -672,15 +671,13 @@ export class ToolExecutorService {
         };
       }
 
-      // Saga가 이미 COMPLETED이면 바로 booking 상태 확인
-      const sagaStatus = sagaResult.status;
+      // Saga 상태 확인 후 booking 상태 polling
+      const sagaStatus = sagaResult.sagaStatus;
       let finalStatus: string;
 
       if (sagaStatus === 'COMPLETED') {
-        // Saga 완료 → booking 상태 직접 조회
         finalStatus = await this.waitForSagaCompletion(bookingId, paymentMethod);
       } else {
-        // Saga 진행 중 → polling
         finalStatus = await this.waitForSagaCompletion(bookingId, paymentMethod);
       }
 
@@ -694,17 +691,17 @@ export class ToolExecutorService {
       return {
         success: true,
         bookingId,
-        bookingNumber: sagaPayload.bookingNumber,
-        confirmationNumber: sagaPayload.bookingNumber,
-        status: finalStatus, // 'CONFIRMED' | 'SLOT_RESERVED' | 'PENDING'
+        bookingNumber: sagaResult.bookingNumber,
+        confirmationNumber: sagaResult.bookingNumber,
+        status: finalStatus,
         message: finalStatus === 'CONFIRMED'
           ? '예약이 완료되었습니다!'
           : '결제를 진행해 주세요.',
         details: {
-          date: sagaPayload.bookingDate,
-          time: sagaPayload.startTime,
-          playerCount: sagaPayload.playerCount,
-          totalPrice: sagaPayload.totalPrice,
+          date: sagaResult.bookingDate,
+          time: sagaResult.startTime,
+          playerCount: sagaResult.playerCount,
+          totalPrice: sagaResult.totalPrice,
         },
       };
     }
