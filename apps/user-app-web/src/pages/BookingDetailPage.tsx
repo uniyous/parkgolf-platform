@@ -190,7 +190,7 @@ export const BookingDetailPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)]">
-      <SubPageHeader title="예약 확인" />
+      <SubPageHeader title="예약 확인" onBack={() => navigate('/bookings')} />
       <Container className="py-6">
         <div className="glass-card">
           {/* 예약 정보 */}
