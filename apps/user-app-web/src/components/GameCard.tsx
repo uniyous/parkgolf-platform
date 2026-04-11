@@ -1,6 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Game, GameTimeSlot } from '@/lib/api/gameApi';
+
+const useIsDesktop = () => {
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isDesktop;
+};
 
 const getAvailabilityText = (remaining: number) => {
   if (remaining === 0) return '매진';
@@ -17,6 +30,8 @@ const SLOTS_VISIBLE = 4;
 
 export const GameCard: React.FC<GameCardProps> = ({ game, onTimeSlotSelect }) => {
   const [currentPage, setCurrentPage] = useState(0);
+  const isDesktop = useIsDesktop();
+  const slotsPerPage = isDesktop ? SLOTS_VISIBLE * 2 : SLOTS_VISIBLE; // 데스크탑 8개, 모바일 4개
 
   const timeSlots = game.timeSlots || [];
 
@@ -33,12 +48,20 @@ export const GameCard: React.FC<GameCardProps> = ({ game, onTimeSlotSelect }) =>
     });
   }, [timeSlots]);
 
-  const totalPages = Math.ceil(filteredSlots.length / SLOTS_VISIBLE);
+  // 화면 전환 시 페이지 범위 초과 방지
+  const totalPages = Math.ceil(filteredSlots.length / slotsPerPage);
+  const safePage = Math.min(currentPage, Math.max(0, totalPages - 1));
   const visibleSlots = filteredSlots.slice(
-    currentPage * SLOTS_VISIBLE,
-    (currentPage + 1) * SLOTS_VISIBLE
+    safePage * slotsPerPage,
+    (safePage + 1) * slotsPerPage
   );
   const needsPagination = totalPages > 1;
+
+  useEffect(() => {
+    if (currentPage > 0 && currentPage >= totalPages) {
+      setCurrentPage(Math.max(0, totalPages - 1));
+    }
+  }, [totalPages, currentPage]);
 
   const pricePerPerson = game.pricePerPerson || game.basePrice || 0;
 
@@ -67,7 +90,7 @@ export const GameCard: React.FC<GameCardProps> = ({ game, onTimeSlotSelect }) =>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {visibleSlots.map((slot) => {
                 const maxCapacity = slot.maxPlayers ?? slot.maxCapacity ?? 4;
                 const currentBookings = slot.bookedPlayers ?? slot.currentBookings ?? 0;
@@ -102,9 +125,9 @@ export const GameCard: React.FC<GameCardProps> = ({ game, onTimeSlotSelect }) =>
               <div className="flex items-center justify-between mt-3">
                 <button
                   onClick={() => setCurrentPage((p) => p - 1)}
-                  disabled={currentPage === 0}
+                  disabled={safePage === 0}
                   className={`inline-flex items-center gap-0.5 text-xs px-2 py-1 rounded-md transition-colors ${
-                    currentPage === 0
+                    safePage === 0
                       ? 'text-white/20 cursor-default'
                       : 'text-white/60 hover:text-white hover:bg-white/10'
                   }`}
@@ -113,13 +136,13 @@ export const GameCard: React.FC<GameCardProps> = ({ game, onTimeSlotSelect }) =>
                   이전
                 </button>
                 <span className="text-xs text-white/40">
-                  {currentPage + 1} / {totalPages}
+                  {safePage + 1} / {totalPages}
                 </span>
                 <button
                   onClick={() => setCurrentPage((p) => p + 1)}
-                  disabled={currentPage >= totalPages - 1}
+                  disabled={safePage >= totalPages - 1}
                   className={`inline-flex items-center gap-0.5 text-xs px-2 py-1 rounded-md transition-colors ${
-                    currentPage >= totalPages - 1
+                    safePage >= totalPages - 1
                       ? 'text-white/20 cursor-default'
                       : 'text-white/60 hover:text-white hover:bg-white/10'
                   }`}
