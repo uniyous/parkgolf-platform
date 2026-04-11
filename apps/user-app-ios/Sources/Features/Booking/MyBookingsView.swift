@@ -600,7 +600,7 @@ struct BookingDetailSheet: View {
                                         Text("예약일시")
                                             .foregroundStyle(.white.opacity(0.6))
                                         Spacer()
-                                        Text(formatDateTime(booking.createdAt))
+                                        Text(formatDateTime(booking.createdAt ?? ""))
                                             .foregroundStyle(.white)
                                     }
                                     .font(.parkBodySmall)
