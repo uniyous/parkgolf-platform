@@ -4,7 +4,7 @@ import { SagaStatus, StepStatus } from '@prisma/client';
 import { SagaRegistry } from './saga-registry';
 import { StepExecutorService } from './step-executor.service';
 import { SagaDefinition, StepDefinition } from '../definitions/saga-definition.interface';
-import { NatsResponse } from '../../common/types/response.types';
+import { NatsResponse, type SagaMeta } from '../../common/types/response.types';
 
 @Injectable()
 export class SagaEngineService {
@@ -28,7 +28,11 @@ export class SagaEngineService {
     const definition = this.registry.get(sagaType);
     if (!definition) {
       this.logger.error(`Unknown saga type: ${sagaType}`);
-      return NatsResponse.success({ error: `Unknown saga type: ${sagaType}` });
+      return NatsResponse.withSaga({}, {
+        executionId: 0,
+        status: 'FAILED',
+        failReason: `Unknown saga type: ${sagaType}`,
+      });
     }
 
     const correlationId = this.buildCorrelationId(sagaType, payload);
@@ -43,7 +47,12 @@ export class SagaEngineService {
     });
     if (existing && existing.status !== SagaStatus.FAILED) {
       this.logger.warn(`[SagaEngine] Duplicate saga: ${correlationId}, status=${existing.status}`);
-      return NatsResponse.success({ sagaExecutionId: existing.id, status: existing.status, duplicate: true });
+      const existingPayload = (existing.payload as Record<string, unknown>) ?? {};
+      return NatsResponse.withSaga(existingPayload, {
+        executionId: existing.id,
+        status: existing.status as SagaMeta['status'],
+        duplicate: true,
+      });
     }
 
     // SagaExecution 생성 + 모든 SagaStep 레코드 생성
@@ -95,9 +104,16 @@ export class SagaEngineService {
     this.logger.log(`[SagaEngine] Saga ${sagaType} ${result.sagaStatus} in ${elapsed}ms: executionId=${sagaExecution.id}`);
     this.logger.log(`[SagaEngine] ========== SAGA ${sagaType} ${result.sagaStatus} ==========`);
 
-    return NatsResponse.success({
-      sagaExecutionId: sagaExecution.id,
-      ...result,
+    const { sagaStatus, failReason, ...dataPayload } = result as {
+      sagaStatus: string;
+      failReason?: string;
+      [key: string]: unknown;
+    };
+
+    return NatsResponse.withSaga(dataPayload, {
+      executionId: sagaExecution.id,
+      status: sagaStatus as SagaMeta['status'],
+      failReason,
     });
   }
 

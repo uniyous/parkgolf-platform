@@ -657,29 +657,34 @@ export class ToolExecutorService {
         ),
     );
 
-    if (response?.success && response?.data) {
-      const sagaResult = response.data;
+    // 새 응답 구조: { success, data: {...}, saga: {status, failReason?} }
+    const sagaMeta = response?.saga;
+    const sagaStatus = sagaMeta?.status;
 
-      // saga 응답에서 bookingId 추출 (flat 구조)
-      const bookingId = sagaResult.bookingId || sagaResult.id;
+    // Saga 실패 처리
+    if (sagaStatus === 'FAILED' || sagaStatus === 'COMPENSATED' || sagaStatus === 'REQUIRES_MANUAL') {
+      return {
+        success: false,
+        message: sagaMeta?.failReason || '슬롯 예약에 실패했습니다. 다른 시간을 선택해 주세요.',
+      };
+    }
+
+    if (response?.success && response?.data) {
+      const sagaData = response.data as Record<string, unknown>;
+
+      // saga payload에서 bookingId 추출
+      const bookingId = (sagaData.bookingId as number) || (sagaData.id as number);
 
       if (!bookingId) {
-        this.logger.error(`[createBooking] No bookingId in saga response: ${JSON.stringify(sagaResult).slice(0, 300)}`);
+        this.logger.error(`[createBooking] No bookingId in saga response: ${JSON.stringify(sagaData).slice(0, 300)}`);
         return {
           success: false,
           message: '예약 생성에 실패했습니다. 다시 시도해 주세요.',
         };
       }
 
-      // Saga 상태 확인 후 booking 상태 polling
-      const sagaStatus = sagaResult.sagaStatus;
-      let finalStatus: string;
-
-      if (sagaStatus === 'COMPLETED') {
-        finalStatus = await this.waitForSagaCompletion(bookingId, paymentMethod);
-      } else {
-        finalStatus = await this.waitForSagaCompletion(bookingId, paymentMethod);
-      }
+      // booking 최종 상태 폴링 (saga 완료 후에도 DB 반영 지연 가능성 대비)
+      const finalStatus = await this.waitForSagaCompletion(bookingId, paymentMethod);
 
       if (finalStatus === 'FAILED') {
         return {
@@ -691,24 +696,24 @@ export class ToolExecutorService {
       return {
         success: true,
         bookingId,
-        bookingNumber: sagaResult.bookingNumber,
-        confirmationNumber: sagaResult.bookingNumber,
+        bookingNumber: sagaData.bookingNumber,
+        confirmationNumber: sagaData.bookingNumber,
         status: finalStatus,
         message: finalStatus === 'CONFIRMED'
           ? '예약이 완료되었습니다!'
           : '결제를 진행해 주세요.',
         details: {
-          date: sagaResult.bookingDate,
-          time: sagaResult.startTime,
-          playerCount: sagaResult.playerCount,
-          totalPrice: sagaResult.totalPrice,
+          date: sagaData.bookingDate,
+          time: sagaData.startTime,
+          playerCount: sagaData.playerCount,
+          totalPrice: sagaData.totalPrice,
         },
       };
     }
 
     return {
       success: false,
-      message: response?.error?.message || response?.data?.failReason || '예약에 실패했습니다',
+      message: sagaMeta?.failReason || '예약에 실패했습니다',
     };
   }
 

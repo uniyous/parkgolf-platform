@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { NatsClientService, NATS_TIMEOUTS } from '../common/nats';
-import { ApiResponse } from '../common/types';
+import { ApiResponse, SagaMeta } from '../common/types';
 import { CreateBookingDto, UpdateBookingDto, BookingStatusType } from './dto/booking.dto';
 import { BookingFilterDto } from './dto/booking-filter.dto';
 
@@ -121,10 +121,11 @@ export class BookingService {
 
   async createBooking(bookingData: CreateBookingDto, adminToken: string): Promise<ApiResponse<BookingResponseDto>> {
     this.logger.log('Creating booking via saga');
-    return this.natsClient.send('saga.booking.create', {
+    const result = await this.natsClient.send<ApiResponse<Record<string, unknown>>>('saga.booking.create', {
       ...bookingData,
       token: adminToken,
     });
+    return this.resolveSagaBookingResponse(result, '예약 생성에 실패했습니다', adminToken);
   }
 
   async updateBooking(
@@ -149,7 +150,8 @@ export class BookingService {
     const params: { bookingId: string; reason?: string; token?: string } = { bookingId };
     if (reason) params.reason = reason;
     if (adminToken) params.token = adminToken;
-    return this.natsClient.send('saga.booking.cancel', params);
+    const result = await this.natsClient.send<ApiResponse<Record<string, unknown>>>('saga.booking.cancel', params);
+    return this.resolveSagaBookingResponse(result, '예약 취소에 실패했습니다', adminToken);
   }
 
   async confirmBooking(bookingId: string, adminToken: string): Promise<ApiResponse<BookingResponseDto>> {
@@ -220,12 +222,90 @@ export class BookingService {
     adminToken: string,
   ): Promise<ApiResponse<PaymentResponseDto>> {
     this.logger.log(`Processing refund for booking: ${bookingId}`);
-    return this.natsClient.send('saga.booking.adminRefund', {
-      bookingId: parseInt(bookingId, 10),
-      cancelAmount: refundData.cancelAmount,
-      cancelReason: refundData.cancelReason,
-      token: adminToken,
-    }, NATS_TIMEOUTS.LIST_QUERY);
+    const result = await this.natsClient.send<ApiResponse<Record<string, unknown>>>(
+      'saga.booking.adminRefund',
+      {
+        bookingId: parseInt(bookingId, 10),
+        cancelAmount: refundData.cancelAmount,
+        cancelReason: refundData.cancelReason,
+        token: adminToken,
+      },
+      NATS_TIMEOUTS.LIST_QUERY,
+    );
+
+    const sagaMeta = result.saga;
+    if (sagaMeta && (sagaMeta.status === 'FAILED' || sagaMeta.status === 'REQUIRES_MANUAL')) {
+      throw new BadRequestException({
+        code: 'SAGA_FAILED',
+        message: sagaMeta.failReason || '환불 처리에 실패했습니다',
+        saga: sagaMeta,
+      });
+    }
+
+    // 환불 saga는 payment 결과가 관심이므로 현재 payload를 그대로 반환하되 saga 메타 포함
+    return {
+      success: true,
+      data: (result.data as unknown as PaymentResponseDto) ?? ({} as PaymentResponseDto),
+      saga: sagaMeta,
+    };
+  }
+
+  /**
+   * Saga 응답을 표준 BookingResponseDto 형태로 정규화.
+   * - 성공: bookingId로 booking.findById 재조회 → {success, data, saga}
+   * - 실패: BadRequestException → UnifiedExceptionFilter가 4xx 표준 에러로 변환
+   */
+  private async resolveSagaBookingResponse(
+    result: ApiResponse<Record<string, unknown>>,
+    fallbackErrorMessage: string,
+    adminToken?: string,
+  ): Promise<ApiResponse<BookingResponseDto>> {
+    const sagaMeta = result.saga;
+    const sagaStatus = sagaMeta?.status;
+    const isFailure = sagaStatus === 'FAILED' || sagaStatus === 'COMPENSATED' || sagaStatus === 'REQUIRES_MANUAL';
+
+    if (isFailure) {
+      const failReason = sagaMeta?.failReason || fallbackErrorMessage;
+      this.logger.warn(`Booking saga ${sagaStatus}: ${failReason}`);
+      throw new BadRequestException({
+        code: 'SAGA_FAILED',
+        message: failReason,
+        saga: sagaMeta,
+      });
+    }
+
+    const payload = (result.data ?? {}) as Record<string, unknown>;
+    const bookingId = (payload.bookingId as number) ?? (payload.id as number);
+
+    if (!bookingId) {
+      this.logger.error(`Saga success but bookingId missing: ${JSON.stringify(payload).slice(0, 300)}`);
+      throw new BadRequestException({
+        code: 'SAGA_RESPONSE_INVALID',
+        message: 'Saga 응답에서 예약 ID를 찾을 수 없습니다',
+        saga: sagaMeta,
+      });
+    }
+
+    const refetch = await this.natsClient.send<ApiResponse<BookingResponseDto>>(
+      'bookings.findById',
+      { bookingId: String(bookingId), token: adminToken },
+      NATS_TIMEOUTS.QUICK,
+    );
+
+    if (!refetch?.success || !refetch.data) {
+      this.logger.error(`Failed to refetch booking ${bookingId} after saga success`);
+      throw new BadRequestException({
+        code: 'BOOKING_REFETCH_FAILED',
+        message: '예약 정보 조회에 실패했습니다',
+        saga: sagaMeta,
+      });
+    }
+
+    return {
+      success: true,
+      data: refetch.data,
+      saga: sagaMeta,
+    };
   }
 
   // Booking History and Analytics
