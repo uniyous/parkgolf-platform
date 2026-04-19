@@ -66,7 +66,7 @@ fun UserProfileDto.toDomain(): User {
 
 fun BookingDto.toDomain(): Booking {
     return Booking(
-        id = id ?: "",
+        id = id?.toString() ?: "",
         bookingNumber = bookingNumber,
         gameId = gameId ?: 0,
         gameTimeSlotId = gameTimeSlotId ?: 0,

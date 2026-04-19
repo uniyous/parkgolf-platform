@@ -46,7 +46,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.parkgolf.app.domain.model.ClubDetail
 import com.parkgolf.app.domain.model.Round
 import com.parkgolf.app.presentation.components.GlassCard

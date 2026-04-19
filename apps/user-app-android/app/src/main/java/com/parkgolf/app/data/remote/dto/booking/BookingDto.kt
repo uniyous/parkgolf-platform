@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class BookingDto(
-    val id: String? = null,
+    val id: Int? = null,
     val bookingNumber: String? = null,
     val userId: Int? = null,
     val gameId: Int? = null,
@@ -18,6 +18,8 @@ data class BookingDto(
     val playerCount: Int? = null,
     val status: String? = null,
     val totalPrice: Int? = null,
+    val pricePerPerson: Int? = null,
+    val serviceFee: Int? = null,
     val paymentMethod: String? = null,
     val specialRequests: String? = null,
     val userEmail: String? = null,

@@ -23,7 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import kotlinx.coroutines.launch
 import com.parkgolf.app.presentation.components.GlassCard
 import com.parkgolf.app.presentation.components.GradientButton
 import com.parkgolf.app.presentation.feature.payment.PaymentActivity
@@ -203,7 +204,8 @@ fun BookingFormScreen(
 
                     // Error message (복사 가능)
                     uiState.error?.let { error ->
-                        val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+                        val clipboard = androidx.compose.ui.platform.LocalClipboard.current
+                        val scope = rememberCoroutineScope()
                         androidx.compose.foundation.layout.Row(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -215,7 +217,13 @@ fun BookingFormScreen(
                                 modifier = Modifier.weight(1f)
                             )
                             TextButton(onClick = {
-                                clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(error))
+                                scope.launch {
+                                    clipboard.setClipEntry(
+                                        androidx.compose.ui.platform.ClipEntry(
+                                            android.content.ClipData.newPlainText("error", error)
+                                        )
+                                    )
+                                }
                                 android.widget.Toast.makeText(context, "에러 메시지 복사됨", android.widget.Toast.LENGTH_SHORT).show()
                             }) {
                                 Text("복사", fontSize = 12.sp)

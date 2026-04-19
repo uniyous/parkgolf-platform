@@ -73,7 +73,7 @@ import com.parkgolf.app.data.remote.auth.AuthEvent
 import com.parkgolf.app.data.remote.auth.AuthEventBus
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 /**
  * Park Golf Navigation

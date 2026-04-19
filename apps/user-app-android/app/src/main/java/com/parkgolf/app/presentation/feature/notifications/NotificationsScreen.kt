@@ -61,7 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.parkgolf.app.domain.model.AppNotification
 import com.parkgolf.app.domain.model.NotificationType
 import com.parkgolf.app.presentation.components.GlassCard
@@ -348,16 +348,13 @@ private fun SwipeableNotificationRow(
     onTap: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { dismissValue ->
-            if (dismissValue == SwipeToDismissBoxValue.EndToStart) {
-                onDelete()
-                true
-            } else {
-                false
-            }
+    val dismissState = rememberSwipeToDismissBoxState()
+
+    LaunchedEffect(dismissState.currentValue) {
+        if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
+            onDelete()
         }
-    )
+    }
 
     // 스와이프 중일 때만 배경 표시
     val isSwipeInProgress = dismissState.targetValue != SwipeToDismissBoxValue.Settled

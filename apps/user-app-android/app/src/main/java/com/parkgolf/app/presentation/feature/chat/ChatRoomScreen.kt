@@ -29,7 +29,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.LifecycleOwner
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import kotlinx.coroutines.launch
 import com.parkgolf.app.presentation.feature.payment.PaymentActivity
 import com.parkgolf.app.data.remote.dto.chat.AiChatRequest
 import com.parkgolf.app.data.remote.dto.chat.TeamDto
@@ -462,7 +463,8 @@ fun ChatRoomScreen(
 
                 // Error Snackbar (복사 가능)
                 uiState.error?.let { error ->
-                    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+                    val clipboard = androidx.compose.ui.platform.LocalClipboard.current
+                    val scope = rememberCoroutineScope()
                     Snackbar(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -470,7 +472,13 @@ fun ChatRoomScreen(
                         action = {
                             Row {
                                 TextButton(onClick = {
-                                    clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(error))
+                                    scope.launch {
+                                        clipboard.setClipEntry(
+                                            androidx.compose.ui.platform.ClipEntry(
+                                                android.content.ClipData.newPlainText("error", error)
+                                            )
+                                        )
+                                    }
                                     android.widget.Toast.makeText(context, "에러 메시지 복사됨", android.widget.Toast.LENGTH_SHORT).show()
                                 }) {
                                     Text("복사")
