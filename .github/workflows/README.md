@@ -116,6 +116,7 @@ Actions > CD Apps > Run workflow
 | 앱 | Firebase Site (dev) | Firebase Site (prod) |
 |----|---------------------|----------------------|
 | admin-dashboard | parkgolf-admin-dev | parkgolf-admin |
+| platform-dashboard | parkgolf-platform-dev | parkgolf-platform |
 | user-app-web | parkgolf-user-dev | parkgolf-user |
 
 ---

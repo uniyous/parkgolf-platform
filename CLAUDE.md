@@ -35,12 +35,30 @@ services/
 Frontend → BFF (REST) → NATS → Microservice (Prisma)
 ```
 
-- **NatsResponse 헬퍼**: Microservice는 `NatsResponse.success()`, `.paginated()`, `.deleted()`로 응답
+- **NatsResponse 헬퍼**: Microservice는 `NatsResponse.success()`, `.paginated()`, `.deleted()`, `.withSaga()`로 응답
 - **예외 처리**: `UnifiedExceptionFilter`에 위임, Controller/Service에 자체 에러 핸들링 금지
 - **NATS 호출 에러**: `catchError`에서 반드시 `throw` — 에러를 삼키거나 자체 fallback 금지
-- **BFF 역할**: Microservice 응답을 그대로 전달 (변환/언래핑 절대 금지)
+- **BFF 역할**: Microservice 응답을 그대로 전달. 단 **saga 트랜잭션 응답은 `{success, data, saga}` 표준 shape로 정규화** (saga 성공 후 `findById` 재조회, 실패 시 `BadRequestException` → 4xx)
 - **TypeScript**: `any` 사용 금지 → `unknown` 또는 제네릭, `interface` 우선
 - **커밋**: `<type>(<scope>): <description>` (feat/fix/refactor/docs/test/chore)
+
+---
+
+## 인프라 / 배포
+
+- **런타임**: GKE Autopilot (백엔드) + Firebase Hosting (웹 프론트)
+- **리전**: `asia-northeast3` (Seoul) · Artifact Registry: `asia-northeast3-docker.pkg.dev`
+- **환경**: `dev` (`parkgolf-dev-cluster` / ns `parkgolf-dev`) · `prod` (`parkgolf-prod-cluster` / ns `parkgolf-prod`)
+- **Terraform**: `infra/` (environments / modules / providers) — VPC·GKE·DB·Secret 프로비저닝
+- **CI/CD**: GitHub Actions 수동 트리거 (`workflow_dispatch`, 자동 GitOps 컨트롤러 없음)
+  - `ci.yml` — lint / test / build + Trivy
+  - `cd-infra.yml` — VPC·GKE·Secret·ConfigMap (`network-apply` → `gke-setup` → `gke-update` → `*-destroy`)
+  - `cd-services.yml` — Docker 빌드 → Artifact Registry push → `kubectl apply`
+  - `cd-apps.yml` — Firebase Hosting 배포 (`admin-dashboard`, `user-app-web`)
+- **최초 배포**: `cd-infra(network-apply)` → `cd-infra(gke-setup)` → `cd-services` → `cd-apps`
+- **배포 의존성**: saga 응답 구조 변경 시 `saga-service` 먼저 → `user-api`·`admin-api`·`agent-service` 순서 (병렬 가능)
+
+상세: `.github/workflows/README.md`, `cicd` skill
 
 ---
 
