@@ -15,11 +15,13 @@ services/
 ├── chat-gateway/           # WebSocket 서버 (Socket.IO)
 ├── iam-service/            # 인증/사용자/친구 (Prisma)
 ├── course-service/         # 골프장/코스/게임 (Prisma)
-├── booking-service/        # 예약/Saga (Prisma)
+├── booking-service/        # 예약 (Prisma)
+├── saga-service/           # Saga 오케스트레이터 (Prisma)
 ├── payment-service/        # 결제 (Prisma)
 ├── chat-service/           # 채팅 (Prisma)
 ├── notify-service/         # 알림 (Prisma)
 ├── agent-service/          # AI 에이전트 (DeepSeek)
+├── partner-service/        # 외부 파트너 연동
 ├── job-service/            # 스케줄링 작업
 ├── location-service/       # 위치 (카카오 로컬 API)
 └── weather-service/        # 날씨 (기상청 API)
