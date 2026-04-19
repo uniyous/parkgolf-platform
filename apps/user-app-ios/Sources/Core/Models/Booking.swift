@@ -86,10 +86,7 @@ struct CreateBookingRequest: Codable, Sendable {
 // MARK: - Booking Response
 
 struct BookingResponse: Codable, Sendable, Identifiable {
-    // saga 응답에서는 bookingId로 반환될 수 있음
-    var id: Int { bookingId ?? _id ?? 0 }
-    private let _id: Int?
-    let bookingId: Int?
+    let id: Int
     let bookingNumber: String
     let userId: Int?
     let gameId: Int?
@@ -110,7 +107,6 @@ struct BookingResponse: Codable, Sendable, Identifiable {
     let serviceFee: Double?
     let totalPrice: Double?
     let status: String?
-    let bookingStatus: String?
     let paymentMethod: String?
     let specialRequests: String?
     let notes: String?
@@ -121,25 +117,8 @@ struct BookingResponse: Codable, Sendable, Identifiable {
     let createdAt: String?
     let updatedAt: String?
 
-    enum CodingKeys: String, CodingKey {
-        case _id = "id"
-        case bookingId
-        case bookingNumber
-        case userId, gameId, gameTimeSlotId
-        case gameName, gameCode
-        case frontNineCourseId, frontNineCourseName
-        case backNineCourseId, backNineCourseName
-        case clubId, clubName
-        case bookingDate, startTime, endTime
-        case playerCount, pricePerPerson, serviceFee, totalPrice
-        case status, bookingStatus, paymentMethod
-        case specialRequests, notes
-        case userEmail, userName, userPhone
-        case canCancel, createdAt, updatedAt
-    }
-
     var statusEnum: BookingStatus {
-        BookingStatus(rawValue: status ?? bookingStatus ?? "PENDING") ?? .pending
+        BookingStatus(rawValue: status ?? "PENDING") ?? .pending
     }
 
     var formattedDate: String {
