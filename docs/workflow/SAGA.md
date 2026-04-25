@@ -316,222 +316,103 @@ Step 5 (UPDATE_BOOKING_STATUS) 결과:
 
 ## 5. 트랜잭션 흐름
 
-### 5.1 현장결제 예약 시퀀스
+### 5.1 예약 라이프사이클 통합 프로세스
+
+모든 saga 트리거 경로와 booking 상태 전이를 한 화면에서 추적하기 위한 통합 다이어그램.
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    participant Client as Frontend
-    participant API as user-api
-    participant SAGA as saga-service
-    participant BS as booking-service
-    participant CS as course-service
-    participant IAM as iam-service
-
-    Client->>API: POST /bookings (paymentMethod=onsite)
-    API->>SAGA: saga.booking.create (NATS)
-
-    Note over SAGA: Step 1: CREATE_BOOKING_RECORD
-    SAGA->>BS: booking.saga.create
-    BS-->>SAGA: { bookingId, paymentMethod=onsite, ... }
-
-    Note over SAGA: Step 4: RESERVE_SLOT
-    SAGA->>CS: slot.reserve (bookingId, slotId, playerCount)
-    CS-->>SAGA: { success: true }
-
-    Note over SAGA: Step 5: UPDATE_BOOKING_STATUS
-    SAGA->>BS: booking.saga.slotReserved
-    BS-->>SAGA: { status: CONFIRMED }
-
-    Note over SAGA: Step 7: SEND_CONFIRMATION (CONFIRMED → 실행)
-    SAGA->>SAGA: notification.booking.confirmed (optional)
-
-    Note over SAGA: Step 8: REGISTER_COMPANY_MEMBER
-    SAGA->>IAM: iam.companyMembers.addByBooking (optional)
-
-    SAGA-->>API: Saga COMPLETED
-    API-->>Client: 예약 완료 (CONFIRMED)
+flowchart TD
+    Start([클라이언트: POST /bookings]) --> CB[CREATE_BOOKING Saga<br/>saga.booking.create]
+    CB --> CB1[1. CREATE_BOOKING_RECORD<br/>booking PENDING]
+    CB1 --> CB2[2. CHECK_PARTNER<br/>3. VERIFY_EXTERNAL]
+    CB2 --> CB3[4. RESERVE_SLOT<br/>course-service slot.reserve]
+    CB3 --> CB4{paymentMethod}
+    
+    CB4 -->|onsite| CB5a[5. UPDATE_BOOKING_STATUS<br/>booking CONFIRMED]
+    CB4 -->|card / dutchpay| CB5b[5. UPDATE_BOOKING_STATUS<br/>booking SLOT_RESERVED]
+    
+    CB5a --> CB6a[6~8. NOTIFY / COMPANY_MEMBER]
+    CB6a --> Done1([Saga COMPLETED<br/>예약 확정])
+    
+    CB5b --> Wait{결제 대기}
+    
+    Wait -->|성공: payment.confirm| PaySuc[payment-service<br/>outbox: booking.paymentConfirmed]
+    Wait -->|실패/취소: client abandon| PayFail[payment-service<br/>payment.markAborted<br/>outbox: booking.paymentFailed]
+    Wait -->|10분 초과: scheduler/cron| PayTO[booking.expireSlotReserved<br/>또는 saga-scheduler]
+    Wait -->|toss webhook: ABORTED/EXPIRED| PayFail
+    
+    PaySuc --> PC[PAYMENT_CONFIRMED Saga<br/>booking.paymentConfirmed]
+    PC --> PC1[1. CONFIRM_BOOKING<br/>booking CONFIRMED]
+    PC1 --> PC2[2~3. NOTIFY / COMPANY_MEMBER]
+    PC2 --> Done1
+    
+    PayFail --> PF[PAYMENT_FAILED Saga<br/>booking.paymentFailed]
+    PayTO --> PT[PAYMENT_TIMEOUT Saga<br/>saga.payment.timeout]
+    
+    PF --> Cleanup[1. MARK_BOOKING_FAILED<br/>booking FAILED]
+    PT --> Cleanup
+    Cleanup --> Cleanup2[2. RELEASE_SLOT<br/>course-service slot.release]
+    Cleanup2 --> Cleanup3[3. NOTIFY optional]
+    Cleanup3 --> Done2([Saga COMPLETED<br/>슬롯 복구 + 알림])
+    
+    Done1 -.취소 요청.-> Cancel[CANCEL_BOOKING Saga<br/>saga.booking.cancel]
+    Cancel --> CN1[1~2. 취소·환불 정책 조회]
+    CN1 --> CN2[3. CANCEL_BOOKING_RECORD<br/>booking CANCELLED]
+    CN2 --> CN3{paymentMethod}
+    CN3 -->|card / dutchpay| CN4[4. CANCEL_PAYMENT<br/>Toss 환불 API]
+    CN3 -->|onsite| CN5
+    CN4 --> CN5[5. RELEASE_SLOT]
+    CN5 --> CN6[6~8. partner / 알림]
+    CN6 --> Done3([Saga COMPLETED<br/>취소 완료])
+    
+    classDef saga fill:#e1f5ff,stroke:#0288d1
+    classDef state fill:#fff9c4,stroke:#f57f17
+    classDef done fill:#c8e6c9,stroke:#388e3c
+    classDef fail fill:#ffcdd2,stroke:#c62828
+    
+    class CB,PC,PF,PT,Cancel saga
+    class Wait state
+    class Done1,Done3 done
+    class Done2 fail
 ```
 
-### 5.2 카드결제 예약 시퀀스
+### 5.2 결제 방법별 분기 요약
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Client as Frontend
-    participant API as user-api
-    participant SAGA as saga-service
-    participant BS as booking-service
-    participant CS as course-service
-    participant PS as payment-service
-    participant TOSS as 토스페이먼츠
+| 결제 방법 | CREATE_BOOKING 종료 상태 | 후속 흐름 |
+|-----------|------------------------|----------|
+| `onsite` (현장결제) | `CONFIRMED` | 추가 saga 없음 |
+| `card` (카드결제) | `SLOT_RESERVED` | Toss 결제 → PAYMENT_CONFIRMED 또는 PAYMENT_FAILED/TIMEOUT |
+| `dutchpay` (더치페이) | `SLOT_RESERVED` | 분할 결제 → 전원 완료 시 PAYMENT_CONFIRMED, 일부 미결제 시 PAYMENT_TIMEOUT |
 
-    Client->>API: POST /bookings (paymentMethod=card)
-    API->>SAGA: saga.booking.create (NATS)
+### 5.3 SLOT_RESERVED 정리 경로 요약
 
-    Note over SAGA: CREATE_BOOKING Saga
-    SAGA->>BS: booking.saga.create
-    BS-->>SAGA: { bookingId, paymentMethod=card }
-    SAGA->>CS: slot.reserve
-    CS-->>SAGA: { success }
-    SAGA->>BS: booking.saga.slotReserved
-    BS-->>SAGA: { status: SLOT_RESERVED }
-    Note over SAGA: SLOT_RESERVED → 알림 조건 미충족, Skip
-    SAGA-->>API: Saga COMPLETED (SLOT_RESERVED)
-    API-->>Client: booking (SLOT_RESERVED)
+`SLOT_RESERVED` 상태에서 booking이 `FAILED`로 전환되는 경로:
 
-    Note over Client: 결제 준비 + Toss 위젯 결제
-    Client->>API: POST /payments/prepare
-    API->>PS: payment.prepare
-    PS-->>Client: { orderId }
-    Client->>TOSS: requestPayment
-    TOSS-->>Client: redirect /payment/success
-    Client->>API: POST /payments/confirm
-    API->>PS: payment.confirm
-    PS->>TOSS: 서버 승인
-    TOSS-->>PS: 승인 완료
+| Entry | 트리거 | Saga | 시점 |
+|-------|--------|------|------|
+| 클라이언트 결제 실패 | `POST /payments/:orderId/abandon` → outbox `booking.paymentFailed` | PAYMENT_FAILED | 즉시 |
+| 사용자 결제 취소 (창 닫기 등) | 동일 | PAYMENT_FAILED | 즉시 |
+| Toss webhook ABORTED/EXPIRED | webhook 핸들러 → outbox `booking.paymentFailed` | PAYMENT_FAILED | webhook 수신 시 |
+| 결제 미진행 10분 초과 | saga-scheduler 또는 job-service Cron → `booking.expireSlotReserved` | PAYMENT_TIMEOUT | 10~15분 |
 
-    Note over PS: 결제 완료 → Outbox
-    PS->>SAGA: booking.paymentConfirmed
+세 경로 모두 **MARK_BOOKING_FAILED → RELEASE_SLOT → NOTIFY** 동일한 정리 단계를 거치므로 핸들러(`booking.saga.paymentTimeout`, `slot.release`)를 재사용합니다.
 
-    Note over SAGA: PAYMENT_CONFIRMED Saga
-    SAGA->>BS: booking.saga.confirmPayment
-    BS-->>SAGA: { status: CONFIRMED }
-    SAGA->>SAGA: notification.booking.confirmed (optional)
-    SAGA->>SAGA: iam.companyMembers.addByBooking (optional)
-```
+### 5.4 응답 동기/비동기
 
-### 5.3 예약 취소 시퀀스 (카드결제)
+| 트리거 | 클라이언트 응답 | saga 실행 |
+|--------|----------------|----------|
+| `saga.booking.create` (CREATE_BOOKING) | 동기 — saga 완료 후 BookingResponseDto 반환 | NATS request-reply |
+| `saga.booking.cancel` (CANCEL_BOOKING) | 동기 | NATS request-reply |
+| `payment.markAborted` (PAYMENT_FAILED) | 동기 (markAborted까지) — saga 자체는 outbox 비동기 | outbox → NATS publish |
+| `booking.paymentConfirmed` (PAYMENT_CONFIRMED) | 비동기 — Toss 승인 응답 후 outbox 처리 | outbox → NATS publish |
+| `saga.payment.timeout` (PAYMENT_TIMEOUT) | 백그라운드 | scheduler 직접 startSaga |
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant User as 고객/관리자
-    participant API as API
-    participant SAGA as saga-service
-    participant BS as booking-service
-    participant PS as payment-service
-    participant CS as course-service
-    participant TOSS as 토스페이먼츠
+### 5.5 outbox 재시도 정책
 
-    User->>API: 취소 요청
-    API->>SAGA: saga.booking.cancel
-
-    Note over SAGA: CANCEL_BOOKING Saga
-    SAGA->>BS: policy.cancellation.resolve
-    BS-->>SAGA: 취소 정책
-    SAGA->>BS: policy.refund.resolve
-    BS-->>SAGA: 환불 정책
-    SAGA->>BS: booking.saga.cancel
-    BS-->>SAGA: { previousStatus, gameTimeSlotId, ... }
-    SAGA->>PS: payment.cancelByBookingId
-    PS->>TOSS: POST /payments/{paymentKey}/cancel
-    TOSS-->>PS: 환불 완료
-    PS-->>SAGA: { cancelAmount }
-    SAGA->>CS: slot.release
-    CS-->>SAGA: { success }
-    SAGA->>SAGA: notification.booking.cancelled (optional)
-    SAGA-->>API: Saga COMPLETED
-    API-->>User: 취소 완료
-```
-
-### 5.4 결제 타임아웃 시퀀스
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant SCHED as saga-scheduler
-    participant BS as booking-service
-    participant SAGA as saga-engine
-    participant CS as course-service
-    participant NS as notify-service
-
-    Note over SCHED: 매분 실행: SLOT_RESERVED 10분 초과 감시
-
-    SCHED->>BS: booking.expireSlotReserved (NATS)
-    BS-->>SCHED: { expiredBookingIds: [101, 102] }
-
-    loop 만료 예약 건별 처리
-        SCHED->>SAGA: startSaga('PAYMENT_TIMEOUT', { bookingId })
-
-        Note over SAGA: PAYMENT_TIMEOUT Saga
-        SAGA->>BS: booking.saga.paymentTimeout
-        BS-->>SAGA: { gameTimeSlotId, playerCount, userId }
-        SAGA->>CS: slot.release
-        CS-->>SAGA: { success }
-        SAGA->>NS: notification.booking.paymentTimeout (optional)
-    end
-```
-
-### 5.5 결제 실패/취소 시퀀스 (신규)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Client as Web/iOS/Android
-    participant API as user-api
-    participant PS as payment-service
-    participant DB as payment_db
-    participant OBX as outbox processor
-    participant SAGA as saga-service
-    participant BS as booking-service
-    participant CS as course-service
-    participant NS as notify-service
-
-    Note over Client: Toss 결제창 onFail / cancel
-    Client->>API: POST /api/user/payments/:orderId/abandon<br/>{ reason, errorCode?, errorMessage? }
-    API->>PS: payment.markAborted (NATS)
-
-    Note over PS,DB: 단일 트랜잭션
-    PS->>DB: UPDATE payments SET status='ABORTED'
-    PS->>DB: INSERT payment_outbox_events<br/>(event_type='booking.paymentFailed', PENDING)
-    PS-->>API: { success: true }
-    API-->>Client: 200 OK
-
-    Note over OBX: 주기적 polling
-    OBX->>DB: SELECT PENDING outbox events
-    OBX->>SAGA: NATS publish booking.paymentFailed<br/>{ bookingId, orderId, reason, ... }
-    OBX->>DB: UPDATE outbox status='PROCESSED'
-
-    Note over SAGA: PAYMENT_FAILED Saga
-    SAGA->>BS: booking.saga.paymentTimeout
-    BS-->>SAGA: { gameTimeSlotId, playerCount, userId }
-    SAGA->>CS: slot.release
-    CS-->>SAGA: { success }
-    SAGA->>NS: notification.booking.paymentFailed (optional)
-    SAGA-->>OBX: Saga COMPLETED
-```
-
-**실패 시 재시도**: outbox processor가 NATS publish 실패 시 retry (지수 백오프). 최종 실패는 `payment_outbox_events.status='FAILED'` + `last_error` 기록 → 운영자 수동 처리.
-
-### 5.6 더치페이 결제 타임아웃 시퀀스
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant SCHED as saga-scheduler
-    participant BS as booking-service
-    participant SAGA as saga-engine
-    participant CS as course-service
-    participant PS as payment-service
-
-    Note over SCHED: 매분 실행: SLOT_RESERVED 10분 초과 감시
-    Note over SCHED: 더치페이도 동일하게 SLOT_RESERVED 상태로 관리
-
-    SCHED->>BS: booking.expireSlotReserved (NATS)
-    BS-->>SCHED: { expiredBookingIds: [105] }
-
-    SCHED->>SAGA: startSaga('PAYMENT_TIMEOUT', { bookingId: 105 })
-
-    Note over SAGA: PAYMENT_TIMEOUT Saga
-    SAGA->>BS: booking.saga.paymentTimeout
-    Note over BS: SLOT_RESERVED → FAILED<br/>부분 결제자 환불 처리
-    BS-->>SAGA: { gameTimeSlotId, playerCount }
-    SAGA->>CS: slot.release
-    CS-->>SAGA: { success }
-    SAGA->>SAGA: notification.booking.paymentTimeout (optional)
-    Note over SAGA: 미결제자에게 만료 알림
-```
+`payment_outbox_events` 발행 실패 시:
+- 지수 백오프 retry (1s → 2s → 4s → ... 최대 5회)
+- 최종 실패: `status='FAILED'`, `last_error` 기록
+- 운영자가 `saga.list` / 직접 DB 조회로 추적 후 재처리
 
 ---
 
