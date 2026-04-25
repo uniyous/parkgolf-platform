@@ -59,33 +59,6 @@ Frontend → BFF (REST) → NATS → Microservice (Prisma)
 
 ---
 
-## 절대 금지 패턴
-
-```typescript
-// ❌ BFF에서 응답 언래핑
-return response.data;  // 그대로 반환해야 함
-
-// ❌ Controller에서 try-catch
-try { ... } catch (e) { return NatsResponse.error(...); }
-
-// ❌ NATS catchError에서 에러 삼키기 (자체 fallback 금지)
-catchError(() => [{ success: false }])
-catchError(() => [null])
-
-// ✅ NATS catchError 표준: 반드시 throw
-catchError((err) => { throw new Error(`Failed to ...: ${err.message}`); })
-
-// ❌ ResponseTransformInterceptor (이중 래핑 유발)
-
-// ❌ any 타입 DTO
-async create(@Payload() data: any) { }
-
-// ❌ useEffect에서 API 호출 (React Query 사용)
-useEffect(() => { fetchData().then(setData); }, []);
-```
-
----
-
 ## 응답 / 결과 문서 출력
 
 - **핵심만**: 결론 우선, 부연·도입부 생략
