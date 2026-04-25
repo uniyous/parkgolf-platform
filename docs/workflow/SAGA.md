@@ -116,41 +116,49 @@ Step 5 결과: `onsite` → CONFIRMED → 6~8 실행. `card`/`dutchpay` → SLOT
 ## 3. 라이프사이클
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#E3F2FD','primaryTextColor':'#000','primaryBorderColor':'#1565C0','lineColor':'#37474F','clusterBkg':'#ECEFF1','fontSize':'13px'}}}%%
 flowchart TD
-    Start([클라이언트: POST /bookings]) --> CB[CREATE_BOOKING Saga]
-    CB --> CB1[booking PENDING<br/>+ slot.reserve]
-    CB1 --> CB4{paymentMethod}
+    Start(["👤 클라이언트<br/>POST /bookings"]) --> CB["🔄 CREATE_BOOKING Saga"]
+    CB --> CB1["📝 booking PENDING<br/>+ slot.reserve"]
+    CB1 --> CB4{"💳 paymentMethod"}
 
-    CB4 -->|onsite| CB5a[booking CONFIRMED]
-    CB4 -->|card / dutchpay| CB5b[booking SLOT_RESERVED]
+    CB4 -->|onsite| CB5a["✅ booking CONFIRMED"]
+    CB4 -->|card / dutchpay| CB5b["⏳ booking SLOT_RESERVED"]
 
-    CB5a --> Done1([Saga COMPLETED<br/>예약 확정])
+    CB5a --> Done1(["🎉 Saga COMPLETED<br/>예약 확정"])
 
-    CB5b --> Wait{결제 결과}
-    Wait -->|성공: payment.confirm| PaySuc[outbox: booking.paymentConfirmed]
-    Wait -->|실패/취소: client abandon| PayFail[payment.markAborted<br/>outbox: booking.paymentFailed]
-    Wait -->|10분 초과| PayTO[saga.payment.timeout]
+    CB5b --> Wait{"💰 결제 결과"}
+    Wait -->|성공: payment.confirm| PaySuc["📤 outbox<br/>booking.paymentConfirmed"]
+    Wait -->|실패/취소: client abandon| PayFail["📤 payment.markAborted<br/>outbox: booking.paymentFailed"]
+    Wait -->|10분 초과| PayTO["⏱️ saga.payment.timeout"]
     Wait -->|webhook ABORTED/EXPIRED| PayFail
 
-    PaySuc --> PC[PAYMENT_CONFIRMED Saga]
+    PaySuc --> PC["🔄 PAYMENT_CONFIRMED Saga"]
     PC --> Done1
 
-    PayFail --> PF[PAYMENT_FAILED Saga]
-    PayTO --> PT[PAYMENT_TIMEOUT Saga]
-    PF --> Cleanup[booking FAILED<br/>+ slot.release + 알림]
+    PayFail --> PF["🔄 PAYMENT_FAILED Saga"]
+    PayTO --> PT["🔄 PAYMENT_TIMEOUT Saga"]
+    PF --> Cleanup["🧹 booking FAILED<br/>+ slot.release + 알림"]
     PT --> Cleanup
-    Cleanup --> Done2([Saga COMPLETED<br/>슬롯 복구])
+    Cleanup --> Done2(["⚠️ Saga COMPLETED<br/>슬롯 복구"])
 
-    Done1 -.취소 요청.-> Cancel[CANCEL_BOOKING Saga]
-    Cancel --> CN[정책 → booking CANCELLED<br/>+ Toss 환불 + slot.release]
-    CN --> Done3([Saga COMPLETED<br/>취소 완료])
+    Done1 -.취소 요청.-> Cancel["🔄 CANCEL_BOOKING Saga"]
+    Cancel --> CN["💸 정책 → booking CANCELLED<br/>+ Toss 환불 + slot.release"]
+    CN --> Done3(["🎉 Saga COMPLETED<br/>취소 완료"])
 
-    classDef saga fill:#e1f5ff,stroke:#0288d1
-    classDef done fill:#c8e6c9,stroke:#388e3c
-    classDef fail fill:#ffcdd2,stroke:#c62828
+    classDef ext fill:#795548,color:#fff,stroke:#4E342E,stroke-width:2px
+    classDef saga fill:#6A1B9A,color:#fff,stroke:#4A148C,stroke-width:3px
+    classDef proc fill:#1565C0,color:#fff,stroke:#0D47A1,stroke-width:2px
+    classDef wait fill:#EF6C00,color:#fff,stroke:#BF360C,stroke-width:3px
+    classDef ok fill:#2E7D32,color:#fff,stroke:#1B5E20,stroke-width:2px
+    classDef fail fill:#C62828,color:#fff,stroke:#8E0000,stroke-width:2px
+
+    class Start ext
     class CB,PC,PF,PT,Cancel saga
-    class Done1,Done3 done
-    class Done2 fail
+    class CB1,PaySuc,PayFail,PayTO,Cleanup,CN proc
+    class CB4,Wait wait
+    class CB5a,Done1,Done3 ok
+    class CB5b,Done2 fail
 ```
 
 `SLOT_RESERVED` → `FAILED` 정리 경로 4종(클라이언트 abandon / Toss webhook / 사용자 취소 / 10분 타임아웃)은 모두 동일한 정리 핸들러(`booking.saga.paymentTimeout` + `slot.release`)를 재사용합니다.
