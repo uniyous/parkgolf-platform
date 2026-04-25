@@ -48,17 +48,12 @@ Frontend → BFF (REST) → NATS → Microservice (Prisma)
 
 ## 인프라 / 배포
 
-- **런타임**: GKE Autopilot (백엔드) + Firebase Hosting (웹 프론트)
-- **리전**: `asia-northeast3` (Seoul) · Artifact Registry: `asia-northeast3-docker.pkg.dev`
-- **환경**: `dev` (`parkgolf-dev-cluster` / ns `parkgolf-dev`) · `prod` (`parkgolf-prod-cluster` / ns `parkgolf-prod`)
-- **Terraform**: `infra/` (environments / modules / providers) — VPC·GKE·DB·Secret 프로비저닝
-- **CI/CD**: GitHub Actions 수동 트리거 (`workflow_dispatch`, 자동 GitOps 컨트롤러 없음)
-  - `ci.yml` — lint / test / build + Trivy
-  - `cd-infra.yml` — VPC·GKE·Secret·ConfigMap (`network-apply` → `gke-setup` → `gke-update` → `*-destroy`)
-  - `cd-services.yml` — Docker 빌드 → Artifact Registry push → `kubectl apply`
-  - `cd-apps.yml` — Firebase Hosting 배포 (`admin-dashboard`, `user-app-web`)
-- **최초 배포**: `cd-infra(network-apply)` → `cd-infra(gke-setup)` → `cd-services` → `cd-apps`
-- **배포 의존성**: saga 응답 구조 변경 시 `saga-service` 먼저 → `user-api`·`admin-api`·`agent-service` 순서 (병렬 가능)
+- **런타임**: GKE Autopilot + Firebase Hosting / 리전 `asia-northeast3`
+- **환경**: `dev` (ns `parkgolf-dev`) · `prod` (ns `parkgolf-prod`)
+- **Terraform**: `infra/` (environments / modules / providers)
+- **CI/CD**: GitHub Actions 수동 트리거 — `ci.yml` / `cd-infra.yml` / `cd-services.yml` / `cd-apps.yml`
+- **최초 배포**: `cd-infra(network-apply → gke-setup)` → `cd-services` → `cd-apps`
+- **배포 의존성**: saga 응답 변경 시 `saga-service` 선배포 → `user-api`·`admin-api`·`agent-service`
 
 상세: `.github/workflows/README.md`, `cicd` skill
 
@@ -74,8 +69,8 @@ return response.data;  // 그대로 반환해야 함
 try { ... } catch (e) { return NatsResponse.error(...); }
 
 // ❌ NATS catchError에서 에러 삼키기 (자체 fallback 금지)
-catchError(() => [{ success: false }])           // 금지
-catchError(() => [null])                          // 금지 (resolveRegionName 같은 보조 조회 제외)
+catchError(() => [{ success: false }])
+catchError(() => [null])
 
 // ✅ NATS catchError 표준: 반드시 throw
 catchError((err) => { throw new Error(`Failed to ...: ${err.message}`); })
@@ -103,14 +98,12 @@ useEffect(() => { fetchData().then(setData); }, []);
 
 ## Skill 참조
 
-상세 개발 가이드는 도메인별 Skill로 분리되어 있다.
+도메인별 상세 가이드는 Skill로 분리.
 
-| Skill | 내용 |
-|-------|------|
-| `nestjs-service` | NestJS 백엔드 (BFF, NATS, 예외, DTO, Dockerfile) |
-| `react-app` | React 웹 앱 (React Query, Tailwind, bffParser) |
-| `ios-app` | iOS 앱 (SwiftUI, MVVM, Actor APIClient) |
-| `android-app` | Android 앱 (Compose, Hilt, Repository) |
-| `cicd` | 인프라/배포 (GKE, Firebase, GitHub Actions) |
-| `testing` | 테스트 전략 (Contract, Integration, E2E) |
-| `docs-writing` | 문서 작성/현행화 가이드 |
+- `nestjs-service` — NestJS (BFF, NATS, 예외, DTO, Dockerfile)
+- `react-app` — React (React Query, Tailwind, bffParser)
+- `ios-app` — iOS (SwiftUI, MVVM, APIClient)
+- `android-app` — Android (Compose, Hilt)
+- `cicd` — 인프라/배포 (GKE, Firebase, Actions)
+- `testing` — Contract / Integration / E2E
+- `docs-writing` — 문서 작성/현행화
