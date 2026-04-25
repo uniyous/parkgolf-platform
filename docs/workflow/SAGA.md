@@ -1,7 +1,7 @@
 # Saga 오케스트레이션 워크플로우
 
-> 버전: 2.0
-> 최종 수정: 2026-03-22
+> 버전: 2.2
+> 최종 수정: 2026-04-25
 
 ## 목차
 
@@ -11,9 +11,13 @@
 4. [Saga 정의](#4-saga-정의)
 5. [트랜잭션 흐름](#5-트랜잭션-흐름)
 6. [결제 타임아웃 관리](#6-결제-타임아웃-관리)
-7. [보상 및 재시도](#7-보상-및-재시도)
-8. [NATS 패턴](#8-nats-패턴)
-9. [모니터링 및 디버깅](#9-모니터링-및-디버깅)
+7. [결제 실패/취소 처리](#7-결제-실패취소-처리)
+8. [클라이언트 통합 (Web/iOS/Android)](#8-클라이언트-통합-webiosandroid)
+9. [보상 및 재시도](#9-보상-및-재시도)
+10. [NATS 패턴](#10-nats-패턴)
+11. [응답 형식 (saga 메타)](#11-응답-형식-saga-메타)
+12. [알려진 결함 및 보완 계획](#12-알려진-결함-및-보완-계획)
+13. [모니터링 및 디버깅](#13-모니터링-및-디버깅)
 
 ---
 
@@ -209,7 +213,8 @@ erDiagram
 | `CANCEL_BOOKING` | `saga.booking.cancel` | 취소 정책 → 환불 계산 → 예약 취소 → 결제 환불 → 슬롯 복구 → 알림 |
 | `ADMIN_REFUND` | `saga.booking.adminRefund` | 환불 정책 → 예약 취소 → 결제 환불 → 슬롯 복구 → 확정 → 알림 |
 | `PAYMENT_CONFIRMED` | `booking.paymentConfirmed` | 예약 확정 → 알림 → 회원 등록 |
-| `PAYMENT_TIMEOUT` | saga-scheduler (매분 감시) | 예약 FAILED → 슬롯 복구 → 알림 |
+| `PAYMENT_FAILED` (신규) | `booking.paymentFailed` | 결제 실패/취소 시 booking FAILED → 슬롯 복구 → 알림 |
+| `PAYMENT_TIMEOUT` | saga-scheduler / job-service | 결제 미진행 10분 초과 시 booking FAILED → 슬롯 복구 → 알림 |
 
 ### 4.2 CREATE_BOOKING
 
@@ -280,13 +285,32 @@ Step 5 (UPDATE_BOOKING_STATUS) 결과:
 
 ### 4.6 PAYMENT_TIMEOUT
 
-결제 타임아웃 Saga. **saga-scheduler가 매분 감시**하여 SLOT_RESERVED 상태에서 10분 이상 결제 미완료 시 자동 트리거.
+결제 타임아웃 Saga. **saga-scheduler가 매분 감시**(설계) 또는 **job-service Cron**(현재)이 SLOT_RESERVED 10분 초과 예약을 자동 트리거.
 
 | Step | Action | Compensate | Target | 조건 |
 |------|--------|-----------|--------|------|
 | 1. MARK_BOOKING_FAILED | `booking.saga.paymentTimeout` | - | booking | - |
 | 2. RELEASE_SLOT | `slot.release` | - | course | - |
 | 3. NOTIFY_TIMEOUT | `notification.booking.paymentTimeout` | - | notify | optional |
+
+### 4.7 PAYMENT_FAILED (신규)
+
+결제 실패/사용자 취소 Saga. payment-service가 `payment.status=ABORTED`로 변경한 직후 outbox 이벤트 `booking.paymentFailed`로 트리거. **결제 승인 전 실패만 처리** (Toss 환불 API 미호출).
+
+| Step | Action | Compensate | Target | 조건 |
+|------|--------|-----------|--------|------|
+| 1. MARK_BOOKING_FAILED | `booking.saga.paymentTimeout` | - | booking | - |
+| 2. RELEASE_SLOT | `slot.release` | - | course | - |
+| 3. NOTIFY_FAILURE | `notification.booking.paymentFailed` | - | notify | optional |
+
+**PAYMENT_TIMEOUT과 차이**:
+
+| 항목 | PAYMENT_TIMEOUT | PAYMENT_FAILED |
+|------|-----------------|----------------|
+| 트리거 | scheduler/cron (시간 경과) | outbox 이벤트 (즉시) |
+| 시점 | SLOT_RESERVED 10분 초과 | 결제 시도 직후 실패 |
+| 사용자 인지 | 백엔드 자동 정리 | 클라이언트 즉시 통지 |
+| Step 1 핸들러 | `booking.saga.paymentTimeout` 공유 | 동일 핸들러 재사용 |
 
 ---
 
@@ -439,7 +463,48 @@ sequenceDiagram
     end
 ```
 
-### 5.5 더치페이 결제 타임아웃 시퀀스
+### 5.5 결제 실패/취소 시퀀스 (신규)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client as Web/iOS/Android
+    participant API as user-api
+    participant PS as payment-service
+    participant DB as payment_db
+    participant OBX as outbox processor
+    participant SAGA as saga-service
+    participant BS as booking-service
+    participant CS as course-service
+    participant NS as notify-service
+
+    Note over Client: Toss 결제창 onFail / cancel
+    Client->>API: POST /api/user/payments/:orderId/abandon<br/>{ reason, errorCode?, errorMessage? }
+    API->>PS: payment.markAborted (NATS)
+
+    Note over PS,DB: 단일 트랜잭션
+    PS->>DB: UPDATE payments SET status='ABORTED'
+    PS->>DB: INSERT payment_outbox_events<br/>(event_type='booking.paymentFailed', PENDING)
+    PS-->>API: { success: true }
+    API-->>Client: 200 OK
+
+    Note over OBX: 주기적 polling
+    OBX->>DB: SELECT PENDING outbox events
+    OBX->>SAGA: NATS publish booking.paymentFailed<br/>{ bookingId, orderId, reason, ... }
+    OBX->>DB: UPDATE outbox status='PROCESSED'
+
+    Note over SAGA: PAYMENT_FAILED Saga
+    SAGA->>BS: booking.saga.paymentTimeout
+    BS-->>SAGA: { gameTimeSlotId, playerCount, userId }
+    SAGA->>CS: slot.release
+    CS-->>SAGA: { success }
+    SAGA->>NS: notification.booking.paymentFailed (optional)
+    SAGA-->>OBX: Saga COMPLETED
+```
+
+**실패 시 재시도**: outbox processor가 NATS publish 실패 시 retry (지수 백오프). 최종 실패는 `payment_outbox_events.status='FAILED'` + `last_error` 기록 → 운영자 수동 처리.
+
+### 5.6 더치페이 결제 타임아웃 시퀀스
 
 ```mermaid
 sequenceDiagram
@@ -486,10 +551,13 @@ CREATE_BOOKING Saga 완료 (SLOT_RESERVED)
 
 ### 6.2 2단계 방어 전략
 
-| 단계 | 주체 | 주기 | 역할 |
-|------|------|------|------|
-| **1차 방어** | saga-scheduler (saga-service 내부) | 매분 | SLOT_RESERVED 10분 초과 → PAYMENT_TIMEOUT Saga 트리거 |
-| **2차 방어** | job-service Cron | 5분 | 1차 방어 실패 시 직접 paymentTimeout 실행 |
+| 단계 | 주체 | 주기 | 역할 | 현재 상태 |
+|------|------|------|------|----------|
+| **1차 방어** | saga-scheduler (saga-service 내부) | 매분 | SLOT_RESERVED 10분 초과 → PAYMENT_TIMEOUT Saga 트리거 | ⚠️ **미구현** |
+| **2차 방어** | job-service Cron | 5분 | `booking.expireSlotReserved` 호출 | 코드 존재, 운영 환경 미가동 |
+| **즉시 처리** | PAYMENT_FAILED Saga (신규) | 즉시 | 클라이언트 결제 실패 통지 → outbox → 즉시 정리 | 신규 도입 (이 문서 기준) |
+
+> **주의**: 2차 방어의 `expireSlotReservedBookings`는 saga 우회로 `paymentTimeout()` 직접 호출. 결과적으로 booking-service의 캐시는 복구되지만 course-service의 `slot.release`는 호출되지 않음. 보완 계획은 12장 참조.
 
 ### 6.3 결제 미완료 시나리오
 
@@ -534,9 +602,203 @@ saga-scheduler (매분 실행):
 
 ---
 
-## 7. 보상 및 재시도
+## 7. 결제 실패/취소 처리
 
-### 7.1 보상 (Compensation)
+### 7.1 개요
+
+카드결제(`card`/`dutchpay`) 흐름에서 사용자가 결제창에서 실패/취소하면 booking은 `SLOT_RESERVED` 상태로 남고 슬롯이 점유된 상태가 됩니다. 이를 즉시 정리하기 위해 **클라이언트 → BFF → payment-service → Outbox → Saga** 경로를 사용합니다.
+
+### 7.2 트리거 조건
+
+| 트리거 | 클라이언트 측 이벤트 | API 호출 |
+|--------|---------------------|---------|
+| 결제 실패 | Toss `onFail` (잔액 부족, 카드 오류 등) | `POST /payments/:orderId/abandon { reason: 'failed', errorCode, errorMessage }` |
+| 사용자 취소 | Toss `onCancel` / 결제창 닫기 | `POST /payments/:orderId/abandon { reason: 'cancelled' }` |
+| Toss webhook | ABORTED/EXPIRED 수신 | webhook controller가 동일 outbox 이벤트 발행 (server-side) |
+
+### 7.3 BFF 엔드포인트 (신규)
+
+```
+POST /api/user/payments/:orderId/abandon
+Authorization: Bearer <token>
+
+Request:
+{
+  "reason": "failed" | "cancelled",
+  "errorCode": "string?",
+  "errorMessage": "string?"
+}
+
+Response:
+{
+  "success": true,
+  "data": { /* 표준 BookingResponseDto (status=FAILED 반영) */ },
+  "saga": {
+    "executionId": 123,
+    "status": "COMPLETED",
+    "failReason": null
+  }
+}
+```
+
+> 본 엔드포인트는 saga 결과를 동기 대기하지 않고 즉시 응답할 수도 있음(202 Accepted). 동기/비동기 선택은 구현 시점에 결정.
+
+### 7.4 payment-service 처리
+
+```
+@MessagePattern('payment.markAborted')
+async markAborted({ orderId, reason, errorCode, errorMessage }) {
+  return this.prisma.$transaction(async (tx) => {
+    const payment = await tx.payment.update({
+      where: { orderId },
+      data: { status: 'ABORTED' },
+    });
+    await tx.paymentOutboxEvent.create({
+      data: {
+        aggregateType: 'Payment',
+        aggregateId: String(payment.id),
+        eventType: 'booking.paymentFailed',
+        payload: { bookingId: payment.bookingId, orderId, reason, errorCode, errorMessage },
+        status: 'PENDING',
+      },
+    });
+    return payment;
+  });
+}
+```
+
+### 7.5 Outbox Processor
+
+payment-service 내부 worker가 주기적(예: 1초)으로 `PENDING` outbox 이벤트를 읽어 NATS로 publish:
+
+```
+loop {
+  events = SELECT * FROM payment_outbox_events
+           WHERE status='PENDING' ORDER BY created_at LIMIT 50;
+  for event in events:
+    try:
+      natsClient.publish(event.eventType, event.payload);
+      UPDATE status='PROCESSED', processed_at=NOW();
+    catch:
+      UPDATE retry_count++, last_error=...;
+      if retry_count >= MAX_RETRY: status='FAILED';
+}
+```
+
+### 7.6 saga-service 처리
+
+```
+@MessagePattern('booking.paymentFailed')
+async handlePaymentFailed(@Payload() data) {
+  return this.sagaEngine.startSaga('PAYMENT_FAILED', data, 'PAYMENT_SERVICE');
+}
+```
+
+이후 `4.7 PAYMENT_FAILED Saga` 흐름 그대로 실행.
+
+---
+
+## 8. 클라이언트 통합 (Web/iOS/Android)
+
+### 8.1 통일 API
+
+3개 클라이언트는 결제 실패/취소 감지 시 동일한 BFF 엔드포인트 호출:
+
+```
+POST /api/user/payments/:orderId/abandon
+```
+
+### 8.2 Web (user-app-web)
+
+**위치**: `apps/user-app-web/src/lib/api/paymentApi.ts` + `BookingCompletePage.tsx`
+
+```typescript
+// paymentApi.ts (신규 메서드)
+abandon: async (
+  orderId: string,
+  body: { reason: 'failed' | 'cancelled'; errorCode?: string; errorMessage?: string }
+): Promise<BookingResponse> => {
+  const response = await apiClient.post<BffResponse<BookingResponse>>(
+    `/api/user/payments/${orderId}/abandon`, body
+  );
+  return unwrapResponse(response.data);
+}
+
+// BookingCompletePage.tsx — Scenario 2: Card failure
+if (errorCode || errorMessage) {
+  const orderId = searchParams.get('orderId');
+  if (orderId) {
+    await paymentApi.abandon(orderId, {
+      reason: 'failed',
+      errorCode: errorCode ?? undefined,
+      errorMessage: errorMessage ?? undefined,
+    });
+  }
+  setPageState({ status: 'error', ... });
+}
+```
+
+### 8.3 iOS (user-app-ios)
+
+**위치**: `Sources/Core/Network/PaymentService.swift` + `Features/Booking/BookingFormView.swift`
+
+```swift
+// PaymentService.swift (신규 메서드)
+func abandonPayment(orderId: String, reason: String, errorCode: String?, errorMessage: String?) async throws -> BookingResponse {
+    let endpoint = Endpoint(
+        path: "/api/user/payments/\(orderId)/abandon",
+        method: .post,
+        body: AbandonPaymentRequest(reason: reason, errorCode: errorCode, errorMessage: errorMessage)
+    )
+    return try await apiClient.request(endpoint, responseType: BookingResponse.self)
+}
+
+// BookingFormView.swift — handlePaymentResult
+case .failure(let errorCode, let errorMessage):
+    Task { try? await paymentService.abandonPayment(orderId: orderId, reason: "failed", errorCode: errorCode, errorMessage: errorMessage) }
+    self.errorMessage = errorMessage
+case .cancelled:
+    Task { try? await paymentService.abandonPayment(orderId: orderId, reason: "cancelled", errorCode: nil, errorMessage: nil) }
+```
+
+### 8.4 Android (user-app-android)
+
+**위치**: `data/remote/api/PaymentApi.kt` + `presentation/feature/booking/BookingFormViewModel.kt`
+
+```kotlin
+// PaymentApi.kt (신규)
+@POST("api/user/payments/{orderId}/abandon")
+suspend fun abandonPayment(
+    @Path("orderId") orderId: String,
+    @Body request: AbandonPaymentRequest,
+): ApiResponse<BookingDto>
+
+// BookingFormViewModel.kt
+fun handlePaymentFailure(errorCode: String?, errorMessage: String?) {
+    viewModelScope.launch {
+        paymentRepository.abandonPayment(orderId, "failed", errorCode, errorMessage)
+        _uiState.update { it.copy(error = errorMessage ?: "결제에 실패했습니다 ($errorCode)") }
+    }
+}
+
+fun handlePaymentCancelled() {
+    viewModelScope.launch {
+        paymentRepository.abandonPayment(orderId, "cancelled", null, null)
+    }
+}
+```
+
+### 8.5 멱등성
+
+- `payment.markAborted`는 멱등 (이미 ABORTED인 경우 outbox 재발행 없이 성공 응답)
+- 클라이언트가 같은 orderId로 여러 번 abandon 호출 가능 (네트워크 재시도 안전)
+- saga-service는 correlationId(`payment-failed:{orderId}`)로 중복 PAYMENT_FAILED Saga 방지
+
+---
+
+## 9. 보상 및 재시도
+
+### 9.1 보상 (Compensation)
 
 Step 실패 시, 이미 완료된 Step의 `compensate` 패턴을 **역순**으로 실행합니다.
 
@@ -552,44 +814,51 @@ flowchart LR
 1. Step 1 보상: `booking.saga.markFailed` → 예약 FAILED 처리
 2. Saga 상태: `COMPENSATION_COMPLETED`
 
-### 7.2 보상 실패
+### 9.2 보상 실패
 
 보상 Step도 실패하면 Saga는 `REQUIRES_MANUAL` 상태가 됩니다.
 관리자가 `saga.resolve` 패턴으로 수동 해결할 수 있습니다.
 
-### 7.3 재시도
+### 9.3 재시도
 
 관리자가 `saga.retry` 패턴으로 실패한 Saga를 재시도할 수 있습니다.
 마지막 실패한 Step부터 재실행합니다.
 
-### 7.4 Optional Step
+### 9.4 Optional Step
 
 `optional: true`인 Step은 실패해도 보상을 트리거하지 않고 다음 Step으로 진행합니다.
 알림, CompanyMember 등록 등 부가 기능에 적용됩니다.
 
 ---
 
-## 8. NATS 패턴
+## 10. NATS 패턴
 
-### 8.1 Saga 트리거 (Inbound)
+### 10.1 Saga 트리거 (Inbound)
 
 | 패턴 | 타입 | 발신 | 설명 |
 |------|------|------|------|
 | `saga.booking.create` | `@MessagePattern` | user-api, agent-service | 예약 생성 Saga |
 | `saga.booking.cancel` | `@MessagePattern` | user-api, admin-api | 예약 취소 Saga |
 | `saga.booking.adminRefund` | `@MessagePattern` | admin-api | 관리자 환불 Saga |
-| `booking.paymentConfirmed` | `@MessagePattern` | payment-service | 결제 완료 후속 Saga |
+| `booking.paymentConfirmed` | `@MessagePattern` | payment-service (outbox) | 결제 완료 후속 Saga |
+| `booking.paymentFailed` (신규) | `@MessagePattern` | payment-service (outbox) | 결제 실패/취소 후속 Saga |
 | `booking.paymentDeposited` | `@MessagePattern` | payment-service | 가상계좌 입금 후속 Saga |
 | `saga.booking.paymentTimeout` | saga-scheduler 내부 | saga-scheduler | 결제 타임아웃 Saga |
 
-### 8.2 결제 타임아웃 관련 (신규)
+### 10.2 결제 실패/취소 (신규)
 
 | 패턴 | 타입 | 발신 | 설명 |
 |------|------|------|------|
-| `booking.findExpiredSlotReserved` | `@MessagePattern` | saga-scheduler | 만료 SLOT_RESERVED 예약 목록 조회 |
+| `payment.markAborted` | `@MessagePattern` | user-api (BFF) | payment.status=ABORTED + outbox INSERT |
+
+### 10.3 결제 타임아웃 관련
+
+| 패턴 | 타입 | 발신 | 설명 |
+|------|------|------|------|
+| `booking.findExpiredSlotReserved` | `@MessagePattern` | saga-scheduler (미구현) | 만료 SLOT_RESERVED 목록 조회 |
 | `booking.expireSlotReserved` | `@MessagePattern` | job-service (2차 방어) | 만료 예약 직접 타임아웃 처리 |
 
-### 8.3 Saga 관리 (Admin)
+### 10.4 Saga 관리 (Admin)
 
 | 패턴 | 설명 |
 |------|------|
@@ -599,7 +868,7 @@ flowchart LR
 | `saga.resolve` | 수동 해결 (REQUIRES_MANUAL → COMPLETED) |
 | `saga.stats` | Saga 통계 (기간별) |
 
-### 8.4 Step 핸들러 (Outbound)
+### 10.5 Step 핸들러 (Outbound)
 
 saga-service가 Step 실행 시 호출하는 패턴.
 
@@ -625,9 +894,10 @@ saga-service가 Step 실행 시 호출하는 패턴.
 | `notification.booking.cancelled` | notify-service | 예약 취소 알림 |
 | `notification.booking.refundCompleted` | notify-service | 환불 완료 알림 |
 | `notification.booking.paymentTimeout` | notify-service | 결제 타임아웃 알림 |
+| `notification.booking.paymentFailed` (신규) | notify-service | 결제 실패 알림 |
 | `iam.companyMembers.addByBooking` | iam-service | 가맹점 회원 등록 |
 
-### 8.5 NATS Client 구성
+### 10.6 NATS Client 구성
 
 saga-service는 6개의 Named NATS Client를 사용:
 
@@ -642,9 +912,130 @@ saga-service는 6개의 Named NATS Client를 사용:
 
 ---
 
-## 9. 모니터링 및 디버깅
+## 11. 응답 형식 (saga 메타)
 
-### 9.1 로그 태그
+BFF가 saga를 경유한 API 응답은 표준 도메인 shape에 `saga` 메타데이터를 부가합니다 (2026-04-25 도입).
+
+```json
+{
+  "success": true,
+  "data": { /* 표준 BookingResponseDto */ },
+  "saga": {
+    "executionId": 123,
+    "status": "COMPLETED",
+    "failReason": null,
+    "duplicate": false
+  }
+}
+```
+
+**실패 시** (HTTP 400):
+```json
+{
+  "success": false,
+  "error": { "code": "SAGA_FAILED", "message": "..." },
+  "saga": { "executionId": 123, "status": "FAILED", "failReason": "..." }
+}
+```
+
+**적용 엔드포인트**:
+- `POST /api/user/bookings` (CREATE_BOOKING)
+- `DELETE /api/user/bookings/:id` (CANCEL_BOOKING)
+- `POST /api/user/payments/:orderId/abandon` (PAYMENT_FAILED)
+- `POST /api/admin/bookings`, `DELETE /api/admin/bookings/:id`, `POST /api/admin/bookings/:id/refund`
+
+**클라이언트 처리**:
+- 일반 응답과 동일한 도메인 타입(`BookingResponse`)으로 파싱
+- `saga` 필드는 옵셔널 — 진행률 표시/디버깅에 활용 가능
+- iOS `APIResponse<T>`, Web `BffResponse<T>`, Android `ApiResponse<T>` 모두 `saga?: SagaMeta` 필드 포함
+
+상세 구현은 `services/{user,admin}-api/src/booking/booking.service.ts` 의 `resolveSagaResponse()` 참조.
+
+---
+
+## 12. 알려진 결함 및 보완 계획
+
+### 12.1 현재 결함 (2026-04-25 기준)
+
+| # | 결함 | 영향 | 우선순위 |
+|---|-----|------|---------|
+| 1 | payment-service `confirmPayment` catch가 outbox 미발행 → booking 미동기화 | SLOT_RESERVED 영구 점유 | **P0** |
+| 2 | 클라이언트(Web/iOS/Android) 결제 실패 시 백엔드 통지 부재 | 결함 #1 발현 트리거 | **P0** |
+| 3 | `payment.markAborted` 엔드포인트 미존재 | 결함 #2 해결을 막음 | **P0** |
+| 4 | PAYMENT_FAILED Saga 미정의 | 결함 #2 해결을 막음 | **P0** |
+| 5 | preparePayment 후 미진행 leak (READY 상태 무한 잔존) | 사용자가 결제창 안 띄울 시 SLOT_RESERVED 영구 | **P0** |
+| 6 | `expireSlotReservedBookings`가 saga 우회로 직접 호출 → `slot.release` 미호출 | course-service 슬롯 미복구 (캐시만 복구) | **P1** |
+| 7 | saga-scheduler 미구현 (1차 방어 부재) | job-service Cron(2차)만 존재 | P1 |
+| 8 | CREATE_BOOKING Step 4(UPDATE_BOOKING_STATUS) compensate 부재 | 해당 step 실패 시 booking PENDING 잔존 | P1 |
+| 9 | Toss webhook(ABORTED/EXPIRED) 라우트 미연동 (dev 기준 webhook 수신 0건) | 외부 결제 상태 변경 미반영 | P1 |
+| 10 | payment-service outbox processor 동작 검증 필요 (`payment_outbox_events` 비어있음) | 결제 confirmed 이벤트 발행 누락 가능 | P1 |
+| 11 | split payment에 saga 미적용 | 분할 결제 일부 실패 시 정합성 보장 부재 | P2 |
+
+### 12.2 작업 계획
+
+```
+[Step 1] 백엔드 - payment-service
+  - payment.markAborted MessagePattern 추가 (트랜잭션: status=ABORTED + outbox INSERT)
+  - confirmPayment catch 경로에서도 동일 outbox 발행
+  - outbox processor 검증/구현 (이미 있는지 확인 후 보완)
+
+[Step 2] 백엔드 - saga-service
+  - PAYMENT_FAILED Saga 정의 추가 (services/saga-service/src/saga/definitions/payment-failed.saga.ts)
+  - SagaRegistry에 등록
+  - booking.paymentFailed MessagePattern 트리거 추가
+
+[Step 3] 백엔드 - user-api
+  - POST /api/user/payments/:orderId/abandon 엔드포인트 추가
+  - PaymentService.abandon → payment.markAborted NATS publish
+
+[Step 4] 백엔드 - notify-service
+  - notification.booking.paymentFailed 핸들러 추가
+
+[Step 5] 클라이언트 - Web
+  - paymentApi.abandon() 메서드 추가
+  - BookingCompletePage Scenario 2에서 호출
+
+[Step 6] 클라이언트 - iOS
+  - PaymentService.abandonPayment() 메서드 추가
+  - BookingFormView.handlePaymentResult의 .failure / .cancelled에서 호출
+  - TossPaymentView가 orderId를 BookingFormView로 전달하도록 보완
+
+[Step 7] 클라이언트 - Android
+  - PaymentApi.abandonPayment() 메서드 추가
+  - BookingFormViewModel.handlePaymentFailure / handlePaymentCancelled에서 호출
+
+[Step 8] 보완 작업 (P1)
+  - expireSlotReservedBookings → saga.payment.timeout NATS publish 방식으로 변경 (slot.release 포함)
+  - CREATE_BOOKING Step 4에 compensate: 'booking.saga.markFailed' 추가
+  - saga-scheduler 구현 (1차 방어)
+  - Toss webhook 라우트 등록 + ABORTED/EXPIRED 처리
+  - preparePayment의 READY 상태 만료 정책 (cron + saga 트리거)
+
+[Step 9] 검증
+  - 결제 실패 → 즉시 booking FAILED + slot 복구 통합 테스트
+  - 클라이언트 3종 동작 확인
+  - DB 정합성 (bookings, payments, game_time_slots, payment_outbox_events) 확인
+```
+
+### 12.3 진행 상황 추적
+
+| Step | 상태 | 담당 | 비고 |
+|------|------|------|------|
+| 1 | 미시작 | - | - |
+| 2 | 미시작 | - | - |
+| 3 | 미시작 | - | - |
+| 4 | 미시작 | - | - |
+| 5 | 미시작 | - | - |
+| 6 | 미시작 | - | - |
+| 7 | 미시작 | - | - |
+| 8 | 미시작 | - | P1, 별도 작업 |
+| 9 | 미시작 | - | - |
+
+---
+
+## 13. 모니터링 및 디버깅
+
+### 13.1 로그 태그
 
 | 태그 | 서비스 | 용도 |
 |------|--------|------|
@@ -654,7 +1045,7 @@ saga-service는 6개의 Named NATS Client를 사용:
 | `[Saga]` | course-service | 슬롯 예약/해제 |
 | `[booking-payment-timeout]` | job-service | 2차 방어 Cron 실행 |
 
-### 9.2 Saga 상태 조회
+### 13.2 Saga 상태 조회
 
 ```bash
 # NATS 직접 호출 (디버깅용)
@@ -663,7 +1054,7 @@ saga-service는 6개의 Named NATS Client를 사용:
 # saga.stats { startDate: '2026-03-01', endDate: '2026-03-22' }
 ```
 
-### 9.3 수동 개입
+### 13.3 수동 개입
 
 REQUIRES_MANUAL 상태의 Saga는 관리자가 원인을 분석한 후 처리합니다:
 
@@ -675,7 +1066,7 @@ REQUIRES_MANUAL 상태의 Saga는 관리자가 원인을 분석한 후 처리합
 # saga.resolve { sagaExecutionId: 123, adminNote: '수동 슬롯 해제 완료' }
 ```
 
-### 9.4 K8s 디버깅
+### 13.4 K8s 디버깅
 
 ```bash
 # saga-service 로그
@@ -695,7 +1086,7 @@ kubectl exec -it postgres-0 -n parkgolf-{env} -- psql -U parkgolf -d booking_db 
   -c "SELECT id, booking_number, status, created_at FROM bookings WHERE status = 'SLOT_RESERVED' ORDER BY created_at;"
 ```
 
-### 9.5 파일 구조
+### 13.5 파일 구조
 
 ```
 services/saga-service/src/
@@ -732,4 +1123,4 @@ services/job-service/src/job/service/
 
 ---
 
-**Last Updated**: 2026-03-22
+**Last Updated**: 2026-04-25
