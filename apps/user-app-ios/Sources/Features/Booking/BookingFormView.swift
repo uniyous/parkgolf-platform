@@ -456,11 +456,36 @@ class BookingFormViewModel: ObservableObject {
                 }
             }
 
-        case .failure(_, let errorMessage):
+        case .failure(let errorCode, let errorMessage):
             self.errorMessage = errorMessage
+            // 백엔드에 결제 실패 통지 → PAYMENT_FAILED Saga로 booking 자동 정리
+            if let orderId = paymentPrepareData?.orderId {
+                Task {
+                    _ = try? await paymentService.abandonPayment(
+                        orderId: orderId,
+                        request: AbandonPaymentRequest(
+                            reason: "failed",
+                            errorCode: errorCode,
+                            errorMessage: errorMessage,
+                        ),
+                    )
+                }
+            }
 
         case .cancelled:
-            break
+            // 사용자 결제 취소 → 백엔드 통지 (booking 자동 정리)
+            if let orderId = paymentPrepareData?.orderId {
+                Task {
+                    _ = try? await paymentService.abandonPayment(
+                        orderId: orderId,
+                        request: AbandonPaymentRequest(
+                            reason: "cancelled",
+                            errorCode: nil,
+                            errorMessage: nil,
+                        ),
+                    )
+                }
+            }
         }
     }
 
