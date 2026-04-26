@@ -51,3 +51,10 @@ data class PaymentStatusResponse(
     val status: String,
     val bookingId: Int? = null
 )
+
+@Serializable
+data class AbandonPaymentRequest(
+    val reason: String, // "failed" | "cancelled"
+    val errorCode: String? = null,
+    val errorMessage: String? = null
+)

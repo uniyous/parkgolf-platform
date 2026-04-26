@@ -10,4 +10,12 @@ interface PaymentRepository {
     suspend fun confirmPayment(paymentKey: String, orderId: String, amount: Int): Result<ConfirmPaymentResponse>
     suspend fun confirmSplitPayment(paymentKey: String, orderId: String, amount: Int): Result<ConfirmSplitPaymentResponse>
     suspend fun getPaymentByOrderId(orderId: String): Result<PaymentStatusResponse>
+
+    /** 결제 실패/취소 통지 → PAYMENT_FAILED Saga 트리거 */
+    suspend fun abandonPayment(
+        orderId: String,
+        reason: String,
+        errorCode: String?,
+        errorMessage: String?,
+    ): Result<PaymentStatusResponse>
 }

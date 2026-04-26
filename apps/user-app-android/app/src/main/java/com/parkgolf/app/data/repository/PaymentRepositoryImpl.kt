@@ -1,6 +1,7 @@
 package com.parkgolf.app.data.repository
 
 import com.parkgolf.app.data.remote.api.PaymentApi
+import com.parkgolf.app.data.remote.dto.payment.AbandonPaymentRequest
 import com.parkgolf.app.data.remote.dto.payment.ConfirmPaymentRequest
 import com.parkgolf.app.data.remote.dto.payment.ConfirmPaymentResponse
 import com.parkgolf.app.data.remote.dto.payment.ConfirmSplitPaymentResponse
@@ -59,5 +60,19 @@ class PaymentRepositoryImpl @Inject constructor(
 
     override suspend fun getPaymentByOrderId(orderId: String): Result<PaymentStatusResponse> = safeApiCall {
         paymentApi.getPaymentByOrderId(orderId).toResult("결제 상태 조회에 실패했습니다")
+    }
+
+    override suspend fun abandonPayment(
+        orderId: String,
+        reason: String,
+        errorCode: String?,
+        errorMessage: String?,
+    ): Result<PaymentStatusResponse> = safeApiCall {
+        val request = AbandonPaymentRequest(
+            reason = reason,
+            errorCode = errorCode,
+            errorMessage = errorMessage,
+        )
+        paymentApi.abandonPayment(orderId, request).toResult("결제 중단 통지에 실패했습니다")
     }
 }
