@@ -125,7 +125,12 @@ flowchart LR
 
 ## 3. 데이터 모델
 
-`saga_db` (PostgreSQL, Prisma) — saga-service 전용. 결제 이벤트 outbox는 `payment_db.payment_outbox_events`에 별도 존재 (saga-service 외부).
+saga 처리에는 두 DB의 테이블이 관여합니다:
+
+- **`saga_db`** (saga-service 소유): `SagaExecution`, `SagaStep` — saga 실행/이력
+- **`payment_db`** (payment-service 소유): `payment_outbox_events` — 결제 이벤트를 saga에 전달하는 트리거 소스
+
+직접적인 FK 관계는 없으며, `payment_outbox_events`가 NATS로 이벤트를 publish하면 saga-service가 수신하여 새로운 `SagaExecution` 레코드를 생성하는 간접 연결입니다.
 
 ### 3.1 ERD
 
@@ -133,9 +138,10 @@ flowchart LR
 %%{init: {'theme':'base','themeVariables':{'primaryColor':'#E3F2FD','primaryTextColor':'#000','primaryBorderColor':'#1565C0','lineColor':'#37474F','fontSize':'13px'}}}%%
 erDiagram
     SagaExecution ||--o{ SagaStep : "1:N"
+    PaymentOutboxEvent ||..o{ SagaExecution : "triggers via NATS<br/>(booking.paymentConfirmed / paymentFailed)"
 
     SagaExecution {
-        int id PK
+        int id PK "saga_db.saga_executions"
         string saga_type "CREATE_BOOKING / CANCEL_BOOKING / ADMIN_REFUND / PAYMENT_CONFIRMED / PAYMENT_FAILED / PAYMENT_TIMEOUT"
         string correlation_id UK "예: booking:123"
         SagaStatus status "STARTED → STEP_EXECUTING → COMPLETED / FAILED ..."
@@ -151,7 +157,7 @@ erDiagram
     }
 
     SagaStep {
-        int id PK
+        int id PK "saga_db.saga_steps"
         int saga_execution_id FK
         int step_index
         string step_name "RESERVE_SLOT 등"
@@ -166,7 +172,22 @@ erDiagram
         datetime started_at "nullable"
         datetime completed_at "nullable"
     }
+
+    PaymentOutboxEvent {
+        int id PK "payment_db.payment_outbox_events"
+        string aggregate_type "Payment"
+        string aggregate_id "payment.id"
+        string event_type "payment.confirmed / payment.failed / payment.canceled / payment.deposited"
+        json payload "bookingId, orderId, paymentKey, amount 등"
+        OutboxStatus status "PENDING → PROCESSING → SENT / FAILED"
+        int retry_count
+        string last_error "nullable"
+        datetime created_at
+        datetime processed_at "nullable"
+    }
 ```
+
+> 점선 관계(`||..o{`)는 직접 FK가 아닌 **NATS 메시지 경유 트리거**를 의미합니다. payment-service의 outbox processor가 5초 주기로 PENDING 이벤트를 NATS publish → saga-service가 수신 → 새 SagaExecution 생성.
 
 ### 3.2 SagaExecution
 
@@ -237,19 +258,31 @@ erDiagram
 | `COMPENSATED` | 보상 완료 |
 | `SKIPPED` | `condition` 미충족으로 건너뜀 |
 
+**OutboxStatus** (payment_db)
+
+| 값 | 의미 |
+|----|------|
+| `PENDING` | 발행 대기 |
+| `PROCESSING` | 발행 시도 중 |
+| `SENT` | NATS publish 성공 |
+| `FAILED` | 5회 재시도 모두 실패 → 운영자 수동 처리 (`retryFailedEvents()` API) |
+
 ### 3.5 데이터 보존 / 정리
 
-| 작업 | 주체 | 주기 | 동작 |
-|------|------|------|------|
-| 만료 saga FAILED 처리 | saga-scheduler | 매분 | STARTED/STEP_EXECUTING 5분 초과 → FAILED |
-| 오래된 saga 삭제 | saga-scheduler | 매일 자정 | COMPLETED/FAILED + 30일 경과 행 DELETE |
-| SLOT_RESERVED 만료 | saga-scheduler | 매분 | 10분 초과 booking에 PAYMENT_TIMEOUT Saga 시작 |
+| 작업 | 주체 | 주기 | 동작 | DB |
+|------|------|------|------|----|
+| 만료 saga FAILED 처리 | saga-scheduler | 매분 | STARTED/STEP_EXECUTING 5분 초과 → FAILED | saga_db |
+| 오래된 saga 삭제 | saga-scheduler | 매일 자정 | COMPLETED/FAILED + 30일 경과 행 DELETE | saga_db |
+| SLOT_RESERVED 만료 | saga-scheduler | 매분 | 10분 초과 booking에 PAYMENT_TIMEOUT Saga 시작 | booking_db (조회) |
+| Outbox 이벤트 발행 | payment-service OutboxProcessor | 5초 | PENDING 이벤트 NATS publish, 최대 5회 재시도 | payment_db |
 
-설정: `services/saga-service/src/common/constants/nats.constants.ts` 의 `SAGA_CONFIG.SAGA_TIMEOUT_MS` (5분), `SAGA_CONFIG.RETENTION_DAYS` (30일).
+**설정 위치**:
+- `services/saga-service/src/common/constants/nats.constants.ts` — `SAGA_CONFIG.SAGA_TIMEOUT_MS` (5분), `RETENTION_DAYS` (30일)
+- `services/payment-service/src/payment/service/outbox-processor.service.ts` — `maxRetries=5`, `batchSize=10`, `sendTimeoutMs=10000`
 
-> **참고**: `payment_db.payment_outbox_events`는 payment-service 책임으로 본 saga_db 스키마와 분리되어 있음. `booking.paymentConfirmed` / `booking.paymentFailed` 이벤트가 saga-service에 도착하는 경로일 뿐 본 DB에는 영향 없음.
-
-원본 스키마: `services/saga-service/prisma/schema.prisma`
+**원본 스키마**:
+- saga 측: `services/saga-service/prisma/schema.prisma`
+- payment 측 outbox: `services/payment-service/prisma/schema.prisma` (`PaymentOutboxEvent` 모델)
 
 ---
 
