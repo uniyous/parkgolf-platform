@@ -42,6 +42,12 @@ export interface ConfirmSplitPaymentRequest {
   amount: number;
 }
 
+export interface AbandonPaymentRequest {
+  reason: 'failed' | 'cancelled';
+  errorCode?: string;
+  errorMessage?: string;
+}
+
 export const paymentApi = {
   preparePayment: async (data: PreparePaymentRequest): Promise<PreparePaymentResponse> => {
     const response = await apiClient.post<BffResponse<PreparePaymentResponse>>(
@@ -70,6 +76,21 @@ export const paymentApi = {
   getPaymentByOrderId: async (orderId: string): Promise<PaymentStatusResponse> => {
     const response = await apiClient.get<BffResponse<PaymentStatusResponse>>(
       `/api/user/payments/order/${orderId}`,
+    );
+    return unwrapResponse(response.data);
+  },
+
+  /**
+   * 결제 중단 통지 (Toss 결제창 onFail / onCancel)
+   * 백엔드: payment.status=ABORTED + outbox booking.paymentFailed → PAYMENT_FAILED Saga
+   */
+  abandonPayment: async (
+    orderId: string,
+    data: AbandonPaymentRequest,
+  ): Promise<PaymentStatusResponse> => {
+    const response = await apiClient.post<BffResponse<PaymentStatusResponse>>(
+      `/api/user/payments/${orderId}/abandon`,
+      data,
     );
     return unwrapResponse(response.data);
   },

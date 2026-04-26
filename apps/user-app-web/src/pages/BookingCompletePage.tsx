@@ -122,6 +122,21 @@ export const BookingCompletePage: React.FC = () => {
       const msg = errorMessage
         ? decodeURIComponent(errorMessage)
         : '결제가 취소되었거나 실패했습니다.';
+
+      // 백엔드에 결제 실패 통지 → PAYMENT_FAILED Saga로 booking 자동 정리
+      if (orderId) {
+        const reason: 'failed' | 'cancelled' = errorCode === 'USER_CANCEL' ? 'cancelled' : 'failed';
+        paymentApi
+          .abandonPayment(orderId, {
+            reason,
+            errorCode: errorCode ?? undefined,
+            errorMessage: errorMessage ? decodeURIComponent(errorMessage) : undefined,
+          })
+          .catch(() => {
+            // 통지 실패는 화면 표시에 영향 없음 (saga-scheduler 백업이 처리)
+          });
+      }
+
       setPageState({
         status: 'error',
         code: errorCode ?? undefined,
