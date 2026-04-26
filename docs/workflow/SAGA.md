@@ -43,8 +43,8 @@ flowchart TB
     subgraph Triggers["📨 Saga 트리거"]
         UA["👥 user-api / admin-api / agent-service"]
         PS_OBX["📤 payment-service<br/>(outbox processor)"]
-        SCHED["⏱️ saga-scheduler<br/>(미구현, P1)"]
-        JOB["🔁 job-service<br/>(2차 방어 Cron)"]
+        SCHED["⏱️ saga-scheduler<br/>(1차 방어, 1분 주기)"]
+        JOB["🔁 job-service<br/>(2차 방어 Cron, 5분 주기)"]
     end
 
     subgraph Orchestrator["🧠 saga-service"]
@@ -67,7 +67,7 @@ flowchart TB
 
     UA -->|"saga.booking.create / cancel / adminRefund"| NATS
     PS_OBX -->|"booking.paymentConfirmed<br/>booking.paymentFailed"| NATS
-    SCHED -.->|"saga.payment.timeout"| NATS
+    SCHED -->|"booking.findExpiredSlotReserved<br/>+ startSaga(PAYMENT_TIMEOUT)"| NATS
     JOB -->|"booking.expireSlotReserved"| NATS
 
     NATS --> CTRL --> ENGINE
@@ -83,8 +83,7 @@ flowchart TB
     classDef store fill:#2E7D32,color:#fff,stroke:#1B5E20,stroke-width:2px
     classDef todo fill:#EF6C00,color:#fff,stroke:#BF360C,stroke-width:2px,stroke-dasharray:5 5
 
-    class UA,PS_OBX,JOB trig
-    class SCHED todo
+    class UA,PS_OBX,JOB,SCHED trig
     class CTRL,ENGINE,DEFS orch
     class NATS bus
     class BS,CS,PAY,NS,IAM,PRT hand
@@ -326,7 +325,9 @@ Response:
 | `saga.booking.adminRefund` | admin-api | 동기 응답 |
 | `booking.paymentConfirmed` | payment-service (outbox) | 비동기 |
 | `booking.paymentFailed` 신규 | payment-service (outbox) | 비동기 |
-| `saga.payment.timeout` | saga-scheduler / job-service | 백그라운드 |
+| `PAYMENT_TIMEOUT (saga internal)` | saga-scheduler `startSaga` (1분 주기) | 백그라운드 |
+| `booking.expireSlotReserved` | job-service Cron (5분 주기, 2차 방어) | 백그라운드 |
+| `booking.findExpiredSlotReserved` | saga-scheduler 만료 후보 조회 | 백그라운드 |
 
 ### 6.2 결제 실패 보조 패턴
 
