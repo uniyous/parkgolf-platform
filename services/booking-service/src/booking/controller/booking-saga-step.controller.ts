@@ -132,17 +132,12 @@ export class BookingSagaStepController {
    * 만료된 SLOT_RESERVED 예약 일괄 타임아웃 처리
    * job-service에서 5분 주기로 호출
    */
-  @MessagePattern('booking.expireSlotReserved')
-  async expireSlotReserved(@Payload() data: { timeoutMinutes?: number }) {
-    const timeoutMinutes = data?.timeoutMinutes || 10;
-    this.logger.log(`NATS: booking.expireSlotReserved (timeout: ${timeoutMinutes}min)`);
-    const result = await this.sagaStepService.expireSlotReservedBookings(timeoutMinutes);
-    return NatsResponse.success(result);
-  }
-
   /**
-   * 만료된 SLOT_RESERVED 예약 후보 조회 (saga-scheduler 1차 방어용)
+   * 만료된 SLOT_RESERVED 예약 후보 조회 (saga-scheduler 전용)
    * 실제 처리는 saga-scheduler가 PAYMENT_TIMEOUT Saga로 트리거.
+   *
+   * Note: 이전 `booking.expireSlotReserved` (직접 paymentTimeout 호출)는 saga 우회로
+   * slot.release를 호출하지 않는 결함이 있어 제거됨. saga-scheduler가 1분 주기로 처리.
    */
   @MessagePattern('booking.findExpiredSlotReserved')
   async findExpiredSlotReserved(@Payload() data: { timeoutMinutes?: number }) {

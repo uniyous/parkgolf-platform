@@ -738,44 +738,6 @@ export class BookingSagaStepService {
   }
 
   /**
-   * 만료된 SLOT_RESERVED 예약 일괄 타임아웃 처리
-   * job-service에서 5분 주기로 호출 (2차 방어)
-   */
-  async expireSlotReservedBookings(timeoutMinutes: number) {
-    const threshold = new Date(Date.now() - timeoutMinutes * 60 * 1000);
-
-    const expiredBookings = await this.prisma.booking.findMany({
-      where: {
-        status: BookingStatus.SLOT_RESERVED,
-        createdAt: { lt: threshold },
-      },
-      select: { id: true, bookingNumber: true },
-    });
-
-    if (expiredBookings.length === 0) {
-      return { expired: 0 };
-    }
-
-    this.logger.warn(`Found ${expiredBookings.length} expired SLOT_RESERVED bookings`);
-
-    let expired = 0;
-    for (const booking of expiredBookings) {
-      try {
-        await this.paymentTimeout({
-          bookingId: booking.id,
-          reason: `결제 타임아웃 (${timeoutMinutes}분 초과)`,
-        });
-        expired++;
-        this.logger.log(`Expired booking ${booking.bookingNumber} (id: ${booking.id})`);
-      } catch (error) {
-        this.logger.error(`Failed to expire booking ${booking.id}: ${error.message}`);
-      }
-    }
-
-    return { expired, total: expiredBookings.length };
-  }
-
-  /**
    * 외부 파트너 예약 생성 (Inbound: 외부 → 내부)
    * Saga를 경유하지 않고 직접 CONFIRMED 상태로 생성
    */

@@ -62,22 +62,6 @@ export class JobSchedulerService {
   }
 
   /**
-   * 결제 타임아웃 예약 정리
-   * 5분마다 — SLOT_RESERVED 상태에서 10분 초과된 예약을 FAILED 처리 + 슬롯 복구
-   */
-  @Cron('*/5 * * * *', { name: 'booking-payment-timeout', timeZone: 'Asia/Seoul' })
-  async handleBookingPaymentTimeout() {
-    this.logger.log('[booking-payment-timeout] Starting...');
-
-    const result = await this.sendNatsRequest(
-      'booking.expireSlotReserved',
-      { timeoutMinutes: 10 },
-    );
-
-    this.logger.log(`[booking-payment-timeout] Result: ${JSON.stringify(result)}`);
-  }
-
-  /**
    * 수동 실행용 메서드
    */
   async runJob(jobName: string): Promise<any> {
@@ -88,8 +72,6 @@ export class JobSchedulerService {
         return this.sendNatsRequest('iam.deletion.execute', {});
       case 'partner-sync':
         return this.sendNatsRequest('partner.sync.execute', {});
-      case 'booking-payment-timeout':
-        return this.sendNatsRequest('booking.expireSlotReserved', { timeoutMinutes: 10 });
       default:
         return { success: false, error: `Unknown job: ${jobName}` };
     }
@@ -117,12 +99,6 @@ export class JobSchedulerService {
         schedule: '*/10 * * * * (매 10분)',
         pattern: 'partner.sync.execute',
         description: '외부 부킹 API 파트너 슬롯/예약 동기화',
-      },
-      {
-        name: 'booking-payment-timeout',
-        schedule: '*/5 * * * * (매 5분)',
-        pattern: 'booking.expireSlotReserved',
-        description: 'SLOT_RESERVED 10분 초과 예약 자동 만료 + 슬롯 복구',
       },
     ];
   }
