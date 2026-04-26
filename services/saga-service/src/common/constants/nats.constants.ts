@@ -15,18 +15,6 @@ export const NATS_TIMEOUTS = {
   PARTNER: 60000,
 } as const;
 
-/** Outbox 처리 설정 */
-export const OUTBOX_CONFIG = {
-  /** 안전망 폴링 주기 (ms) */
-  POLL_INTERVAL_MS: 3000,
-  /** 한 번에 처리할 이벤트 수 */
-  BATCH_SIZE: 10,
-  /** 최대 재시도 횟수 */
-  MAX_RETRY_COUNT: 5,
-  /** 처리 중 락 시간 (ms) */
-  PROCESSING_LOCK_MS: 30000,
-} as const;
-
 /** Saga 타임아웃 설정 */
 export const SAGA_CONFIG = {
   /** Saga 전체 타임아웃 (ms) - 5분 */
