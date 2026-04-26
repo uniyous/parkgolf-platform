@@ -108,13 +108,93 @@ export class PaymentService {
 
       return updatedPayment;
     } catch (error) {
-      // 승인 실패 시 상태 롤백
-      await this.prisma.payment.update({
-        where: { id: payment.id },
-        data: { status: PaymentStatus.ABORTED },
+      // 승인 실패 → ABORTED 처리 + booking.paymentFailed outbox 발행
+      await this.markPaymentAborted(payment.id, {
+        reason: 'confirm_failed',
+        errorMessage: error instanceof Error ? error.message : undefined,
       });
       throw error;
     }
+  }
+
+  /**
+   * 결제 중단 (실패/취소) - orderId 기반
+   * 클라이언트가 결제창 onFail/onCancel 시 호출.
+   * 멱등성 보장 (이미 ABORTED면 outbox 재발행 없이 성공 응답).
+   */
+  async abandonPaymentByOrderId(data: {
+    orderId: string;
+    reason: 'failed' | 'cancelled';
+    errorCode?: string;
+    errorMessage?: string;
+  }) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { orderId: data.orderId },
+    });
+
+    if (!payment) {
+      throw new AppException(Errors.Payment.NOT_FOUND);
+    }
+
+    // 멱등성: 이미 ABORTED면 그대로 반환
+    if (payment.status === PaymentStatus.ABORTED) {
+      this.logger.log(`Payment already ABORTED: ${data.orderId} (idempotent)`);
+      return payment;
+    }
+
+    // 결제 완료된 건은 abandon 불가 (취소 saga로 처리)
+    if (payment.status === PaymentStatus.DONE) {
+      throw new AppException(
+        Errors.Payment.INVALID_STATUS,
+        '이미 결제 완료된 건은 취소 saga로 처리해야 합니다',
+      );
+    }
+
+    return this.markPaymentAborted(payment.id, {
+      reason: data.reason,
+      errorCode: data.errorCode,
+      errorMessage: data.errorMessage,
+    });
+  }
+
+  /**
+   * payment.status=ABORTED + booking.paymentFailed outbox 이벤트 발행 (단일 트랜잭션)
+   */
+  private async markPaymentAborted(
+    paymentId: number,
+    meta: { reason: string; errorCode?: string; errorMessage?: string },
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.update({
+        where: { id: paymentId },
+        data: { status: PaymentStatus.ABORTED },
+      });
+
+      if (payment.bookingId) {
+        await tx.paymentOutboxEvent.create({
+          data: {
+            aggregateType: 'Payment',
+            aggregateId: String(payment.id),
+            eventType: 'payment.failed',
+            payload: {
+              paymentId: payment.id,
+              bookingId: payment.bookingId,
+              orderId: payment.orderId,
+              userId: payment.userId,
+              reason: meta.reason,
+              errorCode: meta.errorCode,
+              errorMessage: meta.errorMessage,
+            } as Prisma.InputJsonValue,
+            status: OutboxStatus.PENDING,
+          },
+        });
+        this.logger.log(`Payment ABORTED + outbox: ${payment.orderId} (booking ${payment.bookingId})`);
+      } else {
+        this.logger.warn(`Payment ABORTED without bookingId: ${payment.orderId}`);
+      }
+
+      return payment;
+    });
   }
 
   /**

@@ -18,7 +18,7 @@ import {
 import { PaymentService } from './payment.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators';
-import { PreparePaymentDto, ConfirmPaymentDto, ConfirmSplitPaymentDto } from './dto/payment.dto';
+import { AbandonPaymentDto, PreparePaymentDto, ConfirmPaymentDto, ConfirmSplitPaymentDto } from './dto/payment.dto';
 
 @ApiTags('Payment')
 @Controller('api/user/payments')
@@ -81,5 +81,21 @@ export class PaymentController {
   async getPaymentByOrderId(@Param('orderId') orderId: string) {
     this.logger.log(`Getting payment by orderId: ${orderId}`);
     return this.paymentService.getPaymentByOrderId(orderId);
+  }
+
+  @Post(':orderId/abandon')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '결제 중단 통지 (Toss 결제창 실패/취소)' })
+  @ApiResponse({ status: 200, description: '결제 중단 처리 완료. PAYMENT_FAILED Saga 트리거' })
+  @ApiResponse({ status: 401, description: '인증이 필요합니다.' })
+  @ApiResponse({ status: 404, description: '결제 정보를 찾을 수 없습니다.' })
+  async abandonPayment(
+    @Param('orderId') orderId: string,
+    @Body() dto: AbandonPaymentDto,
+  ) {
+    this.logger.log(`Abandoning payment orderId: ${orderId} reason: ${dto.reason}`);
+    return this.paymentService.abandonPayment(orderId, dto);
   }
 }

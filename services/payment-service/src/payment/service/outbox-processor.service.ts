@@ -134,6 +134,7 @@ export class OutboxProcessorService implements OnModuleInit {
       'payment.confirmed': 'booking.paymentConfirmed',
       'payment.canceled': 'booking.paymentCanceled',
       'payment.deposited': 'booking.paymentDeposited',
+      'payment.failed': 'booking.paymentFailed',
     };
     return patternMap[eventType] || eventType;
   }

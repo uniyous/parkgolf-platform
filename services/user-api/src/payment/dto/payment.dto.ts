@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
+  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -41,6 +42,26 @@ export class ConfirmPaymentDto {
   @IsNotEmpty()
   @Min(1)
   amount: number;
+}
+
+export class AbandonPaymentDto {
+  @ApiProperty({
+    description: '실패/취소 사유',
+    enum: ['failed', 'cancelled'],
+    example: 'failed',
+  })
+  @IsEnum(['failed', 'cancelled'])
+  reason: 'failed' | 'cancelled';
+
+  @ApiProperty({ description: 'Toss 에러 코드', required: false })
+  @IsString()
+  @IsOptional()
+  errorCode?: string;
+
+  @ApiProperty({ description: 'Toss 에러 메시지', required: false })
+  @IsString()
+  @IsOptional()
+  errorMessage?: string;
 }
 
 export class ConfirmSplitPaymentDto {

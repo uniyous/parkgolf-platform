@@ -108,6 +108,28 @@ export class SagaNatsController {
     }, 'SYSTEM');
   }
 
+  @MessagePattern('booking.paymentFailed')
+  async handlePaymentFailed(@Payload() data: {
+    paymentId: number;
+    bookingId: number;
+    orderId: string;
+    userId?: number;
+    reason: 'failed' | 'cancelled';
+    errorCode?: string;
+    errorMessage?: string;
+  }) {
+    this.logger.log(`[Saga] booking.paymentFailed received: bookingId=${data.bookingId} reason=${data.reason}`);
+    return this.sagaEngine.startSaga('PAYMENT_FAILED', {
+      bookingId: data.bookingId,
+      paymentId: data.paymentId,
+      orderId: data.orderId,
+      userId: data.userId,
+      reason: data.reason,
+      errorCode: data.errorCode,
+      errorMessage: data.errorMessage,
+    }, 'SYSTEM');
+  }
+
   // ===== Saga 관리 (admin-api → saga-service) =====
 
   @MessagePattern('saga.list')

@@ -68,6 +68,25 @@ export class PaymentNatsController {
   }
 
   /**
+   * 결제 중단 (실패/취소) - orderId 기반
+   * 클라이언트가 결제창 실패/취소 시 호출. payment.status=ABORTED + outbox booking.paymentFailed 발행
+   */
+  @MessagePattern('payment.markAborted')
+  async markPaymentAborted(
+    @Payload()
+    data: {
+      orderId: string;
+      reason: 'failed' | 'cancelled';
+      errorCode?: string;
+      errorMessage?: string;
+    },
+  ) {
+    this.logger.log(`Marking payment ABORTED: ${data.orderId} (reason=${data.reason})`);
+    const result = await this.paymentService.abandonPaymentByOrderId(data);
+    return NatsResponse.success(result);
+  }
+
+  /**
    * 결제 조회 (paymentKey)
    */
   @MessagePattern('payment.get')

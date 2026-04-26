@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { NatsClientService } from '../common/nats';
 import { ApiResponse } from '../common/types';
-import { PreparePaymentDto, ConfirmPaymentDto, ConfirmSplitPaymentDto } from './dto/payment.dto';
+import { AbandonPaymentDto, PreparePaymentDto, ConfirmPaymentDto, ConfirmSplitPaymentDto } from './dto/payment.dto';
 import { NATS_TIMEOUTS } from '../common/constants';
 
 export interface PreparePaymentResponse {
@@ -65,5 +65,20 @@ export class PaymentService {
   async getPaymentByOrderId(orderId: string): Promise<ApiResponse<PaymentStatusResponse>> {
     this.logger.log(`Getting payment by orderId: ${orderId}`);
     return this.natsClient.send('payment.getByOrderId', { orderId });
+  }
+
+  /**
+   * 결제 중단 (실패/취소) 통지
+   * Toss 결제창 onFail / onCancel 시 클라이언트가 호출.
+   * payment-service에서 status=ABORTED + outbox `booking.paymentFailed` 발행 → PAYMENT_FAILED Saga 트리거.
+   */
+  async abandonPayment(orderId: string, dto: AbandonPaymentDto): Promise<ApiResponse<PaymentStatusResponse>> {
+    this.logger.log(`Abandoning payment: orderId=${orderId} reason=${dto.reason}`);
+    return this.natsClient.send('payment.markAborted', {
+      orderId,
+      reason: dto.reason,
+      errorCode: dto.errorCode,
+      errorMessage: dto.errorMessage,
+    }, NATS_TIMEOUTS.PAYMENT);
   }
 }

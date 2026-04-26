@@ -140,6 +140,17 @@ export class BookingSagaStepController {
     return NatsResponse.success(result);
   }
 
+  /**
+   * 만료된 SLOT_RESERVED 예약 후보 조회 (saga-scheduler 1차 방어용)
+   * 실제 처리는 saga-scheduler가 PAYMENT_TIMEOUT Saga로 트리거.
+   */
+  @MessagePattern('booking.findExpiredSlotReserved')
+  async findExpiredSlotReserved(@Payload() data: { timeoutMinutes?: number }) {
+    const timeoutMinutes = data?.timeoutMinutes || 10;
+    const candidates = await this.sagaStepService.findExpiredSlotReservedBookings(timeoutMinutes);
+    return NatsResponse.success(candidates);
+  }
+
   // =====================================================
   // 외부 파트너 연동 핸들러
   // =====================================================

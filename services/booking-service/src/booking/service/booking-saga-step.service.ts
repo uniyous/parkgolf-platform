@@ -713,8 +713,33 @@ export class BookingSagaStepService {
   }
 
   /**
+   * 만료된 SLOT_RESERVED 예약 후보 조회만 수행 (saga-scheduler 1차 방어용)
+   * 실제 정리는 saga-scheduler가 PAYMENT_TIMEOUT Saga로 처리.
+   */
+  async findExpiredSlotReservedBookings(timeoutMinutes: number) {
+    const threshold = new Date(Date.now() - timeoutMinutes * 60 * 1000);
+
+    const expired = await this.prisma.booking.findMany({
+      where: {
+        status: BookingStatus.SLOT_RESERVED,
+        createdAt: { lt: threshold },
+      },
+      select: {
+        id: true,
+        bookingNumber: true,
+        gameTimeSlotId: true,
+        playerCount: true,
+        userId: true,
+        clubId: true,
+      },
+    });
+
+    return expired;
+  }
+
+  /**
    * 만료된 SLOT_RESERVED 예약 일괄 타임아웃 처리
-   * job-service에서 5분 주기로 호출
+   * job-service에서 5분 주기로 호출 (2차 방어)
    */
   async expireSlotReservedBookings(timeoutMinutes: number) {
     const threshold = new Date(Date.now() - timeoutMinutes * 60 * 1000);
