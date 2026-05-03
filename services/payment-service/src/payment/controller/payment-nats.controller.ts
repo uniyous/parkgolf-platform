@@ -182,6 +182,18 @@ export class PaymentNatsController {
   }
 
   /**
+   * 분할결제 일괄 환불 (PAYMENT_TIMEOUT Saga의 REFUND_PAID_SPLITS step)
+   * - PAID split을 모두 Toss 환불 → status=REFUNDED
+   * - PENDING split은 EXPIRED로 일괄 변경
+   */
+  @MessagePattern('payment.refundPaidSplits')
+  async refundPaidSplits(@Payload() data: { bookingId: number; reason?: string }) {
+    this.logger.log(`Refunding paid splits for booking ${data.bookingId}`);
+    const result = await this.splitService.refundPaidSplitsByBooking(data);
+    return NatsResponse.success(result);
+  }
+
+  /**
    * 분할결제 상태 조회 (그룹 / 예약 / orderId)
    */
   @MessagePattern('payment.splitGet')

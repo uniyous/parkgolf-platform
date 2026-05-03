@@ -254,4 +254,94 @@ export class PaymentSplitService {
 
     return { expiredCount: expired.count };
   }
+
+  /**
+   * 분할결제 일괄 환불 (PAYMENT_TIMEOUT Saga의 REFUND_PAID_SPLITS step에서 호출)
+   * - bookingId의 PAID split을 모두 Toss 환불 → status=REFUNDED
+   * - PENDING split은 EXPIRED로 변경
+   * - 부분 실패 시 saga가 재시도 또는 REQUIRES_MANUAL로 운영자 개입
+   */
+  async refundPaidSplitsByBooking(data: {
+    bookingId: number;
+    reason?: string;
+  }) {
+    const splits = await this.prisma.paymentSplit.findMany({
+      where: { bookingId: data.bookingId },
+      include: { payment: true },
+    });
+
+    if (splits.length === 0) {
+      this.logger.warn(`No splits found for booking ${data.bookingId}`);
+      return { refundedCount: 0, expiredCount: 0, refundedAmount: 0, failedCount: 0 };
+    }
+
+    const reason = data.reason || '결제 타임아웃 - 분할결제 미완료로 자동 환불';
+    let refundedCount = 0;
+    let refundedAmount = 0;
+    let failedCount = 0;
+    const failures: Array<{ orderId: string; error: string }> = [];
+
+    // PAID 상태인 split을 Toss 환불
+    for (const split of splits) {
+      if (split.status !== SplitStatus.PAID) continue;
+
+      const paymentKey = split.payment?.paymentKey;
+      if (!paymentKey) {
+        this.logger.error(
+          `Split ${split.id} (orderId=${split.orderId}) has no paymentKey - cannot refund via Toss`,
+        );
+        failedCount++;
+        failures.push({ orderId: split.orderId, error: 'no_paymentKey' });
+        continue;
+      }
+
+      try {
+        await this.tossApi.cancelPayment(paymentKey, reason, split.amount);
+        await this.prisma.paymentSplit.update({
+          where: { id: split.id },
+          data: { status: SplitStatus.REFUNDED },
+        });
+        refundedCount++;
+        refundedAmount += split.amount;
+        this.logger.log(
+          `Split refunded: orderId=${split.orderId}, user=${split.userId}, amount=${split.amount}`,
+        );
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : 'unknown';
+        this.logger.error(`Split refund failed: orderId=${split.orderId}, err=${errMsg}`);
+        failedCount++;
+        failures.push({ orderId: split.orderId, error: errMsg });
+      }
+    }
+
+    // PENDING split을 EXPIRED로 일괄 변경
+    const expiredResult = await this.prisma.paymentSplit.updateMany({
+      where: {
+        bookingId: data.bookingId,
+        status: SplitStatus.PENDING,
+      },
+      data: { status: SplitStatus.EXPIRED },
+    });
+
+    this.logger.log(
+      `refundPaidSplitsByBooking(${data.bookingId}): refunded=${refundedCount}, ` +
+      `amount=${refundedAmount}, expired=${expiredResult.count}, failed=${failedCount}`,
+    );
+
+    // 환불 실패 1건이라도 있으면 saga step 실패 → REQUIRES_MANUAL 처리 유도
+    if (failedCount > 0) {
+      throw new AppException(
+        Errors.Refund.REFUND_FAILED,
+        `분할결제 환불 일부 실패: ${failedCount}건. failures=${JSON.stringify(failures)}`,
+      );
+    }
+
+    return {
+      bookingId: data.bookingId,
+      refundedCount,
+      refundedAmount,
+      expiredCount: expiredResult.count,
+      failedCount,
+    };
+  }
 }

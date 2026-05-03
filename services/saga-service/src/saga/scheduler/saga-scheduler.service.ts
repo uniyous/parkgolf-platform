@@ -16,6 +16,7 @@ interface ExpiredBooking {
   playerCount: number;
   userId: number | null;
   clubId: number | null;
+  paymentMethod: string | null;
 }
 
 @Injectable()
@@ -109,10 +110,13 @@ export class SagaSchedulerService {
               playerCount: booking.playerCount,
               userId: booking.userId,
               bookingNumber: booking.bookingNumber,
+              paymentMethod: booking.paymentMethod,
             },
             'SYSTEM',
           );
-          this.logger.log(`[SagaScheduler] PAYMENT_TIMEOUT triggered for booking ${booking.id}`);
+          this.logger.log(
+            `[SagaScheduler] PAYMENT_TIMEOUT triggered for booking ${booking.id} (paymentMethod=${booking.paymentMethod})`,
+          );
         } catch (err) {
           this.logger.error(
             `[SagaScheduler] Failed to trigger PAYMENT_TIMEOUT for booking ${booking.id}: ${err instanceof Error ? err.message : 'unknown'}`,

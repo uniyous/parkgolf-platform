@@ -731,6 +731,7 @@ export class BookingSagaStepService {
         playerCount: true,
         userId: true,
         clubId: true,
+        paymentMethod: true,
       },
     });
 
