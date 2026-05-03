@@ -75,7 +75,7 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
         retry_count: number;
       }>>`
         SELECT id, event_type, payload, retry_count
-        FROM outbox_events
+        FROM booking_outbox_events
         WHERE status = 'PENDING'
           AND (retry_count < ${MAX_RETRY_COUNT})
         ORDER BY created_at ASC

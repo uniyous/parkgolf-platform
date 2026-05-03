@@ -356,7 +356,7 @@ model OutboxEvent {
 
   @@index([status, createdAt])
   @@index([aggregateType, aggregateId])
-  @@map("outbox_events")
+  @@map("booking_outbox_events")
 }
 
 enum OutboxStatus {

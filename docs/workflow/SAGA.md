@@ -125,12 +125,13 @@ flowchart LR
 
 ## 3. 데이터 모델
 
-saga 처리에는 두 DB의 테이블이 관여합니다:
+saga 처리에는 세 DB의 테이블이 관여합니다:
 
 - **`saga_db`** (saga-service 소유): `SagaExecution`, `SagaStep` — saga 실행/이력
-- **`payment_db`** (payment-service 소유): `payment_outbox_events` — 결제 이벤트를 saga에 전달하는 트리거 소스
+- **`payment_db`** (payment-service 소유): `payment_outbox_events` — 결제 이벤트 트리거 소스 (자주 사용)
+- **`booking_db`** (booking-service 소유): `booking_outbox_events` — booking 도메인 이벤트 트리거 소스 (그룹 취소 등 희귀 케이스)
 
-직접적인 FK 관계는 없으며, `payment_outbox_events`가 NATS로 이벤트를 publish하면 saga-service가 수신하여 새로운 `SagaExecution` 레코드를 생성하는 간접 연결입니다.
+직접적인 FK 관계는 없으며, 각 outbox가 NATS로 이벤트를 publish하면 saga-service가 수신하여 새로운 `SagaExecution` 레코드를 생성하는 간접 연결입니다.
 
 ### 3.1 ERD
 
@@ -139,6 +140,7 @@ saga 처리에는 두 DB의 테이블이 관여합니다:
 erDiagram
     SagaExecution ||--o{ SagaStep : "1:N"
     PaymentOutboxEvent ||..o{ SagaExecution : "triggers via NATS<br/>(booking.paymentConfirmed / paymentFailed)"
+    BookingOutboxEvent ||..o{ SagaExecution : "triggers via NATS<br/>(payment.cancelByBookingId 등)"
 
     SagaExecution {
         int id PK "saga_db.saga_executions"
@@ -179,6 +181,19 @@ erDiagram
         string aggregate_id "payment.id"
         string event_type "payment.confirmed / payment.failed / payment.canceled / payment.deposited"
         json payload "bookingId, orderId, paymentKey, amount 등"
+        OutboxStatus status "PENDING → PROCESSING → SENT / FAILED"
+        int retry_count
+        string last_error "nullable"
+        datetime created_at
+        datetime processed_at "nullable"
+    }
+
+    BookingOutboxEvent {
+        int id PK "booking_db.booking_outbox_events"
+        string aggregate_type "Booking"
+        string aggregate_id "booking.id"
+        string event_type "payment.cancelByBookingId 등"
+        json payload "bookingId, cancelReason 등"
         OutboxStatus status "PENDING → PROCESSING → SENT / FAILED"
         int retry_count
         string last_error "nullable"
@@ -282,7 +297,8 @@ erDiagram
 
 **원본 스키마**:
 - saga 측: `services/saga-service/prisma/schema.prisma`
-- payment 측 outbox: `services/payment-service/prisma/schema.prisma` (`PaymentOutboxEvent` 모델)
+- payment outbox: `services/payment-service/prisma/schema.prisma` (`PaymentOutboxEvent` 모델 → `payment_outbox_events`)
+- booking outbox: `services/booking-service/prisma/schema.prisma` (`OutboxEvent` 모델 → `booking_outbox_events`)
 
 ---
 
