@@ -6,8 +6,8 @@ struct PaymentCardView: View {
     var onPaymentComplete: ((Bool) -> Void)?
     var onRequestPayment: ((String, String, Int) -> Void)?
 
-    // 백엔드 saga-scheduler가 10분 후 PAYMENT_TIMEOUT 트리거하므로 10초 버퍼 (이중 결제 방지)
-    private static let PAYMENT_TIMEOUT_SECONDS = 9 * 60 + 50  // 9분 50초
+    // 백엔드 saga-scheduler가 5분 후 PAYMENT_TIMEOUT 트리거하므로 10초 버퍼 (이중 결제 방지)
+    private static let PAYMENT_TIMEOUT_SECONDS = 4 * 60 + 50  // 4분 50초
 
     @State private var remainingSeconds: Int = PaymentCardView.PAYMENT_TIMEOUT_SECONDS
     @State private var isExpired = false

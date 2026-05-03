@@ -15,7 +15,7 @@ export interface SplitPrepareDto {
     userEmail: string;
     amount: number;
   }>;
-  expirationMinutes?: number; // 기본 30분
+  expirationMinutes?: number; // 기본 5분 (saga-scheduler SLOT_RESERVED_TIMEOUT_MINUTES와 통일)
 }
 
 export interface SplitConfirmDto {
@@ -39,7 +39,7 @@ export class PaymentSplitService {
    * 참여자별 개별 orderId를 생성하여 PaymentSplit 레코드 생성
    */
   async prepareSplit(dto: SplitPrepareDto) {
-    const expirationMinutes = dto.expirationMinutes || 30;
+    const expirationMinutes = dto.expirationMinutes || 5;
     const expiredAt = new Date(Date.now() + expirationMinutes * 60 * 1000);
 
     const splits = await this.prisma.$transaction(

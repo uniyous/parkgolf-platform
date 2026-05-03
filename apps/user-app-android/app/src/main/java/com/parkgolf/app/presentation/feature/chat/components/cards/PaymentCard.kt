@@ -17,8 +17,8 @@ import java.text.NumberFormat
 import java.time.LocalDate
 import java.util.Locale
 
-// 백엔드 saga-scheduler가 10분 후 PAYMENT_TIMEOUT 트리거하므로 10초 버퍼 (이중 결제 방지)
-private const val PAYMENT_TIMEOUT_SECONDS = 9 * 60 + 50 // 9분 50초
+// 백엔드 saga-scheduler가 5분 후 PAYMENT_TIMEOUT 트리거하므로 10초 버퍼 (이중 결제 방지)
+private const val PAYMENT_TIMEOUT_SECONDS = 4 * 60 + 50 // 4분 50초
 
 @Composable
 fun PaymentCard(

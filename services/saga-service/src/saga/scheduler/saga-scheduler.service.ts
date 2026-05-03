@@ -7,7 +7,7 @@ import { SagaStatus } from '@prisma/client';
 import { SAGA_CONFIG, NATS_TIMEOUTS } from '../../common/constants/nats.constants';
 import { SagaEngineService } from '../engine/saga-engine.service';
 
-const SLOT_RESERVED_TIMEOUT_MINUTES = 10;
+const SLOT_RESERVED_TIMEOUT_MINUTES = 5;
 
 interface ExpiredBooking {
   id: number;
