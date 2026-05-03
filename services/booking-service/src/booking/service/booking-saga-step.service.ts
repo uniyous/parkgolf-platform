@@ -305,7 +305,7 @@ export class BookingSagaStepService {
             },
           });
 
-          await prisma.outboxEvent.create({
+          await prisma.bookingOutboxEvent.create({
             data: {
               aggregateType: 'Booking',
               aggregateId: String(data.bookingId),

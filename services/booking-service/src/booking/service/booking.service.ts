@@ -270,7 +270,7 @@ export class BookingService {
 
     // 카드/더치페이인 경우 환불 OutboxEvent 생성
     if (existingBooking.paymentMethod === 'card' || existingBooking.paymentMethod === 'dutchpay') {
-      await prisma.outboxEvent.create({
+      await prisma.bookingOutboxEvent.create({
         data: {
           aggregateType: 'Booking',
           aggregateId: String(existingBooking.id),

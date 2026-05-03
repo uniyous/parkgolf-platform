@@ -114,7 +114,7 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
 
     try {
       // PROCESSING 상태로 변경
-      await this.prisma.outboxEvent.update({
+      await this.prisma.bookingOutboxEvent.update({
         where: { id: event.id },
         data: { status: OutboxStatus.PROCESSING },
       });
@@ -191,7 +191,7 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
    * 이벤트 발행 성공 처리
    */
   private async markEventAsSent(eventId: number): Promise<void> {
-    await this.prisma.outboxEvent.update({
+    await this.prisma.bookingOutboxEvent.update({
       where: { id: eventId },
       data: {
         status: OutboxStatus.SENT,
@@ -210,7 +210,7 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
     const newRetryCount = event.retry_count + 1;
     const isFinalFailure = newRetryCount >= MAX_RETRY_COUNT;
 
-    await this.prisma.outboxEvent.update({
+    await this.prisma.bookingOutboxEvent.update({
       where: { id: event.id },
       data: {
         status: isFinalFailure ? OutboxStatus.FAILED : OutboxStatus.PENDING,
@@ -237,7 +237,7 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
-    const result = await this.prisma.outboxEvent.deleteMany({
+    const result = await this.prisma.bookingOutboxEvent.deleteMany({
       where: {
         status: OutboxStatus.SENT,
         processedAt: { lt: cutoffDate },
