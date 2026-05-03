@@ -17,7 +17,9 @@ interface PaymentCardProps {
   completed?: boolean;
 }
 
-const PAYMENT_TIMEOUT_SECONDS = 10 * 60; // 10분
+// 백엔드 saga-scheduler가 10분 후 PAYMENT_TIMEOUT 트리거하므로 10초 버퍼를 두고 종료
+// (이중 결제 / 결제-환불 race condition 방지)
+const PAYMENT_TIMEOUT_SECONDS = 9 * 60 + 50; // 9분 50초
 
 export const PaymentCard: React.FC<PaymentCardProps> = ({ data, roomId, conversationId, onPaymentComplete, completed }) => {
   const [remainingSeconds, setRemainingSeconds] = useState(PAYMENT_TIMEOUT_SECONDS);
