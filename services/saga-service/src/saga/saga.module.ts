@@ -5,6 +5,7 @@ import { SagaRegistry } from './engine/saga-registry';
 import { StepExecutorService } from './engine/step-executor.service';
 import { SagaNatsController } from './controller/saga-nats.controller';
 import { SagaSchedulerService } from './scheduler/saga-scheduler.service';
+import { SagaPgBossWorkerService } from './scheduler/saga-pgboss-worker.service';
 
 @Module({
   imports: [ScheduleModule.forRoot()],
@@ -14,6 +15,7 @@ import { SagaSchedulerService } from './scheduler/saga-scheduler.service';
     SagaRegistry,
     StepExecutorService,
     SagaSchedulerService,
+    SagaPgBossWorkerService,
   ],
   exports: [SagaEngineService],
 })

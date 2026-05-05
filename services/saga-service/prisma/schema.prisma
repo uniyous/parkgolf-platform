@@ -27,6 +27,9 @@ model SagaExecution {
   payload        Json
   failReason     String?     @map("fail_reason")
 
+  // pg-boss timeout task ID (정상 완료 시 cancel용)
+  timeoutJobId   String?     @map("timeout_job_id")
+
   // 트리거 정보
   triggeredBy    String?     @map("triggered_by")    // USER, ADMIN, SYSTEM, SCHEDULER
   triggeredById  Int?        @map("triggered_by_id")
