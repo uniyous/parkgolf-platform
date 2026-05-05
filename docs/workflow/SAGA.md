@@ -496,7 +496,101 @@ Response:
 - saga correlationId(`payment-failed:{orderId}`)로 중복 saga 방지
 - 클라이언트는 네트워크 재시도 안전
 
-### 6.5 Outbox 재시도
+### 6.5 더치페이(분할결제) 예외 처리 흐름
+
+분할결제는 단일결제보다 시나리오가 다양합니다. 4명 더치페이 기준 전체 흐름:
+
+```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#E3F2FD','primaryTextColor':'#000','primaryBorderColor':'#1565C0','lineColor':'#37474F','clusterBkg':'#ECEFF1','fontSize':'13px'}}}%%
+flowchart TD
+    Start(["👥 4명 더치페이 booking<br/>SLOT_RESERVED + 4 PaymentSplit(PENDING)"]) --> Branch{"⏱️ 시나리오"}
+
+    Branch -->|"😀 4명 모두 결제 완료"| AllPaid["✅ booking.paymentConfirmed<br/>(payment-service outbox)"]
+    Branch -->|"😟 1명 명시적 실패/취소<br/>(Toss onFail/onCancel)"| Explicit["📤 client → POST /payments/:orderId/abandon"]
+    Branch -->|"😴 1명 잠수<br/>(앱 종료, 알림 무시)"| Silent["⏰ 5분 경과 대기"]
+    Branch -->|"🔄 결제 후 변심<br/>(이미 PAID 후 취소 요청)"| Mind["💬 그룹 booking 취소"]
+
+    AllPaid --> ConfirmedSaga["🔄 PAYMENT_CONFIRMED Saga"]
+    ConfirmedSaga --> Confirmed["✅ booking CONFIRMED<br/>+ 알림"]
+
+    Explicit --> AbandonAPI["🔧 payment.markAborted<br/>(split 인식 분기 — 신규)"]
+    AbandonAPI --> SplitAborted["📝 PaymentSplit.status=ABORTED<br/>+ outbox: booking.paymentFailed"]
+    SplitAborted --> FailedSaga["🔄 PAYMENT_FAILED Saga<br/>(REFUND_PAID_SPLITS step 추가 — 신규)"]
+
+    Silent --> Scheduler["⏱️ saga-scheduler 매분 검사<br/>5분 초과 SLOT_RESERVED 검출"]
+    Scheduler --> TimeoutSaga["🔄 PAYMENT_TIMEOUT Saga<br/>(REFUND_PAID_SPLITS step 이미 있음)"]
+
+    Mind --> CancelSaga["🔄 CANCEL_BOOKING Saga<br/>(정책 결정 필요)"]
+    CancelSaga --> CancelDone["✅ booking CANCELLED<br/>+ 4명 모두 환불"]
+
+    FailedSaga --> Cleanup["🧹 공통 정리 단계"]
+    TimeoutSaga --> Cleanup
+    Cleanup --> Step1["1️⃣ REFUND_PAID_SPLITS<br/>PAID split → Toss 환불 → REFUNDED<br/>PENDING split → EXPIRED"]
+    Step1 --> Step2["2️⃣ MARK_BOOKING_FAILED<br/>booking.status = FAILED"]
+    Step2 --> Step3["3️⃣ RELEASE_SLOT<br/>course-service 슬롯 복구"]
+    Step3 --> Step4["4️⃣ NOTIFY<br/>'X명에게 N원 자동 환불' 알림"]
+    Step4 --> Done(["⚠️ 정리 완료<br/>4명 모두에게 알림"])
+
+    classDef start fill:#795548,color:#fff,stroke:#4E342E,stroke-width:2px
+    classDef branch fill:#EF6C00,color:#fff,stroke:#BF360C,stroke-width:3px
+    classDef saga fill:#6A1B9A,color:#fff,stroke:#4A148C,stroke-width:3px
+    classDef proc fill:#1565C0,color:#fff,stroke:#0D47A1,stroke-width:2px
+    classDef new fill:#C62828,color:#fff,stroke:#8E0000,stroke-width:3px,stroke-dasharray:5 5
+    classDef ok fill:#2E7D32,color:#fff,stroke:#1B5E20,stroke-width:2px
+
+    class Start start
+    class Branch branch
+    class ConfirmedSaga,FailedSaga,TimeoutSaga,CancelSaga saga
+    class AbandonAPI,SplitAborted,Explicit,Silent,Mind,AllPaid proc
+    class Step1,Step2,Step3,Step4 proc
+    class Scheduler proc
+    class Cleanup new
+    class Confirmed,CancelDone,Done ok
+```
+
+> **빨간 점선** (`Cleanup`): 공통 정리 4단계. PAYMENT_FAILED와 PAYMENT_TIMEOUT 두 saga가 동일한 step을 공유하여 중복 코드 제거.
+
+#### 시나리오별 처리 시점 비교
+
+| 시나리오 | 트리거 시점 | Saga | 처리 지연 |
+|---------|------------|------|----------|
+| 1. 명시적 실패/취소 | client abandon API 즉시 | PAYMENT_FAILED | ~3초 (outbox processor) |
+| 2. 잠수 (미응답) | saga-scheduler 매분 검사 | PAYMENT_TIMEOUT | 5~6분 |
+| 3. 모두 완료 | 마지막 split confirm 즉시 | PAYMENT_CONFIRMED | ~3초 |
+| 4. 결제 후 변심 | 사용자 명시적 cancel 요청 | CANCEL_BOOKING | 즉시 |
+
+#### 현재 구현 상태 vs 신규 작업
+
+| 항목 | 현재 상태 | 필요 작업 |
+|------|----------|----------|
+| PAYMENT_TIMEOUT의 REFUND_PAID_SPLITS | ✅ 구현됨 | - |
+| PAYMENT_FAILED의 REFUND_PAID_SPLITS | ❌ 미구현 | **신규 step 추가 필요** |
+| payment.markAborted의 split 분기 | ❌ 단일결제만 | **split 인식 로직 추가** |
+| notify-service의 split 메시지 | ⚠️ paymentTimeout만 dutchpay 분기 | paymentFailed에도 동일 분기 |
+| 시나리오 4 (결제 후 변심) 정책 | ❌ 미정의 | **정책 결정 필요** (UX 측) |
+| Toss webhook 자동 동기화 | ❌ 미연동 | webhook 라우트 등록 |
+
+#### 핵심 결정 포인트 (사용자 협의)
+
+```
+[Q1] 1명 명시적 실패 시 즉시 booking 정리 vs 5분 대기?
+  - 즉시 정리 (제안): UX 명확, 다른 멤버 헛수고 방지
+  - 5분 대기: 실패자가 재시도 기회 (단 PaymentSplit이 ABORTED라 새 split 생성 필요)
+  → 권장: 즉시 정리 (PAYMENT_FAILED Saga 즉시 실행)
+
+[Q2] 시나리오 4 정책 (이미 PAID 후 그룹 취소)
+  - 옵션 a) 환불 거절 (5분 안 모두 결제 정책)
+  - 옵션 b) 그룹 취소 허용 (CANCEL_BOOKING saga로 4명 모두 환불)
+  → 비즈니스 정책 결정 필요
+
+[Q3] PaymentSplit 재결제 허용?
+  - ABORTED/EXPIRED 후 같은 멤버가 다시 결제 시도 가능?
+  - 권장: 불허 (booking 자체를 새로 만들도록)
+```
+
+---
+
+### 6.6 Outbox 재시도
 
 - payment_outbox_events 발행 실패 시 지수 백오프 (1s → 2s → 4s, 최대 5회)
 - 최종 실패: `status='FAILED'`, `last_error` 기록 → 운영자 수동 처리
