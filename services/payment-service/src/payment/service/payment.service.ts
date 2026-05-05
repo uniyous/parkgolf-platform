@@ -4,6 +4,7 @@ import { Prisma, PaymentStatus, PaymentMethod, RefundStatus, OutboxStatus } from
 import { PrismaService } from '../../../prisma/prisma.service';
 import { TossApiService, TossPaymentResponse } from './toss-api.service';
 import { AppException, Errors } from '../../common/exceptions';
+import { PgBossService } from '../../common/pgboss/pgboss.service';
 import {
   PreparePaymentDto,
   ConfirmPaymentDto,
@@ -21,6 +22,7 @@ export class PaymentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tossApi: TossApiService,
+    private readonly pgboss: PgBossService,
     @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
     @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
   ) {}
@@ -592,13 +594,21 @@ export class PaymentService {
   }
 
   /**
-   * Outbox 이벤트 생성
+   * Outbox 이벤트 생성 + pg-boss 즉시 트리거
+   *
+   * 흐름:
+   *   1. PaymentOutboxEvent INSERT (트랜잭션 안전성 확보)
+   *   2. pg-boss send로 worker 즉시 트리거 (~수ms 지연)
+   *   3. worker가 NATS publish → status=SENT 업데이트
+   *
+   * pg-boss send 실패 시 OutboxEvent는 PENDING 상태로 남고,
+   * OutboxBackupPollerService(1분 주기)가 안전망으로 처리.
    */
   private async createOutboxEvent(
     eventType: string,
     payload: Record<string, unknown> & { paymentId: number },
   ) {
-    await this.prisma.paymentOutboxEvent.create({
+    const event = await this.prisma.paymentOutboxEvent.create({
       data: {
         aggregateType: 'Payment',
         aggregateId: String(payload.paymentId),
@@ -607,6 +617,23 @@ export class PaymentService {
         status: OutboxStatus.PENDING,
       },
     });
+
+    // pg-boss 즉시 트리거 (실패해도 안전망에서 처리하므로 throw 안 함)
+    try {
+      await this.pgboss.send(
+        'payment-outbox-publish',
+        { outboxEventId: event.id },
+        {
+          singletonKey: `outbox-${event.id}`,
+          retryLimit: 5,
+          retryBackoff: true,
+        },
+      );
+    } catch (err) {
+      this.logger.warn(
+        `[Outbox] pg-boss send failed for event ${event.id}: ${err instanceof Error ? err.message : 'unknown'}. Will be picked up by backup poller.`,
+      );
+    }
   }
 
   /**

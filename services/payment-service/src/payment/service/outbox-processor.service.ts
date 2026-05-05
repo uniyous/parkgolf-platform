@@ -4,10 +4,25 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { OutboxStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { firstValueFrom, timeout } from 'rxjs';
+import type { Job } from 'pg-boss';
+import { PgBossService } from '../../common/pgboss/pgboss.service';
+
+const OUTBOX_QUEUE = 'payment-outbox-publish';
+
+interface OutboxJobData {
+  outboxEventId: number;
+}
 
 /**
  * Outbox 이벤트 프로세서
- * 결제 이벤트를 다른 서비스로 안정적으로 전달
+ *
+ * 처리 경로 (이중 안전망):
+ *   1. Primary: pg-boss worker (createOutboxEvent에서 즉시 트리거됨)
+ *   2. Backup: 매 1분 cron으로 미처리 PENDING 검사 (pg-boss 장애 시 안전망)
+ *
+ * 멀티 pod 안전:
+ *   - pg-boss는 SELECT FOR UPDATE SKIP LOCKED 내장
+ *   - 백업 cron은 status PROCESSING 변경으로 단일 처리 보장
  */
 @Injectable()
 export class OutboxProcessorService implements OnModuleInit {
@@ -19,50 +34,71 @@ export class OutboxProcessorService implements OnModuleInit {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly pgboss: PgBossService,
     @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
     @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
   ) {}
 
   async onModuleInit() {
-    // 서비스 시작 시 NATS 클라이언트 연결
+    // NATS 클라이언트 연결
     await this.bookingClient.connect();
     await this.notificationClient.connect();
-    this.logger.log('Outbox processor initialized');
+
+    // pg-boss worker 등록 (primary 처리 경로)
+    await this.pgboss.createQueue(OUTBOX_QUEUE);
+    await this.pgboss.work<OutboxJobData>(OUTBOX_QUEUE, (job) => this.handleOutboxJob(job));
+
+    this.logger.log('Outbox processor initialized (pg-boss worker + backup cron)');
   }
 
   /**
-   * 5초마다 미처리 이벤트 처리
+   * pg-boss worker — outbox event id로 단건 처리
    */
-  @Cron(CronExpression.EVERY_5_SECONDS)
-  async processOutboxEvents() {
-    if (this.isProcessing) {
-      return;
+  private async handleOutboxJob(job: Job<OutboxJobData>): Promise<unknown> {
+    const event = await this.prisma.paymentOutboxEvent.findUnique({
+      where: { id: job.data.outboxEventId },
+    });
+    if (!event) {
+      return { skipped: true, reason: 'not_found' };
     }
+    if (event.status !== OutboxStatus.PENDING) {
+      return { skipped: true, currentStatus: event.status };
+    }
+    return this.processEvent(event);
+  }
 
+  /**
+   * 안전망 cron — pg-boss 장애 시 미처리 PENDING 회수
+   * 1분 주기로 검사 (정상 케이스에선 거의 빈 결과)
+   */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async backupPollPendingEvents() {
+    if (this.isProcessing) return;
     this.isProcessing = true;
 
     try {
-      // 처리 대기중인 이벤트 조회
       const events = await this.prisma.paymentOutboxEvent.findMany({
         where: {
           status: OutboxStatus.PENDING,
           retryCount: { lt: this.maxRetries },
+          // pg-boss가 처리 중인 신규 이벤트는 skip하기 위해 30초 이전 PENDING만
+          createdAt: { lt: new Date(Date.now() - 30_000) },
         },
         orderBy: { createdAt: 'asc' },
         take: this.batchSize,
       });
 
-      if (events.length === 0) {
-        return;
-      }
+      if (events.length === 0) return;
 
-      this.logger.log(`Processing ${events.length} outbox events`);
+      this.logger.warn(`[Outbox backup] Recovering ${events.length} stale PENDING events`);
 
       for (const event of events) {
         await this.processEvent(event);
       }
     } catch (error) {
-      this.logger.error('Outbox processing error', error);
+      this.logger.error(
+        `[Outbox backup] error: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
     } finally {
       this.isProcessing = false;
     }
