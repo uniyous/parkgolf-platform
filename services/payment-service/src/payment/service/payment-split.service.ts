@@ -15,7 +15,7 @@ export interface SplitPrepareDto {
     userEmail: string;
     amount: number;
   }>;
-  expirationMinutes?: number; // 기본 5분 (saga-scheduler SLOT_RESERVED_TIMEOUT_MINUTES와 통일)
+  expirationMinutes?: number; // 기본 5분 (saga-service의 SLOT_RESERVED_TIMEOUT_MINUTES와 통일)
 }
 
 export interface SplitConfirmDto {

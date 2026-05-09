@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
-import { ScheduleModule } from '@nestjs/schedule';
 import { PaymentService } from './service/payment.service';
 import { PaymentSplitService } from './service/payment-split.service';
 import { TossApiService } from './service/toss-api.service';
 import { OutboxProcessorService } from './service/outbox-processor.service';
+import { PaymentReconcileService } from './service/payment-reconcile.service';
 import { PaymentNatsController } from './controller/payment-nats.controller';
 import { WebhookController } from './controller/webhook.controller';
 
@@ -14,10 +14,15 @@ import { WebhookController } from './controller/webhook.controller';
       timeout: 60000, // 토스페이먼츠 권장 Read Timeout 60초 (카드사 승인 최대 지연 대비)
       maxRedirects: 5,
     }),
-    ScheduleModule.forRoot(),
   ],
   controllers: [PaymentNatsController, WebhookController],
-  providers: [PaymentService, PaymentSplitService, TossApiService, OutboxProcessorService],
+  providers: [
+    PaymentService,
+    PaymentSplitService,
+    TossApiService,
+    OutboxProcessorService,
+    PaymentReconcileService,
+  ],
   exports: [PaymentService, PaymentSplitService],
 })
 export class PaymentModule {}

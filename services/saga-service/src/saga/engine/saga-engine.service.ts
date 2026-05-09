@@ -124,7 +124,7 @@ export class SagaEngineService {
       this.logger.warn(
         `[SagaEngine] Failed to register timeout task: ${err instanceof Error ? err.message : 'unknown'}`,
       );
-      // saga 진행은 계속 (타임아웃 보상 누락은 안전망 cron이 처리)
+      // saga 진행은 계속 (타임아웃 보상 누락은 안전망 worker가 처리)
     }
 
     // Step들을 순차 실행

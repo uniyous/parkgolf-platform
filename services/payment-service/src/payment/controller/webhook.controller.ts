@@ -1,7 +1,7 @@
 import { Controller, Post, Body, Headers, Logger, HttpCode, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { PaymentService } from '../service/payment.service';
-import { PaymentStatus, RefundStatus, WebhookStatus, OutboxStatus } from '@prisma/client';
+import { PaymentStatus, RefundStatus, WebhookStatus } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 
@@ -137,6 +137,20 @@ export class WebhookController {
 
     const newStatus = this.mapPaymentStatus(data.status);
 
+    // 멱등 가드: 동일 status면 skip
+    if (payment.status === newStatus) {
+      this.logger.log(`Payment status already ${newStatus}: ${data.orderId} (idempotent)`);
+      return;
+    }
+
+    // 종결 상태에서 역행하는 webhook은 무시 (late arrival 안전망)
+    if (this.isTerminalStatus(payment.status)) {
+      this.logger.warn(
+        `Ignoring webhook regression: ${data.orderId} ${payment.status} → ${newStatus}`,
+      );
+      return;
+    }
+
     await this.prisma.payment.update({
       where: { id: payment.id },
       data: {
@@ -162,6 +176,12 @@ export class WebhookController {
       return;
     }
 
+    // 멱등 가드: 이미 DONE이면 skip (입금 webhook 재전송 대비)
+    if (payment.status === PaymentStatus.DONE) {
+      this.logger.log(`Payment already DONE: ${data.orderId} (idempotent)`);
+      return;
+    }
+
     // 입금 확인 시크릿 검증 (가상계좌 결제 시 토스가 발급한 secret과 비교)
     if (payment.metadata && typeof payment.metadata === 'object' && 'depositSecret' in payment.metadata) {
       const expectedSecret = (payment.metadata as Record<string, unknown>).depositSecret;
@@ -179,21 +199,13 @@ export class WebhookController {
       },
     });
 
-    // Outbox 이벤트 생성 (booking-service에 알림)
-    await this.prisma.paymentOutboxEvent.create({
-      data: {
-        aggregateType: 'Payment',
-        aggregateId: String(payment.id),
-        eventType: 'payment.deposited',
-        payload: {
-          paymentId: payment.id,
-          paymentKey: data.paymentKey,
-          orderId: data.orderId,
-          bookingId: payment.bookingId,
-          userId: payment.userId,
-        } as object,
-        status: OutboxStatus.PENDING,
-      },
+    // Outbox 이벤트 생성 + pg-boss 트리거 (booking-service에 알림)
+    await this.paymentService.createOutboxEvent('payment.deposited', {
+      paymentId: payment.id,
+      paymentKey: data.paymentKey,
+      orderId: data.orderId,
+      bookingId: payment.bookingId,
+      userId: payment.userId,
     });
 
     this.logger.log(`Virtual account deposit confirmed: ${data.orderId}`);
@@ -201,6 +213,7 @@ export class WebhookController {
 
   /**
    * 취소 상태 변경 처리
+   * 토스 콘솔 직접 환불 등 외부 취소 이벤트를 동기화
    */
   private async handleCancelStatusChanged(data: TossWebhookPayload['data']) {
     const payment = await this.prisma.payment.findUnique({
@@ -212,7 +225,13 @@ export class WebhookController {
       return;
     }
 
-    // 최신 취소 정보 저장
+    // 멱등 가드: 이미 CANCELED면 skip
+    if (payment.status === PaymentStatus.CANCELED) {
+      this.logger.log(`Payment already CANCELED: ${data.orderId} (idempotent)`);
+      return;
+    }
+
+    // 최신 취소 정보 저장 (transactionKey unique로 자동 멱등)
     if (data.cancels && data.cancels.length > 0) {
       const latestCancel = data.cancels[data.cancels.length - 1];
 
@@ -234,7 +253,44 @@ export class WebhookController {
       }
     }
 
-    this.logger.log(`Cancel status updated: ${data.orderId}`);
+    // payment.status 동기화 + booking-service에 통보 (토스 status가 종결 상태일 때만)
+    const newStatus = this.mapPaymentStatus(data.status);
+    if (
+      payment.status !== newStatus &&
+      (newStatus === PaymentStatus.CANCELED || newStatus === PaymentStatus.PARTIAL_CANCELED)
+    ) {
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: { status: newStatus },
+      });
+
+      const totalCancelAmount = (data.cancels ?? []).reduce(
+        (sum, c) => sum + c.cancelAmount,
+        0,
+      );
+      await this.paymentService.createOutboxEvent('payment.canceled', {
+        paymentId: payment.id,
+        paymentKey: data.paymentKey,
+        cancelAmount: totalCancelAmount,
+        bookingId: payment.bookingId,
+        userId: payment.userId,
+      });
+    }
+
+    this.logger.log(`Cancel status updated: ${data.orderId} -> ${newStatus}`);
+  }
+
+  /**
+   * 종결 상태 (이후 변경 금지) 판정
+   */
+  private isTerminalStatus(status: PaymentStatus): boolean {
+    return (
+      status === PaymentStatus.DONE ||
+      status === PaymentStatus.CANCELED ||
+      status === PaymentStatus.PARTIAL_CANCELED ||
+      status === PaymentStatus.ABORTED ||
+      status === PaymentStatus.EXPIRED
+    );
   }
 
   /**

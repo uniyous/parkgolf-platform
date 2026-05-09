@@ -1,62 +1,111 @@
-import { Injectable, Logger, Inject, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, Inject, OnModuleInit } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboxStatus } from '@prisma/client';
 import { firstValueFrom, timeout, catchError, of } from 'rxjs';
+import type { Job } from 'pg-boss';
 import { NATS_TIMEOUTS } from '../../common/constants';
+import { PgBossService } from '../../common/pgboss/pgboss.service';
 
 // Outbox 처리 설정
-const POLL_INTERVAL_MS = 3000;       // 3초 안전망 폴링 (GKE 복수 Pod 환경 대비)
 const BATCH_SIZE = 10;               // 한 번에 처리할 이벤트 수
 const MAX_RETRY_COUNT = 5;           // 최대 재시도 횟수
+const OUTBOX_QUEUE = 'booking-outbox-publish';
+const BACKUP_POLL_QUEUE = 'booking-outbox-backup-poll';
 
+interface OutboxJobData {
+  outboxEventId: number;
+}
+
+/**
+ * Outbox 이벤트 프로세서
+ *
+ * 처리 경로 (이중 안전망):
+ *   1. Primary: pg-boss worker (createOutboxEvent 후 triggerImmediate에서 즉시 트리거)
+ *   2. Backup: pg-boss recurring(매분) — pg-boss send 실패 시 stale PENDING 회수
+ *
+ * 멀티 pod 안전:
+ *   - 두 worker 모두 SELECT FOR UPDATE SKIP LOCKED 내장
+ *   - backup poll의 raw query도 FOR UPDATE SKIP LOCKED 사용
+ */
 @Injectable()
-export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
+export class OutboxProcessorService implements OnModuleInit {
   private readonly logger = new Logger(OutboxProcessorService.name);
-  private isProcessing = false;
-  private intervalHandle: NodeJS.Timeout | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly pgboss: PgBossService,
     @Inject('COURSE_SERVICE') private readonly courseServiceClient: ClientProxy,
     @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
     @Inject('PAYMENT_SERVICE') private readonly paymentServiceClient: ClientProxy,
   ) {}
 
-  onModuleInit() {
-    this.logger.log('OutboxProcessor starting...');
-    this.startPolling();
+  async onModuleInit() {
+    // Primary: 단건 outbox 트리거 worker
+    await this.pgboss.createQueue(OUTBOX_QUEUE);
+    await this.pgboss.work<OutboxJobData>(OUTBOX_QUEUE, (job) => this.handleOutboxJob(job));
+
+    // Backup: 매분 PENDING 회수 (pg-boss recurring)
+    await this.pgboss.createQueue(BACKUP_POLL_QUEUE);
+    await this.pgboss.schedule(BACKUP_POLL_QUEUE, '* * * * *');
+    await this.pgboss.work(BACKUP_POLL_QUEUE, () => this.backupPollPendingEvents());
+
+    this.logger.log('OutboxProcessor initialized (pg-boss worker + recurring backup poll)');
   }
 
-  onModuleDestroy() {
-    this.logger.log('OutboxProcessor stopping...');
-    this.stopPolling();
-  }
+  /**
+   * pg-boss worker — outboxEventId로 단건 조회 후 발행
+   */
+  private async handleOutboxJob(job: Job<OutboxJobData>): Promise<unknown> {
+    const event = await this.prisma.bookingOutboxEvent.findUnique({
+      where: { id: job.data.outboxEventId },
+    });
+    if (!event) return { skipped: true, reason: 'not_found' };
+    if (event.status !== OutboxStatus.PENDING) return { skipped: true, currentStatus: event.status };
 
-  private startPolling() {
-    this.intervalHandle = setInterval(async () => {
-      if (!this.isProcessing) {
-        await this.processOutboxEvents();
-      }
-    }, POLL_INTERVAL_MS);
-  }
-
-  private stopPolling() {
-    if (this.intervalHandle) {
-      clearInterval(this.intervalHandle);
-      this.intervalHandle = null;
-    }
+    return this.processEvent({
+      id: event.id,
+      event_type: event.eventType,
+      payload: event.payload,
+      retry_count: event.retryCount,
+    });
   }
 
   /**
    * 새 OutboxEvent 생성 직후 즉시 처리 트리거
-   * - 트랜잭션 커밋 후 호출하여 폴링 대기 없이 즉시 이벤트 발행
-   * - 이미 처리 중이면 안전망 폴링에서 처리됨
+   * - id 있으면 pg-boss send로 단건 worker 트리거
+   * - id 없으면 backup poll 즉시 실행 (그룹 작업 등에서 다건 처리)
    */
-  async triggerImmediate(): Promise<void> {
-    if (!this.isProcessing) {
-      this.logger.debug('[Outbox] Immediate trigger activated');
+  async triggerImmediate(outboxEventId?: number): Promise<void> {
+    if (outboxEventId) {
+      try {
+        await this.pgboss.send(
+          OUTBOX_QUEUE,
+          { outboxEventId },
+          { singletonKey: `outbox-${outboxEventId}`, retryLimit: MAX_RETRY_COUNT, retryBackoff: true },
+        );
+        return;
+      } catch (err) {
+        this.logger.warn(
+          `[Outbox] pg-boss trigger failed for event ${outboxEventId}: ${err instanceof Error ? err.message : 'unknown'}. Backup poll will pick up.`,
+        );
+      }
+    }
+    // id 없거나 pg-boss 실패 → backup poll 즉시 실행
+    await this.backupPollPendingEvents();
+  }
+
+  /**
+   * 안전망 — pg-boss recurring(매분)으로 미처리 PENDING 회수
+   * pg-boss work는 동시 실행을 단일 처리로 보장 (SELECT FOR UPDATE SKIP LOCKED)
+   */
+  async backupPollPendingEvents(): Promise<void> {
+    try {
       await this.processOutboxEvents();
+    } catch (err) {
+      this.logger.error(
+        `[Outbox backup] error: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
     }
   }
 
@@ -64,8 +113,6 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
    * Outbox 이벤트 처리 메인 루프
    */
   async processOutboxEvents(): Promise<void> {
-    this.isProcessing = true;
-
     try {
       // PENDING 상태의 이벤트 조회 (FOR UPDATE SKIP LOCKED로 동시성 제어)
       const events = await this.prisma.$queryRaw<Array<{
@@ -94,8 +141,6 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
       }
     } catch (error) {
       this.logger.error(`Outbox processing error: ${error.message}`);
-    } finally {
-      this.isProcessing = false;
     }
   }
 
@@ -230,21 +275,4 @@ export class OutboxProcessorService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /**
-   * 만료된 SENT 이벤트 정리
-   */
-  async cleanupOldEvents(retentionDays: number = 7): Promise<number> {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
-
-    const result = await this.prisma.bookingOutboxEvent.deleteMany({
-      where: {
-        status: OutboxStatus.SENT,
-        processedAt: { lt: cutoffDate },
-      },
-    });
-
-    this.logger.log(`Cleaned up ${result.count} old outbox events`);
-    return result.count;
-  }
 }

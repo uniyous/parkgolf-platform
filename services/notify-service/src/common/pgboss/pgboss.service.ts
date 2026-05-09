@@ -5,6 +5,7 @@ import type {
   ConstructorOptions,
   SendOptions,
   WorkOptions,
+  ScheduleOptions,
   Job,
 } from 'pg-boss';
 
@@ -13,7 +14,7 @@ import type {
  *
  * 책임:
  *   - PostgreSQL 기반 지연/재시도/취소 가능한 job queue
- *   - saga timeout, payment timeout 등 이벤트 기반 지연 처리
+ *   - 알림 발송/재시도/DLQ 이동/만료 정리 등 정기 작업
  *
  * 멀티 pod 안전:
  *   - SELECT FOR UPDATE SKIP LOCKED 내장 (worker 측)
@@ -87,6 +88,18 @@ export class PgBossService implements OnModuleInit, OnModuleDestroy {
       const job = Array.isArray(jobs) ? jobs[0] : jobs;
       return handler(job);
     });
+  }
+
+  /**
+   * Recurring schedule (cron 표현식)
+   */
+  async schedule(
+    queueName: string,
+    cron: string,
+    data: object = {},
+    options: ScheduleOptions = {},
+  ): Promise<void> {
+    await this.boss.schedule(queueName, cron, data, options);
   }
 
   /**

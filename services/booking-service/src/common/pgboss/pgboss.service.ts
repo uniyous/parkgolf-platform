@@ -5,6 +5,7 @@ import type {
   ConstructorOptions,
   SendOptions,
   WorkOptions,
+  ScheduleOptions,
   Job,
 } from 'pg-boss';
 
@@ -87,6 +88,18 @@ export class PgBossService implements OnModuleInit, OnModuleDestroy {
       const job = Array.isArray(jobs) ? jobs[0] : jobs;
       return handler(job);
     });
+  }
+
+  /**
+   * Recurring schedule (cron 표현식)
+   */
+  async schedule(
+    queueName: string,
+    cron: string,
+    data: object = {},
+    options: ScheduleOptions = {},
+  ): Promise<void> {
+    await this.boss.schedule(queueName, cron, data, options);
   }
 
   /**
