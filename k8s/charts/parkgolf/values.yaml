@@ -2,7 +2,7 @@ global:
   namespace: parkgolf-dev
   image:
     registry: asia-northeast3-docker.pkg.dev/parkgolf-uniyous/parkgolf
-    tag: dev-latest
+    tag: 27494d8ecbca49cd89bd3dba18c46fdcd16c077e
     pullPolicy: IfNotPresent
   domain: dev-api.parkgolfmate.com
 
