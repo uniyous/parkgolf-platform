@@ -1,15 +1,22 @@
-# Infrastructure CD Pipeline
-# Manages network infrastructure (Terraform) and GKE cluster
+# Infrastructure CD Pipeline (GitOps)
+# Manages network (Terraform) and GKE Standard cluster + ArgoCD + External Secrets bootstrap.
 #
 # Actions:
-#   - status: Check infrastructure status
-#   - network-apply: Create/update VPC and subnets (Terraform)
-#   - gke-setup: Create GKE cluster with PostgreSQL and NATS
-#   - gke-update: Update secrets and configmaps
-#   - gke-destroy: Delete GKE cluster
+#   - status:          Check infrastructure status
+#   - network-apply:   Create/update VPC and subnets (Terraform)
+#   - gke-setup:       Create GKE Standard cluster, install ArgoCD + ESO,
+#                      seed GCP Secret Manager, apply ArgoCD Application
+#                      (Helm chart at k8s/charts/parkgolf is then auto-synced)
+#   - gke-update:      Re-seed GCP Secret Manager (rotate keys) and
+#                      trigger ESO refresh + ArgoCD hard-refresh
+#   - gke-destroy:     Delete GKE cluster (preserves Artifact Registry, VPC, GCP Secret Manager)
 #   - network-destroy: Delete VPC and subnets (Terraform)
 
 name: CD Infrastructure
+
+concurrency:
+  group: cd-infra-${{ github.event.inputs.environment }}
+  cancel-in-progress: false
 
 on:
   workflow_dispatch:
@@ -236,12 +243,13 @@ jobs:
 
       - name: Validate Secrets
         run: |
-          if [ -z "${{ secrets.DB_PASSWORD }}" ]; then
-            echo "::error::DB_PASSWORD secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.JWT_SECRET }}" ]; then
-            echo "::error::JWT_SECRET secret is not set"
+          MISSING=()
+          for KEY in DB_PASSWORD JWT_SECRET JWT_REFRESH_SECRET TOSS_SECRET_KEY TOSS_SECURITY_KEY KMA_API_KEY KAKAO_API_KEY DEEPSEEK_API_KEY PARTNER_ENCRYPTION_KEY; do
+            VAL=$(jq -r --arg k "$KEY" '.[$k] // ""' <<< '${{ toJSON(secrets) }}')
+            [ -z "$VAL" ] && MISSING+=("$KEY")
+          done
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "::error::Missing GitHub Secrets: ${MISSING[*]}"
             exit 1
           fi
           echo "All required secrets are configured"
@@ -436,7 +444,7 @@ jobs:
   # GKE Update (Secrets/ConfigMap)
   # ============================================================================
   gke-update:
-    name: GKE Update
+    name: GKE Update (rotate secrets + ArgoCD refresh)
     needs: setup
     if: github.event.inputs.action == 'gke-update'
     runs-on: ubuntu-latest
@@ -452,77 +460,53 @@ jobs:
         with:
           install_components: 'gke-gcloud-auth-plugin'
 
+      - name: Re-seed GCP Secret Manager
+        run: |
+          ENV=${{ needs.setup.outputs.environment }}
+          declare -A SECRETS=(
+            [POSTGRES_USER]="parkgolf"
+            [POSTGRES_PASSWORD]="${{ secrets.DB_PASSWORD }}"
+            [JWT_SECRET]="${{ secrets.JWT_SECRET }}"
+            [JWT_REFRESH_SECRET]="${{ secrets.JWT_REFRESH_SECRET }}"
+            [TOSS_SECRET_KEY]="${{ secrets.TOSS_SECRET_KEY }}"
+            [TOSS_SECURITY_KEY]="${{ secrets.TOSS_SECURITY_KEY }}"
+            [KMA_API_KEY]="${{ secrets.KMA_API_KEY }}"
+            [KAKAO_API_KEY]="${{ secrets.KAKAO_API_KEY }}"
+            [DEEPSEEK_API_KEY]="${{ secrets.DEEPSEEK_API_KEY }}"
+            [PARTNER_ENCRYPTION_KEY]="${{ secrets.PARTNER_ENCRYPTION_KEY }}"
+          )
+
+          for KEY in "${!SECRETS[@]}"; do
+            VALUE="${SECRETS[$KEY]}"
+            SECRET_NAME="parkgolf-${ENV}-${KEY}"
+            [ -z "$VALUE" ] && { echo "::warning::$KEY empty, skip"; continue; }
+
+            if gcloud secrets describe $SECRET_NAME 2>/dev/null > /dev/null; then
+              printf "%s" "$VALUE" | gcloud secrets versions add $SECRET_NAME --data-file=-
+              echo "Updated: $SECRET_NAME"
+            else
+              printf "%s" "$VALUE" | gcloud secrets create $SECRET_NAME --data-file=-
+              echo "Created: $SECRET_NAME"
+            fi
+          done
+
       - name: Get GKE Credentials
         run: |
           gcloud container clusters get-credentials ${{ needs.setup.outputs.cluster_name }} \
             --zone=asia-northeast3-a
 
-      - name: Update Secrets
+      - name: Trigger ESO refresh
         run: |
-          kubectl create secret generic parkgolf-secrets \
-            --namespace=${{ needs.setup.outputs.namespace }} \
-            --from-literal=POSTGRES_USER=parkgolf \
-            --from-literal=POSTGRES_PASSWORD='${{ secrets.DB_PASSWORD }}' \
-            --from-literal=JWT_SECRET='${{ secrets.JWT_SECRET }}' \
-            --from-literal=JWT_REFRESH_SECRET='${{ secrets.JWT_REFRESH_SECRET }}' \
-            --from-literal=KMA_API_KEY='${{ secrets.KMA_API_KEY }}' \
-            --from-literal=KAKAO_API_KEY='${{ secrets.KAKAO_API_KEY }}' \
-            --from-literal=TOSS_SECRET_KEY='${{ secrets.TOSS_SECRET_KEY }}' \
-            --from-literal=TOSS_SECURITY_KEY='${{ secrets.TOSS_SECURITY_KEY }}' \
-            --from-literal=DEEPSEEK_API_KEY='${{ secrets.DEEPSEEK_API_KEY }}' \
-            --from-literal=PARTNER_ENCRYPTION_KEY='${{ secrets.PARTNER_ENCRYPTION_KEY }}' \
-            --dry-run=client -o yaml | kubectl apply -f -
-          echo "Secrets updated"
+          # ExternalSecret refreshInterval은 1h. 즉시 재동기화하려면 controller 재시작.
+          kubectl rollout restart deployment/external-secrets -n external-secrets
+          kubectl rollout status deployment/external-secrets -n external-secrets --timeout=2m
 
-      - name: Initialize Databases
+      - name: Trigger ArgoCD hard-refresh
         run: |
-          echo "Ensuring all databases exist..."
-          kubectl run postgres-init-${{ github.run_id }} \
-            --rm -i --restart=Never \
-            --namespace=${{ needs.setup.outputs.namespace }} \
-            --image=postgres:15-alpine \
-            --env="PGHOST=postgres" \
-            --env="PGUSER=parkgolf" \
-            --env="PGPASSWORD=${{ secrets.DB_PASSWORD }}" \
-            -- sh -c "
-              until pg_isready -h postgres; do sleep 2; done
-              for db in iam_db course_db booking_db chat_db notify_db payment_db partner_db; do
-                if psql -h postgres -tAc \"SELECT 1 FROM pg_database WHERE datname='\$db'\" | grep -q 1; then
-                  echo \"\$db already exists, skipping\"
-                else
-                  psql -h postgres -c \"CREATE DATABASE \$db;\"
-                  echo \"\$db created\"
-                fi
-              done
-              echo 'Databases initialized'
-            "
-
-      - name: Update ConfigMap
-        run: |
-          cat <<EOF | kubectl apply -f -
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: parkgolf-config
-            namespace: ${{ needs.setup.outputs.namespace }}
-          data:
-            NODE_ENV: "${{ needs.setup.outputs.environment == 'prod' && 'production' || 'development' }}"
-            NATS_URL: "nats://nats:4222"
-            DB_HOST: "postgres"
-            DB_PORT: "5432"
-            KMA_API_URL: "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0"
-            TOSS_API_URL: "https://api.tosspayments.com/v1"
-            DEEPSEEK_API_URL: "https://api.deepseek.com"
-            DEEPSEEK_MODEL: "deepseek-chat"
-            CONVERSATION_TTL: "1800"
-            MAX_HISTORY_TURNS: "10"
-          EOF
-          echo "ConfigMap updated"
-
-      - name: Restart Deployments
-        run: |
-          echo "Restarting deployments to pick up new config..."
-          kubectl rollout restart deployment -n ${{ needs.setup.outputs.namespace }} || true
+          # 새 Secret이 K8s에 동기화되면 envFrom secretKeyRef로 노출.
+          # ArgoCD가 변경을 감지해 자동 sync. 즉시 sync 원하면 hard-refresh.
+          kubectl annotate application parkgolf -n argocd \
+            argocd.argoproj.io/refresh=hard --overwrite || true
 
   # ============================================================================
   # GKE Destroy
