@@ -446,6 +446,20 @@ jobs:
             iam.gke.io/gcp-service-account=parkgolf-eso@${PROJECT_ID}.iam.gserviceaccount.com \
             --overwrite
 
+      - name: Create Global Static IP for Ingress
+        run: |
+          # Helm chart의 ingress.staticIpName과 일치해야 함
+          IP_NAME="parkgolf-${{ needs.setup.outputs.cluster_name }}-ip"
+          if gcloud compute addresses describe $IP_NAME --global 2>/dev/null; then
+            echo "Static IP already exists: $IP_NAME"
+          else
+            gcloud compute addresses create $IP_NAME --global
+            echo "Created: $IP_NAME"
+          fi
+          IP=$(gcloud compute addresses describe $IP_NAME --global --format="value(address)")
+          echo "Reserved IP: $IP"
+          echo "::notice::Configure DNS A record for ${{ needs.setup.outputs.environment == 'prod' && 'api' || 'dev-api' }}.parkgolfmate.com → $IP"
+
       - name: Apply ArgoCD Application
         run: |
           # ArgoCD application server가 ready될 때까지 대기
@@ -454,24 +468,32 @@ jobs:
 
       - name: Summary
         run: |
+          ENV=${{ needs.setup.outputs.environment }}
+          IP_NAME="parkgolf-${{ needs.setup.outputs.cluster_name }}-ip"
+          IP=$(gcloud compute addresses describe $IP_NAME --global --format="value(address)" 2>/dev/null || echo "N/A")
+          DOMAIN=$([ "$ENV" = "prod" ] && echo "api.parkgolfmate.com" || echo "dev-api.parkgolfmate.com")
+
           echo "=========================================="
-          echo "  GKE + ArgoCD Bootstrap Complete         "
+          echo "  GKE + ArgoCD Bootstrap Complete ($ENV)  "
           echo "=========================================="
-          echo "Cluster:   ${{ needs.setup.outputs.cluster_name }}"
-          echo "Namespace: ${{ needs.setup.outputs.namespace }}"
+          echo "Cluster:    ${{ needs.setup.outputs.cluster_name }}"
+          echo "Namespace:  ${{ needs.setup.outputs.namespace }}"
+          echo "Static IP:  $IP_NAME ($IP)"
+          echo "Domain:     $DOMAIN"
           echo ""
-          echo "=== argocd / external-secrets / parkgolf-dev ==="
+          echo "=== argocd / external-secrets / parkgolf-${ENV} ==="
           kubectl get pods -n argocd 2>/dev/null | head -20 || true
           echo "---"
           kubectl get pods -n external-secrets 2>/dev/null | head -10 || true
           echo "---"
-          kubectl get application parkgolf -n argocd 2>/dev/null || true
+          kubectl get application parkgolf-${ENV} -n argocd 2>/dev/null || true
           echo ""
-          echo "=== Next ==="
-          echo "1. ArgoCD UI: kubectl port-forward svc/argocd-server -n argocd 8080:443"
-          echo "   admin password: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
-          echo "2. Run 'CD Services' workflow to build images and bump tag in values.yaml"
-          echo "3. ArgoCD will auto-sync within 5 minutes"
+          echo "=== Next steps ==="
+          echo "1. DNS A record:   $DOMAIN  →  $IP"
+          echo "2. ArgoCD UI:      kubectl port-forward svc/argocd-server -n argocd 8080:443"
+          echo "   admin pw:       kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
+          echo "3. CD Services:    image build + tag commit"
+          echo "4. ArgoCD auto-sync (≤5분, prod는 수동 SYNC 필요)"
           echo "=========================================="
 
   # ============================================================================
