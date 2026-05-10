@@ -36,7 +36,6 @@ env:
   REGION: asia-northeast3
   REGISTRY: asia-northeast3-docker.pkg.dev
   PROJECT_ID: parkgolf-uniyous
-  HELM_VALUES_FILE: k8s/charts/parkgolf/values.yaml
 
 jobs:
   setup:
@@ -122,23 +121,27 @@ jobs:
             https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
-      - name: Update image tag in values.yaml
+      - name: Update image tag in env values
         run: |
+          ENV=${{ needs.setup.outputs.environment }}
+          VALUES_FILE="k8s/charts/parkgolf/values-${ENV}.yaml"
           NEW_TAG=${{ github.sha }}
-          # 정확한 path만 변경 (다른 'tag:' 라인 영향 없음)
-          yq -i ".global.image.tag = \"${NEW_TAG}\"" "${{ env.HELM_VALUES_FILE }}"
-          echo "After update:"
-          yq '.global.image.tag' "${{ env.HELM_VALUES_FILE }}"
+
+          # 환경별 values 파일의 global.image.tag 갱신
+          yq -i ".global.image.tag = \"${NEW_TAG}\"" "$VALUES_FILE"
+          echo "After update ($VALUES_FILE):"
+          yq '.global.image.tag' "$VALUES_FILE"
+          echo "VALUES_FILE=$VALUES_FILE" >> $GITHUB_ENV
 
       - name: Commit & push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add ${{ env.HELM_VALUES_FILE }}
+          git add "$VALUES_FILE"
           if git diff --cached --quiet; then
             echo "No changes — skip commit"
           else
-            git commit -m "chore(cd): bump image tag to ${{ github.sha }} [skip ci]"
+            git commit -m "chore(cd-${{ needs.setup.outputs.environment }}): bump image tag to ${{ github.sha }} [skip ci]"
             git push
           fi
 
@@ -159,12 +162,12 @@ jobs:
             echo "|------|-------|"
             echo "| Image tag | \`$SHA\` |"
             echo "| Tags pushed | \`$SHA\`, \`${ENV}-latest\` |"
-            echo "| Helm values updated | \`${{ env.HELM_VALUES_FILE }}\` |"
+            echo "| Helm values updated | \`k8s/charts/parkgolf/values-${ENV}.yaml\` |"
             echo "| Build result | ${{ needs.build-and-push.result }} |"
             echo "| Manifest commit result | ${{ needs.update-manifest.result }} |"
             echo ""
             echo "ArgoCD auto-sync (≤5분). 진행 확인:"
             echo "\`\`\`"
-            echo "kubectl -n argocd get application parkgolf"
+            echo "kubectl -n argocd get application parkgolf-${ENV}"
             echo "\`\`\`"
           } >> $GITHUB_STEP_SUMMARY

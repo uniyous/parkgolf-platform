@@ -66,6 +66,16 @@ jobs:
       cluster_name: ${{ steps.env.outputs.cluster_name }}
       namespace: ${{ steps.env.outputs.namespace }}
       tf_dir: ${{ steps.env.outputs.tf_dir }}
+      # 환경별 클러스터 사양 (dev: zonal 단일 / prod: regional HA)
+      location_flag: ${{ steps.env.outputs.location_flag }}    # --zone or --region
+      location_value: ${{ steps.env.outputs.location_value }}  # asia-northeast3-a or asia-northeast3
+      machine_type: ${{ steps.env.outputs.machine_type }}
+      num_nodes: ${{ steps.env.outputs.num_nodes }}
+      min_nodes: ${{ steps.env.outputs.min_nodes }}
+      max_nodes: ${{ steps.env.outputs.max_nodes }}
+      disk_size: ${{ steps.env.outputs.disk_size }}
+      disk_type: ${{ steps.env.outputs.disk_type }}
+      argocd_app: ${{ steps.env.outputs.argocd_app }}
     steps:
       - name: Determine environment settings
         id: env
@@ -75,6 +85,29 @@ jobs:
           echo "cluster_name=parkgolf-${ENV}-cluster" >> $GITHUB_OUTPUT
           echo "namespace=parkgolf-${ENV}" >> $GITHUB_OUTPUT
           echo "tf_dir=infra/environments/${ENV}" >> $GITHUB_OUTPUT
+          echo "argocd_app=k8s/argocd/application-${ENV}.yaml" >> $GITHUB_OUTPUT
+
+          if [ "$ENV" = "prod" ]; then
+            # prod: regional 3-zone HA
+            echo "location_flag=--region" >> $GITHUB_OUTPUT
+            echo "location_value=asia-northeast3" >> $GITHUB_OUTPUT
+            echo "machine_type=e2-standard-4" >> $GITHUB_OUTPUT
+            echo "num_nodes=1" >> $GITHUB_OUTPUT     # per zone (regional 3 zone = 3 nodes)
+            echo "min_nodes=1" >> $GITHUB_OUTPUT
+            echo "max_nodes=2" >> $GITHUB_OUTPUT     # per zone (max 6 nodes total)
+            echo "disk_size=100" >> $GITHUB_OUTPUT
+            echo "disk_type=pd-ssd" >> $GITHUB_OUTPUT
+          else
+            # dev: zonal 단일
+            echo "location_flag=--zone" >> $GITHUB_OUTPUT
+            echo "location_value=asia-northeast3-a" >> $GITHUB_OUTPUT
+            echo "machine_type=e2-standard-2" >> $GITHUB_OUTPUT
+            echo "num_nodes=1" >> $GITHUB_OUTPUT
+            echo "min_nodes=1" >> $GITHUB_OUTPUT
+            echo "max_nodes=3" >> $GITHUB_OUTPUT
+            echo "disk_size=50" >> $GITHUB_OUTPUT
+            echo "disk_type=pd-standard" >> $GITHUB_OUTPUT
+          fi
 
   # ============================================================================
   # Status Check
@@ -107,11 +140,11 @@ jobs:
         run: |
           CLUSTER="${{ needs.setup.outputs.cluster_name }}"
           echo "=== GKE Cluster ==="
-          if gcloud container clusters describe $CLUSTER --zone=asia-northeast3-a 2>/dev/null; then
+          if gcloud container clusters describe $CLUSTER ${{ needs.setup.outputs.location_flag }}=${{ needs.setup.outputs.location_value }} 2>/dev/null; then
             echo "Cluster exists"
 
             # Get credentials and show resources
-            gcloud container clusters get-credentials $CLUSTER --zone=asia-northeast3-a
+            gcloud container clusters get-credentials $CLUSTER ${{ needs.setup.outputs.location_flag }}=${{ needs.setup.outputs.location_value }}
 
             echo ""
             echo "=== Nodes ==="
@@ -151,7 +184,7 @@ jobs:
           fi
 
           # Check GKE
-          if gcloud container clusters describe ${{ needs.setup.outputs.cluster_name }} --zone=asia-northeast3-a 2>/dev/null; then
+          if gcloud container clusters describe ${{ needs.setup.outputs.cluster_name }} ${{ needs.setup.outputs.location_flag }}=${{ needs.setup.outputs.location_value }} 2>/dev/null; then
             echo "| GKE Cluster | Running |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| GKE Cluster | Not Found |" >> $GITHUB_STEP_SUMMARY
@@ -276,18 +309,22 @@ jobs:
         run: |
           CLUSTER="${{ needs.setup.outputs.cluster_name }}"
           ENV="${{ needs.setup.outputs.environment }}"
-          ZONE=asia-northeast3-a
+          LOC_FLAG="${{ needs.setup.outputs.location_flag }}"
+          LOC_VAL="${{ needs.setup.outputs.location_value }}"
 
-          if gcloud container clusters describe $CLUSTER --zone=$ZONE 2>/dev/null; then
+          if gcloud container clusters describe $CLUSTER $LOC_FLAG=$LOC_VAL 2>/dev/null; then
             echo "Cluster already exists"
           else
-            echo "Creating GKE Standard cluster (zonal)..."
+            echo "Creating GKE Standard cluster ($ENV, $LOC_FLAG=$LOC_VAL)..."
             gcloud container clusters create $CLUSTER \
-              --zone=$ZONE \
-              --machine-type=e2-standard-2 \
-              --num-nodes=1 \
-              --enable-autoscaling --min-nodes=1 --max-nodes=3 \
-              --disk-size=50 --disk-type=pd-standard \
+              $LOC_FLAG=$LOC_VAL \
+              --machine-type=${{ needs.setup.outputs.machine_type }} \
+              --num-nodes=${{ needs.setup.outputs.num_nodes }} \
+              --enable-autoscaling \
+              --min-nodes=${{ needs.setup.outputs.min_nodes }} \
+              --max-nodes=${{ needs.setup.outputs.max_nodes }} \
+              --disk-size=${{ needs.setup.outputs.disk_size }} \
+              --disk-type=${{ needs.setup.outputs.disk_type }} \
               --network=parkgolf-${ENV} \
               --subnetwork=parkgolf-private-${ENV} \
               --release-channel=regular \
@@ -299,24 +336,21 @@ jobs:
       - name: Wait for Cluster Ready
         run: |
           CLUSTER="${{ needs.setup.outputs.cluster_name }}"
-          ZONE=asia-northeast3-a
-          echo "Waiting for cluster to be ready..."
+          LOC_FLAG="${{ needs.setup.outputs.location_flag }}"
+          LOC_VAL="${{ needs.setup.outputs.location_value }}"
           for i in {1..40}; do
             STATUS=$(gcloud container clusters describe $CLUSTER \
-              --zone=$ZONE \
+              $LOC_FLAG=$LOC_VAL \
               --format="value(status)" 2>/dev/null || echo "PROVISIONING")
             echo "[$i/40] Cluster status: $STATUS"
-            if [ "$STATUS" = "RUNNING" ]; then
-              echo "Cluster is ready!"
-              break
-            fi
+            [ "$STATUS" = "RUNNING" ] && { echo "Cluster is ready!"; break; }
             sleep 30
           done
 
       - name: Get GKE Credentials
         run: |
           gcloud container clusters get-credentials ${{ needs.setup.outputs.cluster_name }} \
-            --zone=asia-northeast3-a
+            ${{ needs.setup.outputs.location_flag }}=${{ needs.setup.outputs.location_value }}
 
       - name: Create Namespace
         run: |
@@ -416,7 +450,7 @@ jobs:
         run: |
           # ArgoCD application server가 ready될 때까지 대기
           kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=5m
-          kubectl apply -f k8s/argocd/application.yaml
+          kubectl apply -f ${{ needs.setup.outputs.argocd_app }}
 
       - name: Summary
         run: |
@@ -493,7 +527,7 @@ jobs:
       - name: Get GKE Credentials
         run: |
           gcloud container clusters get-credentials ${{ needs.setup.outputs.cluster_name }} \
-            --zone=asia-northeast3-a
+            ${{ needs.setup.outputs.location_flag }}=${{ needs.setup.outputs.location_value }}
 
       - name: Trigger ESO refresh
         run: |
@@ -542,10 +576,10 @@ jobs:
       - name: Delete GKE Cluster
         run: |
           CLUSTER="${{ needs.setup.outputs.cluster_name }}"
-          if gcloud container clusters describe $CLUSTER --zone=asia-northeast3-a 2>/dev/null; then
+          if gcloud container clusters describe $CLUSTER ${{ needs.setup.outputs.location_flag }}=${{ needs.setup.outputs.location_value }} 2>/dev/null; then
             echo "Deleting GKE cluster: $CLUSTER"
             gcloud container clusters delete $CLUSTER \
-              --zone=asia-northeast3-a \
+              ${{ needs.setup.outputs.location_flag }}=${{ needs.setup.outputs.location_value }} \
               --quiet
             echo "Cluster deleted"
           else
@@ -564,18 +598,26 @@ jobs:
 
       - name: Delete Orphaned PVC Disks
         run: |
-          ZONE=asia-northeast3-a
-          DISKS=$(gcloud compute disks list \
-            --filter="name~^pvc- AND zone:$ZONE" \
-            --format="value(name)" 2>/dev/null || true)
+          # dev: zonal asia-northeast3-a / prod: regional 3-zone
+          ENV=${{ needs.setup.outputs.environment }}
+          if [ "$ENV" = "prod" ]; then
+            ZONES="asia-northeast3-a asia-northeast3-b asia-northeast3-c"
+          else
+            ZONES="asia-northeast3-a"
+          fi
 
           DELETED=0
-          for DISK in $DISKS; do
-            echo "Deleting orphaned disk: $DISK in $ZONE"
-            gcloud compute disks delete $DISK --zone=$ZONE --quiet || true
-            DELETED=$((DELETED + 1))
+          for ZONE in $ZONES; do
+            DISKS=$(gcloud compute disks list \
+              --filter="name~^pvc- AND zone:$ZONE" \
+              --format="value(name)" 2>/dev/null || true)
+            for DISK in $DISKS; do
+              echo "Deleting orphaned disk: $DISK in $ZONE"
+              gcloud compute disks delete $DISK --zone=$ZONE --quiet || true
+              DELETED=$((DELETED + 1))
+            done
           done
-          echo "Deleted $DELETED orphaned disk(s) in $ZONE"
+          echo "Deleted $DELETED orphaned disk(s)"
 
       - name: Summary
         run: |

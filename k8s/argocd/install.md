@@ -47,11 +47,14 @@ argocd repo add https://github.com/uniyous/parkgolf-platform.git \
 ## 4. Application 적용
 
 ```bash
-kubectl apply -f k8s/argocd/application.yaml
+# 환경별 (dev / prod)
+kubectl apply -f k8s/argocd/application-dev.yaml
+# 또는
+kubectl apply -f k8s/argocd/application-prod.yaml
 
 # 상태 확인
-argocd app get parkgolf
-argocd app sync parkgolf
+argocd app get parkgolf-dev      # 또는 parkgolf-prod
+argocd app sync parkgolf-dev
 ```
 
 ## 5. DB 백업 복원

@@ -1,0 +1,112 @@
+# prod 환경 override
+#
+# 차이 (vs dev 기본):
+#   - 도메인 / 네임스페이스 / 클러스터 이름
+#   - postgres: 50Gi storage, 더 큰 리소스
+#   - nats: 3 replica (HA, JetStream 클러스터)  ※ Helm chart 보강 필요 시 추후
+#   - 모든 service replicas 2 이상
+#   - chat-gateway 3 replica
+#   - ConfigMap의 NODE_ENV: production
+
+global:
+  namespace: parkgolf-prod
+  domain: api.parkgolfmate.com
+  image:
+    tag: prod-latest
+
+config:
+  NODE_ENV: production
+
+externalSecrets:
+  clusterName: parkgolf-prod-cluster
+  clusterLocation: asia-northeast3   # regional
+
+postgres:
+  storage: 50Gi
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits:   { cpu: 2,    memory: 4Gi }
+
+nats:
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+defaults:
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 768Mi }
+
+# 서비스별 prod 사양 — replicas 증대
+# values.yaml의 services 배열을 통째로 override (Helm은 list를 merge가 아니라 replace)
+services:
+  - name: iam-service
+    db: iam_db
+    replicas: 2
+  - name: course-service
+    db: course_db
+    replicas: 2
+  - name: booking-service
+    db: booking_db
+    replicas: 2
+  - name: payment-service
+    db: payment_db
+    replicas: 2
+    extraEnv:
+      - { name: TOSS_SECRET_KEY,   secretRef: { name: parkgolf-secrets, key: TOSS_SECRET_KEY } }
+      - { name: TOSS_SECURITY_KEY, secretRef: { name: parkgolf-secrets, key: TOSS_SECURITY_KEY } }
+      - { name: TOSS_API_URL,      configRef: { name: parkgolf-config,  key: TOSS_API_URL } }
+  - name: saga-service
+    db: saga_db
+    replicas: 2
+  - name: chat-service
+    db: chat_db
+    replicas: 2
+  - name: notify-service
+    db: notify_db
+    replicas: 2
+  - name: partner-service
+    db: partner_db
+    replicas: 2
+    extraEnv:
+      - { name: PARTNER_ENCRYPTION_KEY, secretRef: { name: parkgolf-secrets, key: PARTNER_ENCRYPTION_KEY } }
+  - name: chat-gateway
+    replicas: 3
+    strategy:
+      type: RollingUpdate
+      rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+    pdb: { minAvailable: 2 }
+    backendConfig: websocket
+    resources:
+      requests: { cpu: 200m, memory: 256Mi }
+      limits:   { cpu: 500m, memory: 768Mi }
+  - name: job-service
+    replicas: 1   # cron 단일 인스턴스 권장
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits:   { cpu: 300m, memory: 384Mi }
+  - name: weather-service
+    replicas: 2
+    extraEnv:
+      - { name: KMA_API_KEY, secretRef: { name: parkgolf-secrets, key: KMA_API_KEY } }
+      - { name: KMA_API_URL, configRef: { name: parkgolf-config,  key: KMA_API_URL } }
+  - name: location-service
+    replicas: 2
+    extraEnv:
+      - { name: KAKAO_API_KEY, secretRef: { name: parkgolf-secrets, key: KAKAO_API_KEY } }
+  - name: agent-service
+    replicas: 2
+    extraEnv:
+      - { name: DEEPSEEK_API_KEY,  secretRef: { name: parkgolf-secrets, key: DEEPSEEK_API_KEY } }
+      - { name: DEEPSEEK_API_URL,  configRef: { name: parkgolf-config,  key: DEEPSEEK_API_URL } }
+      - { name: DEEPSEEK_MODEL,    configRef: { name: parkgolf-config,  key: DEEPSEEK_MODEL } }
+      - { name: CONVERSATION_TTL,  configRef: { name: parkgolf-config,  key: CONVERSATION_TTL } }
+      - { name: MAX_HISTORY_TURNS, configRef: { name: parkgolf-config,  key: MAX_HISTORY_TURNS } }
+  - name: admin-api
+    replicas: 2
+  - name: user-api
+    replicas: 3
+    backendConfig: user-api
+
+ingress:
+  staticIpName: parkgolf-parkgolf-prod-cluster-ip

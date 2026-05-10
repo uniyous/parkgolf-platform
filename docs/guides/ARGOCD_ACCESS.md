@@ -112,10 +112,10 @@ APPLICATIONS 화면
 
 | 작업 | UI | CLI |
 |---|---|---|
-| 강제 sync | Application → SYNC | `argocd app sync parkgolf` |
-| Hard refresh (git pull) | Application → REFRESH (drop-down → Hard Refresh) | `argocd app get parkgolf --hard-refresh` |
-| 특정 리소스 sync | Tree에서 리소스 우클릭 → Sync | `argocd app sync parkgolf --resource <kind>:<name>` |
-| Rollback | History → 이전 commit 선택 → Rollback | `argocd app rollback parkgolf <id>` |
+| 강제 sync | Application → SYNC | `argocd app sync parkgolf-dev` |
+| Hard refresh (git pull) | Application → REFRESH (drop-down → Hard Refresh) | `argocd app get parkgolf-dev --hard-refresh` |
+| 특정 리소스 sync | Tree에서 리소스 우클릭 → Sync | `argocd app sync parkgolf-dev --resource <kind>:<name>` |
+| Rollback | History → 이전 commit 선택 → Rollback | `argocd app rollback parkgolf-dev <id>` |
 | 로그 확인 | Tree → Pod 클릭 → LOGS | `kubectl logs -n parkgolf-dev <pod>` |
 
 ### 5.3 sync 충돌 시
@@ -158,7 +158,7 @@ flowchart TB
 | 리소스 | 위치 |
 |---|---|
 | ArgoCD 설치 매니페스트 | `https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml` |
-| Application 정의 | `k8s/argocd/application.yaml` |
+| Application 정의 | `k8s/argocd/application-dev.yaml`, `application-prod.yaml` |
 | 동기화 대상 Helm chart | `k8s/charts/parkgolf/` |
 | 로컬 명령 가이드 (설치/복원) | `k8s/argocd/install.md` |
 

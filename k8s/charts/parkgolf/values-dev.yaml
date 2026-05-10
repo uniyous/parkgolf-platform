@@ -1,0 +1,14 @@
+# dev 환경 override
+# values.yaml은 공통(dev 기본)이라 dev에선 거의 override 없음.
+# 향후 dev 전용 차이가 생기면 여기에.
+
+global:
+  namespace: parkgolf-dev
+  domain: dev-api.parkgolfmate.com
+
+externalSecrets:
+  clusterName: parkgolf-dev-cluster
+  clusterLocation: asia-northeast3-a
+
+ingress:
+  staticIpName: parkgolf-parkgolf-dev-cluster-ip
