@@ -141,6 +141,10 @@ jobs:
         working-directory: services/${{ matrix.service }}
         run: npm run lint --if-present
 
+      - name: Type check
+        working-directory: services/${{ matrix.service }}
+        run: npm run typecheck --if-present || npm run type-check --if-present || true
+
       - name: Test
         working-directory: services/${{ matrix.service }}
         run: npm test --if-present -- --passWithNoTests
