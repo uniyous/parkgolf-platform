@@ -1,0 +1,21 @@
+{{- range .Values.services }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.global.namespace }}
+  labels:
+    app: {{ .name }}
+{{- if .backendConfig }}
+  annotations:
+    cloud.google.com/backend-config: '{"default": "{{ .backendConfig }}-backend-config"}'
+{{- end }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: {{ .name }}
+{{- end }}

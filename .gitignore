@@ -623,3 +623,6 @@ services/*/*.temp
 # Docs mockups build artifacts
 docs/business/mockups/node_modules/
 docs/business/mockups/package-lock.json
+
+# Database dumps (sensitive data, never commit)
+/backup/

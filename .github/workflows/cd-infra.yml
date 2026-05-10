@@ -100,11 +100,11 @@ jobs:
         run: |
           CLUSTER="${{ needs.setup.outputs.cluster_name }}"
           echo "=== GKE Cluster ==="
-          if gcloud container clusters describe $CLUSTER --region=${{ env.REGION }} 2>/dev/null; then
+          if gcloud container clusters describe $CLUSTER --zone=asia-northeast3-a 2>/dev/null; then
             echo "Cluster exists"
 
             # Get credentials and show resources
-            gcloud container clusters get-credentials $CLUSTER --region=${{ env.REGION }}
+            gcloud container clusters get-credentials $CLUSTER --zone=asia-northeast3-a
 
             echo ""
             echo "=== Nodes ==="
@@ -144,7 +144,7 @@ jobs:
           fi
 
           # Check GKE
-          if gcloud container clusters describe ${{ needs.setup.outputs.cluster_name }} --region=${{ env.REGION }} 2>/dev/null; then
+          if gcloud container clusters describe ${{ needs.setup.outputs.cluster_name }} --zone=asia-northeast3-a 2>/dev/null; then
             echo "| GKE Cluster | Running |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| GKE Cluster | Not Found |" >> $GITHUB_STEP_SUMMARY
@@ -261,29 +261,38 @@ jobs:
               --description="Parkgolf container images"
           fi
 
-      - name: Check/Create GKE Cluster
+      - name: Check/Create GKE Standard Cluster
         run: |
           CLUSTER="${{ needs.setup.outputs.cluster_name }}"
           ENV="${{ needs.setup.outputs.environment }}"
+          ZONE=asia-northeast3-a
 
-          if gcloud container clusters describe $CLUSTER --region=${{ env.REGION }} 2>/dev/null; then
+          if gcloud container clusters describe $CLUSTER --zone=$ZONE 2>/dev/null; then
             echo "Cluster already exists"
           else
-            echo "Creating GKE Autopilot cluster..."
-            gcloud container clusters create-auto $CLUSTER \
-              --region=${{ env.REGION }} \
-              --release-channel=regular \
+            echo "Creating GKE Standard cluster (zonal)..."
+            gcloud container clusters create $CLUSTER \
+              --zone=$ZONE \
+              --machine-type=e2-standard-2 \
+              --num-nodes=1 \
+              --enable-autoscaling --min-nodes=1 --max-nodes=3 \
+              --disk-size=50 --disk-type=pd-standard \
               --network=parkgolf-${ENV} \
-              --subnetwork=parkgolf-private-${ENV}
+              --subnetwork=parkgolf-private-${ENV} \
+              --release-channel=regular \
+              --workload-pool=${{ env.PROJECT_ID }}.svc.id.goog \
+              --enable-ip-alias \
+              --logging=SYSTEM --monitoring=SYSTEM
           fi
 
       - name: Wait for Cluster Ready
         run: |
           CLUSTER="${{ needs.setup.outputs.cluster_name }}"
+          ZONE=asia-northeast3-a
           echo "Waiting for cluster to be ready..."
           for i in {1..40}; do
             STATUS=$(gcloud container clusters describe $CLUSTER \
-              --region=${{ env.REGION }} \
+              --zone=$ZONE \
               --format="value(status)" 2>/dev/null || echo "PROVISIONING")
             echo "[$i/40] Cluster status: $STATUS"
             if [ "$STATUS" = "RUNNING" ]; then
@@ -296,7 +305,7 @@ jobs:
       - name: Get GKE Credentials
         run: |
           gcloud container clusters get-credentials ${{ needs.setup.outputs.cluster_name }} \
-            --region=${{ env.REGION }}
+            --zone=asia-northeast3-a
 
       - name: Create Namespace
         run: |
@@ -665,7 +674,7 @@ jobs:
       - name: Get GKE Credentials
         run: |
           gcloud container clusters get-credentials ${{ needs.setup.outputs.cluster_name }} \
-            --region=${{ env.REGION }}
+            --zone=asia-northeast3-a
 
       - name: Update Secrets
         run: |
@@ -768,10 +777,10 @@ jobs:
       - name: Delete GKE Cluster
         run: |
           CLUSTER="${{ needs.setup.outputs.cluster_name }}"
-          if gcloud container clusters describe $CLUSTER --region=${{ env.REGION }} 2>/dev/null; then
+          if gcloud container clusters describe $CLUSTER --zone=asia-northeast3-a 2>/dev/null; then
             echo "Deleting GKE cluster: $CLUSTER"
             gcloud container clusters delete $CLUSTER \
-              --region=${{ env.REGION }} \
+              --zone=asia-northeast3-a \
               --quiet
             echo "Cluster deleted"
           else

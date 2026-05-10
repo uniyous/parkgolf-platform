@@ -1,0 +1,66 @@
+{{- if .Values.ingress.enabled }}
+{{- range $name, $cfg := .Values.backendConfigs }}
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: {{ $name }}-backend-config
+  namespace: {{ $.Values.global.namespace }}
+spec:
+{{ toYaml $cfg | indent 2 }}
+{{- end }}
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: {{ .Values.ingress.managedCert }}
+  namespace: {{ .Values.global.namespace }}
+spec:
+  domains:
+    - {{ .Values.global.domain }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: parkgolf-ingress
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: {{ .Values.ingress.staticIpName | quote }}
+    networking.gke.io/managed-certificates: {{ .Values.ingress.managedCert | quote }}
+spec:
+  rules:
+    - host: {{ .Values.global.domain }}
+      http:
+        paths:
+{{- range .Values.ingress.rules }}
+          - path: {{ .path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .service }}
+                port: { number: 8080 }
+          - path: {{ .path }}/*
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: {{ .service }}
+                port: { number: 8080 }
+{{- end }}
+{{- end }}
+{{- /* PDB */}}
+{{- range .Values.services }}
+{{- if .pdb }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .name }}-pdb
+  namespace: {{ $.Values.global.namespace }}
+spec:
+{{ toYaml .pdb | indent 2 }}
+  selector:
+    matchLabels:
+      app: {{ .name }}
+{{- end }}
+{{- end }}

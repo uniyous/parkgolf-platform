@@ -1,13 +1,12 @@
-# Backend Services CD Pipeline
+# Backend Services CD Pipeline (GitOps via ArgoCD)
 #
-# Builds and deploys backend services to GKE Autopilot cluster.
+# 빌드 → Artifact Registry push → k8s/charts/parkgolf/values.yaml 의 image tag 갱신 → git commit
+# ArgoCD가 변경 감지 후 자동 sync (5분 이내).
 #
 # Prerequisites:
-#   1. Run cd-infra.yml (gke-setup) to create cluster
-#   2. GitHub Secrets: GCP_SA_KEY
-#
-# Usage:
-#   Actions > CD Services > Run workflow
+#   1. GKE Standard 클러스터 + ArgoCD + External Secrets 설치 완료
+#   2. GCP Secret Manager에 parkgolf-dev-* 시크릿 등록
+#   3. GitHub Secret: GCP_SA_KEY
 
 name: CD Services
 
@@ -18,12 +17,10 @@ on:
         description: 'Target environment'
         required: true
         type: choice
-        options:
-          - dev
-          - prod
+        options: [dev, prod]
         default: 'dev'
       services:
-        description: 'Services to deploy (comma-separated or "all")'
+        description: 'Services to build (comma-separated or "all")'
         required: true
         default: 'all'
         type: string
@@ -33,26 +30,16 @@ env:
   REGISTRY: asia-northeast3-docker.pkg.dev
 
 jobs:
-  # ============================================================================
-  # Setup
-  # ============================================================================
   setup:
     name: Setup
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.env.outputs.environment }}
-      cluster_name: ${{ steps.env.outputs.cluster_name }}
-      namespace: ${{ steps.env.outputs.namespace }}
-      services: ${{ steps.services.outputs.services }}
       matrix: ${{ steps.services.outputs.matrix }}
     steps:
       - name: Set Environment
         id: env
-        run: |
-          ENV="${{ github.event.inputs.environment }}"
-          echo "environment=$ENV" >> $GITHUB_OUTPUT
-          echo "cluster_name=parkgolf-${ENV}-cluster" >> $GITHUB_OUTPUT
-          echo "namespace=parkgolf-${ENV}" >> $GITHUB_OUTPUT
+        run: echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
 
       - name: Set Services
         id: services
@@ -63,14 +50,9 @@ jobs:
           else
             SERVICES="$INPUT"
           fi
-          echo "services=$SERVICES" >> $GITHUB_OUTPUT
           MATRIX=$(echo $SERVICES | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' | jq -R . | jq -s -c .)
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
-          echo "Services to deploy: $SERVICES"
 
-  # ============================================================================
-  # Build and Push
-  # ============================================================================
   build-and-push:
     name: Build ${{ matrix.service }}
     needs: setup
@@ -79,9 +61,10 @@ jobs:
       matrix:
         service: ${{ fromJson(needs.setup.outputs.matrix) }}
       fail-fast: false
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
       - name: Google Auth
         uses: google-github-actions/auth@v3
@@ -109,565 +92,63 @@ jobs:
             echo "::warning::Service directory not found: services/${{ matrix.service }}"
           fi
 
-      - name: Build Docker Image
+      - name: Build & Push
         if: steps.check.outputs.exists == 'true'
         run: |
           SERVICE="${{ matrix.service }}"
           IMAGE=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/parkgolf/$SERVICE
           ENV=${{ needs.setup.outputs.environment }}
-
-          docker build \
-            -t $IMAGE:${{ github.sha }} \
-            -t $IMAGE:${ENV}-latest \
-            -f services/$SERVICE/Dockerfile \
-            services/$SERVICE
-
-      - name: Push Docker Image
-        if: steps.check.outputs.exists == 'true'
-        run: |
-          SERVICE="${{ matrix.service }}"
-          IMAGE=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/parkgolf/$SERVICE
-          ENV=${{ needs.setup.outputs.environment }}
-
+          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:${ENV}-latest \
+            -f services/$SERVICE/Dockerfile services/$SERVICE
           docker push $IMAGE:${{ github.sha }}
           docker push $IMAGE:${ENV}-latest
 
-  # ============================================================================
-  # Deploy
-  # ============================================================================
-  deploy:
-    name: Deploy ${{ matrix.service }}
+      - name: Output tag
+        id: tag
+        run: echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+  update-manifest:
+    name: Update Helm values & commit
     needs: [setup, build-and-push]
     runs-on: ubuntu-latest
-    environment: ${{ needs.setup.outputs.environment }}
-    strategy:
-      matrix:
-        service: ${{ fromJson(needs.setup.outputs.matrix) }}
-      max-parallel: 3
-      fail-fast: false
     steps:
-      - name: Google Auth
-        uses: google-github-actions/auth@v3
+      - uses: actions/checkout@v6
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Project ID
+      - name: Update image tag in values.yaml
         run: |
-          PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')
-          echo "PROJECT_ID=$PROJECT_ID" >> $GITHUB_ENV
+          ENV=${{ needs.setup.outputs.environment }}
+          VALUES_FILE=k8s/charts/parkgolf/values.yaml
+          NEW_TAG=${{ github.sha }}
 
-      - name: Get GKE Credentials
-        uses: google-github-actions/get-gke-credentials@v3
-        with:
-          cluster_name: ${{ needs.setup.outputs.cluster_name }}
-          location: ${{ env.REGION }}
+          # global.image.tag 갱신
+          sed -i "s|tag: .*|tag: ${NEW_TAG}|" $VALUES_FILE
+          echo "Updated $VALUES_FILE → tag: $NEW_TAG"
 
-      - name: Set Service Config
-        id: config
+      - name: Commit & push
         run: |
-          SERVICE="${{ matrix.service }}"
-          case $SERVICE in
-            iam-service)
-              DB_NAME="iam_db"; NEEDS_DB="true"
-              CPU_REQ="50m"; CPU_LIM="250m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
-              ;;
-            course-service)
-              DB_NAME="course_db"; NEEDS_DB="true"
-              CPU_REQ="50m"; CPU_LIM="250m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
-              ;;
-            booking-service)
-              DB_NAME="booking_db"; NEEDS_DB="true"
-              CPU_REQ="50m"; CPU_LIM="250m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
-              ;;
-            saga-service)
-              DB_NAME="saga_db"; NEEDS_DB="true"
-              CPU_REQ="50m"; CPU_LIM="250m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
-              ;;
-            chat-service)
-              DB_NAME="chat_db"; NEEDS_DB="true"
-              CPU_REQ="50m"; CPU_LIM="250m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
-              ;;
-            notify-service)
-              DB_NAME="notify_db"; NEEDS_DB="true"
-              CPU_REQ="50m"; CPU_LIM="250m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
-              ;;
-            payment-service)
-              DB_NAME="payment_db"; NEEDS_DB="true"
-              CPU_REQ="50m"; CPU_LIM="250m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
-              ;;
-            partner-service)
-              DB_NAME="partner_db"; NEEDS_DB="true"
-              CPU_REQ="50m"; CPU_LIM="250m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
-              ;;
-            chat-gateway)
-              DB_NAME=""; NEEDS_DB="false"
-              CPU_REQ="100m"; CPU_LIM="300m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
-              ;;
-            job-service)
-              DB_NAME=""; NEEDS_DB="false"
-              CPU_REQ="50m"; CPU_LIM="200m"; MEM_REQ="64Mi"; MEM_LIM="256Mi"
-              ;;
-            *)
-              DB_NAME=""; NEEDS_DB="false"
-              CPU_REQ="50m"; CPU_LIM="250m"; MEM_REQ="128Mi"; MEM_LIM="384Mi"
-              ;;
-          esac
-          echo "db_name=$DB_NAME" >> $GITHUB_OUTPUT
-          echo "needs_db=$NEEDS_DB" >> $GITHUB_OUTPUT
-          echo "cpu_req=$CPU_REQ" >> $GITHUB_OUTPUT
-          echo "cpu_lim=$CPU_LIM" >> $GITHUB_OUTPUT
-          echo "mem_req=$MEM_REQ" >> $GITHUB_OUTPUT
-          echo "mem_lim=$MEM_LIM" >> $GITHUB_OUTPUT
-
-      - name: Deploy Service
-        run: |
-          SERVICE="${{ matrix.service }}"
-          NAMESPACE=${{ needs.setup.outputs.namespace }}
-          IMAGE=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/parkgolf/$SERVICE:${{ github.sha }}
-          DB_NAME=${{ steps.config.outputs.db_name }}
-          NEEDS_DB=${{ steps.config.outputs.needs_db }}
-
-          # Create DATABASE_URL secret if needed
-          if [ "$NEEDS_DB" = "true" ]; then
-            DB_USER=$(kubectl get secret parkgolf-secrets -n $NAMESPACE -o jsonpath='{.data.POSTGRES_USER}' | base64 -d)
-            DB_PASS=$(kubectl get secret parkgolf-secrets -n $NAMESPACE -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d)
-            DATABASE_URL="postgresql://${DB_USER}:${DB_PASS}@postgres:5432/${DB_NAME}"
-            kubectl create secret generic ${SERVICE}-db-secret \
-              --namespace=$NAMESPACE \
-              --from-literal=DATABASE_URL="${DATABASE_URL}" \
-              --dry-run=client -o yaml | kubectl apply -f -
-            DB_ENV="
-                  - name: DATABASE_URL
-                    valueFrom:
-                      secretKeyRef:
-                        name: ${SERVICE}-db-secret
-                        key: DATABASE_URL"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add k8s/charts/parkgolf/values.yaml
+          if git diff --cached --quiet; then
+            echo "No changes — skip commit"
           else
-            DB_ENV=""
+            git commit -m "chore(cd): bump image tag to ${{ github.sha }} [skip ci]"
+            git push
           fi
 
-          # Set service-specific env vars
-          EXTRA_ENV=""
-          if [ "$SERVICE" = "weather-service" ]; then
-            EXTRA_ENV="
-                  - name: KMA_API_KEY
-                    valueFrom:
-                      secretKeyRef:
-                        name: parkgolf-secrets
-                        key: KMA_API_KEY
-                  - name: KMA_API_URL
-                    valueFrom:
-                      configMapKeyRef:
-                        name: parkgolf-config
-                        key: KMA_API_URL"
-          elif [ "$SERVICE" = "location-service" ]; then
-            EXTRA_ENV="
-                  - name: KAKAO_API_KEY
-                    valueFrom:
-                      secretKeyRef:
-                        name: parkgolf-secrets
-                        key: KAKAO_API_KEY"
-          elif [ "$SERVICE" = "agent-service" ]; then
-            EXTRA_ENV="
-                  - name: DEEPSEEK_API_KEY
-                    valueFrom:
-                      secretKeyRef:
-                        name: parkgolf-secrets
-                        key: DEEPSEEK_API_KEY
-                  - name: DEEPSEEK_API_URL
-                    valueFrom:
-                      configMapKeyRef:
-                        name: parkgolf-config
-                        key: DEEPSEEK_API_URL
-                  - name: DEEPSEEK_MODEL
-                    valueFrom:
-                      configMapKeyRef:
-                        name: parkgolf-config
-                        key: DEEPSEEK_MODEL
-                  - name: CONVERSATION_TTL
-                    valueFrom:
-                      configMapKeyRef:
-                        name: parkgolf-config
-                        key: CONVERSATION_TTL
-                  - name: MAX_HISTORY_TURNS
-                    valueFrom:
-                      configMapKeyRef:
-                        name: parkgolf-config
-                        key: MAX_HISTORY_TURNS"
-          elif [ "$SERVICE" = "partner-service" ]; then
-            EXTRA_ENV="
-                  - name: PARTNER_ENCRYPTION_KEY
-                    valueFrom:
-                      secretKeyRef:
-                        name: parkgolf-secrets
-                        key: PARTNER_ENCRYPTION_KEY"
-          elif [ "$SERVICE" = "payment-service" ]; then
-            EXTRA_ENV="
-                  - name: TOSS_SECRET_KEY
-                    valueFrom:
-                      secretKeyRef:
-                        name: parkgolf-secrets
-                        key: TOSS_SECRET_KEY
-                  - name: TOSS_SECURITY_KEY
-                    valueFrom:
-                      secretKeyRef:
-                        name: parkgolf-secrets
-                        key: TOSS_SECURITY_KEY
-                  - name: TOSS_API_URL
-                    valueFrom:
-                      configMapKeyRef:
-                        name: parkgolf-config
-                        key: TOSS_API_URL"
-          fi
-
-          # Set replicas and strategy per service
-          REPLICAS=1
-          STRATEGY=""
-          if [ "$SERVICE" = "chat-gateway" ]; then
-            REPLICAS=2
-            STRATEGY="
-            strategy:
-              type: RollingUpdate
-              rollingUpdate:
-                maxSurge: 1
-                maxUnavailable: 0"
-          fi
-
-          cat <<EOF | kubectl apply -f -
-          apiVersion: v1
-          kind: Service
-          metadata:
-            name: $SERVICE
-            namespace: $NAMESPACE
-          spec:
-            ports:
-            - port: 8080
-              targetPort: 8080
-            selector:
-              app: $SERVICE
-          ---
-          apiVersion: apps/v1
-          kind: Deployment
-          metadata:
-            name: $SERVICE
-            namespace: $NAMESPACE
-          spec:
-            replicas: $REPLICAS
-            selector:
-              matchLabels:
-                app: $SERVICE
-          $STRATEGY
-            template:
-              metadata:
-                labels:
-                  app: $SERVICE
-              spec:
-                containers:
-                - name: $SERVICE
-                  image: $IMAGE
-                  ports:
-                  - containerPort: 8080
-                  env:
-                  - name: PORT
-                    value: "8080"
-                  - name: NODE_ENV
-                    valueFrom:
-                      configMapKeyRef:
-                        name: parkgolf-config
-                        key: NODE_ENV
-                  - name: NATS_URL
-                    valueFrom:
-                      configMapKeyRef:
-                        name: parkgolf-config
-                        key: NATS_URL
-                  - name: JWT_SECRET
-                    valueFrom:
-                      secretKeyRef:
-                        name: parkgolf-secrets
-                        key: JWT_SECRET
-                  - name: JWT_REFRESH_SECRET
-                    valueFrom:
-                      secretKeyRef:
-                        name: parkgolf-secrets
-                        key: JWT_REFRESH_SECRET
-          $DB_ENV
-          $EXTRA_ENV
-                  resources:
-                    requests:
-                      cpu: "${{ steps.config.outputs.cpu_req }}"
-                      memory: "${{ steps.config.outputs.mem_req }}"
-                    limits:
-                      cpu: "${{ steps.config.outputs.cpu_lim }}"
-                      memory: "${{ steps.config.outputs.mem_lim }}"
-                  startupProbe:
-                    httpGet:
-                      path: /health
-                      port: 8080
-                    failureThreshold: 12
-                    periodSeconds: 5
-                  readinessProbe:
-                    httpGet:
-                      path: /health/ready
-                      port: 8080
-                    initialDelaySeconds: 5
-                    periodSeconds: 5
-                    failureThreshold: 3
-                  livenessProbe:
-                    httpGet:
-                      path: /health/live
-                      port: 8080
-                    initialDelaySeconds: 30
-                    periodSeconds: 10
-                    failureThreshold: 3
-          EOF
-
-      - name: Wait for Rollout
-        run: |
-          kubectl rollout status deployment/${{ matrix.service }} \
-            -n ${{ needs.setup.outputs.namespace }} --timeout=300s
-
-  # ============================================================================
-  # Setup Ingress
-  # ============================================================================
-  setup-ingress:
-    name: Setup Ingress
-    needs: [setup, deploy]
+  summary:
+    name: Summary
+    needs: [setup, update-manifest]
     runs-on: ubuntu-latest
     steps:
-      - name: Google Auth
-        uses: google-github-actions/auth@v3
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v3
-        with:
-          install_components: 'gke-gcloud-auth-plugin'
-
-      - name: Get GKE Credentials
-        uses: google-github-actions/get-gke-credentials@v3
-        with:
-          cluster_name: ${{ needs.setup.outputs.cluster_name }}
-          location: ${{ env.REGION }}
-
-      - name: Create Static IP
+      - name: Print
         run: |
-          IP_NAME="parkgolf-${{ needs.setup.outputs.cluster_name }}-ip"
-          if ! gcloud compute addresses describe $IP_NAME --global 2>/dev/null; then
-            gcloud compute addresses create $IP_NAME --global
-          fi
-          IP=$(gcloud compute addresses describe $IP_NAME --global --format="value(address)")
-          echo "STATIC_IP=$IP" >> $GITHUB_ENV
-          echo "IP_NAME=$IP_NAME" >> $GITHUB_ENV
-
-      - name: Deploy BackendConfig for WebSocket
-        run: |
-          cat <<EOF | kubectl apply -f -
-          apiVersion: cloud.google.com/v1
-          kind: BackendConfig
-          metadata:
-            name: websocket-backend-config
-            namespace: ${{ needs.setup.outputs.namespace }}
-          spec:
-            timeoutSec: 3600
-            sessionAffinity:
-              affinityType: "GENERATED_COOKIE"
-              affinityCookieTtlSec: 3600
-            connectionDraining:
-              drainingTimeoutSec: 60
-          EOF
-
-      - name: Deploy BackendConfig for User API (AI agent long requests)
-        run: |
-          cat <<EOF | kubectl apply -f -
-          apiVersion: cloud.google.com/v1
-          kind: BackendConfig
-          metadata:
-            name: user-api-backend-config
-            namespace: ${{ needs.setup.outputs.namespace }}
-          spec:
-            timeoutSec: 120
-            connectionDraining:
-              drainingTimeoutSec: 30
-          EOF
-
-      - name: Deploy PDB for chat-gateway
-        run: |
-          cat <<EOF | kubectl apply -f -
-          apiVersion: policy/v1
-          kind: PodDisruptionBudget
-          metadata:
-            name: chat-gateway-pdb
-            namespace: ${{ needs.setup.outputs.namespace }}
-          spec:
-            maxUnavailable: 1
-            selector:
-              matchLabels:
-                app: chat-gateway
-          EOF
-
-      - name: Patch chat-gateway for WebSocket
-        run: |
-          kubectl patch service chat-gateway -n ${{ needs.setup.outputs.namespace }} --type=merge -p '
-          {
-            "metadata": {
-              "annotations": {
-                "cloud.google.com/backend-config": "{\"default\": \"websocket-backend-config\"}"
-              }
-            }
-          }' || true
-
-      - name: Patch user-api for AI agent timeout
-        run: |
-          kubectl patch service user-api -n ${{ needs.setup.outputs.namespace }} --type=merge -p '
-          {
-            "metadata": {
-              "annotations": {
-                "cloud.google.com/backend-config": "{\"default\": \"user-api-backend-config\"}"
-              }
-            }
-          }' || true
-
-      - name: Set Domain
-        id: domain
-        run: |
-          ENV="${{ needs.setup.outputs.environment }}"
-          if [ "$ENV" == "prod" ]; then
-            echo "domain=api.parkgolfmate.com" >> $GITHUB_OUTPUT
-          else
-            echo "domain=dev-api.parkgolfmate.com" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Deploy ManagedCertificate
-        run: |
-          NAMESPACE=${{ needs.setup.outputs.namespace }}
-          cat <<EOF | kubectl apply -f -
-          apiVersion: networking.gke.io/v1
-          kind: ManagedCertificate
-          metadata:
-            name: parkgolf-cert
-            namespace: $NAMESPACE
-          spec:
-            domains:
-            - ${{ steps.domain.outputs.domain }}
-          EOF
-
-      - name: Deploy Ingress
-        run: |
-          NAMESPACE=${{ needs.setup.outputs.namespace }}
-          cat <<EOF | kubectl apply -f -
-          apiVersion: networking.k8s.io/v1
-          kind: Ingress
-          metadata:
-            name: parkgolf-ingress
-            namespace: $NAMESPACE
-            annotations:
-              kubernetes.io/ingress.class: "gce"
-              kubernetes.io/ingress.global-static-ip-name: "${{ env.IP_NAME }}"
-              networking.gke.io/managed-certificates: "parkgolf-cert"
-          spec:
-            rules:
-            - host: ${{ steps.domain.outputs.domain }}
-              http:
-                paths:
-                - path: /api/admin
-                  pathType: Prefix
-                  backend:
-                    service:
-                      name: admin-api
-                      port:
-                        number: 8080
-                - path: /api/admin/*
-                  pathType: ImplementationSpecific
-                  backend:
-                    service:
-                      name: admin-api
-                      port:
-                        number: 8080
-                - path: /api/user
-                  pathType: Prefix
-                  backend:
-                    service:
-                      name: user-api
-                      port:
-                        number: 8080
-                - path: /api/user/*
-                  pathType: ImplementationSpecific
-                  backend:
-                    service:
-                      name: user-api
-                      port:
-                        number: 8080
-                - path: /socket.io
-                  pathType: Prefix
-                  backend:
-                    service:
-                      name: chat-gateway
-                      port:
-                        number: 8080
-                - path: /socket.io/*
-                  pathType: ImplementationSpecific
-                  backend:
-                    service:
-                      name: chat-gateway
-                      port:
-                        number: 8080
-                - path: /chat
-                  pathType: Prefix
-                  backend:
-                    service:
-                      name: chat-gateway
-                      port:
-                        number: 8080
-                - path: /chat/*
-                  pathType: ImplementationSpecific
-                  backend:
-                    service:
-                      name: chat-gateway
-                      port:
-                        number: 8080
-                - path: /notification
-                  pathType: Prefix
-                  backend:
-                    service:
-                      name: chat-gateway
-                      port:
-                        number: 8080
-                - path: /notification/*
-                  pathType: ImplementationSpecific
-                  backend:
-                    service:
-                      name: chat-gateway
-                      port:
-                        number: 8080
-                - path: /webhook
-                  pathType: Prefix
-                  backend:
-                    service:
-                      name: payment-service
-                      port:
-                        number: 8080
-                - path: /webhook/*
-                  pathType: ImplementationSpecific
-                  backend:
-                    service:
-                      name: payment-service
-                      port:
-                        number: 8080
-          EOF
-
-      - name: Summary
-        run: |
-          echo "## Deployment Summary - ${{ needs.setup.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "## Deployment dispatched" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Resource | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Cluster | ${{ needs.setup.outputs.cluster_name }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Namespace | ${{ needs.setup.outputs.namespace }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Static IP | ${{ env.STATIC_IP }} |" >> $GITHUB_STEP_SUMMARY
+          echo "Image tag: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "Environment: ${{ needs.setup.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Endpoints" >> $GITHUB_STEP_SUMMARY
-          echo "- Admin API: https://${{ steps.domain.outputs.domain }}/api/admin" >> $GITHUB_STEP_SUMMARY
-          echo "- User API: https://${{ steps.domain.outputs.domain }}/api/user" >> $GITHUB_STEP_SUMMARY
-          echo "- WebSocket: wss://${{ steps.domain.outputs.domain }}/socket.io" >> $GITHUB_STEP_SUMMARY
-          echo "- Webhook: https://${{ steps.domain.outputs.domain }}/webhook" >> $GITHUB_STEP_SUMMARY
+          echo "ArgoCD가 자동 sync합니다 (≤5분). UI에서 진행 상태 확인:" >> $GITHUB_STEP_SUMMARY
+          echo "\`kubectl -n argocd get application parkgolf\`" >> $GITHUB_STEP_SUMMARY
