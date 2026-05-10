@@ -30,9 +30,12 @@ spec:
       kind: ExternalSecret
       jqPathExpressions:
         - .spec.target.deletionPolicy
+        - .spec.target.template.engineVersion
+        - .spec.target.template.mergePolicy
         - .spec.data[].remoteRef.conversionStrategy
         - .spec.data[].remoteRef.decodingStrategy
         - .spec.data[].remoteRef.metadataPolicy
+        - .spec.data[].remoteRef.nullBytePolicy
     - group: external-secrets.io
       kind: ClusterSecretStore
       jqPathExpressions:
