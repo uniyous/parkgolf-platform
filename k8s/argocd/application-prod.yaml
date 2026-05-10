@@ -24,6 +24,28 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: parkgolf-prod
+  # controller가 자동 추가하는 default field 무시 (cosmetic drift 차단)
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.target.deletionPolicy
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+    - group: external-secrets.io
+      kind: ClusterSecretStore
+      jqPathExpressions:
+        - .spec.conditions
+    - group: apps
+      kind: StatefulSet
+      jqPathExpressions:
+        - .spec.persistentVolumeClaimRetentionPolicy
+        - .spec.podManagementPolicy
+        - .spec.revisionHistoryLimit
+        - .spec.updateStrategy
+        - .spec.volumeClaimTemplates[].apiVersion
+        - .spec.volumeClaimTemplates[].kind
   syncPolicy:
     # prod: 자동 sync 끄고 수동 승인 권장 (안전)
     syncOptions:
