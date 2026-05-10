@@ -10,6 +10,9 @@
 
 name: CD Services
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
     inputs:
