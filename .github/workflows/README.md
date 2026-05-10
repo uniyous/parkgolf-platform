@@ -158,7 +158,7 @@ Actions > CD Apps > Run workflow
 | `PARTNER_ENCRYPTION_KEY` | 파트너 암호화 |
 
 GHA SA 필요 권한:
-`container.admin`, `artifactregistry.admin`, `compute.admin`, `cloudsql.admin`, `iam.serviceAccountAdmin`, `iam.serviceAccountUser`, `resourcemanager.projectIamAdmin`, `secretmanager.admin`, `storage.admin`, `servicenetworking.networksAdmin`, `vpcaccess.admin`, `firebasehosting.admin`, `monitoring.admin`
+`container.admin`, `artifactregistry.admin`, `compute.admin`, `iam.serviceAccountAdmin`, `iam.serviceAccountUser`, `resourcemanager.projectIamAdmin`, `secretmanager.admin`, `storage.admin`, `servicenetworking.networksAdmin`, `vpcaccess.admin`, `firebasehosting.admin`
 
 ---
 
