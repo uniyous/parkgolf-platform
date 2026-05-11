@@ -5,10 +5,10 @@
 global:
   namespace: parkgolf-dev
   domain: dev-api.parkgolfmate.com
-
+  image:
+    tag: 26374ef994948ff169b3ce1043a5ec0fc354d5b7
 externalSecrets:
   clusterName: parkgolf-dev-cluster
   clusterLocation: asia-northeast3-a
-
 ingress:
   staticIpName: parkgolf-parkgolf-dev-cluster-ip
