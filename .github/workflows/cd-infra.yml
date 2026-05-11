@@ -313,7 +313,12 @@ jobs:
           LOC_VAL="${{ needs.setup.outputs.location_value }}"
 
           if gcloud container clusters describe $CLUSTER $LOC_FLAG=$LOC_VAL 2>/dev/null; then
-            echo "Cluster already exists"
+            echo "Cluster already exists — ensuring logging/monitoring config"
+            # workload 로그 수집 활성 (멱등, 변경 없으면 즉시 종료)
+            gcloud container clusters update $CLUSTER $LOC_FLAG=$LOC_VAL \
+              --logging=SYSTEM,WORKLOAD \
+              --monitoring=SYSTEM \
+              || echo "(no-op or already configured)"
           else
             echo "Creating GKE Standard cluster ($ENV, $LOC_FLAG=$LOC_VAL)..."
             gcloud container clusters create $CLUSTER \
@@ -330,7 +335,8 @@ jobs:
               --release-channel=regular \
               --workload-pool=${{ env.PROJECT_ID }}.svc.id.goog \
               --enable-ip-alias \
-              --logging=SYSTEM --monitoring=SYSTEM
+              --logging=SYSTEM,WORKLOAD \
+              --monitoring=SYSTEM
           fi
 
       - name: Wait for Cluster Ready
