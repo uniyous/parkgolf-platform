@@ -1,3 +1,4 @@
+import './common/observability/tracing';
 import { NestFactory } from '@nestjs/core';
 import { INestApplication } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';

@@ -39,6 +39,9 @@ spec:
               valueFrom: { configMapKeyRef: { name: parkgolf-config, key: NODE_ENV } }
             - name: NATS_URL
               valueFrom: { configMapKeyRef: { name: parkgolf-config, key: NATS_URL } }
+            # OpenTelemetry — Cloud Trace 자동 식별
+            - name: OTEL_SERVICE_NAME
+              value: {{ .name | quote }}
             - name: JWT_SECRET
               valueFrom: { secretKeyRef: { name: parkgolf-secrets, key: JWT_SECRET } }
             - name: JWT_REFRESH_SECRET
