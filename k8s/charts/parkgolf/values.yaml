@@ -106,6 +106,7 @@ services:
     db: chat_db
   - name: notify-service
     db: notify_db
+    migrate: false  # prisma migrations 폴더 없음 (db push 기반)
   - name: partner-service
     db: partner_db
     extraEnv:
