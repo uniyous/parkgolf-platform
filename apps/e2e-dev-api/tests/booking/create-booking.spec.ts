@@ -153,7 +153,7 @@ test.describe('Booking — onsite create @write', () => {
     console.log(`[booking] final status=${finalStatus}`);
 
     // === 5. cleanup ===
-    const cancel = await request.patch(`/api/user/bookings/${bookingId}/cancel`, {
+    const cancel = await request.delete(`/api/user/bookings/${bookingId}`, {
       headers: userAuth,
       data: { reason: 'e2e cleanup' },
     });
