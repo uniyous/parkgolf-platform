@@ -185,7 +185,7 @@ GHA SA 필요 권한:
 
 ## 8. 참고 문서
 
-- ArgoCD 접속: `docs/guides/ARGOCD_ACCESS.md`
+- ArgoCD 접속: `docs/guides/argocd-access-guide.md`
 - Helm chart: `k8s/charts/parkgolf/`
 - ArgoCD Application: `k8s/argocd/application.yaml`
 - 인프라 Terraform: `infra/environments/{env}/`

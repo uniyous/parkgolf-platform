@@ -364,7 +364,7 @@ gcloud trace traces list \
 
 ## 13. 관련 파일 / 원천 자료
 
-- ArgoCD 접속 가이드: `docs/guides/ARGOCD_ACCESS.md`
+- ArgoCD 접속 가이드: `docs/guides/argocd-access-guide.md`
 - Helm chart (`OTEL_SERVICE_NAME` 주입): `k8s/charts/parkgolf/templates/deployments.yaml`
 - 각 서비스의 tracing 부트스트랩: `services/*/src/common/observability/tracing.ts`
 - 인프라 워크플로우: `.github/workflows/cd-infra.yml`
