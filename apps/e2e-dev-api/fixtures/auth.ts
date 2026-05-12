@@ -1,7 +1,13 @@
 import { APIRequestContext, expect } from '@playwright/test';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
 /**
  * 인증 헬퍼 — admin / user 로그인 + 토큰 발급
+ *
+ * admin 토큰은 파일 캐시(~/.parkgolf-e2e/admin-token.json, TTL 30분)로
+ * 재기동/재시도 시 재로그인 회피 → rate limit 방지.
  */
 
 export interface LoginResult {
@@ -17,10 +23,10 @@ export interface LoginResult {
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@parkgolf.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123!@#';
 
-/**
- * BFF 공통 응답 shape: { success, data } 또는 { data } 또는 직접
- * 어느 형태든 accessToken을 찾아 반환
- */
+const CACHE_DIR = path.join(os.homedir(), '.parkgolf-e2e');
+const ADMIN_CACHE = path.join(CACHE_DIR, 'admin-token.json');
+const TTL_MS = 30 * 60 * 1000; // 30분
+
 function extractToken(body: any): string | undefined {
   if (!body) return undefined;
   if (typeof body.accessToken === 'string') return body.accessToken;
@@ -29,11 +35,63 @@ function extractToken(body: any): string | undefined {
   return undefined;
 }
 
+function readAdminCache(): LoginResult | null {
+  try {
+    const raw = fs.readFileSync(ADMIN_CACHE, 'utf8');
+    const parsed = JSON.parse(raw) as { savedAt: number; result: LoginResult; baseURL?: string };
+    if (Date.now() - parsed.savedAt < TTL_MS) return parsed.result;
+  } catch {
+    /* miss */
+  }
+  return null;
+}
+
+function writeAdminCache(result: LoginResult, baseURL?: string): void {
+  try {
+    fs.mkdirSync(CACHE_DIR, { recursive: true });
+    fs.writeFileSync(
+      ADMIN_CACHE,
+      JSON.stringify({ savedAt: Date.now(), result, baseURL }, null, 2),
+    );
+  } catch {
+    /* best-effort */
+  }
+}
+
+export function clearAdminCache(): void {
+  try {
+    fs.unlinkSync(ADMIN_CACHE);
+  } catch {
+    /* ignore */
+  }
+}
+
+async function verifyToken(
+  request: APIRequestContext,
+  token: string,
+): Promise<boolean> {
+  try {
+    const res = await request.get('/api/admin/iam/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.ok();
+  } catch {
+    return false;
+  }
+}
+
 export async function loginAdmin(
   request: APIRequestContext,
   email = ADMIN_EMAIL,
   password = ADMIN_PASSWORD,
 ): Promise<LoginResult> {
+  // 1) 캐시 확인 — TTL 내 + token 유효성 검증
+  const cached = readAdminCache();
+  if (cached && (await verifyToken(request, cached.accessToken))) {
+    return cached;
+  }
+
+  // 2) 실로그인
   const res = await request.post('/api/admin/iam/login', {
     data: { email, password },
   });
@@ -41,11 +99,13 @@ export async function loginAdmin(
   const body = await res.json();
   const accessToken = extractToken(body);
   expect(accessToken, 'accessToken not found in response').toBeTruthy();
-  return {
+  const result: LoginResult = {
     accessToken: accessToken!,
     refreshToken: body?.data?.refreshToken ?? body?.refreshToken,
     user: body?.data?.user ?? body?.user,
   };
+  writeAdminCache(result);
+  return result;
 }
 
 export async function loginUser(

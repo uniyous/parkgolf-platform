@@ -14,14 +14,16 @@ export default defineConfig({
   // rate limit 회피 — 로그인이 많은 spec이라 직렬
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 1,
+  // 실패 시 재시도는 register/login throttler를 더 자극 → 로컬은 0
+  retries: process.env.CI ? 2 : 0,
   workers: 1,
   reporter: [
     ['list'],
     ['html', { open: 'never', outputFolder: 'playwright-report' }],
     ['json', { outputFile: 'test-results/results.json' }],
   ],
-  timeout: 30_000,
+  // throttler 60s 충돌 대기 + saga polling 여유
+  timeout: 90_000,
   expect: { timeout: 5_000 },
 
   use: {
