@@ -1,13 +1,9 @@
-import { test, expect } from '@playwright/test';
-import { loginAdmin, authHeaders } from '../../fixtures/auth';
+import { test, expect } from '../../fixtures/test';
+import { authHeaders } from '../../fixtures/auth';
 
 test.describe('Admin Login', () => {
-  test('정상 로그인 → accessToken 발급', async ({ request }) => {
-    const { accessToken, user } = await loginAdmin(request);
-    expect(accessToken.length).toBeGreaterThan(20);
-    if (user) {
-      expect(user.email).toContain('@');
-    }
+  test('정상 로그인 → accessToken 발급 (worker fixture)', async ({ adminToken }) => {
+    expect(adminToken.length).toBeGreaterThan(20);
   });
 
   test('잘못된 비밀번호 → 4xx', async ({ request }) => {
@@ -25,11 +21,13 @@ test.describe('Admin Login', () => {
     expect(res.status()).toBeGreaterThanOrEqual(400);
   });
 
-  test('토큰 validate (자가 검증)', async ({ request }) => {
-    const { accessToken } = await loginAdmin(request);
-    const res = await request.post('/api/admin/iam/validate', {
-      headers: authHeaders(accessToken),
+  test('토큰으로 me 조회 (자가 검증)', async ({ request, adminToken }) => {
+    const res = await request.get('/api/admin/iam/me', {
+      headers: authHeaders(adminToken),
     });
-    expect(res.ok(), `validate failed: ${res.status()}`).toBeTruthy();
+    expect(res.ok(), `me failed: ${res.status()}`).toBeTruthy();
+    const body = await res.json();
+    const user = body?.data ?? body;
+    expect(user?.email || user?.user?.email).toContain('@');
   });
 });

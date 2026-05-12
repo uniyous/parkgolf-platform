@@ -11,10 +11,11 @@ const BASE_URL = process.env.E2E_BASE_URL || 'https://dev-api.parkgolfmate.com';
 
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: true,
+  // rate limit 회피 — 로그인이 많은 spec이라 직렬
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  retries: process.env.CI ? 2 : 1,
+  workers: 1,
   reporter: [
     ['list'],
     ['html', { open: 'never', outputFolder: 'playwright-report' }],
