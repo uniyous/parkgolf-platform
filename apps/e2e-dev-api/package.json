@@ -1,0 +1,24 @@
+{
+  "name": "parkgolf-e2e-dev-api",
+  "version": "0.0.1",
+  "description": "Park Golf Platform - API E2E tests (Playwright)",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:auth": "playwright test tests/auth",
+    "test:booking": "playwright test tests/booking",
+    "test:payment": "playwright test tests/payment",
+    "test:admin": "playwright test tests/admin",
+    "test:dev": "E2E_BASE_URL=https://dev-api.parkgolfmate.com playwright test",
+    "test:prod": "E2E_BASE_URL=https://api.parkgolfmate.com playwright test --grep-invert @write",
+    "report": "playwright show-report",
+    "codegen": "playwright codegen https://dev-api.parkgolfmate.com"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.10.0",
+    "dotenv": "^16.4.5",
+    "typescript": "^5.7.0"
+  }
+}
