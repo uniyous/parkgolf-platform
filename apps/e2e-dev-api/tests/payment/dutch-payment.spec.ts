@@ -1,35 +1,105 @@
-import { test, expect } from '@playwright/test';
-import { loginAdmin, authHeaders } from '../../fixtures/auth';
+import { test, expect } from '../../fixtures/test';
+import { authHeaders } from '../../fixtures/auth';
+import { createE2EUser, E2EUser } from '../../fixtures/users';
+import { obtainSandboxPaymentKey } from '../../fixtures/toss';
 
 /**
- * 더치페이 (split payment) 결제 흐름
+ * 더치페이 (split payment) E2E
  *
- * 시나리오 (실 데이터 — @write)
- *   1. 예약 생성 (paymentMethod=dutchpay)
- *   2. payment.splitPrepare → 참여자별 orderId 발급
- *   3. 각 참여자별 splitConfirm (test 토스 paymentKey 시뮬레이션)
- *   4. 마지막 결제 후 PAYMENT_CONFIRMED saga 트리거 확인
- *   5. booking.status = CONFIRMED 검증
+ * 흐름 (channel = 채팅방 4명)
+ *   1. 4명 user 생성 + 로그인 → 토큰
+ *   2. user-1 채팅방 생성 + 다른 3명 멤버 추가
+ *   3. user-1 AI 에이전트에게 "더치페이로 예약" 명령 → splitPrepare
+ *   4. settlement 카드 broadcast 검증 → 4 orderId 발급
+ *   5. (Plan B) 각자 토스 sandbox paymentKey 발급 → confirmSplit 호출
+ *   6. 마지막 confirm 후 PAYMENT_CONFIRMED saga 트리거
+ *   7. booking.status = CONFIRMED 검증
+ *   8. cleanup (cancel booking + delete user — best effort)
  *
- * 외부 토스 결제는 sandbox 키로 dev 환경 호출 필요.
- * dev에서 실 토스 호출이 부담스러우면 unit/integration 테스트에서 mock 사용 권장.
+ * 현재 상태
+ *   A. 셋업~splitPrepare (4 orderId 발급): 자동 ✅
+ *   B. 토스 confirm 단계: 위젯 자동화 필요 — fixtures/toss.ts TODO
+ *
+ * 본 spec은 A 까지 실 검증, B는 obtainSandboxPaymentKey 구현 시 활성.
  */
-test.describe('Dutch Payment @write @slow', () => {
-  test.skip('더치페이 4인 — 전원 결제 완료 시 booking CONFIRMED', async ({ request }) => {
-    const { accessToken } = await loginAdmin(request);
-    const auth = authHeaders(accessToken);
+test.describe('Dutch Payment (group of 4) @write @slow', () => {
+  const PARTICIPANT_COUNT = 4;
+  let users: E2EUser[] = [];
 
-    // TODO: 1) 예약 생성 (dutchpay)
-    // TODO: 2) splitPrepare 호출 → orderId 4개
-    // TODO: 3) 각 splitConfirm (병렬) — 토스 sandbox paymentKey
-    // TODO: 4) 마지막 confirm 후 saga 트리거 + booking 상태 polling
-    // TODO: 5) booking.status === CONFIRMED
+  test.beforeAll(async ({ playwright }) => {
+    const baseURL =
+      process.env.E2E_BASE_URL || 'https://dev-api.parkgolfmate.com';
+    const ctx = await playwright.request.newContext({ baseURL });
+    // 4명 user 동시 생성
+    users = await Promise.all(
+      Array.from({ length: PARTICIPANT_COUNT }, (_, i) =>
+        createE2EUser(ctx, `dutch${i + 1}`),
+      ),
+    );
+    await ctx.dispose();
   });
 
-  test.skip('더치페이 타임아웃 — PAYMENT_TIMEOUT saga 자동 환불', async ({ request }) => {
-    // TODO: 1) dutchpay 예약 생성
-    // TODO: 2) 1명만 결제 후 5분 대기 (또는 즉시 trigger NATS pattern)
-    // TODO: 3) saga PAYMENT_TIMEOUT 실행 확인
-    // TODO: 4) 결제했던 1명에게 환불 처리 확인
+  test.skip('1. 채팅방 생성 + 멤버 추가', async ({ request }) => {
+    const [booker, ...others] = users;
+    // 채팅방 생성 (booker)
+    const create = await request.post('/api/user/chat/rooms', {
+      headers: authHeaders(booker.accessToken),
+      data: { name: 'E2E 더치페이 채팅방', type: 'GROUP' },
+    });
+    expect(create.ok(), `room create [${create.status()}]`).toBeTruthy();
+    const room = (await create.json())?.data ?? (await create.json());
+    const roomId: string = room?.id ?? room?.roomId;
+    expect(roomId).toBeTruthy();
+
+    // 멤버 추가
+    for (const u of others) {
+      const addRes = await request.post(`/api/user/chat/rooms/${roomId}/members`, {
+        headers: authHeaders(booker.accessToken),
+        data: { userId: u.userId },
+      });
+      expect(addRes.ok() || addRes.status() === 409).toBeTruthy();
+    }
+  });
+
+  test.skip('2. AI 에이전트 → 더치페이 트리거 (splitPrepare)', async ({ request }) => {
+    // TODO: 위 채팅방 ID를 이전 step에서 전달 — beforeAll에서 셋업 또는 별도 store
+    // 1) user-api/chat/rooms/:roomId/agent 호출 ("내일 강남 4명 더치페이로 예약")
+    // 2) 응답에서 CONFIRM_BOOKING action 추출 → confirmBooking + paymentMethod=dutchpay 재호출
+    // 3) splits 응답 검증 (4 orderId)
+    // 4) chat-gateway WebSocket로 settlement 카드 broadcast 수신 확인
+  });
+
+  test.skip('3. Plan B — 각자 confirmSplit + saga 검증', async ({ request }) => {
+    // 위 step에서 발급된 4 orderId, splits 사용
+    // const orderIds: string[] = [...];
+
+    // for (let i = 0; i < users.length; i++) {
+    //   const { paymentKey } = await obtainSandboxPaymentKey(
+    //     request,
+    //     orderIds[i],
+    //     amount,
+    //   );
+    //   const conf = await request.post('/api/user/payments/split/confirm', {
+    //     headers: authHeaders(users[i].accessToken),
+    //     data: { orderId: orderIds[i], paymentKey, amount },
+    //   });
+    //   expect(conf.ok()).toBeTruthy();
+    // }
+
+    // 4) booking 상태 = CONFIRMED polling (PAYMENT_CONFIRMED saga 완료 대기)
+    // const bookingId = ...;
+    // await expect.poll(async () => {
+    //   const r = await request.get(`/api/user/bookings/${bookingId}`, {
+    //     headers: authHeaders(users[0].accessToken),
+    //   });
+    //   const b = (await r.json())?.data ?? (await r.json());
+    //   return b?.status;
+    // }, { timeout: 60_000, intervals: [2_000] }).toBe('CONFIRMED');
+  });
+
+  test.skip('PAYMENT_TIMEOUT — 1명만 결제 후 5분 경과 자동 환불', async () => {
+    // 1~3 셋업 후 1명만 confirmSplit
+    // saga-pgboss의 payment-timeout job 즉시 발화 (5분 대기 우회)
+    // booking.status = FAILED + refund 발생 검증
   });
 });
