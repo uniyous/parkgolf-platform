@@ -1,13 +1,17 @@
 import { APIRequestContext, expect } from '@playwright/test';
 
 /**
- * E2E용 user 헬퍼 — 동적 사용자 생성/로그인 (테스트 격리)
+ * E2E용 user 헬퍼 — 동적 사용자 생성 + 즉시 토큰 발급
+ *
+ * /api/user/iam/register 응답이 accessToken / refreshToken을 즉시 반환하므로
+ * 별도 login 호출 불필요.
  */
 export interface E2EUser {
   email: string;
   password: string;
   userId: number;
   name: string;
+  phone: string;
   accessToken: string;
 }
 
@@ -17,41 +21,60 @@ function uniqueEmail(prefix: string): string {
   return `${prefix}.${Date.now()}.${Math.floor(Math.random() * 9999)}@e2e.parkgolfmate.local`;
 }
 
-/**
- * 신규 user 회원가입 + 로그인. 4명 동시 생성 시 await Promise.all 사용.
- */
+function randomPhone(): string {
+  const rand = () => String(Math.floor(1000 + Math.random() * 9000));
+  return `010-${rand()}-${rand()}`;
+}
+
+function extractAccessToken(body: any): string | undefined {
+  if (!body) return undefined;
+  if (typeof body.accessToken === 'string') return body.accessToken;
+  if (body.data?.accessToken) return body.data.accessToken;
+  return undefined;
+}
+
+function extractUserId(body: any): number | undefined {
+  if (!body) return undefined;
+  return (
+    body?.user?.id ??
+    body?.data?.user?.id ??
+    body?.userId ??
+    body?.data?.userId
+  );
+}
+
 export async function createE2EUser(
   request: APIRequestContext,
   namePrefix = 'tester',
 ): Promise<E2EUser> {
   const email = uniqueEmail(namePrefix);
-  const name = `${namePrefix}-${Date.now().toString().slice(-5)}`;
+  // user 이름 10자 제한 — namePrefix 짧게 + 5자리 suffix
+  const shortPrefix = namePrefix.slice(0, 4);
+  const name = `${shortPrefix}${Date.now().toString().slice(-5)}`.slice(0, 10);
+  const phone = randomPhone();
 
-  // 회원가입
   const reg = await request.post('/api/user/iam/register', {
-    data: { email, password: USER_PASSWORD, name, phone: '01000000000' },
+    data: { email, password: USER_PASSWORD, name, phone },
   });
-  // 가입 응답 시 user 정보 (이미 가입된 케이스 처리)
-  if (!reg.ok() && reg.status() !== 409) {
-    const body = await reg.text();
-    expect(reg.ok(), `register failed [${reg.status()}]: ${body}`).toBeTruthy();
+  const regBody = await reg.json().catch(() => ({}));
+
+  if (!reg.ok()) {
+    expect(
+      false,
+      `register failed [${reg.status()}]: ${JSON.stringify(regBody).slice(0, 300)}`,
+    ).toBeTruthy();
   }
 
-  // 로그인
-  const login = await request.post('/api/user/iam/login', {
-    data: { email, password: USER_PASSWORD },
-  });
-  expect(login.ok(), `login failed [${login.status()}]`).toBeTruthy();
-  const body = await login.json();
-  const accessToken = body?.data?.accessToken ?? body?.accessToken;
-  const user = body?.data?.user ?? body?.user;
-  expect(accessToken).toBeTruthy();
+  const accessToken = extractAccessToken(regBody);
+  expect(accessToken, 'register did not return accessToken').toBeTruthy();
+  const userId = extractUserId(regBody) ?? 0;
 
   return {
     email,
     password: USER_PASSWORD,
     name,
-    userId: user?.id,
-    accessToken,
+    phone,
+    userId,
+    accessToken: accessToken!,
   };
 }
