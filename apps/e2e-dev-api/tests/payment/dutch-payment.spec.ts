@@ -1,7 +1,8 @@
+// 이 spec은 dutch-happy-path.spec.ts 로 대체됨 (Phase 3 적용 후 정공 흐름).
+// 옛 위젯 자동화 placeholder는 더 이상 사용하지 않음. 본 파일은 시나리오 인벤토리만 보존.
 import { test, expect } from '../../fixtures/test';
 import { authHeaders } from '../../fixtures/auth';
 import { createE2EUser, E2EUser } from '../../fixtures/users';
-import { obtainSandboxPaymentKey } from '../../fixtures/toss';
 
 /**
  * 더치페이 (split payment) E2E
