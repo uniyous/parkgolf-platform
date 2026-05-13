@@ -973,37 +973,14 @@ export class BookingService {
             },
           },
         });
-
-        // PAYMENT_CONFIRMED saga 트리거용 outbox
-        await prisma.bookingOutboxEvent.create({
-          data: {
-            aggregateType: 'Booking',
-            aggregateId: String(bookingId),
-            eventType: 'booking.paymentConfirmed',
-            payload: {
-              bookingId,
-              userId: booking.userId,
-              paymentMethod: booking.paymentMethod,
-              amount: Number(booking.totalPrice),
-              // 더치페이는 단일 paymentId/Key/orderId 의미 없음 (split N개)
-              paymentId: null,
-              paymentKey: null,
-              orderId: null,
-              splitPayment: true,
-            } as any,
-            status: OutboxStatus.PENDING,
-          },
-        });
       });
 
       this.logger.log(
         `Booking ${bookingId} CONFIRMED — all ${totalCount} participants paid (split payment)`,
       );
 
-      // pg-boss 즉시 트리거 (outbox-processor의 NATS emit 유도)
-      await this.outboxProcessor.triggerImmediate().catch((err) =>
-        this.logger.warn(`outbox triggerImmediate failed: ${err?.message}`),
-      );
+      // 결제 완료 outbox는 payment-service가 발행 (단건/더치 일관).
+      // 본 메서드는 응답(settled=true)으로 호출자에게 allPaid를 알린다.
     }
 
     const settlementStatus =

@@ -1,9 +1,11 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { SplitStatus } from '@prisma/client';
+import { firstValueFrom, timeout, catchError, of } from 'rxjs';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AppException, Errors } from '../../common/exceptions';
 import { TossApiService } from './toss-api.service';
+import { PaymentService } from './payment.service';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface SplitPrepareDto {
@@ -32,6 +34,7 @@ export class PaymentSplitService {
     private readonly prisma: PrismaService,
     private readonly tossApi: TossApiService,
     @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
+    private readonly paymentService: PaymentService,
   ) {}
 
   /**
@@ -137,18 +140,49 @@ export class PaymentSplitService {
       },
     });
 
-    // booking-service에 참여자 결제 완료 알림
-    this.bookingClient.emit('booking.participant.paid', {
-      bookingId: split.bookingId,
-      userId: split.userId,
-      userName: split.userName,
-      userEmail: split.userEmail,
-      amount: split.amount,
-    });
+    // booking-service에 참여자 결제 완료 알림 (request-reply — allPaid 응답 수신)
+    const markRes = await firstValueFrom(
+      this.bookingClient
+        .send('booking.participant.paid', {
+          bookingId: split.bookingId,
+          userId: split.userId,
+          userName: split.userName,
+          userEmail: split.userEmail,
+          amount: split.amount,
+        })
+        .pipe(
+          timeout(5000),
+          catchError((err) => {
+            this.logger.error(
+              `markParticipantPaid failed: ${err?.message || err}`,
+            );
+            return of({ success: false, data: { settled: false } } as any);
+          }),
+        ),
+    );
 
     this.logger.log(
-      `Split confirmed: orderId=${dto.orderId}, user=${split.userId}`,
+      `Split confirmed: orderId=${dto.orderId}, user=${split.userId}, settled=${markRes?.data?.settled}`,
     );
+
+    // 모든 참여자 결제 완료 → 단건 결제와 동일하게 payment.confirmed outbox 발행
+    // → saga의 PAYMENT_CONFIRMED 트리거 (SEND_CONFIRMATION / REGISTER_COMPANY_MEMBER)
+    if (markRes?.success && markRes?.data?.settled === true) {
+      await this.paymentService.createOutboxEvent('payment.confirmed', {
+        // 더치페이는 단일 paymentId/paymentKey/orderId 의미 없음
+        // (split N개 각각 별도 토스 결제 보유)
+        paymentId: null,
+        paymentKey: null,
+        orderId: null,
+        amount: markRes.data?.amount ?? split.amount,
+        bookingId: split.bookingId,
+        userId: markRes.data?.userId ?? split.userId,
+        splitPayment: true,
+      });
+      this.logger.log(
+        `[Outbox] payment.confirmed emitted for split-payment booking=${split.bookingId}`,
+      );
+    }
 
     return {
       id: updated.id,
