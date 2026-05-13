@@ -321,10 +321,20 @@ export class BookingSagaStepService {
       }
 
       this.logger.warn(`Booking ${data.bookingId} is ${booking.status}, expected SLOT_RESERVED`);
+      // 이미 CONFIRMED (e.g. 더치페이 markParticipantPaid에서 선전이) 인 경우에도
+      // 후속 saga step(SEND_CONFIRMATION, REGISTER_COMPANY_MEMBER)이 동작하도록
+      // 풀 필드 반환.
       return {
         bookingId: booking.id,
         status: booking.status,
         bookingNumber: booking.bookingNumber,
+        gameName: booking.gameName,
+        bookingDate: booking.bookingDate?.toISOString(),
+        startTime: booking.startTime,
+        clubId: booking.clubId,
+        userEmail: booking.userEmail,
+        userName: booking.userName,
+        paymentMethod: booking.paymentMethod,
       };
     }
 

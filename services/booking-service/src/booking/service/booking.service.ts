@@ -939,6 +939,7 @@ export class BookingService {
     const allPaid = paidCount === totalCount && totalCount >= booking.playerCount;
 
     // 전원 결제 완료 → SLOT_RESERVED → CONFIRMED
+    // 알림/CompanyMember 등록은 PAYMENT_CONFIRMED saga가 일관 처리 (SAGA.md §6.6)
     if (allPaid && booking.status === BookingStatus.SLOT_RESERVED) {
       await this.prisma.$transaction(async (prisma) => {
         await prisma.booking.update({
@@ -972,54 +973,37 @@ export class BookingService {
             },
           },
         });
+
+        // PAYMENT_CONFIRMED saga 트리거용 outbox
+        await prisma.bookingOutboxEvent.create({
+          data: {
+            aggregateType: 'Booking',
+            aggregateId: String(bookingId),
+            eventType: 'booking.paymentConfirmed',
+            payload: {
+              bookingId,
+              userId: booking.userId,
+              paymentMethod: booking.paymentMethod,
+              amount: Number(booking.totalPrice),
+              // 더치페이는 단일 paymentId/Key/orderId 의미 없음 (split N개)
+              paymentId: null,
+              paymentKey: null,
+              orderId: null,
+              splitPayment: true,
+            } as any,
+            status: OutboxStatus.PENDING,
+          },
+        });
       });
 
       this.logger.log(
         `Booking ${bookingId} CONFIRMED — all ${totalCount} participants paid (split payment)`,
       );
 
-      // 예약 확정 이벤트 발행 (알림용)
-      if (this.notificationPublisher) {
-        this.notificationPublisher.emit('booking.confirmed', {
-          bookingId: booking.id,
-          bookingNumber: booking.bookingNumber,
-          userId: booking.userId,
-          gameId: booking.gameId,
-          gameName: booking.gameName,
-          bookingDate: booking.bookingDate.toISOString(),
-          timeSlot: booking.startTime,
-          confirmedAt: new Date().toISOString(),
-          userEmail: booking.userEmail,
-          userName: booking.userName,
-          paymentMethod: booking.paymentMethod,
-        });
-      }
-
-      // CompanyMember 자동 등록
-      if (booking.clubId && booking.userId && this.courseServiceClient && this.iamService) {
-        try {
-          const clubResponse = await firstValueFrom(
-            this.courseServiceClient.send('club.findOne', { id: booking.clubId }).pipe(
-              timeout(NATS_TIMEOUTS.DEFAULT),
-              catchError(() => of(null)),
-            ),
-          );
-          const companyId = clubResponse?.data?.companyId;
-          if (companyId) {
-            await firstValueFrom(
-              this.iamService.send('iam.companyMembers.addByBooking', {
-                companyId,
-                userId: booking.userId,
-              }).pipe(
-                timeout(NATS_TIMEOUTS.DEFAULT),
-                catchError(() => of(null)),
-              ),
-            );
-          }
-        } catch (err) {
-          this.logger.warn(`CompanyMember registration failed: ${err?.message}`);
-        }
-      }
+      // pg-boss 즉시 트리거 (outbox-processor의 NATS emit 유도)
+      await this.outboxProcessor.triggerImmediate().catch((err) =>
+        this.logger.warn(`outbox triggerImmediate failed: ${err?.message}`),
+      );
     }
 
     const settlementStatus =

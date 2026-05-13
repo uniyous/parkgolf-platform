@@ -228,6 +228,8 @@ export class OutboxProcessorService implements OnModuleInit {
       'gameTimeSlots.reserve',
       'gameTimeSlots.release',
       'payment.cancelByBookingId',
+      // saga 트리거 — startSaga 응답을 받아 success 판정 (NatsResponse.withSaga)
+      'booking.paymentConfirmed',
     ];
     return requestReplyEvents.includes(eventType);
   }
