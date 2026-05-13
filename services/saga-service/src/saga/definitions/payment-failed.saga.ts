@@ -15,6 +15,26 @@ export const PaymentFailedSaga: SagaDefinition = {
   name: 'PAYMENT_FAILED',
   steps: [
     {
+      // 더치페이일 때만: 이미 PAID인 다른 split → Toss 환불, PENDING → EXPIRED
+      // PAYMENT_TIMEOUT saga의 동일 step과 같은 핸들러 공유.
+      name: 'REFUND_PAID_SPLITS',
+      action: 'payment.refundPaidSplits',
+      compensate: null,
+      timeout: NATS_TIMEOUTS.PAYMENT,
+      targetService: 'PAYMENT_SERVICE',
+      condition: (payload) => payload.paymentMethod === 'dutchpay',
+      buildRequest: (payload) => ({
+        bookingId: payload.bookingId,
+        reason: '결제 취소 - 분할결제 다른 참여자 환불',
+      }),
+      mergeResponse: (payload, response) => ({
+        ...payload,
+        refundedCount: response.refundedCount ?? 0,
+        refundedAmount: response.refundedAmount ?? 0,
+        expiredSplitCount: response.expiredCount ?? 0,
+      }),
+    },
+    {
       name: 'MARK_BOOKING_FAILED',
       action: 'booking.saga.paymentTimeout',
       compensate: null,

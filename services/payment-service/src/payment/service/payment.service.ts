@@ -1,6 +1,6 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { Prisma, PaymentStatus, PaymentMethod, RefundStatus, OutboxStatus } from '@prisma/client';
+import { Prisma, PaymentStatus, PaymentMethod, RefundStatus, OutboxStatus, SplitStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { TossApiService, TossPaymentResponse } from './toss-api.service';
 import { AppException, Errors } from '../../common/exceptions';
@@ -268,33 +268,104 @@ export class PaymentService {
     errorCode?: string;
     errorMessage?: string;
   }) {
+    // 1) 단건 결제 (Payment) 우선 조회
     const payment = await this.prisma.payment.findUnique({
       where: { orderId: data.orderId },
     });
 
-    if (!payment) {
+    if (payment) {
+      // 멱등성: 이미 ABORTED면 그대로 반환
+      if (payment.status === PaymentStatus.ABORTED) {
+        this.logger.log(`Payment already ABORTED: ${data.orderId} (idempotent)`);
+        return payment;
+      }
+
+      // 결제 완료된 건은 abandon 불가 (취소 saga로 처리)
+      if (payment.status === PaymentStatus.DONE) {
+        throw new AppException(
+          Errors.Payment.INVALID_STATUS,
+          '이미 결제 완료된 건은 취소 saga로 처리해야 합니다',
+        );
+      }
+
+      return this.markPaymentAborted(payment.id, {
+        reason: data.reason,
+        errorCode: data.errorCode,
+        errorMessage: data.errorMessage,
+      });
+    }
+
+    // 2) 더치페이 PaymentSplit 분기 — orderId가 SPL-*인 경우
+    const split = await this.prisma.paymentSplit.findUnique({
+      where: { orderId: data.orderId },
+    });
+
+    if (!split) {
       throw new AppException(Errors.Payment.NOT_FOUND);
     }
 
-    // 멱등성: 이미 ABORTED면 그대로 반환
-    if (payment.status === PaymentStatus.ABORTED) {
-      this.logger.log(`Payment already ABORTED: ${data.orderId} (idempotent)`);
-      return payment;
-    }
-
-    // 결제 완료된 건은 abandon 불가 (취소 saga로 처리)
-    if (payment.status === PaymentStatus.DONE) {
-      throw new AppException(
-        Errors.Payment.INVALID_STATUS,
-        '이미 결제 완료된 건은 취소 saga로 처리해야 합니다',
-      );
-    }
-
-    return this.markPaymentAborted(payment.id, {
+    return this.markSplitAborted(split, {
       reason: data.reason,
       errorCode: data.errorCode,
       errorMessage: data.errorMessage,
     });
+  }
+
+  /**
+   * 더치페이 split 1건을 사용자가 명시적으로 abandon — 즉시 PAYMENT_FAILED saga 트리거
+   *
+   * 트랜잭션 안에서
+   *   ─ 해당 split.status = CANCELLED
+   *   ─ outbox 'payment.failed' 발행 (paymentMethod='dutchpay'로 saga 분기 보장)
+   * commit 후 saga가 REFUND_PAID_SPLITS step에서
+   *   이미 PAID인 다른 split → Toss 환불 + PENDING split → EXPIRED 처리.
+   */
+  private async markSplitAborted(
+    split: { id: number; orderId: string; bookingId: number; userId: number; status: SplitStatus },
+    meta: { reason: string; errorCode?: string; errorMessage?: string },
+  ) {
+    // 멱등성
+    if (split.status === SplitStatus.CANCELLED) {
+      this.logger.log(`Split already CANCELLED: ${split.orderId} (idempotent)`);
+      return split;
+    }
+    if (split.status === SplitStatus.PAID) {
+      throw new AppException(
+        Errors.Payment.INVALID_STATUS,
+        '이미 결제 완료된 split은 CANCEL_BOOKING saga로 처리해야 합니다',
+      );
+    }
+    if (split.status !== SplitStatus.PENDING) {
+      throw new AppException(
+        Errors.Payment.INVALID_STATUS,
+        `split 상태가 PENDING이 아닙니다: ${split.status}`,
+      );
+    }
+
+    const { outboxEventId } = await this.prisma.$transaction(async (tx) => {
+      await tx.paymentSplit.update({
+        where: { id: split.id },
+        data: { status: SplitStatus.CANCELLED },
+      });
+
+      const event = await this.insertOutboxEvent(tx, 'payment.failed', {
+        bookingId: split.bookingId,
+        orderId: split.orderId,
+        userId: split.userId,
+        reason: meta.reason,
+        errorCode: meta.errorCode,
+        errorMessage: meta.errorMessage,
+        // saga의 REFUND_PAID_SPLITS step condition 분기용
+        paymentMethod: 'dutchpay',
+      });
+      this.logger.log(
+        `Split CANCELLED + outbox: ${split.orderId} (booking ${split.bookingId})`,
+      );
+      return { outboxEventId: event.id };
+    });
+
+    await this.triggerOutboxJob(outboxEventId);
+    return { ...split, status: SplitStatus.CANCELLED };
   }
 
   /**
@@ -768,12 +839,18 @@ export class PaymentService {
   async insertOutboxEvent(
     tx: Prisma.TransactionClient,
     eventType: string,
-    payload: Record<string, unknown> & { paymentId: number },
+    // 단건 결제: paymentId, 더치페이 split: bookingId만 있을 수도 있음.
+    // aggregateId는 paymentId → bookingId 순으로 fallback.
+    payload: Record<string, unknown> & ({ paymentId: number } | { bookingId: number }),
   ) {
+    const aggregateId =
+      (payload as { paymentId?: number }).paymentId ??
+      (payload as { bookingId?: number }).bookingId ??
+      0;
     return tx.paymentOutboxEvent.create({
       data: {
         aggregateType: 'Payment',
-        aggregateId: String(payload.paymentId),
+        aggregateId: String(aggregateId),
         eventType,
         payload: payload as Prisma.InputJsonValue,
         status: OutboxStatus.PENDING,
