@@ -1,0 +1,10 @@
+{
+  "name": "parkgolf-migrator",
+  "version": "1.0.0",
+  "description": "Unified prisma migrate runner for all parkgolf services",
+  "private": true,
+  "dependencies": {
+    "prisma": "^6.8.1",
+    "@prisma/client": "^6.8.1"
+  }
+}

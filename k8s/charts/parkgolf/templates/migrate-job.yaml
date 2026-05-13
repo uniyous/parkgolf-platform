@@ -1,26 +1,27 @@
 {{- /*
-ArgoCD PreSync Hook — prisma migrate deploy
-  ─ Sync 단계 직전에 실행, 모든 Job 성공 시에만 Deployment sync 진행
-  ─ hook-delete-policy: BeforeHookCreation
-       다음 sync 시 새 Job 생성 직전에 이전 Job 삭제
-       성공/실패한 Job은 다음 sync까지 보존 → 로그 조회 가능
+ArgoCD PreSync Hook — 단일 migrator pod에서 모든 서비스 prisma migrate deploy 순차 실행
 
-대상: .db 지정 AND .migrate != false (notify-service 제외)
+이전 구조: 8개 service별 Job (각 ~300MB image pull → 노드 캐시 미스 시 4분+)
+현재 구조: 단일 parkgolf-migrator Job (단일 ~150MB image, 1회 pull, ~10초 실행)
+
+hook-delete-policy: BeforeHookCreation
+  다음 sync 시 새 Job 생성 직전에 이전 Job 삭제 → 로그 보존 + 충돌 방지
+
+migrator 이미지에 모든 서비스의 prisma 폴더(schema + migrations) 포함.
+각 서비스의 schema 변경 → cd-services에서 service 이미지 + migrator 이미지 함께 빌드.
 */ -}}
 {{- $registry := .Values.global.image.registry -}}
 {{- $tag := .Values.global.image.tag -}}
 {{- $pullPolicy := .Values.global.image.pullPolicy -}}
 {{- $namespace := .Values.global.namespace -}}
-{{- range .Values.services }}
-{{- if and .db (ne (.migrate | toString) "false") }}
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .name }}-migrate
+  name: parkgolf-migrator
   namespace: {{ $namespace }}
   labels:
-    app: {{ .name }}
+    app: parkgolf-migrator
     component: migrate
   annotations:
     argocd.argoproj.io/hook: PreSync
@@ -31,20 +32,22 @@ spec:
   template:
     metadata:
       labels:
-        app: {{ .name }}
+        app: parkgolf-migrator
         component: migrate
     spec:
       restartPolicy: OnFailure
       containers:
         - name: prisma-migrate
-          image: {{ $registry }}/{{ .name }}:{{ $tag }}
+          image: {{ $registry }}/parkgolf-migrator:{{ $tag }}
           imagePullPolicy: {{ $pullPolicy }}
-          command: ["npx", "prisma", "migrate", "deploy"]
           env:
-            - name: DATABASE_URL
+{{- range .Values.services }}
+{{- if and .db (ne (.migrate | toString) "false") }}
+            # {{ .name }} → DATABASE_URL
+            - name: {{ .name | replace "-service" "" | upper | replace "-" "_" }}_DATABASE_URL
               valueFrom: { secretKeyRef: { name: {{ .name }}-db-secret, key: DATABASE_URL } }
+{{- end }}
+{{- end }}
           resources:
-            requests: { cpu: 50m, memory: 128Mi }
+            requests: { cpu: 100m, memory: 256Mi }
             limits:   { cpu: 500m, memory: 512Mi }
-{{- end }}
-{{- end }}
