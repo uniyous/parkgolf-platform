@@ -1,7 +1,7 @@
 # Saga 오케스트레이션 워크플로우
 
-> 버전: 3.4
-> 최종 수정: 2026-05-06
+> 버전: 3.5
+> 최종 수정: 2026-05-13
 
 ## 목차
 
@@ -11,10 +11,13 @@
 4. [Saga 정의](#4-saga-정의)
 5. [라이프사이클](#5-라이프사이클)
 6. [결제 실패 처리](#6-결제-실패-처리)
-   - 6.7 cron 제거 및 pg-boss 전환
-   - 6.8 confirmPayment race window 안전망
-   - 6.9 webhook 멱등성 가드
-   - 6.10 변경 파일 인벤토리
+   - 6.5 더치페이 예외 처리 흐름 (현재)
+   - 6.6 더치페이 통합 워크플로우 (제안 — saga 일관화)
+   - 6.7 Outbox 재시도
+   - 6.8 cron 제거 및 pg-boss 전환
+   - 6.9 confirmPayment race window 안전망
+   - 6.10 webhook 멱등성 가드
+   - 6.11 변경 파일 인벤토리
 7. [NATS 패턴](#7-nats-패턴)
 8. [응답 형식](#8-응답-형식)
 9. [알려진 결함 및 작업 계획](#9-알려진-결함-및-작업-계획)
@@ -553,12 +556,130 @@ flowchart TD
 
 ---
 
-### 6.6 Outbox 재시도
+### 6.6 더치페이 통합 워크플로우 (제안)
+
+#### 6.6.1 사용자 관점 시작 지점
+
+더치페이 흐름을 사용자 입장에서 단순화한 4단계로 정의:
+
+```
+① 멤버 선택         (채팅방 + 최대 4명 팀 구성)
+② 골프장 + 슬롯 선택  (지역/날짜/시간 결정)
+③ 더치페이 결제     (settlement card → 각자 토스 결제)
+④ 결과 카드         (성공 / 실패 / 타임아웃)
+```
+
+agent-service는 ①~③의 UI 카드를 발행하는 **드라이버**일 뿐,
+**상태 변화의 권위(source of truth)는 saga + booking/payment-service**.
+
+#### 6.6.2 변경 전 vs 변경 후
+
+| 단계 | 현재 (변경 전) | 제안 (변경 후) |
+|------|----------------|----------------|
+| splitPrepare 호출 | agent-service의 tool-executor가 NATS 직접 호출 | `CREATE_BOOKING` saga의 신규 step에서 처리 |
+| settlement card broadcast | agent-service가 직접 chat-gateway emit | saga 신규 step에서 처리 (실패 시 saga 보상) |
+| 4명 모두 결제 완료 | booking-service가 직접 `notification.emit` + `iam.companyMembers` 호출 | booking-service가 outbox에 `booking.paymentConfirmed` 추가 → `PAYMENT_CONFIRMED` saga 트리거 |
+| 알림 / CompanyMember 등록 | booking-service 직접 처리 | saga의 SEND_CONFIRMATION + REGISTER_COMPANY_MEMBER step |
+| 추적성 | saga_executions 미기록 | 전 흐름이 saga_executions / saga_steps에 기록 |
+
+→ 단건 카드 결제 흐름과 **완전 동일한 saga 경로**로 통일.
+
+#### 6.6.3 흐름도 (변경 후)
+
+```mermaid
+%%{init: {'theme':'base','themeVariables':{'fontSize':'13px'}}}%%
+flowchart TD
+    %% ── 사용자 인터랙션 (agent UI 카드) ──
+    U1["① 멤버 선택<br/>(채팅방 + 최대 4명)"] --> U2["② 골프장 + 타임슬롯 선택"]
+    U2 --> U3["③ 결제방법 = dutchpay<br/>(confirmBooking)"]
+
+    %% ── CREATE_BOOKING saga (확장) ──
+    U3 --> Trig1[("🎯 saga.booking.create<br/>CREATE_BOOKING saga 시작")]
+    Trig1 --> S1["S1. CREATE_BOOKING_RECORD<br/>booking 생성 (paymentMethod=dutchpay)"]
+    S1 --> S4["S4. RESERVE_SLOT<br/>course-service 슬롯 확보"]
+    S4 --> S5["S5. UPDATE_BOOKING_STATUS<br/>= SLOT_RESERVED"]
+    S5 --> SBR{"paymentMethod"}
+    SBR -->|onsite| Sonsite["S6~S8. CONFIRMED + 알림<br/>(기존)"]
+    SBR -->|card| Scard["결제 대기 (saga 종료)<br/>이후 토스 confirm → PAYMENT_CONFIRMED saga"]
+    SBR -->|dutchpay| Sd1["S5.5. PREPARE_SPLIT 🆕<br/>payment.splitPrepare<br/>━━━━━━━━━━━<br/>4 PaymentSplit row 생성"]
+    Sd1 --> Sd2["S5.6. BROADCAST_SETTLEMENT 🆕<br/>chat-gateway → 4 settlement cards"]
+    Sd2 --> SagaDone["✓ saga 종료<br/>(4명 결제 대기)"]
+
+    %% ── 사용자별 결제 (saga 외부, 실시간 인터랙션) ──
+    SagaDone --> P1["④-a 각자 토스 위젯 결제<br/>→ POST /payments/split/confirm"]
+    P1 --> P2["payment-split.confirmSplit<br/>PaymentSplit.status=PAID<br/>+ NATS emit booking.participant.paid"]
+    P2 --> BS["booking-service.markParticipantPaid<br/>BookingParticipant.status=PAID"]
+    BS --> Check{"allPaid?<br/>(paid == total >= playerCount)"}
+
+    %% ── 성공 경로 (saga 일관화) ──
+    Check -->|"✅ 4명 모두 PAID"| Out["booking-service 트랜잭션 안에서<br/>booking.status=CONFIRMED<br/>+ booking_outbox: booking.paymentConfirmed 🆕"]
+    Out --> Trig2[("🎯 PAYMENT_CONFIRMED saga 시작")]
+    Trig2 --> Pc1["1. CONFIRM_BOOKING (no-op, 이미 CONFIRMED)"]
+    Pc1 --> Pc2["2. SEND_CONFIRMATION (notify)"]
+    Pc2 --> Pc3["3. REGISTER_COMPANY_MEMBER (iam)"]
+    Pc3 --> Card1["✅ 성공 카드<br/>(agent → chat broadcast)"]
+
+    %% ── 실패/타임아웃 경로 ──
+    Check -->|"❌ 5분 경과"| TimerTrig[("🎯 PAYMENT_TIMEOUT saga<br/>(pgboss timeout job)")]
+    Check -->|"⚠️ 1명 명시적 실패"| FailTrig[("🎯 PAYMENT_FAILED saga<br/>(abandon API)")]
+    TimerTrig --> Cleanup["1. REFUND_PAID_SPLITS<br/>2. MARK_BOOKING_FAILED<br/>3. RELEASE_SLOT<br/>4. NOTIFY_TIMEOUT"]
+    FailTrig --> Cleanup
+    Cleanup --> Card2["❌ 실패 카드<br/>(환불 안내)"]
+
+    %% ── 색상 ──
+    classDef ui      fill:#FFF3E0,stroke:#E65100,color:#000
+    classDef saga    fill:#E1BEE7,stroke:#6A1B9A,color:#000,stroke-width:2px
+    classDef step    fill:#E3F2FD,stroke:#1565C0,color:#000
+    classDef newstep fill:#FFCDD2,stroke:#C62828,color:#000,stroke-width:2px,stroke-dasharray:5 5
+    classDef result  fill:#C8E6C9,stroke:#2E7D32,color:#000
+
+    class U1,U2,U3 ui
+    class Trig1,Trig2,TimerTrig,FailTrig saga
+    class S1,S4,S5,Sonsite,Scard,Pc1,Pc2,Pc3,P1,P2,BS step
+    class Sd1,Sd2,Out newstep
+    class Card1,Card2 result
+```
+
+#### 6.6.4 신규/제거 항목
+
+| 항목 | 변경 |
+|------|------|
+| `CREATE_BOOKING` saga 신규 step | **PREPARE_SPLIT** (`payment.splitPrepare`) — paymentMethod=dutchpay 조건부 |
+| `CREATE_BOOKING` saga 신규 step | **BROADCAST_SETTLEMENT** — chat-gateway 카드 발행, paymentMethod=dutchpay 조건부, optional |
+| booking-service `markParticipantPaid` | allPaid 도달 시 outbox `booking.paymentConfirmed` 발행 |
+| booking-service direct emit | `notificationPublisher.emit('booking.confirmed', ...)` **제거** |
+| booking-service direct call | `iamService.addCompanyMember(...)` **제거** (saga로 위임) |
+| agent-service `tool-executor` | `payment.splitPrepare` 직접 호출 **제거** (saga로 위임) |
+| agent-service `tool-executor` | settlement card chat broadcast 직접 호출 **제거** (saga로 위임) |
+
+#### 6.6.5 멱등성 / 안전성 점검
+
+| 항목 | 점검 |
+|------|------|
+| PREPARE_SPLIT 보상 | splitPrepare 후 후속 step 실패 시 → PaymentSplit 4개 EXPIRED 처리 또는 saga rollback step 추가 |
+| BROADCAST_SETTLEMENT 실패 | optional step. 실패 시 saga는 진행, 결제 path는 모바일 UI에서 직접 조회 가능해야 함 → 별도 `GET /api/user/payments/split/booking/:id` 노출 검토 |
+| PAYMENT_CONFIRMED 중복 트리거 | 단건 카드의 `payment.confirmed` outbox와 더치페이의 `booking.paymentConfirmed` outbox가 **둘 다 동일 saga 트리거**. booking이 이미 CONFIRMED라면 step 1은 no-op로 처리되어 안전 |
+| REGISTER_COMPANY_MEMBER 멱등 | `iam.companyMembers.addByBooking`가 이미 등록된 경우 noop이어야 함 — 별도 검증 필요 |
+
+#### 6.6.6 우선순위 / 단계별 적용 제안
+
+| 단계 | 변경 범위 | 위험 | 권장 시점 |
+|------|----------|------|----------|
+| Phase 1 | booking-service markParticipantPaid → outbox `booking.paymentConfirmed` | 낮음 (saga 측은 기존 listener 활용) | 즉시 |
+| Phase 2 | booking-service direct emit / IAM 호출 제거 | 중간 (알림 누락 위험 — saga 통과 검증 필요) | Phase 1 검증 후 |
+| Phase 3 | `CREATE_BOOKING` saga에 PREPARE_SPLIT step 추가 | 중간 (saga 정의 변경, agent와 책임 재분배) | Phase 2 안정화 후 |
+| Phase 4 | agent-service의 splitPrepare/broadcast 직접 호출 제거 | 낮음 (saga가 책임 보유 후 정리) | Phase 3 후 |
+
+→ Phase 1만 적용해도 **사용자 관점의 saga 일관성**(④ 결과 카드까지 saga가 책임)이 확보됨. Phase 3~4는 코드 정리 성격.
+
+---
+
+### 6.7 Outbox 재시도
 
 - payment_outbox_events 발행 실패 시 지수 백오프 (1s → 2s → 4s, 최대 5회)
 - 최종 실패: `status='FAILED'`, `last_error` 기록 → 운영자 수동 처리
 
-### 6.7 payment-service cron 제거 및 pg-boss 전환 (2026-05-05)
+### 6.8 payment-service cron 제거 및 pg-boss 전환 (2026-05-05)
 
 폴링 기반 cron(`saga-scheduler.service.ts`)을 모두 제거하고 pg-boss(PostgreSQL job queue) 기반 이벤트 트리거로 전환했습니다.
 
@@ -580,7 +701,7 @@ createOutboxEvent
 
 **멀티 pod 안전성**: pg-boss는 `SELECT FOR UPDATE SKIP LOCKED` 내장 — 동일 job은 하나의 pod에서만 실행. `singletonKey`로 producer 측 중복 차단.
 
-### 6.8 confirmPayment race window 안전망 (2026-05-06)
+### 6.9 confirmPayment race window 안전망 (2026-05-06)
 
 #### 핵심 통찰
 
@@ -689,7 +810,7 @@ export class PaymentReconcileService implements OnModuleInit {
 | 늦게 paymentKey 도착 (사용자 confirmPayment 재시도) | 가드(status !== READY)로 차단 → 토스 confirm 미호출 → 돈 안 빠짐 |
 | 토스 IN_PROGRESS인 채로 reconcile retry 소진 | DB IN_PROGRESS 잔존 → webhook 또는 운영자 개입 |
 
-### 6.9 webhook 멱등성 가드 (2026-05-06)
+### 6.10 webhook 멱등성 가드 (2026-05-06)
 
 토스 webhook은 통상 1회만 발신되지만, 우리 측 응답이 늦거나 실패하면 재전송될 수 있습니다. 모든 핸들러에 단순 status 가드를 추가했습니다.
 
@@ -711,7 +832,7 @@ flowchart TB
     Q2 -->|"No"| UPD["DB update + outbox 발행"]
 ```
 
-### 6.10 변경 파일 인벤토리 (2026-05-06)
+### 6.11 변경 파일 인벤토리 (2026-05-06)
 
 | 파일 | 변경 내용 |
 |---|---|
