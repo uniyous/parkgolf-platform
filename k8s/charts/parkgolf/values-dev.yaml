@@ -6,7 +6,7 @@ global:
   namespace: parkgolf-dev
   domain: dev-api.parkgolfmate.com
   image:
-    tag: 082a5054d158ca55e4cde4e1a07dba48db17b446
+    tag: 48aaef8e85563430e081ee2422a781f8484a1515
 externalSecrets:
   clusterName: parkgolf-dev-cluster
   clusterLocation: asia-northeast3-a
