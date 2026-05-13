@@ -131,12 +131,13 @@ export class PaymentSplitService {
       );
     }
 
-    // 결제 완료 처리
+    // 결제 완료 처리 — paymentKey 보관 (환불 시 사용)
     const updated = await this.prisma.paymentSplit.update({
       where: { id: split.id },
       data: {
         status: SplitStatus.PAID,
         paidAt: new Date(),
+        paymentKey: dto.paymentKey,
       },
     });
 
@@ -319,7 +320,8 @@ export class PaymentSplitService {
     for (const split of splits) {
       if (split.status !== SplitStatus.PAID) continue;
 
-      const paymentKey = split.payment?.paymentKey;
+      // paymentKey 우선 순서: PaymentSplit.paymentKey → Payment.paymentKey (legacy fallback)
+      const paymentKey = split.paymentKey ?? split.payment?.paymentKey;
       if (!paymentKey) {
         this.logger.error(
           `Split ${split.id} (orderId=${split.orderId}) has no paymentKey - cannot refund via Toss`,

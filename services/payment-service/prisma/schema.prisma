@@ -111,6 +111,7 @@ model PaymentSplit {
   amount          Int                                     // 분담 금액 (원)
   status          SplitStatus  @default(PENDING)
   orderId         String       @unique @map("order_id")  // Toss 주문 ID (개별)
+  paymentKey      String?      @map("payment_key")        // PAID 시 저장 — 환불 시 사용
   paidAt          DateTime?    @map("paid_at")
   expiredAt       DateTime?    @map("expired_at")         // 결제 기한
 
