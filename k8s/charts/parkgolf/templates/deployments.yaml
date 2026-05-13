@@ -26,19 +26,7 @@ spec:
       labels:
         app: {{ .name }}
     spec:
-{{- if and .db (ne (.migrate | toString) "false") }}
-      initContainers:
-        - name: prisma-migrate
-          image: {{ $registry }}/{{ .name }}:{{ $tag }}
-          imagePullPolicy: {{ $pullPolicy }}
-          command: ["npx", "prisma", "migrate", "deploy"]
-          env:
-            - name: DATABASE_URL
-              valueFrom: { secretKeyRef: { name: {{ .name }}-db-secret, key: DATABASE_URL } }
-          resources:
-            requests: { cpu: 50m, memory: 128Mi }
-            limits:   { cpu: 500m, memory: 512Mi }
-{{- end }}
+      # prisma migrate는 ArgoCD PreSync Job(templates/migrate-job.yaml)로 분리.
       containers:
         - name: {{ .name }}
           image: {{ $registry }}/{{ .name }}:{{ $tag }}

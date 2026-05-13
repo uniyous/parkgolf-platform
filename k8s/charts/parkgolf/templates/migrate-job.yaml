@@ -1,0 +1,50 @@
+{{- /*
+ArgoCD PreSync Hook — prisma migrate deploy
+  ─ Sync 단계 직전에 실행, 모든 Job 성공 시에만 Deployment sync 진행
+  ─ hook-delete-policy: BeforeHookCreation
+       다음 sync 시 새 Job 생성 직전에 이전 Job 삭제
+       성공/실패한 Job은 다음 sync까지 보존 → 로그 조회 가능
+
+대상: .db 지정 AND .migrate != false (notify-service 제외)
+*/ -}}
+{{- $registry := .Values.global.image.registry -}}
+{{- $tag := .Values.global.image.tag -}}
+{{- $pullPolicy := .Values.global.image.pullPolicy -}}
+{{- $namespace := .Values.global.namespace -}}
+{{- range .Values.services }}
+{{- if and .db (ne (.migrate | toString) "false") }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .name }}-migrate
+  namespace: {{ $namespace }}
+  labels:
+    app: {{ .name }}
+    component: migrate
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        app: {{ .name }}
+        component: migrate
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: prisma-migrate
+          image: {{ $registry }}/{{ .name }}:{{ $tag }}
+          imagePullPolicy: {{ $pullPolicy }}
+          command: ["npx", "prisma", "migrate", "deploy"]
+          env:
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: {{ .name }}-db-secret, key: DATABASE_URL } }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits:   { cpu: 500m, memory: 512Mi }
+{{- end }}
+{{- end }}
