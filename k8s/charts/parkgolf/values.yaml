@@ -100,6 +100,9 @@ services:
       - { name: TOSS_SECRET_KEY,   secretRef: { name: parkgolf-secrets, key: TOSS_SECRET_KEY } }
       - { name: TOSS_SECURITY_KEY, secretRef: { name: parkgolf-secrets, key: TOSS_SECURITY_KEY } }
       - { name: TOSS_API_URL,      configRef: { name: parkgolf-config,  key: TOSS_API_URL } }
+      # e2e용 토스 API 우회 (paymentKey "e2e_test_*"만 해당)
+      # 서비스 내부에서 NODE_ENV=production이면 자동 무력화 — 이중 안전장치
+      - { name: TOSS_TEST_BYPASS,  value: "true" }
   - name: saga-service
     db: saga_db
   - name: chat-service

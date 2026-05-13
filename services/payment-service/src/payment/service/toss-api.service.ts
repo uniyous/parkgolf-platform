@@ -95,6 +95,7 @@ export class TossApiService {
   private readonly logger = new Logger(TossApiService.name);
   private readonly baseUrl: string;
   private readonly secretKey: string;
+  private readonly bypassEnabled: boolean;
 
   constructor(
     private readonly configService: ConfigService,
@@ -102,6 +103,43 @@ export class TossApiService {
   ) {
     this.baseUrl = this.configService.get<string>('TOSS_API_URL') || 'https://api.tosspayments.com/v1';
     this.secretKey = this.configService.get<string>('TOSS_SECRET_KEY') || '';
+    // 운영 안전장치: NODE_ENV=production이면 어떤 설정이든 강제 비활성
+    const flag = (this.configService.get<string>('TOSS_TEST_BYPASS') || '').toLowerCase() === 'true';
+    const nodeEnv = process.env.NODE_ENV || 'development';
+    this.bypassEnabled = flag && nodeEnv !== 'production';
+    if (this.bypassEnabled) {
+      this.logger.warn(
+        '[TossApiService] TEST BYPASS ENABLED — paymentKey starting with "e2e_test_" will skip Toss API call. NODE_ENV=' +
+          nodeEnv,
+      );
+    }
+  }
+
+  /**
+   * E2E 테스트 우회 paymentKey 여부.
+   * NODE_ENV=production에서는 절대 활성화되지 않는다.
+   */
+  private isE2eBypass(paymentKey: string): boolean {
+    return this.bypassEnabled && typeof paymentKey === 'string' && paymentKey.startsWith('e2e_test_');
+  }
+
+  private buildBypassResponse(
+    paymentKey: string,
+    orderId: string,
+    amount: number,
+  ): TossPaymentResponse {
+    const now = new Date().toISOString();
+    return {
+      paymentKey,
+      orderId,
+      orderName: 'E2E_TEST',
+      status: 'DONE',
+      requestedAt: now,
+      approvedAt: now,
+      totalAmount: amount,
+      balanceAmount: amount,
+      method: '카드',
+    };
   }
 
   /**
@@ -117,6 +155,10 @@ export class TossApiService {
    * POST /payments/confirm
    */
   async confirmPayment(paymentKey: string, orderId: string, amount: number): Promise<TossPaymentResponse> {
+    if (this.isE2eBypass(paymentKey)) {
+      this.logger.warn(`[BYPASS] confirmPayment paymentKey=${paymentKey} orderId=${orderId}`);
+      return this.buildBypassResponse(paymentKey, orderId, amount);
+    }
     try {
       const response = await firstValueFrom(
         this.httpService.post<TossPaymentResponse>(
@@ -173,6 +215,10 @@ export class TossApiService {
       holderName: string;
     },
   ): Promise<TossPaymentResponse> {
+    if (this.isE2eBypass(paymentKey)) {
+      this.logger.warn(`[BYPASS] cancelPayment paymentKey=${paymentKey} reason=${cancelReason}`);
+      return this.buildBypassResponse(paymentKey, 'E2E_CANCEL', cancelAmount ?? 0);
+    }
     try {
       const body: Record<string, unknown> = { cancelReason };
       if (cancelAmount) {

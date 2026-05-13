@@ -56,6 +56,8 @@ services:
       - { name: TOSS_SECRET_KEY,   secretRef: { name: parkgolf-secrets, key: TOSS_SECRET_KEY } }
       - { name: TOSS_SECURITY_KEY, secretRef: { name: parkgolf-secrets, key: TOSS_SECURITY_KEY } }
       - { name: TOSS_API_URL,      configRef: { name: parkgolf-config,  key: TOSS_API_URL } }
+      # prod에서는 절대 활성화 금지 (서비스 내부에서도 NODE_ENV=production 가드)
+      - { name: TOSS_TEST_BYPASS,  value: "false" }
   - name: saga-service
     db: saga_db
     replicas: 2
