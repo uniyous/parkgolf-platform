@@ -11,16 +11,18 @@ import { obtainSandboxPaymentKey } from '../../fixtures/toss';
  *   2. user-1 채팅방 생성 + 다른 3명 멤버 추가
  *   3. user-1 AI 에이전트에게 "더치페이로 예약" 명령 → splitPrepare
  *   4. settlement 카드 broadcast 검증 → 4 orderId 발급
- *   5. (Plan B) 각자 토스 sandbox paymentKey 발급 → confirmSplit 호출
+ *   5. 각자 e2e_test_* paymentKey로 confirmSplit (토스 우회 — TOSS_TEST_BYPASS)
  *   6. 마지막 confirm 후 PAYMENT_CONFIRMED saga 트리거
  *   7. booking.status = CONFIRMED 검증
- *   8. cleanup (cancel booking + delete user — best effort)
  *
  * 현재 상태
- *   A. 셋업~splitPrepare (4 orderId 발급): 자동 ✅
- *   B. 토스 confirm 단계: 위젯 자동화 필요 — fixtures/toss.ts TODO
+ *   ─ 토스 confirm 우회: payment-service에 TOSS_TEST_BYPASS 분기 적용 ✅
+ *     (tests/payment/single-confirm.spec.ts에서 단건 검증)
+ *   ─ 더치 트리거(step 3): agent-service의 LLM 응답 기반이라 비결정적
+ *     → user-api에 dev-only splitPrepare 노출 엔드포인트 추가 필요 (미구현)
  *
- * 본 spec은 A 까지 실 검증, B는 obtainSandboxPaymentKey 구현 시 활성.
+ * 본 spec은 step 5의 confirm 자체는 검증 가능하지만, splitPrepare 트리거 경로
+ * (agent 또는 dev 전용 엔드포인트) 미정으로 전체는 skip 유지.
  */
 test.describe('Dutch Payment (group of 4) @write @slow', () => {
   const PARTICIPANT_COUNT = 4;
