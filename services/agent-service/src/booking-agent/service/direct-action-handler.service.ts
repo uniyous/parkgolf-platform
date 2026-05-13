@@ -164,6 +164,16 @@ export class DirectActionHandlerService {
     this.conversationService.updateSlots(context, { paymentMethod });
     this.conversationService.setState(context, 'BOOKING');
 
+    // 더치페이: 채팅방 팀 멤버 + 채팅방 id를 saga payload에 전달 → saga의 PREPARE_SPLIT step
+    const isDutchpay = paymentMethod === 'dutchpay';
+    const teamMembers = isDutchpay
+      ? (context.slots.currentTeamMembers || []).map((m) => ({
+          userId: m.userId,
+          userName: m.userName,
+          userEmail: m.userEmail,
+        }))
+      : undefined;
+
     const toolResult = await this.toolExecutor.execute({
       name: 'create_booking',
       args: {
@@ -173,6 +183,8 @@ export class DirectActionHandlerService {
         gameTimeSlotId: Number(slotId),
         playerCount,
         paymentMethod,
+        teamMembers,
+        chatRoomId: isDutchpay ? context.slots.chatRoomId : undefined,
       },
     });
 
@@ -240,17 +252,9 @@ export class DirectActionHandlerService {
     const teamMembers = context.slots.currentTeamMembers || [];
     const pricePerPerson = (result.details?.totalPrice || 0) / (teamMembers.length || 1);
 
-    const splitResult = await this.toolExecutor.prepareSplitPayment({
-      bookingId: result.bookingId,
-      participants: teamMembers.map((m) => ({
-        userId: m.userId,
-        userName: m.userName,
-        userEmail: m.userEmail,
-        amount: Math.round(pricePerPerson),
-      })),
-    });
-
-    const splits = splitResult?.splits || teamMembers.map((m) => ({
+    // splits는 saga의 PREPARE_SPLIT step이 발급 — createBooking 응답에 포함되어 있다.
+    // saga 단계에서 누락된 경우(예: condition 미충족, payment 일시 장애)에 한해 placeholder 생성.
+    const splits = (result.splits as any[]) || teamMembers.map((m) => ({
       userId: m.userId,
       userName: m.userName,
       orderId: '',

@@ -629,13 +629,16 @@ export class ToolExecutorService {
    * saga.booking.create 후 Saga 완료를 폴링하여 최종 상태를 반환
    */
   private async createBooking(args: Record<string, unknown>): Promise<unknown> {
-    const { gameTimeSlotId, playerCount, userId, userName, userEmail, paymentMethod } = args as {
+    const { gameTimeSlotId, playerCount, userId, userName, userEmail, paymentMethod, teamMembers, chatRoomId } = args as {
       gameTimeSlotId: number;
       playerCount: number;
       userId: number;
       userName?: string;
       userEmail?: string;
       paymentMethod?: string;
+      // 더치페이용 (paymentMethod=dutchpay) — saga의 PREPARE_SPLIT step에서 사용
+      teamMembers?: Array<{ userId: number; userName?: string; userEmail?: string }>;
+      chatRoomId?: string;
     };
 
     const response = await firstValueFrom(
@@ -648,6 +651,8 @@ export class ToolExecutorService {
           gameTimeSlotId,
           playerCount,
           paymentMethod: paymentMethod || 'onsite',
+          teamMembers,
+          chatRoomId,
         })
         .pipe(
           timeout(this.REQUEST_TIMEOUT),
@@ -708,6 +713,8 @@ export class ToolExecutorService {
           playerCount: sagaData.playerCount,
           totalPrice: sagaData.totalPrice,
         },
+        // 더치페이일 때만: saga의 PREPARE_SPLIT step이 발급한 splits 전달
+        splits: (sagaData.splits as unknown[]) ?? undefined,
       };
     }
 
