@@ -10,6 +10,10 @@ import { PgBossService } from '../../common/pgboss/pgboss.service';
 const SAGA_TIMEOUT_RECOVERY_QUEUE = 'saga-timeout-recovery';
 const SAGA_TIMEOUT_DELAY_SECONDS = 15 * 60; // 15분
 
+// CREATE_BOOKING 후 결제 미완료 시 자동 정리용 큐
+const PAYMENT_TIMEOUT_QUEUE = 'payment-timeout';
+const PAYMENT_TIMEOUT_DELAY_SECONDS = 5 * 60; // 5분
+
 @Injectable()
 export class SagaEngineService {
   private readonly logger = new Logger(SagaEngineService.name);
@@ -141,6 +145,37 @@ export class SagaEngineService {
       } catch (err) {
         // 이미 처리됐거나 cancel 실패해도 saga 자체는 종료된 상태이므로 문제 없음
         this.logger.debug(`[SagaEngine] timeout task cancel skipped: ${err instanceof Error ? err.message : 'unknown'}`);
+      }
+    }
+
+    // CREATE_BOOKING saga가 정상 종료 + paymentMethod가 결제 대기인 경우
+    //   → 5분 후 PAYMENT_TIMEOUT saga 발화 예약 (잠수 시나리오 대응)
+    // singletonKey로 중복 enqueue 방지 (saga 재시도 시 안전).
+    if (
+      sagaType === 'CREATE_BOOKING' &&
+      result.sagaStatus === SagaStatus.COMPLETED &&
+      (result as { paymentMethod?: string }).paymentMethod &&
+      (result as { paymentMethod?: string }).paymentMethod !== 'onsite' &&
+      (result as { bookingId?: number }).bookingId
+    ) {
+      const bookingId = (result as { bookingId: number }).bookingId;
+      try {
+        await this.pgboss.send(
+          PAYMENT_TIMEOUT_QUEUE,
+          { bookingId },
+          {
+            startAfter: PAYMENT_TIMEOUT_DELAY_SECONDS,
+            singletonKey: `payment-timeout-${bookingId}`,
+            retryLimit: 3,
+          },
+        );
+        this.logger.log(
+          `[SagaEngine] payment-timeout scheduled: booking ${bookingId} (+${PAYMENT_TIMEOUT_DELAY_SECONDS}s)`,
+        );
+      } catch (err) {
+        this.logger.warn(
+          `[SagaEngine] Failed to schedule payment-timeout for booking ${bookingId}: ${err instanceof Error ? err.message : 'unknown'}`,
+        );
       }
     }
 
