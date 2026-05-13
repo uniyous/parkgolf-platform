@@ -12,7 +12,7 @@ const SAGA_TIMEOUT_DELAY_SECONDS = 15 * 60; // 15분
 
 // CREATE_BOOKING 후 결제 미완료 시 자동 정리용 큐
 const PAYMENT_TIMEOUT_QUEUE = 'payment-timeout';
-const PAYMENT_TIMEOUT_DELAY_SECONDS = 5 * 60; // 5분
+const PAYMENT_TIMEOUT_DELAY_SECONDS = 3 * 60; // 3분 — PaymentSplit.expirationMinutes와 동기화
 
 @Injectable()
 export class SagaEngineService {

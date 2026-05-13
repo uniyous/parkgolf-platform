@@ -15,7 +15,7 @@ import { makeE2ePaymentKey } from '../../fixtures/toss';
  *   1) 4명 더치페이 셋업 + splits 발급
  *   2) booker 1명만 confirm (PAID 1건)
  *   3) 나머지 3명은 무응답 (잠수)
- *   4) 5분 + 버퍼 대기
+ *   4) 3분 + 버퍼 대기
  *      → saga-engine이 CREATE_BOOKING 종료 시 등록한 payment-timeout job 발화
  *      → saga-pgboss-worker.handlePaymentTimeout
  *      → booking.status === SLOT_RESERVED 확인 → PAYMENT_TIMEOUT saga 시작
@@ -23,15 +23,15 @@ import { makeE2ePaymentKey } from '../../fixtures/toss';
  *      → MARK_BOOKING_FAILED → booking.status = FAILED
  *   5) booker 토큰으로 booking 폴링 → FAILED 확인
  *
- * @write @slow (~7분)
+ * @write @slow (~4~5분)
  *
- * 비용 고려: 실 5분 대기 + 폴링 버퍼. CI에서는 jobs.startAfter를 단축할 수 없으므로
+ * 비용 고려: 실 3분 대기 + 폴링 버퍼. jobs.startAfter는 운영 정책이라 단축 불가.
  *   본 spec은 실시간으로 실행. 자주 돌릴 spec 아님.
  */
 test.describe('Dutch Payment — Timeout 잠수 자동 정리 @write @slow @longwait', () => {
-  test.setTimeout(8 * 60_000); // 8분
+  test.setTimeout(6 * 60_000); // 6분
 
-  test('1명 결제 + 3명 잠수 → 5분 후 PAYMENT_TIMEOUT → booking FAILED', async ({
+  test('1명 결제 + 3명 잠수 → 3분 후 PAYMENT_TIMEOUT → booking FAILED', async ({
     request,
     adminToken,
   }) => {
@@ -76,8 +76,8 @@ test.describe('Dutch Payment — Timeout 잠수 자동 정리 @write @slow @long
     const bookingId: number = dutch.id;
     console.log(`[booking] id=${bookingId} status=${dutch.status} (SLOT_RESERVED 유지 예상)`);
 
-    // 3) 5분 + 버퍼 대기 — 30초 간격 폴링
-    console.log(`[wait] PAYMENT_TIMEOUT 발화 대기 (최대 ~6분)`);
+    // 3) 3분 + 버퍼 대기 — 30초 간격 폴링
+    console.log(`[wait] PAYMENT_TIMEOUT 발화 대기 (최대 ~4분)`);
     let finalStatus: string | null = null;
     await expect
       .poll(
@@ -92,7 +92,7 @@ test.describe('Dutch Payment — Timeout 잠수 자동 정리 @write @slow @long
           return finalStatus;
         },
         {
-          timeout: 7 * 60_000,                  // 7분 폴링
+          timeout: 5 * 60_000,                  // 5분 폴링 (3분 timeout + 2분 버퍼)
           intervals: [30_000, 30_000, 30_000],  // 30초 간격
           message: 'expected PAYMENT_TIMEOUT → booking FAILED',
         },
