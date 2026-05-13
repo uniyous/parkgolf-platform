@@ -152,11 +152,13 @@ export async function seedAvailableSlot(
 }
 
 /**
- * agent 3단계 호출로 dutchpay booking 생성 트리거.
+ * agent 4단계 호출로 dutchpay booking 생성 트리거.
  *
- * 1) selectedClubId         → handleDirectClubSelect (slots.clubId/Name 저장 + SELECT_MEMBERS 카드)
- * 2) selectedSlotId + teamMembers → handleDirectSlotSelect (slots.slotId, currentTeamMembers 저장)
- * 3) confirmBooking + paymentMethod=dutchpay → handleDirectBooking → saga 트리거 → broadcast settlement
+ * production UI 흐름 그대로 (booking-agent.service.ts 분기 순서 준수):
+ *   1) selectedClubId            → handleDirectClubSelect (clubId 저장 + SELECT_MEMBERS/SHOW_SLOTS)
+ *   2) selectedSlotId            → handleDirectSlotSelect (slotId 저장 + SELECT_MEMBERS)
+ *   3) teamMembers (slotId 있음) → groupMode=true 저장 + CONFIRM_BOOKING 카드
+ *   4) confirmBooking + dutchpay → handleDirectBooking → saga 트리거 + broadcast settlement
  */
 export async function triggerDutchBookingViaAgent(
   request: APIRequestContext,
@@ -167,55 +169,58 @@ export async function triggerDutchBookingViaAgent(
 ): Promise<{ conversationId: string }> {
   const auth = authHeaders(booker.accessToken);
 
+  const callAgent = async (
+    label: string,
+    body: Record<string, unknown>,
+    conversationId?: string,
+  ) => {
+    const res = await request.post(`/api/user/chat/rooms/${roomId}/agent`, {
+      headers: auth,
+      data: conversationId ? { conversationId, ...body } : body,
+    });
+    const respBody = await res.json().catch(() => ({}));
+    expect(
+      res.ok(),
+      `agent ${label} [${res.status()}]: ${JSON.stringify(respBody).slice(0, 300)}`,
+    ).toBeTruthy();
+    return respBody?.data ?? respBody;
+  };
+
   // step 1: 골프장 선택
-  const step1 = await request.post(`/api/user/chat/rooms/${roomId}/agent`, {
-    headers: auth,
-    data: {
-      message: '이 골프장으로 진행할게요',
-      selectedClubId: String(setup.clubId),
-      selectedClubName: setup.clubName,
-    },
+  const r1 = await callAgent('step1.selectedClubId', {
+    message: '이 골프장으로 진행할게요',
+    selectedClubId: String(setup.clubId),
+    selectedClubName: setup.clubName,
   });
-  expect(step1.ok(), `agent step1 [${step1.status()}]`).toBeTruthy();
-  const step1Body = await step1.json();
-  const conversationId: string = step1Body?.data?.conversationId ?? step1Body?.conversationId;
+  const conversationId: string = r1?.conversationId;
   expect(conversationId, 'conversationId missing').toBeTruthy();
 
-  // step 2: 슬롯 + 팀멤버 선택
+  // step 2: 슬롯 선택 (단독)
+  await callAgent('step2.selectedSlotId', {
+    message: '이 시간으로 할게요',
+    selectedSlotId: String(setup.slotId),
+    selectedSlotTime: setup.startTime,
+    selectedSlotPrice: setup.price,
+    selectedGameName: setup.gameName,
+  }, conversationId);
+
+  // step 3: 팀멤버 선택 (slotId 이미 저장됨)
   const teamMembers = members.map((m) => ({
     userId: m.userId,
     userName: m.name,
     userEmail: m.email,
   }));
-  const step2 = await request.post(`/api/user/chat/rooms/${roomId}/agent`, {
-    headers: auth,
-    data: {
-      message: '이 시간으로 할게요',
-      conversationId,
-      selectedSlotId: String(setup.slotId),
-      selectedSlotTime: setup.startTime,
-      selectedSlotPrice: setup.price,
-      selectedGameName: setup.gameName,
-      teamMembers,
-    },
-  });
-  expect(step2.ok(), `agent step2 [${step2.status()}]`).toBeTruthy();
+  await callAgent('step3.teamMembers', {
+    message: '멤버 선택했어요',
+    teamMembers,
+  }, conversationId);
 
-  // step 3: 예약 확정 + dutchpay
-  const step3 = await request.post(`/api/user/chat/rooms/${roomId}/agent`, {
-    headers: auth,
-    data: {
-      message: '더치페이로 예약 확정',
-      conversationId,
-      confirmBooking: true,
-      paymentMethod: 'dutchpay',
-    },
-  });
-  const step3Body = await step3.json().catch(() => ({}));
-  expect(
-    step3.ok(),
-    `agent step3 [${step3.status()}]: ${JSON.stringify(step3Body).slice(0, 300)}`,
-  ).toBeTruthy();
+  // step 4: 예약 확정 + dutchpay
+  await callAgent('step4.confirmBooking', {
+    message: '더치페이로 예약 확정',
+    confirmBooking: true,
+    paymentMethod: 'dutchpay',
+  }, conversationId);
 
   return { conversationId };
 }
