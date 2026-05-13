@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { NatsClientService } from '../common/nats';
 import { ApiResponse } from '../common/types';
-import { AbandonPaymentDto, PreparePaymentDto, ConfirmPaymentDto, ConfirmSplitPaymentDto } from './dto/payment.dto';
+import { AbandonPaymentDto, PreparePaymentDto, ConfirmPaymentDto, ConfirmSplitPaymentDto, PrepareSplitPaymentDto } from './dto/payment.dto';
 import { NATS_TIMEOUTS } from '../common/constants';
 
 export interface PreparePaymentResponse {
@@ -60,6 +60,15 @@ export class PaymentService {
       orderId: dto.orderId,
       amount: dto.amount,
     }, NATS_TIMEOUTS.PAYMENT);
+  }
+
+  /**
+   * 분할결제 준비 (dev 전용 — 모바일은 agent 또는 settlement card UI 통해 트리거)
+   * payment-service의 `payment.splitPrepare` NATS pattern으로 전달.
+   */
+  async prepareSplitPayment(dto: PrepareSplitPaymentDto): Promise<ApiResponse<unknown>> {
+    this.logger.log(`Preparing split payment for booking ${dto.bookingId} (${dto.participants.length} participants)`);
+    return this.natsClient.send('payment.splitPrepare', dto, NATS_TIMEOUTS.PAYMENT);
   }
 
   async getPaymentByOrderId(orderId: string): Promise<ApiResponse<PaymentStatusResponse>> {

@@ -8,6 +8,7 @@ import {
   HttpStatus,
   UseGuards,
   Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -18,7 +19,7 @@ import {
 import { PaymentService } from './payment.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators';
-import { AbandonPaymentDto, PreparePaymentDto, ConfirmPaymentDto, ConfirmSplitPaymentDto } from './dto/payment.dto';
+import { AbandonPaymentDto, PreparePaymentDto, ConfirmPaymentDto, ConfirmSplitPaymentDto, PrepareSplitPaymentDto } from './dto/payment.dto';
 
 @ApiTags('Payment')
 @Controller('api/user/payments')
@@ -69,6 +70,27 @@ export class PaymentController {
   ) {
     this.logger.log(`Confirming split payment for user ${userId}, orderId: ${dto.orderId}`);
     return this.paymentService.confirmSplitPayment(userId, dto);
+  }
+
+  /**
+   * 분할결제 준비 — dev 전용 endpoint.
+   * production에선 agent-service / 모바일 settlement UI를 통해 트리거되고
+   * 본 endpoint는 NODE_ENV=production일 때 403 반환.
+   */
+  @Post('split/prepare')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '[DEV] 분할결제 준비 (참여자별 orderId 발급)' })
+  @ApiResponse({ status: 200, description: '분할결제 준비 완료' })
+  @ApiResponse({ status: 401, description: '인증이 필요합니다.' })
+  @ApiResponse({ status: 403, description: 'production에선 사용 불가' })
+  async prepareSplitPayment(@Body() dto: PrepareSplitPaymentDto) {
+    if ((process.env.NODE_ENV || 'development') === 'production') {
+      throw new ForbiddenException('dev-only endpoint');
+    }
+    this.logger.log(`[DEV] Preparing split payment booking=${dto.bookingId}`);
+    return this.paymentService.prepareSplitPayment(dto);
   }
 
   @Get('order/:orderId')
