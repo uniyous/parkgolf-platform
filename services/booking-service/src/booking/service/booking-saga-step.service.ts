@@ -44,6 +44,9 @@ export class BookingSagaStepService {
       teamSelectionId?: number;
       gameId?: number;
       bookingDate?: string;
+      // 더치페이용 — agent가 채팅방 팀 멤버 정보 전달
+      teamMembers?: Array<{ userId: number; userName?: string; userEmail?: string }>;
+      chatRoomId?: string;
     };
 
     // 멱등성 체크
@@ -179,11 +182,45 @@ export class BookingSagaStepService {
         },
       });
 
+      // 더치페이용: teamMembers가 있으면 BookingParticipant 미리 생성
+      // booker는 BOOKER role, 나머지는 MEMBER role
+      if (dto.paymentMethod === 'dutchpay' && Array.isArray(dto.teamMembers) && dto.teamMembers.length > 0) {
+        const sharePerPerson = Math.round(totalPrice / dto.teamMembers.length);
+        await prisma.bookingParticipant.createMany({
+          data: dto.teamMembers.map((m) => ({
+            bookingId: newBooking.id,
+            userId: m.userId,
+            userName: m.userName || '',
+            userEmail: m.userEmail || '',
+            role: m.userId === dto.userId ? ParticipantRole.BOOKER : ParticipantRole.MEMBER,
+            status: ParticipantStatus.PENDING,
+            amount: sharePerPerson,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
       return newBooking;
     });
 
     this.logger.log(`Booking ${booking.bookingNumber} created (PENDING) via saga-service`);
-    return this.toSagaResponse(booking);
+
+    // 더치페이일 때 participants/chatRoomId 응답에 포함 → saga의 PREPARE_SPLIT step에서 사용
+    const baseResponse = this.toSagaResponse(booking);
+    if (dto.paymentMethod === 'dutchpay' && Array.isArray(dto.teamMembers) && dto.teamMembers.length > 0) {
+      const sharePerPerson = Math.round(totalPrice / dto.teamMembers.length);
+      return {
+        ...baseResponse,
+        chatRoomId: dto.chatRoomId,
+        participants: dto.teamMembers.map((m) => ({
+          userId: m.userId,
+          userName: m.userName || '',
+          userEmail: m.userEmail || '',
+          amount: sharePerPerson,
+        })),
+      };
+    }
+    return baseResponse;
   }
 
   /**
