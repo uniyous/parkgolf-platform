@@ -655,12 +655,6 @@ struct ChatRoomView: View {
                         }
                     }
 
-                AiButton(isActive: aiViewModel.isAiMode) {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        aiViewModel.toggleAiMode()
-                    }
-                }
-
                 Button {
                     if aiViewModel.isAiMode {
                         let text = viewModel.inputText
@@ -692,6 +686,13 @@ struct ChatRoomView: View {
                     .clipShape(Circle())
                 }
                 .disabled(viewModel.inputText.isEmpty || viewModel.isSending || aiViewModel.isAiLoading)
+
+                // AI 모드 토글 — 가장 우측에 배치
+                AiButton(isActive: aiViewModel.isAiMode) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        aiViewModel.toggleAiMode()
+                    }
+                }
             }
             .padding(.horizontal, ParkSpacing.md)
             .padding(.vertical, ParkSpacing.sm)
