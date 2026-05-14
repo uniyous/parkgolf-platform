@@ -53,7 +53,6 @@ struct AiMessageBubble: View {
                         Text(content)
                             .font(.body)
                             .foregroundColor(.white)
-                            .fixedSize(horizontal: false, vertical: true)
 
                         if let actions = actions {
                             ForEach(Array(actions.enumerated()), id: \.offset) { _, action in
@@ -78,7 +77,7 @@ struct AiMessageBubble: View {
                 }
             }
 
-            Spacer(minLength: 60)
+            Spacer(minLength: 40)
         }
     }
 
