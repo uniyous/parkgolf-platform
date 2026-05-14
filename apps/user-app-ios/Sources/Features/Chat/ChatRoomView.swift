@@ -229,7 +229,9 @@ struct ChatRoomView: View {
     private var messageList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: ParkSpacing.sm) {
+                // alignment .leading — child(메시지 버블)의 폭이 부모 콘텐츠 폭을 초과해도
+                // center align으로 인해 좌측이 화면을 벗어나지 않게 강제.
+                LazyVStack(alignment: .leading, spacing: ParkSpacing.sm) {
                     // 이전 메시지 로드 버튼/인디케이터
                     if viewModel.hasMoreMessages {
                         loadMoreButton
