@@ -859,6 +859,8 @@ export const ChatRoomPage: React.FC = () => {
       <div className="border-t border-white/10">
         <div className="w-full max-w-screen-xl mx-auto px-4 py-3">
           <div className="flex items-center gap-2">
+            {/* AI 모드 토글 — 입력바 좌측 */}
+            <AiButton active={isAiMode} onClick={handleToggleAiMode} />
             <input
               ref={inputRef}
               type="text"
@@ -875,7 +877,6 @@ export const ChatRoomPage: React.FC = () => {
                   : 'border border-white/10 focus:border-emerald-500/50'
               )}
             />
-            <AiButton active={isAiMode} onClick={handleToggleAiMode} />
             <button
               onClick={handleSendMessage}
               disabled={!inputText.trim() || sendMessageMutation.isPending || isAiLoading}

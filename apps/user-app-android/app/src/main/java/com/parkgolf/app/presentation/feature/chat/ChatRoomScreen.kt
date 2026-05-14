@@ -765,6 +765,12 @@ private fun ChatInputBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // AI 모드 토글 — 입력바 좌측
+            AiButton(
+                isActive = isAiMode,
+                onClick = onToggleAi
+            )
+
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -805,11 +811,6 @@ private fun ChatInputBar(
                     }
                 )
             }
-
-            AiButton(
-                isActive = isAiMode,
-                onClick = onToggleAi
-            )
 
             IconButton(
                 onClick = onSend,
