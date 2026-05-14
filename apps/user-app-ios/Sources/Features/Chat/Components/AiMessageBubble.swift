@@ -22,9 +22,6 @@ struct AiMessageBubble: View {
     var selectedSlotId: String?
 
     var body: some View {
-        // 채팅방 부모 LazyVStack의 horizontal padding(md) 위에 추가 leading inset.
-        // actionView로 들어가는 카드(ClubCard/SlotCard 등)가 자체 콘텐츠 폭을 채우면서
-        // bubble이 화면 좌측 edge에 붙어 보이는 현상 차단.
         HStack(alignment: .bottom, spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
                 // AI avatar + name (hidden for consecutive AI messages)
@@ -64,7 +61,6 @@ struct AiMessageBubble: View {
                             }
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background(Color.parkPrimary.opacity(0.10))
@@ -82,12 +78,8 @@ struct AiMessageBubble: View {
                 }
             }
 
+            Spacer(minLength: 60)
         }
-        // 좌측 시작점과 우측 inset을 명시. 부모 LazyVStack의 horizontal padding(16) 위에
-        // 더해져 bubble이 화면 안쪽에서 안정적으로 그려짐.
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.leading, 8)
-        .padding(.trailing, 60)
     }
 
     @ViewBuilder
