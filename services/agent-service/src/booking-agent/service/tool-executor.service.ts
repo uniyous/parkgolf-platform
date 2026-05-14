@@ -20,7 +20,10 @@ export interface ToolResult {
 @Injectable()
 export class ToolExecutorService {
   private readonly logger = new Logger(ToolExecutorService.name);
-  private readonly REQUEST_TIMEOUT = 10000; // 10초
+  private readonly REQUEST_TIMEOUT = 10000; // 10초 (단순 조회용)
+  // saga 트리거 호출(CREATE_BOOKING 등 다단계 step) — 전체 saga 완료까지 대기.
+  // PREPARE_SPLIT 등 결제 step 추가로 응답 시간 가변, 안전 마진 포함.
+  private readonly SAGA_TIMEOUT = 60000; // 60초
 
   constructor(
     @Inject('COURSE_SERVICE') private readonly courseClient: ClientProxy,
@@ -655,7 +658,9 @@ export class ToolExecutorService {
           chatRoomId,
         })
         .pipe(
-          timeout(this.REQUEST_TIMEOUT),
+          // CREATE_BOOKING saga는 다단계(record→slot reserve→split prepare 등)라
+          // 단일 NATS 조회보다 응답 시간이 김. SAGA_TIMEOUT 사용.
+          timeout(this.SAGA_TIMEOUT),
           catchError((err) => {
             throw new Error(`Failed to create booking: ${err.message}`);
           }),
