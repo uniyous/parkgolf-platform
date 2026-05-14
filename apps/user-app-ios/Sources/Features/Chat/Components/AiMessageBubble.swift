@@ -82,9 +82,12 @@ struct AiMessageBubble: View {
                 }
             }
 
-            Spacer(minLength: 40)
         }
+        // 좌측 시작점과 우측 inset을 명시. 부모 LazyVStack의 horizontal padding(16) 위에
+        // 더해져 bubble이 화면 안쪽에서 안정적으로 그려짐.
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.leading, 8)
+        .padding(.trailing, 60)
     }
 
     @ViewBuilder
