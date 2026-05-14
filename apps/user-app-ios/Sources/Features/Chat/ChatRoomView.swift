@@ -618,6 +618,13 @@ struct ChatRoomView: View {
                 .background(Color.white.opacity(0.1))
 
             HStack(spacing: ParkSpacing.xs) {
+                // AI 모드 토글 — 입력바 좌측
+                AiButton(isActive: aiViewModel.isAiMode) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        aiViewModel.toggleAiMode()
+                    }
+                }
+
                 TextField(
                     aiViewModel.isAiMode ? "AI에게 예약 요청하기..." : "메시지 입력...",
                     text: $viewModel.inputText,
@@ -686,13 +693,6 @@ struct ChatRoomView: View {
                     .clipShape(Circle())
                 }
                 .disabled(viewModel.inputText.isEmpty || viewModel.isSending || aiViewModel.isAiLoading)
-
-                // AI 모드 토글 — 가장 우측에 배치
-                AiButton(isActive: aiViewModel.isAiMode) {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        aiViewModel.toggleAiMode()
-                    }
-                }
             }
             .padding(.horizontal, ParkSpacing.md)
             .padding(.vertical, ParkSpacing.sm)
