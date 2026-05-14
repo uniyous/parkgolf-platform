@@ -323,7 +323,13 @@ fun ClubDetailDto.toDomain(): ClubDetail {
         latitude = latitude,
         longitude = longitude,
         operatingHours = operatingHours?.let {
-            ClubDetail.OperatingHours(open = it.open, close = it.close)
+            // weekday 우선, 없으면 weekend, 그것도 없으면 옛 평면 구조(open/close) fallback
+            val hours = it.weekday ?: it.weekend
+            val open = hours?.start ?: it.open
+            val close = hours?.end ?: it.close
+            if (open != null && close != null) {
+                ClubDetail.OperatingHours(open = open, close = close)
+            } else null
         },
         seasonInfo = seasonInfo?.let {
             ClubDetail.SeasonInfo(type = it.type, startDate = it.startDate, endDate = it.endDate)
