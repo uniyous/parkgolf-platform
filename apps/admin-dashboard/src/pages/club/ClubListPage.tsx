@@ -11,6 +11,7 @@ import {
 } from '@/components/common/filters';
 import { CanManageCourses } from '@/components/auth';
 import { PageLayout } from '@/components/layout';
+import { ClubPartnerStatusBadge } from '@/components/features/club/ClubPartnerStatusBadge';
 import type { Club } from '@/types/club';
 
 export const ClubListPage: React.FC = () => {
@@ -220,6 +221,7 @@ export const ClubListPage: React.FC = () => {
                         }`}>
                           {club.bookingMode === 'PARTNER' ? '파트너' : '플랫폼'}
                         </span>
+                        <ClubPartnerStatusBadge clubId={club.id} bookingMode={club.bookingMode} />
                       </div>
                       <span className="text-xs text-white/40">
                         {club.operatingHours?.open?.slice(0, 5)}

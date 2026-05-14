@@ -8,8 +8,9 @@ import type { CourseCombo } from '@/types/club';
 import { CourseManagementTab } from '@/components/features/club/CourseManagementTab';
 import { BasicInfoTab } from '@/components/features/club/BasicInfoTab';
 import { OperationInfoTab } from '@/components/features/club/OperationInfoTab';
+import { PartnerStatusPanel } from '@/components/features/club/PartnerStatusPanel';
 
-type TabType = 'basic' | 'courses' | 'operation';
+type TabType = 'basic' | 'courses' | 'operation' | 'partner';
 
 export const ClubDetailPage: React.FC = () => {
   const { clubId } = useParams<{ clubId: string }>();
@@ -227,6 +228,23 @@ export const ClubDetailPage: React.FC = () => {
               <span>운영정보</span>
             </div>
           </button>
+          {club.bookingMode === 'PARTNER' && (
+            <button
+              onClick={() => setActiveTab('partner')}
+              className={`px-6 py-3 text-sm font-medium rounded-t-md transition-colors ${
+                activeTab === 'partner'
+                  ? 'bg-emerald-500/10 text-emerald-300 border-b-2 border-emerald-500'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                <span>파트너 연동</span>
+              </div>
+            </button>
+          )}
         </div>
       </div>
 
@@ -247,6 +265,11 @@ export const ClubDetailPage: React.FC = () => {
         )}
         {activeTab === 'operation' && (
           <OperationInfoTab club={club} onUpdate={refetchClub} />
+        )}
+        {activeTab === 'partner' && club.bookingMode === 'PARTNER' && (
+          <div className="p-6">
+            <PartnerStatusPanel clubId={club.id} />
+          </div>
         )}
       </div>
     </div>

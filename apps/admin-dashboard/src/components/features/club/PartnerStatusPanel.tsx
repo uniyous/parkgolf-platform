@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   RefreshCw,
   Wifi,
@@ -17,7 +17,6 @@ import {
   useSyncLogsQuery,
   useBookingMappingsQuery,
 } from '@/hooks/queries/partner';
-import { useClubsQuery } from '@/hooks/queries/course';
 import type { PartnerConfig, SyncLog, SyncAction, BookingMapping, BookingSyncStatus, GameMapping } from '@/types/partner';
 
 type TabKey = 'overview' | 'syncLogs' | 'bookingMappings';
@@ -67,22 +66,18 @@ function isOverdue(lastSync: string | null | undefined, intervalMin: number): bo
   return elapsed > intervalMin * 2 * 60000;
 }
 
-export const PartnerStatusPage: React.FC = () => {
+/**
+ * 가맹점 본인 클럽의 파트너(외부 ERP) 연동 상태 패널.
+ * ClubDetailPage 탭 / PartnerStatusPage(다중 클럽 wrapper) 양쪽에서 재사용.
+ */
+export const PartnerStatusPanel: React.FC<{ clubId: number }> = ({ clubId }) => {
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
-  const [selectedClubId, setSelectedClubId] = useState<number | undefined>();
 
-  const { data: clubsData } = useClubsQuery();
-  const clubs = clubsData?.data || [];
-  const clubId = selectedClubId ?? clubs[0]?.id;
+  const { data: partnerConfig, isLoading: configLoading } = useMyPartnerConfigQuery(clubId, { enabled: !!clubId });
+  const { data: syncLogs, isLoading: logsLoading } = useSyncLogsQuery(clubId, { enabled: !!clubId && activeTab === 'syncLogs' });
+  const { data: bookingMappings, isLoading: mappingsLoading } = useBookingMappingsQuery(clubId, { enabled: !!clubId && activeTab === 'bookingMappings' });
 
-  const { data: partnerConfig, isLoading: configLoading } = useMyPartnerConfigQuery(clubId ?? 0, { enabled: !!clubId });
-  const { data: syncLogs, isLoading: logsLoading } = useSyncLogsQuery(clubId ?? 0, { enabled: !!clubId && activeTab === 'syncLogs' });
-  const { data: bookingMappings, isLoading: mappingsLoading } = useBookingMappingsQuery(clubId ?? 0, { enabled: !!clubId && activeTab === 'bookingMappings' });
-
-  const conflictCount = useMemo(() =>
-    bookingMappings?.filter((m) => m.syncStatus === 'CONFLICT').length ?? 0,
-    [bookingMappings]
-  );
+  const conflictCount = (bookingMappings ?? []).filter((m) => m.syncStatus === 'CONFLICT').length;
 
   const tabs: { key: TabKey; label: string; count?: number }[] = [
     { key: 'overview', label: '연동 현황' },
@@ -90,119 +85,89 @@ export const PartnerStatusPage: React.FC = () => {
     { key: 'bookingMappings', label: '예약 매핑', count: conflictCount || undefined },
   ];
 
-  if (!clubId) {
+  if (configLoading) {
     return (
-      <div className="text-center py-20">
+      <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-8 text-center">
+        <RefreshCw className="w-8 h-8 text-white/30 mx-auto animate-spin" />
+        <p className="mt-2 text-white/50">연동 정보를 불러오는 중...</p>
+      </div>
+    );
+  }
+
+  if (!partnerConfig) {
+    return (
+      <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-8 text-center">
         <WifiOff className="w-12 h-12 text-white/30 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-white mb-2">골프장을 선택해주세요</h3>
-        <p className="text-white/50">파트너 연동 현황을 확인할 골프장이 없습니다.</p>
+        <h3 className="text-lg font-medium text-white mb-2">파트너 연동이 설정되지 않았습니다</h3>
+        <p className="text-white/50">이 골프장은 자체 플랫폼 모드로 운영 중입니다.</p>
+        <p className="text-sm text-white/30 mt-1">파트너 연동이 필요하면 플랫폼 관리자에게 요청하세요.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-white">파트너 연동 현황</h2>
-            <p className="mt-1 text-sm text-white/50">외부 부킹 시스템 연동 상태를 확인합니다 (조회 전용)</p>
-          </div>
-          {clubs.length > 1 && (
-            <select
-              value={clubId}
-              onChange={(e) => setSelectedClubId(Number(e.target.value))}
-              className="px-3 py-2 bg-white/5 border border-white/15 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+      {/* Status Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatusCard
+          label="연결 상태"
+          value={partnerConfig.isActive ? '연동 중' : '비활성'}
+          icon={partnerConfig.isActive ? <Wifi className="w-5 h-5" /> : <WifiOff className="w-5 h-5" />}
+          color={partnerConfig.isActive ? 'emerald' : 'red'}
+        />
+        <StatusCard
+          label="동기화 모드"
+          value={SYNC_MODE_LABELS[partnerConfig.syncMode] || partnerConfig.syncMode}
+          sub={`${partnerConfig.syncIntervalMin}분 간격`}
+          icon={<Clock className="w-5 h-5" />}
+          color="blue"
+        />
+        <StatusCard
+          label="마지막 슬롯 동기화"
+          value={partnerConfig.lastSlotSyncAt ? timeAgo(partnerConfig.lastSlotSyncAt) : '없음'}
+          sub={partnerConfig.lastSlotSyncStatus || undefined}
+          icon={partnerConfig.lastSlotSyncStatus === 'FAILED' ? <XCircle className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
+          color={isOverdue(partnerConfig.lastSlotSyncAt, partnerConfig.syncIntervalMin) ? 'yellow' : 'emerald'}
+          warning={isOverdue(partnerConfig.lastSlotSyncAt, partnerConfig.syncIntervalMin) ? '동기화 지연' : undefined}
+        />
+        <StatusCard
+          label="코스 매핑"
+          value={`${partnerConfig.gameMappings?.length ?? 0}개`}
+          sub={`동기화 범위: ${partnerConfig.syncRangeDays}일`}
+          icon={<RefreshCw className="w-5 h-5" />}
+          color="purple"
+        />
+      </div>
+
+      {/* Tabs */}
+      <div className="border-b border-white/15">
+        <div className="flex space-x-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors relative ${
+                activeTab === tab.key
+                  ? 'bg-white/10 text-white border-b-2 border-emerald-400'
+                  : 'text-white/50 hover:text-white hover:bg-white/5'
+              }`}
             >
-              {clubs.map((club) => (
-                <option key={club.id} value={club.id}>{club.name}</option>
-              ))}
-            </select>
-          )}
+              {tab.label}
+              {tab.count !== undefined && tab.count > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs bg-red-500 text-white rounded-full">
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Content */}
-      {configLoading ? (
-        <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-8 text-center">
-          <RefreshCw className="w-8 h-8 text-white/30 mx-auto animate-spin" />
-          <p className="mt-2 text-white/50">연동 정보를 불러오는 중...</p>
-        </div>
-      ) : !partnerConfig ? (
-        <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-8 text-center">
-          <WifiOff className="w-12 h-12 text-white/30 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">파트너 연동이 설정되지 않았습니다</h3>
-          <p className="text-white/50">이 골프장은 자체 플랫폼 모드로 운영 중입니다.</p>
-          <p className="text-sm text-white/30 mt-1">파트너 연동이 필요하면 플랫폼 관리자에게 요청하세요.</p>
-        </div>
-      ) : (
-        <>
-          {/* Status Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <StatusCard
-              label="연결 상태"
-              value={partnerConfig.isActive ? '연동 중' : '비활성'}
-              icon={partnerConfig.isActive ? <Wifi className="w-5 h-5" /> : <WifiOff className="w-5 h-5" />}
-              color={partnerConfig.isActive ? 'emerald' : 'red'}
-            />
-            <StatusCard
-              label="동기화 모드"
-              value={SYNC_MODE_LABELS[partnerConfig.syncMode] || partnerConfig.syncMode}
-              sub={`${partnerConfig.syncIntervalMin}분 간격`}
-              icon={<Clock className="w-5 h-5" />}
-              color="blue"
-            />
-            <StatusCard
-              label="마지막 슬롯 동기화"
-              value={partnerConfig.lastSlotSyncAt ? timeAgo(partnerConfig.lastSlotSyncAt) : '없음'}
-              sub={partnerConfig.lastSlotSyncStatus || undefined}
-              icon={partnerConfig.lastSlotSyncStatus === 'FAILED'
-                ? <XCircle className="w-5 h-5" />
-                : <CheckCircle className="w-5 h-5" />}
-              color={isOverdue(partnerConfig.lastSlotSyncAt, partnerConfig.syncIntervalMin) ? 'yellow' : 'emerald'}
-              warning={isOverdue(partnerConfig.lastSlotSyncAt, partnerConfig.syncIntervalMin) ? '동기화 지연' : undefined}
-            />
-            <StatusCard
-              label="코스 매핑"
-              value={`${partnerConfig.gameMappings?.length ?? 0}개`}
-              sub={`동기화 범위: ${partnerConfig.syncRangeDays}일`}
-              icon={<RefreshCw className="w-5 h-5" />}
-              color="purple"
-            />
-          </div>
-
-          {/* Tabs */}
-          <div className="border-b border-white/15">
-            <div className="flex space-x-1">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors relative ${
-                    activeTab === tab.key
-                      ? 'bg-white/10 text-white border-b-2 border-emerald-400'
-                      : 'text-white/50 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  {tab.label}
-                  {tab.count !== undefined && tab.count > 0 && (
-                    <span className="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs bg-red-500 text-white rounded-full">
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Tab Content */}
-          {activeTab === 'overview' && <OverviewTab partnerConfig={partnerConfig} />}
-          {activeTab === 'syncLogs' && <SyncLogsTab logs={syncLogs || []} isLoading={logsLoading} />}
-          {activeTab === 'bookingMappings' && (
-            <BookingMappingsTab mappings={bookingMappings || []} isLoading={mappingsLoading} />
-          )}
-        </>
+      {/* Tab Content */}
+      {activeTab === 'overview' && <OverviewTab partnerConfig={partnerConfig} />}
+      {activeTab === 'syncLogs' && <SyncLogsTab logs={syncLogs || []} isLoading={logsLoading} />}
+      {activeTab === 'bookingMappings' && (
+        <BookingMappingsTab mappings={bookingMappings || []} isLoading={mappingsLoading} />
       )}
     </div>
   );
@@ -249,7 +214,6 @@ const StatusCard: React.FC<{
 
 const OverviewTab: React.FC<{ partnerConfig: PartnerConfig }> = ({ partnerConfig }) => (
   <div className="space-y-4">
-    {/* Config Info */}
     <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-6">
       <h3 className="text-lg font-medium text-white mb-4">연동 상세 정보</h3>
       <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
@@ -272,7 +236,6 @@ const OverviewTab: React.FC<{ partnerConfig: PartnerConfig }> = ({ partnerConfig
       </dl>
     </div>
 
-    {/* Course Mappings */}
     {partnerConfig.gameMappings && partnerConfig.gameMappings.length > 0 && (
       <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/15 p-6">
         <h3 className="text-lg font-medium text-white mb-4">코스 매핑</h3>
@@ -398,7 +361,6 @@ const SyncLogsTab: React.FC<{ logs: SyncLog[]; isLoading: boolean }> = ({ logs, 
               )}
             </div>
 
-            {/* Gap indicator */}
             {gap > 15 && (
               <div className="flex items-center justify-center py-1">
                 <span className={`text-xs px-2 py-0.5 rounded-full ${
