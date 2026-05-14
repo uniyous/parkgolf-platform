@@ -180,9 +180,11 @@ fun ParkGolfNavHost(
         ) {
             ClubDetailScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToSearch = {
-                    navController.navigate("main") {
-                        popUpTo("main") { inclusive = true }
+                onNavigateToSearch = { clubName ->
+                    // 검색 탭으로 이동 + 클럽 이름 자동 입력 (iOS/web과 동일 흐름)
+                    navController.navigate(Screen.Search.createRoute(clubName)) {
+                        popUpTo("main") { inclusive = false }
+                        launchSingleTop = true
                     }
                 }
             )
@@ -487,8 +489,13 @@ fun MainScreen(
                         }
                     )
                 }
-                composable(Screen.Search.route) {
+                composable(
+                    route = Screen.Search.route,
+                    arguments = listOf(navArgument("clubName") { type = NavType.StringType; nullable = true; defaultValue = null })
+                ) { backStackEntry ->
+                    val clubName = backStackEntry.arguments?.getString("clubName")
                     RoundBookingScreen(
+                        initialSearchQuery = clubName,
                         onNavigate = { route -> navController.navigate(route) }
                     )
                 }

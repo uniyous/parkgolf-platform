@@ -77,10 +77,18 @@ import java.time.LocalDate
 @Composable
 fun RoundBookingScreen(
     onNavigate: (String) -> Unit,
+    initialSearchQuery: String? = null,
     viewModel: RoundBookingViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val dateOptions by viewModel.dateOptions.collectAsState()
+
+    // 외부에서 받은 검색어를 1회만 ViewModel에 주입 (예: 클럽 상세 → 검색 탭)
+    LaunchedEffect(initialSearchQuery) {
+        if (!initialSearchQuery.isNullOrBlank() && uiState.searchQuery != initialSearchQuery) {
+            viewModel.updateSearchQuery(initialSearchQuery)
+        }
+    }
 
     var isRefreshing by remember { mutableStateOf(false) }
     val pullToRefreshState = rememberPullToRefreshState()

@@ -6,7 +6,10 @@ sealed class Screen(val route: String) {
     data object SignUp : Screen("signup")
     // Main Tabs
     data object Home : Screen("home")
-    data object Search : Screen("search")
+    data object Search : Screen("search?clubName={clubName}") {
+        fun createRoute(clubName: String? = null): String =
+            if (clubName.isNullOrBlank()) "search" else "search?clubName=${clubName}"
+    }
     data object Social : Screen("social")
     data object Profile : Screen("profile")
 

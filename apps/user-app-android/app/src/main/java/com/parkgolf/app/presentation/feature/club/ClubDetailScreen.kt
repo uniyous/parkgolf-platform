@@ -64,7 +64,7 @@ import java.util.Locale
 @Composable
 fun ClubDetailScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToSearch: () -> Unit,
+    onNavigateToSearch: (clubName: String?) -> Unit,
     viewModel: ClubDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -148,7 +148,7 @@ fun ClubDetailScreen(
                         ClubInfoCard(club = uiState.club!!)
                         GamesSection(
                             games = uiState.games,
-                            onBookClick = onNavigateToSearch
+                            onBookClick = { onNavigateToSearch(uiState.club?.name) }
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                     }
