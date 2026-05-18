@@ -54,7 +54,7 @@ jobs:
         run: |
           INPUT="${{ github.event.inputs.services }}"
           if [ "$INPUT" = "all" ] || [ -z "$INPUT" ]; then
-            SERVICES="iam-service,course-service,booking-service,payment-service,chat-service,notify-service,saga-service,partner-service,admin-api,user-api,chat-gateway,weather-service,location-service,job-service,agent-service,migrator"
+            SERVICES="iam-service,course-service,booking-service,payment-service,chat-service,notify-service,saga-service,partner-service,admin-api,user-api,chat-gateway,weather-service,location-service,job-service,agent-service"
           else
             SERVICES="$INPUT"
           fi
@@ -99,14 +99,8 @@ jobs:
           SERVICE="${{ matrix.service }}"
           ENV=${{ needs.setup.outputs.environment }}
 
-          # migrator는 모든 서비스의 prisma 폴더를 참조 — build context를 repo root로 사용
-          if [ "$SERVICE" = "migrator" ]; then
-            IMAGE_NAME="parkgolf-migrator"
-            CONTEXT="."
-          else
-            IMAGE_NAME="$SERVICE"
-            CONTEXT="services/$SERVICE"
-          fi
+          IMAGE_NAME="$SERVICE"
+          CONTEXT="services/$SERVICE"
 
           IMAGE=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/parkgolf/$IMAGE_NAME
           docker build \
