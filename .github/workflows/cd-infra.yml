@@ -305,6 +305,27 @@ jobs:
               --description="Parkgolf container images"
           fi
 
+      - name: Apply Artifact Registry cleanup policies
+        run: |
+          # 정책 (멱등 — 매 실행마다 갱신)
+          #   Delete: untagged 7일 경과
+          #   (tagged 이미지는 보존 — 운영 안전 우선)
+          cat > /tmp/ar-cleanup-policy.json <<'EOF'
+          [
+            {
+              "name": "delete-untagged-after-7d",
+              "action": {"type": "Delete"},
+              "condition": {
+                "tagState": "UNTAGGED",
+                "olderThan": "604800s"
+              }
+            }
+          ]
+          EOF
+          gcloud artifacts repositories set-cleanup-policies parkgolf \
+            --location=${{ env.REGION }} \
+            --policy=/tmp/ar-cleanup-policy.json
+
       - name: Check/Create GKE Standard Cluster
         run: |
           CLUSTER="${{ needs.setup.outputs.cluster_name }}"
