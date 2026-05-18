@@ -120,6 +120,13 @@ export class LlmOrchestratorService {
             },
           };
         }
+        // get_chat_room_members: chatRoomId가 LLM이 안 채웠으면 request에서 자동 주입
+        if (tc.name === 'get_chat_room_members' && !tc.args.chatRoomId && request.chatRoomId) {
+          return {
+            ...tc,
+            args: { ...tc.args, chatRoomId: request.chatRoomId },
+          };
+        }
         return tc;
       });
     }

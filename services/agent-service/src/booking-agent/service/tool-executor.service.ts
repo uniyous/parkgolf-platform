@@ -194,6 +194,13 @@ export class ToolExecutorService {
       case 'get_booking_policy':
         return this.getBookingPolicy(toolCall.args);
 
+      case 'get_chat_room_members': {
+        const roomId = String(toolCall.args.chatRoomId || '');
+        if (!roomId) return { error: 'chatRoomId not provided', members: [] };
+        const members = await this.getChatRoomMembers(roomId);
+        return { members: members || [] };
+      }
+
       default:
         throw new Error(`Unknown tool: ${toolCall.name}`);
     }

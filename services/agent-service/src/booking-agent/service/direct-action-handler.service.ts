@@ -27,7 +27,9 @@ export class DirectActionHandlerService {
   ) {}
 
   /**
-   * 골프장 카드 클릭 → 채팅방 멤버 조회 → SELECT_MEMBERS 카드
+   * 골프장 카드 클릭 → 타임슬롯 조회 → SHOW_SLOTS 카드
+   * (자연스러운 흐름: 골프장 → 슬롯 → 멤버 → 결제)
+   * 슬롯 0건일 때만 멤버 카드를 띄우지 않고 텍스트로 안내.
    */
   async handleDirectClubSelect(
     context: ConversationContext,
@@ -40,13 +42,6 @@ export class DirectActionHandlerService {
       clubName: selectedClubName,
     });
 
-    const result = await this.uiCardHelper.showSelectMembers(
-      context,
-      `${selectedClubName}이(가) 선택되었어요! 함께 플레이할 멤버를 선택해 주세요.`,
-    );
-    if (result) return result;
-
-    // 폴백: chatRoomId 없거나 멤버 조회 실패 → 슬롯 바로 표시
     const date = context.slots.date || this.uiCardHelper.getTomorrowDate();
     const toolResult = await this.toolExecutor.execute({
       name: 'get_available_slots',

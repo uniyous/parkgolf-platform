@@ -48,7 +48,9 @@ export class DeepSeekService implements OnModuleInit {
 도구 사용 규칙:
 - 사용자가 날짜를 언급한 경우 search_clubs 대신 search_clubs_with_slots를 사용하세요
 - 날짜 없이 지역만 물어보면 기존 search_clubs를 사용하세요
+- 사용자가 "근처", "내 근처", "가까운" 등 위치 기반 표현을 쓰면 get_nearby_clubs를 사용하세요 (좌표는 시스템 메시지로 자동 주입됨)
 - 사용자가 인원수를 언급하면 search_clubs_with_slots의 playerCount 파라미터에 포함하세요
+- 사용자가 채팅방 멤버 이름(예: "철수랑", "영희와")을 언급하면 get_chat_room_members를 호출해서 매칭 후 컨텍스트에 활용하세요. 채팅방 ID는 시스템이 자동 주입합니다
 - 사용자가 날씨만 물어볼 때(예약 의도 없이)는 get_weather_by_location을 사용하세요
 - 특정 골프장의 날씨를 물어보면 get_weather(clubId 필요)를 사용하세요
 
@@ -58,6 +60,12 @@ export class DeepSeekService implements OnModuleInit {
 - "이번 주말" → 가장 가까운 토요일/일요일
 - "다음 주" → 다음 주 월요일부터
 
+결제방법 키워드 (사용자가 언급 시 텍스트 응답에 명확히 반영):
+- "더치페이" / "나눠서" / "각자" / "n분의 1" → dutchpay
+- "카드" / "카드결제" / "온라인" → card
+- "현장" / "현장결제" / "가서 결제" → onsite
+- 언급 없으면 사용자가 카드 UI에서 직접 선택
+
 오늘 날짜: {{TODAY_DATE}}
 
 원샷 예약:
@@ -65,8 +73,13 @@ export class DeepSeekService implements OnModuleInit {
 - 선택 기준: 여유 슬롯 > 가격 > 시간대
 - 사용자가 다른 옵션 원하면 전체 목록 표시
 
+가용성 사전 체크 (중요):
+- 사용자가 "예약 가능한 시간 알려줘", "가능한지" 같이 가용성 위주로 물으면, 슬롯 조회 결과가 0건일 경우 카드를 표시하지 말고 텍스트로만 "해당 조건에 예약 가능한 시간이 없어요. 다른 날짜/장소를 시도해 보세요"라고 응답하세요
+- 슬롯이 1건 이상이면 평소대로 SHOW_SLOTS 카드 표시
+
 예약 안내:
-- 골프장 검색 후 사용자가 골프장을 선택하면, 자동으로 팀 멤버 선택 → 슬롯 선택 → 결제 순서로 진행됩니다
+- 자연스러운 카드 순서: 골프장 선택 → 타임슬롯 선택 → 멤버 선택 → 결제방법 선택(CONFIRM_BOOKING 카드 내) → 결제 진행
+- 골프장+슬롯+멤버+결제방법이 한 메시지에 다 있으면 위 순서대로 카드 한 번에 흘려보내되, 컨텍스트는 모두 저장하여 다음 단계에서 활용
 - 그룹 예약/더치페이는 별도 판단 없이 통합 플로우에서 자동 처리됩니다`;
 
   /**
@@ -250,6 +263,22 @@ export class DeepSeekService implements OnModuleInit {
             radius: { type: 'number', description: '검색 반경 (미터, 기본값 10000)' },
           },
           required: ['latitude', 'longitude'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'get_chat_room_members',
+        description: '현재 채팅방의 멤버 목록을 조회합니다. 사용자가 멤버 이름(예: "철수랑", "영희와")을 언급할 때 호출하여 이름을 매칭하세요. chatRoomId 인자는 비워두면 시스템이 자동 주입합니다.',
+        parameters: {
+          type: 'object',
+          properties: {
+            chatRoomId: {
+              type: 'string',
+              description: '채팅방 ID (비워두면 자동 주입). 명시 시 우선 사용.',
+            },
+          },
         },
       },
     },
