@@ -64,9 +64,11 @@ nats:
     limits:   { cpu: 250m, memory: 256Mi }
 
 # 공통 probe / 리소스 기본값
+# cpu request 30m: dev 환경 실측 CPU 사용량 22% 기반 — autoscaler가 1노드로 압축 가능
+# (limits 250m은 그대로 → 필요 시 burst 가능)
 defaults:
   resources:
-    requests: { cpu: 50m, memory: 128Mi }
+    requests: { cpu: 30m, memory: 128Mi }
     limits:   { cpu: 250m, memory: 384Mi }
   startupProbe:
     httpGet: { path: /health, port: 8080 }
