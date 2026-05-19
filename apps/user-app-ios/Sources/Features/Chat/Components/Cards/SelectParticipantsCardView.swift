@@ -202,9 +202,13 @@ struct SelectParticipantsCardView: View {
     // MARK: - Data Parsing
 
     private func parseData() {
-        guard let teamsData = dict["teams"] as? [[String: Any]] else { return }
+        // 서버(agent-service)가 보내는 키: assignedTeams (완료된 팀들), availableMembers (미배정)
+        // 기존 호환을 위해 teams / unassigned도 fallback으로 읽음
+        let teamsData = (dict["assignedTeams"] as? [[String: Any]])
+            ?? (dict["teams"] as? [[String: Any]])
+            ?? []
 
-        teams = teamsData.enumerated().map { index, teamDict in
+        var parsedTeams: [EditableTeam] = teamsData.enumerated().map { index, teamDict in
             let teamNumber = teamDict["teamNumber"] as? Int ?? (index + 1)
             let slotId = teamDict["slotId"] as? String ?? ""
             let slotTime = teamDict["slotTime"] as? String ?? ""
@@ -223,9 +227,27 @@ struct SelectParticipantsCardView: View {
             )
         }
 
-        if let unassignedData = dict["unassigned"] as? [[String: Any]] {
-            unassigned = unassignedData.map { parseMember($0) }
+        // 현재 진행 중인 팀(아직 비어있는 팀)을 자동 추가 — 서버는 카드 루트에 teamNumber/maxPlayers만 전달
+        let currentTeamNumber = dict["teamNumber"] as? Int ?? (parsedTeams.count + 1)
+        let alreadyHasCurrent = parsedTeams.contains { $0.teamNumber == currentTeamNumber }
+        if !alreadyHasCurrent {
+            parsedTeams.append(
+                EditableTeam(
+                    teamNumber: currentTeamNumber,
+                    slotId: dict["slotId"] as? String ?? "",
+                    slotTime: dict["slotTime"] as? String ?? dict["time"] as? String ?? "",
+                    gameName: dict["gameName"] as? String ?? "",
+                    maxPlayers: dict["maxPlayers"] as? Int ?? 4,
+                    members: []
+                )
+            )
         }
+        teams = parsedTeams
+
+        let availableData = (dict["availableMembers"] as? [[String: Any]])
+            ?? (dict["unassigned"] as? [[String: Any]])
+            ?? []
+        unassigned = availableData.map { parseMember($0) }
     }
 
     private func parseMember(_ dict: [String: Any]) -> MemberInfo {
