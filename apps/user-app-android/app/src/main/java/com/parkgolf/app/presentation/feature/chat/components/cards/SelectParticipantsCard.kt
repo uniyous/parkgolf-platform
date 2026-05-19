@@ -41,9 +41,14 @@ fun SelectParticipantsCard(
     val pricePerPerson = (data["pricePerPerson"] as? Number)?.toInt() ?: 0
     val numberFormat = NumberFormat.getNumberInstance(Locale.KOREA)
 
+    // 서버(agent-service ui-card.helper.ts)가 카드 데이터에 모든 필요 정보를 내려준다:
+    //   - assignedTeams: 완료된 팀들 (참고용)
+    //   - currentTeam:   지금 채우는 팀 (자연어로 사전 추출된 멤버가 미리 채워질 수 있음)
+    //   - availableMembers: 채팅방 전체 멤버 중 미배정자
+    // 클라이언트는 자체 멤버 조회/빈 팀 생성 로직 없음 — 서버 데이터를 그대로 렌더링.
     @Suppress("UNCHECKED_CAST")
     val initialTeams = remember(data) {
-        (data["teams"] as? List<Map<String, Any?>>)?.map { team ->
+        val parseTeam: (Map<String, Any?>) -> TeamState = { team ->
             val members = (team["members"] as? List<Map<String, Any?>>)?.map { m ->
                 MemberState(
                     userId = (m["userId"] as? Number)?.toInt() ?: 0,
@@ -51,7 +56,6 @@ fun SelectParticipantsCard(
                     userEmail = m["userEmail"]?.toString() ?: ""
                 )
             } ?: emptyList()
-
             TeamState(
                 teamNumber = (team["teamNumber"] as? Number)?.toInt() ?: 0,
                 slotId = team["slotId"]?.toString() ?: "",
@@ -60,18 +64,31 @@ fun SelectParticipantsCard(
                 maxPlayers = (team["maxPlayers"] as? Number)?.toInt() ?: 4,
                 members = members
             )
-        } ?: emptyList()
+        }
+
+        val assignedData = (data["assignedTeams"] as? List<Map<String, Any?>>)
+            ?: (data["teams"] as? List<Map<String, Any?>>)
+            ?: emptyList()
+        val parsed = assignedData.map(parseTeam).toMutableList()
+
+        (data["currentTeam"] as? Map<String, Any?>)?.let { current ->
+            parsed.add(parseTeam(current))
+        }
+        parsed.toList()
     }
 
     @Suppress("UNCHECKED_CAST")
     val initialUnassigned = remember(data) {
-        (data["unassigned"] as? List<Map<String, Any?>>)?.map { m ->
+        val availableData = (data["availableMembers"] as? List<Map<String, Any?>>)
+            ?: (data["unassigned"] as? List<Map<String, Any?>>)
+            ?: emptyList()
+        availableData.map { m ->
             MemberState(
                 userId = (m["userId"] as? Number)?.toInt() ?: 0,
                 userName = m["userName"]?.toString() ?: "",
                 userEmail = m["userEmail"]?.toString() ?: ""
             )
-        } ?: emptyList()
+        }
     }
 
     var teams by remember { mutableStateOf(initialTeams) }

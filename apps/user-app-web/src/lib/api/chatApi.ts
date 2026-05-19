@@ -177,10 +177,25 @@ export interface SelectMembersData {
   maxPlayers: number;
   assignedTeams: Array<{
     teamNumber: number;
+    slotId?: string;
     slotTime: string;
     gameName: string;
+    maxPlayers?: number;
     members: Array<{ userId: number; userName: string }>;
   }>;
+  /**
+   * 지금 채우는 팀. 서버(agent)가 자연어에서 사전 추출한 멤버를
+   * members에 미리 채울 수 있음 (예: "철수랑 예약").
+   * 카드 진입 시 selectedIds 초기값으로 prefill 처리.
+   */
+  currentTeam?: {
+    teamNumber: number;
+    slotId?: string;
+    slotTime?: string;
+    gameName?: string;
+    maxPlayers?: number;
+    members: Array<{ userId: number; userName: string; userEmail?: string }>;
+  };
   availableMembers: Array<{
     userId: number;
     userName: string;

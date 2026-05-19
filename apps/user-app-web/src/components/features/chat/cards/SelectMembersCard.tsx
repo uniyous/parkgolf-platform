@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Users, Check, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SelectMembersData } from '@/lib/api/chatApi';
@@ -16,7 +16,27 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
   onCancel,
   completed,
 }) => {
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  // currentTeam.members(서버 prefill) + availableMembers를 합쳐서 표시.
+  // currentTeam.members는 미리 체크된 상태로 시작 (서버가 자연어에서 추출한 사전 배정).
+  const allMembers = useMemo(() => {
+    const seen = new Set<number>();
+    const merged: Array<{ userId: number; userName: string; userEmail: string }> = [];
+    for (const m of data.currentTeam?.members ?? []) {
+      if (seen.has(m.userId)) continue;
+      seen.add(m.userId);
+      merged.push({ userId: m.userId, userName: m.userName, userEmail: m.userEmail ?? '' });
+    }
+    for (const m of data.availableMembers) {
+      if (seen.has(m.userId)) continue;
+      seen.add(m.userId);
+      merged.push(m);
+    }
+    return merged;
+  }, [data.currentTeam, data.availableMembers]);
+
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(
+    () => new Set((data.currentTeam?.members ?? []).map((m) => m.userId)),
+  );
 
   const toggleMember = (userId: number) => {
     setSelectedIds((prev) => {
@@ -31,7 +51,7 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
   };
 
   const handleConfirm = () => {
-    const selected = data.availableMembers.filter((m) => selectedIds.has(m.userId));
+    const selected = allMembers.filter((m) => selectedIds.has(m.userId));
     onConfirm?.(selected);
   };
 
@@ -80,7 +100,7 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
               {selectedIds.size}/{data.maxPlayers}
             </span>
           </div>
-          {data.availableMembers.map((member) => {
+          {allMembers.map((member) => {
             const isSelected = selectedIds.has(member.userId);
             const isDisabled = completed || (!isSelected && selectedIds.size >= data.maxPlayers);
 
