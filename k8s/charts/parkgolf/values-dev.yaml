@@ -12,3 +12,5 @@ externalSecrets:
   clusterLocation: asia-northeast3-a
 ingress:
   staticIpName: parkgolf-parkgolf-dev-cluster-ip
+serviceImageTags:
+  agent-service: 39c71fbeb6de4d6b328fc2c4b6f1e7165dbd9259
