@@ -493,7 +493,10 @@ fun MainScreen(
                     route = Screen.Search.route,
                     arguments = listOf(navArgument("clubName") { type = NavType.StringType; nullable = true; defaultValue = null })
                 ) { backStackEntry ->
+                    // Compose Navigation은 query 없이 호출 시 placeholder("{clubName}") 리터럴을 그대로
+                    // argument로 넘기는 경우가 있어 sentinel 필터링 (입력박스에 "{clubName}" 노출 방지).
                     val clubName = backStackEntry.arguments?.getString("clubName")
+                        ?.takeUnless { it.isBlank() || it == "{clubName}" }
                     RoundBookingScreen(
                         initialSearchQuery = clubName,
                         onNavigate = { route -> navController.navigate(route) }
