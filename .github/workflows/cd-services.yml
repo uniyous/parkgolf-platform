@@ -130,11 +130,31 @@ jobs:
           ENV=${{ needs.setup.outputs.environment }}
           VALUES_FILE="k8s/charts/parkgolf/values-${ENV}.yaml"
           NEW_TAG=${{ github.sha }}
+          SERVICES_JSON='${{ needs.setup.outputs.matrix }}'
+          INPUT_SERVICES="${{ github.event.inputs.services }}"
 
-          # 환경별 values 파일의 global.image.tag 갱신
-          yq -i ".global.image.tag = \"${NEW_TAG}\"" "$VALUES_FILE"
-          echo "After update ($VALUES_FILE):"
-          yq '.global.image.tag' "$VALUES_FILE"
+          # serviceImageTags 노드 보장 (없거나 null이면 빈 객체로 초기화)
+          CURRENT=$(yq '.serviceImageTags' "$VALUES_FILE")
+          if [ "$CURRENT" = "null" ] || [ -z "$CURRENT" ]; then
+            yq -i '.serviceImageTags = {}' "$VALUES_FILE"
+          fi
+
+          # 빌드된 service의 tag만 갱신 (다른 service는 기존 tag 또는 global.image.tag fallback)
+          for svc in $(echo "$SERVICES_JSON" | jq -r '.[]'); do
+            yq -i ".serviceImageTags.\"$svc\" = \"${NEW_TAG}\"" "$VALUES_FILE"
+            echo "Updated: serviceImageTags.$svc = $NEW_TAG"
+          done
+
+          # services: all (또는 입력 비어있음=all로 처리)일 때만 global.image.tag fallback도 갱신
+          if [ "$INPUT_SERVICES" = "all" ] || [ -z "$INPUT_SERVICES" ]; then
+            yq -i ".global.image.tag = \"${NEW_TAG}\"" "$VALUES_FILE"
+            echo "Updated: global.image.tag = $NEW_TAG (services=all)"
+          else
+            echo "Skipped global.image.tag update (services=$INPUT_SERVICES, not all)"
+          fi
+
+          echo "---After update ($VALUES_FILE)---"
+          yq '.global.image.tag, .serviceImageTags' "$VALUES_FILE"
           echo "VALUES_FILE=$VALUES_FILE" >> $GITHUB_ENV
 
       - name: Commit & push

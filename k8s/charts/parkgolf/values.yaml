@@ -2,9 +2,17 @@ global:
   namespace: parkgolf-dev
   image:
     registry: asia-northeast3-docker.pkg.dev/parkgolf-uniyous/parkgolf
+    # services-all 빌드 시 자동 갱신되는 fallback tag.
+    # 개별 service 빌드 시에는 serviceImageTags의 해당 항목만 갱신되고 이 값은 유지됨.
     tag: 27494d8ecbca49cd89bd3dba18c46fdcd16c077e
     pullPolicy: IfNotPresent
   domain: dev-api.parkgolfmate.com
+
+# 서비스별 image tag override.
+# cd-services workflow가 빌드된 service의 항목만 갱신.
+# 비어있거나 특정 service가 누락되면 global.image.tag로 fallback.
+# 예: { agent-service: <sha>, chat-service: <sha>, ... }
+serviceImageTags: {}
 
 # 공통 ConfigMap (parkgolf-config) — 모든 서비스가 envFrom로 사용 가능
 config:

@@ -29,7 +29,8 @@ spec:
       # prisma migrate는 ArgoCD PreSync Job(templates/migrate-job.yaml)로 분리.
       containers:
         - name: {{ .name }}
-          image: {{ $registry }}/{{ .name }}:{{ $tag }}
+          # service별 tag override 우선, 없으면 global.image.tag fallback
+          image: {{ $registry }}/{{ .name }}:{{ index $.Values.serviceImageTags .name | default $tag }}
           imagePullPolicy: {{ $pullPolicy }}
           ports:
             - containerPort: 8080
