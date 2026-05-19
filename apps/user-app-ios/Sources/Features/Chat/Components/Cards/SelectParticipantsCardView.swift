@@ -202,45 +202,19 @@ struct SelectParticipantsCardView: View {
     // MARK: - Data Parsing
 
     private func parseData() {
-        // 서버(agent-service)가 보내는 키: assignedTeams (완료된 팀들), availableMembers (미배정)
-        // 기존 호환을 위해 teams / unassigned도 fallback으로 읽음
-        let teamsData = (dict["assignedTeams"] as? [[String: Any]])
+        // 서버(agent-service ui-card.helper.ts)가 카드 데이터에 모든 필요 정보를 내려준다:
+        //   - assignedTeams: 완료된 팀들
+        //   - currentTeam:   지금 채우는 팀 (자연어로 사전 추출된 멤버가 미리 채워질 수 있음)
+        //   - availableMembers: 채팅방 전체 멤버 중 미배정자
+        // iOS는 자체 멤버 조회/빈 팀 생성 로직 없음 — 서버 데이터를 그대로 렌더링.
+        let assignedData = (dict["assignedTeams"] as? [[String: Any]])
             ?? (dict["teams"] as? [[String: Any]])
             ?? []
 
-        var parsedTeams: [EditableTeam] = teamsData.enumerated().map { index, teamDict in
-            let teamNumber = teamDict["teamNumber"] as? Int ?? (index + 1)
-            let slotId = teamDict["slotId"] as? String ?? ""
-            let slotTime = teamDict["slotTime"] as? String ?? ""
-            let gameName = teamDict["gameName"] as? String ?? ""
-            let maxPlayers = teamDict["maxPlayers"] as? Int ?? 4
-            let membersData = teamDict["members"] as? [[String: Any]] ?? []
-            let members = membersData.map { parseMember($0) }
+        var parsedTeams: [EditableTeam] = assignedData.map { parseTeam($0) }
 
-            return EditableTeam(
-                teamNumber: teamNumber,
-                slotId: slotId,
-                slotTime: slotTime,
-                gameName: gameName,
-                maxPlayers: maxPlayers,
-                members: members
-            )
-        }
-
-        // 현재 진행 중인 팀(아직 비어있는 팀)을 자동 추가 — 서버는 카드 루트에 teamNumber/maxPlayers만 전달
-        let currentTeamNumber = dict["teamNumber"] as? Int ?? (parsedTeams.count + 1)
-        let alreadyHasCurrent = parsedTeams.contains { $0.teamNumber == currentTeamNumber }
-        if !alreadyHasCurrent {
-            parsedTeams.append(
-                EditableTeam(
-                    teamNumber: currentTeamNumber,
-                    slotId: dict["slotId"] as? String ?? "",
-                    slotTime: dict["slotTime"] as? String ?? dict["time"] as? String ?? "",
-                    gameName: dict["gameName"] as? String ?? "",
-                    maxPlayers: dict["maxPlayers"] as? Int ?? 4,
-                    members: []
-                )
-            )
+        if let currentDict = dict["currentTeam"] as? [String: Any] {
+            parsedTeams.append(parseTeam(currentDict))
         }
         teams = parsedTeams
 
@@ -248,6 +222,23 @@ struct SelectParticipantsCardView: View {
             ?? (dict["unassigned"] as? [[String: Any]])
             ?? []
         unassigned = availableData.map { parseMember($0) }
+    }
+
+    private func parseTeam(_ teamDict: [String: Any]) -> EditableTeam {
+        let teamNumber = teamDict["teamNumber"] as? Int ?? 1
+        let slotId = teamDict["slotId"] as? String ?? ""
+        let slotTime = teamDict["slotTime"] as? String ?? ""
+        let gameName = teamDict["gameName"] as? String ?? ""
+        let maxPlayers = teamDict["maxPlayers"] as? Int ?? 4
+        let membersData = teamDict["members"] as? [[String: Any]] ?? []
+        return EditableTeam(
+            teamNumber: teamNumber,
+            slotId: slotId,
+            slotTime: slotTime,
+            gameName: gameName,
+            maxPlayers: maxPlayers,
+            members: membersData.map { parseMember($0) }
+        )
     }
 
     private func parseMember(_ dict: [String: Any]) -> MemberInfo {

@@ -17,6 +17,11 @@ export class UiCardHelper {
 
   /**
    * SELECT_MEMBERS 카드 응답 생성. chatRoomId 없거나 멤버 조회 실패 시 null.
+   *
+   * 카드 데이터 구성 (클라이언트는 단순 렌더만):
+   * - assignedTeams: 이미 완료된 팀들 (참고용)
+   * - currentTeam: 지금 채우는 팀 (members에 자연어로 사전 추출된 멤버 미리 채움 가능)
+   * - availableMembers: 채팅방 전체 멤버 중 assignedTeams/currentTeam.members 제외한 미배정자
    */
   async showSelectMembers(
     context: ConversationContext,
@@ -30,6 +35,7 @@ export class UiCardHelper {
 
     const teamNumber = context.slots.currentTeamNumber || 1;
     const completedTeams = context.slots.completedTeams || [];
+    const currentTeamMembers = context.slots.currentTeamMembers || [];
 
     const assignedUserIds = new Set<number>();
     for (const team of completedTeams) {
@@ -37,7 +43,23 @@ export class UiCardHelper {
         assignedUserIds.add(m.userId);
       }
     }
+    for (const m of currentTeamMembers) {
+      assignedUserIds.add(m.userId);
+    }
     const availableMembers = allMembers.filter((m) => !assignedUserIds.has(m.userId));
+
+    const currentTeam = {
+      teamNumber,
+      slotId: context.slots.slotId || '',
+      slotTime: context.slots.time || '',
+      gameName: context.slots.gameName || '',
+      maxPlayers: 4,
+      members: currentTeamMembers.map((m) => ({
+        userId: m.userId,
+        userName: m.userName,
+        userEmail: m.userEmail,
+      })),
+    };
 
     const selectData = {
       teamNumber,
@@ -46,10 +68,13 @@ export class UiCardHelper {
       maxPlayers: 4,
       assignedTeams: completedTeams.map((t) => ({
         teamNumber: t.teamNumber,
+        slotId: t.slotId,
         slotTime: t.slotTime,
         gameName: t.gameName,
+        maxPlayers: 4,
         members: t.members,
       })),
+      currentTeam,
       availableMembers,
     };
 
