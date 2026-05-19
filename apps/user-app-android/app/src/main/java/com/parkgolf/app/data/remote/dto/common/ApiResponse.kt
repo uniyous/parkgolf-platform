@@ -26,12 +26,26 @@ data class SagaMeta(
     val duplicate: Boolean? = null
 )
 
+/**
+ * 페이지네이션 응답
+ *
+ * 서버 응답 구조 (2단계 래핑):
+ * { success, data: { data: [...], total, page, limit, totalPages }, error? }
+ *
+ * iOS와 동일하게 ApiResponse 패턴을 따른다.
+ */
 @Serializable
 data class PaginatedResponse<T>(
     val success: Boolean,
+    val data: PaginatedPayload<T>? = null,
+    val error: ApiError? = null
+)
+
+@Serializable
+data class PaginatedPayload<T>(
     val data: List<T>,
-    val total: Int,
-    val page: Int,
-    val limit: Int,
-    val totalPages: Int
+    val total: Int = 0,
+    val page: Int = 1,
+    val limit: Int = 20,
+    val totalPages: Int = 1
 )

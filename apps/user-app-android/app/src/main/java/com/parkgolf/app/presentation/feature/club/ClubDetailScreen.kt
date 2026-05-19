@@ -1,5 +1,6 @@
 package com.parkgolf.app.presentation.feature.club
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -396,26 +397,16 @@ private fun IconInfoRow(
     color: Color,
     onClick: (() -> Unit)? = null
 ) {
+    val rowModifier = Modifier.padding(vertical = 2.dp).let {
+        if (onClick != null) it.clickable(onClick = onClick) else it
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = if (onClick != null) {
-            Modifier.padding(vertical = 2.dp)
-        } else {
-            Modifier.padding(vertical = 2.dp)
-        }
+        modifier = rowModifier
     ) {
         icon()
         Spacer(modifier = Modifier.width(6.dp))
-        if (onClick != null) {
-            TextButton(
-                onClick = onClick,
-                modifier = Modifier.height(24.dp)
-            ) {
-                Text(text = text, color = color, style = MaterialTheme.typography.bodySmall)
-            }
-        } else {
-            Text(text = text, color = color, style = MaterialTheme.typography.bodySmall)
-        }
+        Text(text = text, color = color, style = MaterialTheme.typography.bodySmall)
     }
 }
 

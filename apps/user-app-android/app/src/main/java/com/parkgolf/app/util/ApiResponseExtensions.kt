@@ -92,18 +92,19 @@ inline fun <T, R> PaginatedResponse<T>.toPaginatedResult(
     errorMessage: String = "요청에 실패했습니다",
     transform: (T) -> R
 ): Result<PaginatedData<R>> {
-    return if (success) {
+    val payload = data
+    return if (success && payload != null) {
         Result.success(
             PaginatedData(
-                data = data.map(transform),
-                total = total,
-                page = page,
-                limit = limit,
-                totalPages = totalPages
+                data = payload.data.map(transform),
+                total = payload.total,
+                page = payload.page,
+                limit = payload.limit,
+                totalPages = payload.totalPages
             )
         )
     } else {
-        Result.failure(Exception(errorMessage))
+        Result.failure(Exception(error?.message ?: errorMessage))
     }
 }
 
