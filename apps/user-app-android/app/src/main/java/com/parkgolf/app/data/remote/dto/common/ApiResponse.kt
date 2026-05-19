@@ -29,23 +29,16 @@ data class SagaMeta(
 /**
  * 페이지네이션 응답
  *
- * 서버 응답 구조 (2단계 래핑):
- * { success, data: { data: [...], total, page, limit, totalPages }, error? }
- *
- * iOS와 동일하게 ApiResponse 패턴을 따른다.
+ * 서버 응답 구조: { success, data: [...] }
+ * (페이지 메타 total/page/limit/totalPages는 엔드포인트에 따라 누락될 수 있어 default 값 부여)
  */
 @Serializable
 data class PaginatedResponse<T>(
     val success: Boolean,
-    val data: PaginatedPayload<T>? = null,
-    val error: ApiError? = null
-)
-
-@Serializable
-data class PaginatedPayload<T>(
-    val data: List<T>,
+    val data: List<T> = emptyList(),
     val total: Int = 0,
     val page: Int = 1,
     val limit: Int = 20,
-    val totalPages: Int = 1
+    val totalPages: Int = 1,
+    val error: ApiError? = null
 )
