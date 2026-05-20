@@ -110,7 +110,13 @@ function transformCompanyData(rawCompany: RawCompanyData): Company {
 export const companyApi = {
   // 회사 목록 조회
   async getCompanies(filters: CompanyFiltersQuery = {}, page = 1, limit = 20): Promise<CompanyListResponse> {
-    const response = await apiClient.get<unknown>('/admin/companies', { page, limit });
+    // 서버(admin-api)가 search/status 파라미터 지원 — query string으로 전달해서 server-side 필터링
+    // (이전엔 page/limit만 보내고 client-side filter라 50건 밖 회사 검색 불가했음)
+    const params: Record<string, unknown> = { page, limit };
+    if (filters.search) params.search = filters.search;
+    if (filters.status) params.status = filters.status;
+
+    const response = await apiClient.get<unknown>('/admin/companies', params);
 
     // bffParser로 데이터 추출
     const rawCompanies = extractList<RawCompanyData>(response.data, 'companies');
