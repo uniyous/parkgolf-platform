@@ -54,5 +54,6 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8088/health || exit 1
 
 # Start the application
+# prisma 폴더 추가 후 nest build 출력 경로가 dist/src/main.js로 변경됨 (tsconfig rootDir 확장)
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]
