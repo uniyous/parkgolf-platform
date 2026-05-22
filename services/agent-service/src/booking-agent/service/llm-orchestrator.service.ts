@@ -54,6 +54,32 @@ export class LlmOrchestratorService {
       });
     }
 
+    // [Phase 2 — Episodic Memory] 사용자 첫 메시지 시점에 한 번 최근 부킹 이력 prefill
+    // (이미 prefill된 경우 skip — slots.episodicPrefilled 플래그)
+    if (request?.userId && !context.slots.episodicPrefilled) {
+      try {
+        const recent = await this.toolExecutor.getUserRecentBookings(request.userId, 5);
+        if (recent.length > 0) {
+          const summary = recent
+            .map(
+              (b, i) =>
+                `${i + 1}) ${b.clubName ?? `클럽${b.clubId}`} · ${b.date ?? '-'} ${b.startTime ?? ''} · ${b.playerCount}명 · ${b.paymentMethod ?? '-'} · ${b.status}`,
+            )
+            .join('\n');
+          messages.unshift({
+            role: 'user',
+            content:
+              `[시스템 정보 — 최근 부킹 이력 ${recent.length}건]\n${summary}\n\n"지난번처럼", "자주 가는" 같은 표현 시 위 이력을 참고하세요. 이 메시지엔 직접 응답하지 마세요.`,
+          });
+        }
+        // 동일 conversation 내 중복 prefill 방지
+        this.conversationService.updateSlots(context, { episodicPrefilled: true });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'unknown';
+        this.logger.warn(`Episodic prefill skipped: ${msg}`);
+      }
+    }
+
     let llmResponse: DeepSeekResponse;
     let iterations = 0;
     let allActions: ChatAction[] = [];
@@ -125,6 +151,13 @@ export class LlmOrchestratorService {
           return {
             ...tc,
             args: { ...tc.args, chatRoomId: request.chatRoomId },
+          };
+        }
+        // get_user_recent_bookings: userId 자동 주입 (Phase 2 Episodic)
+        if (tc.name === 'get_user_recent_bookings' && !tc.args.userId) {
+          return {
+            ...tc,
+            args: { ...tc.args, userId: request.userId },
           };
         }
         return tc;

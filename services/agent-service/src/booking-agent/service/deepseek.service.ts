@@ -282,6 +282,26 @@ export class DeepSeekService implements OnModuleInit {
         },
       },
     },
+    {
+      type: 'function',
+      function: {
+        name: 'get_user_recent_bookings',
+        description: '사용자의 최근 부킹 이력을 조회합니다. "지난번처럼", "자주 가는", "예전에 했던" 같은 표현 시 사용. userId는 비워두면 자동 주입됩니다.',
+        parameters: {
+          type: 'object',
+          properties: {
+            userId: {
+              type: 'number',
+              description: '사용자 ID (비워두면 자동 주입).',
+            },
+            limit: {
+              type: 'number',
+              description: '조회할 최대 부킹 수 (기본 5).',
+            },
+          },
+        },
+      },
+    },
   ];
 
   constructor(private readonly configService: ConfigService) {}

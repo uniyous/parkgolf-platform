@@ -229,6 +229,9 @@ export interface BookingSlots {
   totalPrice?: number;
   slotPrice?: number;
 
+  // Phase 2 — Episodic Memory: 한 conversation 내 최근 부킹 prefill 1회 실행 표시
+  episodicPrefilled?: boolean;
+
   // 팀 예약 (모든 예약에 적용)
   chatRoomId?: string;
   bookerId?: number;

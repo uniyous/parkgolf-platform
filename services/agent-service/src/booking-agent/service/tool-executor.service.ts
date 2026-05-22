@@ -201,8 +201,75 @@ export class ToolExecutorService {
         return { members: members || [] };
       }
 
+      case 'get_user_recent_bookings': {
+        const userId = Number(toolCall.args.userId || 0);
+        const limit = Number(toolCall.args.limit || 5);
+        if (!userId) return { error: 'userId not provided', bookings: [] };
+        const bookings = await this.getUserRecentBookings(userId, limit);
+        return { bookings };
+      }
+
       default:
         throw new Error(`Unknown tool: ${toolCall.name}`);
+    }
+  }
+
+  /**
+   * 사용자 최근 부킹 조회 (Episodic Memory — Phase 2)
+   * - booking-service의 booking.findByUserId 호출
+   * - createdAt desc 정렬 후 limit 적용
+   * - LLM에 적합한 압축 형식으로 반환
+   */
+  async getUserRecentBookings(
+    userId: number,
+    limit = 5,
+  ): Promise<Array<{
+    bookingId: number;
+    clubId: number | null;
+    clubName: string | null;
+    date: string | null;
+    startTime: string | null;
+    playerCount: number;
+    paymentMethod: string | null;
+    status: string;
+    createdAt: string;
+  }>> {
+    try {
+      const response = await firstValueFrom(
+        this.bookingClient
+          .send<{ success: boolean; data: any[] }>('booking.findByUserId', { userId })
+          .pipe(
+            timeout(this.REQUEST_TIMEOUT),
+            catchError((err) => {
+              this.logger.warn(`booking.findByUserId failed: ${err.message}`);
+              return [null];
+            }),
+          ),
+      );
+
+      if (!response?.success || !Array.isArray(response.data)) return [];
+
+      const sorted = [...response.data].sort((a, b) => {
+        const da = new Date(b.createdAt ?? 0).getTime();
+        const db = new Date(a.createdAt ?? 0).getTime();
+        return da - db;
+      });
+
+      return sorted.slice(0, limit).map((b) => ({
+        bookingId: b.id,
+        clubId: b.clubId ?? null,
+        clubName: b.clubName ?? null,
+        date: b.date ?? null,
+        startTime: b.startTime ?? null,
+        playerCount: b.playerCount ?? 0,
+        paymentMethod: b.paymentMethod ?? null,
+        status: b.status,
+        createdAt: b.createdAt,
+      }));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'unknown';
+      this.logger.error(`getUserRecentBookings error: ${msg}`);
+      return [];
     }
   }
 
