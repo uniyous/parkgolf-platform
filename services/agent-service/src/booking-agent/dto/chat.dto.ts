@@ -232,6 +232,9 @@ export interface BookingSlots {
   // Phase 2 — Episodic Memory: 한 conversation 내 최근 부킹 prefill 1회 실행 표시
   episodicPrefilled?: boolean;
 
+  // Phase 3 — Semantic Memory: 한 conversation 내 사용자 프로파일 prefill 1회 실행 표시
+  semanticPrefilled?: boolean;
+
   // 팀 예약 (모든 예약에 적용)
   chatRoomId?: string;
   bookerId?: number;

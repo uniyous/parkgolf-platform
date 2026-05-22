@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConversationService } from './conversation.service';
 import { ToolExecutorService } from './tool-executor.service';
+import { UserMemoryService } from './user-memory.service';
 import { ChatRequestDto, ChatResponseDto, ConversationContext } from '../dto/chat.dto';
 
 /**
@@ -9,9 +10,12 @@ import { ChatRequestDto, ChatResponseDto, ConversationContext } from '../dto/cha
  */
 @Injectable()
 export class BookingCompletionService {
+  private readonly logger = new Logger(BookingCompletionService.name);
+
   constructor(
     private readonly conversationService: ConversationService,
     private readonly toolExecutor: ToolExecutorService,
+    private readonly userMemory: UserMemoryService,
   ) {}
 
   /**
@@ -65,6 +69,25 @@ export class BookingCompletionService {
     const message = `팀${teamNumber} 예약이 완료되었어요!`;
     this.conversationService.addAssistantMessage(context, message);
     this.conversationService.setState(context, 'TEAM_COMPLETE');
+
+    // [Phase 3 — Semantic Memory] 사용자 메모리에 부킹 결과 누적 (fire-and-forget, 응답 지연 방지)
+    // 실패해도 부킹 흐름엔 영향 없음. UserMemoryService 내부에서 try/catch.
+    const userId = context.userId;
+    const clubIdRaw = context.slots.clubId;
+    const clubIdNum = clubIdRaw ? Number(clubIdRaw) : NaN;
+    if (userId && !Number.isNaN(clubIdNum)) {
+      void this.userMemory.mergeBookingResult({
+        userId,
+        bookingId: completedTeam.bookingId,
+        clubId: clubIdNum,
+        clubName: context.slots.clubName || '',
+        date: context.slots.date || '',
+        startTime: context.slots.time || '',
+        playerCount: teamMembers.length,
+        paymentMethod,
+        teamMembers: teamMembers.map((m) => ({ userId: m.userId, userName: m.userName })),
+      });
+    }
 
     // 채팅방 전체 브로드캐스트 (senderId=0). API 응답에는 actions 제외 (중복 방지).
     const roomId = context.slots.chatRoomId;

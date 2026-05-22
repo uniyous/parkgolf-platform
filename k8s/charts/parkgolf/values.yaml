@@ -63,6 +63,7 @@ postgres:
     - chat_db
     - notify_db
     - partner_db
+    - agent_db
 
 # In-cluster NATS
 nats:
@@ -162,6 +163,7 @@ services:
     # multi-pod 운영 — Redis Working Memory + per-conversation lock으로 동시성 안전
     # 설계: docs/workflow/AGENT_MEMORY.md §3.5, §8
     replicas: 2
+    db: agent_db
     hpa:
       enabled: true
       min: 2

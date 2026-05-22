@@ -10,6 +10,7 @@ import { BookingCompletionService } from './service/booking-completion.service';
 import { GroupBookingService } from './service/group-booking.service';
 import { PaymentResultHandlerService } from './service/payment-result-handler.service';
 import { DirectActionHandlerService } from './service/direct-action-handler.service';
+import { UserMemoryService } from './service/user-memory.service';
 import { BookingAgentNatsController } from './controller/booking-agent-nats.controller';
 
 @Module({
@@ -25,6 +26,7 @@ import { BookingAgentNatsController } from './controller/booking-agent-nats.cont
     GroupBookingService,
     PaymentResultHandlerService,
     DirectActionHandlerService,
+    UserMemoryService,
     BookingAgentService,
   ],
   exports: [BookingAgentService],

@@ -1,0 +1,42 @@
+// ==============================================
+// agent-service / agent_db
+// Hermes 5-Layer Memory — Layer 3 (Semantic Memory)
+// 설계: docs/workflow/AGENT_MEMORY.md §5
+// ==============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// 사용자별 개인화 메모리 (부킹 패턴 / 선호도 / 친구 관계).
+/// 매 부킹 완료 후 규칙 기반으로 누적 갱신.
+/// LLM system prompt에 1~2줄 요약으로 주입되어 "기억하는 부킹 비서" 동작.
+model UserMemory {
+  userId            Int       @id @map("user_id")
+
+  /// 선호도: { preferredTimes: ["weekend_morning"], paymentMethod: "dutchpay", avgGroupSize: 4 }
+  preferences       Json?
+
+  /// 자주 가는 클럽: [{ clubId, name, visitCount }]
+  favoriteClubs     Json?
+
+  /// 자주 함께하는 팀원: [{ userId, name, count }]
+  frequentTeammates Json?
+
+  /// 가장 최근 부킹 5건 요약 (LLM prefill용 압축 텍스트, 1~2줄)
+  recentSummary     String?
+
+  /// 사용자 토글로 AI 메모리 사용 비활성 시 false. (Phase 3 권한 토글)
+  enabled           Boolean   @default(true)
+
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@map("user_memory")
+  @@index([updatedAt])
+}

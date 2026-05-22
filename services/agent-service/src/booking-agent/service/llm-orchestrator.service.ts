@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DeepSeekService, DeepSeekResponse, ToolCall } from './deepseek.service';
 import { ToolExecutorService, ToolResult } from './tool-executor.service';
 import { ConversationService } from './conversation.service';
+import { UserMemoryService } from './user-memory.service';
 import {
   ChatRequestDto,
   ChatAction,
@@ -21,6 +22,7 @@ export class LlmOrchestratorService {
     private readonly deepseekService: DeepSeekService,
     private readonly toolExecutor: ToolExecutorService,
     private readonly conversationService: ConversationService,
+    private readonly userMemory: UserMemoryService,
   ) {}
 
   /**
@@ -52,6 +54,26 @@ export class LlmOrchestratorService {
         role: 'user',
         content: `[시스템 정보] ${locationInfo} 이 메시지에 대해 직접 응답하지 마세요.`,
       });
+    }
+
+    // [Phase 3 — Semantic Memory] 사용자 프로파일(자주 가는 클럽/멤버/시간대) prefill
+    // 한 conversation 동안 1회만 실행 (semanticPrefilled 플래그)
+    if (request?.userId && !context.slots.semanticPrefilled) {
+      try {
+        const snapshot = await this.userMemory.get(request.userId);
+        const profile = this.userMemory.formatProfile(snapshot);
+        if (profile) {
+          messages.unshift({
+            role: 'user',
+            content:
+              `[사용자 프로파일] ${profile}\n\n부킹 추천/자동완성 시 위 정보를 우선 고려하세요. 사용자가 명시적으로 다르게 요청하면 그에 따르세요. 이 메시지엔 직접 응답하지 마세요.`,
+          });
+        }
+        this.conversationService.updateSlots(context, { semanticPrefilled: true });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'unknown';
+        this.logger.warn(`Semantic prefill skipped: ${msg}`);
+      }
     }
 
     // [Phase 2 — Episodic Memory] 사용자 첫 메시지 시점에 한 번 최근 부킹 이력 prefill
