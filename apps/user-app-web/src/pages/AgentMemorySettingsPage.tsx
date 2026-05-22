@@ -58,10 +58,10 @@ export function AgentMemorySettingsPage() {
   return (
     <AppLayout title="AI 메모리 설정">
       <Container className="py-4">
-        <SectionHeader
-          title="AI 비서 메모리"
-          description="자주 가는 골프장, 함께하는 멤버, 선호 시간대를 기억해서 더 빠른 추천을 받을 수 있어요."
-        />
+        <SectionHeader title="AI 비서 메모리" className="mb-2 px-1" />
+        <p className="px-1 mb-3 text-sm text-[var(--color-text-muted)]">
+          자주 가는 골프장, 함께하는 멤버, 선호 시간대를 기억해서 더 빠른 추천을 받을 수 있어요.
+        </p>
 
         <GlassCard className="mt-4">
           <div className="flex items-center gap-4 py-3">

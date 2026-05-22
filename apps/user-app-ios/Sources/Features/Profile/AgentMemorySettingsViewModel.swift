@@ -36,7 +36,9 @@ class AgentMemorySettingsViewModel: ObservableObject {
         do {
             _ = try await settingsService.setAgentMemoryEnabled(enabled)
             // 성공 시 다시 fetch (summary 갱신 가능성)
-            status = try? await settingsService.getAgentMemory() ?? status
+            if let fresh = try? await settingsService.getAgentMemory() {
+                status = fresh
+            }
         } catch {
             // 롤백
             status = AgentMemoryStatus(
