@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConversationService } from './conversation.service';
+import { v4 as uuidv4 } from 'uuid';
+import { ConversationService, ConversationBusyError } from './conversation.service';
 import { LlmOrchestratorService } from './llm-orchestrator.service';
 import { MessageContextExtractor } from './message-context.extractor';
 import { GroupBookingService } from './group-booking.service';
@@ -34,9 +35,39 @@ export class BookingAgentService {
    * - 없으면 LLM 처리 + TASK_PREVIEW 병합 → return
    */
   async chat(request: ChatRequestDto): Promise<ChatResponseDto> {
-    const { userId, message, conversationId, latitude, longitude } = request;
+    const { userId, conversationId } = request;
+    const convId = conversationId ?? uuidv4();
 
-    const context = this.conversationService.getOrCreate(userId, conversationId);
+    try {
+      return await this.conversationService.withLock(userId, convId, async () => {
+        const context = await this.conversationService.loadOrCreate(userId, convId);
+        const response = await this.handleRequest(context, request);
+        await this.conversationService.save(context);
+        return response;
+      });
+    } catch (err: unknown) {
+      if (err instanceof ConversationBusyError) {
+        this.logger.warn(`Conversation busy: user=${userId} conv=${convId}`);
+        return {
+          conversationId: convId,
+          message: '이전 요청을 처리 중이에요. 잠시 후 다시 시도해 주세요.',
+          state: 'ANALYZING',
+        };
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * 실제 라우팅 — withLock 내부에서 호출됨.
+   * context는 load 된 상태이고, 모든 sync mutate는 메모리에 즉시 반영됨.
+   * chat() 가 마지막에 save 1회 호출.
+   */
+  private async handleRequest(
+    context: import('../dto/chat.dto').ConversationContext,
+    request: ChatRequestDto,
+  ): Promise<ChatResponseDto> {
+    const { message, latitude, longitude } = request;
 
     // 위치 정보 저장 (첫 메시지에서만)
     if (latitude && longitude && !context.slots.latitude) {
@@ -130,12 +161,13 @@ export class BookingAgentService {
   /**
    * 대화 리셋
    */
-  resetConversation(userId: number): ChatResponseDto {
-    const context = this.conversationService.create(userId);
+  async resetConversation(userId: number, conversationId?: string): Promise<ChatResponseDto> {
+    const context = await this.conversationService.reset(userId, conversationId);
 
     const welcomeMessage =
       '안녕하세요! 파크골프 예약 도우미입니다. 어떤 골프장을 예약하시겠어요?';
     this.conversationService.addAssistantMessage(context, welcomeMessage);
+    await this.conversationService.save(context);
 
     return {
       conversationId: context.conversationId,

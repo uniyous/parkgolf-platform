@@ -49,11 +49,11 @@ export class BookingAgentNatsController {
    * Pattern: agent.reset
    */
   @MessagePattern('agent.reset')
-  async reset(@Payload() data: ResetRequestDto) {
+  async reset(@Payload() data: ResetRequestDto & { conversationId?: string }) {
     this.logger.debug(`Reset conversation for user: ${data.userId}`);
 
     try {
-      const response = this.agentService.resetConversation(data.userId);
+      const response = await this.agentService.resetConversation(data.userId, data.conversationId);
       return NatsResponse.success(response);
     } catch (error) {
       this.logger.error('Reset failed', error);
@@ -70,7 +70,7 @@ export class BookingAgentNatsController {
     this.logger.debug(`Status request: ${data.conversationId}`);
 
     try {
-      const context = this.conversationService.get(data.userId, data.conversationId);
+      const context = await this.conversationService.load(data.userId, data.conversationId);
 
       if (!context) {
         return NatsResponse.error('NOT_FOUND', 'Conversation not found');
@@ -97,7 +97,7 @@ export class BookingAgentNatsController {
   @MessagePattern('agent.stats')
   async getStats() {
     try {
-      const stats = this.conversationService.getStats();
+      const stats = await this.conversationService.getStats();
       return NatsResponse.success({
         ...stats,
         timestamp: new Date().toISOString(),
