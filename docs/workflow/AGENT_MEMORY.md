@@ -100,31 +100,171 @@ flowchart TB
 
 ## 3. Layer 1 — Working Memory (Phase 1)
 
-### 3.1 책임
+### 3.1 책임 / 저장 대상
 
-현재 대화 세션의 휘발성 상태:
-- `messages[]` — 최근 N턴 (현재 10턴)
-- `slots` — 구조화 정보 (clubId, slotId, currentTeamMembers, completedTeams, paymentMethod 등)
-- `state` — FSM (IDLE → ANALYZING → ... → COMPLETED)
-- tool history (한 응답 내)
+현재 대화 세션의 휘발성 상태 (LLM 한 사이클을 위해 필요한 모든 정보):
 
-### 3.2 저장 방식 — Redis
+| 항목 | 설명 | 크기 (평균) |
+|------|------|:----------:|
+| `messages[]` | role/content/timestamp 시계열 (최근 10턴 슬라이딩 윈도우) | 3~7KB |
+| `slots` | 구조화 부킹 정보 (clubId, slotId, currentTeamMembers 등) | 0.5~2KB |
+| `state` | FSM 상태 (IDLE → ANALYZING → ... → COMPLETED) | <100B |
+| `meta` | conversationId, userId, createdAt, updatedAt | <200B |
+| (tool history) | LLM tool iteration 내부 누적 — 응답 후 폐기 | 메모리만 |
+
+→ **대화당 평균 5~10KB**, 활성 사용자 1만 명 = ~100MB. 작은 Redis(256MB~1GB)로 충분.
+
+---
+
+### 3.2 키 설계 — **userId + conversationId 복합** (권장)
+
+#### 핵심 결정: "사용자별" vs "접속(세션)별" 어떻게 관리?
+
+비교:
+
+| 방식 | 키 패턴 | 장점 | 단점 | 채택 |
+|------|--------|------|------|:----:|
+| **A. userId만** | `agent:conv:{userId}` | 멀티 디바이스 자동 동기화 (휴대폰 → PC 이어서) | 동시 다중 대화 불가 / 격리 어려움 / 동시 요청 충돌 | ✗ |
+| **B. conversationId만** | `agent:conv:{convId}` | 다중 세션 자유 | 사용자별 조회/삭제 어려움 (별도 인덱스 필요) | ✗ |
+| **C. userId + convId 복합** ⭐ | `agent:conv:{userId}:{convId}` | 둘 다 장점 결합 + 현재 코드 패턴 유지 | 키 약간 길어짐 (~60 bytes) | ✓ |
+
+#### C 선택 이유
+
+1. **현재 `ConversationService.getKey(userId, conversationId)`와 일치** — 마이그레이션 단순
+2. **사용자별 조회**: `SCAN agent:conv:{userId}:*` 패턴 매칭으로 사용자 모든 대화 조회 가능
+3. **사용자별 삭제** (계정 삭제 정책): `KEYS agent:conv:{userId}:*` → `DEL` (또는 SCAN 기반 안전 삭제)
+4. **다중 대화**: 같은 사용자가 채팅방 A, 채팅방 B에서 동시 대화 가능 (각각 다른 conversationId)
+5. **권한 분리**: userId 검증으로 다른 사용자 conversationId 무단 접근 차단
+
+#### 키 패턴 전체
 
 ```
-키 스키마:
-  agent:conv:{userId}:{conversationId}    Hash 또는 JSON String
-  lock:conv:{userId}:{conversationId}     String (TTL 짧음, distributed lock)
+agent:conv:{userId}:{conversationId}    String (JSON) — 본체, TTL 30분
+lock:conv:{userId}:{conversationId}     String (token) — 분산 락, TTL 8초
 
-TTL:
-  conv: 1800초 (30분) — 기존 CONVERSATION_TTL 동일
-  lock: 8초 — LLM 평균 응답 시간 + 마진
-
-크기:
-  대화당 평균 5~10KB
-  활성 사용자 1만 → ~100MB (작은 Redis로 충분)
+(선택, 사용자별 인덱스가 필요해질 때만)
+agent:user:{userId}:active              Set — 활성 conversationId 목록, TTL 30분
 ```
 
-### 3.3 Multi-pod 동시성 보장 — Per-conversation Lock
+#### 예시
+
+| 사용자 | conversationId | Redis Key |
+|--------|---------------|-----------|
+| userId=26 (박영희) | `abc-123` (채팅방 dd97 더치페이) | `agent:conv:26:abc-123` |
+| userId=26 (박영희) | `def-456` (다른 채팅방 검색만) | `agent:conv:26:def-456` |
+| userId=10 (김민수) | `ghi-789` (같은 채팅방 dd97에서 다른 세션) | `agent:conv:10:ghi-789` |
+
+→ **세 키 모두 완전 분리**. 한 사용자가 동시 두 대화 가능, 다른 사용자와도 격리.
+
+---
+
+### 3.3 Value 데이터 구조 — 단일 JSON String (권장)
+
+#### 옵션 비교
+
+| 방식 | 구조 | 장점 | 단점 | 채택 |
+|------|------|------|------|:----:|
+| **1. 단일 JSON String** ⭐ | `SET key "{...전체...}"` | 단순 / atomic write (한 번에 모든 필드) / 직렬화 단순 | 작은 변경도 전체 read+write | ✓ |
+| 2. Hash 필드별 | `HSET key state X slots {...} ...` | 필드별 atomic update / 부분 read | 일관성 관리 복잡 / messages list 표현 어색 | ✗ |
+| 3. List + Hash 혼합 | `:meta` Hash + `:msgs` List | messages 자연스러운 시계열 | 두 키 동기화 / TTL 동기화 필요 | ✗ |
+
+#### 1번 선택 이유
+
+- LLM 한 사이클당 read 1회 + write 1회 — Redis RTT ~1ms × 2 = 2ms, LLM 2~5s 대비 무시 가능
+- atomic write 보장 — 부분 갱신 race condition 원천 차단 (lock도 있지만 2중 안전망)
+- 전체 컨텍스트가 5~10KB로 작아 네트워크 부담 미미
+- 직렬화/역직렬화 단순 (NestJS `class-transformer` 한 번)
+
+#### Value 스키마
+
+```typescript
+// services/agent-service/src/booking-agent/dto/conversation.dto.ts (참고)
+export interface ConversationContext {
+  conversationId: string;            // uuid
+  userId: number;
+  state: ConversationState;          // IDLE | ANALYZING | ... | COMPLETED
+  messages: ConversationMessage[];   // 슬라이딩 윈도우 (max 20 = 10턴)
+  slots: BookingSlots;               // 구조화 부킹 정보
+  createdAt: string;                 // ISO 8601
+  updatedAt: string;
+}
+
+export interface ConversationMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
+
+export interface BookingSlots {
+  clubId?: string;
+  clubName?: string;
+  slotId?: string;
+  time?: string;
+  date?: string;
+  paymentMethod?: 'onsite' | 'card' | 'dutchpay';
+  groupMode?: boolean;
+  currentTeamMembers?: Array<{ userId: number; userName: string; userEmail: string }>;
+  completedTeams?: Array<{ teamNumber: number; bookingId: number; ... }>;
+  chatRoomId?: string;
+  latitude?: number;
+  longitude?: number;
+  // ... 기타 필드 (기존 chat.dto.ts BookingSlots와 동일)
+}
+```
+
+#### 실제 Redis Value 예시
+
+```json
+{
+  "conversationId": "abc-123-uuid",
+  "userId": 26,
+  "state": "SELECTING_MEMBERS",
+  "messages": [
+    { "role": "user", "content": "내일 강남탄천 철수랑 예약해줘", "timestamp": "2026-05-22T14:30:00+09:00" },
+    { "role": "assistant", "content": "팀1 멤버를 선택해 주세요.", "timestamp": "2026-05-22T14:30:03+09:00" }
+  ],
+  "slots": {
+    "clubId": "1",
+    "clubName": "강남탄천파크골프장",
+    "slotId": "S123",
+    "time": "09:00",
+    "date": "2026-05-23",
+    "paymentMethod": "dutchpay",
+    "groupMode": true,
+    "currentTeamNumber": 1,
+    "currentTeamMembers": [
+      { "userId": 5, "userName": "철수", "userEmail": "..." },
+      { "userId": 26, "userName": "박영희", "userEmail": "..." }
+    ],
+    "completedTeams": [],
+    "chatRoomId": "dd97d5b0-...",
+    "latitude": 37.5163, "longitude": 127.0204
+  },
+  "createdAt": "2026-05-22T14:29:50+09:00",
+  "updatedAt": "2026-05-22T14:30:03+09:00"
+}
+```
+
+크기: ~2KB (이 예시 기준). messages 10턴 누적 시 최대 ~10KB.
+
+---
+
+### 3.4 TTL 정책
+
+| 키 | TTL | 갱신 시점 | 이유 |
+|----|:---:|----------|------|
+| `agent:conv:{userId}:{convId}` | 1800초 (30분) | 매 write 시 `EXPIRE` | 사용자 idle 30분 후 컨텍스트 자동 정리 (현재 CONVERSATION_TTL 동일) |
+| `lock:conv:{userId}:{convId}` | 8000ms (8초) | 락 획득 시 1회 (`SET PX NX`) | LLM 응답 평균 2~5초 + 마진. 락 보유 pod 비정상 종료해도 자동 해제 |
+| `agent:user:{userId}:active` (선택) | 1800초 | 매 활성 시 갱신 | 본체 키와 동기화 |
+
+EXPIRE 갱신 패턴:
+```typescript
+await redis.set(key, JSON.stringify(ctx), 'EX', 1800);  // SET + TTL 한 번에
+```
+
+---
+
+### 3.5 Multi-pod 동시성 보장 — Per-conversation Lock
 
 ```mermaid
 %%{init: {'theme':'base','themeVariables':{'fontSize':'13px'}}}%%
@@ -139,41 +279,96 @@ sequenceDiagram
     end
 
     U->>A: msg1 (Pod A 라우팅)
-    A->>R: SET NX lock:conv:1:abc token=X TTL=8s
+    A->>R: SET NX lock:conv:26:abc token=X TTL=8s
     R-->>A: OK (락 획득)
-    A->>R: GET agent:conv:1:abc
-    R-->>A: context
+    A->>R: GET agent:conv:26:abc
+    R-->>A: context JSON
     Note over A: LLM 호출 (2~5s)
-    A->>R: SET agent:conv:1:abc {updated}
-    A->>R: EVAL unlock(lock:conv:1:abc, X)
-    R-->>U: response
+    A->>R: SET agent:conv:26:abc {updated} EX 1800
+    A->>R: EVAL unlock(lock:conv:26:abc, X)
+    A-->>U: response
 
     U->>A: msg2 (Pod B 라우팅, 동시)
-    A->>R: SET NX lock:conv:1:abc Y
+    A->>R: SET NX lock:conv:26:abc Y
     R-->>A: nil (락 보유 중)
-    Note over A: 50ms 후 재시도 또는<br/>"처리 중" 응답
+    Note over A: 100ms 후 재시도 (최대 3회)<br/>또는 "처리 중입니다" 응답
 ```
 
-### 3.4 NestJS 통합
+#### Lua unlock script (token 검증)
+
+다른 pod이 만료/실수로 해제하는 사고 방지:
+
+```lua
+-- unlock.lua
+if redis.call("GET", KEYS[1]) == ARGV[1] then
+  return redis.call("DEL", KEYS[1])
+else
+  return 0
+end
+```
+
+---
+
+### 3.6 NestJS 통합
 
 ```typescript
 @Injectable()
 export class ConversationService {
-  // NodeCache → Redis client 교체
   constructor(@InjectRedis() private readonly redis: Redis) {}
 
+  private getKey(userId: number, convId: string): string {
+    return `agent:conv:${userId}:${convId}`;
+  }
+  private getLockKey(userId: number, convId: string): string {
+    return `lock:conv:${userId}:${convId}`;
+  }
+
+  async getOrCreate(userId: number, convId?: string): Promise<ConversationContext> {
+    const id = convId ?? randomUUID();
+    const raw = await this.redis.get(this.getKey(userId, id));
+    if (raw) return JSON.parse(raw);
+
+    const fresh: ConversationContext = {
+      conversationId: id, userId, state: 'IDLE',
+      messages: [], slots: {},
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await this.redis.set(this.getKey(userId, id), JSON.stringify(fresh), 'EX', 1800);
+    return fresh;
+  }
+
+  async save(ctx: ConversationContext): Promise<void> {
+    ctx.updatedAt = new Date().toISOString();
+    await this.redis.set(this.getKey(ctx.userId, ctx.conversationId), JSON.stringify(ctx), 'EX', 1800);
+  }
+
   async withLock<T>(userId: number, convId: string, fn: () => Promise<T>): Promise<T> {
-    const key = `lock:conv:${userId}:${convId}`;
+    const key = this.getLockKey(userId, convId);
     const token = randomUUID();
     const ok = await this.redis.set(key, token, 'PX', 8000, 'NX');
     if (!ok) throw new ConversationBusyException();
     try { return await fn(); }
-    finally { await this.unlockWithToken(key, token); }   // Lua script
+    finally { await this.unlockWithToken(key, token); }
+  }
+
+  /** 사용자 계정 삭제 시 호출 — 안전한 SCAN 기반 삭제 */
+  async deleteAllByUser(userId: number): Promise<number> {
+    let cursor = '0';
+    let deleted = 0;
+    do {
+      const [next, keys] = await this.redis.scan(cursor, 'MATCH', `agent:conv:${userId}:*`, 'COUNT', 100);
+      cursor = next;
+      if (keys.length) deleted += await this.redis.del(...keys);
+    } while (cursor !== '0');
+    return deleted;
   }
 }
 ```
 
-### 3.5 Redis 인프라
+---
+
+### 3.7 Redis 인프라
 
 ```yaml
 # k8s/charts/parkgolf/templates/redis.yaml (신규)
@@ -186,8 +381,62 @@ spec:
       resources:
         requests: { cpu: 50m, memory: 128Mi }
         limits:   { cpu: 250m, memory: 512Mi }
-      args: ["--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+      args:
+        - "--maxmemory"
+        - "256mb"
+        - "--maxmemory-policy"
+        - "allkeys-lru"     # 메모리 초과 시 LRU evict (TTL 만료 외 안전망)
+        - "--appendonly"
+        - "yes"             # AOF — pod 재시작 시 컨텍스트 복구 (선택)
 ```
+
+### 3.8 동작 시나리오 — 3가지 케이스
+
+#### 케이스 1: 단일 사용자, 단일 대화 (가장 흔함)
+
+```
+박영희(userId=26) → 채팅방 dd97에서 AI 모드 진입
+  → conversationId = "abc-123" 생성
+  → key: agent:conv:26:abc-123
+  → 모든 메시지 같은 key에 누적
+  → 30분 idle 후 자동 정리
+```
+
+#### 케이스 2: 동일 사용자, 멀티 디바이스 (휴대폰 + 데스크탑)
+
+```
+사용자가 휴대폰에서 시작 (conv=abc-123)
+  → 휴대폰에서 클럽 선택 → slots.clubId 저장
+사용자가 데스크탑에서 같은 채팅방 진입
+  → 클라이언트가 conversationId="abc-123" 전달 (이전 응답에서 받은 값)
+  → 같은 Redis key 접근 → 상태 이어서 진행 ✓
+```
+
+→ 클라이언트가 `conversationId`를 localStorage/session에 보존해야 멀티 디바이스 동기화. 그렇지 않으면 디바이스별 새 대화 시작.
+
+#### 케이스 3: 다중 사용자 동시 부킹 (그룹 더치페이)
+
+```
+박영희(userId=26) → conv=abc-123 → key: agent:conv:26:abc-123
+김민수(userId=10) → conv=ghi-789 → key: agent:conv:10:ghi-789
+                                    ↑ 완전 분리 (같은 채팅방이어도)
+
+박영희가 더치페이 예약 생성 → saga 처리 → 김민수에게 결제 알림
+김민수가 결제 → 김민수의 conv 키와 무관 (saga에서 처리)
+```
+
+→ AI 대화 컨텍스트는 **사용자별 완전 격리**. 부킹 결과 broadcast는 chat-gateway + saga가 담당.
+
+### 3.9 사용자별 vs 접속별 — 최종 정리
+
+| 시나리오 | 처리 |
+|---------|------|
+| 같은 사용자 + 같은 conversationId | **같은 Redis key** → 컨텍스트 공유 (멀티 디바이스 이어가기) |
+| 같은 사용자 + 다른 conversationId | **다른 Redis key** → 독립 대화 |
+| 다른 사용자 (같은 채팅방이라도) | **다른 Redis key** → 완전 격리 (privacy) |
+| 사용자 계정 삭제 | `SCAN agent:conv:{userId}:*` → 일괄 DEL (계정 삭제 정책 반영) |
+| 사용자별 활성 대화 조회 (필요 시) | `SCAN agent:conv:{userId}:*` 또는 선택적 `agent:user:{userId}:active` Set |
+| 동시 같은 conv 요청 (multi-pod) | `lock:conv:{userId}:{convId}` 분산 락 → 직렬 처리 |
 
 ---
 
@@ -516,3 +765,4 @@ gantt
 | 날짜 | 버전 | 변경 |
 |------|------|------|
 | 2026-05-22 | 0.1 | 최초 작성. Hermes 5-Layer 메모리 구조 정의 + Phase 1~3 적용 로드맵 + multi-pod 운영 가이드 |
+| 2026-05-22 | 0.2 | §3 Layer 1 구체화 — Key 설계(userId+convId 복합) + Value 데이터 구조(단일 JSON String) + TTL 정책 + Lua unlock script + NestJS 통합 코드(getOrCreate/save/withLock/deleteAllByUser) + 동작 시나리오 3가지 + 사용자별/접속별 정리표 |
