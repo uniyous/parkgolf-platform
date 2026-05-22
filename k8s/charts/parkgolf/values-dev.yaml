@@ -13,7 +13,7 @@ externalSecrets:
 ingress:
   staticIpName: parkgolf-parkgolf-dev-cluster-ip
 serviceImageTags:
-  agent-service: de928e62e51f443ce5fc59cc25ace779dc4e22ba
+  agent-service: 99a616096967126ee171e592969c0fb7779c9e55
   iam-service: 2731166216d830664c28cd5d648fa0433cae2bdd
   course-service: 2731166216d830664c28cd5d648fa0433cae2bdd
   booking-service: 2731166216d830664c28cd5d648fa0433cae2bdd
