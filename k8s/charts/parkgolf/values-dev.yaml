@@ -6,11 +6,25 @@ global:
   namespace: parkgolf-dev
   domain: dev-api.parkgolfmate.com
   image:
-    tag: 1661eddba9bc6578a51a0319b9a714815d15fd6d
+    tag: 2731166216d830664c28cd5d648fa0433cae2bdd
 externalSecrets:
   clusterName: parkgolf-dev-cluster
   clusterLocation: asia-northeast3-a
 ingress:
   staticIpName: parkgolf-parkgolf-dev-cluster-ip
 serviceImageTags:
-  agent-service: 6ad4ba0e8e2328532fb9f20590dd77fa918edcbb
+  agent-service: 2731166216d830664c28cd5d648fa0433cae2bdd
+  iam-service: 2731166216d830664c28cd5d648fa0433cae2bdd
+  course-service: 2731166216d830664c28cd5d648fa0433cae2bdd
+  booking-service: 2731166216d830664c28cd5d648fa0433cae2bdd
+  payment-service: 2731166216d830664c28cd5d648fa0433cae2bdd
+  chat-service: 2731166216d830664c28cd5d648fa0433cae2bdd
+  notify-service: 2731166216d830664c28cd5d648fa0433cae2bdd
+  saga-service: 2731166216d830664c28cd5d648fa0433cae2bdd
+  partner-service: 2731166216d830664c28cd5d648fa0433cae2bdd
+  admin-api: 2731166216d830664c28cd5d648fa0433cae2bdd
+  user-api: 2731166216d830664c28cd5d648fa0433cae2bdd
+  chat-gateway: 2731166216d830664c28cd5d648fa0433cae2bdd
+  weather-service: 2731166216d830664c28cd5d648fa0433cae2bdd
+  location-service: 2731166216d830664c28cd5d648fa0433cae2bdd
+  job-service: 2731166216d830664c28cd5d648fa0433cae2bdd
