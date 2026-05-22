@@ -18,11 +18,12 @@ serviceImageTags: {}
 config:
   NODE_ENV: development
   NATS_URL: nats://nats:4222
+  REDIS_URL: redis://parkgolf-redis:6379
   TOSS_API_URL: https://api.tosspayments.com/v1
   KMA_API_URL: http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0
   DEEPSEEK_API_URL: https://api.deepseek.com/v1
   DEEPSEEK_MODEL: deepseek-chat
-  CONVERSATION_TTL: "3600"
+  CONVERSATION_TTL: "1800"
   MAX_HISTORY_TURNS: "10"
 
 # External Secrets — GCP Secret Manager 동기화
@@ -70,6 +71,19 @@ nats:
   resources:
     requests: { cpu: 50m, memory: 64Mi }
     limits:   { cpu: 250m, memory: 256Mi }
+
+# In-cluster Redis (StatefulSet)
+# 용도: agent-service Working Memory (ConversationContext, per-conv distributed lock)
+# 키 패턴: agent:conv:{userId}:{convId} (TTL 30분), lock:conv:{userId}:{convId} (TTL 8초)
+# 자세한 설계: docs/workflow/AGENT_MEMORY.md §3
+redis:
+  enabled: true
+  image: redis:7-alpine
+  maxmemory: 256mb
+  maxmemoryPolicy: allkeys-lru
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { cpu: 250m, memory: 512Mi }
 
 # 공통 probe / 리소스 기본값
 # cpu request 30m: dev 환경 실측 CPU 사용량 22% 기반 — autoscaler가 1노드로 압축 가능
@@ -151,6 +165,7 @@ services:
       - { name: DEEPSEEK_MODEL,      configRef: { name: parkgolf-config,  key: DEEPSEEK_MODEL } }
       - { name: CONVERSATION_TTL,    configRef: { name: parkgolf-config,  key: CONVERSATION_TTL } }
       - { name: MAX_HISTORY_TURNS,   configRef: { name: parkgolf-config,  key: MAX_HISTORY_TURNS } }
+      - { name: REDIS_URL,           configRef: { name: parkgolf-config,  key: REDIS_URL } }
   - name: admin-api
   - name: user-api
     backendConfig: user-api
