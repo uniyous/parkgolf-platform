@@ -23,7 +23,7 @@ serviceImageTags:
   saga-service: 2731166216d830664c28cd5d648fa0433cae2bdd
   partner-service: 2731166216d830664c28cd5d648fa0433cae2bdd
   admin-api: 2731166216d830664c28cd5d648fa0433cae2bdd
-  user-api: 3bf99e3dc25c0b2d51408de40a3c039ee96ae3a6
+  user-api: 0959c9aa8c4d3b463422b53ae0973b405acdb8be
   chat-gateway: 2731166216d830664c28cd5d648fa0433cae2bdd
   weather-service: 2731166216d830664c28cd5d648fa0433cae2bdd
   location-service: 2731166216d830664c28cd5d648fa0433cae2bdd
