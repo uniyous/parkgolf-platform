@@ -797,6 +797,24 @@ export const ChatRoomPage: React.FC = () => {
 
               // AI 모드 사용자 메시지는 AiUserMessageBubble로 렌더링
               if (message.messageType === 'AI_USER') {
+                // 개인 AI 대화: targetUserIds 필터링 (요청자 본인만 표시)
+                if (message.metadata) {
+                  try {
+                    const parsedMeta = typeof message.metadata === 'string'
+                      ? JSON.parse(message.metadata)
+                      : message.metadata;
+                    if (parsedMeta?.targetUserIds) {
+                      const targetIds = parsedMeta.targetUserIds as number[];
+                      const myId = Number(currentUserId);
+                      if (!targetIds.includes(myId)) {
+                        return null;
+                      }
+                    }
+                  } catch {
+                    // metadata 파싱 실패 시 그냥 표시
+                  }
+                }
+
                 return (
                   <AiUserMessageBubble
                     key={message.id}
