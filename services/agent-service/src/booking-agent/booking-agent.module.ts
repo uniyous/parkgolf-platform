@@ -11,12 +11,24 @@ import { GroupBookingService } from './service/group-booking.service';
 import { PaymentResultHandlerService } from './service/payment-result-handler.service';
 import { DirectActionHandlerService } from './service/direct-action-handler.service';
 import { UserMemoryService } from './service/user-memory.service';
+import { SearchTools } from './service/tools/search.tools';
+import { WeatherTools } from './service/tools/weather.tools';
+import { BookingTools } from './service/tools/booking.tools';
+import { SocialTools } from './service/tools/social.tools';
+import { PaymentTools } from './service/tools/payment.tools';
+import { NotificationTools } from './service/tools/notification.tools';
 import { BookingAgentNatsController } from './controller/booking-agent-nats.controller';
 
 @Module({
   controllers: [BookingAgentNatsController],
   providers: [
     DeepSeekService,
+    SearchTools,
+    WeatherTools,
+    BookingTools,
+    SocialTools,
+    PaymentTools,
+    NotificationTools,
     ToolExecutorService,
     ConversationService,
     LlmOrchestratorService,
