@@ -4,6 +4,7 @@ import { settingsApi, type UpdateNotificationSettings } from '@/lib/api/settings
 const settingsKeys = {
   all: ['settings'] as const,
   notifications: () => [...settingsKeys.all, 'notifications'] as const,
+  agentMemory: () => [...settingsKeys.all, 'agentMemory'] as const,
 };
 
 export const useNotificationSettingsQuery = () => {
@@ -21,6 +22,26 @@ export const useUpdateNotificationSettingsMutation = () => {
       settingsApi.updateNotificationSettings(settings),
     onSuccess: (data) => {
       queryClient.setQueryData(settingsKeys.notifications(), data);
+    },
+  });
+};
+
+// ─── AI Agent Memory (Phase 3) ───────────────────
+
+export const useAgentMemoryQuery = () => {
+  return useQuery({
+    queryKey: settingsKeys.agentMemory(),
+    queryFn: () => settingsApi.getAgentMemory(),
+  });
+};
+
+export const useUpdateAgentMemoryMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (enabled: boolean) => settingsApi.setAgentMemoryEnabled(enabled),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: settingsKeys.agentMemory() });
     },
   });
 };

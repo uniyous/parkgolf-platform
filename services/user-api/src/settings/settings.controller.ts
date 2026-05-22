@@ -41,4 +41,25 @@ export class SettingsController {
   ) {
     return this.settingsService.updateNotificationSettings(userId, dto);
   }
+
+  // ─── AI Agent Memory (Phase 3 — UNI-20 프라이버시 토글) ───
+
+  @Get('agent-memory')
+  @ApiOperation({ summary: 'AI 비서 메모리 상태 조회 (프라이버시 토글)' })
+  @ApiResponse({ status: 200, description: '조회 성공 — { enabled, hasMemory, summary }' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  async getAgentMemory(@CurrentUser('userId') userId: number) {
+    return this.settingsService.getAgentMemory(userId);
+  }
+
+  @Put('agent-memory')
+  @ApiOperation({ summary: 'AI 비서 메모리 ON/OFF 토글 (프라이버시)' })
+  @ApiResponse({ status: 200, description: '변경 성공' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  async setAgentMemoryEnabled(
+    @CurrentUser('userId') userId: number,
+    @Body() body: { enabled: boolean },
+  ) {
+    return this.settingsService.setAgentMemoryEnabled(userId, !!body?.enabled);
+  }
 }

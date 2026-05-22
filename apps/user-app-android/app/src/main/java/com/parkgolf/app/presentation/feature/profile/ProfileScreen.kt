@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
@@ -397,6 +398,13 @@ private fun AppSettingsSection(onNavigate: (String) -> Unit) {
             iconColor = ParkError,
             title = "알림 설정",
             onClick = { onNavigate("settings/notifications") }
+        )
+
+        ProfileMenuItem(
+            icon = Icons.Default.AutoAwesome,
+            iconColor = ParkPrimary,
+            title = "AI 비서 메모리",
+            onClick = { onNavigate("settings/agent_memory") }
         )
     }
 }

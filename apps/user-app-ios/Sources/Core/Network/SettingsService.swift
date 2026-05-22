@@ -95,4 +95,37 @@ actor SettingsService {
         )
         return try await apiClient.request(endpoint, responseType: NotificationSettings.self)
     }
+
+    // MARK: - Agent Memory (Phase 3 — UNI-20 프라이버시 토글)
+
+    func getAgentMemory() async throws -> AgentMemoryStatus {
+        let endpoint = Endpoint(path: "/api/user/settings/agent-memory", method: .get)
+        return try await apiClient.request(endpoint, responseType: AgentMemoryStatus.self)
+    }
+
+    func setAgentMemoryEnabled(_ enabled: Bool) async throws -> AgentMemoryToggleResult {
+        struct UpdateRequest: Codable { let enabled: Bool }
+        let endpoint = Endpoint(
+            path: "/api/user/settings/agent-memory",
+            method: .put,
+            body: UpdateRequest(enabled: enabled)
+        )
+        return try await apiClient.request(endpoint, responseType: AgentMemoryToggleResult.self)
+    }
+}
+
+// MARK: - Agent Memory Models
+
+struct AgentMemoryStatus: Codable, Sendable {
+    let userId: Int
+    let enabled: Bool
+    let hasMemory: Bool
+    let summary: String?
+    let favoriteClubsCount: Int?
+    let frequentTeammatesCount: Int?
+}
+
+struct AgentMemoryToggleResult: Codable, Sendable {
+    let userId: Int
+    let enabled: Bool
 }

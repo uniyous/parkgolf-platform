@@ -46,6 +46,7 @@ sealed class Screen(val route: String) {
     data object EditProfile : Screen("profile/edit")
     data object Settings : Screen("settings")
     data object NotificationSettings : Screen("settings/notifications")
+    data object AgentMemorySettings : Screen("settings/agent_memory")
     data object ChangePassword : Screen("settings/change_password")
     data object DeleteAccount : Screen("settings/delete_account")
     data object ThemeSettings : Screen("settings/theme")

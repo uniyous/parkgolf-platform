@@ -2,6 +2,7 @@ import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { BookingAgentService } from '../service/booking-agent.service';
 import { ConversationService } from '../service/conversation.service';
+import { UserMemoryService } from '../service/user-memory.service';
 import { ChatRequestDto, ChatResponseDto, ResetRequestDto } from '../dto/chat.dto';
 
 /**
@@ -25,6 +26,7 @@ export class BookingAgentNatsController {
   constructor(
     private readonly agentService: BookingAgentService,
     private readonly conversationService: ConversationService,
+    private readonly userMemoryService: UserMemoryService,
   ) {}
 
   /**
@@ -107,4 +109,70 @@ export class BookingAgentNatsController {
     }
   }
 
+  // ─── Phase 3 — Semantic Memory (UNI-20 프라이버시 토글) ──────
+
+  /**
+   * 사용자 메모리 조회 (프라이버시 토글 상태 + 요약)
+   * Pattern: agent.memory.get
+   */
+  @MessagePattern('agent.memory.get')
+  async getMemory(@Payload() data: { userId: number }) {
+    try {
+      const snapshot = await this.userMemoryService.get(data.userId);
+      if (!snapshot) {
+        // 미존재 사용자도 default(enabled=true) 응답 — 클라이언트 토글 초기값
+        return NatsResponse.success({
+          userId: data.userId,
+          enabled: true,
+          hasMemory: false,
+          summary: null,
+        });
+      }
+      const profile = this.userMemoryService.formatProfile(snapshot);
+      return NatsResponse.success({
+        userId: snapshot.userId,
+        enabled: snapshot.enabled,
+        hasMemory: true,
+        summary: profile,
+        favoriteClubsCount: snapshot.favoriteClubs.length,
+        frequentTeammatesCount: snapshot.frequentTeammates.length,
+      });
+    } catch (error) {
+      this.logger.error('getMemory failed', error);
+      return NatsResponse.error('MEMORY_GET_ERROR', 'Failed to get user memory');
+    }
+  }
+
+  /**
+   * 사용자 메모리 프라이버시 토글
+   * Pattern: agent.memory.setEnabled
+   * 기본값 ON (사용자가 명시적으로 OFF로 변경 가능)
+   */
+  @MessagePattern('agent.memory.setEnabled')
+  async setMemoryEnabled(@Payload() data: { userId: number; enabled: boolean }) {
+    try {
+      await this.userMemoryService.setEnabled(data.userId, !!data.enabled);
+      this.logger.log(`Memory toggle: user=${data.userId} enabled=${data.enabled}`);
+      return NatsResponse.success({ userId: data.userId, enabled: !!data.enabled });
+    } catch (error) {
+      this.logger.error('setMemoryEnabled failed', error);
+      return NatsResponse.error('MEMORY_SET_ERROR', 'Failed to update memory toggle');
+    }
+  }
+
+  /**
+   * 사용자 메모리 전체 삭제 (계정 삭제 정책 연계)
+   * Pattern: agent.memory.deleteByUser
+   */
+  @MessagePattern('agent.memory.deleteByUser')
+  async deleteMemoryByUser(@Payload() data: { userId: number }) {
+    try {
+      await this.userMemoryService.deleteByUser(data.userId);
+      this.logger.log(`Memory deleted for user=${data.userId}`);
+      return NatsResponse.success({ userId: data.userId, deleted: true });
+    } catch (error) {
+      this.logger.error('deleteMemoryByUser failed', error);
+      return NatsResponse.error('MEMORY_DELETE_ERROR', 'Failed to delete user memory');
+    }
+  }
 }

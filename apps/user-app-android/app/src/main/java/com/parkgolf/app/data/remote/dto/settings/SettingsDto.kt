@@ -23,3 +23,24 @@ data class UpdateProfileRequest(
     val name: String? = null,
     val phone: String? = null
 )
+
+@Serializable
+data class AgentMemoryStatus(
+    val userId: Int,
+    val enabled: Boolean,
+    val hasMemory: Boolean,
+    val summary: String? = null,
+    val favoriteClubsCount: Int? = null,
+    val frequentTeammatesCount: Int? = null
+)
+
+@Serializable
+data class AgentMemoryToggleResult(
+    val userId: Int,
+    val enabled: Boolean
+)
+
+@Serializable
+data class UpdateAgentMemoryRequest(
+    val enabled: Boolean
+)

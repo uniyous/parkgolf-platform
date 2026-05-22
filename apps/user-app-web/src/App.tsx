@@ -17,6 +17,7 @@ import {
   ChangePasswordPage,
   EditProfilePage,
   NotificationSettingsPage,
+  AgentMemorySettingsPage,
   DeleteAccountPage,
   ClubDetailPage,
 } from './pages';
@@ -60,6 +61,7 @@ function App() {
             <Route path="/club/:id" element={<ClubDetailPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
+            <Route path="/settings/agent-memory" element={<AgentMemorySettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -63,6 +63,7 @@ import com.parkgolf.app.presentation.feature.profile.LanguageSettingsScreen
 import com.parkgolf.app.presentation.feature.profile.PrivacyScreen
 import com.parkgolf.app.presentation.feature.profile.TermsScreen
 import com.parkgolf.app.presentation.feature.profile.ThemeSettingsScreen
+import com.parkgolf.app.presentation.feature.profile.AgentMemorySettingsScreen
 import com.parkgolf.app.presentation.feature.profile.NotificationSettingsScreen
 import com.parkgolf.app.presentation.feature.profile.ProfileScreen
 import com.parkgolf.app.presentation.feature.profile.SettingsScreen
@@ -265,6 +266,12 @@ fun ParkGolfNavHost(
 
         composable(Screen.NotificationSettings.route) {
             NotificationSettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.AgentMemorySettings.route) {
+            AgentMemorySettingsScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
