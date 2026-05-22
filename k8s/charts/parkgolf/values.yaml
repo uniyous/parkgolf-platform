@@ -159,6 +159,15 @@ services:
     extraEnv:
       - { name: KAKAO_API_KEY, secretRef: { name: parkgolf-secrets, key: KAKAO_API_KEY } }
   - name: agent-service
+    # multi-pod 운영 — Redis Working Memory + per-conversation lock으로 동시성 안전
+    # 설계: docs/workflow/AGENT_MEMORY.md §3.5, §8
+    replicas: 2
+    hpa:
+      enabled: true
+      min: 2
+      max: 10
+      cpu: 70
+      memory: 75
     extraEnv:
       - { name: DEEPSEEK_API_KEY,    secretRef: { name: parkgolf-secrets, key: DEEPSEEK_API_KEY } }
       - { name: DEEPSEEK_API_URL,    configRef: { name: parkgolf-config,  key: DEEPSEEK_API_URL } }
