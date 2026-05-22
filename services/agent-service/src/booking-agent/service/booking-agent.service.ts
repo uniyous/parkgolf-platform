@@ -122,17 +122,13 @@ export class BookingAgentService {
     // ── LLM Processing ──
     this.conversationService.addUserMessage(context, message);
 
-    const preview = await this.contextExtractor.extractContextPreview(message, context, request);
-
     try {
       context.state = 'ANALYZING';
 
       const response = await this.llmOrchestrator.processWithLLM(context, request);
 
+      // UNI-26: TASK_PREVIEW 카드 제거 — 진행 안내는 LLM 텍스트로 충분 (카드는 결과/액션 전용)
       const actions: ChatAction[] = [];
-      if (preview) {
-        actions.push({ type: 'TASK_PREVIEW', data: preview });
-      }
       if (response.actions) {
         actions.push(...response.actions);
       }
