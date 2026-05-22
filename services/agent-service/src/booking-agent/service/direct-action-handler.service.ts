@@ -27,9 +27,9 @@ export class DirectActionHandlerService {
   ) {}
 
   /**
-   * 골프장 카드 클릭 → 타임슬롯 조회 → SHOW_SLOTS 카드
-   * (자연스러운 흐름: 골프장 → 슬롯 → 멤버 → 결제)
-   * 슬롯 0건일 때만 멤버 카드를 띄우지 않고 텍스트로 안내.
+   * 골프장 카드 클릭
+   * - 채팅방 그룹 진입 + 멤버 미선택 → SELECT_MEMBERS 먼저 (인원수 확정)
+   * - 그 외(채팅방 외 / 이미 멤버 선택) → SHOW_SLOTS 직행
    */
   async handleDirectClubSelect(
     context: ConversationContext,
@@ -41,6 +41,18 @@ export class DirectActionHandlerService {
       clubId: selectedClubId,
       clubName: selectedClubName,
     });
+
+    // 채팅방 + 아직 멤버 미선택 → SELECT_MEMBERS 우선 (UNI-21)
+    const isChatRoom = !!context.slots.chatRoomId;
+    const hasMembers = (context.slots.currentTeamMembers || []).length > 0;
+    if (isChatRoom && !hasMembers) {
+      const result = await this.uiCardHelper.showSelectMembers(
+        context,
+        `${selectedClubName} — 함께할 멤버를 선택해 주세요!`,
+      );
+      if (result) return result;
+      // 폴백: 멤버 조회 실패 시 기존 슬롯 흐름
+    }
 
     const date = context.slots.date || this.uiCardHelper.getTomorrowDate();
     const toolResult = await this.toolExecutor.execute({
@@ -70,7 +82,9 @@ export class DirectActionHandlerService {
   }
 
   /**
-   * 슬롯 카드 클릭 → 멤버 미선택 시 SELECT_MEMBERS, 선택 완료 시 CONFIRM_BOOKING
+   * 슬롯 카드 클릭 → 바로 CONFIRM_BOOKING.
+   * 멤버는 클럽 선택 시점에 이미 확정 (UNI-21 흐름 변경).
+   * 채팅방 외 1인 진입은 groupMode=false / playerCount=1 default.
    */
   async handleDirectSlotSelect(
     context: ConversationContext,
@@ -92,16 +106,11 @@ export class DirectActionHandlerService {
       ...(request.selectedGameName && { gameName: request.selectedGameName }),
     });
 
-    if (!context.slots.groupMode) {
-      const result = await this.uiCardHelper.showSelectMembers(
-        context,
-        '멤버를 선택해 주세요!',
-      );
-      if (result) return result;
-      // 폴백: 멤버 조회 실패 시 1인 예약으로 진행
-    }
-
-    const playerCount = context.slots.currentTeamMembers?.length || context.slots.playerCount || 4;
+    const teamMembers = context.slots.currentTeamMembers || [];
+    const isGroup = context.slots.groupMode || teamMembers.length > 0;
+    const playerCount = isGroup
+      ? teamMembers.length || context.slots.playerCount || 1
+      : context.slots.playerCount || 1;
     const slotPrice = selectedSlotPrice || context.slots.slotPrice || 0;
     const price = slotPrice * playerCount;
 
@@ -111,9 +120,9 @@ export class DirectActionHandlerService {
       time: selectedSlotTime || context.slots.time || '',
       playerCount,
       price,
-      groupMode: true,
+      groupMode: isGroup,
       teamNumber: context.slots.currentTeamNumber || 1,
-      members: (context.slots.currentTeamMembers || []).map((m) => ({
+      members: teamMembers.map((m) => ({
         userId: m.userId,
         userName: m.userName,
       })),
