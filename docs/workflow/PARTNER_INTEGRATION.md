@@ -4,7 +4,7 @@
 
 > **상태**: design 0.3 (제안). 합의 후 Phase 1부터 단계적 PR.
 >
-> **연계 문서**: 가맹점이 계약 시 제공해야 하는 표준 데이터 명세는 [`docs/policy/PARTNER_RIS.md`](../policy/PARTNER_RIS.md) 참조.
+> **연계 문서**: 가맹점이 계약 시 제공해야 하는 표준 데이터 명세는 [`docs/policy/PARTNER_RIS.md`](../policy/PARTNER_RIS.md) 참조. 예약 연동은 [`BOOKING.md`](./BOOKING.md) · 예약 트랜잭션 [`SAGA.md`](./SAGA.md).
 
 ---
 
