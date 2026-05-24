@@ -103,6 +103,7 @@ async function seedTomorrowSlots(
     const clubs = clubsBody?.data?.items ?? clubsBody?.data ?? clubsBody?.items ?? [];
     if (!Array.isArray(clubs) || clubs.length === 0) return null;
 
+    let fallback: { clubId: string; clubName: string } | null = null;
     for (let i = 0; i < Math.min(8, clubs.length); i++) {
       const club = clubs[i];
       const clubId = club.id ?? club.clubId;
@@ -114,7 +115,7 @@ async function seedTomorrowSlots(
       const gameId = games[0].id ?? games[0].gameId;
       if (!gameId) continue;
 
-      // 내일 ~ +2일, 3슬롯/일
+      // 내일 ~ +2일, 6슬롯/일 (결제분기·그룹 2팀까지 distinct 슬롯 확보용)
       const base = new Date();
       base.setUTCDate(base.getUTCDate() + 1);
       base.setUTCHours(0, 0, 0, 0);
@@ -122,32 +123,95 @@ async function seedTomorrowSlots(
       for (let d = 0; d < 3; d++) {
         const day = new Date(base.getTime() + d * 86400_000).toISOString().slice(0, 10);
         for (const s of [
-          { startTime: '08:00', endTime: '10:00', price: 30000 },
-          { startTime: '11:00', endTime: '13:00', price: 35000 },
-          { startTime: '15:00', endTime: '17:00', price: 30000 },
+          { startTime: '08:00', endTime: '09:30', price: 30000 },
+          { startTime: '09:30', endTime: '11:00', price: 30000 },
+          { startTime: '11:00', endTime: '12:30', price: 35000 },
+          { startTime: '12:30', endTime: '14:00', price: 35000 },
+          { startTime: '14:00', endTime: '15:30', price: 30000 },
+          { startTime: '15:30', endTime: '17:00', price: 30000 },
         ]) {
-          timeSlots.push({ date: day, maxPlayers: 4, ...s });
+          // 반복 실행 누적에도 잔여석 여유 확보 (maxPlayers 상한 8)
+          timeSlots.push({ date: day, maxPlayers: 8, ...s });
         }
       }
       const bulk = await request.post(`/api/admin/games/${gameId}/time-slots/bulk`, {
         headers: adminAuth,
         data: { timeSlots },
       });
-      if (bulk.ok() || bulk.status() === 201 || bulk.status() === 409) {
-        return { clubId: String(clubId), clubName: club.name ?? '시드 클럽' };
-      }
+      const picked = { clubId: String(clubId), clubName: club.name ?? '시드 클럽' };
+      // 신규 생성(=용량 20 슬롯 확보) 우선, 기존(409)은 fallback으로 기억
+      if (bulk.ok() || bulk.status() === 201) return picked;
+      if (bulk.status() === 409 && !fallback) fallback = picked;
     }
-    return null;
+    return fallback;
   } catch {
     return null;
   }
 }
 
 // ── 파일 공유 상태 ──
+// A/B/C/D/E는 공유 user/room 재사용(등록 비용 절감). 예약을 "생성"하는 F는
+// 같은 날 겹치는 시간대 중복 예약(BOOK_012)을 피하려 테스트별 fresh booker 사용.
 let user: E2EUser;
 let auth: Record<string, string>;
 let roomId: string;
 let seed: { clubId: string; clubName: string } | null = null;
+
+interface Booker { user: E2EUser; auth: Record<string, string>; roomId: string }
+const asMember = (u: E2EUser) => ({ userId: u.userId, userName: u.name, userEmail: u.email });
+
+/** fresh user + 본인 소유 채팅방 — 예약 생성 테스트의 독립 컨텍스트 */
+async function setupBooker(request: APIRequestContext, prefix: string): Promise<Booker> {
+  const u = await createE2EUser(request, prefix);
+  const a = authHeaders(u.accessToken);
+  const room = await createRoom(request, a, u.userId);
+  return { user: u, auth: a, roomId: room };
+}
+
+/** 클럽 선택 → 멤버 확정까지 구동 후 SHOW_SLOTS 슬롯 배열 반환 (없으면 []) */
+async function driveToShowSlots(
+  request: APIRequestContext,
+  a: Record<string, string>,
+  room: string,
+  convId: string,
+  members: Array<{ userId: number; userName: string; userEmail: string }>,
+): Promise<any[]> {
+  await sendAgent(request, a, room, {
+    message: '', conversationId: convId,
+    selectedClubId: seed!.clubId, selectedClubName: seed!.clubName,
+  });
+  const member = await sendAgent(request, a, room, {
+    message: '', conversationId: convId, teamMembers: members,
+  });
+  return actionsOf(member.data).find((x) => x?.type === 'SHOW_SLOTS')?.data?.slots ?? [];
+}
+
+/** 슬롯 선택(버튼) → CONFIRM_BOOKING 응답 */
+async function selectSlot(
+  request: APIRequestContext,
+  a: Record<string, string>,
+  room: string,
+  convId: string,
+  slot: any,
+): Promise<AgentResult> {
+  return sendAgent(request, a, room, {
+    message: '', conversationId: convId,
+    selectedSlotId: String(slot.id),
+    selectedSlotTime: slot.time,
+    selectedSlotPrice: slot.price,
+    selectedGameName: slot.gameName,
+  });
+}
+
+/** 잔여석(need) 충족 + (옵션)afterEndTime 이후 시작하는 첫 슬롯 (BOOK_009/겹침 회피) */
+function pickSlot(slots: any[], opts: { need?: number; afterEndTime?: string } = {}): any | undefined {
+  const need = opts.need ?? 1;
+  return slots.find(
+    (s) =>
+      (s?.availableSpots ?? 0) >= need &&
+      (!opts.afterEndTime || (typeof s?.time === 'string' && s.time >= opts.afterEndTime)),
+  );
+}
 
 test.beforeAll(async ({ playwright, adminToken }) => {
   const ctx = await playwright.request.newContext({ baseURL: BASE_URL });
@@ -343,5 +407,121 @@ test.describe('Agent > E. 엣지/회복력 @write', () => {
     expect(r2.status, `E3 r2 ${r2.status}`).toBeLessThan(500);
     const busy = [r1.data?.message, r2.data?.message].filter((m) => typeof m === 'string' && m.includes('처리 중')).length;
     expect(busy, 'E3 동시 처리 — busy 안내는 최대 1건').toBeLessThanOrEqual(1);
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════
+// F. 결제 분기 & 그룹 멀티턴 (결정적, 슬롯 시드 필요)
+//   예약 생성 테스트는 fresh booker(자체 room) 사용 — 같은 날 겹치는 시간대
+//   중복 예약(BOOK_012) 회피. F3 team2는 team1과 겹치지 않는 슬롯 선택.
+// ════════════════════════════════════════════════════════════════════════
+test.describe('Agent > F. 결제 분기 & 그룹 멀티턴 @write', () => {
+  test('F1 카드결제 분기 → SHOW_PAYMENT 카드 + state BOOKING', async ({ request }) => {
+    test.skip(!seed, '슬롯 시드 실패 — skip');
+    const b = await setupBooker(request, 'agentCard');
+    const convId = (await sendAgent(request, b.auth, b.roomId, { message: '안녕' })).data?.conversationId as string;
+    const slots = await driveToShowSlots(request, b.auth, b.roomId, convId, [asMember(b.user)]);
+    const slot = pickSlot(slots, { need: 1 });
+    test.skip(!slot, '가용 슬롯 없음 — skip');
+
+    const confirm = await selectSlot(request, b.auth, b.roomId, convId, slot);
+    expect(actionsOf(confirm.data)[0]?.type, 'F1 슬롯선택 → CONFIRM_BOOKING').toBe('CONFIRM_BOOKING');
+
+    // 카드결제 버튼
+    const r = await sendAgent(request, b.auth, b.roomId, {
+      message: '', conversationId: convId, confirmBooking: true, paymentMethod: 'card',
+    });
+    assertContract(r, 'F1');
+    const types = actionsOf(r.data).map((a) => a?.type);
+    console.log(`[F1] state=${r.data?.state} actions=${types.join(',') || 'none'}`);
+    expect(types, `F1 카드결제 → SHOW_PAYMENT (state=${r.data?.state}, msg=${r.data?.message})`).toContain('SHOW_PAYMENT');
+    expect(r.data?.state, 'F1 state BOOKING').toBe('BOOKING');
+    const pay = actionsOf(r.data).find((a) => a?.type === 'SHOW_PAYMENT');
+    expect(pay?.data?.amount, 'F1 결제 금액 > 0').toBeGreaterThan(0);
+    expect(pay?.data?.bookingId, 'F1 bookingId').toBeTruthy();
+  });
+
+  test('F2 더치페이 분기(2인) → state SETTLING (정산카드 broadcast, 응답 액션 없음)', async ({ request }) => {
+    test.skip(!seed, '슬롯 시드 실패 — skip');
+    const b = await setupBooker(request, 'agentDutch');
+    let participant: E2EUser;
+    try {
+      participant = await createE2EUser(request, 'agentDutchP');
+    } catch {
+      test.skip(true, '참여자 생성 실패 — skip');
+      return;
+    }
+    const addRes = await request.post(`/api/user/chat/rooms/${b.roomId}/members`, {
+      headers: b.auth, data: { user_ids: [String(participant.userId)] },
+    });
+    expect(addRes.ok() || addRes.status() === 201 || addRes.status() === 409, 'F2 참여자 초대').toBeTruthy();
+
+    const convId = (await sendAgent(request, b.auth, b.roomId, { message: '안녕' })).data?.conversationId as string;
+    const slots = await driveToShowSlots(request, b.auth, b.roomId, convId, [asMember(b.user), asMember(participant)]);
+    const slot = pickSlot(slots, { need: 2 }); // 2인 더치페이 — 잔여석 ≥2
+    test.skip(!slot, '잔여석 2 이상 슬롯 없음 — skip');
+
+    const confirm = await selectSlot(request, b.auth, b.roomId, convId, slot);
+    expect(actionsOf(confirm.data)[0]?.type, 'F2 슬롯선택 → CONFIRM_BOOKING').toBe('CONFIRM_BOOKING');
+
+    // 더치페이 버튼
+    const r = await sendAgent(request, b.auth, b.roomId, {
+      message: '', conversationId: convId, confirmBooking: true, paymentMethod: 'dutchpay',
+    });
+    assertContract(r, 'F2');
+    console.log(`[F2] state=${r.data?.state} actions=${actionsOf(r.data).map((a) => a?.type).join(',') || 'none'} msg=${r.data?.message}`);
+    expect(r.data?.state, `F2 state SETTLING (실제=${r.data?.state}, msg=${r.data?.message})`).toBe('SETTLING');
+    // 정산 카드는 참여자에게 broadcast — booker의 HTTP 응답에는 액션 미포함
+    expect(actionsOf(r.data).length, 'F2 응답 액션 없음(broadcast 경로)').toBe(0);
+  });
+
+  test('F3 그룹 멀티턴: team1 완료 → nextTeam → SELECT_MEMBERS(team2) → team2 완료 → finishGroup', async ({ request }) => {
+    test.skip(!seed, '슬롯 시드 실패 — skip');
+    const b = await setupBooker(request, 'agentGroup');
+    const me = asMember(b.user);
+    const convId = (await sendAgent(request, b.auth, b.roomId, { message: '안녕' })).data?.conversationId as string;
+
+    // ── team1: 멤버 → 슬롯 → 현장결제 확정 → TEAM_COMPLETE ──
+    const slots1 = await driveToShowSlots(request, b.auth, b.roomId, convId, [me]);
+    const team1Slot = pickSlot(slots1, { need: 1 });
+    test.skip(!team1Slot, '그룹용 슬롯 없음 — skip');
+    const c1 = await selectSlot(request, b.auth, b.roomId, convId, team1Slot);
+    expect(actionsOf(c1.data)[0]?.type, 'F3 team1 CONFIRM_BOOKING').toBe('CONFIRM_BOOKING');
+    const t1 = await sendAgent(request, b.auth, b.roomId, {
+      message: '', conversationId: convId, confirmBooking: true, paymentMethod: 'onsite',
+    });
+    assertContract(t1, 'F3-team1');
+    expect(t1.data?.state, `F3 team1 → TEAM_COMPLETE (msg=${t1.data?.message})`).toBe('TEAM_COMPLETE');
+
+    // ── nextTeam 버튼 → SELECT_MEMBERS(team2) ──
+    const next = await sendAgent(request, b.auth, b.roomId, {
+      message: '', conversationId: convId, nextTeam: true,
+    });
+    assertContract(next, 'F3-nextTeam');
+    expect(actionsOf(next.data)[0]?.type, 'F3 nextTeam → SELECT_MEMBERS').toBe('SELECT_MEMBERS');
+
+    // ── team2: 멤버 → team1과 겹치지 않는 슬롯 → 현장결제 → TEAM_COMPLETE ──
+    const slots2 = await driveToShowSlots(request, b.auth, b.roomId, convId, [me]);
+    const team2Slot = pickSlot(slots2, { need: 1, afterEndTime: team1Slot.endTime });
+    test.skip(!team2Slot, 'team1과 겹치지 않는 team2 슬롯 없음 — skip');
+    const c2 = await selectSlot(request, b.auth, b.roomId, convId, team2Slot);
+    expect(actionsOf(c2.data)[0]?.type, 'F3 team2 CONFIRM_BOOKING').toBe('CONFIRM_BOOKING');
+    const t2 = await sendAgent(request, b.auth, b.roomId, {
+      message: '', conversationId: convId, confirmBooking: true, paymentMethod: 'onsite',
+    });
+    assertContract(t2, 'F3-team2');
+    expect(t2.data?.state, `F3 team2 → TEAM_COMPLETE (msg=${t2.data?.message})`).toBe('TEAM_COMPLETE');
+
+    // ── finishGroup 버튼 → 그룹 요약 TEAM_COMPLETE + COMPLETED ──
+    const fin = await sendAgent(request, b.auth, b.roomId, {
+      message: '', conversationId: convId, finishGroup: true,
+    });
+    assertContract(fin, 'F3-finish');
+    const finAction = actionsOf(fin.data)[0];
+    console.log(`[F3] finish state=${fin.data?.state} teams=${finAction?.data?.teamCount}`);
+    expect(finAction?.type, 'F3 finishGroup → TEAM_COMPLETE').toBe('TEAM_COMPLETE');
+    expect(finAction?.data?.groupSummary, 'F3 그룹 요약 플래그').toBeTruthy();
+    expect(finAction?.data?.teamCount, 'F3 2팀 요약').toBeGreaterThanOrEqual(2);
+    expect(fin.data?.state, 'F3 state COMPLETED').toBe('COMPLETED');
   });
 });
