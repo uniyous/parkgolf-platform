@@ -2,6 +2,7 @@
 
 > 버전: 3.5
 > 최종 수정: 2026-05-13
+> **연계 문서**: AI 예약 흐름 [`AGENT.md`](./AGENT.md) · 더치페이 end-to-end [`AGENT_DUTCHPAY.md`](./AGENT_DUTCHPAY.md) · 예약/정산 상태 [`BOOKING.md`](./BOOKING.md)
 
 ## 목차
 

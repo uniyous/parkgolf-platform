@@ -2,6 +2,7 @@
 
 > 버전: 6.0
 > 최종 수정: 2026-03-09
+> **연계 문서**: AI 예약 흐름 [`AGENT.md`](./AGENT.md) · 더치페이 end-to-end [`AGENT_DUTCHPAY.md`](./AGENT_DUTCHPAY.md) · saga 트랜잭션 [`SAGA.md`](./SAGA.md)
 
 ## 목차
 

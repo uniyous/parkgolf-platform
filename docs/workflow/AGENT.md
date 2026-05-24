@@ -1,7 +1,9 @@
 # AI 예약 에이전트 워크플로우
 
-> **연계 문서**: 메모리 아키텍처(Hermes 5-Layer)·multi-pod 운영은 [`AGENT_MEMORY.md`](./AGENT_MEMORY.md), 카드 흐름·분류 표준은 [`AGENT_CARD.md`](./AGENT_CARD.md) 참조.
 > 최종 수정: 2026-05-24
+> **연계 문서**: 카드 표준 [`AGENT_CARD.md`](./AGENT_CARD.md) · 더치페이 cross-service [`AGENT_DUTCHPAY.md`](./AGENT_DUTCHPAY.md) · 메모리/multi-pod [`AGENT_MEMORY.md`](./AGENT_MEMORY.md) · 예약 트랜잭션 [`SAGA.md`](./SAGA.md) · 예약/정산 상태 [`BOOKING.md`](./BOOKING.md)
+>
+> 본 문서는 AI 에이전트의 **전체 워크플로우(핵심)** 만 담는다. 카드/더치페이/메모리 상세는 위 분리 문서가 단일 출처(SSOT)다.
 
 ## 1. 개요
 
@@ -230,105 +232,14 @@ if (request.selectedClubId)       → handleDirectClubSelect()
 
 ## 7. UI 카드
 
-### 응답 형식
+카드 종류(ActionType)·분류·데이터 형태·인터랙션(요청 필드)·표준 흐름은 [`AGENT_CARD.md`](./AGENT_CARD.md)에 단일 출처(SSOT)로 분리한다.
 
+응답 형식:
 ```typescript
-{
-  message: string
-  state: ConversationState
-  actions?: Array<{ type: ActionType, data: unknown }>
-}
+{ message: string, state: ConversationState, actions?: Array<{ type: ActionType, data: unknown }> }
 ```
 
-> **카드/텍스트 비중복 원칙 (UNI-26)**: 카드가 표시하는 데이터(클럽 목록·슬롯 시간·날씨 등)는 텍스트로 다시 나열하지 않는다. 진행 안내는 텍스트 한 줄로 — 카드는 **결과 시각화** 또는 **액션 유도**일 때만. 분류·표준 흐름은 [`AGENT_CARD.md`](./AGENT_CARD.md).
-
-### 카드 목록
-
-| ActionType | 분류 | 용도 | 트리거 |
-|------------|------|------|--------|
-| `SHOW_CLUBS` | 정보 | 골프장 목록 | 클릭 → handleDirectClubSelect |
-| `SHOW_SLOTS` | 정보 | 타임슬롯 목록 | 클릭 → handleDirectSlotSelect |
-| `SHOW_WEATHER` | 정보 | 날씨 정보 (부킹 흐름과 분리) | 정보 표시만 |
-| `SELECT_MEMBERS` | 액션 | 팀 멤버 선택 | 클릭 → handleTeamMemberSelect |
-| `CONFIRM_BOOKING` | 액션 | 예약 확인 + 결제방법 선택 | 확인 → handleDirectBooking |
-| `SHOW_PAYMENT` | 액션 | 카드결제 (Toss SDK) | 10분 타이머 |
-| `SETTLEMENT_STATUS` | 상태 | 더치페이 정산 현황 | 리마인더/새로고침 버튼 |
-| `TEAM_COMPLETE` | 상태 | 팀 예약 완료 / 그룹 요약(`groupSummary`) | 다음 팀/종료 버튼 |
-| `BOOKING_FAILED` | 상태 | 예약 실패 (사유·대안 안내) | 재시도 |
-| `BOOKING_EXPIRED` | 상태 | 결제 타임아웃 안내 | 재시도 |
-| `SPLIT_PAYMENT` | (deprecated) | 더치페이 결제 상태 — 현재 `SETTLEMENT_STATUS`로 통합 | — |
-
-> `TASK_PREVIEW`(진행 안내 카드)는 제거됨(UNI-26). 백엔드가 push를 멈추면 전 플랫폼 자동 반영되며, 클라이언트는 알 수 없는 ActionType을 graceful skip한다.
-
-### 카드 데이터
-
-**SHOW_CLUBS**: `{ found, clubs: [{ id, name, address, region }] }`
-
-**SELECT_MEMBERS**:
-```json
-{
-  "teamNumber": 1, "clubName": "한밭파크골프장", "date": "2026-02-28",
-  "maxPlayers": 4,
-  "assignedTeams": [],
-  "availableMembers": [
-    { "userId": 1, "userName": "김민수", "userEmail": "kim@email.com" },
-    { "userId": 2, "userName": "박지영", "userEmail": "park@email.com" }
-  ]
-}
-```
-- 1팀: `assignedTeams` 비어있음
-- 2팀 이후: 이전 팀 배정 정보 포함
-
-**SHOW_SLOTS**:
-```json
-{
-  "clubName": "한밭파크골프장", "clubAddress": "...", "date": "2026-02-28",
-  "rounds": [{ "gameId": 1, "name": "A코스 오전", "price": 15000,
-    "slots": [{ "id": 1, "time": "09:00", "availableSpots": 4, "price": 15000 }]
-  }]
-}
-```
-
-**CONFIRM_BOOKING**:
-```json
-{
-  "clubName": "한밭파크골프장", "date": "2026-02-28", "time": "09:00",
-  "playerCount": 4, "price": 60000, "courseName": "A코스 오전",
-  "groupMode": true, "teamNumber": 1,
-  "members": [
-    { "userId": 1, "userName": "김민수" },
-    { "userId": 2, "userName": "박지영" }
-  ],
-  "pricePerPerson": 15000
-}
-```
-- 결제방법: 현장결제 / 카드결제 / 더치페이 (2명 이상일 때만 더치페이 표시)
-
-**SHOW_PAYMENT**: `{ bookingId, orderId, amount, orderName, clubName, date, time, playerCount }`
-
-**SETTLEMENT_STATUS**: `{ teamNumber, bookerId, clubName, date, slotTime, totalPrice, pricePerPerson, expiredAt, participants: [{ userId, userName, orderId, amount, status, expiredAt }] }`
-
-**TEAM_COMPLETE**: `{ teamNumber, bookingId, bookingNumber, clubName, date, slotTime, gameName, participants, totalPrice, paymentMethod, hasMoreTeams }`
-- "종료"(handleFinishGroup) 시에도 TEAM_COMPLETE로 그룹 전체 요약 반환: `{ groupSummary: true, teamCount, totalMembers, totalPrice, teams: [{ teamNumber, bookingNumber, slotTime, gameName, members, totalPrice, paymentMethod }] }`
-
-**BOOKING_FAILED**: `{ reason }` — 예약 실패 사유 안내
-
-**BOOKING_EXPIRED**: 결제 타임아웃 안내
-
-### 카드 인터랙션
-
-| 사용자 액션 | 구조화 요청 필드 |
-|-------------|----------------|
-| 골프장 선택 | `selectedClubId`, `selectedClubName` |
-| 멤버 확정 | `teamMembers: [{ userId, userName, userEmail }]` |
-| 슬롯 선택 | `selectedSlotId`, `selectedSlotTime`, `selectedSlotPrice` |
-| 예약 확인 | `confirmBooking=true`, `paymentMethod` |
-| 예약 취소 | `cancelBooking=true` |
-| 결제 완료 | `paymentComplete=true`, `paymentSuccess` |
-| 더치페이 결제 완료 | `splitPaymentComplete=true`, `splitOrderId` |
-| 다음 팀 | `nextTeam=true` |
-| 종료 | `finishGroup=true` |
-| 리마인더 | `sendReminder=true` |
+> **카드/텍스트 비중복 원칙 (UNI-26)**: 카드가 표시하는 데이터(클럽 목록·슬롯 시간·날씨 등)는 텍스트로 다시 나열하지 않는다. 카드는 **결과 시각화** 또는 **액션 유도**일 때만. → [`AGENT_CARD.md`](./AGENT_CARD.md)
 
 ---
 
@@ -368,127 +279,17 @@ sequenceDiagram
     Agent-->>App: TEAM_COMPLETE
 ```
 
-### 8.3 더치페이 플로우
+### 8.3 더치페이 플로우 (요약)
 
-더치페이는 **진행자(Booker)** 와 **참여자(Participant)** 두 경로가 존재한다.
+더치페이는 팀 부킹 위에 얹힌 **가장 복잡한 cross-service 플로우**(AGENT × SAGA × BOOKING × PAYMENT)다. end-to-end 시퀀스·책임 분담·단계별 상세·타임라인은 [`AGENT_DUTCHPAY.md`](./AGENT_DUTCHPAY.md)에 통합한다.
 
-#### 전체 시퀀스
+요약: 예약 생성(`PAYMENT_PENDING`) → `payment.splitPrepare`(참여자 N명 `orderId`) → 진행자에 `SETTLEMENT_STATUS`(개인) + 참여자에 broadcast(`senderId=0`) → 각자 `/payments/split/confirm` → `handleSplitPaymentComplete`로 allPaid 확인 → 전원 완료 시 `TEAM_COMPLETE`.
 
-```mermaid
-sequenceDiagram
-    participant Booker as 진행자
-    participant Agent as agent-service
-    participant Book as booking-service
-    participant Course as course-service
-    participant Pay as payment-service
-    participant Chat as chat-service
-    participant GW as chat-gateway
-    participant Notify as notify-service
-    participant P as 참여자
-
-    Note over Booker,P: ① 예약 생성 + 슬롯 확보
-    Booker->>Agent: confirmBooking=true, paymentMethod="dutchpay"
-    Agent->>Book: NATS send booking.create
-    Note over Book: saga-service 트리거 (SAGA.md 참조)
-
-    loop Saga 폴링 (300ms × 20회)
-        Agent->>Book: NATS send booking.findById
-    end
-    Book-->>Agent: status=PAYMENT_PENDING
-
-    Note over Agent,Pay: ② 분할결제 준비 (N명분 orderId 발급)
-    Agent->>Pay: NATS send payment.splitPrepare
-    Pay-->>Agent: splits[] (orderId × N명)
-
-    Note over Agent,P: ③ 진행자에게 정산 카드 (HTTP 응답)
-    Agent-->>Booker: SETTLEMENT_STATUS 카드 (state=SETTLING)
-
-    Note over Agent,P: ④ 참여자에게 브로드캐스트 (NATS 이벤트)
-    Agent->>Chat: NATS send chat.messages.save (senderId=0)
-    Agent->>GW: NATS emit chat.message.room
-    GW->>P: Socket.IO new_message (서버사이드 user:{userId} 타겟팅)
-    Agent->>Notify: NATS emit notify.sendBatch (push 알림)
-
-    Note over Pay,GW: ⑤-a 결제 완료 → 정산 상태 Push (webhook 경로)
-    Pay->>Book: NATS emit participant.paid
-    Book->>Book: markParticipantPaid()
-    Book->>Chat: NATS send chat.messages.save (정산 카드)
-    Book->>GW: NATS emit chat.message.room
-    GW->>Booker: Socket.IO new_message (서버사이드 타겟팅)
-
-    Note over P,Pay: ⑤ 참여자 개별 결제
-    P->>Pay: POST /api/user/payments/split/confirm (Toss SDK)
-    Pay-->>P: 결제 승인 완료
-
-    Note over P,Agent: ⑥ 정산 상태 갱신
-    P->>Agent: splitPaymentComplete=true, splitOrderId
-    Agent->>Pay: NATS send payment.splitStatus (bookingId 기반)
-    Pay-->>Agent: { paidCount, totalCount, allPaid, splits[] }
-
-    alt 전원 결제 완료
-        Agent-->>Booker: TEAM_COMPLETE
-    else 미결제자 있음
-        Agent-->>Booker: 갱신된 SETTLEMENT_STATUS
-    end
-```
-
-#### 단계별 상세
-
-**① 예약 생성**: 일반 예약과 동일. [Saga](./SAGA.md) 폴링으로 `PAYMENT_PENDING` 상태 확인.
-
-**② 분할결제 준비** (`payment.splitPrepare`):
-
-```typescript
-// agent-service → payment-service
-NATS send 'payment.splitPrepare' {
-  bookingId: number,
-  participants: [
-    { userId: number, userName: string, userEmail: string, amount: number }
-  ],
-  expiredAt: string  // 현재 + 30분
-}
-// → PaymentSplit 레코드 N개 생성, 각각 고유 orderId 발급
-```
-
-**③ 진행자 응답**: HTTP 응답으로 `SETTLEMENT_STATUS` 카드 반환. 진행자만 보는 개인 AI 메시지.
-
-**④ 참여자 브로드캐스트** (2단계 저장+전달):
-
-```typescript
-// Step 1: DB 저장 (chat-service)
-NATS send 'chat.messages.save' {
-  id: uuid,
-  roomId: string,
-  senderId: 0,              // ← 브로드캐스트 마커
-  senderName: 'AI 예약 도우미',
-  content: '더치페이 결제 요청이 도착했습니다.',
-  messageType: 'AI_ASSISTANT',  // ← chat-service가 DB type 컬럼으로 매핑
-  metadata: JSON.stringify({
-    conversationId: null,
-    state: 'SETTLING',
-    actions: [{ type: 'SETTLEMENT_STATUS', data: settlementData }],
-    targetUserIds: [2, 3, 4]  // ← chat-gateway 서버사이드 타겟팅 키
-  })
-}
-
-// Step 2: 실시간 전달 (chat-gateway → Socket.IO)
-NATS emit 'chat.message.room' {
-  roomId: string,
-  message: { ...위와 동일 }  // ← messageType 필드 포함
-}
-```
-
-**⑤ 참여자 결제**: 클라이언트에서 Toss SDK 호출 → `POST /api/user/payments/split/confirm`
-
-**⑥ 정산 갱신**: `handleSplitPaymentComplete`에서 `booking.settlementStatus`로 allPaid 확인 (SSOT) → 전원 완료 시 `TEAM_COMPLETE` (fallback: `payment.splitStatus` 기반 계산)
-
-#### 더치페이 타임라인
-
-| 시점 | 동작 |
-|------|------|
-| 슬롯 확보 시 | `expiredAt` = 현재 + 30분 |
-| 만료 10분 전 | 미결제 참여자에게 리마인더 (job-service) |
-| 만료 시 | PaymentSplit → EXPIRED, slot.release |
+| 부분 | 문서 |
+| -- | -- |
+| 에이전트(정산카드·broadcast·완료 판정) | [`AGENT_DUTCHPAY.md §3`](./AGENT_DUTCHPAY.md) |
+| saga(예약 생성·결제확정·보상) | [`SAGA.md §6.5, §6.6`](./SAGA.md) |
+| 예약·정산 상태(SplitStatus·파생) | [`BOOKING.md §3.7, §3.9`](./BOOKING.md) |
 
 ---
 

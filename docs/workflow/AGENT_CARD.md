@@ -1,7 +1,9 @@
-# AI 응답 카드 흐름 표준
+# AI 응답 카드 표준 (UI 카드)
 
 > 최종 수정: 2026-05-24
 > **연계 문서**: 에이전트 전체 플로우는 [`AGENT.md`](./AGENT.md), 부킹 상태/멱등성은 [`BOOKING.md`](./BOOKING.md) 참조.
+
+AI 응답 UI 카드의 단일 출처(SSOT) — 원칙·흐름·분류·데이터 형태·인터랙션·구현 위치.
 
 ## 1. 원칙
 
@@ -13,7 +15,17 @@
   - 슬롯 카드 → "예약 가능 시간이에요!" (X: "9시 4,000원, 10시 4,000원…")
   - 날씨 카드 → "내일 골프 치기 좋은 날씨예요!" (X: "맑음 22도 습도 50%…")
 
-## 2. 카드 진행 흐름
+## 2. 응답 형식
+
+```typescript
+{
+  message: string
+  state: ConversationState
+  actions?: Array<{ type: ActionType, data: unknown }>
+}
+```
+
+## 3. 카드 진행 흐름
 
 ```mermaid
 flowchart TD
@@ -35,16 +47,96 @@ flowchart TD
 
 부킹 카드 순서는 **골프장 → 멤버(채팅방 그룹) → 슬롯 → 결제**다. 채팅방 그룹 예약은 멤버 확정 후 인원수 기반으로 슬롯을 조회한다 (UNI-21). `SHOW_WEATHER`는 부킹 흐름과 분리된 사이드 정보다.
 
-## 3. 카드 분류
+## 4. 카드 목록 (ActionType)
 
-| 분류 | 카드 | 책임 |
-| -- | -- | -- |
-| **정보 결과** | `SHOW_CLUBS`, `SHOW_SLOTS`, `SHOW_WEATHER` | 결과 시각화 |
-| **액션 유도** | `SELECT_MEMBERS`, `CONFIRM_BOOKING`, `SHOW_PAYMENT` | 사용자 선택/확정 |
-| **결과/상태** | `TEAM_COMPLETE`, `BOOKING_FAILED`, `BOOKING_EXPIRED`, `SETTLEMENT_STATUS` | 종료 + broadcast |
-| **제거됨** | ~~`TASK_PREVIEW`~~ | 진행 안내 — 텍스트로 대체 (UNI-26) |
+| ActionType | 분류 | 용도 | 트리거 |
+| -- | -- | -- | -- |
+| `SHOW_CLUBS` | 정보 결과 | 골프장 목록 | 클릭 → handleDirectClubSelect |
+| `SHOW_SLOTS` | 정보 결과 | 타임슬롯 목록 | 클릭 → handleDirectSlotSelect |
+| `SHOW_WEATHER` | 정보 결과 | 날씨 (부킹 흐름과 분리) | 정보 표시만 |
+| `SELECT_MEMBERS` | 액션 유도 | 팀 멤버 선택 | 클릭 → handleTeamMemberSelect |
+| `CONFIRM_BOOKING` | 액션 유도 | 예약 확인 + 결제방법 선택 | 확인 → handleDirectBooking |
+| `SHOW_PAYMENT` | 액션 유도 | 카드결제 (Toss SDK) | 10분 타이머 |
+| `SETTLEMENT_STATUS` | 결과/상태 | 더치페이 정산 현황 (broadcast) | 리마인더/새로고침 버튼 |
+| `TEAM_COMPLETE` | 결과/상태 | 팀 예약 완료 / 그룹 요약(`groupSummary`) | 다음 팀/종료 버튼 |
+| `BOOKING_FAILED` | 결과/상태 | 예약 실패 (사유·대안 안내) | 재시도 |
+| `BOOKING_EXPIRED` | 결과/상태 | 결제 타임아웃 안내 | 재시도 |
+| `SPLIT_PAYMENT` | (deprecated) | 더치페이 결제 상태 — 현재 `SETTLEMENT_STATUS`로 통합 | — |
 
-## 4. 구현 위치
+> `TASK_PREVIEW`(진행 안내 카드)는 제거됨(UNI-26). 백엔드가 push를 멈추면 전 플랫폼 자동 반영되며, 클라이언트는 알 수 없는 ActionType을 graceful skip한다.
+
+## 5. 카드 데이터
+
+**SHOW_CLUBS**: `{ found, clubs: [{ id, name, address, region }] }`
+
+**SELECT_MEMBERS**:
+```json
+{
+  "teamNumber": 1, "clubName": "한밭파크골프장", "date": "2026-02-28",
+  "maxPlayers": 4,
+  "assignedTeams": [],
+  "availableMembers": [
+    { "userId": 1, "userName": "김민수", "userEmail": "kim@email.com" },
+    { "userId": 2, "userName": "박지영", "userEmail": "park@email.com" }
+  ]
+}
+```
+- 1팀: `assignedTeams` 비어있음 / 2팀 이후: 이전 팀 배정 정보 포함
+
+**SHOW_SLOTS**:
+```json
+{
+  "clubName": "한밭파크골프장", "clubAddress": "...", "date": "2026-02-28",
+  "rounds": [{ "gameId": 1, "name": "A코스 오전", "price": 15000,
+    "slots": [{ "id": 1, "time": "09:00", "availableSpots": 4, "price": 15000 }]
+  }]
+}
+```
+
+**CONFIRM_BOOKING**:
+```json
+{
+  "clubName": "한밭파크골프장", "date": "2026-02-28", "time": "09:00",
+  "playerCount": 4, "price": 60000, "gameName": "A코스 오전",
+  "groupMode": true, "teamNumber": 1,
+  "members": [
+    { "userId": 1, "userName": "김민수" },
+    { "userId": 2, "userName": "박지영" }
+  ],
+  "pricePerPerson": 15000
+}
+```
+- 결제방법: 현장결제 / 카드결제 / 더치페이 (2명 이상일 때만 더치페이 표시)
+
+**SHOW_PAYMENT**: `{ bookingId, orderId, amount, orderName, clubName, date, time, playerCount }`
+
+**SETTLEMENT_STATUS**: `{ bookingId, bookerId, teamNumber, clubName, gameName, date, slotTime, totalParticipants, pricePerPerson, totalPrice, paidCount, expiredAt, participants: [{ userId, userName, orderId, amount, status, expiredAt }] }`
+
+**TEAM_COMPLETE**: `{ teamNumber, bookingId, bookingNumber, clubName, date, slotTime, gameName, participants, totalPrice, paymentMethod, hasMoreTeams }`
+- "종료"(handleFinishGroup) 시에도 TEAM_COMPLETE로 그룹 전체 요약 반환: `{ groupSummary: true, teamCount, totalMembers, totalPrice, teams: [{ teamNumber, bookingNumber, slotTime, gameName, members, totalPrice, paymentMethod }] }`
+
+**BOOKING_FAILED**: `{ reason }` — 예약 실패 사유 안내
+
+**BOOKING_EXPIRED**: 결제 타임아웃 안내
+
+## 6. 카드 인터랙션 (요청 필드)
+
+카드 버튼 클릭은 자연어가 아닌 direct-action 필드로 전송되어 LLM을 우회한다.
+
+| 사용자 액션 | 구조화 요청 필드 |
+| -- | -- |
+| 골프장 선택 | `selectedClubId`, `selectedClubName` |
+| 멤버 확정 | `teamMembers: [{ userId, userName, userEmail }]` |
+| 슬롯 선택 | `selectedSlotId`, `selectedSlotTime`, `selectedSlotPrice`, `selectedGameName` |
+| 예약 확인 | `confirmBooking=true`, `paymentMethod` |
+| 예약 취소 | `cancelBooking=true` |
+| 결제 완료 | `paymentComplete=true`, `paymentSuccess` |
+| 더치페이 결제 완료 | `splitPaymentComplete=true`, `splitOrderId` |
+| 다음 팀 | `nextTeam=true` |
+| 종료 | `finishGroup=true` |
+| 리마인더 | `sendReminder=true` |
+
+## 7. 구현 위치
 
 | 영역 | 위치 |
 | -- | -- |
