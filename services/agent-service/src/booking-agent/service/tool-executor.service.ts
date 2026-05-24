@@ -109,10 +109,6 @@ export class ToolExecutorService {
     return this.search.resolveRegionName(latitude, longitude);
   }
 
-  resolveLocationName(query: string) {
-    return this.search.resolveLocationName(query);
-  }
-
   getUserRecentBookings(userId: number, limit = 5) {
     return this.booking.getUserRecentBookings(userId, limit);
   }

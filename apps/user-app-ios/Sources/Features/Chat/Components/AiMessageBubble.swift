@@ -133,8 +133,6 @@ struct AiMessageBubble: View {
             )
         case .splitPayment:
             EmptyView()
-        case .taskPreview:
-            TaskPreviewCardView(data: action.data.value)
         case .bookingFailed:
             BookingFailedCardView(data: action.data.value)
         case .bookingExpired:

@@ -297,7 +297,6 @@ enum ConversationState: String, Codable, Sendable {
 }
 
 enum ActionType: String, Codable, Sendable {
-    case taskPreview = "TASK_PREVIEW"
     case showClubs = "SHOW_CLUBS"
     case showSlots = "SHOW_SLOTS"
     case showWeather = "SHOW_WEATHER"

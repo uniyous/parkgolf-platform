@@ -1,7 +1,6 @@
 import React from 'react';
 import { Sparkles } from 'lucide-react';
 import type { ChatAction, ClubCardData, SlotCardData, WeatherCardData, ConfirmBookingData, PaymentCardData, SelectMembersData, TeamCompleteData, SettlementStatusData } from '@/lib/api/chatApi';
-import { TaskPreviewCard } from './cards/TaskPreviewCard';
 import { ClubCard } from './cards/ClubCard';
 import { SlotCard } from './cards/SlotCard';
 import { WeatherCard } from './cards/WeatherCard';
@@ -80,9 +79,6 @@ export const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
 
             {actions?.map((action, index) => (
               <div key={index}>
-                {action.type === 'TASK_PREVIEW' && (
-                  <TaskPreviewCard data={action.data as Record<string, unknown>} />
-                )}
                 {action.type === 'SHOW_CLUBS' && (
                   <ClubCard
                     data={action.data as ClubCardData}

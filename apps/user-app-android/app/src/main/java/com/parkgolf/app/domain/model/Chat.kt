@@ -140,7 +140,6 @@ enum class ConversationState(val value: String) {
 }
 
 enum class ActionType(val value: String) {
-    TASK_PREVIEW("TASK_PREVIEW"),
     SHOW_CLUBS("SHOW_CLUBS"),
     SHOW_SLOTS("SHOW_SLOTS"),
     SHOW_WEATHER("SHOW_WEATHER"),

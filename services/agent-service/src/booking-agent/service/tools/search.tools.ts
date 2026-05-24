@@ -33,24 +33,6 @@ export class SearchTools {
     }
   }
 
-  async resolveLocationName(query: string): Promise<string | null> {
-    try {
-      const response = await firstValueFrom(
-        this.locationClient.send('location.search.address', { query }).pipe(
-          timeout(REQUEST_TIMEOUT),
-          catchError(() => [null]),
-        ),
-      );
-      if (response?.success && response?.data?.addresses?.length > 0) {
-        const addr = response.data.addresses[0];
-        return addr.region1 ? `${addr.region1} ${addr.region2 || ''}`.trim() : null;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
   async searchClubs(args: Record<string, unknown>): Promise<unknown> {
     const { location, name } = args as { location: string; name?: string };
     const query = name ? `${location} ${name}` : location;

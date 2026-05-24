@@ -147,7 +147,6 @@ export type ConversationState =
  * UI 액션 타입
  */
 export type ActionType =
-  | 'TASK_PREVIEW'            // 작업 안내 카드 (컨텍스트 프리뷰)
   | 'SHOW_CLUBS'              // 골프장 목록 표시
   | 'SHOW_SLOTS'              // 타임슬롯 표시
   | 'SHOW_WEATHER'            // 날씨 정보 표시

@@ -4,7 +4,6 @@ import { ToolExecutorService } from './service/tool-executor.service';
 import { ConversationService } from './service/conversation.service';
 import { BookingAgentService } from './service/booking-agent.service';
 import { LlmOrchestratorService } from './service/llm-orchestrator.service';
-import { MessageContextExtractor } from './service/message-context.extractor';
 import { UiCardHelper } from './service/ui-card.helper';
 import { BookingCompletionService } from './service/booking-completion.service';
 import { GroupBookingService } from './service/group-booking.service';
@@ -32,7 +31,6 @@ import { BookingAgentNatsController } from './controller/booking-agent-nats.cont
     ToolExecutorService,
     ConversationService,
     LlmOrchestratorService,
-    MessageContextExtractor,
     UiCardHelper,
     BookingCompletionService,
     GroupBookingService,

@@ -26,7 +26,6 @@ import com.parkgolf.app.presentation.feature.chat.components.cards.SettlementSta
 import com.parkgolf.app.presentation.feature.chat.components.cards.SlotCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.TeamCompleteCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.TeamConfirmData
-import com.parkgolf.app.presentation.feature.chat.components.cards.TaskPreviewCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.BookingFailedCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.BookingExpiredCard
 import com.parkgolf.app.presentation.feature.chat.components.cards.WeatherCard
@@ -181,7 +180,6 @@ fun AiMessageBubble(
                                     data = action.data
                                 )
                                 ActionType.SPLIT_PAYMENT -> { /* handled by settlement status */ }
-                                ActionType.TASK_PREVIEW -> TaskPreviewCard(data = action.data)
                                 ActionType.BOOKING_FAILED -> BookingFailedCard(data = action.data)
                                 ActionType.BOOKING_EXPIRED -> BookingExpiredCard(data = action.data)
                             }

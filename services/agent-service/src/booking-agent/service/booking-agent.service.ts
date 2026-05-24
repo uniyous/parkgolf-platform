@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { ConversationService, ConversationBusyError } from './conversation.service';
 import { LlmOrchestratorService } from './llm-orchestrator.service';
-import { MessageContextExtractor } from './message-context.extractor';
 import { GroupBookingService } from './group-booking.service';
 import { PaymentResultHandlerService } from './payment-result-handler.service';
 import { DirectActionHandlerService } from './direct-action-handler.service';
@@ -14,7 +13,7 @@ import {
 
 /**
  * 예약 에이전트 라우터.
- * request flag별로 적절한 핸들러로 위임 후, LLM 처리 결과와 TASK_PREVIEW를 병합하여 응답 조립.
+ * request flag별로 적절한 핸들러로 위임 후, LLM 처리 결과를 응답으로 조립.
  */
 @Injectable()
 export class BookingAgentService {
@@ -23,7 +22,6 @@ export class BookingAgentService {
   constructor(
     private readonly conversationService: ConversationService,
     private readonly llmOrchestrator: LlmOrchestratorService,
-    private readonly contextExtractor: MessageContextExtractor,
     private readonly groupBooking: GroupBookingService,
     private readonly paymentResult: PaymentResultHandlerService,
     private readonly directAction: DirectActionHandlerService,
@@ -32,7 +30,7 @@ export class BookingAgentService {
   /**
    * 채팅 진입점.
    * - request flag(send/finish/teamMembers/...)가 있으면 직접 핸들러 → return
-   * - 없으면 LLM 처리 + TASK_PREVIEW 병합 → return
+   * - 없으면 LLM 처리 → return
    */
   async chat(request: ChatRequestDto): Promise<ChatResponseDto> {
     const { userId, conversationId } = request;
@@ -127,11 +125,8 @@ export class BookingAgentService {
 
       const response = await this.llmOrchestrator.processWithLLM(context, request);
 
-      // UNI-26: TASK_PREVIEW 카드 제거 — 진행 안내는 LLM 텍스트로 충분 (카드는 결과/액션 전용)
-      const actions: ChatAction[] = [];
-      if (response.actions) {
-        actions.push(...response.actions);
-      }
+      // 카드는 결과/액션 전용 — 진행 안내는 LLM 텍스트로 충분 (UNI-26)
+      const actions: ChatAction[] = response.actions ?? [];
 
       return {
         conversationId: context.conversationId,
