@@ -2,6 +2,8 @@ import { APIRequestContext } from '@playwright/test';
 import { test, expect } from '../../fixtures/test';
 import { authHeaders } from '../../fixtures/auth';
 import { createE2EUser, E2EUser } from '../../fixtures/users';
+import { makeE2ePaymentKey } from '../../fixtures/toss';
+import { extractDutchSplits, confirmAllDutchSplits } from '../../fixtures/dutch';
 
 /**
  * AI Booking Agent — 시나리오 기반 종합 검증 (capability 분류)
@@ -416,7 +418,8 @@ test.describe('Agent > E. 엣지/회복력 @write', () => {
 //   중복 예약(BOOK_012) 회피. F3 team2는 team1과 겹치지 않는 슬롯 선택.
 // ════════════════════════════════════════════════════════════════════════
 test.describe('Agent > F. 결제 분기 & 그룹 멀티턴 @write', () => {
-  test('F1 카드결제 분기 → SHOW_PAYMENT 카드 + state BOOKING', async ({ request }) => {
+  test('F1 카드결제 풀플로우 → SHOW_PAYMENT → 토스승인 → TEAM_COMPLETE', async ({ request }) => {
+    test.setTimeout(120_000);
     test.skip(!seed, '슬롯 시드 실패 — skip');
     const b = await setupBooker(request, 'agentCard');
     const convId = (await sendAgent(request, b.auth, b.roomId, { message: '안녕' })).data?.conversationId as string;
@@ -439,9 +442,40 @@ test.describe('Agent > F. 결제 분기 & 그룹 멀티턴 @write', () => {
     const pay = actionsOf(r.data).find((a) => a?.type === 'SHOW_PAYMENT');
     expect(pay?.data?.amount, 'F1 결제 금액 > 0').toBeGreaterThan(0);
     expect(pay?.data?.bookingId, 'F1 bookingId').toBeTruthy();
+
+    // ── 토스 우회 결제 승인 → 예약 확정 풀플로우 (TOSS_TEST_BYPASS) ──
+    const orderId = pay?.data?.orderId;
+    test.skip(!orderId, 'prepare orderId 없음 — 결제 승인 skip');
+    const conf = await request.post('/api/user/payments/confirm', {
+      headers: b.auth,
+      data: makeE2ePaymentKey(String(orderId), pay.data.amount),
+    });
+    test.skip(!conf.ok(), `TOSS_TEST_BYPASS 미적용(confirm ${conf.status()}) — 결제 승인 skip`);
+
+    // 예약 CONFIRMED 폴링 (토스 우회 승인 → saga 확정)
+    await expect
+      .poll(
+        async () => {
+          const br = await request.get(`/api/user/bookings/${pay.data.bookingId}`, { headers: b.auth });
+          if (!br.ok()) return br.status();
+          const body = await br.json();
+          return (body?.data ?? body)?.status ?? null;
+        },
+        { timeout: 30_000, intervals: [1000, 2000, 3000, 5000], message: 'F1 booking CONFIRMED 미도달' },
+      )
+      .toBe('CONFIRMED');
+
+    // agent 결제완료 통지(paymentComplete) → 예약확정 카드
+    const done = await sendAgent(request, b.auth, b.roomId, {
+      message: '', conversationId: convId, paymentComplete: true, paymentSuccess: true,
+    });
+    assertContract(done, 'F1-paid');
+    console.log(`[F1-paid] state=${done.data?.state} actions=${actionsOf(done.data).map((a) => a?.type).join(',') || 'none'}`);
+    expect(['TEAM_COMPLETE', 'COMPLETED'], 'F1 결제완료 → 예약확정').toContain(done.data?.state);
   });
 
-  test('F2 더치페이 분기(2인) → state SETTLING (정산카드 broadcast, 응답 액션 없음)', async ({ request }) => {
+  test('F2 더치페이 풀플로우(2인) → SETTLING → 각자 토스승인 → 정산 완료', async ({ request }) => {
+    test.setTimeout(180_000);
     test.skip(!seed, '슬롯 시드 실패 — skip');
     const b = await setupBooker(request, 'agentDutch');
     let participant: E2EUser;
@@ -473,6 +507,58 @@ test.describe('Agent > F. 결제 분기 & 그룹 멀티턴 @write', () => {
     expect(r.data?.state, `F2 state SETTLING (실제=${r.data?.state}, msg=${r.data?.message})`).toBe('SETTLING');
     // 정산 카드는 참여자에게 broadcast — booker의 HTTP 응답에는 액션 미포함
     expect(actionsOf(r.data).length, 'F2 응답 액션 없음(broadcast 경로)').toBe(0);
+
+    // ── 더치페이 풀결제: 정산카드 splits 추출 → 각자 토스 우회 결제 → 예약 확정 ──
+    let splits = await extractDutchSplits(request, b.user, b.roomId);
+    await expect
+      .poll(
+        async () => {
+          if (splits.length > 0) return splits.length;
+          splits = await extractDutchSplits(request, b.user, b.roomId);
+          return splits.length;
+        },
+        { timeout: 20_000, intervals: [500, 1000, 2000] },
+      )
+      .toBeGreaterThanOrEqual(2);
+    console.log(`[F2] splits=${splits.length} ${JSON.stringify(splits).slice(0, 200)}`);
+
+    const dutchMembers = [b.user, participant];
+    const inSplit = dutchMembers.filter((m) => splits.some((s) => s.userId === m.userId));
+    let bypassOk = true;
+    try {
+      await confirmAllDutchSplits(request, inSplit, splits); // paymentKey=e2e_test_*
+    } catch {
+      bypassOk = false;
+    }
+    test.skip(!bypassOk, 'TOSS_TEST_BYPASS 미적용 — 더치 결제 승인 skip');
+
+    // 예약 CONFIRMED 폴링 (booker my-bookings의 최신 dutch booking)
+    const myBody = await (await request.get('/api/user/bookings', { headers: b.auth })).json();
+    const myList = myBody?.data ?? myBody;
+    const myItems: any[] = Array.isArray(myList) ? myList : myList?.items ?? [];
+    const dutchBooking = myItems
+      .filter((bk) => bk.paymentMethod === 'dutchpay')
+      .sort((a, c) => new Date(c.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    test.skip(!dutchBooking, '더치 booking 조회 실패 — skip');
+    await expect
+      .poll(
+        async () => {
+          const br = await request.get(`/api/user/bookings/${dutchBooking.id ?? dutchBooking.bookingId}`, { headers: b.auth });
+          if (!br.ok()) return br.status();
+          const body = await br.json();
+          return (body?.data ?? body)?.status ?? null;
+        },
+        { timeout: 40_000, intervals: [2000, 3000, 5000], message: 'F2 booking CONFIRMED 미도달' },
+      )
+      .toBe('CONFIRMED');
+
+    // agent 정산완료 통지(splitPaymentComplete) → 완료 상태 인지
+    const settle = await sendAgent(request, b.auth, b.roomId, {
+      message: '', conversationId: convId, splitPaymentComplete: true, splitOrderId: splits[0].orderId,
+    });
+    assertContract(settle, 'F2-paid');
+    console.log(`[F2-paid] agentState=${settle.data?.state} bookingStatus=CONFIRMED`);
+    expect(['TEAM_COMPLETE', 'COMPLETED'], 'F2 전원 결제 → 정산 완료').toContain(settle.data?.state);
   });
 
   test('F3 그룹 멀티턴: team1 완료 → nextTeam → SELECT_MEMBERS(team2) → team2 완료 → finishGroup', async ({ request }) => {
