@@ -18,62 +18,32 @@
 | ⑥ 정산 갱신/완료 | **AGENT + BOOKING** | `handleSplitPaymentComplete` → allPaid 확인 → `TEAM_COMPLETE` / booking `CONFIRMED` | [§3](#3-agent-처리-부분), [BOOKING.md §9.6](./BOOKING.md) |
 | 만료 | **JOB + BOOKING** | 리마인더 → `EXPIRED` → slot release | [§7](#7-타임라인--만료) |
 
-## 2. End-to-end 시퀀스
+## 2. End-to-end 워크플로우
+
+처리 주체를 색상으로 구분 — 🟪 **AGENT** · 🟦 **SAGA** · 🟩 **BOOKING** · 🟧 **PAYMENT**. 단계 번호는 [§1 책임 분담표](#1-책임-분담-한눈에)와 일치한다.
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    participant Booker as 진행자
-    participant Agent as agent-service
-    participant Book as booking-service
-    participant Pay as payment-service
-    participant Chat as chat-service
-    participant GW as chat-gateway
-    participant Notify as notify-service
-    participant P as 참여자
+flowchart TD
+    Start([진행자: 더치페이로 예약 확정]) --> Create["① 예약 생성 + 슬롯 확보<br/>booking.create → CREATE_BOOKING saga<br/>→ PAYMENT_PENDING"]
+    Create --> Prepare["② 분할결제 준비<br/>payment.splitPrepare<br/>참여자 N명 orderId 발급"]
+    Prepare --> Card["③ 진행자 정산 카드<br/>SETTLEMENT_STATUS (state=SETTLING)<br/>진행자 개인 메시지"]
+    Card --> Broadcast["④ 참여자 브로드캐스트<br/>senderId=0 정산 카드 + push 알림<br/>(chat · gateway · notify)"]
+    Broadcast --> Pay["⑤ 참여자 개별 결제<br/>POST /payments/split/confirm (Toss)"]
+    Pay --> MarkPaid["⑤-a 정산 상태 갱신<br/>participant.paid → markParticipantPaid()<br/>→ 진행자에 정산 카드 push"]
+    MarkPaid --> Check{"⑥ 전원 결제 완료?<br/>handleSplitPaymentComplete<br/>booking.settlementStatus (SSOT)"}
+    Check -->|예| Done([TEAM_COMPLETE<br/>booking CONFIRMED])
+    Check -->|아니오| Wait["갱신된 SETTLEMENT_STATUS<br/>다음 참여자 결제 대기"]
+    Wait --> Pay
+    Check -. 30분 만료 .-> Expire["EXPIRED + slot release<br/>(만료 10분 전 리마인더)"]
 
-    Note over Booker,P: ① 예약 생성 + 슬롯 확보 (SAGA)
-    Booker->>Agent: confirmBooking=true, paymentMethod="dutchpay"
-    Agent->>Book: NATS send booking.create
-    Note over Book: CREATE_BOOKING saga — SAGA.md §4.2
-    loop Saga 폴링 (300ms × 20회)
-        Agent->>Book: NATS send booking.findById
-    end
-    Book-->>Agent: status=PAYMENT_PENDING
-
-    Note over Agent,Pay: ② 분할결제 준비 (AGENT)
-    Agent->>Pay: NATS send payment.splitPrepare
-    Pay-->>Agent: splits[] (orderId × N명)
-
-    Note over Agent,P: ③ 진행자 정산 카드 (AGENT, HTTP 응답)
-    Agent-->>Booker: SETTLEMENT_STATUS (state=SETTLING)
-
-    Note over Agent,P: ④ 참여자 브로드캐스트 (AGENT)
-    Agent->>Chat: NATS send chat.messages.save (senderId=0)
-    Agent->>GW: NATS emit chat.message.room
-    GW->>P: Socket.IO new_message (user:{userId} 타겟팅)
-    Agent->>Notify: NATS emit notify.sendBatch (push)
-
-    Note over P,Pay: ⑤ 참여자 개별 결제 (payment)
-    P->>Pay: POST /payments/split/confirm (Toss SDK)
-    Pay-->>P: 결제 승인
-
-    Note over Pay,Booker: ⑤-a 정산 상태 push (BOOKING)
-    Pay->>Book: NATS emit participant.paid
-    Book->>Book: markParticipantPaid()
-    Book->>Chat: NATS send chat.messages.save (정산 카드)
-    Book->>GW: NATS emit chat.message.room
-    GW->>Booker: Socket.IO new_message
-
-    Note over P,Agent: ⑥ 정산 갱신/완료 (AGENT + BOOKING)
-    P->>Agent: splitPaymentComplete=true, splitOrderId
-    Agent->>Book: NATS send booking.settlementStatus (SSOT)
-    Book-->>Agent: { paidCount, totalCount, allPaid }
-    alt 전원 결제 완료
-        Agent-->>Booker: TEAM_COMPLETE (booking CONFIRMED)
-    else 미결제자 있음
-        Agent-->>Booker: 갱신된 SETTLEMENT_STATUS
-    end
+    classDef agent fill:#f3e5f5,stroke:#7b1fa2,color:#000
+    classDef saga fill:#e3f2fd,stroke:#1565c0,color:#000
+    classDef booking fill:#e8f5e9,stroke:#2e7d32,color:#000
+    classDef payment fill:#fff3e0,stroke:#ef6c00,color:#000
+    class Create,Expire saga
+    class Prepare,Card,Broadcast,Check,Wait agent
+    class Pay payment
+    class MarkPaid booking
 ```
 
 ## 3. AGENT 처리 부분
