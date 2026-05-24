@@ -8,7 +8,7 @@ import {
   Check,
   X,
 } from 'lucide-react';
-import { AppLayout, Container } from '@/components/layout';
+import { SubPageHeader, Container } from '@/components/layout';
 import { GlassCard, Button, clearSkipTimestamp } from '@/components/ui';
 import { useChangePasswordMutation } from '@/hooks/queries/auth';
 import { showSuccessToast, showErrorToast } from '@/lib/toast';
@@ -112,7 +112,8 @@ export function ChangePasswordPage() {
   };
 
   return (
-    <AppLayout title="비밀번호 변경" showTabBar={false}>
+    <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title="비밀번호 변경" />
       <Container className="py-4 md:py-6 space-y-4">
         {/* 비밀번호 정책 안내 */}
         <GlassCard>
@@ -213,7 +214,7 @@ export function ChangePasswordPage() {
           {changePasswordMutation.isPending ? '변경 중...' : '비밀번호 변경'}
         </Button>
       </Container>
-    </AppLayout>
+    </div>
   );
 }
 

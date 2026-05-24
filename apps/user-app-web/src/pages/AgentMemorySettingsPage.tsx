@@ -1,5 +1,5 @@
 import { Sparkles } from 'lucide-react';
-import { AppLayout, Container } from '@/components/layout';
+import { SubPageHeader, Container } from '@/components/layout';
 import { GlassCard, SectionHeader, LoadingView } from '@/components/ui';
 import {
   useAgentMemoryQuery,
@@ -33,22 +33,24 @@ export function AgentMemorySettingsPage() {
 
   if (isLoading) {
     return (
-      <AppLayout title="AI 메모리 설정" showTabBar={false}>
+      <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title="AI 메모리 설정" />
         <LoadingView />
-      </AppLayout>
+      </div>
     );
   }
 
   if (isError || !data) {
     return (
-      <AppLayout title="AI 메모리 설정" showTabBar={false}>
+      <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title="AI 메모리 설정" />
         <Container className="py-4">
           <GlassCard className="text-center">
             <p className="text-[var(--color-error)] mb-2">설정을 불러오는데 실패했습니다.</p>
             <p className="text-sm text-[var(--color-text-muted)]">잠시 후 다시 시도해주세요.</p>
           </GlassCard>
         </Container>
-      </AppLayout>
+      </div>
     );
   }
 
@@ -56,7 +58,8 @@ export function AgentMemorySettingsPage() {
   const disabled = updateMutation.isPending;
 
   return (
-    <AppLayout title="AI 메모리 설정" showTabBar={false}>
+    <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title="AI 메모리 설정" />
       <Container className="py-4">
         <SectionHeader title="AI 비서 메모리" className="mb-2 px-1" />
         <p className="px-1 mb-3 text-sm text-[var(--color-text-muted)]">
@@ -116,6 +119,6 @@ export function AgentMemorySettingsPage() {
           <p>• 계정 삭제 시 메모리 데이터도 함께 삭제됩니다.</p>
         </div>
       </Container>
-    </AppLayout>
+    </div>
   );
 }

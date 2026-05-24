@@ -6,7 +6,7 @@ import {
   Tag,
   Megaphone,
 } from 'lucide-react';
-import { AppLayout, Container } from '@/components/layout';
+import { SubPageHeader, Container } from '@/components/layout';
 import { GlassCard, SectionHeader, LoadingView } from '@/components/ui';
 import {
   useNotificationSettingsQuery,
@@ -75,27 +75,30 @@ export function NotificationSettingsPage() {
 
   if (isLoading) {
     return (
-      <AppLayout title="알림 설정" showTabBar={false}>
+      <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title="알림 설정" />
         <LoadingView />
-      </AppLayout>
+      </div>
     );
   }
 
   if (isError || !settings) {
     return (
-      <AppLayout title="알림 설정" showTabBar={false}>
+      <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title="알림 설정" />
         <Container className="py-4">
           <GlassCard className="text-center">
             <p className="text-[var(--color-error)] mb-2">설정을 불러오는데 실패했습니다.</p>
             <p className="text-sm text-[var(--color-text-muted)]">잠시 후 다시 시도해주세요.</p>
           </GlassCard>
         </Container>
-      </AppLayout>
+      </div>
     );
   }
 
   return (
-    <AppLayout title="알림 설정" showTabBar={false}>
+    <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <SubPageHeader title="알림 설정" />
       <Container className="py-4 md:py-6 space-y-4">
         {/* 안내 카드 */}
         <GlassCard>
@@ -158,6 +161,6 @@ export function NotificationSettingsPage() {
           </GlassCard>
         </div>
       </Container>
-    </AppLayout>
+    </div>
   );
 }
