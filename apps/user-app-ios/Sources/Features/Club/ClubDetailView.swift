@@ -28,6 +28,7 @@ struct ClubDetailView: View {
         .background(LinearGradient.parkBackground)
         .navigationTitle(viewModel.club?.name ?? "골프장 정보")
         .navigationBarTitleDisplayMode(.inline)
+        .subScreenTabBarHidden()
         .task {
             await viewModel.loadData()
         }
@@ -170,6 +171,7 @@ struct ClubDetailView: View {
                         RoundBookingView(showTitle: false)
                             .navigationTitle("라운드 예약")
                             .navigationBarTitleDisplayMode(.inline)
+                            .subScreenTabBarHidden()
                     } label: {
                         GameCardContent(game: game)
                     }

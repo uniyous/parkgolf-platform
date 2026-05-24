@@ -188,6 +188,7 @@ struct HomeView: View {
                         HomeFriendRequestsView(requests: viewModel.friendRequests)
                             .navigationTitle("친구 요청")
                             .navigationBarTitleDisplayMode(.inline)
+                            .subScreenTabBarHidden()
                     } label: {
                         HomeNotificationCardLabel(
                             icon: "person.badge.plus.fill",
@@ -205,6 +206,7 @@ struct HomeView: View {
                         HomeUnreadChatsView(chatRooms: viewModel.unreadChatRooms)
                             .navigationTitle("새 메시지")
                             .navigationBarTitleDisplayMode(.inline)
+                            .subScreenTabBarHidden()
                     } label: {
                         HomeNotificationCardLabel(
                             icon: "bubble.left.fill",
@@ -239,6 +241,7 @@ struct HomeView: View {
             RoundBookingView(showTitle: false)
                 .navigationTitle("라운드 예약")
                 .navigationBarTitleDisplayMode(.inline)
+                .subScreenTabBarHidden()
         } label: {
             HStack {
                 Image(systemName: "magnifyingglass")

@@ -75,7 +75,7 @@ export function NotificationSettingsPage() {
 
   if (isLoading) {
     return (
-      <AppLayout title="알림 설정">
+      <AppLayout title="알림 설정" showTabBar={false}>
         <LoadingView />
       </AppLayout>
     );
@@ -83,7 +83,7 @@ export function NotificationSettingsPage() {
 
   if (isError || !settings) {
     return (
-      <AppLayout title="알림 설정">
+      <AppLayout title="알림 설정" showTabBar={false}>
         <Container className="py-4">
           <GlassCard className="text-center">
             <p className="text-[var(--color-error)] mb-2">설정을 불러오는데 실패했습니다.</p>
@@ -95,7 +95,7 @@ export function NotificationSettingsPage() {
   }
 
   return (
-    <AppLayout title="알림 설정">
+    <AppLayout title="알림 설정" showTabBar={false}>
       <Container className="py-4 md:py-6 space-y-4">
         {/* 안내 카드 */}
         <GlassCard>

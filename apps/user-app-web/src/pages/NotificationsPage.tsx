@@ -181,7 +181,7 @@ export function NotificationsPage() {
 
   if (isError) {
     return (
-      <AppLayout title="알림">
+      <AppLayout title="알림" showTabBar={false}>
         <Container className="py-4">
           <GlassCard>
             <EmptyState
@@ -198,7 +198,7 @@ export function NotificationsPage() {
   }
 
   return (
-    <AppLayout title="알림" headerRight={headerRight}>
+    <AppLayout title="알림" headerRight={headerRight} showTabBar={false}>
       <Container className="py-4 md:py-6">
         {/* Filter Tabs */}
         <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide pb-1">

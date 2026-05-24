@@ -33,7 +33,7 @@ export function AgentMemorySettingsPage() {
 
   if (isLoading) {
     return (
-      <AppLayout title="AI 메모리 설정">
+      <AppLayout title="AI 메모리 설정" showTabBar={false}>
         <LoadingView />
       </AppLayout>
     );
@@ -41,7 +41,7 @@ export function AgentMemorySettingsPage() {
 
   if (isError || !data) {
     return (
-      <AppLayout title="AI 메모리 설정">
+      <AppLayout title="AI 메모리 설정" showTabBar={false}>
         <Container className="py-4">
           <GlassCard className="text-center">
             <p className="text-[var(--color-error)] mb-2">설정을 불러오는데 실패했습니다.</p>
@@ -56,7 +56,7 @@ export function AgentMemorySettingsPage() {
   const disabled = updateMutation.isPending;
 
   return (
-    <AppLayout title="AI 메모리 설정">
+    <AppLayout title="AI 메모리 설정" showTabBar={false}>
       <Container className="py-4">
         <SectionHeader title="AI 비서 메모리" className="mb-2 px-1" />
         <p className="px-1 mb-3 text-sm text-[var(--color-text-muted)]">

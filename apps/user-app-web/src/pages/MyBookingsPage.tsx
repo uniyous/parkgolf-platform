@@ -61,7 +61,7 @@ export const MyBookingsPage: React.FC = () => {
   const totalPages = data ? Math.ceil(data.total / data.limit) : 0;
 
   return (
-    <AppLayout title="예약 내역">
+    <AppLayout title="예약 내역" showTabBar={false}>
       <Container className="py-4 md:py-6 space-y-4">
         {/* Tab Selector */}
         <GlassCard className="!p-0">

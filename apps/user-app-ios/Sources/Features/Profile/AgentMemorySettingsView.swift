@@ -97,6 +97,7 @@ struct AgentMemorySettingsView: View {
         }
         .navigationTitle("AI 메모리 설정")
         .navigationBarTitleDisplayMode(.inline)
+        .subScreenTabBarHidden()
         .task { await viewModel.load() }
     }
 }

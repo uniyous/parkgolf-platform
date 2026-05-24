@@ -54,6 +54,7 @@ struct MyBookingsView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .subScreenTabBarHidden()
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button {

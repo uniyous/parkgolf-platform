@@ -225,6 +225,7 @@ struct BookingDetailView: View {
         }
         .navigationTitle("예약 상세")
         .navigationBarTitleDisplayMode(.inline)
+        .subScreenTabBarHidden()
     }
 
     private func formatDate(_ date: Date) -> String {

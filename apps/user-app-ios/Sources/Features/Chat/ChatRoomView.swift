@@ -51,6 +51,7 @@ struct ChatRoomView: View {
         }
         .navigationTitle(room.displayName(currentUserId: viewModel.currentUserId))
         .navigationBarTitleDisplayMode(.inline)
+        .subScreenTabBarHidden()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {

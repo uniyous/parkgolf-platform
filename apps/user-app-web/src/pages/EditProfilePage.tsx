@@ -75,7 +75,7 @@ export function EditProfilePage() {
   const avatarInitial = (user?.name || '사용자').charAt(0).toUpperCase();
 
   return (
-    <AppLayout title="프로필 수정">
+    <AppLayout title="프로필 수정" showTabBar={false}>
       <Container className="py-4 md:py-6 space-y-4">
         {/* Avatar */}
         <div className="flex justify-center">

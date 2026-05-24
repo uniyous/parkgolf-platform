@@ -63,6 +63,7 @@ struct NotificationsView: View {
             }
         }
         .toolbarBackground(.hidden, for: .navigationBar)
+        .subScreenTabBarHidden()
         .task {
             await viewModel.connectSocket()
             await viewModel.loadNotifications()

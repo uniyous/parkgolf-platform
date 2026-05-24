@@ -25,7 +25,7 @@ export function ClubDetailPage() {
 
   if (isLoadingClub) {
     return (
-      <AppLayout title="골프장 정보">
+      <AppLayout title="골프장 정보" showTabBar={false}>
         <Container className="py-4 md:py-6">
           <LoadingView message="골프장 정보를 불러오는 중..." />
         </Container>
@@ -35,7 +35,7 @@ export function ClubDetailPage() {
 
   if (clubError || !club) {
     return (
-      <AppLayout title="골프장 정보">
+      <AppLayout title="골프장 정보" showTabBar={false}>
         <Container className="py-4 md:py-6">
           <GlassCard>
             <EmptyState
@@ -52,7 +52,7 @@ export function ClubDetailPage() {
   }
 
   return (
-    <AppLayout title={club.name}>
+    <AppLayout title={club.name} showTabBar={false}>
       <Container className="py-4 md:py-6 space-y-4">
         {/* Back Button */}
         <button

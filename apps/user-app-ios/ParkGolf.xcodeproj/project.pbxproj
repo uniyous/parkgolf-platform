@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 55;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -81,6 +81,7 @@
 		902703BA6A09BD826DA60E70 /* GradientButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0390C2F676958F1F9C37936B /* GradientButton.swift */; };
 		936087BEB6B47A624245976E /* AiButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB101266F65B0E0F0452592E /* AiButton.swift */; };
 		95875B41115E528559A0EC87 /* Booking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 880051E9F996505E9E6C7E0D /* Booking.swift */; };
+		963A0057B041487C1BF24030 /* View+TabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7F0D0D832ACB350FD7C37A9 /* View+TabBar.swift */; };
 		975427803D3BDA2873D3F611 /* BookingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 651647EF9DAB12B4A9B21DF3 /* BookingViewModel.swift */; };
 		98E5873757F807A1E0CDF001 /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED45DEF85021870A3EAC449 /* GlassCard.swift */; };
 		993AD598651A08F4899E6D38 /* ClubDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DE08BEB4A767BE056A855EB /* ClubDetailViewModel.swift */; };
@@ -303,6 +304,7 @@
 		F37E6F00B3B10E3026CD368F /* RoundService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundService.swift; sourceTree = "<group>"; };
 		F6C0769058A9766991DA8403 /* SettlementStatusCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettlementStatusCardView.swift; sourceTree = "<group>"; };
 		F7BC2B942DF8F763DD87B0E1 /* Round.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Round.swift; sourceTree = "<group>"; };
+		F7F0D0D832ACB350FD7C37A9 /* View+TabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+TabBar.swift"; sourceTree = "<group>"; };
 		F95880DFF69A896E0CC90951 /* BookingFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingFormView.swift; sourceTree = "<group>"; };
 		FC56DB6810DFF5383E00DFED /* ClubCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClubCardView.swift; sourceTree = "<group>"; };
 		FD4B375DEE30695ECC01789A /* Endpoints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Endpoints.swift; sourceTree = "<group>"; };
@@ -384,6 +386,14 @@
 				FB3465F726A6D293634F79BC /* Tests */,
 			);
 			name = Project;
+			sourceTree = "<group>";
+		};
+		23F76401E8E13761C2E8A603 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				F7F0D0D832ACB350FD7C37A9 /* View+TabBar.swift */,
+			);
+			path = Extensions;
 			sourceTree = "<group>";
 		};
 		2917F27E0B2AB4854C47A12E /* Models */ = {
@@ -705,6 +715,7 @@
 			isa = PBXGroup;
 			children = (
 				3604CDDD142EDD999118B352 /* Components */,
+				23F76401E8E13761C2E8A603 /* Extensions */,
 				F21CE5781672F6327463E382 /* Theme */,
 			);
 			path = DesignSystem;
@@ -919,6 +930,7 @@
 				FE39C665D329030FFC014FBE /* PriceDisplay.swift in Sources */,
 				78CE0F8C0D36AC45A943AAE9 /* StatusBadge.swift in Sources */,
 				885BCD6C98A477338F174149 /* TimeSlotButton.swift in Sources */,
+				963A0057B041487C1BF24030 /* View+TabBar.swift in Sources */,
 				F2366E4B7B3B3539C9C96463 /* Colors.swift in Sources */,
 				B8F5871459EF0BB00DAFA6B5 /* Spacing.swift in Sources */,
 				C65349DDDCAB835051701150 /* Typography.swift in Sources */,
@@ -1017,7 +1029,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = 7W4BQTPNLB;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = "Derived/InfoPlists/ParkGolf-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -1035,7 +1046,10 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
+					"$(inherited)",
+					DEBUG,
+				);
 				SWIFT_COMPILATION_MODE = singlefile;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1064,7 +1078,10 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
+					"$(inherited)",
+					DEBUG,
+				);
 				SWIFT_COMPILATION_MODE = singlefile;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1214,7 +1231,10 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
+					"$(inherited)",
+					DEBUG,
+				);
 				SWIFT_COMPILATION_MODE = singlefile;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1228,7 +1248,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = 7W4BQTPNLB;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = "Derived/InfoPlists/ParkGolf-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

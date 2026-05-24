@@ -112,7 +112,7 @@ export function ChangePasswordPage() {
   };
 
   return (
-    <AppLayout title="비밀번호 변경">
+    <AppLayout title="비밀번호 변경" showTabBar={false}>
       <Container className="py-4 md:py-6 space-y-4">
         {/* 비밀번호 정책 안내 */}
         <GlassCard>
