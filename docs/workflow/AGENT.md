@@ -1,6 +1,7 @@
 # AI 예약 에이전트 워크플로우
 
-> **연계 문서**: 메모리 아키텍처(Hermes 5-Layer) 및 multi-pod 운영은 [`AGENT_MEMORY.md`](./AGENT_MEMORY.md) 참조.
+> **연계 문서**: 메모리 아키텍처(Hermes 5-Layer)·multi-pod 운영은 [`AGENT_MEMORY.md`](./AGENT_MEMORY.md), 카드 흐름·분류 표준은 [`AGENT_CARD.md`](./AGENT_CARD.md) 참조.
+> 최종 수정: 2026-05-24
 
 ## 1. 개요
 
@@ -192,10 +193,10 @@ if (request.selectedClubId)       → handleDirectClubSelect()
 | `handleTeamMemberSelect` | 멤버 확정 클릭 | groupMode=true, 멤버 저장 → 슬롯 조회 → **SHOW_SLOTS 카드** |
 | `handleDirectSlotSelect` | 슬롯 칩 클릭 | slots에 slotId 저장 → **CONFIRM_BOOKING 카드** (결제방법 3가지) |
 | `handleDirectBooking` | 예약 확인 클릭 | booking.create → [Saga](./SAGA.md) 폴링 → 결제방법에 따라 분기 |
-| `handlePaymentComplete` | 카드결제 완료 | booking CONFIRMED 확인 후 **TEAM_COMPLETE** 또는 **BOOKING_COMPLETE** 카드 |
+| `handlePaymentComplete` | 카드결제 완료 | booking CONFIRMED 확인 후 completeTeam → **TEAM_COMPLETE** 카드 |
 | `handleCancelBooking` | 취소 클릭 | slots 초기화 → COLLECTING |
 | `handleNextTeam` | "다음 팀" 클릭 | teamNumber++ → **SELECT_MEMBERS** (이전 팀 멤버 제외) |
-| `handleFinishGroup` | "종료" 클릭 | **BOOKING_COMPLETE** (전체 요약) + 채팅방 SYSTEM 메시지 |
+| `handleFinishGroup` | "종료" 클릭 | **TEAM_COMPLETE** (groupSummary 전체 요약) + 채팅방 SYSTEM 메시지 |
 | `handleSplitPaymentComplete` | 참여자 결제 완료 | `booking.settlementStatus`로 allPaid 확인 → 전원 완료 시 **TEAM_COMPLETE** |
 | `handleSendReminder` | 리마인더 버튼 | 미결제 참여자에게 push 알림 |
 
@@ -239,19 +240,25 @@ if (request.selectedClubId)       → handleDirectClubSelect()
 }
 ```
 
+> **카드/텍스트 비중복 원칙 (UNI-26)**: 카드가 표시하는 데이터(클럽 목록·슬롯 시간·날씨 등)는 텍스트로 다시 나열하지 않는다. 진행 안내는 텍스트 한 줄로 — 카드는 **결과 시각화** 또는 **액션 유도**일 때만. 분류·표준 흐름은 [`AGENT_CARD.md`](./AGENT_CARD.md).
+
 ### 카드 목록
 
-| ActionType | 용도 | 트리거 |
-|------------|------|--------|
-| `SHOW_CLUBS` | 골프장 목록 | 클릭 → handleDirectClubSelect |
-| `SELECT_MEMBERS` | 팀 멤버 선택 | 클릭 → handleTeamMemberSelect |
-| `SHOW_SLOTS` | 타임슬롯 목록 | 클릭 → handleDirectSlotSelect |
-| `SHOW_WEATHER` | 날씨 정보 | 정보 표시만 |
-| `CONFIRM_BOOKING` | 예약 확인 + 결제방법 선택 | 확인 → handleDirectBooking |
-| `SHOW_PAYMENT` | 카드결제 (Toss SDK) | 10분 타이머 |
-| `SETTLEMENT_STATUS` | 더치페이 정산 현황 | 리마인더/새로고침 버튼 |
-| `TEAM_COMPLETE` | 팀 예약 완료 | 다음 팀/종료 버튼 |
-| `BOOKING_COMPLETE` | 예약 완료 (전체 요약) | 종료 시 표시 |
+| ActionType | 분류 | 용도 | 트리거 |
+|------------|------|------|--------|
+| `SHOW_CLUBS` | 정보 | 골프장 목록 | 클릭 → handleDirectClubSelect |
+| `SHOW_SLOTS` | 정보 | 타임슬롯 목록 | 클릭 → handleDirectSlotSelect |
+| `SHOW_WEATHER` | 정보 | 날씨 정보 (부킹 흐름과 분리) | 정보 표시만 |
+| `SELECT_MEMBERS` | 액션 | 팀 멤버 선택 | 클릭 → handleTeamMemberSelect |
+| `CONFIRM_BOOKING` | 액션 | 예약 확인 + 결제방법 선택 | 확인 → handleDirectBooking |
+| `SHOW_PAYMENT` | 액션 | 카드결제 (Toss SDK) | 10분 타이머 |
+| `SETTLEMENT_STATUS` | 상태 | 더치페이 정산 현황 | 리마인더/새로고침 버튼 |
+| `TEAM_COMPLETE` | 상태 | 팀 예약 완료 / 그룹 요약(`groupSummary`) | 다음 팀/종료 버튼 |
+| `BOOKING_FAILED` | 상태 | 예약 실패 (사유·대안 안내) | 재시도 |
+| `BOOKING_EXPIRED` | 상태 | 결제 타임아웃 안내 | 재시도 |
+| `SPLIT_PAYMENT` | (deprecated) | 더치페이 결제 상태 — 현재 `SETTLEMENT_STATUS`로 통합 | — |
+
+> `TASK_PREVIEW`(진행 안내 카드)는 제거됨(UNI-26). 백엔드가 push를 멈추면 전 플랫폼 자동 반영되며, 클라이언트는 알 수 없는 ActionType을 graceful skip한다.
 
 ### 카드 데이터
 
@@ -301,9 +308,12 @@ if (request.selectedClubId)       → handleDirectClubSelect()
 
 **SETTLEMENT_STATUS**: `{ teamNumber, bookerId, clubName, date, slotTime, totalPrice, pricePerPerson, expiredAt, participants: [{ userId, userName, orderId, amount, status, expiredAt }] }`
 
-**TEAM_COMPLETE**: `{ teamNumber, bookingId, bookingNumber, clubName, date, slotTime, courseName, participants, totalPrice, paymentMethod, hasMoreTeams }`
+**TEAM_COMPLETE**: `{ teamNumber, bookingId, bookingNumber, clubName, date, slotTime, gameName, participants, totalPrice, paymentMethod, hasMoreTeams }`
+- "종료"(handleFinishGroup) 시에도 TEAM_COMPLETE로 그룹 전체 요약 반환: `{ groupSummary: true, teamCount, totalMembers, totalPrice, teams: [{ teamNumber, bookingNumber, slotTime, gameName, members, totalPrice, paymentMethod }] }`
 
-**BOOKING_COMPLETE**: `{ success, bookingId, bookingNumber, details: { date, time, playerCount, totalPrice } }`
+**BOOKING_FAILED**: `{ reason }` — 예약 실패 사유 안내
+
+**BOOKING_EXPIRED**: 결제 타임아웃 안내
 
 ### 카드 인터랙션
 
@@ -718,7 +728,7 @@ agent-service는 7개의 Named NATS Client를 사용:
 ④ 예약 확인    → CONFIRM_BOOKING     (Direct: handleDirectSlotSelect)
 ⑤ 결제 처리    → 결제방법에 따라 분기  (Direct: handleDirectBooking)
 ⑥ 팀 완료      → TEAM_COMPLETE       (다음 팀 / 종료)
-⑦ 종료         → BOOKING_COMPLETE    (전체 요약 + SYSTEM 메시지)
+⑦ 종료         → TEAM_COMPLETE       (groupSummary 전체 요약 + SYSTEM 메시지)
 ```
 
 ### 12.2 상세 플로우
@@ -752,7 +762,7 @@ agent-service는 7개의 Named NATS Client를 사용:
 
 ⑥ TEAM_COMPLETE 카드
    ├─ "다음 팀 예약" → handleNextTeam → SELECT_MEMBERS (②로 복귀)
-   └─ "종료"        → handleFinishGroup → BOOKING_COMPLETE + SYSTEM 메시지
+   └─ "종료"        → handleFinishGroup → TEAM_COMPLETE(groupSummary) + SYSTEM 메시지
 ```
 
 ### 12.3 UI 카드 흐름
