@@ -34,7 +34,7 @@ flowchart TD
     Check -->|예| Done([TEAM_COMPLETE<br/>booking CONFIRMED])
     Check -->|아니오| Wait["갱신된 SETTLEMENT_STATUS<br/>다음 참여자 결제 대기"]
     Wait --> Pay
-    Check -. 30분 만료 .-> Expire["EXPIRED + slot release<br/>(만료 10분 전 리마인더)"]
+    Check -. 3분 만료 .-> Expire["EXPIRED + slot release"]
 
     classDef agent fill:#f3e5f5,stroke:#7b1fa2,color:#000
     classDef saga fill:#e3f2fd,stroke:#1565c0,color:#000
@@ -83,7 +83,7 @@ NATS send 'payment.splitPrepare' {
   participants: [
     { userId: number, userName: string, userEmail: string, amount: number }
   ],
-  expiredAt: string  // 현재 + 30분
+  expiredAt: string  // 현재 + 3분 (기본값 — saga payment-timeout과 동기화)
 }
 // → PaymentSplit 레코드 N개 생성, 각각 고유 orderId 발급
 ```
@@ -106,8 +106,8 @@ NATS send 'chat.messages.save' {
 
 | 시점 | 동작 | 주체 |
 | -- | -- | -- |
-| 슬롯 확보 시 | `expiredAt` = 현재 + 30분 | payment (splitPrepare) |
-| 만료 10분 전 | 미결제 참여자에게 리마인더 | job-service |
+| 슬롯 확보 시 | `expiredAt` = 현재 + **3분** (saga `PAYMENT_TIMEOUT_DELAY_SECONDS`와 동기화) | payment (splitPrepare) |
+| 만료 전 (수동) | 진행자가 `sendReminder` 버튼 → 미결제자에게 push (스케줄 리마인더 아님) | agent → notify |
 | 만료 시 | PaymentSplit → `EXPIRED`, slot release | saga 보상 ([SAGA.md §6.5](./SAGA.md)) |
 
 ## 8. 검증 (e2e)

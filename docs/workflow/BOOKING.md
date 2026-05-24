@@ -475,7 +475,7 @@ flowchart LR
 | `PAYMENT_SEND_TIMEOUT` | 10,000ms | payment | 결제 Outbox NATS 전송 타임아웃 |
 | `PAYMENT_MAX_RETRIES` | 5 | payment | 결제 Outbox 최대 재시도 |
 | `TOSS_HTTP_TIMEOUT` | 60,000ms | payment | 토스페이먼츠 API HTTP 타임아웃 (공식 권장) |
-| `SPLIT_EXPIRATION` | 30분 | payment | 더치페이 결제 기한 (기본값) |
+| `SPLIT_EXPIRATION` | 3분 | payment | 더치페이 결제 기한 (기본값, saga payment-timeout과 동기화) |
 
 ### 6.3 정리 작업 스케줄
 
