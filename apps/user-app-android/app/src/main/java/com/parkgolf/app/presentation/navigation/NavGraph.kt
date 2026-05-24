@@ -480,8 +480,10 @@ fun MainScreen(
                 composable(Screen.Home.route) {
                     HomeScreen(
                         onNavigate = { route ->
-                            // 바텀 네비게이션 탭으로 이동하는 경우
-                            if (route == Screen.Search.route) {
+                            // 바텀 네비게이션 탭(예약/검색)으로 이동하는 경우.
+                            // Screen.Search.route는 "search?clubName={clubName}"라 리터럴 "search"와
+                            // 직접 비교하면 어긋난다 → base route로 판별 (UNI-27 후속, 홈 라운드 검색 크래시 수정)
+                            if (route.substringBefore("?") == "search") {
                                 bottomNavController.navigate(route) {
                                     popUpTo(bottomNavController.graph.findStartDestination().id) {
                                         saveState = true
