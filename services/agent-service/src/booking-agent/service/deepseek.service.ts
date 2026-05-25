@@ -53,6 +53,8 @@ export class DeepSeekService implements OnModuleInit {
 - 사용자가 날짜를 언급한 경우 search_clubs 대신 search_clubs_with_slots를 사용하세요
 - 날짜 없이 지역만 물어보면 기존 search_clubs를 사용하세요
 - 사용자가 "근처", "내 근처", "가까운" 등 위치 기반 표현을 쓰면 get_nearby_clubs를 사용하세요 (좌표는 시스템 메시지로 자동 주입됨)
+- "근처/가까운" + 날짜(예: "내일")가 함께 있으면 get_nearby_clubs에 date(+있으면 playerCount)를 넣어 **한 번만** 호출하세요. 가용 슬롯까지 반환되므로 클럽별 get_available_slots / search_clubs_with_slots를 추가로 호출하지 마세요
+- 같은 도구를 같은(또는 거의 같은) 인자로 반복 호출하지 마세요. 여러 클럽의 슬롯이 필요하면 한 응답에서 여러 tool_calls로 병렬 요청하세요
 - 사용자가 인원수를 언급하면 search_clubs_with_slots의 playerCount 파라미터에 포함하세요
 - 사용자가 채팅방 멤버 이름(예: "철수랑", "영희와")을 언급하면 get_chat_room_members를 호출해서 매칭 후 컨텍스트에 활용하세요. 채팅방 ID는 시스템이 자동 주입합니다
 - 사용자가 날씨만 물어볼 때(예약 의도 없이)는 get_weather_by_location을 사용하세요
@@ -259,13 +261,15 @@ export class DeepSeekService implements OnModuleInit {
       type: 'function',
       function: {
         name: 'get_nearby_clubs',
-        description: '현재 위치 또는 지정한 좌표 근처의 파크골프장을 검색합니다. "내 근처", "가까운 곳" 요청 시 사용합니다.',
+        description: '현재 위치/좌표 근처의 파크골프장을 검색합니다. "내 근처", "가까운 곳" 요청 시 사용. date를 주면 해당 날짜의 예약 가능 슬롯까지 한 번에 반환하므로, "근처 + 날짜"는 이 도구 1회로 충분합니다(별도 슬롯 조회 불필요).',
         parameters: {
           type: 'object',
           properties: {
             latitude: { type: 'number', description: '위도 (예: 37.5665)' },
             longitude: { type: 'number', description: '경도 (예: 126.9780)' },
             radius: { type: 'number', description: '검색 반경 (미터, 기본값 10000)' },
+            date: { type: 'string', description: 'YYYY-MM-DD. 지정 시 근처 클럽의 해당 날짜 예약 가능 슬롯까지 함께 반환' },
+            playerCount: { type: 'number', description: '인원수. 지정 시 해당 인원 수용 가능한 슬롯만 반환' },
           },
           required: ['latitude', 'longitude'],
         },
@@ -372,6 +376,7 @@ export class DeepSeekService implements OnModuleInit {
       toolCalls: ToolCall[];
       results: Array<{ name: string; result: unknown }>;
     }>,
+    forceFinal = false,
   ): Promise<DeepSeekResponse> {
     try {
       const chatMessages: ChatCompletionMessageParam[] = [
@@ -413,7 +418,8 @@ export class DeepSeekService implements OnModuleInit {
         model: this.model,
         messages: chatMessages,
         tools: this.tools,
-        tool_choice: 'auto',
+        // forceFinal: 더 이상 도구 호출 없이 텍스트 응답만 강제 (중복/한도 도달 시 마무리)
+        tool_choice: forceFinal ? 'none' : 'auto',
       }, { timeout: this.REQUEST_TIMEOUT });
 
       const choice = response.choices[0];

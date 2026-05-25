@@ -219,10 +219,12 @@ export class SearchTools {
   }
 
   async getNearbyClubs(args: Record<string, unknown>): Promise<unknown> {
-    const { latitude, longitude, radius } = args as {
+    const { latitude, longitude, radius, date, playerCount } = args as {
       latitude: number;
       longitude: number;
       radius?: number;
+      date?: string;
+      playerCount?: number;
     };
 
     const radiusKm = radius && radius >= 1000 ? Math.round(radius / 1000) : radius || 10;
@@ -238,21 +240,58 @@ export class SearchTools {
         ),
     );
 
-    if (response?.success && Array.isArray(response?.data) && response.data.length > 0) {
-      const clubs = response.data;
-      return {
-        found: clubs.length,
-        nearbyClubs: clubs.slice(0, 5).map((club: any) => ({
-          id: club.id,
-          name: club.name,
-          address: club.address,
-          region: club.location,
-          phone: club.phone,
-          distance: club.distance != null ? `${club.distance}km` : undefined,
-        })),
-      };
+    if (!response?.success || !Array.isArray(response?.data) || response.data.length === 0) {
+      return { found: 0, nearbyClubs: [], message: '근처에 파크골프장을 찾을 수 없습니다' };
     }
 
-    return { found: 0, nearbyClubs: [], message: '근처에 파크골프장을 찾을 수 없습니다' };
+    const clubs = response.data.slice(0, 5);
+    const toBasic = (club: any) => ({
+      id: club.id,
+      name: club.name,
+      address: club.address,
+      region: club.location,
+      phone: club.phone,
+      distance: club.distance != null ? `${club.distance}km` : undefined,
+    });
+
+    // 날짜 없으면 기존 동작(클럽 기본 정보만)
+    if (!date) {
+      return { found: response.data.length, nearbyClubs: clubs.map(toBasic) };
+    }
+
+    // 날짜 있으면 근처 클럽들의 가용 슬롯을 한 번에(병렬) 조회 → LLM 추가 라운드 방지 (UNI 최적화)
+    const enriched = await Promise.all(
+      clubs.map(async (club: any) => {
+        try {
+          const gamesResp = await firstValueFrom(
+            this.courseClient
+              .send('games.search', { clubId: club.id, date, limit: 50 })
+              .pipe(timeout(REQUEST_TIMEOUT), catchError(() => [null] as any)),
+          );
+          const games = gamesResp?.success && Array.isArray(gamesResp.data) ? gamesResp.data : [];
+          const slots: Array<{ id: number; gameId: number; gameName: string; time: string; availableSpots: number; price: number }> = [];
+          for (const game of games) {
+            for (const s of game.timeSlots || []) {
+              const spots = s.availablePlayers ?? (s.maxPlayers - s.bookedPlayers);
+              if (playerCount && spots < playerCount) continue;
+              slots.push({ id: s.id, gameId: game.id, gameName: game.name, time: s.startTime, availableSpots: spots, price: Number(s.price) });
+            }
+          }
+          slots.sort((a, b) => a.time.localeCompare(b.time));
+          return { ...toBasic(club), availableSlotCount: slots.length, slots: slots.slice(0, 6) };
+        } catch {
+          return { ...toBasic(club), availableSlotCount: 0, slots: [] };
+        }
+      }),
+    );
+
+    const available = enriched.filter((c) => c.availableSlotCount > 0);
+    return {
+      found: enriched.length,
+      date,
+      availableCount: available.length,
+      // 가용 클럽 우선 정렬
+      nearbyClubs: [...available, ...enriched.filter((c) => c.availableSlotCount === 0)],
+    };
   }
 }

@@ -109,13 +109,38 @@ export class LlmOrchestratorService {
       toolCalls: ToolCall[];
       results: Array<{ name: string; result: unknown }>;
     }> = [];
+    // 중복/과반복 도구 호출로 인한 불필요한 LLM 라운드 차단 (응답 지연 최적화)
+    const seenSignatures = new Set<string>();
+    const toolNameCounts = new Map<string, number>();
 
     llmResponse = await this.deepseekService.chat(messages);
 
     while (llmResponse.toolCalls && llmResponse.toolCalls.length > 0) {
-      if (iterations >= MAX_TOOL_ITERATIONS) {
-        this.logger.warn('Max tool iterations reached');
+      const signature = llmResponse.toolCalls
+        .map((tc) => `${tc.name}:${JSON.stringify(tc.args)}`)
+        .sort()
+        .join('|');
+      // 같은 도구가 이미 2개 라운드에서 호출됨 → 추가 탐색 낭비로 간주
+      const overRepeated = llmResponse.toolCalls.some(
+        (tc) => (toolNameCounts.get(tc.name) ?? 0) >= 2,
+      );
+
+      // 최대 반복 / 동일 toolCall 세트 재등장 / 동일 도구 과반복 → 도구 없이 최종 텍스트 강제
+      if (iterations >= MAX_TOOL_ITERATIONS || seenSignatures.has(signature) || overRepeated) {
+        const reason =
+          iterations >= MAX_TOOL_ITERATIONS
+            ? 'max iterations'
+            : seenSignatures.has(signature)
+              ? 'duplicate tool set'
+              : 'tool over-repeated';
+        this.logger.warn(`Tool loop stop (${reason}) — finalizing without further tools`);
+        llmResponse = await this.deepseekService.continueWithToolResults(messages, toolHistory, true);
         break;
+      }
+
+      seenSignatures.add(signature);
+      for (const tc of llmResponse.toolCalls) {
+        toolNameCounts.set(tc.name, (toolNameCounts.get(tc.name) ?? 0) + 1);
       }
 
       const toolResults = await this.executeTools(llmResponse.toolCalls, request);
