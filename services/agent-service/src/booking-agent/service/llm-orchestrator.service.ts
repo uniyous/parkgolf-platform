@@ -34,6 +34,18 @@ export class LlmOrchestratorService {
   ): Promise<{ text: string; actions?: ChatAction[] }> {
     const messages = this.conversationService.getRecentMessages(context);
 
+    // 직전에 안내한 골프장 목록을 시스템 메시지로 주입 (순번/이름 → 실제 clubId 매핑)
+    const recentClubs = context.slots.recentClubs;
+    if (recentClubs && recentClubs.length > 0) {
+      const clubList = recentClubs
+        .map((c, i) => `${i + 1}) ${c.name} (clubId=${c.id})`)
+        .join(', ');
+      messages.unshift({
+        role: 'user',
+        content: `[시스템 정보] 직전에 사용자에게 안내한 골프장 목록: ${clubList}. 사용자가 "N번" 또는 골프장 이름으로 지칭하면 반드시 위의 정확한 clubId를 사용하세요. 순번(1, 2, 3)을 clubId로 쓰지 마세요. 이 메시지에 대해 직접 응답하지 마세요.`,
+      });
+    }
+
     // 위치 정보를 시스템 메시지로 주입
     if (context.slots.latitude && context.slots.longitude) {
       if (!context.slots.regionName) {
@@ -309,6 +321,11 @@ export class LlmOrchestratorService {
               location: call.args.location as string,
             });
           }
+          this.rememberClubs(context, (result.result as any)?.clubs);
+          break;
+
+        case 'get_nearby_clubs':
+          this.rememberClubs(context, (result.result as any)?.nearbyClubs);
           break;
 
         case 'search_clubs_with_slots': {
@@ -327,6 +344,7 @@ export class LlmOrchestratorService {
               playerCount: call.args.playerCount as number,
             });
           }
+          this.rememberClubs(context, (result.result as any)?.clubs);
           const searchResult = result.result as any;
           if (searchResult?.found === 1 && searchResult.clubs?.[0]) {
             const club = searchResult.clubs[0];
@@ -360,6 +378,20 @@ export class LlmOrchestratorService {
           }
           break;
       }
+    }
+  }
+
+  /**
+   * 사용자에게 안내한 골프장 목록을 컨텍스트에 저장 → 후속 턴에서 "N번"/이름 지칭 시
+   * 실제 clubId 매핑에 사용 (순번을 clubId로 오용하는 환각 방지)
+   */
+  private rememberClubs(context: ConversationContext, list: unknown): void {
+    if (!Array.isArray(list)) return;
+    const clubs = list
+      .filter((c: any) => c && typeof c.id === 'number' && c.name)
+      .map((c: any) => ({ id: c.id as number, name: c.name as string }));
+    if (clubs.length > 0) {
+      this.conversationService.updateSlots(context, { recentClubs: clubs });
     }
   }
 

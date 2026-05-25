@@ -234,6 +234,10 @@ export interface BookingSlots {
   // Phase 3 — Semantic Memory: 한 conversation 내 사용자 프로파일 prefill 1회 실행 표시
   semanticPrefilled?: boolean;
 
+  // 직전 턴에 사용자에게 안내한 골프장 목록(순번→실제 clubId 매핑용).
+  // 후속 턴에서 "N번"/이름 지칭 시 실제 clubId 사용하도록 컨텍스트 주입
+  recentClubs?: Array<{ id: number; name: string }>;
+
   // 팀 예약 (모든 예약에 적용)
   chatRoomId?: string;
   bookerId?: number;
