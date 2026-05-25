@@ -187,9 +187,11 @@ export class LlmOrchestratorService {
         '먼저 함께할 멤버를 선택해 주세요! (인원수 확정 후 시간 선택)',
       );
       if (selectMembers) {
-        this.conversationService.addAssistantMessage(context, selectMembers.message);
+        // LLM의 안내 텍스트(예: 가용 여부)가 있으면 보존하고 멤버 선택 카드를 함께 노출
+        const text = llmResponse.text?.trim() ? llmResponse.text : selectMembers.message;
+        this.conversationService.addAssistantMessage(context, text);
         return {
-          text: selectMembers.message,
+          text,
           actions: selectMembers.actions,
         };
       }

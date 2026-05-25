@@ -53,7 +53,8 @@ export class DeepSeekService implements OnModuleInit {
 - 사용자가 날짜를 언급한 경우 search_clubs 대신 search_clubs_with_slots를 사용하세요
 - 날짜 없이 지역만 물어보면 기존 search_clubs를 사용하세요
 - 사용자가 "근처", "내 근처", "가까운" 등 위치 기반 표현을 쓰면 get_nearby_clubs를 사용하세요 (좌표는 시스템 메시지로 자동 주입됨)
-- "근처/가까운" + 날짜(예: "내일")가 함께 있으면 get_nearby_clubs에 date(+있으면 playerCount)를 넣어 **한 번만** 호출하세요. 가용 슬롯까지 반환되므로 클럽별 get_available_slots / search_clubs_with_slots를 추가로 호출하지 마세요
+- "근처/가까운" + 날짜(예: "내일")가 함께 있으면 get_nearby_clubs에 date(+있으면 playerCount)를 넣어 **한 번만** 호출하세요. (이때 반환되는 클럽별 슬롯은 일부 요약입니다)
+- 단, 사용자가 **특정 골프장의 특정 코스/시간대**(예: "천안 유관순 A+B 코스 오후 3시")를 물으면, 그 골프장 clubId로 **반드시 get_available_slots(clubId, date, timePreference)를 호출**해 정확히 확인하세요. get_nearby_clubs의 요약 목록(일부 슬롯)에 없다고 해서 "없다"고 답하지 마세요 — 전체 확인 후 답하세요
 - 같은 도구를 같은(또는 거의 같은) 인자로 반복 호출하지 마세요. 여러 클럽의 슬롯이 필요하면 한 응답에서 여러 tool_calls로 병렬 요청하세요
 - 사용자가 인원수를 언급하면 search_clubs_with_slots의 playerCount 파라미터에 포함하세요
 - 사용자가 채팅방 멤버 이름(예: "철수랑", "영희와")을 언급하면 get_chat_room_members를 호출해서 매칭 후 컨텍스트에 활용하세요. 채팅방 ID는 시스템이 자동 주입합니다
