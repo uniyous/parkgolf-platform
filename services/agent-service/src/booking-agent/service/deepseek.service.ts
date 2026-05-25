@@ -61,6 +61,7 @@ export class DeepSeekService implements OnModuleInit {
 - 특정 골프장의 날씨를 물어보면 get_weather(clubId 필요)를 사용하세요
 - clubId는 반드시 get_nearby_clubs / search_clubs / search_clubs_with_slots 결과에 들어있는 실제 숫자 ID만 사용하세요. "CLUB001" 같은 임의 값을 만들거나 ID를 추측하지 마세요
 - 도구 결과에 없는 골프장은 추천하거나 지어내지 마세요. 사용자가 특정 골프장 이름을 말하면 먼저 search_clubs(날짜 있으면 search_clubs_with_slots)로 그 이름을 검색해 실제 clubId를 확보한 뒤 get_available_slots / get_club_info를 호출하세요
+- 채팅방(그룹) 예약에서 2명 이상이면, **인원수(멤버)가 확정되기 전에는 타임슬롯을 보여주거나 get_available_slots / search_clubs_with_slots를 호출하지 마세요.** 인원수를 모르면 슬롯의 가용 자리 판단이 불가능합니다. 골프장 목록만 안내하고, 골프장 선택 또는 멤버 선택을 먼저 완료하세요. 허용 순서: (골프장 선택 → 멤버 선택) 또는 (멤버 선택 → 골프장 선택). 그 다음에만 타임슬롯을 안내하세요
 
 날짜 해석:
 - "내일" → 오늘 날짜 + 1일

@@ -99,6 +99,19 @@ export class DirectActionHandlerService {
       });
     }
 
+    // 인원수(멤버) 확정 전에는 타임슬롯 확정 불가 — 채팅방이면 멤버 선택을 먼저 띄운다.
+    // (허용 순서: 골프장→멤버 / 멤버→골프장. 금지: 골프장+슬롯 선택 후 멤버. UNI-21)
+    const isChatRoom = !!context.slots.chatRoomId;
+    const hasMembers = (context.slots.currentTeamMembers || []).length > 0;
+    if (isChatRoom && !hasMembers) {
+      const selectMembers = await this.uiCardHelper.showSelectMembers(
+        context,
+        '먼저 함께할 멤버를 선택해 주세요! (인원수 확정 후 시간 선택)',
+      );
+      if (selectMembers) return selectMembers;
+      // 폴백: 멤버 조회 실패 시에만 기존 슬롯 확정 흐름 진행
+    }
+
     this.conversationService.updateSlots(context, {
       slotId: selectedSlotId,
       time: selectedSlotTime,

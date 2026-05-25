@@ -325,6 +325,16 @@ export class LlmOrchestratorService {
           break;
 
         case 'get_nearby_clubs':
+          if (call.args.date) {
+            this.conversationService.updateSlots(context, {
+              date: call.args.date as string,
+            });
+          }
+          if (call.args.playerCount) {
+            this.conversationService.updateSlots(context, {
+              playerCount: call.args.playerCount as number,
+            });
+          }
           this.rememberClubs(context, (result.result as any)?.nearbyClubs);
           break;
 
