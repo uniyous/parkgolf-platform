@@ -3,6 +3,7 @@ import { DeepSeekService, DeepSeekResponse, ToolCall } from './deepseek.service'
 import { ToolExecutorService, ToolResult } from './tool-executor.service';
 import { ConversationService } from './conversation.service';
 import { UserMemoryService } from './user-memory.service';
+import { UiCardHelper } from './ui-card.helper';
 import {
   ChatRequestDto,
   ChatAction,
@@ -23,6 +24,7 @@ export class LlmOrchestratorService {
     private readonly toolExecutor: ToolExecutorService,
     private readonly conversationService: ConversationService,
     private readonly userMemory: UserMemoryService,
+    private readonly uiCardHelper: UiCardHelper,
   ) {}
 
   /**
@@ -172,6 +174,25 @@ export class LlmOrchestratorService {
       );
 
       iterations++;
+    }
+
+    // 그룹(채팅방) 예약: 멤버(인원수) 미확정 상태에서 LLM이 슬롯을 보여주려 하면
+    // 슬롯 대신 멤버 선택 카드를 먼저 노출 (규칙: 인원 확정 전 타임슬롯 선택 불가).
+    const isChatRoom = !!context.slots.chatRoomId;
+    const hasMembers = (context.slots.currentTeamMembers?.length || 0) > 0;
+    const slotsShown = allActions.some((a) => a.type === 'SHOW_SLOTS');
+    if (isChatRoom && !hasMembers && slotsShown) {
+      const selectMembers = await this.uiCardHelper.showSelectMembers(
+        context,
+        '먼저 함께할 멤버를 선택해 주세요! (인원수 확정 후 시간 선택)',
+      );
+      if (selectMembers) {
+        this.conversationService.addAssistantMessage(context, selectMembers.message);
+        return {
+          text: selectMembers.message,
+          actions: selectMembers.actions,
+        };
+      }
     }
 
     if (llmResponse.text) {
