@@ -22,6 +22,14 @@ export class BookingTools {
       timePreference?: 'morning' | 'afternoon' | 'evening';
     };
 
+    const id = Number(clubId);
+    if (!Number.isInteger(id) || id <= 0) {
+      return {
+        error: 'INVALID_CLUB_ID',
+        message: `clubId "${clubId}"는 유효한 골프장 ID가 아닙니다. 임의로 ID를 만들지 말고 search_clubs(날짜 있으면 search_clubs_with_slots)로 골프장 이름을 검색해 실제 숫자 ID를 먼저 확보하세요.`,
+      };
+    }
+
     const timeOfDayMap: Record<string, string> = {
       morning: 'MORNING',
       afternoon: 'AFTERNOON',
@@ -31,7 +39,7 @@ export class BookingTools {
     const response = await firstValueFrom(
       this.courseClient
         .send('games.search', {
-          clubId: Number(clubId),
+          clubId: id,
           date,
           timeOfDay: timePreference ? timeOfDayMap[timePreference] : undefined,
           limit: 50,

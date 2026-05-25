@@ -161,8 +161,16 @@ export class SearchTools {
   async getClubInfo(args: Record<string, unknown>): Promise<unknown> {
     const { clubId } = args as { clubId: string };
 
+    const id = Number(clubId);
+    if (!Number.isInteger(id) || id <= 0) {
+      return {
+        error: 'INVALID_CLUB_ID',
+        message: `clubId "${clubId}"는 유효한 골프장 ID가 아닙니다. 임의로 ID를 만들지 말고 search_clubs로 골프장 이름을 검색해 실제 숫자 ID를 먼저 확보하세요.`,
+      };
+    }
+
     const response = await firstValueFrom(
-      this.courseClient.send('club.findOne', { id: Number(clubId) }).pipe(
+      this.courseClient.send('club.findOne', { id }).pipe(
         timeout(REQUEST_TIMEOUT),
         catchError((err) => {
           throw new Error(`Failed to get club info: ${err.message}`);

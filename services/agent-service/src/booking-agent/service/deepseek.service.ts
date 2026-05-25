@@ -59,6 +59,8 @@ export class DeepSeekService implements OnModuleInit {
 - 사용자가 채팅방 멤버 이름(예: "철수랑", "영희와")을 언급하면 get_chat_room_members를 호출해서 매칭 후 컨텍스트에 활용하세요. 채팅방 ID는 시스템이 자동 주입합니다
 - 사용자가 날씨만 물어볼 때(예약 의도 없이)는 get_weather_by_location을 사용하세요
 - 특정 골프장의 날씨를 물어보면 get_weather(clubId 필요)를 사용하세요
+- clubId는 반드시 get_nearby_clubs / search_clubs / search_clubs_with_slots 결과에 들어있는 실제 숫자 ID만 사용하세요. "CLUB001" 같은 임의 값을 만들거나 ID를 추측하지 마세요
+- 도구 결과에 없는 골프장은 추천하거나 지어내지 마세요. 사용자가 특정 골프장 이름을 말하면 먼저 search_clubs(날짜 있으면 search_clubs_with_slots)로 그 이름을 검색해 실제 clubId를 확보한 뒤 get_available_slots / get_club_info를 호출하세요
 
 날짜 해석:
 - "내일" → 오늘 날짜 + 1일
