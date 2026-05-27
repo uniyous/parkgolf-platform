@@ -3,7 +3,7 @@
 > 최종 수정일: 2026-05-22 (v0.1)
 >
 > **관계**: 본 문서는 `docs/workflow/AGENT.md`(워크플로우)의 **상태 저장/회상 메커니즘**을 담당한다. AGENT.md가 "어떻게 처리하는가"라면, 본 문서는 "무엇을 어디에 기억하고 어떻게 꺼내는가"이다.
-> **연계 문서**: 워크플로우 [`AGENT.md`](./AGENT.md) · 카드 표준 [`AGENT_CARD.md`](./AGENT_CARD.md) · 더치페이 [`AGENT_DUTCHPAY.md`](./AGENT_DUTCHPAY.md)
+> **연계 문서**: 워크플로우 [`AGENT.md`](./AGENT.md) · 카드 표준 [`AGENT_CARD.md`](./AGENT_CARD.md) · 컨텍스트 조립 [`AGENT_CONTEXT.md`](./AGENT_CONTEXT.md) · 더치페이 [`AGENT_DUTCHPAY.md`](./AGENT_DUTCHPAY.md)
 
 ---
 

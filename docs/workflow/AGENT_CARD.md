@@ -1,7 +1,7 @@
 # AI 응답 카드 표준 (UI 카드)
 
 > 최종 수정: 2026-05-24
-> **연계 문서**: 에이전트 전체 플로우는 [`AGENT.md`](./AGENT.md), 부킹 상태/멱등성은 [`BOOKING.md`](./BOOKING.md) 참조.
+> **연계 문서**: 에이전트 전체 플로우 [`AGENT.md`](./AGENT.md) · 컨텍스트 조립 [`AGENT_CONTEXT.md`](./AGENT_CONTEXT.md) · 부킹 상태/멱등성 [`BOOKING.md`](./BOOKING.md)
 
 AI 응답 UI 카드의 단일 출처(SSOT) — 원칙·흐름·분류·데이터 형태·인터랙션·구현 위치.
 

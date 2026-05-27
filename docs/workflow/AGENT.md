@@ -1,7 +1,7 @@
 # AI 예약 에이전트 워크플로우
 
 > 최종 수정: 2026-05-24
-> **연계 문서**: 카드 표준 [`AGENT_CARD.md`](./AGENT_CARD.md) · 더치페이 cross-service [`AGENT_DUTCHPAY.md`](./AGENT_DUTCHPAY.md) · 메모리/multi-pod [`AGENT_MEMORY.md`](./AGENT_MEMORY.md) · 예약 트랜잭션 [`SAGA.md`](./SAGA.md) · 예약/정산 상태 [`BOOKING.md`](./BOOKING.md)
+> **연계 문서**: 카드 표준 [`AGENT_CARD.md`](./AGENT_CARD.md) · 컨텍스트 조립 [`AGENT_CONTEXT.md`](./AGENT_CONTEXT.md) · 더치페이 cross-service [`AGENT_DUTCHPAY.md`](./AGENT_DUTCHPAY.md) · 메모리/multi-pod [`AGENT_MEMORY.md`](./AGENT_MEMORY.md) · 예약 트랜잭션 [`SAGA.md`](./SAGA.md) · 예약/정산 상태 [`BOOKING.md`](./BOOKING.md)
 >
 > 본 문서는 AI 에이전트의 **전체 워크플로우(핵심)** 만 담는다. 카드/더치페이/메모리 상세는 위 분리 문서가 단일 출처(SSOT)다.
 

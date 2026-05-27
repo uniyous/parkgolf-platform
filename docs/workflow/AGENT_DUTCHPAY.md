@@ -1,7 +1,7 @@
 # 더치페이(분할결제) — AGENT × SAGA × BOOKING 통합 워크플로우
 
 > 최종 수정: 2026-05-24
-> **연계 문서**: 에이전트 전체 플로우 [`AGENT.md`](./AGENT.md) · 카드 표준 [`AGENT_CARD.md`](./AGENT_CARD.md) · saga 보상/결제실패 [`SAGA.md`](./SAGA.md) · 예약/정산 상태 [`BOOKING.md`](./BOOKING.md)
+> **연계 문서**: 에이전트 전체 플로우 [`AGENT.md`](./AGENT.md) · 카드 표준 [`AGENT_CARD.md`](./AGENT_CARD.md) · 컨텍스트 조립 [`AGENT_CONTEXT.md`](./AGENT_CONTEXT.md) · saga 보상/결제실패 [`SAGA.md`](./SAGA.md) · 예약/정산 상태 [`BOOKING.md`](./BOOKING.md)
 
 더치페이는 **팀 부킹 위에 얹힌 가장 복잡한 cross-service 플로우**다. 책임이 agent / saga / booking / payment 네 서비스에 걸쳐 있어, 본 문서가 **end-to-end 단일 진입점(navigator)** 역할을 한다. 각 부분의 상세는 해당 문서로 링크한다.
 
