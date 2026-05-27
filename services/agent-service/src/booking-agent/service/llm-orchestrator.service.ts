@@ -157,7 +157,7 @@ export class LlmOrchestratorService {
         toolNameCounts.set(tc.name, (toolNameCounts.get(tc.name) ?? 0) + 1);
       }
 
-      const toolResults = await this.executeTools(llmResponse.toolCalls, request);
+      const toolResults = await this.executeTools(llmResponse.toolCalls, request, context);
       const actions = this.createActionsFromToolResults(llmResponse.toolCalls, toolResults);
       allActions = [...allActions, ...actions];
 
@@ -212,7 +212,11 @@ export class LlmOrchestratorService {
   /**
    * 도구 실행 (create_booking에 사용자 정보 서버사이드 주입)
    */
-  private async executeTools(toolCalls: ToolCall[], request?: ChatRequestDto): Promise<ToolResult[]> {
+  private async executeTools(
+    toolCalls: ToolCall[],
+    request?: ChatRequestDto,
+    context?: ConversationContext,
+  ): Promise<ToolResult[]> {
     this.logger.debug(`Executing ${toolCalls.length} tools`);
 
     if (request?.userId) {
@@ -246,7 +250,35 @@ export class LlmOrchestratorService {
       });
     }
 
-    return this.toolExecutor.executeAll(toolCalls);
+    // create_booking 가드 — 채팅방 그룹 컨텍스트에서 멤버 미선택 상태 호출 차단.
+    // (LLM이 자연어 동의("네 좋아요")로 부적절하게 호출하는 회귀 방지)
+    return Promise.all(
+      toolCalls.map(async (tc) => {
+        if (tc.name === 'create_booking') {
+          const inChatRoom = !!(request?.chatRoomId || context?.slots.chatRoomId);
+          const argsMembers = Array.isArray(tc.args.teamMembers)
+            ? (tc.args.teamMembers as unknown[]).length
+            : 0;
+          const ctxMembers = (context?.slots.currentTeamMembers ?? []).length;
+          if (inChatRoom && argsMembers === 0 && ctxMembers === 0) {
+            this.logger.warn(
+              `[create_booking] 차단: 채팅방 그룹 컨텍스트인데 멤버 미선택 (args.teamMembers/ctx 모두 비어있음)`,
+            );
+            return {
+              name: 'create_booking',
+              success: true,
+              result: {
+                success: false,
+                error: 'INVALID_GROUP_BOOKING',
+                message:
+                  '채팅방 그룹 예약은 멤버 선택 카드(SELECT_MEMBERS)에서 멤버를 확정한 뒤에만 진행됩니다. 직접 create_booking을 호출하지 말고 멤버 선택을 안내하세요.',
+              },
+            } as ToolResult;
+          }
+        }
+        return this.toolExecutor.execute(tc);
+      }),
+    );
   }
 
   /**
@@ -270,6 +302,23 @@ export class LlmOrchestratorService {
             actions.push({ type: 'SHOW_CLUBS', data: result.result });
           }
           break;
+
+        case 'get_nearby_clubs': {
+          // UNI-26: LLM이 텍스트로 클럽 정보를 나열하지 못하도록 카드를 강제 발행
+          const data = result.result as any;
+          if (Array.isArray(data?.nearbyClubs) && data.nearbyClubs.length > 0) {
+            actions.push({
+              type: 'SHOW_CLUBS',
+              data: {
+                found: data.found ?? data.nearbyClubs.length,
+                date: data.date,
+                availableCount: data.availableCount,
+                clubs: data.nearbyClubs,
+              },
+            });
+          }
+          break;
+        }
 
         case 'search_clubs_with_slots': {
           const searchData = result.result as any;

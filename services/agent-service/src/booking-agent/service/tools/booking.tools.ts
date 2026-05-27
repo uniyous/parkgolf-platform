@@ -120,6 +120,16 @@ export class BookingTools {
       chatRoomId?: string;
     };
 
+    // gameTimeSlotId 검증 — LLM 환각으로 존재하지 않는 id가 들어와 saga 무의미하게 시작되는 것 방지
+    const slotIdNum = Number(gameTimeSlotId);
+    if (!Number.isInteger(slotIdNum) || slotIdNum <= 0) {
+      return {
+        success: false,
+        error: 'INVALID_SLOT_ID',
+        message: `gameTimeSlotId "${gameTimeSlotId}"는 유효한 타임슬롯 ID가 아닙니다. 임의로 ID를 만들지 말고 get_available_slots / search_clubs_with_slots / get_nearby_clubs 결과의 실제 숫자 ID만 사용하세요.`,
+      };
+    }
+
     const response = await firstValueFrom(
       this.bookingClient
         .send('saga.booking.create', {
@@ -127,7 +137,7 @@ export class BookingTools {
           userId,
           userName: userName || '',
           userEmail: userEmail || '',
-          gameTimeSlotId,
+          gameTimeSlotId: slotIdNum,
           playerCount,
           paymentMethod: paymentMethod || 'onsite',
           teamMembers,
