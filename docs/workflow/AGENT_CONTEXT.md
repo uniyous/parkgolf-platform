@@ -166,12 +166,89 @@ flowchart LR
 
 ---
 
-## 8. 향후 다듬을 여지
+## 8. 효율 개선 제안 — 병렬 prefetch + 책임 분리
 
-1. **단일 CONTEXT 시스템 블록 통합** — 의사-system 3건을 `role: 'system'` 1개 블록으로 합쳐 단편화 해소 + `"직접 응답하지 마세요"` 꼬리표 제거.
-2. **`timePreference` 보존** — "오후 3시" 같은 시간 의도를 `slots`에 캐리해 멤버 선택 후 슬롯 조회(`handleSelectTeamMembers`)가 자동으로 해당 시간대를 적용. (현재 morning 슬롯만 표시되는 케이스 해소)
-3. **`getRecentMessages` 확장** — 직전 턴의 구조화된 도구 결과(예: 마지막으로 본 슬롯 목록 id)가 필요해지면 `recentClubs` 캐리 패턴을 그대로 확장.
-4. **응답 가드 텍스트 정합성** — LLM 텍스트가 "아래 슬롯에서 선택하세요"인데 실제 액션이 `SELECT_MEMBERS`로 대체되는 경우 메시지-카드 정합성 점검.
+현재 phase 2(조건부 주입)는 **직렬 IO 2건**(`coord2region`, `userMemory.get`)을 차례로 await + 분류·페치·조립이 한 덩어리. 확장 시 직렬 길이가 누적된다. 분류 → 병렬 prefetch → 순수 조립의 3단계로 분리하면 응답 latency를 줄이고 확장도 쉬워진다.
+
+### 8.1 현재 직렬 지점
+
+| 단계 | IO | 대기 형태 |
+|---|---|---|
+| (b) location · `regionName` 미설정 | `await coord2region` (NATS, 수십~수백 ms) | 단독 await |
+| (c) semantic prefill | `await userMemory.get(userId)` (Redis, 수십 ms) | (b) 끝나야 시작 |
+| (a) recentClubs | IO 없음 (`slots` 읽기만) | — |
+
+→ 합산 latency. 미래 prefetch 추가(채팅방 멤버 / episodic 부킹 …)도 그대로 직렬화된다.
+
+### 8.2 제안 — 3단계 분리 (classify → parallel prefetch → pure assembly)
+
+```ts
+// (1) 분류 — 어떤 prefetch가 필요한지 결정 (IO 없음)
+const need = {
+  region:   !!(s.latitude && s.longitude && !s.regionName),
+  semantic: !!(request.userId && !s.semanticPrefilled),
+  // 확장: chatMembers, episodic, ...
+};
+
+// (2) 병렬 prefetch — 필요한 것만 한 묶음, 각각 best-effort 격리
+const [regionName, semanticSnap] = await Promise.all([
+  need.region   ? this.toolExecutor.resolveRegionName(s.latitude, s.longitude).catch(() => null) : null,
+  need.semantic ? this.userMemory.get(request.userId).catch(() => null) : null,
+]);
+
+// (3) 결과 반영 + 순수 조립 (await 없음)
+if (regionName)   this.conversationService.updateSlots(ctx, { regionName });
+if (semanticSnap) this.conversationService.updateSlots(ctx, { semanticPrefilled: true });
+
+const messages = this.conversationService.getRecentMessages(ctx);
+if (s.recentClubs?.length)     messages.unshift(buildRecentClubsMsg(s.recentClubs));
+if (s.latitude && s.longitude) messages.unshift(buildLocationMsg(s, regionName ?? s.regionName));
+const profile = semanticSnap && this.userMemory.formatProfile(semanticSnap);
+if (profile)                   messages.unshift(buildProfileMsg(profile));
+
+// (4) 도구 루프 + 응답 가드 — 기존 동일
+```
+
+`prepareContext(ctx, request): Promise<{ regionName?, semanticSnap?, ... }>`로 추출하면 단위 테스트도 쉬워진다.
+
+### 8.3 기대 효과
+
+| 항목 | Before | After |
+|---|---|---|
+| location + semantic 둘 다 필요 | 직렬 (T1 + T2) | 병렬 (max(T1, T2)) |
+| 확장(멤버/에피소딕 prefetch 추가) | 직렬이 더 길어짐 | `Promise.all`에 한 줄 추가 |
+| 함수 책임 | 분류·페치·조립이 한 덩어리 | 명확 분리 → 테스트/리팩터 쉬움 |
+| 실패 격리 | await 한 곳 실패 시 전체 영향 가능 | `.catch(() => null)` 개별 격리 |
+
+### 8.4 갱신안 워크플로우 (to-be)
+
+```mermaid
+flowchart TD
+  REQ["ChatRequest"] --> CLS["① 분류<br/>need = {region?, semantic?, ...}<br/>(IO 없음)"]
+  CLS --> PAR["② 병렬 prefetch<br/>Promise.all([coord2region?, userMemory.get?, ...])<br/>각각 .catch(()=>null)로 격리"]
+  PAR --> APPLY["③ 결과 반영<br/>updateSlots(regionName / semanticPrefilled / ...)"]
+  APPLY --> COMP["④ 메시지 조립 (순수, await 無)<br/>history + (a)recentClubs + (b)location + (c)profile"]
+  COMP --> CALL["⑤ deepseek.chat<br/>(systemPromptTemplate 자동 prepend)"]
+  CALL --> TOOL{"toolCalls 있는가?"}
+  TOOL -- "예" --> LOOP["⑥ 도구 루프<br/>(executeTools는 이미 Promise.all)"]
+  LOOP --> CALL
+  TOOL -- "아니오" --> GUARD["⑦ 응답 가드<br/>(그룹 예약 멤버 미선택 시 슬롯 차단)"]
+  GUARD --> RET[/"return { text, actions }"/]
+```
+
+### 8.5 함께 정리하면 좋은 항목
+
+- **`prepareContext()`로 추출** — 분류 · prefetch · 반영을 한 함수로. 단위 테스트 용이.
+- **단일 CONTEXT system 블록 통합** — (a)(b)(c) 3건의 의사-system을 `role: 'system'` **1개 메시지**로 합치면 단편화 해소 + `"이 메시지에 대해 직접 응답하지 마세요."` 꼬리표 제거. prefetch 결과를 한 곳에서 조립하므로 자연스러움.
+- **`timePreference` 보존** — `updateSlotsFromToolResults`에서 `get_available_slots` / `search_clubs_with_slots`의 `timePreference`도 `slots`에 캐리 → 멤버 선택 후 `handleSelectTeamMembers`가 자동 적용 (현재 morning 슬롯만 표시되는 케이스 해소).
+- **(옵션) `chatRoomId`면 멤버 prefetch** — LLM이 `get_chat_room_members`를 자주 호출하는 패턴이면 이 단계에서 prefetch + `slots` 캐시 → 도구 1라운드 절감.
+- **`getRecentMessages` 확장** — 직전 턴의 구조화된 도구 결과(예: 마지막으로 본 슬롯 id) 캐리가 필요해지면 `recentClubs` 패턴 그대로 확장.
+- **응답 가드 텍스트 정합성** — LLM 텍스트가 "아래 슬롯에서 선택하세요"인데 실제 액션이 `SELECT_MEMBERS`로 대체되는 경우 메시지-카드 정합성 점검.
+
+### 8.6 적용 범위 옵션
+
+- **A. 최소 (병렬 prefetch만)** — 현재 2개 IO를 `Promise.all`로 묶고 함수 3단 분리. 본 문서의 §1 워크플로우도 §8.4로 갱신.
+- **B. A + 단일 system 블록 통합 + `timePreference` 보존** — 컨텍스트 구조까지 한 번에 깔끔하게 정리.
 
 ---
 
