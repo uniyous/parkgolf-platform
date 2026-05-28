@@ -101,4 +101,77 @@ test.describe('Dutch Payment — Timeout 잠수 자동 정리 @write @slow @long
 
     console.log(`[final] booking ${bookingId} status=${finalStatus}`);
   });
+
+  test('3명 booking — 전원 잠수 → 3분 후 PAYMENT_TIMEOUT → booking FAILED + splits 전체 EXPIRED', async ({
+    request,
+    adminToken,
+  }) => {
+    test.setTimeout(6 * 60_000); // 6분
+
+    // 1) 3명 셋업 (booker + 멤버 2명)
+    const { booker, members, roomId } = await seedDutchTeam(request, 3);
+    const setup = await seedAvailableSlot(request, adminToken);
+    await triggerDutchBookingViaAgent(request, booker, members, roomId, setup);
+
+    // splits 추출 (3건 발급 대기)
+    let splits = await extractDutchSplits(request, booker, roomId);
+    await expect
+      .poll(
+        async () => {
+          if (splits.length > 0) return splits.length;
+          splits = await extractDutchSplits(request, booker, roomId);
+          return splits.length;
+        },
+        { timeout: 20_000, intervals: [500, 1000, 2000] },
+      )
+      .toBeGreaterThanOrEqual(3);
+    console.log(`[splits] ${splits.length} orders prepared (전원 잠수 — confirm 호출 없음)`);
+
+    // 2) booking 찾기
+    const myRes = await request.get('/api/user/bookings', {
+      headers: authHeaders(booker.accessToken),
+    });
+    expect(myRes.ok()).toBeTruthy();
+    const items: any[] = ((await myRes.json())?.data ?? []) as any[];
+    const dutch = items
+      .filter((b) => b.paymentMethod === 'dutchpay')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    const bookingId: number = dutch.id;
+    console.log(`[booking] id=${bookingId} status=${dutch.status} playerCount=${dutch.playerCount} (paid=0)`);
+    expect(dutch.playerCount, 'playerCount=3 확인').toBe(3);
+
+    // 3) 3분 + 버퍼 대기 — 전원 미결제 상태에서 PAYMENT_TIMEOUT 자동 발화
+    console.log(`[wait] 전원 잠수 → PAYMENT_TIMEOUT 발화 대기 (~3.5분)`);
+    let finalStatus: string | null = null;
+    await expect
+      .poll(
+        async () => {
+          const r = await request.get(`/api/user/bookings/${bookingId}`, {
+            headers: authHeaders(booker.accessToken),
+          });
+          if (!r.ok()) return r.status();
+          const b = (await r.json())?.data ?? (await r.json());
+          finalStatus = b?.status ?? null;
+          console.log(`[poll] booking=${bookingId} status=${finalStatus}`);
+          return finalStatus;
+        },
+        {
+          timeout: 5 * 60_000,
+          intervals: [30_000, 30_000, 30_000],
+          message: 'expected PAYMENT_TIMEOUT(전원 잠수) → booking FAILED',
+        },
+      )
+      .toBe('FAILED');
+
+    // 4) splits 최종 상태 검증 — 모두 EXPIRED여야 함
+    const finalSplits = await extractDutchSplits(request, booker, roomId);
+    const expired = finalSplits.filter((s: any) => s.status === 'EXPIRED').length;
+    const paid = finalSplits.filter((s: any) => s.status === 'PAID').length;
+    console.log(
+      `[final] booking ${bookingId} status=${finalStatus}, splits total=${finalSplits.length} EXPIRED=${expired} PAID=${paid}`,
+    );
+    expect(paid, '결제자 없어야 함').toBe(0);
+    expect(expired, '모든 split이 EXPIRED여야 함').toBe(finalSplits.length);
+    expect(finalSplits.length, '3명 split').toBe(3);
+  });
 });

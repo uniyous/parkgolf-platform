@@ -186,7 +186,7 @@ export async function triggerDutchBookingViaAgent(
     return respBody?.data ?? respBody;
   };
 
-  // step 1: 골프장 선택
+  // step 1: 골프장 선택 → 채팅방 그룹 게이트로 SELECT_MEMBERS 카드 우선
   const r1 = await callAgent('step1.selectedClubId', {
     message: '이 골프장으로 진행할게요',
     selectedClubId: String(setup.clubId),
@@ -195,24 +195,24 @@ export async function triggerDutchBookingViaAgent(
   const conversationId: string = r1?.conversationId;
   expect(conversationId, 'conversationId missing').toBeTruthy();
 
-  // step 2: 슬롯 선택 (단독)
-  await callAgent('step2.selectedSlotId', {
-    message: '이 시간으로 할게요',
-    selectedSlotId: String(setup.slotId),
-    selectedSlotTime: setup.startTime,
-    selectedSlotPrice: setup.price,
-    selectedGameName: setup.gameName,
-  }, conversationId);
-
-  // step 3: 팀멤버 선택 (slotId 이미 저장됨)
+  // step 2: 팀멤버 선택 — 인원 확정 (가드 규칙: 멤버 확정 전엔 슬롯 선택 차단)
   const teamMembers = members.map((m) => ({
     userId: m.userId,
     userName: m.name,
     userEmail: m.email,
   }));
-  await callAgent('step3.teamMembers', {
+  await callAgent('step2.teamMembers', {
     message: '멤버 선택했어요',
     teamMembers,
+  }, conversationId);
+
+  // step 3: 슬롯 선택 (멤버 확정 후이므로 가드 통과)
+  await callAgent('step3.selectedSlotId', {
+    message: '이 시간으로 할게요',
+    selectedSlotId: String(setup.slotId),
+    selectedSlotTime: setup.startTime,
+    selectedSlotPrice: setup.price,
+    selectedGameName: setup.gameName,
   }, conversationId);
 
   // step 4: 예약 확정 + dutchpay
