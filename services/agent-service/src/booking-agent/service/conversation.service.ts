@@ -44,6 +44,16 @@ export class ConversationService {
     end
   `.trim();
 
+  // Lua: token 일치할 때만 PEXPIRE — 작업 진행 중 락 TTL 연장(하트비트)
+  // (다른 pod의 락은 건드리지 않음, 만료된 락은 연장 실패)
+  private static readonly EXTEND_LUA = `
+    if redis.call("GET", KEYS[1]) == ARGV[1] then
+      return redis.call("PEXPIRE", KEYS[1], ARGV[2])
+    else
+      return 0
+    end
+  `.trim();
+
   constructor(
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     private readonly configService: ConfigService,
@@ -146,9 +156,27 @@ export class ConversationService {
     if (acquired !== 'OK') {
       throw new ConversationBusyError(userId, conversationId);
     }
+
+    // 하트비트: 작업 진행 중 락 TTL을 주기적으로 연장.
+    // 고정 TTL이 만료되면 동시 실행 위험 → 작업이 살아있는 한 락도 살아있도록.
+    // 파드가 죽거나 이벤트 루프가 멈추면 하트비트도 멈춰 TTL 자연 만료(안전망).
+    const heartbeatMs = Math.max(500, Math.floor(this.lockTtlMs / 2));
+    const heartbeat = setInterval(() => {
+      this.redis
+        .eval(ConversationService.EXTEND_LUA, 1, lockKey, token, String(this.lockTtlMs))
+        .catch((err: unknown) => {
+          this.logger.warn(
+            `Lock heartbeat failed for ${lockKey}: ${err instanceof Error ? err.message : 'unknown'}`,
+          );
+        });
+    }, heartbeatMs);
+    // unref() — 하트비트 타이머가 프로세스 종료를 막지 않도록 (graceful shutdown 호환)
+    heartbeat.unref?.();
+
     try {
       return await fn();
     } finally {
+      clearInterval(heartbeat);
       try {
         await this.redis.eval(ConversationService.UNLOCK_LUA, 1, lockKey, token);
       } catch (err: unknown) {
