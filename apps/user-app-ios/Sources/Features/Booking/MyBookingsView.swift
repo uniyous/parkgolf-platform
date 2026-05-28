@@ -165,8 +165,36 @@ struct BookingListCard: View {
             GlassCard(padding: 0) {
                 VStack(alignment: .leading, spacing: 0) {
                     // Header
-                    HStack {
+                    HStack(spacing: ParkSpacing.xs) {
                         StatusBadge(status: .init(from: booking.status ?? "PENDING"), size: .small)
+
+                        // AGENT_PAY.md §11.7 — 더치페이 참여자/취소 상태 배지
+                        if booking.isMemberRole {
+                            Text("참여")
+                                .font(.parkCaption)
+                                .foregroundStyle(Color.purple)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(Color.purple.opacity(0.15))
+                                .clipShape(Capsule())
+                        }
+                        if booking.myParticipantStatus == "CANCELLED" {
+                            Text("내 자리 취소")
+                                .font(.parkCaption)
+                                .foregroundStyle(Color.gray)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(Color.gray.opacity(0.15))
+                                .clipShape(Capsule())
+                        } else if booking.myParticipantStatus == "REFUNDED" {
+                            Text("환불 완료")
+                                .font(.parkCaption)
+                                .foregroundStyle(Color.gray)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(Color.gray.opacity(0.15))
+                                .clipShape(Capsule())
+                        }
 
                         Spacer()
 
@@ -218,9 +246,10 @@ struct BookingListCard: View {
 
                         Spacer()
 
-                        if let onCancel = onCancel {
+                        // AGENT_PAY.md §11.7 — 본인이 이미 취소/환불됐으면 버튼 숨김
+                        if let onCancel = onCancel, !booking.isMyParticipantCancelled {
                             SmallButton(
-                                title: "취소",
+                                title: booking.isDutchpay ? "내 자리 취소" : "취소",
                                 icon: "xmark",
                                 color: .parkError.opacity(0.8)
                             ) {
@@ -317,9 +346,20 @@ class MyBookingsViewModel: ObservableObject {
     func cancelBooking(_ booking: BookingResponse, reason: String?) {
         Task {
             do {
-                try await bookingService.cancelBooking(id: booking.id, reason: reason)
-                // Remove from list or reload
-                bookings.removeAll { $0.id == booking.id }
+                // AGENT_PAY.md §11.4 — 더치페이는 본인 자리만 취소 (BFF가 JWT userId로 participant 매칭)
+                if booking.isDutchpay {
+                    let result = try await bookingService.cancelParticipant(id: booking.id, reason: reason)
+                    if result.bookingCancelled {
+                        // 마지막 참여자 → booking 전체 CANCELLED
+                        bookings.removeAll { $0.id == booking.id }
+                    } else {
+                        // 본인만 빠짐 → 목록 새로고침 (참여자 상태 갱신 위해)
+                        await loadBookingsAsync()
+                    }
+                } else {
+                    try await bookingService.cancelBooking(id: booking.id, reason: reason)
+                    bookings.removeAll { $0.id == booking.id }
+                }
                 bookingToCancel = nil
             } catch {
                 errorMessage = error.localizedDescription
@@ -350,7 +390,8 @@ struct CancelBookingSheet: View {
                         HStack(spacing: ParkSpacing.sm) {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .foregroundStyle(Color.parkWarning)
-                            Text("다음 예약을 취소하시겠습니까?")
+                            // AGENT_PAY.md §11.4 — 더치페이는 본인 자리만 취소
+                            Text(booking.isDutchpay ? "내 자리만 취소하시겠습니까?" : "다음 예약을 취소하시겠습니까?")
                                 .font(.parkHeadlineSmall)
                                 .foregroundStyle(.white)
                         }
@@ -420,7 +461,9 @@ struct CancelBookingSheet: View {
                             Image(systemName: "info.circle")
                                 .foregroundStyle(Color.parkInfo)
 
-                            Text("3일 전까지 무료 취소 가능합니다")
+                            Text(booking.isDutchpay
+                                ? "본인 결제 금액에 한해 환불 정책에 따라 처리되며, 다른 참여자의 예약은 그대로 유지됩니다."
+                                : "3일 전까지 무료 취소 가능합니다")
                                 .font(.parkBodySmall)
                                 .foregroundStyle(.white.opacity(0.7))
                         }
@@ -440,7 +483,7 @@ struct CancelBookingSheet: View {
                     Spacer()
 
                     GradientButton(
-                        title: "예약 취소하기",
+                        title: booking.isDutchpay ? "내 자리 취소하기" : "예약 취소하기",
                         icon: "xmark.circle",
                         style: .destructive,
                         isDisabled: selectedReason == nil
@@ -460,7 +503,7 @@ struct CancelBookingSheet: View {
                     )
                 }
             }
-            .navigationTitle("예약 취소")
+            .navigationTitle(booking.isDutchpay ? "내 자리 취소" : "예약 취소")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

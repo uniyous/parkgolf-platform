@@ -101,3 +101,17 @@ export const useCancelBookingMutation = () => {
     },
   });
 };
+
+// Cancel Participant Mutation — AGENT_PAY.md §11.4 (더치페이 본인 자리 취소)
+export const useCancelParticipantMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason?: string }) =>
+      bookingApi.cancelParticipant(id, reason),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: bookingKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: bookingKeys.lists() });
+    },
+  });
+};

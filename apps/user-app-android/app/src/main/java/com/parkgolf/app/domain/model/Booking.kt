@@ -22,7 +22,10 @@ data class Booking(
     val specialRequests: String? = null,
     val userEmail: String? = null,
     val userName: String? = null,
-    val userPhone: String? = null
+    val userPhone: String? = null,
+    // AGENT_PAY.md §11.3 — 마이페이지 노출용 파생 필드
+    val myRole: String? = null,                  // "BOOKER" | "MEMBER"
+    val myParticipantStatus: String? = null      // "PENDING" | "PAID" | "CANCELLED" | "REFUNDED"
 ) {
     val priceText: String
         get() = "${String.format("%,d", totalPrice)}원"
@@ -41,6 +44,16 @@ data class Booking(
 
     val canCancel: Boolean
         get() = status.canCancel
+
+    // AGENT_PAY.md §11.4 — 더치페이 본인 자리 취소 분기
+    val isDutchpay: Boolean
+        get() = paymentMethod == "dutchpay"
+
+    val isMemberRole: Boolean
+        get() = myRole == "MEMBER"
+
+    val isMyParticipantCancelled: Boolean
+        get() = myParticipantStatus == "CANCELLED" || myParticipantStatus == "REFUNDED"
 }
 
 enum class BookingStatus(

@@ -162,6 +162,14 @@ export class SearchBookingDto {
   @IsString()
   @IsOptional()
   timeFilter?: 'upcoming' | 'past' | 'all';
+
+  @ApiProperty({
+    description: '참여자(BookingParticipant)로 포함된 예약도 함께 조회 — userId 필터와 함께 사용. 마이페이지 예약 내역(더치페이 참여자 노출)에 사용. AGENT_PAY.md §11.3',
+    required: false,
+    default: false,
+  })
+  @IsOptional()
+  includeAsParticipant?: boolean;
 }
 
 export class GameTimeSlotAvailabilityDto {
@@ -378,6 +386,13 @@ export class BookingResponseDto {
   @ApiProperty({ description: '예약 취소 가능 여부' })
   canCancel?: boolean;
 
+  // currentUserId 기준 파생 필드 — AGENT_PAY.md §11.3
+  @ApiProperty({ description: '현재 사용자의 역할 (BOOKER=예약자, MEMBER=더치페이 참여자)', required: false })
+  myRole?: 'BOOKER' | 'MEMBER';
+
+  @ApiProperty({ description: '현재 사용자의 BookingParticipant.status (더치페이만)', required: false })
+  myParticipantStatus?: 'PENDING' | 'PAID' | 'CANCELLED' | 'REFUNDED';
+
   @ApiProperty({ description: '생성일시' })
   createdAt: string;
 
@@ -387,7 +402,11 @@ export class BookingResponseDto {
   /**
    * 엔티티를 DTO로 변환
    */
-  static fromEntity(entity: BookingWithRelations, includeCanCancel: boolean = false): BookingResponseDto {
+  static fromEntity(
+    entity: BookingWithRelations,
+    includeCanCancel: boolean = false,
+    currentUserId?: number,
+  ): BookingResponseDto {
     const dto = new BookingResponseDto();
     dto.id = entity.id;
     dto.bookingNumber = entity.bookingNumber;
@@ -449,14 +468,30 @@ export class BookingResponseDto {
       dto.canCancel = BookingResponseDto.calculateCanCancel(entity.bookingDate, entity.status);
     }
 
+    // 현재 사용자 기준 파생 필드 — AGENT_PAY.md §11.3
+    if (currentUserId !== undefined) {
+      if (entity.userId === currentUserId) {
+        dto.myRole = 'BOOKER';
+      }
+      const myParticipant = (entity.participants || []).find((p) => p.userId === currentUserId);
+      if (myParticipant) {
+        dto.myRole ??= 'MEMBER';
+        dto.myParticipantStatus = myParticipant.status as BookingResponseDto['myParticipantStatus'];
+      }
+    }
+
     return dto;
   }
 
   /**
    * 엔티티 배열을 DTO 배열로 변환
    */
-  static fromEntities(entities: BookingWithRelations[], includeCanCancel: boolean = false): BookingResponseDto[] {
-    return entities.map(entity => BookingResponseDto.fromEntity(entity, includeCanCancel));
+  static fromEntities(
+    entities: BookingWithRelations[],
+    includeCanCancel: boolean = false,
+    currentUserId?: number,
+  ): BookingResponseDto[] {
+    return entities.map(entity => BookingResponseDto.fromEntity(entity, includeCanCancel, currentUserId));
   }
 
   /**

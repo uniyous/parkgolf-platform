@@ -47,6 +47,22 @@ export const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancelClick
             )}>
               {status.label}
             </span>
+            {/* AGENT_PAY.md §11.7 — 더치페이 참여자 배지 */}
+            {booking.myRole === 'MEMBER' && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full border bg-purple-500/20 text-purple-300 border-purple-500/30">
+                참여
+              </span>
+            )}
+            {booking.myParticipantStatus === 'CANCELLED' && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full border bg-gray-500/20 text-gray-300 border-gray-500/30">
+                내 자리 취소
+              </span>
+            )}
+            {booking.myParticipantStatus === 'REFUNDED' && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full border bg-gray-500/20 text-gray-300 border-gray-500/30">
+                환불 완료
+              </span>
+            )}
             <span className="text-xs text-white/50">
               {booking.bookingNumber}
             </span>
@@ -89,18 +105,23 @@ export const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancelClick
             {formatPrice(booking.totalPrice)}원
           </p>
         </div>
-        {booking.canCancel && booking.status === 'CONFIRMED' && (
-          <button
-            onClick={handleCancelClick}
-            className={cn(
-              'px-4 py-2 text-sm font-medium rounded-lg',
-              'bg-red-500/20 text-red-300 border border-red-500/30',
-              'hover:bg-red-500/30 transition-colors'
-            )}
-          >
-            예약 취소
-          </button>
-        )}
+        {/* AGENT_PAY.md §11.7 — 결제방식별 취소 분기 */}
+        {booking.canCancel
+          && booking.status === 'CONFIRMED'
+          && booking.myParticipantStatus !== 'CANCELLED'
+          && booking.myParticipantStatus !== 'REFUNDED'
+          && (
+            <button
+              onClick={handleCancelClick}
+              className={cn(
+                'px-4 py-2 text-sm font-medium rounded-lg',
+                'bg-red-500/20 text-red-300 border border-red-500/30',
+                'hover:bg-red-500/30 transition-colors'
+              )}
+            >
+              {booking.paymentMethod === 'dutchpay' ? '내 자리 취소' : '예약 취소'}
+            </button>
+          )}
         {!booking.canCancel && booking.status === 'CONFIRMED' && !isPast && (
           <span className="text-xs text-white/40">
             3일 전까지 취소 가능

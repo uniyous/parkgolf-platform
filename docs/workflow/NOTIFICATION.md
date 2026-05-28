@@ -2,7 +2,7 @@
 
 Park Golf Platform 알림 시스템 아키텍처 및 워크플로우 문서입니다.
 
-> **연계 문서**: 예약 알림 [`BOOKING.md`](./BOOKING.md) · 더치페이 결제요청 push [`AGENT_DUTCHPAY.md`](./AGENT_DUTCHPAY.md) · 채팅 메시지 [`CHAT.md`](./CHAT.md)
+> **연계 문서**: 예약 알림 [`BOOKING.md`](./BOOKING.md) · 결제(더치페이 결제요청 push 포함) [`AGENT_PAY.md`](./AGENT_PAY.md) · 채팅 메시지 [`CHAT.md`](./CHAT.md)
 
 ## 목차
 

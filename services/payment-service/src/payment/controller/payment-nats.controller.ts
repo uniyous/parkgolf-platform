@@ -194,6 +194,28 @@ export class PaymentNatsController {
   }
 
   /**
+   * 단일 분할결제 환불 — AGENT_PAY.md §11.4 (마이페이지 본인 자리 취소)
+   * booking-service `booking.cancelParticipant`가 PAID split에 대해 호출.
+   * policy.refund.resolve로 환불률 결정 후 Toss 부분 환불.
+   */
+  @MessagePattern('payment.refundSplit')
+  async refundSplit(@Payload() data: {
+    bookingId: number;
+    userId: number;
+    reason?: string;
+    clubId?: number | null;
+    companyId?: number | null;
+    bookingDate?: string | Date;
+    startTime?: string;
+  }) {
+    this.logger.log(
+      `refundSplit: booking=${data.bookingId} user=${data.userId}`,
+    );
+    const result = await this.splitService.refundSingleSplit(data);
+    return NatsResponse.success(result);
+  }
+
+  /**
    * 분할결제 상태 조회 (그룹 / 예약 / orderId)
    */
   @MessagePattern('payment.splitGet')

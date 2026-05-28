@@ -83,7 +83,10 @@ fun BookingDto.toDomain(): Booking {
         specialRequests = specialRequests,
         userEmail = userEmail,
         userName = userName,
-        userPhone = userPhone
+        userPhone = userPhone,
+        // AGENT_PAY.md §11.3
+        myRole = myRole,
+        myParticipantStatus = myParticipantStatus
     )
 }
 

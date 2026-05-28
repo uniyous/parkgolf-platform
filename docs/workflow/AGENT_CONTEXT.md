@@ -5,7 +5,7 @@ DeepSeek LLM에 전달되는 메시지 배열은 **턴마다 동적으로 조립
 
 본 문서는 `llm-orchestrator.processWithLLM` 흐름과 `context.slots` 캐리 매트릭스를 정리한다.
 
-> **연계 문서**: 에이전트 전체 워크플로우 [`AGENT.md`](./AGENT.md) · UI 카드 SSOT [`AGENT_CARD.md`](./AGENT_CARD.md) · 더치페이 cross-service [`AGENT_DUTCHPAY.md`](./AGENT_DUTCHPAY.md) · 장기 메모리/userMemory [`AGENT_MEMORY.md`](./AGENT_MEMORY.md)
+> **연계 문서**: 에이전트 전체 워크플로우 [`AGENT.md`](./AGENT.md) · UI SSOT [`AGENT_UI.md`](./AGENT_UI.md) · 결제(현장·카드·더치페이) [`AGENT_PAY.md`](./AGENT_PAY.md) · 장기 메모리/userMemory [`AGENT_MEMORY.md`](./AGENT_MEMORY.md)
 
 ---
 

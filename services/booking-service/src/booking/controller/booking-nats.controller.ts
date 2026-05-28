@@ -1,6 +1,7 @@
 import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { BookingService } from '../service/booking.service';
+import { ParticipantCancelService } from '../service/participant-cancel.service';
 import {
   UpdateBookingDto,
   SearchBookingDto,
@@ -13,7 +14,10 @@ import { Errors } from '../../common/exceptions/catalog/error-catalog';
 export class BookingNatsController {
   private readonly logger = new Logger(BookingNatsController.name);
 
-  constructor(private readonly bookingService: BookingService) {}
+  constructor(
+    private readonly bookingService: BookingService,
+    private readonly participantCancelService: ParticipantCancelService,
+  ) {}
 
   // ============================================
   // Health Check / Ping
@@ -285,6 +289,20 @@ export class BookingNatsController {
   async cancelGroupBookings(@Payload() data: { groupId: string }) {
     this.logger.log(`NATS: Cancelling group bookings: groupId=${data.groupId}`);
     const result = await this.bookingService.cancelGroupBookings(data.groupId);
+    return NatsResponse.success(result);
+  }
+
+  // AGENT_PAY.md §11.4 — 더치페이 본인 자리 취소 (마이페이지)
+  @MessagePattern('booking.cancelParticipant')
+  async cancelParticipant(@Payload() data: { bookingId: number; userId: number; reason?: string }) {
+    this.logger.log(
+      `NATS: cancelParticipant booking=${data.bookingId} user=${data.userId}`,
+    );
+    const result = await this.participantCancelService.cancelParticipant({
+      bookingId: data.bookingId,
+      userId: data.userId,
+      reason: data.reason,
+    });
     return NatsResponse.success(result);
   }
 }

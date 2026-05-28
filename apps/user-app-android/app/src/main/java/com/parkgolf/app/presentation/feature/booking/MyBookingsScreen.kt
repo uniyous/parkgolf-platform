@@ -223,7 +223,12 @@ fun MyBookingsScreen(
             booking = booking,
             onDismiss = { bookingToCancel = null },
             onCancel = { reason ->
-                viewModel.cancelBooking(booking.id, reason)
+                // AGENT_PAY.md §11.4 — 더치페이는 본인 자리만 취소
+                if (booking.isDutchpay) {
+                    viewModel.cancelParticipant(booking.id, reason)
+                } else {
+                    viewModel.cancelBooking(booking.id, reason)
+                }
                 bookingToCancel = null
             }
         )
@@ -350,7 +355,20 @@ private fun BookingListCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                StatusBadge(statusString = booking.status.name)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    StatusBadge(statusString = booking.status.name)
+                    // AGENT_PAY.md §11.7 — 더치페이 참여자/취소/환불 배지
+                    if (booking.isMemberRole) {
+                        ParticipantBadge(text = "참여", color = Color(0xFFB388FF))
+                    }
+                    when (booking.myParticipantStatus) {
+                        "CANCELLED" -> ParticipantBadge(text = "내 자리 취소", color = Color.Gray)
+                        "REFUNDED" -> ParticipantBadge(text = "환불 완료", color = Color.Gray)
+                    }
+                }
                 Text(
                     text = booking.bookingNumber ?: "",
                     style = MaterialTheme.typography.labelSmall,
@@ -457,13 +475,13 @@ private fun BookingListCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Cancel Button
-                    onCancel?.let {
+                    // AGENT_PAY.md §11.7 — 본인이 이미 취소/환불됐으면 버튼 숨김
+                    if (onCancel != null && !booking.isMyParticipantCancelled) {
                         SmallButton(
-                            text = "취소",
+                            text = if (booking.isDutchpay) "내 자리 취소" else "취소",
                             icon = Icons.Default.Close,
                             color = ParkError.copy(alpha = 0.8f),
-                            onClick = it
+                            onClick = onCancel
                         )
                     }
 
@@ -499,6 +517,21 @@ private fun InfoChip(
             text = text,
             style = MaterialTheme.typography.labelSmall,
             color = TextOnGradientSecondary.copy(alpha = 0.6f)
+        )
+    }
+}
+
+@Composable
+private fun ParticipantBadge(text: String, color: Color) {
+    Surface(
+        color = color.copy(alpha = 0.15f),
+        shape = RoundedCornerShape(50)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
         )
     }
 }
@@ -562,9 +595,9 @@ private fun CancelBookingSheet(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Title
+            // Title — AGENT_PAY.md §11.4 dutchpay 분기
             Text(
-                text = "예약 취소",
+                text = if (booking.isDutchpay) "내 자리 취소" else "예약 취소",
                 style = MaterialTheme.typography.titleLarge,
                 color = TextOnGradient,
                 fontWeight = FontWeight.Bold
@@ -588,7 +621,10 @@ private fun CancelBookingSheet(
                     tint = ParkWarning
                 )
                 Text(
-                    text = "다음 예약을 취소하시겠습니까?",
+                    text = if (booking.isDutchpay)
+                        "내 자리만 취소하시겠습니까?"
+                    else
+                        "다음 예약을 취소하시겠습니까?",
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextOnGradient
                 )
@@ -692,7 +728,10 @@ private fun CancelBookingSheet(
                     tint = ParkInfo
                 )
                 Text(
-                    text = "3일 전까지 무료 취소 가능합니다",
+                    text = if (booking.isDutchpay)
+                        "본인 결제 금액에 한해 환불 정책에 따라 처리되며, 다른 참여자의 예약은 그대로 유지됩니다."
+                    else
+                        "3일 전까지 무료 취소 가능합니다",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextOnGradientSecondary.copy(alpha = 0.7f)
                 )
@@ -702,7 +741,7 @@ private fun CancelBookingSheet(
 
             // Cancel Button
             GradientButton(
-                text = "예약 취소하기",
+                text = if (booking.isDutchpay) "내 자리 취소하기" else "예약 취소하기",
                 onClick = {
                     val reason = if (selectedReason == CancellationReason.OTHER) {
                         customReason.takeIf { it.isNotBlank() }

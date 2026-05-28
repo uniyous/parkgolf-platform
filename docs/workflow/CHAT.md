@@ -2,7 +2,7 @@
 
 Park Golf Platform 채팅 시스템 아키텍처 및 워크플로우 문서입니다.
 
-> **연계 문서**: AI 모드·정산 카드 [`AGENT.md`](./AGENT.md) · 더치페이 broadcast [`AGENT_DUTCHPAY.md`](./AGENT_DUTCHPAY.md) · 알림 [`NOTIFICATION.md`](./NOTIFICATION.md) · 인증/친구 [`AUTH.md`](./AUTH.md)
+> **연계 문서**: AI 모드·정산 카드 [`AGENT.md`](./AGENT.md) · 결제(더치페이 broadcast 포함) [`AGENT_PAY.md`](./AGENT_PAY.md) · 알림 [`NOTIFICATION.md`](./NOTIFICATION.md) · 인증/친구 [`AUTH.md`](./AUTH.md)
 
 ## 목차
 

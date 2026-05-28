@@ -380,4 +380,165 @@ export class PaymentSplitService {
       failedCount,
     };
   }
+
+  /**
+   * 단일 PaymentSplit 환불 — AGENT_PAY.md §11.4 (개인 자리 취소)
+   *
+   * booking-service `booking.cancelParticipant`가 호출한다.
+   * - PaymentSplit(bookingId + userId) 1건을 조회
+   * - booking-service `policy.refund.resolve`로 환불률 계산 (출발까지 남은 시간 → tier)
+   * - Toss 부분 환불 후 status=REFUNDED
+   *
+   * 환불률 0%면 Toss 미호출, status만 REFUNDED 마킹.
+   * 정책 조회 실패 시 안전 fallback 100% 환불 (운영 정책 미등록 대비).
+   */
+  async refundSingleSplit(data: {
+    bookingId: number;
+    userId: number;
+    reason?: string;
+    clubId?: number | null;
+    companyId?: number | null;
+    bookingDate?: string | Date;
+    startTime?: string;
+  }): Promise<{
+    orderId: string;
+    refundedAmount: number;
+    refundRate: number;
+    splitAmount: number;
+    paymentKey: string;
+  }> {
+    const split = await this.prisma.paymentSplit.findFirst({
+      where: { bookingId: data.bookingId, userId: data.userId },
+      include: { payment: true },
+    });
+
+    if (!split) {
+      throw new AppException(
+        Errors.Refund.NOT_FOUND,
+        `PaymentSplit not found: booking=${data.bookingId} user=${data.userId}`,
+      );
+    }
+
+    if (split.status !== SplitStatus.PAID) {
+      throw new AppException(
+        Errors.Refund.REFUND_FAILED,
+        `Cannot refund split with status=${split.status} (orderId=${split.orderId})`,
+      );
+    }
+
+    const paymentKey = split.paymentKey ?? split.payment?.paymentKey;
+    if (!paymentKey) {
+      throw new AppException(
+        Errors.Refund.REFUND_FAILED,
+        `Split ${split.orderId} has no paymentKey`,
+      );
+    }
+
+    // 환불률 결정 (booking-service의 policy.refund.resolve 호출)
+    const refundRate = await this.resolveRefundRate({
+      clubId: data.clubId ?? undefined,
+      companyId: data.companyId ?? undefined,
+      bookingDate: data.bookingDate,
+      startTime: data.startTime,
+    });
+
+    const refundedAmount = Math.floor((split.amount * refundRate) / 100);
+    const reason = data.reason || '본인 자리 취소 (마이페이지)';
+
+    if (refundedAmount > 0) {
+      await this.tossApi.cancelPayment(paymentKey, reason, refundedAmount);
+    } else {
+      this.logger.warn(
+        `Refund rate=0%, skipping Toss call: orderId=${split.orderId}, user=${split.userId}`,
+      );
+    }
+
+    await this.prisma.paymentSplit.update({
+      where: { id: split.id },
+      data: { status: SplitStatus.REFUNDED },
+    });
+
+    this.logger.log(
+      `Split refunded (single): orderId=${split.orderId} user=${split.userId} ` +
+        `amount=${split.amount} rate=${refundRate}% refunded=${refundedAmount}`,
+    );
+
+    return {
+      orderId: split.orderId,
+      refundedAmount,
+      refundRate,
+      splitAmount: split.amount,
+      paymentKey,
+    };
+  }
+
+  /**
+   * 환불률(%) 결정 — booking-service의 policy.refund.resolve 호출.
+   *
+   * 1) policy 없으면 100% (안전 fallback)
+   * 2) bookingDate/startTime 없으면 100% (계산 불가)
+   * 3) tiers 중 minHoursBefore ≤ hours < maxHoursBefore matching → refundRate
+   * 4) 매칭 tier 없으면 0% (보수적)
+   */
+  private async resolveRefundRate(args: {
+    clubId?: number;
+    companyId?: number;
+    bookingDate?: string | Date;
+    startTime?: string;
+  }): Promise<number> {
+    let policy: any = null;
+    try {
+      const res: any = await firstValueFrom(
+        this.bookingClient
+          .send('policy.refund.resolve', {
+            clubId: args.clubId,
+            companyId: args.companyId,
+          })
+          .pipe(
+            timeout(5000),
+            catchError((err) => {
+              this.logger.warn(`policy.refund.resolve failed: ${err?.message || err}`);
+              return of(null);
+            }),
+          ),
+      );
+      // NatsResponse 포맷({ success, data }) 또는 raw policy 모두 처리
+      policy = res?.data ?? res;
+    } catch (err) {
+      this.logger.warn(`policy.refund.resolve threw: ${(err as Error)?.message}`);
+    }
+
+    if (!policy || !Array.isArray(policy.tiers) || policy.tiers.length === 0) {
+      this.logger.warn('No refund policy/tiers — falling back to 100% refund');
+      return 100;
+    }
+
+    if (!args.bookingDate || !args.startTime) {
+      this.logger.warn('bookingDate/startTime missing — falling back to 100% refund');
+      return 100;
+    }
+
+    const startDateTime = this.composeStartDateTime(args.bookingDate, args.startTime);
+    const hoursBefore = Math.max(0, (startDateTime.getTime() - Date.now()) / 3600_000);
+
+    // tiers: minHoursBefore ≤ hours < (maxHoursBefore ?? ∞) 매칭
+    for (const tier of policy.tiers) {
+      const min = tier.minHoursBefore ?? 0;
+      const max = tier.maxHoursBefore;
+      if (hoursBefore >= min && (max == null || hoursBefore < max)) {
+        return tier.refundRate ?? 0;
+      }
+    }
+    return 0;
+  }
+
+  private composeStartDateTime(bookingDate: string | Date, startTime: string): Date {
+    const datePart =
+      bookingDate instanceof Date
+        ? bookingDate.toISOString().slice(0, 10)
+        : String(bookingDate).slice(0, 10);
+    // startTime: 'HH:MM' or 'HH:MM:SS'
+    const timePart = /^\d{2}:\d{2}(:\d{2})?$/.test(startTime) ? startTime : '00:00';
+    return new Date(`${datePart}T${timePart.length === 5 ? timePart + ':00' : timePart}`);
+  }
 }

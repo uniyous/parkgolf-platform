@@ -9,6 +9,7 @@ import { TeamSelectionService } from './service/team-selection.service';
 import { SagaHandlerService } from './service/saga-handler.service';
 import { BookingSagaStepService } from './service/booking-saga-step.service';
 import { OutboxProcessorService } from './service/outbox-processor.service';
+import { ParticipantCancelService } from './service/participant-cancel.service';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { OutboxProcessorService } from './service/outbox-processor.service';
     SagaHandlerService,
     BookingSagaStepService,
     OutboxProcessorService,
+    ParticipantCancelService,
   ],
 })
 export class BookingModule {}

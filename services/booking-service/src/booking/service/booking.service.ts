@@ -70,15 +70,22 @@ export class BookingService {
   }
 
   async getBookingsByUserId(userId: number): Promise<BookingResponseDto[]> {
+    // AGENT_PAY.md §11.3 — booker + 더치페이 참여자 모두 포함
     const bookings = await this.prisma.booking.findMany({
-      where: { userId },
+      where: {
+        OR: [
+          { userId },
+          { participants: { some: { userId } } },
+        ],
+      },
       orderBy: { createdAt: 'desc' },
       include: {
-        payments: true
-      }
+        payments: true,
+        participants: { orderBy: { id: 'asc' } },
+      },
     });
 
-    return bookings.map(booking => BookingResponseDto.fromEntity(booking));
+    return bookings.map((booking) => BookingResponseDto.fromEntity(booking, false, userId));
   }
 
   async searchBookings(searchDto: SearchBookingDto): Promise<{
@@ -100,7 +107,8 @@ export class BookingService {
       endDate,
       sortBy = 'bookingDate',
       sortOrder = 'desc',
-      timeFilter = 'all'
+      timeFilter = 'all',
+      includeAsParticipant = false,
     } = searchDto;
     const skip = (page - 1) * limit;
 
@@ -132,7 +140,15 @@ export class BookingService {
       }
     }
     if (userId) {
-      where.userId = userId;
+      // AGENT_PAY.md §11.3 — 마이페이지(includeAsParticipant=true)는 booker+더치페이 참여자 모두 노출
+      if (includeAsParticipant) {
+        where.OR = [
+          { userId },
+          { participants: { some: { userId } } },
+        ];
+      } else {
+        where.userId = userId;
+      }
     }
     if (paymentMethod) {
       where.paymentMethod = paymentMethod;
@@ -168,14 +184,19 @@ export class BookingService {
         take: limit,
         orderBy,
         include: {
-          payments: true
-        }
+          payments: true,
+          // AGENT_PAY.md §11.3 — 마이페이지에서 myRole/myParticipantStatus 계산용
+          participants: includeAsParticipant ? { orderBy: { id: 'asc' } } : false,
+        },
       }),
       this.prisma.booking.count({ where }),
     ]);
 
+    // includeAsParticipant=true 호출이면 userId를 currentUserId로 사용해 파생 필드 계산
+    const currentUserId = includeAsParticipant ? userId : undefined;
+
     return {
-      bookings: BookingResponseDto.fromEntities(bookings, true),
+      bookings: BookingResponseDto.fromEntities(bookings, true, currentUserId),
       total,
       page,
       limit

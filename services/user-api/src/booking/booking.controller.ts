@@ -26,6 +26,7 @@ import {
   UpdateBookingDto,
   SearchBookingDto,
   CancelBookingDto,
+  CancelParticipantDto,
 } from './dto/booking.dto';
 
 @ApiTags('Booking')
@@ -134,7 +135,7 @@ export class BookingController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: '예약 취소' })
+  @ApiOperation({ summary: '예약 취소 (단일 결제 — booker 전체 취소)' })
   @ApiResponse({
     status: 200,
     description: '예약이 성공적으로 취소되었습니다.',
@@ -149,6 +150,26 @@ export class BookingController {
   ) {
     this.logger.log(`Cancelling booking ${id} for user ${userId}`);
     return this.bookingService.cancelBooking(id, userId, cancelDto.reason);
+  }
+
+  // AGENT_PAY.md §11.4 — 더치페이 본인 자리 취소
+  // JWT userId가 곧 취소 대상 participant.userId — booking-service에서 검증·환불·슬롯 release.
+  @Delete(':id/participant')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '더치페이 본인 자리만 취소 (참여자/booker 동일)' })
+  @ApiResponse({ status: 200, description: '본인 자리가 취소되었습니다.' })
+  @ApiResponse({ status: 400, description: '이미 취소되었거나 환불 처리 실패' })
+  @ApiResponse({ status: 401, description: '인증이 필요합니다.' })
+  @ApiResponse({ status: 404, description: '참여자를 찾을 수 없습니다.' })
+  async cancelParticipant(
+    @CurrentUser('userId') userId: number,
+    @Param('id') id: number,
+    @Body() dto: CancelParticipantDto,
+  ) {
+    this.logger.log(`Cancelling participant: booking=${id} user=${userId}`);
+    return this.bookingService.cancelParticipant(id, userId, dto?.reason);
   }
 
   @Get('games/:gameId/time-slots')

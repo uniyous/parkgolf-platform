@@ -38,8 +38,22 @@ export interface BookingResponseDto {
   userName?: string;
   userPhone?: string;
   canCancel?: boolean;
+  // AGENT_PAY.md §11.3 — 마이페이지 노출용 파생 필드
+  myRole?: 'BOOKER' | 'MEMBER';
+  myParticipantStatus?: 'PENDING' | 'PAID' | 'CANCELLED' | 'REFUNDED';
   createdAt: string;
   updatedAt: string;
+}
+
+/** AGENT_PAY.md §11.4 — 더치페이 본인 자리 취소 응답 */
+export interface CancelParticipantResponse {
+  bookingId: number;
+  userId: number;
+  previousStatus: string;
+  newStatus: string;
+  refundedAmount: number;
+  bookingCancelled: boolean;
+  remainingParticipants: number;
 }
 
 /** Booking 목록 응답 타입 */
@@ -120,7 +134,12 @@ export class BookingService {
   }
 
   async searchBookings(searchDto: SearchBookingDto): Promise<ApiResponse<BookingListResponse>> {
-    return this.natsClient.send('booking.search', searchDto, NATS_TIMEOUTS.LIST_QUERY);
+    // AGENT_PAY.md §11.3 — user-api는 본인 예약 조회이므로 더치페이 참여자도 항상 포함
+    return this.natsClient.send(
+      'booking.search',
+      { ...searchDto, includeAsParticipant: true },
+      NATS_TIMEOUTS.LIST_QUERY,
+    );
   }
 
   async updateBooking(id: number, dto: UpdateBookingDto): Promise<ApiResponse<BookingResponseDto>> {
@@ -135,6 +154,24 @@ export class BookingService {
     );
 
     return this.resolveSagaResponse(result, '예약 취소에 실패했습니다');
+  }
+
+  /**
+   * 더치페이 본인 자리 취소 — AGENT_PAY.md §11.4
+   *
+   * booking-service `booking.cancelParticipant`를 호출.
+   * 호출자가 JWT userId를 전달하므로 booking-service는 해당 participant만 취소.
+   */
+  async cancelParticipant(
+    bookingId: number,
+    userId: number,
+    reason?: string,
+  ): Promise<ApiResponse<CancelParticipantResponse>> {
+    return this.natsClient.send(
+      'booking.cancelParticipant',
+      { bookingId, userId, reason },
+      NATS_TIMEOUTS.DEFAULT,
+    );
   }
 
   /**

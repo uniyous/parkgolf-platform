@@ -114,6 +114,9 @@ struct BookingResponse: Codable, Sendable, Identifiable {
     let userName: String?
     let userPhone: String?
     let canCancel: Bool?
+    // AGENT_PAY.md §11.3 — 마이페이지 노출용 파생 필드 (BFF가 currentUser 기준 계산)
+    let myRole: String?                  // "BOOKER" | "MEMBER"
+    let myParticipantStatus: String?     // "PENDING" | "PAID" | "CANCELLED" | "REFUNDED"
     let createdAt: String?
     let updatedAt: String?
 
@@ -142,6 +145,31 @@ struct BookingResponse: Codable, Sendable, Identifiable {
         }
         return frontNineCourseName ?? backNineCourseName
     }
+
+    // AGENT_PAY.md §11.4 — 더치페이 본인 자리 취소 분기
+    var isDutchpay: Bool {
+        paymentMethod == "dutchpay"
+    }
+
+    var isMemberRole: Bool {
+        myRole == "MEMBER"
+    }
+
+    var isMyParticipantCancelled: Bool {
+        myParticipantStatus == "CANCELLED" || myParticipantStatus == "REFUNDED"
+    }
+}
+
+// MARK: - Cancel Participant Response (AGENT_PAY.md §11.4)
+
+struct CancelParticipantResponse: Codable, Sendable {
+    let bookingId: Int
+    let userId: Int
+    let previousStatus: String
+    let newStatus: String
+    let refundedAmount: Int
+    let bookingCancelled: Bool
+    let remainingParticipants: Int
 }
 
 // MARK: - Empty Data Response
