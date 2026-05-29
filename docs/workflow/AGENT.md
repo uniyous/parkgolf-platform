@@ -22,6 +22,10 @@
   └─ 자연어 텍스트? → DeepSeek → Tool 실행 → 응답
 ```
 
+> **결정/비결정 경계 (UNI-29)**: 예약/결제 같은 **부수효과(saga 시작)는 Direct 경로(effect-executor)만** 수행한다.
+> LLM(자연어)은 read-only 도구로 **탐색·제안**만 하며, `create_booking` 같은 command 도구는 LLM tools[]에 노출되지 않는다.
+> 즉 "예약해줘"/"네 좋아요" 같은 자연어로는 예약이 생성되지 않으며, 확정 카드(CONFIRM_BOOKING) 클릭 시점에만 saga가 시작된다. → §6.1, §14
+
 ---
 
 ## 2. 아키텍처
@@ -194,7 +198,7 @@ if (request.selectedClubId)       → handleDirectClubSelect()
 | `handleDirectClubSelect` | 골프장 카드 클릭 | slots에 clubId 저장 → 채팅방 멤버 조회 → **SELECT_MEMBERS 카드** |
 | `handleTeamMemberSelect` | 멤버 확정 클릭 | groupMode=true, 멤버 저장 → 슬롯 조회 → **SHOW_SLOTS 카드** |
 | `handleDirectSlotSelect` | 슬롯 칩 클릭 | slots에 slotId 저장 → **CONFIRM_BOOKING 카드** (결제방법 3가지) |
-| `handleDirectBooking` | 예약 확인 클릭 | booking.create → [Saga](./SAGA.md) 폴링 → 결제방법에 따라 분기 |
+| `handleDirectBooking` | 예약 확인 클릭 | **effect-executor.commitBooking** → create_booking saga → 폴링 → 결제방법 분기 (saga 시작 유일 경로, §14) |
 | `handlePaymentComplete` | 카드결제 완료 | booking CONFIRMED 확인 후 completeTeam → **TEAM_COMPLETE** 카드 |
 | `handleCancelBooking` | 취소 클릭 | slots 초기화 → COLLECTING |
 | `handleNextTeam` | "다음 팀" 클릭 | teamNumber++ → **SELECT_MEMBERS** (이전 팀 멤버 제외) |
@@ -209,12 +213,23 @@ if (request.selectedClubId)       → handleDirectClubSelect()
 자연어 메시지가 Direct Handler에 해당하지 않을 때 실행.
 
 1. DeepSeek에 메시지 + 대화 히스토리 전송
-2. `tool_calls` 반환 시 → `ToolExecutorService.executeAll()` (병렬 실행)
+2. `tool_calls` 반환 시 → 도구 실행 (병렬). 단 **command 도구는 `guardLlmToolCall`로 차단**(§6.1)
 3. 도구 결과로 UI 카드(actions) 생성 + slots 업데이트
 4. 도구 결과를 DeepSeek에 전달하여 다음 응답 요청
 5. 텍스트 응답이 나올 때까지 반복 (최대 5회)
 
-### Function Calling Tools
+> LLM 응답의 tool args JSON 은 `safeParseArgs` 로 파싱한다 — 잘못된 JSON이 와도 빈 args 로 강등되어 루프 전체가 죽지 않는다 (UNI-29 P1).
+
+### 6.1 도구 분류 — query / command (UNI-29 P2)
+
+부수효과 경계는 프롬프트가 아니라 **코드로** 강제한다. 분류 단일 출처는 `tool-policy.ts` `COMMAND_TOOL_NAMES`.
+
+| 분류 | LLM 노출 | 도구 |
+|------|:--------:|------|
+| **query** (read-only) | ✅ | search_clubs, search_clubs_with_slots, get_club_info, get_available_slots, get_nearby_clubs, get_weather(_by_location), get_booking_policy, get_user_recent_bookings, get_chat_room_members, search_address |
+| **command** (side-effect) | ❌ | `create_booking` — LLM tools[]에서 제외. 모델이 환각으로 호출해도 `guardLlmToolCall`이 차단(이중 방어) |
+
+### Function Calling Tools (query — LLM 노출분)
 
 | 도구 | NATS 패턴 | 대상 |
 |------|-----------|------|
@@ -224,9 +239,12 @@ if (request.selectedClubId)       → handleDirectClubSelect()
 | `get_available_slots` | `games.search` | course |
 | `get_nearby_clubs` | `club.findNearby` | course |
 | `get_weather` / `get_weather_by_location` | `weather.forecast` | weather |
-| `create_booking` | `booking.create` | booking |
 | `get_booking_policy` | `policy.*.resolve` | booking |
+| `get_user_recent_bookings` | `booking.recentByUser` | booking |
+| `get_chat_room_members` | `chat.room.getMembers` | chat |
 | `search_address` | `location.search.address` | location |
+
+> `create_booking`(command)은 LLM에 노출되지 않으며 effect-executor만 호출한다 → §14.
 
 ---
 
@@ -639,4 +657,47 @@ model ChatMessage {
 
 ---
 
-**Last Updated**: 2026-05-28
+## 14. 부수효과 실행 & Turn Journal (UNI-29)
+
+> 결정/비결정 경계를 코드로 강제하고, 예약(saga) 재진입을 멱등하게 만든다.
+
+### 14.1 effect-executor — saga 시작 유일 게이트
+
+`create_booking` saga 호출은 **`effect-executor.commitBooking` 한 곳**만 수행한다. `handleDirectBooking`(UI 확정 클릭)이 이를 호출하며, LLM/자연어는 saga를 시작할 수 없다.
+
+```mermaid
+flowchart TD
+    Confirm["confirmBooking 클릭"] --> DA["direct-action-handler"]
+    DA --> Commit["effect-executor.commitBooking"]
+    Commit --> JCheck{"journal[stepId]?"}
+    JCheck -->|COMMITTED| Cached["캐시 결과 반환<br/>saga 재호출 X (멱등)"]
+    JCheck -->|없음/PENDING| Put1["journal PENDING 기록"]
+    Put1 --> CB["create_booking (결정적 idemKey)"]
+    CB --> Saga["saga.booking.create"]
+    Saga --> Poll["waitForSagaCompletion 폴링"]
+    Poll --> OK{성공?}
+    OK -->|예| Put2["journal COMMITTED 기록"]
+    OK -->|아니오| Keep["PENDING 유지 → 재시도 허용"]
+```
+
+- **결정적 멱등키 (P1)**: `idempotencyKey = sha256(userId, slotId, playerCount, paymentMethod)`. 재시도는 같은 키로 saga-service가 dedup → 이중 예약 방지. (이전 `randomUUID`는 재시도마다 새 키였음)
+- saga 폴링 실패/타임아웃은 silent swallow하지 않고 로깅한다. 타임아웃 시 `PENDING` 반환 → 호출부가 "처리 중" graceful 안내.
+
+### 14.2 Turn Journal (resume)
+
+`turn-journal.service.ts` — 부수효과 스텝의 append-only 기록 + 재진입 멱등.
+
+| 항목 | 값 |
+|------|----|
+| 키 | `agent:journal:{runId}` (Redis Hash, field=stepId), conv 스냅샷과 동일 TTL |
+| stepId | `sha256(userId, slotId, playerCount, paymentMethod)` — saga idemKey와 동일 입력 |
+| COMMITTED | 결과 캐시 → 재진입 시 saga 재호출 생략 |
+| PENDING | 진입했으나 미완 → 같은 idemKey로 재시도(saga가 dedup) |
+
+read-only(query) 스텝은 기록하지 않는다(재실행 안전). LLM 출력 캐시(Tier 2)는 범위 밖.
+
+> L3(Semantic Memory) 갱신 단일화는 UNI-36에서 별도 정리 (현재는 `booking-completion.completeTeam`).
+
+---
+
+**Last Updated**: 2026-05-29
