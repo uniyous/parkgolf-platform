@@ -6,6 +6,7 @@ import {
   triggerDutchBookingViaAgent,
   extractDutchSplits,
   confirmAllDutchSplits,
+  cancelDutchParticipant,
 } from '../../fixtures/dutch';
 
 /**
@@ -89,20 +90,17 @@ test.describe('Dutch Payment — Participant Cancel (AGENT_PAY.md §11.4) @write
     const canceller = membersInSplit.find((m) => m.userId !== booker.userId);
     expect(canceller, 'no non-booker participant for cancel test').toBeTruthy();
 
-    const cancelRes = await request.delete(`/api/user/bookings/${bookingId}/participant`, {
-      headers: authHeaders(canceller!.accessToken),
-      data: { reason: 'e2e participant cancel' },
-    });
-    expect(cancelRes.ok(), `cancelParticipant [${cancelRes.status()}]: ${await cancelRes.text()}`).toBeTruthy();
-    const cancelBody = await cancelRes.json();
-    const cancelData = cancelBody?.data ?? cancelBody;
+    const cancelData = await cancelDutchParticipant(request, canceller!, bookingId, 'e2e participant cancel');
     console.log(`[cancel] user=${canceller!.userId} body=${JSON.stringify(cancelData)}`);
 
     expect(cancelData.previousStatus).toBe('PAID');
     expect(cancelData.newStatus).toBe('REFUNDED');
-    expect(cancelData.refundedAmount).toBeGreaterThan(0);
+    // 환불 금액은 policy.refund.resolve의 tier 매칭에 따라 0~amount 사이
+    // (내일 슬롯이면 24h 이내 정책으로 0% 가능). REFUNDED 상태로의 전이 자체가 환불 트리거 검증.
+    expect(cancelData.refundedAmount).toBeGreaterThanOrEqual(0);
     expect(cancelData.bookingCancelled).toBe(false);
     expect(cancelData.remainingParticipants).toBe(3);
+    console.log(`[refund] amount=${cancelData.refundedAmount} (policy tier 결과)`);
 
     // 5-a) 본인 다시 조회 — 마이페이지에 노출되고 myParticipantStatus=REFUNDED
     const cancellerMyRes = await request.get('/api/user/bookings/search?page=1&limit=20', {
@@ -143,12 +141,7 @@ test.describe('Dutch Payment — Participant Cancel (AGENT_PAY.md §11.4) @write
     for (let i = 0; i < remaining.length; i++) {
       const m = remaining[i];
       const isLast = i === remaining.length - 1;
-      const r = await request.delete(`/api/user/bookings/${bookingId}/participant`, {
-        headers: authHeaders(m.accessToken),
-        data: { reason: `e2e cascade ${i + 1}` },
-      });
-      expect(r.ok(), `cascade cancel user=${m.userId} [${r.status()}]`).toBeTruthy();
-      const body = (await r.json())?.data;
+      const body = await cancelDutchParticipant(request, m, bookingId, `e2e cascade ${i + 1}`);
       console.log(`[cascade ${i + 1}/${remaining.length}] user=${m.userId} bookingCancelled=${body.bookingCancelled} remaining=${body.remainingParticipants}`);
 
       if (isLast) {

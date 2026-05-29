@@ -105,6 +105,40 @@ test.describe('Dutch Payment — Happy Path @write @slow', () => {
 
     console.log(`[final] booking ${bookingId} status=${finalStatus}`);
 
+    // UNI-28 회귀 감시 — booker view에 myRole/myParticipantStatus 노출되는지
+    const bookerView = await request.get('/api/user/bookings/search?page=1&limit=20', {
+      headers: authHeaders(booker.accessToken),
+    });
+    if (bookerView.ok()) {
+      const bookerBookings: any[] = ((await bookerView.json())?.data?.bookings) ?? [];
+      const found = bookerBookings.find((b) => b.id === bookingId);
+      if (found) {
+        expect(found.myRole, 'booker should see myRole=BOOKER').toBe('BOOKER');
+        expect(
+          ['PAID', 'PENDING'].includes(found.myParticipantStatus),
+          `booker myParticipantStatus should be PAID|PENDING, got ${found.myParticipantStatus}`,
+        ).toBeTruthy();
+        console.log(`[uni-28 regression] booker myRole=${found.myRole} myParticipantStatus=${found.myParticipantStatus}`);
+      }
+    }
+
+    // 비booker 참여자도 마이페이지에서 booking 노출 확인 (UNI-28 §11.3)
+    const nonBookerMember = members.find((m) => m.userId !== booker.userId);
+    if (nonBookerMember) {
+      const memberView = await request.get('/api/user/bookings/search?page=1&limit=20', {
+        headers: authHeaders(nonBookerMember.accessToken),
+      });
+      if (memberView.ok()) {
+        const memberBookings: any[] = ((await memberView.json())?.data?.bookings) ?? [];
+        const found = memberBookings.find((b) => b.id === bookingId);
+        expect(found, 'member should see booking via includeAsParticipant').toBeTruthy();
+        if (found) {
+          expect(found.myRole).toBe('MEMBER');
+          console.log(`[uni-28 regression] member user=${nonBookerMember.userId} myRole=${found.myRole}`);
+        }
+      }
+    }
+
     // cleanup: booking 취소
     await request.delete(`/api/user/bookings/${bookingId}`, {
       headers: authHeaders(booker.accessToken),

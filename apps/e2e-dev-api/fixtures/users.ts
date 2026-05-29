@@ -58,10 +58,12 @@ export async function createE2EUser(
   const phone = randomPhone();
   const data = { email, password: USER_PASSWORD, name, phone };
 
-  // 429 처리: x-ratelimit-reset 헤더(초) + 2초 버퍼 만큼 대기 후 재시도.
+  // 재시도 정책:
+  //   - 429 (throttler): x-ratelimit-reset(초) + 2초 버퍼, 최대 65초
+  //   - 5xx (502/503/504 일시 장애): 지수 백오프 3s/6s, 최대 3회
   // user-api throttler = 60s 5req/IP — 충돌 시 최대 ~62s 대기.
   let last: { status: number; body: any } | null = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 4; attempt++) {
     const reg = await request.post('/api/user/iam/register', { data });
     const regBody = await reg.json().catch(() => ({}));
     if (reg.ok()) {
@@ -71,13 +73,22 @@ export async function createE2EUser(
       return { email, password: USER_PASSWORD, name, phone, userId, accessToken: accessToken! };
     }
     last = { status: reg.status(), body: regBody };
-    if (reg.status() !== 429) break;
-    const headers = reg.headers();
-    const resetSec = Number(headers['x-ratelimit-reset'] ?? headers['retry-after'] ?? 60);
-    const waitMs = Math.min(Math.max(resetSec * 1000, 1000), 65_000) + 2000;
-    // eslint-disable-next-line no-console
-    console.log(`[register] 429 — wait ${Math.round(waitMs / 1000)}s before retry (attempt ${attempt + 1})`);
-    await sleep(waitMs);
+    const status = reg.status();
+    if (status === 429) {
+      const headers = reg.headers();
+      const resetSec = Number(headers['x-ratelimit-reset'] ?? headers['retry-after'] ?? 60);
+      const waitMs = Math.min(Math.max(resetSec * 1000, 1000), 65_000) + 2000;
+      // eslint-disable-next-line no-console
+      console.log(`[register] 429 — wait ${Math.round(waitMs / 1000)}s before retry (attempt ${attempt + 1})`);
+      await sleep(waitMs);
+    } else if (status >= 500 && status < 600) {
+      const waitMs = 3000 * (attempt + 1); // 3s, 6s, 9s
+      // eslint-disable-next-line no-console
+      console.log(`[register] ${status} — backoff ${waitMs / 1000}s (attempt ${attempt + 1})`);
+      await sleep(waitMs);
+    } else {
+      break;
+    }
   }
 
   expect(
