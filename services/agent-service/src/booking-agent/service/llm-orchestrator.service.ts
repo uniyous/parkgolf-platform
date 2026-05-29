@@ -4,6 +4,7 @@ import { ToolExecutorService, ToolResult } from './tool-executor.service';
 import { ConversationService } from './conversation.service';
 import { UserMemoryService } from './user-memory.service';
 import { UiCardHelper } from './ui-card.helper';
+import { guardLlmToolCall } from './tool-policy';
 import {
   ChatRequestDto,
   ChatAction,
@@ -157,7 +158,7 @@ export class LlmOrchestratorService {
         toolNameCounts.set(tc.name, (toolNameCounts.get(tc.name) ?? 0) + 1);
       }
 
-      const toolResults = await this.executeTools(llmResponse.toolCalls, request, context);
+      const toolResults = await this.executeTools(llmResponse.toolCalls, request);
       const actions = this.createActionsFromToolResults(llmResponse.toolCalls, toolResults);
       allActions = [...allActions, ...actions];
 
@@ -210,28 +211,17 @@ export class LlmOrchestratorService {
   }
 
   /**
-   * 도구 실행 (create_booking에 사용자 정보 서버사이드 주입)
+   * 도구 실행 — read-only(query) 도구만 LLM 경로에서 실행된다.
+   * 부수효과(command) 도구는 tool-policy.guardLlmToolCall 로 차단 (UNI-33).
    */
   private async executeTools(
     toolCalls: ToolCall[],
     request?: ChatRequestDto,
-    context?: ConversationContext,
   ): Promise<ToolResult[]> {
     this.logger.debug(`Executing ${toolCalls.length} tools`);
 
     if (request?.userId) {
       toolCalls = toolCalls.map((tc) => {
-        if (tc.name === 'create_booking') {
-          return {
-            ...tc,
-            args: {
-              ...tc.args,
-              userId: request.userId,
-              userName: request.userName,
-              userEmail: request.userEmail,
-            },
-          };
-        }
         // get_chat_room_members: chatRoomId가 LLM이 안 채웠으면 request에서 자동 주입
         if (tc.name === 'get_chat_room_members' && !tc.args.chatRoomId && request.chatRoomId) {
           return {
@@ -250,31 +240,14 @@ export class LlmOrchestratorService {
       });
     }
 
-    // create_booking 가드 — 채팅방 그룹 컨텍스트에서 멤버 미선택 상태 호출 차단.
-    // (LLM이 자연어 동의("네 좋아요")로 부적절하게 호출하는 회귀 방지)
+    // 부수효과(command) 도구 가드 — LLM이 create_booking 등을 emit하면 차단(이중 방어).
+    // command 도구는 deepseek tools[]에 노출되지 않으므로 정상 동작에선 발생하지 않음.
     return Promise.all(
       toolCalls.map(async (tc) => {
-        if (tc.name === 'create_booking') {
-          const inChatRoom = !!(request?.chatRoomId || context?.slots.chatRoomId);
-          const argsMembers = Array.isArray(tc.args.teamMembers)
-            ? (tc.args.teamMembers as unknown[]).length
-            : 0;
-          const ctxMembers = (context?.slots.currentTeamMembers ?? []).length;
-          if (inChatRoom && argsMembers === 0 && ctxMembers === 0) {
-            this.logger.warn(
-              `[create_booking] 차단: 채팅방 그룹 컨텍스트인데 멤버 미선택 (args.teamMembers/ctx 모두 비어있음)`,
-            );
-            return {
-              name: 'create_booking',
-              success: true,
-              result: {
-                success: false,
-                error: 'INVALID_GROUP_BOOKING',
-                message:
-                  '채팅방 그룹 예약은 멤버 선택 카드(SELECT_MEMBERS)에서 멤버를 확정한 뒤에만 진행됩니다. 직접 create_booking을 호출하지 말고 멤버 선택을 안내하세요.',
-              },
-            } as ToolResult;
-          }
+        const rejection = guardLlmToolCall(tc);
+        if (rejection) {
+          this.logger.warn(`[guard] LLM command 도구 차단: ${tc.name}`);
+          return rejection as ToolResult;
         }
         return this.toolExecutor.execute(tc);
       }),
