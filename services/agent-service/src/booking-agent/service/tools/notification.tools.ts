@@ -78,7 +78,7 @@ export class NotificationTools {
       roomId,
       senderId: 0,
       senderName: 'AI 예약 도우미',
-      content: `팀${teamCompleteData['teamNumber'] || ''} 예약이 완료되었어요!`,
+      content: '예약이 완료되었어요!',
       messageType: 'AI_ASSISTANT',
       metadata,
       createdAt: new Date().toISOString(),

@@ -107,14 +107,6 @@ export class ChatRequestDto {
 
   @IsOptional()
   @IsBoolean()
-  nextTeam?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  finishGroup?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
   sendReminder?: boolean;
 
   // ── 분할결제 완료 필드 ──
@@ -238,22 +230,10 @@ export interface BookingSlots {
   // 후속 턴에서 "N번"/이름 지칭 시 실제 clubId 사용하도록 컨텍스트 주입
   recentClubs?: Array<{ id: number; name: string }>;
 
-  // 팀 예약 (모든 예약에 적용)
+  // 예약 참여자 (1예약 = 최대 4명, UNI-36)
   chatRoomId?: string;
   bookerId?: number;
   paymentMethod?: string;
-  groupMode?: boolean;
-  currentTeamNumber?: number;
+  groupMode?: boolean;            // 멤버 선택 단계를 거쳤는지
   currentTeamMembers?: Array<{ userId: number; userName: string; userEmail: string }>;
-  completedTeams?: Array<{
-    teamNumber: number;
-    bookingId: number;
-    bookingNumber: string;
-    slotId: string;
-    slotTime: string;
-    gameName: string;
-    members: Array<{ userId: number; userName: string }>;
-    totalPrice: number;
-    paymentMethod: string;
-  }>;
 }

@@ -36,12 +36,13 @@ export class PaymentResultHandlerService {
       const bookingId = context.slots.bookingId;
       const detail = bookingId ? await this.toolExecutor.getBookingDetail(bookingId) : null;
       if (detail?.status === 'CONFIRMED') {
+        // 카드결제: 결제 완료 후 확정 → 공통 finalize
         const result = {
           bookingId: context.slots.bookingId,
           bookingNumber: context.slots.bookingNumber,
           details: { totalPrice: context.slots.totalPrice },
         };
-        return this.bookingCompletion.completeTeam(context, request, result);
+        return this.bookingCompletion.finalizeBooking(context, result);
       }
       message = '결제가 완료되었어요! 예약 확정 처리 중입니다.';
       this.conversationService.setState(context, 'CONFIRMING');
@@ -116,14 +117,11 @@ export class PaymentResultHandlerService {
       ?? participants.filter((s: any) => s.status === 'PAID').length;
     const allPaid = settlement?.allPaid
       ?? (paidCount === totalParticipants && totalParticipants > 0);
-    const teamNumber = context.slots.currentTeamNumber || 1;
-
     const actions: ChatAction[] = [{
       type: 'SETTLEMENT_STATUS',
       data: {
         bookingId,
         bookerId: bookerId || 0,
-        teamNumber,
         clubName: context.slots.clubName || '',
         gameName: context.slots.gameName || '',
         date: context.slots.date || '',
@@ -164,23 +162,22 @@ export class PaymentResultHandlerService {
         );
       }
 
-      // 2) 채팅방 전체에 TEAM_COMPLETE
+      // 2) 더치페이(전원완료) 확정 → 공통 finalize
+      // 부커 컨텍스트(slots 보유)에서만 L3 기록 + TEAM_COMPLETE 브로드캐스트.
       if (context.slots.groupMode) {
         const result = {
           bookingId,
           bookingNumber: context.slots.bookingNumber || '',
-          details: {
-            totalPrice: totalParticipants * pricePerPerson,
-          },
+          details: { totalPrice: totalParticipants * pricePerPerson },
         };
-        return this.bookingCompletion.completeTeam(context, request, result);
+        // dutchpay L3 는 생성 시점(handleDutchpayBranch)에서 이미 기록 → 여기선 중복 방지.
+        return this.bookingCompletion.finalizeBooking(context, result, false);
       }
 
-      // 비예약자 context → 직접 TEAM_COMPLETE 브로드캐스트
+      // 비예약자(참여자) context → slots 가 없어 L3 기록 불가. TEAM_COMPLETE 카드만 브로드캐스트.
       if (roomId) {
         const bookingDetail = await this.toolExecutor.getBookingDetail(bookingId);
         const teamCompleteData: Record<string, unknown> = {
-          teamNumber: context.slots.currentTeamNumber || 1,
           bookingId,
           bookingNumber: context.slots.bookingNumber || bookingDetail?.bookingNumber || '',
           clubName: context.slots.clubName || bookingDetail?.clubName || '',
@@ -190,7 +187,6 @@ export class PaymentResultHandlerService {
           participants: participants.map((s: any) => ({ userId: s.userId, userName: s.userName })),
           totalPrice: totalParticipants * pricePerPerson,
           paymentMethod: context.slots.paymentMethod || bookingDetail?.paymentMethod || 'dutchpay',
-          hasMoreTeams: true,
         };
         this.toolExecutor.broadcastTeamCompleteCard(roomId, teamCompleteData);
       }

@@ -5,7 +5,7 @@ import { ChatResponseDto, ConversationContext } from '../dto/chat.dto';
 
 /**
  * UI 카드/날짜 헬퍼
- * - SELECT_MEMBERS 카드 빌더 (직접/슬롯/다음팀 등 여러 핸들러에서 공유)
+ * - SELECT_MEMBERS 카드 빌더 (클럽 선택/슬롯 핸들러에서 공유)
  * - 단순 날짜 유틸
  */
 @Injectable()
@@ -18,10 +18,9 @@ export class UiCardHelper {
   /**
    * SELECT_MEMBERS 카드 응답 생성. chatRoomId 없거나 멤버 조회 실패 시 null.
    *
-   * 카드 데이터 구성 (클라이언트는 단순 렌더만):
-   * - assignedTeams: 이미 완료된 팀들 (참고용)
-   * - currentTeam: 지금 채우는 팀 (members에 자연어로 사전 추출된 멤버 미리 채움 가능)
-   * - availableMembers: 채팅방 전체 멤버 중 assignedTeams/currentTeam.members 제외한 미배정자
+   * 1예약 = 최대 4명 (UNI-36). 카드 데이터 (클라이언트는 단순 렌더만):
+   * - currentTeam: 지금 선택 중인 멤버 (자연어로 사전 추출된 멤버 미리 채움 가능)
+   * - availableMembers: 채팅방 전체 멤버 중 이미 선택된 멤버 제외한 후보
    */
   async showSelectMembers(
     context: ConversationContext,
@@ -33,23 +32,12 @@ export class UiCardHelper {
     const allMembers = await this.toolExecutor.getChatRoomMembers(chatRoomId);
     if (!allMembers || allMembers.length === 0) return null;
 
-    const teamNumber = context.slots.currentTeamNumber || 1;
-    const completedTeams = context.slots.completedTeams || [];
     const currentTeamMembers = context.slots.currentTeamMembers || [];
 
-    const assignedUserIds = new Set<number>();
-    for (const team of completedTeams) {
-      for (const m of team.members) {
-        assignedUserIds.add(m.userId);
-      }
-    }
-    for (const m of currentTeamMembers) {
-      assignedUserIds.add(m.userId);
-    }
-    const availableMembers = allMembers.filter((m) => !assignedUserIds.has(m.userId));
+    const selectedUserIds = new Set<number>(currentTeamMembers.map((m) => m.userId));
+    const availableMembers = allMembers.filter((m) => !selectedUserIds.has(m.userId));
 
     const currentTeam = {
-      teamNumber,
       slotId: context.slots.slotId || '',
       slotTime: context.slots.time || '',
       gameName: context.slots.gameName || '',
@@ -62,18 +50,9 @@ export class UiCardHelper {
     };
 
     const selectData = {
-      teamNumber,
       clubName: context.slots.clubName || '',
       date: context.slots.date || this.getTomorrowDate(),
       maxPlayers: 4,
-      assignedTeams: completedTeams.map((t) => ({
-        teamNumber: t.teamNumber,
-        slotId: t.slotId,
-        slotTime: t.slotTime,
-        gameName: t.gameName,
-        maxPlayers: 4,
-        members: t.members,
-      })),
       currentTeam,
       availableMembers,
     };

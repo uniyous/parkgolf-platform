@@ -136,7 +136,6 @@ export class DirectActionHandlerService {
       playerCount,
       price,
       groupMode: isGroup,
-      teamNumber: context.slots.currentTeamNumber || 1,
       members: teamMembers.map((m) => ({
         userId: m.userId,
         userName: m.userName,
@@ -218,19 +217,15 @@ export class DirectActionHandlerService {
       }
 
       if (status === 'CONFIRMED') {
-        if (context.slots.groupMode) {
-          return this.bookingCompletion.completeTeam(context, request, result);
-        }
-        actions.push({ type: 'TEAM_COMPLETE', data: result });
-        message = '예약이 완료되었습니다!';
-        this.conversationService.updateSlots(context, { confirmed: true });
-        this.conversationService.setState(context, 'COMPLETED');
+        // 현장결제: 즉시 확정 → 공통 finalize (onsite, 1예약/≤4명)
+        return this.bookingCompletion.finalizeBooking(context, result);
       } else if (status === 'SLOT_RESERVED') {
         return this.handleCardPaymentBranch(context, request, result, playerCount);
       } else {
-        // PENDING — 폴링 타임아웃 (graceful degradation)
-        actions.push({ type: 'TEAM_COMPLETE', data: result });
+        // PENDING — 폴링 타임아웃. saga는 진행 중일 수 있어 확정 처리(finalize)는 보류.
+        // L3는 확정 시점에만 기록하므로 여기선 기록하지 않음(과대집계 방지).
         message = '예약이 처리 중이에요. 잠시 후 예약 내역에서 확인해 주세요.';
+        actions.push({ type: 'TEAM_COMPLETE', data: result });
         this.conversationService.updateSlots(context, { confirmed: true });
         this.conversationService.setState(context, 'COMPLETED');
       }
@@ -281,12 +276,9 @@ export class DirectActionHandlerService {
       expiredAt: '',
     }));
 
-    const teamNumber = context.slots.currentTeamNumber || 1;
-
     const settlementData = {
       bookingId: result.bookingId,
       bookerId: request.userId,
-      teamNumber,
       clubName: context.slots.clubName || '',
       gameName: context.slots.gameName || '',
       date: context.slots.date || '',
@@ -334,7 +326,11 @@ export class DirectActionHandlerService {
       );
     }
 
-    const message = `팀${teamNumber} 예약이 생성되었어요! 참여자들에게 결제 요청이 전송됩니다.`;
+    // [L3] 더치페이는 결제 완료가 참여자별로 분산·비결정적이라, 부커가 반드시 1회 거치는
+    // 이 생성 시점에서 L3를 기록한다 (정산완료 finalize 는 recordMemory=false 로 중복 방지).
+    this.bookingCompletion.recordBookingMemory(context);
+
+    const message = '예약이 생성되었어요! 참여자들에게 결제 요청이 전송됩니다.';
     this.conversationService.addAssistantMessage(context, message);
     this.conversationService.setState(context, 'SETTLING');
 
