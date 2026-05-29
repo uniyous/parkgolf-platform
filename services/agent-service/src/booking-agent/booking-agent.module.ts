@@ -9,6 +9,8 @@ import { BookingCompletionService } from './service/booking-completion.service';
 import { GroupBookingService } from './service/group-booking.service';
 import { PaymentResultHandlerService } from './service/payment-result-handler.service';
 import { DirectActionHandlerService } from './service/direct-action-handler.service';
+import { EffectExecutorService } from './service/effect-executor.service';
+import { TurnJournalService } from './service/turn-journal.service';
 import { UserMemoryService } from './service/user-memory.service';
 import { SearchTools } from './service/tools/search.tools';
 import { WeatherTools } from './service/tools/weather.tools';
@@ -36,6 +38,8 @@ import { BookingAgentNatsController } from './controller/booking-agent-nats.cont
     GroupBookingService,
     PaymentResultHandlerService,
     DirectActionHandlerService,
+    EffectExecutorService,
+    TurnJournalService,
     UserMemoryService,
     BookingAgentService,
   ],
