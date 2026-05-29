@@ -258,11 +258,9 @@ export class ChatService {
         paymentMethod: dto.paymentMethod,
         paymentComplete: dto.paymentComplete,
         paymentSuccess: dto.paymentSuccess,
-        // 그룹 예약 필드 (팀 단위 순차)
+        // 멤버 선택 (1예약 = 최대 4명)
         confirmGroupBooking: dto.confirmGroupBooking,
         teamMembers: dto.teamMembers,
-        nextTeam: dto.nextTeam,
-        finishGroup: dto.finishGroup,
         sendReminder: dto.sendReminder,
         // 분할결제 완료 필드
         splitPaymentComplete: dto.splitPaymentComplete,

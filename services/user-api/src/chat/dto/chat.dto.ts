@@ -178,16 +178,6 @@ export class AiChatRequestDto {
   @Type(() => TeamMemberDto)
   teamMembers?: TeamMemberDto[];
 
-  @ApiPropertyOptional({ description: '다음 팀 버튼' })
-  @IsOptional()
-  @IsBoolean()
-  nextTeam?: boolean;
-
-  @ApiPropertyOptional({ description: '그룹 예약 종료 버튼' })
-  @IsOptional()
-  @IsBoolean()
-  finishGroup?: boolean;
-
   @ApiPropertyOptional({ description: '리마인더 발송 버튼' })
   @IsOptional()
   @IsBoolean()
