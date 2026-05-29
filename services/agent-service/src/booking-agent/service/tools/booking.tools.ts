@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
+import { createHash } from 'node:crypto';
 import { catchError, firstValueFrom, timeout } from 'rxjs';
 
 const REQUEST_TIMEOUT = 10000;
@@ -133,7 +134,10 @@ export class BookingTools {
     const response = await firstValueFrom(
       this.bookingClient
         .send('saga.booking.create', {
-          idempotencyKey: crypto.randomUUID(),
+          // 결정적 멱등키 — 동일 (사용자·슬롯·인원·결제수단) 재시도는 같은 키로 묶여
+          // saga-service가 중복 제거. (이전 randomUUID는 재시도마다 새 키 → 이중 예약 위험)
+          // 동일 타임슬롯을 같은 인원·결제수단으로 2번 예약하는 것은 비정상 케이스이므로 dedup 허용.
+          idempotencyKey: this.buildIdempotencyKey(slotIdNum, userId, playerCount, paymentMethod),
           userId,
           userName: userName || '',
           userEmail: userEmail || '',
@@ -198,6 +202,20 @@ export class BookingTools {
     return { success: false, message: sagaMeta?.failReason || '예약에 실패했습니다' };
   }
 
+  /**
+   * 결정적 멱등키 — 같은 예약 의도(슬롯·사용자·인원·결제수단)는 항상 같은 키.
+   * 네트워크 재시도/중복 호출이 saga-service에서 dedup 되도록.
+   */
+  private buildIdempotencyKey(
+    slotId: number,
+    userId: number,
+    playerCount: number,
+    paymentMethod?: string,
+  ): string {
+    const raw = `booking:${userId}:${slotId}:${playerCount}:${paymentMethod || 'onsite'}`;
+    return createHash('sha256').update(raw).digest('hex').slice(0, 32);
+  }
+
   private async waitForSagaCompletion(bookingId: number, paymentMethod?: string): Promise<string> {
     const POLL_INTERVAL = 300;
     const MAX_ATTEMPTS = 20;
@@ -210,18 +228,27 @@ export class BookingTools {
         const response = await firstValueFrom(
           this.bookingClient.send('booking.findById', { id: bookingId }).pipe(
             timeout(5000),
-            catchError(() => [null]),
+            catchError((err) => {
+              // 폴링 1회 실패는 치명적이지 않음(다음 시도) — 단 silent swallow 금지, 가시화.
+              this.logger.warn(
+                `Saga poll attempt failed (booking ${bookingId}): ${err instanceof Error ? err.message : 'unknown'}`,
+              );
+              return [null];
+            }),
           ),
         );
         const status = response?.data?.status;
         if (status === targetStatus || status === 'CONFIRMED') return status;
         if (status === 'FAILED') return 'FAILED';
-      } catch {
-        // retry
+      } catch (err: unknown) {
+        this.logger.warn(
+          `Saga poll unexpected error (booking ${bookingId}): ${err instanceof Error ? err.message : 'unknown'}`,
+        );
       }
     }
 
-    this.logger.warn(`Saga polling timeout for booking ${bookingId}`);
+    // 타임아웃 — 미확정. 호출부(direct-action-handler)가 "처리 중" 안내로 graceful degradation.
+    this.logger.warn(`Saga polling timeout for booking ${bookingId} — returning PENDING (미확정)`);
     return 'PENDING';
   }
 

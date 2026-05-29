@@ -453,7 +453,7 @@ export class DeepSeekService implements OnModuleInit {
 
     const parsedToolCalls: ToolCall[] | undefined = message.tool_calls?.map((tc) => ({
       name: tc.function.name,
-      args: JSON.parse(tc.function.arguments),
+      args: this.safeParseArgs(tc.function.name, tc.function.arguments),
     }));
 
     return {
@@ -461,5 +461,23 @@ export class DeepSeekService implements OnModuleInit {
       toolCalls: parsedToolCalls && parsedToolCalls.length > 0 ? parsedToolCalls : undefined,
       finishReason: choice.finish_reason || 'stop',
     };
+  }
+
+  /**
+   * LLM이 반환한 tool 인자(JSON 문자열) 안전 파싱.
+   * 잘못된 JSON이 와도 throw로 전체 도구 루프를 죽이지 않고 빈 args로 강등 →
+   * 해당 도구는 인자 부족으로 자연스럽게 실패 처리됨.
+   */
+  private safeParseArgs(toolName: string, raw: string): Record<string, unknown> {
+    if (!raw) return {};
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+    } catch (err: unknown) {
+      this.logger.warn(
+        `Tool args JSON parse failed (${toolName}): ${err instanceof Error ? err.message : 'unknown'} — raw=${raw.slice(0, 200)}`,
+      );
+      return {};
+    }
   }
 }
