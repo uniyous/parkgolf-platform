@@ -171,25 +171,15 @@ export interface TeamMember {
 }
 
 export interface SelectMembersData {
-  teamNumber: number;
   clubName: string;
   date: string;
   maxPlayers: number;
-  assignedTeams: Array<{
-    teamNumber: number;
-    slotId?: string;
-    slotTime: string;
-    gameName: string;
-    maxPlayers?: number;
-    members: Array<{ userId: number; userName: string }>;
-  }>;
   /**
-   * 지금 채우는 팀. 서버(agent)가 자연어에서 사전 추출한 멤버를
+   * 지금 선택 중인 멤버. 서버(agent)가 자연어에서 사전 추출한 멤버를
    * members에 미리 채울 수 있음 (예: "철수랑 예약").
    * 카드 진입 시 selectedIds 초기값으로 prefill 처리.
    */
   currentTeam?: {
-    teamNumber: number;
     slotId?: string;
     slotTime?: string;
     gameName?: string;
@@ -204,7 +194,6 @@ export interface SelectMembersData {
 }
 
 export interface TeamCompleteData {
-  teamNumber: number;
   bookingId: number;
   bookingNumber: string;
   clubName: string;
@@ -214,7 +203,6 @@ export interface TeamCompleteData {
   participants: Array<{ userId: number; userName: string }>;
   totalPrice: number;
   paymentMethod: string;
-  hasMoreTeams: boolean;
 }
 
 export interface SettlementStatusData {
@@ -222,7 +210,6 @@ export interface SettlementStatusData {
   bookingGroupId?: number;
   bookingId?: number;
   bookerId?: number;
-  teamNumber?: number;
   clubName?: string;
   gameName?: string;
   date?: string;
@@ -258,10 +245,8 @@ export interface AiChatRequest {
   paymentMethod?: string;
   paymentComplete?: boolean;
   paymentSuccess?: boolean;
-  // 그룹 예약 (팀 단위)
+  // 멤버 선택 (1예약 = 최대 4명)
   teamMembers?: Array<{ userId: number; userName: string; userEmail: string }>;
-  nextTeam?: boolean;
-  finishGroup?: boolean;
   sendReminder?: boolean;
   // 분할결제 완료
   splitPaymentComplete?: boolean;

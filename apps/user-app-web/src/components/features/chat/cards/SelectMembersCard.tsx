@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Users, Check, CheckCircle2 } from 'lucide-react';
+import { Users, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SelectMembersData } from '@/lib/api/chatApi';
 
@@ -61,36 +61,12 @@ export const SelectMembersCard: React.FC<SelectMembersCardProps> = ({
         <div>
           <h4 className="text-lg font-semibold text-white flex items-center gap-2">
             <Users className="w-4 h-4 text-violet-400" />
-            팀{data.teamNumber} 멤버 선택
+            멤버 선택
           </h4>
           <p className="text-base text-white/50 mt-1">
             {data.clubName} · {data.date} · 최대 {data.maxPlayers}명
           </p>
         </div>
-
-        {/* Assigned Teams (read-only) */}
-        {data.assignedTeams.length > 0 && (
-          <div className="space-y-1.5">
-            <p className="text-base text-white/40">이전 팀 배정 현황</p>
-            {data.assignedTeams.map((team) => (
-              <div
-                key={team.teamNumber}
-                className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5"
-              >
-                <div className="flex items-center gap-2 text-base text-white/50">
-                  <CheckCircle2 className="w-3 h-3 text-violet-400" />
-                  <span className="text-violet-400 font-medium">팀{team.teamNumber}</span>
-                  <span>{team.slotTime}</span>
-                  <span className="text-white/30">·</span>
-                  <span>{team.gameName}</span>
-                </div>
-                <span className="text-base text-white/40">
-                  {team.members.map((m) => m.userName).join(', ')}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* Available Members (checkboxes) */}
         <div className="space-y-1.5">
