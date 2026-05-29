@@ -7,7 +7,6 @@ struct TeamCompleteCardView: View {
         data as? [String: Any] ?? [:]
     }
 
-    private var teamNumber: Int { dict["teamNumber"] as? Int ?? 1 }
     private var bookingNumber: String { dict["bookingNumber"] as? String ?? "" }
     private var clubName: String { dict["clubName"] as? String ?? "" }
     private var date: String { dict["date"] as? String ?? "" }
@@ -34,7 +33,7 @@ struct TeamCompleteCardView: View {
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(Color.parkPrimary)
-                Text("팀\(teamNumber) 예약 완료")
+                Text("예약 완료")
                     .font(.title3)
                     .fontWeight(.semibold)
                     .foregroundColor(Color.parkPrimary)

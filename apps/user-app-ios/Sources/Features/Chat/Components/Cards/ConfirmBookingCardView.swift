@@ -17,16 +17,8 @@ struct ConfirmBookingCardView: View {
     private var playerCount: Int { dict["playerCount"] as? Int ?? 0 }
     private var price: Int { dict["price"] as? Int ?? 0 }
     private var groupMode: Bool { dict["groupMode"] as? Bool ?? false }
-    private var teamNumber: Int? { dict["teamNumber"] as? Int }
     private var members: [[String: Any]]? { dict["members"] as? [[String: Any]] }
     private var pricePerPerson: Int? { dict["pricePerPerson"] as? Int }
-
-    private var headerTitle: String {
-        if let teamNumber = teamNumber {
-            return "팀\(teamNumber) 예약 정보 확인"
-        }
-        return "예약 정보 확인"
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -34,7 +26,7 @@ struct ConfirmBookingCardView: View {
             HStack(spacing: 8) {
                 Image(systemName: "clipboard.fill")
                     .foregroundColor(Color.parkPrimary)
-                Text(headerTitle)
+                Text("예약 정보 확인")
                     .font(.title3)
                     .fontWeight(.semibold)
                     .foregroundColor(.white)

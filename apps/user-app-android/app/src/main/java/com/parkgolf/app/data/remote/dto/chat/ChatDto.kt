@@ -140,8 +140,6 @@ data class AiChatRequest(
     // 그룹 예약 후속 액션
     val chatRoomId: String? = null,
     val teamMembers: List<TeamMemberDto>? = null,
-    val nextTeam: Boolean? = null,
-    val finishGroup: Boolean? = null,
     val sendReminder: Boolean? = null
 )
 

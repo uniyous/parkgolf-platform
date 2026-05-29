@@ -32,7 +32,6 @@ fun ConfirmBookingCard(
 
     // 그룹 모드 관련
     val groupMode = data["groupMode"] as? Boolean ?: false
-    val teamNumber = (data["teamNumber"] as? Number)?.toInt()
     val pricePerPerson = (data["pricePerPerson"] as? Number)?.toInt()
     @Suppress("UNCHECKED_CAST")
     val members = (data["members"] as? List<Map<String, Any?>>) ?: emptyList()
@@ -52,7 +51,7 @@ fun ConfirmBookingCard(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = if (teamNumber != null) "팀${teamNumber} 예약 정보 확인" else "예약 정보 확인",
+                text = "예약 정보 확인",
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = ParkOnPrimary

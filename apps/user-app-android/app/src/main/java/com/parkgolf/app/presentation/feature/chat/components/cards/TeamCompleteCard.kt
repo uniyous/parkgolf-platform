@@ -23,7 +23,6 @@ import java.util.Locale
 fun TeamCompleteCard(
     data: Map<String, Any?>
 ) {
-    val teamNumber = (data["teamNumber"] as? Number)?.toInt() ?: 1
     val bookingNumber = data["bookingNumber"]?.toString() ?: ""
     val clubName = data["clubName"]?.toString() ?: ""
     val date = data["date"]?.toString() ?: ""
@@ -66,7 +65,7 @@ fun TeamCompleteCard(
                     tint = ParkPrimary
                 )
                 Text(
-                    text = "팀${teamNumber} 예약 완료",
+                    text = "예약 완료",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = ParkPrimary

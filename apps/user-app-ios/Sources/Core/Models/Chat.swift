@@ -392,8 +392,6 @@ struct AiChatRequest: Codable, Sendable {
     // 그룹 후속 액션
     var chatRoomId: String?
     var teamMembers: [TeamMemberDto]?
-    var nextTeam: Bool?
-    var finishGroup: Bool?
     var sendReminder: Bool?
 }
 
