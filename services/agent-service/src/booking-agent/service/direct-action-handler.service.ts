@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConversationService } from './conversation.service';
 import { ToolExecutorService } from './tool-executor.service';
+import { EffectExecutorService } from './effect-executor.service';
 import { UiCardHelper } from './ui-card.helper';
 import { BookingCompletionService } from './booking-completion.service';
 import {
@@ -22,6 +23,7 @@ export class DirectActionHandlerService {
   constructor(
     private readonly conversationService: ConversationService,
     private readonly toolExecutor: ToolExecutorService,
+    private readonly effectExecutor: EffectExecutorService,
     private readonly uiCardHelper: UiCardHelper,
     private readonly bookingCompletion: BookingCompletionService,
   ) {}
@@ -191,18 +193,17 @@ export class DirectActionHandlerService {
         }))
       : undefined;
 
-    const toolResult = await this.toolExecutor.execute({
-      name: 'create_booking',
-      args: {
-        userId: request.userId,
-        userName: request.userName,
-        userEmail: request.userEmail,
-        gameTimeSlotId: Number(slotId),
-        playerCount,
-        paymentMethod,
-        teamMembers,
-        chatRoomId: isDutchpay ? context.slots.chatRoomId : undefined,
-      },
+    // saga 시작은 effect-executor 단일 게이트 경유 — journal 기록 + 재진입 멱등 (UNI-34)
+    const toolResult = await this.effectExecutor.commitBooking({
+      conversationId: context.conversationId,
+      userId: request.userId,
+      userName: request.userName,
+      userEmail: request.userEmail,
+      slotId: Number(slotId),
+      playerCount,
+      paymentMethod,
+      teamMembers,
+      chatRoomId: isDutchpay ? context.slots.chatRoomId : undefined,
     });
 
     const actions: ChatAction[] = [];
