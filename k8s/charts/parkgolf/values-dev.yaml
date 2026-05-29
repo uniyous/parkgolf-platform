@@ -6,25 +6,25 @@ global:
   namespace: parkgolf-dev
   domain: dev-api.parkgolfmate.com
   image:
-    tag: b6916347301f68caa3c52d65e54bd5d4bd0cf13d
+    tag: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
 externalSecrets:
   clusterName: parkgolf-dev-cluster
   clusterLocation: asia-northeast3-a
 ingress:
   staticIpName: parkgolf-parkgolf-dev-cluster-ip
 serviceImageTags:
-  agent-service: b6916347301f68caa3c52d65e54bd5d4bd0cf13d
-  iam-service: b6916347301f68caa3c52d65e54bd5d4bd0cf13d
-  course-service: b6916347301f68caa3c52d65e54bd5d4bd0cf13d
-  booking-service: b6916347301f68caa3c52d65e54bd5d4bd0cf13d
-  payment-service: b6916347301f68caa3c52d65e54bd5d4bd0cf13d
-  chat-service: b6916347301f68caa3c52d65e54bd5d4bd0cf13d
-  notify-service: b6916347301f68caa3c52d65e54bd5d4bd0cf13d
-  saga-service: b6916347301f68caa3c52d65e54bd5d4bd0cf13d
-  partner-service: b6916347301f68caa3c52d65e54bd5d4bd0cf13d
-  admin-api: b6916347301f68caa3c52d65e54bd5d4bd0cf13d
-  user-api: b6916347301f68caa3c52d65e54bd5d4bd0cf13d
-  chat-gateway: b6916347301f68caa3c52d65e54bd5d4bd0cf13d
-  weather-service: b6916347301f68caa3c52d65e54bd5d4bd0cf13d
-  location-service: b6916347301f68caa3c52d65e54bd5d4bd0cf13d
-  job-service: b6916347301f68caa3c52d65e54bd5d4bd0cf13d
+  agent-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  iam-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  course-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  booking-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  payment-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  chat-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  notify-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  saga-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  partner-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  admin-api: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  user-api: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  chat-gateway: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  weather-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  location-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
+  job-service: bdbd1febd27332f3c5eb8caa5bf34d2797450b4a
