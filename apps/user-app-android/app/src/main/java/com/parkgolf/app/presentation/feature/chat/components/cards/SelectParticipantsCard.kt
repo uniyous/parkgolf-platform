@@ -124,7 +124,7 @@ fun SelectParticipantsCard(
                         tint = ParkPrimary
                     )
                     Text(
-                        text = "팀 편성",
+                        text = "멤버 선택",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = ParkOnPrimary
@@ -157,12 +157,6 @@ fun SelectParticipantsCard(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Text(
-                                    text = "팀${team.teamNumber}",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = ParkPrimary
-                                )
                                 Icon(
                                     Icons.Default.AccessTime,
                                     contentDescription = null,
@@ -286,7 +280,7 @@ fun SelectParticipantsCard(
                                         modifier = Modifier.height(28.dp)
                                     ) {
                                         Text(
-                                            text = "팀${availableTeam.teamNumber}에 추가",
+                                            text = "추가",
                                             style = MaterialTheme.typography.labelMedium,
                                             color = ParkPrimary
                                         )

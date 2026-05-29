@@ -14,9 +14,8 @@ import { TurnJournalService } from './turn-journal.service';
  *
  * read-only(query) 도구는 여기를 거치지 않는다(tool-executor 직접).
  *
- * NOTE: L3(Semantic Memory) 단일화는 별도 후속(UNI-36) — 결제 확정(card/dutchpay)이
- *   나중 시점에 일어나 effect-executor가 관측할 수 없고, completeTeam과 이중 집계
- *   위험이 있어 분리. 현재 L3는 booking-completion.completeTeam 이 담당.
+ * L3(Semantic Memory) 기록은 booking-completion.finalizeBooking 단 1곳으로 단일화됨 (UNI-36).
+ * effect-executor 는 saga 시작/멱등만 담당하고 L3 는 관여하지 않는다.
  */
 
 export interface CommitBookingParams {

@@ -29,7 +29,7 @@ struct SelectParticipantsCardView: View {
             HStack(spacing: 8) {
                 Image(systemName: "person.3.sequence.fill")
                     .foregroundColor(Color.parkPrimary)
-                Text("팀 편성")
+                Text("멤버 선택")
                     .font(.title3)
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
@@ -43,10 +43,6 @@ struct SelectParticipantsCardView: View {
             ForEach(Array(teams.enumerated()), id: \.element.id) { teamIndex, team in
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        Text("팀\(team.teamNumber)")
-                            .font(.body)
-                            .fontWeight(.semibold)
-                            .foregroundColor(Color.parkPrimary)
                         if !team.slotTime.isEmpty {
                             Text("\(team.slotTime) · \(team.gameName)")
                                 .font(.subheadline)
@@ -114,7 +110,7 @@ struct SelectParticipantsCardView: View {
                                     Button {
                                         addMember(member, toTeamAt: teamIndex)
                                     } label: {
-                                        Text("팀\(team.teamNumber)")
+                                        Text("추가")
                                             .font(.subheadline)
                                             .foregroundColor(Color.parkPrimary)
                                             .padding(.horizontal, 8)

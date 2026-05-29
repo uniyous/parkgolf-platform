@@ -19,9 +19,7 @@ export const TeamCompleteCard: React.FC<TeamCompleteCardProps> = ({
       {/* Header */}
       <div className="flex items-center gap-2">
         <CheckCircle2 className="w-5 h-5 text-violet-400" />
-        <h4 className="text-lg font-semibold text-white">
-          팀{data.teamNumber} 예약 완료
-        </h4>
+        <h4 className="text-lg font-semibold text-white">예약 완료</h4>
       </div>
 
       {/* Booking Info */}

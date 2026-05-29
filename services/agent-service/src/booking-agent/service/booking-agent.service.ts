@@ -79,12 +79,10 @@ export class BookingAgentService {
 
     // ── Direct Handling (LLM 우회) ──
 
-    // 그룹 예약 핸들러 (우선)
+    // 더치페이 미결제 리마인더
     if (request.sendReminder) return this.groupBooking.handleSendReminder(context, request);
-    if (request.finishGroup) return this.groupBooking.handleFinishGroup(context, request);
-    if (request.nextTeam) return this.groupBooking.handleNextTeam(context, request);
 
-    // 팀 멤버 선택: 슬롯 이미 선택돼 있으면 슬롯 select로 redirect (단방향 의존성 유지)
+    // 멤버 선택: 슬롯 이미 선택돼 있으면 슬롯 select로 redirect (단방향 의존성 유지)
     if (request.teamMembers) {
       if (
         request.teamMembers.length > 0 &&
@@ -93,7 +91,6 @@ export class BookingAgentService {
       ) {
         this.conversationService.updateSlots(context, {
           groupMode: true,
-          currentTeamNumber: context.slots.currentTeamNumber || 1,
           currentTeamMembers: request.teamMembers,
           playerCount: request.teamMembers.length,
         });

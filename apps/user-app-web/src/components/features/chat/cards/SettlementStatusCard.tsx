@@ -69,7 +69,7 @@ const BookerDashboardView: React.FC<{
       <div className="flex items-center justify-between">
         <h4 className="text-lg font-semibold text-white flex items-center gap-2">
           <Users className="w-4 h-4 text-violet-400" />
-          {data.teamNumber ? `팀${data.teamNumber} 정산 현황` : '정산 현황'}
+          정산 현황
         </h4>
         <span className={cn(
           'text-base font-medium px-2 py-0.5 rounded-full',

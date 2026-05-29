@@ -10,12 +10,12 @@ import {
 } from '../dto/chat.dto';
 
 /**
- * 그룹/팀 예약 핸들러 (멀티팀 순차 예약).
+ * 멤버 선택/리마인더 핸들러 (1예약 = 최대 4명, UNI-36).
  *
- * - handleTeamMemberSelect: 팀 멤버 선택 → 슬롯 조회 (이미 슬롯이 있다면 라우터가 redirect)
- * - handleNextTeam:         "다음 팀" → SELECT_MEMBERS 카드
- * - handleFinishGroup:      "종료" → 그룹 요약 + 시스템 메시지 발송
- * - handleSendReminder:     리마인더 push 전송
+ * - handleTeamMemberSelect: 멤버 선택 → 슬롯 조회 (이미 슬롯이 있으면 라우터가 redirect)
+ * - handleSendReminder:     더치페이 미결제 참여자 리마인더 push
+ *
+ * (구 멀티팀 순차 예약의 handleNextTeam / handleFinishGroup 은 UNI-36 에서 제거됨)
  */
 @Injectable()
 export class GroupBookingService {
@@ -26,7 +26,7 @@ export class GroupBookingService {
   ) {}
 
   /**
-   * 팀 멤버 선택 → 슬롯 조회 (SHOW_SLOTS).
+   * 멤버 선택 → 슬롯 조회 (SHOW_SLOTS).
    * 이미 슬롯이 선택된 케이스는 라우터(BookingAgentService)에서 DirectAction로 redirect 처리.
    */
   async handleTeamMemberSelect(
@@ -42,7 +42,6 @@ export class GroupBookingService {
 
     this.conversationService.updateSlots(context, {
       groupMode: true,
-      currentTeamNumber: context.slots.currentTeamNumber || 1,
       currentTeamMembers: teamMembers,
       playerCount: teamMembers.length,
     });
@@ -66,8 +65,7 @@ export class GroupBookingService {
 
     if (toolResult.success && (toolResult.result as any)?.availableCount > 0) {
       actions.push({ type: 'SHOW_SLOTS', data: toolResult.result });
-      const teamNumber = context.slots.currentTeamNumber || 1;
-      message = `팀${teamNumber} (${teamMembers.length}명) — 시간을 선택해 주세요!`;
+      message = `${teamMembers.length}명 — 시간을 선택해 주세요!`;
       this.conversationService.setState(context, 'CONFIRMING');
     } else {
       message = `${date}에 예약 가능한 시간이 없어요.`;
@@ -83,81 +81,7 @@ export class GroupBookingService {
   }
 
   /**
-   * "다음 팀" 버튼 → SELECT_MEMBERS 카드 (이전 팀 표시 + 가용 멤버)
-   */
-  async handleNextTeam(
-    context: ConversationContext,
-    _request: ChatRequestDto,
-  ): Promise<ChatResponseDto> {
-    const nextTeamNumber = (context.slots.currentTeamNumber || 1) + 1;
-    this.conversationService.updateSlots(context, {
-      currentTeamNumber: nextTeamNumber,
-      currentTeamMembers: undefined,
-      groupMode: false,
-      slotId: undefined,
-      time: undefined,
-      slotPrice: undefined,
-    });
-
-    const result = await this.uiCardHelper.showSelectMembers(
-      context,
-      `팀${nextTeamNumber} 멤버를 선택해 주세요!`,
-    );
-    if (result) return result;
-
-    const message = '채팅방 멤버를 조회할 수 없어요.';
-    this.conversationService.addAssistantMessage(context, message);
-    return { conversationId: context.conversationId, message, state: context.state };
-  }
-
-  /**
-   * "종료" 버튼 → 그룹 예약 요약 + 채팅방 SYSTEM 메시지
-   */
-  async handleFinishGroup(
-    context: ConversationContext,
-    _request: ChatRequestDto,
-  ): Promise<ChatResponseDto> {
-    const completedTeams = context.slots.completedTeams || [];
-
-    const totalPrice = completedTeams.reduce((sum, t) => sum + t.totalPrice, 0);
-    const totalMembers = completedTeams.reduce((sum, t) => sum + t.members.length, 0);
-
-    const summaryData = {
-      success: true,
-      groupSummary: true,
-      teamCount: completedTeams.length,
-      totalMembers,
-      totalPrice,
-      teams: completedTeams.map((t) => ({
-        teamNumber: t.teamNumber,
-        bookingNumber: t.bookingNumber,
-        slotTime: t.slotTime,
-        gameName: t.gameName,
-        members: t.members.map((m) => m.userName),
-        totalPrice: t.totalPrice,
-        paymentMethod: t.paymentMethod,
-      })),
-    };
-
-    const message = `${completedTeams.length}개 팀 예약이 모두 완료되었어요!`;
-    this.conversationService.addAssistantMessage(context, message);
-    this.conversationService.setState(context, 'COMPLETED');
-
-    if (context.slots.chatRoomId) {
-      const systemMsg = `[그룹 예약 완료] ${completedTeams.length}팀, 총 ${totalMembers}명 — ${context.slots.clubName} (${context.slots.date})`;
-      this.toolExecutor.sendSystemMessage(context.slots.chatRoomId, systemMsg);
-    }
-
-    return {
-      conversationId: context.conversationId,
-      message,
-      state: context.state,
-      actions: [{ type: 'TEAM_COMPLETE', data: summaryData }],
-    };
-  }
-
-  /**
-   * 리마인더: 미결제 참여자에게 push 알림 재발송
+   * 리마인더: 미결제 참여자에게 push 알림 재발송 (더치페이)
    */
   async handleSendReminder(
     context: ConversationContext,
